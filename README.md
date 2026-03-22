@@ -56,8 +56,7 @@ echo "CONFIG_PCI_P2PDMA=y" >> config
 makepkg -si
 ```
 
-Or use our pre-built [`linux-zen-p2p`](https://github.com/mattbucci/linux-zen-p2p) package
-if available. The running kernel should show `HSA_AMD_P2P` enabled:
+The running kernel should show `HSA_AMD_P2P` enabled:
 
 ```bash
 zcat /proc/config.gz | grep HSA_AMD_P2P
@@ -151,6 +150,19 @@ python scripts/convert_compressed_tensors_to_awq.py
 # Benchmark
 ./scripts/bench_quick.sh "description"
 ```
+
+## What we tried that didn't help
+
+These optimizations were tested and found to be neutral or harmful on triton 3.6:
+
+| Experiment | Result | Why |
+|-----------|--------|-----|
+| `triton_attention_num_kv_splits=32` | No change | Short sequences (256 tok) don't benefit |
+| AWQ autotune kernel variants (from triton 3.4 setup) | **2x regression** | triton 3.6 codegen differs; `waves_per_eu` hint + scales caching hurt performance |
+| AWQ BSM=16 BSN=128 (sweep-optimal in isolation) | -20% throughput | Better in microbenchmark but worse with CUDA graph capture overhead |
+| AWQ adaptive split_k by batch size | -20% throughput | Same story — kernel-level optimality doesn't translate to server throughput |
+
+See `benchmarks.log` for the full progression (patches 0-9).
 
 ## Recommendations
 
