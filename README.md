@@ -106,6 +106,33 @@ fused kernel using RDNA4-tuned split_k (2 for large N, 8 for small N) and FP32 a
 
 Large projections (gate/up/down) achieve 72-91% of peak bandwidth.
 
+## Bottleneck Analysis
+
+FP8 decode at bs=1 takes ~39ms per token. Where does the time go?
+
+```
+GEMM (weight reads):     ~23.6ms  (60%)  ← bottleneck
+Overhead (graph/sched):   ~8.7ms  (22%)
+Elementwise/norms:        ~3.9ms  (10%)
+RCCL allreduce:           ~2.8ms   (7%)  ← not the bottleneck
+Attention:                ~0.4ms   (1%)
+```
+
+GEMM is bandwidth-bound: each decode step reads all 12.1 GB of model weights
+(FP8) through 442 GB/s memory. The theoretical floor is 27.4ms — we're at 39ms
+(70% efficiency). The gap is from per-layer overhead (weights are 256MB/layer,
+hitting the R9700's 442 GB/s bandwidth tier instead of the 562 GB/s tier for 1GB+ reads).
+
+## Future Optimizations
+
+| Optimization | Expected impact | Difficulty |
+|-------------|----------------|------------|
+| **AWQ kernel re-autotune for triton 3.6** | +10-15% throughput | Medium — run `sweep_awq_triton36.py`, needs per-batch-size kernel specialization |
+| **Weight prefetch / double buffering** | up to -27% TPOT | Hard — exploit R9700's 562 GB/s tier (1GB+ reads) by prefetching next layer |
+| **FP8 lm_head** | -1ms/step | Medium — triton compiler hangs on some tile sizes, needs workaround |
+| **QuickReduce with DMA-BUF IPC** | -5% TPOT | Hard — replace `hipIpcGetMemHandle` (crashes on gfx1201) with DMA-BUF export/import |
+| **Speculative decoding (EAGLE)** | 2-3x effective throughput | Medium — R9700 has VRAM headroom for a small draft model |
+
 ## What's Patched (352 lines, 13 files)
 
 ### Performance
