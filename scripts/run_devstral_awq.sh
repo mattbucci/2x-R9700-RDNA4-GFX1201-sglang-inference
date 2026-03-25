@@ -37,8 +37,9 @@ exec python -m sglang.launch_server \
     --chunked-prefill-size 8192 \
     --attention-backend triton \
     --num-continuous-decode-steps 32 \
-    --disable-custom-all-reduce \ # Required: QuickReduce uses hipIpcGetMemHandle which crashes on gfx1201
+    --disable-custom-all-reduce \
     --trust-remote-code \
+    --chat-template "$SCRIPT_DIR/devstral_chat_template.jinja" \
     --port "$PORT" \
     --host 0.0.0.0 \
     --enable-metrics

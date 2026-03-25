@@ -2,12 +2,48 @@
 
 High-throughput LLM inference on AMD Radeon AI PRO R9700 (gfx1201, RDNA4) with ROCm 7.2.
 
-## Performance (Devstral-24B, 2x R9700, 262K context)
+## Performance (2x R9700, 262K context, AWQ-4bit)
 
-| Quantization | Single request | 8 concurrent | 16 concurrent |
-|-------------|----------------|--------------|---------------|
-| **AWQ-4bit** | 28ms (36 tok/s) | **319 tok/s** | **331 tok/s** |
-| FP8 | 39ms (26 tok/s) | 208 tok/s | 246 tok/s |
+### Devstral-24B (Mistral 3, standard transformer, TP=2)
+
+| Concurrency | TPOT | Throughput |
+|-------------|------|-----------|
+| 1 | 29ms (34 tok/s) | 96 tok/s |
+| 8 | 44ms | **310 tok/s** |
+| 16 | 65ms | **396 tok/s** |
+| 32 | 57ms | **458 tok/s** |
+
+### Qwen3.5-27B (hybrid DeltaNet + attention, TP=2 replicated)
+
+| Concurrency | TPOT | Throughput |
+|-------------|------|-----------|
+| 1 | 57ms (18 tok/s) | 46 tok/s |
+
+Qwen3.5 with TP=2 replicates all layers to avoid DeltaNet precision errors,
+so each GPU computes the full model. Throughput is limited by this replication.
+Quality is perfect: 39/39 tests pass (text + vision).
+
+#### Long-context decode (DeltaNet = O(1) decode)
+
+| Context length | Prefill time | Decode TPOT |
+|----------------|-------------|-------------|
+| 256 tokens | 0.5s | **57ms** |
+| 4K tokens | 4s | 57ms |
+| 16K tokens | 20s | 57ms |
+| 64K tokens | 45s | 57ms |
+| 128K tokens | 100s | 57ms |
+| 250K tokens | 85s | 57ms |
+
+Decode speed is constant at **57ms/token** regardless of context length — DeltaNet's
+recurrent state replaces KV cache for 48 of 64 layers. Prefill throughput is ~1.3K tok/s
+(chunked at 8192 tokens).
+
+### Devstral FP8 (for comparison)
+
+| Concurrency | TPOT | Throughput |
+|-------------|------|-----------|
+| 1 | 39ms (26 tok/s) | — |
+| 16 | — | 246 tok/s |
 
 AWQ-4bit reads 0.5 bytes/param (half the bandwidth of FP8), enabling higher throughput
 through batching. FP8 is bandwidth-bound at ~39ms — near the hardware floor.
@@ -16,12 +52,14 @@ through batching. FP8 is bandwidth-bound at ~39ms — near the hardware floor.
 
 1. **System RCCL 7.2 has P2P/IPC for gfx1201** — no custom RCCL build needed
 2. **Upstream triton 3.6.0 works on RDNA4** — `triton-rocm` 3.6 (AMD's PyTorch fork) deadlocks with `LD_PRELOAD`, but the upstream release does not
-3. **352 lines of patches** get SGLang v0.5.9 running on RDNA4 with near-optimal performance
+3. **~250 lines of patches** get SGLang v0.5.9 running on RDNA4 with near-optimal performance
 4. **The single highest-impact change is using fused AWQ GEMM** instead of dequantize+matmul — 4x TPOT improvement
+5. **Qwen3.5 TP=2 works** by replicating all layers (DeltaNet + MLP) to avoid FP16 rounding accumulation
+6. **Both models support chat** with custom chat templates (Devstral needs BOS removed from template)
 
 | Component | Version | Source |
 |-----------|---------|--------|
-| SGLang | v0.5.9 | stock + 352-line patch (13 files) |
+| SGLang | v0.5.9 | stock + ~250-line patch (18 files) |
 | Triton | 3.6.0 | upstream triton-lang, built from source |
 | RCCL | system ROCm 7.2 (2.27.7) | no custom build |
 | PyTorch | 2.12.0.dev20260310+rocm7.2 | nightly |
@@ -90,7 +128,7 @@ Stock SGLang already performs near-optimally. Patches are for stability, not spe
 | Config | conc=1 TPOT | conc=8 throughput | conc=16 throughput |
 |--------|-------------|-------------------|---------------------|
 | Stock AWQ (dequantize + matmul) | 112ms | 132 tok/s | 148 tok/s |
-| **Fused GEMM (this repo)** | **28ms** | **319 tok/s** | **331 tok/s** |
+| **Fused GEMM (this repo)** | **29ms** | **310 tok/s** | **396 tok/s** |
 
 The fused GEMM replaces two kernel launches (dequantize, then matmul) with a single
 fused kernel using RDNA4-tuned split_k (2 for large N, 8 for small N) and FP32 accumulator.
@@ -133,13 +171,13 @@ hitting the R9700's 442 GB/s bandwidth tier instead of the 562 GB/s tier for 1GB
 | **QuickReduce with DMA-BUF IPC** | -5% TPOT | Hard — replace `hipIpcGetMemHandle` (crashes on gfx1201) with DMA-BUF export/import |
 | **Speculative decoding (EAGLE)** | 2-3x effective throughput | Medium — R9700 has VRAM headroom for a small draft model |
 
-## What's Patched (352 lines, 13 files)
+## What's Patched (~250 lines, 18 files)
 
 ### Performance
 | File | Change | Impact |
 |------|--------|--------|
 | `awq.py` | Use fused GEMM on HIP instead of dequantize+matmul | **4x AWQ TPOT** |
-| `awq_triton.py` | FP32 accumulator for WMMA precision | correctness + speed |
+| `awq_triton.py` | FP32 accumulator + FP32 split_k buffer | correctness + speed |
 | `decode_attention.py` | BLOCK=32 on RDNA4 (stock uses 8 on HIP) | decode attention speed |
 | `extend_attention.py` | RDNA4 block sizes tuned by head dimension | prefill speed |
 
@@ -148,8 +186,12 @@ hitting the R9700's 442 GB/s bandwidth tier instead of the 562 GB/s tier for 1GB
 |------|--------|--------|
 | `sgl-kernel/setup_rocm.py` | Allow gfx1xxx RDNA, set FP8 E4M3 type, 48KB LDS | sgl-kernel builds on RDNA4 |
 | `fp8_utils.py` | Disable rowwise torch._scaled_mm on RDNA4 | prevents GPU hang during CUDA graph capture |
+| `http_server.py` | Text-only warmup for VLMs (Qwen3.5, Mistral3) | **prevents radix cache pollution + SSM corruption** |
 | `llava.py` | Catch ValueError in transformers 5.x model mapping | prevents crash on startup |
 | `llava.py` | Strip `model.` prefix in weight names, route lm_head | AWQ model loading works |
+| `communicator.py` | Float32 all-reduce for TP precision | prevents DeltaNet error accumulation |
+| `qwen3_5.py` | Replicate all DeltaNet + MLP layers (tp_size=1) | **TP=2 quality fix** |
+| `qwen3_next.py` | `tp_world_size=1` for MambaPool SSM state | replicated DeltaNet state |
 
 ### Compatibility (CUDA-only import guards)
 | File | Change |
@@ -167,16 +209,138 @@ hitting the R9700's 442 GB/s bandwidth tier instead of the 562 GB/s tier for 1GB
 ## Run
 
 ```bash
-# FP8 (simple — no model conversion needed)
+# Devstral-24B FP8 (simple — no model conversion needed)
 ./scripts/run_devstral_7.2.sh
 
-# AWQ-4bit (highest throughput — requires model conversion first)
+# Devstral-24B AWQ-4bit (highest throughput — requires model conversion first)
 python scripts/convert_compressed_tensors_to_awq.py
 ./scripts/run_devstral_awq.sh
+
+# Qwen3.5-27B AWQ-4bit (TP=2, supports text + image/video + thinking mode)
+./scripts/run_qwen35_27b_awq.sh
+
+# Comprehensive evaluation (math, code gen, vision, parallel stress tests)
+python scripts/eval_comprehensive.py --port 23334 --parallel 4
 
 # Benchmark
 ./scripts/bench_quick.sh "description"
 ```
+
+## Qwen3.5-27B on RDNA4
+
+Qwen3.5-27B uses a hybrid DeltaNet (linear attention) + full attention architecture.
+Running it on RDNA4 with TP=2 requires replicating all layers to avoid FP16 precision
+errors from TP matmul splits accumulating through DeltaNet's recurrent state.
+
+### TP=2 precision fix
+
+**Root cause:** TP RowParallelLinear splits matmul: `W_0@x_0 + W_1@x_1` differs from
+`W@x` by ~1 ULP in FP16. DeltaNet's state `S(t) = g*S(t-1) + delta` compounds this
+error across 48 layers x N tokens. MLP TP error also feeds into DeltaNet input every layer.
+
+**Fix (all in `qwen3_5.py`):**
+1. **Replicate DeltaNet projections** — all projections use `tp_rank=0, tp_size=1`. Output divided by `real_tp_size` for correct all-reduce.
+2. **Replicate ALL MLPs** — both LinearDecoderLayer and AttentionDecoderLayer MLPs use `tp_rank=0, tp_size=1`. Output divided by `real_tp_size`.
+3. **Float32 all-reduce** in `communicator.py` `_gather_hidden_states_and_residual`.
+4. **Float32 split_k buffer** in `awq_triton.py`.
+5. **SSM state** uses `tp_world_size=1` in `qwen3_next.py`.
+
+### Quality validation (TP=2, 256K context)
+
+```
+Math:     8/8  (2+2, 17*23=391, 144/12, sqrt(169), 2^10, 997 prime, fib(10), 847+396)
+Code:     8/8  (reverse_string, is_prime, fizzbuzz, binary_search, flatten, merge_sort, LRU cache, matrix_multiply)
+Knowledge: 7/7  (Paris, H2O, speed of light, Python creator, odd one out, sequence, raw completion)
+Edge:     5/5  (empty string, negative mod, float precision, list vs tuple, reduce factorial)
+Parallel: 8/8  (4 concurrent mixed tasks)
+Vision:   3/3  (shape identification, text reading, shape counting)
+Total:   39/39
+```
+
+### Configuration
+
+```bash
+# 256K context, TP=2, thinking mode, vision
+./scripts/run_qwen35_27b_awq.sh
+```
+
+VRAM budget (per GPU, 32GB):
+- Model weights (replicated): ~14.3 GB
+- SSM state (10 slots): ~1.6 GB
+- KV cache (256K FP8): ~4.0 GB (16 attention layers x 2 kv-heads/gpu)
+- CUDA overhead + graphs: ~2.0 GB
+- Free: ~10 GB
+
+### Patches required (already applied)
+
+| File | Change | Why |
+|------|--------|-----|
+| `qwen3_5.py` | Replicate all DeltaNet + MLP layers (tp_size=1) | TP=2 precision fix |
+| `qwen3_5.py` | `quant_config=None` for `in_proj_b`, `in_proj_a` | Output dim 48 / TP=2 = 24, not divisible by 16 for hipBLASLt `scaled_mm` |
+| `causal_conv1d_triton.py` | Cast conv_state loads to activation dtype | Conv states in BF16 but activations in FP16 causes triton type mismatch |
+| `communicator.py` | Float32 all-reduce | TP precision preservation |
+| `qwen3_next.py` | `tp_world_size=1` for MambaPool | Replicated DeltaNet state |
+
+## Devstral-24B on RDNA4
+
+Devstral is a standard Mistral 3 transformer (no recurrent layers). TP=2 works
+out of the box with the AWQ model from the community conversion.
+
+### Chat template fix
+
+The community AWQ model's chat template includes a BOS token (`<s>`) that causes
+the model to generate `<unk>` tokens. The launch script uses a fixed template
+(`scripts/devstral_chat_template.jinja`) with BOS removed.
+
+### VLM warmup fix
+
+SGLang's default warmup sends an image request for VLM models. With the AWQ model,
+this image warmup produces garbage KV values that pollute the radix cache, causing
+all subsequent chat requests sharing the `[INST]` prefix to fail. Fixed by adding
+`Mistral3ForConditionalGeneration` to the text-only warmup list in `http_server.py`.
+
+### Quality validation
+
+```
+Math:     8/8  Code: 8/8  Knowledge: 7/7  Edge: 4/5  Parallel: 8/8
+Vision:   NOT WORKING (AWQ conversion issue — outputs <unk> tokens)
+```
+
+Devstral is primarily a code model. Vision is not functional with the AWQ model
+due to issues in the community quantization (androiddrew's conversion).
+
+## Qwen3.5 quantization pipeline
+
+The base BF16 model (54GB) fits in 64GB VRAM but leaves no room for KV cache.
+AWQ-4bit brings weights down to ~15GB (text) + 879MB (vision encoder), enabling
+131K context on a single 32GB R9700.
+
+**Why not simpler approaches?**
+- **FP8**: Block-wise FP8 triton kernel crashes on RDNA4 (`PassManager::run failed`); online FP8 doesn't reduce weight memory for this model
+- **Community AWQ (QuantTrio)**: Produces garbage output + GPU crashes
+- **RTN quantization**: Round-to-nearest without calibration produces garbage on DeltaNet's sensitive weights
+- **AutoAWQ**: Doesn't support `qwen3_5` model type (deprecated)
+- **llm-compressor AWQModifier**: Can't handle hybrid architecture (DeltaNet layers lack standard q/k/v projection mapping for smooth quant)
+
+**What works: GPTQ calibrated quantization → AWQ format conversion**
+
+```bash
+# One-time: install llm-compressor in sglang env (--no-deps to avoid torch conflicts)
+pip install git+https://github.com/vllm-project/llm-compressor.git --no-deps
+pip install git+https://github.com/neuralmagic/compressed-tensors.git --no-deps
+
+# Quantize (GPTQ calibration on GPU, ~6h on 2x R9700)
+./scripts/quantize_qwen35_llmcompressor.sh
+
+# Run inference
+MODEL=~/AI/models/Qwen3.5-27B-AWQ-4bit-calibrated ./scripts/run_qwen35_27b_awq.sh
+```
+
+The pipeline:
+1. **GPTQ calibration** (`quantize_qwen35_llmcompressor.py`): Loads BF16 model across 2 GPUs, runs 256 calibration samples through each layer, optimizes quantization per-layer using Hessian-based GPTQ. Outputs compressed-tensors format.
+2. **AWQ format conversion** (`convert_qwen35_ct_to_awq.py`): Unpacks compressed-tensors sequential packing, transposes weights, repacks with AWQ interleaved order, remaps key prefixes (`model.layers.*` → `model.language_model.layers.*`), copies vision encoder weights (FP16) from the original model, writes native AWQ format that SGLang's triton GEMM kernel consumes.
+
+GPTQ was chosen over AWQ because it processes layers independently — no smooth-quant layer mapping needed for the hybrid DeltaNet/attention architecture.
 
 ## What we tried that didn't help
 
@@ -193,8 +357,10 @@ See `benchmarks.log` for the full progression (patches 0-9).
 
 ## Recommendations
 
-- **Use AWQ-4bit for throughput** — 331 tok/s vs 246 tok/s with FP8
+- **Use AWQ-4bit for throughput** — 458 tok/s at 32 concurrent (Devstral), vs 246 tok/s with FP8
 - **Use FP8 for simplicity** — no model conversion, 39ms TPOT is excellent for single-user
+- **Use Qwen3.5 for vision + thinking** — 39/39 quality tests pass, 256K context, working TP=2
+- **Use Devstral for code tasks** — fastest throughput, but no vision with AWQ
 - **Build triton 3.6 from source** — upstream triton-lang, not triton-rocm from PyTorch wheels
 - **No custom RCCL needed** — system RCCL 7.2 has P2P/IPC for gfx1201
 
@@ -217,12 +383,20 @@ Python: 3.12
 ├── scripts/
 │   ├── setup.sh               # Full automated setup
 │   ├── common.sh              # Shared config (conda env, ports, env vars)
-│   ├── run_devstral_7.2.sh    # Launch FP8 server
-│   ├── run_devstral_awq.sh    # Launch AWQ-4bit server
+│   ├── run_devstral_7.2.sh    # Launch Devstral FP8 server
+│   ├── run_devstral_awq.sh    # Launch Devstral AWQ-4bit server
+│   ├── run_qwen35_27b_awq.sh  # Launch Qwen3.5-27B AWQ-4bit server (TP=2)
+│   ├── eval_comprehensive.py  # Quality evaluation (math, code, vision, parallel)
+│   ├── bench_long_context.py  # Long-context decode speed benchmark
+│   ├── test_tp2_quality.py    # Quick TP=2 quality check
+│   ├── devstral_chat_template.jinja  # Fixed chat template (BOS removed)
 │   ├── bench_quick.sh         # Quick benchmark (records to benchmarks.log)
 │   ├── bench_devstral.sh      # Full 5-tier benchmark
 │   ├── sweep_awq_triton36.py  # AWQ GEMM microbenchmark sweep
-│   ├── convert_compressed_tensors_to_awq.py  # Model format conversion
+│   ├── convert_compressed_tensors_to_awq.py  # Devstral format conversion
+│   ├── quantize_qwen35_llmcompressor.sh      # Qwen3.5 quantization pipeline
+│   ├── quantize_qwen35_llmcompressor.py      # GPTQ calibrated quantization
+│   ├── convert_qwen35_ct_to_awq.py           # Qwen3.5 compressed-tensors → AWQ
 │   └── warmup.py              # Server warmup requests
 ├── patches/
 │   └── 001-rdna4-minimal-fixes.patch  # Applied by setup.sh
