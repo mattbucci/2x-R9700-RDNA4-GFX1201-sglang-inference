@@ -140,3 +140,21 @@ Additional fixes for import guards and llava.py weight loading still need to be 
 
 ### Total Patch Count
 15 files modified, 170 insertions, 40 deletions (vs v0.5.9: 19 files, ~290 lines)
+
+## Qwen3.5 AWQ: NOW WORKING (2026-03-30 02:40)
+
+**Root cause of crash:** BF16/FP16 type mismatch in `causal_conv1d_triton.py` Triton kernel.
+Conv states stored in BF16 but activations in FP16 — Triton requires matching types across
+if/else branches. Fixed by casting conv_state loads to activation dtype.
+
+**Additional fixes required (beyond Devstral):**
+- `causal_conv1d_triton.py`: `.to(_act_dtype)` for all conv_state loads
+- `seg_la.py`: `num_stages=0` for DeltaNet linear attention kernel
+- `qwen3_next.py`: `tp_world_size=1` for MambaPool SSM state cache
+- `weight_utils.py`: `override_tp_rank` parameter for `sharded_weight_loader`
+- `qwen3_5.py`: `attn_tp_rank=0, attn_tp_size=1` + `quant_config=None` for `in_proj_ba`
+
+**Results:**
+- Quality: 4/4 quick tests pass (2+2, 17*23, Paris, sqrt(169))
+- TPOT: ~74ms (v0.5.9: 57ms, 30% regression)
+- Total: 16 files changed, 182 insertions, 51 deletions
