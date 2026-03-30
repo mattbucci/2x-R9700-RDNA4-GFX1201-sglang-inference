@@ -166,8 +166,24 @@ No additional patches beyond AWQ — same DeltaNet replication fixes apply.
 
 ### Performance Summary
 
-| Model | v0.5.10rc0 | v0.5.9 | Notes |
-|-------|-----------|--------|-------|
-| Devstral AWQ conc=1 | 35ms TPOT | 29ms | 20% slower single-request |
-| Devstral AWQ conc=8 | **400 tok/s** | 310 tok/s | **29% better throughput** |
-| Devstral AWQ conc=32 | 384 tok/s | 458 tok/s | 16% lower at high conc |
+Benchmarked with `sglang.bench_serving` (256 in / 256 out, random tokens):
+
+| Config | conc=1 TPOT | conc=8 throughput | conc=16 | conc=32 |
+|--------|-------------|-------------------|---------|---------|
+| v0.5.10rc0 no graphs | 34ms | 211 tok/s | 262 | 270 |
+| v0.5.10rc0 + CUDA graphs | 34ms | 148 tok/s | 172 | 185 |
+| v0.5.9 + CUDA graphs | **29ms** | **310 tok/s** | **396** | **458** |
+
+**Key findings:**
+- Single-request TPOT: 34ms (v0.5.10rc0) vs 29ms (v0.5.9) — 17% gap
+- CUDA graphs provide NO benefit on v0.5.10rc0 (actually slower at high conc)
+- Without graphs, v0.5.10rc0 throughput peaks at 270 tok/s vs v0.5.9's 458 with graphs
+- The 29ms vs 34ms gap is from v0.5.10rc0's scheduling/overhead, not CUDA graphs
+- CUDA graphs captured successfully (bs=1,2,4,8) and used during decode (`cuda graph: True`)
+  but don't improve TPOT — the graph overhead may be higher in v0.5.10rc0's code path
+
+**Next steps to investigate:**
+- Profile with rocprof to compare per-kernel timing between v0.5.9 and v0.5.10rc0
+- Check if v0.5.10rc0's `disable_overlap_schedule` (forced for VLMs) hurts performance
+- Try `--enable-torch-compile` for kernel fusion
+- AWQ Triton kernel FP32 split_k accumulator (matching v0.5.9) needs Triton dtype fix
