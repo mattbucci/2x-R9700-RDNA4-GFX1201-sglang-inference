@@ -52,14 +52,14 @@ through batching. FP8 is bandwidth-bound at ~39ms — near the hardware floor.
 
 1. **System RCCL 7.2 has P2P/IPC for gfx1201** — no custom RCCL build needed
 2. **Upstream triton 3.6.0 works on RDNA4** — `triton-rocm` 3.6 (AMD's PyTorch fork) deadlocks with `LD_PRELOAD`, but the upstream release does not
-3. **~250 lines of patches** get SGLang v0.5.9 running on RDNA4 with near-optimal performance
+3. **~290 lines of patches** get SGLang v0.5.9 running on RDNA4 with near-optimal performance
 4. **The single highest-impact change is using fused AWQ GEMM** instead of dequantize+matmul — 4x TPOT improvement
 5. **Qwen3.5 TP=2 works** by replicating all layers (DeltaNet + MLP) to avoid FP16 rounding accumulation
 6. **Both models support chat** with custom chat templates (Devstral needs BOS removed from template)
 
 | Component | Version | Source |
 |-----------|---------|--------|
-| SGLang | v0.5.9 | stock + ~250-line patch (18 files) |
+| SGLang | v0.5.9 | stock + ~290-line patch (19 files) |
 | Triton | 3.6.0 | upstream triton-lang, built from source |
 | RCCL | system ROCm 7.2 (2.27.7) | no custom build |
 | PyTorch | 2.12.0.dev20260310+rocm7.2 | nightly |
@@ -171,7 +171,7 @@ hitting the R9700's 442 GB/s bandwidth tier instead of the 562 GB/s tier for 1GB
 | **QuickReduce with DMA-BUF IPC** | -5% TPOT | Hard — replace `hipIpcGetMemHandle` (crashes on gfx1201) with DMA-BUF export/import |
 | **Speculative decoding (EAGLE)** | 2-3x effective throughput | Medium — R9700 has VRAM headroom for a small draft model |
 
-## What's Patched (~250 lines, 18 files)
+## What's Patched (~290 lines, 19 files)
 
 ### Performance
 | File | Change | Impact |
@@ -190,7 +190,9 @@ hitting the R9700's 442 GB/s bandwidth tier instead of the 562 GB/s tier for 1GB
 | `llava.py` | Catch ValueError in transformers 5.x model mapping | prevents crash on startup |
 | `llava.py` | Strip `model.` prefix in weight names, route lm_head | AWQ model loading works |
 | `communicator.py` | Float32 all-reduce for TP precision | prevents DeltaNet error accumulation |
-| `qwen3_5.py` | Replicate all DeltaNet + MLP layers (tp_size=1) | **TP=2 quality fix** |
+| `fp8_kernel.py` | Force `num_stages=0` for block FP8 kernel on RDNA4 | **FP8 block quant works on gfx1201** |
+| `qwen3_5.py` | Replicate DeltaNet layers (tp_size=1), conditional MLP replication | **TP=2 quality fix for AWQ and FP8** |
+| `qwen3_5.py` | Fix MLP forward call (don't pass forward_batch as should_allreduce_fusion) | **FP8 un-replicated MLP all-reduce works** |
 | `qwen3_next.py` | `tp_world_size=1` for MambaPool SSM state | replicated DeltaNet state |
 
 ### Compatibility (CUDA-only import guards)
@@ -316,7 +318,7 @@ AWQ-4bit brings weights down to ~15GB (text) + 879MB (vision encoder), enabling
 131K context on a single 32GB R9700.
 
 **Why not simpler approaches?**
-- **FP8**: Block-wise FP8 triton kernel crashes on RDNA4 (`PassManager::run failed`); online FP8 doesn't reduce weight memory for this model
+- **FP8**: Now working — see `run_qwen35_27b_fp8.sh`. Required `num_stages=0` for block FP8 Triton kernel, MLP un-replication, and a `should_allreduce_fusion` call-site fix. 65ms TPOT, 36/36 tests pass. 32K context (vs 256K for AWQ) due to larger model footprint
 - **Community AWQ (QuantTrio)**: Produces garbage output + GPU crashes
 - **RTN quantization**: Round-to-nearest without calibration produces garbage on DeltaNet's sensitive weights
 - **AutoAWQ**: Doesn't support `qwen3_5` model type (deprecated)
@@ -357,9 +359,9 @@ See `benchmarks.log` for the full progression (patches 0-9).
 
 ## Recommendations
 
-- **Use AWQ-4bit for throughput** — 458 tok/s at 32 concurrent (Devstral), vs 246 tok/s with FP8
-- **Use FP8 for simplicity** — no model conversion, 39ms TPOT is excellent for single-user
-- **Use Qwen3.5 for vision + thinking** — 39/39 quality tests pass, 256K context, working TP=2
+- **Use AWQ-4bit for throughput + long context** — 458 tok/s at 32 concurrent (Devstral), 256K context (Qwen3.5)
+- **Use Qwen3.5 FP8 for higher precision** — official FP8 model, 65ms TPOT, 36/36 tests, 32K context
+- **Use Qwen3.5 AWQ for vision + thinking + long context** — 39/39 quality tests, 256K context, working TP=2
 - **Use Devstral for code tasks** — fastest throughput, but no vision with AWQ
 - **Build triton 3.6 from source** — upstream triton-lang, not triton-rocm from PyTorch wheels
 - **No custom RCCL needed** — system RCCL 7.2 has P2P/IPC for gfx1201
@@ -386,6 +388,7 @@ Python: 3.12
 │   ├── run_devstral_7.2.sh    # Launch Devstral FP8 server
 │   ├── run_devstral_awq.sh    # Launch Devstral AWQ-4bit server
 │   ├── run_qwen35_27b_awq.sh  # Launch Qwen3.5-27B AWQ-4bit server (TP=2)
+│   ├── run_qwen35_27b_fp8.sh  # Launch Qwen3.5-27B FP8 server (TP=2)
 │   ├── eval_comprehensive.py  # Quality evaluation (math, code, vision, parallel)
 │   ├── bench_long_context.py  # Long-context decode speed benchmark
 │   ├── test_tp2_quality.py    # Quick TP=2 quality check

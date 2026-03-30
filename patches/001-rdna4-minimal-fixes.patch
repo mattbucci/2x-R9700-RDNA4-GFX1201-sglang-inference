@@ -320,6 +320,30 @@ index b83dd79..4d76443 100644
  
      # A = input, B = qweight, C = result
      # A = M x K, B = K x N, C = M x N
+diff --git a/python/sglang/srt/layers/quantization/fp8_kernel.py b/python/sglang/srt/layers/quantization/fp8_kernel.py
+index 1806c54..6074c79 100644
+--- a/python/sglang/srt/layers/quantization/fp8_kernel.py
++++ b/python/sglang/srt/layers/quantization/fp8_kernel.py
+@@ -32,6 +32,7 @@ from sglang.srt.layers import deep_gemm_wrapper
+ from sglang.srt.utils import (
+     ceil_align,
+     get_bool_env_var,
++    get_device_capability,
+     get_device_core_count,
+     get_device_name,
+     is_cpu,
+@@ -1133,6 +1134,11 @@ def w8a8_block_fp8_matmul_triton(
+             "num_stages": 3,
+         }
+ 
++    # RDNA4 (gfx12): Triton pipelining (num_stages >= 1) creates pointer select
++    # patterns that crash the CanonicalizePointers pass. Disable pipelining.
++    if _is_hip and get_device_capability()[0] >= 12:
++        config["num_stages"] = 0
++
+     needs_masking = bool(K % config["BLOCK_SIZE_K"] != 0)
+ 
+     def grid(META):
 diff --git a/python/sglang/srt/layers/quantization/fp8_utils.py b/python/sglang/srt/layers/quantization/fp8_utils.py
 index 3b9616e..7b9bf74 100644
 --- a/python/sglang/srt/layers/quantization/fp8_utils.py
@@ -462,7 +486,7 @@ index c76312c..77c4273 100644
                  if name.startswith(part):
                      name = name[len(part + ".") :]
 diff --git a/python/sglang/srt/models/qwen3_5.py b/python/sglang/srt/models/qwen3_5.py
-index f012254..ff5b119 100644
+index f012254..bf13dea 100644
 --- a/python/sglang/srt/models/qwen3_5.py
 +++ b/python/sglang/srt/models/qwen3_5.py
 @@ -40,6 +40,7 @@ from sglang.srt.eplb.expert_location import ModelConfigForExpertLocation
@@ -473,7 +497,29 @@ index f012254..ff5b119 100644
  from sglang.srt.layers.communicator import LayerCommunicator, LayerScatterModes
  from sglang.srt.layers.dp_attention import (
      get_attention_tp_rank,
-@@ -97,8 +98,16 @@ class Qwen3_5GatedDeltaNet(nn.Module):
+@@ -86,6 +87,21 @@ _is_npu = is_npu()
+ cached_get_processor = lru_cache(get_processor)
+ 
+ 
++def _should_replicate_deltanet_for_tp(quant_config: Optional[QuantizationConfig]) -> bool:
++    """Whether to replicate DeltaNet+MLP layers across TP ranks.
++
++    AWQ/no-quant: replicate to avoid FP16 rounding from TP matmul splits
++    compounding through DeltaNet's recurrent state.
++
++    FP8: don't replicate MLPs — FP8 models can't fit with full replication.
++    DeltaNet projections remain replicated (tp_size=1 in Qwen3_5GatedDeltaNet)."""
++    if quant_config is None:
++        return True  # full precision — replicate for safety
++    name = quant_config.get_name()
++    # FP8 variants can't fit with full replication
++    return name not in ("fp8", "mxfp8", "w8a8_fp8")
++
++
+ class Qwen3_5GatedDeltaNet(nn.Module):
+     def __init__(
+         self,
+@@ -97,8 +113,16 @@ class Qwen3_5GatedDeltaNet(nn.Module):
      ) -> None:
          super().__init__()
          self.config = config
@@ -492,7 +538,7 @@ index f012254..ff5b119 100644
          self.hidden_size = config.hidden_size
          self.num_v_heads = config.linear_num_value_heads
          self.num_k_heads = config.linear_num_key_heads
-@@ -113,28 +122,27 @@ class Qwen3_5GatedDeltaNet(nn.Module):
+@@ -113,28 +137,27 @@ class Qwen3_5GatedDeltaNet(nn.Module):
          self.activation = config.hidden_act
          self.layer_norm_epsilon = config.rms_norm_eps
  
@@ -527,7 +573,7 @@ index f012254..ff5b119 100644
              prefix=add_prefix("in_proj_qkv", prefix),
          )
          self.in_proj_z = ColumnParallelLinear(
-@@ -142,30 +150,30 @@ class Qwen3_5GatedDeltaNet(nn.Module):
+@@ -142,30 +165,30 @@ class Qwen3_5GatedDeltaNet(nn.Module):
              output_size=self.value_dim,
              bias=False,
              quant_config=quant_config,
@@ -567,7 +613,7 @@ index f012254..ff5b119 100644
          query_key_settings = (self.key_dim, 0, False)
          value_settings = (self.value_dim, 0, False)
  
-@@ -179,32 +187,33 @@ class Qwen3_5GatedDeltaNet(nn.Module):
+@@ -179,32 +202,33 @@ class Qwen3_5GatedDeltaNet(nn.Module):
                          query_key_settings,
                          value_settings,
                      ],
@@ -612,7 +658,7 @@ index f012254..ff5b119 100644
              head_q_dim=self.head_k_dim,
              head_k_dim=self.head_k_dim,
              head_v_dim=self.head_v_dim,
-@@ -225,16 +234,17 @@ class Qwen3_5GatedDeltaNet(nn.Module):
+@@ -225,16 +249,17 @@ class Qwen3_5GatedDeltaNet(nn.Module):
              dtype=config.torch_dtype,
          )
  
@@ -634,7 +680,7 @@ index f012254..ff5b119 100644
              prefix=add_prefix("out_proj", prefix),
          )
  
-@@ -301,6 +311,11 @@ class Qwen3_5GatedDeltaNet(nn.Module):
+@@ -301,6 +326,11 @@ class Qwen3_5GatedDeltaNet(nn.Module):
          core_attn_out = core_attn_out.reshape(z_shape_og)
          core_attn_out = rearrange(core_attn_out, "... h d -> ... (h d)")
          output, _ = self.out_proj(core_attn_out)
@@ -646,7 +692,7 @@ index f012254..ff5b119 100644
          return output
  
  
-@@ -318,6 +333,7 @@ class Qwen3_5LinearDecoderLayer(nn.Module):
+@@ -318,6 +348,7 @@ class Qwen3_5LinearDecoderLayer(nn.Module):
          super().__init__()
          self.config = config
          self.layer_id = layer_id
@@ -654,37 +700,49 @@ index f012254..ff5b119 100644
  
          linear_attn_quant_config = (
              None
-@@ -342,12 +358,17 @@ class Qwen3_5LinearDecoderLayer(nn.Module):
+@@ -342,12 +373,22 @@ class Qwen3_5LinearDecoderLayer(nn.Module):
              is_previous_layer_sparse = True
              is_next_layer_sparse = True
          elif config.model_type == "qwen3_5_text":
-+            # Replicate MLP across TP ranks (tp_size=1) to prevent
-+            # FP16 rounding from TP matmul splits feeding error into
-+            # DeltaNet's recurrent state.
++            replicate_mlp = _should_replicate_deltanet_for_tp(quant_config)
++            self._mlp_replicated = replicate_mlp
++            if replicate_mlp:
++                # Replicate MLP across TP ranks (tp_size=1) to prevent
++                # FP16 rounding from TP matmul splits feeding error into
++                # DeltaNet's recurrent state.
++                mlp_tp_kwargs = {"tp_rank": 0, "tp_size": 1}
++            else:
++                mlp_tp_kwargs = {}  # use default TP splitting
              self.mlp = Qwen2MoeMLP(
                  hidden_size=config.hidden_size,
                  intermediate_size=config.intermediate_size,
                  hidden_act=config.hidden_act,
                  quant_config=quant_config,
                  prefix=add_prefix("mlp", prefix.replace(".linear_attn", "")),
-+                tp_rank=0,
-+                tp_size=1,
++                **mlp_tp_kwargs,
              )
              is_layer_sparse = False
              is_previous_layer_sparse = False
-@@ -401,6 +422,11 @@ class Qwen3_5LinearDecoderLayer(nn.Module):
+@@ -400,7 +441,17 @@ class Qwen3_5LinearDecoderLayer(nn.Module):
+         use_reduce_scatter = self.layer_communicator.should_use_reduce_scatter(
              forward_batch
          )
-         hidden_states = self.mlp(hidden_states, forward_batch, use_reduce_scatter)
-+        # Divide by real TP size so the communicator's all-reduce
-+        # (which sums identical copies from all ranks) produces
-+        # the correct undivided result.
-+        if self.real_tp_size > 1:
+-        hidden_states = self.mlp(hidden_states, forward_batch, use_reduce_scatter)
++        if isinstance(self.mlp, Qwen2MoeMLP):
++            # Qwen2MoeMLP.forward(x, should_allreduce_fusion, use_reduce_scatter)
++            # — do NOT pass forward_batch as should_allreduce_fusion
++            hidden_states = self.mlp(hidden_states, use_reduce_scatter=use_reduce_scatter)
++        else:
++            # Qwen2MoeSparseMoeBlock.forward(hidden_states, forward_batch, use_reduce_scatter)
++            hidden_states = self.mlp(hidden_states, forward_batch, use_reduce_scatter)
++        # Only divide by TP size when MLP is replicated (AWQ).
++        # For FP8/standard TP, the MLP's RowParallelLinear handles all-reduce.
++        if getattr(self, '_mlp_replicated', True) and self.real_tp_size > 1:
 +            hidden_states = hidden_states / self.real_tp_size
  
          hidden_states, residual = self.layer_communicator.postprocess_layer(
              hidden_states, residual, forward_batch
-@@ -425,6 +451,7 @@ class Qwen3_5AttentionDecoderLayer(nn.Module):
+@@ -425,6 +476,7 @@ class Qwen3_5AttentionDecoderLayer(nn.Module):
          self.hidden_size = config.hidden_size
          self.attn_tp_rank = get_attention_tp_rank()
          self.attn_tp_size = get_attention_tp_size()
@@ -692,33 +750,42 @@ index f012254..ff5b119 100644
          self.total_num_heads = config.num_attention_heads
          assert self.total_num_heads % self.attn_tp_size == 0
          self.num_heads = self.total_num_heads // self.attn_tp_size
-@@ -502,7 +529,8 @@ class Qwen3_5AttentionDecoderLayer(nn.Module):
+@@ -502,14 +554,23 @@ class Qwen3_5AttentionDecoderLayer(nn.Module):
              prefix=f"{prefix}.attn",
          )
  
 -        # Dense MLP for non-MoE variant
-+        # Dense MLP for non-MoE variant — replicated (tp_size=1) to prevent
-+        # FP16 rounding from TP matmul splits feeding error into DeltaNet.
++        # Dense MLP for non-MoE variant.
          if config.model_type == "qwen3_5_text":
++            replicate_mlp = _should_replicate_deltanet_for_tp(quant_config)
++            self._mlp_replicated = replicate_mlp
++            if replicate_mlp:
++                # Replicate across TP ranks (tp_size=1) to prevent FP16
++                # rounding from TP matmul splits feeding error into DeltaNet.
++                mlp_tp_kwargs = {"tp_rank": 0, "tp_size": 1}
++            else:
++                mlp_tp_kwargs = {}  # use default TP splitting
              self.mlp = Qwen2MoeMLP(
                  hidden_size=config.hidden_size,
-@@ -510,6 +538,8 @@ class Qwen3_5AttentionDecoderLayer(nn.Module):
+                 intermediate_size=config.intermediate_size,
                  hidden_act=config.hidden_act,
                  quant_config=quant_config,
                  prefix=add_prefix("mlp", prefix.replace(".self_attn", "")),
-+                tp_rank=0,
-+                tp_size=1,
++                **mlp_tp_kwargs,
              )
              is_layer_sparse = False
              is_previous_layer_sparse = False
-@@ -634,6 +664,11 @@ class Qwen3_5AttentionDecoderLayer(nn.Module):
+@@ -633,7 +694,13 @@ class Qwen3_5AttentionDecoderLayer(nn.Module):
+         use_reduce_scatter = self.layer_communicator.should_use_reduce_scatter(
              forward_batch
          )
-         hidden_states = self.mlp(hidden_states, forward_batch, use_reduce_scatter)
-+        # Divide by real TP size so the communicator's all-reduce
-+        # (which sums identical copies from all ranks) produces
-+        # the correct undivided result.
-+        if self.real_tp_size > 1:
+-        hidden_states = self.mlp(hidden_states, forward_batch, use_reduce_scatter)
++        if isinstance(self.mlp, Qwen2MoeMLP):
++            hidden_states = self.mlp(hidden_states, use_reduce_scatter=use_reduce_scatter)
++        else:
++            hidden_states = self.mlp(hidden_states, forward_batch, use_reduce_scatter)
++        # Only divide by TP size when MLP is replicated (AWQ).
++        if getattr(self, '_mlp_replicated', True) and self.real_tp_size > 1:
 +            hidden_states = hidden_states / self.real_tp_size
  
          hidden_states, residual = self.layer_communicator.postprocess_layer(
