@@ -121,27 +121,7 @@ Additional fixes for import guards and llava.py weight loading still need to be 
 - Single-request 20% slower but mid-concurrency throughput 29% better
 - Chat template works via /generate endpoint; /v1/chat/completions returns null (BOS issue)
 
-### Qwen3.5 AWQ: PARTIALLY WORKING
-- Model loads with replicated DeltaNet (tp_size=1)
-- Weight loading fixed (override_tp_rank, quant_config=None for in_proj_ba)
-- MambaPool state cache fixed (tp_world_size=1)
-- Triton kernel compilation fixed (num_stages=0 in seg_la.py and causal_conv1d_triton.py)
-- Server starts ("fired up and ready to roll!")
-- Crashes on first inference request — likely segfault in Triton GDN kernel
-
-### Additional Patches Applied (beyond initial analysis)
-| File | Change |
-|------|--------|
-| `seg_la.py` | `num_stages=0` for RDNA4 (DeltaNet Triton kernel) |
-| `causal_conv1d_triton.py` | `num_stages=0` for RDNA4 |
-| `qwen3_next.py` | `tp_world_size=1` for MambaPool SSM state |
-| `weight_utils.py` | `sharded_weight_loader` override_tp_rank parameter |
-| `qwen3_5.py` | DeltaNet replication + quant_config=None for in_proj_ba |
-
-### Total Patch Count
-15 files modified, 170 insertions, 40 deletions (vs v0.5.9: 19 files, ~290 lines)
-
-## Qwen3.5 AWQ: NOW WORKING (2026-03-30 02:40)
+### Qwen3.5 AWQ: WORKING
 
 **Root cause of crash:** BF16/FP16 type mismatch in `causal_conv1d_triton.py` Triton kernel.
 Conv states stored in BF16 but activations in FP16 — Triton requires matching types across
@@ -156,5 +136,38 @@ if/else branches. Fixed by casting conv_state loads to activation dtype.
 
 **Results:**
 - Quality: 4/4 quick tests pass (2+2, 17*23, Paris, sqrt(169))
-- TPOT: ~74ms (v0.5.9: 57ms, 30% regression)
-- Total: 16 files changed, 182 insertions, 51 deletions
+
+### Qwen3.5 FP8: WORKING
+No additional patches beyond AWQ — same DeltaNet replication fixes apply.
+4/4 quality tests pass.
+
+### All Patches Applied
+
+| File | Change |
+|------|--------|
+| `awq.py` | Fused GEMM routing for HIP |
+| `awq_triton.py` | (upstreamed from v0.5.9) |
+| `fp8_kernel.py` | `num_stages=0` for gfx1201 block FP8 kernel |
+| `fp8_utils.py` | Disable rowwise `scaled_mm` for gfx12 |
+| `communicator.py` | Float32 all-reduce for DeltaNet TP precision |
+| `qwen3_5.py` | DeltaNet replication + `quant_config=None` for `in_proj_ba` |
+| `qwen3_next.py` | `tp_world_size=1` for MambaPool SSM state |
+| `llava.py` | Weight key prefix mapping + transformers 5.x compat |
+| `weight_utils.py` | `sharded_weight_loader` override_tp_rank parameter |
+| `seg_la.py` | `num_stages=0` for DeltaNet linear attention kernel |
+| `causal_conv1d_triton.py` | `num_stages=0` + BF16→FP16 conv_state dtype cast |
+| `setup_rocm.py` | gfx12xx GPU target support |
+| `quark_w4a4_mxfp4.py` | `try/except` around aiter imports |
+| `quark_int4fp8_moe.py` | `try/except` around aiter imports |
+| `token_dispatcher/__init__.py` | `try/except` around flashinfer import |
+| `fused_moe_triton/layer.py` | `try/except` around flashinfer import |
+
+**Total: 16 files, 184 insertions, 53 deletions** (vs v0.5.9: 19 files, ~290 lines)
+
+### Performance Summary
+
+| Model | v0.5.10rc0 | v0.5.9 | Notes |
+|-------|-----------|--------|-------|
+| Devstral AWQ conc=1 | 35ms TPOT | 29ms | 20% slower single-request |
+| Devstral AWQ conc=8 | **400 tok/s** | 310 tok/s | **29% better throughput** |
+| Devstral AWQ conc=32 | 384 tok/s | 458 tok/s | 16% lower at high conc |
