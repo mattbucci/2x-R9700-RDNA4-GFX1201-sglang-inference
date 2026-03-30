@@ -187,3 +187,29 @@ Benchmarked with `sglang.bench_serving` (256 in / 256 out, random tokens):
 - Check if v0.5.10rc0's `disable_overlap_schedule` (forced for VLMs) hurts performance
 - Try `--enable-torch-compile` for kernel fusion
 - AWQ Triton kernel FP32 split_k accumulator (matching v0.5.9) needs Triton dtype fix
+
+### Performance Investigation Details (2026-03-30)
+
+**AWQ Triton kernel compiled config on gfx1201:**
+- `num_stages=2, num_warps=4` (Triton default for HIP)
+- Changing to `num_stages=0` or `num_stages=1` crashes the AWQ kernel
+- The FP8 block kernel CAN use `num_stages=0` (different pointer pattern)
+- AWQ kernel is locked to `num_stages=2` — no room to optimize here
+
+**Float32 allreduce:**
+- Active on ALL HIP models (not just DeltaNet) — unnecessary for Devstral
+- Removing it causes server crash (needs further investigation)
+- On v0.5.9, the same float32 allreduce was active and TPOT was still 29ms
+- So this is NOT the cause of the 34ms→29ms gap
+
+**FP32 split_k buffer:**
+- v0.5.9 used `dtype=torch.float32` for the split_k reduction buffer
+- v0.5.10rc0 uses `dtype=scales.dtype` (FP16)
+- Changing to FP32 causes Triton `tl.dot` type mismatch error
+- Would need to restructure the kernel to support FP32 accumulation
+
+**Conclusion:**
+The 34ms TPOT on v0.5.10rc0 is the current floor. The 5ms gap from v0.5.9 (29ms)
+is from v0.5.10rc0's scheduler/runtime overhead, not from kernel performance.
+The AWQ Triton GEMM compiles and runs identically — the overhead is in the
+Python/C++ scheduling between kernel launches.
