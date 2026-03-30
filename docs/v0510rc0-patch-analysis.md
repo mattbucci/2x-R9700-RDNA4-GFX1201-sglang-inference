@@ -115,10 +115,10 @@ Additional fixes for import guards and llava.py weight loading still need to be 
 ## Runtime Test Progress (2026-03-30)
 
 ### Devstral AWQ: WORKING
-- Server starts and serves requests
-- TPOT: 34ms (v0.5.9: 29ms, 17% regression)
-- Throughput at conc=32: 186 tok/s (v0.5.9: 458 tok/s, significant regression)
-- CUDA graphs capture but don't seem to improve perf
+- Server starts and serves requests with CUDA graphs
+- TPOT: 35ms single-request (v0.5.9: 29ms)
+- Throughput: conc=8: **400 tok/s** (v0.5.9: 310), conc=16: 366, conc=32: 384
+- Single-request 20% slower but mid-concurrency throughput 29% better
 - Chat template works via /generate endpoint; /v1/chat/completions returns null (BOS issue)
 
 ### Qwen3.5 AWQ: PARTIALLY WORKING
