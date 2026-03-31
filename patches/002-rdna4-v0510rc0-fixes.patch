@@ -400,7 +400,7 @@ index 60e646fcf..3a50e828b 100644
          shard_size = param.data.shape[shard_axis]
          start_idx = tp_rank * shard_size
 diff --git a/python/sglang/srt/models/llava.py b/python/sglang/srt/models/llava.py
-index c76312c0a..428011f75 100644
+index c76312c0a..eb2ee1bcd 100644
 --- a/python/sglang/srt/models/llava.py
 +++ b/python/sglang/srt/models/llava.py
 @@ -657,7 +657,12 @@ class LlavaForConditionalGeneration(LlavaBaseForCausalLM):
@@ -417,7 +417,7 @@ index c76312c0a..428011f75 100644
              if archs is not None:
                  if isinstance(archs, tuple):
                      mapping[config_cls.__name__] = tuple(
-@@ -824,15 +829,32 @@ class LlavaForConditionalGeneration(LlavaBaseForCausalLM):
+@@ -824,15 +829,40 @@ class LlavaForConditionalGeneration(LlavaBaseForCausalLM):
          # Create dictionaries for direct parameter loading
          params_dict = dict(self.named_parameters())
  
@@ -438,6 +438,13 @@ index c76312c0a..428011f75 100644
 +            if name.startswith("lm_head."):
 +                name = "language_model." + name
 +
++            # Handle both "vision_tower.X" and "model.vision_tower.X" formats
++            # Some checkpoints (androiddrew Devstral AWQ) use "model." prefix
++            if name.startswith("model.vision_tower."):
++                name = name[len("model."):]  # model.vision_tower.X → vision_tower.X
++            if name.startswith("model.multi_modal_projector."):
++                name = name[len("model."):]  # model.multi_modal_projector.X → multi_modal_projector.X
++
              for part in ("language_model", "vision_tower"):
                  if name.startswith(part):
                      name = name[len(part + ".") :]
@@ -445,6 +452,7 @@ index c76312c0a..428011f75 100644
                      break
              else:
 -                param = params_dict[name]
++                # multi_modal_projector weights go to params_dict directly
 +                param = params_dict.get(name)
 +                if param is None:
 +                    logger.warning(f"Skipping unknown weight: {name}")
