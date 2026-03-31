@@ -400,7 +400,7 @@ index 60e646fcf..3a50e828b 100644
          shard_size = param.data.shape[shard_axis]
          start_idx = tp_rank * shard_size
 diff --git a/python/sglang/srt/models/llava.py b/python/sglang/srt/models/llava.py
-index c76312c0a..eb2ee1bcd 100644
+index c76312c0a..d4750008b 100644
 --- a/python/sglang/srt/models/llava.py
 +++ b/python/sglang/srt/models/llava.py
 @@ -657,7 +657,12 @@ class LlavaForConditionalGeneration(LlavaBaseForCausalLM):
@@ -417,7 +417,7 @@ index c76312c0a..eb2ee1bcd 100644
              if archs is not None:
                  if isinstance(archs, tuple):
                      mapping[config_cls.__name__] = tuple(
-@@ -824,15 +829,40 @@ class LlavaForConditionalGeneration(LlavaBaseForCausalLM):
+@@ -824,15 +829,47 @@ class LlavaForConditionalGeneration(LlavaBaseForCausalLM):
          # Create dictionaries for direct parameter loading
          params_dict = dict(self.named_parameters())
  
@@ -444,6 +444,13 @@ index c76312c0a..eb2ee1bcd 100644
 +                name = name[len("model."):]  # model.vision_tower.X → vision_tower.X
 +            if name.startswith("model.multi_modal_projector."):
 +                name = name[len("model."):]  # model.multi_modal_projector.X → multi_modal_projector.X
++
++            # Cast BF16 vision/projector weights to model dtype (FP16)
++            # AWQ checkpoints may store vision weights in BF16 while language
++            # model runs in FP16 — mismatched dtypes cause silent matmul failures
++            if (name.startswith("vision_tower.") or name.startswith("multi_modal_projector.")):
++                if loaded_weight.dtype == torch.bfloat16:
++                    loaded_weight = loaded_weight.to(torch.float16)
 +
              for part in ("language_model", "vision_tower"):
                  if name.startswith(part):

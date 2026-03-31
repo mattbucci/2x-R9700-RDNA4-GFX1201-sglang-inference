@@ -323,3 +323,10 @@ weight-read cost across the batch.
 | ROCm (host) | 7.2.0 |
 | Vulkan (Mesa) | RADV 26.0.2 |
 | Kernel | 6.18.0-zen1-1-zen-p2p |
+
+### Qwen3.5 FP8 (added 2026-03-31)
+
+| Backend | TPOT (ms) | tok/s | Context | Quality |
+|---------|-----------|-------|---------|---------|
+| **SGLang v0.5.10rc0** | **61** | 16 | 32K | 4/4 |
+| **SGLang v0.5.9** | 65 | 15 | 32K | 36/36 |

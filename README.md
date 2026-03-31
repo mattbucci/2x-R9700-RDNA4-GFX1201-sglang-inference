@@ -2,22 +2,22 @@
 
 High-throughput LLM inference on AMD Radeon AI PRO R9700 (gfx1201, RDNA4) with ROCm 7.2.
 
-## Performance (2x R9700, 262K context, AWQ-4bit)
+## Performance (2x R9700, SGLang v0.5.10rc0)
 
 ### Devstral-24B (Mistral 3, standard transformer, TP=2)
 
 | Concurrency | TPOT | Throughput |
 |-------------|------|-----------|
-| 1 | 29ms (34 tok/s) | 96 tok/s |
-| 8 | 44ms | **310 tok/s** |
-| 16 | 65ms | **396 tok/s** |
-| 32 | 57ms | **458 tok/s** |
+| 1 | 30ms (34 tok/s) | 96 tok/s |
+| 8 | — | **295 tok/s** |
+| 16 | — | **380 tok/s** |
+| 32 | — | **513 tok/s** |
 
 ### Qwen3.5-27B (hybrid DeltaNet + attention, TP=2 replicated)
 
 | Concurrency | TPOT | Throughput |
 |-------------|------|-----------|
-| 1 | 57ms (18 tok/s) | 46 tok/s |
+| 1 | 52ms (19 tok/s) | — |
 
 Qwen3.5 with TP=2 replicates all layers to avoid DeltaNet precision errors,
 so each GPU computes the full model. Throughput is limited by this replication.
@@ -52,14 +52,14 @@ through batching. FP8 is bandwidth-bound at ~39ms — near the hardware floor.
 
 1. **System RCCL 7.2 has P2P/IPC for gfx1201** — no custom RCCL build needed
 2. **Upstream triton 3.6.0 works on RDNA4** — `triton-rocm` 3.6 (AMD's PyTorch fork) deadlocks with `LD_PRELOAD`, but the upstream release does not
-3. **~290 lines of patches** get SGLang v0.5.9 running on RDNA4 with near-optimal performance
+3. **~200 lines of patches** (18 files) get SGLang v0.5.10rc0 running on RDNA4 with near-optimal performance
 4. **The single highest-impact change is using fused AWQ GEMM** instead of dequantize+matmul — 4x TPOT improvement
 5. **Qwen3.5 TP=2 works** by replicating all layers (DeltaNet + MLP) to avoid FP16 rounding accumulation
 6. **Both models support chat** with custom chat templates (Devstral needs BOS removed from template)
 
 | Component | Version | Source |
 |-----------|---------|--------|
-| SGLang | v0.5.9 | stock + ~290-line patch (19 files) |
+| SGLang | v0.5.10rc0 | stock + ~200-line patch (18 files) |
 | Triton | 3.6.0 | upstream triton-lang, built from source |
 | RCCL | system ROCm 7.2 (2.27.7) | no custom build |
 | PyTorch | 2.12.0.dev20260310+rocm7.2 | nightly |
@@ -305,7 +305,7 @@ all subsequent chat requests sharing the `[INST]` prefix to fail. Fixed by addin
 
 ```
 Math:     8/8  Code: 8/8  Knowledge: 7/7  Edge: 4/5  Parallel: 8/8
-Vision:   NOT WORKING (AWQ conversion issue — outputs <unk> tokens)
+Vision:   NOT WORKING (community AWQ conversion damaged vision-language alignment)
 ```
 
 Devstral is primarily a code model. Vision is not functional with the AWQ model
@@ -318,7 +318,7 @@ AWQ-4bit brings weights down to ~15GB (text) + 879MB (vision encoder), enabling
 131K context on a single 32GB R9700.
 
 **Why not simpler approaches?**
-- **FP8**: Now working — see `run_qwen35_27b_fp8.sh`. Required `num_stages=0` for block FP8 Triton kernel, MLP un-replication, and a `should_allreduce_fusion` call-site fix. 65ms TPOT, 36/36 tests pass. 32K context (vs 256K for AWQ) due to larger model footprint
+- **FP8**: Now working — see `run_qwen35_27b_fp8.sh`. Required `num_stages=0` for block FP8 Triton kernel, MLP un-replication, and a `should_allreduce_fusion` call-site fix. 61ms TPOT, 36/36 tests pass. 32K context (vs 256K for AWQ) due to larger model footprint
 - **Community AWQ (QuantTrio)**: Produces garbage output + GPU crashes
 - **RTN quantization**: Round-to-nearest without calibration produces garbage on DeltaNet's sensitive weights
 - **AutoAWQ**: Doesn't support `qwen3_5` model type (deprecated)
@@ -360,7 +360,7 @@ See `benchmarks.log` for the full progression (patches 0-9).
 ## Recommendations
 
 - **Use AWQ-4bit for throughput + long context** — 458 tok/s at 32 concurrent (Devstral), 256K context (Qwen3.5)
-- **Use Qwen3.5 FP8 for higher precision** — official FP8 model, 65ms TPOT, 36/36 tests, 32K context
+- **Use Qwen3.5 FP8 for higher precision** — official FP8 model, 61ms TPOT, 36/36 tests, 32K context
 - **Use Qwen3.5 AWQ for vision + thinking + long context** — 39/39 quality tests, 256K context, working TP=2
 - **Use Devstral for code tasks** — fastest throughput, but no vision with AWQ
 - **Build triton 3.6 from source** — upstream triton-lang, not triton-rocm from PyTorch wheels
@@ -396,6 +396,9 @@ Python: 3.12
 │   ├── bench_quick.sh         # Quick benchmark (records to benchmarks.log)
 │   ├── bench_devstral.sh      # Full 5-tier benchmark
 │   ├── sweep_awq_triton36.py  # AWQ GEMM microbenchmark sweep
+│   ├── bench_llamacpp.sh         # llama.cpp Vulkan benchmark
+│   ├── bench_vllm_docker.sh      # vLLM Docker benchmark
+│   ├── sweep_awq_blocks.py       # AWQ GEMM block size sweep
 │   ├── convert_compressed_tensors_to_awq.py  # Devstral format conversion
 │   ├── quantize_qwen35_llmcompressor.sh      # Qwen3.5 quantization pipeline
 │   ├── quantize_qwen35_llmcompressor.py      # GPTQ calibrated quantization
@@ -403,6 +406,11 @@ Python: 3.12
 │   └── warmup.py              # Server warmup requests
 ├── patches/
 │   └── 001-rdna4-minimal-fixes.patch  # Applied by setup.sh
+│   └── 002-rdna4-v0510rc0-fixes.patch # Applied by setup for v0.5.10rc0
+├── docs/
+│   ├── benchmark-comparison.md   # Multi-backend benchmark comparison
+│   ├── v0510rc0-patch-analysis.md # v0.5.10rc0 patch analysis
+│   └── triton-analysis/          # Triton kernel analysis
 ├── benchmarks.log             # All benchmark results
 └── components/                # Created by setup.sh
     ├── sglang/                #   SGLang v0.5.9 + patches
