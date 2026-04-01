@@ -18,7 +18,7 @@ import time
 # Use GPU for faster quantization (Devstral fits on 2x 32GB GPUs in BF16)
 # If OOM, set CUDA_VISIBLE_DEVICES="" to use CPU (slower but works)
 
-from transformers import AutoModelForCausalLM, AutoProcessor
+from transformers import AutoModelForImageTextToText, AutoProcessor
 from llmcompressor.modifiers.quantization import GPTQModifier
 from llmcompressor import oneshot
 from datasets import load_dataset
@@ -45,7 +45,7 @@ else:
     device_map = "auto"
     print(f"Using GPU (CUDA_VISIBLE_DEVICES={os.environ.get('CUDA_VISIBLE_DEVICES')})")
 
-model = AutoModelForCausalLM.from_pretrained(
+model = AutoModelForImageTextToText.from_pretrained(
     MODEL_PATH,
     device_map=device_map,
     torch_dtype="auto",
