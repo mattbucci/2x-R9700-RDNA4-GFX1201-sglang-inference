@@ -1,24 +1,29 @@
 #!/usr/bin/env python3
-"""Quantize Devstral-24B to W4A16 using llm-compressor GPTQ with calibration.
+"""Quantize Devstral-24B language model to W4A16 using llm-compressor GPTQ.
 
-Uses GPTQ (Hessian-based per-layer optimization) for calibrated INT4 quantization.
-Only quantizes the language model — vision encoder and multimodal projector stay FP16.
+Loads ONLY the language model component from the Devstral VLM checkpoint.
+Vision weights are copied separately in the convert_devstral_ct_to_awq.py step.
 
-Output is in compressed-tensors format. Run convert_devstral_ct_to_awq.py
-afterward to convert to native AWQ format for SGLang's triton AWQ kernel.
+Same approach as Qwen3.5: quantize text model on CPU, copy vision later.
 
 Usage:
-    conda activate sglang-triton36
     python scripts/quantize_devstral_llmcompressor.py
 """
 import os
-import sys
 import time
+import json
+import glob
+import tempfile
+import shutil
 
-# Use GPU for faster quantization (Devstral fits on 2x 32GB GPUs in BF16)
-# If OOM, set CUDA_VISIBLE_DEVICES="" to use CPU (slower but works)
+# Force CPU — language model is ~24B params (~48GB BF16)
+# With memory-mapped safetensors + GPTQ per-layer processing, fits in 62GB RAM
+os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
-from transformers import AutoModelForImageTextToText, AutoProcessor
+from transformers import AutoModelForCausalLM, AutoTokenizer, AutoConfig
+from safetensors import safe_open
+from safetensors.torch import save_file
+from collections import OrderedDict
 from llmcompressor.modifiers.quantization import GPTQModifier
 from llmcompressor import oneshot
 from datasets import load_dataset
@@ -34,36 +39,93 @@ print(f"Model:  {MODEL_PATH}")
 print(f"Output: {OUTPUT_DIR}")
 print(f"RAM:    {ram_gb:.1f} GB")
 
-# Load model
-print("\nLoading model...")
+# Step 1: Create a temporary directory with language-model-only weights
+# The checkpoint stores weights as language_model.model.layers.X.*
+# We need to strip the language_model. prefix so AutoModelForCausalLM can load them
+print("\nPreparing language model weights (stripping language_model. prefix)...")
+
+# Find the HF cache snapshot
+hf_cache = os.path.expanduser(
+    "~/.cache/huggingface/hub/models--mistralai--Devstral-Small-2-24B-Instruct-2512"
+)
+snapshots = glob.glob(f"{hf_cache}/snapshots/*")
+if not snapshots:
+    print(f"Model not cached. Run: huggingface-cli download {MODEL_PATH}")
+    exit(1)
+snapshot_dir = snapshots[0]
+
+# Create temp dir with remapped weights
+tmp_dir = tempfile.mkdtemp(prefix="devstral_lm_")
+print(f"Temp dir: {tmp_dir}")
+
+# Copy config with text_config as root
+full_config = AutoConfig.from_pretrained(MODEL_PATH, trust_remote_code=True)
+text_config = full_config.text_config
+text_config.save_pretrained(tmp_dir)
+
+# Copy tokenizer
+for f in glob.glob(f"{snapshot_dir}/tokenizer*") + glob.glob(f"{snapshot_dir}/special_tokens*"):
+    shutil.copy2(f, tmp_dir)
+
+# Remap safetensors: strip language_model. prefix, skip vision/projector
+shard_files = sorted(glob.glob(f"{snapshot_dir}/model-*.safetensors"))
+weight_map = {}
+for shard_path in shard_files:
+    shard_name = os.path.basename(shard_path)
+    remapped = OrderedDict()
+
+    with safe_open(shard_path, framework="pt") as f:
+        for key in f.keys():
+            if not key.startswith("language_model."):
+                continue  # Skip vision_tower, multi_modal_projector
+            new_key = key[len("language_model."):]
+            # lm_head is inside language_model in the checkpoint
+            remapped[new_key] = f.get_tensor(key)
+            weight_map[new_key] = shard_name
+
+    if remapped:
+        save_file(remapped, os.path.join(tmp_dir, shard_name))
+        print(f"  {shard_name}: {len(remapped)} language model tensors")
+    del remapped
+
+# Create index
+index = {"metadata": {"total_size": 0}, "weight_map": weight_map}
+with open(os.path.join(tmp_dir, "model.safetensors.index.json"), "w") as f:
+    json.dump(index, f, indent=2)
+
+print(f"  Total: {len(weight_map)} tensors")
+
+# Step 2: Load the language model from temp dir
+print(f"\nLoading Ministral3ForCausalLM from remapped weights...")
 t0 = time.time()
-
-if os.environ.get("CUDA_VISIBLE_DEVICES", "") == "":
-    device_map = "cpu"
-    print("Using CPU (set CUDA_VISIBLE_DEVICES=0,1 for GPU)")
-else:
-    device_map = "auto"
-    print(f"Using GPU (CUDA_VISIBLE_DEVICES={os.environ.get('CUDA_VISIBLE_DEVICES')})")
-
-model = AutoModelForImageTextToText.from_pretrained(
-    MODEL_PATH,
-    device_map=device_map,
+model = AutoModelForCausalLM.from_pretrained(
+    tmp_dir,
+    device_map="cpu",
     torch_dtype="auto",
     trust_remote_code=True,
 )
-processor = AutoProcessor.from_pretrained(MODEL_PATH, trust_remote_code=True)
-tokenizer = processor.tokenizer if hasattr(processor, 'tokenizer') else processor
+tokenizer = AutoTokenizer.from_pretrained(tmp_dir, trust_remote_code=True)
 print(f"Model loaded in {time.time() - t0:.0f}s")
 print(f"Model type: {type(model).__name__}")
+print(f"Parameters: {sum(p.numel() for p in model.parameters()) / 1e9:.1f}B")
 
-# Calibration data (text-only — don't need vision for language model quantization)
-print(f"\nLoading calibration data ({NUM_CALIBRATION_SAMPLES} samples, max {MAX_SEQUENCE_LENGTH} tokens)...")
+# Clean up temp dir (weights are in memory now)
+shutil.rmtree(tmp_dir)
+
+# Step 3: Calibration data
+print(f"\nLoading calibration data ({NUM_CALIBRATION_SAMPLES} samples)...")
 ds = load_dataset("HuggingFaceH4/ultrachat_200k", split=f"train_sft[:{NUM_CALIBRATION_SAMPLES}]")
 ds = ds.shuffle(seed=42)
 
 
 def preprocess(example):
-    return {"text": tokenizer.apply_chat_template(example["messages"], tokenize=False)}
+    # Simple concatenation — chat template may not be set on the text-only tokenizer
+    parts = []
+    for msg in example["messages"]:
+        role = msg.get("role", "")
+        content = msg.get("content", "")
+        parts.append(f"[{role}] {content}")
+    return {"text": "\n".join(parts)}
 
 
 ds = ds.map(preprocess)
@@ -81,22 +143,15 @@ def tokenize(sample):
 
 ds = ds.map(tokenize, remove_columns=ds.column_names)
 
-# GPTQ recipe — only quantize language model linear layers
-# Vision tower and multimodal projector stay in FP16
+# Step 4: GPTQ quantization
 recipe = GPTQModifier(
     targets="Linear",
     scheme="W4A16",
-    ignore=[
-        "lm_head",                      # Output head (keep FP16)
-        "re:.*vision_tower.*",          # Entire vision encoder (keep FP16)
-        "re:.*multi_modal_projector.*", # Multimodal projector (keep FP16)
-    ],
+    ignore=["lm_head"],
     offload_hessians=True,
 )
 
-print(f"\nRunning GPTQ calibration + quantization...")
-print(f"Recipe: {recipe}")
-print(f"Ignoring: lm_head, vision_tower.*, multi_modal_projector.*")
+print(f"\nRunning GPTQ calibration + quantization (CPU, ~6h)...")
 t0 = time.time()
 oneshot(
     model=model,
@@ -107,14 +162,11 @@ oneshot(
     processor=tokenizer,
 )
 elapsed = time.time() - t0
-print(f"\nGPTQ quantization completed in {elapsed / 3600:.1f} hours ({elapsed:.0f}s)")
+print(f"\nGPTQ completed in {elapsed / 3600:.1f}h ({elapsed:.0f}s)")
 
-# Save compressed-tensors format
+# Step 5: Save
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 print(f"\nSaving to {OUTPUT_DIR}...")
 model.save_pretrained(OUTPUT_DIR, save_compressed=True)
 tokenizer.save_pretrained(OUTPUT_DIR)
-if hasattr(processor, 'save_pretrained'):
-    processor.save_pretrained(OUTPUT_DIR)
-print(f"Done! Compressed-tensors model saved to {OUTPUT_DIR}")
-print(f"Next: run convert_devstral_ct_to_awq.py to create native AWQ format")
+print(f"Done! Next: python scripts/convert_devstral_ct_to_awq.py")
