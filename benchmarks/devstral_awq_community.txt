@@ -1,0 +1,8 @@
+=== Devstral-24B AWQ (community) ===
+Date: Thu Apr  2 06:55:30 AM PDT 2026
+conc=1  TPOT=27.98ms  throughput=96.82 tok/s  TTFT=230.49ms
+conc=2  TPOT=28.30ms  throughput=174.95 tok/s  TTFT=548.18ms
+conc=4  TPOT=30.77ms  throughput=269.86 tok/s  TTFT=925.11ms
+conc=8  TPOT=55.39ms  throughput=334.19 tok/s  TTFT=1639.10ms
+conc=16  TPOT=72.68ms  throughput=370.08 tok/s  TTFT=3248.90ms
+conc=32  TPOT=68.13ms  throughput=405.07 tok/s  TTFT=13053.48ms

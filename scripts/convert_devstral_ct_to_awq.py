@@ -43,21 +43,22 @@ os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 
 def remap_key(key: str) -> str:
-    """Strip model. prefix from state_dict keys to match HF standard.
+    """Remap CausalLM state_dict keys to VLM (HF standard) format.
 
-    state_dict() produces: model.language_model.layers.0.self_attn.q_proj
-    HF standard is:        language_model.model.layers.0.self_attn.q_proj
+    The CT output comes from standalone Ministral3ForCausalLM save_pretrained():
+      model.layers.0.*      → language_model.model.layers.0.*
+      model.embed_tokens.*  → language_model.model.embed_tokens.*
+      model.norm.*          → language_model.model.norm.*
+      lm_head.*             → language_model.lm_head.*
 
-    For Devstral (Mistral3ForConditionalGeneration):
-      model.vision_tower.X        → vision_tower.X
-      model.multi_modal_projector.X → multi_modal_projector.X
-      model.language_model.X      → language_model.X
-      lm_head.X                   → language_model.lm_head.X
+    Vision weights (copied from original VLM checkpoint) already use bare
+    vision_tower.* and multi_modal_projector.* — no remapping needed.
     """
     if key.startswith("model."):
-        key = key[len("model."):]
-    if key.startswith("lm_head."):
-        key = "language_model.lm_head." + key[len("lm_head."):]
+        # model.X → language_model.model.X (CausalLM inner model → VLM path)
+        key = "language_model." + key
+    elif key.startswith("lm_head."):
+        key = "language_model." + key
     return key
 
 
@@ -200,8 +201,10 @@ if orig_snapshot:
         shutil.copy2(orig_template, os.path.join(OUTPUT_DIR, "chat_template.jinja"))
         print("  Copied chat_template.jinja")
 
-    # Copy processor config
-    for f_name in ["processor_config.json", "preprocessor_config.json"]:
+    # Copy processor config and tokenizer files
+    for f_name in ["processor_config.json", "preprocessor_config.json",
+                    "tokenizer.json", "tokenizer_config.json",
+                    "special_tokens_map.json", "tokenizer.model"]:
         orig_f = os.path.join(orig_snapshot, f_name)
         if os.path.exists(orig_f):
             shutil.copy2(orig_f, os.path.join(OUTPUT_DIR, f_name))
@@ -216,7 +219,7 @@ if orig_snapshot:
                 if "vision_tower" not in key and "multi_modal_projector" not in key:
                     continue
                 tensor = orig_f.get_tensor(key)
-                # Strip model. prefix per HF standard
+                # Vision keys already bare (vision_tower.*, multi_modal_projector.*)
                 new_key = remap_key(key)
                 if tensor.dtype == torch.bfloat16:
                     tensor = tensor.to(torch.float16)
@@ -276,9 +279,11 @@ print(f"  Quantized layers: {total_converted}")
 print(f"  Kept layers: {total_kept}")
 print(f"  Vision layers: {total_vision}")
 print(f"  Output: {OUTPUT_DIR}")
-print(f"\nWeight key format (HF standard):")
-print(f"  language_model.model.layers.X.* (language)")
-print(f"  vision_tower.* (vision encoder)")
-print(f"  multi_modal_projector.* (projector)")
-print(f"  language_model.lm_head.* (output head)")
+print(f"\nWeight key format (HF VLM standard):")
+print(f"  language_model.model.layers.X.*.qweight/scales/qzeros (quantized)")
+print(f"  language_model.model.embed_tokens.weight (embedding)")
+print(f"  language_model.model.norm.weight (final norm)")
+print(f"  language_model.lm_head.weight (output head, FP16)")
+print(f"  vision_tower.* (vision encoder, FP16)")
+print(f"  multi_modal_projector.* (projector, FP16)")
 print(f"{'='*50}")

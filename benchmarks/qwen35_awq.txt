@@ -1,0 +1,10 @@
+=== Qwen3.5-27B AWQ Benchmarks ===
+Date: Thu Apr  2 06:30:43 AM PDT 2026
+
+conc=1  TPOT=54.31ms  throughput=47.70 tok/s  TTFT=2317.43ms
+conc=2  TPOT=56.67ms  throughput=48.87 tok/s  TTFT=6752.20ms
+conc=4  TPOT=55.63ms  throughput=49.49 tok/s  TTFT=17559.38ms
+conc=8  TPOT=58.70ms  throughput=48.11 tok/s  TTFT=42409.59ms
+conc=16  TPOT=59.32ms  throughput=47.27 tok/s  TTFT=64988.13ms
+conc=32  TPOT=60.79ms  throughput=47.15 tok/s  TTFT=167267.36ms
+

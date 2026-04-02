@@ -657,3 +657,50 @@ index 8dddf027e..f40f1dcc2 100644
  
  hipcc_flags = [
      "-DNDEBUG",
+diff --git a/python/sglang/srt/layers/moe/fused_moe_triton/fused_moe_triton_config.py b/python/sglang/srt/layers/moe/fused_moe_triton/fused_moe_triton_config.py
+index 90a6a31c7..56badb210 100644
+--- a/python/sglang/srt/layers/moe/fused_moe_triton/fused_moe_triton_config.py
++++ b/python/sglang/srt/layers/moe/fused_moe_triton/fused_moe_triton_config.py
+@@ -15,6 +15,19 @@ from sglang.srt.utils import get_device_name, is_hip
+ logger = logging.getLogger(__name__)
+ _is_hip = is_hip()
+ 
++# RDNA4 (gfx1201) needs num_stages=0 — Triton's CanonicalizePointers crashes with num_stages>=1
++def _is_rdna4():
++    if not _is_hip:
++        return False
++    try:
++        from sglang.srt.utils import get_device_capability
++        cap = get_device_capability()
++        return cap[0] >= 12
++    except Exception:
++        return False
++
++_rdna4 = _is_rdna4()
++
+ 
+ def get_config_file_name(
+     E: int,
+diff --git a/python/sglang/srt/layers/moe/fused_moe_triton/fused_moe_triton_kernels.py b/python/sglang/srt/layers/moe/fused_moe_triton/fused_moe_triton_kernels.py
+index b80e1827b..2d583b96a 100644
+--- a/python/sglang/srt/layers/moe/fused_moe_triton/fused_moe_triton_kernels.py
++++ b/python/sglang/srt/layers/moe/fused_moe_triton/fused_moe_triton_kernels.py
+@@ -42,6 +42,18 @@ _is_cpu_amx_available = cpu_has_amx_support()
+ _is_cpu = is_cpu()
+ _use_aiter = get_bool_env_var("SGLANG_USE_AITER") and _is_hip
+ 
++# RDNA4 (gfx1201) doesn't support FP8 dot in MoE — dequant to FP16 before fused kernel
++def _detect_rdna4():
++    if not _is_hip:
++        return False
++    try:
++        from sglang.srt.utils import get_device_capability
++        return get_device_capability()[0] >= 12
++    except Exception:
++        return False
++
++_is_rdna4 = _detect_rdna4()
++
+ if _is_cuda:
+     pass
+ elif _is_cpu and _is_cpu_amx_available:

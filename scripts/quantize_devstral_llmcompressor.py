@@ -20,6 +20,7 @@ import shutil
 # With memory-mapped safetensors + GPTQ per-layer processing, fits in 62GB RAM
 os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
+import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer, AutoConfig
 from safetensors import safe_open
 from safetensors.torch import save_file
@@ -54,8 +55,8 @@ if not snapshots:
     exit(1)
 snapshot_dir = snapshots[0]
 
-# Create temp dir with remapped weights
-tmp_dir = tempfile.mkdtemp(prefix="devstral_lm_")
+# Create temp dir with remapped weights — use /home (disk-backed) not /tmp (tmpfs, too small for BF16)
+tmp_dir = tempfile.mkdtemp(prefix="devstral_lm_", dir=os.path.expanduser("~/AI/models"))
 print(f"Temp dir: {tmp_dir}")
 
 # Copy config with text_config as root
@@ -68,19 +69,38 @@ for f in glob.glob(f"{snapshot_dir}/tokenizer*") + glob.glob(f"{snapshot_dir}/sp
     shutil.copy2(f, tmp_dir)
 
 # Remap safetensors: strip language_model. prefix, skip vision/projector
+# IMPORTANT: The checkpoint is FP8 quantized — dequantize weights to BF16
+# by multiplying weight (float8_e4m3fn) × weight_scale_inv (float32 scalar)
 shard_files = sorted(glob.glob(f"{snapshot_dir}/model-*.safetensors"))
 weight_map = {}
+fp8_dequantized = 0
 for shard_path in shard_files:
     shard_name = os.path.basename(shard_path)
     remapped = OrderedDict()
 
     with safe_open(shard_path, framework="pt") as f:
-        for key in f.keys():
+        all_keys = list(f.keys())
+        for key in all_keys:
             if not key.startswith("language_model."):
                 continue  # Skip vision_tower, multi_modal_projector
+            # Skip FP8 metadata — we dequantize inline
+            if key.endswith(".weight_scale_inv") or key.endswith(".activation_scale"):
+                continue
             new_key = key[len("language_model."):]
-            # lm_head is inside language_model in the checkpoint
-            remapped[new_key] = f.get_tensor(key)
+            tensor = f.get_tensor(key)
+
+            # Dequantize FP8 weights: weight × scale_inv → BF16
+            if tensor.dtype == torch.float8_e4m3fn or tensor.dtype == torch.float8_e4m3fnuz:
+                scale_key = key + "_scale_inv"
+                if scale_key in all_keys:
+                    scale_inv = f.get_tensor(scale_key)
+                    tensor = tensor.float() * scale_inv.float()
+                    tensor = tensor.to(torch.bfloat16)
+                    fp8_dequantized += 1
+                else:
+                    print(f"  WARN: FP8 weight {key} has no scale_inv, keeping raw")
+
+            remapped[new_key] = tensor
             weight_map[new_key] = shard_name
 
     if remapped:
@@ -93,7 +113,7 @@ index = {"metadata": {"total_size": 0}, "weight_map": weight_map}
 with open(os.path.join(tmp_dir, "model.safetensors.index.json"), "w") as f:
     json.dump(index, f, indent=2)
 
-print(f"  Total: {len(weight_map)} tensors")
+print(f"  Total: {len(weight_map)} tensors ({fp8_dequantized} FP8→BF16 dequantized)")
 
 # Step 2: Load the language model from temp dir
 print(f"\nLoading Ministral3ForCausalLM from remapped weights...")

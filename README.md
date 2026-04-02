@@ -4,20 +4,27 @@ High-throughput LLM inference on AMD Radeon AI PRO R9700 (gfx1201, RDNA4) with R
 
 ## Performance (2x R9700, SGLang v0.5.10rc0)
 
-### Devstral-24B (Mistral 3, standard transformer, TP=2)
+### Devstral-24B AWQ (Mistral 3, standard transformer, TP=2)
 
-| Concurrency | TPOT | Throughput |
-|-------------|------|-----------|
-| 1 | 30ms (34 tok/s) | 96 tok/s |
-| 8 | — | **295 tok/s** |
-| 16 | — | **380 tok/s** |
-| 32 | — | **513 tok/s** |
+| Concurrency | TPOT | Throughput | TTFT |
+|-------------|------|-----------|------|
+| 1 | 28.0ms | 97 tok/s | 230ms |
+| 2 | 28.3ms | 175 tok/s | 548ms |
+| 4 | 30.8ms | 270 tok/s | 925ms |
+| 8 | 55.4ms | 334 tok/s | 1.6s |
+| 16 | 72.7ms | 370 tok/s | 3.2s |
+| 32 | 68.1ms | **405 tok/s** | 13s |
 
-### Qwen3.5-27B (hybrid DeltaNet + attention, TP=2 replicated)
+### Qwen3.5-27B AWQ (hybrid DeltaNet + attention, TP=2 replicated)
 
-| Concurrency | TPOT | Throughput |
-|-------------|------|-----------|
-| 1 | 52ms (19 tok/s) | — |
+| Concurrency | TPOT | Throughput | TTFT |
+|-------------|------|-----------|------|
+| 1 | 54.3ms | 48 tok/s | 2.3s |
+| 2 | 56.7ms | 49 tok/s | 6.8s |
+| 4 | 55.6ms | 49 tok/s | 17.6s |
+| 8 | 58.7ms | 48 tok/s | 42.4s |
+| 16 | 59.3ms | 47 tok/s | 65.0s |
+| 32 | 60.8ms | 47 tok/s | 167s |
 
 Qwen3.5 with TP=2 replicates all layers to avoid DeltaNet precision errors,
 so each GPU computes the full model. Throughput is limited by this replication.
@@ -37,6 +44,19 @@ Quality is perfect: 39/39 tests pass (text + vision).
 Decode speed is constant at **57ms/token** regardless of context length — DeltaNet's
 recurrent state replaces KV cache for 48 of 64 layers. Prefill throughput is ~1.3K tok/s
 (chunked at 8192 tokens).
+
+### Qwen3-Coder-30B-A3B FP8 (standard MoE, 128 experts)
+
+**Status: Not yet working on SGLang/RDNA4** — the FP8 block-quantized MoE Triton kernel
+crashes with `hipErrorLaunchFailure` on gfx1201. vLLM has a [merged fix](https://github.com/vllm-project/vllm/pull/38086)
+with tuned kernel configs for R9700, but SGLang's Triton MoE kernel needs additional
+porting work. MoE configs from vLLM have been added to this repo.
+
+### Qwen3-Coder-Next (80B/3B hybrid DeltaNet + MoE, 512 experts)
+
+**Status: Blocked** — FP8 (80GB) doesn't fit in 64GB VRAM. Compressed-tensors AWQ
+uses Marlin MoE repack (CUDA-only JIT kernel). Same arch as Qwen3.5 — our DeltaNet
+patches would apply once the MoE quantized path is solved.
 
 ### Devstral FP8 (for comparison)
 
