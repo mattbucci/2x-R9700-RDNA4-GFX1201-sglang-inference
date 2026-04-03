@@ -6,14 +6,18 @@ High-throughput LLM inference on AMD Radeon AI PRO R9700 (gfx1201, RDNA4) with R
 
 ### Devstral-24B AWQ (Mistral 3, standard transformer, TP=2)
 
-| Concurrency | TPOT | Throughput | TTFT |
-|-------------|------|-----------|------|
-| 1 | 28.0ms | 97 tok/s | 230ms |
-| 2 | 28.3ms | 175 tok/s | 548ms |
-| 4 | 30.8ms | 270 tok/s | 925ms |
-| 8 | 55.4ms | 334 tok/s | 1.6s |
-| 16 | 72.7ms | 370 tok/s | 3.2s |
-| 32 | 68.1ms | **405 tok/s** | 13s |
+| Concurrency | TPOT (calibrated) | Throughput (calibrated) | TPOT (community) | Throughput (community) |
+|-------------|-------------------|------------------------|-------------------|-----------------------|
+| 1 | **26.9ms** | 103 tok/s | 28.0ms | 97 tok/s |
+| 2 | 28.3ms | 177 tok/s | 28.3ms | 175 tok/s |
+| 4 | 30.3ms | 275 tok/s | 30.8ms | 270 tok/s |
+| 8 | 36.0ms | 443 tok/s | 55.4ms | 334 tok/s |
+| 16 | 52.0ms | 486 tok/s | 72.7ms | 370 tok/s |
+| 32 | 46.9ms | **576 tok/s** | 68.1ms | 405 tok/s |
+
+The calibrated model (GPTQ with FP8→BF16 dequantization) achieves **42% higher throughput** at
+high concurrency vs the community AWQ conversion. The key difference: proper FP8 dequantization
+before GPTQ calibration produces better weight quantization quality.
 
 ### Qwen3.5-27B AWQ (hybrid DeltaNet + attention, TP=2 replicated)
 
