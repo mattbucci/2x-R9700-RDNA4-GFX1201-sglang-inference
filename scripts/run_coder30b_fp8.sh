@@ -3,6 +3,7 @@ cd /home/letsrtfm/AI/rdna4-inference-triton36
 source scripts/common.sh
 activate_conda
 setup_rdna4_env
+export TORCHDYNAMO_DISABLE=1
 exec python -m sglang.launch_server \
     --model-path /home/letsrtfm/AI/models/Qwen3-Coder-30B-A3B-FP8 \
     --tensor-parallel-size 2 --dtype float16 --quantization fp8 \

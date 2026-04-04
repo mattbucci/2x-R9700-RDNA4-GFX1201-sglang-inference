@@ -322,7 +322,7 @@ index 90a6a31c7..56badb210 100644
  def get_config_file_name(
      E: int,
 diff --git a/python/sglang/srt/layers/moe/fused_moe_triton/fused_moe_triton_kernels.py b/python/sglang/srt/layers/moe/fused_moe_triton/fused_moe_triton_kernels.py
-index b80e1827b..e3c638b0d 100644
+index b80e1827b..8afeabccf 100644
 --- a/python/sglang/srt/layers/moe/fused_moe_triton/fused_moe_triton_kernels.py
 +++ b/python/sglang/srt/layers/moe/fused_moe_triton/fused_moe_triton_kernels.py
 @@ -42,6 +42,18 @@ _is_cpu_amx_available = cpu_has_amx_support()
@@ -344,7 +344,7 @@ index b80e1827b..e3c638b0d 100644
  if _is_cuda:
      pass
  elif _is_cpu and _is_cpu_amx_available:
-@@ -320,6 +332,107 @@ def fused_moe_kernel_gptq_awq(
+@@ -320,6 +332,104 @@ def fused_moe_kernel_gptq_awq(
      tl.store(c_ptrs, accumulator, mask=c_mask)
  
  
@@ -356,7 +356,7 @@ index b80e1827b..e3c638b0d 100644
 +def fused_moe_kernel_rdna4(
 +    a_ptr, b_ptr, c_ptr,
 +    a_scale_ptr, b_scale_ptr,
-+    topk_weights_ptr, sorted_token_ids_ptr, expert_ids_ptr, num_tokens_post_padded_ptr,
++    sorted_token_ids_ptr, expert_ids_ptr, num_tokens_post_padded_ptr,
 +    N, K, EM, num_valid_tokens,
 +    stride_am, stride_ak, stride_be, stride_bk, stride_bn,
 +    stride_cm, stride_cn,
@@ -364,7 +364,7 @@ index b80e1827b..e3c638b0d 100644
 +    group_n: tl.constexpr, group_k: tl.constexpr,
 +    BLOCK_SIZE_M: tl.constexpr, BLOCK_SIZE_N: tl.constexpr,
 +    BLOCK_SIZE_K: tl.constexpr, GROUP_SIZE_M: tl.constexpr,
-+    MUL_ROUTED_WEIGHT: tl.constexpr, top_k: tl.constexpr,
++    top_k: tl.constexpr,
 +    compute_type: tl.constexpr,
 +    use_fp8_w8a8: tl.constexpr, use_int8_w8a8: tl.constexpr,
 +    per_channel_quant: tl.constexpr,
@@ -438,10 +438,7 @@ index b80e1827b..e3c638b0d 100644
 +    if (use_fp8_w8a8 or use_int8_w8a8) and not (group_k > 0 and group_n > 0):
 +        accumulator = accumulator * a_scale * b_scale
 +
-+    if MUL_ROUTED_WEIGHT:
-+        moe_weight = tl.load(topk_weights_ptr + offs_token, mask=token_mask, other=0)
-+        accumulator *= moe_weight[:, None]
-+
++    # No MUL_ROUTED_WEIGHT — applied externally after kernel
 +    accumulator = accumulator.to(compute_type)
 +    offs_cn = pid_n * BLOCK_SIZE_N + tl.arange(0, BLOCK_SIZE_N)
 +    c_ptrs = c_ptr + stride_cm * offs_token[:, None] + stride_cn * offs_cn[None, :]
@@ -452,7 +449,7 @@ index b80e1827b..e3c638b0d 100644
  @triton.jit
  def fused_moe_kernel(
      # Pointers to matrices
-@@ -491,10 +604,7 @@ def fused_moe_kernel(
+@@ -491,10 +601,7 @@ def fused_moe_kernel(
                  a_scale_ptrs = a_scale_ptr + offs_token_id * stride_asm
              else:
                  a_scale_ptrs = a_scale_ptr + (offs_token // top_k) * stride_asm
@@ -464,7 +461,7 @@ index b80e1827b..e3c638b0d 100644
              b_scale_ptrs = (
                  b_scale_ptr + off_experts * stride_bse + offs_bsn * stride_bsn
              )
-@@ -546,8 +656,6 @@ def fused_moe_kernel(
+@@ -546,8 +653,6 @@ def fused_moe_kernel(
                  .reshape(BLOCK_SIZE_N, BLOCK_SIZE_K)
                  .T
              )
@@ -473,7 +470,7 @@ index b80e1827b..e3c638b0d 100644
          else:
              b = tl.load(b_ptrs, mask=offs_k[:, None] < K - k_start, other=0.0)
  
-@@ -556,18 +664,17 @@ def fused_moe_kernel(
+@@ -556,18 +661,17 @@ def fused_moe_kernel(
              accumulator = tl.dot(a, b.to(compute_type), acc=accumulator)
          elif use_fp8_w8a8 or use_int8_w8a8:
              if group_k > 0 and group_n > 0:
@@ -498,7 +495,7 @@ index b80e1827b..e3c638b0d 100644
              else:
                  if use_fp8_w8a8:
                      if swap_ab:
-@@ -778,12 +885,28 @@ def invoke_fused_moe_kernel(
+@@ -778,12 +882,24 @@ def invoke_fused_moe_kernel(
          * triton.cdiv(B.shape[1], META["BLOCK_SIZE_N"]),
      )
  
@@ -517,28 +514,30 @@ index b80e1827b..e3c638b0d 100644
      else:
          even_Ks = False
  
-+    # RDNA4: disable kernel optimizations that cause codegen issues on gfx1201.
-+    # Force always-masked loads (even_Ks=False) and disable expert filtering
-+    # to match vLLM's simpler kernel path that works on R9700.
-+    if _is_rdna4:
-+        even_Ks = False
-+        filter_expert = False
++    # RDNA4: keep default kernel optimizations with ROCm 7.2.1
++    # (previously forced even_Ks=False, filter_expert=False but assembly matches vLLM)
 +
      if fuse_sum_all_reduce:
          assert not c_sorted, "fuse_sum_all_reduce only supports c_sorted=False"
  
-@@ -837,6 +960,42 @@ def invoke_fused_moe_kernel(
+@@ -837,6 +953,45 @@ def invoke_fused_moe_kernel(
              **config,
          )
  
-+    elif _is_rdna4 and (use_fp8_w8a8 or use_int8_w8a8):
++    elif False and _is_rdna4 and (use_fp8_w8a8 or use_int8_w8a8):  # Disabled — testing vanilla kernel with ROCm 7.2.1
 +        # RDNA4: use simplified kernel matching vLLM's proven-working signature.
 +        # SGLang's main kernel has extra constexpr params that cause Triton
 +        # to generate invalid ISA on gfx1201.
++        import logging as _log
++        _log.getLogger(__name__).warning(
++            f"RDNA4 MoE kernel: A={A.shape}/{A.dtype} B={B.shape}/{B.dtype} C={C.shape}/{C.dtype} "
++            f"A_scale={A_scale.shape if A_scale is not None else None} B_scale={B_scale.shape if B_scale is not None else None} "
++            f"block_shape={block_shape} config={config}"
++        )
 +        fused_moe_kernel_rdna4[grid](
 +            A, B, C,
 +            A_scale, B_scale,
-+            topk_weights, sorted_token_ids, expert_ids, num_tokens_post_padded,
++            sorted_token_ids, expert_ids, num_tokens_post_padded,
 +            B.shape[1],
 +            B.shape[2] - padded_size,
 +            sorted_token_ids.shape[0],
@@ -553,9 +552,6 @@ index b80e1827b..e3c638b0d 100644
 +            B_scale.stride(1) if B_scale is not None and B_scale.ndim >= 2 else 0,
 +            0 if block_shape is None else block_shape[0],
 +            0 if block_shape is None else block_shape[1],
-+            # RDNA4: disable MUL_ROUTED_WEIGHT inside kernel to match vLLM's
-+            # working codegen. Apply topk weights after kernel instead.
-+            MUL_ROUTED_WEIGHT=False,
 +            top_k=top_k,
 +            compute_type=compute_type,
 +            use_fp8_w8a8=use_fp8_w8a8,
@@ -570,7 +566,7 @@ index b80e1827b..e3c638b0d 100644
      else:
          if a_use_tma or b_use_tma:
              _set_triton_tma_allocator()
-@@ -906,6 +1065,8 @@ def invoke_fused_moe_kernel(
+@@ -906,6 +1061,8 @@ def invoke_fused_moe_kernel(
              **config,
          )
  
