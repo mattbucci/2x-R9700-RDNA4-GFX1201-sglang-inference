@@ -81,6 +81,10 @@ setup_rdna4_env() {
     # TunableOp off during graph capture
     export PYTORCH_TUNABLEOP_ENABLED=0
 
+    # NOTE: Do NOT set TORCHDYNAMO_DISABLE=1 here — it prevents multiprocessing
+    # spawn from working. Instead, individual @torch.compile calls are disabled
+    # via disable=_is_hip in topk.py and other files.
+
     # RCCL debug — INFO so we can see transport selection
     export NCCL_DEBUG=${NCCL_DEBUG:-INFO}
     export NCCL_DEBUG_SUBSYS=${NCCL_DEBUG_SUBSYS:-INIT,P2P}

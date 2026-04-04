@@ -15,15 +15,16 @@ os.environ['TOKENIZERS_PARALLELISM'] = 'false'
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'components', 'sglang', 'python'))
 from sglang.launch_server import run_server
 from sglang.srt.server_args import ServerArgs
-args = ServerArgs(
-    model_path=os.path.expanduser('~/AI/models/Qwen3-Coder-30B-A3B-FP8'),
-    tp_size=1, dtype='float16', quantization='fp8',
-    kv_cache_dtype='fp8_e4m3', context_length=4096,
-    mem_fraction_static=0.95, disable_cuda_graph=True,
-    max_running_requests=1, chunked_prefill_size=2048,
-    attention_backend='triton', num_continuous_decode_steps=4,
-    disable_custom_all_reduce=True, trust_remote_code=True,
-    watchdog_timeout=1800, skip_server_warmup=True,
-    port=23334, host='0.0.0.0', enable_metrics=True,
-)
-run_server(args)
+if __name__ == '__main__':
+    args = ServerArgs(
+        model_path=os.path.expanduser('~/AI/models/Qwen3-Coder-30B-A3B-FP8'),
+        tp_size=1, dtype='float16', quantization='fp8',
+        kv_cache_dtype='fp8_e4m3', context_length=4096,
+        mem_fraction_static=0.95, disable_cuda_graph=True,
+        max_running_requests=1, chunked_prefill_size=2048,
+        attention_backend='triton', num_continuous_decode_steps=1,
+        disable_custom_all_reduce=True, trust_remote_code=True,
+        watchdog_timeout=1800, skip_server_warmup=True,
+        port=23334, host='0.0.0.0', enable_metrics=True,
+    )
+    run_server(args)
