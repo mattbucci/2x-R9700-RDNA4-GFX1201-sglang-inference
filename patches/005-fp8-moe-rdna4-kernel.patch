@@ -344,7 +344,7 @@ index 90a6a31c7..e2f840e12 100644
                  "num_stages": 2 if _is_hip else 3,
              }
 diff --git a/python/sglang/srt/layers/moe/fused_moe_triton/fused_moe_triton_kernels.py b/python/sglang/srt/layers/moe/fused_moe_triton/fused_moe_triton_kernels.py
-index b80e1827b..e8da8c13d 100644
+index b80e1827b..d1b48d07e 100644
 --- a/python/sglang/srt/layers/moe/fused_moe_triton/fused_moe_triton_kernels.py
 +++ b/python/sglang/srt/layers/moe/fused_moe_triton/fused_moe_triton_kernels.py
 @@ -42,6 +42,18 @@ _is_cpu_amx_available = cpu_has_amx_support()
@@ -517,7 +517,29 @@ index b80e1827b..e8da8c13d 100644
              else:
                  if use_fp8_w8a8:
                      if swap_ab:
-@@ -778,12 +882,53 @@ def invoke_fused_moe_kernel(
+@@ -743,7 +847,21 @@ def invoke_fused_moe_kernel(
+             if _is_cuda:
+                 A, A_scale = sglang_per_token_group_quant_fp8(A, block_k)
+             else:
++                # DEBUG: sync before and after per_token_group_quant_fp8
++                if _is_rdna4 and not hasattr(invoke_fused_moe_kernel, '_quant_dbg'):
++                    invoke_fused_moe_kernel._quant_dbg = True
++                    torch.cuda.synchronize()
++                    import os
++                    with open(f"/tmp/moe_quant_rank{os.environ.get('RANK','?')}.log", 'w') as _f:
++                        _f.write(f"PRE-QUANT: A={A.shape}/{A.dtype} block_k={block_k}\n")
++                        _f.flush()
+                 A, A_scale = per_token_group_quant_fp8(A, block_k)
++                if hasattr(invoke_fused_moe_kernel, '_quant_dbg') and not hasattr(invoke_fused_moe_kernel, '_quant_ok'):
++                    invoke_fused_moe_kernel._quant_ok = True
++                    torch.cuda.synchronize()
++                    with open(f"/tmp/moe_quant_rank{os.environ.get('RANK','?')}.log", 'a') as _f:
++                        _f.write(f"POST-QUANT SYNC OK: A={A.shape}/{A.dtype} A_scale={A_scale.shape}\n")
++                        _f.flush()
+             assert triton.cdiv(A.shape[-1], block_k) == A_scale.shape[-1]
+             assert triton.cdiv(B.shape[-2], block_n) == B_scale.shape[-2]
+             assert triton.cdiv(B.shape[-1], block_k) == B_scale.shape[-1]
+@@ -778,12 +896,51 @@ def invoke_fused_moe_kernel(
          * triton.cdiv(B.shape[1], META["BLOCK_SIZE_N"]),
      )
  
@@ -527,25 +549,23 @@ index b80e1827b..e8da8c13d 100644
 +        import os
 +        rank = os.environ.get('RANK', '?')
 +        try:
++            # Save ONLY the small tensors (A, A_scale) - B is too large
 +            torch.save({
-+                'A': A.cpu(), 'B': B.cpu(), 'C_shape': C.shape,
-+                'A_scale': A_scale.cpu() if A_scale is not None else None,
-+                'B_scale': B_scale.cpu() if B_scale is not None else None,
-+                'topk_weights': topk_weights.cpu(),
-+                'topk_ids': topk_ids.cpu(),
-+                'sorted_token_ids': sorted_token_ids.cpu(),
-+                'expert_ids': expert_ids.cpu(),
-+                'num_tokens_post_padded': num_tokens_post_padded.cpu(),
-+                'config': config, 'block_shape': block_shape,
-+                'mul_routed_weight': mul_routed_weight, 'top_k': top_k,
-+                'use_fp8_w8a8': use_fp8_w8a8,
-+            }, f"/tmp/moe_invoke_args_rank{rank}.pt")
++                'A': A.detach().cpu().clone(),
++                'A_scale': A_scale.detach().cpu().clone() if A_scale is not None else None,
++                'sorted_token_ids': sorted_token_ids.detach().cpu().clone(),
++                'expert_ids': expert_ids.detach().cpu().clone(),
++                'num_tokens_post_padded': num_tokens_post_padded.detach().cpu().clone(),
++                'topk_weights': topk_weights.detach().cpu().clone(),
++                'topk_ids': topk_ids.detach().cpu().clone(),
++            }, f"/tmp/moe_A_rank{rank}.pt")
 +            with open(f"/tmp/moe_invoke_rank{rank}.log", 'w') as _f:
 +                _f.write(f"A={A.shape}/{A.dtype} B={B.shape}/{B.dtype} "
 +                         f"B_contig={B.is_contiguous()} B_stride={B.stride()}\n"
 +                         f"A_scale={A_scale.shape if A_scale is not None else None} "
 +                         f"B_scale={B_scale.shape if B_scale is not None else None}\n"
-+                         f"config={config} block_shape={block_shape}\n")
++                         f"config={config} block_shape={block_shape}\n"
++                         f"SAVED A tensors to /tmp/moe_A_rank{rank}.pt\n")
 +        except Exception as e:
 +            with open(f"/tmp/moe_invoke_rank{rank}.log", 'w') as _f:
 +                _f.write(f"SAVE FAILED: {e}\n")
@@ -571,7 +591,7 @@ index b80e1827b..e8da8c13d 100644
      if fuse_sum_all_reduce:
          assert not c_sorted, "fuse_sum_all_reduce only supports c_sorted=False"
  
-@@ -837,6 +982,45 @@ def invoke_fused_moe_kernel(
+@@ -837,6 +994,45 @@ def invoke_fused_moe_kernel(
              **config,
          )
  
@@ -617,7 +637,7 @@ index b80e1827b..e8da8c13d 100644
      else:
          if a_use_tma or b_use_tma:
              _set_triton_tma_allocator()
-@@ -906,6 +1090,8 @@ def invoke_fused_moe_kernel(
+@@ -906,6 +1102,8 @@ def invoke_fused_moe_kernel(
              **config,
          )
  
