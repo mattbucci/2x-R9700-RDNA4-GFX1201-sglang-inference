@@ -1,0 +1,14 @@
+Devstral-24B AWQ (calibrated) - SGLang v0.5.10rc0 - sglang-clean env
+torch 2.12.0.dev20260403+rocm7.2, Triton 3.6.0, ROCm 7.2.1
+2x AMD Radeon AI PRO R9700 (gfx1201, RDNA4), TP=2
+Context: 4096, FP8 KV cache, AWQ 4-bit
+
+Single Request (200 tokens): 35.8 tok/s (28ms TPOT)
+
+Concurrency Throughput (tok/s):
+  1:    34.3
+  2:    70.1
+  4:   145.0
+  8:   256.0
+ 16:   433.9
+ 32:   858.3
