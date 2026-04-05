@@ -270,7 +270,7 @@ index e4960bdb4..c3544c41b 100644
 +    def forward_hip(self, x: torch.Tensor) -> torch.Tensor:
 +        return self.forward_native(x)
 diff --git a/python/sglang/srt/layers/moe/fused_moe_triton/fused_moe.py b/python/sglang/srt/layers/moe/fused_moe_triton/fused_moe.py
-index f2621473c..ae095cb0a 100644
+index f2621473c..11a316d3a 100644
 --- a/python/sglang/srt/layers/moe/fused_moe_triton/fused_moe.py
 +++ b/python/sglang/srt/layers/moe/fused_moe_triton/fused_moe.py
 @@ -290,13 +290,13 @@ def fused_experts(
@@ -297,6 +297,23 @@ index f2621473c..ae095cb0a 100644
  def _swiglu_gpt_oss_sigmoid_alpha(x, gemm1_alpha, gemm1_limit):
      # NOTE: This variant uses gemm1_alpha, unlike _swiglu_silu_clamp_mul.
      # At present, only GPT-OSS uses this variant.
+@@ -480,6 +479,16 @@ def fused_experts_impl(
+             curr_topk_ids, config["BLOCK_SIZE_M"], E
+         )
+ 
++        # DEBUG: sync before MoE kernel to separate prior async errors
++        import os as _os
++        if not hasattr(fused_experts_impl, '_dbg_done'):
++            fused_experts_impl._dbg_done = True
++            torch.cuda.synchronize()
++            with open(f"/tmp/sglang_moe_dbg_rank{_os.environ.get('RANK','?')}.log", 'a') as _f:
++                _f.write(f"PRE-MoE sync OK: hidden={curr_hidden_states.shape}/{curr_hidden_states.dtype} "
++                         f"w1={w1.shape}/{w1.dtype} scale={w1_scale.shape if w1_scale is not None else None}\n")
++                _f.flush()
++
+         invoke_fused_moe_kernel(
+             curr_hidden_states,
+             w1,
 diff --git a/python/sglang/srt/layers/moe/fused_moe_triton/fused_moe_triton_config.py b/python/sglang/srt/layers/moe/fused_moe_triton/fused_moe_triton_config.py
 index 90a6a31c7..e2f840e12 100644
 --- a/python/sglang/srt/layers/moe/fused_moe_triton/fused_moe_triton_config.py
@@ -784,6 +801,18 @@ index 63b376c24..b9db467d1 100644
  def get_masked_input_and_mask(
      input_: torch.Tensor,
      org_vocab_start_index: int,
+diff --git a/python/sglang/srt/managers/scheduler.py b/python/sglang/srt/managers/scheduler.py
+index b050a72c9..ba8437d5b 100644
+--- a/python/sglang/srt/managers/scheduler.py
++++ b/python/sglang/srt/managers/scheduler.py
+@@ -3579,4 +3579,7 @@ def run_scheduler_process(
+     except Exception:
+         traceback = get_exception_traceback()
+         logger.error(f"Scheduler hit an exception: {traceback}")
++        # DEBUG: Write to file for crash forensics
++        with open(f"/tmp/sglang_scheduler_crash_tp{tp_rank}.log", "w") as _f:
++            _f.write(traceback)
+         parent_process.send_signal(signal.SIGQUIT)
 diff --git a/python/sglang/srt/model_executor/model_runner_kv_cache_mixin.py b/python/sglang/srt/model_executor/model_runner_kv_cache_mixin.py
 index 7bc66f08d..c1aa42b02 100644
 --- a/python/sglang/srt/model_executor/model_runner_kv_cache_mixin.py
