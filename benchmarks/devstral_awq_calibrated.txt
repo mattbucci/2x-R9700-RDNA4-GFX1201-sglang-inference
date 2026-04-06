@@ -1,8 +1,0 @@
-=== Devstral-24B AWQ (calibrated GPTQ) ===
-Date: Thu Apr  2 05:25:16 PM PDT 2026
-conc=1  TPOT=26.88ms  throughput=102.74 tok/s  TTFT=173.55ms
-conc=2  TPOT=28.25ms  throughput=177.34 tok/s  TTFT=471.40ms
-conc=4  TPOT=30.25ms  throughput=275.28 tok/s  TTFT=896.80ms
-conc=8  TPOT=35.99ms  throughput=443.35 tok/s  TTFT=1600.71ms
-conc=16  TPOT=51.97ms  throughput=486.04 tok/s  TTFT=2436.81ms
-conc=32  TPOT=46.92ms  throughput=575.81 tok/s  TTFT=8543.83ms

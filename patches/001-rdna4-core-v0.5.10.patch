@@ -1,0 +1,3606 @@
+diff --git a/python/sglang/srt/configs/model_config.py b/python/sglang/srt/configs/model_config.py
+index 691f06411..52513ad7c 100644
+--- a/python/sglang/srt/configs/model_config.py
++++ b/python/sglang/srt/configs/model_config.py
+@@ -155,6 +155,7 @@ class ModelConfig:
+         if enable_multimodal is None:
+             mm_disabled_models = [
+                 "Gemma3ForConditionalGeneration",
++                "Gemma4ForConditionalGeneration",
+                 "Llama4ForConditionalGeneration",
+                 "Step3VLForConditionalGeneration",
+             ]
+@@ -1438,6 +1439,8 @@ def compute_mla_mscale_scaling(rope_scaling: dict, base_scaling: float) -> float
+ def is_hybrid_swa_model(model_architectures: List[str]):
+ 
+     hybrid_swa_archs = {
++        "Gemma4ForCausalLM",
++        "Gemma4ForConditionalGeneration",
+         "Llama4ForConditionalGeneration",
+         "GptOssForCausalLM",
+         "MiMoV2FlashForCausalLM",
+@@ -1491,6 +1494,17 @@ def get_hybrid_layer_ids(
+             for i, x in enumerate(layer_types)
+             if x == "full_attention" and i < num_hidden_layers
+         ]
++    elif (
++        "Gemma4ForCausalLM" in model_architectures
++        or "Gemma4ForConditionalGeneration" in model_architectures
++    ):
++        layer_types = getattr(hf_text_config, "layer_types", [])
++        swa_attention_layer_ids = [
++            i for i, x in enumerate(layer_types) if x == "sliding_attention"
++        ]
++        full_attention_layer_ids = [
++            i for i, x in enumerate(layer_types) if x == "full_attention"
++        ]
+     elif "Step3p5MTP" in model_architectures:
+         swa_attention_layer_ids = [0]
+         full_attention_layer_ids = []
+diff --git a/python/sglang/srt/configs/qwen3_next.py b/python/sglang/srt/configs/qwen3_next.py
+index 3bf153a22..f83b5f43e 100644
+--- a/python/sglang/srt/configs/qwen3_next.py
++++ b/python/sglang/srt/configs/qwen3_next.py
+@@ -287,8 +287,11 @@ class Qwen3NextConfig(PretrainedConfig):
+             world_size = get_attention_tp_size()
+             adjust_tp_num_heads_if_necessary(self, world_size, False)
+ 
++        # DeltaNet projections are replicated (tp_size=1) to avoid
++        # precision errors from TP matmul splits in the recurrent state.
++        # The SSM state must match the replicated projection dimensions.
+         shape = Mamba2StateShape.create(
+-            tp_world_size=get_attention_tp_size(),
++            tp_world_size=1,
+             intermediate_size=self.linear_value_head_dim * self.linear_num_value_heads,
+             n_groups=self.linear_num_key_heads,
+             num_heads=self.linear_num_value_heads,
+diff --git a/python/sglang/srt/layers/attention/linear/seg_la.py b/python/sglang/srt/layers/attention/linear/seg_la.py
+index 9b4e68d8d..f707e2f2e 100644
+--- a/python/sglang/srt/layers/attention/linear/seg_la.py
++++ b/python/sglang/srt/layers/attention/linear/seg_la.py
+@@ -12,6 +12,11 @@ import torch
+ import triton
+ import triton.language as tl
+ 
++from sglang.srt.utils import get_device_capability, is_hip
++
++# RDNA4 (gfx12): Triton pipelining crashes CanonicalizePointers pass.
++_RDNA4_NUM_STAGES = 0 if is_hip() and get_device_capability()[0] >= 12 else None
++
+ 
+ # arg `meta` of `seg_la_fwd` is SegLaMeta
+ @dataclass
+@@ -684,7 +689,7 @@ def seg_la_fwd(
+         V_SPLIT_DIM = 32 if bs <= 2 else 64
+ 
+         num_warps = 2  # 2
+-        num_stages = 3  # 3
++        num_stages = _RDNA4_NUM_STAGES if _RDNA4_NUM_STAGES is not None else 3
+ 
+         k_dim_block = HEAD_DIM // K_SPLIT_DIM
+         v_dim_block = HEAD_DIM // V_SPLIT_DIM
+@@ -801,7 +806,7 @@ def seg_la_fwd(
+                     DIM=qo_heads * HEAD_DIM,
+                     NUM_BLOCK=k_dim_block,
+                     num_warps=2,
+-                    num_stages=3,
++                    num_stages=_RDNA4_NUM_STAGES if _RDNA4_NUM_STAGES is not None else 3,
+                 )
+         else:
+             o = tmp[0]
+@@ -812,7 +817,7 @@ def seg_la_fwd(
+             K_SPLIT_DIM = 128  # 128
+             V_SPLIT_DIM = 32  # 32
+             num_warps = 2  # 2
+-            num_stages = 2  # 3
++            num_stages = _RDNA4_NUM_STAGES if _RDNA4_NUM_STAGES is not None else 2
+         else:
+             K_SPLIT_DIM = 128  # 128
+             V_SPLIT_DIM = 64  # 32
+diff --git a/python/sglang/srt/layers/attention/mamba/causal_conv1d_triton.py b/python/sglang/srt/layers/attention/mamba/causal_conv1d_triton.py
+index c82f4d730..72af9b7a0 100644
+--- a/python/sglang/srt/layers/attention/mamba/causal_conv1d_triton.py
++++ b/python/sglang/srt/layers/attention/mamba/causal_conv1d_triton.py
+@@ -8,6 +8,8 @@ import torch
+ import triton
+ import triton.language as tl
+ 
++from sglang.srt.utils import is_hip
++
+ PAD_SLOT_ID = -1
+ 
+ 
+@@ -117,33 +119,34 @@ def _causal_conv1d_fwd_kernel(  # continuous batching
+         if HAS_INITIAL_STATES:  # the new HAS_INITIAL_STATES
+             load_init_state = tl.load(has_initial_states_ptr + idx_seq).to(tl.int1)
+         if load_init_state:
+-            # load from conv_states
++            # load from conv_states — cast to activation dtype to match else branch
++            _act_dtype = x_ptr.dtype.element_ty
+             prior_tokens = conv_states_base + (state_len - 1) * stride_conv_state_tok
+             mask_w = idx_feats < dim
+             if KERNEL_WIDTH == 2:
+                 conv_states_ptrs = prior_tokens  # [BLOCK_N]
+-                col0 = tl.load(conv_states_ptrs, mask_w, 0.0)
++                col0 = tl.load(conv_states_ptrs, mask_w, 0.0).to(_act_dtype)
+             if KERNEL_WIDTH == 3:
+                 conv_states_ptrs = prior_tokens  # [BLOCK_N]
+-                col1 = tl.load(conv_states_ptrs, mask_w, 0.0)
++                col1 = tl.load(conv_states_ptrs, mask_w, 0.0).to(_act_dtype)
+                 conv_states_ptrs = prior_tokens - 1 * stride_conv_state_tok  # [BLOCK_N]
+-                col0 = tl.load(conv_states_ptrs, mask_w, 0.0)
++                col0 = tl.load(conv_states_ptrs, mask_w, 0.0).to(_act_dtype)
+             if KERNEL_WIDTH == 4:
+                 conv_states_ptrs = prior_tokens  # [BLOCK_N]
+-                col2 = tl.load(conv_states_ptrs, mask_w, 0.0)
++                col2 = tl.load(conv_states_ptrs, mask_w, 0.0).to(_act_dtype)
+                 conv_states_ptrs = prior_tokens - 1 * stride_conv_state_tok  # [BLOCK_N]
+-                col1 = tl.load(conv_states_ptrs, mask_w, 0.0)
++                col1 = tl.load(conv_states_ptrs, mask_w, 0.0).to(_act_dtype)
+                 conv_states_ptrs = prior_tokens - 2 * stride_conv_state_tok  # [BLOCK_N]
+-                col0 = tl.load(conv_states_ptrs, mask_w, 0.0)
++                col0 = tl.load(conv_states_ptrs, mask_w, 0.0).to(_act_dtype)
+             if KERNEL_WIDTH == 5:
+                 conv_states_ptrs = prior_tokens  # [BLOCK_N]
+-                col3 = tl.load(conv_states_ptrs, mask_w, 0.0)
++                col3 = tl.load(conv_states_ptrs, mask_w, 0.0).to(_act_dtype)
+                 conv_states_ptrs = prior_tokens - 1 * stride_conv_state_tok  # [BLOCK_N]
+-                col2 = tl.load(conv_states_ptrs, mask_w, 0.0)
++                col2 = tl.load(conv_states_ptrs, mask_w, 0.0).to(_act_dtype)
+                 conv_states_ptrs = prior_tokens - 2 * stride_conv_state_tok  # [BLOCK_N]
+-                col1 = tl.load(conv_states_ptrs, mask_w, 0.0)
++                col1 = tl.load(conv_states_ptrs, mask_w, 0.0).to(_act_dtype)
+                 conv_states_ptrs = prior_tokens - 3 * stride_conv_state_tok  # [BLOCK_N]
+-                col0 = tl.load(conv_states_ptrs, mask_w, 0.0)
++                col0 = tl.load(conv_states_ptrs, mask_w, 0.0).to(_act_dtype)
+         else:
+             # prior-tokens are zeros
+             if KERNEL_WIDTH >= 2:  # STRATEGY1
+@@ -547,7 +550,7 @@ def causal_conv1d_fn(
+         # launch_cooperative_grid=True
+         BLOCK_M=8,
+         BLOCK_N=256,
+-        num_stages=2,
++        num_stages=0 if is_hip() else 2,
+     )
+     return out
+ 
+diff --git a/python/sglang/srt/layers/attention/triton_backend.py b/python/sglang/srt/layers/attention/triton_backend.py
+index 18ed55572..ac03c1af2 100644
+--- a/python/sglang/srt/layers/attention/triton_backend.py
++++ b/python/sglang/srt/layers/attention/triton_backend.py
+@@ -51,6 +51,8 @@ class ForwardMetadata:
+     window_kv_indices: torch.Tensor
+     window_num_kv_splits: torch.Tensor
+     window_kv_offsets: torch.Tensor
++    # Separate attn_logits for SWA layers when v_head_dim differs
++    swa_attn_logits: Optional[torch.Tensor] = None
+ 
+ 
+ class TritonAttnBackend(AttentionBackend):
+@@ -104,6 +106,14 @@ class TritonAttnBackend(AttentionBackend):
+             self.v_head_dim = model_runner.token_to_kv_pool.get_value_buffer(0).shape[
+                 -1
+             ]
++        # Track whether SWA layers need different v_head_dim
++        full_v_head_dim = model_runner.model_config.v_head_dim
++        swa_v_head_dim = model_runner.model_config.swa_v_head_dim
++        if self.sliding_window_size is not None and swa_v_head_dim != full_v_head_dim:
++            self.swa_v_head_dim = swa_v_head_dim
++        else:
++            self.swa_v_head_dim = None
++
+         self.max_context_len = model_runner.model_config.context_len
+         self.device = model_runner.device
+         self.device_core_count = get_device_core_count(model_runner.gpu_id)
+@@ -290,6 +300,14 @@ class TritonAttnBackend(AttentionBackend):
+                 dtype=torch.float32,
+                 device=self.device,
+             )
++            if self.swa_v_head_dim is not None:
++                swa_attn_logits = torch.empty(
++                    (bs, self.num_head, self.max_kv_splits, self.swa_v_head_dim),
++                    dtype=torch.float32,
++                    device=self.device,
++                )
++            else:
++                swa_attn_logits = None
+             attn_lse = torch.empty(
+                 (bs, self.num_head, self.max_kv_splits),
+                 dtype=torch.float32,
+@@ -422,6 +440,10 @@ class TritonAttnBackend(AttentionBackend):
+             max_extend_len = max(forward_batch.extend_seq_lens_cpu)
+             num_kv_splits = None
+ 
++        # For non-decode modes, swa_attn_logits is not needed
++        if not forward_batch.forward_mode.is_decode():
++            swa_attn_logits = None
++
+         self.forward_metadata = ForwardMetadata(
+             attn_logits,
+             attn_lse,
+@@ -436,6 +458,7 @@ class TritonAttnBackend(AttentionBackend):
+             window_kv_indices,
+             window_num_kv_splits,
+             window_kv_offsets,
++            swa_attn_logits=swa_attn_logits,
+         )
+ 
+     def init_cuda_graph_state(
+@@ -450,6 +473,14 @@ class TritonAttnBackend(AttentionBackend):
+             dtype=torch.float32,
+             device=self.device,
+         )
++        if self.swa_v_head_dim is not None:
++            self.cuda_graph_swa_attn_logits = torch.zeros(
++                (max_num_tokens, self.num_head, self.max_kv_splits, self.swa_v_head_dim),
++                dtype=torch.float32,
++                device=self.device,
++            )
++        else:
++            self.cuda_graph_swa_attn_logits = None
+         self.cuda_graph_attn_lse = torch.zeros(
+             (max_num_tokens, self.num_head, self.max_kv_splits),
+             dtype=torch.float32,
+@@ -558,6 +589,7 @@ class TritonAttnBackend(AttentionBackend):
+                 kv_indptr, kv_indices = spec_info.kv_indptr, spec_info.kv_indices
+ 
+             attn_logits = self.cuda_graph_attn_logits
++            swa_attn_logits = self.cuda_graph_swa_attn_logits
+             attn_lse = self.cuda_graph_attn_lse
+             max_extend_len = None
+             num_kv_splits = self.cuda_graph_num_kv_splits
+@@ -645,6 +677,10 @@ class TritonAttnBackend(AttentionBackend):
+                 f"Invalid forward mode: {forward_mode=} for CUDA Graph capture."
+             )
+ 
++        # For non-decode CUDA graph modes, swa_attn_logits is not needed
++        if not forward_mode.is_decode():
++            swa_attn_logits = None
++
+         self.forward_metadata = ForwardMetadata(
+             attn_logits,
+             attn_lse,
+@@ -659,6 +695,7 @@ class TritonAttnBackend(AttentionBackend):
+             window_kv_indices,
+             window_num_kv_splits,
+             window_kv_offsets,
++            swa_attn_logits=swa_attn_logits,
+         )
+ 
+     def init_forward_metadata_replay_cuda_graph(
+@@ -813,6 +850,18 @@ class TritonAttnBackend(AttentionBackend):
+         save_kv_cache=True,
+         sinks=None,
+     ):
++        # Handle KV-shared layers (Gemma4): k=None, v=None means retrieve from cache
++        if k is None and v is None:
++            pool = forward_batch.token_to_kv_pool
++            cache_loc = forward_batch.out_cache_loc
++            if hasattr(pool, 'layers_mapping') and pool.layers_mapping[layer.layer_id][1]:
++                cache_loc = pool.translate_loc_from_full_to_swa(cache_loc)
++            k_buffer, v_buffer = pool.get_kv_buffer(layer.layer_id)
++            k = k_buffer[cache_loc]
++            v = v_buffer[cache_loc]
++        elif k is None or v is None:
++            raise ValueError("Both k and v should be None or not None")
++
+         # TODO: reuse the buffer across layers
+         if layer.qk_head_dim != layer.v_head_dim:
+             o = q.new_empty((q.shape[0], layer.tp_q_head_num * layer.v_head_dim))
+@@ -1045,6 +1094,18 @@ class TritonAttnBackend(AttentionBackend):
+         save_kv_cache=True,
+         sinks=None,
+     ):
++        # Handle KV-shared layers (Gemma4): k=None, v=None means retrieve from cache
++        if k is None and v is None:
++            pool = forward_batch.token_to_kv_pool
++            cache_loc = forward_batch.out_cache_loc
++            if hasattr(pool, 'layers_mapping') and pool.layers_mapping[layer.layer_id][1]:
++                cache_loc = pool.translate_loc_from_full_to_swa(cache_loc)
++            k_buffer, v_buffer = pool.get_kv_buffer(layer.layer_id)
++            k = k_buffer[cache_loc]
++            v = v_buffer[cache_loc]
++        elif k is None or v is None:
++            raise ValueError("Both k and v should be None or not None")
++
+         # During torch.compile, there is a bug in rotary_emb that causes the
+         # output value to have a 3D tensor shape. This reshapes the output correctly.
+         q = q.reshape(-1, layer.tp_q_head_num * layer.qk_head_dim)
+@@ -1089,6 +1150,15 @@ class TritonAttnBackend(AttentionBackend):
+             k_descale = 1.0
+             v_descale = 1.0
+ 
++        # Select the correctly-sized attn_logits buffer for this layer.
++        attn_logits = self.forward_metadata.attn_logits
++        if (
++            self.forward_metadata.swa_attn_logits is not None
++            and layer.sliding_window_size is not None
++            and layer.sliding_window_size > -1
++        ):
++            attn_logits = self.forward_metadata.swa_attn_logits
++
+         self.decode_attention_fwd(
+             q.view(-1, layer.tp_q_head_num, layer.qk_head_dim),
+             forward_batch.token_to_kv_pool.get_key_buffer(layer.layer_id),
+@@ -1096,7 +1166,7 @@ class TritonAttnBackend(AttentionBackend):
+             o.view(-1, layer.tp_q_head_num, layer.v_head_dim),
+             kv_indptr,
+             kv_indices,
+-            self.forward_metadata.attn_logits,
++            attn_logits,
+             self.forward_metadata.attn_lse,
+             self.forward_metadata.num_kv_splits,
+             self.max_kv_splits,
+diff --git a/python/sglang/srt/layers/attention/triton_ops/decode_attention.py b/python/sglang/srt/layers/attention/triton_ops/decode_attention.py
+index 2b166f3b0..109078e57 100644
+--- a/python/sglang/srt/layers/attention/triton_ops/decode_attention.py
++++ b/python/sglang/srt/layers/attention/triton_ops/decode_attention.py
+@@ -25,9 +25,10 @@ import logging
+ import triton
+ import triton.language as tl
+ 
+-from sglang.srt.utils import is_hip
++from sglang.srt.utils import get_device_capability, is_hip
+ 
+ _is_hip = is_hip()
++_is_rdna4 = _is_hip and get_device_capability()[0] >= 12
+ 
+ logger = logging.getLogger(__name__)
+ 
+@@ -196,7 +197,7 @@ def _decode_att_m_fwd(
+     BLOCK = 64
+     # [TODO] work around SGPR limit on MI3xx
+     if _is_hip:
+-        BLOCK = 8
++        BLOCK = 32 if _is_rdna4 else 8
+     MAX_KV_SPLITS = max_kv_splits
+     Lk = k_buffer.shape[-1]
+     Lv = v_buffer.shape[-1]
+@@ -210,7 +211,7 @@ def _decode_att_m_fwd(
+         num_warps = 4
+     else:
+         num_warps = 2
+-        if _is_hip:
++        if _is_hip and not _is_rdna4:
+             num_warps = 1
+ 
+     BLOCK_DMODEL = triton.next_power_of_2(Lk)
+diff --git a/python/sglang/srt/layers/communicator.py b/python/sglang/srt/layers/communicator.py
+index 936eecb90..2146b3649 100644
+--- a/python/sglang/srt/layers/communicator.py
++++ b/python/sglang/srt/layers/communicator.py
+@@ -75,7 +75,8 @@ _is_cuda = is_cuda()
+ _is_flashinfer_available = is_flashinfer_available()
+ _is_sm90_supported = _is_cuda and is_sm90_supported()
+ _is_sm100_supported = _is_cuda and is_sm100_supported()
+-_use_aiter = get_bool_env_var("SGLANG_USE_AITER") and is_hip()
++_is_hip = is_hip()
++_use_aiter = get_bool_env_var("SGLANG_USE_AITER") and _is_hip
+ _is_gfx95_supported = is_gfx95_supported()
+ _is_npu = is_npu()
+ _use_ag_after_qlora = envs.SGLANG_USE_AG_AFTER_QLORA.get()
+@@ -883,9 +884,16 @@ class CommunicateWithAllReduceAndLayerNormFn:
+                 handled = True
+ 
+             if not handled:
++                # Float32 all-reduce for TP precision on HIP (prevents
++                # FP16 rounding accumulation through DeltaNet recurrence).
++                orig_dtype = hidden_states.dtype
++                if _is_hip and orig_dtype != torch.float32:
++                    hidden_states = hidden_states.float()
+                 hidden_states = attention_tensor_model_parallel_all_reduce(
+                     hidden_states
+                 )
++                if _is_hip and hidden_states.dtype != orig_dtype:
++                    hidden_states = hidden_states.to(orig_dtype)
+                 if _is_npu and context.cache is not None:
+                     _ = prepare_weight_cache(hidden_states, context.cache)
+                 hidden_states, residual = layernorm(hidden_states, residual)
+diff --git a/python/sglang/srt/layers/gemma4_fused_ops.py b/python/sglang/srt/layers/gemma4_fused_ops.py
+new file mode 100644
+index 000000000..5f227db82
+--- /dev/null
++++ b/python/sglang/srt/layers/gemma4_fused_ops.py
+@@ -0,0 +1,79 @@
++"""Fused triton kernels for Gemma4 decoder layer operations.
++
++Fuses standard RMSNorm + residual-add (+ optional scalar multiply) into
++a single kernel pass to reduce kernel launch overhead.
++"""
++
++import torch
++import triton
++import triton.language as tl
++
++
++@triton.jit
++def _gemma_rmsnorm_residual_kernel(
++    X_ptr,
++    W_ptr,
++    Residual_ptr,
++    Scalar_ptr,
++    Out_ptr,
++    stride_x,
++    stride_r,
++    stride_o,
++    N,
++    eps,
++    HAS_SCALAR: tl.constexpr,
++    BLOCK_SIZE: tl.constexpr,
++):
++    """Fused kernel: out = rmsnorm(x, w) + residual [* scalar]
++
++    When HAS_SCALAR is True, also multiplies by a scalar loaded from Scalar_ptr.
++    """
++    row = tl.program_id(0)
++    cols = tl.arange(0, BLOCK_SIZE)
++    mask = cols < N
++
++    x = tl.load(X_ptr + row * stride_x + cols, mask=mask, other=0.0).to(tl.float32)
++    w = tl.load(W_ptr + cols, mask=mask, other=0.0).to(tl.float32)
++    r = tl.load(Residual_ptr + row * stride_r + cols, mask=mask, other=0.0).to(
++        tl.float32
++    )
++
++    var = tl.sum(x * x, axis=0) / N
++    rrms = tl.rsqrt(var + eps)
++    out = x * rrms * w + r
++
++    if HAS_SCALAR:
++        scalar = tl.load(Scalar_ptr).to(tl.float32)
++        out = out * scalar
++
++    tl.store(Out_ptr + row * stride_o + cols, out.to(x.dtype), mask=mask)
++
++
++def gemma_rmsnorm_residual_scalar(
++    x: torch.Tensor,
++    weight: torch.Tensor,
++    residual: torch.Tensor,
++    scalar: torch.Tensor,
++    eps: float = 1e-6,
++) -> torch.Tensor:
++    """Fused (rmsnorm(x) + residual) * scalar."""
++    assert x.dim() == 2 and x.stride(-1) == 1, "Expected contiguous 2D input"
++    M, N = x.shape
++    BLOCK_SIZE = triton.next_power_of_2(N)
++    out = torch.empty_like(x)
++
++    _gemma_rmsnorm_residual_kernel[(M,)](
++        x,
++        weight,
++        residual,
++        scalar,
++        out,
++        x.stride(0),
++        residual.stride(0),
++        out.stride(0),
++        N,
++        eps,
++        HAS_SCALAR=True,
++        BLOCK_SIZE=BLOCK_SIZE,
++    )
++    return out
+diff --git a/python/sglang/srt/layers/layernorm.py b/python/sglang/srt/layers/layernorm.py
+index e4960bdb4..c3544c41b 100644
+--- a/python/sglang/srt/layers/layernorm.py
++++ b/python/sglang/srt/layers/layernorm.py
+@@ -631,3 +631,60 @@ class Gemma3RMSNorm(MultiPlatformOp):
+ 
+     def extra_repr(self):
+         return f"{tuple(self.weight.shape)}, eps={self.eps}"
++
++
++class Gemma4RMSNorm(MultiPlatformOp):
++    def __init__(
++        self,
++        dim: int,
++        eps: float = 1e-6,
++        scale_shift: float = 0.0,
++        with_scale: bool = True,
++    ):
++        super().__init__()
++        self.with_scale = with_scale
++        self.variance_epsilon = eps
++
++        if self.with_scale:
++            self.weight = nn.Parameter(torch.ones(dim))
++        else:
++            self.register_buffer("weight", torch.ones(dim), persistent=False)
++
++        self.eps = eps
++        self.scale_shift = scale_shift
++
++    def __repr__(self):
++        dim = self.weight.shape[0]
++        return (
++            f"{self.__class__.__name__}(dim={dim}, eps={self.eps}, "
++            f"with_scale={self.with_scale}, scale_shift={self.scale_shift})"
++        )
++
++    def _norm(self, x):
++        mean_squared = x.pow(2).mean(-1, keepdim=True) + self.eps
++        return x * torch.pow(mean_squared, -0.5)
++
++    def forward_native(self, x: torch.Tensor) -> torch.Tensor:
++        normed_output = self._norm(x.float())
++        if self.with_scale:
++            normed_output = normed_output * (self.weight.float() + self.scale_shift)
++        return normed_output.type_as(x)
++
++    def forward_cuda(self, x: torch.Tensor) -> torch.Tensor:
++        if x.numel() == 0:
++            return x
++        needs_reshape = x.dim() != 2
++        if needs_reshape:
++            original_shape = x.shape
++            x = x.contiguous().reshape(-1, original_shape[-1])
++        if self.with_scale and self.scale_shift == 1.0:
++            out = gemma_rmsnorm(x, self.weight.data, self.eps)
++        else:
++            out = rmsnorm(x, self.weight.data, self.eps)
++
++        if needs_reshape:
++            out = out.reshape(original_shape)
++        return out
++
++    def forward_hip(self, x: torch.Tensor) -> torch.Tensor:
++        return self.forward_native(x)
+diff --git a/python/sglang/srt/layers/moe/fused_moe_triton/configs/triton_3_6_0/E=128,N=1536,device_name=AMD_Radeon_AI_PRO_R9700,dtype=fp8_w8a8,block_shape=[128, 128].json b/python/sglang/srt/layers/moe/fused_moe_triton/configs/triton_3_6_0/E=128,N=1536,device_name=AMD_Radeon_AI_PRO_R9700,dtype=fp8_w8a8,block_shape=[128, 128].json
+new file mode 100644
+index 000000000..d7888148c
+--- /dev/null
++++ b/python/sglang/srt/layers/moe/fused_moe_triton/configs/triton_3_6_0/E=128,N=1536,device_name=AMD_Radeon_AI_PRO_R9700,dtype=fp8_w8a8,block_shape=[128, 128].json	
+@@ -0,0 +1,74 @@
++{
++    "1": {
++        "BLOCK_SIZE_M": 16,
++        "BLOCK_SIZE_N": 128,
++        "BLOCK_SIZE_K": 128,
++        "GROUP_SIZE_M": 1,
++        "num_warps": 4,
++        "num_stages": 0
++    },
++    "2": {
++        "BLOCK_SIZE_M": 16,
++        "BLOCK_SIZE_N": 128,
++        "BLOCK_SIZE_K": 128,
++        "GROUP_SIZE_M": 1,
++        "num_warps": 4,
++        "num_stages": 0
++    },
++    "4": {
++        "BLOCK_SIZE_M": 16,
++        "BLOCK_SIZE_N": 128,
++        "BLOCK_SIZE_K": 128,
++        "GROUP_SIZE_M": 1,
++        "num_warps": 4,
++        "num_stages": 0
++    },
++    "8": {
++        "BLOCK_SIZE_M": 16,
++        "BLOCK_SIZE_N": 128,
++        "BLOCK_SIZE_K": 128,
++        "GROUP_SIZE_M": 4,
++        "num_warps": 4,
++        "num_stages": 0
++    },
++    "16": {
++        "BLOCK_SIZE_M": 16,
++        "BLOCK_SIZE_N": 128,
++        "BLOCK_SIZE_K": 128,
++        "GROUP_SIZE_M": 4,
++        "num_warps": 4,
++        "num_stages": 0
++    },
++    "32": {
++        "BLOCK_SIZE_M": 16,
++        "BLOCK_SIZE_N": 128,
++        "BLOCK_SIZE_K": 128,
++        "GROUP_SIZE_M": 8,
++        "num_warps": 4,
++        "num_stages": 0
++    },
++    "64": {
++        "BLOCK_SIZE_M": 16,
++        "BLOCK_SIZE_N": 128,
++        "BLOCK_SIZE_K": 128,
++        "GROUP_SIZE_M": 16,
++        "num_warps": 4,
++        "num_stages": 0
++    },
++    "128": {
++        "BLOCK_SIZE_M": 32,
++        "BLOCK_SIZE_N": 128,
++        "BLOCK_SIZE_K": 128,
++        "GROUP_SIZE_M": 8,
++        "num_warps": 4,
++        "num_stages": 0
++    },
++    "256": {
++        "BLOCK_SIZE_M": 32,
++        "BLOCK_SIZE_N": 128,
++        "BLOCK_SIZE_K": 128,
++        "GROUP_SIZE_M": 8,
++        "num_warps": 4,
++        "num_stages": 0
++    }
++}
+diff --git a/python/sglang/srt/layers/moe/fused_moe_triton/configs/triton_3_6_0/E=128,N=1536,device_name=AMD_Radeon_AI_PRO_R9700,dtype=fp8_w8a8,block_shape=[128, 128]_down.json b/python/sglang/srt/layers/moe/fused_moe_triton/configs/triton_3_6_0/E=128,N=1536,device_name=AMD_Radeon_AI_PRO_R9700,dtype=fp8_w8a8,block_shape=[128, 128]_down.json
+new file mode 100644
+index 000000000..d7888148c
+--- /dev/null
++++ b/python/sglang/srt/layers/moe/fused_moe_triton/configs/triton_3_6_0/E=128,N=1536,device_name=AMD_Radeon_AI_PRO_R9700,dtype=fp8_w8a8,block_shape=[128, 128]_down.json	
+@@ -0,0 +1,74 @@
++{
++    "1": {
++        "BLOCK_SIZE_M": 16,
++        "BLOCK_SIZE_N": 128,
++        "BLOCK_SIZE_K": 128,
++        "GROUP_SIZE_M": 1,
++        "num_warps": 4,
++        "num_stages": 0
++    },
++    "2": {
++        "BLOCK_SIZE_M": 16,
++        "BLOCK_SIZE_N": 128,
++        "BLOCK_SIZE_K": 128,
++        "GROUP_SIZE_M": 1,
++        "num_warps": 4,
++        "num_stages": 0
++    },
++    "4": {
++        "BLOCK_SIZE_M": 16,
++        "BLOCK_SIZE_N": 128,
++        "BLOCK_SIZE_K": 128,
++        "GROUP_SIZE_M": 1,
++        "num_warps": 4,
++        "num_stages": 0
++    },
++    "8": {
++        "BLOCK_SIZE_M": 16,
++        "BLOCK_SIZE_N": 128,
++        "BLOCK_SIZE_K": 128,
++        "GROUP_SIZE_M": 4,
++        "num_warps": 4,
++        "num_stages": 0
++    },
++    "16": {
++        "BLOCK_SIZE_M": 16,
++        "BLOCK_SIZE_N": 128,
++        "BLOCK_SIZE_K": 128,
++        "GROUP_SIZE_M": 4,
++        "num_warps": 4,
++        "num_stages": 0
++    },
++    "32": {
++        "BLOCK_SIZE_M": 16,
++        "BLOCK_SIZE_N": 128,
++        "BLOCK_SIZE_K": 128,
++        "GROUP_SIZE_M": 8,
++        "num_warps": 4,
++        "num_stages": 0
++    },
++    "64": {
++        "BLOCK_SIZE_M": 16,
++        "BLOCK_SIZE_N": 128,
++        "BLOCK_SIZE_K": 128,
++        "GROUP_SIZE_M": 16,
++        "num_warps": 4,
++        "num_stages": 0
++    },
++    "128": {
++        "BLOCK_SIZE_M": 32,
++        "BLOCK_SIZE_N": 128,
++        "BLOCK_SIZE_K": 128,
++        "GROUP_SIZE_M": 8,
++        "num_warps": 4,
++        "num_stages": 0
++    },
++    "256": {
++        "BLOCK_SIZE_M": 32,
++        "BLOCK_SIZE_N": 128,
++        "BLOCK_SIZE_K": 128,
++        "GROUP_SIZE_M": 8,
++        "num_warps": 4,
++        "num_stages": 0
++    }
++}
+diff --git a/python/sglang/srt/layers/moe/fused_moe_triton/configs/triton_3_6_0/E=128,N=2048,device_name=AMD_Radeon_AI_PRO_R9700,dtype=fp8_w8a8,block_shape=[128, 128].json b/python/sglang/srt/layers/moe/fused_moe_triton/configs/triton_3_6_0/E=128,N=2048,device_name=AMD_Radeon_AI_PRO_R9700,dtype=fp8_w8a8,block_shape=[128, 128].json
+new file mode 100644
+index 000000000..d7888148c
+--- /dev/null
++++ b/python/sglang/srt/layers/moe/fused_moe_triton/configs/triton_3_6_0/E=128,N=2048,device_name=AMD_Radeon_AI_PRO_R9700,dtype=fp8_w8a8,block_shape=[128, 128].json	
+@@ -0,0 +1,74 @@
++{
++    "1": {
++        "BLOCK_SIZE_M": 16,
++        "BLOCK_SIZE_N": 128,
++        "BLOCK_SIZE_K": 128,
++        "GROUP_SIZE_M": 1,
++        "num_warps": 4,
++        "num_stages": 0
++    },
++    "2": {
++        "BLOCK_SIZE_M": 16,
++        "BLOCK_SIZE_N": 128,
++        "BLOCK_SIZE_K": 128,
++        "GROUP_SIZE_M": 1,
++        "num_warps": 4,
++        "num_stages": 0
++    },
++    "4": {
++        "BLOCK_SIZE_M": 16,
++        "BLOCK_SIZE_N": 128,
++        "BLOCK_SIZE_K": 128,
++        "GROUP_SIZE_M": 1,
++        "num_warps": 4,
++        "num_stages": 0
++    },
++    "8": {
++        "BLOCK_SIZE_M": 16,
++        "BLOCK_SIZE_N": 128,
++        "BLOCK_SIZE_K": 128,
++        "GROUP_SIZE_M": 4,
++        "num_warps": 4,
++        "num_stages": 0
++    },
++    "16": {
++        "BLOCK_SIZE_M": 16,
++        "BLOCK_SIZE_N": 128,
++        "BLOCK_SIZE_K": 128,
++        "GROUP_SIZE_M": 4,
++        "num_warps": 4,
++        "num_stages": 0
++    },
++    "32": {
++        "BLOCK_SIZE_M": 16,
++        "BLOCK_SIZE_N": 128,
++        "BLOCK_SIZE_K": 128,
++        "GROUP_SIZE_M": 8,
++        "num_warps": 4,
++        "num_stages": 0
++    },
++    "64": {
++        "BLOCK_SIZE_M": 16,
++        "BLOCK_SIZE_N": 128,
++        "BLOCK_SIZE_K": 128,
++        "GROUP_SIZE_M": 16,
++        "num_warps": 4,
++        "num_stages": 0
++    },
++    "128": {
++        "BLOCK_SIZE_M": 32,
++        "BLOCK_SIZE_N": 128,
++        "BLOCK_SIZE_K": 128,
++        "GROUP_SIZE_M": 8,
++        "num_warps": 4,
++        "num_stages": 0
++    },
++    "256": {
++        "BLOCK_SIZE_M": 32,
++        "BLOCK_SIZE_N": 128,
++        "BLOCK_SIZE_K": 128,
++        "GROUP_SIZE_M": 8,
++        "num_warps": 4,
++        "num_stages": 0
++    }
++}
+diff --git a/python/sglang/srt/layers/moe/fused_moe_triton/configs/triton_3_6_0/E=128,N=2048,device_name=AMD_Radeon_AI_PRO_R9700,dtype=fp8_w8a8,block_shape=[128, 128]_down.json b/python/sglang/srt/layers/moe/fused_moe_triton/configs/triton_3_6_0/E=128,N=2048,device_name=AMD_Radeon_AI_PRO_R9700,dtype=fp8_w8a8,block_shape=[128, 128]_down.json
+new file mode 100644
+index 000000000..d7888148c
+--- /dev/null
++++ b/python/sglang/srt/layers/moe/fused_moe_triton/configs/triton_3_6_0/E=128,N=2048,device_name=AMD_Radeon_AI_PRO_R9700,dtype=fp8_w8a8,block_shape=[128, 128]_down.json	
+@@ -0,0 +1,74 @@
++{
++    "1": {
++        "BLOCK_SIZE_M": 16,
++        "BLOCK_SIZE_N": 128,
++        "BLOCK_SIZE_K": 128,
++        "GROUP_SIZE_M": 1,
++        "num_warps": 4,
++        "num_stages": 0
++    },
++    "2": {
++        "BLOCK_SIZE_M": 16,
++        "BLOCK_SIZE_N": 128,
++        "BLOCK_SIZE_K": 128,
++        "GROUP_SIZE_M": 1,
++        "num_warps": 4,
++        "num_stages": 0
++    },
++    "4": {
++        "BLOCK_SIZE_M": 16,
++        "BLOCK_SIZE_N": 128,
++        "BLOCK_SIZE_K": 128,
++        "GROUP_SIZE_M": 1,
++        "num_warps": 4,
++        "num_stages": 0
++    },
++    "8": {
++        "BLOCK_SIZE_M": 16,
++        "BLOCK_SIZE_N": 128,
++        "BLOCK_SIZE_K": 128,
++        "GROUP_SIZE_M": 4,
++        "num_warps": 4,
++        "num_stages": 0
++    },
++    "16": {
++        "BLOCK_SIZE_M": 16,
++        "BLOCK_SIZE_N": 128,
++        "BLOCK_SIZE_K": 128,
++        "GROUP_SIZE_M": 4,
++        "num_warps": 4,
++        "num_stages": 0
++    },
++    "32": {
++        "BLOCK_SIZE_M": 16,
++        "BLOCK_SIZE_N": 128,
++        "BLOCK_SIZE_K": 128,
++        "GROUP_SIZE_M": 8,
++        "num_warps": 4,
++        "num_stages": 0
++    },
++    "64": {
++        "BLOCK_SIZE_M": 16,
++        "BLOCK_SIZE_N": 128,
++        "BLOCK_SIZE_K": 128,
++        "GROUP_SIZE_M": 16,
++        "num_warps": 4,
++        "num_stages": 0
++    },
++    "128": {
++        "BLOCK_SIZE_M": 32,
++        "BLOCK_SIZE_N": 128,
++        "BLOCK_SIZE_K": 128,
++        "GROUP_SIZE_M": 8,
++        "num_warps": 4,
++        "num_stages": 0
++    },
++    "256": {
++        "BLOCK_SIZE_M": 32,
++        "BLOCK_SIZE_N": 128,
++        "BLOCK_SIZE_K": 128,
++        "GROUP_SIZE_M": 8,
++        "num_warps": 4,
++        "num_stages": 0
++    }
++}
+diff --git a/python/sglang/srt/layers/moe/fused_moe_triton/configs/triton_3_6_0/E=128,N=384,device_name=AMD_Radeon_AI_PRO_R9700,dtype=fp8_w8a8,block_shape=[128, 128].json b/python/sglang/srt/layers/moe/fused_moe_triton/configs/triton_3_6_0/E=128,N=384,device_name=AMD_Radeon_AI_PRO_R9700,dtype=fp8_w8a8,block_shape=[128, 128].json
+new file mode 100644
+index 000000000..ac815ea8f
+--- /dev/null
++++ b/python/sglang/srt/layers/moe/fused_moe_triton/configs/triton_3_6_0/E=128,N=384,device_name=AMD_Radeon_AI_PRO_R9700,dtype=fp8_w8a8,block_shape=[128, 128].json	
+@@ -0,0 +1,106 @@
++{
++    "1": {
++        "BLOCK_SIZE_M": 16,
++        "BLOCK_SIZE_N": 128,
++        "BLOCK_SIZE_K": 256,
++        "GROUP_SIZE_M": 1,
++        "num_warps": 4,
++        "num_stages": 0
++    },
++    "2": {
++        "BLOCK_SIZE_M": 16,
++        "BLOCK_SIZE_N": 128,
++        "BLOCK_SIZE_K": 256,
++        "GROUP_SIZE_M": 1,
++        "num_warps": 4,
++        "num_stages": 0
++    },
++    "4": {
++        "BLOCK_SIZE_M": 16,
++        "BLOCK_SIZE_N": 128,
++        "BLOCK_SIZE_K": 256,
++        "GROUP_SIZE_M": 1,
++        "num_warps": 4,
++        "num_stages": 0
++    },
++    "8": {
++        "BLOCK_SIZE_M": 16,
++        "BLOCK_SIZE_N": 128,
++        "BLOCK_SIZE_K": 128,
++        "GROUP_SIZE_M": 4,
++        "num_warps": 4,
++        "num_stages": 0
++    },
++    "16": {
++        "BLOCK_SIZE_M": 16,
++        "BLOCK_SIZE_N": 128,
++        "BLOCK_SIZE_K": 128,
++        "GROUP_SIZE_M": 4,
++        "num_warps": 4,
++        "num_stages": 0
++    },
++    "32": {
++        "BLOCK_SIZE_M": 16,
++        "BLOCK_SIZE_N": 128,
++        "BLOCK_SIZE_K": 128,
++        "GROUP_SIZE_M": 8,
++        "num_warps": 4,
++        "num_stages": 0
++    },
++    "64": {
++        "BLOCK_SIZE_M": 16,
++        "BLOCK_SIZE_N": 128,
++        "BLOCK_SIZE_K": 128,
++        "GROUP_SIZE_M": 16,
++        "num_warps": 4,
++        "num_stages": 0
++    },
++    "128": {
++        "BLOCK_SIZE_M": 32,
++        "BLOCK_SIZE_N": 128,
++        "BLOCK_SIZE_K": 128,
++        "GROUP_SIZE_M": 8,
++        "num_warps": 4,
++        "num_stages": 0
++    },
++    "256": {
++        "BLOCK_SIZE_M": 32,
++        "BLOCK_SIZE_N": 128,
++        "BLOCK_SIZE_K": 128,
++        "GROUP_SIZE_M": 8,
++        "num_warps": 4,
++        "num_stages": 0
++    },
++    "512": {
++        "BLOCK_SIZE_M": 32,
++        "BLOCK_SIZE_N": 128,
++        "BLOCK_SIZE_K": 128,
++        "GROUP_SIZE_M": 8,
++        "num_warps": 4,
++        "num_stages": 0
++    },
++    "1024": {
++        "BLOCK_SIZE_M": 32,
++        "BLOCK_SIZE_N": 128,
++        "BLOCK_SIZE_K": 256,
++        "GROUP_SIZE_M": 4,
++        "num_warps": 4,
++        "num_stages": 0
++    },
++    "2048": {
++        "BLOCK_SIZE_M": 32,
++        "BLOCK_SIZE_N": 128,
++        "BLOCK_SIZE_K": 128,
++        "GROUP_SIZE_M": 4,
++        "num_warps": 4,
++        "num_stages": 0
++    },
++    "4096": {
++        "BLOCK_SIZE_M": 32,
++        "BLOCK_SIZE_N": 128,
++        "BLOCK_SIZE_K": 128,
++        "GROUP_SIZE_M": 8,
++        "num_warps": 4,
++        "num_stages": 0
++    }
++}
+diff --git a/python/sglang/srt/layers/moe/fused_moe_triton/configs/triton_3_6_0/E=128,N=384,device_name=AMD_Radeon_AI_PRO_R9700,dtype=fp8_w8a8,block_shape=[128, 128]_down.json b/python/sglang/srt/layers/moe/fused_moe_triton/configs/triton_3_6_0/E=128,N=384,device_name=AMD_Radeon_AI_PRO_R9700,dtype=fp8_w8a8,block_shape=[128, 128]_down.json
+new file mode 100644
+index 000000000..ac815ea8f
+--- /dev/null
++++ b/python/sglang/srt/layers/moe/fused_moe_triton/configs/triton_3_6_0/E=128,N=384,device_name=AMD_Radeon_AI_PRO_R9700,dtype=fp8_w8a8,block_shape=[128, 128]_down.json	
+@@ -0,0 +1,106 @@
++{
++    "1": {
++        "BLOCK_SIZE_M": 16,
++        "BLOCK_SIZE_N": 128,
++        "BLOCK_SIZE_K": 256,
++        "GROUP_SIZE_M": 1,
++        "num_warps": 4,
++        "num_stages": 0
++    },
++    "2": {
++        "BLOCK_SIZE_M": 16,
++        "BLOCK_SIZE_N": 128,
++        "BLOCK_SIZE_K": 256,
++        "GROUP_SIZE_M": 1,
++        "num_warps": 4,
++        "num_stages": 0
++    },
++    "4": {
++        "BLOCK_SIZE_M": 16,
++        "BLOCK_SIZE_N": 128,
++        "BLOCK_SIZE_K": 256,
++        "GROUP_SIZE_M": 1,
++        "num_warps": 4,
++        "num_stages": 0
++    },
++    "8": {
++        "BLOCK_SIZE_M": 16,
++        "BLOCK_SIZE_N": 128,
++        "BLOCK_SIZE_K": 128,
++        "GROUP_SIZE_M": 4,
++        "num_warps": 4,
++        "num_stages": 0
++    },
++    "16": {
++        "BLOCK_SIZE_M": 16,
++        "BLOCK_SIZE_N": 128,
++        "BLOCK_SIZE_K": 128,
++        "GROUP_SIZE_M": 4,
++        "num_warps": 4,
++        "num_stages": 0
++    },
++    "32": {
++        "BLOCK_SIZE_M": 16,
++        "BLOCK_SIZE_N": 128,
++        "BLOCK_SIZE_K": 128,
++        "GROUP_SIZE_M": 8,
++        "num_warps": 4,
++        "num_stages": 0
++    },
++    "64": {
++        "BLOCK_SIZE_M": 16,
++        "BLOCK_SIZE_N": 128,
++        "BLOCK_SIZE_K": 128,
++        "GROUP_SIZE_M": 16,
++        "num_warps": 4,
++        "num_stages": 0
++    },
++    "128": {
++        "BLOCK_SIZE_M": 32,
++        "BLOCK_SIZE_N": 128,
++        "BLOCK_SIZE_K": 128,
++        "GROUP_SIZE_M": 8,
++        "num_warps": 4,
++        "num_stages": 0
++    },
++    "256": {
++        "BLOCK_SIZE_M": 32,
++        "BLOCK_SIZE_N": 128,
++        "BLOCK_SIZE_K": 128,
++        "GROUP_SIZE_M": 8,
++        "num_warps": 4,
++        "num_stages": 0
++    },
++    "512": {
++        "BLOCK_SIZE_M": 32,
++        "BLOCK_SIZE_N": 128,
++        "BLOCK_SIZE_K": 128,
++        "GROUP_SIZE_M": 8,
++        "num_warps": 4,
++        "num_stages": 0
++    },
++    "1024": {
++        "BLOCK_SIZE_M": 32,
++        "BLOCK_SIZE_N": 128,
++        "BLOCK_SIZE_K": 256,
++        "GROUP_SIZE_M": 4,
++        "num_warps": 4,
++        "num_stages": 0
++    },
++    "2048": {
++        "BLOCK_SIZE_M": 32,
++        "BLOCK_SIZE_N": 128,
++        "BLOCK_SIZE_K": 128,
++        "GROUP_SIZE_M": 4,
++        "num_warps": 4,
++        "num_stages": 0
++    },
++    "4096": {
++        "BLOCK_SIZE_M": 32,
++        "BLOCK_SIZE_N": 128,
++        "BLOCK_SIZE_K": 128,
++        "GROUP_SIZE_M": 8,
++        "num_warps": 4,
++        "num_stages": 0
++    }
++}
+diff --git a/python/sglang/srt/layers/moe/fused_moe_triton/configs/triton_3_6_0/E=128,N=768,device_name=AMD_Radeon_AI_PRO_R9700,dtype=fp8_w8a8,block_shape=[128, 128].json b/python/sglang/srt/layers/moe/fused_moe_triton/configs/triton_3_6_0/E=128,N=768,device_name=AMD_Radeon_AI_PRO_R9700,dtype=fp8_w8a8,block_shape=[128, 128].json
+new file mode 100644
+index 000000000..d7888148c
+--- /dev/null
++++ b/python/sglang/srt/layers/moe/fused_moe_triton/configs/triton_3_6_0/E=128,N=768,device_name=AMD_Radeon_AI_PRO_R9700,dtype=fp8_w8a8,block_shape=[128, 128].json	
+@@ -0,0 +1,74 @@
++{
++    "1": {
++        "BLOCK_SIZE_M": 16,
++        "BLOCK_SIZE_N": 128,
++        "BLOCK_SIZE_K": 128,
++        "GROUP_SIZE_M": 1,
++        "num_warps": 4,
++        "num_stages": 0
++    },
++    "2": {
++        "BLOCK_SIZE_M": 16,
++        "BLOCK_SIZE_N": 128,
++        "BLOCK_SIZE_K": 128,
++        "GROUP_SIZE_M": 1,
++        "num_warps": 4,
++        "num_stages": 0
++    },
++    "4": {
++        "BLOCK_SIZE_M": 16,
++        "BLOCK_SIZE_N": 128,
++        "BLOCK_SIZE_K": 128,
++        "GROUP_SIZE_M": 1,
++        "num_warps": 4,
++        "num_stages": 0
++    },
++    "8": {
++        "BLOCK_SIZE_M": 16,
++        "BLOCK_SIZE_N": 128,
++        "BLOCK_SIZE_K": 128,
++        "GROUP_SIZE_M": 4,
++        "num_warps": 4,
++        "num_stages": 0
++    },
++    "16": {
++        "BLOCK_SIZE_M": 16,
++        "BLOCK_SIZE_N": 128,
++        "BLOCK_SIZE_K": 128,
++        "GROUP_SIZE_M": 4,
++        "num_warps": 4,
++        "num_stages": 0
++    },
++    "32": {
++        "BLOCK_SIZE_M": 16,
++        "BLOCK_SIZE_N": 128,
++        "BLOCK_SIZE_K": 128,
++        "GROUP_SIZE_M": 8,
++        "num_warps": 4,
++        "num_stages": 0
++    },
++    "64": {
++        "BLOCK_SIZE_M": 16,
++        "BLOCK_SIZE_N": 128,
++        "BLOCK_SIZE_K": 128,
++        "GROUP_SIZE_M": 16,
++        "num_warps": 4,
++        "num_stages": 0
++    },
++    "128": {
++        "BLOCK_SIZE_M": 32,
++        "BLOCK_SIZE_N": 128,
++        "BLOCK_SIZE_K": 128,
++        "GROUP_SIZE_M": 8,
++        "num_warps": 4,
++        "num_stages": 0
++    },
++    "256": {
++        "BLOCK_SIZE_M": 32,
++        "BLOCK_SIZE_N": 128,
++        "BLOCK_SIZE_K": 128,
++        "GROUP_SIZE_M": 8,
++        "num_warps": 4,
++        "num_stages": 0
++    }
++}
+diff --git a/python/sglang/srt/layers/moe/fused_moe_triton/configs/triton_3_6_0/E=128,N=768,device_name=AMD_Radeon_AI_PRO_R9700,dtype=fp8_w8a8,block_shape=[128, 128]_down.json b/python/sglang/srt/layers/moe/fused_moe_triton/configs/triton_3_6_0/E=128,N=768,device_name=AMD_Radeon_AI_PRO_R9700,dtype=fp8_w8a8,block_shape=[128, 128]_down.json
+new file mode 100644
+index 000000000..d7888148c
+--- /dev/null
++++ b/python/sglang/srt/layers/moe/fused_moe_triton/configs/triton_3_6_0/E=128,N=768,device_name=AMD_Radeon_AI_PRO_R9700,dtype=fp8_w8a8,block_shape=[128, 128]_down.json	
+@@ -0,0 +1,74 @@
++{
++    "1": {
++        "BLOCK_SIZE_M": 16,
++        "BLOCK_SIZE_N": 128,
++        "BLOCK_SIZE_K": 128,
++        "GROUP_SIZE_M": 1,
++        "num_warps": 4,
++        "num_stages": 0
++    },
++    "2": {
++        "BLOCK_SIZE_M": 16,
++        "BLOCK_SIZE_N": 128,
++        "BLOCK_SIZE_K": 128,
++        "GROUP_SIZE_M": 1,
++        "num_warps": 4,
++        "num_stages": 0
++    },
++    "4": {
++        "BLOCK_SIZE_M": 16,
++        "BLOCK_SIZE_N": 128,
++        "BLOCK_SIZE_K": 128,
++        "GROUP_SIZE_M": 1,
++        "num_warps": 4,
++        "num_stages": 0
++    },
++    "8": {
++        "BLOCK_SIZE_M": 16,
++        "BLOCK_SIZE_N": 128,
++        "BLOCK_SIZE_K": 128,
++        "GROUP_SIZE_M": 4,
++        "num_warps": 4,
++        "num_stages": 0
++    },
++    "16": {
++        "BLOCK_SIZE_M": 16,
++        "BLOCK_SIZE_N": 128,
++        "BLOCK_SIZE_K": 128,
++        "GROUP_SIZE_M": 4,
++        "num_warps": 4,
++        "num_stages": 0
++    },
++    "32": {
++        "BLOCK_SIZE_M": 16,
++        "BLOCK_SIZE_N": 128,
++        "BLOCK_SIZE_K": 128,
++        "GROUP_SIZE_M": 8,
++        "num_warps": 4,
++        "num_stages": 0
++    },
++    "64": {
++        "BLOCK_SIZE_M": 16,
++        "BLOCK_SIZE_N": 128,
++        "BLOCK_SIZE_K": 128,
++        "GROUP_SIZE_M": 16,
++        "num_warps": 4,
++        "num_stages": 0
++    },
++    "128": {
++        "BLOCK_SIZE_M": 32,
++        "BLOCK_SIZE_N": 128,
++        "BLOCK_SIZE_K": 128,
++        "GROUP_SIZE_M": 8,
++        "num_warps": 4,
++        "num_stages": 0
++    },
++    "256": {
++        "BLOCK_SIZE_M": 32,
++        "BLOCK_SIZE_N": 128,
++        "BLOCK_SIZE_K": 128,
++        "GROUP_SIZE_M": 8,
++        "num_warps": 4,
++        "num_stages": 0
++    }
++}
+diff --git a/python/sglang/srt/layers/moe/fused_moe_triton/configs/triton_3_7_0 b/python/sglang/srt/layers/moe/fused_moe_triton/configs/triton_3_7_0
+new file mode 120000
+index 000000000..fd7c245f7
+--- /dev/null
++++ b/python/sglang/srt/layers/moe/fused_moe_triton/configs/triton_3_7_0
+@@ -0,0 +1 @@
++triton_3_6_0
+\ No newline at end of file
+diff --git a/python/sglang/srt/layers/moe/fused_moe_triton/fused_moe.py b/python/sglang/srt/layers/moe/fused_moe_triton/fused_moe.py
+index f2621473c..ae095cb0a 100644
+--- a/python/sglang/srt/layers/moe/fused_moe_triton/fused_moe.py
++++ b/python/sglang/srt/layers/moe/fused_moe_triton/fused_moe.py
+@@ -290,13 +290,13 @@ def fused_experts(
+         )
+ 
+ 
+-@torch.compile
++# Disable @torch.compile on RDNA4 — inductor's SFDP pattern matching takes 30+ min
++# and blocks the server from starting.  The eager path is fast enough.
+ def moe_sum_reduce_torch_compile(x, out, routed_scaling_factor):
+     torch.sum(x, dim=1, out=out)
+     out.mul_(routed_scaling_factor)
+ 
+ 
+-@torch.compile
+ def _swiglu_silu_clamp_mul(x, gemm1_limit):
+     gate, up = x.chunk(2, dim=-1)
+     gate = F.silu(gate)
+@@ -305,7 +305,6 @@ def _swiglu_silu_clamp_mul(x, gemm1_limit):
+     return gate * up
+ 
+ 
+-@torch.compile
+ def _swiglu_gpt_oss_sigmoid_alpha(x, gemm1_alpha, gemm1_limit):
+     # NOTE: This variant uses gemm1_alpha, unlike _swiglu_silu_clamp_mul.
+     # At present, only GPT-OSS uses this variant.
+diff --git a/python/sglang/srt/layers/moe/fused_moe_triton/fused_moe_triton_config.py b/python/sglang/srt/layers/moe/fused_moe_triton/fused_moe_triton_config.py
+index 90a6a31c7..3fb0ac4b4 100644
+--- a/python/sglang/srt/layers/moe/fused_moe_triton/fused_moe_triton_config.py
++++ b/python/sglang/srt/layers/moe/fused_moe_triton/fused_moe_triton_config.py
+@@ -15,6 +15,19 @@ from sglang.srt.utils import get_device_name, is_hip
+ logger = logging.getLogger(__name__)
+ _is_hip = is_hip()
+ 
++# RDNA4 (gfx1201) needs num_stages=0 — Triton's CanonicalizePointers crashes with num_stages>=1
++def _is_rdna4():
++    if not _is_hip:
++        return False
++    try:
++        from sglang.srt.utils import get_device_capability
++        cap = get_device_capability()
++        return cap[0] >= 12
++    except Exception:
++        return False
++
++_rdna4 = _is_rdna4()
++
+ 
+ def get_config_file_name(
+     E: int,
+@@ -58,7 +71,7 @@ def get_moe_configs(
+         )
+         return None
+     # Supported Triton versions, should be sorted from the newest to the oldest
+-    supported_triton_versions = ["3.4.0", "3.3.1", "3.2.0", "3.1.0"]
++    supported_triton_versions = ["3.7.0", "3.6.0", "3.4.0", "3.3.1", "3.2.0", "3.1.0"]
+ 
+     # First look up if an optimized configuration is available in the configs
+     # directory
+@@ -175,12 +188,12 @@ def get_default_config(
+         else:
+             # Block-wise quant: BLOCK_SIZE_K must be divisible by block_shape[1]
+             config = {
+-                "BLOCK_SIZE_M": 64,
++                "BLOCK_SIZE_M": 16 if _rdna4 else 64,  # RDNA4: smaller BLOCK_SIZE_M
+                 "BLOCK_SIZE_N": block_shape[0],
+                 "BLOCK_SIZE_K": block_shape[1],
+-                "GROUP_SIZE_M": 32,
++                "GROUP_SIZE_M": 1 if _rdna4 else 32,
+                 "num_warps": 4,
+-                "num_stages": 2 if _is_hip else 3,
++                "num_stages": 0 if _rdna4 else (2 if _is_hip else 3),
+             }
+     else:
+         config = {
+diff --git a/python/sglang/srt/layers/moe/fused_moe_triton/fused_moe_triton_kernels.py b/python/sglang/srt/layers/moe/fused_moe_triton/fused_moe_triton_kernels.py
+index b80e1827b..eaf66dc7b 100644
+--- a/python/sglang/srt/layers/moe/fused_moe_triton/fused_moe_triton_kernels.py
++++ b/python/sglang/srt/layers/moe/fused_moe_triton/fused_moe_triton_kernels.py
+@@ -42,6 +42,18 @@ _is_cpu_amx_available = cpu_has_amx_support()
+ _is_cpu = is_cpu()
+ _use_aiter = get_bool_env_var("SGLANG_USE_AITER") and _is_hip
+ 
++# RDNA4 (gfx1201) doesn't support FP8 dot in MoE — dequant to FP16 before fused kernel
++def _detect_rdna4():
++    if not _is_hip:
++        return False
++    try:
++        from sglang.srt.utils import get_device_capability
++        return get_device_capability()[0] >= 12
++    except Exception:
++        return False
++
++_is_rdna4 = _detect_rdna4()
++
+ if _is_cuda:
+     pass
+ elif _is_cpu and _is_cpu_amx_available:
+@@ -320,6 +332,105 @@ def fused_moe_kernel_gptq_awq(
+     tl.store(c_ptrs, accumulator, mask=c_mask)
+ 
+ 
++# RDNA4-compatible kernel: dequantizes FP8/INT8 to BF16 before tl.dot to avoid
++# the FP8 matmul ISA path that generates invalid instructions on gfx1201.
++# Uses BF16 dot product which is fully supported on RDNA4 wave32.
++@triton.jit
++def fused_moe_kernel_rdna4(
++    a_ptr, b_ptr, c_ptr,
++    a_scale_ptr, b_scale_ptr,
++    sorted_token_ids_ptr, expert_ids_ptr, num_tokens_post_padded_ptr,
++    N, K, EM, num_valid_tokens,
++    stride_am, stride_ak, stride_be, stride_bk, stride_bn,
++    stride_cm, stride_cn,
++    stride_asm, stride_ask, stride_bse, stride_bsk, stride_bsn,
++    group_n: tl.constexpr, group_k: tl.constexpr,
++    BLOCK_SIZE_M: tl.constexpr, BLOCK_SIZE_N: tl.constexpr,
++    BLOCK_SIZE_K: tl.constexpr, GROUP_SIZE_M: tl.constexpr,
++    top_k: tl.constexpr,
++    compute_type: tl.constexpr,
++    use_fp8_w8a8: tl.constexpr, use_int8_w8a8: tl.constexpr,
++    per_channel_quant: tl.constexpr,
++):
++    pid = tl.program_id(axis=0)
++    num_pid_m = tl.cdiv(EM, BLOCK_SIZE_M)
++    num_pid_n = tl.cdiv(N, BLOCK_SIZE_N)
++    num_pid_in_group = GROUP_SIZE_M * num_pid_n
++    group_id = pid // num_pid_in_group
++    first_pid_m = group_id * GROUP_SIZE_M
++    group_size_m = min(num_pid_m - first_pid_m, GROUP_SIZE_M)
++    pid_m = first_pid_m + ((pid % num_pid_in_group) % group_size_m)
++    pid_n = (pid % num_pid_in_group) // group_size_m
++
++    offs = tl.arange(0, BLOCK_SIZE_M).to(tl.int64)
++    num_tokens_post_padded = tl.load(num_tokens_post_padded_ptr)
++    if pid_m * BLOCK_SIZE_M >= num_tokens_post_padded:
++        return
++
++    offs_token_id = pid_m * BLOCK_SIZE_M + offs
++    offs_token = tl.load(sorted_token_ids_ptr + offs_token_id)
++    offs_token = offs_token.to(tl.int64)
++    token_mask = offs_token < num_valid_tokens
++
++    off_experts = tl.load(expert_ids_ptr + pid_m).to(tl.int64)
++    if off_experts == -1:
++        write_zeros_to_output(c_ptr, stride_cm, stride_cn, pid_n, N,
++                              offs_token, token_mask, BLOCK_SIZE_M, BLOCK_SIZE_N, compute_type)
++        return
++
++    offs_bn = (pid_n * BLOCK_SIZE_N + tl.arange(0, BLOCK_SIZE_N).to(tl.int64)) % N
++    offs_k = tl.arange(0, BLOCK_SIZE_K)
++    a_ptrs = a_ptr + (offs_token[:, None] // top_k * stride_am + offs_k[None, :] * stride_ak)
++    b_ptrs = b_ptr + off_experts * stride_be + (offs_k[:, None] * stride_bk + offs_bn[None, :] * stride_bn)
++
++    if use_fp8_w8a8 or use_int8_w8a8:
++        if group_k > 0 and group_n > 0:
++            a_scale_ptrs = a_scale_ptr + (offs_token // top_k) * stride_asm
++            offs_bsn = offs_bn // group_n
++            b_scale_ptrs = b_scale_ptr + off_experts * stride_bse + offs_bsn * stride_bsn
++        elif per_channel_quant:
++            b_scale_ptrs = b_scale_ptr + off_experts * stride_bse + offs_bn[None, :] * stride_bsn
++            b_scale = tl.load(b_scale_ptrs)
++            a_scale_ptrs = a_scale_ptr + (offs_token // top_k) * stride_asm
++            a_scale = tl.load(a_scale_ptrs, mask=token_mask, other=0.0)[:, None]
++        else:
++            a_scale = tl.load(a_scale_ptr)
++            b_scale = tl.load(b_scale_ptr + off_experts)
++
++    accumulator = tl.zeros((BLOCK_SIZE_M, BLOCK_SIZE_N), dtype=tl.float32)
++    for k in range(0, tl.cdiv(K, BLOCK_SIZE_K)):
++        k_remaining = K - k * BLOCK_SIZE_K
++        a = tl.load(a_ptrs, mask=token_mask[:, None] & (offs_k[None, :] < k_remaining), other=0.0)
++        b = tl.load(b_ptrs, mask=offs_k[:, None] < k_remaining, other=0.0)
++
++        # RDNA4 FIX: dequantize to BF16 before dot to avoid FP8 matmul ISA crash
++        if use_fp8_w8a8 or use_int8_w8a8:
++            a_bf16 = a.to(tl.bfloat16)
++            b_bf16 = b.to(tl.bfloat16)
++            if group_k > 0 and group_n > 0:
++                k_start = k * BLOCK_SIZE_K
++                offs_ks = k_start // group_k
++                a_scale = tl.load(a_scale_ptrs + offs_ks * stride_ask, mask=token_mask, other=0.0)
++                b_scale = tl.load(b_scale_ptrs + offs_ks * stride_bsk)
++                accumulator += tl.dot(a_bf16, b_bf16) * a_scale[:, None] * b_scale[None, :]
++            else:
++                accumulator += tl.dot(a_bf16, b_bf16)
++        else:
++            accumulator += tl.dot(a, b)
++        a_ptrs += BLOCK_SIZE_K * stride_ak
++        b_ptrs += BLOCK_SIZE_K * stride_bk
++
++    if (use_fp8_w8a8 or use_int8_w8a8) and not (group_k > 0 and group_n > 0):
++        accumulator = accumulator * a_scale * b_scale
++
++    # No MUL_ROUTED_WEIGHT — applied externally after kernel
++    accumulator = accumulator.to(compute_type)
++    offs_cn = pid_n * BLOCK_SIZE_N + tl.arange(0, BLOCK_SIZE_N)
++    c_ptrs = c_ptr + stride_cm * offs_token[:, None] + stride_cn * offs_cn[None, :]
++    c_mask = token_mask[:, None] & (offs_cn[None, :] < N)
++    tl.store(c_ptrs, accumulator, mask=c_mask)
++
++
+ @triton.jit
+ def fused_moe_kernel(
+     # Pointers to matrices
+@@ -491,10 +602,7 @@ def fused_moe_kernel(
+                 a_scale_ptrs = a_scale_ptr + offs_token_id * stride_asm
+             else:
+                 a_scale_ptrs = a_scale_ptr + (offs_token // top_k) * stride_asm
+-            if BLOCK_SIZE_N > group_n:
+-                offs_bsn = offs_bn // group_n
+-            else:
+-                offs_bsn = pid_n * BLOCK_SIZE_N // group_n
++            offs_bsn = offs_bn // group_n
+             b_scale_ptrs = (
+                 b_scale_ptr + off_experts * stride_bse + offs_bsn * stride_bsn
+             )
+@@ -546,8 +654,6 @@ def fused_moe_kernel(
+                 .reshape(BLOCK_SIZE_N, BLOCK_SIZE_K)
+                 .T
+             )
+-        elif even_Ks:
+-            b = tl.load(b_ptrs)
+         else:
+             b = tl.load(b_ptrs, mask=offs_k[:, None] < K - k_start, other=0.0)
+ 
+@@ -556,18 +662,17 @@ def fused_moe_kernel(
+             accumulator = tl.dot(a, b.to(compute_type), acc=accumulator)
+         elif use_fp8_w8a8 or use_int8_w8a8:
+             if group_k > 0 and group_n > 0:
+-                offs_ks = k_start // group_k
++                k_start_idx = k_start // group_k
+                 a_scale = tl.load(
+-                    a_scale_ptrs + offs_ks * stride_ask, mask=token_mask, other=0.0
++                    a_scale_ptrs + k_start_idx * stride_ask,
++                    mask=token_mask,
++                    other=0.0,
+                 )
+-                b_scale = tl.load(b_scale_ptrs + offs_ks * stride_bsk)
++                b_scale = tl.load(b_scale_ptrs + k_start_idx * stride_bsk)
+                 if swap_ab:
+                     a, b = tl.trans(b, (1, 0)), tl.trans(a, (1, 0))
+                     a_scale, b_scale = b_scale, a_scale
+-                if BLOCK_SIZE_N > group_n:
+-                    accumulator += tl.dot(a, b) * a_scale[:, None] * b_scale[None, :]
+-                else:
+-                    accumulator += tl.dot(a, b) * (a_scale[:, None] * b_scale)
++                accumulator += tl.dot(a, b) * a_scale[:, None] * b_scale[None, :]
+             else:
+                 if use_fp8_w8a8:
+                     if swap_ab:
+@@ -687,6 +792,97 @@ def _get_b_tma_desc_cached(B: torch.Tensor, block_n: int, block_k: int):
+     return desc
+ 
+ 
++def _rdna4_torch_moe(
++    A: torch.Tensor,  # [num_tokens, K] fp8
++    B: torch.Tensor,  # [E, N, K] fp8
++    C: torch.Tensor,  # output
++    A_scale: Optional[torch.Tensor],
++    B_scale: Optional[torch.Tensor],
++    topk_weights: torch.Tensor,
++    topk_ids: torch.Tensor,
++    sorted_token_ids: torch.Tensor,
++    expert_ids: torch.Tensor,
++    num_tokens_post_padded: torch.Tensor,
++    mul_routed_weight: bool,
++    top_k: int,
++    block_shape: Optional[List[int]],
++    per_channel_quant: bool,
++    compute_type,
++) -> None:
++    """Torch-native FP8 MoE for RDNA4: dequantize weights to BF16, per-expert matmul.
++    A is BF16 (we skip FP8 activation quant), B is FP8 (model weights)."""
++    out_dtype = torch.bfloat16 if compute_type == tl.bfloat16 else torch.float16
++    E, N, K = B.shape
++    num_valid = topk_ids.numel()
++
++    # Sync to catch async errors from prior kernels
++    torch.cuda.synchronize()
++
++    # A is already BF16 (we skip FP8 quant for RDNA4)
++    A_bf16 = A.to(out_dtype) if A.dtype != out_dtype else A
++
++    # Process each expert that has tokens assigned
++    C.zero_()
++    num_experts_used = expert_ids.shape[0]
++    block_m = 16  # matches BLOCK_SIZE_M from config
++
++    for block_idx in range(num_experts_used):
++        expert_id = expert_ids[block_idx].item()
++        if expert_id == -1:
++            continue
++
++        # Get token indices for this block
++        start = block_idx * block_m
++        end = min(start + block_m, sorted_token_ids.shape[0])
++        token_ids = sorted_token_ids[start:end]
++
++        # Filter valid tokens
++        valid_mask = token_ids < num_valid
++        if not valid_mask.any():
++            continue
++
++        valid_token_ids = token_ids[valid_mask]
++        # Map to actual input token index (divide by top_k)
++        input_ids = valid_token_ids // top_k
++
++        # Gather input tokens
++        a_tokens = A_bf16[input_ids]  # [num_valid_in_block, K]
++
++        # Dequantize B for this expert
++        b_expert = B[expert_id].to(out_dtype)  # [N, K]
++
++        # Apply B scales for block-quantized
++        if block_shape is not None and B_scale is not None:
++            block_n, block_k = block_shape
++            # B_scale: [E, N//block_n, K//block_k]
++            bs = B_scale[expert_id]  # [N//block_n, K//block_k]
++            bs_expanded = bs.repeat_interleave(block_n, dim=0).repeat_interleave(block_k, dim=1)
++            bs_expanded = bs_expanded[:N, :K]
++            b_expert = b_expert * bs_expanded.to(out_dtype)
++        elif B_scale is not None:
++            if B_scale.ndim == 1:
++                b_expert = b_expert * B_scale[expert_id].item()
++            elif per_channel_quant and B_scale.ndim >= 2:
++                b_expert = b_expert * B_scale[expert_id].to(out_dtype)
++
++        # Matmul: [num_valid, K] @ [K, N] -> [num_valid, N]
++        result = torch.mm(a_tokens, b_expert.t())  # b_expert is [N, K], transpose to [K, N]
++
++        # Apply routing weights
++        if mul_routed_weight:
++            weights = topk_weights.view(-1)[valid_token_ids]
++            result = result * weights.unsqueeze(-1)
++
++        # Scatter results back
++        result = result.to(out_dtype)
++        # C layout depends on whether it's the first or second GEMM
++        if C.ndim == 2:
++            C[valid_token_ids] += result
++        elif C.ndim == 3:
++            # For topk > 1, C is [M, topk, N] indexed by token position
++            C.view(-1, C.shape[-1])[valid_token_ids] += result
++
++
+ def invoke_fused_moe_kernel(
+     A: torch.Tensor,
+     B: torch.Tensor,
+@@ -721,6 +917,18 @@ def invoke_fused_moe_kernel(
+     assert topk_weights.stride(1) == 1
+     assert sorted_token_ids.stride(0) == 1
+ 
++    # RDNA4: skip FP8 activation quantization entirely — our torch MoE works with BF16 inputs
++    # and dequantizes FP8 weights internally. This avoids Triton quant kernel compilation
++    # which hangs for 30+ min on gfx1201.
++    if _is_rdna4 and (use_fp8_w8a8 or use_int8_w8a8):
++        _rdna4_torch_moe(
++            A, B, C, A_scale, B_scale, topk_weights, topk_ids,
++            sorted_token_ids, expert_ids, num_tokens_post_padded,
++            mul_routed_weight, top_k, block_shape, per_channel_quant,
++            compute_type,
++        )
++        return
++
+     if use_fp8_w8a8:
+         swap_ab = should_enable_swap_ab(config["BLOCK_SIZE_M"], config["BLOCK_SIZE_N"])
+     else:
+@@ -778,12 +986,24 @@ def invoke_fused_moe_kernel(
+         * triton.cdiv(B.shape[1], META["BLOCK_SIZE_N"]),
+     )
+ 
++    # Clamp BLOCK_SIZE_K to block_shape for block-quantized FP8/INT8.
++    # Without this, BLOCK_SIZE_K=256 with block_shape=[128,128] causes the
++    # scale indexing to span two quantization blocks, producing incorrect
++    # results and GPU faults on RDNA4.  (Matches vLLM's fused_moe.py)
++    if block_shape is not None and (use_fp8_w8a8 or use_int8_w8a8):
++        config["BLOCK_SIZE_K"] = min(
++            config["BLOCK_SIZE_K"], min(block_shape[0], block_shape[1])
++        )
++
+     K = B.shape[2] - padded_size
+     if K % config["BLOCK_SIZE_K"] == 0:
+         even_Ks = True
+     else:
+         even_Ks = False
+ 
++    # RDNA4: keep default kernel optimizations with ROCm 7.2.1
++    # (previously forced even_Ks=False, filter_expert=False but assembly matches vLLM)
++
+     if fuse_sum_all_reduce:
+         assert not c_sorted, "fuse_sum_all_reduce only supports c_sorted=False"
+ 
+@@ -906,6 +1126,8 @@ def invoke_fused_moe_kernel(
+             **config,
+         )
+ 
++    # NOTE: Debug synchronize removed — was blocking on inductor compile workers
++
+ 
+ @triton.jit
+ def tanh(x):
+diff --git a/python/sglang/srt/layers/moe/fused_moe_triton/layer.py b/python/sglang/srt/layers/moe/fused_moe_triton/layer.py
+index 72483f4ea..5e8fd6749 100644
+--- a/python/sglang/srt/layers/moe/fused_moe_triton/layer.py
++++ b/python/sglang/srt/layers/moe/fused_moe_triton/layer.py
+@@ -37,7 +37,10 @@ from sglang.srt.layers.moe.kt_ep_wrapper import (
+ )
+ from sglang.srt.layers.moe.token_dispatcher import CombineInput, DispatchOutput
+ from sglang.srt.layers.moe.token_dispatcher.base import BaseDispatcher
+-from sglang.srt.layers.moe.token_dispatcher.flashinfer import FlashinferDispatcher
++try:
++    from sglang.srt.layers.moe.token_dispatcher.flashinfer import FlashinferDispatcher
++except (ImportError, AssertionError):
++    FlashinferDispatcher = None
+ from sglang.srt.layers.moe.token_dispatcher.standard import (
+     StandardDispatcher,
+ )
+diff --git a/python/sglang/srt/layers/moe/token_dispatcher/__init__.py b/python/sglang/srt/layers/moe/token_dispatcher/__init__.py
+index cb6909660..b3b34392d 100644
+--- a/python/sglang/srt/layers/moe/token_dispatcher/__init__.py
++++ b/python/sglang/srt/layers/moe/token_dispatcher/__init__.py
+@@ -16,10 +16,14 @@ from sglang.srt.layers.moe.token_dispatcher.deepep import (
+     DeepEPNormalCombineInput,
+     DeepEPNormalDispatchOutput,
+ )
+-from sglang.srt.layers.moe.token_dispatcher.flashinfer import (
+-    FlashinferDispatcher,
+-    FlashinferDispatchOutput,
+-)
++try:
++    from sglang.srt.layers.moe.token_dispatcher.flashinfer import (
++        FlashinferDispatcher,
++        FlashinferDispatchOutput,
++    )
++except (ImportError, AssertionError):
++    FlashinferDispatcher = None
++    FlashinferDispatchOutput = None
+ from sglang.srt.layers.moe.token_dispatcher.fuseep import NpuFuseEPDispatcher
+ from sglang.srt.layers.moe.token_dispatcher.mooncake import (
+     MooncakeCombineInput,
+diff --git a/python/sglang/srt/layers/moe/topk.py b/python/sglang/srt/layers/moe/topk.py
+index 892dcebae..36f432ec2 100644
+--- a/python/sglang/srt/layers/moe/topk.py
++++ b/python/sglang/srt/layers/moe/topk.py
+@@ -545,7 +545,7 @@ def fused_topk(
+ 
+ 
+ # This is used by the Deepseek V2/V3/R1 series models
+-@torch.compile(dynamic=True, backend=get_compiler_backend(), disable=_is_npu)
++@torch.compile(dynamic=True, backend=get_compiler_backend(), disable=_is_npu or _is_hip)
+ def grouped_topk_gpu(
+     hidden_states: torch.Tensor,
+     gating_output: torch.Tensor,
+@@ -636,7 +636,7 @@ def grouped_topk_cpu(
+     )
+ 
+ 
+-@torch.compile(dynamic=True, backend=get_compiler_backend(), disable=_is_npu)
++@torch.compile(dynamic=True, backend=get_compiler_backend(), disable=_is_npu or _is_hip)
+ def kimi_k2_biased_topk_impl(
+     hidden_states: torch.Tensor,
+     gating_output: torch.Tensor,
+@@ -674,7 +674,7 @@ def kimi_k2_biased_topk_impl(
+     return topk_weights, topk_ids
+ 
+ 
+-@torch.compile(dynamic=True, backend=get_compiler_backend(), disable=_is_npu)
++@torch.compile(dynamic=True, backend=get_compiler_backend(), disable=_is_npu or _is_hip)
+ def biased_grouped_topk_impl(
+     hidden_states: torch.Tensor,
+     gating_output: torch.Tensor,
+@@ -761,7 +761,7 @@ def _mask_topk_ids_padded_region(
+     topk_ids[indices >= num_token_non_padded, :] = -1
+ 
+ 
+-@torch.compile(dynamic=True, backend=get_compiler_backend())
++@torch.compile(dynamic=True, backend=get_compiler_backend(), disable=_is_hip)
+ def _biased_grouped_topk_postprocess(
+     topk_ids, expert_location_dispatch_info, num_token_non_padded
+ ):
+diff --git a/python/sglang/srt/layers/quantization/awq.py b/python/sglang/srt/layers/quantization/awq.py
+index c05aa091a..511789834 100644
+--- a/python/sglang/srt/layers/quantization/awq.py
++++ b/python/sglang/srt/layers/quantization/awq.py
+@@ -77,6 +77,7 @@ if _is_cuda:
+ elif _is_hip:
+     from sglang.srt.layers.quantization.awq_triton import (
+         awq_dequantize_triton as awq_dequantize,
++        awq_gemm_triton,
+     )
+ 
+ elif _is_xpu:
+@@ -455,8 +456,26 @@ class AWQLinearMethod(LinearMethodBase):
+         pack_factor = self.quant_config.pack_factor
+         out_shape = x.shape[:-1] + (qweight.shape[-1] * pack_factor,)
+         reshaped_x = x.reshape(-1, x.shape[-1])
+-        out = awq_dequantize(qweight, scales, qzeros)
+-        out = torch.matmul(reshaped_x, out)
++
++        # Use fused GEMM on HIP (4x faster than dequantize + matmul on RDNA4)
++        # Block sizes tuned via scripts/sweep_awq_blocks.py on 2x R9700.
++        # bm=32, bn=64, bk=64 optimal across all batch sizes and projections.
++        # split_k=8 for M<=16 (decode), split_k=4 for M>16 (batched prefill).
++        if _is_hip:
++            M = reshaped_x.shape[0]
++            out = awq_gemm_triton(
++                reshaped_x,
++                qweight,
++                scales,
++                qzeros,
++                split_k_iters=8 if M <= 16 else 4,
++                block_size_m=32,
++                block_size_n=64,
++                block_size_k=64,
++            )
++        else:
++            out = awq_dequantize(qweight, scales, qzeros)
++            out = torch.matmul(reshaped_x, out)
+ 
+         if bias is not None:
+             out.add_(bias)
+diff --git a/python/sglang/srt/layers/quantization/awq_triton.py b/python/sglang/srt/layers/quantization/awq_triton.py
+index b83dd79fb..d7d209d30 100644
+--- a/python/sglang/srt/layers/quantization/awq_triton.py
++++ b/python/sglang/srt/layers/quantization/awq_triton.py
+@@ -212,9 +212,9 @@ def awq_gemm_kernel(
+         b = (b >> shifts) & 0xF
+         zeros = (zeros >> shifts) & 0xF
+         b = (b - zeros) * scales
+-        b = b.to(c_ptr.type.element_ty)
++        b = b.to(a_ptr.type.element_ty)
+ 
+-        # Accumulate results.
++        # Accumulate results (FP32 accumulation with FP16 inputs).
+         accumulator = tl.dot(a, b, accumulator, out_dtype=accumulator_dtype)
+ 
+         offsets_k += BLOCK_SIZE_K * SPLIT_K
+diff --git a/python/sglang/srt/layers/quantization/fp8_kernel.py b/python/sglang/srt/layers/quantization/fp8_kernel.py
+index 016c836fe..1979e8a7f 100644
+--- a/python/sglang/srt/layers/quantization/fp8_kernel.py
++++ b/python/sglang/srt/layers/quantization/fp8_kernel.py
+@@ -32,6 +32,7 @@ from sglang.srt.layers import deep_gemm_wrapper
+ from sglang.srt.utils import (
+     ceil_align,
+     get_bool_env_var,
++    get_device_capability,
+     get_device_core_count,
+     get_device_name,
+     is_cpu,
+@@ -1146,15 +1147,22 @@ def w8a8_block_fp8_matmul_triton(
+     else:
+         # Default config
+         # Block-wise quant: BLOCK_SIZE_K must be divisible by block_size[1]
++        # RDNA4: BLOCK_SIZE_M=64 causes GPU hangs. Use 16 for RDNA4.
++        _rdna4_dense = _is_hip and get_device_capability()[0] >= 12
+         config = {
+-            "BLOCK_SIZE_M": 64,
++            "BLOCK_SIZE_M": 16 if _rdna4_dense else 64,
+             "BLOCK_SIZE_N": block_size[0],
+             "BLOCK_SIZE_K": block_size[1],
+-            "GROUP_SIZE_M": 32,
++            "GROUP_SIZE_M": 1 if _rdna4_dense else 32,
+             "num_warps": 4,
+             "num_stages": 3,
+         }
+ 
++    # RDNA4 (gfx12): Triton pipelining (num_stages >= 1) creates pointer select
++    # patterns that crash the CanonicalizePointers pass. Disable pipelining.
++    if _is_hip and get_device_capability()[0] >= 12:
++        config["num_stages"] = 0
++
+     needs_masking = bool(K % config["BLOCK_SIZE_K"] != 0)
+ 
+     def grid(META):
+@@ -1193,6 +1201,43 @@ def w8a8_block_fp8_matmul_triton(
+ 
+ 
+ # universal entry point, for testing purposes
++def _w8a8_block_fp8_matmul_torch(
++    A: torch.Tensor,
++    B: torch.Tensor,
++    As: torch.Tensor,
++    Bs: torch.Tensor,
++    block_size: List[int],
++    output_dtype: torch.dtype = torch.bfloat16,
++) -> torch.Tensor:
++    """RDNA4 fallback: dequantize FP8 to BF16 and use torch.mm.
++    Avoids Triton FP8 matmul ISA that generates invalid gfx1201 instructions.
++    A can be BF16 (from linear layer) or FP8 (from MoE)."""
++    block_n, block_k = block_size
++    M = A.shape[0]
++    K = A.shape[1]
++    N = B.shape[0]
++
++    # Dequantize A: [M, K] -> bf16, apply per-token-group scales if present
++    A_bf16 = A.to(output_dtype)
++    if As is not None and As.numel() > 1:
++        As_expanded = As.repeat_interleave(block_k, dim=-1)[:, :K]
++        A_bf16 = A_bf16 * As_expanded.to(output_dtype)
++    elif As is not None:
++        A_bf16 = A_bf16 * As.to(output_dtype)
++
++    # Dequantize B: [N, K] fp8 -> bf16, apply block scales
++    B_bf16 = B.to(output_dtype)
++    if Bs is not None and Bs.numel() > 1:
++        Bs_expanded = Bs.repeat_interleave(block_n, dim=0).repeat_interleave(block_k, dim=1)
++        Bs_expanded = Bs_expanded[:N, :K]
++        B_bf16 = B_bf16 * Bs_expanded.to(output_dtype)
++    elif Bs is not None:
++        B_bf16 = B_bf16 * Bs.to(output_dtype)
++
++    # Standard matmul: [M, K] @ [K, N] -> [M, N]
++    return torch.mm(A_bf16, B_bf16.t()).to(output_dtype)
++
++
+ def w8a8_block_fp8_matmul(
+     A: torch.Tensor,
+     B: torch.Tensor,
+@@ -1201,14 +1246,21 @@ def w8a8_block_fp8_matmul(
+     block_size: List[int],
+     output_dtype: torch.dtype = torch.float16,
+ ) -> torch.Tensor:
++    # RDNA4: use torch-native path to avoid Triton FP8 matmul ISA crash
++    if _is_hip and get_device_capability()[0] >= 12:
++        return _w8a8_block_fp8_matmul_torch(
++            A, B, As, Bs, block_size, output_dtype=output_dtype
++        )
+     if output_dtype == torch.bfloat16 and deep_gemm_wrapper.ENABLE_JIT_DEEPGEMM:
+-        return w8a8_block_fp8_matmul_deepgemm(
++        result = w8a8_block_fp8_matmul_deepgemm(
++            A, B, As, Bs, block_size, output_dtype=output_dtype
++        )
++    else:
++        result = w8a8_block_fp8_matmul_triton(
+             A, B, As, Bs, block_size, output_dtype=output_dtype
+         )
+ 
+-    return w8a8_block_fp8_matmul_triton(
+-        A, B, As, Bs, block_size, output_dtype=output_dtype
+-    )
++    return result
+ 
+ 
+ # Copied and adapted from https://github.com/triton-lang/triton/blob/main/python/tutorials/10-block-scaled-matmul.py
+diff --git a/python/sglang/srt/layers/quantization/fp8_utils.py b/python/sglang/srt/layers/quantization/fp8_utils.py
+index 49b5aeb30..e9913a1c4 100755
+--- a/python/sglang/srt/layers/quantization/fp8_utils.py
++++ b/python/sglang/srt/layers/quantization/fp8_utils.py
+@@ -59,6 +59,17 @@ _use_aiter = get_bool_env_var("SGLANG_USE_AITER") and _is_hip
+ _use_aiter_gfx95 = _use_aiter and _is_gfx95_supported
+ 
+ 
++def _is_rdna4_device() -> bool:
++    """Check if running on RDNA4 (gfx1201) GPU."""
++    if not _is_hip:
++        return False
++    try:
++        from sglang.srt.utils import get_device_capability
++        return get_device_capability()[0] >= 12
++    except Exception:
++        return False
++
++
+ def use_aiter_triton_gemm_w8a8_tuned_gfx950(n: int, k: int) -> bool:
+     return (n, k) in [
+         (1024, 8192),
+@@ -125,7 +136,15 @@ def use_rowwise_torch_scaled_mm():
+         # torch._scaled_mm rowwise feature.
+         # The condition is determined once as the operations
+         # are time consuming.
+-        return get_device_capability() >= (9, 4) and torch_release >= (2, 7)
++        cap = get_device_capability()
++        # Only MI300 family (gfx94x, capability 9.4-9.9) supports rowwise
++        # torch._scaled_mm reliably. RDNA4 (gfx12xx, capability 12.x) reports
++        # >= (9,4) but has issues with rowwise scaling during CUDA graph capture.
++        return (
++            cap >= (9, 4)
++            and cap < (10, 0)
++            and torch_release >= (2, 7)
++        )
+     return False
+ 
+ 
+@@ -442,7 +461,8 @@ def _dispatch_auto_backend() -> Callable:
+     # 2. FlashInfer TRTLLM (if Blackwell GPU and FlashInfer available)
+     # 3. CUTLASS (if Hopper+ GPU and CUDA 12.0+)
+     # 4. AITER (if AMD GPU with AITER enabled)
+-    # 5. Triton (fallback)
++    # 5. RDNA4 torch-native (if gfx12 — Triton FP8 crashes)
++    # 6. Triton (fallback)
+ 
+     if deep_gemm_wrapper.ENABLE_JIT_DEEPGEMM:
+         return deepgemm_w8a8_block_fp8_linear_with_fallback
+@@ -452,6 +472,9 @@ def _dispatch_auto_backend() -> Callable:
+         return cutlass_w8a8_block_fp8_linear_with_fallback
+     elif _use_aiter:
+         return aiter_w8a8_block_fp8_linear
++    elif _is_hip and _is_rdna4_device():
++        import sys; print("[RDNA4] Using torch_w8a8_block_fp8_linear for dense FP8", file=sys.stderr, flush=True)
++        return torch_w8a8_block_fp8_linear
+     else:
+         return triton_w8a8_block_fp8_linear
+ 
+@@ -815,6 +838,31 @@ def triton_w8a8_block_fp8_linear(
+     return output.to(dtype=input_2d.dtype).view(*output_shape)
+ 
+ 
++def torch_w8a8_block_fp8_linear(
++    input: torch.Tensor,
++    weight: torch.Tensor,
++    block_size: List[int],
++    weight_scale: torch.Tensor,
++    input_scale: Optional[torch.Tensor] = None,
++    bias: Optional[torch.Tensor] = None,
++) -> torch.Tensor:
++    """RDNA4 torch-native FP8 linear: dequantize to BF16, use torch.mm.
++    Avoids ALL Triton FP8 kernels that crash on gfx1201."""
++    assert input_scale is None
++    input_2d = input.view(-1, input.shape[-1])
++    output_shape = [*input.shape[:-1], weight.shape[0]]
++
++    from sglang.srt.layers.quantization.fp8_kernel import _w8a8_block_fp8_matmul_torch
++    # Skip FP8 quantization of activations — pass BF16 directly
++    # _w8a8_block_fp8_matmul_torch handles BF16 A input with FP8 B weights
++    output = _w8a8_block_fp8_matmul_torch(
++        input_2d, weight, None, weight_scale, block_size, output_dtype=input_2d.dtype
++    )
++    if bias is not None:
++        output += bias
++    return output.to(dtype=input_2d.dtype).view(*output_shape)
++
++
+ @lru_cache(maxsize=1)
+ def _get_triton_mxfp8_downcast():
+     try:
+diff --git a/python/sglang/srt/layers/quantization/quark/schemes/quark_w4a4_mxfp4.py b/python/sglang/srt/layers/quantization/quark/schemes/quark_w4a4_mxfp4.py
+index 04f7cd246..16ef56f0a 100644
+--- a/python/sglang/srt/layers/quantization/quark/schemes/quark_w4a4_mxfp4.py
++++ b/python/sglang/srt/layers/quantization/quark/schemes/quark_w4a4_mxfp4.py
+@@ -10,12 +10,15 @@ from sglang.srt.utils import is_hip
+ 
+ _is_hip = is_hip()
+ if _is_hip:
+-    from aiter.ops.triton.gemm.fused.fused_gemm_afp4wfp4_split_cat import (
+-        fused_gemm_afp4wfp4_split_cat,
+-    )
+-    from aiter.ops.triton.gemm_afp4wfp4 import gemm_afp4wfp4
+-    from aiter.ops.triton.gemm_afp4wfp4_pre_quant_atomic import gemm_afp4wfp4_pre_quant
+-    from aiter.ops.triton.quant import dynamic_mxfp4_quant
++    try:
++        from aiter.ops.triton.gemm.fused.fused_gemm_afp4wfp4_split_cat import (
++            fused_gemm_afp4wfp4_split_cat,
++        )
++        from aiter.ops.triton.gemm_afp4wfp4 import gemm_afp4wfp4
++        from aiter.ops.triton.gemm_afp4wfp4_pre_quant_atomic import gemm_afp4wfp4_pre_quant
++        from aiter.ops.triton.quant import dynamic_mxfp4_quant
++    except ImportError:
++        pass
+ 
+ 
+ __all__ = ["QuarkW4A4MXFP4"]
+diff --git a/python/sglang/srt/layers/quantization/quark_int4fp8_moe.py b/python/sglang/srt/layers/quantization/quark_int4fp8_moe.py
+index 7fbbc6113..472cd2b3b 100644
+--- a/python/sglang/srt/layers/quantization/quark_int4fp8_moe.py
++++ b/python/sglang/srt/layers/quantization/quark_int4fp8_moe.py
+@@ -27,11 +27,13 @@ _is_hip = is_hip()
+ 
+ 
+ if _is_hip:
+-    from aiter import ActivationType, QuantType
+-    from aiter.fused_moe import fused_moe
+-    from aiter.ops.shuffle import shuffle_weight
+-
+-    ON_GFX950 = "gfx950" in torch.cuda.get_device_properties("cuda").gcnArchName
++    try:
++        from aiter import ActivationType, QuantType
++        from aiter.fused_moe import fused_moe
++        from aiter.ops.shuffle import shuffle_weight
++        ON_GFX950 = "gfx950" in torch.cuda.get_device_properties("cuda").gcnArchName
++    except ImportError:
++        ON_GFX950 = False
+ 
+ logger = logging.getLogger(__name__)
+ 
+diff --git a/python/sglang/srt/layers/rotary_embedding/factory.py b/python/sglang/srt/layers/rotary_embedding/factory.py
+index 27e28577c..d058ea08a 100644
+--- a/python/sglang/srt/layers/rotary_embedding/factory.py
++++ b/python/sglang/srt/layers/rotary_embedding/factory.py
+@@ -21,6 +21,7 @@ from sglang.srt.layers.rotary_embedding.rope_variant import (
+     DynamicNTKAlphaRotaryEmbedding,
+     DynamicNTKScalingRotaryEmbedding,
+     FourierRotaryEmbedding,
++    Gemma4RotaryEmbedding,
+     Llama3RotaryEmbedding,
+     Phi3LongRoPEScaledRotaryEmbedding,
+ )
+@@ -326,6 +327,15 @@ def get_rope(
+                 long_factor,
+                 **extra_kwargs,
+             )
++        elif scaling_type == "proportional":
++            rotary_emb = Gemma4RotaryEmbedding(
++                head_size,
++                rotary_dim,
++                max_position,
++                base,
++                is_neox_style,
++                dtype,
++            )
+         else:
+             raise ValueError(f"Unknown RoPE scaling type {scaling_type}")
+     _ROPE_DICT[key] = rotary_emb
+diff --git a/python/sglang/srt/layers/rotary_embedding/rope_variant.py b/python/sglang/srt/layers/rotary_embedding/rope_variant.py
+index 28aaae598..0a6535bb0 100644
+--- a/python/sglang/srt/layers/rotary_embedding/rope_variant.py
++++ b/python/sglang/srt/layers/rotary_embedding/rope_variant.py
+@@ -866,3 +866,58 @@ class DynamicNTKScalingRotaryEmbedding(RotaryEmbedding):
+         sin = freqs.sin()
+         cache = torch.cat((cos, sin), dim=-1)
+         return cache
++
++
++class Gemma4RotaryEmbedding(RotaryEmbedding):
++    """Gemma4-specific RoPE with cross-mixing.
++
++    Instead of rotating the first `rotary_dim` dimensions contiguously,
++    splits the head into two halves and applies rotation across both.
++
++    For a head_dim of D and rotary_dim of R:
++    - Standard RoPE rotates: [0, R)
++    - Gemma4 RoPE rotates: [0, R/2) cross-mixed with [D/2, D/2 + R/2)
++    """
++
++    def __init__(
++        self,
++        head_size: int,
++        rotary_dim: int,
++        max_position_embeddings: int,
++        base: float,
++        is_neox_style: bool,
++        dtype: torch.dtype,
++    ) -> None:
++        self.rope_angles = rotary_dim // 2
++        self.nope_angles = (head_size // 2) - self.rope_angles
++
++        super().__init__(
++            head_size,
++            head_size,
++            max_position_embeddings,
++            base,
++            is_neox_style,
++            dtype,
++        )
++
++    def _compute_inv_freq(self, base: float) -> torch.Tensor:
++        freq_exponents = (
++            torch.arange(0, 2 * self.rope_angles, 2, dtype=torch.float) / self.head_size
++        )
++        inv_freq = 1.0 / (base**freq_exponents)
++
++        if self.nope_angles > 0:
++            inv_freq = torch.cat(
++                [
++                    inv_freq,
++                    torch.zeros(self.nope_angles, dtype=torch.float),
++                ]
++            )
++        return inv_freq
++
++    def extra_repr(self) -> str:
++        s = f"head_size={self.head_size}, rotary_dim={self.rotary_dim}"
++        s += f", rope_angles={self.rope_angles}, nope_angles={self.nope_angles}"
++        s += f", max_position_embeddings={self.max_position_embeddings}"
++        s += f", base={self.base}, is_neox_style={self.is_neox_style}"
++        return s
+diff --git a/python/sglang/srt/layers/rotary_embedding/utils.py b/python/sglang/srt/layers/rotary_embedding/utils.py
+index 882c68241..fc55ee0e9 100644
+--- a/python/sglang/srt/layers/rotary_embedding/utils.py
++++ b/python/sglang/srt/layers/rotary_embedding/utils.py
+@@ -7,7 +7,7 @@ from typing import Tuple
+ 
+ import torch
+ 
+-from sglang.srt.utils import cpu_has_amx_support, get_compiler_backend, is_cpu, is_npu
++from sglang.srt.utils import cpu_has_amx_support, get_compiler_backend, is_cpu, is_hip, is_npu
+ 
+ _is_npu = is_npu()
+ _is_cpu = is_cpu()
+@@ -70,7 +70,7 @@ def rotate_half(x):
+     return torch.cat((-x2, x1), dim=-1)
+ 
+ 
+-@torch.compile(dynamic=True, backend=get_compiler_backend())
++@torch.compile(dynamic=True, backend=get_compiler_backend(), disable=is_hip())
+ def apply_rotary_pos_emb_native(
+     q: torch.Tensor,
+     k: torch.Tensor,
+diff --git a/python/sglang/srt/layers/sampler.py b/python/sglang/srt/layers/sampler.py
+index e947a48cb..0323f14c7 100644
+--- a/python/sglang/srt/layers/sampler.py
++++ b/python/sglang/srt/layers/sampler.py
+@@ -545,7 +545,7 @@ def top_k_top_p_min_p_sampling_from_logits_ascend(
+     return batch_next_token_ids.view(-1)
+ 
+ 
+-@torch.compile(dynamic=True)
++@torch.compile(dynamic=True, disable=True)  # Disabled: inductor stalls on ROCm
+ def multinomial_with_seed(
+     logprobs: torch.Tensor, seed: torch.Tensor, positions: torch.Tensor
+ ) -> torch.Tensor:
+diff --git a/python/sglang/srt/layers/vocab_parallel_embedding.py b/python/sglang/srt/layers/vocab_parallel_embedding.py
+index 63b376c24..b9db467d1 100644
+--- a/python/sglang/srt/layers/vocab_parallel_embedding.py
++++ b/python/sglang/srt/layers/vocab_parallel_embedding.py
+@@ -36,6 +36,7 @@ from sglang.srt.utils import (
+     cpu_has_amx_support,
+     get_compiler_backend,
+     is_cpu,
++    is_hip,
+     is_npu,
+     set_weight_attrs,
+ )
+@@ -130,7 +131,7 @@ class VocabParallelEmbeddingShardIndices:
+         assert self.num_added_elements <= self.num_added_elements_padded
+ 
+ 
+-@torch.compile(dynamic=True, backend=get_compiler_backend(), disable=_is_npu)
++@torch.compile(dynamic=True, backend=get_compiler_backend(), disable=_is_npu or is_hip())
+ def get_masked_input_and_mask(
+     input_: torch.Tensor,
+     org_vocab_start_index: int,
+diff --git a/python/sglang/srt/model_executor/model_runner_kv_cache_mixin.py b/python/sglang/srt/model_executor/model_runner_kv_cache_mixin.py
+index a6baa4817..60f27ac36 100644
+--- a/python/sglang/srt/model_executor/model_runner_kv_cache_mixin.py
++++ b/python/sglang/srt/model_executor/model_runner_kv_cache_mixin.py
+@@ -618,16 +618,24 @@ class ModelRunnerKVCacheMixin:
+         else:
+             if self.is_hybrid_swa:
+                 kwargs = {}
+-                if self.is_hybrid_swa_compress:
++                # Pass SWA-specific head dimensions when they differ from full attention
++                swa_head_dim = getattr(self.model_config.hf_text_config, "swa_head_dim", self.model_config.head_dim)
++                swa_v_head_dim = getattr(self.model_config.hf_text_config, "swa_v_head_dim", self.model_config.v_head_dim)
++                swa_num_kv_heads = getattr(self.model_config.hf_text_config, "swa_num_key_value_heads", None)
++                if (
++                    self.is_hybrid_swa_compress
++                    or swa_head_dim != self.model_config.head_dim
++                    or (swa_num_kv_heads is not None and swa_num_kv_heads != self.model_config.hf_text_config.num_key_value_heads)
++                ):
+                     kwargs = {
+                         "swa_head_num": max(
+                             1,
+-                            self.model_config.hf_text_config.swa_num_key_value_heads
++                            (swa_num_kv_heads or self.model_config.hf_text_config.num_key_value_heads)
+                             // get_attention_tp_size(),
+                         ),
+-                        "swa_head_dim": self.model_config.hf_text_config.swa_head_dim,
+-                        "swa_v_head_dim": self.model_config.hf_text_config.swa_v_head_dim,
+-                        "v_head_dim": self.model_config.hf_text_config.v_head_dim,
++                        "swa_head_dim": swa_head_dim,
++                        "swa_v_head_dim": swa_v_head_dim,
++                        "v_head_dim": self.model_config.v_head_dim,
+                     }
+                 self.token_to_kv_pool = SWAKVPool(
+                     size=self.full_max_total_num_tokens,
+diff --git a/python/sglang/srt/model_loader/weight_utils.py b/python/sglang/srt/model_loader/weight_utils.py
+index ef672c5c0..e44cfceb1 100644
+--- a/python/sglang/srt/model_loader/weight_utils.py
++++ b/python/sglang/srt/model_loader/weight_utils.py
+@@ -1044,11 +1044,11 @@ def row_parallel_weight_loader(
+ LoaderFunction = Callable[[torch.Tensor, torch.Tensor], torch.Tensor]
+ 
+ 
+-def sharded_weight_loader(shard_axis: int) -> LoaderFunction:
++def sharded_weight_loader(shard_axis: int, override_tp_rank: int = None) -> LoaderFunction:
+     """Create a weight loader that shards the weights along the given axis"""
+ 
+     def loader(param: torch.Tensor, loaded_weight: torch.Tensor) -> None:
+-        tp_rank = get_attention_tp_rank()
++        tp_rank = override_tp_rank if override_tp_rank is not None else get_attention_tp_rank()
+ 
+         shard_size = param.data.shape[shard_axis]
+         start_idx = tp_rank * shard_size
+diff --git a/python/sglang/srt/models/gemma4_causal.py b/python/sglang/srt/models/gemma4_causal.py
+new file mode 100644
+index 000000000..f2e6b2d7b
+--- /dev/null
++++ b/python/sglang/srt/models/gemma4_causal.py
+@@ -0,0 +1,1074 @@
++# Copyright 2025 SGLang Team
++# Licensed under the Apache License, Version 2.0 (the "License");
++# you may not use this file except in compliance with the License.
++# You may obtain a copy of the License at
++#
++#     http://www.apache.org/licenses/LICENSE-2.0
++#
++# Unless required by applicable law or agreed to in writing, software
++# distributed under the License is distributed on an "AS IS" BASIS,
++# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++# See the License for the specific language governing permissions and
++# limitations under the License.
++# ==============================================================================
++
++import logging
++import re
++from typing import Iterable, Optional, Set, Tuple
++
++import torch
++from torch import nn
++from transformers import (
++    Gemma4TextConfig,
++    PretrainedConfig,
++    PreTrainedModel,
++)
++
++from sglang.srt.distributed import (
++    get_tensor_model_parallel_world_size,
++)
++from sglang.srt.layers.gemma4_fused_ops import gemma_rmsnorm_residual_scalar
++from sglang.srt.layers.layernorm import Gemma4RMSNorm, RMSNorm
++from sglang.srt.layers.linear import (
++    QKVParallelLinear,
++    ReplicatedLinear,
++    RowParallelLinear,
++)
++from sglang.srt.layers.logits_processor import LogitsProcessor
++from sglang.srt.layers.moe.ep_moe.layer import get_moe_impl_class
++from sglang.srt.layers.moe.topk import TopK
++from sglang.srt.layers.quantization.base_config import QuantizationConfig
++from sglang.srt.layers.radix_attention import RadixAttention
++from sglang.srt.layers.rotary_embedding import get_rope
++from sglang.srt.layers.vocab_parallel_embedding import ParallelLMHead
++from sglang.srt.model_executor.forward_batch_info import ForwardBatch
++from sglang.srt.model_loader.weight_utils import (
++    default_weight_loader,
++    maybe_remap_kv_scale_name,
++)
++from sglang.srt.models.gemma3_causal import Gemma3MLP, Gemma3TextScaledWordEmbedding
++from sglang.srt.server_args import get_global_server_args
++from sglang.srt.utils import add_prefix, make_layers
++
++logger = logging.getLogger(__name__)
++
++
++# Aligned with HF's implementation, using sliding window inclusive with the last token
++# SGLang assumes exclusive
++def get_attention_sliding_window_size(config):
++    return config.sliding_window - 1
++
++
++Gemma4MLP = Gemma3MLP
++Gemma4TextScaledWordEmbedding = Gemma3TextScaledWordEmbedding
++
++
++class Gemma4Router(nn.Module):
++    """Router for Gemma4 MoE that preprocesses input before projection.
++
++    Applies RMSNorm (no learned weight), root_size scaling
++    (hidden_size^{-0.5}), then a learned per-dimension scale before
++    projecting to expert logits.
++
++    This preprocessing is applied ONLY to the router's input, not to
++    the expert MLPs' input.
++    """
++
++    def __init__(
++        self,
++        config,
++        quant_config: QuantizationConfig | None = None,
++        prefix: str = "",
++    ) -> None:
++        super().__init__()
++        self.hidden_size = config.hidden_size
++
++        # RMSNorm without learned weight — pure normalization only
++        self.norm = Gemma4RMSNorm(
++            self.hidden_size, eps=config.rms_norm_eps, with_scale=False
++        )
++        # Per-dimension learned scale, applied after norm + root_size
++        self.scale = nn.Parameter(torch.ones(self.hidden_size))
++        # Constant 1/sqrt(hidden_size) scaling factor
++        self.register_buffer(
++            "root_size",
++            torch.tensor(self.hidden_size**-0.5),
++            persistent=False,
++        )
++        # Project to expert logits; replicated across TP for consistent routing
++        self.proj = ReplicatedLinear(
++            self.hidden_size,
++            config.num_experts,
++            bias=False,
++            quant_config=None,
++            prefix=add_prefix("proj", prefix),
++        )
++        self._fused_scale: Optional[torch.Tensor] = None
++
++    def fuse_scale(self):
++        """Pre-compute scale * root_size. Call after weights are loaded."""
++        self._fused_scale = (self.scale * self.root_size).to(self.scale.dtype)
++
++    def forward(self, x: torch.Tensor) -> torch.Tensor:
++        """Returns raw router logits [T, E]."""
++        x = self.norm(x)
++        if self._fused_scale is None:
++            self.fuse_scale()
++        x = x * self._fused_scale.to(x.dtype)
++        router_logits, _ = self.proj(x)
++        return router_logits
++
++
++class Gemma4MoE(nn.Module):
++    """Mixture of Experts for Gemma4.
++
++    Wraps MoE implementation with custom routing. The router projection is
++    external (Gemma4Router) — this class only handles expert dispatch.
++
++    Gemma4 routing: softmax over ALL experts → top-k → renormalize.
++    per_expert_scale is folded into routing weights for mathematical
++    correctness with MoE's fused kernel.
++    """
++
++    def __init__(
++        self,
++        hidden_size: int,
++        layer_id: int,
++        config: Gemma4TextConfig,
++        quant_config: Optional[QuantizationConfig] = None,
++        prefix: str = "",
++    ) -> None:
++        super().__init__()
++        self.layer_id = layer_id
++        self.hidden_size = hidden_size
++        self.num_experts = config.num_experts
++        self.tp_size = get_tensor_model_parallel_world_size()
++
++        # Per-expert output scale folded into routing weights so that
++        # MoE's fused kernel computes: Σ_e (expert_e * w_e * scale_e)
++        self.per_expert_scale = nn.Parameter(torch.ones(config.num_experts))
++
++        # Capture param directly to avoid closing over self in the routing closure.
++        per_expert_scale = self.per_expert_scale
++
++        def routing_function(
++            hidden_states: torch.Tensor,
++            gating_output: torch.Tensor,
++            topk: int,
++            renormalize: bool,  # always True for Gemma4; softmax identity only holds when renormalizing
++        ) -> tuple[torch.Tensor, torch.Tensor]:
++            # softmax(all)[topk] / sum(softmax(all)[topk]) = softmax(topk_logits),
++            # so we softmax only the top-k logits (fewer kernel launches).
++            topk_logits, topk_ids = torch.topk(gating_output, k=topk, dim=-1)
++            topk_weights = torch.nn.functional.softmax(topk_logits, dim=-1)
++
++            # Fold per_expert_scale into routing weights
++            topk_weights = topk_weights * per_expert_scale[topk_ids].to(
++                topk_weights.dtype
++            )
++
++            return topk_weights.to(torch.float32), topk_ids.to(torch.int32)
++
++        self.topk = TopK(
++            top_k=config.top_k_experts,
++            layer_id=layer_id,
++            custom_routing_function=routing_function,
++        )
++
++        experts_type = get_moe_impl_class(quant_config)
++
++        self.experts = experts_type(
++            num_experts=config.num_experts
++            + get_global_server_args().ep_num_redundant_experts,
++            hidden_size=config.hidden_size,
++            intermediate_size=config.moe_intermediate_size,
++            layer_id=layer_id,
++            top_k=config.top_k_experts,
++            quant_config=quant_config,
++            prefix=add_prefix("experts", prefix),
++            activation="gelu",
++            reduce_results=True,
++        )
++
++    def forward(
++        self, hidden_states: torch.Tensor, router_logits: torch.Tensor
++    ) -> torch.Tensor:
++        num_tokens, hidden_dim = hidden_states.shape
++        topk_output = self.topk(hidden_states, router_logits)
++        hidden_states = self.experts(hidden_states, topk_output)
++        return hidden_states.view(num_tokens, hidden_dim)
++
++
++class Gemma4Attention(nn.Module):
++    def __init__(
++        self,
++        layer_id: int,
++        config: Gemma4TextConfig,
++        head_dim: int,
++        max_position_embeddings: int,
++        quant_config: Optional[QuantizationConfig] = None,
++        prefix: str = "",
++    ) -> None:
++        super().__init__()
++
++        self.layer_id = layer_id
++        self.config = config
++        tp_size = get_tensor_model_parallel_world_size()
++
++        layer_type = config.layer_types[layer_id]
++        self.sliding_window = (
++            config.sliding_window if layer_type == "sliding_attention" else None
++        )
++
++        self.total_num_heads = config.num_attention_heads
++        assert self.total_num_heads % tp_size == 0
++        self.num_heads = self.total_num_heads // tp_size
++
++        if layer_type == "sliding_attention":
++            self.total_num_kv_heads = getattr(
++                config, "swa_num_key_value_heads", config.num_key_value_heads
++            )
++        else:
++            self.total_num_kv_heads = config.num_key_value_heads
++
++        self.num_kv_heads = max(1, self.total_num_kv_heads // tp_size)
++
++        if self.total_num_kv_heads >= tp_size:
++            assert self.total_num_kv_heads % tp_size == 0
++        else:
++            assert tp_size % self.total_num_kv_heads == 0
++
++        hidden_size = config.hidden_size
++        self.head_dim = head_dim
++
++        self.q_size = self.num_heads * self.head_dim
++        self.kv_size = self.num_kv_heads * self.head_dim
++
++        self.qkv_proj = QKVParallelLinear(
++            hidden_size,
++            self.head_dim,
++            self.total_num_heads,
++            self.total_num_kv_heads,
++            bias=config.attention_bias,
++            quant_config=quant_config,
++            prefix=add_prefix("qkv_proj", prefix),
++        )
++        self.o_proj = RowParallelLinear(
++            self.total_num_heads * self.head_dim,
++            hidden_size,
++            bias=config.attention_bias,
++            quant_config=quant_config,
++            prefix=add_prefix("o_proj", prefix),
++        )
++
++        self.q_norm = Gemma4RMSNorm(
++            self.head_dim,
++            eps=config.rms_norm_eps,
++        )
++        self.k_norm = Gemma4RMSNorm(
++            self.head_dim,
++            eps=config.rms_norm_eps,
++        )
++        self.v_norm = Gemma4RMSNorm(
++            self.head_dim, eps=config.rms_norm_eps, scale_shift=0.0, with_scale=False
++        )
++
++        if layer_type in config.rope_parameters:
++            rope_parameters = dict(config.rope_parameters[layer_type])
++        else:
++            rope_parameters = dict(
++                rope_type="default",
++                rope_theta=10000.0,
++            )
++
++        # KV sharing logic
++        num_kv_shared_layers = getattr(config, "num_kv_shared_layers", 0)
++        first_kv_shared_layer_idx = config.num_hidden_layers - num_kv_shared_layers
++        self.is_kv_shared_layer = (
++            layer_id >= first_kv_shared_layer_idx and num_kv_shared_layers > 0
++        )
++
++        self.kv_shared_layer_index = None
++        if num_kv_shared_layers > 0 and self.layer_id >= first_kv_shared_layer_idx:
++            prev_layers = config.layer_types[:first_kv_shared_layer_idx]
++            current_layer_type = config.layer_types[self.layer_id]
++            if current_layer_type not in prev_layers:
++                raise ValueError(
++                    f"KV sharing layer {self.layer_id} has type '{current_layer_type}' "
++                    f"but no matching type found in layers 0..{first_kv_shared_layer_idx - 1}. "
++                    f"Available types: {set(prev_layers)}"
++                )
++            self.kv_shared_layer_index = (
++                len(prev_layers) - 1 - prev_layers[::-1].index(current_layer_type)
++            )
++
++        self.rotary_emb = get_rope(
++            self.head_dim,
++            rotary_dim=self.head_dim,
++            max_position=max_position_embeddings,
++            base=rope_parameters.get("rope_theta", 10000.0),
++            rope_scaling={"rope_type": rope_parameters.get("rope_type", "default")},
++            partial_rotary_factor=rope_parameters.get("partial_rotary_factor", 1.0),
++            is_neox_style=True,
++        )
++
++        self.attn = RadixAttention(
++            self.num_heads,
++            self.head_dim,
++            1,  # scaling factor
++            num_kv_heads=self.num_kv_heads,
++            layer_id=(
++                self.kv_shared_layer_index if self.is_kv_shared_layer else self.layer_id
++            ),
++            logit_cap=0.0,
++            sliding_window_size=self.sliding_window,
++            quant_config=quant_config,
++            prefix=add_prefix("attn", prefix),
++        )
++
++    def forward(
++        self,
++        positions: torch.Tensor,
++        hidden_states: torch.Tensor,
++        forward_batch: ForwardBatch,
++        **kwargs,
++    ):
++        _dbg = (self.layer_id == 0 and not hasattr(self, '_attn_dbg_done'))
++
++        qkv, _ = self.qkv_proj(hidden_states)
++        q, k, v = qkv.split([self.q_size, self.kv_size, self.kv_size], dim=-1)
++
++        if _dbg:
++            self._attn_dbg_done = True
++            logger.warning(f"ATTN L{self.layer_id}: qkv nan={qkv.isnan().any().item()} "
++                          f"q_size={self.q_size} kv_size={self.kv_size} "
++                          f"heads={self.num_heads} kv_heads={self.num_kv_heads} head_dim={self.head_dim}")
++
++        q = q.unflatten(-1, (self.num_heads, self.head_dim))
++        q = self.q_norm(q)
++        q = q.flatten(-2, -1)
++
++        if _dbg:
++            logger.warning(f"ATTN L{self.layer_id}: after q_norm nan={q.isnan().any().item()}")
++
++        # Check if we should use shared KV cache
++        if self.is_kv_shared_layer and self.kv_shared_layer_index is not None:
++            k = None
++            v = None
++        else:
++            k = k.unflatten(-1, (self.num_kv_heads, self.head_dim))
++            k = self.k_norm(k)
++
++            v = v.unflatten(-1, (self.num_kv_heads, self.head_dim))
++            v = self.v_norm(v)
++
++        # Apply rotary embedding
++        if k is not None:
++            k = k.flatten(-2, -1)
++            q, k = self.rotary_emb(positions, q, k)
++
++            if _dbg:
++                logger.warning(f"ATTN L{self.layer_id}: after rope q_nan={q.isnan().any().item()} k_nan={k.isnan().any().item()}")
++
++            k = k.unflatten(-1, (self.num_kv_heads, self.head_dim))
++        else:
++            dummy_k = torch.zeros_like(q[:, : self.kv_size])
++            q, _ = self.rotary_emb(positions, q, dummy_k)
++
++        q = q.unflatten(-1, (self.num_heads, self.head_dim))
++        attn_output = self.attn(
++            q,
++            k,
++            v,
++            forward_batch=forward_batch,
++            save_kv_cache=not self.is_kv_shared_layer,
++        )
++
++        if _dbg:
++            logger.warning(f"ATTN L{self.layer_id}: after attn nan={attn_output.isnan().any().item()} shape={attn_output.shape}")
++
++        if attn_output.dim() == 3:
++            attn_output = attn_output.flatten(-2, -1)
++        output, _ = self.o_proj(attn_output)
++
++        if _dbg:
++            logger.warning(f"ATTN L{self.layer_id}: after o_proj nan={output.isnan().any().item()}")
++
++        return output
++
++
++class Gemma4DecoderLayer(nn.Module):
++    def __init__(
++        self,
++        layer_id: int,
++        config: PretrainedConfig,
++        quant_config: Optional[QuantizationConfig] = None,
++        prefix: str = "",
++    ) -> None:
++        super().__init__()
++        self.hidden_size = config.hidden_size
++        self.hidden_size_per_layer_input = (
++            getattr(config, "hidden_size_per_layer_input", None) or 0
++        )
++
++        self.layer_id = layer_id
++
++        # Gemma 4 uses different head dimensions for sliding vs full attention
++        layer_type = config.layer_types[layer_id]
++        self.is_full_attention = layer_type == "full_attention"
++        if self.is_full_attention:
++            head_dim = config.head_dim  # following sglang naming
++        else:
++            head_dim = getattr(config, "swa_head_dim", config.head_dim)
++
++        self.self_attn = Gemma4Attention(
++            layer_id=layer_id,
++            config=config,
++            max_position_embeddings=config.max_position_embeddings,
++            head_dim=head_dim,
++            quant_config=quant_config,
++            prefix=add_prefix("self_attn", prefix),
++        )
++
++        first_kv_shared_layer_idx = config.num_hidden_layers - getattr(
++            config, "num_kv_shared_layers", 0
++        )
++        is_kv_shared_layer = self.layer_id >= first_kv_shared_layer_idx > 0
++        use_double_wide_mlp = (
++            getattr(config, "use_double_wide_mlp", False) and is_kv_shared_layer
++        )
++        layer_intermediate_size = config.intermediate_size * (
++            2 if use_double_wide_mlp else 1
++        )
++
++        self.mlp = Gemma4MLP(
++            hidden_size=self.hidden_size,
++            intermediate_size=layer_intermediate_size,
++            hidden_activation=config.hidden_activation,
++            quant_config=quant_config,
++            prefix=add_prefix("mlp", prefix),
++        )
++
++        self.input_layernorm = RMSNorm(config.hidden_size, eps=config.rms_norm_eps)
++        self.post_attention_layernorm = RMSNorm(
++            config.hidden_size, eps=config.rms_norm_eps
++        )
++        self.pre_feedforward_layernorm = RMSNorm(
++            config.hidden_size, eps=config.rms_norm_eps
++        )
++        self.post_feedforward_layernorm = RMSNorm(
++            config.hidden_size, eps=config.rms_norm_eps
++        )
++
++        # Per-Layer Embedding (PLE) components — present in each decoder layer
++        if self.hidden_size_per_layer_input > 0:
++            # Gate: projects hidden_states → per-layer dim for gating
++            self.per_layer_input_gate = ReplicatedLinear(
++                self.hidden_size,
++                self.hidden_size_per_layer_input,
++                bias=False,
++                quant_config=quant_config,
++                prefix=add_prefix("per_layer_input_gate", prefix),
++            )
++            # Projection: projects gated per-layer input back → hidden size
++            self.per_layer_projection = ReplicatedLinear(
++                self.hidden_size_per_layer_input,
++                self.hidden_size,
++                bias=False,
++                quant_config=quant_config,
++                prefix=add_prefix("per_layer_projection", prefix),
++            )
++            self.post_per_layer_input_norm = Gemma4RMSNorm(
++                config.hidden_size, eps=config.rms_norm_eps
++            )
++        else:
++            self.per_layer_input_gate = None
++            self.per_layer_projection = None
++            self.post_per_layer_input_norm = None
++
++        # Parallel MoE
++        self.enable_moe_block = getattr(config, "enable_moe_block", False)
++        if self.enable_moe_block:
++            self.router = Gemma4Router(
++                config,
++                quant_config=quant_config,
++                prefix=add_prefix("router", prefix),
++            )
++            self.moe = Gemma4MoE(
++                hidden_size=self.hidden_size,
++                layer_id=layer_id,
++                config=config,
++                quant_config=quant_config,
++                prefix=add_prefix("moe", prefix),
++            )
++
++            self.post_feedforward_layernorm_1 = RMSNorm(
++                config.hidden_size, eps=config.rms_norm_eps
++            )
++            self.post_feedforward_layernorm_2 = RMSNorm(
++                config.hidden_size, eps=config.rms_norm_eps
++            )
++            self.pre_feedforward_layernorm_2 = RMSNorm(
++                config.hidden_size, eps=config.rms_norm_eps
++            )
++        else:
++            self.router = None
++            self.moe = None
++            self.post_feedforward_layernorm_1 = None
++            self.post_feedforward_layernorm_2 = None
++            self.pre_feedforward_layernorm_2 = None
++
++        self.register_buffer("layer_scalar", torch.ones(1), persistent=True)
++        self.has_ple = self.hidden_size_per_layer_input > 0
++        self.prefix = prefix
++
++    def forward(
++        self,
++        positions: torch.Tensor,
++        hidden_states: torch.Tensor,
++        per_layer_input: torch.Tensor,
++        forward_batch: ForwardBatch,
++        **kwargs,
++    ) -> tuple[
++        torch.FloatTensor, Optional[tuple[torch.FloatTensor, torch.FloatTensor]]
++    ]:
++        # Gemma4 residual pattern following JAX implementation:
++        # 1. input_norm(x) -> attn -> post_attn_norm -> ADD residual
++        # 2. pre_ff_norm -> mlp -> post_ff_norm -> ADD residual
++        #
++        # Optimization: fuse "post_attn_norm(h) + residual; pre_ff_norm(...)"
++        # into "post_attn_norm(h); pre_ff_norm(h, residual)" using
++        # gemma_fused_add_rmsnorm which computes:
++        #   residual = h + residual (in-place)
++        #   h = gemma_norm(residual)
++        residual = hidden_states
++
++        # DEBUG: trace NaN source in first layer
++        _dbg = (self.layer_id == 0 and not hasattr(self, '_dbg_done'))
++        if _dbg:
++            self._dbg_done = True
++            logger.warning(f"L{self.layer_id} input: nan={hidden_states.isnan().any().item()} "
++                          f"mean={hidden_states.float().mean():.4f}")
++
++        # Apply input layernorm
++        hidden_states = self.input_layernorm(hidden_states)
++        if _dbg:
++            logger.warning(f"L{self.layer_id} after input_norm: nan={hidden_states.isnan().any().item()} "
++                          f"mean={hidden_states[~hidden_states.isnan()].float().mean():.4f if not hidden_states.isnan().all() else 'ALL_NAN'}")
++
++        hidden_states = self.self_attn(
++            positions=positions,
++            hidden_states=hidden_states,
++            forward_batch=forward_batch,
++        )
++        if _dbg:
++            logger.warning(f"L{self.layer_id} after attn: nan={hidden_states.isnan().any().item()} "
++                          f"shape={hidden_states.shape}")
++
++        hidden_states = self.post_attention_layernorm(hidden_states)
++        if _dbg:
++            logger.warning(f"L{self.layer_id} after post_attn_norm: nan={hidden_states.isnan().any().item()}")
++
++        if self.enable_moe_block:
++            # Fuse: hidden_states + residual -> residual; pre_ff_norm(residual) -> hidden_states
++            # Also need raw (unfused) residual for router and pre_ff_norm_2
++            hidden_states, residual = self.pre_feedforward_layernorm(
++                hidden_states, residual
++            )
++            # For MoE: router and pre_ff_norm_2 need the unfused residual
++            # (which is now updated to post_attn_out + old_residual)
++            moe_input = residual
++
++            # Dense MLP branch
++            hidden_states_1 = self.mlp(hidden_states)
++            hidden_states_1 = self.post_feedforward_layernorm_1(hidden_states_1)
++
++            # MoE branch: router sees residual (= post_attn_out + old_residual)
++            router_logits = self.router(moe_input)
++            hidden_states_2 = self.pre_feedforward_layernorm_2(moe_input)
++            hidden_states_2 = self.moe(hidden_states_2, router_logits)
++            hidden_states_2 = self.post_feedforward_layernorm_2(hidden_states_2)
++
++            # Combine branches
++            hidden_states = hidden_states_1 + hidden_states_2
++        else:
++            # Fuse: hidden_states + residual -> residual; pre_ff_norm(residual) -> hidden_states
++            hidden_states, residual = self.pre_feedforward_layernorm(
++                hidden_states, residual
++            )
++            hidden_states = self.mlp(hidden_states)
++
++        if False:  # Disabled on RDNA4 — the Triton fused kernel crashes on gfx1201
++            # Fused: (post_ff_norm(h) + residual) * layer_scalar in one kernel
++            norm = self.post_feedforward_layernorm
++            hidden_states = gemma_rmsnorm_residual_scalar(
++                hidden_states,
++                norm.weight.data,
++                residual,
++                self.layer_scalar,
++                norm.variance_epsilon,
++            )
++        else:
++            hidden_states = self.post_feedforward_layernorm(hidden_states)
++            hidden_states = hidden_states + residual
++
++            if self.has_ple and per_layer_input is not None:
++                gate, _ = self.per_layer_input_gate(hidden_states)
++                gate = torch.nn.functional.gelu(gate, approximate="tanh")
++                gated_per_layer = gate * per_layer_input
++                per_layer_contribution, _ = self.per_layer_projection(gated_per_layer)
++                per_layer_contribution = self.post_per_layer_input_norm(
++                    per_layer_contribution
++                )
++                hidden_states = hidden_states + per_layer_contribution
++
++            hidden_states = hidden_states * self.layer_scalar
++        return hidden_states, None
++
++
++class Gemma4TextModel(PreTrainedModel):
++    def __init__(
++        self,
++        config: Gemma4TextConfig,
++        quant_config: Optional[QuantizationConfig] = None,
++        prefix: str = "",
++    ) -> None:
++        super().__init__(config=config)
++        self.config = config
++        self.quant_config = quant_config
++        self.vocab_size = config.vocab_size
++        self.padding_idx = getattr(config, "pad_token_id", None)
++
++        self.embed_tokens = Gemma4TextScaledWordEmbedding(
++            config.vocab_size,
++            config.hidden_size,
++            self.padding_idx,
++            embed_scale=self.config.hidden_size**0.5,  # embedded normalizer
++        )
++
++        # Per-layer input embeddings
++        self.hidden_size = config.hidden_size
++        self.hidden_size_per_layer_input = (
++            getattr(config, "hidden_size_per_layer_input", None) or 0
++        )
++        self.vocab_size_per_layer_input = (
++            getattr(config, "vocab_size_per_layer_input", None) or config.vocab_size
++        )
++
++        if self.hidden_size_per_layer_input and self.hidden_size_per_layer_input > 0:
++            self.embed_tokens_per_layer = Gemma4TextScaledWordEmbedding(
++                self.vocab_size_per_layer_input,
++                config.num_hidden_layers * self.hidden_size_per_layer_input,
++                self.padding_idx,
++                embed_scale=self.hidden_size_per_layer_input**0.5,
++            )
++
++            self.per_layer_model_projection = ReplicatedLinear(
++                self.hidden_size,
++                config.num_hidden_layers * self.hidden_size_per_layer_input,
++                bias=False,
++                quant_config=quant_config,
++                prefix=add_prefix("per_layer_model_projection", prefix),
++            )
++
++            self.per_layer_projection_norm = RMSNorm(
++                self.hidden_size_per_layer_input,
++                config.rms_norm_eps,
++            )
++            self.per_layer_input_scale = torch.rsqrt(torch.tensor(2.0))
++            self.per_layer_projection_scale = torch.tensor(
++                config.hidden_size**-0.5,
++            )
++        else:
++            self.embed_tokens_per_layer = None
++            self.per_layer_model_projection = None
++            self.per_layer_projection_norm = None
++            self.per_layer_input_scale = None
++            self.per_layer_projection_scale = None
++
++        self.layers = make_layers(
++            config.num_hidden_layers,
++            lambda idx, prefix: Gemma4DecoderLayer(
++                layer_id=idx,
++                config=config,
++                quant_config=quant_config,
++                prefix=prefix,
++            ),
++            prefix=add_prefix("layers", prefix),
++        )
++
++        self.norm = RMSNorm(config.hidden_size, eps=config.rms_norm_eps)
++        self.post_init()
++
++    def get_input_embeddings(self) -> nn.Embedding:
++        return self.embed_tokens
++
++    def dtype(self) -> torch.dtype:
++        return next(self.parameters()).dtype
++
++    def get_per_layer_inputs(self, input_ids: torch.LongTensor) -> torch.Tensor:
++        if self.embed_tokens_per_layer is None:
++            return None
++
++        # Handle out-of-vocab tokens for PLE (vocab_size_per_layer_input may
++        # be smaller than the main vocab_size). Following Gemma3n pattern.
++        per_layer_inputs_mask = torch.logical_and(
++            input_ids >= 0,
++            input_ids < self.vocab_size_per_layer_input,
++        )
++        per_layer_inputs_tokens = torch.where(
++            per_layer_inputs_mask, input_ids, torch.zeros_like(input_ids)
++        )
++
++        # Get packed per-layer embeddings: (num_tokens, total_ple_dim)
++        per_layer_embeds = self.embed_tokens_per_layer(per_layer_inputs_tokens)
++
++        # Apply embed_scale (sqrt of per-layer hidden dim)
++        # Already done in embedding layer
++        # per_layer_embeds = per_layer_embeds * self.embed_scale_per_layer
++
++        # Reshape to (num_tokens, num_layers, hidden_size_per_layer_input)
++        per_layer_embeds = per_layer_embeds.reshape(
++            *input_ids.shape,
++            self.config.num_hidden_layers,
++            self.hidden_size_per_layer_input,
++        )
++        return per_layer_embeds
++
++    def project_per_layer_inputs(
++        self,
++        inputs_embeds: torch.Tensor,
++        per_layer_inputs: Optional[torch.Tensor] = None,
++    ) -> torch.Tensor:
++        """Project inputs_embeds and combine with per_layer_inputs.
++
++        Following HF/Gemma3n reference:
++        1. Project inputs_embeds: hidden_size → total_ple_dim
++        2. Scale by hidden_size^{-0.5} (Gemma4ScaledLinear w_scale)
++        3. Reshape to (num_tokens, num_layers, per_layer_dim)
++        4. Normalize with per_layer_projection_norm
++        5. Combine: (projection + per_layer_inputs) * 1/sqrt(2)
++        """
++        if self.per_layer_model_projection is None:
++            return None
++
++        # Project from hidden_size to total_ple_dim
++        per_layer_projection, _ = self.per_layer_model_projection(inputs_embeds)
++
++        # Apply w_scale (HF: Gemma4ScaledLinear with w_scale=hidden_size^{-0.5})
++        per_layer_projection = per_layer_projection * self.per_layer_projection_scale
++
++        # Reshape to (num_tokens, num_layers, hidden_size_per_layer_input)
++        per_layer_projection = per_layer_projection.reshape(
++            *inputs_embeds.shape[:-1],
++            self.config.num_hidden_layers,
++            self.hidden_size_per_layer_input,
++        )
++
++        # Normalize
++        per_layer_projection = self.per_layer_projection_norm(per_layer_projection)
++
++        if per_layer_inputs is None:
++            return per_layer_projection
++
++        # Combine: (projection + per_layer_inputs) * scale
++        return (per_layer_projection + per_layer_inputs) * self.per_layer_input_scale
++
++    def forward(
++        self,
++        input_ids: torch.Tensor,
++        positions: torch.Tensor,
++        forward_batch: ForwardBatch,
++        input_embeds: torch.Tensor = None,
++        per_layer_inputs: Optional[torch.Tensor] = None,
++        **kwargs,
++    ) -> torch.Tensor:
++        if (input_ids is None) ^ (input_embeds is not None):
++            raise ValueError(
++                "You must specify exactly one of input_ids or inputs_embeds"
++            )
++
++        if input_ids is not None:
++            input_embeds = self.embed_tokens(input_ids)
++            per_layer_inputs = self.get_per_layer_inputs(input_ids)
++        per_layer_inputs = self.project_per_layer_inputs(input_embeds, per_layer_inputs)
++
++        hidden_states = input_embeds
++
++        _do_debug = not hasattr(self, '_dbg_done')
++        if _do_debug:
++            self._dbg_done = True
++            logger.warning(f"DBG embed: shape={hidden_states.shape} nan={hidden_states.isnan().any().item()} "
++                          f"mean={hidden_states.float().mean():.4f}")
++
++        for layer_idx, layer in enumerate(self.layers):
++            if per_layer_inputs is not None:
++                per_layer_input = per_layer_inputs[:, layer_idx, :]
++            else:
++                per_layer_input = None
++            layer_outputs = layer(
++                positions=positions,
++                hidden_states=hidden_states,
++                per_layer_input=per_layer_input,
++                forward_batch=forward_batch,
++                **kwargs,
++            )
++            hidden_states = layer_outputs[0]
++            residual = layer_outputs[1] if len(layer_outputs) > 1 else None
++
++            if _do_debug and layer_idx < 5:
++                logger.warning(f"DBG layer {layer_idx}: nan={hidden_states.isnan().any().item()} "
++                              f"mean={hidden_states[~hidden_states.isnan()].float().mean():.4f if not hidden_states.isnan().all().item() else 'ALL_NAN'}")
++
++        if residual is None:
++            hidden_states = self.norm(hidden_states)
++        else:
++            hidden_states, _ = self.norm(hidden_states, residual)
++        return hidden_states
++
++
++class Gemma4ForCausalLM(PreTrainedModel):
++    config_class = Gemma4TextConfig
++    base_model_prefix = "language_model"
++    _tied_weights_keys = {"lm_head.weight": "model.embed_tokens.weight"}
++    _tp_plan = {"lm_head": "colwise_rep"}
++
++    # BitandBytes specific attributes
++    default_bitsandbytes_target_modules = [
++        ".gate_proj.",
++        ".down_proj.",
++        ".up_proj.",
++        ".q_proj.",
++        ".k_proj.",
++        ".v_proj.",
++        ".o_proj.",
++    ]
++    bitsandbytes_stacked_params_mapping = {
++        # shard_name, weight_name, index
++        "q_proj": ("qkv_proj", 0),
++        "k_proj": ("qkv_proj", 1),
++        "v_proj": ("qkv_proj", 2),
++        "gate_proj": ("gate_up_proj", 0),
++        "up_proj": ("gate_up_proj", 1),
++    }
++
++    packed_modules_mapping = {
++        "qkv_proj": [
++            "q_proj",
++            "k_proj",
++            "v_proj",
++        ],
++        "gate_up_proj": [
++            "gate_proj",
++            "up_proj",
++        ],
++    }
++
++    # Gemma does not apply LoRA to the embedding layer.
++    embedding_modules = {}
++    embedding_padding_modules = []
++    supports_lora = False
++
++    def __init__(
++        self,
++        config,
++        quant_config: Optional[QuantizationConfig] = None,
++        prefix: str = "",
++    ) -> None:
++        # Handle multimodal config wrapper: extract text_config for the language model
++        if hasattr(config, "text_config") and getattr(config, "model_type", "") == "gemma4":
++            config = config.text_config
++        super().__init__(config=config)
++        self.config = config
++        self.quant_config = quant_config
++        self.model = Gemma4TextModel(
++            config=config, quant_config=quant_config, prefix=add_prefix("model", prefix)
++        )
++        self.logits_processor = LogitsProcessor(config)
++
++        if self.config.tie_word_embeddings:
++            self.lm_head = self.model.embed_tokens
++        else:
++            self.lm_head = ParallelLMHead(
++                config.vocab_size,
++                config.hidden_size,
++                quant_config=quant_config,
++                prefix=add_prefix("lm_head", prefix),
++            )
++        self.post_init()
++
++    def get_input_embeddings(self) -> nn.Embedding:
++        return self.model.embed_tokens
++
++    def get_attention_sliding_window_size(self):
++        return get_attention_sliding_window_size(self.config)
++
++    def dtype(self) -> torch.dtype:
++        return next(self.parameters()).dtype
++
++    @torch.no_grad()
++    def forward(
++        self,
++        input_ids: torch.Tensor,
++        positions: torch.Tensor,
++        forward_batch: ForwardBatch,
++        input_embeds: torch.Tensor = None,
++        per_layer_inputs: Optional[torch.Tensor] = None,
++        **kwargs,
++    ) -> LogitsProcessor:
++        hidden_states = self.model(
++            input_ids,
++            positions,
++            forward_batch,
++            input_embeds,
++            per_layer_inputs,
++            **kwargs,
++        )
++        # DEBUG: check hidden_states before logits
++        if hasattr(self, '_debug_count'):
++            self._debug_count += 1
++        else:
++            self._debug_count = 1
++        if self._debug_count <= 3:
++            logger.warning(f"DEBUG hidden_states: shape={hidden_states.shape}, "
++                          f"mean={hidden_states.float().mean():.6f}, "
++                          f"std={hidden_states.float().std():.6f}, "
++                          f"any_nan={hidden_states.isnan().any().item()}")
++        return self.logits_processor(
++            input_ids, hidden_states, self.lm_head, forward_batch
++        )
++
++    def _get_k_eq_v_layers(self) -> set:
++        """Return set of layer indices where attention_k_eq_v applies (full-attention layers)."""
++        if not getattr(self.config, "attention_k_eq_v", False):
++            return set()
++        return {
++            i for i, lt in enumerate(self.config.layer_types) if lt == "full_attention"
++        }
++
++    def load_weights(self, weights: Iterable[Tuple[str, torch.Tensor]]):
++        stacked_params_mapping = [
++            # (param_name, shard_name, shard_id)
++            ("qkv_proj", "q_proj", "q"),
++            ("qkv_proj", "k_proj", "k"),
++            ("qkv_proj", "v_proj", "v"),
++            ("gate_up_proj", "gate_proj", 0),
++            ("gate_up_proj", "up_proj", 1),
++        ]
++
++        expert_params_mapping = [
++            # (param_name, ckpt_weight_name, shard_ids)
++            # gate_up_proj is fused [E, 2*I, H] — chunk into w1 (gate) + w3 (up)
++            ("experts.w13_weight", "experts.gate_up_proj", ("w1", "w3")),
++            ("experts.w2_weight", "experts.down_proj", ("w2",)),
++        ]
++        num_experts = getattr(self.config, "num_experts", 0)
++
++        k_eq_v_layers = self._get_k_eq_v_layers()
++
++        params_dict = dict(self.named_parameters())
++        params_dict.update(dict(self.named_buffers()))
++        non_persistent_buffers: Set[str] = set()
++        for mod_name, mod in self.named_modules():
++            for buf_name in getattr(mod, "_non_persistent_buffers_set", set()):
++                full = f"{mod_name}.{buf_name}" if mod_name else buf_name
++                non_persistent_buffers.add(full)
++
++        loaded_params: Set[str] = set()
++        for name, loaded_weight in weights:
++            name = name.replace("model.language_model.", "model.")
++
++            # HF has router.per_expert_scale and experts.* on the decoder layer;
++            # remap into our moe.* subtree since Gemma4MoE owns both.
++            name = name.replace(".router.per_expert_scale", ".moe.per_expert_scale")
++            if ".experts." in name and ".moe.experts." not in name:
++                name = name.replace(".experts.", ".moe.experts.")
++
++            # attention_k_eq_v: full-attention layers have no v_proj in the
++            # checkpoint (K and V share weights).  When we see a k_proj weight
++            # for one of these layers, load it into both the "k" and "v" shards
++            # of the fused QKV so the forward produces v_raw == k_raw.
++            should_dup_k_to_v = (
++                ".k_proj." in name
++                and k_eq_v_layers
++                and (m := re.search(r"layers\.(\d+)\.", name)) is not None
++                and int(m.group(1)) in k_eq_v_layers
++            )
++
++            # MoE expert weights checked first (gate_up_proj contains "up_proj"
++            # which would false-match the stacked dense MLP mapping).
++            orig_name = name
++            for param_name, weight_name, shard_ids in expert_params_mapping:
++                name = orig_name
++                if weight_name not in name:
++                    continue
++                name = name.replace(weight_name, param_name)
++                if name not in params_dict:
++                    continue
++                param = params_dict[name]
++                weight_loader = param.weight_loader
++                for i in range(num_experts):
++                    chunks = loaded_weight[i].chunk(len(shard_ids), dim=0)
++                    for chunk, sid in zip(chunks, shard_ids):
++                        weight_loader(param, chunk, name, sid, i)
++                break
++            else:
++                for param_name, weight_name, shard_id in stacked_params_mapping:
++                    name = orig_name
++                    if weight_name not in name:
++                        continue
++                    name = name.replace(weight_name, param_name)
++                    if name not in params_dict:
++                        continue
++                    param = params_dict[name]
++                    weight_loader = param.weight_loader
++                    weight_loader(param, loaded_weight, shard_id)
++                    if should_dup_k_to_v:
++                        weight_loader(param, loaded_weight, "v")
++                    break
++                else:
++                    name = orig_name
++                    if name.endswith(".bias") and name not in params_dict:
++                        continue
++                    name = maybe_remap_kv_scale_name(name, params_dict)
++                    if name is None:
++                        continue
++                    if name not in params_dict:
++                        continue
++                    param = params_dict[name]
++                    weight_loader = getattr(
++                        param, "weight_loader", default_weight_loader
++                    )
++                    weight_loader(param, loaded_weight)
++            loaded_params.add(name)
++        unloaded_params = params_dict.keys() - loaded_params
++        if unloaded_params:
++            param_names = set(dict(self.named_parameters()).keys())
++            buckets = {
++                logging.WARNING: (
++                    "Some weights are not initialized from checkpoints",
++                    lambda p: p in param_names,
++                ),
++                logging.INFO: (
++                    "Persistent buffers not in checkpoint (using default init)",
++                    lambda p: p not in param_names and p not in non_persistent_buffers,
++                ),
++                logging.DEBUG: (
++                    "Non-persistent buffers not in checkpoint (expected)",
++                    lambda p: p in non_persistent_buffers,
++                ),
++            }
++            for level, (msg, pred) in buckets.items():
++                names = sorted(p for p in unloaded_params if pred(p))
++                if names:
++                    logger.log(level, "%s: %s", msg, names)
++        return loaded_params
++
++
++# Text-only alias for multimodal architecture name
++# Allows loading Gemma4ForConditionalGeneration models without vision
++class Gemma4ForConditionalGeneration(Gemma4ForCausalLM):
++    pass
++
++
++EntryClass = [Gemma4ForCausalLM, Gemma4ForConditionalGeneration]
+diff --git a/python/sglang/srt/models/llava.py b/python/sglang/srt/models/llava.py
+index e07ca7418..3fcac8f9e 100644
+--- a/python/sglang/srt/models/llava.py
++++ b/python/sglang/srt/models/llava.py
+@@ -855,15 +855,47 @@ class LlavaForConditionalGeneration(LlavaBaseForCausalLM):
+         # Create dictionaries for direct parameter loading
+         params_dict = dict(self.named_parameters())
+ 
+-        # Load weights directly without remapping
++        # Load weights with prefix remapping for AWQ checkpoints
++        # Some checkpoints (e.g. Devstral AWQ) store language model weights
++        # under "model.*" instead of "language_model.model.*", and "lm_head.*"
++        # instead of "language_model.lm_head.*".
+         for name, loaded_weight in weights:
++            # Remap bare "model.*" → "language_model.model.*" when it is
++            # not already correctly prefixed for a known sub-module.
++            if name.startswith("model.") and not name.startswith(
++                ("model.language_model.", "model.multi_modal_projector.", "model.vision_tower.")
++            ):
++                name = "language_model." + name  # model.X → language_model.model.X
++
++            # Remap bare "lm_head.*" → "language_model.lm_head.*"
++            if name.startswith("lm_head."):
++                name = "language_model." + name
++
++            # Handle both "vision_tower.X" and "model.vision_tower.X" formats
++            # Some checkpoints (androiddrew Devstral AWQ) use "model." prefix
++            if name.startswith("model.vision_tower."):
++                name = name[len("model."):]  # model.vision_tower.X → vision_tower.X
++            if name.startswith("model.multi_modal_projector."):
++                name = name[len("model."):]  # model.multi_modal_projector.X → multi_modal_projector.X
++
++            # Cast BF16 vision/projector weights to model dtype (FP16)
++            # AWQ checkpoints may store vision weights in BF16 while language
++            # model runs in FP16 — mismatched dtypes cause silent matmul failures
++            if (name.startswith("vision_tower.") or name.startswith("multi_modal_projector.")):
++                if loaded_weight.dtype == torch.bfloat16:
++                    loaded_weight = loaded_weight.to(torch.float16)
++
+             for part in ("language_model", "vision_tower"):
+                 if name.startswith(part):
+                     name = name[len(part + ".") :]
+                     getattr(self, part).load_weights([(name, loaded_weight)])
+                     break
+             else:
+-                param = params_dict[name]
++                # multi_modal_projector weights go to params_dict directly
++                param = params_dict.get(name)
++                if param is None:
++                    logger.warning(f"Skipping unknown weight: {name}")
++                    continue
+                 weight_loader = getattr(param, "weight_loader", default_weight_loader)
+                 weight_loader(param, loaded_weight)
+ 
+diff --git a/python/sglang/srt/models/qwen3_5.py b/python/sglang/srt/models/qwen3_5.py
+index 2f430c2b9..e1d082f3f 100644
+--- a/python/sglang/srt/models/qwen3_5.py
++++ b/python/sglang/srt/models/qwen3_5.py
+@@ -106,6 +106,21 @@ _is_amx_available = cpu_has_amx_support()
+ cached_get_processor = lru_cache(get_processor)
+ 
+ 
++def _should_replicate_deltanet_for_tp(
++    quant_config: Optional[QuantizationConfig],
++) -> bool:
++    """Whether to replicate DeltaNet+MLP layers across TP ranks.
++
++    FP8 models are too large to replicate everything, so only DeltaNet
++    projections are replicated while MLPs use standard TP splitting.
++    AWQ and unquantized models replicate both DeltaNet and MLP layers.
++    """
++    if quant_config is None:
++        return True
++    name = quant_config.get_name()
++    return name not in ("fp8", "mxfp8", "w8a8_fp8")
++
++
+ class Qwen3_5GatedDeltaNet(nn.Module):
+     def __init__(
+         self,
+@@ -117,8 +132,12 @@ class Qwen3_5GatedDeltaNet(nn.Module):
+     ) -> None:
+         super().__init__()
+         self.config = config
+-        self.attn_tp_rank = get_attention_tp_rank()
+-        self.attn_tp_size = get_attention_tp_size()
++        # DeltaNet projections are always replicated (tp_size=1) to avoid
++        # FP16 rounding errors accumulating through recurrent state S(t).
++        self.attn_tp_rank = 0
++        self.attn_tp_size = 1
++        self.real_tp_rank = get_attention_tp_rank()
++        self.real_tp_size = get_attention_tp_size()
+         self.hidden_size = config.hidden_size
+         self.num_v_heads = config.linear_num_value_heads
+         self.num_k_heads = config.linear_num_key_heads
+@@ -157,10 +176,13 @@ class Qwen3_5GatedDeltaNet(nn.Module):
+             tp_size=self.attn_tp_size,
+         )
+ 
++        # quant_config=None for in_proj_ba: output dim 48 is not divisible
++        # by TP=2 * 16 (hipBLASLt scaled_mm alignment), so FP8 quantization
++        # would fail. Keep projections in full precision.
+         self.in_proj_ba = self.create_ba_proj(
+             hidden_size=self.hidden_size,
+             num_v_heads=self.num_v_heads,
+-            quant_config=quant_config,
++            quant_config=None,
+             prefix=add_prefix("in_proj_ba", prefix),
+             tp_rank=self.attn_tp_rank,
+             tp_size=self.attn_tp_size,
+@@ -197,8 +219,9 @@ class Qwen3_5GatedDeltaNet(nn.Module):
+             torch.empty(self.num_v_heads // self.attn_tp_size, dtype=torch.float32),
+         )
+ 
+-        set_weight_attrs(self.A_log, {"weight_loader": sharded_weight_loader(0)})
+-        set_weight_attrs(self.dt_bias, {"weight_loader": sharded_weight_loader(0)})
++        # override_tp_rank=0 so all TP workers load the full (unsharded) weight
++        set_weight_attrs(self.A_log, {"weight_loader": sharded_weight_loader(0, override_tp_rank=0)})
++        set_weight_attrs(self.dt_bias, {"weight_loader": sharded_weight_loader(0, override_tp_rank=0)})
+ 
+         conv_weights = self.conv1d.weight.view(
+             self.conv1d.weight.size(0), self.conv1d.weight.size(2)
+@@ -490,6 +513,8 @@ class Qwen3_5GatedDeltaNet(nn.Module):
+         core_attn_out = core_attn_out.reshape(*core_attn_out.shape[:-2], -1)
+ 
+         output, _ = self.out_proj(core_attn_out)
++        if self.real_tp_size > 1:
++            output = output / self.real_tp_size
+         return output
+ 
+ 
+@@ -520,6 +545,8 @@ class Qwen3_5LinearDecoderLayer(nn.Module):
+ 
+         # NOTE: Determine the MLP type based on the model type
+         # Qwen3.5 use all layers for MLP / Qwen3.5-MoE use sparse MoE blocks
++        self.replicate_mlp = _should_replicate_deltanet_for_tp(quant_config)
++        self.real_tp_size = get_attention_tp_size()
+         if config.model_type == "qwen3_5_moe_text":
+             self.mlp = Qwen2MoeSparseMoeBlock(
+                 layer_id=layer_id,
+@@ -533,12 +560,16 @@ class Qwen3_5LinearDecoderLayer(nn.Module):
+             is_previous_layer_sparse = True
+             is_next_layer_sparse = True
+         elif config.model_type == "qwen3_5_text":
++            mlp_tp_kwargs = {}
++            if self.replicate_mlp:
++                mlp_tp_kwargs = {"tp_rank": 0, "tp_size": 1}
+             self.mlp = Qwen2MoeMLP(
+                 hidden_size=config.hidden_size,
+                 intermediate_size=config.intermediate_size,
+                 hidden_act=config.hidden_act,
+                 quant_config=quant_config,
+                 prefix=add_prefix("mlp", prefix.replace(".linear_attn", "")),
++                **mlp_tp_kwargs,
+             )
+             is_layer_sparse = False
+             is_previous_layer_sparse = False
+@@ -609,6 +640,8 @@ class Qwen3_5LinearDecoderLayer(nn.Module):
+             hidden_states = self.mlp(
+                 hidden_states, should_allreduce_fusion, use_reduce_scatter
+             )
++        if self.replicate_mlp and self.real_tp_size > 1:
++            hidden_states = hidden_states / self.real_tp_size
+         if should_allreduce_fusion:
+             hidden_states._sglang_needs_allreduce_fusion = True
+         else:
+@@ -713,13 +746,19 @@ class Qwen3_5AttentionDecoderLayer(nn.Module):
+         )
+ 
+         # Dense MLP for non-MoE variant
++        self.replicate_mlp = _should_replicate_deltanet_for_tp(quant_config)
++        self.real_tp_size = get_attention_tp_size()
+         if config.model_type == "qwen3_5_text":
++            mlp_tp_kwargs = {}
++            if self.replicate_mlp:
++                mlp_tp_kwargs = {"tp_rank": 0, "tp_size": 1}
+             self.mlp = Qwen2MoeMLP(
+                 hidden_size=config.hidden_size,
+                 intermediate_size=config.intermediate_size,
+                 hidden_act=config.hidden_act,
+                 quant_config=quant_config,
+                 prefix=add_prefix("mlp", prefix.replace(".self_attn", "")),
++                **mlp_tp_kwargs,
+             )
+             is_layer_sparse = False
+             is_previous_layer_sparse = False
+@@ -862,6 +901,8 @@ class Qwen3_5AttentionDecoderLayer(nn.Module):
+             hidden_states = self.mlp(
+                 hidden_states, should_allreduce_fusion, use_reduce_scatter
+             )
++        if self.replicate_mlp and self.real_tp_size > 1:
++            hidden_states = hidden_states / self.real_tp_size
+         if should_allreduce_fusion:
+             hidden_states._sglang_needs_allreduce_fusion = True
+         else:
+@@ -1429,7 +1470,7 @@ class Qwen3_5ForConditionalGeneration(Qwen3VLForConditionalGeneration):
+                     name = name.replace(r"attn.qkv.", r"attn.qkv_proj.")
+                     name = name.replace(r"model.visual.", r"visual.")
+ 
+-                # print(name, loaded_weight.shape)
++                print(name, loaded_weight.shape)
+                 # Skip loading extra bias for GPTQ models.
+                 if name.endswith(".bias") and name not in params_dict:
+                     continue
+diff --git a/python/sglang/srt/utils/hf_transformers_utils.py b/python/sglang/srt/utils/hf_transformers_utils.py
+index 806c401e4..b5fc2b62a 100644
+--- a/python/sglang/srt/utils/hf_transformers_utils.py
++++ b/python/sglang/srt/utils/hf_transformers_utils.py
+@@ -625,6 +625,31 @@ def get_config(
+     if config.model_type == "longcat_flash":
+         config.update({"architectures": ["LongcatFlashForCausalLM"]})
+ 
++    if config.model_type == "gemma4":
++        # Gemma4 configs use base attributes for SWA layers and `global_*`
++        # variants for full-attention layers.  SGLang expects the opposite:
++        # base = full-attention, `swa_*` = sliding-window overrides.
++        text_config = get_hf_text_config(config=config)
++        global_head_dim = getattr(text_config, "global_head_dim", None)
++        global_kv_heads = getattr(text_config, "num_global_key_value_heads", None)
++
++        swa_head_dim = text_config.head_dim
++        swa_kv_heads = text_config.num_key_value_heads
++
++        text_config.swa_head_dim = swa_head_dim
++        text_config.swa_v_head_dim = swa_head_dim
++        text_config.swa_num_key_value_heads = swa_kv_heads
++
++        if global_head_dim is not None:
++            text_config.head_dim = global_head_dim
++        if global_kv_heads is not None:
++            text_config.num_key_value_heads = global_kv_heads
++
++        if not hasattr(text_config, "v_head_dim"):
++            text_config.v_head_dim = text_config.head_dim
++        if not hasattr(text_config, "swa_v_head_dim"):
++            text_config.swa_v_head_dim = text_config.swa_head_dim
++
+     if model_override_args:
+         config.update(model_override_args)
+ 
+diff --git a/sgl-kernel/setup_rocm.py b/sgl-kernel/setup_rocm.py
+index 8dddf027e..f40f1dcc2 100644
+--- a/sgl-kernel/setup_rocm.py
++++ b/sgl-kernel/setup_rocm.py
+@@ -72,21 +72,31 @@ if torch.cuda.is_available():
+ else:
+     print(f"Warning: torch.cuda not available. Using default target: {amdgpu_target}")
+ 
+-if amdgpu_target not in ["gfx942", "gfx950"]:
++_supported_targets = ["gfx942", "gfx950"]
++# RDNA4 (gfx1200, gfx1201, etc.)
++if amdgpu_target.startswith("gfx12"):
++    _supported_targets.append(amdgpu_target)
++if amdgpu_target not in _supported_targets:
+     print(
+-        f"Warning: Unsupported GPU architecture detected '{amdgpu_target}'. Expected 'gfx942' or 'gfx950'."
++        f"Warning: Unsupported GPU architecture detected '{amdgpu_target}'. Expected one of {_supported_targets}."
+     )
+     sys.exit(1)
+ 
++# gfx942 (MI300) uses FNUZ FP8; everything else (gfx950, gfx12xx) uses E4M3
+ fp8_macro = (
+     "-DHIP_FP8_TYPE_FNUZ" if amdgpu_target == "gfx942" else "-DHIP_FP8_TYPE_E4M3"
+ )
+ 
+ # Dynamic shared-memory budget for the TopK kernels.
+ # - gfx942 (MI300/MI325): LDS is typically 64KB per workgroup -> keep dynamic smem <= ~48KB
+-#   (leaves room for static shared allocations in the kernel).
+ # - gfx95x (MI350): LDS is larger (e.g. 160KB per CU) -> allow the original 128KB dynamic smem.
+-topk_dynamic_smem_bytes = 48 * 1024 if amdgpu_target == "gfx942" else 32 * 1024 * 4
++# - gfx12xx (RDNA4): LDS is 128KB per WGP but 48KB is safe for compatibility.
++if amdgpu_target == "gfx942":
++    topk_dynamic_smem_bytes = 48 * 1024
++elif amdgpu_target.startswith("gfx12"):
++    topk_dynamic_smem_bytes = 48 * 1024
++else:
++    topk_dynamic_smem_bytes = 32 * 1024 * 4
+ 
+ hipcc_flags = [
+     "-DNDEBUG",

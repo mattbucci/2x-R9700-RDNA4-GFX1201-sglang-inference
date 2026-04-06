@@ -2,7 +2,7 @@
 
 High-throughput LLM inference on AMD Radeon AI PRO R9700 (gfx1201, RDNA4) with ROCm 7.2.
 
-## Performance (2x R9700, SGLang v0.5.10rc0, updated 2026-04-05)
+## Performance (2x R9700, SGLang v0.5.10, updated 2026-04-05)
 
 ### Devstral-24B AWQ-4bit (Mistral 3, 384K context, TP=2)
 
@@ -64,14 +64,14 @@ invalid `.hsaco` binaries for FP8 WMMA instructions. Same kernel works in Docker
 
 1. **System RCCL 7.2 has P2P/IPC for gfx1201** — no custom RCCL build needed
 2. **Upstream triton 3.6.0 works on RDNA4** — `triton-rocm` 3.6 (AMD's PyTorch fork) deadlocks with `LD_PRELOAD`, but the upstream release does not
-3. **~200 lines of patches** (18 files) get SGLang v0.5.10rc0 running on RDNA4 with near-optimal performance
+3. **~200 lines of patches** (18 files) get SGLang v0.5.10 running on RDNA4 with near-optimal performance
 4. **The single highest-impact change is using fused AWQ GEMM** instead of dequantize+matmul — 4x TPOT improvement
 5. **Qwen3.5 TP=2 works** by replicating all layers (DeltaNet + MLP) to avoid FP16 rounding accumulation
 6. **Both models support chat** with custom chat templates (Devstral needs BOS removed from template)
 
 | Component | Version | Source |
 |-----------|---------|--------|
-| SGLang | v0.5.10rc0 | stock + RDNA4 patches (branch `rdna4-v0.5.10rc0`) |
+| SGLang | v0.5.10 | stock + 3 patches (see `patches/README.md`) |
 | Triton | 3.6.0 | upstream triton-lang |
 | RCCL | system ROCm 7.2 (2.27.7) | no custom build |
 | PyTorch | 2.11.0+rocm7.2 | stable release |
@@ -419,10 +419,10 @@ Python: 3.12
 │   └── warmup.py              # Server warmup requests
 ├── patches/
 │   └── 001-rdna4-minimal-fixes.patch  # Applied by setup.sh
-│   └── 002-rdna4-v0510rc0-fixes.patch # Applied by setup for v0.5.10rc0
+│   └── 002-rdna4-v0510rc0-fixes.patch # Applied by setup for v0.5.10
 ├── docs/
 │   ├── benchmark-comparison.md   # Multi-backend benchmark comparison
-│   ├── v0510rc0-patch-analysis.md # v0.5.10rc0 patch analysis
+│   ├── v0510rc0-patch-analysis.md # v0.5.10 patch analysis
 │   └── triton-analysis/          # Triton kernel analysis
 ├── benchmarks.log             # All benchmark results
 └── components/                # Created by setup.sh

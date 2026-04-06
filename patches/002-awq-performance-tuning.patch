@@ -1,0 +1,163 @@
+diff --git a/python/sglang/srt/layers/quantization/awq.py b/python/sglang/srt/layers/quantization/awq.py
+index 511789834..c38dcc58f 100644
+--- a/python/sglang/srt/layers/quantization/awq.py
++++ b/python/sglang/srt/layers/quantization/awq.py
+@@ -78,6 +78,7 @@ elif _is_hip:
+     from sglang.srt.layers.quantization.awq_triton import (
+         awq_dequantize_triton as awq_dequantize,
+         awq_gemm_triton,
++        awq_gemv_triton,
+     )
+ 
+ elif _is_xpu:
+@@ -459,19 +460,31 @@ class AWQLinearMethod(LinearMethodBase):
+ 
+         # Use fused GEMM on HIP (4x faster than dequantize + matmul on RDNA4)
+         # Block sizes tuned via scripts/sweep_awq_blocks.py on 2x R9700.
+-        # bm=32, bn=64, bk=64 optimal across all batch sizes and projections.
+-        # split_k=8 for M<=16 (decode), split_k=4 for M>16 (batched prefill).
++        # Batch-size-dependent dispatch: higher split_k for decode (small M),
++        # lower split_k for prefill (large M). Inspired by vLLM HybridW4A16.
+         if _is_hip:
+             M = reshaped_x.shape[0]
++            if M == 1:
++                # Single-token decode: maximize K-parallelism
++                split_k, bm, bn, bk = 16, 16, 64, 64
++            elif M <= 8:
++                # Small batch decode
++                split_k, bm, bn, bk = 8, 16, 64, 64
++            elif M <= 32:
++                # Medium batch (default, previously tuned)
++                split_k, bm, bn, bk = 8, 32, 64, 64
++            else:
++                # Large batch / prefill: maximize throughput
++                split_k, bm, bn, bk = 2, 64, 128, 64
+             out = awq_gemm_triton(
+                 reshaped_x,
+                 qweight,
+                 scales,
+                 qzeros,
+-                split_k_iters=8 if M <= 16 else 4,
+-                block_size_m=32,
+-                block_size_n=64,
+-                block_size_k=64,
++                split_k_iters=split_k,
++                block_size_m=bm,
++                block_size_n=bn,
++                block_size_k=bk,
+             )
+         else:
+             out = awq_dequantize(qweight, scales, qzeros)
+diff --git a/python/sglang/srt/layers/quantization/awq_triton.py b/python/sglang/srt/layers/quantization/awq_triton.py
+index d7d209d30..b0b60e245 100644
+--- a/python/sglang/srt/layers/quantization/awq_triton.py
++++ b/python/sglang/srt/layers/quantization/awq_triton.py
+@@ -281,6 +281,108 @@ def awq_dequantize_triton(
+     return result
+ 
+ 
++@triton.jit
++def awq_gemv_kernel(
++    # M=1 specialized: input [1, K], qweight [K, N//8], output [SPLIT_K, 1, N]
++    a_ptr, b_ptr, c_ptr, zeros_ptr, scales_ptr,
++    N, K, group_size,
++    BLOCK_SIZE_N: tl.constexpr,
++    BLOCK_SIZE_K: tl.constexpr,
++    SPLIT_K: tl.constexpr,
++):
++    """AWQ GEMV kernel for M=1 decode. No M-dimension tiling overhead."""
++    pid_n = tl.program_id(0)
++    pid_z = tl.program_id(1)
++
++    accumulator_dtype = c_ptr.type.element_ty
++    accumulator = tl.zeros((BLOCK_SIZE_N,), dtype=accumulator_dtype)
++
++    # AWQ unpack order: [0, 4, 1, 5, 2, 6, 3, 7]
++    reverse_awq_order = ((tl.arange(0, 2) * 4)[None, :] + tl.arange(0, 4)[:, None]).reshape(8)
++    shifts = reverse_awq_order * 4
++    shifts = tl.broadcast_to(shifts[None, :], (BLOCK_SIZE_K * (BLOCK_SIZE_N // 8), 8))
++    shifts = tl.reshape(shifts, (BLOCK_SIZE_K, BLOCK_SIZE_N))
++
++    offsets_bn = pid_n * (BLOCK_SIZE_N // 8) + tl.arange(0, BLOCK_SIZE_N // 8)
++    masks_bn = offsets_bn < N // 8
++    offsets_sn = pid_n * BLOCK_SIZE_N + tl.arange(0, BLOCK_SIZE_N)
++    masks_sn = offsets_sn < N
++
++    offsets_k = pid_z * BLOCK_SIZE_K + tl.arange(0, BLOCK_SIZE_K)
++
++    a_ptrs = a_ptr + offsets_k  # [BLOCK_SIZE_K] — single row
++    b_ptrs = b_ptr + (N // 8) * offsets_k[:, None] + offsets_bn[None, :]
++
++    for k in range(0, tl.cdiv(K, BLOCK_SIZE_K * SPLIT_K)):
++        masks_k = offsets_k < K
++        a = tl.load(a_ptrs, mask=masks_k, other=0.0)  # [BLOCK_SIZE_K]
++        b = tl.load(b_ptrs, mask=masks_k[:, None] & masks_bn[None, :], other=0.0)
++
++        # Unpack INT4
++        b = tl.interleave(b, b)
++        b = tl.interleave(b, b)
++        b = tl.interleave(b, b)
++
++        # Dequantize
++        offsets_szk = (BLOCK_SIZE_K * SPLIT_K * k + pid_z * BLOCK_SIZE_K) // group_size + tl.arange(0, 1)
++        masks_zk = offsets_szk < K // group_size
++
++        zeros = tl.load(zeros_ptr + (N // 8) * offsets_szk[:, None] + offsets_bn[None, :],
++                        mask=masks_zk[:, None] & masks_bn[None, :], other=0.0)
++        zeros = tl.interleave(zeros, zeros)
++        zeros = tl.interleave(zeros, zeros)
++        zeros = tl.interleave(zeros, zeros)
++        zeros = tl.broadcast_to(zeros, (BLOCK_SIZE_K, BLOCK_SIZE_N))
++
++        scales = tl.load(scales_ptr + N * offsets_szk[:, None] + offsets_sn[None, :],
++                         mask=masks_zk[:, None] & masks_sn[None, :], other=0.0)
++        scales = tl.broadcast_to(scales, (BLOCK_SIZE_K, BLOCK_SIZE_N))
++
++        b = (b >> shifts) & 0xF
++        zeros = (zeros >> shifts) & 0xF
++        b = (b - zeros) * scales
++        b = b.to(a_ptr.type.element_ty)
++
++        # GEMV: accumulate a[k] * b[k, n] over K
++        accumulator += tl.sum(a[:, None] * b, axis=0).to(accumulator_dtype)
++
++        offsets_k += BLOCK_SIZE_K * SPLIT_K
++        a_ptrs += BLOCK_SIZE_K * SPLIT_K
++        b_ptrs += BLOCK_SIZE_K * SPLIT_K * (N // 8)
++
++    # Store
++    c_ptrs = c_ptr + pid_z * N + offsets_sn
++    tl.store(c_ptrs, accumulator.to(c_ptr.type.element_ty), mask=offsets_sn < N)
++
++
++def awq_gemv_triton(
++    input: torch.Tensor,
++    qweight: torch.Tensor,
++    scales: torch.Tensor,
++    qzeros: torch.Tensor,
++    split_k_iters: int = 16,
++    block_size_n: int = 64,
++    block_size_k: int = 64,
++) -> torch.Tensor:
++    """AWQ GEMV for M=1 decode. Avoids GEMM tile overhead."""
++    assert input.shape[0] == 1, "GEMV kernel requires M=1"
++    M, K = input.shape
++    N = qweight.shape[1] * 8
++    group_size = qweight.shape[0] // qzeros.shape[0]
++
++    grid = (triton.cdiv(N, block_size_n), split_k_iters)
++    result = torch.zeros((split_k_iters, N), dtype=scales.dtype, device=input.device)
++
++    awq_gemv_kernel[grid](
++        input, qweight, result, qzeros, scales,
++        N, K, group_size,
++        BLOCK_SIZE_N=block_size_n,
++        BLOCK_SIZE_K=block_size_k,
++        SPLIT_K=split_k_iters,
++    )
++    return result.sum(0).unsqueeze(0)  # [1, N]
++
++
+ # input   - [M, K]
+ # qweight - [K, N // 8]
+ # qzeros  - [K // G, N // 8]
