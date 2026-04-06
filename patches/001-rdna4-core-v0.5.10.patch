@@ -1853,6 +1853,236 @@ index 892dcebae..31ce6d6cf 100644
  def _biased_grouped_topk_postprocess(
      topk_ids, expert_location_dispatch_info, num_token_non_padded
  ):
+diff --git a/python/sglang/srt/layers/quantization/awq.py b/python/sglang/srt/layers/quantization/awq.py
+index c05aa091a..17fa551f3 100644
+--- a/python/sglang/srt/layers/quantization/awq.py
++++ b/python/sglang/srt/layers/quantization/awq.py
+@@ -77,6 +77,8 @@ if _is_cuda:
+ elif _is_hip:
+     from sglang.srt.layers.quantization.awq_triton import (
+         awq_dequantize_triton as awq_dequantize,
++        awq_gemm_triton,
++        awq_gemv_triton,
+     )
+ 
+ elif _is_xpu:
+@@ -186,6 +188,8 @@ class AWQConfig(QuantizationConfig):
+             if is_layer_skipped_awq(prefix, self.modules_to_not_convert):
+                 return UnquantizedLinearMethod()
+             return AWQLinearMethod(self)
++        elif isinstance(layer, FusedMoE) and _is_hip:
++            return AWQTritonMoEMethod(self)
+         return None
+ 
+ 
+@@ -455,8 +459,38 @@ class AWQLinearMethod(LinearMethodBase):
+         pack_factor = self.quant_config.pack_factor
+         out_shape = x.shape[:-1] + (qweight.shape[-1] * pack_factor,)
+         reshaped_x = x.reshape(-1, x.shape[-1])
+-        out = awq_dequantize(qweight, scales, qzeros)
+-        out = torch.matmul(reshaped_x, out)
++
++        # Use fused GEMM on HIP (4x faster than dequantize + matmul on RDNA4)
++        # Block sizes tuned via scripts/sweep_awq_blocks.py on 2x R9700.
++        # Batch-size-dependent dispatch: higher split_k for decode (small M),
++        # lower split_k for prefill (large M). Inspired by vLLM HybridW4A16.
++        if _is_hip:
++            M = reshaped_x.shape[0]
++            if M == 1:
++                # Single-token decode: maximize K-parallelism
++                split_k, bm, bn, bk = 16, 16, 64, 64
++            elif M <= 8:
++                # Small batch decode
++                split_k, bm, bn, bk = 8, 16, 64, 64
++            elif M <= 32:
++                # Medium batch (default, previously tuned)
++                split_k, bm, bn, bk = 8, 32, 64, 64
++            else:
++                # Large batch / prefill: maximize throughput
++                split_k, bm, bn, bk = 2, 64, 128, 64
++            out = awq_gemm_triton(
++                reshaped_x,
++                qweight,
++                scales,
++                qzeros,
++                split_k_iters=split_k,
++                block_size_m=bm,
++                block_size_n=bn,
++                block_size_k=bk,
++            )
++        else:
++            out = awq_dequantize(qweight, scales, qzeros)
++            out = torch.matmul(reshaped_x, out)
+ 
+         if bias is not None:
+             out.add_(bias)
+@@ -864,6 +898,166 @@ class AWQMoEMethod(FusedMoEMethodBase):
+         return self.runner.run(dispatch_output, quant_info)
+ 
+ 
++class AWQTritonMoEMethod(FusedMoEMethodBase):
++    """AWQ MoE using per-expert Triton AWQ GEMM for HIP/RDNA4.
++
++    SGLang's fused MoE kernel only supports FP8/FP16/Marlin. This method keeps
++    expert weights packed in AWQ INT4 format and calls awq_gemm_triton per-expert,
++    avoiding the OOM from dequantizing all 128+ experts to FP16.
++    """
++
++    def __init__(self, quant_config: AWQConfig):
++        self.quant_config = quant_config
++        if self.quant_config.weight_bits != 4:
++            raise ValueError("AWQTritonMoEMethod only supports 4bit.")
++
++    def create_weights(
++        self,
++        layer: torch.nn.Module,
++        num_experts: int,
++        hidden_size: int,
++        intermediate_size_per_partition: int,
++        params_dtype: torch.dtype,
++        **extra_weight_attrs,
++    ):
++        from sglang.srt.layers.moe.fused_moe_triton import FusedMoeWeightScaleSupported
++
++        extra_weight_attrs.update({
++            "is_transposed": True,
++            "quant_method": FusedMoeWeightScaleSupported.GROUP.value,
++        })
++
++        pack_factor = self.quant_config.pack_factor
++        group_size = self.quant_config.group_size
++
++        # w13 = gate_proj + up_proj (fused)
++        w13_qweight = torch.nn.Parameter(
++            torch.empty(num_experts, hidden_size,
++                        2 * intermediate_size_per_partition // pack_factor,
++                        dtype=torch.int32),
++            requires_grad=False)
++        layer.register_parameter("w13_qweight", w13_qweight)
++        set_weight_attrs(w13_qweight, extra_weight_attrs)
++
++        # w2 = down_proj
++        w2_qweight = torch.nn.Parameter(
++            torch.empty(num_experts, intermediate_size_per_partition,
++                        hidden_size // pack_factor, dtype=torch.int32),
++            requires_grad=False)
++        layer.register_parameter("w2_qweight", w2_qweight)
++        set_weight_attrs(w2_qweight, extra_weight_attrs)
++
++        num_groups_w13 = hidden_size // group_size
++        num_groups_w2 = intermediate_size_per_partition // group_size
++
++        w13_scales = torch.nn.Parameter(
++            torch.empty(num_experts, num_groups_w13,
++                        intermediate_size_per_partition * 2, dtype=params_dtype),
++            requires_grad=False)
++        layer.register_parameter("w13_scales", w13_scales)
++        set_weight_attrs(w13_scales, extra_weight_attrs)
++
++        w2_scales = torch.nn.Parameter(
++            torch.empty(num_experts, num_groups_w2, hidden_size, dtype=params_dtype),
++            requires_grad=False)
++        layer.register_parameter("w2_scales", w2_scales)
++        set_weight_attrs(w2_scales, extra_weight_attrs)
++
++        w13_qzeros = torch.nn.Parameter(
++            torch.empty(num_experts, num_groups_w13,
++                        2 * intermediate_size_per_partition // pack_factor,
++                        dtype=torch.int32),
++            requires_grad=False)
++        layer.register_parameter("w13_qzeros", w13_qzeros)
++        set_weight_attrs(w13_qzeros, extra_weight_attrs)
++
++        w2_qzeros = torch.nn.Parameter(
++            torch.empty(num_experts, num_groups_w2,
++                        hidden_size // pack_factor, dtype=torch.int32),
++            requires_grad=False)
++        layer.register_parameter("w2_qzeros", w2_qzeros)
++        set_weight_attrs(w2_qzeros, extra_weight_attrs)
++
++    def process_weights_after_loading(self, layer: torch.nn.Module) -> None:
++        # Keep weights in AWQ format — no Marlin repacking needed.
++        # awq_gemm_triton consumes the native AWQ packing order directly.
++        pass
++
++    def create_moe_runner(
++        self, layer: torch.nn.Module, moe_runner_config: MoeRunnerConfig
++    ):
++        self.moe_runner_config = moe_runner_config
++
++    def apply(
++        self,
++        layer: torch.nn.Module,
++        dispatch_output,
++    ):
++        from sglang.srt.layers.moe.token_dispatcher import StandardCombineInput
++
++        x = dispatch_output.hidden_states  # [M, K]
++        topk_weights, topk_ids, _ = dispatch_output.topk_output
++
++        M, K = x.shape
++        top_k = topk_ids.shape[1]
++        num_experts = layer.w13_qweight.shape[0]
++        intermediate = layer.w2_qweight.shape[1]
++
++        # Output accumulator: [M, K]
++        output = torch.zeros_like(x)
++
++        # Per-expert AWQ GEMM
++        for expert_id in range(num_experts):
++            # Find tokens routed to this expert
++            mask = (topk_ids == expert_id)  # [M, top_k]
++            if not mask.any():
++                continue
++
++            # Get token indices and their routing weights
++            token_indices, slot_indices = mask.nonzero(as_tuple=True)
++            weights = topk_weights[token_indices, slot_indices]  # [num_tokens_for_expert]
++
++            # Gather input tokens
++            expert_input = x[token_indices]  # [num_tokens_for_expert, K]
++
++            # GEMM1: gate+up projection via AWQ
++            # w13_qweight[expert_id]: [K, 2*intermediate//8]
++            gate_up = awq_gemm_triton(
++                expert_input,
++                layer.w13_qweight[expert_id],
++                layer.w13_scales[expert_id],
++                layer.w13_qzeros[expert_id],
++                split_k_iters=8,
++                block_size_m=16,
++                block_size_n=64,
++                block_size_k=64,
++            )  # [num_tokens, 2*intermediate]
++
++            # Activation: SiLU(gate) * up
++            gate = gate_up[:, :intermediate]
++            up = gate_up[:, intermediate:]
++            activated = torch.nn.functional.silu(gate) * up  # [num_tokens, intermediate]
++
++            # GEMM2: down projection via AWQ
++            # w2_qweight[expert_id]: [intermediate, K//8]
++            expert_output = awq_gemm_triton(
++                activated,
++                layer.w2_qweight[expert_id],
++                layer.w2_scales[expert_id],
++                layer.w2_qzeros[expert_id],
++                split_k_iters=8,
++                block_size_m=16,
++                block_size_n=64,
++                block_size_k=64,
++            )  # [num_tokens, K]
++
++            # Apply routing weights and accumulate
++            expert_output = expert_output * weights.unsqueeze(-1)
++            output.index_add_(0, token_indices, expert_output.to(output.dtype))
++
++        return StandardCombineInput(hidden_states=output)
++
++
+ class AWQMoEAscendMethod(AWQMoEMethod):
+     def __init__(self, quant_config: AWQConfig):
+         self.quant_config = quant_config
 diff --git a/python/sglang/srt/layers/quantization/awq_triton.py b/python/sglang/srt/layers/quantization/awq_triton.py
 index b83dd79fb..b0b60e245 100644
 --- a/python/sglang/srt/layers/quantization/awq_triton.py

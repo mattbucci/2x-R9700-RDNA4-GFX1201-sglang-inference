@@ -62,11 +62,14 @@ SHM transport (check `NCCL_DEBUG=INFO` output for `SHM` vs `P2P/IPC`).
 | Devstral-24B | 24B dense | SGLang AWQ | 36.0 tok/s | 1,266 tok/s | Benchmarked |
 | Qwen3.5-27B | 27B dense (DeltaNet) | SGLang AWQ | 21.3 tok/s | ~55 tok/s | Benchmarked |
 | Qwen3-Coder-30B | 30.5B MoE (3.3B active) | vLLM Docker FP8 | 93.9 tok/s | 1,882 tok/s | Benchmarked |
+| Qwen3-Coder-30B | 30.5B MoE (3.3B active) | SGLang AWQ | ~3.5 tok/s | — | Working (slow) |
 | Qwen3-Coder-Next-80B | 80B MoE (3B active) | llama.cpp Vulkan | 79 tok/s | — | Benchmarked |
 
 **Dense models** use SGLang + AWQ-4bit — our fused Triton GEMM kernels are tuned for RDNA4.
 
-**MoE models** use vLLM Docker with FP8. SGLang's fused MoE kernel requires either FP8/FP16 weights or Marlin-packed AWQ (CUDA-only). There is no Triton AWQ path for fused MoE experts — loading AWQ MoE on SGLang dequantizes all experts to FP16, causing OOM. A Triton AWQ fused MoE kernel would fix this but is significant work.
+**MoE models on SGLang:** AWQ now loads correctly (7.93 GB/GPU for Coder-30B vs 28 GB with FP16 dequant) using per-expert AWQ GEMM dispatch. Current speed is ~3.5 tok/s due to Python-level per-expert loop (no CUDA graphs). A fused AWQ MoE Triton kernel would bring performance to parity with vLLM FP8.
+
+**MoE models for production:** Use vLLM Docker with FP8 (93.9 tok/s single, 1,882 tok/s peak).
 
 **FP8 on SGLang** is blocked by an Arch Linux `comgr` package bug ([similar to NVIDIA SM121a](https://github.com/sgl-project/sglang/issues/18203)). FP8 works via vLLM Docker (Ubuntu ROCm).
 
@@ -244,7 +247,7 @@ Standard Mistral 3 transformer. TP=2 works out of the box with AWQ.
 ## Known Issues
 
 - **sgl_kernel on ROCm/RDNA4**: Pip `sgl-kernel` ships CUDA-only `.so` files. Patches add torch-based fallbacks for activation functions. Same issue affects [NVIDIA SM121a/DGX Spark](https://github.com/sgl-project/sglang/issues/18203).
-- **AWQ MoE on SGLang**: No Triton AWQ fused MoE kernel exists. Loading AWQ MoE models dequantizes all experts to FP16, causing OOM on 32GB GPUs. MoE models must use FP8 via vLLM Docker.
+- **AWQ MoE performance**: Per-expert AWQ GEMM dispatch works (7.93 GB/GPU) but is slow (~3.5 tok/s) due to Python loop overhead and no CUDA graph support. A fused AWQ MoE Triton kernel is needed for production speed. Coder-Next-80B also needs `qwen3_next.py` fixes for AWQ + DeltaNet weight loader compatibility.
 - **FP8 MoE on SGLang**: Blocked by Arch Linux `comgr` generating invalid `.hsaco` for FP8 WMMA on gfx1201. Docker works. Use `vllm/vllm-openai-rocm:gemma4` for FP8 MoE.
 - **Gemma 4**: Triton attention crash with mixed head_dim (SWA=256, full=512). Model code ported but blocked.
 - **AWQ GEMV**: Native HIP kernel works but same speed as Triton GEMM (AWQ matmul is only 11% of TPOT).

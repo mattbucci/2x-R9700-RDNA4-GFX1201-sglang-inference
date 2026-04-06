@@ -1,0 +1,20 @@
+Qwen3-Coder-30B-A3B AWQ-4bit — SGLang v0.5.10, 2x R9700, TP=2
+Engine: SGLang v0.5.10 (RDNA4 patches + AWQTritonMoEMethod)
+Hardware: 2x AMD Radeon AI PRO R9700 (gfx1201, RDNA4), TP=2
+Settings: context=32768, FP8 KV cache, AWQ 4-bit, triton attention
+MoE: 128 experts, 8 active per token (30.5B total / 3.3B active)
+CUDA Graphs: DISABLED (per-expert Python loop not graph-compatible)
+Date: 2026-04-06
+
+VRAM: 7.93 GB/GPU (vs 27.91 GB with FP16 dequant, vs 15 GB FP8)
+
+Single user decode: ~3.5 tok/s (per-expert AWQ GEMM, no CUDA graphs)
+
+Quality: Verified correct (2+2=4, 17*23=391, 997 prime, Paris, is_prime)
+
+Note: First MoE model running with AWQ on SGLang/RDNA4.
+Performance limited by per-expert Python dispatch (768+ kernel launches/step).
+A fused AWQ MoE Triton kernel would bring this to vLLM FP8 levels (~94 tok/s).
+
+For production: vLLM Docker FP8 (93.9 tok/s, 1882 tok/s peak) recommended
+until fused kernel is implemented.
