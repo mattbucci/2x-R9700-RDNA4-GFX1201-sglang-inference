@@ -3789,6 +3789,51 @@ index 2f430c2b9..e1d082f3f 100644
                  # Skip loading extra bias for GPTQ models.
                  if name.endswith(".bias") and name not in params_dict:
                      continue
+diff --git a/python/sglang/srt/models/qwen3_next.py b/python/sglang/srt/models/qwen3_next.py
+index 7e3862a8a..22d34e848 100644
+--- a/python/sglang/srt/models/qwen3_next.py
++++ b/python/sglang/srt/models/qwen3_next.py
+@@ -135,12 +135,13 @@ class Qwen3GatedDeltaNet(nn.Module):
+ 
+         # Override weight_loader for packed checkpoint format.
+         # Must capture original_loader BEFORE overwriting.
+-        self._override_weight_loader(
+-            self.in_proj_qkvz, self._make_packed_weight_loader(self.in_proj_qkvz)
+-        )
+-        self._override_weight_loader(
+-            self.in_proj_ba, self._make_packed_weight_loader(self.in_proj_ba)
+-        )
++        # With AWQ quantization, modules have qweight instead of weight — skip.
++        loader_qkvz = self._make_packed_weight_loader(self.in_proj_qkvz)
++        if loader_qkvz is not None:
++            self._override_weight_loader(self.in_proj_qkvz, loader_qkvz)
++        loader_ba = self._make_packed_weight_loader(self.in_proj_ba)
++        if loader_ba is not None:
++            self._override_weight_loader(self.in_proj_ba, loader_ba)
+ 
+         # Conv1d weight loader setup
+         query_key_settings = (self.key_dim, 0, False)
+@@ -222,7 +223,10 @@ class Qwen3GatedDeltaNet(nn.Module):
+ 
+         ModelWeightParameter exposes weight_loader as a read-only property
+         backed by _weight_loader, while plain parameters store it as a
+-        regular attribute.  This helper handles both cases."""
++        regular attribute.  This helper handles both cases.
++        With AWQ quantization, module has qweight instead of weight — skip."""
++        if not hasattr(module, "weight"):
++            return  # AWQ quantization: qweight/scales/qzeros handle their own loading
+         param = module.weight
+         if hasattr(param, "_weight_loader"):
+             param._weight_loader = new_loader
+@@ -235,6 +239,8 @@ class Qwen3GatedDeltaNet(nn.Module):
+         (packed-format) checkpoint weights (shard_id=None), and delegates
+         to the standard MergedColumnParallelLinear loader for split checkpoint
+         weights (shard_id=int/tuple)."""
++        if not hasattr(module, "weight"):
++            return None  # AWQ: skip packed weight loader
+         original_loader = module.weight.weight_loader
+ 
+         def weight_loader(param, loaded_weight, loaded_shard_id=None):
 diff --git a/python/sglang/srt/utils/hf_transformers_utils.py b/python/sglang/srt/utils/hf_transformers_utils.py
 index 806c401e4..b5fc2b62a 100644
 --- a/python/sglang/srt/utils/hf_transformers_utils.py
