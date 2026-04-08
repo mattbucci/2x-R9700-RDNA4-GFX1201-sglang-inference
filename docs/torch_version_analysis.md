@@ -56,8 +56,45 @@ The attention computation in the full serving pipeline produces numerically diff
 
 The root cause is likely in **torch's internal kernels for paged/indirect attention**, or in how torch 2.12 handles the tensor operations that SGLang uses to manage paged KV cache (scatter/gather/index operations on GPU memory).
 
-## MoE Issue (Separate Bug)
-MoE AWQ crashes on torch 2.11 with `hipErrorLaunchFailure` in `fused_moe_kernel_gptq_awq`. This is a **different** libtriton.so codegen bug — torch 2.11's Triton generates invalid HSACO for the fused MoE kernel's `tl.dot` pattern. Our workaround (sort-based per-expert dispatch with `awq_gemm_triton`) avoids the fused kernel entirely and works on both envs.
+## MoE Issue on torch 2.11
+
+### Root cause: `_fwd_kernel` attention HSACO crashes gfx1201
+
+MoE AWQ on torch 2.11 crashes with `hipErrorLaunchFailure` during the first warmup forward pass. Detailed debugging with `torch.cuda.synchronize()` after every operation showed:
+
+1. Gate linear projection: **OK** (sync passes)
+2. TopK softmax routing: **OK** (sync passes)
+3. Token dispatch: **OK** (sync passes)
+4. MoE apply entry sync: **OK** (sync passes)
+5. Pre-zeros_like sync: **OK** (sync passes)
+6. `torch.zeros_like(x)`: **CRASH** with hipErrorLaunchFailure
+
+The crash occurs at `torch.zeros_like()` — a simple memory allocation — even after all syncs pass. This is a **sticky device error** from an invalid HSACO being loaded into the GPU context.
+
+### Analysis of compiled HSACO
+
+The `_fwd_kernel` (extend attention) compiles to:
+- **256 VGPRs** (maximum for RDNA4 Wave32)
+- **104-105 SGPRs** (near the gfx1201 limit of ~106)
+- 128 `v_wmma_f32_16x16x16_f16` instructions (FP16 WMMA — should be supported)
+- 41 KB HSACO binary
+
+The AWQ GEMM kernel (which works fine) compiles to:
+- 107 VGPRs, 45 SGPRs — well within limits
+- 8 `v_wmma_f32_16x16x16_f16` instructions
+- 12 KB HSACO binary
+
+Reducing block sizes (BLOCK_M=32, BLOCK_N=64, num_warps=2) did NOT help — the compiler still allocated 256 VGPRs and 105 SGPRs. The Triton LLVM/comgr pipeline in torch 2.11 generates code that maxes out gfx1201 register limits for complex attention kernels.
+
+### Why torch 2.12 fixes the MoE crash
+
+Torch 2.12's `libtriton.so` generates different register allocation for the same kernel — likely with more aggressive spilling or different instruction scheduling that keeps within gfx1201 limits. The trade-off is that it introduces numerical divergence in the attention computation (see dense AWQ analysis above).
+
+### What was tested and eliminated
+- Removing FP8 KV cache (`--kv-cache-dtype auto`): Still crashes
+- Reducing attention block sizes (BLOCK_M=32, num_warps=2): Still crashes (SGPR stays at 105)
+- Using `torch_native` attention: Still crashes (also compiles Triton kernels on ROCm)
+- Swapping libtriton.so from 2.11 to 2.12: Still crashes (torch runtime also matters)
 
 ## Proposed Fixes
 
