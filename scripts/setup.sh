@@ -61,7 +61,7 @@ fi
 # -------------------------------------------------------------------
 echo ""
 if [ ! -d "$SGLANG_DIR" ] || [ ! -d "$SGLANG_DIR/.git" ]; then
-    echo "[1/4] Cloning SGLang $SGLANG_TAG (stock)..."
+    echo "[1/5] Cloning SGLang $SGLANG_TAG (stock)..."
     rm -rf "$SGLANG_DIR"
     mkdir -p "$(dirname "$SGLANG_DIR")"
     git clone --branch "$SGLANG_TAG" --depth 1 "$SGLANG_REPO" "$SGLANG_DIR"
@@ -77,7 +77,7 @@ if [ ! -d "$SGLANG_DIR" ] || [ ! -d "$SGLANG_DIR/.git" ]; then
         echo "  No patches to apply (stock install)"
     fi
 else
-    echo "[1/4] Using existing SGLang source at $SGLANG_DIR"
+    echo "[1/5] Using existing SGLang source at $SGLANG_DIR"
 fi
 
 # -------------------------------------------------------------------
@@ -85,7 +85,7 @@ fi
 # -------------------------------------------------------------------
 if [ "$SKIP_ENV" = false ]; then
     echo ""
-    echo "[2/4] Creating conda environment: $ENV_NAME"
+    echo "[2/5] Creating conda environment: $ENV_NAME"
 
     init_conda
     conda deactivate 2>/dev/null || true
@@ -123,7 +123,7 @@ if [ "$SKIP_ENV" = false ]; then
     echo "Upgrading transformers to 5.x..."
     pip install --no-deps "transformers>=5.0" gguf
 else
-    echo "[2/4] Skipping conda env creation"
+    echo "[2/5] Skipping conda env creation"
     init_conda
     conda activate "$ENV_NAME"
 fi
@@ -132,7 +132,7 @@ fi
 # Step 3: Build + install triton 3.6.0 from source
 # -------------------------------------------------------------------
 echo ""
-echo "[3/4] Building triton 3.6.0 from source..."
+echo "[3/5] Building triton 3.6.0 from source..."
 
 TRITON_DIR="$REPO_DIR/components/triton-build"
 
@@ -150,10 +150,20 @@ pip install -e .
 python -c "import triton; print(f'triton {triton.__version__} OK')"
 
 # -------------------------------------------------------------------
-# Step 4: Verify installation
+# Step 4: Build + install sgl_kernel with native HIP ops
 # -------------------------------------------------------------------
 echo ""
-echo "[4/4] Verifying installation..."
+echo "[4/5] Building sgl_kernel with native HIP ops for gfx1201..."
+echo "  CRITICAL: Without this, rotary_embedding uses a Python fallback"
+echo "  that produces wrong results on non-contiguous tensors, causing"
+echo "  garbage output for dense AWQ models."
+"$SCRIPT_DIR/setup_sgl_kernel.sh"
+
+# -------------------------------------------------------------------
+# Step 5: Verify installation
+# -------------------------------------------------------------------
+echo ""
+echo "[5/5] Verifying installation..."
 
 HIP_VISIBLE_DEVICES=0,1 python -c "
 import torch

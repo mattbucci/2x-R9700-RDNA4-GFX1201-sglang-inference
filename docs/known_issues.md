@@ -27,24 +27,16 @@ Each issue includes root cause, impact, and proposed fix.
 **Impact:** `moe_align_block_size` now uses native C++ kernel instead of Python-loop fallback — major MoE routing speedup. Dense model activation functions use native HIP kernels instead of torch fallbacks.
 **Build:** `cd sgl-kernel && AMDGPU_TARGET=gfx1201 python setup_rocm.py build_ext --inplace && cp python/sgl_kernel/common_ops.*.so $CONDA_PREFIX/lib/python3.12/site-packages/sgl_kernel/`
 
-### 3. Torch 2.12 nightly breaks dense AWQ on RDNA4
-**Status:** ROOT CAUSE IDENTIFIED — Triton attention kernel regression
-**Root cause:** The Triton attention kernel (`extend_attention`/`decode_attention`) in torch 2.12's bundled `libtriton.so` produces numerically different results compared to torch 2.11's build. Both report Triton 3.6.0 but have **different C++ backends** (different md5 hashes, ~200KB size difference). The per-layer attention error is small (~3-4% relative on the sum of attention output) but compounds exponentially through 56 transformer layers via residual connections, producing garbage output by the final layer.
-**Key finding:** AWQ GEMM kernels are **bit-identical** between torch versions — verified with real Devstral weights, synthetic data, multiprocess context, and all real model dimensions. The divergence occurs specifically in the attention operation between QKV projection output and O projection input.
-**Diagnosis method:** AWQ debug instrumentation showed layer 0 QKV output is identical (`out_sum=-1146.7246` on both), but attention output diverges (`-8.72` vs `-9.05`). By layer 1, gate_up input differs by 97.8 (47× amplification). By layer 4, diff is 178.0.
-**What was tested and eliminated:**
-- AWQ GEMM kernel: PASS (identical on both, with real weights and synthetic data)
-- Multiprocess AWQ: PASS (identical in mp.spawn context)
-- FP8 KV cache: NOT the cause (garbled with and without fp8_e4m3)
-- Triton attention vs torch_native attention: both garbled (both still use Triton-generated code internally on ROCm)
-- torch.compile/inductor: NOT involved (disabled, verified)
-- Embedding/RMSNorm/SiLU: PASS (basic torch ops identical)
-**Impact:** Dense AWQ models (Devstral-24B, Qwen3.5-27B) must use `sglang-clean` (torch 2.11). MoE AWQ models (Coder-30B) must use `sglang-triton36` (torch 2.12) because MoE kernels crash on torch 2.11. No single torch version works for both.
-**Proposed fix options:**
-1. **Cross-compile Triton attention from 2.11's libtriton.so into 2.12 env** — extract the specific attention HSACO from a torch 2.11 triton cache and inject it into the 2.12 cache
-2. **Build Triton from source** with the correct LLVM/comgr to get correct codegen for BOTH attention and MoE kernels
-3. **Use torch_native SDPA attention backend** — but this also uses Triton-generated code on ROCm; a pure eager fallback might work
-4. **Wait for torch nightly fix** — report the bug upstream with the specific libtriton.so difference
+### 3. Dense AWQ garbage on torch 2.12 — sgl_kernel rotary_embedding fallback
+**Status:** FIXED — install native sgl_kernel with `scripts/setup_sgl_kernel.sh`
+**Root cause:** The pip-installed `sgl_kernel` package uses `_fb_rotary_embedding` (a Python fallback) for rotary embeddings. This fallback produces numerically different results from the native HIP `rotary_embedding` kernel when operating on non-contiguous tensors from `qkv.split()`. The `__init__.py` fallback-override logic checks `torch.ops.sgl_kernel.rotary_embedding` registration (which never exists), so it ALWAYS overwrites the native import with the Python fallback.
+**Key finding:** ALL individual operations (AWQ GEMM, SDPA, RoPE, KV cache, matmul) produce bit-identical results between torch 2.11 and 2.12 when tested in isolation. The divergence occurs specifically in the sgl_kernel rotary_embedding call within the full model pipeline, because the model's `Ministral3Attention.forward()` passes non-contiguous q/k tensors (views from `qkv.split(dim=-1)`).
+**Diagnosis method:** Added debug instrumentation to `Ministral3Attention.forward()` (Devstral uses Ministral3, not Llama). Compared PRE_ROPE and POST_ROPE values:
+- PRE_ROPE q/k/v: **bit-identical** between torch versions (QKV projection is correct)
+- POST_ROPE q/k: **diverges** (torch 2.11: -796.9944, torch 2.12: -490.2792 for rank 0)
+- Manual RoPE on `.clone()` (contiguous): **-490.2792 on BOTH** → proves the divergence is from non-contiguous tensor handling
+**Fix:** `scripts/setup_sgl_kernel.sh --env <env-name>` copies the source-built native `sgl_kernel` files (including `rotary_embedding` from `sgl_kernel.elementwise`) into the target env.
+**Defensive fix:** Added `.contiguous()` calls in `ministral3.py` and `llama.py` before RoPE for robustness.
 
 ### FP8 MoE on SGLang — Arch Linux comgr bug
 **Status:** Blocked, workaround via vLLM Docker
