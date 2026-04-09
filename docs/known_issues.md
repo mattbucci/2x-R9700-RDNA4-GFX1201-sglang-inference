@@ -35,8 +35,13 @@ Each issue includes root cause, impact, and proposed fix.
 - PRE_ROPE q/k/v: **bit-identical** between torch versions (QKV projection is correct)
 - POST_ROPE q/k: **diverges** (torch 2.11: -796.9944, torch 2.12: -490.2792 for rank 0)
 - Manual RoPE on `.clone()` (contiguous): **-490.2792 on BOTH** → proves the divergence is from non-contiguous tensor handling
-**Fix:** `scripts/setup_sgl_kernel.sh --env <env-name>` copies the source-built native `sgl_kernel` files (including `rotary_embedding` from `sgl_kernel.elementwise`) into the target env.
-**Defensive fix:** Added `.contiguous()` calls in `ministral3.py` and `llama.py` before RoPE for robustness.
+**Upstream code modified:** `sgl-kernel/python/sgl_kernel/__init__.py` — complete rewrite for RDNA4 graceful degradation. Tracked as `patches/004-sgl-kernel-rdna4-fallbacks.patch`. The patch rewrites all native op imports with try/except, adds torch fallbacks, and fixes the fallback-override bug that clobbers native elementwise imports.
+**Fix workflow:**
+1. Patch is applied to sglang fork (`git apply patches/004-sgl-kernel-rdna4-fallbacks.patch`)
+2. Build native HIP ops: `cd sgl-kernel && AMDGPU_TARGET=gfx1201 python setup_rocm.py build_ext --inplace`
+3. Install to env: `scripts/setup_sgl_kernel.sh --env <env-name>`
+4. Verify: `scripts/setup_sgl_kernel.sh --env <env-name> --verify` — must show `sgl_kernel.elementwise`
+**Defensive fix:** Added `.contiguous()` calls in `ministral3.py` and `llama.py` before RoPE (in our sglang fork).
 
 ### FP8 MoE on SGLang — Arch Linux comgr bug
 **Status:** Blocked, workaround via vLLM Docker

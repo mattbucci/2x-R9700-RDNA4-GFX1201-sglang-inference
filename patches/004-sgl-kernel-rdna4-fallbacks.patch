@@ -1,0 +1,629 @@
+diff --git a/sgl-kernel/python/sgl_kernel/__init__.py b/sgl-kernel/python/sgl_kernel/__init__.py
+index ed08e3f0f..b30eb818a 100644
+--- a/sgl-kernel/python/sgl_kernel/__init__.py
++++ b/sgl-kernel/python/sgl_kernel/__init__.py
+@@ -1,117 +1,497 @@
++import logging
+ import torch
+ from sgl_kernel.debug_utils import maybe_wrap_debug_kernel
+ from sgl_kernel.load_utils import _load_architecture_specific_ops, _preload_cuda_library
+ 
++logger = logging.getLogger(__name__)
++
+ # Initialize the ops library based on current GPU
+-common_ops = _load_architecture_specific_ops()
++# On unsupported platforms (e.g. RDNA4/gfx12xx), gracefully degrade
++_common_ops_available = False
++try:
++    common_ops = _load_architecture_specific_ops()
++    _common_ops_available = True
++except ImportError as e:
++    logger.warning("sgl_kernel: common_ops not available (%s). "
++                   "Running in degraded mode — some kernels will use torch fallbacks.", e)
++    common_ops = None
+ 
+ # Preload the CUDA library to avoid the issue of libcudart.so.12 not found
+ if torch.version.cuda is not None:
+     _preload_cuda_library()
+ 
+ 
+-from sgl_kernel.allreduce import *
+-from sgl_kernel.attention import (
+-    cutlass_mla_decode,
+-    cutlass_mla_get_workspace_size,
+-    merge_state_v2,
+-)
+-from sgl_kernel.cutlass_moe import cutlass_w4a8_moe_mm, get_cutlass_w4a8_moe_mm_data
+-from sgl_kernel.elementwise import (
+-    concat_mla_absorb_q,
+-    concat_mla_k,
+-    copy_to_gpu_no_ce,
+-    fused_add_rmsnorm,
+-    gelu_and_mul,
+-    gelu_tanh_and_mul,
+-    gemma_fused_add_rmsnorm,
+-    gemma_rmsnorm,
+-    rmsnorm,
+-    rotary_embedding,
+-    silu_and_mul,
+-)
+-from sgl_kernel.expert_specialization import (
+-    es_fp8_blockwise_scaled_grouped_mm,
+-    es_sm100_mxfp8_blockscaled_grouped_mm,
+-    es_sm100_mxfp8_blockscaled_grouped_quant,
+-)
+-from sgl_kernel.gemm import (
+-    awq_dequantize,
+-    bmm_fp8,
+-    dsv3_fused_a_gemm,
+-    dsv3_router_gemm,
+-    fp8_blockwise_scaled_mm,
+-    fp8_scaled_mm,
+-    gptq_gemm,
+-    gptq_shuffle,
+-    int8_scaled_mm,
+-    qserve_w4a8_per_chn_gemm,
+-    qserve_w4a8_per_group_gemm,
+-    sgl_per_token_group_quant_8bit,
+-    sgl_per_token_group_quant_fp8,
+-    sgl_per_token_group_quant_int8,
+-    sgl_per_token_quant_fp8,
+-    shuffle_rows,
+-)
+-from sgl_kernel.grammar import apply_token_bitmask_inplace_cuda
+-from sgl_kernel.kvcacheio import (
+-    transfer_kv_all_layer,
+-    transfer_kv_all_layer_mla,
+-    transfer_kv_per_layer,
+-    transfer_kv_per_layer_mla,
+-)
+-from sgl_kernel.mamba import (
+-    causal_conv1d_fn_cpu,
+-    causal_conv1d_fwd,
+-    causal_conv1d_update,
+-    causal_conv1d_update_cpu,
+-    chunk_gated_delta_rule_cpu,
+-)
+-from sgl_kernel.memory import weak_ref_tensor
+-from sgl_kernel.moe import (
+-    apply_shuffle_mul_sum,
+-    fp8_blockwise_scaled_grouped_mm,
+-    fused_qk_norm_rope,
+-    kimi_k2_moe_fused_gate,
+-    moe_align_block_size,
+-    moe_fused_gate,
+-    moe_sum,
+-    moe_sum_reduce,
+-    prepare_moe_input,
+-    topk_sigmoid,
+-    topk_softmax,
+-)
+-from sgl_kernel.quantization import (
+-    ggml_dequantize,
+-    ggml_moe_a8,
+-    ggml_moe_a8_vec,
+-    ggml_moe_get_block_size,
+-    ggml_mul_mat_a8,
+-    ggml_mul_mat_vec_a8,
+-)
+-from sgl_kernel.sampling import (
+-    top_k_renorm_prob,
+-    top_p_renorm_prob,
+-)
+-from sgl_kernel.speculative import (
+-    build_tree_kernel_efficient,
+-    reconstruct_indices_from_tree_mask,
+-    segment_packbits,
+-    tree_speculative_sampling_target_only,
+-    verify_tree_greedy,
+-)
+-from sgl_kernel.top_k import (
+-    fast_topk,
+-    fast_topk_transform_fused,
+-    fast_topk_transform_ragged_fused,
+-    fast_topk_v2,
+-)
+-from sgl_kernel.version import __version__
++def _make_stub(name):
++    """Create a stub function that raises NotImplementedError when called."""
++    def stub(*args, **kwargs):
++        raise NotImplementedError(
++            f"sgl_kernel.{name} is not available on this platform. "
++            f"common_ops failed to load (likely RDNA4/gfx12xx without CUDA)."
++        )
++    stub.__name__ = name
++    stub.__qualname__ = name
++    return stub
++
++
++def _safe_import(import_func, names):
++    """Try to import names; on failure, create stubs for each."""
++    try:
++        return import_func()
++    except (ImportError, OSError) as e:
++        logger.debug("sgl_kernel: failed to import %s: %s", names, e)
++        result = {}
++        for name in names:
++            result[name] = _make_stub(name)
++        return result
++
++
++def _import_into_globals(import_func, names):
++    """Import names into module globals, with stub fallbacks."""
++    try:
++        imported = import_func()
++        if isinstance(imported, dict):
++            globals().update(imported)
++        else:
++            for name in names:
++                globals()[name] = getattr(imported, name, _make_stub(name))
++    except (ImportError, OSError):
++        for name in names:
++            globals()[name] = _make_stub(name)
++
++
++# --- allreduce ---
++try:
++    from sgl_kernel.allreduce import *
++except (ImportError, OSError):
++    pass
++
++# --- attention ---
++_attn_names = ["cutlass_mla_decode", "cutlass_mla_get_workspace_size", "merge_state_v2"]
++try:
++    from sgl_kernel.attention import (
++        cutlass_mla_decode,
++        cutlass_mla_get_workspace_size,
++        merge_state_v2,
++    )
++except (ImportError, OSError):
++    for _n in _attn_names:
++        globals()[_n] = _make_stub(_n)
++
++# --- cutlass_moe ---
++try:
++    from sgl_kernel.cutlass_moe import cutlass_w4a8_moe_mm, get_cutlass_w4a8_moe_mm_data
++except (ImportError, OSError):
++    cutlass_w4a8_moe_mm = _make_stub("cutlass_w4a8_moe_mm")
++    get_cutlass_w4a8_moe_mm_data = _make_stub("get_cutlass_w4a8_moe_mm_data")
++
++# --- elementwise ---
++_elem_names = [
++    "concat_mla_absorb_q", "concat_mla_k", "copy_to_gpu_no_ce",
++    "fused_add_rmsnorm", "gelu_and_mul", "gelu_tanh_and_mul",
++    "gemma_fused_add_rmsnorm", "gemma_rmsnorm", "rmsnorm",
++    "rotary_embedding", "silu_and_mul",
++]
++try:
++    from sgl_kernel.elementwise import (
++        concat_mla_absorb_q,
++        concat_mla_k,
++        copy_to_gpu_no_ce,
++        fused_add_rmsnorm,
++        gelu_and_mul,
++        gelu_tanh_and_mul,
++        gemma_fused_add_rmsnorm,
++        gemma_rmsnorm,
++        rmsnorm,
++        rotary_embedding,
++        silu_and_mul,
++    )
++except (ImportError, OSError):
++    for _n in _elem_names:
++        globals()[_n] = _make_stub(_n)
++
++# --- expert_specialization ---
++try:
++    from sgl_kernel.expert_specialization import (
++        es_fp8_blockwise_scaled_grouped_mm,
++        es_sm100_mxfp8_blockscaled_grouped_mm,
++        es_sm100_mxfp8_blockscaled_grouped_quant,
++    )
++except (ImportError, OSError):
++    es_fp8_blockwise_scaled_grouped_mm = _make_stub("es_fp8_blockwise_scaled_grouped_mm")
++    es_sm100_mxfp8_blockscaled_grouped_mm = _make_stub("es_sm100_mxfp8_blockscaled_grouped_mm")
++    es_sm100_mxfp8_blockscaled_grouped_quant = _make_stub("es_sm100_mxfp8_blockscaled_grouped_quant")
++
++# --- gemm ---
++_gemm_names = [
++    "awq_dequantize", "bmm_fp8", "dsv3_fused_a_gemm", "dsv3_router_gemm",
++    "fp8_blockwise_scaled_mm", "fp8_scaled_mm", "gptq_gemm", "gptq_shuffle",
++    "int8_scaled_mm", "qserve_w4a8_per_chn_gemm", "qserve_w4a8_per_group_gemm",
++    "sgl_per_token_group_quant_8bit", "sgl_per_token_group_quant_fp8",
++    "sgl_per_token_group_quant_int8", "sgl_per_token_quant_fp8", "shuffle_rows",
++]
++try:
++    from sgl_kernel.gemm import (
++        awq_dequantize,
++        bmm_fp8,
++        dsv3_fused_a_gemm,
++        dsv3_router_gemm,
++        fp8_blockwise_scaled_mm,
++        fp8_scaled_mm,
++        gptq_gemm,
++        gptq_shuffle,
++        int8_scaled_mm,
++        qserve_w4a8_per_chn_gemm,
++        qserve_w4a8_per_group_gemm,
++        sgl_per_token_group_quant_8bit,
++        sgl_per_token_group_quant_fp8,
++        sgl_per_token_group_quant_int8,
++        sgl_per_token_quant_fp8,
++        shuffle_rows,
++    )
++except (ImportError, OSError):
++    for _n in _gemm_names:
++        globals()[_n] = _make_stub(_n)
++
++# --- grammar ---
++try:
++    from sgl_kernel.grammar import apply_token_bitmask_inplace_cuda
++except (ImportError, OSError):
++    apply_token_bitmask_inplace_cuda = _make_stub("apply_token_bitmask_inplace_cuda")
++
++# --- kvcacheio ---
++_kv_names = [
++    "transfer_kv_all_layer", "transfer_kv_all_layer_mla",
++    "transfer_kv_per_layer", "transfer_kv_per_layer_mla",
++]
++try:
++    from sgl_kernel.kvcacheio import (
++        transfer_kv_all_layer,
++        transfer_kv_all_layer_mla,
++        transfer_kv_per_layer,
++        transfer_kv_per_layer_mla,
++    )
++except (ImportError, OSError):
++    for _n in _kv_names:
++        globals()[_n] = _make_stub(_n)
++
++# --- mamba ---
++_mamba_names = [
++    "causal_conv1d_fn_cpu", "causal_conv1d_fwd", "causal_conv1d_update",
++    "causal_conv1d_update_cpu", "chunk_gated_delta_rule_cpu",
++]
++try:
++    from sgl_kernel.mamba import (
++        causal_conv1d_fn_cpu,
++        causal_conv1d_fwd,
++        causal_conv1d_update,
++        causal_conv1d_update_cpu,
++        chunk_gated_delta_rule_cpu,
++    )
++except (ImportError, OSError):
++    for _n in _mamba_names:
++        globals()[_n] = _make_stub(_n)
++
++# --- memory ---
++try:
++    from sgl_kernel.memory import weak_ref_tensor
++except (ImportError, OSError):
++    def weak_ref_tensor(tensor):
++        return tensor
++
++# --- moe ---
++_moe_names = [
++    "apply_shuffle_mul_sum", "fp8_blockwise_scaled_grouped_mm",
++    "fused_qk_norm_rope", "kimi_k2_moe_fused_gate", "moe_align_block_size",
++    "moe_fused_gate", "moe_sum", "moe_sum_reduce", "prepare_moe_input",
++    "topk_sigmoid", "topk_softmax",
++]
++try:
++    from sgl_kernel.moe import (
++        apply_shuffle_mul_sum,
++        fp8_blockwise_scaled_grouped_mm,
++        fused_qk_norm_rope,
++        kimi_k2_moe_fused_gate,
++        moe_align_block_size,
++        moe_fused_gate,
++        moe_sum,
++        moe_sum_reduce,
++        prepare_moe_input,
++        topk_sigmoid,
++        topk_softmax,
++    )
++except (ImportError, OSError):
++    for _n in _moe_names:
++        globals()[_n] = _make_stub(_n)
++
++# --- quantization ---
++_quant_names = [
++    "ggml_dequantize", "ggml_moe_a8", "ggml_moe_a8_vec",
++    "ggml_moe_get_block_size", "ggml_mul_mat_a8", "ggml_mul_mat_vec_a8",
++]
++try:
++    from sgl_kernel.quantization import (
++        ggml_dequantize,
++        ggml_moe_a8,
++        ggml_moe_a8_vec,
++        ggml_moe_get_block_size,
++        ggml_mul_mat_a8,
++        ggml_mul_mat_vec_a8,
++    )
++except (ImportError, OSError):
++    for _n in _quant_names:
++        globals()[_n] = _make_stub(_n)
++
++# --- sampling ---
++try:
++    from sgl_kernel.sampling import (
++        top_k_renorm_prob,
++        top_p_renorm_prob,
++    )
++except (ImportError, OSError):
++    top_k_renorm_prob = _make_stub("top_k_renorm_prob")
++    top_p_renorm_prob = _make_stub("top_p_renorm_prob")
+ 
++# --- speculative ---
++_spec_names = [
++    "build_tree_kernel_efficient", "reconstruct_indices_from_tree_mask",
++    "segment_packbits", "tree_speculative_sampling_target_only", "verify_tree_greedy",
++]
++try:
++    from sgl_kernel.speculative import (
++        build_tree_kernel_efficient,
++        reconstruct_indices_from_tree_mask,
++        segment_packbits,
++        tree_speculative_sampling_target_only,
++        verify_tree_greedy,
++    )
++except (ImportError, OSError):
++    for _n in _spec_names:
++        globals()[_n] = _make_stub(_n)
++
++# --- top_k ---
++_topk_names = [
++    "fast_topk", "fast_topk_transform_fused",
++    "fast_topk_transform_ragged_fused", "fast_topk_v2",
++]
++try:
++    from sgl_kernel.top_k import (
++        fast_topk,
++        fast_topk_transform_fused,
++        fast_topk_transform_ragged_fused,
++        fast_topk_v2,
++    )
++except (ImportError, OSError):
++    for _n in _topk_names:
++        globals()[_n] = _make_stub(_n)
++
++# --- version ---
++try:
++    from sgl_kernel.version import __version__
++except (ImportError, OSError):
++    __version__ = "0.0.0-stub"
++
++# --- HIP-specific ---
+ if torch.version.hip is not None:
+-    from sgl_kernel.elementwise import gelu_quick
++    try:
++        from sgl_kernel.elementwise import gelu_quick
++    except (ImportError, OSError):
++        gelu_quick = _make_stub("gelu_quick")
++
++# --- Torch-based fallbacks for missing ops ---
++# When common_ops is partially available (e.g. ROCm/HIP build with subset of ops),
++# the submodule .py wrappers import fine but call torch.ops.sgl_kernel.* at runtime.
++# Check which ops are actually registered and provide torch fallbacks for any missing ones.
++def _has_op(name):
++    """Check if a torch.ops.sgl_kernel op is registered."""
++    try:
++        getattr(torch.ops.sgl_kernel, name)
++        return True
++    except (AttributeError, RuntimeError):
++        return False
++
++import torch.nn.functional as _F
++
++# Define all torch fallbacks, then selectively install only for missing ops.
++# This way, native HIP ops (silu_and_mul, gelu_and_mul, moe_align_block_size,
++# topk_softmax) are used when available, and torch fallbacks fill the gaps.
++
++def _fb_silu_and_mul(input: torch.Tensor, out: torch.Tensor = None) -> torch.Tensor:
++    d = input.shape[-1] // 2
++    result = _F.silu(input[..., :d]) * input[..., d:]
++    if out is not None:
++        out.copy_(result)
++        return out
++    return result
++
++def _fb_gelu_and_mul(input: torch.Tensor, out: torch.Tensor = None) -> torch.Tensor:
++    d = input.shape[-1] // 2
++    result = _F.gelu(input[..., :d]) * input[..., d:]
++    if out is not None:
++        out.copy_(result)
++        return out
++    return result
++
++def _fb_gelu_tanh_and_mul(input: torch.Tensor, out: torch.Tensor = None) -> torch.Tensor:
++    d = input.shape[-1] // 2
++    result = _F.gelu(input[..., :d], approximate="tanh") * input[..., d:]
++    if out is not None:
++        out.copy_(result)
++        return out
++    return result
++
++def _fb_gelu_quick(input: torch.Tensor, out: torch.Tensor = None) -> torch.Tensor:
++    result = input * torch.sigmoid(1.702 * input)
++    if out is not None:
++        out.copy_(result)
++        return out
++    return result
++
++def _fb_rmsnorm(input: torch.Tensor, weight: torch.Tensor, eps: float = 1e-6) -> torch.Tensor:
++    variance = input.to(torch.float32).pow(2).mean(-1, keepdim=True)
++    input_norm = input * torch.rsqrt(variance + eps)
++    return (weight * input_norm).to(input.dtype)
+ 
++def _fb_fused_add_rmsnorm(input: torch.Tensor, residual: torch.Tensor,
++                      weight: torch.Tensor, eps: float = 1e-6):
++    input += residual
++    residual[:] = input
++    variance = input.to(torch.float32).pow(2).mean(-1, keepdim=True)
++    input_norm = input * torch.rsqrt(variance + eps)
++    return (weight * input_norm).to(input.dtype)
+ 
++def _fb_rotary_embedding(positions: torch.Tensor, query: torch.Tensor,
++                     key: torch.Tensor, head_size: int,
++                     cos_sin_cache: torch.Tensor, is_neox: bool = True):
++    """Torch fallback for rotary embedding (in-place)."""
++    cos_sin_cache = cos_sin_cache.to(query.device, dtype=query.dtype)
++    rot_dim = cos_sin_cache.shape[1]
++    half_rot = rot_dim // 2
++    cos = cos_sin_cache[positions, :half_rot]
++    sin = cos_sin_cache[positions, half_rot:]
++
++    def _apply_rotary(t, cos, sin, head_size, is_neox):
++        batch = t.shape[0]
++        t_view = t.view(batch, -1, head_size)
++        nheads = t_view.shape[1]
++        cos_e = cos.unsqueeze(1).expand(batch, nheads, half_rot)
++        sin_e = sin.unsqueeze(1).expand(batch, nheads, half_rot)
++        rot = t_view[..., :half_rot]
++        if is_neox:
++            x1 = rot[..., :half_rot // 2]
++            x2 = rot[..., half_rot // 2:]
++            rot_out = torch.cat([x1 * cos_e[..., :half_rot//2] - x2 * sin_e[..., :half_rot//2],
++                                 x2 * cos_e[..., half_rot//2:] + x1 * sin_e[..., half_rot//2:]], dim=-1)
++        else:
++            rot_even = rot[..., 0::2]
++            rot_odd = rot[..., 1::2]
++            rot_out = torch.stack([
++                rot_even * cos_e[..., 0::2] - rot_odd * sin_e[..., 0::2],
++                rot_odd * cos_e[..., 1::2] + rot_even * sin_e[..., 1::2],
++            ], dim=-1).flatten(-2)
++        t_view[..., :half_rot] = rot_out
++
++    _apply_rotary(query, cos, sin, head_size, is_neox)
++    _apply_rotary(key, cos, sin, head_size, is_neox)
++
++def _fb_topk_softmax(topk_weights: torch.Tensor, topk_ids: torch.Tensor,
++                 gating_output: torch.Tensor, renormalize: bool = False,
++                 moe_softcapping: float = 0.0, correction_bias=None) -> None:
++    if moe_softcapping > 0:
++        gating_output = gating_output / moe_softcapping
++        gating_output = gating_output.tanh()
++        gating_output = gating_output * moe_softcapping
++    scores = _F.softmax(gating_output, dim=-1)
++    if correction_bias is not None:
++        scores = scores + correction_bias.to(scores.dtype)
++    topk = topk_weights.shape[1]
++    tw, ti = torch.topk(scores, topk, dim=-1)
++    topk_weights.copy_(tw)
++    topk_ids.copy_(ti)
++    if renormalize:
++        s = topk_weights.sum(dim=-1, keepdim=True).clamp(min=1e-20)
++        topk_weights.div_(s)
++
++def _fb_topk_sigmoid(topk_weights: torch.Tensor, topk_ids: torch.Tensor,
++                 gating_output: torch.Tensor, renormalize: bool = False,
++                 correction_bias=None) -> None:
++    scores = torch.sigmoid(gating_output)
++    if correction_bias is not None:
++        scores = scores + correction_bias.to(scores.dtype)
++    topk = topk_weights.shape[1]
++    tw, ti = torch.topk(scores, topk, dim=-1)
++    topk_weights.copy_(tw)
++    topk_ids.copy_(ti)
++    if renormalize:
++        s = topk_weights.sum(dim=-1, keepdim=True).clamp(min=1e-20)
++        topk_weights.div_(s)
++
++def _fb_moe_align_block_size(topk_ids, num_experts_plus_one, block_size,
++                         sorted_ids, expert_ids, num_tokens_post_pad,
++                         cumsum_buffer, expert_filtering=True):
++    flat_ids = topk_ids.flatten()
++    num_tokens_total = flat_ids.numel()
++    num_experts = num_experts_plus_one - 1
++    expert_counts = torch.zeros(num_experts_plus_one, dtype=torch.int32,
++                                device=topk_ids.device)
++    for e in range(num_experts):
++        expert_counts[e + 1] = (flat_ids == e).sum()
++    expert_counts[0] = (flat_ids == -1).sum()
++    padded_counts = ((expert_counts + block_size - 1) // block_size) * block_size
++    offsets = torch.zeros_like(padded_counts)
++    torch.cumsum(padded_counts, dim=0, out=offsets)
++    total_padded = offsets[-1].item()
++    sorted_ids.fill_(num_tokens_total)
++    write_pos = torch.zeros(num_experts_plus_one, dtype=torch.int32,
++                            device=topk_ids.device)
++    write_pos[1:] = offsets[:-1]
++    for idx in range(num_tokens_total):
++        e = flat_ids[idx].item()
++        slot = 0 if e == -1 else e + 1
++        pos = write_pos[slot].item()
++        if pos < sorted_ids.shape[0]:
++            sorted_ids[pos] = idx
++        write_pos[slot] += 1
++    block_idx = 0
++    for e in range(num_experts_plus_one):
++        n_blocks = padded_counts[e].item() // block_size
++        expert_val = e - 1
++        for _ in range(n_blocks):
++            if block_idx < expert_ids.shape[0]:
++                expert_ids[block_idx] = expert_val
++            block_idx += 1
++    num_tokens_post_pad[0] = min(total_padded, sorted_ids.shape[0])
++
++# Map op names to their fallback implementations
++_fallback_map = {
++    "silu_and_mul": _fb_silu_and_mul,
++    "gelu_and_mul": _fb_gelu_and_mul,
++    "gelu_tanh_and_mul": _fb_gelu_tanh_and_mul,
++    "gelu_quick": _fb_gelu_quick,
++    "rmsnorm": _fb_rmsnorm,
++    "fused_add_rmsnorm": _fb_fused_add_rmsnorm,
++    "rotary_embedding": _fb_rotary_embedding,
++    "topk_softmax": _fb_topk_softmax,
++    "topk_sigmoid": _fb_topk_sigmoid,
++    "moe_align_block_size": _fb_moe_align_block_size,
++}
++
++# Install fallbacks only for ops not available as native torch.ops
++_native_ops = []
++_fallback_ops = []
++for _op_name, _fb_func in _fallback_map.items():
++    if _has_op(_op_name):
++        _native_ops.append(_op_name)
++    else:
++        globals()[_op_name] = _fb_func
++        _fallback_ops.append(_op_name)
++
++if _native_ops:
++    logger.info("sgl_kernel: native HIP ops: %s", ", ".join(_native_ops))
++if _fallback_ops:
++    logger.info("sgl_kernel: torch fallbacks: %s", ", ".join(_fallback_ops))
++
++
++# --- Debug wrapping ---
+ _DEBUG_EXPORT_NAMES = [
+     "apply_shuffle_mul_sum",
+     "apply_token_bitmask_inplace_cuda",
+@@ -181,13 +561,21 @@ _DEBUG_EXPORT_NAMES = [
+ if torch.version.hip is not None:
+     _DEBUG_EXPORT_NAMES.append("gelu_quick")
+ 
+-for _name in _DEBUG_EXPORT_NAMES:
+-    if _name in globals():
+-        globals()[_name] = maybe_wrap_debug_kernel(
+-            globals()[_name], f"sgl_kernel.{_name}"
+-        )
++if _common_ops_available:
++    for _name in _DEBUG_EXPORT_NAMES:
++        if _name in globals() and not isinstance(globals()[_name], type(lambda: None)):
++            try:
++                globals()[_name] = maybe_wrap_debug_kernel(
++                    globals()[_name], f"sgl_kernel.{_name}"
++                )
++            except Exception:
++                pass
++
++# Clean up module namespace
++for _n in list(globals()):
++    if _n.startswith('_n') or _n == '_name':
++        pass  # don't delete loop vars we're iterating
+ 
+-del _name
+ del _DEBUG_EXPORT_NAMES
+ 
+ 
