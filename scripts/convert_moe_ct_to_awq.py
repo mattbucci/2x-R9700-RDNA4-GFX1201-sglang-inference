@@ -72,6 +72,47 @@ def convert_weight(packed: torch.Tensor, scale: torch.Tensor, group_size: int):
     return qweight, scales, qzeros
 
 
+def quantize_bf16_to_awq(weight: torch.Tensor, group_size: int):
+    """Quantize a BF16/FP16 weight to AWQ INT4 format using RTN (round-to-nearest).
+
+    Input:  weight [out_features, in_features] in BF16/FP16
+    Output: qweight [in_features, out_features//8] int32 (AWQ packed)
+            scales  [in_features//group_size, out_features] fp16
+            qzeros  [in_features//group_size, out_features//8] int32
+    """
+    out_features, in_features = weight.shape
+    w = weight.float()
+
+    # Reshape to groups: [out, in//G, G]
+    num_groups = in_features // group_size
+    w_grouped = w.reshape(out_features, num_groups, group_size)
+
+    # Per-group symmetric quantization: scale = max(abs(w)) / 7
+    # INT4 symmetric: values -8..7, zero_point=8, so dequant = (q - 8) * scale
+    w_max = w_grouped.abs().amax(dim=-1, keepdim=True).clamp(min=1e-6)  # [out, G, 1]
+    scale_vals = w_max / 7.0  # maps [-7*s, 7*s] to [-7, 7]
+
+    # Quantize: q = round(w / scale) + 8, clamped to [0, 15]
+    q = torch.round(w_grouped / scale_vals).clamp(-8, 7).to(torch.int8) + 8  # [out, G, gs]
+    q = q.reshape(out_features, in_features)  # [out, in]
+
+    # Transpose to AWQ layout: [in, out]
+    q_t = q.T.contiguous()
+    qweight = pack_4bit_to_int32_awq(q_t)  # [in, out//8]
+
+    # Scales: [in//G, out] in fp16
+    scales = scale_vals.squeeze(-1).T.contiguous().to(torch.float16)  # [G, out] -> [G, out]
+
+    # Qzeros: symmetric zero_point = 8 for all groups
+    num_out_packed = out_features // PACK_FACTOR
+    zp_val = torch.tensor([8], dtype=torch.int32)
+    qzeros = torch.zeros((num_groups, num_out_packed), dtype=torch.int32)
+    for i in range(PACK_FACTOR):
+        qzeros |= (zp_val << (AWQ_PACK_ORDER[i] * W_BIT))
+
+    return qweight, scales, qzeros
+
+
 def main():
     parser = argparse.ArgumentParser(description="Convert compressed-tensors to AWQ")
     parser.add_argument("src_dir", help="Source model directory (compressed-tensors)")
@@ -165,8 +206,62 @@ def main():
                 continue
 
             else:
-                converted[key] = f.get_tensor(key)
-                total_passthrough += 1
+                tensor = f.get_tensor(key)
+
+                # Quantize BF16 expert MLP weights to AWQ INT4 (RTN)
+                # Per-expert format: experts.N.{gate,up,down}_proj.weight [out, in]
+                # Fused format: experts.{gate_up_proj,down_proj} [E, out, in]
+                is_expert_weight = (
+                    "experts" in key
+                    and any(p in key for p in ["gate_proj.weight", "up_proj.weight",
+                                               "down_proj.weight", "gate_up_proj", "experts.down_proj"])
+                    and tensor.dtype in (torch.bfloat16, torch.float16, torch.float32)
+                )
+
+                if is_expert_weight and tensor.dim() == 2:
+                    # Per-expert 2D: [out, in] — quantize directly
+                    base = key[:-len(".weight")]
+                    qw, sc, qz = quantize_bf16_to_awq(tensor, group_size)
+                    converted[f"{base}.qweight"] = qw
+                    converted[f"{base}.scales"] = sc
+                    converted[f"{base}.qzeros"] = qz
+                    total_quantized += 1
+                    if ".experts.0." in key:
+                        print(f"  Q {base}: [{tensor.shape[0]}, {tensor.shape[1]}] -> "
+                              f"qw{list(qw.shape)} sc{list(sc.shape)}")
+                    processed.add(key)
+
+                elif is_expert_weight and tensor.dim() == 3:
+                    # Fused 3D: [E, out, in] — split per-expert and quantize
+                    E = tensor.shape[0]
+                    base = key.rsplit(".", 1)[0]
+
+                    for e in range(E):
+                        w = tensor[e]
+                        if "gate_up" in key:
+                            mid = w.shape[0] // 2
+                            for sub_name, sub_w in [("gate_proj", w[:mid]), ("up_proj", w[mid:])]:
+                                qw, sc, qz = quantize_bf16_to_awq(sub_w, group_size)
+                                prefix = f"{base}.{e}.{sub_name}"
+                                converted[f"{prefix}.qweight"] = qw
+                                converted[f"{prefix}.scales"] = sc
+                                converted[f"{prefix}.qzeros"] = qz
+                                total_quantized += 1
+                        else:
+                            qw, sc, qz = quantize_bf16_to_awq(w, group_size)
+                            prefix = f"{base}.{e}.down_proj"
+                            converted[f"{prefix}.qweight"] = qw
+                            converted[f"{prefix}.scales"] = sc
+                            converted[f"{prefix}.qzeros"] = qz
+                            total_quantized += 1
+                    if "gate_up" in key:
+                        print(f"  Q {base}.*.gate_proj/up_proj: [{tensor.shape[1]//2}, {tensor.shape[2]}] x {E}")
+                    else:
+                        print(f"  Q {base}.*.down_proj: [{tensor.shape[1]}, {tensor.shape[2]}] x {E}")
+                    processed.add(key)
+                else:
+                    converted[key] = tensor
+                    total_passthrough += 1
 
         # Save
         out_path = os.path.join(dst_dir, shard_name)
