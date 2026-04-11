@@ -73,7 +73,7 @@ class UnfusedGemma4TextExperts(nn.Module):
         batch_size = hidden_states.shape[0]
         final_hidden = torch.zeros_like(hidden_states)
         expert_mask = torch.nn.functional.one_hot(
-            selected_experts, num_classes=self.num_experts
+            selected_experts.long(), num_classes=self.num_experts
         ).permute(2, 1, 0)
 
         for expert_idx in range(self.num_experts):
@@ -200,10 +200,17 @@ calibration_data = "open_platypus"
 print(f"Using calibration dataset: {calibration_data}")
 
 # GPTQ config
+from compressed_tensors.quantization import QuantizationArgs, QuantizationScheme
+
 recipe = GPTQModifier(
-    targets="Linear",
-    scheme="W4A16",
-    ignore=["lm_head"],  # don't quantize output head
+    config_groups={
+        "group_0": QuantizationScheme(
+            targets=["Linear"],
+            weights=QuantizationArgs(num_bits=4, type="int", symmetric=True, strategy="group", group_size=32),
+        )
+    },
+    ignore=["lm_head"],
+    bypass_divisibility_checks=True,  # vision tower has 4304 cols not divisible by 32
 )
 
 print("\nLoading unfused model...")
