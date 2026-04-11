@@ -219,17 +219,21 @@ model = AutoModelForCausalLM.from_pretrained(
 )
 
 # Monkey-patch compressed_tensors to skip incompatible-dimension layers
-# instead of raising ValueError during save (vision tower has 4304 cols, not divisible by 32)
-import compressed_tensors.quantization.lifecycle.forward_helpers as _fh
-_orig_process_group = _fh._process_group
+# during save (vision tower has 4304 cols, not divisible by 32)
+import compressed_tensors.quantization.lifecycle.forward as _fw
+_orig_quantize = _fw.quantize
 
-def _patched_process_group(x, scale, zero_point, args, do_dequantize=False, global_scale=None, g_idx=None):
+@torch.no_grad()
+def _patched_quantize(x, scale, zero_point, args, dtype=None, global_scale=None, g_idx=None):
     if hasattr(args, 'group_size') and args.group_size and x.shape[-1] % args.group_size != 0:
-        return x  # skip quantization for incompatible dimensions
-    return _orig_process_group(x, scale, zero_point, args, do_dequantize=do_dequantize, global_scale=global_scale, g_idx=g_idx)
+        return x  # skip — vision tower stays FP16
+    return _orig_quantize(x, scale, zero_point, args, dtype=dtype, global_scale=global_scale, g_idx=g_idx)
 
-_fh._process_group = _patched_process_group
-print("  Patched compressed_tensors to skip incompatible dims")
+_fw.quantize = _patched_quantize
+# Also patch the import in the compressor module that calls it
+import compressed_tensors.compressors.pack_quantized.base as _pqb
+_pqb.quantize = _patched_quantize
+print("  Patched compressed_tensors quantize() to skip incompatible dims")
 
 linear_count = sum(1 for m in model.modules() if isinstance(m, nn.Linear))
 print(f"Loaded model with {linear_count} nn.Linear layers")
