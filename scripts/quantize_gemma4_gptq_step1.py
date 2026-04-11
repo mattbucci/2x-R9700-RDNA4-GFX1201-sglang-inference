@@ -218,22 +218,23 @@ model = AutoModelForCausalLM.from_pretrained(
     tmp_dir, torch_dtype=torch.bfloat16, device_map="cpu",
 )
 
-# Monkey-patch compressed_tensors to skip incompatible-dimension layers
-# during save (vision tower has 4304 cols, not divisible by 32)
-import compressed_tensors.quantization.lifecycle.forward as _fw
-_orig_quantize = _fw.quantize
+# Patch compress_module to skip modules with incompatible weight dimensions
+# Vision tower has 4304 cols (not divisible by 32) — skip compression for those
+import compressed_tensors.compressors.base as _cb
+_orig_compress_module_method = _cb.BaseCompressor.compress_module
 
-@torch.no_grad()
-def _patched_quantize(x, scale, zero_point, args, dtype=None, global_scale=None, g_idx=None):
-    if hasattr(args, 'group_size') and args.group_size and x.shape[-1] % args.group_size != 0:
-        return x  # skip — vision tower stays FP16
-    return _orig_quantize(x, scale, zero_point, args, dtype=dtype, global_scale=global_scale, g_idx=g_idx)
+@classmethod
+def _patched_compress_module(cls, module):
+    weight = getattr(module, 'weight', None)
+    if weight is not None and hasattr(module, 'quantization_scheme'):
+        scheme = module.quantization_scheme
+        gs = getattr(scheme.weights, 'group_size', None) if scheme.weights else None
+        if gs and weight.shape[-1] % gs != 0:
+            return  # skip — incompatible dims
+    return _orig_compress_module_method.__func__(cls, module)
 
-_fw.quantize = _patched_quantize
-# Also patch the import in the compressor module that calls it
-import compressed_tensors.compressors.pack_quantized.base as _pqb
-_pqb.quantize = _patched_quantize
-print("  Patched compressed_tensors quantize() to skip incompatible dims")
+_cb.BaseCompressor.compress_module = _patched_compress_module
+print("  Patched BaseCompressor.compress_module to skip incompatible dims")
 
 linear_count = sum(1 for m in model.modules() if isinstance(m, nn.Linear))
 print(f"Loaded model with {linear_count} nn.Linear layers")
