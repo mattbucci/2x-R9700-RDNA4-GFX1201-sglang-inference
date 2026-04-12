@@ -1,0 +1,811 @@
+diff --git a/python/sglang/srt/configs/qwen3_5.py b/python/sglang/srt/configs/qwen3_5.py
+index fddf783..66403ec 100644
+--- a/python/sglang/srt/configs/qwen3_5.py
++++ b/python/sglang/srt/configs/qwen3_5.py
+@@ -1,7 +1,16 @@
+ from transformers import PretrainedConfig
+ 
++from sglang.srt.configs.mamba_utils import (
++    Mamba2CacheParams,
++    Mamba2StateShape,
++    mamba2_state_dtype,
++)
+ from sglang.srt.configs.qwen3_next import Qwen3NextConfig
++from sglang.srt.configs.update_config import adjust_tp_num_heads_if_necessary
+ from sglang.srt.configs.qwen3_vl import Qwen3VLVisionConfig
++from sglang.srt.utils import is_cpu
++
++_is_cpu = is_cpu()
+ 
+ 
+ class Qwen3_5VisionConfig(Qwen3VLVisionConfig):
+@@ -30,6 +39,33 @@ class Qwen3_5TextConfig(Qwen3NextConfig):
+         # Keep both names for compatibility with model code paths that read either.
+         self.rope_parameters = rope_parameters or self.rope_scaling
+ 
++    @property
++    def mamba2_cache_params(self) -> Mamba2CacheParams:
++        from sglang.srt.layers.dp_attention import get_attention_tp_size
++
++        if _is_cpu:
++            world_size = get_attention_tp_size()
++            adjust_tp_num_heads_if_necessary(self, world_size, False)
++
++        # Qwen3.5 DeltaNet layers are always replicated (attn_tp_size=1)
++        # to avoid FP16 rounding errors accumulating through recurrent state.
++        # The mamba cache dimensions must match the layer's actual TP size (1),
++        # not the model's global TP size.
++        tp_size = 1
++        shape = Mamba2StateShape.create(
++            tp_world_size=tp_size,
++            intermediate_size=self.linear_value_head_dim * self.linear_num_value_heads,
++            n_groups=self.linear_num_key_heads,
++            num_heads=self.linear_num_value_heads,
++            head_dim=self.linear_value_head_dim,
++            state_size=self.linear_key_head_dim,
++            conv_kernel=self.linear_conv_kernel_dim,
++        )
++
++        return Mamba2CacheParams(
++            shape=shape, layers=self.linear_layer_ids, dtype=mamba2_state_dtype(self)
++        )
++
+ 
+ class Qwen3_5Config(PretrainedConfig):
+     r"""
+diff --git a/python/sglang/srt/layers/quantization/awq.py b/python/sglang/srt/layers/quantization/awq.py
+index e854742..53285c1 100644
+--- a/python/sglang/srt/layers/quantization/awq.py
++++ b/python/sglang/srt/layers/quantization/awq.py
+@@ -1025,6 +1025,12 @@ class AWQTritonMoEMethod(FusedMoEMethodBase):
+         self, layer: torch.nn.Module, moe_runner_config: MoeRunnerConfig
+     ):
+         self.moe_runner_config = moe_runner_config
++        # Store activation function from model config (Gemma4 uses gelu, Qwen uses silu)
++        act_name = getattr(moe_runner_config, "activation", "silu")
++        if act_name == "gelu":
++            self._act_fn = lambda x: torch.nn.functional.gelu(x, approximate="tanh")
++        else:
++            self._act_fn = torch.nn.functional.silu
+ 
+     def apply(
+         self,
+@@ -1065,10 +1071,10 @@ class AWQTritonMoEMethod(FusedMoEMethodBase):
+             gate_up, sorted_ids, expert_ids_flat, weights_flat,
+             top_k, False, 0)
+ 
+-        # Step 2: SiLU activation
++        # Step 2: Activation (gelu for Gemma4, silu for Qwen)
+         gate = gate_up[:, :intermediate]
+         up = gate_up[:, intermediate:]
+-        activated = (torch.nn.functional.silu(gate) * up).contiguous()
++        activated = (self._act_fn(gate) * up).contiguous()
+ 
+         # Step 3: Down GEMV with routing weight applied (top_k=1: each slot is
+         # an independent token since each has unique activated features)
+@@ -1107,7 +1113,7 @@ class AWQTritonMoEMethod(FusedMoEMethodBase):
+ 
+             gate = gate_up[:, :intermediate]
+             up = gate_up[:, intermediate:]
+-            activated = torch.nn.functional.silu(gate) * up
++            activated = self._act_fn(gate) * up
+ 
+             w2_fp16 = awq_dequantize_decomposition(
+                 layer.w2_qweight[expert_id], layer.w2_scales[expert_id],
+diff --git a/python/sglang/srt/models/gemma4_causal.py b/python/sglang/srt/models/gemma4_causal.py
+index 5444061..c1776cf 100644
+--- a/python/sglang/srt/models/gemma4_causal.py
++++ b/python/sglang/srt/models/gemma4_causal.py
+@@ -36,6 +36,7 @@ from sglang.srt.layers.linear import (
+ )
+ from sglang.srt.layers.logits_processor import LogitsProcessor
+ from sglang.srt.layers.moe.ep_moe.layer import get_moe_impl_class
++from sglang.srt.layers.moe.fused_moe_triton.layer import FusedMoE
+ from sglang.srt.layers.moe.topk import TopK
+ from sglang.srt.layers.quantization.base_config import QuantizationConfig
+ from sglang.srt.layers.radix_attention import RadixAttention
+@@ -229,7 +230,9 @@ class Gemma4Attention(nn.Module):
+                 config, "swa_num_key_value_heads", config.num_key_value_heads
+             )
+         else:
+-            self.total_num_kv_heads = config.num_key_value_heads
++            self.total_num_kv_heads = getattr(
++                config, "num_global_key_value_heads", config.num_key_value_heads
++            )
+ 
+         self.num_kv_heads = max(1, self.total_num_kv_heads // tp_size)
+ 
+@@ -342,8 +345,6 @@ class Gemma4Attention(nn.Module):
+ 
+         # Check if we should use shared KV cache
+         if self.is_kv_shared_layer and self.kv_shared_layer_index is not None:
+-            # For KV shared layers, we skip K/V computation and normalization
+-            # The RadixAttention will handle retrieving shared KV from cache
+             k = None
+             v = None
+         else:
+@@ -359,7 +360,6 @@ class Gemma4Attention(nn.Module):
+             q, k = self.rotary_emb(positions, q, k)
+             k = k.unflatten(-1, (self.num_kv_heads, self.head_dim))
+         else:
+-            # Rotary embedding requires a key input; use zeros since KV is shared from another layer
+             dummy_k = torch.zeros_like(q[:, : self.kv_size])
+             q, _ = self.rotary_emb(positions, q, dummy_k)
+ 
+@@ -371,6 +371,7 @@ class Gemma4Attention(nn.Module):
+             forward_batch=forward_batch,
+             save_kv_cache=not self.is_kv_shared_layer,
+         )
++
+         if attn_output.dim() == 3:
+             attn_output = attn_output.flatten(-2, -1)
+         output, _ = self.o_proj(attn_output)
+@@ -395,10 +396,12 @@ class Gemma4DecoderLayer(nn.Module):
+         self.layer_id = layer_id
+ 
+         # Gemma 4 uses different head dimensions for sliding vs full attention
++        # hf_transformers_utils remaps: config.head_dim = global_head_dim (512),
++        # config.swa_head_dim = original head_dim (256)
+         layer_type = config.layer_types[layer_id]
+         self.is_full_attention = layer_type == "full_attention"
+         if self.is_full_attention:
+-            head_dim = config.head_dim  # following sglang naming
++            head_dim = config.head_dim
+         else:
+             head_dim = getattr(config, "swa_head_dim", config.head_dim)
+ 
+@@ -524,13 +527,14 @@ class Gemma4DecoderLayer(nn.Module):
+         #   h = gemma_norm(residual)
+         residual = hidden_states
+ 
+-        # Apply input layernorm
+         hidden_states = self.input_layernorm(hidden_states)
++
+         hidden_states = self.self_attn(
+             positions=positions,
+             hidden_states=hidden_states,
+             forward_batch=forward_batch,
+         )
++
+         hidden_states = self.post_attention_layernorm(hidden_states)
+ 
+         if self.enable_moe_block:
+@@ -562,7 +566,7 @@ class Gemma4DecoderLayer(nn.Module):
+             )
+             hidden_states = self.mlp(hidden_states)
+ 
+-        if not self.has_ple and hidden_states.is_cuda and hidden_states.dim() == 2:
++        if False:  # Disabled on RDNA4 — the Triton fused kernel crashes on gfx1201
+             # Fused: (post_ff_norm(h) + residual) * layer_scalar in one kernel
+             norm = self.post_feedforward_layernorm
+             hidden_states = gemma_rmsnorm_residual_scalar(
+@@ -825,10 +829,13 @@ class Gemma4ForCausalLM(PreTrainedModel):
+ 
+     def __init__(
+         self,
+-        config: Gemma4TextConfig,
++        config,
+         quant_config: Optional[QuantizationConfig] = None,
+         prefix: str = "",
+     ) -> None:
++        # Handle multimodal config wrapper: extract text_config for the language model
++        if hasattr(config, "text_config") and getattr(config, "model_type", "") == "gemma4":
++            config = config.text_config
+         super().__init__(config=config)
+         self.config = config
+         self.quant_config = quant_config
+@@ -897,13 +904,25 @@ class Gemma4ForCausalLM(PreTrainedModel):
+             ("gate_up_proj", "up_proj", 1),
+         ]
+ 
+-        expert_params_mapping = [
+-            # (param_name, ckpt_weight_name, shard_ids)
+-            # gate_up_proj is fused [E, 2*I, H] — chunk into w1 (gate) + w3 (up)
++        num_experts = getattr(self.config, "num_experts", 0) or 0
++
++        # Per-expert mapping for AWQ/GPTQ checkpoints (experts.0.gate_proj.qweight)
++        per_expert_params_mapping = (
++            FusedMoE.make_expert_params_mapping(
++                ckpt_gate_proj_name="gate_proj",
++                ckpt_down_proj_name="down_proj",
++                ckpt_up_proj_name="up_proj",
++                num_experts=num_experts,
++            )
++            if num_experts > 0
++            else []
++        )
++
++        # Fused mapping for BF16 checkpoints (experts.gate_up_proj [E, 2*I, H])
++        fused_expert_params_mapping = [
+             ("experts.w13_weight", "experts.gate_up_proj", ("w1", "w3")),
+             ("experts.w2_weight", "experts.down_proj", ("w2",)),
+         ]
+-        num_experts = self.config.num_experts
+ 
+         k_eq_v_layers = self._get_k_eq_v_layers()
+ 
+@@ -919,6 +938,13 @@ class Gemma4ForCausalLM(PreTrainedModel):
+         for name, loaded_weight in weights:
+             name = name.replace("model.language_model.", "model.")
+ 
++            # CT-GPTQ unfused experts: experts.gate_proj.0. → experts.0.gate_proj.
++            name = re.sub(
++                r"\.experts\.(gate_proj|up_proj|down_proj)\.(\d+)\.",
++                r".experts.\2.\1.",
++                name,
++            )
++
+             # HF has router.per_expert_scale and experts.* on the decoder layer;
+             # remap into our moe.* subtree since Gemma4MoE owns both.
+             name = name.replace(".router.per_expert_scale", ".moe.per_expert_scale")
+@@ -936,26 +962,33 @@ class Gemma4ForCausalLM(PreTrainedModel):
+                 and int(m.group(1)) in k_eq_v_layers
+             )
+ 
+-            # MoE expert weights checked first (gate_up_proj contains "up_proj"
+-            # which would false-match the stacked dense MLP mapping).
+             orig_name = name
+-            for param_name, weight_name, shard_ids in expert_params_mapping:
+-                name = orig_name
++
++            # --- Per-expert AWQ/GPTQ weights (experts.{i}.gate_proj.qweight) ---
++            is_expert_weight = False
++            for param_name, weight_name, expert_id, shard_id in per_expert_params_mapping:
+                 if weight_name not in name:
+                     continue
++                is_expert_weight = True
+                 name = name.replace(weight_name, param_name)
+                 if name not in params_dict:
+                     continue
+                 param = params_dict[name]
+                 weight_loader = param.weight_loader
+-                for i in range(num_experts):
+-                    chunks = loaded_weight[i].chunk(len(shard_ids), dim=0)
+-                    for chunk, sid in zip(chunks, shard_ids):
+-                        weight_loader(param, chunk, name, sid, i)
++                weight_loader(
++                    param, loaded_weight, name,
++                    shard_id=shard_id, expert_id=expert_id,
++                )
+                 break
+             else:
+-                for param_name, weight_name, shard_id in stacked_params_mapping:
+-                    name = orig_name
++                if is_expert_weight:
++                    loaded_params.add(name)
++                    continue
++
++                # --- Fused BF16 experts (experts.gate_up_proj [E, 2*I, H]) ---
++                name = orig_name
++                fused_matched = False
++                for param_name, weight_name, shard_ids in fused_expert_params_mapping:
+                     if weight_name not in name:
+                         continue
+                     name = name.replace(weight_name, param_name)
+@@ -963,24 +996,45 @@ class Gemma4ForCausalLM(PreTrainedModel):
+                         continue
+                     param = params_dict[name]
+                     weight_loader = param.weight_loader
+-                    weight_loader(param, loaded_weight, shard_id)
+-                    if should_dup_k_to_v:
+-                        weight_loader(param, loaded_weight, "v")
++                    for i in range(num_experts):
++                        chunks = loaded_weight[i].chunk(len(shard_ids), dim=0)
++                        for chunk, sid in zip(chunks, shard_ids):
++                            weight_loader(param, chunk, name, sid, i)
++                    fused_matched = True
+                     break
+-                else:
+-                    name = orig_name
+-                    if name.endswith(".bias") and name not in params_dict:
+-                        continue
+-                    name = maybe_remap_kv_scale_name(name, params_dict)
+-                    if name is None:
+-                        continue
+-                    if name not in params_dict:
+-                        continue
+-                    param = params_dict[name]
+-                    weight_loader = getattr(
+-                        param, "weight_loader", default_weight_loader
+-                    )
+-                    weight_loader(param, loaded_weight)
++
++                if not fused_matched:
++                    # --- Stacked dense params (qkv_proj, gate_up_proj) ---
++                    for param_name, weight_name, shard_id in stacked_params_mapping:
++                        name = orig_name
++                        if weight_name not in name:
++                            continue
++                        # Skip MoE expert weights — handled above
++                        if ".moe.experts." in name:
++                            continue
++                        name = name.replace(weight_name, param_name)
++                        if name not in params_dict:
++                            continue
++                        param = params_dict[name]
++                        weight_loader = param.weight_loader
++                        weight_loader(param, loaded_weight, shard_id)
++                        if should_dup_k_to_v:
++                            weight_loader(param, loaded_weight, "v")
++                        break
++                    else:
++                        name = orig_name
++                        if name.endswith(".bias") and name not in params_dict:
++                            continue
++                        name = maybe_remap_kv_scale_name(name, params_dict)
++                        if name is None:
++                            continue
++                        if name not in params_dict:
++                            continue
++                        param = params_dict[name]
++                        weight_loader = getattr(
++                            param, "weight_loader", default_weight_loader
++                        )
++                        weight_loader(param, loaded_weight)
+             loaded_params.add(name)
+         unloaded_params = params_dict.keys() - loaded_params
+         if unloaded_params:
+@@ -1006,4 +1060,10 @@ class Gemma4ForCausalLM(PreTrainedModel):
+         return loaded_params
+ 
+ 
+-EntryClass = Gemma4ForCausalLM
++# Text-only alias for multimodal architecture name
++# Allows loading Gemma4ForConditionalGeneration models without vision
++class Gemma4ForConditionalGeneration(Gemma4ForCausalLM):
++    pass
++
++
++EntryClass = [Gemma4ForCausalLM, Gemma4ForConditionalGeneration]
+diff --git a/python/sglang/srt/models/llama.py b/python/sglang/srt/models/llama.py
+index f955ac7..de9076d 100644
+--- a/python/sglang/srt/models/llama.py
++++ b/python/sglang/srt/models/llama.py
+@@ -198,6 +198,12 @@ class LlamaAttention(nn.Module):
+     def forward_prepare_native(self, positions, hidden_states):
+         qkv, _ = self.qkv_proj(hidden_states)
+         q, k, v = qkv.split([self.q_size, self.kv_size, self.kv_size], dim=-1)
++        # Ensure contiguous — split() returns non-contiguous views and
++        # in-place rotary embedding via .view() behaves inconsistently
++        # across torch versions on non-contiguous tensors.
++        q = q.contiguous()
++        k = k.contiguous()
++        v = v.contiguous()
+         q, k = self.rotary_emb(positions, q, k)
+         return q, k, v
+ 
+diff --git a/python/sglang/srt/models/llava.py b/python/sglang/srt/models/llava.py
+index e07ca74..3fcac8f 100644
+--- a/python/sglang/srt/models/llava.py
++++ b/python/sglang/srt/models/llava.py
+@@ -855,15 +855,47 @@ class LlavaForConditionalGeneration(LlavaBaseForCausalLM):
+         # Create dictionaries for direct parameter loading
+         params_dict = dict(self.named_parameters())
+ 
+-        # Load weights directly without remapping
++        # Load weights with prefix remapping for AWQ checkpoints
++        # Some checkpoints (e.g. Devstral AWQ) store language model weights
++        # under "model.*" instead of "language_model.model.*", and "lm_head.*"
++        # instead of "language_model.lm_head.*".
+         for name, loaded_weight in weights:
++            # Remap bare "model.*" → "language_model.model.*" when it is
++            # not already correctly prefixed for a known sub-module.
++            if name.startswith("model.") and not name.startswith(
++                ("model.language_model.", "model.multi_modal_projector.", "model.vision_tower.")
++            ):
++                name = "language_model." + name  # model.X → language_model.model.X
++
++            # Remap bare "lm_head.*" → "language_model.lm_head.*"
++            if name.startswith("lm_head."):
++                name = "language_model." + name
++
++            # Handle both "vision_tower.X" and "model.vision_tower.X" formats
++            # Some checkpoints (androiddrew Devstral AWQ) use "model." prefix
++            if name.startswith("model.vision_tower."):
++                name = name[len("model."):]  # model.vision_tower.X → vision_tower.X
++            if name.startswith("model.multi_modal_projector."):
++                name = name[len("model."):]  # model.multi_modal_projector.X → multi_modal_projector.X
++
++            # Cast BF16 vision/projector weights to model dtype (FP16)
++            # AWQ checkpoints may store vision weights in BF16 while language
++            # model runs in FP16 — mismatched dtypes cause silent matmul failures
++            if (name.startswith("vision_tower.") or name.startswith("multi_modal_projector.")):
++                if loaded_weight.dtype == torch.bfloat16:
++                    loaded_weight = loaded_weight.to(torch.float16)
++
+             for part in ("language_model", "vision_tower"):
+                 if name.startswith(part):
+                     name = name[len(part + ".") :]
+                     getattr(self, part).load_weights([(name, loaded_weight)])
+                     break
+             else:
+-                param = params_dict[name]
++                # multi_modal_projector weights go to params_dict directly
++                param = params_dict.get(name)
++                if param is None:
++                    logger.warning(f"Skipping unknown weight: {name}")
++                    continue
+                 weight_loader = getattr(param, "weight_loader", default_weight_loader)
+                 weight_loader(param, loaded_weight)
+ 
+diff --git a/python/sglang/srt/models/ministral3.py b/python/sglang/srt/models/ministral3.py
+index 8d678ec..37970f3 100644
+--- a/python/sglang/srt/models/ministral3.py
++++ b/python/sglang/srt/models/ministral3.py
+@@ -72,6 +72,13 @@ class Ministral3Attention(LlamaAttention):
+         qkv, _ = self.qkv_proj(hidden_states)
+         q, k, v = qkv.split([self.q_size, self.kv_size, self.kv_size], dim=-1)
+ 
++        # Ensure q/k/v are contiguous — split() returns non-contiguous views
++        # and the sgl_kernel rotary_embedding fallback produces wrong results
++        # on non-contiguous tensors on some torch versions.
++        q = q.contiguous()
++        k = k.contiguous()
++        v = v.contiguous()
++
+         # Apply RoPE
+         q, k = self.rotary_emb(positions, q, k)
+ 
+@@ -80,13 +87,8 @@ class Ministral3Attention(LlamaAttention):
+             scale = _get_llama_4_attn_scale(
+                 positions, self.llama_4_scaling_beta, self.max_position_embeddings
+             ).to(q.dtype)
+-            # q shape is [batch_size * seq_len, num_heads * head_dim] or [batch_size * seq_len, num_heads, head_dim]
+-            # positions is [batch_size * seq_len]
+-            # scale is [batch_size * seq_len, 1]
+-            # We need to reshape q to apply scale correctly if it's flattened
+-            # Assuming q is (total_tokens, num_heads * head_dim)
+             q = q.view(-1, self.num_heads, self.head_dim)
+-            q = q * scale.unsqueeze(1)  # Broadcast over heads
++            q = q * scale.unsqueeze(1)
+             q = q.view(-1, self.num_heads * self.head_dim)
+ 
+         attn_output = self.attn(q, k, v, forward_batch)
+diff --git a/python/sglang/srt/models/qwen3_5.py b/python/sglang/srt/models/qwen3_5.py
+index cd1e685..e1d082f 100644
+--- a/python/sglang/srt/models/qwen3_5.py
++++ b/python/sglang/srt/models/qwen3_5.py
+@@ -106,6 +106,21 @@ _is_amx_available = cpu_has_amx_support()
+ cached_get_processor = lru_cache(get_processor)
+ 
+ 
++def _should_replicate_deltanet_for_tp(
++    quant_config: Optional[QuantizationConfig],
++) -> bool:
++    """Whether to replicate DeltaNet+MLP layers across TP ranks.
++
++    FP8 models are too large to replicate everything, so only DeltaNet
++    projections are replicated while MLPs use standard TP splitting.
++    AWQ and unquantized models replicate both DeltaNet and MLP layers.
++    """
++    if quant_config is None:
++        return True
++    name = quant_config.get_name()
++    return name not in ("fp8", "mxfp8", "w8a8_fp8")
++
++
+ class Qwen3_5GatedDeltaNet(nn.Module):
+     def __init__(
+         self,
+@@ -117,8 +132,12 @@ class Qwen3_5GatedDeltaNet(nn.Module):
+     ) -> None:
+         super().__init__()
+         self.config = config
+-        self.attn_tp_rank = get_attention_tp_rank()
+-        self.attn_tp_size = get_attention_tp_size()
++        # DeltaNet projections are always replicated (tp_size=1) to avoid
++        # FP16 rounding errors accumulating through recurrent state S(t).
++        self.attn_tp_rank = 0
++        self.attn_tp_size = 1
++        self.real_tp_rank = get_attention_tp_rank()
++        self.real_tp_size = get_attention_tp_size()
+         self.hidden_size = config.hidden_size
+         self.num_v_heads = config.linear_num_value_heads
+         self.num_k_heads = config.linear_num_key_heads
+@@ -157,10 +176,13 @@ class Qwen3_5GatedDeltaNet(nn.Module):
+             tp_size=self.attn_tp_size,
+         )
+ 
++        # quant_config=None for in_proj_ba: output dim 48 is not divisible
++        # by TP=2 * 16 (hipBLASLt scaled_mm alignment), so FP8 quantization
++        # would fail. Keep projections in full precision.
+         self.in_proj_ba = self.create_ba_proj(
+             hidden_size=self.hidden_size,
+             num_v_heads=self.num_v_heads,
+-            quant_config=quant_config,
++            quant_config=None,
+             prefix=add_prefix("in_proj_ba", prefix),
+             tp_rank=self.attn_tp_rank,
+             tp_size=self.attn_tp_size,
+@@ -197,8 +219,9 @@ class Qwen3_5GatedDeltaNet(nn.Module):
+             torch.empty(self.num_v_heads // self.attn_tp_size, dtype=torch.float32),
+         )
+ 
+-        set_weight_attrs(self.A_log, {"weight_loader": sharded_weight_loader(0)})
+-        set_weight_attrs(self.dt_bias, {"weight_loader": sharded_weight_loader(0)})
++        # override_tp_rank=0 so all TP workers load the full (unsharded) weight
++        set_weight_attrs(self.A_log, {"weight_loader": sharded_weight_loader(0, override_tp_rank=0)})
++        set_weight_attrs(self.dt_bias, {"weight_loader": sharded_weight_loader(0, override_tp_rank=0)})
+ 
+         conv_weights = self.conv1d.weight.view(
+             self.conv1d.weight.size(0), self.conv1d.weight.size(2)
+@@ -490,6 +513,8 @@ class Qwen3_5GatedDeltaNet(nn.Module):
+         core_attn_out = core_attn_out.reshape(*core_attn_out.shape[:-2], -1)
+ 
+         output, _ = self.out_proj(core_attn_out)
++        if self.real_tp_size > 1:
++            output = output / self.real_tp_size
+         return output
+ 
+ 
+@@ -520,6 +545,8 @@ class Qwen3_5LinearDecoderLayer(nn.Module):
+ 
+         # NOTE: Determine the MLP type based on the model type
+         # Qwen3.5 use all layers for MLP / Qwen3.5-MoE use sparse MoE blocks
++        self.replicate_mlp = _should_replicate_deltanet_for_tp(quant_config)
++        self.real_tp_size = get_attention_tp_size()
+         if config.model_type == "qwen3_5_moe_text":
+             self.mlp = Qwen2MoeSparseMoeBlock(
+                 layer_id=layer_id,
+@@ -533,12 +560,16 @@ class Qwen3_5LinearDecoderLayer(nn.Module):
+             is_previous_layer_sparse = True
+             is_next_layer_sparse = True
+         elif config.model_type == "qwen3_5_text":
++            mlp_tp_kwargs = {}
++            if self.replicate_mlp:
++                mlp_tp_kwargs = {"tp_rank": 0, "tp_size": 1}
+             self.mlp = Qwen2MoeMLP(
+                 hidden_size=config.hidden_size,
+                 intermediate_size=config.intermediate_size,
+                 hidden_act=config.hidden_act,
+                 quant_config=quant_config,
+                 prefix=add_prefix("mlp", prefix.replace(".linear_attn", "")),
++                **mlp_tp_kwargs,
+             )
+             is_layer_sparse = False
+             is_previous_layer_sparse = False
+@@ -574,15 +605,8 @@ class Qwen3_5LinearDecoderLayer(nn.Module):
+     ):
+         forward_batch = kwargs.get("forward_batch", None)
+ 
+-        hidden_states, residual = (
+-            self.layer_communicator.prepare_attn_and_capture_last_layer_outputs(
+-                hidden_states,
+-                residual,
+-                forward_batch,
+-                captured_last_layer_outputs=kwargs.get(
+-                    "captured_last_layer_outputs", None
+-                ),
+-            )
++        hidden_states, residual = self.layer_communicator.prepare_attn(
++            hidden_states, residual, forward_batch
+         )
+ 
+         if not forward_batch.forward_mode.is_idle():
+@@ -616,6 +640,8 @@ class Qwen3_5LinearDecoderLayer(nn.Module):
+             hidden_states = self.mlp(
+                 hidden_states, should_allreduce_fusion, use_reduce_scatter
+             )
++        if self.replicate_mlp and self.real_tp_size > 1:
++            hidden_states = hidden_states / self.real_tp_size
+         if should_allreduce_fusion:
+             hidden_states._sglang_needs_allreduce_fusion = True
+         else:
+@@ -720,13 +746,19 @@ class Qwen3_5AttentionDecoderLayer(nn.Module):
+         )
+ 
+         # Dense MLP for non-MoE variant
++        self.replicate_mlp = _should_replicate_deltanet_for_tp(quant_config)
++        self.real_tp_size = get_attention_tp_size()
+         if config.model_type == "qwen3_5_text":
++            mlp_tp_kwargs = {}
++            if self.replicate_mlp:
++                mlp_tp_kwargs = {"tp_rank": 0, "tp_size": 1}
+             self.mlp = Qwen2MoeMLP(
+                 hidden_size=config.hidden_size,
+                 intermediate_size=config.intermediate_size,
+                 hidden_act=config.hidden_act,
+                 quant_config=quant_config,
+                 prefix=add_prefix("mlp", prefix.replace(".self_attn", "")),
++                **mlp_tp_kwargs,
+             )
+             is_layer_sparse = False
+             is_previous_layer_sparse = False
+@@ -832,16 +864,10 @@ class Qwen3_5AttentionDecoderLayer(nn.Module):
+         hidden_states: torch.Tensor,
+         residual: Optional[torch.Tensor],
+         forward_batch: ForwardBatch,
+-        captured_last_layer_outputs: Optional[list[torch.Tensor]] = None,
+         **kwargs,
+     ):
+-        hidden_states, residual = (
+-            self.layer_communicator.prepare_attn_and_capture_last_layer_outputs(
+-                hidden_states,
+-                residual,
+-                forward_batch,
+-                captured_last_layer_outputs=captured_last_layer_outputs,
+-            )
++        hidden_states, residual = self.layer_communicator.prepare_attn(
++            hidden_states, residual, forward_batch
+         )
+ 
+         if not forward_batch.forward_mode.is_idle():
+@@ -875,6 +901,8 @@ class Qwen3_5AttentionDecoderLayer(nn.Module):
+             hidden_states = self.mlp(
+                 hidden_states, should_allreduce_fusion, use_reduce_scatter
+             )
++        if self.replicate_mlp and self.real_tp_size > 1:
++            hidden_states = hidden_states / self.real_tp_size
+         if should_allreduce_fusion:
+             hidden_states._sglang_needs_allreduce_fusion = True
+         else:
+@@ -894,7 +922,7 @@ ALL_DECODER_LAYER_TYPES = {
+ class Qwen3_5ForCausalLM(nn.Module):
+     """Qwen3.5 Model with support for dense variant."""
+ 
+-    if _is_gfx95 or _is_npu:
++    if _is_gfx95:
+         packed_modules_mapping = {
+             "qkv_proj": ["q_proj", "k_proj", "v_proj"],
+             "gate_up_proj": ["gate_proj", "up_proj"],
+@@ -958,16 +986,9 @@ class Qwen3_5ForCausalLM(nn.Module):
+         else:
+             self.norm = PPMissingLayer()
+ 
+-        self.layers_to_capture = []
+-
+     def get_input_embeddings(self):
+         return self.embed_tokens
+ 
+-    def set_dflash_layers_to_capture(self, layers_to_capture: list[int]):
+-        self.layers_to_capture = layers_to_capture
+-        for layer_id in self.layers_to_capture:
+-            setattr(self.layers[layer_id], "_is_layer_to_capture", True)
+-
+     @property
+     def start_layer(self) -> int:
+         return self._start_layer
+@@ -998,7 +1019,6 @@ class Qwen3_5ForCausalLM(nn.Module):
+             hidden_states = pp_proxy_tensors["hidden_states"]
+             residual = pp_proxy_tensors["residual"]
+ 
+-        aux_hidden_states = []
+         # Pass through decoder layers
+         for layer_idx in range(self.start_layer, self.end_layer):
+             layer = self.layers[layer_idx]
+@@ -1010,11 +1030,6 @@ class Qwen3_5ForCausalLM(nn.Module):
+                     hidden_states=hidden_states,
+                     residual=residual,
+                     forward_batch=forward_batch,
+-                    captured_last_layer_outputs=(
+-                        aux_hidden_states
+-                        if getattr(layer, "_is_layer_to_capture", False)
+-                        else None
+-                    ),
+                 )
+ 
+             # Process deepstack embeddings if provided
+@@ -1044,10 +1059,7 @@ class Qwen3_5ForCausalLM(nn.Module):
+             else:
+                 hidden_states, _ = self.norm(hidden_states, residual)
+ 
+-        if len(aux_hidden_states) == 0:
+-            return hidden_states
+-
+-        return hidden_states, aux_hidden_states
++        return hidden_states
+ 
+     def load_weights(self, weights: Iterable[Tuple[str, torch.Tensor]]):
+         stacked_params_mapping = [
+@@ -1339,7 +1351,7 @@ class Qwen3_5MoeForCausalLM(Qwen3_5ForCausalLM):
+ 
+ 
+ class Qwen3_5ForConditionalGeneration(Qwen3VLForConditionalGeneration):
+-    if _is_gfx95 or _is_npu:
++    if _is_gfx95:
+         packed_modules_mapping = Qwen3_5ForCausalLM.packed_modules_mapping
+         hf_to_sglang_mapper = None
+ 
+@@ -1458,7 +1470,7 @@ class Qwen3_5ForConditionalGeneration(Qwen3VLForConditionalGeneration):
+                     name = name.replace(r"attn.qkv.", r"attn.qkv_proj.")
+                     name = name.replace(r"model.visual.", r"visual.")
+ 
+-                # print(name, loaded_weight.shape)
++                print(name, loaded_weight.shape)
+                 # Skip loading extra bias for GPTQ models.
+                 if name.endswith(".bias") and name not in params_dict:
+                     continue
+@@ -1476,7 +1488,7 @@ class Qwen3_5ForConditionalGeneration(Qwen3VLForConditionalGeneration):
+ class Qwen3_5MoeForConditionalGeneration(Qwen3VLForConditionalGeneration):
+     """Qwen3.5 MoE Vision-Language Model."""
+ 
+-    if _is_gfx95 or _is_npu:
++    if _is_gfx95:
+         packed_modules_mapping = Qwen3_5ForCausalLM.packed_modules_mapping
+         hf_to_sglang_mapper = None
+ 
+diff --git a/python/sglang/srt/models/qwen3_next.py b/python/sglang/srt/models/qwen3_next.py
+index ac63cae..22d34e8 100644
+--- a/python/sglang/srt/models/qwen3_next.py
++++ b/python/sglang/srt/models/qwen3_next.py
+@@ -135,12 +135,13 @@ class Qwen3GatedDeltaNet(nn.Module):
+ 
+         # Override weight_loader for packed checkpoint format.
+         # Must capture original_loader BEFORE overwriting.
+-        self._override_weight_loader(
+-            self.in_proj_qkvz, self._make_packed_weight_loader(self.in_proj_qkvz)
+-        )
+-        self._override_weight_loader(
+-            self.in_proj_ba, self._make_packed_weight_loader(self.in_proj_ba)
+-        )
++        # With AWQ quantization, modules have qweight instead of weight — skip.
++        loader_qkvz = self._make_packed_weight_loader(self.in_proj_qkvz)
++        if loader_qkvz is not None:
++            self._override_weight_loader(self.in_proj_qkvz, loader_qkvz)
++        loader_ba = self._make_packed_weight_loader(self.in_proj_ba)
++        if loader_ba is not None:
++            self._override_weight_loader(self.in_proj_ba, loader_ba)
+ 
+         # Conv1d weight loader setup
+         query_key_settings = (self.key_dim, 0, False)
+@@ -222,7 +223,10 @@ class Qwen3GatedDeltaNet(nn.Module):
+ 
+         ModelWeightParameter exposes weight_loader as a read-only property
+         backed by _weight_loader, while plain parameters store it as a
+-        regular attribute.  This helper handles both cases."""
++        regular attribute.  This helper handles both cases.
++        With AWQ quantization, module has qweight instead of weight — skip."""
++        if not hasattr(module, "weight"):
++            return  # AWQ quantization: qweight/scales/qzeros handle their own loading
+         param = module.weight
+         if hasattr(param, "_weight_loader"):
+             param._weight_loader = new_loader
+@@ -235,6 +239,8 @@ class Qwen3GatedDeltaNet(nn.Module):
+         (packed-format) checkpoint weights (shard_id=None), and delegates
+         to the standard MergedColumnParallelLinear loader for split checkpoint
+         weights (shard_id=int/tuple)."""
++        if not hasattr(module, "weight"):
++            return None  # AWQ: skip packed weight loader
+         original_loader = module.weight.weight_loader
+ 
+         def weight_loader(param, loaded_weight, loaded_shard_id=None):
+@@ -813,11 +819,6 @@ class Qwen3NextModel(nn.Module):
+         for layer_id in self.layers_to_capture:
+             setattr(self.layers[layer_id], "_is_layer_to_capture", True)
+ 
+-    def set_dflash_layers_to_capture(self, layers_to_capture: list[int]):
+-        self.layers_to_capture = layers_to_capture
+-        for layer_id in self.layers_to_capture:
+-            setattr(self.layers[layer_id], "_is_layer_to_capture", True)
+-
+     def forward(
+         self,
+         input_ids: torch.Tensor,
+@@ -952,9 +953,6 @@ class Qwen3NextForCausalLM(nn.Module):
+     def get_embed_and_head(self):
+         return self.model.embed_tokens.weight, self.lm_head.weight
+ 
+-    def get_input_embeddings(self) -> nn.Embedding:
+-        return self.model.embed_tokens
+-
+     def set_embed_and_head(self, embed, head):
+         del self.model.embed_tokens.weight
+         del self.lm_head.weight
+@@ -1135,17 +1133,5 @@ class Qwen3NextForCausalLM(nn.Module):
+         else:
+             self.model.set_eagle3_layers_to_capture([val + 1 for val in layer_ids])
+ 
+-    def set_dflash_layers_to_capture(self, layer_ids: list[int]):
+-        if not self.pp_group.is_last_rank:
+-            return
+-
+-        if layer_ids is None:
+-            raise ValueError(
+-                "DFLASH requires explicit layer_ids for aux hidden capture."
+-            )
+-
+-        self.capture_aux_hidden_states = True
+-        self.model.set_dflash_layers_to_capture([val + 1 for val in layer_ids])
+-
+ 
+ EntryClass = Qwen3NextForCausalLM

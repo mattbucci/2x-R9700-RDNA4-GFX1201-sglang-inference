@@ -1,0 +1,56 @@
+diff --git a/python/sglang/srt/layers/rotary_embedding/utils.py b/python/sglang/srt/layers/rotary_embedding/utils.py
+index 882c68241..fc55ee0e9 100644
+--- a/python/sglang/srt/layers/rotary_embedding/utils.py
++++ b/python/sglang/srt/layers/rotary_embedding/utils.py
+@@ -7,7 +7,7 @@ from typing import Tuple
+ 
+ import torch
+ 
+-from sglang.srt.utils import cpu_has_amx_support, get_compiler_backend, is_cpu, is_npu
++from sglang.srt.utils import cpu_has_amx_support, get_compiler_backend, is_cpu, is_hip, is_npu
+ 
+ _is_npu = is_npu()
+ _is_cpu = is_cpu()
+@@ -70,7 +70,7 @@ def rotate_half(x):
+     return torch.cat((-x2, x1), dim=-1)
+ 
+ 
+-@torch.compile(dynamic=True, backend=get_compiler_backend())
++@torch.compile(dynamic=True, backend=get_compiler_backend(), disable=is_hip())
+ def apply_rotary_pos_emb_native(
+     q: torch.Tensor,
+     k: torch.Tensor,
+diff --git a/python/sglang/srt/layers/sampler.py b/python/sglang/srt/layers/sampler.py
+index e947a48cb..0323f14c7 100644
+--- a/python/sglang/srt/layers/sampler.py
++++ b/python/sglang/srt/layers/sampler.py
+@@ -545,7 +545,7 @@ def top_k_top_p_min_p_sampling_from_logits_ascend(
+     return batch_next_token_ids.view(-1)
+ 
+ 
+-@torch.compile(dynamic=True)
++@torch.compile(dynamic=True, disable=True)  # Disabled: inductor stalls on ROCm
+ def multinomial_with_seed(
+     logprobs: torch.Tensor, seed: torch.Tensor, positions: torch.Tensor
+ ) -> torch.Tensor:
+diff --git a/python/sglang/srt/layers/vocab_parallel_embedding.py b/python/sglang/srt/layers/vocab_parallel_embedding.py
+index 63b376c24..b9db467d1 100644
+--- a/python/sglang/srt/layers/vocab_parallel_embedding.py
++++ b/python/sglang/srt/layers/vocab_parallel_embedding.py
+@@ -36,6 +36,7 @@ from sglang.srt.utils import (
+     cpu_has_amx_support,
+     get_compiler_backend,
+     is_cpu,
++    is_hip,
+     is_npu,
+     set_weight_attrs,
+ )
+@@ -130,7 +131,7 @@ class VocabParallelEmbeddingShardIndices:
+         assert self.num_added_elements <= self.num_added_elements_padded
+ 
+ 
+-@torch.compile(dynamic=True, backend=get_compiler_backend(), disable=_is_npu)
++@torch.compile(dynamic=True, backend=get_compiler_backend(), disable=_is_npu or is_hip())
+ def get_masked_input_and_mask(
+     input_: torch.Tensor,
+     org_vocab_start_index: int,
