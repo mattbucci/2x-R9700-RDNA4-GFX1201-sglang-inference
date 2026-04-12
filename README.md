@@ -264,13 +264,10 @@ pip install -e components/sglang/python
 
 ## Patches
 
-5 patches on top of SGLang v0.5.10 (~5,100 lines across 54 files):
+2 patches on top of SGLang v0.5.10 (~9,000 lines across 40 files):
 
-1. **001-rdna4-core** (46 files) — Core RDNA4 support: fused AWQ GEMM (4x decode speedup), torch.compile disabled on HIP, Triton 3.6 support, Qwen3.5 TP=2 layer replication, Devstral chat template fix, FP8 torch-native fallbacks, R9700 MoE kernel configs
-2. **002-awq-performance** (1 file) — Batch-size-dependent AWQ dispatch: M=1 split_k=16, M>32 split_k=2/bm=64 (+6% decode, +13% throughput)
-3. **003-hip-awq-gemv** (2 files, optional) — Native HIP AWQ GEMV kernel for M=1 decode
-4. **004-sgl-kernel-rdna4-fallbacks** (2 files) — sgl-kernel graceful degradation: wraps all CUDA-only imports with try/except, provides torch-native fallbacks for elementwise ops (rmsnorm, rotary, silu, gelu), topk, and moe_align_block_size
-5. **005-qwen35-cache-gemma4-fixes** (3 files) — Qwen3.5 mamba cache TP fix (use tp_world_size=1 for replicated DeltaNet layers), Gemma4 MoE activation fn (gelu not silu), CT-GPTQ weight name remapping
+1. **001-upstream-sync** (22 files, 2,700 LOC) — Cherry-picks from upstream main: Gemma 4 model, Qwen3.5/3-Next updates, triton attention improvements, SWA fixes, layernorm, rotary embedding, config handling. No RDNA4-specific changes.
+2. **002-rdna4-core** (40 files, 6,335 LOC) — All RDNA4 (gfx1201) fixes: fused AWQ GEMM + HIP GEMV (4x decode speedup), torch.compile disabled on HIP, Triton 3.6 MoE configs, sgl-kernel fallbacks, FP8 torch-native paths, Qwen3.5 TP=2 DeltaNet replication, Gemma4 MoE gelu activation, Devstral chat template fix
 
 | Component | Version | Source |
 |-----------|---------|--------|
