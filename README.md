@@ -4,8 +4,7 @@ High-throughput LLM inference on AMD Radeon AI PRO R9700 (gfx1201, RDNA4) with R
 
 ## Known Issues
 
-- **Qwen3.5-27B AWQ** — `causal_conv1d` shape mismatch at TP=2. Server crashes during warmup (`conv_states.shape` dim=5120, expected 10240). Was working previously (129 tok/s @32), likely TP split regression in Mamba conv1d state.
-- **Gemma 4 31B Dense** — cyankiwi AWQ has RTN quality artifacts. Standard GPTQ calibration needed (script ready: `scripts/quantize/quantize_gemma4_31b_gptq.sh`). BF16 base is NOT gated.
+- **Gemma 4 31B Dense** — cyankiwi AWQ has RTN quality artifacts. GPTQ calibration from BF16 base in progress. BF16 base is NOT gated.
 - **FP8 MoE on SGLang** — Blocked. Arch `comgr` generates invalid HSACO for FP8 WMMA on gfx1201. Workaround: vLLM Docker for comparison benchmarks.
 
 ## Quick Start
@@ -66,13 +65,22 @@ SHM transport (check `NCCL_DEBUG=INFO` output for `SHM` vs `P2P/IPC`).
 
 All models run on SGLang with RDNA4 patches. vLLM/llama.cpp used for comparison only.
 
-| Model | Type | 1-user tok/s | @32 conc | Max context | Launch | Weights | Status |
-|-------|------|:------------:|:--------:|:-----------:|:-----:|:------:|:------:|
-| Devstral-24B AWQ | Dense | 17 | 13 | 262K | `launch.sh devstral` | Self-calibrated | Working |
-| Coder-30B AWQ | MoE (128 experts) | 28 | 332 | 32K | `launch.sh coder-30b` | Community | Working |
-| Gemma 4 26B AWQ | MoE (128 experts) | 27 | 165 | 4K | `launch.sh gemma4` | Self-calibrated | Working |
-| Coder-Next 80B AWQ | MoE+DeltaNet (512 experts) | 24 | 25 | 8K | `launch.sh coder-next` | Community | Working |
-| Qwen3.5-27B AWQ | DeltaNet hybrid | — | — | 256K | `launch.sh qwen35` | Self-calibrated | Conv1d bug |
+### Throughput (short context, max batching)
+
+| Model | Type | 1-user tok/s | Peak tok/s | Context | Launch | Status |
+|-------|------|:------------:|:----------:|:-------:|:------:|:------:|
+| Coder-30B AWQ | MoE (128 experts) | 28 | 332 @32 | 32K | `launch.sh coder-30b` | Working |
+| Gemma 4 26B AWQ | MoE (128 experts) | 27 | 165 @32 | 4K | `launch.sh gemma4` | Working |
+| Coder-Next 80B AWQ | MoE+DeltaNet (512 experts) | 24 | 25 @8 | 8K | `launch.sh coder-next` | Working |
+| Devstral-24B AWQ | Dense (32K mode) | 78 | 1,266 @64 | 32K | `launch.sh devstral` | Working |
+
+### Long context (single user, max context window)
+
+| Model | Max context | 1-user tok/s | Notes | Launch | Status |
+|-------|:----------:|:------------:|-------|:------:|:------:|
+| Qwen3.5-27B AWQ | 262K | — | DeltaNet hybrid, reasoning | `launch.sh qwen35` | Working |
+| Devstral-24B AWQ | 262K | 17 | KV cache fills VRAM, batching limited | `launch.sh devstral` | Working |
+| Coder-Next 80B AWQ | 8K | 24 | 23 GB/GPU weights, VRAM-limited | `launch.sh coder-next` | Working |
 
 **Weights:** Community AWQ checkpoints work for standard architectures (Coder-30B, Coder-Next) but fail for others:
 - **Devstral** — community AWQ includes a BOS token that causes `<unk>` output, and vision is broken from quantization damaging the vision-language alignment
@@ -81,14 +89,11 @@ All models run on SGLang with RDNA4 patches. vLLM/llama.cpp used for comparison 
 
 Self-calibrated models use the pipeline in `scripts/quantize/` (GPTQ calibration → CT→AWQ conversion).
 
-Note: Devstral at 262K context allocates most VRAM to KV cache, limiting batching.
-At 32K context (previous config), Devstral achieves 78 tok/s single-user and 841 @32 concurrent.
-
 **Dense AWQ:** HIP GEMV for M=1 decode (30% faster), dequant+matmul for prefill. Zero Triton in AWQ path.
 
 **MoE AWQ:** HIP GEMV fused expert dispatch (all experts in one GPU kernel). Three RDNA4-specific crash sources fixed: Triton AWQ GEMM, sgl_kernel.topk_softmax, per-expert Python loop.
 
-**DeltaNet hybrid models (Coder-Next, Qwen3.5):** DeltaNet/attention layers kept in BF16 — INT4 quantization destroys quality due to recurrent state error accumulation. This limits decode to ~15-21 tok/s (bandwidth-bound by BF16 weight reads).
+**DeltaNet hybrid models (Coder-Next, Qwen3.5):** DeltaNet/attention layers kept in BF16 — INT4 quantization destroys quality due to recurrent state error accumulation. This limits decode to ~15-24 tok/s (bandwidth-bound by BF16 weight reads).
 
 **MoE quantization:** Standard GPTQ under-calibrates rare experts (inter-expert imbalance). Use expert-balanced calibration (MoEQuant EBSS or GPTQModel FailSafe). See `rules-for-agents.md`.
 
@@ -96,9 +101,17 @@ At 32K context (previous config), Devstral achieves 78 tok/s single-user and 841
 
 ## Performance (2x R9700, TP=2, SGLang v0.5.10, updated 2026-04-11)
 
+### All models comparison
+
+![Context Length vs Decode Speed](benchmarks/all_models_context.png)
+
+![Throughput Scaling](benchmarks/all_models_concurrency.png)
+
 ### Devstral-24B AWQ-4bit (262K context)
 
 24B dense transformer. ~6.5 GB/GPU AWQ weights. At 262K context, most VRAM is KV cache.
+
+![Devstral context scaling](benchmarks/devstral-24b-awq/context_vs_toks.png)
 
 | Context Length | Time (100 tok) | tok/s |
 |:--------------:|:--------------:|:-----:|
@@ -110,6 +123,8 @@ At 32K context (previous config), Devstral achieves 78 tok/s single-user and 841
 | 64K            | 17.3s          | 2.2   |
 | 131K           | 40.3s          | 2.0   |
 | **262K**       | **96.5s**      | **0.9** |
+
+![Devstral concurrency](benchmarks/devstral-24b-awq/concurrency_vs_toks.png)
 
 | Concurrency | tok/s |
 |:-----------:|:-----:|
@@ -123,6 +138,8 @@ Quality: **38/39** (math, code, reasoning, vision, parallel)
 
 30B total / 3B active MoE. ~7.9 GB/GPU AWQ weights. Best throughput scaling.
 
+![Coder-30B context scaling](benchmarks/coder-30b-awq/context_vs_toks.png)
+
 | Context Length | Time (100 tok) | tok/s |
 |:--------------:|:--------------:|:-----:|
 | 128            | 1.6s           | 28.2  |
@@ -131,6 +148,8 @@ Quality: **38/39** (math, code, reasoning, vision, parallel)
 | 8K             | 3.2s           | 16.1  |
 | 16K            | 4.3s           | 7.4   |
 | **32K**        | **7.8s**       | **4.0** |
+
+![Coder-30B concurrency](benchmarks/coder-30b-awq/concurrency_vs_toks.png)
 
 | Concurrency | tok/s |
 |:-----------:|:-----:|
@@ -144,6 +163,8 @@ Quality: **38/39** (math, code, reasoning, vision, parallel)
 
 26B total / 4B active MoE. ~8.5 GB/GPU AWQ weights. GPTQ with forced-routing calibration.
 
+![Gemma 4 context scaling](benchmarks/gemma4-26b-awq/context_vs_toks.png)
+
 | Context Length | Time (100 tok) | tok/s |
 |:--------------:|:--------------:|:-----:|
 | 128            | 1.8s           | 27.3  |
@@ -151,6 +172,8 @@ Quality: **38/39** (math, code, reasoning, vision, parallel)
 | 1K             | 1.6s           | 23.9  |
 | 2K             | 1.5s           | 19.9  |
 | **4K**         | **2.2s**       | **18.6** |
+
+![Gemma 4 concurrency](benchmarks/gemma4-26b-awq/concurrency_vs_toks.png)
 
 | Concurrency | tok/s |
 |:-----------:|:-----:|
@@ -164,12 +187,16 @@ Quality: **38/39** (math, code, reasoning, vision, parallel)
 
 80B total / 3B active MoE + DeltaNet. ~23 GB/GPU (DeltaNet+attention BF16, only MoE experts quantized).
 
+![Coder-Next context scaling](benchmarks/coder-next-80b-awq/context_vs_toks.png)
+
 | Context Length | Time (100 tok) | tok/s |
 |:--------------:|:--------------:|:-----:|
 | 128            | 4.1s           | 24.2  |
 | 1K             | 4.4s           | 22.6  |
 | 4K             | 5.6s           | 18.0  |
 | **8K**         | **6.9s**       | **14.4** |
+
+![Coder-Next concurrency](benchmarks/coder-next-80b-awq/concurrency_vs_toks.png)
 
 | Concurrency | tok/s |
 |:-----------:|:-----:|
@@ -213,12 +240,13 @@ pip install -e components/sglang/python
 
 ## Patches
 
-4 patches on top of SGLang v0.5.10 (~5,000 lines across 51 files):
+5 patches on top of SGLang v0.5.10 (~5,100 lines across 54 files):
 
 1. **001-rdna4-core** (46 files) — Core RDNA4 support: fused AWQ GEMM (4x decode speedup), torch.compile disabled on HIP, Triton 3.6 support, Qwen3.5 TP=2 layer replication, Devstral chat template fix, FP8 torch-native fallbacks, R9700 MoE kernel configs
 2. **002-awq-performance** (1 file) — Batch-size-dependent AWQ dispatch: M=1 split_k=16, M>32 split_k=2/bm=64 (+6% decode, +13% throughput)
 3. **003-hip-awq-gemv** (2 files, optional) — Native HIP AWQ GEMV kernel for M=1 decode
 4. **004-sgl-kernel-rdna4-fallbacks** (2 files) — sgl-kernel graceful degradation: wraps all CUDA-only imports with try/except, provides torch-native fallbacks for elementwise ops (rmsnorm, rotary, silu, gelu), topk, and moe_align_block_size
+5. **005-qwen35-cache-gemma4-fixes** (3 files) — Qwen3.5 mamba cache TP fix (use tp_world_size=1 for replicated DeltaNet layers), Gemma4 MoE activation fn (gelu not silu), CT-GPTQ weight name remapping
 
 | Component | Version | Source |
 |-----------|---------|--------|

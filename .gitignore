@@ -8,3 +8,7 @@ __pycache__/
 *.egg-info/
 *.jsonl
 build/
+
+# GPTQ calibration temp files
+gptqmodel_offload/
+gptq_log_*.log

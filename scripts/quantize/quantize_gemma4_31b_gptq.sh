@@ -15,10 +15,14 @@ QUANT_ENV="gemma4-quant"
 QUANT_PYTHON="$CONDA_BASE/envs/$QUANT_ENV/bin/python"
 MODELS_DIR="${MODELS_DIR:-$HOME/AI/models}"
 
-# Need BF16 base — download if not present
-BF16_MODEL="google/gemma-4-31B-it"
+# BF16 base — use local copy if available, otherwise HuggingFace
+if [ -d "$MODELS_DIR/gemma-4-31B-it-BF16" ]; then
+    BF16_MODEL="$MODELS_DIR/gemma-4-31B-it-BF16"
+else
+    BF16_MODEL="google/gemma-4-31B-it"
+fi
 CT_OUTPUT="$MODELS_DIR/gemma-4-31B-it-CT-GPTQ"
-AWQ_OUTPUT="$MODELS_DIR/gemma-4-31B-it-AWQ-GPTQ"
+AWQ_OUTPUT="$MODELS_DIR/gemma-4-31B-it-AWQ-GPTQ-calibrated"
 
 echo "=============================================="
 echo "Gemma 4 31B Dense GPTQ Calibration"
@@ -86,7 +90,6 @@ oneshot(
     max_seq_length=512,
     num_calibration_samples=128,
     output_dir=OUTPUT,
-    trust_remote_code=True,
 )
 print(f'Done in {(time.time()-start)/60:.1f} minutes')
 "

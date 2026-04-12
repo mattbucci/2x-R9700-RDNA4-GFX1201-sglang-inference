@@ -69,16 +69,16 @@ apply_preset() {
             OVERLAP=""
             ;;
         gemma4-31b)
-            MODEL="${MODEL:-$MODELS_DIR/gemma-4-31B-it-AWQ}"
+            MODEL="${MODEL:-$MODELS_DIR/gemma-4-31B-it-AWQ-GPTQ}"
             CTX=4096; MAX_RUNNING=1; CHUNKED=2048
             WARMUP="--skip-server-warmup"; WATCHDOG=1800
             OVERLAP=""
             ;;
         qwen35)
             MODEL="${MODEL:-$MODELS_DIR/Qwen3.5-27B-AWQ-4bit-calibrated}"
-            CTX=262144; MEM=0.85; MAX_RUNNING=8; CHUNKED=8192; DECODE_STEPS=32
-            CUDA_GRAPH="--cuda-graph-bs 1 2 4 8 16"
-            MAMBA_CACHE="--max-mamba-cache-size 10"
+            CTX=262144; MEM=0.80; MAX_RUNNING=8; CHUNKED=8192; DECODE_STEPS=32
+            CUDA_GRAPH="--cuda-graph-bs 1 2 4 8"
+            MAMBA_CACHE="--max-mamba-cache-size 8"
             CHAT_TEMPLATE="--chat-template \$MODEL/chat_template.jinja"
             REASONING="--reasoning-parser qwen3"
             OVERLAP=""
@@ -186,7 +186,7 @@ CMD=(python -m sglang.launch_server
 [[ -n "$QUANT" ]] && CMD+=(--quantization "$QUANT")
 [[ -n "$TOKENIZER" ]] && CMD+=($TOKENIZER)
 [[ -n "$MAMBA_CACHE" ]] && CMD+=($MAMBA_CACHE)
-[[ -n "$CHAT_TEMPLATE" ]] && CMD+=(--chat-template "$CHAT_TEMPLATE")
+[[ -n "$CHAT_TEMPLATE" ]] && CMD+=($CHAT_TEMPLATE)
 [[ -n "$REASONING" ]] && CMD+=($REASONING)
 [[ -n "$WARMUP" ]] && CMD+=($WARMUP)
 [[ -n "$OVERLAP" ]] && CMD+=($OVERLAP)
