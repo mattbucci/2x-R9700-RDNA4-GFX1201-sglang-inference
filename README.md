@@ -107,11 +107,18 @@ Self-calibrated models use the pipeline in `scripts/quantize/` (GPTQ calibration
 
 ![Throughput Scaling](benchmarks/all_models_concurrency.png)
 
-### Devstral-24B AWQ-4bit (262K context)
+### Devstral-24B AWQ-4bit
 
-24B dense transformer. ~6.5 GB/GPU AWQ weights. At 262K context, most VRAM is KV cache.
+24B dense transformer. ~6.5 GB/GPU AWQ weights. Default config: 32K context.
+
+**32K context (default):** 78 tok/s single-user, 841 @32, 1,266 @64 concurrent.
+Quality: **38/39** (math, code, reasoning, vision, parallel)
+
+The charts below show the **262K context config** — most VRAM goes to KV cache at this setting, severely limiting throughput and batching. Use 32K context for max throughput.
 
 ![Devstral context scaling](benchmarks/devstral-24b-awq/context_vs_toks.png)
+
+<details><summary>262K context sweep (click to expand)</summary>
 
 | Context Length | Time (100 tok) | tok/s |
 |:--------------:|:--------------:|:-----:|
@@ -124,15 +131,22 @@ Self-calibrated models use the pipeline in `scripts/quantize/` (GPTQ calibration
 | 131K           | 40.3s          | 2.0   |
 | **262K**       | **96.5s**      | **0.9** |
 
-![Devstral concurrency](benchmarks/devstral-24b-awq/concurrency_vs_toks.png)
+</details>
 
-| Concurrency | tok/s |
-|:-----------:|:-----:|
-| 1           | 19.7  |
-| 32          | 13.2  |
+![Devstral concurrency (262K config)](benchmarks/devstral-24b-awq/concurrency_vs_toks.png)
 
-At 32K context (previous config): 78 tok/s single-user, 841 @32, 1,266 @64.
-Quality: **38/39** (math, code, reasoning, vision, parallel)
+<details><summary>262K concurrency sweep (click to expand)</summary>
+
+| Concurrency | Total tok/s |
+|:-----------:|:-----------:|
+| 1           | 19.7        |
+| 2           | 0.9         |
+| 4           | 1.6         |
+| 8           | 3.6         |
+| 16          | 6.6         |
+| 32          | 13.2        |
+
+</details>
 
 ### Coder-30B AWQ-4bit MoE (32K context, 128 experts)
 
