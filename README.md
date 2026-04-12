@@ -67,12 +67,12 @@ All models run on SGLang with RDNA4 patches. vLLM/llama.cpp used for comparison 
 
 ### Throughput (short context, max batching)
 
-| Model | Type | 1-user tok/s | Peak tok/s | Context | Launch | Status |
-|-------|------|:------------:|:----------:|:-------:|:------:|:------:|
-| Coder-30B AWQ | MoE (128 experts) | 28 | 332 @32 | 32K | `launch.sh coder-30b` | Working |
-| Gemma 4 26B AWQ | MoE (128 experts) | 27 | 165 @32 | 4K | `launch.sh gemma4` | Working |
-| Coder-Next 80B AWQ | MoE+DeltaNet (512 experts) | 24 | 25 @8 | 8K | `launch.sh coder-next` | Working |
-| Devstral-24B AWQ | Dense (32K mode) | 78 | 1,266 @64 | 32K | `launch.sh devstral` | Working |
+| Model | Type | Peak total tok/s | Per-user @peak | Context | Launch | Status |
+|-------|------|:----------------:|:--------------:|:-------:|:------:|:------:|
+| Devstral-24B AWQ | Dense (32K mode) | 1,266 @64 | 20 | 32K | `launch.sh devstral` | Working |
+| Coder-30B AWQ | MoE (128 experts) | 332 @32 | 10 | 32K | `launch.sh coder-30b` | Working |
+| Gemma 4 26B AWQ | MoE (128 experts) | 165 @32 | 5 | 4K | `launch.sh gemma4` | Working |
+| Coder-Next 80B AWQ | MoE+DeltaNet (512 experts) | 25 @8 | 3 | 8K | `launch.sh coder-next` | Working |
 
 ### Long context (single user, max context window)
 

@@ -163,6 +163,13 @@ def main():
         json.dump(all_results, f, indent=2)
     print(f"\nResults saved to {out_path}")
 
+    # Regenerate benchmark charts
+    chart_script = os.path.join(os.path.dirname(__file__), "generate_charts.py")
+    if os.path.exists(chart_script):
+        print("\nRegenerating benchmark charts...")
+        import subprocess
+        subprocess.run([sys.executable, chart_script], check=False)
+
 
 if __name__ == "__main__":
     main()

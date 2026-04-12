@@ -93,8 +93,12 @@ tokens via `S(t) = gating * S(t-1) + delta`. INT4 quantization destroys output q
 - Activation fn: `AWQTritonMoEMethod` reads `MoeRunnerConfig.activation` — Gemma4=gelu, Qwen=silu
 
 ## Benchmarking
-- Concurrency sweep: 1, 4, 8, 16, 32
+- Concurrency sweep: 1, 2, 4, 8, 16, 32
+- Context sweep: all powers of 2 from 128 up to the model's max context length
 - Save to `benchmarks/{model}/results.json` (structured data) and `benchmarks/{model}/README.md` (prose + comparison tables)
+- After updating results.json, **always regenerate charts**: `python scripts/bench/generate_charts.py`
+- Charts are embedded in README.md — all context charts use a unified 256K x-axis for comparison
+- Concurrency charts must show OOM for levels that exceed VRAM (don't just omit them)
 - Run `scripts/eval/eval_comprehensive.py` after kernel changes
 - Always use timeouts on GPU/Docker commands
 - DeltaNet hybrid models: throughput is flat (VRAM-limited by BF16 weight reads)
