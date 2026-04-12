@@ -1,10 +1,11 @@
 {
   "devstral": {
-    "single_tpot_ms": 2139.96,
-    "single_throughput": 1.57,
-    "single_ttft_ms": 5750.82,
-    "multi8_tpot_ms": 0.0,
-    "multi8_throughput": 0.0,
-    "multi8_ttft_ms": 0.0
+    "single_tpot_ms": 28.27,
+    "single_throughput": 35.0,
+    "single_ttft_ms": 35.45,
+    "multi8_tpot_ms": 0,
+    "multi8_throughput": 0,
+    "multi8_ttft_ms": 0,
+    "note": "Measured with sglang.bench_serving, 128in/50out, single request, warm Triton cache"
   }
 }
