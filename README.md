@@ -4,9 +4,8 @@ High-throughput LLM inference on AMD Radeon AI PRO R9700 (gfx1201, RDNA4) with R
 
 ## Known Issues
 
-- **Gemma 4 31B Dense** — cyankiwi AWQ has RTN quality artifacts. GPTQ calibration from BF16 base in progress. BF16 base is NOT gated.
+- **Gemma 4 31B Dense** — Working (RTN AWQ 4-bit, BF16 activations, ~19 tok/s). Quality degrades after ~30 tokens with RTN quantization — needs proper GPTQ calibration in BF16 for production use. See [Gemma 31B notes](#gemma-4-31b-dense-notes) below.
 - **GLM-4.5-Air REAP** — Blocked. CT format needs Marlin (CUDA-only). CT-to-AWQ conversion done but `moe_intermediate_size=1408` is not TP=2 aligned with group_size=128. Needs AWQ loader patch for non-aligned group boundaries.
-- **FP8 MoE on SGLang** — Blocked. Arch `comgr` generates invalid HSACO for FP8 WMMA on gfx1201. Workaround: vLLM Docker for comparison benchmarks.
 
 ## Quick Start
 
@@ -19,6 +18,7 @@ High-throughput LLM inference on AMD Radeon AI PRO R9700 (gfx1201, RDNA4) with R
 ./scripts/launch.sh coder-30b           # Coder-30B MoE AWQ — best throughput
 ./scripts/launch.sh coder-next          # Coder-Next 80B AWQ — largest model
 ./scripts/launch.sh gemma4              # Gemma 4 26B MoE AWQ
+./scripts/launch.sh gemma4-31b          # Gemma 4 31B Dense AWQ (BF16)
 
 # 3. Test quality
 python scripts/eval/eval_comprehensive.py --port 23334 --parallel 4
@@ -34,7 +34,6 @@ python scripts/bench/bench_all_unified.py --name "Model Name" --port 23334
 - **Custom kernel with `CONFIG_HSA_AMD_P2P=y`** (required for multi-GPU TP=2)
 - Miniforge3/Conda
 - `pacman -S rocprofiler rccl` (Arch Linux) or equivalent
-- Docker (only needed for FP8 MoE models)
 
 ### Kernel: P2P PCIe support
 
@@ -75,11 +74,13 @@ Primary use case: agent and coding workflows with maximum context at fast decode
 | Devstral-24B AWQ | Dense | 32K | 37 | 27ms | `launch.sh devstral` | Working |
 | Coder-30B AWQ | MoE (128 experts) | 32K | 30 | 34ms | `launch.sh coder-30b` | Working |
 | Gemma 4 26B AWQ | MoE (128 experts) | 4K | 30 | 33ms | `launch.sh gemma4` | Working |
+| Gemma 4 31B AWQ | Dense | 8K | 19 | 53ms | `launch.sh gemma4-31b` | Working* |
 | Qwen3.5-27B AWQ | DeltaNet hybrid | 16K | 26 | 38ms | `launch.sh qwen35` | Working |
 | Coder-Next 80B AWQ | MoE+DeltaNet (512 experts) | 8K | 24 | 41ms | `launch.sh coder-next` | Working |
 | Coder-Next REAM 60B | MoE+DeltaNet (384 experts) | 32K | 25 | 41ms | `launch.sh coder-next-ream` | Working |
 
 All numbers measured with `sglang.bench_serving` (TPOT = Time Per Output Token, decode only).
+*Working but RTN quantization — quality degrades on long generation. Needs GPTQ-in-BF16 calibration for production use.
 
 ### Batch throughput (multi-user)
 
@@ -105,7 +106,7 @@ Self-calibrated models use the pipeline in `scripts/quantize/` (GPTQ calibration
 
 **MoE quantization:** Standard GPTQ under-calibrates rare experts (inter-expert imbalance). Use expert-balanced calibration (MoEQuant EBSS or GPTQModel FailSafe). See `rules-for-agents.md`.
 
-**FP8:** Blocked on SGLang by Arch Linux `comgr` bug.
+**Gemma 4 31B Dense (BF16 required):** Gemma models were [never designed for FP16 inference](https://huggingface.co/google/gemma-3-27b-it/discussions/45) — hidden state values overflow FP16 max (65504) at layer 2. Must use `--dtype bfloat16`. Our AWQ path uses FP32 accumulation in matmul + HIP GEMV in FP16 with BF16 boundary casts. RTN 4-bit quantization (no calibration) produces correct short answers but degrades after ~30 tokens — proper GPTQ-in-BF16 calibration needed for production quality.
 
 ## Performance (2x R9700, TP=2, SGLang v0.5.10, updated 2026-04-11)
 
@@ -236,7 +237,6 @@ A [REAM variant](https://huggingface.co/cyankiwi/Qwen3-Coder-Next-REAM-AWQ-4bit)
 
 | Model | Engine | Single tok/s | Peak tok/s |
 |-------|--------|:------------:|:----------:|
-| Coder-30B FP8 | vLLM Docker | 94 | 1,882 @64 |
 | Coder-Next 80B GGUF | llama.cpp Vulkan | 79 | — |
 
 ## Setup

@@ -99,6 +99,42 @@ tokens via `S(t) = gating * S(t-1) + delta`. INT4 quantization destroys output q
 - Router projection: dequant to BF16 if GPTQ quantized it (SGLang creates router unquantized)
 - Activation fn: `AWQTritonMoEMethod` reads `MoeRunnerConfig.activation` — Gemma4=gelu, Qwen=silu
 
+## Diagnostics
+
+### Chat template verification
+Before debugging model output quality, **always verify the chat template is loaded**:
+```python
+from transformers import AutoTokenizer
+t = AutoTokenizer.from_pretrained("path/to/tokenizer", trust_remote_code=True)
+# Must have chat_template — if None, SGLang uses a generic default
+assert t.chat_template is not None, "Missing chat_template in tokenizer_config.json!"
+# Verify formatting
+msgs = [{"role": "user", "content": "Hello"}]
+print(t.apply_chat_template(msgs, tokenize=False, add_generation_prompt=True))
+```
+If `chat_template` is missing from `tokenizer_config.json` but a `chat_template.jinja` file
+exists, embed it: read the jinja file and add it as the `chat_template` field in
+`tokenizer_config.json`. SGLang reads from the tokenizer, not the standalone jinja file.
+
+### AWQ weight quality verification
+After any CT→AWQ or GPTQ→AWQ conversion, verify weight quality with cosine similarity:
+```python
+# For each projection in the model, compare AWQ dequant vs BF16 source:
+x = torch.randn(1, in_dim, dtype=torch.float16)
+y_awq = x.float() @ dequant_weight.float()
+y_bf16 = x.float() @ bf16_weight.float().T
+cos = F.cosine_similarity(y_awq, y_bf16, dim=-1)
+# Must be >0.99 for all projections. Below 0.95 = broken conversion.
+```
+Known issue: CT→AWQ conversion with group_size=32 produces poor quality for large output
+dimensions (q_proj cosine ~0.84, gate_proj ~0.92). This is a conversion bug, not a model bug.
+
+### FP16 overflow detection
+Large dense models (hidden_size > 4096) can overflow FP16 range (65504) during MLP:
+- Add per-layer sync + range check: `torch.cuda.synchronize(); print(hidden_states.max())`
+- If MLP output exceeds ~10000, the model needs BF16 activations
+- Fix: `--dtype bfloat16` + AWQ BF16 support patch (see awq.py get_supported_act_dtypes)
+
 ## Benchmarking
 
 ### Methodology

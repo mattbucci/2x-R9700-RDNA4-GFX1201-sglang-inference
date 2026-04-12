@@ -15,11 +15,8 @@
 #   coder-next-ream Qwen3-Coder-Next REAM 60B AWQ (128K, pruned 80→60B)
 #   glm45-air      GLM-4.5-Air REAP 82B MoE AWQ (32K)
 #   gemma4         Gemma 4 26B MoE AWQ (4K, GPTQ forced-routing)
-#   gemma4-31b     Gemma 4 31B Dense AWQ (4K, needs GPTQ calibration)
+#   gemma4-31b     Gemma 4 31B Dense AWQ (8K, BF16 required)
 #   qwen35         Qwen3.5-27B DeltaNet AWQ (262K)
-#   coder-30b-fp8  Qwen3-Coder-30B FP8 (blocked by comgr bug)
-#   qwen35-fp8     Qwen3.5-27B FP8 (blocked by comgr bug)
-#   gemma4-bf16    Gemma 4 26B BF16 (diagnostic, no quantization)
 
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -82,8 +79,9 @@ apply_preset() {
             OVERLAP=""
             ;;
         gemma4-31b)
-            MODEL="${MODEL:-$MODELS_DIR/gemma-4-31B-it-AWQ-calibrated}"
+            MODEL="${MODEL:-$MODELS_DIR/gemma-4-31B-it-AWQ-RTN-128g}"
             TOKENIZER="--tokenizer-path $MODELS_DIR/gemma-4-31B-it-BF16"
+            DTYPE="bfloat16"  # BF16 required: Gemma was never designed for FP16 inference
             CTX=8192; MAX_RUNNING=8; CHUNKED=4096
             WARMUP="--skip-server-warmup"; WATCHDOG=1800
             OVERLAP=""
@@ -95,27 +93,6 @@ apply_preset() {
             MAMBA_CACHE="--max-mamba-cache-size 8"
             CHAT_TEMPLATE="--chat-template \$MODEL/chat_template.jinja"
             REASONING="--reasoning-parser qwen3"
-            OVERLAP=""
-            ;;
-        coder-30b-fp8)
-            MODEL="${MODEL:-$MODELS_DIR/Qwen3-Coder-30B-A3B-FP8}"
-            QUANT="fp8"; CTX=4096; MEM=0.90; MAX_RUNNING=1; CHUNKED=2048; DECODE_STEPS=1
-            WARMUP="--skip-server-warmup"; WATCHDOG=1800
-            EXTRA_ENV="TORCHDYNAMO_DISABLE=1"
-            OVERLAP=""
-            ;;
-        qwen35-fp8)
-            MODEL="${MODEL:-$MODELS_DIR/Qwen3.5-27B-FP8}"
-            QUANT="fp8"; CTX=32768; MEM=0.80; MAX_RUNNING=4; CHUNKED=4096
-            MAMBA_CACHE="--max-mamba-cache-size 4"
-            CHAT_TEMPLATE="--chat-template \$MODEL/chat_template.jinja"
-            REASONING="--reasoning-parser qwen3"
-            OVERLAP=""
-            ;;
-        gemma4-bf16)
-            MODEL="${MODEL:-$MODELS_DIR/gemma-4-26B-A4B-it-BF16}"
-            QUANT=""; DTYPE="bfloat16"; CTX=2048; MEM=0.55; MAX_RUNNING=1; CHUNKED=1024
-            WARMUP="--skip-server-warmup"; WATCHDOG=1800
             OVERLAP=""
             ;;
         *)
