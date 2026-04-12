@@ -74,7 +74,12 @@ All models run on SGLang with RDNA4 patches. vLLM/llama.cpp used for comparison 
 | Coder-Next 80B AWQ | MoE+DeltaNet (512 experts) | 24 | 25 | 8K | `launch.sh coder-next` | Community | Working |
 | Qwen3.5-27B AWQ | DeltaNet hybrid | — | — | 256K | `launch.sh qwen35` | Self-calibrated | Conv1d bug |
 
-**Weights:** "Community" = HuggingFace AWQ weights used as-is. "Self-calibrated" = we ran GPTQ calibration + CT→AWQ conversion because community weights were broken or unavailable. Calibration scripts are in `scripts/quantize/`.
+**Weights:** Community AWQ checkpoints work for standard architectures (Coder-30B, Coder-Next) but fail for others:
+- **Devstral** — community AWQ includes a BOS token that causes `<unk>` output, and vision is broken from quantization damaging the vision-language alignment
+- **Gemma 4 26B** — standard GPTQ only calibrated 1/128 experts (inter-expert routing imbalance); we use forced-routing calibration to cover all 128
+- **Qwen3.5** — community AWQ produces garbage on DeltaNet layers; we calibrate with GPTQ and keep DeltaNet/SSM layers in BF16
+
+Self-calibrated models use the pipeline in `scripts/quantize/` (GPTQ calibration → CT→AWQ conversion).
 
 Note: Devstral at 262K context allocates most VRAM to KV cache, limiting batching.
 At 32K context (previous config), Devstral achieves 78 tok/s single-user and 841 @32 concurrent.
