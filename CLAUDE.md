@@ -8,9 +8,8 @@ Custom SGLang v0.5.10 + RDNA4 patches for 2x AMD Radeon AI PRO R9700.
 
 | File | Purpose |
 |------|---------|
-| [README.md](README.md) | Setup, benchmarks, model support, architecture |
-| [rules-for-agents.md](rules-for-agents.md) | RDNA4 constraints, launch flags, quantization rules, model status |
-| [docs/known_issues.md](docs/known_issues.md) | Active issues, MoE quantization research |
+| [README.md](README.md) | Setup, benchmarks, model support, known issues, architecture |
+| [rules-for-agents.md](rules-for-agents.md) | RDNA4 constraints, launch flags, quantization rules |
 
 ## Key Commands
 ```bash

@@ -2,6 +2,12 @@
 
 High-throughput LLM inference on AMD Radeon AI PRO R9700 (gfx1201, RDNA4) with ROCm 7.2.
 
+## Known Issues
+
+- **Qwen3.5-27B AWQ** — `causal_conv1d` shape mismatch at TP=2. Server crashes during warmup (`conv_states.shape` dim=5120, expected 10240). Was working previously (129 tok/s @32), likely TP split regression in Mamba conv1d state.
+- **Gemma 4 31B Dense** — cyankiwi AWQ has RTN quality artifacts. Standard GPTQ calibration needed (script ready: `scripts/quantize_gemma4_31b_gptq.sh`). BF16 base is NOT gated.
+- **FP8 MoE on SGLang** — Blocked. Arch `comgr` generates invalid HSACO for FP8 WMMA on gfx1201. Workaround: vLLM Docker for comparison benchmarks.
+
 ## Quick Start
 
 ```bash
@@ -269,14 +275,6 @@ Standard GPTQ/AWQ **fails** for MoE models (MoEQuant, ICML 2025). Two critical i
 **Solutions**: Expert-balanced sampling (MoEQuant EBSS, GPTQModel FailSafe), skip recurrent layers.
 See [rules-for-agents.md](rules-for-agents.md) for full quantization pipeline and rules.
 
-## Known Issues
-
-See [docs/known_issues.md](docs/known_issues.md) for full details.
-
-- **Gemma 4 26B MoE**: GPTQ v2 recalibrating (expert imbalance fix)
-- **Gemma 4 31B Dense**: Needs HF token for BF16 base download
-- **FP8 MoE on SGLang**: Blocked by Arch Linux `comgr` bug
-
 ## Test System
 
 ```
@@ -302,6 +300,5 @@ benchmarks/                        # Benchmark results (per-model directories)
   {model}/README.md               #   Results + comparisons (renders on GitHub)
   {model}/results.json            #   Structured data from bench_all_unified.py
 scripts/                           # Launch, benchmark, eval, quantization
-docs/                              # Known issues tracker
 components/sglang/                 # SGLang v0.5.10 + patches
 ```
