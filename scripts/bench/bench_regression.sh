@@ -153,6 +153,15 @@ for i in $(seq 1 30); do
 done
 echo "Server ready."
 
+# Warm up Triton cache — cold cache causes 100x false regression
+echo "Warming Triton cache (5 requests)..."
+for i in $(seq 1 5); do
+    curl -s "$BASE_URL/v1/chat/completions" \
+        -H "Content-Type: application/json" \
+        -d "{\"model\":\"m\",\"messages\":[{\"role\":\"user\",\"content\":\"Warmup request $i: explain gravity briefly\"}],\"max_tokens\":50,\"temperature\":0.7}" > /dev/null 2>&1
+done
+echo "Cache warm."
+
 # Run benchmarks
 RESULTS="{}"
 FAILED=0
