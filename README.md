@@ -5,7 +5,7 @@ High-throughput LLM inference on AMD Radeon AI PRO R9700 (gfx1201, RDNA4) with R
 ## Known Issues
 
 - **Gemma 4 31B Dense** — cyankiwi AWQ has RTN quality artifacts. GPTQ calibration from BF16 base in progress. BF16 base is NOT gated.
-- **GLM-4.5-Air REAP** — Blocked. `compressed-tensors` MoE loader calls `gptq_marlin_repack` which is CUDA-only (no ROCm/RDNA4). Needs CT-to-AWQ conversion or Marlin bypass patch.
+- **GLM-4.5-Air REAP** — Blocked. CT format needs Marlin (CUDA-only). CT-to-AWQ conversion done but `moe_intermediate_size=1408` is not TP=2 aligned with group_size=128. Needs AWQ loader patch for non-aligned group boundaries.
 - **FP8 MoE on SGLang** — Blocked. Arch `comgr` generates invalid HSACO for FP8 WMMA on gfx1201. Workaround: vLLM Docker for comparison benchmarks.
 
 ## Quick Start

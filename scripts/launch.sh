@@ -70,8 +70,7 @@ apply_preset() {
             WATCHDOG=1800
             ;;
         glm45-air)
-            MODEL="${MODEL:-$MODELS_DIR/GLM-4.5-Air-REAP-82B-A12B-AWQ-4bit}"
-            QUANT="compressed-tensors"
+            MODEL="${MODEL:-$MODELS_DIR/GLM-4.5-Air-REAP-AWQ}"
             CTX=32768; MAX_RUNNING=32; CHUNKED=4096; DECODE_STEPS=8
             WATCHDOG=1800
             ;;
