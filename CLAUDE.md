@@ -13,14 +13,15 @@ Custom SGLang v0.5.10 + RDNA4 patches for 2x AMD Radeon AI PRO R9700.
 
 ## Key Commands
 ```bash
-scripts/setup.sh                     # Full setup (applies all 4 patches)
-scripts/setup_sgl_kernel.sh --env X  # Native sgl_kernel (required)
-scripts/build_awq_gemv.sh --env X    # HIP GEMV kernel (required for MoE)
-scripts/run_devstral_awq.sh          # Devstral 24B
-scripts/run_coder30b_awq.sh          # Coder-30B MoE
-scripts/run_coder_next_awq.sh        # Coder-Next 80B
-scripts/run_gemma4_26b_awq.sh        # Gemma 4 26B MoE
-scripts/quantize_gemma4_gptq.sh      # Gemma 4 26B GPTQ calibration
+scripts/setup.sh                       # Full setup (applies all 4 patches)
+scripts/setup_sgl_kernel.sh --env X    # Native sgl_kernel (required)
+scripts/build_awq_gemv.sh --env X      # HIP GEMV kernel (required for MoE)
+scripts/launch.sh devstral             # Devstral 24B AWQ
+scripts/launch.sh coder-30b            # Coder-30B MoE AWQ
+scripts/launch.sh coder-next           # Coder-Next 80B AWQ
+scripts/launch.sh gemma4               # Gemma 4 26B MoE AWQ
+scripts/launch.sh qwen35               # Qwen3.5-27B AWQ (broken)
+scripts/quantize/quantize_gemma4_gptq.sh  # Gemma 4 GPTQ calibration
 ```
 
 ## Critical Rules

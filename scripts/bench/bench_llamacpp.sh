@@ -9,7 +9,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_DIR="$(dirname "$SCRIPT_DIR")"
+REPO_DIR="$(dirname "$(dirname "$SCRIPT_DIR")")"
 LLAMA_DIR="$HOME/AI/llama.cpp"
 LLAMA_BENCH="$LLAMA_DIR/build/bin/llama-bench"
 LLAMA_SERVER="$LLAMA_DIR/build/bin/llama-server"

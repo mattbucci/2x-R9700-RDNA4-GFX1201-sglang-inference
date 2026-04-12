@@ -9,7 +9,7 @@
 
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "$SCRIPT_DIR/common.sh"
+source "$SCRIPT_DIR/../common.sh"
 
 QUANT_ENV="gemma4-quant"
 QUANT_PYTHON="$CONDA_BASE/envs/$QUANT_ENV/bin/python"

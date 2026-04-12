@@ -12,7 +12,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_DIR="$(dirname "$SCRIPT_DIR")"
+REPO_DIR="$(dirname "$(dirname "$SCRIPT_DIR")")"
 PORT=8000
 CONTAINER_NAME="vllm-bench"
 VLLM_IMG="rocm/vllm:rocm7.12.0_gfx120X-all_ubuntu24.04_py3.12_pytorch_2.9.1_vllm_0.16.0"

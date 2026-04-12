@@ -46,7 +46,7 @@ BF16 model → llmcompressor oneshot GPTQ → compressed-tensors (CT) format
 ```
 compressed-tensors → native AWQ format (qweight + scales + qzeros)
 ```
-- Use `scripts/convert_gemma4_ct_to_awq.py` or model-specific converter
+- Use `scripts/quantize/convert_gemma4_ct_to_awq.py` or model-specific converter
 - **Clamp scales** to [-65504, 65504] before `.to(torch.float16)` to prevent inf overflow
 - Verify output: `torch.isinf(scales).any()` must be False for every tensor
 
@@ -56,12 +56,12 @@ AWQ checkpoint → fix naming, dequant router, verify
 ```
 - Expert naming: must be `experts.{id}.{proj}.{suffix}` (SGLang format)
 - Router: if quantized by GPTQ, dequant back to BF16
-- Use `scripts/fix_gemma4_awq_checkpoint.py` as reference
+- Use `scripts/quantize/fix_gemma4_awq_checkpoint.py` as reference
 
 ### Dense model calibration
 - No monkey-patching needed — all layers are nn.Linear
 - 128 samples × 512 tokens is sufficient
-- Examples: `scripts/quantize_devstral_llmcompressor.sh`, `scripts/quantize_qwen35_llmcompressor.sh`
+- Examples: `scripts/quantize/quantize_devstral_llmcompressor.sh`, `scripts/quantize/quantize_qwen35_llmcompressor.sh`
 
 ### MoE model calibration — CRITICAL
 Standard GPTQ/AWQ **FAILS** for MoE models due to expert routing imbalance (MoEQuant, ICML 2025):
@@ -77,7 +77,7 @@ Standard GPTQ/AWQ **FAILS** for MoE models due to expert routing imbalance (MoEQ
 - After conversion, **always check scales**: `torch.isinf(scales).any()` must be False
 - Consider **GPTQModel** with `MoE.Routing` FailSafe mode for expert-balanced calibration
 - Consider **MoEQuant EBSS** (Expert-Balanced Self-Sampling) for proper MoE quantization
-- Example: `scripts/quantize_gemma4_gptq.sh` → `quantize_gemma4_gptq_step1.py` → `convert_gemma4_ct_to_awq.py`
+- Example: `scripts/quantize/quantize_gemma4_gptq.sh` → `quantize_gemma4_gptq_step1.py` → `convert_gemma4_ct_to_awq.py`
 
 ### DeltaNet/Mamba/SSM layers — DO NOT quantize to INT4
 Models with recurrent state (DeltaNet, Mamba, SSM) accumulate quantization error across
@@ -95,7 +95,7 @@ tokens via `S(t) = gating * S(t-1) + delta`. INT4 quantization destroys output q
 ## Benchmarking
 - Concurrency sweep: 1, 4, 8, 16, 32
 - Save to `benchmarks/{model}/results.json` (structured data) and `benchmarks/{model}/README.md` (prose + comparison tables)
-- Run `scripts/eval_comprehensive.py` after kernel changes
+- Run `scripts/eval/eval_comprehensive.py` after kernel changes
 - Always use timeouts on GPU/Docker commands
 - DeltaNet hybrid models: throughput is flat (VRAM-limited by BF16 weight reads)
 

@@ -5,7 +5,7 @@
 # Usage: ./scripts/bench_quick.sh "patch description"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_DIR="$(dirname "$SCRIPT_DIR")"
+REPO_DIR="$(dirname "$(dirname "$SCRIPT_DIR")")"
 RESULTS_FILE="$REPO_DIR/benchmarks.log"
 
 eval "$($HOME/miniforge3/bin/conda shell.bash hook)"

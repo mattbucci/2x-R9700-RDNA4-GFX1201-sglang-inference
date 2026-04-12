@@ -5,7 +5,7 @@ High-throughput LLM inference on AMD Radeon AI PRO R9700 (gfx1201, RDNA4) with R
 ## Known Issues
 
 - **Qwen3.5-27B AWQ** — `causal_conv1d` shape mismatch at TP=2. Server crashes during warmup (`conv_states.shape` dim=5120, expected 10240). Was working previously (129 tok/s @32), likely TP split regression in Mamba conv1d state.
-- **Gemma 4 31B Dense** — cyankiwi AWQ has RTN quality artifacts. Standard GPTQ calibration needed (script ready: `scripts/quantize_gemma4_31b_gptq.sh`). BF16 base is NOT gated.
+- **Gemma 4 31B Dense** — cyankiwi AWQ has RTN quality artifacts. Standard GPTQ calibration needed (script ready: `scripts/quantize/quantize_gemma4_31b_gptq.sh`). BF16 base is NOT gated.
 - **FP8 MoE on SGLang** — Blocked. Arch `comgr` generates invalid HSACO for FP8 WMMA on gfx1201. Workaround: vLLM Docker for comparison benchmarks.
 
 ## Quick Start
@@ -15,15 +15,16 @@ High-throughput LLM inference on AMD Radeon AI PRO R9700 (gfx1201, RDNA4) with R
 ./scripts/setup.sh
 
 # 2. Run any model:
-./scripts/run_devstral_awq.sh           # Devstral-24B AWQ — best all-round
-./scripts/run_qwen35_27b_awq.sh         # Qwen3.5-27B AWQ — 256K context + vision
-./scripts/bench_vllm_docker.sh          # Coder-30B FP8 — via Docker (MoE model)
+./scripts/launch.sh devstral            # Devstral-24B AWQ — best all-round
+./scripts/launch.sh coder-30b           # Coder-30B MoE AWQ — best throughput
+./scripts/launch.sh coder-next          # Coder-Next 80B AWQ — largest model
+./scripts/launch.sh gemma4              # Gemma 4 26B MoE AWQ
 
 # 3. Test quality
-python scripts/eval_comprehensive.py --port 23334 --parallel 4
+python scripts/eval/eval_comprehensive.py --port 23334 --parallel 4
 
 # 4. Benchmark
-./scripts/bench_comprehensive.sh "Model Name" auto 23334
+python scripts/bench/bench_all_unified.py --name "Model Name" --port 23334
 ```
 
 ## Prerequisites
@@ -251,8 +252,8 @@ AWQ-4bit via GPTQ calibration + format conversion (community AWQ models produce 
 ```bash
 pip install git+https://github.com/vllm-project/llm-compressor.git --no-deps
 pip install git+https://github.com/neuralmagic/compressed-tensors.git --no-deps
-./scripts/quantize_qwen35_llmcompressor.sh    # ~6h on 2x R9700
-MODEL=~/AI/models/Qwen3.5-27B-AWQ-4bit-calibrated ./scripts/run_qwen35_27b_awq.sh
+./scripts/quantize/quantize_qwen35_llmcompressor.sh    # ~6h on 2x R9700
+MODEL=~/AI/models/Qwen3.5-27B-AWQ-4bit-calibrated ./scripts/launch.sh qwen35
 ```
 
 ## Devstral-24B Technical Details
@@ -299,6 +300,13 @@ patches/                           # SGLang v0.5.10 RDNA4 patches
 benchmarks/                        # Benchmark results (per-model directories)
   {model}/README.md               #   Results + comparisons (renders on GitHub)
   {model}/results.json            #   Structured data from bench_all_unified.py
-scripts/                           # Launch, benchmark, eval, quantization
+scripts/
+  launch.sh                       #   Unified model launcher (launch.sh <model>)
+  common.sh                       #   Shared RDNA4 environment setup
+  setup.sh                        #   Full setup (patches, conda, build)
+  bench/                          #   Benchmark scripts
+  quantize/                       #   Quantization + CT→AWQ conversion
+  eval/                           #   Quality evaluation + warmup
+  test/                           #   Tests, debug, profiling, sweeps
 components/sglang/                 # SGLang v0.5.10 + patches
 ```

@@ -6,7 +6,7 @@
 # Example: ./scripts/bench_comprehensive.sh "Qwen3.5-27B AWQ" "Qwen/Qwen3.5-27B-AWQ" 23334
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_DIR="$(dirname "$SCRIPT_DIR")"
+REPO_DIR="$(dirname "$(dirname "$SCRIPT_DIR")")"
 RESULTS_DIR="$REPO_DIR/benchmarks"
 mkdir -p "$RESULTS_DIR"
 

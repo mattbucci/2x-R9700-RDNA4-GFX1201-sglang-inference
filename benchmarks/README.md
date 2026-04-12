@@ -19,17 +19,17 @@ Performance data for all models on 2x AMD Radeon AI PRO R9700 (gfx1201, RDNA4), 
 Each model directory contains:
 
 - **`README.md`** — Results with context sweep, throughput sweep, engine comparisons, and notes
-- **`results.json`** — Structured data from `bench_all_unified.py`
+- **`results.json`** — Structured data from `scripts/bench/bench_all_unified.py`
 
 ## Benchmark Method
 
 ### SGLang (primary)
 
-All SGLang benchmarks use `scripts/bench_all_unified.py`:
+All SGLang benchmarks use `scripts/bench/bench_all_unified.py`:
 
 ```bash
-# Start the model server first (e.g. scripts/run_coder30b_awq.sh)
-python scripts/bench_all_unified.py --name "Model Name" --port 23334 --output benchmarks/model/results.json
+# Start the model server first (e.g. scripts/launch.sh coder-30b)
+python scripts/bench/bench_all_unified.py --name "Model Name" --port 23334 --output benchmarks/model/results.json
 ```
 
 Two sweeps per model:
@@ -41,7 +41,7 @@ Requests go through the OpenAI-compatible `/v1/chat/completions` endpoint. tok/s
 ### vLLM Docker (comparison)
 
 ```bash
-./scripts/bench_vllm_docker.sh [hf_model_id] [label]
+./scripts/bench/bench_vllm_docker.sh [hf_model_id] [label]
 ```
 
 Runs `vllm/vllm-openai-rocm` Docker image with FP8 quantization. Uses `sglang.bench_serving` for throughput sweep (256 in / 256 out). Only used for models where SGLang FP8 is blocked (Arch `comgr` bug).
@@ -49,7 +49,7 @@ Runs `vllm/vllm-openai-rocm` Docker image with FP8 quantization. Uses `sglang.be
 ### llama.cpp (comparison)
 
 ```bash
-./scripts/bench_llamacpp.sh <model.gguf> [label]
+./scripts/bench/bench_llamacpp.sh <model.gguf> [label]
 ```
 
 Runs `llama-bench` for raw kernel performance (pp256, tg256) with Vulkan backend on 2 GPUs via layer split. Single-user only — no batched serving.
@@ -57,12 +57,12 @@ Runs `llama-bench` for raw kernel performance (pp256, tg256) with Vulkan backend
 ### Quality Evaluation
 
 ```bash
-python scripts/eval_comprehensive.py --port 23334 --parallel 4
+python scripts/eval/eval_comprehensive.py --port 23334 --parallel 4
 ```
 
 39-test suite covering math, code generation, reasoning, edge cases, parallel execution, and vision. Designed to catch TP=2 precision errors.
 
-## Benchmark Scripts
+## Scripts (in `scripts/bench/`)
 
 | Script | Purpose |
 |--------|---------|
@@ -73,7 +73,6 @@ python scripts/eval_comprehensive.py --port 23334 --parallel 4
 | `bench_long_context.py` | Context-length-specific sweep via `/v1/completions` |
 | `bench_llamacpp.sh` | llama.cpp Vulkan benchmark (`llama-bench` + optional server) |
 | `bench_vllm_docker.sh` | vLLM ROCm Docker benchmark (FP8, `sglang.bench_serving`) |
-| `eval_comprehensive.py` | Quality evaluation (39 tests, math/code/reasoning/vision) |
 
 ## Raw Data
 
