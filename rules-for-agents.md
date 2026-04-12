@@ -93,8 +93,13 @@ tokens via `S(t) = gating * S(t-1) + delta`. INT4 quantization destroys output q
 - Activation fn: `AWQTritonMoEMethod` reads `MoeRunnerConfig.activation` — Gemma4=gelu, Qwen=silu
 
 ## Benchmarking
+
+### Methodology
+- **Always use `sglang.bench_serving`** for performance numbers — it measures TPOT (Time Per Output Token) and TTFT (Time To First Token) separately from prefill
+- **Never use wall-clock-time / total-tokens** — this mixes prefill and decode, producing misleadingly low tok/s numbers
 - Concurrency sweep: 1, 2, 4, 8, 16, 32
 - Context sweep: all powers of 2 from 128 up to the model's max context length
+- Default benchmark: `--random-input 256 --random-output 256 --num-prompts 4 --request-rate 1` (single user)
 - Save to `benchmarks/{model}/results.json` (structured data) and `benchmarks/{model}/README.md` (prose + comparison tables)
 - After updating results.json, **always regenerate charts**: `python scripts/bench/generate_charts.py`
 - Charts are embedded in README.md — all context charts use a unified 256K x-axis for comparison
@@ -102,6 +107,19 @@ tokens via `S(t) = gating * S(t-1) + delta`. INT4 quantization destroys output q
 - Run `scripts/eval/eval_comprehensive.py` after kernel changes
 - Always use timeouts on GPU/Docker commands
 - DeltaNet hybrid models: throughput is flat (VRAM-limited by BF16 weight reads)
+
+### Regression detection
+After any patch change, **run the regression test before committing**:
+```bash
+# Launch the model, then:
+./scripts/bench/bench_regression.sh devstral   # Test against baseline
+BASELINE=save ./scripts/bench/bench_regression.sh devstral  # Save new baseline
+```
+
+- Baselines stored in `benchmarks/baselines.json`
+- Regression threshold: >10% TPOT increase or >10% throughput decrease
+- **Key metrics:** single-user TPOT (ms), single-user throughput (tok/s), multi@8 throughput (tok/s)
+- Always run regression test on a clean system (no other GPU/CPU-heavy processes)
 
 ## Model Status
 

@@ -105,6 +105,8 @@ Self-calibrated models use the pipeline in `scripts/quantize/` (GPTQ calibration
 
 ## Performance (2x R9700, TP=2, SGLang v0.5.10, updated 2026-04-11)
 
+**Methodology:** All numbers use `sglang.bench_serving` which measures TPOT (decode latency per token) and TTFT (prefill latency) separately. See [benchmarks/README.md](benchmarks/README.md) for full methodology. Regression tests: `./scripts/bench/bench_regression.sh <model>`.
+
 ### All models comparison
 
 ![Context Length vs Decode Speed](benchmarks/all_models_context.png)

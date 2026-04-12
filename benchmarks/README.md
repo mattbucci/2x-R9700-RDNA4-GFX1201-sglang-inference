@@ -23,20 +23,41 @@ Each model directory contains:
 
 ## Benchmark Method
 
+### Key principle: always measure TPOT, not wall clock
+
+**Never divide completion_tokens by total wall-clock time.** That mixes prefill and decode latency, producing misleadingly low tok/s (e.g. 16 tok/s instead of 78 tok/s for the same model).
+
+Instead, use `sglang.bench_serving` which measures:
+- **TPOT** (Time Per Output Token) — pure decode latency per token
+- **TTFT** (Time To First Token) — prefill latency
+- **Output token throughput** — aggregate decode tok/s
+
 ### SGLang (primary)
 
-All SGLang benchmarks use `scripts/bench/bench_all_unified.py`:
-
 ```bash
-# Start the model server first (e.g. scripts/launch.sh coder-30b)
+# Quick regression test against baseline
+./scripts/bench/bench_regression.sh devstral
+
+# Save a new baseline after verified patch
+BASELINE=save ./scripts/bench/bench_regression.sh devstral
+
+# Full benchmark suite with charts
 python scripts/bench/bench_all_unified.py --name "Model Name" --port 23334 --output benchmarks/model/results.json
 ```
 
 Two sweeps per model:
-1. **Context sweep** — Single-user, 100 output tokens, context from 128 to model max. Measures decode tok/s at each context length.
-2. **Throughput sweep** — Concurrency 1/2/4/8/16/32, fixed short prompts, 200 output tokens. Measures aggregate tok/s.
+1. **Context sweep** — Single-user, `sglang.bench_serving` with `--random-input N --random-output 256`, input length from 128 to model max context. Reports TPOT at each context length.
+2. **Throughput sweep** — Concurrency 1/2/4/8/16/32, `--random-input 256 --random-output 256`. Reports aggregate output tok/s.
 
-Requests go through the OpenAI-compatible `/v1/chat/completions` endpoint. tok/s = `completion_tokens / wall_clock_elapsed`.
+### Regression detection
+
+Run after every patch change, before committing:
+```bash
+./scripts/bench/bench_regression.sh <model>
+```
+- Compares TPOT and throughput against stored baselines (`benchmarks/baselines.json`)
+- Flags regressions >10% slower
+- Must run on clean system (no other GPU/CPU-heavy processes — a background GPTQ calibration can cause 5x slowdown)
 
 ### vLLM Docker (comparison)
 
