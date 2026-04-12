@@ -1,0 +1,990 @@
+diff --git a/python/sglang/srt/configs/model_config.py b/python/sglang/srt/configs/model_config.py
+index 52513ad7c..67cce0e63 100644
+--- a/python/sglang/srt/configs/model_config.py
++++ b/python/sglang/srt/configs/model_config.py
+@@ -155,7 +155,6 @@ class ModelConfig:
+         if enable_multimodal is None:
+             mm_disabled_models = [
+                 "Gemma3ForConditionalGeneration",
+-                "Gemma4ForConditionalGeneration",
+                 "Llama4ForConditionalGeneration",
+                 "Step3VLForConditionalGeneration",
+             ]
+@@ -197,8 +196,16 @@ class ModelConfig:
+         self.is_image_understandable_model = enable_multimodal and hasattr(
+             self.hf_config, "vision_config"
+         )
+-        self.is_audio_understandable_model = enable_multimodal and hasattr(
+-            self.hf_config, "audio_config"
++
++        # Models expose audio_config at different nesting levels:
++        #   - top-level audio_config: e.g. Qwen2Audio
++        #   - thinker_config.audio_config: Qwen3-Omni, Qwen3-ASR (nested thinker arch)
++        #   - is_audio_model(): Whisper, Qwen3-ASR (architecture-based fallback)\
++        # TODO: Handle this more robustly by standardizing the config structure in the future
++        self.is_audio_understandable_model = enable_multimodal and (
++            hasattr(self.hf_config, "audio_config")
++            or hasattr(getattr(self.hf_config, "thinker_config", None), "audio_config")
++            or is_audio_model(self.hf_config.architectures)
+         )
+ 
+         self.is_multimodal_chunked_prefill_supported = (
+@@ -233,6 +240,8 @@ class ModelConfig:
+ 
+         # Cache attributes
+         self.hf_eos_token_id = self._get_hf_eos_token_id()
++        # Set by scheduler when reasoning_parser is enabled
++        self.think_end_id: Optional[int] = None
+ 
+         # multimodal
+         self.image_token_id = getattr(
+@@ -375,6 +384,8 @@ class ModelConfig:
+         self.is_hybrid_swa_compress = self.hf_config.architectures[0] in [
+             "MiMoV2FlashForCausalLM",
+             "MiMoV2MTP",
++            "Gemma4ForCausalLM",
++            "Gemma4ForConditionalGeneration",
+         ]
+ 
+     def _derive_context_length(self, context_length: int):
+@@ -432,7 +443,7 @@ class ModelConfig:
+         self.swa_v_head_dim = getattr(
+             self.hf_text_config,
+             "swa_v_head_dim",
+-            self.v_head_dim,
++            self.swa_head_dim,
+         )
+         # FIXME: temporary special judge for MLA architecture
+         if (
+@@ -564,6 +575,12 @@ class ModelConfig:
+         self.num_key_value_heads = getattr(
+             self.hf_text_config, "num_key_value_heads", None
+         )
++        self.first_k_dense_replace = getattr(
++            self.hf_text_config, "first_k_dense_replace", None
++        )
++        self.full_attention_interval = getattr(
++            self.hf_text_config, "full_attention_interval", None
++        )
+ 
+         # for Dbrx and MPT models
+         if self.hf_config.model_type in ["dbrx", "mpt"]:
+@@ -1054,8 +1071,10 @@ class ModelConfig:
+                     f"supported in ROCm."
+                 )
+             if self.quantization not in optimized_quantization_methods:
+-                # Don't warn for MXFP4 on SM100 since it has optimized kernels
+-                if not (self.quantization == "mxfp4" and is_sm100_supported()):
++                # Don't warn for MXFP4/MXFP8 on SM100 since they have optimized kernels
++                if not (
++                    self.quantization in ["mxfp4", "mxfp8"] and is_sm100_supported()
++                ):
+                     logger.warning(
+                         "%s quantization is not fully "
+                         "optimized yet. The speed can be slower than "
+@@ -1300,6 +1319,7 @@ multimodal_model_archs = [
+     "Ernie4_5_VLMoeForConditionalGeneration",
+     "Gemma3ForConditionalGeneration",
+     "Gemma3nForConditionalGeneration",
++    "Gemma4ForConditionalGeneration",
+     "Glm4vForConditionalGeneration",
+     "Glm4vMoeForConditionalGeneration",
+     "GlmOcrForConditionalGeneration",
+@@ -1328,12 +1348,14 @@ multimodal_model_archs = [
+     "Qwen3VLMoeForConditionalGeneration",
+     "Qwen3_5ForConditionalGeneration",
+     "Qwen3_5MoeForConditionalGeneration",
++    "Qwen3ASRForConditionalGeneration",
+     "Qwen3OmniMoeForConditionalGeneration",
+     "KimiVLForConditionalGeneration",
+     "InternVLChatModel",
+     "InternS1ForConditionalGeneration",
+     "InternS1ProForConditionalGeneration",
+     "Phi4MMForCausalLM",
++    "VoxtralForConditionalGeneration",
+     "WhisperForConditionalGeneration",
+     "Step3VLForConditionalGeneration",
+     "POINTSV15ChatModel",
+@@ -1375,6 +1397,7 @@ def is_multimodal_model(model_architectures: List[str]):
+ def is_audio_model(model_architectures: List[str]):
+     models = [
+         "WhisperForConditionalGeneration",
++        "Qwen3ASRForConditionalGeneration",
+     ]
+     return any(model in model_architectures for model in models)
+ 
+@@ -1439,14 +1462,14 @@ def compute_mla_mscale_scaling(rope_scaling: dict, base_scaling: float) -> float
+ def is_hybrid_swa_model(model_architectures: List[str]):
+ 
+     hybrid_swa_archs = {
+-        "Gemma4ForCausalLM",
+-        "Gemma4ForConditionalGeneration",
+         "Llama4ForConditionalGeneration",
+         "GptOssForCausalLM",
+         "MiMoV2FlashForCausalLM",
+         "MiMoV2MTP",
+         "Step3p5ForCausalLM",
+         "Step3p5MTP",
++        "Gemma4ForCausalLM",
++        "Gemma4ForConditionalGeneration",
+     }
+     return any(arch in hybrid_swa_archs for arch in model_architectures)
+ 
+@@ -1464,7 +1487,7 @@ def get_hybrid_layer_ids(
+             i for i in range(num_hidden_layers) if (i + 1) % 4 == 0
+         ]
+     elif "GptOssForCausalLM" in model_architectures:
+-        layer_types = getattr(hf_text_config, "layer_types", None)
++        layer_types = getattr(hf_text_config, "layer_types", [])
+         swa_attention_layer_ids = [
+             i for i, x in enumerate(layer_types) if x == "sliding_attention"
+         ]
+@@ -1494,6 +1517,9 @@ def get_hybrid_layer_ids(
+             for i, x in enumerate(layer_types)
+             if x == "full_attention" and i < num_hidden_layers
+         ]
++    elif "Step3p5MTP" in model_architectures:
++        swa_attention_layer_ids = [0]
++        full_attention_layer_ids = []
+     elif (
+         "Gemma4ForCausalLM" in model_architectures
+         or "Gemma4ForConditionalGeneration" in model_architectures
+@@ -1505,9 +1531,6 @@ def get_hybrid_layer_ids(
+         full_attention_layer_ids = [
+             i for i, x in enumerate(layer_types) if x == "full_attention"
+         ]
+-    elif "Step3p5MTP" in model_architectures:
+-        swa_attention_layer_ids = [0]
+-        full_attention_layer_ids = []
+     else:
+         swa_attention_layer_ids = None
+         full_attention_layer_ids = None
+diff --git a/python/sglang/srt/layers/attention/triton_backend.py b/python/sglang/srt/layers/attention/triton_backend.py
+index ac03c1af2..c1f1f48fb 100644
+--- a/python/sglang/srt/layers/attention/triton_backend.py
++++ b/python/sglang/srt/layers/attention/triton_backend.py
+@@ -12,6 +12,7 @@ from sglang.srt.layers.attention.base_attn_backend import AttentionBackend
+ from sglang.srt.layers.attention.utils import create_flashinfer_kv_indices_triton
+ from sglang.srt.layers.dp_attention import get_attention_tp_size
+ from sglang.srt.layers.radix_attention import AttentionType
++from sglang.srt.mem_cache.swa_memory_pool import SWAKVPool
+ from sglang.srt.model_executor.forward_batch_info import ForwardBatch, ForwardMode
+ from sglang.srt.speculative.spec_utils import generate_draft_decode_kv_indices
+ from sglang.srt.utils import (
+@@ -96,24 +97,30 @@ class TritonAttnBackend(AttentionBackend):
+         self.num_kv_head = model_runner.model_config.get_num_kv_heads(
+             get_attention_tp_size()
+         )
+-        if (
++        # The decode triton kernel derives attn_lse offsets from attn_logits
++        # strides via integer division by v_head_dim (the "// Lv" trick in
++        # _fwd_kernel_stage1/stage2), so attn_logits.shape[-1] must exactly
++        # match the layer's v_head_dim. For hybrid SWA models where SWA and
++        # full-attention layers use different v_head_dim (e.g. Gemma 4:
++        # swa=256, full=512), we allocate a second buffer for SWA layers.
++        full_v_head_dim = model_runner.model_config.v_head_dim
++        swa_v_head_dim = model_runner.model_config.swa_v_head_dim
++        if self.sliding_window_size is not None and swa_v_head_dim != full_v_head_dim:
++            self.v_head_dim = full_v_head_dim
++            self.swa_v_head_dim = swa_v_head_dim
++        elif (
+             model_runner.hybrid_gdn_config is not None
+             or model_runner.kimi_linear_config is not None
++            or model_runner.linear_attn_model_spec is not None
+         ):
+             # For hybrid linear models, layer_id = 0 may not be full attention
+             self.v_head_dim = model_runner.token_to_kv_pool.get_v_head_dim()
++            self.swa_v_head_dim = None
+         else:
+             self.v_head_dim = model_runner.token_to_kv_pool.get_value_buffer(0).shape[
+                 -1
+             ]
+-        # Track whether SWA layers need different v_head_dim
+-        full_v_head_dim = model_runner.model_config.v_head_dim
+-        swa_v_head_dim = model_runner.model_config.swa_v_head_dim
+-        if self.sliding_window_size is not None and swa_v_head_dim != full_v_head_dim:
+-            self.swa_v_head_dim = swa_v_head_dim
+-        else:
+             self.swa_v_head_dim = None
+-
+         self.max_context_len = model_runner.model_config.context_len
+         self.device = model_runner.device
+         self.device_core_count = get_device_core_count(model_runner.gpu_id)
+@@ -252,6 +259,7 @@ class TritonAttnBackend(AttentionBackend):
+         window_kv_indices = None
+         window_num_kv_splits = None
+         window_kv_offsets = None
++        swa_attn_logits = None
+         spec_info = forward_batch.spec_info
+ 
+         if forward_batch.forward_mode.is_decode_or_idle():
+@@ -440,10 +448,6 @@ class TritonAttnBackend(AttentionBackend):
+             max_extend_len = max(forward_batch.extend_seq_lens_cpu)
+             num_kv_splits = None
+ 
+-        # For non-decode modes, swa_attn_logits is not needed
+-        if not forward_batch.forward_mode.is_decode():
+-            swa_attn_logits = None
+-
+         self.forward_metadata = ForwardMetadata(
+             attn_logits,
+             attn_lse,
+@@ -475,7 +479,12 @@ class TritonAttnBackend(AttentionBackend):
+         )
+         if self.swa_v_head_dim is not None:
+             self.cuda_graph_swa_attn_logits = torch.zeros(
+-                (max_num_tokens, self.num_head, self.max_kv_splits, self.swa_v_head_dim),
++                (
++                    max_num_tokens,
++                    self.num_head,
++                    self.max_kv_splits,
++                    self.swa_v_head_dim,
++                ),
+                 dtype=torch.float32,
+                 device=self.device,
+             )
+@@ -551,6 +560,7 @@ class TritonAttnBackend(AttentionBackend):
+         window_kv_indices = None
+         window_num_kv_splits = None
+         window_kv_offsets = None
++        swa_attn_logits = None
+ 
+         if forward_mode.is_decode_or_idle():
+             if spec_info is None:
+@@ -677,10 +687,6 @@ class TritonAttnBackend(AttentionBackend):
+                 f"Invalid forward mode: {forward_mode=} for CUDA Graph capture."
+             )
+ 
+-        # For non-decode CUDA graph modes, swa_attn_logits is not needed
+-        if not forward_mode.is_decode():
+-            swa_attn_logits = None
+-
+         self.forward_metadata = ForwardMetadata(
+             attn_logits,
+             attn_lse,
+@@ -850,44 +856,43 @@ class TritonAttnBackend(AttentionBackend):
+         save_kv_cache=True,
+         sinks=None,
+     ):
+-        # Handle KV-shared layers (Gemma4): k=None, v=None means retrieve from cache
++        # TODO: reuse the buffer across layers
++        if layer.qk_head_dim != layer.v_head_dim:
++            o = q.new_empty((q.shape[0], layer.tp_q_head_num * layer.v_head_dim))
++        else:
++            o = torch.empty_like(q)
++
+         if k is None and v is None:
+             pool = forward_batch.token_to_kv_pool
+             cache_loc = forward_batch.out_cache_loc
+-            if hasattr(pool, 'layers_mapping') and pool.layers_mapping[layer.layer_id][1]:
++            if isinstance(pool, SWAKVPool) and pool.layers_mapping[layer.layer_id][1]:
+                 cache_loc = pool.translate_loc_from_full_to_swa(cache_loc)
+             k_buffer, v_buffer = pool.get_kv_buffer(layer.layer_id)
+             k = k_buffer[cache_loc]
+             v = v_buffer[cache_loc]
+         elif k is None or v is None:
+             raise ValueError("Both k and v should be None or not None")
+-
+-        # TODO: reuse the buffer across layers
+-        if layer.qk_head_dim != layer.v_head_dim:
+-            o = q.new_empty((q.shape[0], layer.tp_q_head_num * layer.v_head_dim))
+         else:
+-            o = torch.empty_like(q)
+-
+-        # Save KV cache first (must do this before unified kernel)
+-        if save_kv_cache:
+-            if (
+-                self.use_mla or layer.k_scale is None
+-            ):  # Triton MLA currently doesn't support quantized kv cache
+-                forward_batch.token_to_kv_pool.set_kv_buffer(
+-                    layer,
+-                    forward_batch.out_cache_loc,
+-                    k,
+-                    v,
+-                )
+-            else:
+-                forward_batch.token_to_kv_pool.set_kv_buffer(
+-                    layer,
+-                    forward_batch.out_cache_loc,
+-                    k.clone(),  # cloned to protect k,v from in-place mutation in set_kv_buffer
+-                    v.clone(),
+-                    layer.k_scale,
+-                    layer.v_scale,
+-                )
++            # Save KV cache first (must do this before unified kernel)
++            if save_kv_cache:
++                if (
++                    self.use_mla or layer.k_scale is None
++                ):  # Triton MLA currently doesn't support quantized kv cache
++                    forward_batch.token_to_kv_pool.set_kv_buffer(
++                        layer,
++                        forward_batch.out_cache_loc,
++                        k,
++                        v,
++                    )
++                else:
++                    forward_batch.token_to_kv_pool.set_kv_buffer(
++                        layer,
++                        forward_batch.out_cache_loc,
++                        k.clone(),  # cloned to protect k,v from in-place mutation in set_kv_buffer
++                        v.clone(),
++                        layer.k_scale,
++                        layer.v_scale,
++                    )
+ 
+         logits_soft_cap = logit_capping_mod(layer.logit_capping_method, layer.logit_cap)
+ 
+@@ -1094,18 +1099,6 @@ class TritonAttnBackend(AttentionBackend):
+         save_kv_cache=True,
+         sinks=None,
+     ):
+-        # Handle KV-shared layers (Gemma4): k=None, v=None means retrieve from cache
+-        if k is None and v is None:
+-            pool = forward_batch.token_to_kv_pool
+-            cache_loc = forward_batch.out_cache_loc
+-            if hasattr(pool, 'layers_mapping') and pool.layers_mapping[layer.layer_id][1]:
+-                cache_loc = pool.translate_loc_from_full_to_swa(cache_loc)
+-            k_buffer, v_buffer = pool.get_kv_buffer(layer.layer_id)
+-            k = k_buffer[cache_loc]
+-            v = v_buffer[cache_loc]
+-        elif k is None or v is None:
+-            raise ValueError("Both k and v should be None or not None")
+-
+         # During torch.compile, there is a bug in rotary_emb that causes the
+         # output value to have a 3D tensor shape. This reshapes the output correctly.
+         q = q.reshape(-1, layer.tp_q_head_num * layer.qk_head_dim)
+@@ -1151,11 +1144,12 @@ class TritonAttnBackend(AttentionBackend):
+             v_descale = 1.0
+ 
+         # Select the correctly-sized attn_logits buffer for this layer.
++        # The triton kernel's // Lv stride trick requires attn_logits.shape[-1]
++        # to exactly match the layer's v_head_dim.
+         attn_logits = self.forward_metadata.attn_logits
+         if (
+             self.forward_metadata.swa_attn_logits is not None
+-            and layer.sliding_window_size is not None
+-            and layer.sliding_window_size > -1
++            and layer.v_head_dim == self.swa_v_head_dim
+         ):
+             attn_logits = self.forward_metadata.swa_attn_logits
+ 
+diff --git a/python/sglang/srt/layers/attention/triton_ops/prefill_attention.py b/python/sglang/srt/layers/attention/triton_ops/prefill_attention.py
+index ac0fc72af..a50b89787 100644
+--- a/python/sglang/srt/layers/attention/triton_ops/prefill_attention.py
++++ b/python/sglang/srt/layers/attention/triton_ops/prefill_attention.py
+@@ -168,13 +168,14 @@ def _fwd_kernel(
+ 
+ 
+ def context_attention_fwd(
+-    q, k, v, o, b_start_loc, b_seq_len, max_input_len, is_causal=True
++    q, k, v, o, b_start_loc, b_seq_len, max_input_len, is_causal=True, sm_scale=None
+ ):
+     """
+     q, k, v: [b * s, head, head_dim]
+     b_start_loc: [b]
+     b_seq_len: [b]
+     out: [b * s, head, head_dim]
++    sm_scale: softmax scale, defaults to 1/sqrt(head_dim)
+     """
+     if (_is_cuda or _is_hip) and CUDA_CAPABILITY[0] > 8:
+         BLOCK = 128
+@@ -183,7 +184,8 @@ def context_attention_fwd(
+ 
+     Lq, Lk, Lv = q.shape[-1], k.shape[-1], v.shape[-1]
+ 
+-    sm_scale = 1.0 / (Lq**0.5)
++    if sm_scale is None:
++        sm_scale = 1.0 / (Lq**0.5)
+     batch, head = b_seq_len.shape[0], q.shape[1]
+     kv_group_num = q.shape[1] // k.shape[1]
+ 
+diff --git a/python/sglang/srt/layers/layernorm.py b/python/sglang/srt/layers/layernorm.py
+index c3544c41b..55d880643 100644
+--- a/python/sglang/srt/layers/layernorm.py
++++ b/python/sglang/srt/layers/layernorm.py
+@@ -65,11 +65,14 @@ if _is_cuda or _is_xpu:
+         gemma_rmsnorm,
+         rmsnorm,
+     )
++_has_aiter_layer_norm = False
+ _has_vllm_rms_norm = False
+ if _use_aiter:
++    from aiter import layernorm2d_fwd as layer_norm
+     from aiter import rmsnorm2d_fwd as rms_norm
+     from aiter import rmsnorm2d_fwd_with_add as fused_add_rms_norm
+ 
++    _has_aiter_layer_norm = True  # aiter provides the layer_norm functions
+     _has_vllm_rms_norm = True  # aiter provides the rms_norm functions
+ elif _is_hip:
+     try:
+@@ -181,7 +184,16 @@ class RMSNorm(MultiPlatformOp):
+         post_residual_addition: Optional[torch.Tensor] = None,
+     ) -> Union[torch.Tensor, Tuple[torch.Tensor, torch.Tensor]]:
+         if x.numel() == 0:
++            if residual is not None:
++                if post_residual_addition is not None:
++                    residual = residual + post_residual_addition
++                return x, residual
+             return x
++        # sgl_kernel rmsnorm requires 2D input; reshape higher-rank tensors
++        needs_reshape = x.dim() != 2 and residual is None
++        if needs_reshape:
++            original_shape = x.shape
++            x = x.contiguous().reshape(-1, original_shape[-1])
+         if self.variance_size_override is not None:
+             return self.forward_native(x, residual, post_residual_addition)
+         if is_batch_invariant_mode_enabled():
+@@ -205,6 +217,8 @@ class RMSNorm(MultiPlatformOp):
+             fused_add_rmsnorm(x, residual, self.weight.data, self.variance_epsilon)
+             return x, residual
+         out = rmsnorm(x, self.weight.data, self.variance_epsilon)
++        if needs_reshape:
++            out = out.reshape(original_shape)
+         return out
+ 
+     def forward_npu(
+@@ -421,7 +435,18 @@ class LayerNorm(MultiPlatformOp):
+         self,
+         x: torch.Tensor,
+     ) -> torch.Tensor:
+-        return self.forward_native(x)
++        if (
++            _has_aiter_layer_norm
++            and x.dtype in (torch.bfloat16, torch.float16)
++            and x.dtype == self.dtype
++        ):
++            orig_shape = x.shape
++            x = x.reshape(-1, self.hidden_size)
++            return layer_norm(x, self.weight, self.bias, self.variance_epsilon).view(
++                orig_shape
++            )
++        else:
++            return self.forward_native(x)
+ 
+     def forward_npu(
+         self,
+@@ -458,6 +483,10 @@ class GemmaRMSNorm(MultiPlatformOp):
+         residual: Optional[torch.Tensor] = None,
+         post_residual_addition: Optional[torch.Tensor] = None,
+     ) -> Union[torch.Tensor, Tuple[torch.Tensor, torch.Tensor]]:
++        needs_reshape = x.dim() != 2 and residual is None
++        if needs_reshape:
++            original_shape = x.shape
++            x = x.contiguous().reshape(-1, original_shape[-1])
+         if residual is not None:
+             if post_residual_addition is not None:
+                 residual = residual + post_residual_addition
+@@ -466,6 +495,8 @@ class GemmaRMSNorm(MultiPlatformOp):
+             )
+             return x, residual
+         out = gemma_rmsnorm(x, self.weight.data, self.variance_epsilon)
++        if needs_reshape:
++            out = out.reshape(original_shape)
+         return out
+ 
+     def forward_native(
+@@ -643,7 +674,6 @@ class Gemma4RMSNorm(MultiPlatformOp):
+     ):
+         super().__init__()
+         self.with_scale = with_scale
+-        self.variance_epsilon = eps
+ 
+         if self.with_scale:
+             self.weight = nn.Parameter(torch.ones(dim))
+@@ -678,8 +708,12 @@ class Gemma4RMSNorm(MultiPlatformOp):
+             original_shape = x.shape
+             x = x.contiguous().reshape(-1, original_shape[-1])
+         if self.with_scale and self.scale_shift == 1.0:
++            # gemma_rmsnorm: norm(x) * (1 + weight)
+             out = gemma_rmsnorm(x, self.weight.data, self.eps)
+         else:
++            # rmsnorm: norm(x) * weight
++            # with_scale=False → weight is ones → norm(x) * 1 = norm(x)
++            # scale_shift=0.0 → standard RMSNorm without +1 shift
+             out = rmsnorm(x, self.weight.data, self.eps)
+ 
+         if needs_reshape:
+@@ -687,4 +721,29 @@ class Gemma4RMSNorm(MultiPlatformOp):
+         return out
+ 
+     def forward_hip(self, x: torch.Tensor) -> torch.Tensor:
++        # sgl_kernel's gemma_rmsnorm is not available on ROCm;
++        # delegate to the pure-PyTorch implementation.
+         return self.forward_native(x)
++
++
++class RMSNormWithoutScale(MultiPlatformOp):
++    def __init__(self, hidden_size: int, eps=1e-6):
++        super().__init__()
++        self.hidden_size = hidden_size
++        self.eps = eps
++
++    def _norm(self, x):
++        return x * torch.rsqrt(x.pow(2).mean(-1, keepdim=True) + self.eps)
++
++    def forward_native(self, x):
++        orig_dtype = x.dtype
++        x = x.float()
++        variance = x.pow(2).mean(dim=-1, keepdim=True)
++        x = x * torch.rsqrt(variance + self.eps)
++        return x.to(orig_dtype)
++
++    def forward_cuda(self, x):
++        return self.forward_native(x)
++
++    def extra_repr(self):
++        return f"{self.hidden_size}, eps={self.eps}"
+diff --git a/python/sglang/srt/mem_cache/swa_memory_pool.py b/python/sglang/srt/mem_cache/swa_memory_pool.py
+index 96b0e3844..80f24e6df 100644
+--- a/python/sglang/srt/mem_cache/swa_memory_pool.py
++++ b/python/sglang/srt/mem_cache/swa_memory_pool.py
+@@ -1,5 +1,4 @@
+ import logging
+-import weakref
+ from typing import Dict, List, Optional, Tuple
+ 
+ import torch
+@@ -306,7 +305,7 @@ class SWATokenToKVPoolAllocator(BaseTokenToKVPoolAllocator):
+ 
+         self.clear()
+         self._kvcache = kvcache
+-        self._kvcache.register_mapping(weakref.proxy(self.full_to_swa_index_mapping))
++        self._kvcache.register_mapping(self.full_to_swa_index_mapping)
+ 
+     def available_size(self):
+         return min(
+diff --git a/python/sglang/srt/models/gemma4_causal.py b/python/sglang/srt/models/gemma4_causal.py
+index 32c1dd228..544406119 100644
+--- a/python/sglang/srt/models/gemma4_causal.py
++++ b/python/sglang/srt/models/gemma4_causal.py
+@@ -36,7 +36,6 @@ from sglang.srt.layers.linear import (
+ )
+ from sglang.srt.layers.logits_processor import LogitsProcessor
+ from sglang.srt.layers.moe.ep_moe.layer import get_moe_impl_class
+-from sglang.srt.layers.moe.fused_moe_triton.layer import FusedMoE
+ from sglang.srt.layers.moe.topk import TopK
+ from sglang.srt.layers.quantization.base_config import QuantizationConfig
+ from sglang.srt.layers.radix_attention import RadixAttention
+@@ -230,9 +229,7 @@ class Gemma4Attention(nn.Module):
+                 config, "swa_num_key_value_heads", config.num_key_value_heads
+             )
+         else:
+-            self.total_num_kv_heads = getattr(
+-                config, "num_global_key_value_heads", config.num_key_value_heads
+-            )
++            self.total_num_kv_heads = config.num_key_value_heads
+ 
+         self.num_kv_heads = max(1, self.total_num_kv_heads // tp_size)
+ 
+@@ -345,6 +342,8 @@ class Gemma4Attention(nn.Module):
+ 
+         # Check if we should use shared KV cache
+         if self.is_kv_shared_layer and self.kv_shared_layer_index is not None:
++            # For KV shared layers, we skip K/V computation and normalization
++            # The RadixAttention will handle retrieving shared KV from cache
+             k = None
+             v = None
+         else:
+@@ -360,6 +359,7 @@ class Gemma4Attention(nn.Module):
+             q, k = self.rotary_emb(positions, q, k)
+             k = k.unflatten(-1, (self.num_kv_heads, self.head_dim))
+         else:
++            # Rotary embedding requires a key input; use zeros since KV is shared from another layer
+             dummy_k = torch.zeros_like(q[:, : self.kv_size])
+             q, _ = self.rotary_emb(positions, q, dummy_k)
+ 
+@@ -371,7 +371,6 @@ class Gemma4Attention(nn.Module):
+             forward_batch=forward_batch,
+             save_kv_cache=not self.is_kv_shared_layer,
+         )
+-
+         if attn_output.dim() == 3:
+             attn_output = attn_output.flatten(-2, -1)
+         output, _ = self.o_proj(attn_output)
+@@ -396,12 +395,10 @@ class Gemma4DecoderLayer(nn.Module):
+         self.layer_id = layer_id
+ 
+         # Gemma 4 uses different head dimensions for sliding vs full attention
+-        # hf_transformers_utils remaps: config.head_dim = global_head_dim (512),
+-        # config.swa_head_dim = original head_dim (256)
+         layer_type = config.layer_types[layer_id]
+         self.is_full_attention = layer_type == "full_attention"
+         if self.is_full_attention:
+-            head_dim = config.head_dim
++            head_dim = config.head_dim  # following sglang naming
+         else:
+             head_dim = getattr(config, "swa_head_dim", config.head_dim)
+ 
+@@ -527,14 +524,13 @@ class Gemma4DecoderLayer(nn.Module):
+         #   h = gemma_norm(residual)
+         residual = hidden_states
+ 
++        # Apply input layernorm
+         hidden_states = self.input_layernorm(hidden_states)
+-
+         hidden_states = self.self_attn(
+             positions=positions,
+             hidden_states=hidden_states,
+             forward_batch=forward_batch,
+         )
+-
+         hidden_states = self.post_attention_layernorm(hidden_states)
+ 
+         if self.enable_moe_block:
+@@ -566,7 +562,7 @@ class Gemma4DecoderLayer(nn.Module):
+             )
+             hidden_states = self.mlp(hidden_states)
+ 
+-        if False:  # Disabled on RDNA4 — the Triton fused kernel crashes on gfx1201
++        if not self.has_ple and hidden_states.is_cuda and hidden_states.dim() == 2:
+             # Fused: (post_ff_norm(h) + residual) * layer_scalar in one kernel
+             norm = self.post_feedforward_layernorm
+             hidden_states = gemma_rmsnorm_residual_scalar(
+@@ -829,13 +825,10 @@ class Gemma4ForCausalLM(PreTrainedModel):
+ 
+     def __init__(
+         self,
+-        config,
++        config: Gemma4TextConfig,
+         quant_config: Optional[QuantizationConfig] = None,
+         prefix: str = "",
+     ) -> None:
+-        # Handle multimodal config wrapper: extract text_config for the language model
+-        if hasattr(config, "text_config") and getattr(config, "model_type", "") == "gemma4":
+-            config = config.text_config
+         super().__init__(config=config)
+         self.config = config
+         self.quant_config = quant_config
+@@ -904,25 +897,13 @@ class Gemma4ForCausalLM(PreTrainedModel):
+             ("gate_up_proj", "up_proj", 1),
+         ]
+ 
+-        num_experts = getattr(self.config, "num_experts", 0)
+-
+-        # Per-expert mapping for AWQ/GPTQ checkpoints (experts.0.gate_proj.qweight)
+-        per_expert_params_mapping = (
+-            FusedMoE.make_expert_params_mapping(
+-                ckpt_gate_proj_name="gate_proj",
+-                ckpt_down_proj_name="down_proj",
+-                ckpt_up_proj_name="up_proj",
+-                num_experts=num_experts,
+-            )
+-            if num_experts > 0
+-            else []
+-        )
+-
+-        # Fused mapping for BF16 checkpoints (experts.gate_up_proj [E, 2*I, H])
+-        fused_expert_params_mapping = [
++        expert_params_mapping = [
++            # (param_name, ckpt_weight_name, shard_ids)
++            # gate_up_proj is fused [E, 2*I, H] — chunk into w1 (gate) + w3 (up)
+             ("experts.w13_weight", "experts.gate_up_proj", ("w1", "w3")),
+             ("experts.w2_weight", "experts.down_proj", ("w2",)),
+         ]
++        num_experts = self.config.num_experts
+ 
+         k_eq_v_layers = self._get_k_eq_v_layers()
+ 
+@@ -955,33 +936,26 @@ class Gemma4ForCausalLM(PreTrainedModel):
+                 and int(m.group(1)) in k_eq_v_layers
+             )
+ 
++            # MoE expert weights checked first (gate_up_proj contains "up_proj"
++            # which would false-match the stacked dense MLP mapping).
+             orig_name = name
+-
+-            # --- Per-expert AWQ/GPTQ weights (experts.{i}.gate_proj.qweight) ---
+-            is_expert_weight = False
+-            for param_name, weight_name, expert_id, shard_id in per_expert_params_mapping:
++            for param_name, weight_name, shard_ids in expert_params_mapping:
++                name = orig_name
+                 if weight_name not in name:
+                     continue
+-                is_expert_weight = True
+                 name = name.replace(weight_name, param_name)
+                 if name not in params_dict:
+                     continue
+                 param = params_dict[name]
+                 weight_loader = param.weight_loader
+-                weight_loader(
+-                    param, loaded_weight, name,
+-                    shard_id=shard_id, expert_id=expert_id,
+-                )
++                for i in range(num_experts):
++                    chunks = loaded_weight[i].chunk(len(shard_ids), dim=0)
++                    for chunk, sid in zip(chunks, shard_ids):
++                        weight_loader(param, chunk, name, sid, i)
+                 break
+             else:
+-                if is_expert_weight:
+-                    loaded_params.add(name)
+-                    continue
+-
+-                # --- Fused BF16 experts (experts.gate_up_proj [E, 2*I, H]) ---
+-                name = orig_name
+-                fused_matched = False
+-                for param_name, weight_name, shard_ids in fused_expert_params_mapping:
++                for param_name, weight_name, shard_id in stacked_params_mapping:
++                    name = orig_name
+                     if weight_name not in name:
+                         continue
+                     name = name.replace(weight_name, param_name)
+@@ -989,45 +963,24 @@ class Gemma4ForCausalLM(PreTrainedModel):
+                         continue
+                     param = params_dict[name]
+                     weight_loader = param.weight_loader
+-                    for i in range(num_experts):
+-                        chunks = loaded_weight[i].chunk(len(shard_ids), dim=0)
+-                        for chunk, sid in zip(chunks, shard_ids):
+-                            weight_loader(param, chunk, name, sid, i)
+-                    fused_matched = True
++                    weight_loader(param, loaded_weight, shard_id)
++                    if should_dup_k_to_v:
++                        weight_loader(param, loaded_weight, "v")
+                     break
+-
+-                if not fused_matched:
+-                    # --- Stacked dense params (qkv_proj, gate_up_proj) ---
+-                    for param_name, weight_name, shard_id in stacked_params_mapping:
+-                        name = orig_name
+-                        if weight_name not in name:
+-                            continue
+-                        # Skip MoE expert weights — handled above
+-                        if ".moe.experts." in name:
+-                            continue
+-                        name = name.replace(weight_name, param_name)
+-                        if name not in params_dict:
+-                            continue
+-                        param = params_dict[name]
+-                        weight_loader = param.weight_loader
+-                        weight_loader(param, loaded_weight, shard_id)
+-                        if should_dup_k_to_v:
+-                            weight_loader(param, loaded_weight, "v")
+-                        break
+-                    else:
+-                        name = orig_name
+-                        if name.endswith(".bias") and name not in params_dict:
+-                            continue
+-                        name = maybe_remap_kv_scale_name(name, params_dict)
+-                        if name is None:
+-                            continue
+-                        if name not in params_dict:
+-                            continue
+-                        param = params_dict[name]
+-                        weight_loader = getattr(
+-                            param, "weight_loader", default_weight_loader
+-                        )
+-                        weight_loader(param, loaded_weight)
++                else:
++                    name = orig_name
++                    if name.endswith(".bias") and name not in params_dict:
++                        continue
++                    name = maybe_remap_kv_scale_name(name, params_dict)
++                    if name is None:
++                        continue
++                    if name not in params_dict:
++                        continue
++                    param = params_dict[name]
++                    weight_loader = getattr(
++                        param, "weight_loader", default_weight_loader
++                    )
++                    weight_loader(param, loaded_weight)
+             loaded_params.add(name)
+         unloaded_params = params_dict.keys() - loaded_params
+         if unloaded_params:
+@@ -1053,10 +1006,4 @@ class Gemma4ForCausalLM(PreTrainedModel):
+         return loaded_params
+ 
+ 
+-# Text-only alias for multimodal architecture name
+-# Allows loading Gemma4ForConditionalGeneration models without vision
+-class Gemma4ForConditionalGeneration(Gemma4ForCausalLM):
+-    pass
+-
+-
+-EntryClass = [Gemma4ForCausalLM, Gemma4ForConditionalGeneration]
++EntryClass = Gemma4ForCausalLM
+diff --git a/python/sglang/srt/utils/hf_transformers_utils.py b/python/sglang/srt/utils/hf_transformers_utils.py
+index b5fc2b62a..b928b08d4 100644
+--- a/python/sglang/srt/utils/hf_transformers_utils.py
++++ b/python/sglang/srt/utils/hf_transformers_utils.py
+@@ -622,14 +622,12 @@ def get_config(
+     if config.model_type == "multi_modality":
+         config.update({"architectures": ["MultiModalityCausalLM"]})
+ 
+-    if config.model_type == "longcat_flash":
+-        config.update({"architectures": ["LongcatFlashForCausalLM"]})
+-
+     if config.model_type == "gemma4":
+         # Gemma4 configs use base attributes for SWA layers and `global_*`
+         # variants for full-attention layers.  SGLang expects the opposite:
+         # base = full-attention, `swa_*` = sliding-window overrides.
+-        text_config = get_hf_text_config(config=config)
++        # Remap here so the rest of the stack sees a uniform convention.
++        text_config = config.text_config
+         global_head_dim = getattr(text_config, "global_head_dim", None)
+         global_kv_heads = getattr(text_config, "num_global_key_value_heads", None)
+ 
+@@ -650,6 +648,9 @@ def get_config(
+         if not hasattr(text_config, "swa_v_head_dim"):
+             text_config.swa_v_head_dim = text_config.swa_head_dim
+ 
++    if config.model_type == "longcat_flash":
++        config.update({"architectures": ["LongcatFlashForCausalLM"]})
++
+     if model_override_args:
+         config.update(model_override_args)
+ 
+@@ -862,9 +863,25 @@ def get_tokenizer(
+         )
+         raise RuntimeError(err_msg) from e
+     except ValueError as e:
++        # MistralCommon tokenizers reject standard HF kwargs like
++        # trust_remote_code, use_fast etc. Retry without them.
++        if "are not supported by" in str(e) and "MistralCommon" in str(e):
++            for k in (
++                "trust_remote_code",
++                "tokenizer_revision",
++                "use_fast",
++                "_from_auto",
++                "clean_up_tokenization_spaces",
++            ):
++                kwargs.pop(k, None)
++            tokenizer = AutoTokenizer.from_pretrained(
++                tokenizer_name,
++                *args,
++                **kwargs,
++            )
+         # If the error pertains to the tokenizer class not existing or not
+         # currently being imported, suggest using the --trust-remote-code flag.
+-        if not trust_remote_code and (
++        elif not trust_remote_code and (
+             "does not exist or is not currently imported." in str(e)
+             or "requires you to execute the tokenizer file" in str(e)
+         ):
+@@ -900,6 +917,7 @@ def get_tokenizer(
+             "slowdown. Consider using a fast tokenizer instead."
+         )
+ 
++    _patch_mistral_common_tokenizer(tokenizer)
+     _fix_special_tokens_pattern(tokenizer)
+     attach_additional_stop_token_ids(tokenizer)
+     tokenizer = patch_tokenizer(tokenizer)
+@@ -1292,6 +1310,22 @@ def get_processor(
+                 revision=revision,
+                 **kwargs,
+             )
++        elif (
++            "are not supported by" in error_message and "MistralCommon" in error_message
++        ):
++            logger.info(
++                "AutoProcessor for %s rejected standard kwargs, "
++                "retrying without trust_remote_code/use_fast",
++                tokenizer_name,
++            )
++            kwargs.pop("use_fast", None)
++            kwargs.pop("_from_auto", None)
++            processor = AutoProcessor.from_pretrained(
++                tokenizer_name,
++                *args,
++                revision=revision,
++                **kwargs,
++            )
+         elif "Unrecognized feature extractor" in error_message:
+             logger.info(
+                 "AutoProcessor failed on feature extractor for %s, "
+@@ -1340,6 +1374,7 @@ def get_processor(
+         )
+ 
+     tokenizer = get_tokenizer_from_processor(processor)
++    _patch_mistral_common_tokenizer(tokenizer)
+ 
+     if tokenizer.chat_template is None:
+         local_path = download_from_hf(
+@@ -1366,6 +1401,86 @@ def attach_additional_stop_token_ids(tokenizer):
+         tokenizer.additional_stop_token_ids = None
+ 
+ 
++def _patch_mistral_common_tokenizer(tokenizer):
++    """Patch MistralCommonTokenizer/Backend to be compatible with HF tokenizer API.
++
++    MistralCommon tokenizers (used by Voxtral, Pixtral, etc.) reject several
++    standard kwargs and lack some attributes that sglang expects.  We wrap the
++    offending methods once at load time so that the rest of the codebase does
++    not need any special-casing.
++    """
++    cls_name = type(tokenizer).__name__
++    if "MistralCommon" not in cls_name:
++        return tokenizer
++    if getattr(tokenizer, "_mistral_common_patched", False):
++        return tokenizer
++    tokenizer._mistral_common_patched = True
++
++    # Missing attributes
++    if not hasattr(tokenizer, "get_added_vocab"):
++        tokenizer.get_added_vocab = lambda: {}
++
++    # Set a chat_template containing "audio" so that sglang's content format
++    # detector returns "openai" (which preserves audio_url extraction).
++    # The actual template rendering is done by MistralCommon's apply_chat_template.
++    if not hasattr(tokenizer, "chat_template") or tokenizer.chat_template is None:
++        tokenizer.chat_template = "<!-- audio/image multimodal -->"
++
++    # convert_tokens_to_ids asserts on multi-token strings
++    _orig_convert = tokenizer.convert_tokens_to_ids
++
++    def _safe_convert(val):
++        try:
++            return _orig_convert(val)
++        except AssertionError:
++            return getattr(tokenizer, "unk_token_id", None)
++
++    tokenizer.convert_tokens_to_ids = _safe_convert
++
++    # Wrap methods that reject certain kwargs
++    def _drop_kwargs(fn, keys):
++        def wrapper(*args, **kwargs):
++            for k in keys:
++                kwargs.pop(k, None)
++            return fn(*args, **kwargs)
++
++        return wrapper
++
++    tokenizer.decode = _drop_kwargs(tokenizer.decode, ["spaces_between_special_tokens"])
++    tokenizer.batch_decode = _drop_kwargs(
++        tokenizer.batch_decode, ["spaces_between_special_tokens"]
++    )
++
++    # Save original apply_chat_template for processors that need it (e.g. Voxtral)
++    tokenizer._orig_apply_chat_template = tokenizer.apply_chat_template
++
++    def _safe_apply_chat_template(messages, **kwargs):
++        """Wrapper that strips unsupported kwargs and non-text content parts.
++
++        When sglang extracts audio/image URLs, it replaces content blocks with
++        {"type": "audio"} or {"type": "image"} (no URL).  MistralCommon fails
++        on these stripped blocks.  We convert them to text-only messages.
++        """
++        kwargs.pop("add_generation_prompt", None)
++        cleaned = []
++        for msg in messages:
++            if isinstance(msg, dict):
++                content = msg.get("content", "")
++                if isinstance(content, list):
++                    text_parts = [
++                        p.get("text", "")
++                        for p in content
++                        if isinstance(p, dict) and p.get("type") == "text"
++                    ]
++                    msg = {**msg, "content": " ".join(text_parts) if text_parts else ""}
++                cleaned.append(msg)
++            else:
++                cleaned.append(msg)
++        return tokenizer._orig_apply_chat_template(cleaned, **kwargs)
++
++    tokenizer.apply_chat_template = _safe_apply_chat_template
++
++
+ def check_gguf_file(model: Union[str, os.PathLike]) -> bool:
+     """Check if the file is a GGUF model."""
+     model = Path(model)

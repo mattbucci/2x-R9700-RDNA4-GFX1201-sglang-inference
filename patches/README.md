@@ -50,6 +50,27 @@ Native HIP AWQ GEMV kernel. **Consider dropping.**
 
 Must be applied BEFORE building sgl_kernel native HIP ops.
 
+## 005-qwen35-cache-gemma4-fixes.patch (121 LOC)
+Qwen3.5 mamba cache TP fix + Gemma4 MoE activation + CT-GPTQ weight remapping.
+
+- Qwen3.5: override mamba2_cache_params with tp_world_size=1 for replicated DeltaNet
+- Gemma4 MoE: use gelu (not silu) activation in AWQTritonMoEMethod
+- Gemma4: CT-GPTQ unfused expert weight name remapping
+
+## 006-upstream-gemma4-sync.patch (990 LOC)
+Sync Gemma4 and shared infrastructure with upstream SGLang main.
+
+Cherry-picked from upstream main (commit 2813cb6d9):
+- gemma4_causal.py: simplified KV head handling, upstream cleanups + our RDNA4 fixes
+- swa_memory_pool.py: weakref stability fix
+- triton_backend.py: attention improvements (SWA, KV-shared layers)
+- prefill_attention.py: prefill fixes
+- layernorm.py: upstream improvements
+- model_config.py: Gemma4 model detection
+- hf_transformers_utils.py: Gemma4 config transformer cleanups
+
+**TODO:** Reorganize patches so 001 = upstream sync, 002+ = RDNA4 fixes.
+
 ## Apply
 
 ```bash
@@ -57,8 +78,10 @@ cd components/sglang
 git checkout v0.5.10
 git apply ../../../patches/001-rdna4-core-v0.5.10.patch
 git apply ../../../patches/002-awq-performance-tuning.patch
-# git apply ../../../patches/003-hip-awq-gemv-kernel.patch  # optional, no practical speedup
+# git apply ../../../patches/003-hip-awq-gemv-kernel.patch  # optional
 git apply ../../../patches/004-sgl-kernel-rdna4-fallbacks.patch
+git apply ../../../patches/005-qwen35-cache-gemma4-fixes.patch
+git apply ../../../patches/006-upstream-gemma4-sync.patch
 ```
 
 ## Build native kernels after patching
