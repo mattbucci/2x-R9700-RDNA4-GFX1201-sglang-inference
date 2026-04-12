@@ -1,0 +1,114 @@
+{
+  "model": "coder-next-ream",
+  "engine": "SGLang",
+  "hardware": "2x R9700 TP=2",
+  "timestamp": "2026-04-12 00:36:15",
+  "method": "sglang.bench_serving (TPOT-based)",
+  "output_tokens": 50,
+  "context_sweep": [
+    {
+      "context": 128,
+      "input_len": 64,
+      "tpot_ms": 46.49,
+      "tok_per_sec": 21.5,
+      "ttft_ms": 73.07,
+      "throughput": 21.18
+    },
+    {
+      "context": 256,
+      "input_len": 128,
+      "tpot_ms": 47.5,
+      "tok_per_sec": 21.1,
+      "ttft_ms": 85.16,
+      "throughput": 20.64
+    },
+    {
+      "context": 512,
+      "input_len": 256,
+      "tpot_ms": 46.97,
+      "tok_per_sec": 21.3,
+      "ttft_ms": 77.12,
+      "throughput": 20.95
+    },
+    {
+      "context": 1024,
+      "input_len": 512,
+      "tpot_ms": 46.73,
+      "tok_per_sec": 21.4,
+      "ttft_ms": 83.51,
+      "throughput": 20.97
+    },
+    {
+      "context": 2048,
+      "input_len": 1024,
+      "tpot_ms": 46.48,
+      "tok_per_sec": 21.5,
+      "ttft_ms": 80.87,
+      "throughput": 21.11
+    },
+    {
+      "context": 4096,
+      "input_len": 2048,
+      "tpot_ms": 47.17,
+      "tok_per_sec": 21.2,
+      "ttft_ms": 171.46,
+      "throughput": 19.96
+    },
+    {
+      "context": 8192,
+      "input_len": 4096,
+      "tpot_ms": 47.45,
+      "tok_per_sec": 21.1,
+      "ttft_ms": 171.08,
+      "throughput": 19.86
+    },
+    {
+      "context": 16384,
+      "input_len": 8192,
+      "tpot_ms": 46.8,
+      "tok_per_sec": 21.4,
+      "ttft_ms": 648.2,
+      "throughput": 16.51
+    },
+    {
+      "context": 32768,
+      "input_len": 16384,
+      "tpot_ms": 47.51,
+      "tok_per_sec": 21.0,
+      "ttft_ms": 1502.72,
+      "throughput": 12.39
+    }
+  ],
+  "throughput_sweep": [
+    {
+      "concurrency": 1,
+      "tok_per_sec": 29.72,
+      "tpot_ms": 60.03,
+      "ttft_ms": 419.46
+    },
+    {
+      "concurrency": 2,
+      "tok_per_sec": 34.52,
+      "tpot_ms": 53.77,
+      "ttft_ms": 267.46
+    },
+    {
+      "concurrency": 4,
+      "tok_per_sec": 30.49,
+      "tpot_ms": 56.85,
+      "ttft_ms": 628.78
+    },
+    {
+      "concurrency": 8,
+      "tok_per_sec": 47.29,
+      "tpot_ms": 52.39,
+      "ttft_ms": 2801.57
+    },
+    {
+      "concurrency": 16,
+      "tok_per_sec": 49.75,
+      "tpot_ms": 52.69,
+      "ttft_ms": 6318.29
+    }
+  ]
+}

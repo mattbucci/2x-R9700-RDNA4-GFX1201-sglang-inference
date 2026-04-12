@@ -23,5 +23,10 @@
     "single_tpot_ms": 38.34,
     "single_throughput": 26.1,
     "peak_throughput": 0.0
+  },
+  "coder-next-ream": {
+    "single_tpot_ms": 46.49,
+    "single_throughput": 21.5,
+    "peak_throughput": 49.75
   }
 }

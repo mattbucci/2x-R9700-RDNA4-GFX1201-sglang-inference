@@ -5,6 +5,7 @@ High-throughput LLM inference on AMD Radeon AI PRO R9700 (gfx1201, RDNA4) with R
 ## Known Issues
 
 - **Gemma 4 31B Dense** — cyankiwi AWQ has RTN quality artifacts. GPTQ calibration from BF16 base in progress. BF16 base is NOT gated.
+- **GLM-4.5-Air REAP** — Blocked. `compressed-tensors` MoE loader calls `gptq_marlin_repack` which is CUDA-only (no ROCm/RDNA4). Needs CT-to-AWQ conversion or Marlin bypass patch.
 - **FP8 MoE on SGLang** — Blocked. Arch `comgr` generates invalid HSACO for FP8 WMMA on gfx1201. Workaround: vLLM Docker for comparison benchmarks.
 
 ## Quick Start
@@ -76,8 +77,10 @@ Primary use case: agent and coding workflows with maximum context at fast decode
 | Gemma 4 26B AWQ | MoE (128 experts) | 4K | 30 | 33ms | `launch.sh gemma4` | Working |
 | Qwen3.5-27B AWQ | DeltaNet hybrid | 16K | 26 | 38ms | `launch.sh qwen35` | Working |
 | Coder-Next 80B AWQ | MoE+DeltaNet (512 experts) | 8K | 24 | 41ms | `launch.sh coder-next` | Working |
+| Coder-Next REAM 60B | MoE+DeltaNet (384 experts) | 32K | 21 | 47ms | `launch.sh coder-next-ream` | Working |
 
 All numbers measured with `sglang.bench_serving` (TPOT = Time Per Output Token, decode only).
+Coder-Next REAM uses compressed-tensors (no HIP GEMV) — slower per-token but fits 32K context.
 
 ### Batch throughput (multi-user)
 
@@ -85,6 +88,7 @@ All numbers measured with `sglang.bench_serving` (TPOT = Time Per Output Token, 
 |-------|:----------------:|:--------:|:-------:|:------:|
 | Coder-30B AWQ | 166 @32 | 32 | 32K | Working |
 | Coder-Next 80B AWQ | 53 @8 | 8 (OOM@16) | 8K | Working |
+| Coder-Next REAM 60B | 50 @16 | 16 | 32K | Working |
 | Gemma 4 26B AWQ | 27 @32 | 32 | 4K | Working |
 
 **Weights:** Community AWQ checkpoints work for standard architectures (Coder-30B, Coder-Next) but fail for others:
