@@ -94,7 +94,7 @@ tokens via `S(t) = gating * S(t-1) + delta`. INT4 quantization destroys output q
 
 ## Benchmarking
 - Concurrency sweep: 1, 4, 8, 16, 32
-- Save to `benchmarks/` as `{model}_{quant}.json` (structured data) and `.md` (prose + comparison tables)
+- Save to `benchmarks/{model}/results.json` (structured data) and `benchmarks/{model}/README.md` (prose + comparison tables)
 - Run `scripts/eval_comprehensive.py` after kernel changes
 - Always use timeouts on GPU/Docker commands
 - DeltaNet hybrid models: throughput is flat (VRAM-limited by BF16 weight reads)

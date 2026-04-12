@@ -298,7 +298,9 @@ patches/                           # SGLang v0.5.10 RDNA4 patches
   002-awq-performance-tuning.patch #   AWQ optimization (+6% decode)
   003-hip-awq-gemv-kernel.patch   #   Native HIP kernel (optional)
   004-sgl-kernel-rdna4-fallbacks.patch # sgl-kernel graceful degradation
-benchmarks/                        # Benchmark results (json + txt)
+benchmarks/                        # Benchmark results (per-model directories)
+  {model}/README.md               #   Results + comparisons (renders on GitHub)
+  {model}/results.json            #   Structured data from bench_all_unified.py
 scripts/                           # Launch, benchmark, eval, quantization
 docs/                              # Known issues tracker
 components/sglang/                 # SGLang v0.5.10 + patches
