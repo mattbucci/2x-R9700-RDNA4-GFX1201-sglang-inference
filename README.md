@@ -77,10 +77,9 @@ Primary use case: agent and coding workflows with maximum context at fast decode
 | Gemma 4 26B AWQ | MoE (128 experts) | 4K | 30 | 33ms | `launch.sh gemma4` | Working |
 | Qwen3.5-27B AWQ | DeltaNet hybrid | 16K | 26 | 38ms | `launch.sh qwen35` | Working |
 | Coder-Next 80B AWQ | MoE+DeltaNet (512 experts) | 8K | 24 | 41ms | `launch.sh coder-next` | Working |
-| Coder-Next REAM 60B | MoE+DeltaNet (384 experts) | 32K | 21 | 47ms | `launch.sh coder-next-ream` | Working |
+| Coder-Next REAM 60B | MoE+DeltaNet (384 experts) | 32K | 25 | 41ms | `launch.sh coder-next-ream` | Working |
 
 All numbers measured with `sglang.bench_serving` (TPOT = Time Per Output Token, decode only).
-Coder-Next REAM uses compressed-tensors (no HIP GEMV) — slower per-token but fits 32K context.
 
 ### Batch throughput (multi-user)
 
