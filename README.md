@@ -123,19 +123,38 @@ Self-calibrated models use the pipeline in `scripts/quantize/` (GPTQ calibration
 
 Gemma models were [never designed for FP16 inference](https://huggingface.co/google/gemma-3-27b-it/discussions/45). Must use `--dtype bfloat16`.
 
-**Root cause of 30-token degradation:** The AWQ `awq_dequantize_decomposition` function dequantized all weights in FP16 (scales.dtype) regardless of activation dtype. For Gemma's 60-layer architecture, FP16 precision loss (~0.1% per layer) compounded through the residual stream, causing output collapse after ~30 tokens.
+**Two compounding issues found:**
+
+1. **FP16 dequantization precision loss.** The AWQ `awq_dequantize_decomposition` function dequantized in FP16 (scales.dtype) regardless of activation dtype. For Gemma's 60-layer architecture, FP16 precision loss compounded through the residual stream, causing output collapse after ~30 tokens. Fixed: dequant now uses activation dtype (BF16).
+
+2. **INT4 quantization noise through 60 layers.** Even with BF16 dequant, uniform INT4 quantization of all 60 layers causes quality degradation at ~60-100 tokens. Research ([APEX](https://github.com/mudler/apex-quant), [sensitivity analysis](https://huggingface.co/blog/badaoui/sensitivity-aware-mixed-precision-quantizer-v1)) shows edge layers and attention-critical layers are most sensitive — keeping them in higher precision eliminates most compounding error.
 
 **What we tried:**
-1. RTN group_size=128 → degraded at ~30 tokens (FP16 dequant)
-2. RTN group_size=32 → same degradation (not a group_size issue)
-3. GPTQ via GPTQModel → crashed (wrong output format fed to AWQ converter)
-4. GPTQ via llmcompressor → GPTQ calibration correct, AWQ still degraded (FP16 dequant)
-5. Compressed-tensors direct (BF16 torch dequant) → coherent output, 0.28 tok/s
-6. **AWQ with BF16 dequant** → coherent output, 0.34 tok/s (current)
 
-**Fix:** `awq_dequantize_decomposition` now accepts `out_dtype` parameter. When `--dtype bfloat16`, dequant happens entirely in BF16. M=1 decode bypasses FP16-only HIP GEMV and uses torch matmul.
+| Approach | Quality | Speed | Notes |
+|----------|---------|:-----:|-------|
+| RTN group_size=128 (FP16 dequant) | Garbage at 30 tokens | ~19 tok/s | FP16 dequant was root cause |
+| RTN group_size=32 (FP16 dequant) | Garbage at 30 tokens | — | Not a group_size issue |
+| GPTQ via GPTQModel | Crashed | — | Wrong format fed to AWQ converter |
+| GPTQ via llmcompressor (FP16 dequant) | Garbage at 30 tokens | — | Calibration correct, FP16 dequant still broke it |
+| Compressed-tensors direct (BF16 torch dequant) | Coherent ~100 tokens | 0.28 tok/s | Correct but too slow |
+| AWQ + BF16 torch dequant fallback | Coherent ~100 tokens | 0.34 tok/s | Confirmed BF16 is the fix |
+| AWQ + BF16 HIP GEMV kernel | Coherent ~60 tokens | 12.4 tok/s | New kernel, FP16→BF16 scale loss |
+| FP32 softcapping fix | No improvement alone | — | Correct but not the bottleneck |
+| **Mixed-precision (23 BF16 + 37 INT4)** | **Testing** | — | Edge + global attention layers in BF16 |
 
-**Speed impact:** M=1 decode dropped from ~19 tok/s (HIP GEMV) to ~0.34 tok/s (torch matmul). Fix: write a BF16-capable HIP GEMV kernel.
+**Mixed-precision approach (in progress):** Based on APEX research, keeping edge layers (first 8, last 8) and global attention layers (every 6th in Gemma's 5:1 sliding:full pattern) in BF16 while quantizing the robust middle layers to INT4. This protects the layers most sensitive to quantization:
+- **Edge layers** handle the interface between token space and internal representations
+- **Global attention layers** attend over full context (non-sparse patterns amplify quantization noise)
+- **v_proj and ffn_down** are the most sensitive projections within each layer
+
+Gemma 31B layer layout: 50 sliding_attention + 10 full_attention (layers 5,11,17,23,29,35,41,47,53,59).
+BF16 layers: 0-7, 11, 17, 23, 29, 35, 41, 47, 52-59 (23 total). INT4 layers: the remaining 37.
+
+**Fixes applied:**
+- Patch 006: AWQ dequant in activation dtype (BF16) + BF16 HIP GEMV kernel (12.4 tok/s)
+- Patch 008: CompressedTensorsWNA16 HIP fallback (torch dequant for `--quantization compressed-tensors`)
+- Patch 009: Softcapping tanh computed in FP32 (attention + final logits)
 
 ## Performance (2x R9700, TP=2, SGLang v0.5.10, updated 2026-04-11)
 
