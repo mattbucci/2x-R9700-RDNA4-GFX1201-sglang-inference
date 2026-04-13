@@ -4,7 +4,8 @@ High-throughput LLM inference on AMD Radeon AI PRO R9700 (gfx1201, RDNA4) with R
 
 ## Known Issues
 
-- **Gemma 4 31B Dense** — INT4 quantization fundamentally broken for this 60-layer model. Even mixed-precision (23 BF16 + 37 INT4) with FP32 dequant and BF16 KV cache degrades at ~50 tokens. See [investigation](#gemma-4-31b-dense-investigation). INT8 or FP8 may work.
+- **Triton attention BF16 precision** — Triton attention kernels accumulate in BF16 on RDNA4, causing quality degradation after ~50 tokens on deep models (60 layers). Workaround: `--attention-backend torch_native`. Affects Gemma 31B and potentially other deep models. See [investigation](#gemma-4-31b-dense-investigation).
+- **Gemma 4 31B Dense** — Works with `--attention-backend torch_native` + AutoRound/GPTQ INT4. Triton attention path broken due to BF16 precision. Speed limited by torch_native (~0.5 tok/s). Needs triton kernel FP32 precision fix for production speed.
 - **GLM-4.5-Air REAP** — Blocked. CT format needs Marlin (CUDA-only). CT-to-AWQ conversion done but `moe_intermediate_size=1408` is not TP=2 aligned with group_size=128. Needs AWQ loader patch for non-aligned group boundaries.
 
 ## Next to Try
@@ -160,10 +161,27 @@ BF16 layers: 0-7, 11, 17, 23, 29, 35, 41, 47, 52-59 (23 total). INT4 layers: the
 
 **Even full FP32 dequant + FP32 matmul still degrades.** This proves the issue is NOT in the quantized linear layers. The bug is in the **triton attention kernels** — specifically how they handle Gemma's softcapping with the sliding window attention pattern through 60 layers. The FP32 softcapping patch (009) helps but isn't sufficient; the attention reduction or KV interaction likely has a precision issue that compounds autoregressive generation.
 
-**Next steps:**
-- Audit `decode_attention.py` and `extend_attention.py` triton kernels for BF16 precision issues in the reduce step
-- Test with `--attention-backend torch` (pure PyTorch attention, slow but correct)
-- Compare attention outputs between our triton kernels and torch reference at layer 30+
+**ROOT CAUSE CONFIRMED:** `--attention-backend torch_native` produces perfect output (152+ word coherent paragraphs, correct code). The triton kernels have systemic BF16 precision bugs:
+
+| Test | Triton attention | Torch native attention |
+|:-----|:---:|:---:|
+| Short answer | OK | OK |
+| 150-word paragraph | Garbage at ~50 tokens | Perfect |
+| Code generation | N/A | Perfect |
+| Precision test (128 KV tokens) | 15% mean error vs FP32 | Reference |
+
+**Triton attention audit findings (decode_attention.py, extend_attention.py):**
+1. Online softmax `e_max`/`e_sum`/`re_scale` accumulate in BF16 — catastrophic over 4000+ KV tokens
+2. `tl.dot()` calls lack explicit `out_dtype=tl.float32` — BF16 accumulation on RDNA4
+3. Split-K stage2 reduction: `tl.exp(e_max - n_e_max)` in BF16 loses rescaling precision
+4. Softcapping: `tanh()` computes FP32 internally but result multiplied back in BF16
+5. `k_scale` missing from extend stage (line 498 vs 392) — FP8 KV attention logit mismatch
+6. `p.to(v.dtype)` before value accumulation — FP32 softmax weights truncated to BF16
+7. `window_kv_offsets` discarded in decode mode (triton_backend.py line 278)
+
+**Workaround:** Use `--attention-backend torch_native` (slow but correct). Long-term fix: patch triton kernels to force FP32 accumulation in online softmax, dot products, and split-K reduction.
+
+**This affects ALL models with >30 layers on BF16 RDNA4**, not just Gemma 31B. Shallower models (26-27 layers) may tolerate the precision loss.
 
 **Fixes applied:**
 - Patch 006: AWQ dequant in activation dtype (BF16) + BF16 HIP GEMV kernel (12.4 tok/s)

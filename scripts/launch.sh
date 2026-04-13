@@ -39,6 +39,7 @@ CUDA_GRAPH="--disable-cuda-graph"
 MAMBA_CACHE=""
 CHAT_TEMPLATE=""
 REASONING=""
+ATTN_BACKEND="triton"
 OVERLAP="--disable-overlap-schedule"
 WARMUP=""
 WATCHDOG=600
@@ -81,9 +82,12 @@ apply_preset() {
             OVERLAP=""
             ;;
         gemma4-31b)
-            MODEL="${MODEL:-$MODELS_DIR/gemma-4-31B-it-AWQ-GPTQ-128g}"
+            # AutoRound INT4 with torch_native attention (triton BF16 precision bug)
+            MODEL="${MODEL:-$MODELS_DIR/gemma-4-31B-it-int4-AutoRound}"
             TOKENIZER="--tokenizer-path $MODELS_DIR/gemma-4-31B-it-BF16"
-            DTYPE="bfloat16"  # BF16 required: Gemma was never designed for FP16 inference
+            QUANT="auto-round"
+            DTYPE="bfloat16"
+            ATTN_BACKEND="torch_native"  # Required: triton attention degrades at 60 layers
             CTX=8192; MAX_RUNNING=8; CHUNKED=4096
             WARMUP="--skip-server-warmup"; WATCHDOG=1800
             OVERLAP=""
@@ -194,7 +198,7 @@ CMD=(python -m sglang.launch_server
     --max-running-requests "$MAX_RUNNING"
     --chunked-prefill-size "$CHUNKED"
     --num-continuous-decode-steps "$DECODE_STEPS"
-    --attention-backend triton
+    --attention-backend "$ATTN_BACKEND"
     --disable-custom-all-reduce
     --trust-remote-code
     --watchdog-timeout "$WATCHDOG"
