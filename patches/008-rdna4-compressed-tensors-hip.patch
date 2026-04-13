@@ -1,0 +1,128 @@
+diff --git a/python/sglang/srt/layers/quantization/compressed_tensors/schemes/compressed_tensors_wNa16.py b/python/sglang/srt/layers/quantization/compressed_tensors/schemes/compressed_tensors_wNa16.py
+index 15375212c..815c06730 100644
+--- a/python/sglang/srt/layers/quantization/compressed_tensors/schemes/compressed_tensors_wNa16.py
++++ b/python/sglang/srt/layers/quantization/compressed_tensors/schemes/compressed_tensors_wNa16.py
+@@ -38,9 +38,10 @@ from sglang.srt.layers.quantization.utils import (
+     replace_parameter,
+     unpack_cols,
+ )
+-from sglang.srt.utils import is_cuda
++from sglang.srt.utils import is_cuda, is_hip
+ 
+ _is_cuda = is_cuda()
++_is_hip = is_hip()
+ 
+ if _is_cuda:
+     from sglang.jit_kernel.gptq_marlin_repack import gptq_marlin_repack
+@@ -91,7 +92,9 @@ class CompressedTensorsWNA16(CompressedTensorsLinearScheme):
+ 
+     @classmethod
+     def get_min_capability(cls) -> int:
+-        # ampere and up
++        # ampere and up (CUDA); HIP uses torch fallback, no capability check
++        if _is_hip:
++            return 0
+         return 80
+ 
+     def create_weights(self, layer: torch.nn.Module, output_size: int,
+@@ -214,6 +217,17 @@ class CompressedTensorsWNA16(CompressedTensorsLinearScheme):
+         self.w_zp_name = "weight_zero_point"
+         self.w_gidx_name = "weight_g_idx"
+ 
++        # HIP/ROCm: skip Marlin repacking, keep weights in CT format for
++        # torch dequant+matmul fallback (Marlin kernels are CUDA-only)
++        if _is_hip:
++            self._use_hip_fallback = True
++            if "hip_ct_fallback" not in CompressedTensorsWNA16._kernel_backends_being_used:
++                CompressedTensorsWNA16._kernel_backends_being_used.add("hip_ct_fallback")
++                logger.info("CompressedTensorsWNA16: using HIP torch dequant+matmul fallback")
++            return
++
++        self._use_hip_fallback = False
++
+         device = getattr(layer, self.w_q_name).device
+         c = self.kernel_config
+ 
+@@ -300,8 +314,82 @@ class CompressedTensorsWNA16(CompressedTensorsLinearScheme):
+         _transform_param(layer, self.w_q_name, transform_w_q)
+         _transform_param(layer, self.w_s_name, transform_w_s)
+ 
++    @staticmethod
++    def _hip_dequant_matmul(
++        x: torch.Tensor,
++        w_packed: torch.Tensor,
++        w_scale: torch.Tensor,
++        group_size: int,
++        symmetric: bool,
++        w_zp: Optional[torch.Tensor] = None,
++        bias: Optional[torch.Tensor] = None,
++    ) -> torch.Tensor:
++        """Dequantize INT4 packed weights and matmul on HIP/ROCm.
++
++        Weights are in compressed-tensors format:
++          w_packed: [out, in//8] int32, sequential 4-bit packing
++          w_scale:  [out, in//group_size] float
++        """
++        pack_factor = 8  # 8x 4-bit values per int32
++        out_features = w_packed.shape[0]
++        in_features = w_packed.shape[1] * pack_factor
++
++        # Unpack int32 → 4-bit values: extract sequentially
++        unpacked = []
++        for i in range(pack_factor):
++            unpacked.append((w_packed >> (i * 4)) & 0xF)
++        # [out, in] as int8
++        w_int = torch.stack(unpacked, dim=-1).reshape(out_features, in_features)
++
++        # Dequantize: (w_int - zero_point) * scale
++        # scale is [out, in//G] → expand to [out, in]
++        scale_expanded = w_scale.to(torch.float32).repeat_interleave(group_size, dim=1)
++        if scale_expanded.shape[1] > in_features:
++            scale_expanded = scale_expanded[:, :in_features]
++
++        if symmetric:
++            w_float = (w_int.to(torch.float32) - 8.0) * scale_expanded
++        else:
++            # Asymmetric: unpack zero points similarly
++            if w_zp is not None:
++                zp_unpacked = []
++                for i in range(pack_factor):
++                    zp_unpacked.append((w_zp >> (i * 4)) & 0xF)
++                zp_int = torch.stack(zp_unpacked, dim=-1).reshape(
++                    w_zp.shape[0], -1)
++                zp_expanded = zp_int.to(torch.float32).repeat_interleave(
++                    group_size, dim=1)
++                if zp_expanded.shape[1] > in_features:
++                    zp_expanded = zp_expanded[:, :in_features]
++            else:
++                zp_expanded = 8.0
++            w_float = (w_int.to(torch.float32) - zp_expanded) * scale_expanded
++
++        # Cast to activation dtype for matmul (BF16 avoids FP16 overflow)
++        w_dequant = w_float.to(x.dtype)
++
++        # matmul: x [*, in] @ w [out, in].T → [*, out]
++        out = torch.matmul(x, w_dequant.T)
++        if bias is not None:
++            out = out + bias
++        return out
++
+     def apply_weights(self, layer: torch.nn.Module, x: torch.Tensor,
+                       bias: Optional[torch.Tensor]) -> torch.Tensor:
++
++        # HIP fallback: torch dequant+matmul in activation dtype
++        if getattr(self, '_use_hip_fallback', False):
++            w_packed = getattr(layer, self.w_q_name)
++            w_scale = getattr(layer, self.w_s_name)
++            w_zp = getattr(layer, self.w_zp_name or "", None)
++            return self._hip_dequant_matmul(
++                x, w_packed, w_scale,
++                group_size=self.group_size,
++                symmetric=self.symmetric,
++                w_zp=w_zp,
++                bias=bias,
++            )
++
+         c = self.kernel_config
+ 
+         def _get_weight_params(
