@@ -228,13 +228,36 @@ config_path = os.path.join(OUTPUT_DIR, "config.json")
 with open(config_path) as cfg_f:
     config = json.load(cfg_f)
 
+# Build modules_to_not_convert from CT ignore list (for mixed-precision models)
+# Extract unique layer-level prefixes from the ignore list
+ct_ignore = qconfig.get("ignore", [])
+bf16_layer_prefixes = set()
+for entry in ct_ignore:
+    # Match language model layer prefixes like "model.language_model.layers.N"
+    if "language_model.layers." in entry:
+        parts = entry.split(".")
+        # Find "layers" and take up to "layers.N"
+        for i, p in enumerate(parts):
+            if p == "layers" and i + 1 < len(parts):
+                prefix = ".".join(parts[: i + 2])
+                bf16_layer_prefixes.add(prefix)
+                break
+# SGLang remaps "model.language_model." -> "model." during weight loading
+# (see gemma4_causal.py load_weights), so modules_to_not_convert must match
+# the model-internal names, not the safetensors key names.
+modules_to_not_convert = sorted(
+    p.replace("model.language_model.", "model.") for p in bf16_layer_prefixes
+)
+if modules_to_not_convert:
+    print(f"\n  Mixed-precision: {len(modules_to_not_convert)} BF16 layer prefixes in modules_to_not_convert")
+
 config["quantization_config"] = {
     "bits": 4,
     "group_size": GROUP_SIZE,
     "quant_method": "awq",
     "version": "gemm",
     "zero_point": True,
-    "modules_to_not_convert": [],
+    "modules_to_not_convert": modules_to_not_convert,
 }
 
 with open(config_path, "w") as cfg_f:

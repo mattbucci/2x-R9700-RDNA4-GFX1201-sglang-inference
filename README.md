@@ -4,7 +4,7 @@ High-throughput LLM inference on AMD Radeon AI PRO R9700 (gfx1201, RDNA4) with R
 
 ## Known Issues
 
-- **Gemma 4 31B Dense** — Quality fixed (BF16 dequant), speed regressed to ~0.34 tok/s. Needs BF16 HIP GEMV kernel to restore ~19 tok/s. See [Gemma 31B investigation](#gemma-4-31b-dense-investigation) below.
+- **Gemma 4 31B Dense** — INT4 quantization fundamentally broken for this 60-layer model. Even mixed-precision (23 BF16 + 37 INT4) with FP32 dequant and BF16 KV cache degrades at ~50 tokens. See [investigation](#gemma-4-31b-dense-investigation). INT8 or FP8 may work.
 - **GLM-4.5-Air REAP** — Blocked. CT format needs Marlin (CUDA-only). CT-to-AWQ conversion done but `moe_intermediate_size=1408` is not TP=2 aligned with group_size=128. Needs AWQ loader patch for non-aligned group boundaries.
 
 ## Next to Try
@@ -141,15 +141,19 @@ Gemma models were [never designed for FP16 inference](https://huggingface.co/goo
 | AWQ + BF16 torch dequant fallback | Coherent ~100 tokens | 0.34 tok/s | Confirmed BF16 is the fix |
 | AWQ + BF16 HIP GEMV kernel | Coherent ~60 tokens | 12.4 tok/s | New kernel, FP16→BF16 scale loss |
 | FP32 softcapping fix | No improvement alone | — | Correct but not the bottleneck |
-| **Mixed-precision (23 BF16 + 37 INT4)** | **Testing** | — | Edge + global attention layers in BF16 |
+| Mixed-precision CT (23 BF16 + 37 INT4, FP8 KV) | Degrades at ~50 tokens | 0.9 tok/s | Edge + global attention in BF16, not enough |
+| Mixed-precision CT (23 BF16 + 37 INT4, BF16 KV) | Degrades at ~50 tokens | 0.9 tok/s | KV cache precision NOT the cause |
 
-**Mixed-precision approach (in progress):** Based on APEX research, keeping edge layers (first 8, last 8) and global attention layers (every 6th in Gemma's 5:1 sliding:full pattern) in BF16 while quantizing the robust middle layers to INT4. This protects the layers most sensitive to quantization:
-- **Edge layers** handle the interface between token space and internal representations
-- **Global attention layers** attend over full context (non-sparse patterns amplify quantization noise)
-- **v_proj and ffn_down** are the most sensitive projections within each layer
+**Mixed-precision approach (tested, still degrades):** Based on APEX research, kept edge layers (first 8, last 8) and global attention layers (every 6th in Gemma's 5:1 sliding:full pattern) in BF16 while quantizing the robust middle layers to INT4. Even with only 37/60 layers quantized, FP32 dequant, and BF16 KV cache, quality still collapses at ~50 tokens.
 
 Gemma 31B layer layout: 50 sliding_attention + 10 full_attention (layers 5,11,17,23,29,35,41,47,53,59).
 BF16 layers: 0-7, 11, 17, 23, 29, 35, 41, 47, 52-59 (23 total). INT4 layers: the remaining 37.
+
+**Conclusion:** INT4 GPTQ quantization fundamentally doesn't work for Gemma 31B Dense at this depth (60 layers). The error accumulation through the residual stream is too severe regardless of precision fixes. Potential next steps:
+- **INT8 quantization** — 2x the bits, should preserve quality (model fits in 60GB VRAM with TP=2)
+- **FP8 inference** — native FP8 compute if ROCm supports it on gfx1201
+- **GGUF via llama.cpp** — Q4_K_M might handle this better due to different quantization scheme
+- **Accept BF16-only** — 60GB model barely fits with 4K context, impractical for production
 
 **Fixes applied:**
 - Patch 006: AWQ dequant in activation dtype (BF16) + BF16 HIP GEMV kernel (12.4 tok/s)

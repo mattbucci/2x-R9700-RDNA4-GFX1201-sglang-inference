@@ -122,21 +122,22 @@ apply_preset() {
     esac
 }
 
-# --- Parse arguments ---
+# --- Parse arguments (saved for post-preset override) ---
 PRESET=""
+CLI_CTX="" CLI_PORT="" CLI_MEM="" CLI_MAX_RUNNING="" CLI_DECODE_STEPS="" CLI_CHUNKED="" CLI_WATCHDOG=""
 while [[ $# -gt 0 ]]; do
     case "$1" in
         -h|--help)
             head -19 "$0" | tail -18
             exit 0
             ;;
-        --context-length) CTX="$2"; shift 2 ;;
-        --port) PORT="$2"; shift 2 ;;
-        --mem-fraction) MEM="$2"; shift 2 ;;
-        --max-running) MAX_RUNNING="$2"; shift 2 ;;
-        --decode-steps) DECODE_STEPS="$2"; shift 2 ;;
-        --chunked-prefill) CHUNKED="$2"; shift 2 ;;
-        --watchdog) WATCHDOG="$2"; shift 2 ;;
+        --context-length) CLI_CTX="$2"; shift 2 ;;
+        --port) CLI_PORT="$2"; shift 2 ;;
+        --mem-fraction) CLI_MEM="$2"; shift 2 ;;
+        --max-running) CLI_MAX_RUNNING="$2"; shift 2 ;;
+        --decode-steps) CLI_DECODE_STEPS="$2"; shift 2 ;;
+        --chunked-prefill) CLI_CHUNKED="$2"; shift 2 ;;
+        --watchdog) CLI_WATCHDOG="$2"; shift 2 ;;
         -*)
             echo "Unknown option: $1"; exit 1 ;;
         *)
@@ -156,6 +157,15 @@ if [[ -z "$PRESET" ]]; then
 fi
 
 apply_preset "$PRESET"
+
+# CLI flags override preset values
+[[ -n "$CLI_CTX" ]] && CTX="$CLI_CTX"
+[[ -n "$CLI_PORT" ]] && PORT="$CLI_PORT"
+[[ -n "$CLI_MEM" ]] && MEM="$CLI_MEM"
+[[ -n "$CLI_MAX_RUNNING" ]] && MAX_RUNNING="$CLI_MAX_RUNNING"
+[[ -n "$CLI_DECODE_STEPS" ]] && DECODE_STEPS="$CLI_DECODE_STEPS"
+[[ -n "$CLI_CHUNKED" ]] && CHUNKED="$CLI_CHUNKED"
+[[ -n "$CLI_WATCHDOG" ]] && WATCHDOG="$CLI_WATCHDOG"
 
 # Resolve chat template (deferred $MODEL expansion)
 CHAT_TEMPLATE=$(eval echo "$CHAT_TEMPLATE")
