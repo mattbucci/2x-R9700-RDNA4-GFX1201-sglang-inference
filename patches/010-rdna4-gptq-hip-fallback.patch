@@ -1,0 +1,136 @@
+diff --git a/python/sglang/srt/layers/quantization/gptq.py b/python/sglang/srt/layers/quantization/gptq.py
+index 9e5c2945f..f3172d301 100644
+--- a/python/sglang/srt/layers/quantization/gptq.py
++++ b/python/sglang/srt/layers/quantization/gptq.py
+@@ -67,6 +67,12 @@ if _is_cuda:
+     from sgl_kernel import gptq_gemm, gptq_shuffle
+ 
+     from sglang.jit_kernel.gptq_marlin_repack import gptq_marlin_repack
++elif torch.version.hip is not None:
++    # HIP/ROCm: gptq_gemm and gptq_shuffle are available in our sgl_kernel build
++    try:
++        from sgl_kernel import gptq_gemm, gptq_shuffle
++    except ImportError:
++        pass
+ 
+ _is_npu = is_npu()
+ 
+@@ -565,6 +571,11 @@ class GPTQLinearMethod(LinearMethodBase):
+         layer.g_idx = torch.nn.Parameter(layer.g_idx.data, requires_grad=False)
+         layer.scales = torch.nn.Parameter(layer.scales.data, requires_grad=False)
+ 
++        # HIP/ROCm: skip shuffle, use torch dequant fallback
++        if torch.version.hip is not None:
++            self._use_hip_fallback = True
++            return
++
+         # exllama needs to shuffle the weight after the weight is loaded
+         # here we do the shuffle on first forward pass
+         if self.use_shuffle:
+@@ -576,6 +587,56 @@ class GPTQLinearMethod(LinearMethodBase):
+                 )
+             gptq_shuffle(layer.qweight, layer.g_idx, self.quant_config.weight_bits)
+ 
++    @staticmethod
++    def _hip_gptq_dequant_matmul(
++        x: torch.Tensor,
++        qweight: torch.Tensor,
++        qzeros: torch.Tensor,
++        scales: torch.Tensor,
++        g_idx: torch.Tensor,
++        bits: int,
++    ) -> torch.Tensor:
++        """Torch-based GPTQ dequant+matmul for HIP/ROCm."""
++        pack_factor = 32 // bits
++        # qweight: [K//pack, N] int32, GPTQ sequential packing
++        K = qweight.shape[0] * pack_factor
++        N = qweight.shape[1]
++
++        # Unpack int32 → 4-bit values
++        # qweight is [K//pack, N] with pack along K dim
++        unpacked = []
++        for i in range(pack_factor):
++            unpacked.append((qweight >> (i * bits)) & ((1 << bits) - 1))
++        # Stack along dim=1 (between K/pack and N) to get [K/pack, pack, N]
++        # then reshape to [K, N] so K indices are contiguous
++        w_int = torch.stack(unpacked, dim=1).reshape(K, N)  # [K, N]
++
++        # Apply g_idx reordering if present
++        if g_idx.numel() > 0 and g_idx.numel() == K:
++            group_indices = g_idx
++        else:
++            group_size = K // scales.shape[0] if scales.shape[0] > 0 else K
++            group_indices = torch.arange(K, device=qweight.device) // group_size
++
++        # Dequantize: (w_int - zp) * scale
++        # qzeros: [groups, N//pack] int32
++        zp_unpacked = []
++        for i in range(pack_factor):
++            zp_unpacked.append((qzeros >> (i * bits)) & ((1 << bits) - 1))
++        zp_all = torch.stack(zp_unpacked, dim=-1).reshape(qzeros.shape[0], -1)  # [groups, N]
++        if zp_all.shape[1] > N:
++            zp_all = zp_all[:, :N]
++
++        # Expand per group
++        zp = zp_all[group_indices]  # [K, N]
++        sc = scales[group_indices]  # [K, N]
++
++        # GPTQ v1 format: actual_zp = stored_zp + 1
++        w_float = (w_int.to(torch.float32) - (zp.to(torch.float32) + 1.0)) * sc.to(torch.float32)
++
++        # Matmul in FP32 to avoid BF16 precision loss through 60 layers
++        return torch.matmul(x.to(torch.float32), w_float).to(x.dtype)
++
+     def apply(
+         self,
+         layer: torch.nn.Module,
+@@ -585,15 +646,25 @@ class GPTQLinearMethod(LinearMethodBase):
+         out_shape = x.shape[:-1] + (layer.qweight.shape[-1],)
+         reshaped_x = x.reshape(-1, x.shape[-1])
+ 
+-        output = gptq_gemm(
+-            reshaped_x,
+-            layer.qweight,
+-            layer.qzeros,
+-            layer.scales,
+-            layer.g_idx,
+-            self.use_shuffle,
+-            self.quant_config.weight_bits,
+-        )
++        if getattr(self, '_use_hip_fallback', False):
++            output = self._hip_gptq_dequant_matmul(
++                reshaped_x,
++                layer.qweight,
++                layer.qzeros,
++                layer.scales,
++                layer.g_idx,
++                self.quant_config.weight_bits,
++            )
++        else:
++            output = gptq_gemm(
++                reshaped_x,
++                layer.qweight,
++                layer.qzeros,
++                layer.scales,
++                layer.g_idx,
++                self.use_shuffle,
++                self.quant_config.weight_bits,
++            )
+         if bias is not None:
+             output.add_(bias)
+         return output.reshape(out_shape)
+diff --git a/python/sglang/srt/layers/quantization/marlin_utils.py b/python/sglang/srt/layers/quantization/marlin_utils.py
+index 04b72ca0d..3e06b4861 100644
+--- a/python/sglang/srt/layers/quantization/marlin_utils.py
++++ b/python/sglang/srt/layers/quantization/marlin_utils.py
+@@ -119,6 +119,10 @@ def _check_marlin_supported(
+     device_capability: Optional[int] = None,
+ ) -> tuple[bool, Optional[str]]:
+ 
++    # Marlin kernels are CUDA-only; disable on HIP/ROCm
++    if torch.version.hip is not None:
++        return False, "Marlin is not supported on HIP/ROCm"
++
+     if device_capability is None:
+         major, minor = get_device_capability()
+         capability = major * 10 + minor

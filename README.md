@@ -149,13 +149,21 @@ Gemma models were [never designed for FP16 inference](https://huggingface.co/goo
 Gemma 31B layer layout: 50 sliding_attention + 10 full_attention (layers 5,11,17,23,29,35,41,47,53,59).
 BF16 layers: 0-7, 11, 17, 23, 29, 35, 41, 47, 52-59 (23 total). INT4 layers: the remaining 37.
 
-**However**: [RedHatAI/gemma-3-27b-it-quantized.w4a16](https://huggingface.co/RedHatAI/gemma-3-27b-it-quantized.w4a16) and [ISTA-DASLab/gemma-3-27b-it-GPTQ-4b-128g](https://huggingface.co/ISTA-DASLab/gemma-3-27b-it-GPTQ-4b-128g) report **99.4%+ quality recovery** with uniform GPTQ INT4 (all layers quantized, group_size=128, symmetric). This means GPTQ INT4 *can* work for Gemma — the issue is likely in our CT→AWQ conversion or inference path, not the quantization itself.
+**Critical finding: Issue is NOT quantization, it's our triton attention kernels.**
 
-**Next steps to try:**
-- **Intel/gemma-4-31B-it-int4-AutoRound** — Pre-quantized with AutoRound (signed gradient descent optimization). Try `--quantization auto-round` or `--quantization compressed-tensors`
-- **Download known-good GPTQ** (RedHatAI/ISTA-DASLab) and test with our compressed-tensors path to isolate whether issue is calibration vs inference
-- **Google QAT GGUF** — Quantization-aware trained, 54% less perplexity drop vs PTQ. GGUF-only, for llama.cpp comparison
-- **AWQ is broken for Gemma** in llm-compressor — dim 4034 not divisible by group_size 128 ([issue #2102](https://github.com/vllm-project/llm-compressor/issues/2102)). Our CT→AWQ conversion may have related issues
+[RedHatAI](https://huggingface.co/RedHatAI/gemma-3-27b-it-quantized.w4a16) and [ISTA-DASLab](https://huggingface.co/ISTA-DASLab/gemma-3-27b-it-GPTQ-4b-128g) report 99.4%+ quality with uniform GPTQ INT4 on CUDA. We tested [Intel/gemma-4-31B-it-int4-AutoRound](https://huggingface.co/Intel/gemma-4-31B-it-int4-AutoRound) (a known-good pre-quantized model) with our GPTQ HIP fallback (patch 010):
+
+| Dequant precision | Matmul precision | Result |
+|:-:|:-:|:-:|
+| FP32 | BF16 | Degrades at ~50 tokens |
+| FP32 | FP32 | Still degrades at ~15 tokens |
+
+**Even full FP32 dequant + FP32 matmul still degrades.** This proves the issue is NOT in the quantized linear layers. The bug is in the **triton attention kernels** — specifically how they handle Gemma's softcapping with the sliding window attention pattern through 60 layers. The FP32 softcapping patch (009) helps but isn't sufficient; the attention reduction or KV interaction likely has a precision issue that compounds autoregressive generation.
+
+**Next steps:**
+- Audit `decode_attention.py` and `extend_attention.py` triton kernels for BF16 precision issues in the reduce step
+- Test with `--attention-backend torch` (pure PyTorch attention, slow but correct)
+- Compare attention outputs between our triton kernels and torch reference at layer 30+
 
 **Fixes applied:**
 - Patch 006: AWQ dequant in activation dtype (BF16) + BF16 HIP GEMV kernel (12.4 tok/s)
