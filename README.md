@@ -4,15 +4,14 @@ High-throughput LLM inference on AMD Radeon AI PRO R9700 (gfx1201, RDNA4) with R
 
 ## Known Issues
 
-- **Gemma 4 31B Dense** — GPTQ calibration in progress (llmcompressor, group_size=128). RTN AWQ degraded after ~30 tokens due to error accumulation through 60 layers. Old GPTQModel pipeline was broken (wrong format fed to converter). New pipeline: llmcompressor → CT → AWQ.
+- **Gemma 4 31B Dense** — Quality fixed (BF16 dequant), speed regressed to ~0.34 tok/s. Needs BF16 HIP GEMV kernel to restore ~19 tok/s. See [Gemma 31B investigation](#gemma-4-31b-dense-investigation) below.
 - **GLM-4.5-Air REAP** — Blocked. CT format needs Marlin (CUDA-only). CT-to-AWQ conversion done but `moe_intermediate_size=1408` is not TP=2 aligned with group_size=128. Needs AWQ loader patch for non-aligned group boundaries.
 
 ## Next to Try
 
-- **Gemma 31B GPTQ AWQ** — Calibration running. Convert with `convert_gemma4_31b_ct_to_awq.py`, test with `launch.sh gemma4-31b`. Fall back to `launch.sh gemma4-31b-ct` (compressed-tensors direct) if AWQ conversion degrades quality.
+- **BF16 HIP GEMV kernel** — The existing HIP GEMV kernel is FP16-only. BF16 models (Gemma 31B) fall back to torch matmul at 0.34 tok/s. A BF16-capable kernel would restore ~19 tok/s.
 - **Coder-30B REAP (auto-round)** — [cerebras/Qwen3-Coder-REAP-25B-A3B](https://huggingface.co/cerebras/Qwen3-Coder-REAP-25B-A3B) hits 134 tok/s on 3090s. Pre-quantized, just download and try `--quantization auto-round`. Check if auto-round kernels work on RDNA4.
 - **Qwen3.5-35B-A3B MoE** — REAM/REAP pipeline ready (`scripts/quantize/REAM.md`). Download model, run REAM (256→192 experts), then GPTQ calibrate + CT→AWQ convert. DeltaNet layers must stay BF16.
-- **Compressed-tensors backend on RDNA4** — `CompressedTensorsWNA16` (dense layers) falls back to Marlin which is CUDA-only. Need to add HIP fallback (torch dequant or route to our Triton AWQ kernel) for `--quantization compressed-tensors` to work on dense models.
 
 ### Findings from NVIDIA 3090 system
 
@@ -120,7 +119,23 @@ Self-calibrated models use the pipeline in `scripts/quantize/` (GPTQ calibration
 
 **MoE quantization:** Standard GPTQ under-calibrates rare experts (inter-expert imbalance). Use expert-balanced calibration (MoEQuant EBSS or GPTQModel FailSafe). See `rules-for-agents.md`.
 
-**Gemma 4 31B Dense (BF16 required):** Gemma models were [never designed for FP16 inference](https://huggingface.co/google/gemma-3-27b-it/discussions/45) — hidden state values overflow FP16 max (65504) at layer 2. Must use `--dtype bfloat16`. Our AWQ path uses FP32 accumulation in matmul + HIP GEMV in FP16 with BF16 boundary casts. RTN 4-bit quantization (no calibration) produces correct short answers but degrades after ~30 tokens — proper GPTQ-in-BF16 calibration needed for production quality.
+### Gemma 4 31B Dense Investigation
+
+Gemma models were [never designed for FP16 inference](https://huggingface.co/google/gemma-3-27b-it/discussions/45). Must use `--dtype bfloat16`.
+
+**Root cause of 30-token degradation:** The AWQ `awq_dequantize_decomposition` function dequantized all weights in FP16 (scales.dtype) regardless of activation dtype. For Gemma's 60-layer architecture, FP16 precision loss (~0.1% per layer) compounded through the residual stream, causing output collapse after ~30 tokens.
+
+**What we tried:**
+1. RTN group_size=128 → degraded at ~30 tokens (FP16 dequant)
+2. RTN group_size=32 → same degradation (not a group_size issue)
+3. GPTQ via GPTQModel → crashed (wrong output format fed to AWQ converter)
+4. GPTQ via llmcompressor → GPTQ calibration correct, AWQ still degraded (FP16 dequant)
+5. Compressed-tensors direct (BF16 torch dequant) → coherent output, 0.28 tok/s
+6. **AWQ with BF16 dequant** → coherent output, 0.34 tok/s (current)
+
+**Fix:** `awq_dequantize_decomposition` now accepts `out_dtype` parameter. When `--dtype bfloat16`, dequant happens entirely in BF16. M=1 decode bypasses FP16-only HIP GEMV and uses torch matmul.
+
+**Speed impact:** M=1 decode dropped from ~19 tok/s (HIP GEMV) to ~0.34 tok/s (torch matmul). Fix: write a BF16-capable HIP GEMV kernel.
 
 ## Performance (2x R9700, TP=2, SGLang v0.5.10, updated 2026-04-11)
 
