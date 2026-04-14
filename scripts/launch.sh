@@ -87,7 +87,6 @@ apply_preset() {
             TOKENIZER="--tokenizer-path $MODELS_DIR/gemma-4-31B-it-BF16"
             QUANT="awq"
             DTYPE="bfloat16"
-            ATTN_BACKEND="${ATTN_BACKEND:-torch_native}"
             CTX=8192; MAX_RUNNING=8; CHUNKED=4096
             WARMUP="--skip-server-warmup"; WATCHDOG=1800
             OVERLAP=""

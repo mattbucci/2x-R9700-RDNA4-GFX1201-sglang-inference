@@ -4,26 +4,31 @@ High-throughput LLM inference on AMD Radeon AI PRO R9700 (gfx1201, RDNA4) with R
 
 ## Known Issues
 
-- **Gemma 4 31B Dense** — Quality FIXED (patch 011: FP32 triton attention). GPTQ path works at ~2 tok/s. AWQ path blocked by negative scales from symmetric GPTQ→AWQ conversion. See [investigation](#gemma-4-31b-dense-investigation) and [next steps](#gemma-31b-next-steps).
-- **GPTQ→AWQ symmetric scale conversion** — AutoRound GPTQ uses `sym=True`, producing 50.4% negative scales. Standard AWQ assumes positive-only scales. `awq_dequantize_decomposition` produces NaN on BF16 broadcast with negative scales. Fix: absorb sign into zero points during conversion, or handle negative scales in dequant.
-- **Sliding window decode metadata bug** — `triton_backend.py:278` discards `window_kv_start_idx` in decode mode (4th return of `update_sliding_window_buffer`). Fixed in patch 012. Extend mode handles it correctly (lines 350-354).
+- **Gemma 4 31B Dense** — Quality FIXED (patch 011: FP32 triton attention). AWQ converter FIXED (full dequant→requant for symmetric GPTQ). Triton GEMV with FP32 dequant achieves **17 tok/s** decode but quality degrades at ~400 tokens — FP32 dequant fix under testing. See [investigation](#gemma-4-31b-dense-investigation) and [next steps](#gemma-31b-next-steps).
+- **Triton kv_indices kernel crash on RDNA4** — `create_flashinfer_kv_indices_triton` crashes with HSA exception on gfx1201. All 9 call sites in `triton_backend.py` replaced with PyTorch fallback `_create_kv_indices()`. Negligible perf impact for small batch decode.
+- **Sliding window decode metadata bug** — FIXED in patch 012 (`window_kv_offsets` captured instead of discarded at `triton_backend.py:278`).
 - **GLM-4.5-Air REAP** — Blocked. CT format needs Marlin (CUDA-only). CT-to-AWQ conversion done but `moe_intermediate_size=1408` is not TP=2 aligned with group_size=128. Needs AWQ loader patch for non-aligned group boundaries.
 
 ## Next Steps
 
 ### Gemma 31B Next Steps
 
-**Current state:** Near-perfect quality at ~2 tok/s (Intel AutoRound GPTQ + torch dequant fallback + FP32 triton attention + FP8 KV cache). Need 10-20x speedup to be usable.
+**Current state:** 17 tok/s decode with Triton AWQ GEMV + triton attention backend. Short-context quality is excellent (200 tokens). Long-context quality (>400 tokens) under testing — initial FP16 dequant degraded, FP32 dequant fix deployed but needs verification on longer sequences.
 
-**Root cause of AWQ crash (solved):** GPTQ→AWQ converter preserved negative scales from AutoRound's symmetric quantization (`sym=True`). 50.4% of scales are negative. SGLang's `awq_dequantize_decomposition` does `(w_int - zp) * scale` via BF16 3D broadcast reshape — with negative FP16 scales cast to BF16, this produces NaN at layer 8. The RTN AWQ model (always positive scales) works fine through the same AWQ code path, confirming the issue is scale sign, not the code.
+**Speed path (solved):** Three changes unlocked 17 tok/s (from 0.3):
+1. **Triton attention backend** — Replaced `create_flashinfer_kv_indices_triton` (HSA crash on RDNA4) with PyTorch fallback `_create_kv_indices()` at all 9 call sites. Triton decode/extend attention kernels with FP32 intermediates (patch 011) work correctly.
+2. **Triton AWQ GEMV** — New fused M=1 kernel with full FP32 dequantization: `(b.to(fp32) - zeros.to(fp32)) * scales.to(fp32)`. Replaces unfused dequant+matmul (was 100x slower). HIP GEMV crashes on Gemma4 dimensions (HSA exception).
+3. **AWQ converter fixed** — Full dequant→requant for symmetric GPTQ→AWQ conversion (50.4% negative scales). Cross-shard tensor loading. BF16→FP16 norm conversion.
 
-**AutoRound calibration on our hardware:** The 59 GB BF16 model cannot be calibrated on 2×30 GB + 62 GB RAM. Accelerate's weight dispatcher stalls at 62% (734/1188 tensors) at the GPU↔CPU boundary regardless of `max_memory` settings. Needs single GPU with >60 GB VRAM (A100-80G, H100).
+**Quality concern:** First Triton GEMV test (FP16 dequant) degraded at ~400 tokens ("l l l l" repetition). Root cause: `(b - zeros) * scales` in FP16 before FP32 cast. Fixed to do all dequant in FP32. Needs verification on 800+ token generation.
 
-1. **Fix GPTQ→AWQ converter for symmetric quantization** — Absorb negative scales: when `scale < 0`, flip the quantized values (`w_int = 15 - w_int` for 4-bit) and negate the scale. This produces AWQ-compatible positive-only scales while preserving the dequantized values. Script: `scripts/quantize/convert_gptq_to_awq.py`.
+**AutoRound calibration on our hardware:** The 59 GB BF16 model cannot be calibrated on 2×30 GB + 62 GB RAM. Needs single GPU with >60 GB VRAM (A100-80G, H100).
 
-2. **Sliding window decode metadata bug** — Fixed in patch 012 (`window_kv_offsets` captured instead of discarded).
+1. **Verify long-context quality with FP32 GEMV** — Test 800+ token generation with the full FP32 dequant fix. If quality is good, Gemma4-31B is production-ready at 17 tok/s.
 
-3. **Build native GPTQ HIP kernels** — Compile `gptq_gemm`/`gptq_shuffle` for ROCm so AutoRound GPTQ format runs at native speed. Currently these ops are only built for CUDA (`if _is_cuda:` guard in gptq.py).
+2. **Optimize prefill speed** — M>1 path still uses unfused dequant+matmul. Could use Triton AWQ GEMM with FP32 dequant for faster prefill.
+
+3. **Build native GPTQ HIP kernels** — Alternative: compile `gptq_gemm`/`gptq_shuffle` for ROCm so GPTQ format runs at native speed.
 
 ### Other Models
 
@@ -112,7 +117,7 @@ Primary use case: agent and coding workflows with maximum context at fast decode
 | Devstral-24B AWQ | Dense | 32K | 37 | 27ms | `launch.sh devstral` | Working |
 | Coder-30B AWQ | MoE (128 experts) | 32K | 30 | 34ms | `launch.sh coder-30b` | Working |
 | Gemma 4 26B AWQ | MoE (128 experts) | 4K | 30 | 33ms | `launch.sh gemma4` | Working |
-| Gemma 4 31B AWQ | Dense | 8K | 19 | 53ms | `launch.sh gemma4-31b` | Working* |
+| Gemma 4 31B AWQ | Dense | 8K | 17 | 59ms | `launch.sh gemma4-31b` | Testing* |
 | Qwen3.5-27B AWQ | DeltaNet hybrid | 16K | 26 | 38ms | `launch.sh qwen35` | Working |
 | Coder-Next 80B AWQ | MoE+DeltaNet (512 experts) | 8K | 24 | 41ms | `launch.sh coder-next` | Working |
 | Coder-Next REAM 60B | MoE+DeltaNet (384 experts) | 32K | 25 | 41ms | `launch.sh coder-next-ream` | Working |
@@ -164,7 +169,10 @@ Gemma models were [never designed for FP16 inference](https://huggingface.co/goo
 | GPTQ via llmcompressor (FP16 dequant) | Garbage at 30 tokens | — | Calibration correct, FP16 dequant still broke it |
 | Compressed-tensors direct (BF16 torch dequant) | Coherent ~100 tokens | 0.28 tok/s | Correct but too slow |
 | AWQ + BF16 torch dequant fallback | Coherent ~100 tokens | 0.34 tok/s | Confirmed BF16 is the fix |
-| AWQ + BF16 HIP GEMV kernel | Coherent ~60 tokens | 12.4 tok/s | New kernel, FP16→BF16 scale loss |
+| AWQ + BF16 HIP GEMV kernel | Coherent ~60 tokens | 12.4 tok/s | FP16 bit-tricks, FP16→BF16 scale loss |
+| AWQ + Triton GEMV (FP16 dequant) | Degrades ~400 tokens | 17 tok/s | FP16 dequant before FP32 cast |
+| AWQ + Triton GEMV (FP32 dequant) | Under testing | 17 tok/s | Full FP32 dequant: `(b.fp32 - z.fp32) * s.fp32` |
+| HIP GEMV + BF16→FP16 cast | HSA crash | — | HIP kernel crashes on Gemma4 dimensions |
 | FP32 softcapping fix | No improvement alone | — | Correct but not the bottleneck |
 | Mixed-precision CT (23 BF16 + 37 INT4, FP8 KV) | Degrades at ~50 tokens | 0.9 tok/s | Edge + global attention in BF16, not enough |
 | Mixed-precision CT (23 BF16 + 37 INT4, BF16 KV) | Degrades at ~50 tokens | 0.9 tok/s | KV cache precision NOT the cause |
@@ -208,9 +216,11 @@ BF16 layers: 0-7, 11, 17, 23, 29, 35, 41, 47, 52-59 (23 total). INT4 layers: the
 **This affects ALL models with >30 layers on BF16 RDNA4**, not just Gemma 31B. Shallower models (26-27 layers) may tolerate the precision loss.
 
 **Fixes applied:**
-- Patch 006: AWQ dequant in activation dtype (BF16) + BF16 HIP GEMV kernel (12.4 tok/s)
+- Patch 006: AWQ dequant in activation dtype (BF16) + Triton GEMV with FP32 dequant (17 tok/s) + HIP GEMV for FP16 models
 - Patch 008: CompressedTensorsWNA16 HIP fallback (torch dequant for `--quantization compressed-tensors`)
 - Patch 009: Softcapping tanh computed in FP32 (attention + final logits)
+- Patch 011: FP32 value accumulation in triton attention (decode + extend)
+- Patch 012: Sliding window decode metadata fix + `create_flashinfer_kv_indices_triton` replaced with PyTorch fallback at all 9 call sites
 
 ## Performance (2x R9700, TP=2, SGLang v0.5.10, updated 2026-04-11)
 
