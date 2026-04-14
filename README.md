@@ -179,7 +179,7 @@ BF16 layers: 0-7, 11, 17, 23, 29, 35, 41, 47, 52-59 (23 total). INT4 layers: the
 6. `p.to(v.dtype)` before value accumulation — FP32 softmax weights truncated to BF16
 7. `window_kv_offsets` discarded in decode mode (triton_backend.py line 278)
 
-**Workaround:** Use `--attention-backend torch_native` (slow but correct). Long-term fix: patch triton kernels to force FP32 accumulation in online softmax, dot products, and split-K reduction.
+**FIX (patch 011):** FP32 value accumulation in decode grouped kernel — `tl.dot(p.to(tl.float32), v.to(tl.float32))` instead of `tl.dot(p.to(v.dtype), v)`. The original truncated FP32 softmax weights to BF16 before the dot product, destroying precision. With the fix, 155-word paragraphs are coherent (minor prefill artifacts from unpatched extend kernel). Fallback: `--attention-backend torch_native` for perfect quality.
 
 **This affects ALL models with >30 layers on BF16 RDNA4**, not just Gemma 31B. Shallower models (26-27 layers) may tolerate the precision loss.
 
