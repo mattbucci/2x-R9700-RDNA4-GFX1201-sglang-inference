@@ -53,10 +53,20 @@ index 3a57ad090..a05895e64 100644
  
              old_scale = tl.exp(e_max - n_e_max)
 diff --git a/python/sglang/srt/layers/attention/triton_ops/extend_attention.py b/python/sglang/srt/layers/attention/triton_ops/extend_attention.py
-index d2d97f8c6..efdf07356 100644
+index d2d97f8c6..267e24b1e 100644
 --- a/python/sglang/srt/layers/attention/triton_ops/extend_attention.py
 +++ b/python/sglang/srt/layers/attention/triton_ops/extend_attention.py
-@@ -376,7 +376,8 @@ def _fwd_kernel(
+@@ -61,7 +61,8 @@ def _get_block_sizes_for_extend_attention(Lq: int, Lv: int):
+ 
+     # Determine BLOCK_M, BLOCK_N, and num_warps based on hardware
+     if _is_hip:
+-        BLOCK_M, BLOCK_N = (64, 64)
++        # RDNA4 has 64KB shared memory — smaller blocks for FP32 value accumulation
++        BLOCK_M, BLOCK_N = (32, 64) if Lq <= 128 else (32, 32)
+         num_warps = 4
+     else:
+         if _is_cuda and CUDA_CAPABILITY[0] == 12:
+@@ -376,7 +377,8 @@ def _fwd_kernel(
                  other=0.0,
              )
  
@@ -66,7 +76,7 @@ index d2d97f8c6..efdf07356 100644
              if BLOCK_DPE > 0:
                  offs_kpe = (
                      offs_kv_loc[None, :] * stride_buf_kbs
-@@ -388,7 +389,7 @@ def _fwd_kernel(
+@@ -388,7 +390,7 @@ def _fwd_kernel(
                      mask=mask_n[None, :],
                      other=0.0,
                  )
@@ -75,7 +85,7 @@ index d2d97f8c6..efdf07356 100644
              qk *= sm_scale * k_scale
  
              if logit_cap > 0:
-@@ -399,6 +400,7 @@ def _fwd_kernel(
+@@ -399,6 +401,7 @@ def _fwd_kernel(
  
              qk = tl.where(final_mask, qk, float("-inf"))
  
@@ -83,15 +93,19 @@ index d2d97f8c6..efdf07356 100644
              row_max = tl.max(qk, 1)
              row_max_fixed = tl.where(row_max == float("-inf"), -1e20, row_max)
              n_e_max = tl.maximum(row_max_fixed, e_max)
-@@ -417,6 +419,7 @@ def _fwd_kernel(
+@@ -417,8 +420,9 @@ def _fwd_kernel(
                  mask=mask_n[:, None] & mask_dv[None, :],
                  other=0.0,
              )
+-            p = p.to(v.dtype)
+-            acc = acc * re_scale[:, None] + tl.dot(p, v) * v_scale
 +            # FP32 value accumulation — keep p in FP32, cast v to FP32
-             p = p.to(v.dtype)
-             acc = acc * re_scale[:, None] + tl.dot(p, v) * v_scale
++            # FP32 value accumulation — prevents BF16 precision loss through 60 layers
++            acc = acc * re_scale[:, None] + tl.dot(p.to(tl.float32), v.to(tl.float32)) * v_scale
  
-@@ -481,7 +484,8 @@ def _fwd_kernel(
+             e_max = n_e_max
+ 
+@@ -481,7 +485,8 @@ def _fwd_kernel(
                  K_Extend + offs_k, mask=(mask_n[None, :]) & (mask_d[:, None]), other=0.0
              )
  
@@ -101,7 +115,7 @@ index d2d97f8c6..efdf07356 100644
              if BLOCK_DPE > 0:
                  offs_kpe = (
                      (cur_seq_extend_start_idx + start_n + offs_n[None, :]) * stride_kbs
-@@ -493,9 +497,9 @@ def _fwd_kernel(
+@@ -493,9 +498,9 @@ def _fwd_kernel(
                      mask=mask_n[None, :],
                      other=0.0,
                  )
@@ -113,7 +127,7 @@ index d2d97f8c6..efdf07356 100644
  
              if logit_cap > 0:
                  qk = logit_cap * tanh(qk / logit_cap)
-@@ -505,6 +509,7 @@ def _fwd_kernel(
+@@ -505,6 +510,7 @@ def _fwd_kernel(
  
              qk = tl.where(final_mask, qk, float("-inf"))
  
@@ -121,15 +135,19 @@ index d2d97f8c6..efdf07356 100644
              row_max = tl.max(qk, 1)
              row_max_fixed = tl.where(row_max == float("-inf"), -1e20, row_max)
              n_e_max = tl.maximum(row_max_fixed, e_max)
-@@ -521,6 +526,7 @@ def _fwd_kernel(
+@@ -521,8 +527,9 @@ def _fwd_kernel(
              v = tl.load(
                  V_Extend + offs_v, mask=mask_n[:, None] & mask_dv[None, :], other=0.0
              )
+-            p = p.to(v.dtype)
+-            acc = acc * re_scale[:, None] + tl.dot(p, v)
 +            # FP32 value accumulation
-             p = p.to(v.dtype)
-             acc = acc * re_scale[:, None] + tl.dot(p, v)
++            # FP32 value accumulation
++            acc = acc * re_scale[:, None] + tl.dot(p.to(tl.float32), v.to(tl.float32))
  
-@@ -880,8 +886,8 @@ def _fwd_kernel_unified(
+             e_max = n_e_max
+ 
+@@ -880,8 +887,8 @@ def _fwd_kernel_unified(
                  other=0.0,
              )
  
@@ -140,7 +158,7 @@ index d2d97f8c6..efdf07356 100644
              if BLOCK_DPE > 0:
                  offs_kpe = (
                      offs_kv_loc[None, :] * stride_buf_kbs
-@@ -893,7 +899,7 @@ def _fwd_kernel_unified(
+@@ -893,7 +900,7 @@ def _fwd_kernel_unified(
                      mask=mask_n[None, :],
                      other=0.0,
                  )
@@ -149,7 +167,7 @@ index d2d97f8c6..efdf07356 100644
  
              qk *= sm_scale_withk
  
-@@ -905,7 +911,7 @@ def _fwd_kernel_unified(
+@@ -905,7 +912,7 @@ def _fwd_kernel_unified(
  
              qk = tl.where(final_mask, qk, float("-inf"))
  
@@ -158,13 +176,17 @@ index d2d97f8c6..efdf07356 100644
              row_max = tl.max(qk, 1)
              row_max_fixed = tl.where(row_max == float("-inf"), -1e20, row_max)
              n_e_max = tl.maximum(row_max_fixed, e_max)
-@@ -925,6 +931,7 @@ def _fwd_kernel_unified(
+@@ -925,8 +932,9 @@ def _fwd_kernel_unified(
                  mask=mask_n[:, None] & mask_dv[None, :],
                  other=0.0,
              )
+-            p = p.to(v.dtype)
+-            acc = acc * re_scale[:, None] + tl.dot(p, v)
 +            # FP32 value accumulation
-             p = p.to(v.dtype)
-             acc = acc * re_scale[:, None] + tl.dot(p, v)
++            # FP32 value accumulation
++            acc = acc * re_scale[:, None] + tl.dot(p.to(tl.float32), v.to(tl.float32))
+ 
+             e_max = n_e_max
  
 diff --git a/python/sglang/srt/layers/quantization/gptq.py b/python/sglang/srt/layers/quantization/gptq.py
 index 9e5c2945f..f3172d301 100644
