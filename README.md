@@ -4,7 +4,7 @@ High-throughput LLM inference on AMD Radeon AI PRO R9700 (gfx1201, RDNA4) with R
 
 ## Known Issues
 
-- **Gemma 4 31B Dense** — Quality FIXED (patch 011: FP32 triton attention). AWQ converter FIXED (full dequant→requant for symmetric GPTQ). Triton GEMV with FP32 dequant achieves **17 tok/s** decode but quality degrades at ~400 tokens — FP32 dequant fix under testing. See [investigation](#gemma-4-31b-dense-investigation) and [next steps](#gemma-31b-next-steps).
+- **Gemma 4 31B Dense** — Working at **15 tok/s** with torch_native attention + Triton GEMV (FP32 dequant). Triton attention degrades at ~400 tokens (known issue, kernels pass in isolation — interaction bug with SGLang SWA pipeline). See [investigation](#gemma-4-31b-dense-investigation).
 - **Triton kv_indices kernel crash on RDNA4** — `create_flashinfer_kv_indices_triton` crashes with HSA exception on gfx1201. All 9 call sites in `triton_backend.py` replaced with PyTorch fallback `_create_kv_indices()`. Negligible perf impact for small batch decode.
 - **Sliding window decode metadata bug** — FIXED in patch 012 (`window_kv_offsets` captured instead of discarded at `triton_backend.py:278`).
 - **GLM-4.5-Air REAP** — Blocked. CT format needs Marlin (CUDA-only). CT-to-AWQ conversion done but `moe_intermediate_size=1408` is not TP=2 aligned with group_size=128. Needs AWQ loader patch for non-aligned group boundaries.
@@ -146,7 +146,7 @@ All numbers measured with `sglang.bench_serving` (TPOT = Time Per Output Token, 
 
 Self-calibrated models use the pipeline in `scripts/quantize/` (GPTQ calibration → CT→AWQ conversion).
 
-**Dense AWQ:** HIP GEMV for M=1 decode (30% faster), dequant+matmul for prefill. Zero Triton in AWQ path.
+**Dense AWQ:** HIP GEMV for FP16 models (M=1 decode, 30% faster), Triton GEMV with FP32 dequant for BF16 models (50x faster than unfused). Dequant+matmul for M>1 prefill.
 
 **MoE AWQ:** HIP GEMV fused expert dispatch (all experts in one GPU kernel). Three RDNA4-specific crash sources fixed: Triton AWQ GEMM, sgl_kernel.topk_softmax, per-expert Python loop.
 
