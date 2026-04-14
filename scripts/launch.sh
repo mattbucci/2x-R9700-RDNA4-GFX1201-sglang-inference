@@ -43,6 +43,7 @@ ATTN_BACKEND="${ATTN_BACKEND:-triton}"
 OVERLAP="--disable-overlap-schedule"
 WARMUP=""
 WATCHDOG=600
+EXTRA_ARGS=""
 EXTRA_ENV=""
 
 # --- Model presets ---
@@ -112,6 +113,7 @@ apply_preset() {
             CTX=32768; MAX_RUNNING=32; CHUNKED=4096; DECODE_STEPS=8
             MAMBA_CACHE="--max-mamba-cache-size 10"
             REASONING="--reasoning-parser qwen3"
+            EXTRA_ARGS=""
             OVERLAP=""
             ;;
         qwen35)
@@ -219,6 +221,7 @@ CMD=(python -m sglang.launch_server
 [[ -n "$REASONING" ]] && CMD+=($REASONING)
 [[ -n "$WARMUP" ]] && CMD+=($WARMUP)
 [[ -n "$OVERLAP" ]] && CMD+=($OVERLAP)
+[[ -n "$EXTRA_ARGS" ]] && CMD+=($EXTRA_ARGS)
 
 # CUDA graph: either --disable-cuda-graph or --cuda-graph-bs <sizes>
 CMD+=($CUDA_GRAPH)
