@@ -4,14 +4,34 @@ High-throughput LLM inference on AMD Radeon AI PRO R9700 (gfx1201, RDNA4) with R
 
 ## Known Issues
 
-- **Gemma 4 31B Dense** — FIXED with patch 011 (FP32 triton attention) + Intel AutoRound INT4. Quality near-perfect (159-word coherent paragraphs, perfect code). Requires `--kv-cache-dtype fp8_e4m3` (BF16 KV cache degrades — FP8's range compression helps). See [investigation](#gemma-4-31b-dense-investigation).
+- **Gemma 4 31B Dense** — Quality FIXED (patch 011: FP32 triton attention). Currently limited to ~2 tok/s via GPTQ torch fallback. AWQ path blocked by sliding window decode metadata bug. See [investigation](#gemma-4-31b-dense-investigation) and [next steps](#gemma-31b-next-steps).
+- **Sliding window decode metadata bug** — `triton_backend.py:278` discards `window_kv_start_idx` in decode mode (4th return of `update_sliding_window_buffer`). Causes `_assert_async` crash on models with sliding window attention (Gemma) when using AWQ format. Extend mode handles it correctly (lines 350-354).
 - **GLM-4.5-Air REAP** — Blocked. CT format needs Marlin (CUDA-only). CT-to-AWQ conversion done but `moe_intermediate_size=1408` is not TP=2 aligned with group_size=128. Needs AWQ loader patch for non-aligned group boundaries.
 
-## Next to Try
+## Next Steps
 
-- **BF16 HIP GEMV kernel** — The existing HIP GEMV kernel is FP16-only. BF16 models (Gemma 31B) fall back to torch matmul at 0.34 tok/s. A BF16-capable kernel would restore ~19 tok/s.
+### Gemma 31B Next Steps
+
+**Current state:** Near-perfect quality at ~2 tok/s (Intel AutoRound GPTQ + torch dequant fallback + FP32 triton attention + FP8 KV cache). Need 10-20x speedup to be usable.
+
+1. **Fix sliding window decode metadata bug** (triton_backend.py:278) — Unblocks AWQ format, which uses fast Triton AWQ kernel (~12-19 tok/s). GPTQ→AWQ converter verified mathematically correct (`scripts/quantize/convert_gptq_to_awq.py`), AWQ dequant produces clean weights (no NaN/Inf). The crash is purely in the SWA metadata path.
+
+2. **Run AutoRound with `--format auto_awq`** — Intel's AutoRound can export directly to AWQ format, skipping our GPTQ→AWQ conversion entirely. `pip install auto-round && auto-round --model google/gemma-4-31B-it --format auto_awq --output_dir ./out`. Needs the quant conda env (dependency conflicts with SGLang).
+
+3. **Build native GPTQ HIP kernels** — Compile `gptq_gemm`/`gptq_shuffle` for ROCm so AutoRound GPTQ format runs at native speed. Currently these ops are only built for CUDA (`if _is_cuda:` guard in gptq.py).
+
+### Other Models
+
 - **Coder-30B REAP (auto-round)** — [cerebras/Qwen3-Coder-REAP-25B-A3B](https://huggingface.co/cerebras/Qwen3-Coder-REAP-25B-A3B) hits 134 tok/s on 3090s. Pre-quantized, just download and try `--quantization auto-round`. Check if auto-round kernels work on RDNA4.
 - **Qwen3.5-35B-A3B MoE** — REAM/REAP pipeline ready (`scripts/quantize/REAM.md`). Download model, run REAM (256→192 experts), then GPTQ calibrate + CT→AWQ convert. DeltaNet layers must stay BF16.
+
+### Research Findings
+
+**AutoRound vs GPTQ vs AWQ:** AutoRound (arxiv 2309.05516) uses SignSGD (200 iterations) to jointly optimize rounding offsets and clipping ranges, directly minimizing reconstruction error `||WX - W_qX||`. GPTQ uses closed-form Hessian approximation (breaks down at INT4). AWQ only adjusts per-channel scales. AutoRound produces better INT4 quality and can export to both GPTQ and AWQ formats.
+
+**INT4 quality is a cross-vendor problem:** [NVIDIA DGX Spark thread](https://forums.developer.nvidia.com/t/qwen3-5-27b-optimisation-thread-starting-at-30-t-s-tp-1/366009) reports AutoRound INT4 on Qwen3.5-27B shows "spiraling output" on Blackwell SM12.x with Flash Attention — similar to our RDNA4 triton precision issue. They recommend FP8 over INT4 for production. FP8 doesn't fit our 2×30GB VRAM for 31B models (would need ~32GB per GPU), but does for smaller models.
+
+**BF16 attention precision affects all new GPU architectures.** Both RDNA4 (64KB LDS) and Blackwell SM12.x (100KB SMEM) hit attention precision issues that older architectures (Ampere/Hopper) tolerate. The fix is the same: FP32 accumulation in the value dot product of the online softmax.
 
 ### Findings from NVIDIA 3090 system
 
