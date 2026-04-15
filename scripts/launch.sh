@@ -76,9 +76,11 @@ apply_preset() {
             WATCHDOG=1800
             ;;
         gemma4)
+            # torch_native attention required — triton attention crashes with SWA on RDNA4
             MODEL="${MODEL:-$MODELS_DIR/gemma-4-26B-A4B-it-AWQ-GPTQ-v2-fixed}"
             TOKENIZER="--tokenizer-path $MODELS_DIR/gemma-4-26B-A4B-it-BF16"
-            CTX=4096; MAX_RUNNING=1; CHUNKED=2048
+            ATTN_BACKEND="${ATTN_BACKEND:-torch_native}"
+            CTX=4096; MAX_RUNNING=8; CHUNKED=2048
             WARMUP="--skip-server-warmup"; WATCHDOG=1800
             OVERLAP=""
             ;;
