@@ -7,6 +7,7 @@ High-throughput LLM inference on AMD Radeon AI PRO R9700 (gfx1201, RDNA4) with R
 - **Gemma 4 31B Dense** — Working at **15 tok/s** with torch_native attention + Triton GEMV (FP32 dequant). Triton attention degrades at ~400 tokens (known issue, kernels pass in isolation — interaction bug with SGLang SWA pipeline). See [investigation](#gemma-4-31b-dense-investigation).
 - **Triton kv_indices kernel crash on RDNA4** — `create_flashinfer_kv_indices_triton` crashes with HSA exception on gfx1201. All 9 call sites in `triton_backend.py` replaced with PyTorch fallback `_create_kv_indices()`. Negligible perf impact for small batch decode.
 - **Sliding window decode metadata bug** — FIXED in patch 012 (`window_kv_offsets` captured instead of discarded at `triton_backend.py:278`).
+- **Vision support** — Devstral-24B and Qwen3.5-27B: vision WORKING (red square test pass). Gemma 4 26B MoE: vision layers quantized to INT4 (untestable, server crashes on text too). Gemma 4 31B: no vision weights (text-only conversion).
 - **GLM-4.5-Air REAP** — Blocked. HSA crash in PyTorch `scaled_dot_product_attention` during prefill. Persists across ALL configs (triton/torch_native attention, HIP GEMV/unfused AWQ, FP8/FP16 KV, any memory fraction). SDPA passes in isolation with GLM dims (48Q/4KV=12:1 GQA, head_dim=128) using random data — crash requires actual model weights/activations. Also crashes on [Blackwell GPUs](https://github.com/sgl-project/sglang/issues/18874) (cross-vendor). Likely ROCm/HIP SDPA kernel bug with high GQA ratios on real activations.
 
 ## Next Steps
