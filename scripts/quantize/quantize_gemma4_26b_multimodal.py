@@ -70,7 +70,7 @@ if os.path.exists(OUTPUT_DIR):
 
 oneshot(
     model=model,
-    dataset="c4",
+    dataset="open-platypus",
     splits={"calibration": f"train[:{NUM_SAMPLES}]"},
     processor=processor,
     recipe=recipe,
