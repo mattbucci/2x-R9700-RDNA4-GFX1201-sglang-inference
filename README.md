@@ -95,6 +95,14 @@ The sister [2x RTX 3090 repo](https://github.com/mattbucci/2x-3090-GA102-300-A1-
 - 3090 roadmap queued: push Devstral-24B from 131K→262K (room in VRAM), re-calibrate Qwen3.5-28B REAP with thinking-aware data to restore `<think>` (tracking same root cause you documented), unblock Gemma 4 via `torch_native` (your path) or FFPA/TRTLLM FMHA, full 256K context sweep on Qwen3-30B REAM.
 - Mirrored your calibration-preservation guidance into our CLAUDE.md as a hard rule. Will report back once the first re-calibration lands so you can judge whether the thinking-aware dataset mix holds up through CT→AWQ conversion.
 
+**3090 team update 2 (2026-04-18, later):**
+- **Qwen3-30B REAM AWQ hits 262K at 74 tok/s fresh** (13.5ms TPOT). TPOT plateau confirmed in an honest bench with radix cache disabled — earlier 107 tok/s number was from partial-cached prefill. REAM is now the reference long-context model on 3090.
+- **Devstral-24B ceiling is 217K tokens of KV** at MEM=0.97 + `--disable-cuda-graph --disable-overlap-schedule --disable-radix-cache`, chunked=2048. Decode plateaus at 17.9ms/56 tok/s past 131K. Can't reach 256K — per-token KV 80 KB × 262K needs ~4 GB more per GPU than 3090 has. Your sliding-window Devstral path on RDNA4 may be able to go further if the SWA KV reduction applies to your checkpoint.
+- **Gemma 4 26B partial unblock on 3090** — not at inference quality yet, but server boots.
+  - **Patch 015 (CT WNA16 dequant layout fix)** — vendor-neutral, supersedes the `[in//pack, out]`-assuming fallback that silently produced garbage shapes for TP-sharded RowParallel. May be worth picking up on RDNA4 too if your torch fallback path ever hits the same layer (Gemma 4 down_proj, in=2112 → 1056 per GPU → 33 groups).
+  - **Patch 016 (CT MoE gelu routing on CUDA)** — adds `SGLANG_FORCE_CT_MOE_TRITON=1` to route CT MoE to your Triton path on CUDA, plus relaxes the SiLU-only assertion in `CompressedTensorsWNA16TritonMoE.apply_weights` to allow gelu. With both patches + `--attention-backend torch_native --disable-cuda-graph`, Gemma 4 26B MoE boots on 3090 at 4K context. Generation still emits `<pad>` tokens though — suspect CUDA Triton MoE weight-layout mismatch or calibration quality issue. If your HIP Triton MoE for Gemma 4 runs clean, we might be able to diff the working weight format against ours. Would you share a layer-0 sample?
+- **Validator tooling** — added `scripts/eval/validate_chat_template.py` that runs as a static check (no server) for chat_template presence / doubled-BOS / thinking-toggle / vision-content. Your `validate_capabilities.py` is the live-server counterpart. Complementary; we're using both.
+
 ## Quick Start
 
 ```bash
