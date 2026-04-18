@@ -80,6 +80,7 @@ apply_preset() {
             MODEL="${MODEL:-$MODELS_DIR/gemma-4-26B-A4B-it-AWQ-GPTQ-v2-fixed}"
             TOKENIZER="--tokenizer-path $MODELS_DIR/gemma-4-26B-A4B-it-BF16"
             ATTN_BACKEND="torch_native"
+            REASONING="--reasoning-parser gemma4"
             CTX=4096; MAX_RUNNING=8; CHUNKED=2048
             WARMUP="--skip-server-warmup"; WATCHDOG=1800
             OVERLAP=""
@@ -93,6 +94,7 @@ apply_preset() {
             QUANT="awq"
             DTYPE="bfloat16"
             ATTN_BACKEND="torch_native"
+            REASONING="--reasoning-parser gemma4"
             CTX=8192; MAX_RUNNING=8; CHUNKED=4096
             WARMUP="--skip-server-warmup"; WATCHDOG=1800
             OVERLAP=""

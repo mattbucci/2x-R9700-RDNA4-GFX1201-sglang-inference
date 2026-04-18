@@ -80,6 +80,14 @@ Gemma4 multimodal pipeline: vision encoder, audio encoder, multimodal processor.
 
 ## Apply
 
+## 014-gemma4-reasoning-parser (40 LOC)
+Gemma4 reasoning parser (cherry-picked from upstream PR #21952).
+- Gemma4Detector: `<|channel>` / `<channel|>` delimiters for thinking channel
+- Enables `--reasoning-parser gemma4` for structured thinking output
+- Separates `reasoning_content` from `content` in API responses
+
+## Apply
+
 ```bash
 cd components/sglang
 git checkout v0.5.10
