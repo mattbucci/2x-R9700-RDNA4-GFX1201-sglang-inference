@@ -320,6 +320,28 @@ def rows_to_text(
     return Dataset.from_list(out)
 
 
+def tokenize_text_dataset(
+    dataset: Dataset,
+    tokenizer,
+    max_length: int,
+) -> Dataset:
+    """Pre-tokenize a text-only dataset for llm-compressor oneshot().
+
+    Matches the pattern used by existing `quantize_qwen35_llmcompressor.py`:
+    returns a dataset with `input_ids` + `attention_mask`, text column dropped.
+    """
+    def _tok(sample):
+        return tokenizer(
+            sample["text"],
+            padding=False,
+            max_length=max_length,
+            truncation=True,
+            add_special_tokens=False,
+        )
+
+    return dataset.map(_tok, remove_columns=dataset.column_names)
+
+
 def verify_thinking_preserved(dataset: Dataset, min_fraction: float = 0.10) -> None:
     """Sanity check: confirm <think>...</think> appears in the rendered text.
 
