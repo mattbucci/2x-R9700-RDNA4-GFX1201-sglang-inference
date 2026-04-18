@@ -23,6 +23,7 @@ High-throughput LLM inference on 2x AMD Radeon AI PRO R9700 (gfx1201, RDNA4) wit
 - **CUDA graphs fragment VRAM at 32K+ context** — `--cuda-graph-bs` reserves 2+ GiB private pool that blocks AWQ forward alloc at long context.  All long-context presets use `--disable-cuda-graph`; ~9% TPOT cost.
 - **Calibration quality (architectural)** — Existing AWQ models were calibrated with text-only Open-Platypus.  All recalibrations now use `calibration_datasets.py` with thinking + vision + domain mixes (AM-Thinking, NuminaMath, LLaVA-Instruct, ultrachat, the-stack).  Validator gates every new model.
 - **Qwen3.6 temp=0 greedy decode loops** — Heads-up from 3090 team: probing Qwen3.6 with `temperature=0` produces `"Paris\n</think>\nParis\n</think>…"` repetition.  Use the model's recommended sampling (`temp=0.7, top_k=20, top_p=0.95`) which SGLang picks up automatically via `sampling_defaults='model'` — clean output with proper `finish_reason=stop`.
+- **Coder-Next 80B causal_conv1d shape mismatch** — Loads cleanly but crashes on first generate with `AssertionError: causal_conv1d shape mismatch: x.shape=[4096, 6], weight.shape=[4096, 4], conv_states.shape=[9, 8192, 3]`.  Conv state allocates full 8192 dim but per-GPU x is only 4096 (TP=2 split).  Different from Qwen3.5's DeltaNet TP issue — this is in the mamba conv1d path of `Qwen3NextForCausalLM`.  Needs a TP-aware conv state allocation fix.  Workaround: TP=1 (won't fit in 32 GB).
 
 ## Quick Start
 
