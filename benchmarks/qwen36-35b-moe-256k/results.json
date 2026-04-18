@@ -1,0 +1,144 @@
+{
+  "model": "Qwen3.6-35B MoE GPTQ 256K",
+  "engine": "SGLang",
+  "method": "sglang.bench_serving",
+  "hardware": "2x R9700 TP=2",
+  "timestamp": "2026-04-18 16:08:44",
+  "output_tokens": 100,
+  "context_sweep": [
+    {
+      "context": 128,
+      "input_len": 64,
+      "tpot_ms": 64.56,
+      "tok_per_sec": 15.5,
+      "ttft_ms": 125.8,
+      "throughput": 4.77
+    },
+    {
+      "context": 256,
+      "input_len": 128,
+      "tpot_ms": 70.96,
+      "tok_per_sec": 14.1,
+      "ttft_ms": 105.94,
+      "throughput": 4.8
+    },
+    {
+      "context": 512,
+      "input_len": 256,
+      "tpot_ms": 67.88,
+      "tok_per_sec": 14.7,
+      "ttft_ms": 130.64,
+      "throughput": 4.79
+    },
+    {
+      "context": 1024,
+      "input_len": 512,
+      "tpot_ms": 68.45,
+      "tok_per_sec": 14.6,
+      "ttft_ms": 96.86,
+      "throughput": 4.8
+    },
+    {
+      "context": 2048,
+      "input_len": 1024,
+      "tpot_ms": 66.48,
+      "tok_per_sec": 15.0,
+      "ttft_ms": 92.27,
+      "throughput": 4.79
+    },
+    {
+      "context": 4096,
+      "input_len": 2048,
+      "tpot_ms": 70.28,
+      "tok_per_sec": 14.2,
+      "ttft_ms": 202.54,
+      "throughput": 4.79
+    },
+    {
+      "context": 8192,
+      "input_len": 4096,
+      "tpot_ms": 67.01,
+      "tok_per_sec": 14.9,
+      "ttft_ms": 192.67,
+      "throughput": 4.8
+    },
+    {
+      "context": 16384,
+      "input_len": 8192,
+      "tpot_ms": 64.78,
+      "tok_per_sec": 15.4,
+      "ttft_ms": 1137.81,
+      "throughput": 4.8
+    },
+    {
+      "context": 32768,
+      "input_len": 16384,
+      "tpot_ms": 59.6,
+      "tok_per_sec": 16.8,
+      "ttft_ms": 4652.66,
+      "throughput": 2.42
+    },
+    {
+      "context": 65536,
+      "input_len": 32768,
+      "tpot_ms": 80.01,
+      "tok_per_sec": 12.5,
+      "ttft_ms": 12300.63,
+      "throughput": 0.98
+    },
+    {
+      "context": 131072,
+      "input_len": 65536,
+      "tpot_ms": 68.53,
+      "tok_per_sec": 14.6,
+      "ttft_ms": 27497.63,
+      "throughput": 0.46
+    },
+    {
+      "context": 262144,
+      "input_len": 131072,
+      "tpot_ms": 75.44,
+      "tok_per_sec": 13.3,
+      "ttft_ms": 57824.76,
+      "throughput": 0.22
+    }
+  ],
+  "throughput_sweep": [
+    {
+      "concurrency": 1,
+      "throughput": 4.79,
+      "tpot_ms": 72.12,
+      "ttft_ms": 117.63
+    },
+    {
+      "concurrency": 2,
+      "throughput": 14.46,
+      "tpot_ms": 83.94,
+      "ttft_ms": 174.32
+    },
+    {
+      "concurrency": 4,
+      "throughput": 25.5,
+      "tpot_ms": 72.99,
+      "ttft_ms": 501.78
+    },
+    {
+      "concurrency": 8,
+      "throughput": 25.97,
+      "tpot_ms": 72.98,
+      "ttft_ms": 5416.07
+    },
+    {
+      "concurrency": 16,
+      "throughput": 27.53,
+      "tpot_ms": 69.93,
+      "ttft_ms": 7873.92
+    },
+    {
+      "concurrency": 32,
+      "throughput": 27.94,
+      "tpot_ms": 68.76,
+      "ttft_ms": 26975.74
+    }
+  ]
+}
