@@ -45,14 +45,15 @@ else
 fi
 
 wait_for_server() {
-    for i in $(seq 1 180); do
+    # 300s so Coder-Next-80B and Qwen3.5-35B MoE have time to load weights.
+    for i in $(seq 1 300); do
         if curl -s "http://localhost:$PORT/health" > /dev/null 2>&1; then
             echo "  Server ready after ${i}s"
             return 0
         fi
         sleep 1
     done
-    echo "  ERROR: Server failed to start within 180s"
+    echo "  ERROR: Server failed to start within 300s"
     return 1
 }
 
