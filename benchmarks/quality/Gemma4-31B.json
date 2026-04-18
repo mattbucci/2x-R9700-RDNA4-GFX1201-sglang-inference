@@ -1,0 +1,70 @@
+{
+  "tag": "Gemma4-31B",
+  "timestamp": "2026-04-17 23:57",
+  "max_context": 8192,
+  "mmlu": {
+    "correct": 52,
+    "total": 57,
+    "accuracy": 0.9122807017543859
+  },
+  "humaneval": {
+    "passed": 12,
+    "total": 30,
+    "pass_rate": 0.4
+  },
+  "labbench": {
+    "LitQA2": {
+      "correct": 11,
+      "total": 25,
+      "accuracy": 0.44
+    },
+    "DbQA": {
+      "correct": 4,
+      "total": 25,
+      "accuracy": 0.16
+    },
+    "SuppQA": {
+      "correct": 0,
+      "total": 25,
+      "accuracy": 0.0
+    },
+    "TableQA": {
+      "correct": 0,
+      "total": 25,
+      "accuracy": 0.0
+    },
+    "ProtocolQA": {
+      "correct": 0,
+      "total": 25,
+      "accuracy": 0.0
+    },
+    "SeqQA": {
+      "correct": 0,
+      "total": 25,
+      "accuracy": 0.0
+    },
+    "CloningScenarios": {
+      "correct": 0,
+      "total": 25,
+      "accuracy": 0.0
+    },
+    "_overall": {
+      "correct": 15,
+      "total": 175,
+      "accuracy": 0.08571428571428572
+    }
+  },
+  "needle": {
+    "results": [
+      {
+        "context": 1024,
+        "found": false
+      },
+      {
+        "context": 4096,
+        "found": false
+      }
+    ],
+    "score": 0.0
+  }
+}

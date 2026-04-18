@@ -1,0 +1,70 @@
+{
+  "tag": "Qwen3.5-35B-MoE",
+  "timestamp": "2026-04-18 02:31",
+  "max_context": 32768,
+  "mmlu": {
+    "correct": 6,
+    "total": 57,
+    "accuracy": 0.10526315789473684
+  },
+  "humaneval": {
+    "passed": 15,
+    "total": 30,
+    "pass_rate": 0.5
+  },
+  "labbench": {
+    "LitQA2": {
+      "correct": 0,
+      "total": 25,
+      "accuracy": 0.0
+    },
+    "DbQA": {
+      "correct": 0,
+      "total": 25,
+      "accuracy": 0.0
+    },
+    "SuppQA": {
+      "correct": 0,
+      "total": 25,
+      "accuracy": 0.0
+    },
+    "TableQA": {
+      "correct": 0,
+      "total": 25,
+      "accuracy": 0.0
+    },
+    "ProtocolQA": {
+      "correct": 0,
+      "total": 25,
+      "accuracy": 0.0
+    },
+    "SeqQA": {
+      "correct": 0,
+      "total": 25,
+      "accuracy": 0.0
+    },
+    "CloningScenarios": {
+      "correct": 0,
+      "total": 25,
+      "accuracy": 0.0
+    },
+    "_overall": {
+      "correct": 0,
+      "total": 175,
+      "accuracy": 0.0
+    }
+  },
+  "needle": {
+    "results": [
+      {
+        "context": 1024,
+        "found": false
+      },
+      {
+        "context": 4096,
+        "found": false
+      }
+    ],
+    "score": 0.0
+  }
+}

@@ -1,0 +1,70 @@
+{
+  "tag": "Qwen3.5-27B",
+  "timestamp": "2026-04-18 00:16",
+  "max_context": 262144,
+  "mmlu": {
+    "correct": 11,
+    "total": 57,
+    "accuracy": 0.19298245614035087
+  },
+  "humaneval": {
+    "passed": 21,
+    "total": 30,
+    "pass_rate": 0.7
+  },
+  "labbench": {
+    "LitQA2": {
+      "correct": 0,
+      "total": 25,
+      "accuracy": 0.0
+    },
+    "DbQA": {
+      "correct": 0,
+      "total": 25,
+      "accuracy": 0.0
+    },
+    "SuppQA": {
+      "correct": 3,
+      "total": 25,
+      "accuracy": 0.12
+    },
+    "TableQA": {
+      "correct": 1,
+      "total": 25,
+      "accuracy": 0.04
+    },
+    "ProtocolQA": {
+      "correct": 1,
+      "total": 25,
+      "accuracy": 0.04
+    },
+    "SeqQA": {
+      "correct": 0,
+      "total": 25,
+      "accuracy": 0.0
+    },
+    "CloningScenarios": {
+      "correct": 0,
+      "total": 25,
+      "accuracy": 0.0
+    },
+    "_overall": {
+      "correct": 5,
+      "total": 175,
+      "accuracy": 0.02857142857142857
+    }
+  },
+  "needle": {
+    "results": [
+      {
+        "context": 1024,
+        "found": false
+      },
+      {
+        "context": 4096,
+        "found": false
+      }
+    ],
+    "score": 0.0
+  }
+}

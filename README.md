@@ -184,9 +184,14 @@ Quality eval suite: MMLU (100 samples), HumanEval pass@1 (30), LAB-Bench (7 scie
 
 | Model | MMLU | HumanEval | LAB-Bench | Needle |
 |-------|:----:|:---------:|:---------:|:------:|
-| Devstral-24B AWQ | **80.7%** | **73.3%** | 25.7% | 100% |
+| Coder-30B AWQ | **86.0%** | **96.7%** | **38.3%** | 100% |
+| Gemma 4 31B AWQ | **91.2%** | 40.0% | 8.6% | — |
+| Devstral-24B AWQ | 80.7% | 73.3% | 25.7% | 100% |
+| Gemma 4 26B AWQ | 77.2% | — | 3.4% | — |
+| Qwen3.5-27B AWQ | 19.3%* | 70.0% | 2.9%* | — |
+| Qwen3.5-35B MoE | 10.5%* | 50.0% | 0.0%* | — |
 
-Devstral is a coding model — strong MMLU and HumanEval despite being INT4 AWQ. LAB-Bench (science research questions) is expectedly low for a coding model. Needle-in-Haystack passes at 1K and 4K context. More models to be evaluated.
+\*Qwen3.5 models use thinking tokens (`<think>`) — the 512-token MC budget truncates reasoning, giving false low scores. Needs re-eval with higher budget. Gemma4 HumanEval uses `/v1/completions` endpoint which may not work correctly for all model classes. Coder-Next 80B/REAM not yet evaluated (server startup timeout).
 
 ### Gemma 4 31B Dense Investigation
 
