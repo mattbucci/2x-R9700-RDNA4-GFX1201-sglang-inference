@@ -15,6 +15,10 @@ LAUNCH="$REPO_DIR/scripts/launch.sh"
 BENCH="$REPO_DIR/scripts/bench/bench_all_unified.py"
 PORT=23334
 
+# Ensure conda env has sglang + triton (bench_serving imports triton)
+source "$REPO_DIR/scripts/common.sh"
+activate_conda
+
 # Models to benchmark (launch.sh preset → display name → context max → concurrency max)
 #
 # context_max should match or be <= the launch preset's CTX value.  Primary

@@ -49,6 +49,12 @@ def run_bench_serving(port, model, input_len, output_len, num_prompts, request_r
         m = re.search(rf"{re.escape(field)}\s*(?:\([^)]*\))?\s*:\s+([\d.]+)", output)
         return float(m.group(1)) if m else None
 
+    tpot_match = extract("Mean TPOT")
+    if tpot_match is None and len(output) > 0:
+        # Print debug once per input context when metrics aren't found
+        tail = "\n".join(output.splitlines()[-15:])
+        print(f"  DEBUG (tail of {len(output)}-char subprocess output):\n{tail}", flush=True)
+
     return {
         "tpot_ms": extract("Mean TPOT"),
         "ttft_ms": extract("Mean TTFT"),
