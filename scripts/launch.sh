@@ -19,6 +19,7 @@
 #   gemma4-31b-ct  Gemma 4 31B Dense compressed-tensors (fallback if AWQ breaks quality)
 #   qwen35         Qwen3.5-27B DeltaNet AWQ (262K)
 #   qwen35-moe     Qwen3.5-35B-A3B MoE+DeltaNet AWQ (REAM/REAP compressed)
+#   qwen36-moe     Qwen3.6-35B-A3B MoE+DeltaNet AWQ (thinking+vision, 262K)
 
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -125,6 +126,23 @@ apply_preset() {
             # GB/GPU).  That leaves ~15 GB/GPU for KV cache — FP8 KV gives
             # us 256K+ headroom for single user.
             MODEL="${MODEL:-$MODELS_DIR/Qwen3.5-35B-A3B-GPTQ-Int4}"
+            QUANT="moe_wna16"
+            DTYPE="bfloat16"
+            CTX=262144; MAX_RUNNING=8; CHUNKED=8192; DECODE_STEPS=8; MEM=0.85
+            MAMBA_CACHE="--max-mamba-cache-size 8"
+            REASONING="--reasoning-parser qwen3"
+            WARMUP="--skip-server-warmup"
+            OVERLAP=""
+            ;;
+        qwen36-moe)
+            # Qwen3.6-35B-A3B (2026-04-18).  Same architecture as Qwen3.5-35B
+            # (Qwen3_5MoeForConditionalGeneration class) but thinking-enabled by
+            # default + native multimodal.  BF16 weights are 67 GB — MUST be
+            # calibrated first or it won't fit (60 GB total VRAM).  Default
+            # path assumes a thinking+vision-calibrated AWQ at
+            # Qwen3.6-35B-A3B-AWQ-thinking.  Override MODEL= to test other
+            # quants.
+            MODEL="${MODEL:-$MODELS_DIR/Qwen3.6-35B-A3B-AWQ-thinking}"
             QUANT="moe_wna16"
             DTYPE="bfloat16"
             CTX=262144; MAX_RUNNING=8; CHUNKED=8192; DECODE_STEPS=8; MEM=0.85
