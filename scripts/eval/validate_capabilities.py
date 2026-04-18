@@ -41,7 +41,17 @@ def _http_post(url: str, payload: dict, timeout: int = 180) -> dict:
 
 def _http_get(url: str, timeout: int = 10) -> dict:
     with urllib.request.urlopen(url, timeout=timeout) as resp:
-        return json.loads(resp.read().decode("utf-8"))
+        body = resp.read().decode("utf-8").strip()
+        return json.loads(body) if body else {}
+
+
+def _server_alive(base_url: str, timeout: int = 5) -> bool:
+    """/health returns 200 with empty body on SGLang; don't try to parse JSON."""
+    try:
+        with urllib.request.urlopen(f"{base_url}/health", timeout=timeout) as resp:
+            return resp.status == 200
+    except Exception:
+        return False
 
 
 def _make_test_image() -> bytes:
@@ -136,20 +146,30 @@ def check_thinking(
 
 
 def check_basic(base_url: str, model: str) -> tuple[bool, str]:
-    """Short factual question — verifies the server at all."""
+    """Short factual question — verifies the server at all.
+
+    Large reasoning budget so a thinking-broken model still produces content
+    we can diagnose.  We accept either content or reasoning_content containing
+    "paris" — the goal is "did the model answer correctly," not "did it use
+    the right channel."
+    """
     payload = {
         "model": model,
         "messages": [{"role": "user", "content": "What is the capital of France?  Answer in one word."}],
-        "max_tokens": 32,
+        "max_tokens": 256,
         "temperature": 0,
     }
     try:
         r = _http_post(f"{base_url}/v1/chat/completions", payload, timeout=120)
     except Exception as e:
         return False, f"request failed: {e!r}"
-    content = (r["choices"][0]["message"].get("content") or "").lower()
-    passed = "paris" in content
-    return passed, f"answer={content[:60]!r}"
+    msg = r["choices"][0]["message"]
+    content = (msg.get("content") or "").lower()
+    reasoning = (msg.get("reasoning_content") or "").lower()
+    finish = r["choices"][0].get("finish_reason")
+    passed = "paris" in content or "paris" in reasoning
+    sample = content[:60] if content else f"(reasoning){reasoning[:60]}"
+    return passed, f"finish={finish} answer={sample!r}"
 
 
 def check_vision(base_url: str, model: str) -> tuple[bool, str]:
@@ -201,10 +221,8 @@ def main() -> int:
     base = f"http://{args.host}:{args.port}"
 
     # Verify server
-    try:
-        _http_get(f"{base}/health", timeout=5)
-    except Exception as e:
-        sys.stderr.write(f"Server at {base} not responding: {e!r}\n")
+    if not _server_alive(base):
+        sys.stderr.write(f"Server at {base} not responding\n")
         return 2
 
     # Resolve model name
