@@ -121,9 +121,13 @@ apply_preset() {
             OVERLAP=""
             ;;
         qwen35)
+            # CUDA graphs disabled: private-pool reservations (~2.2 GiB) fragment
+            # VRAM and cause OOM at 32K+ context (confirmed 2026-04-18).  For
+            # 256K single-user we need every MiB for KV cache — graphs also
+            # violate the RDNA4 default (see rules-for-agents.md).
             MODEL="${MODEL:-$MODELS_DIR/Qwen3.5-27B-AWQ-4bit-calibrated}"
             CTX=262144; MEM=0.80; MAX_RUNNING=8; CHUNKED=8192; DECODE_STEPS=32
-            CUDA_GRAPH="--cuda-graph-bs 1 2 4 8"
+            CUDA_GRAPH="--disable-cuda-graph"
             MAMBA_CACHE="--max-mamba-cache-size 8"
             CHAT_TEMPLATE="--chat-template \$MODEL/chat_template.jinja"
             REASONING="--reasoning-parser qwen3"
