@@ -178,6 +178,16 @@ Self-calibrated using the pipeline in `scripts/quantize/` (GPTQ calibration → 
 
 **MoE quantization:** Standard GPTQ under-calibrates rare experts (inter-expert imbalance). Use expert-balanced calibration (MoEQuant EBSS or GPTQModel FailSafe). See `rules-for-agents.md`.
 
+### Quality Evals
+
+Quality eval suite: MMLU (100 samples), HumanEval pass@1 (30), LAB-Bench (7 science benchmarks, 25 each), Needle-in-Haystack. Run with `scripts/eval/eval_and_chart.py`.
+
+| Model | MMLU | HumanEval | LAB-Bench | Needle |
+|-------|:----:|:---------:|:---------:|:------:|
+| Devstral-24B AWQ | **80.7%** | **73.3%** | 25.7% | 0% |
+
+Devstral is a coding model — strong MMLU and HumanEval despite being INT4 AWQ. LAB-Bench (science research questions) is expectedly low for a coding model. Needle-in-Haystack failed at both 1K and 4K context — Devstral doesn't do well at literal retrieval tasks. More models to be evaluated.
+
 ### Gemma 4 31B Dense Investigation
 
 Gemma models were [never designed for FP16 inference](https://huggingface.co/google/gemma-3-27b-it/discussions/45). Must use `--dtype bfloat16`.

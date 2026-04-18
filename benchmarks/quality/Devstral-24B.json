@@ -1,0 +1,70 @@
+{
+  "tag": "Devstral-24B",
+  "timestamp": "2026-04-17 21:43",
+  "max_context": 32768,
+  "mmlu": {
+    "correct": 46,
+    "total": 57,
+    "accuracy": 0.8070175438596491
+  },
+  "humaneval": {
+    "passed": 22,
+    "total": 30,
+    "pass_rate": 0.7333333333333333
+  },
+  "labbench": {
+    "LitQA2": {
+      "correct": 7,
+      "total": 25,
+      "accuracy": 0.28
+    },
+    "DbQA": {
+      "correct": 3,
+      "total": 25,
+      "accuracy": 0.12
+    },
+    "SuppQA": {
+      "correct": 11,
+      "total": 25,
+      "accuracy": 0.44
+    },
+    "TableQA": {
+      "correct": 8,
+      "total": 25,
+      "accuracy": 0.32
+    },
+    "ProtocolQA": {
+      "correct": 8,
+      "total": 25,
+      "accuracy": 0.32
+    },
+    "SeqQA": {
+      "correct": 6,
+      "total": 25,
+      "accuracy": 0.24
+    },
+    "CloningScenarios": {
+      "correct": 2,
+      "total": 25,
+      "accuracy": 0.08
+    },
+    "_overall": {
+      "correct": 45,
+      "total": 175,
+      "accuracy": 0.2571428571428571
+    }
+  },
+  "needle": {
+    "results": [
+      {
+        "context": 1024,
+        "found": false
+      },
+      {
+        "context": 4096,
+        "found": false
+      }
+    ],
+    "score": 0.0
+  }
+}
