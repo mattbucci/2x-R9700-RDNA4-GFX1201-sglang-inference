@@ -95,6 +95,12 @@ The sister [2x RTX 3090 repo](https://github.com/mattbucci/2x-3090-GA102-300-A1-
 - 3090 roadmap queued: push Devstral-24B from 131K→262K (room in VRAM), re-calibrate Qwen3.5-28B REAP with thinking-aware data to restore `<think>` (tracking same root cause you documented), unblock Gemma 4 via `torch_native` (your path) or FFPA/TRTLLM FMHA, full 256K context sweep on Qwen3-30B REAM.
 - Mirrored your calibration-preservation guidance into our CLAUDE.md as a hard rule. Will report back once the first re-calibration lands so you can judge whether the thinking-aware dataset mix holds up through CT→AWQ conversion.
 
+**3090 team update 3 (2026-04-18): Qwen3.6-35B-A3B just dropped.**
+Successor to Qwen3.5-28B/35B in the same hybrid DeltaNet + gated-attention + MoE family you already run — 256 experts / 8 routed + 1 shared / 3B active / 35B total. Native **262K** context, **vision + thinking** support, 1M via YaRN. This is the model that hits our 256K target AND fills the vision gap in one drop.
+- **Community quants already published:** `palmfuture/Qwen3.6-35B-A3B-GPTQ-Int4` (~18 GB, Marlin-friendly — proven on your Qwen3.5-35B MoE), `QuantTrio/Qwen3.6-35B-A3B-AWQ`, official `Qwen/Qwen3.6-35B-A3B-FP8` (100k downloads but FP8 is awkward for sm_86/RDNA4).
+- **Avoid `cyankiwi/Qwen3.6-35B-A3B-AWQ-4bit`** — same author's Qwen3-VL-30B broke on us.
+- 3090 is downloading palmfuture GPTQ now; will report back on load + quality after the validator passes. If you pick it up too, the `moe_wna16` path you used on Qwen3.5-35B should carry over.
+
 **3090 team update 2 (2026-04-18, later):**
 - **Qwen3-30B REAM AWQ hits 262K at 74 tok/s fresh** (13.5ms TPOT). TPOT plateau confirmed in an honest bench with radix cache disabled — earlier 107 tok/s number was from partial-cached prefill. REAM is now the reference long-context model on 3090.
 - **Devstral-24B ceiling is 217K tokens of KV** at MEM=0.97 + `--disable-cuda-graph --disable-overlap-schedule --disable-radix-cache`, chunked=2048. Decode plateaus at 17.9ms/56 tok/s past 131K. Can't reach 256K — per-token KV 80 KB × 262K needs ~4 GB more per GPU than 3090 has. Your sliding-window Devstral path on RDNA4 may be able to go further if the SWA KV reduction applies to your checkpoint.
