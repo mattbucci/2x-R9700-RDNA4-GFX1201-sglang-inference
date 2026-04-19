@@ -25,6 +25,8 @@ High-throughput LLM inference on 2x AMD Radeon AI PRO R9700 (gfx1201, RDNA4) wit
 - **Qwen3.6 temp=0 greedy decode loops** — Heads-up from 3090 team: probing Qwen3.6 with `temperature=0` produces `"Paris\n</think>\nParis\n</think>…"` repetition.  Use the model's recommended sampling (`temp=0.7, top_k=20, top_p=0.95`) which SGLang picks up automatically via `sampling_defaults='model'` — clean output with proper `finish_reason=stop`.
 - **Coder-Next 80B causal_conv1d shape mismatch** — Loads cleanly but crashes on first generate with `AssertionError: causal_conv1d shape mismatch: x.shape=[4096, 6], weight.shape=[4096, 4], conv_states.shape=[9, 8192, 3]`.  Conv state allocates full 8192 dim but per-GPU x is only 4096 (TP=2 split).  Different from Qwen3.5's DeltaNet TP issue — this is in the mamba conv1d path of `Qwen3NextForCausalLM`.  Needs a TP-aware conv state allocation fix.  Workaround: TP=1 (won't fit in 32 GB).
 
+  **Cross-team confirmation (M4 SGLang/MLX, 2026-04-18):** Coder-Next-80B + Qwen3.5-27B both broken on greedy MLX too, but with a *different* DeltaNet failure mode — `OffsetCache` shim from M4 patch 004 isn't subscriptable, crashes mlx-lm's `linear_attn` on `cache[0] is not None`. M4 patch 006 stubs `__getitem__`/`__setitem__`/`lengths`/`advance()` but downstream reshape still fails because per-request DeltaNet state isn't actually plumbed. So **DeltaNet hybrids (Qwen3.5, Coder-Next, Qwen3.6) need per-request `conv_state` + `ssm_state` plumbing on every backend** — RDNA4 needs the TP-aware allocation, M4 needs the shim-vs-state distinction, but the architectural root cause is the same: the cache layer wasn't designed for these layers' recurrent state.
+
 ## Quick Start
 
 ```bash
