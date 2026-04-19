@@ -107,13 +107,9 @@ def _common_voice_audio(row: dict) -> list[dict]:
 
 
 def _vatex_video(row: dict) -> list[dict]:
-    """VATEX: video captioning.  Each row has `videoID` and an English caption.
-
-    Renders as a video-describe turn with an explicit `<|video|>` placeholder
-    token so the chat template inserts a video slot the same way LLaVA inserts
-    `<image>`.  Actual frame data is dropped at calibration text-render time
-    (vision/video towers are skipped from quantization anyway — what matters
-    is the LM seeing the placeholder + caption distribution).
+    """VATEX: video captioning (legacy fallback).  Each row has `videoID` and
+    an English caption.  Kept as a stable fallback when LLaVA-Video-178K is
+    unreachable; for production calibration prefer `llava_video_178k`.
     """
     cap = row.get("enCap") or row.get("caption") or ""
     if isinstance(cap, list):
@@ -121,6 +117,45 @@ def _vatex_video(row: dict) -> list[dict]:
     return [
         {"role": "user", "content": "<|video|> Describe what happens in this video."},
         {"role": "assistant", "content": cap},
+    ]
+
+
+def _llava_video_178k(row: dict) -> list[dict]:
+    """lmms-lab/LLaVA-Video-178K: instruction-tuning video data.
+
+    Schema: `id`, `video` (path), `conversations` list of {"from","value"}
+    where the first turn typically embeds `<image>` or `<video>` placeholders.
+    Per LLaVA-Video paper: 178K caption entries + 960K open-ended QA + 196K
+    multiple-choice — already in chat format, sampled at FPS=1 over dynamic
+    untrimmed videos.  This is the gold-standard video calibration set as of
+    2026; superior to VATEX caption-only because the assistant turns include
+    detailed temporal reasoning and QA structure.
+    """
+    msgs = []
+    for turn in row.get("conversations", []):
+        role = {"human": "user", "gpt": "assistant"}.get(turn.get("from"), turn.get("from", "user"))
+        content = turn.get("value", "")
+        # Normalize the placeholder so it lines up with our chat-template
+        # rendering rules (we strip raw bytes; what matters is the LM sees
+        # a token slot in the prompt position where vision embeddings would go).
+        content = content.replace("<image>", "<|image|>").replace("<video>", "<|video|>")
+        msgs.append({"role": role, "content": content})
+    return msgs
+
+
+def _covost2_audio(row: dict) -> list[dict]:
+    """google/covost2: speech translation / transcription instruction.
+
+    Schema: `sentence` (source transcript), `translation` (en target).
+    Renders as a transcribe-or-translate prompt with `<|audio|>` placeholder.
+    Audio-instruction style is closer to what Gemma 4's audio encoder needs
+    than plain Common Voice transcripts.
+    """
+    src = row.get("sentence") or row.get("text") or ""
+    tgt = row.get("translation") or src
+    return [
+        {"role": "user", "content": "<|audio|> Transcribe and translate this clip to English."},
+        {"role": "assistant", "content": tgt or src},
     ]
 
 
@@ -157,10 +192,19 @@ MIXES: dict[str, Mix] = {
         "vatex_video", "Multimodal-Fatima/VATEX",
         split="train", weight=0.0, format_fn=_vatex_video, streaming=True,
     ),
+    "llava_video_178k": Mix(
+        "llava_video_178k", "lmms-lab/LLaVA-Video-178K",
+        split="train", weight=0.0, format_fn=_llava_video_178k, streaming=True,
+    ),
     "common_voice_audio": Mix(
         "common_voice_audio", "mozilla-foundation/common_voice_17_0",
         split="train", weight=0.0, format_fn=_common_voice_audio, streaming=True,
         config="en",
+    ),
+    "covost2_audio": Mix(
+        "covost2_audio", "google/covost2",
+        split="train", weight=0.0, format_fn=_covost2_audio, streaming=True,
+        config="en_de",
     ),
 }
 
@@ -187,25 +231,29 @@ RECIPE_THINKING_VISION = {
 
 RECIPE_THINKING_VISION_VIDEO = {
     # Thinking + vision + video (Gemma 4 / Qwen3.5/3.6 native multimodal).
-    # M4 team confirmed Gemma 4 has video (~1s frames with `<|video|>` token);
-    # Qwen3.5/3.6 have video via `video_grid_thw` + `second_per_grid_ts`.
+    # llava_video_178k is the gold-standard video instruction set
+    # (178K captions + 960K open-ended QA + 196K MC, FPS=1 untrimmed video,
+    # already in chat-template format).  Replaces VATEX caption-only.
     "am_thinking": 0.30,
     "llava_instruct": 0.25,        # static images
-    "vatex_video":  0.20,           # video captions
+    "llava_video_178k": 0.20,       # video instruction (chat-format QA + captions)
     "numina_math": 0.15,
     "ultrachat": 0.10,
 }
 
 RECIPE_THINKING_VISION_VIDEO_AUDIO = {
     # Full Gemma 4 multimodal: thinking + vision + video + audio.
-    # 3090 team's recommended audio dataset (Common Voice).  No Qwen variant
-    # uses this — Qwen3.5/3.6 have no audio path.
-    "am_thinking": 0.25,
-    "llava_instruct": 0.20,
-    "vatex_video":  0.20,
-    "common_voice_audio": 0.15,
-    "numina_math": 0.10,
-    "ultrachat": 0.10,
+    # Audio mix combines Common Voice (transcription) + CoVoST2 (instruction-
+    # style speech translation) — covers both straight ASR and the prompt
+    # patterns Gemma 4's audio encoder needs.  No Qwen variant uses this —
+    # Qwen3.5/3.6 have no audio path.
+    "am_thinking": 0.20,
+    "llava_instruct": 0.18,
+    "llava_video_178k": 0.18,
+    "common_voice_audio": 0.10,
+    "covost2_audio": 0.10,
+    "numina_math": 0.12,
+    "ultrachat": 0.12,
 }
 
 RECIPE_CODE_VISION = {
