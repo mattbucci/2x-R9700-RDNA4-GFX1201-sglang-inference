@@ -91,6 +91,24 @@ def _thestack_code(row: dict) -> list[dict]:
     ]
 
 
+def _vatex_video(row: dict) -> list[dict]:
+    """VATEX: video captioning.  Each row has `videoID` and an English caption.
+
+    Renders as a video-describe turn with an explicit `<|video|>` placeholder
+    token so the chat template inserts a video slot the same way LLaVA inserts
+    `<image>`.  Actual frame data is dropped at calibration text-render time
+    (vision/video towers are skipped from quantization anyway — what matters
+    is the LM seeing the placeholder + caption distribution).
+    """
+    cap = row.get("enCap") or row.get("caption") or ""
+    if isinstance(cap, list):
+        cap = cap[0] if cap else ""
+    return [
+        {"role": "user", "content": "<|video|> Describe what happens in this video."},
+        {"role": "assistant", "content": cap},
+    ]
+
+
 # --- Registry of available mixes ---
 
 MIXES: dict[str, Mix] = {
@@ -120,6 +138,10 @@ MIXES: dict[str, Mix] = {
         split="train", weight=0.0, format_fn=_thestack_code,
         config="data/python",
     ),
+    "vatex_video": Mix(
+        "vatex_video", "Multimodal-Fatima/VATEX",
+        split="train", weight=0.0, format_fn=_vatex_video, streaming=True,
+    ),
 }
 
 
@@ -143,6 +165,19 @@ RECIPE_THINKING_VISION = {
     "ultrachat": 0.15,
 }
 
+RECIPE_THINKING_VISION_VIDEO = {
+    # Thinking + vision + video (Gemma 4 / Qwen3.5/3.6 native multimodal).
+    # M4 team confirmed Gemma 4 has video (~1s frames with `<|video|>` token);
+    # Qwen3.5/3.6 have video via `video_grid_thw` + `second_per_grid_ts`.
+    # Audio path exists for Gemma 4 but no good calibration dataset yet —
+    # leaving it for a follow-up.
+    "am_thinking": 0.30,
+    "llava_instruct": 0.25,        # static images
+    "vatex_video":  0.20,           # video captions (placeholder; see formatter)
+    "numina_math": 0.15,
+    "ultrachat": 0.10,
+}
+
 RECIPE_CODE_VISION = {
     # Coder + vision (Devstral).  Code heavy, vision preserved, minimal thinking.
     "thestack_code": 0.45,
@@ -162,6 +197,7 @@ RECIPE_CODE_THINKING = {
 RECIPES = {
     "thinking_text": RECIPE_THINKING_TEXT,
     "thinking_vision": RECIPE_THINKING_VISION,
+    "thinking_vision_video": RECIPE_THINKING_VISION_VIDEO,
     "code_vision": RECIPE_CODE_VISION,
     "code_thinking": RECIPE_CODE_THINKING,
 }

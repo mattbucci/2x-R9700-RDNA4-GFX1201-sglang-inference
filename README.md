@@ -6,7 +6,10 @@ High-throughput LLM inference on 2x AMD Radeon AI PRO R9700 (gfx1201, RDNA4) wit
 
 **Primary target: single-user 256K context across all supported models.** Multi-user throughput is a secondary concern.  Optimizations that slow batch-32 but improve single-user long-context TPOT are acceptable trades.
 
-**Hard constraint: preserve both thinking and vision during every calibration.**  Past calibrations silently degraded both (Qwen3.5 infinite reasoning loop, Devstral vision broken).  Every requant must pass `scripts/eval/validate_capabilities.py`: (1) image-text roundtrip, (2) thinking-tagged generation terminates cleanly.  No model ships without both green.
+**Hard constraint: preserve thinking, vision, AND video during every calibration.**  Past calibrations silently degraded these (Qwen3.5 infinite reasoning loop, Devstral vision broken).  Every requant must pass `scripts/eval/validate_capabilities.py`: basic + thinking + image roundtrip + video motion (skip with `--skip-video` for image-only models like Devstral).  Multimodal capability matrix per M4 team:
+- Gemma 4: image + video + audio
+- Qwen3.5 / Qwen3.6: image + video (no audio)
+- Devstral 24B: image only
 
 ### Active work (in priority order)
 
@@ -132,6 +135,10 @@ All values tok/s single-user.  *Qwen3.5-27B 32K+ numbers collected with concurre
 ### Comparison: 2x R9700 RDNA4 vs 2x RTX 3090
 
 The sister [2x RTX 3090 repo](https://github.com/mattbucci/2x-3090-GA102-300-A1-sglang-inference) runs the same SGLang v0.5.10 + patches stack.
+
+**Sister projects:**
+- [3090 GA102 repo](https://github.com/mattbucci/2x-3090-GA102-300-A1-sglang-inference) — Marlin INT4, FlashInfer, NVLink P2P, CUDA graphs.  Same SGLang stack.
+- [M4 Apple Silicon repo](https://github.com/mattbucci/m4-sglang-inference) — MLX backend, 64 GB unified mem, no CUDA path.  Confirmed Gemma 4 supports video + audio and Qwen3.5/3.6 support video; their patch 013 root-caused the "DeltaNet broken on VLM-wrapped models" mystery to a cache-routing bug.
 
 | Model | RDNA4 tok/s | 3090 tok/s | Gap | Why |
 |-------|:----------:|:---------:|:---:|-----|

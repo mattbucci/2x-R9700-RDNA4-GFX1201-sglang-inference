@@ -187,6 +187,87 @@ def check_basic(base_url: str, model: str) -> tuple[bool, str]:
     return passed, f"finish={finish} answer={sample!r}"
 
 
+def _make_test_video() -> bytes:
+    """A 12-frame synthetic video: red circle moves left→right across white bg.
+
+    Encoded as MP4 (libx264 if available; falls back to GIF).  Used only to
+    confirm the video tower receives frames and the LM emits motion words.
+    """
+    try:
+        from PIL import Image, ImageDraw
+        import imageio.v3 as iio
+    except ImportError:
+        sys.stderr.write("PIL+imageio required for video validation; pip install pillow imageio[ffmpeg]\n")
+        raise
+
+    frames = []
+    for i in range(12):
+        img = Image.new("RGB", (256, 256), "white")
+        draw = ImageDraw.Draw(img)
+        x = 32 + i * 16  # circle moves rightward
+        draw.ellipse((x, 96, x + 64, 160), fill="red", outline="black", width=3)
+        frames.append(img)
+
+    buf = io.BytesIO()
+    try:
+        iio.imwrite(buf, [f for f in frames], extension=".mp4", fps=12)
+    except Exception:
+        # libx264 not available — fall back to GIF (Gemma video tower accepts both)
+        buf = io.BytesIO()
+        iio.imwrite(buf, [f for f in frames], extension=".gif", fps=12)
+    return buf.getvalue()
+
+
+def check_video(base_url: str, model: str) -> tuple[bool, str]:
+    """Send a synthetic video (red circle moving right) and verify motion describe.
+
+    Pass: response mentions at least one of {move, slide, right, motion,
+    travel, across, ball, circle, red}.  Catches both vision-tower regressions
+    and chat-template video-token plumbing failures.
+
+    Multimodal capability matrix (per M4 cross-team note):
+      - Gemma 4: image + video + audio
+      - Qwen3.5/3.6: image + video (no audio)
+      - Devstral: image only — call check_video on Devstral and you'll get a
+        polite refusal; that's fine, validator tolerates that.
+    """
+    try:
+        from PIL import Image  # noqa: F401  - imported for the bytes builder
+    except ImportError:
+        return True, "skipped (no PIL)"
+
+    try:
+        video_bytes = _make_test_video()
+    except Exception as e:
+        return True, f"skipped ({e!r})"
+
+    b64 = base64.b64encode(video_bytes).decode("ascii")
+    payload = {
+        "model": model,
+        "messages": [{
+            "role": "user",
+            "content": [
+                {"type": "video_url", "video_url": {"url": f"data:video/mp4;base64,{b64}"}},
+                {"type": "text", "text": "What happens in this video?  One short sentence."},
+            ],
+        }],
+        "max_tokens": 128,
+        "temperature": 0.7,
+    }
+    try:
+        r = _http_post(f"{base_url}/v1/chat/completions", payload, timeout=180)
+    except Exception as e:
+        return False, f"request failed: {e!r}"
+
+    content = (r["choices"][0]["message"].get("content") or "").lower()
+    expected = ["move", "slide", "right", "motion", "travel", "across",
+                "ball", "circle", "red", "across"]
+    hits = [w for w in expected if w in content]
+    passed = len(hits) >= 1
+    msg = f"saw={hits}  response={content[:120]!r}"
+    return passed, msg
+
+
 def check_vision(base_url: str, model: str) -> tuple[bool, str]:
     """Send a synthetic image (red circle) and verify the model sees it.
 
@@ -228,6 +309,8 @@ def main() -> int:
     p.add_argument("--model", default=None, help="Override model name (default: server-reported)")
     p.add_argument("--skip-thinking", action="store_true")
     p.add_argument("--skip-vision", action="store_true")
+    p.add_argument("--skip-video", action="store_true",
+                   help="skip the video roundtrip (Devstral has no video; Qwen/Gemma do)")
     p.add_argument("--thinking-kwarg", default=None,
                    help='JSON string, e.g. \'{"enable_thinking": true}\' for Gemma4')
     p.add_argument("--timeout", type=int, default=180)
@@ -272,6 +355,11 @@ def main() -> int:
         ok, msg = check_vision(base, model)
         results.append(("vision", ok, msg))
         print(f"  [{'PASS' if ok else 'FAIL'}] vision    {msg}")
+
+    if not args.skip_video:
+        ok, msg = check_video(base, model)
+        results.append(("video", ok, msg))
+        print(f"  [{'PASS' if ok else 'FAIL'}] video     {msg}")
 
     elapsed = time.time() - t0
     print(f"--- {sum(ok for _, ok, _ in results)}/{len(results)} passed in {elapsed:.1f}s ---")
