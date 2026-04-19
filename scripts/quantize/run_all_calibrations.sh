@@ -170,9 +170,10 @@ run_one() {
 
     echo "[$key] validator PASSED — pushing to $hf_repo"
     conda activate quant
+    # upload-large-folder is chunked + deduped + resumable.  Plain `hf upload`
+    # stalled at 98% for hours on the Qwen3.5-27B 17GB ship — avoid.
     HF_TOKEN=$(cat "$HF_TOKEN_FILE" | tr -d '[:space:]') \
-        hf upload "$hf_repo" "$awq_out" . --repo-type model \
-        --commit-message "v$(date +%Y%m%d): $key recalibration via $calib_script" \
+        hf upload-large-folder "$hf_repo" "$awq_out" --repo-type model \
         >> "$log" 2>&1 || echo "[$key] HF push warning — check $log"
     conda deactivate
 
