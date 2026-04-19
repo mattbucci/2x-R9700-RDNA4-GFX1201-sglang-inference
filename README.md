@@ -110,13 +110,13 @@ All context-sweep numbers: `sglang.bench_serving`, FP8 KV cache, `--disable-cuda
 
 | Model | 128 | 4K | 16K | 32K | 65K | 131K | 262K |
 |-------|:---:|:--:|:---:|:---:|:---:|:----:|:----:|
-| Qwen3.5-27B AWQ | 26* | 25* | 18.7 | 15.3 | 13.0 | 9.5 | **5.8** |
+| Qwen3.5-27B AWQ | 26 | 25 | 22.6 | 15.3* | 13.0* | 9.5* | **5.8\*** |
 | Qwen3.5-35B MoE GPTQ | 14.4 | 15.8 | 14.4 | 16.7 | 14.7 | 15.3 | **12.4** |
 | **Qwen3.6-35B MoE GPTQ** | 15.5 | 14.2 | 15.4 | 16.8 | 12.5 | 14.6 | **13.3** |
 | Devstral-24B AWQ (131K) | 27.7 | 29.5 | 26.2 | 22.9 | 15.8 | 9.7 | n/a |
 | Coder-Next 80B AWQ | (blocked: causal_conv1d TP shape) | | | | | | |
 
-All values tok/s single-user.  *Qwen3.5-27B 128/4K numbers from earlier clean run; remainder collected with concurrent CPU calibration so are conservative (~30-40% under-reported).  Both 35B-A3B MoE models hit the 256K target with similar characteristics; Qwen3.6 edges out Qwen3.5 at 256K (13.3 vs 12.4).  Dense Qwen3.5-27B drops to 5.8 @ 256K — quadratic full-attention layers dominate at long context.  3090 team measured Qwen3.6 at 14 tok/s @ 250K — parity within the bandwidth-bound regime.
+All values tok/s single-user.  *Qwen3.5-27B 32K+ numbers collected with concurrent CPU calibration so are conservative (~30-40% under-reported); short context from clean run.  Both 35B-A3B MoE models hit the 256K target with similar characteristics; Qwen3.6 edges out Qwen3.5 at 256K (13.3 vs 12.4).  Dense Qwen3.5-27B drops to 5.8 @ 256K — quadratic full-attention layers dominate at long context.  3090 team measured Qwen3.6 at 14 tok/s @ 250K — parity within the bandwidth-bound regime.
 
 ### Concurrency (short context)
 
