@@ -1,0 +1,136 @@
+{
+  "model": "Devstral-24B AWQ 131K",
+  "engine": "SGLang",
+  "method": "sglang.bench_serving",
+  "hardware": "2x R9700 TP=2",
+  "timestamp": "2026-04-18 17:27:24",
+  "output_tokens": 100,
+  "context_sweep": [
+    {
+      "context": 128,
+      "input_len": 64,
+      "tpot_ms": 36.04,
+      "tok_per_sec": 27.7,
+      "ttft_ms": 92.37,
+      "throughput": 4.79
+    },
+    {
+      "context": 256,
+      "input_len": 128,
+      "tpot_ms": 35.0,
+      "tok_per_sec": 28.6,
+      "ttft_ms": 74.0,
+      "throughput": 4.79
+    },
+    {
+      "context": 512,
+      "input_len": 256,
+      "tpot_ms": 39.51,
+      "tok_per_sec": 25.3,
+      "ttft_ms": 70.32,
+      "throughput": 4.79
+    },
+    {
+      "context": 1024,
+      "input_len": 512,
+      "tpot_ms": 39.14,
+      "tok_per_sec": 25.5,
+      "ttft_ms": 81.87,
+      "throughput": 4.79
+    },
+    {
+      "context": 2048,
+      "input_len": 1024,
+      "tpot_ms": 36.52,
+      "tok_per_sec": 27.4,
+      "ttft_ms": 71.47,
+      "throughput": 4.8
+    },
+    {
+      "context": 4096,
+      "input_len": 2048,
+      "tpot_ms": 33.92,
+      "tok_per_sec": 29.5,
+      "ttft_ms": 81.17,
+      "throughput": 4.79
+    },
+    {
+      "context": 8192,
+      "input_len": 4096,
+      "tpot_ms": 34.92,
+      "tok_per_sec": 28.6,
+      "ttft_ms": 78.26,
+      "throughput": 4.79
+    },
+    {
+      "context": 16384,
+      "input_len": 8192,
+      "tpot_ms": 38.11,
+      "tok_per_sec": 26.2,
+      "ttft_ms": 189.38,
+      "throughput": 4.79
+    },
+    {
+      "context": 32768,
+      "input_len": 16384,
+      "tpot_ms": 43.6,
+      "tok_per_sec": 22.9,
+      "ttft_ms": 400.47,
+      "throughput": 4.8
+    },
+    {
+      "context": 65536,
+      "input_len": 32768,
+      "tpot_ms": 63.26,
+      "tok_per_sec": 15.8,
+      "ttft_ms": 824.15,
+      "throughput": 4.8
+    },
+    {
+      "context": 131072,
+      "input_len": 65536,
+      "tpot_ms": 102.97,
+      "tok_per_sec": 9.7,
+      "ttft_ms": 1659.67,
+      "throughput": 4.34
+    }
+  ],
+  "throughput_sweep": [
+    {
+      "concurrency": 1,
+      "throughput": 4.8,
+      "tpot_ms": 37.91,
+      "ttft_ms": 77.66
+    },
+    {
+      "concurrency": 2,
+      "throughput": 2.55,
+      "tpot_ms": 1432.53,
+      "ttft_ms": 1266.42
+    },
+    {
+      "concurrency": 4,
+      "throughput": 0.98,
+      "tpot_ms": 2415.91,
+      "ttft_ms": 2814.92
+    },
+    {
+      "concurrency": 8,
+      "throughput": 1.94,
+      "tpot_ms": 2270.69,
+      "ttft_ms": 2992.54
+    },
+    {
+      "concurrency": 16,
+      "throughput": 2.57,
+      "tpot_ms": 2446.9,
+      "ttft_ms": 33900.91
+    },
+    {
+      "concurrency": 32,
+      "throughput": 2.94,
+      "tpot_ms": 2348.0,
+      "ttft_ms": 172692.46
+    }
+  ]
+}
