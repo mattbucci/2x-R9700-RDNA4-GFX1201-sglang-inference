@@ -35,8 +35,19 @@ def _http_post(url: str, payload: dict, timeout: int = 180) -> dict:
         data=json.dumps(payload).encode("utf-8"),
         headers={"Content-Type": "application/json"},
     )
-    with urllib.request.urlopen(req, timeout=timeout) as resp:
-        return json.loads(resp.read().decode("utf-8"))
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            return json.loads(resp.read().decode("utf-8"))
+    except urllib.error.HTTPError as e:
+        # Surface the server's error body (often actionable: missing config,
+        # template render error, etc.) instead of the opaque default str().
+        try:
+            body = e.read().decode("utf-8", errors="replace")[:500]
+        except Exception:
+            body = "<no body>"
+        raise urllib.error.HTTPError(
+            e.url, e.code, f"{e.reason}: {body}", e.headers, None
+        ) from None
 
 
 def _http_get(url: str, timeout: int = 10) -> dict:
@@ -291,7 +302,11 @@ def check_vision(base_url: str, model: str) -> tuple[bool, str]:
             ],
         }],
         "max_tokens": 128,
-        "temperature": 0,
+        # Greedy (temp=0) can send Qwen3/Gemma4 into an immediate-EOS state;
+        # use nucleus sampling like the other checks.
+        "temperature": 0.7,
+        "top_p": 0.95,
+        "top_k": 20,
     }
     try:
         r = _http_post(f"{base_url}/v1/chat/completions", payload, timeout=180)

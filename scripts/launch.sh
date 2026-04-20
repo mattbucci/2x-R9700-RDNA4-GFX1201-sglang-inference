@@ -92,9 +92,12 @@ apply_preset() {
             TOKENIZER="--tokenizer-path $MODELS_DIR/gemma-4-26B-A4B-it-BF16"
             ATTN_BACKEND="torch_native"
             REASONING="--reasoning-parser gemma4"
-            CTX=4096; MAX_RUNNING=8; CHUNKED=2048
+            # Bumped CTX 4096 → 16384: at 4096, check_thinking max_tokens=4096
+            # + small input exceeds the limit and SGLang returns 400.
+            CTX=16384; MAX_RUNNING=8; CHUNKED=4096
             WARMUP="--skip-server-warmup"; WATCHDOG=1800
             OVERLAP=""
+            EXTRA_ARGS="${EXTRA_ARGS:-} --enable-multimodal"
             ;;
         gemma4-31b)
             # AutoRound GPTQ→AWQ converted (sym→asym re-quantized)
