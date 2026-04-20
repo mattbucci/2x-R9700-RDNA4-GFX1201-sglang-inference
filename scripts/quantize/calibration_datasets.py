@@ -194,7 +194,8 @@ MIXES: dict[str, Mix] = {
     ),
     "llava_video_178k": Mix(
         "llava_video_178k", "lmms-lab/LLaVA-Video-178K",
-        split="train", weight=0.0, format_fn=_llava_video_178k, streaming=True,
+        split="caption", weight=0.0, format_fn=_llava_video_178k, streaming=True,
+        config="0_30_s_academic_v0_1",
     ),
     "common_voice_audio": Mix(
         "common_voice_audio", "mozilla-foundation/common_voice_17_0",

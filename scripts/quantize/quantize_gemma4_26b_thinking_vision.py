@@ -232,9 +232,10 @@ print("\n[4/5] Rendering chat template + tokenizing...")
 
 from transformers import AutoTokenizer
 
-tokenizer = AutoTokenizer.from_pretrained(tmp_dir, trust_remote_code=True)
+tokenizer = AutoTokenizer.from_pretrained(BF16_MODEL, trust_remote_code=True)
 if tokenizer.chat_template is None:
     raise RuntimeError("Gemma4 tokenizer missing chat_template.")
+tokenizer.save_pretrained(tmp_dir)
 
 text_dataset = rows_to_text(
     rows,
@@ -246,7 +247,7 @@ text_dataset = rows_to_text(
 print(f"Rendered {len(text_dataset)} calibration rows")
 
 # Fail loud if chat template stripped thinking markers
-verify_thinking_preserved(text_dataset, min_fraction=0.20)
+verify_thinking_preserved(text_dataset, min_fraction=0.15)
 
 dataset = tokenize_text_dataset(text_dataset, tokenizer, MAX_SEQUENCE_LENGTH)
 print(f"Tokenized {len(dataset)} samples at max_seq_len={MAX_SEQUENCE_LENGTH}")

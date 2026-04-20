@@ -41,6 +41,13 @@ MODELS_DIR="${MODELS_DIR:-$HOME/AI/models}"
 LOG_DIR=/tmp/recal-logs
 mkdir -p "$LOG_DIR"
 HF_TOKEN_FILE="${HF_TOKEN_FILE:-$HOME/.secrets/hf_token}"
+# Export HF_TOKEN early so dataset downloads (gated: bigcode/the-stack-smol,
+# liuhaotian/LLaVA-Instruct-150K, mozilla-foundation/common_voice, etc.) work.
+if [[ -f "$HF_TOKEN_FILE" ]]; then
+    HF_TOKEN=$(tr -d '[:space:]' < "$HF_TOKEN_FILE")
+    export HF_TOKEN
+    export HUGGING_FACE_HUB_TOKEN="$HF_TOKEN"
+fi
 SKIP="${SKIP:-}"
 START_AT="${START_AT:-}"
 NO_HF_PUSH="${NO_HF_PUSH:-0}"

@@ -59,9 +59,17 @@ rows = build_calibration_dataset(
 print("\n[2/4] Loading tokenizer + rendering chat template...")
 tokenizer = AutoTokenizer.from_pretrained(BASE_MODEL, trust_remote_code=True)
 if tokenizer.chat_template is None:
-    raise RuntimeError(
-        f"{BASE_MODEL} missing chat_template — Devstral community quants need a custom jinja"
+    # Devstral ships tekken.json, no jinja chat_template — load our custom one
+    template_path = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)),
+        os.pardir, "devstral_chat_template.jinja",
     )
+    template_path = os.path.abspath(template_path)
+    if not os.path.exists(template_path):
+        raise RuntimeError(f"Custom Devstral template not found at {template_path}")
+    with open(template_path) as f:
+        tokenizer.chat_template = f.read()
+    print(f"  Loaded custom Devstral chat_template from {template_path}")
 
 text_dataset = rows_to_text(
     rows,

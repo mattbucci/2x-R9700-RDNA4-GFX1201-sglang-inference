@@ -142,7 +142,15 @@ apply_preset() {
             # path points at our thinking+vision-calibrated compressed-tensors
             # output.  No official GPTQ from Qwen as of 2026-04-18.
             MODEL="${MODEL:-$MODELS_DIR/Qwen3.6-35B-A3B-AWQ-CT-thinking-vision}"
-            QUANT="moe_wna16"
+            # Auto-detect quant format: our CT output ships compressed-tensors;
+            # palmfuture's GPTQ-Int4 ships gptq/moe_wna16.  SGLang errors if the
+            # CLI --quantization disagrees with config's quantization_config.
+            if [[ -f "$MODEL/config.json" ]] && \
+               grep -q '"quant_method": *"compressed-tensors"' "$MODEL/config.json" 2>/dev/null; then
+                QUANT="compressed-tensors"
+            else
+                QUANT="moe_wna16"
+            fi
             DTYPE="bfloat16"
             CTX=262144; MAX_RUNNING=8; CHUNKED=8192; DECODE_STEPS=8; MEM=0.85
             MAMBA_CACHE="--max-mamba-cache-size 8"
