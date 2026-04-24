@@ -144,10 +144,12 @@ apply_preset() {
             # calibrated first or it won't fit (60 GB total VRAM).  Default
             # path points at our thinking+vision-calibrated compressed-tensors
             # output.  No official GPTQ from Qwen as of 2026-04-18.
-            MODEL="${MODEL:-$MODELS_DIR/Qwen3.6-35B-A3B-AWQ-CT-thinking-vision}"
-            # Auto-detect quant format: our CT output ships compressed-tensors;
-            # palmfuture's GPTQ-Int4 ships gptq/moe_wna16.  SGLang errors if the
-            # CLI --quantization disagrees with config's quantization_config.
+            # Default path: native AWQ (moe_wna16) converted from CT via
+            # scripts/quantize/convert_moe_ct_to_awq.py.  On RDNA4 this ran
+            # 6x faster than the compressed-tensors kernel (21.6 vs 3.6 tok/s).
+            MODEL="${MODEL:-$MODELS_DIR/Qwen3.6-35B-A3B-AWQ-native-thinking-vision}"
+            # Auto-detect quant format: CT ships compressed-tensors, our
+            # native AWQ and palmfuture's GPTQ-Int4 both ship moe_wna16.
             if [[ -f "$MODEL/config.json" ]] && \
                grep -q '"quant_method": *"compressed-tensors"' "$MODEL/config.json" 2>/dev/null; then
                 QUANT="compressed-tensors"

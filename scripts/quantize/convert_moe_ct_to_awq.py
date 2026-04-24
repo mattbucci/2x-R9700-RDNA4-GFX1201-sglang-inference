@@ -153,8 +153,12 @@ def main():
             if not os.path.exists(dst):
                 shutil.copy2(fname, dst)
 
-    # Process shards
-    shard_files = sorted(glob.glob(os.path.join(src_dir, "model-*.safetensors")))
+    # Process shards (match both sharded `model-00001-of-NNNNN.safetensors`
+    # and single-file `model.safetensors`, plus any `model-vision.safetensors`).
+    shard_files = sorted(
+        set(glob.glob(os.path.join(src_dir, "model-*.safetensors")))
+        | set(glob.glob(os.path.join(src_dir, "model.safetensors")))
+    )
 
     # Build cross-shard index for weights split across shards
     print(f"Building cross-shard index for {len(shard_files)} shards...")
@@ -198,6 +202,27 @@ def main():
                         scale = sf2.get_tensor(scale_key)
                     print(f"  (cross-shard scale for {base})")
 
+                out_features = packed.shape[0]
+                in_features = packed.shape[1] * PACK_FACTOR
+
+                # AWQ requires out_features % PACK_FACTOR == 0.  Small gate
+                # linears (e.g. shared_expert_gate [1, H]) don't satisfy this;
+                # dequantize them back to BF16 and pass through.
+                if out_features % PACK_FACTOR != 0:
+                    unpacked = unpack_int32_to_4bit(packed).to(torch.int32)  # [out, in]
+                    # Per-group symmetric dequant: w = (q - 8) * scale
+                    num_groups = in_features // group_size
+                    q = unpacked.reshape(out_features, num_groups, group_size)
+                    s = scale.reshape(out_features, num_groups, 1).to(torch.float32)
+                    w = ((q - 8).to(torch.float32) * s).reshape(out_features, in_features)
+                    converted[f"{base}.weight"] = w.to(torch.bfloat16)
+                    processed.add(key)
+                    processed.add(scale_key)
+                    processed.add(f"{base}.weight_shape")
+                    total_passthrough += 1
+                    print(f"  D {base}: [{out_features}, {in_features}] -> BF16 (out%8!=0)")
+                    continue
+
                 qweight, scales, qzeros = convert_weight(packed, scale, group_size)
 
                 converted[f"{base}.qweight"] = qweight
@@ -208,8 +233,6 @@ def main():
                 processed.add(scale_key)
                 processed.add(f"{base}.weight_shape")
 
-                out_features = packed.shape[0]
-                in_features = packed.shape[1] * PACK_FACTOR
                 total_quantized += 1
                 print(f"  Q {base}: [{out_features}, {in_features}] -> "
                       f"qw{list(qweight.shape)} sc{list(scales.shape)}")
