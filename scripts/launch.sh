@@ -21,6 +21,7 @@
 #   qwen35-moe     Qwen3.5-35B-A3B MoE+DeltaNet AWQ (REAM/REAP compressed)
 #   qwen36-moe     Qwen3.6-35B-A3B MoE+DeltaNet AWQ (thinking+vision, 262K)
 #   qwen36-27b     Qwen3.6-27B dense AWQ (thinking+vision, 262K)
+#   coder-reap-25b Cerebras Qwen3-Coder-REAP-25B-A3B (pruned from Coder-30B, 256K)
 
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -174,6 +175,22 @@ apply_preset() {
             CUDA_GRAPH="--disable-cuda-graph"
             MAMBA_CACHE="--max-mamba-cache-size 8"
             CHAT_TEMPLATE="--chat-template \$MODEL/chat_template.jinja"
+            REASONING="--reasoning-parser qwen3"
+            OVERLAP=""
+            ;;
+        coder-reap-25b)
+            # Cerebras Qwen3-Coder-REAP-25B-A3B — REAP-pruned Coder-30B (arxiv:2510.13999).
+            # 128 → ~96 experts, ~25B params, base "Qwen3-Coder-30B-A3B-Instruct".
+            # Default path = our self-calibrated AWQ (native AWQ post CT→AWQ conversion).
+            MODEL="${MODEL:-$MODELS_DIR/Qwen3-Coder-REAP-25B-A3B-AWQ-native}"
+            if [[ -f "$MODEL/config.json" ]] && \
+               grep -q '"quant_method": *"compressed-tensors"' "$MODEL/config.json" 2>/dev/null; then
+                QUANT="compressed-tensors"
+            else
+                QUANT="moe_wna16"
+            fi
+            DTYPE="bfloat16"
+            CTX=262144; MAX_RUNNING=8; CHUNKED=8192; DECODE_STEPS=8; MEM=0.85
             REASONING="--reasoning-parser qwen3"
             OVERLAP=""
             ;;
