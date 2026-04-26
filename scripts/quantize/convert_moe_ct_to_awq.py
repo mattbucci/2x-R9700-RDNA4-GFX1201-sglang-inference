@@ -316,7 +316,11 @@ def main():
     with open(os.path.join(dst_dir, "model.safetensors.index.json"), "w") as fout:
         json.dump(index, fout, indent=2)
 
-    # Update config
+    # Update config — preserve the source CT recipe's `ignore` list so
+    # downstream audit tools (3090 team's audit script flagged us 2026-04-25
+    # because empty ignore=[] looked like a broken calibration even though
+    # the actual safetensors still have BF16 router/vision/shared_expert).
+    src_ignore = config.get("quantization_config", {}).get("ignore", [])
     config["quantization_config"] = {
         "bits": 4,
         "group_size": group_size,
@@ -324,6 +328,7 @@ def main():
         "version": "gemm",
         "zero_point": True,
         "modules_to_not_convert": [],
+        "ignore": src_ignore,
     }
     with open(os.path.join(dst_dir, "config.json"), "w") as fout:
         json.dump(config, fout, indent=2)
