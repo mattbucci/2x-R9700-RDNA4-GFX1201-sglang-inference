@@ -247,7 +247,7 @@ def main():
                 # Per-expert format: experts.N.{gate,up,down}_proj.weight [out, in]
                 # Fused format: experts.{gate_up_proj,down_proj} [E, out, in]
                 is_expert_weight = (
-                    "experts" in key
+                    ("experts" in key or "shared_expert" in key)
                     and any(p in key for p in ["gate_proj.weight", "up_proj.weight",
                                                "down_proj.weight", "gate_up_proj", "experts.down_proj"])
                     and tensor.dtype in (torch.bfloat16, torch.float16, torch.float32)
