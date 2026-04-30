@@ -29,15 +29,25 @@ if [ ${#MODELS[@]} -eq 0 ]; then
 fi
 
 # Models without vision/video (skip those checks)
-TEXT_ONLY=(coder-30b devstral qwen3-ream qwen35-moe qwen35)
+TEXT_ONLY=(coder-30b coder-reap-25b devstral qwen3-ream qwen35-moe qwen35)
 
-is_text_only() {
-    local m="$1"
-    for t in "${TEXT_ONLY[@]}"; do
-        [ "$m" = "$t" ] && return 0
+# Models that are explicitly non-thinking by upstream design.
+# Running the thinking probe against these gives a meaningless FAIL because
+# they were never trained to emit <think>...</think> blocks. See upstream:
+# Qwen3-Coder-30B-A3B-Instruct, Qwen3-Coder-REAP-25B-A3B,
+# Qwen3-30B-A3B-Instruct-2507 — all tagged "non-thinking only."
+NON_THINKING=(coder-30b coder-reap-25b qwen3-ream devstral)
+
+contains() {
+    local needle="$1"; shift
+    for x in "$@"; do
+        [ "$x" = "$needle" ] && return 0
     done
     return 1
 }
+
+is_text_only() { contains "$1" "${TEXT_ONLY[@]}"; }
+is_non_thinking() { contains "$1" "${NON_THINKING[@]}"; }
 
 wait_ready() {
     # SGLang surfaces /v1/models early (during warmup) but /health stays 503
@@ -115,10 +125,13 @@ run_one() {
         return 1
     fi
 
-    # Skip vision/video for text-only models
+    # Skip vision/video for text-only models, thinking for non-thinking models
     local extra_flags=()
     if is_text_only "$model"; then
         extra_flags+=(--skip-vision --skip-video)
+    fi
+    if is_non_thinking "$model"; then
+        extra_flags+=(--skip-thinking)
     fi
 
     python "$REPO_DIR/scripts/eval/validate_capabilities.py" \
