@@ -84,6 +84,16 @@ def _make_test_image() -> bytes:
     return buf.getvalue()
 
 
+def _model_max_len(base_url: str) -> int | None:
+    """Look up max_model_len from /v1/models so we don't request more tokens
+    than the server allows (small-context test runs OOM otherwise)."""
+    try:
+        data = _http_get(f"{base_url}/v1/models", timeout=5)
+        return data["data"][0].get("max_model_len")
+    except Exception:
+        return None
+
+
 def check_thinking(
     base_url: str,
     model: str,
@@ -102,6 +112,12 @@ def check_thinking(
     # correctly — SGLang reads sampling defaults from generation_config.json when
     # we omit temperature; falling back to 0.7/top_p=0.95 if the server hasn't
     # picked up a model preset.
+    # Cap max_tokens against the model's actual context window — small-context
+    # test runs (e.g. 4K for OOM-headroom) would otherwise 400 on the request.
+    server_max = _model_max_len(base_url)
+    if server_max:
+        max_tokens = min(max_tokens, max(256, server_max - 256))
+
     payload = {
         "model": model,
         "messages": [{"role": "user", "content": prompt}],
@@ -180,7 +196,7 @@ def check_basic(base_url: str, model: str) -> tuple[bool, str]:
     reasoning that loops `paris</think>\\n\\nparis</think>\\n\\n…` because
     it's never been calibrated to handle a basic question through the
     thinking gate.  This is the M4-audited regression — basic mode should
-    use the non-thinking path.
+    use the non-thinking path.  (Cross-team patch from R9700 2026-04-30.)
     """
     payload = {
         "model": model,
@@ -321,9 +337,19 @@ def check_vision(base_url: str, model: str) -> tuple[bool, str]:
     content = (msg.get("content") or "").lower()
     reasoning = (msg.get("reasoning_content") or "").lower()
     haystack = content + " " + reasoning
-    expected = ["red", "circle", "round", "sphere", "ball", "dot", "disk", "oval"]
-    hits = [w for w in expected if w in haystack]
-    passed = len(hits) >= 1
+    # The probe image is a solid red circle on a white background.  A model that
+    # actually processed the image should mention BOTH color and shape — matching
+    # just one word triggers false positives on text-only models that accept
+    # image tokens silently and hallucinate generic descriptions (see Qwen3.6-35B
+    # flattened-config case: validator passed with "one-sentence description of
+    # the image" while the model's direct answer was "The image is a black
+    # square.").  Require a color hit AND a shape hit.
+    color_terms = ["red", "crimson", "scarlet"]
+    shape_terms = ["circle", "round", "sphere", "ball", "dot", "disk", "oval", "ellipse"]
+    color_hits = [w for w in color_terms if w in haystack]
+    shape_hits = [w for w in shape_terms if w in haystack]
+    hits = color_hits + shape_hits
+    passed = bool(color_hits) and bool(shape_hits)
     sample = content[:120] if content else f"(reasoning){reasoning[:120]}"
     return passed, f"saw={hits}  response={sample!r}"
 
@@ -340,6 +366,10 @@ def main() -> int:
     p.add_argument("--thinking-kwarg", default=None,
                    help='JSON string, e.g. \'{"enable_thinking": true}\' for Gemma4')
     p.add_argument("--timeout", type=int, default=180)
+    p.add_argument("--save", default=None,
+                   help="Append results to a JSON file keyed by --tag (creates if missing)")
+    p.add_argument("--tag", default=None,
+                   help="Model tag for --save (default: server-reported model name)")
     args = p.parse_args()
 
     base = f"http://{args.host}:{args.port}"
@@ -389,6 +419,25 @@ def main() -> int:
 
     elapsed = time.time() - t0
     print(f"--- {sum(ok for _, ok, _ in results)}/{len(results)} passed in {elapsed:.1f}s ---")
+
+    if args.save:
+        out_path = Path(args.save)
+        existing = json.load(open(out_path)) if out_path.exists() else {}
+        tag = args.tag or model.split("/")[-1]
+        existing[tag] = {
+            "tag": tag,
+            "model": model,
+            "timestamp": time.strftime("%Y-%m-%d %H:%M"),
+            "elapsed_sec": round(elapsed, 1),
+            "checks": {name: {"passed": ok, "message": msg} for name, ok, msg in results},
+            "summary": {
+                "passed": sum(ok for _, ok, _ in results),
+                "total": len(results),
+            },
+        }
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        json.dump(existing, open(out_path, "w"), indent=2)
+        print(f"Saved to {out_path}")
 
     failed = [name for name, ok, _ in results if not ok]
     if failed:
