@@ -174,10 +174,13 @@ def check_thinking(
 def check_basic(base_url: str, model: str) -> tuple[bool, str]:
     """Short factual question — verifies the server at all.
 
-    Large reasoning budget so a thinking-broken model still produces content
-    we can diagnose.  We accept either content or reasoning_content containing
-    "paris" — the goal is "did the model answer correctly," not "did it use
-    the right channel."
+    Explicitly sets `enable_thinking=False` so that for Qwen3.5/3.6 family
+    chat templates (which default `enable_thinking=True`), the rendered
+    prompt has NO `<think>` markers.  Otherwise the model emits open-ended
+    reasoning that loops `paris</think>\\n\\nparis</think>\\n\\n…` because
+    it's never been calibrated to handle a basic question through the
+    thinking gate.  This is the M4-audited regression — basic mode should
+    use the non-thinking path.
     """
     payload = {
         "model": model,
@@ -188,6 +191,7 @@ def check_basic(base_url: str, model: str) -> tuple[bool, str]:
         "temperature": 0.7,
         "top_p": 0.95,
         "top_k": 20,
+        "chat_template_kwargs": {"enable_thinking": False},
     }
     try:
         r = _http_post(f"{base_url}/v1/chat/completions", payload, timeout=120)
