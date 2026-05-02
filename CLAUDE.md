@@ -38,6 +38,7 @@ scripts/bench/bench_256k_sweep.sh                   # 256K single-user suite acr
 
 ## Critical Rules
 - **SGLang only** — all models must run on SGLang with our RDNA4 patches
+- **Build models from scratch — never ship random community quants.** Always start from the upstream BF16 base (or a published REAM/REAP prune of the BF16 base) and run our own llmcompressor calibration → CT → native AWQ pipeline. We control the recipe (thinking + vision + video + audio coverage), the ignore list (DeltaNet gates, MoE router, vision tower stay BF16), and the architectures rescue. Pre-quantized 3rd-party AWQ uploads (`QuantTrio/*`, `unsloth/*`, etc.) are useful as **reference points only** — bench against ours, but the shipped `mattbucci/<name>-AWQ` repo must be our own calibration so we can debug, recalibrate, and validate end-to-end.
 - **MoE quantization is hard** — standard GPTQ under-calibrates rare experts (see rules-for-agents.md)
 - **DeltaNet/SSM layers cannot be INT4 quantized** — recurrent state error accumulation
 - **HIP GEMV kernel required** — `scripts/common.sh` sets `LD_LIBRARY_PATH` and `PYTHONPATH`
@@ -70,6 +71,7 @@ Any job expected to run > 30 minutes (calibrations, long benches, 50 GB+ downloa
 - Sister projects — read their commits, push findings to their README.
   - **3090 team (NVIDIA Ampere, AWQ_Marlin):** `~/AI/2x-3090-GA102-300-A1-sglang-inference` — long-context benchmarks reference, `validate_chat_template.py` owner.
   - **M4 team (Apple Silicon, MLX):** `~/AI/m4-sglang-inference` — patch 013 owner (DeltaNet cache-wiring fix), identified video+audio modality gaps in community checkpoints.
+- **Cross-team validation requests are made by pushing to the other team's README.** When we ship a model and want second-stack validation (e.g., does the new mattbucci/X-AWQ also serve clean on Ampere/MLX?), don't email or wait for them to discover it — push a `> 📢 Cross-team request from R9700 (date)` banner to their README.md root with the repo path and the validator command. They've reciprocated this for our Qwen3.6-27B (3090 confirmed 3/3 PASS in their commit 0db6979) and expect the same flow back.
 
 ## HuggingFace Naming Convention
 
