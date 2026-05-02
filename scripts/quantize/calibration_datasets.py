@@ -39,6 +39,11 @@ class Mix:
     format_fn: Callable[[dict], list[dict]]
     streaming: bool = False
     config: str | None = None
+    # Some HF datasets (e.g. liuhaotian/LLaVA-Instruct-150K) ship multiple files
+    # with diverging schemas; the default load_dataset() concatenation hits a
+    # DatasetGenerationError mid-stream. Setting data_files to a specific file
+    # forces a clean single-file load.
+    data_files: str | None = None
 
 
 def _am_thinking(row: dict) -> list[dict]:
@@ -182,6 +187,11 @@ MIXES: dict[str, Mix] = {
     "llava_instruct": Mix(
         "llava_instruct", "liuhaotian/LLaVA-Instruct-150K",
         split="train", weight=0.0, format_fn=_llava_instruct,
+        # Pin to the canonical 158K-row file; without data_files load_dataset
+        # tries to concat all files (llava_instruct_150k.json,
+        # complex_reasoning_77k.json, conversation_58k.json, …) which raises
+        # DatasetGenerationError on schema divergence after ~394K rows.
+        data_files="llava_instruct_150k.json",
     ),
     "thestack_code": Mix(
         "thestack_code", "bigcode/the-stack-smol",
@@ -324,12 +334,15 @@ def _load_slice(mix: Mix, n: int, seed: int) -> list[dict]:
     """Load `n` rows from a mix, returning raw HF rows.  Streaming-safe."""
     print(f"  [{mix.name}] loading {n} samples from {mix.hf_name}")
     try:
+        load_kwargs = {"name": mix.config}
+        if mix.data_files:
+            load_kwargs["data_files"] = mix.data_files
         if mix.streaming:
             ds = load_dataset(
                 mix.hf_name,
-                name=mix.config,
                 split=mix.split,
                 streaming=True,
+                **load_kwargs,
             )
             ds = ds.shuffle(seed=seed, buffer_size=10_000)
             rows = []
@@ -341,8 +354,8 @@ def _load_slice(mix: Mix, n: int, seed: int) -> list[dict]:
         else:
             ds = load_dataset(
                 mix.hf_name,
-                name=mix.config,
                 split=f"{mix.split}[:{max(n * 3, n + 100)}]",
+                **load_kwargs,
             )
             ds = ds.shuffle(seed=seed)
             return [ds[i] for i in range(min(n, len(ds)))]
