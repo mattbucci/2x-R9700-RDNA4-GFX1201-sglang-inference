@@ -1,0 +1,29 @@
+diff --git a/python/sglang/srt/models/gemma4_causal.py b/python/sglang/srt/models/gemma4_causal.py
+index c1776cf62..08f686b18 100644
+--- a/python/sglang/srt/models/gemma4_causal.py
++++ b/python/sglang/srt/models/gemma4_causal.py
+@@ -425,11 +425,23 @@ class Gemma4DecoderLayer(nn.Module):
+             2 if use_double_wide_mlp else 1
+         )
+
++        # On MoE-block layers (parallel dense+MoE Gemma 4 architecture, e.g.
++        # 26B), the dense-MLP branch ships as PLAIN BF16 weights
++        # (mlp.{gate,up,down}_proj.weight, no qweight/qzeros/scales) — the
++        # calibration recipe deliberately leaves the dense MLP full-precision.
++        # If we pass quant_config here, the AWQ loader feeds the plain BF16
++        # weight into the qweight parameter slot and every matmul output is
++        # garbage (15078 NaN + 3267 inf out of 84480 in layer 0 gate_up_proj
++        # alone, then NaN cascades to lm_head → vocab-low <pad> spam).
++        # On Dense-only Gemma 4 (e.g. 31B), the MLP is fully AWQ-packed
++        # (mlp.*.weight_packed), so quant_config must be passed.
++        # Bug + fix surfaced 2026-05-03 via SGLANG_GEMMA4_TRACE forward-hook.
++        _enable_moe = getattr(config, "enable_moe_block", False)
+         self.mlp = Gemma4MLP(
+             hidden_size=self.hidden_size,
+             intermediate_size=layer_intermediate_size,
+             hidden_activation=config.hidden_activation,
+-            quant_config=quant_config,
++            quant_config=None if _enable_moe else quant_config,
+             prefix=add_prefix("mlp", prefix),
+         )
+

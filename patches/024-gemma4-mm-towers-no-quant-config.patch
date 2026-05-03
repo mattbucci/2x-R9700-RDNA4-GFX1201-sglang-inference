@@ -1,0 +1,51 @@
+diff --git a/python/sglang/srt/models/gemma4_mm.py b/python/sglang/srt/models/gemma4_mm.py
+index 4618129fa..187e70cd2 100644
+--- a/python/sglang/srt/models/gemma4_mm.py
++++ b/python/sglang/srt/models/gemma4_mm.py
+@@ -175,16 +175,28 @@ class Gemma4ForConditionalGeneration(PreTrainedModel):
+ 
+         prefix = add_prefix("model", prefix)
+ 
++        # Gemma 4 calibration recipes preserve the multimodal towers in BF16
++        # (recipe.yaml ignore: re:.*vision_tower.*, re:.*embed_vision.*,
++        # re:.*audio_tower.*, re:.*embed_audio.*).  The checkpoint stores them
++        # as plain `.linear.weight` tensors with no qweight/scales/shapes.
++        # If we pass quant_config here, the AWQ loader allocates weight_packed
++        # parameter slots and the BF16 checkpoint keys silently fail to load
++        # ("Some weights are not initialized: vision_tower.encoder.layers.*
++        # .mlp.gate_up.gate_up_proj.weight_packed/scale/shape ..."), leaving
++        # the vision tower at random init → vision PASSes round/circle but
++        # hallucinates content.  Same shape as patch 023 (dense MLP on MoE
++        # layers).  Bug surfaced 2026-05-03 via "Some weights not initialized"
++        # log in the gemma4-26b-mm-arch-fix-May03 run.
+         self.vision_tower = Gemma4VisionEncoder(
+             config=config.vision_config,
+-            quant_config=quant_config,
++            quant_config=None,
+             prefix=add_prefix("vision_tower", prefix),
+         )
+ 
+         self.embed_vision = Gemma4MultimodalEmbedder(
+             config.vision_config,
+             config.text_config,
+-            quant_config=quant_config,
++            quant_config=None,
+             prefix=add_prefix("embed_vision", prefix),
+         )
+ 
+@@ -192,13 +204,13 @@ class Gemma4ForConditionalGeneration(PreTrainedModel):
+         if getattr(config, "audio_config", None) is not None:
+             self.audio_tower = Gemma4AudioEncoder(
+                 config=config.audio_config,
+-                quant_config=quant_config,
++                quant_config=None,
+                 prefix=add_prefix("audio_tower", prefix),
+             )
+             self.embed_audio = Gemma4MultimodalEmbedder(
+                 config.audio_config,
+                 config.text_config,
+-                quant_config=quant_config,
++                quant_config=None,
+                 prefix=add_prefix("embed_audio", prefix),
+             )
+         else:
