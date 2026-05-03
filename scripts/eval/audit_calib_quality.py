@@ -47,6 +47,7 @@ DEFAULT_REPOS = [
     "mattbucci/Qwen3-Coder-REAP-25B-A3B-AWQ",
     "mattbucci/Qwen3-Coder-Next-REAM-AWQ",
     "mattbucci/Qwen3-Coder-30B-A3B-REAP-AWQ",
+    "mattbucci/Qwen3.5-28B-A3B-REAP-AWQ",  # 3090 ship 2026-05-02
 ]
 
 
@@ -73,7 +74,7 @@ def _tensor_keys(repo: str) -> list[str]:
     """Return list of tensor keys for a repo. Falls back to single-file header
     range fetch when model.safetensors.index.json is absent (small models)."""
     try:
-        idx = json.loads(_get(f"https://huggingface.co/{repo}/raw/main/model.safetensors.index.json"))
+        idx = json.loads(_get(f"https://huggingface.co/{repo}/resolve/main/model.safetensors.index.json"))
         return list(idx.get("weight_map", {}).keys())
     except urllib.error.HTTPError as e:
         if e.code != 404:
@@ -94,7 +95,7 @@ def _tensor_keys(repo: str) -> list[str]:
 
 
 def audit(repo: str) -> dict:
-    cfg = json.loads(_get(f"https://huggingface.co/{repo}/raw/main/config.json"))
+    cfg = json.loads(_get(f"https://huggingface.co/{repo}/resolve/main/config.json"))
     arch = ", ".join(cfg.get("architectures", []) or ["?"])
     qc = cfg.get("quantization_config", {})
     ignore = qc.get("ignore", []) or qc.get("modules_to_not_convert", [])
