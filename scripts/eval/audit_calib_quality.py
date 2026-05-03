@@ -109,7 +109,13 @@ def audit(repo: str) -> dict:
     vision = [k for k in keys if any(t in k for t in ("vision_tower", "visual.", "multi_modal_projector", "embed_vision"))]
     audio = [k for k in keys if any(t in k for t in ("audio_tower", "embed_audio"))]
     router = [k for k in keys if re.search(r"mlp\.gate(\.|$)", k) and "shared_expert" not in k]
-    deltanet = [k for k in keys if "linear_attn.in_proj" in k]
+    # Only the gate scalars in_proj_a / in_proj_b must stay BF16 — the
+    # in_proj_qkv / in_proj_z / in_proj_qkvz / out_proj projections are
+    # REQUIRED to be INT4 by SGLang's Qwen3_5GatedDeltaNet loader (the merged
+    # ba path is hardcoded quant_config=None, the qkvz path passes outer
+    # quant_config). Earlier check `"linear_attn.in_proj" in k` over-matched
+    # and flagged correct INT4-quantized qkv/z as a divergence risk.
+    deltanet = [k for k in keys if re.search(r"linear_attn\.in_proj_(a|b)(\.|$)", k)]
 
     findings = []
     multimodal_arch = "ConditionalGeneration" in arch or "ForConditional" in arch
