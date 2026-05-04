@@ -1,0 +1,35 @@
+diff --git a/python/sglang/srt/models/gemma4_mm.py b/python/sglang/srt/models/gemma4_mm.py
+index 0000000..1111111 100644
+--- a/python/sglang/srt/models/gemma4_mm.py
++++ b/python/sglang/srt/models/gemma4_mm.py
+@@ -447,10 +447,26 @@
+                 pv = pv.to(device=vt.device, dtype=self.language_model.dtype())
+                 pp = pp.to(device=vt.device)
+ 
+-                pooled, pooler_mask = vt(pv, pp)
+-
+-                for hs, mask in zip(pooled, pooler_mask):
+-                    real_tokens = hs[mask]
++                # Process frames one-at-a-time instead of as a single batch.
++                # The batched call (pv shape [num_frames, num_patches, ...])
++                # materializes a one_hot tensor of size num_frames *
++                # num_patches * 2 * position_embedding_size in
++                # Gemma4VisionPatchEmbedder._position_embeddings (~1.24 GB
++                # for 12 frames at pooling_kernel_size=3 / 10240 classes /
++                # bf16), which OOMs on Ampere TP=1 after the LM weights +
++                # KV pool are loaded. Per-frame keeps that allocation at
++                # 1/num_frames the size with the same total throughput
++                # cost (vt is the bottleneck either way at video time).
++                # Also avoids the bsz==1 assertion at attention/vision.py:
++                # 254 that the RDNA4 stack hit on the same model — single-
++                # batch calls satisfy both constraints. Validated 2026-05-04
++                # via gemma4 preset port 23355 — patch 026.
++                num_frames = pv.shape[0]
++                for f in range(num_frames):
++                    pooled_f, mask_f = vt(pv[f : f + 1], pp[f : f + 1])
++                    # pooled_f: [1, output_len, hidden]
++                    # mask_f:   [1, output_len]
++                    real_tokens = pooled_f[0][mask_f[0]]
+                     all_embeds.append(
+                         self.embed_vision(
+                             inputs_embeds=real_tokens.unsqueeze(0)
