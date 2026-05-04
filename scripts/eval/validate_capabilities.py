@@ -286,7 +286,11 @@ def check_video(base_url: str, model: str) -> tuple[bool, str]:
                 {"type": "text", "text": "What happens in this video?  One short sentence."},
             ],
         }],
-        "max_tokens": 128,
+        # 12 frames produce ~200 reasoning tokens before the model gets to the
+        # one-sentence summary on Qwen3.6-27B; 128 truncates inside reasoning
+        # so the visible answer comes back empty. 400 is comfortable for
+        # Qwen-family + Gemma 4 thinking modes without going crazy.
+        "max_tokens": 400,
         "temperature": 0.7,
     }
     try:
@@ -294,13 +298,19 @@ def check_video(base_url: str, model: str) -> tuple[bool, str]:
     except Exception as e:
         return False, f"request failed: {e!r}"
 
-    content = (r["choices"][0]["message"].get("content") or "").lower()
+    msg = r["choices"][0]["message"]
+    content = (msg.get("content") or "").lower()
+    reasoning = (msg.get("reasoning_content") or "").lower()
+    # Same pattern as check_vision: thinking-mode models (Qwen3/Gemma) emit
+    # the substantive answer into reasoning_content, not content. Without
+    # checking both, the validator silently fails clean models.
+    haystack = content + " " + reasoning
     expected = ["move", "slide", "right", "motion", "travel", "across",
-                "ball", "circle", "red", "across"]
-    hits = [w for w in expected if w in content]
+                "ball", "circle", "red"]
+    hits = [w for w in expected if w in haystack]
     passed = len(hits) >= 1
-    msg = f"saw={hits}  response={content[:120]!r}"
-    return passed, msg
+    sample = content[:120] if content else f"(reasoning){reasoning[:120]}"
+    return passed, f"saw={hits}  response={sample!r}"
 
 
 def check_vision(base_url: str, model: str) -> tuple[bool, str]:
