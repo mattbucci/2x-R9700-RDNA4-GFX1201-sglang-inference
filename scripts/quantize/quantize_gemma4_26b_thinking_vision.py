@@ -241,7 +241,20 @@ text_dataset = rows_to_text(
     rows,
     tokenizer,
     enable_thinking=True,
-    drop_images=True,  # vision encoder is NOT quantized; images not needed for text-backbone calib
+    # FIXED 2026-05-04 (was drop_images=True). 3090 commit a7e35f0 root-caused
+    # task #66 (Gemma 4 vision validator-passes-but-degraded "scattered red
+    # pixels" instead of "a red circle"): even though the vision encoder is
+    # preserved BF16, the LM's AWQ-quantized attention QKV+O and MoE expert
+    # weights need to see image-conditioned hidden states during calibration
+    # so the quantization scales reflect the image-token distribution.
+    # drop_images=True meant ~0% of calibration samples carried image-shaped
+    # hiddens through the LM, so the quant scales were tuned exclusively for
+    # text-flavored activations. At serving time, image soft tokens flow into
+    # the LM at <image_pad> positions but encounter weights that have never
+    # seen image-distribution → noise compounds across 30 layers → degraded
+    # vision content recognition. Same shape on both 3090 (Ampere AWQ-Marlin)
+    # and R9700 (RDNA4 native AWQ) since the underlying weights are identical.
+    drop_images=False,
     max_samples=NUM_CALIBRATION_SAMPLES,
 )
 print(f"Rendered {len(text_dataset)} calibration rows")
