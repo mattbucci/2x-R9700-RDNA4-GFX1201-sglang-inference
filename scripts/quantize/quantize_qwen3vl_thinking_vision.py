@@ -113,6 +113,47 @@ recipe = GPTQModifier(
     offload_hessians=True,
 )
 
+# Per-layer (subgraph) checkpointing — defends against the save-phase OOM that
+# killed our 2026-05-03 27.5h VL-32B run. Hooks LifecycleCallbacks.sequential_
+# epoch_end and writes a snapshot every CHECKPOINT_INTERVAL subgraphs. Each
+# snapshot uses max_shard_size="2GB" (same OOM fix as the final save), so a
+# checkpoint write that would OOM dies on its own and the next interval gets a
+# fresh attempt with calibration state intact. Worst case if a snapshot DOES
+# OOM-kill the process: previous snapshot survives at .checkpoints/subgraph_*.
+# See feedback_calib_save_oom.md.
+import llmcompressor.core
+from pathlib import Path
+
+CHECKPOINT_INTERVAL = 16  # 4 snapshots across a 65-subgraph 64-layer run
+CHECKPOINT_DIR = Path(OUTPUT_DIR) / ".checkpoints"
+_subgraph_counter = {"i": 0}
+_orig_seq_epoch_end = llmcompressor.core.LifecycleCallbacks.sequential_epoch_end.__func__
+
+def _checkpoint_after_subgraph(cls, subgraph, **kwargs):
+    result = _orig_seq_epoch_end(cls, subgraph, **kwargs)
+    _subgraph_counter["i"] += 1
+    n = _subgraph_counter["i"]
+    if n % CHECKPOINT_INTERVAL == 0:
+        ckpt_dir = CHECKPOINT_DIR / f"subgraph_{n:03d}"
+        try:
+            ckpt_dir.mkdir(parents=True, exist_ok=True)
+            print(f"\n[CHECKPOINT] Subgraph {n}: saving snapshot to {ckpt_dir}/...", flush=True)
+            t_ckpt = time.time()
+            model.save_pretrained(str(ckpt_dir), save_compressed=True, max_shard_size="2GB")
+            print(f"[CHECKPOINT] Subgraph {n}: saved in {time.time()-t_ckpt:.1f}s", flush=True)
+            # Keep only the latest 2 checkpoints to bound disk usage
+            existing = sorted(CHECKPOINT_DIR.glob("subgraph_*"))
+            for old in existing[:-2]:
+                import shutil
+                shutil.rmtree(old, ignore_errors=True)
+                print(f"[CHECKPOINT] Pruned old: {old.name}", flush=True)
+        except Exception as e:
+            print(f"[CHECKPOINT] FAILED at subgraph {n}: {e!r} — continuing calibration", flush=True)
+    return result
+
+llmcompressor.core.LifecycleCallbacks.sequential_epoch_end = classmethod(_checkpoint_after_subgraph)
+print(f"[CHECKPOINT] Per-layer checkpointing enabled: every {CHECKPOINT_INTERVAL} subgraphs → {CHECKPOINT_DIR}")
+
 t0 = time.time()
 oneshot(
     model=model,
@@ -128,7 +169,12 @@ print(f"\nGPTQ complete in {elapsed/3600:.1f}h ({elapsed:.0f}s)")
 
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 print(f"Saving to {OUTPUT_DIR}...")
-model.save_pretrained(OUTPUT_DIR, save_compressed=True)
+# max_shard_size="2GB" forces sharded writes so each shard buffer is small and
+# freed between shards. Default ("5GB") OOM-killed our first VL-32B attempt
+# 2026-05-03 after 27.5h of GPTQ — Writing model shards: 0% then exit=137.
+# 62 GB RAM + 68 GB swap was insufficient for the full-model shard alloc.
+# See feedback_calib_save_oom.md.
+model.save_pretrained(OUTPUT_DIR, save_compressed=True, max_shard_size="2GB")
 tokenizer.save_pretrained(OUTPUT_DIR)
 
 # SGLang's tokenizer_manager requires preprocessor_config.json for multimodal
