@@ -122,6 +122,14 @@ if [ "$SKIP_ENV" = false ]; then
 
     echo "Upgrading transformers to 5.x..."
     pip install --no-deps "transformers>=5.0" gguf
+
+    # Eval/validator deps — pillow already comes via SGLang's [srt_hip] extras,
+    # but imageio[ffmpeg] is needed for validate_capabilities.py video check
+    # (12-frame mp4 build via iio.imwrite). Without it the video step silently
+    # skips with "no module named imageio" and you lose the modality.
+    # Ported from 3090 commit 9ee3b0d.
+    echo "Installing eval/validator deps..."
+    pip install "imageio[ffmpeg]"
 else
     echo "[2/5] Skipping conda env creation"
     init_conda
