@@ -21,6 +21,7 @@
 #   qwen35-moe     Qwen3.5-35B-A3B MoE+DeltaNet AWQ (REAM/REAP compressed)
 #   qwen36-moe     Qwen3.6-35B-A3B MoE+DeltaNet AWQ (thinking+vision, 262K)
 #   qwen36-27b     Qwen3.6-27B dense AWQ (thinking+vision, 262K)
+#   qwen3vl-32b    Qwen3-VL-32B dense AWQ (thinking+vision, self-recal balanced, 256K)
 #   coder-reap-25b Cerebras Qwen3-Coder-REAP-25B-A3B (pruned from Coder-30B, 256K)
 
 set -euo pipefail
@@ -212,6 +213,20 @@ apply_preset() {
             MAMBA_CACHE="--max-mamba-cache-size 8"
             REASONING="--reasoning-parser qwen3"
             OVERLAP=""
+            ;;
+        qwen3vl-32b)
+            # Qwen3-VL-32B-Instruct: pure Dense (head_dim=128, no DeltaNet, no MoE).
+            # Self-recal native AWQ from BF16 base via balanced_thinking_vision
+            # recipe (am_thinking + llava_instruct + ultrachat + numina_math +
+            # thestack_code, drop_images=True). 27h calib + max_shard_size="2GB"
+            # save fix (2026-05-04 OOM lessons applied). Vision tower BF16 in
+            # ignore list. Thinking + vision; no audio.
+            MODEL="${MODEL:-$MODELS_DIR/Qwen3-VL-32B-AWQ-balanced}"
+            QUANT="awq"
+            DTYPE="bfloat16"
+            CTX=32768; MEM=0.85; MAX_RUNNING=8; CHUNKED=4096; DECODE_STEPS=8
+            REASONING="--reasoning-parser qwen3"
+            EXTRA_ARGS="${EXTRA_ARGS:-} --enable-multimodal"
             ;;
         *)
             echo "Unknown model: $1"
