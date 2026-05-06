@@ -288,8 +288,8 @@ recipe = GPTQModifier(
     },
     ignore=[
         "lm_head",
-        "model.vision_tower",
-        "model.embed_vision",
+        r"re:.*vision_tower.*",
+        r"re:.*embed_vision.*",
         r"re:.*multi_modal_projector.*",
     ],
     bypass_divisibility_checks=True,
