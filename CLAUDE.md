@@ -45,6 +45,8 @@ scripts/bench/bench_256k_sweep.sh                   # 256K single-user suite acr
 - **HIP GEMV kernel required** — `scripts/common.sh` sets `LD_LIBRARY_PATH` and `PYTHONPATH`
 - Always source `scripts/common.sh` + `activate_conda` + `setup_rdna4_env` before launching
 - **Model status and benchmarks** are in README.md (single source of truth)
+- **Calibration recipe `ignore` lists must use regex for descendants.** llmcompressor matches at module-name granularity — bare strings like `"model.embed_vision"` do NOT exclude `model.embed_vision.embedding_projection` (the actual Linear underneath). Always use `r"re:.*embed_vision.*"` / `r"re:.*vision_tower.*"` / `r"re:.*multi_modal_projector.*"` patterns. Cost of forgetting: 16h calibration silently produces zero scales for the descendant Linear, model dequantizes image embeddings to zero, NaN cascade in LM forward, sampler crashes (HSAIL on RDNA4, similar on other backends). Lost 18h on 2026-05-06 Gemma 4 26B v3 to this. See `project_gemma4_v3_drop_images_false.md`.
+- **Run `scripts/eval/check_awq_scales.py` after every CT→native AWQ conversion** — scans every `*.scales` / `*.weight_scale` tensor for all-zero / NaN / Inf / extreme-magnitude values. validate_capabilities cannot catch silent zero-scales (the model loads, the server boots, generation produces NaN logits that get masked or returned as empty). The forensic-diff method took 30 seconds to find the v3 disaster the validator missed. Make it part of every pipeline step before ship.
 
 ## Working Mode
 
