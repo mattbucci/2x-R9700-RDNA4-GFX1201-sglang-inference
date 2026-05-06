@@ -33,12 +33,13 @@ for p in ../../patches/0*.patch; do git apply "$p"; done
 | 022 | gemma4-causal-dedup-entry-class | 12 | Remove text-only `Gemma4ForConditionalGeneration` alias from `gemma4_causal.py` `EntryClass` so the proper multimodal path in `gemma4_mm.py` owns the architecture (was a duplicate-registration after patch 020 fixed the mm import) |
 | 023 | gemma4-moe-mlp-no-quant-config | 14 | **Ported from 3090 2026-05-03 — NOT portable to R9700.** On Ampere, fixes a real bug: passing `quant_config` to BF16-preserved dense MLP makes loader feed BF16 into qweight slot → NaN cascade. On R9700, the AWQ loader already silently falls back to BF16 for empty qweight slots, so the bug doesn't manifest. Applying patch 023 then triggers HSAIL 0x1016 in `top_k_top_p_min_p_sampling_from_probs_torch` (sampler) on first inference — 2026-05-03 task #65 test confirmed pre-patch 4/4 PASS, post-patch 1/4 (basic only, then HSAIL). Patch file kept in `patches/` for reference but **NOT** applied via setup.sh. |
 | 024 | gemma4-mm-towers-no-quant-config | 16 | **Ported from 3090 2026-05-03 — NOT portable to R9700.** Same story as 023: fixes Ampere-side vision_tower / embed_vision / audio_tower / embed_audio random-init bug. R9700 doesn't have the bug (loader auto-falls-back to BF16). Applying triggers same HSAIL as 023. R9700 baseline `mattbucci/gemma-4-26B-AWQ` validated 4/4 PASS at vision with content-aware response (`'red and black pixels'`), confirming our vision tower works without the patch. |
+| 026 | gemma4-mm-video-per-frame-batching | 26 | **Ported from 3090 2026-05-04 (commit `3b9e077`), applied + smoked on R9700 2026-05-06 (task #69).** Replaces `pooled, pooler_mask = vt(pv, pp)` (batched call materializing `num_frames × num_patches × 2 × position_embedding_size` one_hot tensor — ~1.24 GB peak at 12 frames) with a per-frame `for f in range(num_frames): pooled_f, pooler_mask_f = vt(pv[f:f+1], pp[f:f+1])` loop. Closes both: (a) R9700's pre-existing `bsz==1` assertion at `vision.py:254` (frames pre-flattened expected `cu_seqlens` path that didn't accept batched), and (b) Ampere's OOM in `Gemma4VisionPatchEmbedder._position_embeddings` at the same shape. **Smoke result on R9700**: `mattbucci/gemma-4-26B-AWQ` v2-fixed, 3/4 PASS (basic + thinking + vision; video reaches LM decode path now instead of the bsz==1 assert, then crashes downstream — exit -6 in LM forward — same Gemma 4 video LM-side limitation 3090 saw post-026 returning "static image" for the moving circle, traced upstream per `project_gemma4_66_upstream_limit.md`). Vision PASS confirms no regression on the path the patch touches. |
 
 ## Build stack
 
 | Component | Version | Source |
 |-----------|---------|--------|
-| SGLang | v0.5.10 | stock + 14 patches |
+| SGLang | v0.5.10 | stock + 15 patches |
 | Triton | 3.6.0 | upstream triton-lang |
 | RCCL | system ROCm 7.2 (2.27.7) | no custom build |
 | PyTorch | 2.12.0+rocm7.2 | nightly |
