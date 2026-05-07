@@ -17,11 +17,10 @@ Bonus: in 001-upstream-sync, the Gemma 4 config patching for SWA layer types was
 
 **11 patches apply cleanly to v0.5.11** after regeneration: 002, 003, 005, 008, 011, 012, 015, 016, 023, 024, 026.  The 002/003/005/008/011/012/015/016/023/024/026 patch files were regenerated 2026-05-07 against v0.5.11 by applying the v0.5.10-era patch via 3-way merge, resolving the qwen3_next.py/quark_int4fp8_moe.py conflicts, then `git diff` to capture the v0.5.11-correct hunks.
 
-**4 patches still need manual rework against v0.5.11** (target files refactored or line numbers shifted significantly — 3-way auto-merge couldn't resolve cleanly):
-- 001-upstream-sync — partial port: qwen3_5.py applied cleanly, hf_transformers_utils.py is now a shim (its content moved to `hf_transformers/config.py` upstream — Gemma 4 config logic CONFIRMED present at line 176). Still need to port: `is_causal_lm_only` check in `model_config.py` (NOT upstreamed); attention/triton_backend.py, communicator.py, layernorm.py, rotary_embedding/rope_variant.py, gemma4_causal.py — multiple file conflicts from line shifts.
-- 004-rdna4-moe-fixes — MoE files refactored. Many hunks need rewriting against new fused_moe layout.
-- 007-rdna4-model-fixes — partial port: ministral3.py + qwen3_5.py applied, qwen3_next.py conflicts.
-- 027-rdna4-softcap-fp32 — softcap kernel still in upstream `logits_processor.py:1110` but the surrounding lines for our other hunks shifted; partial port.
+**14 patches apply clean to v0.5.11 in setup-order**: 001, 002, 003, 005, 007, 008, 011, 012, 015, 016, 023, 024, 026, 027.  001 was the multi-file 3-way job (gemma4_causal, qwen3_next, triton_backend, communicator, layernorm, rope_variant) — auto-resolved by preferring our changes for semantic conflicts and accepting upstream's shim for `hf_transformers_utils.py` (content moved to `hf_transformers/config.py:176`).  027 (softcap-fp32, was 009) renamed to apply after 011 since it now depends on `_is_rdna4` detection added by 011.
+
+**1 patch still needs v0.5.11-aware rewrite:**
+- 004-rdna4-moe-fixes — MoE module restructured upstream. v0.5.11 deleted `fused_moe.py`, `fused_moe_triton_config.py`, `fused_moe_triton_kernels.py` (renamed to `triton_kernels_moe.py`), `moe_align_block_size.py`, and added `moe_runner/` subdir with `aiter.py`, `base.py`, `deep_gemm.py`, `flashinfer_cutedsl.py`, `flashinfer_trtllm.py`. Our patch's hunks target the deleted files. Needs rewrite against new layout: identify which RDNA4 fixes (torch-native topk_softmax, moe_align fallback, R9700 wave32 Triton configs) still apply and where they go in v0.5.11. Triton config JSONs are file additions and likely still relevant; code mods need re-targeting.
 
 ## Apply
 
@@ -69,7 +68,7 @@ python scripts/eval/check_awq_scales.py /path/to/your/AWQ-dir
 
 | Component | Version | Source |
 |-----------|---------|--------|
-| SGLang | v0.5.11 | stock + 11 patches clean apply (was 19; 7 dropped via v0.5.10→v0.5.11 audit, 4 still need rework) |
+| SGLang | v0.5.11 | stock + 14 patches clean apply (was 19; 7 dropped via v0.5.10→v0.5.11 audit, 1 still needs rework: 004 MoE refactor) |
 | Triton | 3.6.0 | upstream triton-lang |
 | RCCL | system ROCm 7.2 (2.27.7) | no custom build |
 | PyTorch | 2.12.0+rocm7.2 | nightly |
