@@ -71,6 +71,7 @@ apply_preset() {
             MAX_RUNNING="${_ENV_MAX_RUNNING:-32}"
             CHUNKED="${_ENV_CHUNKED:-4096}"
             DECODE_STEPS="${_ENV_DECODE_STEPS:-8}"
+            MEM="${_ENV_MEM:-$MEM}"
             ;;
         coder-next)
             # Long-context target: 131K by default (can push to 256K with CLI
