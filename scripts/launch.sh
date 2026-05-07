@@ -208,6 +208,13 @@ apply_preset() {
             else
                 QUANT="awq"
             fi
+            # 2026-05-08 — bf16 required for Qwen3.5-arch decode kernels.
+            # Default fp16 from line 35 leaks the bf16-vs-fp16 type-mismatch
+            # in `triton_ops/decode_attention.py` ("Mismatched type for col0
+            # between then block (bf16) and else block (fp16)") that crashes
+            # the scheduler 3s after `Application startup complete`. Same
+            # rule as qwen36-moe at line 193.
+            DTYPE="bfloat16"
             CTX=262144; MEM=0.80; MAX_RUNNING=8; CHUNKED=8192; DECODE_STEPS=32
             CUDA_GRAPH="--disable-cuda-graph"
             MAMBA_CACHE="--max-mamba-cache-size 8"
