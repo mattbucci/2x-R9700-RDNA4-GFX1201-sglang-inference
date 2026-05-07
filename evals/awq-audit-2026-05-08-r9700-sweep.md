@@ -20,11 +20,12 @@ launched on RDNA4**, not paper-port matches.  Master log:
 | `devstral` | ✅ **1/1 PASS** in 0.7s | ✓ paris finish=stop | (skip — non-thinking) | (skip — non-vision) | Mistral-arch dense AWQ on default `DTYPE="float16"` — Mistral kernel doesn't have the bf16/fp16 mismatch Qwen3.5-arch decode kernel does. Confirms the bf16 fix isn't universally needed; arch-specific. |
 | `gemma4-31b` | ⚠️ **2/3 PASS** in 97.8s | ✓ paris | ✓ 512 tok terminated answer_ok | ✗ saw=[] response='the image shows a single cuneiform character.' | Vision FAIL is the documented upstream Gemma 4 limit (per closed task #66). Patches 023 + 024 NOT applied (HSAIL surface), patch 025 + 026 active. Thinking + basic confirmed real on R9700 — 512-tok reasoning chain finished cleanly. |
 | `gemma4` (26B MoE) | ❌ **0/3 FAIL** in 1.6s | request failed: RemoteDisconnected | request failed: ConnectionRefused | request failed: ConnectionRefused | Server reached READY at 09:21:10, then died on **first** inference. Matches the documented HSAIL 0x1016 surface in `sampler.py:479` for Gemma 4 26B on RDNA4 — same crash class that trips when patches 023+024 are applied. Server boots cleanly post-loader-fix patches, dies in first sampling step. Memory: `project_gemma4_v3_drop_images_false.md` documents the same kernel surface. |
+| `qwen36-moe` (35B-A3B) | ✅ **3/3 PASS** in 43.2s | ✓ paris finish=stop | ✓ 771 tok finish=stop reasoning_seen terminated | ✓ red+circle+round | Post-sweep extension 2026-05-08 11:32 (commit pending). Qwen3.5-arch MoE+DeltaNet+vision **bigger sister** of qwen36-27b. Crucially: thinking-mode 771-tok reasoning finished cleanly, no scheduler death. **Narrows qwen36-27b root cause** — the Qwen3.5-arch + thinking + MoE+DeltaNet path is fine on R9700; whatever crashes qwen36-27b is preset/dense-specific (model file? per-layer config? not shared with the MoE sister). Validates patch 031 (moe_wna16) end-to-end with the full thinking + vision matrix. |
 
 ## Headline
 
-Out of 8 attempted presets (+1 pre-sweep), after patch 031 land:
-- **4 fully PASS** (qwen3vl-32b 3/3, devstral 1/1, qwen35-moe 2/2, coder-reap-25b 1/1)
+Out of 8 attempted presets (+1 pre-sweep + 1 post-sweep extension), after patch 031 land:
+- **5 fully PASS** (qwen3vl-32b 3/3, devstral 1/1, qwen35-moe 2/2, coder-reap-25b 1/1, qwen36-moe 3/3)
 - **2 partial** (gemma4-31b 2/3 — vision is upstream Google limit; qwen36-27b 1/2 — basic works, thinking kills scheduler)
 - **3 distinct failure classes** still open:
 
@@ -34,7 +35,7 @@ Out of 8 attempted presets (+1 pre-sweep), after patch 031 land:
 | ~~Triton bf16/fp16 kernel-compile mismatch on Qwen3.5-arch~~ | ~~qwen35~~ | RESOLVED — DTYPE=bfloat16 in launch.sh case (`fe609c4`) |
 | OOM at MEM=0.85 / CTX=4096 / TP=2 | coder-30b | bump MEM to 0.92 or smaller CTX in sweep config |
 | Gemma 4 26B sampler HSAIL 0x1016 on first inference | gemma4 | upstream / kernel-side, RDNA4 specific |
-| Scheduler dies on thinking-mode longer generation | qwen36-27b | needs kernel-level diagnosis (R9700 Qwen3.5-arch + MoE+DeltaNet + thinking specific) |
+| Scheduler dies on thinking-mode longer generation | qwen36-27b ONLY (qwen36-moe sister passes 3/3) | needs kernel-level diagnosis — narrowed to qwen36-27b dense-specific path, NOT generic Qwen3.5-arch+thinking (moe sister passes cleanly) |
 | ~~Sweep `tee -a` interleave race~~ | qwen36-27b | RESOLVED — standalone rerun produced clean output |
 
 ## What this validates
@@ -58,3 +59,8 @@ Out of 8 attempted presets (+1 pre-sweep), after patch 031 land:
 5. qwen36-27b thinking-mode scheduler death: capture full log + stack trace
    when it next reproduces; check if disabling `--max-mamba-cache-size`
    tweaks help isolate DeltaNet vs MoE-routing as the culprit.
+6. **NEW 2026-05-08** — qwen36-moe (35B-A3B sister) passes 3/3 including
+   thinking. Diff qwen36-27b vs qwen36-moe launch flags + model configs to
+   isolate the failure path; suspect dense decode vs MoE routing variant
+   under DeltaNet hybrid layers, OR a model-file-specific issue with
+   qwen36-27b's calibration / shipped weights.
