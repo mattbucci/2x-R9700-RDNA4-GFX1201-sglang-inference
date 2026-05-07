@@ -19,6 +19,8 @@ mirrors. All results match 3090's findings exactly.
 | `Qwen3.6-35B-A3B-AWQ-native-thinking-vision`<br>(R9700 source for `mattbucci/Qwen3.6-35B-A3B-AWQ`) | 30970 / **144 flagged** | 30970 / 144 | ✅ |
 | `Qwen3.6-REAM-A3B-AWQ` (R9700 source for `mattbucci/Qwen3.6-REAM-A3B-AWQ`) | 23290 / **118 flagged** | 23290 / 118 | ✅ |
 | `Qwen3.6-VL-REAP-26B-A3B-AWQ-native`<br>(R9700 source for `mattbucci/Qwen3.6-VL-REAP-26B-A3B-AWQ`) | 23290 / **114 flagged** | 23290 / 114 | ✅ |
+| `Qwen3.6-35B-A3B-AWQ-CT-thinking-vision`<br>(R9700 source for `mattbucci/Qwen3.6-35B-A3B-AWQ-CT`) | 31010 / 0 (clean) | 31010 / 0 | ✅ |
+| `Qwen3.6-35B-A3B-AWQ-CT-thinking-vision-v2`<br>(R9700-only local, alt-recipe build) | 30850 / 0 (clean) | (not on 3090) | n/a |
 
 ## Sample R9700 flag pattern
 
@@ -76,8 +78,16 @@ work on R9700:
 
 - HF Range-fetch audit (`--hf mattbucci/Qwen3.6-35B-A3B-AWQ`) hung past
   4-min timeout — Range-request timing on R9700's network pipe vs 3090's.
-  Local-disk path validates the same files anyway; not blocking.
-- 3090's CT-on-NVIDIA `shared_expert_gate` failure mode — RDNA4 has a
-  different MoE loader code path (R9700's `gemma4_causal.py` directly,
-  not via NVIDIA's `qwen2_moe.py:Qwen2MoeSparseMoeBlock`). Not validated
-  on R9700 because the NVIDIA failure surface doesn't apply here.
+  Local-disk path validates the same files anyway (the same source bytes
+  R9700 uploaded to HF), so not blocking.
+- 3090's CT-on-NVIDIA `shared_expert_gate` failure mode + their patch 029
+  loader-side fix (their commit `83a0227`) — the bug is NVIDIA-specific
+  (`qwen2_moe.py:Qwen2MoeSparseMoeBlock.__init__` constructs the gate as
+  plain `nn.Linear` with no `quant_config`); R9700's serving path uses our
+  separate convert script's BF16 fallback for these gates and doesn't hit
+  the missing-params-dict surface. Full RDNA4 serving validation of
+  Qwen3.6-35B-A3B-AWQ-CT (on-cluster `qwen36-moe` launch + validator
+  sweep) is the cleanest cross-team confirmation; defer until next
+  scheduled qwen36 server bring-up to avoid GPU contention with the
+  in-flight 21B-REAP recalibration on 3090's box (CPU only — doesn't
+  affect us, but our audit tool sweeps RAM-touch the same models).
