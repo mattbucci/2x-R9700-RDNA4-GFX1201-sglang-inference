@@ -12,7 +12,7 @@ launched on RDNA4**, not paper-port matches.  Master log:
 | Preset | Status | basic | thinking | vision | Notes |
 |---|:---:|:---:|:---:|:---:|---|
 | `qwen3vl-32b` | ✅ **3/3 PASS** | ✓ | ✓ 107 tok | ✓ red+circle+round | Pre-sweep validation receipt at `evals/awq-audit-2026-05-08-r9700-validate-receipt.md`. Vision: `'a simple red circle with a black outline on a white background'`. |
-| `qwen36-27b` | (rerun, validator output lost in 44 MB log race) | (server ready 09:09:44) | | | Server reached READY, sent 2 chat POSTs, but `tee -a $log` interleaved with launcher's NCCL stdout produced corrupt validator output. Re-running standalone for clean number. Sweep-time fact: `dtype='bfloat16', quantization='awq'` confirmed in args (3499877 + 030 patches active). |
+| `qwen36-27b` | ⚠️ **1/2 PASS** (rerun standalone) | ✓ paris finish=stop | ✗ RemoteDisconnected | (server died) | Standalone rerun (commit `198b82b` follow-up): basic works (`'paris'`), thinking probe crashes the server connection — `Scheduler hit an exception` with no Triton/HSAIL backtrace in log; SIGTERM cascade after server hangs. Same scheduler-death-during-longer-generation pattern as gemma4 26B. R9700 Qwen3.5-arch + thinking + MoE+DeltaNet hybrid path on v0.5.11 + patches 028/029/030 needs follow-up kernel-level diagnosis. Server boots fine, basic generation fine, longer thinking-mode generation kills the scheduler. |
 | `qwen35-moe` | ❌ FAIL | — | — | — | `ValueError: moe_wna16 quantization is currently not supported in ROCm` — upstream SGLang block at `model_config.py:1144` `_verify_quantization()`. Affects native-AWQ MoE serving on ROCm any time the model isn't CT format. Workaround: serve from CT mirror + use `--quantization compressed-tensors`. |
 | `qwen35` | ❌ FAIL → **FIXED** in `fe609c4` | — | — | — | Same Triton bf16/fp16 kernel-compile mismatch as `qwen36-27b` had pre-fix. Default `DTYPE="float16"` from launch.sh:35 leaked through; case had no override. Added `DTYPE="bfloat16"` to `qwen35` case (commit `fe609c4`); rerun should land cleanly. |
 | `coder-30b` | ❌ FAIL | — | — | — | `RuntimeError: Not enough memory. Please try to increase --mem-fraction-static` at sweep's MEM=0.85 / CTX=4096. Coder-30B AWQ + KV pool exceeds the 24 GB headroom budget at TP=2 / 4K with MEM=0.85. Tune MEM=0.92 or smaller CTX next attempt. |
@@ -23,10 +23,9 @@ launched on RDNA4**, not paper-port matches.  Master log:
 
 ## Headline
 
-Out of 8 attempted presets:
+Out of 8 attempted presets (+1 pre-sweep):
 - **2 fully PASS** (qwen3vl-32b 3/3, devstral 1/1)
-- **1 partial** (gemma4-31b 2/3 — vision is upstream Google limit)
-- **1 in-flight rerun** (qwen36-27b — sweep tee race lost output, re-running standalone)
+- **2 partial** (gemma4-31b 2/3 — vision is upstream Google limit; qwen36-27b 1/2 — basic works, thinking kills scheduler)
 - **5 distinct failure classes** found, each tagged to a real R9700 limitation:
 
 | Failure class | Affected presets | R9700 fix path |
@@ -35,7 +34,8 @@ Out of 8 attempted presets:
 | Triton bf16/fp16 kernel-compile mismatch on Qwen3.5-arch | qwen35 | DTYPE fix in launch.sh case (DONE `fe609c4`) |
 | OOM at MEM=0.85 / CTX=4096 / TP=2 | coder-30b | bump MEM to 0.92 or smaller CTX in sweep config |
 | Gemma 4 26B sampler HSAIL 0x1016 on first inference | gemma4 | upstream / kernel-side, RDNA4 specific |
-| Sweep `tee -a` interleave race (lost validator output) | qwen36-27b | sweep-script side; capture validator to dedicated file |
+| Scheduler dies on thinking-mode longer generation | qwen36-27b | needs kernel-level diagnosis (R9700 Qwen3.5-arch + MoE+DeltaNet + thinking specific) |
+| ~~Sweep `tee -a` interleave race~~ | qwen36-27b | RESOLVED — standalone rerun produced clean output |
 
 ## What this validates
 
@@ -46,7 +46,15 @@ Out of 8 attempted presets:
 
 ## Next iterations
 
-1. Rerun qwen36-27b with stdout captured to a dedicated file (not `tee -a` shared with NCCL stream).  Hardware ready, AWQ + bf16 + Qwen3.5-arch all proven to work — should land clean number.
-2. Bump coder-30b sweep params: MEM=0.92, CTX=2048.
-3. ROCm `moe_wna16` block: file upstream issue + scope a stack-side patch.  R9700 shipping CT variants instead is the simpler workaround for now.
-4. Gemma 4 26B HSAIL: separate investigation, R9700-side kernel work.
+1. ~~Rerun qwen36-27b standalone~~ — DONE this iteration.  Result: basic
+   PASS, thinking FAIL (scheduler dies). Real R9700 issue, not a sweep
+   artifact.  Needs separate kernel-level diagnosis.
+2. Bump coder-30b sweep params: MEM=0.92, CTX=2048.  Re-attempt and see if
+   this preset can serve.
+3. ROCm `moe_wna16` block: file upstream issue + scope a stack-side patch.
+   R9700 shipping CT variants instead is the simpler workaround for now.
+4. Gemma 4 26B HSAIL on first inference: separate investigation, R9700-side
+   kernel work; same crash class as the patches 023+024 trip surface.
+5. qwen36-27b thinking-mode scheduler death: capture full log + stack trace
+   when it next reproduces; check if disabling `--max-mamba-cache-size`
+   tweaks help isolate DeltaNet vs MoE-routing as the culprit.
