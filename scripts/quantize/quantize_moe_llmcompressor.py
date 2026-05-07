@@ -23,6 +23,26 @@ import os
 import sys
 import time
 
+# 2026-05-08: Apply Qwen3MoeExperts unfusing patch BEFORE any from_pretrained.
+# transformers 5.x ships Qwen3MoeExperts with fused 3D Parameters; loading a
+# checkpoint with per-expert keys silently drops them as UNEXPECTED, fused
+# params init random, GPTQ saliency runs on garbage. The patch swaps in
+# Qwen3MoeExpertsUnfused (ModuleList[Qwen3MoeMLP]) which matches the
+# checkpoint shape so per-expert weights load cleanly.
+#
+# No-op for non-Qwen3MoE models — the patch only touches the
+# transformers.models.qwen3_moe.modeling_qwen3_moe namespace.
+# See memory project_ream_qwen3moe_root_cause.md.
+_REPO_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+_PATCH_DIR = os.path.join(_REPO_DIR, "patches")
+if os.path.isfile(os.path.join(_PATCH_DIR, "qwen3moe_unfused_experts.py")):
+    sys.path.insert(0, _PATCH_DIR)
+    try:
+        import qwen3moe_unfused_experts  # noqa: F401
+        print("[quantize_moe_llmcompressor] Qwen3MoeExperts → Qwen3MoeExpertsUnfused (per-expert ModuleList)")
+    except ImportError as e:
+        print(f"[quantize_moe_llmcompressor] WARNING: failed to apply unfused patch: {e}")
+
 parser = argparse.ArgumentParser()
 parser.add_argument("--model", required=True, help="HF model ID or local path")
 parser.add_argument("--output", default=None, help="Output dir (default: auto)")

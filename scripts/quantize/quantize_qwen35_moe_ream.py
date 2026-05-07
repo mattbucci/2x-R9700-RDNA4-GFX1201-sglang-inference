@@ -21,6 +21,22 @@ import os
 import sys
 import time
 
+# 2026-05-08: Apply Qwen3MoeExperts unfusing patch BEFORE any from_pretrained.
+# Necessary if the source model is Qwen3MoeForCausalLM (Coder-30B-A3B-style);
+# no-op for Qwen3_5MoeForConditionalGeneration which already uses ModuleList.
+# Without it, transformers 5.x silently drops per-expert checkpoint keys as
+# UNEXPECTED and random-inits fused 3D params, garbaging GPTQ saliency.
+# See memory project_ream_qwen3moe_root_cause.md.
+_REPO_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+_PATCH_DIR = os.path.join(_REPO_DIR, "patches")
+if os.path.isfile(os.path.join(_PATCH_DIR, "qwen3moe_unfused_experts.py")):
+    sys.path.insert(0, _PATCH_DIR)
+    try:
+        import qwen3moe_unfused_experts  # noqa: F401
+        print("[quantize_qwen35_moe_ream] Qwen3MoeExperts → Qwen3MoeExpertsUnfused (per-expert ModuleList)")
+    except ImportError as e:
+        print(f"[quantize_qwen35_moe_ream] WARNING: failed to apply unfused patch: {e}")
+
 parser = argparse.ArgumentParser()
 parser.add_argument("--model", default=None,
                     help="BF16 model path (default: ~/AI/models/Qwen3.5-35B-A3B-REAM-BF16)")
