@@ -76,31 +76,28 @@ class Qwen3MoeMLP(nn.Module):
         return self.down_proj(self.act_fn(gate) * up)
 
 
-class Qwen3MoeExpertsUnfused(nn.Module):
-    """Drop-in replacement for `Qwen3MoeExperts` using per-expert children
-    registered at the OUTER level (no inner `.experts` attribute) so the
-    state_dict prefix matches the checkpoint format `mlp.experts.{N}.{proj}.weight`.
+class Qwen3MoeExpertsUnfused(nn.ModuleList):
+    """Drop-in replacement for `Qwen3MoeExperts` that IS a `nn.ModuleList`
+    of per-expert `Qwen3MoeMLP` children.
+
+    Two reasons for ModuleList specifically (not nn.Module + add_module):
+    1. State_dict prefix matches checkpoint: `0.gate_proj.weight`, ... →
+       combined with parent `mlp.experts.` gives the full
+       `mlp.experts.0.gate_proj.weight` that Coder-30B ships.
+    2. REAM merger.py + moe_utils.run_all_experts gate on
+       `isinstance(moe_layer.experts, nn.ModuleList)` to dispatch
+       per-expert vs fused-3D code paths. We need the per-expert path,
+       so we MUST be a ModuleList instance — anything else (plain
+       nn.Module, custom container) takes the fused-3D path that
+       references missing `gate_up_proj` / `down_proj` 3D Parameters.
     """
 
     def __init__(self, config):
-        super().__init__()
+        super().__init__([Qwen3MoeMLP(config) for _ in range(config.num_experts)])
         self.num_experts = config.num_experts
         self.hidden_dim = config.hidden_size
         self.intermediate_dim = config.moe_intermediate_size
-        # Register children with NUMERIC string names so the state_dict prefix
-        # is `0.gate_proj.weight`, `1.gate_proj.weight`, etc. — matching the
-        # checkpoint format `mlp.experts.0.gate_proj.weight` exactly.
-        # Don't use `self.experts = nn.ModuleList(...)` — that adds an extra
-        # `experts.` level → `mlp.experts.experts.0.gate_proj.weight` mismatch.
-        for i in range(self.num_experts):
-            self.add_module(str(i), Qwen3MoeMLP(config))
         self.act_fn = ACT2FN[config.hidden_act]
-
-    def __getitem__(self, idx):
-        return self._modules[str(idx)]
-
-    def __len__(self):
-        return self.num_experts
 
     def forward(
         self,
@@ -108,6 +105,8 @@ class Qwen3MoeExpertsUnfused(nn.Module):
         top_k_index: torch.Tensor,
         top_k_weights: torch.Tensor,
     ) -> torch.Tensor:
+        # nn.ModuleList.forward raises NotImplementedError by default; override
+        # so Qwen3MoeSparseMoeBlock can call self.experts(hidden, idx, w).
         final_hidden_states = torch.zeros_like(hidden_states)
         with torch.no_grad():
             expert_mask = nn.functional.one_hot(top_k_index, num_classes=self.num_experts)
