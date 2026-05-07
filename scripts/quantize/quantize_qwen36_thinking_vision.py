@@ -45,6 +45,11 @@ OUTPUT_DIR = os.environ.get(
     f"{MODELS_DIR}/Qwen3.6-35B-A3B-AWQ-CT-thinking-vision",
 )
 
+# NUM_SAMPLES default 256. Cross-team audit 2026-05-08 found rare-expert under-cal
+# at 256 on Qwen3MoE-family (144 flagged scales on mattbucci/Qwen3.6-35B-A3B-AWQ
+# at this sample count). Override `NUM_SAMPLES=1024` for cleaner scales if
+# calibration time + RAM budget allow — ~4x longer GPTQ runtime, ~4x more Hessian
+# accumulation memory.
 NUM_CALIBRATION_SAMPLES = int(os.environ.get("NUM_SAMPLES", "256"))
 MAX_SEQUENCE_LENGTH = int(os.environ.get("MAX_SEQ_LEN", "1024"))
 

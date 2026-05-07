@@ -26,7 +26,11 @@ import time
 parser = argparse.ArgumentParser()
 parser.add_argument("--model", required=True, help="HF model ID or local path")
 parser.add_argument("--output", default=None, help="Output dir (default: auto)")
-parser.add_argument("--samples", type=int, default=256, help="Calibration samples")
+parser.add_argument("--samples", type=int, default=256,
+                    help="Calibration samples (default 256). Cross-team audit "
+                         "2026-05-08 found rare-expert under-cal at 256 on "
+                         "Qwen3MoE-family — bump to 1024+ for cleaner scales "
+                         "if calibration time + RAM budget allow.")
 parser.add_argument("--seq-len", type=int, default=512, help="Max sequence length")
 parser.add_argument("--offload-dir", default=None,
                     help="Disk offload dir for models that don't fit in RAM")

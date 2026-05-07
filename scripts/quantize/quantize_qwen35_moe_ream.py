@@ -27,7 +27,10 @@ parser.add_argument("--model", default=None,
 parser.add_argument("--output", default=None,
                     help="Output dir (default: <model>-AWQ-CT)")
 parser.add_argument("--samples", type=int, default=256,
-                    help="Calibration samples")
+                    help="Calibration samples (default 256). Cross-team audit "
+                         "2026-05-08 found rare-expert under-cal at 256 on "
+                         "Qwen3MoE-family — bump to 1024+ for cleaner scales "
+                         "if calibration time + RAM budget allow.")
 parser.add_argument("--seq-len", type=int, default=512,
                     help="Max sequence length for calibration")
 parser.add_argument("--offload-dir", default=None,
