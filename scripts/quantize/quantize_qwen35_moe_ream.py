@@ -102,7 +102,17 @@ ignore_list = [
 if num_experts > 0:
     # MoE router gates must stay full precision for routing accuracy
     ignore_list.append("re:.*mlp\\.gate$")
-    print(f"  Added MoE router gate exclusions")
+    # 2026-05-08 cross-team request from 3090: exclude shared_expert_gate
+    # (Qwen3MoE family has a (1, H) scalar gate per layer that's too narrow
+    # for AWQ group-quantization and trips SGLang's NVIDIA CT loader if
+    # exported as quantized triplet — the loader expects nn.Linear `weight`
+    # only, not `weight_packed/scale/shape`. Exporting BF16 here lets both
+    # NVIDIA CT and ROCm AWQ loaders consume the same checkpoint cleanly.
+    ignore_list.append("re:.*shared_expert_gate$")
+    # Also exclude shared_expert {gate,up,down}_proj (broader, narrower than
+    # the gate above — separate Linears at the same module level on Qwen3.5MoE).
+    ignore_list.append("re:.*shared_expert\\.[a-z_]+_proj$")
+    print(f"  Added MoE router gate + shared_expert exclusions")
 
 print(f"  Ignore list: {ignore_list}")
 
