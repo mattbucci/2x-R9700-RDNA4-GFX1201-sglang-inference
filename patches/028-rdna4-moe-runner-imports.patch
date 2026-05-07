@@ -1,0 +1,47 @@
+From: R9700 team <noreply@anthropic.com>
+Date: 2026-05-08
+Subject: [PATCH] moe_runner/triton: add missing platform-detection imports
+
+Surfaced 2026-05-08 during R9700 hardware launch test of qwen36-moe:
+
+  File ".../moe_runner/triton.py", line 27, in <module>
+    _is_hip = is_hip()
+              ^^^^^^
+  NameError: name 'is_hip' is not defined
+
+`triton.py` references `is_hip()`, `is_cuda()`, `cpu_has_amx_support()`,
+`is_cpu()`, `is_xpu()`, and `os.getenv()` at module-load time but never
+imports them. Reproduces on every MoE model launch (server crashes during
+import, before model instantiation).
+
+Carry-over from the v0.5.10 → v0.5.11 patch upgrade — patch 004 regen
+auto-resolve dropped these imports during conflict resolution.
+
+Receipt: scripts/eval/validate_capabilities.py 3/3 PASS on
+Qwen3-VL-32B-AWQ-balanced post fix (evals/awq-audit-2026-05-08-r9700-
+validate-receipt.md, R9700 commits 3499877 + 9dc1ea5).
+
+diff --git a/python/sglang/srt/layers/moe/moe_runner/triton.py b/python/sglang/srt/layers/moe/moe_runner/triton.py
+--- a/python/sglang/srt/layers/moe/moe_runner/triton.py
++++ b/python/sglang/srt/layers/moe/moe_runner/triton.py
+@@ -1,5 +1,6 @@
+ from __future__ import annotations
+
++import os
+ from dataclasses import dataclass
+ from typing import TYPE_CHECKING, Any, List, Optional
+
+@@ -16,6 +17,13 @@ from sglang.srt.layers.moe.moe_runner.base import (
+     register_pre_permute,
+ )
+ from sglang.srt.layers.moe.utils import MoeRunnerBackend
++from sglang.srt.utils import (
++    cpu_has_amx_support,
++    is_cpu,
++    is_cuda,
++    is_hip,
++    is_xpu,
++)
+
+ if TYPE_CHECKING:
+     from sglang.srt.layers.moe.token_dispatcher.standard import (

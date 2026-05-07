@@ -1,0 +1,47 @@
+From: R9700 team <noreply@anthropic.com>
+Date: 2026-05-08
+Subject: [PATCH] gemma4_causal: drop dual-EntryClass that collides with gemma4_mm
+
+Patch 001 (`rdna4-upstream-sync`) introduces a stub
+`Gemma4ForConditionalGeneration(Gemma4ForCausalLM): pass` and registers it
+via `EntryClass = [Gemma4ForCausalLM, Gemma4ForConditionalGeneration]` at
+the bottom of `gemma4_causal.py`.  In v0.5.11 `gemma4_mm.py:120` ALSO
+defines + registers `Gemma4ForConditionalGeneration` (the real multimodal
+implementation, `EntryClass = Gemma4ForConditionalGeneration` at
+`gemma4_mm.py:906`).
+
+Two registrations for the same name → model registry asserts at import
+time:
+
+  AssertionError: Duplicated model implementation for
+                  Gemma4ForConditionalGeneration
+
+Surfaces on every model launch (registry init runs at import, so this
+blocks Gemma 4 AND every other model from coming up).  Discovered
+2026-05-08 during R9700 hardware launch test.
+
+This patch removes the stub class + reverts `EntryClass` back to the
+single-value `Gemma4ForCausalLM` form (matches upstream v0.5.11).  The
+multimodal `gemma4_mm.py` registration becomes the canonical
+`Gemma4ForConditionalGeneration`.  Same shape as 3090's old patch 022,
+which v0.5.11 already accepted upstream — R9700's patch 001 just needed
+to drop its local override.
+
+Receipt: scripts/eval/validate_capabilities.py 3/3 PASS on
+Qwen3-VL-32B-AWQ-balanced post fix.
+
+diff --git a/python/sglang/srt/models/gemma4_causal.py b/python/sglang/srt/models/gemma4_causal.py
+--- a/python/sglang/srt/models/gemma4_causal.py
++++ b/python/sglang/srt/models/gemma4_causal.py
+@@ -1053,10 +1053,4 @@
+         return loaded_params
+
+
+-# Text-only alias for multimodal architecture name
+-# Allows loading Gemma4ForConditionalGeneration models without vision
+-class Gemma4ForConditionalGeneration(Gemma4ForCausalLM):
+-    pass
+-
+-
+-EntryClass = [Gemma4ForCausalLM, Gemma4ForConditionalGeneration]
++EntryClass = Gemma4ForCausalLM
