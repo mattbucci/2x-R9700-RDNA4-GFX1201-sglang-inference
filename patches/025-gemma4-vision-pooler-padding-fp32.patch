@@ -1,0 +1,31 @@
+diff --git a/python/sglang/srt/models/gemma4_vision.py b/python/sglang/srt/models/gemma4_vision.py
+index f0c49cbc6..9bf98b0b7 100644
+--- a/python/sglang/srt/models/gemma4_vision.py
++++ b/python/sglang/srt/models/gemma4_vision.py
+@@ -482,7 +482,10 @@ class Gemma4VisionPooler(nn.Module):
+         kernel_idxs = kernel_idxs[..., 0] + (max_x // k) * kernel_idxs[..., 1]
+ 
+         weights = F.one_hot(kernel_idxs.long(), length).float() / k_squared
+-        output = weights.transpose(1, 2).to(x.dtype) @ x
++        # Match HF reference: accumulate the avg-pool in FP32, then cast back.
++        # BF16 accumulation over k**2 = 9 patches at hidden_size=1152 loses
++        # precision proportional to bucket variance; FP32 keeps the sum clean.
++        output = (weights.transpose(1, 2) @ x.float()).to(x.dtype)
+         mask = torch.logical_not((weights == 0).all(dim=1))
+         return output, mask
+ 
+@@ -507,6 +510,14 @@ class Gemma4VisionPooler(nn.Module):
+         length = output_length
+         if isinstance(length, (list, tuple)):
+             length = length[0]
++        # Zero out padding-patch hidden states before the avg-pool. Padding
++        # positions are masked in encoder attention but still accumulate non-
++        # zero values from MLPs/residual; if we don't zero them here, the
++        # avg-pool dilutes real-content buckets with padding garbage. Matches
++        # HF reference modeling_gemma4.py:621.
++        hidden_states = hidden_states.masked_fill(
++            padding_positions.unsqueeze(-1), 0.0
++        )
+         if hidden_states.shape[1] == length:
+             mask = padding_positions
+         else:
