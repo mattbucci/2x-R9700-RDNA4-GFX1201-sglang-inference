@@ -77,20 +77,27 @@ class Qwen3MoeMLP(nn.Module):
 
 
 class Qwen3MoeExpertsUnfused(nn.Module):
-    """Drop-in replacement for `Qwen3MoeExperts` using per-expert ModuleList."""
+    """Drop-in replacement for `Qwen3MoeExperts` using per-expert children
+    registered at the OUTER level (no inner `.experts` attribute) so the
+    state_dict prefix matches the checkpoint format `mlp.experts.{N}.{proj}.weight`.
+    """
 
     def __init__(self, config):
         super().__init__()
         self.num_experts = config.num_experts
         self.hidden_dim = config.hidden_size
         self.intermediate_dim = config.moe_intermediate_size
-        self.experts = nn.ModuleList(
-            [Qwen3MoeMLP(config) for _ in range(self.num_experts)]
-        )
+        # Register children with NUMERIC string names so the state_dict prefix
+        # is `0.gate_proj.weight`, `1.gate_proj.weight`, etc. — matching the
+        # checkpoint format `mlp.experts.0.gate_proj.weight` exactly.
+        # Don't use `self.experts = nn.ModuleList(...)` — that adds an extra
+        # `experts.` level → `mlp.experts.experts.0.gate_proj.weight` mismatch.
+        for i in range(self.num_experts):
+            self.add_module(str(i), Qwen3MoeMLP(config))
         self.act_fn = ACT2FN[config.hidden_act]
 
     def __getitem__(self, idx):
-        return self.experts[idx]
+        return self._modules[str(idx)]
 
     def __len__(self):
         return self.num_experts
@@ -113,7 +120,7 @@ class Qwen3MoeExpertsUnfused(nn.Module):
                 continue
             top_k_pos, token_idx = torch.where(expert_mask[expert_idx])
             current_state = hidden_states[token_idx]
-            current_hidden_states = self.experts[expert_idx](current_state)
+            current_hidden_states = self[expert_idx](current_state)
             current_hidden_states = current_hidden_states * top_k_weights[token_idx, top_k_pos, None]
             final_hidden_states.index_add_(
                 0, token_idx, current_hidden_states.to(final_hidden_states.dtype)
