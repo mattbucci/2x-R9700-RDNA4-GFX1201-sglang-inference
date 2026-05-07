@@ -12,7 +12,7 @@ launched on RDNA4**, not paper-port matches.  Master log:
 | Preset | Status | basic | thinking | vision | Notes |
 |---|:---:|:---:|:---:|:---:|---|
 | `qwen3vl-32b` | ✅ **3/3 PASS** | ✓ | ✓ 107 tok | ✓ red+circle+round | Pre-sweep validation receipt at `evals/awq-audit-2026-05-08-r9700-validate-receipt.md`. Vision: `'a simple red circle with a black outline on a white background'`. |
-| `qwen36-27b` | ⚠️ **1/2 PASS** (rerun standalone) | ✓ paris finish=stop | ✗ RemoteDisconnected | (server died) | Standalone rerun (commit `198b82b` follow-up): basic works (`'paris'`), thinking probe crashes the server connection — `Scheduler hit an exception` with no Triton/HSAIL backtrace in log; SIGTERM cascade after server hangs. Same scheduler-death-during-longer-generation pattern as gemma4 26B. R9700 Qwen3.5-arch + thinking + MoE+DeltaNet hybrid path on v0.5.11 + patches 028/029/030 needs follow-up kernel-level diagnosis. Server boots fine, basic generation fine, longer thinking-mode generation kills the scheduler. |
+| `qwen36-27b` | ⚠️ **2/3 PASS** post DECODE_STEPS=8 fix | ✓ paris finish=stop | ⚠️ timeout @ 8192 max_tok / 300s (manual 1024 PASS finish=stop) | ✓ red+circle+round → 'red circle on a white background, resembling the flag of japan' | **2026-05-08 ROOT CAUSE FOUND.** Diff vs qwen36-moe (3/3 PASS sister): qwen36-27b ran DECODE_STEPS=32, qwen36-moe ran DECODE_STEPS=8. Manual A/B on R9700 with `--decode-steps 8`: thinking 1024 tokens completes finish=stop, correct answer; before fix server crashed scheduler. Vision now content-aware (recognizes red circle, even compares to flag of Japan). Validator's default 8192 max_tokens still exceeds the 300s probe budget at decode=8 — but **server no longer crashes**, gen progressively. Fix landed: `qwen36-27b` case in launch.sh now sets `DECODE_STEPS=8`. Open: validator probe budget tuning (out-of-scope for this preset fix). |
 | `qwen35-moe` | ✅ **2/2 PASS** post patch 031 | ✓ paris finish=stop | ✓ 406 tok finish=stop reasoning_seen terminated | (skip — no vision in preset) | Pre-patch failure: `ValueError: moe_wna16 quantization is currently not supported in ROCm` at `model_config.py:1144`.  Patch 031 restores `moe_wna16` to `rocm_supported_quantization` (was in v0.5.10 list, removed in v0.5.11 — overly conservative).  Hardware-validated 17.6s. |
 | `qwen35` | ❌ FAIL → **FIXED** in `fe609c4` | — | — | — | Same Triton bf16/fp16 kernel-compile mismatch as `qwen36-27b` had pre-fix. Default `DTYPE="float16"` from launch.sh:35 leaked through; case had no override. Added `DTYPE="bfloat16"` to `qwen35` case (commit `fe609c4`); rerun should land cleanly. |
 | `coder-30b` | ❌ FAIL | — | — | — | `RuntimeError: Not enough memory. Please try to increase --mem-fraction-static` at sweep's MEM=0.85 / CTX=4096. Coder-30B AWQ + KV pool exceeds the 24 GB headroom budget at TP=2 / 4K with MEM=0.85. Tune MEM=0.92 or smaller CTX next attempt. |
@@ -24,10 +24,10 @@ launched on RDNA4**, not paper-port matches.  Master log:
 
 ## Headline
 
-Out of 8 attempted presets (+1 pre-sweep + 1 post-sweep extension), after patch 031 land:
+Out of 8 attempted presets (+1 pre-sweep + 1 post-sweep extension), after patch 031 + DECODE_STEPS=8 fix land:
 - **5 fully PASS** (qwen3vl-32b 3/3, devstral 1/1, qwen35-moe 2/2, coder-reap-25b 1/1, qwen36-moe 3/3)
-- **2 partial** (gemma4-31b 2/3 — vision is upstream Google limit; qwen36-27b 1/2 — basic works, thinking kills scheduler)
-- **3 distinct failure classes** still open:
+- **2 partial** (gemma4-31b 2/3 — vision is upstream Google limit; qwen36-27b 2/3 — server no longer crashes thanks to DECODE_STEPS=8 fix, validator probe budget hits 300s at default 8192 max_tok — manual 1024-tok finishes clean)
+- **2 distinct failure classes** still open (down from 3):
 
 | Failure class | Affected presets | R9700 fix path |
 |---|---|---|
@@ -35,7 +35,7 @@ Out of 8 attempted presets (+1 pre-sweep + 1 post-sweep extension), after patch 
 | ~~Triton bf16/fp16 kernel-compile mismatch on Qwen3.5-arch~~ | ~~qwen35~~ | RESOLVED — DTYPE=bfloat16 in launch.sh case (`fe609c4`) |
 | OOM at MEM=0.85 / CTX=4096 / TP=2 | coder-30b | bump MEM to 0.92 or smaller CTX in sweep config |
 | Gemma 4 26B sampler HSAIL 0x1016 on first inference | gemma4 | upstream / kernel-side, RDNA4 specific |
-| Scheduler dies on thinking-mode longer generation | qwen36-27b ONLY (qwen36-moe sister passes 3/3) | needs kernel-level diagnosis — narrowed to qwen36-27b dense-specific path, NOT generic Qwen3.5-arch+thinking (moe sister passes cleanly) |
+| ~~Scheduler dies on thinking-mode longer generation~~ | ~~qwen36-27b~~ | RESOLVED 2026-05-08 — DECODE_STEPS=8 in launch.sh case (commit pending). Diff vs MoE sister isolated the variable; `--num-continuous-decode-steps=32` + per-Linear AWQ kernel + DeltaNet hybrid + thinking-mode is the bad combo on R9700. =8 (matches qwen36-moe) keeps server alive. |
 | ~~Sweep `tee -a` interleave race~~ | qwen36-27b | RESOLVED — standalone rerun produced clean output |
 
 ## What this validates

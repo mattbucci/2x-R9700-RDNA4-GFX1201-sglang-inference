@@ -228,7 +228,14 @@ apply_preset() {
             # the scheduler 3s after `Application startup complete`. Same
             # rule as qwen36-moe at line 193.
             DTYPE="bfloat16"
-            CTX=262144; MEM=0.80; MAX_RUNNING=8; CHUNKED=8192; DECODE_STEPS=32
+            # 2026-05-08 — DECODE_STEPS=8 (was 32). Sweep surfaced thinking-
+            # mode scheduler death at 32; manual A/B (commit pending) on
+            # R9700 with --decode-steps 8 confirmed clean thinking gen
+            # (1024 tok, finish=stop, correct answer) where 32 crashed.
+            # The bigger MoE sister (qwen36-moe) ships DECODE_STEPS=8 and
+            # passes 3/3, so 8 is the proven-safe value across the family.
+            # Cost: slightly slower batch decode; Benefit: thinking works.
+            CTX=262144; MEM=0.80; MAX_RUNNING=8; CHUNKED=8192; DECODE_STEPS=8
             CUDA_GRAPH="--disable-cuda-graph"
             MAMBA_CACHE="--max-mamba-cache-size 8"
             REASONING="--reasoning-parser qwen3"
