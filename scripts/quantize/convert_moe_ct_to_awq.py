@@ -19,6 +19,7 @@ import glob
 import json
 import os
 import shutil
+import sys
 from collections import OrderedDict
 
 import torch
@@ -336,6 +337,27 @@ def main():
     print(f"\nDone! {total_quantized} quantized, {total_passthrough} passthrough")
     print(f"AWQ model at: {dst_dir}")
     print(f"Config: AWQ 4-bit, group_size={group_size}")
+
+    # Post-conversion AWQ scales sanity gate (CLAUDE.md rule). validate_capabilities
+    # cannot catch silent zero-scales (model loads, server boots, generation produces
+    # NaN logits that get masked or returned as empty). The forensic-diff method took
+    # 30 seconds to find the v3 Gemma-4-26B disaster the validator missed, so this
+    # runs every CT→AWQ conversion automatically. Non-zero exit means DO NOT SHIP.
+    # Cross-stack: 3090 wired the same gate at their commit `4f57767`.
+    import subprocess
+    repo_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    checker = os.path.join(repo_root, "scripts", "eval", "check_awq_scales.py")
+    if os.path.exists(checker):
+        print("\n=== Running check_awq_scales.py post-conversion gate ===")
+        result = subprocess.run([sys.executable, checker, dst_dir], capture_output=False)
+        if result.returncode != 0:
+            print("\n🛑 check_awq_scales.py FAILED — DO NOT SHIP this AWQ.")
+            print("   Investigate the flagged tensors before any further use.")
+            sys.exit(result.returncode)
+        else:
+            print("✅ AWQ scales sanity check passed.")
+    else:
+        print(f"\n⚠️  check_awq_scales.py not found at {checker} — skipping sanity gate.")
 
 
 if __name__ == "__main__":

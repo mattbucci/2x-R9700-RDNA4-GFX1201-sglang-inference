@@ -94,6 +94,19 @@ else
     conda deactivate
 fi
 
+# --- Step 3b: AWQ scales sanity gate (CLAUDE.md rule) ---
+# Belt-and-suspenders: convert_moe_ct_to_awq.py runs the gate inline at conversion
+# time, but other CT→AWQ scripts may not. Re-run here to guarantee the gate runs
+# regardless of which CONVERT_SCRIPT was used. Non-zero exit blocks ship.
+echo ""
+echo "=== Step 3b: AWQ scales sanity check ==="
+if ! python scripts/eval/check_awq_scales.py "$AWQ_OUTPUT" 2>&1 | tee "$LOG_DIR/${MODEL_KEY}_check_scales.log"; then
+    echo ""
+    echo "🛑 check_awq_scales.py FAILED — DO NOT SHIP $AWQ_OUTPUT" >&2
+    echo "   Investigate flagged tensors before proceeding." >&2
+    exit 4
+fi
+
 # --- Step 4: merge vision weights (multimodal models) ---
 if [[ "$HAS_VISION" -eq 1 ]]; then
     conda activate quant
