@@ -186,7 +186,12 @@ apply_preset() {
             # else block (fp16)" Triton compile crash 3s after Application
             # startup complete. Surfaced via R9700 sweep 2026-05-08.
             DTYPE="bfloat16"
-            CTX=262144; MEM=0.80; MAX_RUNNING=8; CHUNKED=8192; DECODE_STEPS=32
+            # 2026-05-08 — DECODE_STEPS=8 (was 32). Same fix as qwen36-27b
+            # (commit 6de2ff9). Qwen3.5-arch + per-Linear AWQ + DeltaNet
+            # hybrid + DECODE_STEPS=32 produces unstable/slow thinking
+            # generation on RDNA4. =8 (matching qwen36-moe sister) is the
+            # proven-safe value across the family.
+            CTX=262144; MEM=0.80; MAX_RUNNING=8; CHUNKED=8192; DECODE_STEPS=8
             CUDA_GRAPH="--disable-cuda-graph"
             MAMBA_CACHE="--max-mamba-cache-size 8"
             CHAT_TEMPLATE="--chat-template \$MODEL/chat_template.jinja"
