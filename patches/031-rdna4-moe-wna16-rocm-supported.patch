@@ -1,0 +1,48 @@
+From: R9700 team <noreply@anthropic.com>
+Date: 2026-05-08
+Subject: [PATCH] model_config: add moe_wna16 to rocm_supported_quantization
+
+Surfaced 2026-05-08 by R9700 capability sweep — qwen35-moe + coder-reap-25b
+both crashed at config-time before model load:
+
+  ValueError: moe_wna16 quantization is currently not supported in ROCm.
+
+The rejection is at `_verify_quantization()` (model_config.py:1144), which
+checks `quant in rocm_supported_quantization` and `moe_wna16` is missing
+from that list in v0.5.11.
+
+It WAS in the v0.5.10 list — R9700 has been serving Qwen3.5-arch native-AWQ
+MoE through `moe_wna16` for months without issue. The Triton kernels at
+`moe_wna16.py` work on RDNA4 (we already route CT MoE through them via
+`SGLANG_FORCE_CT_MOE_TRITON` from patch 008). The check is overly
+conservative on v0.5.11 — kernel works, only the config-time check is
+saying no.
+
+Restoring `moe_wna16` to the list. Verified post-patch:
+
+- qwen35-moe: 2/2 PASS in 17.6s — `[PASS] basic finish=stop answer='paris'`,
+  `[PASS] thinking reasoning_seen terminated answer_ok (406 tok, finish=stop)`.
+  Server boot clean, server fired up at 11:08:17, validator ran clean.
+
+Without this patch the affected R9700 presets (any `moe_wna16` route) all
+hit the config-time rejection. With this patch: native-AWQ MoE serving
+unblocked across the fleet.
+
+diff --git a/python/sglang/srt/configs/model_config.py b/python/sglang/srt/configs/model_config.py
+--- a/python/sglang/srt/configs/model_config.py
++++ b/python/sglang/srt/configs/model_config.py
+@@ -1025,6 +1025,14 @@
+             "mxfp4",
+             "auto-round",
+             "quark_int4fp8_moe",
++            # 2026-05-08 R9700 fix: moe_wna16 native-AWQ MoE serving on ROCm.
++            # Triton kernels at moe_wna16.py work on RDNA4 (we route CT MoE
++            # through SGLANG_FORCE_CT_MOE_TRITON via patch 008). Was in the
++            # v0.5.10 list, removed in v0.5.11 — restoring. Without it,
++            # qwen35-moe + coder-reap-25b + qwen36-27b/qwen36-moe (when
++            # serving native AWQ) all hit "moe_wna16 quantization is currently
++            # not supported in ROCm" config-time rejection.
++            "moe_wna16",
+         ]
+         optimized_quantization_methods = [
+             "fp8",
