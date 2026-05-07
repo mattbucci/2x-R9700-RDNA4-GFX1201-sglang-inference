@@ -4,21 +4,23 @@ Patches applied in order on a stock `git checkout v0.5.11`.  This file is the so
 
 ## v0.5.10 → v0.5.11 audit (2026-05-07)
 
-**5 patches dropped — fully upstreamed in v0.5.11** (moved to `upstreamed-in-v0.5.11/` for reference):
+**7 patches dropped — fully upstreamed in v0.5.11** (moved to `upstreamed-in-v0.5.11/` for reference):
+- 006 (rdna4-awq-kernels) — DROPPED 2026-05-07: both hunks (HIP GEMV BF16-to-Triton fallback simplification + `AWQ_MOE_FORCE_LOOP` env var override) match v0.5.11 `awq/awq.py:496` and `awq/awq.py:761` exactly.
+- 009-qwen35-moe-causalLM — DROPPED 2026-05-07: upstream v0.5.11 ships `Qwen3_5ForCausalLM` (qwen3_5.py:935) and `Qwen3_5MoeForCausalLM` (qwen3_5.py:1230) — the wrapper classes our patch added. The diagnostic logging in `process_weights_after_loading` was temporary debug.
 - 010 (rdna4-gptq-hip-fallback) — DROPPED 2026-05-07: gptq.py portion was already duplicated into 011 (FP32 attention work), and marlin_utils.py HIP-disable is upstreamed in v0.5.11. Both halves now elsewhere; 010 redundant.
 - 013 (gemma4-multimodal) — upstream now ships `gemma4_mm.py` (878 lines), `gemma4_vision.py` (599), `gemma4_audio.py` (873). Our 956-line patch matched in spirit; upstream's is more complete.
 - 014 (gemma4-reasoning-parser) — `Gemma4Detector` at `parser/reasoning_parser.py:510` (matches our cherry-pick of PR #21952).
 - 020 (clippable-linear-shim) — upstream has the **full implementation** at `layers/clippable_linear.py` (283 lines vs our 33-line shim).  Our patch comment said "If multimodal looks degraded, port the actual ClippableLinear from upstream" — that's now done upstream.
 - 022 (gemma4-causal-dedup-entry-class) — `EntryClass = Gemma4ForCausalLM` (singular, no list with multimodal alias).
 
+Bonus: in 001-upstream-sync, the Gemma 4 config patching for SWA layer types was upstreamed too — `python/sglang/srt/utils/hf_transformers/config.py:176` matches the comment + logic our patch added. `hf_transformers_utils.py` itself is now a 17-line shim re-exporting from the new `hf_transformers` package.
+
 **11 patches apply cleanly to v0.5.11** after regeneration: 002, 003, 005, 008, 011, 012, 015, 016, 023, 024, 026.  The 002/003/005/008/011/012/015/016/023/024/026 patch files were regenerated 2026-05-07 against v0.5.11 by applying the v0.5.10-era patch via 3-way merge, resolving the qwen3_next.py/quark_int4fp8_moe.py conflicts, then `git diff` to capture the v0.5.11-correct hunks.
 
-**6 patches still need manual rework against v0.5.11** (target files refactored or line numbers shifted significantly — 3-way auto-merge couldn't resolve cleanly):
-- 001-upstream-sync — partial port: qwen3_5.py applied, qwen3_next.py + hf_transformers_utils.py conflicts. The is_causal_lm_only check NOT upstreamed; still needed.
+**4 patches still need manual rework against v0.5.11** (target files refactored or line numbers shifted significantly — 3-way auto-merge couldn't resolve cleanly):
+- 001-upstream-sync — partial port: qwen3_5.py applied cleanly, hf_transformers_utils.py is now a shim (its content moved to `hf_transformers/config.py` upstream — Gemma 4 config logic CONFIRMED present at line 176). Still need to port: `is_causal_lm_only` check in `model_config.py` (NOT upstreamed); attention/triton_backend.py, communicator.py, layernorm.py, rotary_embedding/rope_variant.py, gemma4_causal.py — multiple file conflicts from line shifts.
 - 004-rdna4-moe-fixes — MoE files refactored. Many hunks need rewriting against new fused_moe layout.
-- 006-rdna4-awq-kernels — AWQ refactored to subpackage: `quantization/awq.py` → `quantization/awq/awq.py`. Need to update patch paths + verify hunks still apply.
 - 007-rdna4-model-fixes — partial port: ministral3.py + qwen3_5.py applied, qwen3_next.py conflicts.
-- 009-qwen35-moe-causalLM — same AWQ refactor as 006 + model files.
 - 009-rdna4-softcap-fp32 — softcap kernel still in upstream `logits_processor.py:1110` but the surrounding lines for our other hunks shifted; partial port.
 
 ## Apply
@@ -67,7 +69,7 @@ python scripts/eval/check_awq_scales.py /path/to/your/AWQ-dir
 
 | Component | Version | Source |
 |-----------|---------|--------|
-| SGLang | v0.5.11 | stock + 15 patches (was 19; 4 dropped after v0.5.10→v0.5.11 audit) |
+| SGLang | v0.5.11 | stock + 11 patches clean apply (was 19; 7 dropped via v0.5.10→v0.5.11 audit, 4 still need rework) |
 | Triton | 3.6.0 | upstream triton-lang |
 | RCCL | system ROCm 7.2 (2.27.7) | no custom build |
 | PyTorch | 2.12.0+rocm7.2 | nightly |
