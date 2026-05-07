@@ -172,6 +172,12 @@ apply_preset() {
             # 256K single-user we need every MiB for KV cache — graphs also
             # violate the RDNA4 default (see rules-for-agents.md).
             MODEL="${MODEL:-$MODELS_DIR/Qwen3.5-27B-AWQ-4bit-calibrated}"
+            # 2026-05-08 — bf16 required (same fix as qwen36-27b/qwen36-moe).
+            # Qwen3.5-arch decode kernels expect bf16 throughout; default fp16
+            # leaks "Mismatched type for col0 between then block (bf16) and
+            # else block (fp16)" Triton compile crash 3s after Application
+            # startup complete. Surfaced via R9700 sweep 2026-05-08.
+            DTYPE="bfloat16"
             CTX=262144; MEM=0.80; MAX_RUNNING=8; CHUNKED=8192; DECODE_STEPS=32
             CUDA_GRAPH="--disable-cuda-graph"
             MAMBA_CACHE="--max-mamba-cache-size 8"
