@@ -25,7 +25,7 @@ TORCHAUDIO_VERSION="2.11.0.dev20260310+rocm7.2"
 TORCH_INDEX="https://download.pytorch.org/whl/nightly/rocm7.2"
 
 SGLANG_REPO="https://github.com/sgl-project/sglang.git"
-SGLANG_TAG="v0.5.10"
+SGLANG_TAG="v0.5.11"
 
 SKIP_ENV=false
 for arg in "$@"; do

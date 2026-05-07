@@ -1,12 +1,36 @@
-# SGLang v0.5.10 RDNA4 Patches
+# SGLang v0.5.11 RDNA4 Patches
 
-14 patches applied in order on a stock `git checkout v0.5.10`.  This file is the source of truth for **what's been fixed and how** — the main [README.md](../README.md) documents current state only.
+Patches applied in order on a stock `git checkout v0.5.11`.  This file is the source of truth for **what's been fixed and how** — the main [README.md](../README.md) documents current state only.
+
+## v0.5.10 → v0.5.11 audit (2026-05-07)
+
+**4 patches dropped — fully upstreamed in v0.5.11** (moved to `upstreamed-in-v0.5.11/` for reference):
+- 013 (gemma4-multimodal) — upstream now ships `gemma4_mm.py` (878 lines), `gemma4_vision.py` (599), `gemma4_audio.py` (873). Our 956-line patch matched in spirit; upstream's is more complete.
+- 014 (gemma4-reasoning-parser) — `Gemma4Detector` at `parser/reasoning_parser.py:510` (matches our cherry-pick of PR #21952).
+- 020 (clippable-linear-shim) — upstream has the **full implementation** at `layers/clippable_linear.py` (283 lines vs our 33-line shim).  Our patch comment said "If multimodal looks degraded, port the actual ClippableLinear from upstream" — that's now done upstream.
+- 022 (gemma4-causal-dedup-entry-class) — `EntryClass = Gemma4ForCausalLM` (singular, no list with multimodal alias).
+
+**Partially upstreamed — needs regen with reduced scope:**
+- 010 — Marlin HIP fallback hunk (`marlin_utils.py:122`) is in v0.5.11; our gptq.py HIP fallback is still needed.
+
+**Still RDNA4-specific, line numbers shifted, needs regen at v0.5.11:** 001, 004, 005, 006, 007, 009-qwen35-moe, 009-rdna4-softcap-fp32, 016 — 8 patches whose target files moved or refactored.  Most apply via `git apply --3way` (auto-merge).
+
+**Apply cleanly to v0.5.11 with no regen:** 002, 003, 008, 011, 012, 015, 023, 024, 026 — 9 patches.
 
 ## Apply
 
 ```bash
-cd components/sglang && git checkout v0.5.10
-for p in ../../patches/0*.patch; do git apply "$p"; done
+cd components/sglang && git checkout v0.5.11
+for p in ../../patches/0*.patch; do
+  git apply --3way "$p" || echo "WARN: $p failed — see patches/README.md upgrade audit"
+done
+```
+
+## Sanity check after apply
+
+```bash
+# Confirm no zero-scale regressions vs base AWQ — the v3 disaster was caught here, not by validate
+python scripts/eval/check_awq_scales.py /path/to/your/AWQ-dir
 ```
 
 ## Patch Index
@@ -25,12 +49,12 @@ for p in ../../patches/0*.patch; do git apply "$p"; done
 | 010 | rdna4-gptq-hip-fallback | — | GPTQ HIP kernel fallback (`gptq_gemm`/`gptq_shuffle`) |
 | 011 | rdna4-triton-attention-fp32 | — | FP32 value-accumulation in Triton decode/extend attention (see investigation below) |
 | 012 | rdna4-sliding-window-decode-fix | 168 | `torch_native` SWA support for decode/extend; translate full pool → SWA pool; without it, Gemma 4 crashes on any seq > window |
-| 013 | gemma4-multimodal | 2,887 | Vision + audio encoders, multimodal processor, BF16 vision (FP16 overflows after 27 layers), per-expert AWQ loading, SDPA vision backend |
-| 014 | gemma4-reasoning-parser | 40 | Cherry-picked upstream PR #21952: `Gemma4Detector` for `<|channel>` / `<channel|>` — enables `--reasoning-parser gemma4` |
+| ~~013~~ | ~~gemma4-multimodal~~ | — | **DROPPED 2026-05-07** — upstreamed in v0.5.11 (gemma4_mm/vision/audio.py shipped). Archived at `upstreamed-in-v0.5.11/013-gemma4-multimodal.patch`. |
+| ~~014~~ | ~~gemma4-reasoning-parser~~ | — | **DROPPED 2026-05-07** — upstreamed in v0.5.11 as `Gemma4Detector` at `parser/reasoning_parser.py:510`. Bonus: upstream also brings `think_start_self_label` + `HunyuanDetector`. Archived. |
 | 015 | qwen36-vision-config-dict-wrap | — | Wrap dict `vision_config` in `SimpleNamespace` so Qwen3.6 VL loads through our rebuilt config |
 | 016 | qwen3next-conv1d-tp | — | Split Qwen3-Next vs Qwen3.5 mamba2_cache_params: Coder-Next 80B uses TP-sharded conv/SSM state; Qwen3.5 overrides to `tp_world_size=1` to match its replicated DeltaNet |
-| 020 | gemma4-clippable-linear-shim | 33 | Add `Clippable*ParallelLinear` aliases so `gemma4_audio.py`/`gemma4_vision.py`/`gemma4_mm.py` import cleanly (without the shim, multimodal load silently falls back to text-only `Gemma4ForCausalLM` and 26B emits `<pad>`) |
-| 022 | gemma4-causal-dedup-entry-class | 12 | Remove text-only `Gemma4ForConditionalGeneration` alias from `gemma4_causal.py` `EntryClass` so the proper multimodal path in `gemma4_mm.py` owns the architecture (was a duplicate-registration after patch 020 fixed the mm import) |
+| ~~020~~ | ~~gemma4-clippable-linear-shim~~ | — | **DROPPED 2026-05-07** — upstreamed in v0.5.11 as the full implementation at `layers/clippable_linear.py` (283 lines vs our 33-line shim). Archived. |
+| ~~022~~ | ~~gemma4-causal-dedup-entry-class~~ | — | **DROPPED 2026-05-07** — upstreamed in v0.5.11 (`EntryClass = Gemma4ForCausalLM` singular). Archived. |
 | 023 | gemma4-moe-mlp-no-quant-config | 14 | **Ported from 3090 2026-05-03 — NOT portable to R9700.** On Ampere, fixes a real bug: passing `quant_config` to BF16-preserved dense MLP makes loader feed BF16 into qweight slot → NaN cascade. On R9700, the AWQ loader already silently falls back to BF16 for empty qweight slots, so the bug doesn't manifest. Applying patch 023 then triggers HSAIL 0x1016 in `top_k_top_p_min_p_sampling_from_probs_torch` (sampler) on first inference — 2026-05-03 task #65 test confirmed pre-patch 4/4 PASS, post-patch 1/4 (basic only, then HSAIL). Patch file kept in `patches/` for reference but **NOT** applied via setup.sh. |
 | 024 | gemma4-mm-towers-no-quant-config | 16 | **Ported from 3090 2026-05-03 — NOT portable to R9700.** Same story as 023: fixes Ampere-side vision_tower / embed_vision / audio_tower / embed_audio random-init bug. R9700 doesn't have the bug (loader auto-falls-back to BF16). Applying triggers same HSAIL as 023. R9700 baseline `mattbucci/gemma-4-26B-AWQ` validated 4/4 PASS at vision with content-aware response (`'red and black pixels'`), confirming our vision tower works without the patch. |
 | 026 | gemma4-mm-video-per-frame-batching | 26 | **Ported from 3090 2026-05-04 (commit `3b9e077`), applied + smoked on R9700 2026-05-06 (task #69).** Replaces `pooled, pooler_mask = vt(pv, pp)` (batched call materializing `num_frames × num_patches × 2 × position_embedding_size` one_hot tensor — ~1.24 GB peak at 12 frames) with a per-frame `for f in range(num_frames): pooled_f, pooler_mask_f = vt(pv[f:f+1], pp[f:f+1])` loop. Closes both: (a) R9700's pre-existing `bsz==1` assertion at `vision.py:254` (frames pre-flattened expected `cu_seqlens` path that didn't accept batched), and (b) Ampere's OOM in `Gemma4VisionPatchEmbedder._position_embeddings` at the same shape. **Smoke result on R9700**: `mattbucci/gemma-4-26B-AWQ` v2-fixed, 3/4 PASS (basic + thinking + vision; video reaches LM decode path now instead of the bsz==1 assert, then crashes downstream — exit -6 in LM forward — same Gemma 4 video LM-side limitation 3090 saw post-026 returning "static image" for the moving circle, traced upstream per `project_gemma4_66_upstream_limit.md`). Vision PASS confirms no regression on the path the patch touches. |
@@ -39,7 +63,7 @@ for p in ../../patches/0*.patch; do git apply "$p"; done
 
 | Component | Version | Source |
 |-----------|---------|--------|
-| SGLang | v0.5.10 | stock + 15 patches |
+| SGLang | v0.5.11 | stock + 15 patches (was 19; 4 dropped after v0.5.10→v0.5.11 audit) |
 | Triton | 3.6.0 | upstream triton-lang |
 | RCCL | system ROCm 7.2 (2.27.7) | no custom build |
 | PyTorch | 2.12.0+rocm7.2 | nightly |
