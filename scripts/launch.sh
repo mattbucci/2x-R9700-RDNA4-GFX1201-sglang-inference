@@ -67,6 +67,15 @@ apply_preset() {
             # ctx=32K + max_running=32 doesn't fit on TP=1 / 24 GB cards.
             # Override via `CTX=2048 MEM=0.92 MAX_RUNNING=1 launch.sh coder-30b`
             # for tighter test envs (sweep validation, single-card).
+            # 2026-05-08 — DTYPE=bfloat16 + QUANT=moe_wna16. Sister Qwen3MoE
+            # presets (qwen35-moe, coder-reap-25b, qwen36-moe) all run on
+            # moe_wna16 + bf16 cleanly. coder-30b case was missing both
+            # overrides and inherited fp16 + plain `awq` from line 35/34
+            # globals — that path routes 128 experts × 48 layers × 3 projs
+            # through per-Linear AWQ kernels per forward, triggering HSAIL
+            # 0x1016 on first inference. moe_wna16 fuses the experts.
+            QUANT="moe_wna16"
+            DTYPE="bfloat16"
             CTX="${_ENV_CTX:-32768}"
             MAX_RUNNING="${_ENV_MAX_RUNNING:-32}"
             CHUNKED="${_ENV_CHUNKED:-4096}"
