@@ -21,7 +21,7 @@ Bonus: in 001-upstream-sync, the Gemma 4 config patching for SWA layer types was
 - 001-upstream-sync — partial port: qwen3_5.py applied cleanly, hf_transformers_utils.py is now a shim (its content moved to `hf_transformers/config.py` upstream — Gemma 4 config logic CONFIRMED present at line 176). Still need to port: `is_causal_lm_only` check in `model_config.py` (NOT upstreamed); attention/triton_backend.py, communicator.py, layernorm.py, rotary_embedding/rope_variant.py, gemma4_causal.py — multiple file conflicts from line shifts.
 - 004-rdna4-moe-fixes — MoE files refactored. Many hunks need rewriting against new fused_moe layout.
 - 007-rdna4-model-fixes — partial port: ministral3.py + qwen3_5.py applied, qwen3_next.py conflicts.
-- 009-rdna4-softcap-fp32 — softcap kernel still in upstream `logits_processor.py:1110` but the surrounding lines for our other hunks shifted; partial port.
+- 027-rdna4-softcap-fp32 — softcap kernel still in upstream `logits_processor.py:1110` but the surrounding lines for our other hunks shifted; partial port.
 
 ## Apply
 
