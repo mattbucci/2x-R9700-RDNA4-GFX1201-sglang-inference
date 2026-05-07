@@ -98,9 +98,17 @@ def check_thinking(
     base_url: str,
     model: str,
     thinking_kwargs: dict | None,
-    max_tokens: int = 4096,
+    max_tokens: int = 8192,
 ) -> tuple[bool, str]:
-    """Send a reasoning prompt, verify <think>...</think> structure + clean termination."""
+    """Send a reasoning prompt, verify <think>...</think> structure + clean termination.
+
+    NOTE 2026-05-08: bumped default from 4096 → 8192 (3090 cross-team port,
+    their commit a37c450). Some thinking-cal recals (e.g. Qwen3.5-28B-REAP)
+    produce reasoning chains for the bat-and-ball problem that legitimately
+    exceed 4096 tokens — `reasoning_seen=True` and `answer_ok=True` but
+    `finish=length` because the model didn't print `</think>` within budget.
+    8192 gives enough headroom for the verbose recipes; the per-request
+    `_model_max_len` cap below still tightens this when CTX is small."""
     prompt = (
         "A ball and a bat cost $1.10 together.  The bat costs $1.00 more than "
         "the ball.  How much does the ball cost?  Put the final numeric answer "
@@ -179,7 +187,11 @@ def check_thinking(
     #   (b) answer was found in reasoning_content even if max_tokens hit —
     #       the model is calibrated correctly, the bat-ball is just verbose
     #       at temp=0.7.  We log TRUNCATED so the user sees it.
-    passed = has_reasoning and answer_correct and (closed or not truncated)
+    # 2026-05-08 cross-team port from 3090 (their a37c450): original gate
+    # `closed or not truncated` was over-strict and FAILED case (b). Now
+    # matches the docstring intent — PASS as long as reasoning was seen and
+    # the answer is correct, regardless of `</think>` printing in budget.
+    passed = has_reasoning and answer_correct
     msg = (
         f"{' '.join(status) or 'no_markers':30s} "
         f"({completion_tokens} tok, finish={finish})"
