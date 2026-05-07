@@ -1,16 +1,7 @@
 diff --git a/python/sglang/srt/layers/attention/triton_ops/decode_attention.py b/python/sglang/srt/layers/attention/triton_ops/decode_attention.py
-index 2b166f3b0..2a07a313a 100644
+index 2b166f3b0..a09615429 100644
 --- a/python/sglang/srt/layers/attention/triton_ops/decode_attention.py
 +++ b/python/sglang/srt/layers/attention/triton_ops/decode_attention.py
-@@ -25,7 +25,7 @@ import logging
- import triton
- import triton.language as tl
- 
--from sglang.srt.utils import is_hip
-+from sglang.srt.utils import get_device_capability, is_hip
- 
- _is_hip = is_hip()
- 
 @@ -123,7 +123,8 @@ def _fwd_kernel_stage1(
                  mask=(offs_n[:, None] < split_kv_end) & (mask_d[None, :]),
                  other=0.0,

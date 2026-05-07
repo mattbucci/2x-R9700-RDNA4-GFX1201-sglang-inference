@@ -1,9 +1,13 @@
 diff --git a/python/sglang/srt/layers/attention/triton_ops/decode_attention.py b/python/sglang/srt/layers/attention/triton_ops/decode_attention.py
-index 2a07a313a..a05895e64 100644
+index a09615429..a05895e64 100644
 --- a/python/sglang/srt/layers/attention/triton_ops/decode_attention.py
 +++ b/python/sglang/srt/layers/attention/triton_ops/decode_attention.py
-@@ -28,6 +28,7 @@ import triton.language as tl
- from sglang.srt.utils import get_device_capability, is_hip
+@@ -25,9 +25,10 @@ import logging
+ import triton
+ import triton.language as tl
+ 
+-from sglang.srt.utils import is_hip
++from sglang.srt.utils import get_device_capability, is_hip
  
  _is_hip = is_hip()
 +_is_rdna4 = _is_hip and get_device_capability()[0] >= 12
