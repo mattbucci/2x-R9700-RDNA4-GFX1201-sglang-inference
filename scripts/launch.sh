@@ -63,7 +63,14 @@ apply_preset() {
             ;;
         coder-30b)
             MODEL="${MODEL:-$MODELS_DIR/Qwen3-Coder-30B-A3B-AWQ}"
-            CTX=32768; MAX_RUNNING=32; CHUNKED=4096; DECODE_STEPS=8
+            # Env-overridable defaults — coder-30b is 30B AWQ MoE; default
+            # ctx=32K + max_running=32 doesn't fit on TP=1 / 24 GB cards.
+            # Override via `CTX=2048 MEM=0.92 MAX_RUNNING=1 launch.sh coder-30b`
+            # for tighter test envs (sweep validation, single-card).
+            CTX="${_ENV_CTX:-32768}"
+            MAX_RUNNING="${_ENV_MAX_RUNNING:-32}"
+            CHUNKED="${_ENV_CHUNKED:-4096}"
+            DECODE_STEPS="${_ENV_DECODE_STEPS:-8}"
             ;;
         coder-next)
             # Long-context target: 131K by default (can push to 256K with CLI
