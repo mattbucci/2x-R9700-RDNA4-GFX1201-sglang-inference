@@ -102,201 +102,40 @@ index 8d678ec54..37970f3c8 100644
              q = q.view(-1, self.num_heads * self.head_dim)
  
          attn_output = self.attn(q, k, v, forward_batch)
-diff --git a/python/sglang/srt/models/qwen3_5.py b/python/sglang/srt/models/qwen3_5.py
-index 2b3315fbf..dfd0bcc6e 100644
---- a/python/sglang/srt/models/qwen3_5.py
-+++ b/python/sglang/srt/models/qwen3_5.py
-@@ -110,6 +110,21 @@ _is_amx_available = cpu_has_amx_support()
- cached_get_processor = lru_cache(get_processor)
- 
- 
-+def _should_replicate_deltanet_for_tp(
-+    quant_config: Optional[QuantizationConfig],
-+) -> bool:
-+    """Whether to replicate DeltaNet+MLP layers across TP ranks.
-+
-+    FP8 models are too large to replicate everything, so only DeltaNet
-+    projections are replicated while MLPs use standard TP splitting.
-+    AWQ and unquantized models replicate both DeltaNet and MLP layers.
-+    """
-+    if quant_config is None:
-+        return True
-+    name = quant_config.get_name()
-+    return name not in ("fp8", "mxfp8", "w8a8_fp8")
-+
-+
- class Qwen3_5GatedDeltaNet(nn.Module):
-     def __init__(
-         self,
-@@ -121,8 +136,12 @@ class Qwen3_5GatedDeltaNet(nn.Module):
-     ) -> None:
-         super().__init__()
-         self.config = config
--        self.attn_tp_rank = get_attention_tp_rank()
--        self.attn_tp_size = get_attention_tp_size()
-+        # DeltaNet projections are always replicated (tp_size=1) to avoid
-+        # FP16 rounding errors accumulating through recurrent state S(t).
-+        self.attn_tp_rank = 0
-+        self.attn_tp_size = 1
-+        self.real_tp_rank = get_attention_tp_rank()
-+        self.real_tp_size = get_attention_tp_size()
-         self.hidden_size = config.hidden_size
-         self.num_v_heads = (
-             config.linear_num_value_heads
-@@ -169,10 +188,13 @@ class Qwen3_5GatedDeltaNet(nn.Module):
-             tp_size=self.attn_tp_size,
-         )
- 
-+        # quant_config=None for in_proj_ba: output dim 48 is not divisible
-+        # by TP=2 * 16 (hipBLASLt scaled_mm alignment), so FP8 quantization
-+        # would fail. Keep projections in full precision.
-         self.in_proj_ba = self.create_ba_proj(
-             hidden_size=self.hidden_size,
-             num_v_heads=self.num_v_heads,
--            quant_config=quant_config,
-+            quant_config=None,
-             prefix=add_prefix("in_proj_ba", prefix),
-             tp_rank=self.attn_tp_rank,
-             tp_size=self.attn_tp_size,
-@@ -209,8 +231,9 @@ class Qwen3_5GatedDeltaNet(nn.Module):
-             torch.empty(self.num_v_heads // self.attn_tp_size, dtype=torch.float32),
-         )
- 
--        set_weight_attrs(self.A_log, {"weight_loader": sharded_weight_loader(0)})
--        set_weight_attrs(self.dt_bias, {"weight_loader": sharded_weight_loader(0)})
-+        # override_tp_rank=0 so all TP workers load the full (unsharded) weight
-+        set_weight_attrs(self.A_log, {"weight_loader": sharded_weight_loader(0, override_tp_rank=0)})
-+        set_weight_attrs(self.dt_bias, {"weight_loader": sharded_weight_loader(0, override_tp_rank=0)})
- 
-         conv_weights = self.conv1d.weight.view(
-             self.conv1d.weight.size(0), self.conv1d.weight.size(2)
-@@ -520,6 +543,8 @@ class Qwen3_5GatedDeltaNet(nn.Module):
-         core_attn_out = core_attn_out.reshape(*core_attn_out.shape[:-2], -1)
- 
-         output, _ = self.out_proj(core_attn_out)
-+        if self.real_tp_size > 1:
-+            output = output / self.real_tp_size
-         return output
- 
- 
-@@ -550,6 +575,8 @@ class Qwen3_5LinearDecoderLayer(nn.Module):
- 
-         # NOTE: Determine the MLP type based on the model type
-         # Qwen3.5 use all layers for MLP / Qwen3.5-MoE use sparse MoE blocks
-+        self.replicate_mlp = _should_replicate_deltanet_for_tp(quant_config)
-+        self.real_tp_size = get_attention_tp_size()
-         if config.model_type == "qwen3_5_moe_text":
-             self.mlp = Qwen2MoeSparseMoeBlock(
-                 layer_id=layer_id,
-@@ -564,12 +591,16 @@ class Qwen3_5LinearDecoderLayer(nn.Module):
-             is_previous_layer_sparse = True
-             is_next_layer_sparse = True
-         elif config.model_type == "qwen3_5_text":
-+            mlp_tp_kwargs = {}
-+            if self.replicate_mlp:
-+                mlp_tp_kwargs = {"tp_rank": 0, "tp_size": 1}
-             self.mlp = Qwen2MoeMLP(
-                 hidden_size=config.hidden_size,
-                 intermediate_size=config.intermediate_size,
-                 hidden_act=config.hidden_act,
-                 quant_config=quant_config,
-                 prefix=add_prefix("mlp", prefix.replace(".linear_attn", "")),
-+                **mlp_tp_kwargs,
-             )
-             is_layer_sparse = False
-             is_previous_layer_sparse = False
-@@ -647,6 +678,8 @@ class Qwen3_5LinearDecoderLayer(nn.Module):
-             hidden_states = self.mlp(
-                 hidden_states, should_allreduce_fusion, use_reduce_scatter
-             )
-+        if self.replicate_mlp and self.real_tp_size > 1:
-+            hidden_states = hidden_states / self.real_tp_size
-         if should_allreduce_fusion:
-             hidden_states._sglang_needs_allreduce_fusion = True
-         else:
-@@ -751,13 +784,19 @@ class Qwen3_5AttentionDecoderLayer(nn.Module):
-         )
- 
-         # Dense MLP for non-MoE variant
-+        self.replicate_mlp = _should_replicate_deltanet_for_tp(quant_config)
-+        self.real_tp_size = get_attention_tp_size()
-         if config.model_type == "qwen3_5_text":
-+            mlp_tp_kwargs = {}
-+            if self.replicate_mlp:
-+                mlp_tp_kwargs = {"tp_rank": 0, "tp_size": 1}
-             self.mlp = Qwen2MoeMLP(
-                 hidden_size=config.hidden_size,
-                 intermediate_size=config.intermediate_size,
-                 hidden_act=config.hidden_act,
-                 quant_config=quant_config,
-                 prefix=add_prefix("mlp", prefix.replace(".self_attn", "")),
-+                **mlp_tp_kwargs,
-             )
-             is_layer_sparse = False
-             is_previous_layer_sparse = False
-@@ -916,6 +955,8 @@ class Qwen3_5AttentionDecoderLayer(nn.Module):
-             hidden_states = self.mlp(
-                 hidden_states, should_allreduce_fusion, use_reduce_scatter
-             )
-+        if self.replicate_mlp and self.real_tp_size > 1:
-+            hidden_states = hidden_states / self.real_tp_size
-         if should_allreduce_fusion:
-             hidden_states._sglang_needs_allreduce_fusion = True
-         else:
-@@ -1565,7 +1606,7 @@ class Qwen3_5ForConditionalGeneration(Qwen3VLForConditionalGeneration):
-                     name = name.replace(r"attn.qkv.", r"attn.qkv_proj.")
-                     name = name.replace(r"model.visual.", r"visual.")
- 
--                # print(name, loaded_weight.shape)
-+                print(name, loaded_weight.shape)
-                 # Skip loading extra bias for GPTQ models.
-                 if name.endswith(".bias") and name not in params_dict:
-                     continue
 diff --git a/python/sglang/srt/models/qwen3_next.py b/python/sglang/srt/models/qwen3_next.py
-index 432b9fb54..c9bf1654e 100644
+index b7df48232..c9bf1654e 100644
 --- a/python/sglang/srt/models/qwen3_next.py
 +++ b/python/sglang/srt/models/qwen3_next.py
-@@ -143,12 +143,13 @@ class Qwen3GatedDeltaNet(nn.Module):
- 
-         # Override weight_loader for packed checkpoint format.
-         # Must capture original_loader BEFORE overwriting.
--        self._override_weight_loader(
--            self.in_proj_qkvz, self._make_packed_weight_loader(self.in_proj_qkvz)
--        )
--        self._override_weight_loader(
--            self.in_proj_ba, self._make_packed_weight_loader(self.in_proj_ba)
--        )
-+        # With AWQ quantization, modules have qweight instead of weight — skip.
-+        loader_qkvz = self._make_packed_weight_loader(self.in_proj_qkvz)
-+        if loader_qkvz is not None:
-+            self._override_weight_loader(self.in_proj_qkvz, loader_qkvz)
-+        loader_ba = self._make_packed_weight_loader(self.in_proj_ba)
-+        if loader_ba is not None:
-+            self._override_weight_loader(self.in_proj_ba, loader_ba)
- 
-         # Conv1d weight loader setup
-         query_key_settings = (self.key_dim, 0, False)
-@@ -230,9 +231,13 @@ class Qwen3GatedDeltaNet(nn.Module):
- 
+@@ -232,14 +232,24 @@ class Qwen3GatedDeltaNet(nn.Module):
          ModelWeightParameter exposes weight_loader as a read-only property
          backed by _weight_loader, while plain parameters store it as a
--        regular attribute.  This helper handles both cases."""
-+        regular attribute.  This helper handles both cases.
+         regular attribute.  This helper handles both cases.
+-        With AWQ quantization, module has qweight instead of weight — skip."""
+-        if not hasattr(module, "weight"):
+-            return  # AWQ quantization: qweight/scales/qzeros handle their own loading
+-        param = module.weight
+-        if hasattr(param, "_weight_loader"):
+-            param._weight_loader = new_loader
+-        else:
+-            param.weight_loader = new_loader
 +        Also covers AWQ (qweight/scales/qzeros) and FP8 (weight_scale*) attrs."""
-         for attr_name in (
-             "weight",
++        for attr_name in (
++            "weight",
 +            "qweight",
 +            "scales",
 +            "qzeros",
-             "weight_scale_inv",
-             "weight_scale",
-             "input_scale",
-@@ -252,6 +257,8 @@ class Qwen3GatedDeltaNet(nn.Module):
-         (packed-format) checkpoint weights (shard_id=None), and delegates
-         to the standard MergedColumnParallelLinear loader for split checkpoint
-         weights (shard_id=int/tuple)."""
-+        if not hasattr(module, "weight"):
-+            return None  # AWQ: skip packed weight loader
-         original_loader = module.weight.weight_loader
++            "weight_scale_inv",
++            "weight_scale",
++            "input_scale",
++            "weight_offset",
++        ):
++            param = getattr(module, attr_name, None)
++            if param is None:
++                continue
++            if hasattr(param, "_weight_loader"):
++                param._weight_loader = new_loader
++            else:
++                param.weight_loader = new_loader
  
-         def weight_loader(param, loaded_weight, loaded_shard_id=None):
+     @staticmethod
+     def _make_packed_weight_loader(module):
