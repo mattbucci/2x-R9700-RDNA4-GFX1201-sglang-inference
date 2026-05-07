@@ -13,25 +13,25 @@ launched on RDNA4**, not paper-port matches.  Master log:
 |---|:---:|:---:|:---:|:---:|---|
 | `qwen3vl-32b` | ✅ **3/3 PASS** | ✓ | ✓ 107 tok | ✓ red+circle+round | Pre-sweep validation receipt at `evals/awq-audit-2026-05-08-r9700-validate-receipt.md`. Vision: `'a simple red circle with a black outline on a white background'`. |
 | `qwen36-27b` | ⚠️ **1/2 PASS** (rerun standalone) | ✓ paris finish=stop | ✗ RemoteDisconnected | (server died) | Standalone rerun (commit `198b82b` follow-up): basic works (`'paris'`), thinking probe crashes the server connection — `Scheduler hit an exception` with no Triton/HSAIL backtrace in log; SIGTERM cascade after server hangs. Same scheduler-death-during-longer-generation pattern as gemma4 26B. R9700 Qwen3.5-arch + thinking + MoE+DeltaNet hybrid path on v0.5.11 + patches 028/029/030 needs follow-up kernel-level diagnosis. Server boots fine, basic generation fine, longer thinking-mode generation kills the scheduler. |
-| `qwen35-moe` | ❌ FAIL | — | — | — | `ValueError: moe_wna16 quantization is currently not supported in ROCm` — upstream SGLang block at `model_config.py:1144` `_verify_quantization()`. Affects native-AWQ MoE serving on ROCm any time the model isn't CT format. Workaround: serve from CT mirror + use `--quantization compressed-tensors`. |
+| `qwen35-moe` | ✅ **2/2 PASS** post patch 031 | ✓ paris finish=stop | ✓ 406 tok finish=stop reasoning_seen terminated | (skip — no vision in preset) | Pre-patch failure: `ValueError: moe_wna16 quantization is currently not supported in ROCm` at `model_config.py:1144`.  Patch 031 restores `moe_wna16` to `rocm_supported_quantization` (was in v0.5.10 list, removed in v0.5.11 — overly conservative).  Hardware-validated 17.6s. |
 | `qwen35` | ❌ FAIL → **FIXED** in `fe609c4` | — | — | — | Same Triton bf16/fp16 kernel-compile mismatch as `qwen36-27b` had pre-fix. Default `DTYPE="float16"` from launch.sh:35 leaked through; case had no override. Added `DTYPE="bfloat16"` to `qwen35` case (commit `fe609c4`); rerun should land cleanly. |
 | `coder-30b` | ❌ FAIL | — | — | — | `RuntimeError: Not enough memory. Please try to increase --mem-fraction-static` at sweep's MEM=0.85 / CTX=4096. Coder-30B AWQ + KV pool exceeds the 24 GB headroom budget at TP=2 / 4K with MEM=0.85. Tune MEM=0.92 or smaller CTX next attempt. |
-| `coder-reap-25b` | ❌ FAIL | — | — | — | Same `moe_wna16 quantization is currently not supported in ROCm` block. Native AWQ MoE on ROCm hits the same upstream `_verify_quantization()` rejection as `qwen35-moe`. |
+| `coder-reap-25b` | ✅ **1/1 PASS** post patch 031 | ✓ paris finish=stop | (skip — non-thinking) | (skip — non-vision) | Same root cause as `qwen35-moe`; patch 031 unblocks. Hardware-validated 0.9s. |
 | `devstral` | ✅ **1/1 PASS** in 0.7s | ✓ paris finish=stop | (skip — non-thinking) | (skip — non-vision) | Mistral-arch dense AWQ on default `DTYPE="float16"` — Mistral kernel doesn't have the bf16/fp16 mismatch Qwen3.5-arch decode kernel does. Confirms the bf16 fix isn't universally needed; arch-specific. |
 | `gemma4-31b` | ⚠️ **2/3 PASS** in 97.8s | ✓ paris | ✓ 512 tok terminated answer_ok | ✗ saw=[] response='the image shows a single cuneiform character.' | Vision FAIL is the documented upstream Gemma 4 limit (per closed task #66). Patches 023 + 024 NOT applied (HSAIL surface), patch 025 + 026 active. Thinking + basic confirmed real on R9700 — 512-tok reasoning chain finished cleanly. |
 | `gemma4` (26B MoE) | ❌ **0/3 FAIL** in 1.6s | request failed: RemoteDisconnected | request failed: ConnectionRefused | request failed: ConnectionRefused | Server reached READY at 09:21:10, then died on **first** inference. Matches the documented HSAIL 0x1016 surface in `sampler.py:479` for Gemma 4 26B on RDNA4 — same crash class that trips when patches 023+024 are applied. Server boots cleanly post-loader-fix patches, dies in first sampling step. Memory: `project_gemma4_v3_drop_images_false.md` documents the same kernel surface. |
 
 ## Headline
 
-Out of 8 attempted presets (+1 pre-sweep):
-- **2 fully PASS** (qwen3vl-32b 3/3, devstral 1/1)
+Out of 8 attempted presets (+1 pre-sweep), after patch 031 land:
+- **4 fully PASS** (qwen3vl-32b 3/3, devstral 1/1, qwen35-moe 2/2, coder-reap-25b 1/1)
 - **2 partial** (gemma4-31b 2/3 — vision is upstream Google limit; qwen36-27b 1/2 — basic works, thinking kills scheduler)
-- **5 distinct failure classes** found, each tagged to a real R9700 limitation:
+- **3 distinct failure classes** still open:
 
 | Failure class | Affected presets | R9700 fix path |
 |---|---|---|
-| ROCm-side `moe_wna16` block in `_verify_quantization()` | qwen35-moe, coder-reap-25b | upstream relaxation patch (or serve CT variant + `compressed-tensors` quant) |
-| Triton bf16/fp16 kernel-compile mismatch on Qwen3.5-arch | qwen35 | DTYPE fix in launch.sh case (DONE `fe609c4`) |
+| ~~ROCm-side `moe_wna16` block~~ | ~~qwen35-moe, coder-reap-25b~~ | RESOLVED 2026-05-08 patch 031 (`fe97a0b`) — restored to rocm_supported_quantization list |
+| ~~Triton bf16/fp16 kernel-compile mismatch on Qwen3.5-arch~~ | ~~qwen35~~ | RESOLVED — DTYPE=bfloat16 in launch.sh case (`fe609c4`) |
 | OOM at MEM=0.85 / CTX=4096 / TP=2 | coder-30b | bump MEM to 0.92 or smaller CTX in sweep config |
 | Gemma 4 26B sampler HSAIL 0x1016 on first inference | gemma4 | upstream / kernel-side, RDNA4 specific |
 | Scheduler dies on thinking-mode longer generation | qwen36-27b | needs kernel-level diagnosis (R9700 Qwen3.5-arch + MoE+DeltaNet + thinking specific) |
