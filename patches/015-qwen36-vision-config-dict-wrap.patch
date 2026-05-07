@@ -1,5 +1,5 @@
 diff --git a/python/sglang/srt/multimodal/processors/qwen_vl.py b/python/sglang/srt/multimodal/processors/qwen_vl.py
-index 3f102567d..b58991e9f 100644
+index 7dd36c2dd..c40eda359 100644
 --- a/python/sglang/srt/multimodal/processors/qwen_vl.py
 +++ b/python/sglang/srt/multimodal/processors/qwen_vl.py
 @@ -254,6 +254,14 @@ class QwenVLImageProcessor(SGLangBaseProcessor):

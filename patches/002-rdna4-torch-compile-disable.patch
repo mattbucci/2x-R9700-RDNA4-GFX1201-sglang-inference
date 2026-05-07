@@ -21,10 +21,10 @@ index 882c68241..fc55ee0e9 100644
      q: torch.Tensor,
      k: torch.Tensor,
 diff --git a/python/sglang/srt/layers/sampler.py b/python/sglang/srt/layers/sampler.py
-index e947a48cb..0323f14c7 100644
+index caa468b9f..89ede8cb3 100644
 --- a/python/sglang/srt/layers/sampler.py
 +++ b/python/sglang/srt/layers/sampler.py
-@@ -545,7 +545,7 @@ def top_k_top_p_min_p_sampling_from_logits_ascend(
+@@ -551,7 +551,7 @@ def top_k_top_p_min_p_sampling_from_logits_ascend(
      return batch_next_token_ids.view(-1)
  
  

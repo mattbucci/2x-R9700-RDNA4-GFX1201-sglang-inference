@@ -1,5 +1,5 @@
 diff --git a/python/sglang/srt/configs/qwen3_5.py b/python/sglang/srt/configs/qwen3_5.py
-index fddf783ab..0e3feb4a5 100644
+index 98de12f7e..35252ef9b 100644
 --- a/python/sglang/srt/configs/qwen3_5.py
 +++ b/python/sglang/srt/configs/qwen3_5.py
 @@ -1,5 +1,10 @@
@@ -13,7 +13,7 @@ index fddf783ab..0e3feb4a5 100644
  from sglang.srt.configs.qwen3_next import Qwen3NextConfig
  from sglang.srt.configs.qwen3_vl import Qwen3VLVisionConfig
  
-@@ -30,6 +35,26 @@ class Qwen3_5TextConfig(Qwen3NextConfig):
+@@ -33,6 +38,26 @@ class Qwen3_5TextConfig(Qwen3NextConfig):
          # Keep both names for compatibility with model code paths that read either.
          self.rope_parameters = rope_parameters or self.rope_scaling
  
@@ -41,23 +41,17 @@ index fddf783ab..0e3feb4a5 100644
  class Qwen3_5Config(PretrainedConfig):
      r"""
 diff --git a/python/sglang/srt/configs/qwen3_next.py b/python/sglang/srt/configs/qwen3_next.py
-index 32f4ab090..ba8fb1912 100644
+index 3bf153a22..ba8fb1912 100644
 --- a/python/sglang/srt/configs/qwen3_next.py
 +++ b/python/sglang/srt/configs/qwen3_next.py
-@@ -287,11 +287,12 @@ class Qwen3NextConfig(PretrainedConfig):
+@@ -287,6 +287,10 @@ class Qwen3NextConfig(PretrainedConfig):
              world_size = get_attention_tp_size()
              adjust_tp_num_heads_if_necessary(self, world_size, False)
  
--        # Conv1d and projections use get_attention_tp_size() for TP splitting.
--        # The SSM state must match the actual TP-split dimensions.
--        tp_size = get_attention_tp_size()
 +        # Qwen3-Next (Coder-Next 80B) keeps the upstream TP-sharded DeltaNet
 +        # (ColumnParallelLinear at attn_tp_size).  Qwen3.5 subclasses override
 +        # this property to force tp_world_size=1 because their DeltaNet is
 +        # replicated by the RDNA4 FP16 precision fix.
          shape = Mamba2StateShape.create(
--            tp_world_size=tp_size,
-+            tp_world_size=get_attention_tp_size(),
+             tp_world_size=get_attention_tp_size(),
              intermediate_size=self.linear_value_head_dim * self.linear_num_value_heads,
-             n_groups=self.linear_num_key_heads,
-             num_heads=self.linear_num_value_heads,

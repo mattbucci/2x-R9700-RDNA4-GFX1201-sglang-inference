@@ -4,18 +4,22 @@ Patches applied in order on a stock `git checkout v0.5.11`.  This file is the so
 
 ## v0.5.10 → v0.5.11 audit (2026-05-07)
 
-**4 patches dropped — fully upstreamed in v0.5.11** (moved to `upstreamed-in-v0.5.11/` for reference):
+**5 patches dropped — fully upstreamed in v0.5.11** (moved to `upstreamed-in-v0.5.11/` for reference):
+- 010 (rdna4-gptq-hip-fallback) — DROPPED 2026-05-07: gptq.py portion was already duplicated into 011 (FP32 attention work), and marlin_utils.py HIP-disable is upstreamed in v0.5.11. Both halves now elsewhere; 010 redundant.
 - 013 (gemma4-multimodal) — upstream now ships `gemma4_mm.py` (878 lines), `gemma4_vision.py` (599), `gemma4_audio.py` (873). Our 956-line patch matched in spirit; upstream's is more complete.
 - 014 (gemma4-reasoning-parser) — `Gemma4Detector` at `parser/reasoning_parser.py:510` (matches our cherry-pick of PR #21952).
 - 020 (clippable-linear-shim) — upstream has the **full implementation** at `layers/clippable_linear.py` (283 lines vs our 33-line shim).  Our patch comment said "If multimodal looks degraded, port the actual ClippableLinear from upstream" — that's now done upstream.
 - 022 (gemma4-causal-dedup-entry-class) — `EntryClass = Gemma4ForCausalLM` (singular, no list with multimodal alias).
 
-**Partially upstreamed — needs regen with reduced scope:**
-- 010 — Marlin HIP fallback hunk (`marlin_utils.py:122`) is in v0.5.11; our gptq.py HIP fallback is still needed.
+**11 patches apply cleanly to v0.5.11** after regeneration: 002, 003, 005, 008, 011, 012, 015, 016, 023, 024, 026.  The 002/003/005/008/011/012/015/016/023/024/026 patch files were regenerated 2026-05-07 against v0.5.11 by applying the v0.5.10-era patch via 3-way merge, resolving the qwen3_next.py/quark_int4fp8_moe.py conflicts, then `git diff` to capture the v0.5.11-correct hunks.
 
-**Still RDNA4-specific, line numbers shifted, needs regen at v0.5.11:** 001, 004, 005, 006, 007, 009-qwen35-moe, 009-rdna4-softcap-fp32, 016 — 8 patches whose target files moved or refactored.  Most apply via `git apply --3way` (auto-merge).
-
-**Apply cleanly to v0.5.11 with no regen:** 002, 003, 008, 011, 012, 015, 023, 024, 026 — 9 patches.
+**6 patches still need manual rework against v0.5.11** (target files refactored or line numbers shifted significantly — 3-way auto-merge couldn't resolve cleanly):
+- 001-upstream-sync — partial port: qwen3_5.py applied, qwen3_next.py + hf_transformers_utils.py conflicts. The is_causal_lm_only check NOT upstreamed; still needed.
+- 004-rdna4-moe-fixes — MoE files refactored. Many hunks need rewriting against new fused_moe layout.
+- 006-rdna4-awq-kernels — AWQ refactored to subpackage: `quantization/awq.py` → `quantization/awq/awq.py`. Need to update patch paths + verify hunks still apply.
+- 007-rdna4-model-fixes — partial port: ministral3.py + qwen3_5.py applied, qwen3_next.py conflicts.
+- 009-qwen35-moe-causalLM — same AWQ refactor as 006 + model files.
+- 009-rdna4-softcap-fp32 — softcap kernel still in upstream `logits_processor.py:1110` but the surrounding lines for our other hunks shifted; partial port.
 
 ## Apply
 

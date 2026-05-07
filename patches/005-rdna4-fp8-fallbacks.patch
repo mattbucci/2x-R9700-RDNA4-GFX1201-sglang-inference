@@ -1,5 +1,5 @@
 diff --git a/python/sglang/srt/layers/quantization/fp8_kernel.py b/python/sglang/srt/layers/quantization/fp8_kernel.py
-index 016c836fe..1979e8a7f 100644
+index ac3498657..3999adb39 100644
 --- a/python/sglang/srt/layers/quantization/fp8_kernel.py
 +++ b/python/sglang/srt/layers/quantization/fp8_kernel.py
 @@ -32,6 +32,7 @@ from sglang.srt.layers import deep_gemm_wrapper
@@ -10,7 +10,7 @@ index 016c836fe..1979e8a7f 100644
      get_device_core_count,
      get_device_name,
      is_cpu,
-@@ -1146,15 +1147,22 @@ def w8a8_block_fp8_matmul_triton(
+@@ -1155,15 +1156,22 @@ def w8a8_block_fp8_matmul_triton(
      else:
          # Default config
          # Block-wise quant: BLOCK_SIZE_K must be divisible by block_size[1]
@@ -35,7 +35,7 @@ index 016c836fe..1979e8a7f 100644
      needs_masking = bool(K % config["BLOCK_SIZE_K"] != 0)
  
      def grid(META):
-@@ -1193,6 +1201,43 @@ def w8a8_block_fp8_matmul_triton(
+@@ -1202,6 +1210,43 @@ def w8a8_block_fp8_matmul_triton(
  
  
  # universal entry point, for testing purposes
@@ -79,7 +79,7 @@ index 016c836fe..1979e8a7f 100644
  def w8a8_block_fp8_matmul(
      A: torch.Tensor,
      B: torch.Tensor,
-@@ -1201,14 +1246,21 @@ def w8a8_block_fp8_matmul(
+@@ -1210,14 +1255,21 @@ def w8a8_block_fp8_matmul(
      block_size: List[int],
      output_dtype: torch.dtype = torch.float16,
  ) -> torch.Tensor:
@@ -106,11 +106,11 @@ index 016c836fe..1979e8a7f 100644
  
  # Copied and adapted from https://github.com/triton-lang/triton/blob/main/python/tutorials/10-block-scaled-matmul.py
 diff --git a/python/sglang/srt/layers/quantization/fp8_utils.py b/python/sglang/srt/layers/quantization/fp8_utils.py
-index 49b5aeb30..e9913a1c4 100755
+index b39da5267..7642de806 100755
 --- a/python/sglang/srt/layers/quantization/fp8_utils.py
 +++ b/python/sglang/srt/layers/quantization/fp8_utils.py
-@@ -59,6 +59,17 @@ _use_aiter = get_bool_env_var("SGLANG_USE_AITER") and _is_hip
- _use_aiter_gfx95 = _use_aiter and _is_gfx95_supported
+@@ -66,6 +66,17 @@ _use_aiter_gfx95 = _use_aiter and _is_gfx95_supported
+ _use_aiter_bpreshuffle_gfx95 = _use_aiter_gfx95 and get_hip_version() >= (7, 2, 0)
  
  
 +def _is_rdna4_device() -> bool:
@@ -127,7 +127,7 @@ index 49b5aeb30..e9913a1c4 100755
  def use_aiter_triton_gemm_w8a8_tuned_gfx950(n: int, k: int) -> bool:
      return (n, k) in [
          (1024, 8192),
-@@ -125,7 +136,15 @@ def use_rowwise_torch_scaled_mm():
+@@ -132,7 +143,15 @@ def use_rowwise_torch_scaled_mm():
          # torch._scaled_mm rowwise feature.
          # The condition is determined once as the operations
          # are time consuming.
@@ -144,7 +144,7 @@ index 49b5aeb30..e9913a1c4 100755
      return False
  
  
-@@ -442,7 +461,8 @@ def _dispatch_auto_backend() -> Callable:
+@@ -449,7 +468,8 @@ def _dispatch_auto_backend() -> Callable:
      # 2. FlashInfer TRTLLM (if Blackwell GPU and FlashInfer available)
      # 3. CUTLASS (if Hopper+ GPU and CUDA 12.0+)
      # 4. AITER (if AMD GPU with AITER enabled)
@@ -154,7 +154,7 @@ index 49b5aeb30..e9913a1c4 100755
  
      if deep_gemm_wrapper.ENABLE_JIT_DEEPGEMM:
          return deepgemm_w8a8_block_fp8_linear_with_fallback
-@@ -452,6 +472,9 @@ def _dispatch_auto_backend() -> Callable:
+@@ -459,6 +479,9 @@ def _dispatch_auto_backend() -> Callable:
          return cutlass_w8a8_block_fp8_linear_with_fallback
      elif _use_aiter:
          return aiter_w8a8_block_fp8_linear
@@ -164,7 +164,7 @@ index 49b5aeb30..e9913a1c4 100755
      else:
          return triton_w8a8_block_fp8_linear
  
-@@ -815,6 +838,31 @@ def triton_w8a8_block_fp8_linear(
+@@ -834,6 +857,31 @@ def triton_w8a8_block_fp8_linear(
      return output.to(dtype=input_2d.dtype).view(*output_shape)
  
  
@@ -223,21 +223,19 @@ index 04f7cd246..16ef56f0a 100644
  
  __all__ = ["QuarkW4A4MXFP4"]
 diff --git a/python/sglang/srt/layers/quantization/quark_int4fp8_moe.py b/python/sglang/srt/layers/quantization/quark_int4fp8_moe.py
-index 7fbbc6113..472cd2b3b 100644
+index 0e9204d19..ba700b63a 100644
 --- a/python/sglang/srt/layers/quantization/quark_int4fp8_moe.py
 +++ b/python/sglang/srt/layers/quantization/quark_int4fp8_moe.py
-@@ -27,11 +27,13 @@ _is_hip = is_hip()
+@@ -27,9 +27,13 @@ _is_hip = is_hip()
  
  
  if _is_hip:
--    from aiter import ActivationType, QuantType
--    from aiter.fused_moe import fused_moe
 -    from aiter.ops.shuffle import shuffle_weight
 -
 -    ON_GFX950 = "gfx950" in torch.cuda.get_device_properties("cuda").gcnArchName
++    # gfx1201 (RDNA4) doesn't have aiter — guard the import so this module
++    # can still load on cards without the kernel pkg.
 +    try:
-+        from aiter import ActivationType, QuantType
-+        from aiter.fused_moe import fused_moe
 +        from aiter.ops.shuffle import shuffle_weight
 +        ON_GFX950 = "gfx950" in torch.cuda.get_device_properties("cuda").gcnArchName
 +    except ImportError:
