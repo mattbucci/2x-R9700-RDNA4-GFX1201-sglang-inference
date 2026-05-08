@@ -44,21 +44,33 @@ fi
 
 source "$REPO_DIR/scripts/common.sh"
 activate_conda
-# REAM env (separate from sglang-triton36 — has llmcompressor's transformers fork).
+# REAM env: dedicated `ream` conda env (has scipy + lm-eval + transformers 5.6).
 # Override with REAM_ENV=<env> if needed.
-REAM_ENV="${REAM_ENV:-quant}"
+# (Don't use `quant` — it's missing scipy/lm-eval which REAM depends on.)
+REAM_ENV="${REAM_ENV:-ream}"
 conda activate "$REAM_ENV"
 
 # Make the unfused-experts patch importable by REAM's merge.py.
 export PYTHONPATH="$REPO_DIR/patches:${PYTHONPATH:-}"
 
 # Apply patch via -c '<bootstrap>; exec ...' so we don't touch upstream merge.py.
-# The bootstrap import installs the monkey-patch BEFORE merge.py runs from_pretrained.
+# The bootstrap:
+#   1. Installs Qwen3MoeExperts monkey-patch BEFORE merge.py runs from_pretrained.
+#   2. Stubs vllm + lm_eval (REAM's config.py imports both for version metadata
+#      only — they're not load-bearing for merge logic, just env introspection).
 cd "$REAM_REPO"
 exec python -c "
-import sys
+import sys, types
 sys.path.insert(0, '$REPO_DIR/patches')
 import qwen3moe_unfused_experts  # noqa: F401  — patches transformers in place
 print('[run_ream_qwen3moe] Qwen3MoeExperts monkey-patched to unfused ModuleList')
+
+# Stub vllm/lm_eval so REAM's config.py env-record doesn't fail in our env.
+for _mod_name in ('vllm', 'lm_eval'):
+    if _mod_name not in sys.modules:
+        _mod = types.ModuleType(_mod_name)
+        _mod.__version__ = 'stub-not-installed'
+        sys.modules[_mod_name] = _mod
+
 exec(open('$REAM_REPO/merge.py').read())
 " "$@"
