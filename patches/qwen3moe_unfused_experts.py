@@ -97,7 +97,14 @@ class Qwen3MoeExpertsUnfused(nn.ModuleList):
         self.num_experts = config.num_experts
         self.hidden_dim = config.hidden_size
         self.intermediate_dim = config.moe_intermediate_size
-        self.act_fn = ACT2FN[config.hidden_act]
+        # NOTE: do NOT keep self.act_fn here — ACT2FN values (e.g. nn.SiLU)
+        # are nn.Module instances, and on a ModuleList subclass nn.Module
+        # __setattr__ registers them as children. That inflates `len(self)`
+        # from num_experts to num_experts+1 → REAM merger's get_num_experts()
+        # returns 129 for a 128-expert model → router-gate view crashes with
+        # `shape '[B, S, 129]' is invalid for input of size B*S*128`. Each
+        # child Qwen3MoeMLP has its own act_fn, so the outer activation is
+        # not needed for forward dispatch.
 
     def forward(
         self,
