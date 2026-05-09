@@ -2,28 +2,50 @@ diff --git a/python/sglang/srt/models/gemma4_causal.py b/python/sglang/srt/model
 index 544406119..0ddf9eb61 100644
 --- a/python/sglang/srt/models/gemma4_causal.py
 +++ b/python/sglang/srt/models/gemma4_causal.py
-@@ -422,11 +422,23 @@ class Gemma4DecoderLayer(nn.Module):
+@@ -422,11 +422,45 @@ class Gemma4DecoderLayer(nn.Module):
              2 if use_double_wide_mlp else 1
          )
- 
+
 +        # On MoE-block layers (parallel dense+MoE Gemma 4 architecture, e.g.
-+        # 26B), the dense-MLP branch ships as PLAIN BF16 weights
-+        # (mlp.{gate,up,down}_proj.weight, no qweight/qzeros/scales) — the
-+        # calibration recipe deliberately leaves the dense MLP full-precision.
-+        # If we pass quant_config here, the AWQ loader feeds the plain BF16
-+        # weight into the qweight parameter slot and every matmul output is
-+        # garbage (15078 NaN + 3267 inf out of 84480 in layer 0 gate_up_proj
-+        # alone, then NaN cascades to lm_head → vocab-low <pad> spam).
++        # 26B), the dense-MLP branch CAN ship as either:
++        #   (a) PLAIN BF16 (mlp.{gate,up,down}_proj.weight) — original recipe
++        #       expectation; quant_config must be None or the AWQ loader feeds
++        #       the BF16 weight into the qweight slot and every matmul outputs
++        #       garbage (15078 NaN + 3267 inf in layer 0 gate_up_proj alone,
++        #       NaN cascades to lm_head → vocab-low <pad> spam).
++        #   (b) AWQ-packed (mlp.{gate,up,down}_proj.qweight) — what
++        #       mattbucci/gemma-4-26B-AWQ HF mirror + locally-built
++        #       21B-REAP-AWQ-thinking-vision-v3b actually ship; here
++        #       quant_config must be passed or the model creates BF16 .weight
++        #       placeholders that never match the .qweight checkpoint keys
++        #       and forward returns zeros → also <pad> spam.
 +        # On Dense-only Gemma 4 (e.g. 31B), the MLP is fully AWQ-packed
-+        # (mlp.*.weight_packed), so quant_config must be passed.
-+        # Bug + fix surfaced 2026-05-03 via SGLANG_GEMMA4_TRACE forward-hook.
++        # (mlp.*.weight_packed), so quant_config must always be passed.
++        # Detection: parse quantization_config.ignore from the model config.
++        # If a regex/string in ignore matches `mlp.*proj`, the calibration
++        # recipe deliberately kept the dense MLP BF16 → use quant_config=None.
++        # Otherwise the dense MLP was quantized → use quant_config.
++        # Bug surfaced 2026-05-03 (SGLANG_GEMMA4_TRACE), expanded to handle
++        # case (b) on 2026-05-09 after env upgrade to v0.5.11 surfaced it.
 +        _enable_moe = getattr(config, "enable_moe_block", False)
++        _mlp_quant_config = quant_config
++        if _enable_moe and quant_config is not None:
++            import re as _re
++            qc = getattr(config, "quantization_config", None) or {}
++            _ignore = qc.get("ignore", []) if isinstance(qc, dict) else getattr(qc, "ignore", []) or []
++            _mlp_kept_bf16 = any(
++                _re.search(r"\.mlp\.(gate|up|down)_proj", str(x))
++                or _re.search(r"^mlp\.(gate|up|down)_proj", str(x))
++                for x in _ignore
++            )
++            if _mlp_kept_bf16:
++                _mlp_quant_config = None
          self.mlp = Gemma4MLP(
              hidden_size=self.hidden_size,
              intermediate_size=layer_intermediate_size,
              hidden_activation=config.hidden_activation,
 -            quant_config=quant_config,
-+            quant_config=None if _enable_moe else quant_config,
++            quant_config=_mlp_quant_config,
              prefix=add_prefix("mlp", prefix),
          )
- 
+
