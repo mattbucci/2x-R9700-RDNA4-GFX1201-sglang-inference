@@ -141,7 +141,8 @@ print(f"\nGPTQ complete in {elapsed/3600:.1f}h ({elapsed:.0f}s)")
 
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 print(f"Saving to {OUTPUT_DIR}...")
-model.save_pretrained(OUTPUT_DIR, save_compressed=True)
+# max_shard_size="2GB" — default 5GB OOMs the safetensors write on 62GB hosts at 32B+ params.
+model.save_pretrained(OUTPUT_DIR, save_compressed=True, max_shard_size="2GB")
 tokenizer.save_pretrained(OUTPUT_DIR)
 
 # SGLang's tokenizer_manager requires preprocessor_config.json for multimodal
