@@ -19,7 +19,10 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="$(dirname "$SCRIPT_DIR")"
-SRC_FILE="$REPO_DIR/components/sglang/sgl-kernel/csrc/quantization/awq/awq_gemv_hip.cu"
+# 2026-05-09: source moved out of components/sglang/ (which is gitignored as a vendored
+# checkout). The kernel was orphaned when patch 006 shrunk on commit 1550f38, only the
+# .so files in conda envs survived. Recovered + tracked at kernels/awq_hip/.
+SRC_FILE="$REPO_DIR/kernels/awq_hip/awq_gemv_hip.cu"
 
 TARGET_ENV=""
 while [[ $# -gt 0 ]]; do
