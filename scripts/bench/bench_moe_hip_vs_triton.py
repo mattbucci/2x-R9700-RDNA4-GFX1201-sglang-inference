@@ -42,13 +42,25 @@ def get_args():
     return p.parse_args()
 
 
-def make_awq_weights(E, K, N, group_size, device):
-    """Random AWQ-packed weights matching kernel expectation: [E, K, N//8] int32."""
+def make_awq_weights_hip(E, K, N, group_size, device):
+    """HIP kernel layout: qweight [E, K, N/8] int32 (on-disk AWQ format)."""
     PACK = 8
     num_groups = K // group_size
     qweight = torch.randint(0, 2**31 - 1, (E, K, N // PACK), dtype=torch.int32, device=device)
     scales = torch.randn(E, num_groups, N, dtype=torch.float16, device=device) * 0.01
     qzeros = torch.randint(0, 2**31 - 1, (E, num_groups, N // PACK), dtype=torch.int32, device=device)
+    return qweight, scales, qzeros
+
+
+def make_awq_weights_triton(E, K, N, group_size, device):
+    """SGLang Triton MoE layout (post moe_wna16 convert_awq_tensor):
+    qweight [E, N, K/8] int32, qzeros [E, N/8, K/G] int32, scales [E, K/G, N] fp16.
+    Per `_fused_moe_kernel_sequence`: `E, N, _ = w1.shape`."""
+    PACK = 8
+    num_groups = K // group_size
+    qweight = torch.randint(0, 2**31 - 1, (E, N, K // PACK), dtype=torch.int32, device=device)
+    scales = torch.randn(E, num_groups, N, dtype=torch.float16, device=device) * 0.01
+    qzeros = torch.randint(0, 2**31 - 1, (E, N // PACK, num_groups), dtype=torch.int32, device=device)
     return qweight, scales, qzeros
 
 
@@ -137,11 +149,24 @@ def bench_triton_path(m, args, weights):
             sorted_ids, expert_ids, num_tokens_post,
             config, None, False,
             b1=None, b2=None,
-            use_int4_w4a16=True, per_channel_quant=False,
+            use_fp8_w8a8=False,
+            use_int8_w8a8=False,
+            use_int8_w8a16=False,
+            use_int4_w4a16=True,
+            per_channel_quant=False,
             w1_scale=w13_sc, w2_scale=w2_sc,
             w1_zp=w13_qz, w2_zp=w2_qz,
-            block_shape=[args.group_size, args.group_size],
-            activation="silu", is_gated=True,
+            a1_scale=None, a2_scale=None,
+            block_shape=[0, args.group_size],
+            activation="silu",
+            is_gated=True,
+            no_combine=False,
+            inplace=False,
+            apply_router_weight_on_input=False,
+            routed_scaling_factor=None,
+            gemm1_alpha=None,
+            gemm1_limit=None,
+            filter_expert=False,
         )
         return out
 
@@ -155,11 +180,17 @@ def main():
           f"experts={args.num_experts} top_k={args.top_k} gs={args.group_size}")
     print(f"Bench: warmup={args.warmup} iters={args.iters}\n")
 
-    weights = {
-        "w13": make_awq_weights(args.num_experts, args.hidden, args.moe_inter * 2,
-                                args.group_size, args.device),
-        "w2": make_awq_weights(args.num_experts, args.moe_inter, args.hidden,
-                               args.group_size, args.device),
+    weights_hip = {
+        "w13": make_awq_weights_hip(args.num_experts, args.hidden, args.moe_inter * 2,
+                                    args.group_size, args.device),
+        "w2": make_awq_weights_hip(args.num_experts, args.moe_inter, args.hidden,
+                                   args.group_size, args.device),
+    }
+    weights_triton = {
+        "w13": make_awq_weights_triton(args.num_experts, args.hidden, args.moe_inter * 2,
+                                       args.group_size, args.device),
+        "w2": make_awq_weights_triton(args.num_experts, args.moe_inter, args.hidden,
+                                      args.group_size, args.device),
     }
 
     print(f"{'M':>3} | {'HIP×2+silu (us)':>20} | {'Triton fused (us)':>20} | "
@@ -176,7 +207,7 @@ def main():
     for m in args.m:
         if hip_available:
             try:
-                hip_med, hip_min, hip_max = bench_hip_path(m, args, weights)
+                hip_med, hip_min, hip_max = bench_hip_path(m, args, weights_hip)
                 hip_str = f"{hip_med:>8.1f} ({hip_min:.1f}-{hip_max:.1f})"
             except Exception as e:
                 hip_med, hip_str = float("inf"), f"CRASH: {type(e).__name__}: {e}"
@@ -184,7 +215,7 @@ def main():
             hip_med, hip_str = float("inf"), "n/a"
 
         try:
-            tri_med, tri_min, tri_max = bench_triton_path(m, args, weights)
+            tri_med, tri_min, tri_max = bench_triton_path(m, args, weights_triton)
             tri_str = f"{tri_med:>8.1f} ({tri_min:.1f}-{tri_max:.1f})"
         except Exception as e:
             tri_med, tri_str = float("inf"), f"CRASH: {type(e).__name__}: {e}"
