@@ -195,3 +195,13 @@ bash scripts/quantize/run_full_pipeline.sh gemma4-26b   # same, thinking+vision 
 ```
 
 See [rules-for-agents.md](../rules-for-agents.md) for full rules (calibration samples, DeltaNet exclusions, AWQ checkpoint format).
+
+## REAM tooling files (not SGLang patches)
+
+Two files in `patches/` are **transformers-side** infrastructure for REAM/calibration tooling, NOT part of the SGLang patch series above:
+
+- **`qwen3moe_unfused_experts.py`** — runtime monkey-patch. Replaces `Qwen3MoeExperts` (transformers 5.x fused 3D Parameter `gate_up_proj` / `down_proj`) with per-expert `ModuleList[Qwen3MoeMLP]` so REAM `merge.py` can read per-expert weights. Imported at the top of REAM driver scripts (see `scripts/quantize/run_ream_qwen3moe.sh:65`). Without this, REAM silently random-inits the fused params on load → all downstream merging/saliency/quant sees garbage. Origin: `memory/project_ream_qwen3moe_root_cause.md` (2026-05-02).
+
+- **`transformers_disable_qwen3moe_fusion.patch`** — companion `conversion_mapping.py` patch that removes the `qwen3_moe → qwen2_moe` alias for paths the monkey-patch above doesn't cover. Apply once into a calibration env via `patch -p1 -d $CONDA_PREFIX/lib/python3.12/site-packages/ < transformers_disable_qwen3moe_fusion.patch`.
+
+Both are kept here because they live alongside the SGLang patches in our build/quant workflows; `setup.sh` does not apply them — only REAM-tooling scripts do.
