@@ -490,7 +490,7 @@ def tokenize_text_dataset(
 ) -> Dataset:
     """Pre-tokenize a text-only dataset for llm-compressor oneshot().
 
-    Matches the pattern used by existing `quantize_qwen35_llmcompressor.py`:
+    Matches the pattern used by `quantize_qwen35_thinking_aware.py` and friends:
     returns a dataset with `input_ids` + `attention_mask`, text column dropped.
     """
     def _tok(sample):

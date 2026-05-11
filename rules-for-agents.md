@@ -98,7 +98,7 @@ AWQ checkpoint → fix naming, dequant router, verify
 ### Dense model calibration
 - No monkey-patching needed — all layers are nn.Linear
 - 128 samples × 512 tokens is sufficient
-- Examples: `scripts/quantize/quantize_devstral_llmcompressor.sh`, `scripts/quantize/quantize_qwen35_llmcompressor.sh`
+- Examples: `scripts/quantize/quantize_devstral_code_vision.py`, `scripts/quantize/quantize_qwen35_thinking_aware.py`
 
 ### MoE model calibration — CRITICAL
 Standard GPTQ/AWQ **FAILS** for MoE models due to expert routing imbalance (MoEQuant, ICML 2025):
@@ -114,7 +114,7 @@ Standard GPTQ/AWQ **FAILS** for MoE models due to expert routing imbalance (MoEQ
 - After conversion, **always check scales**: `torch.isinf(scales).any()` must be False
 - Consider **GPTQModel** with `MoE.Routing` FailSafe mode for expert-balanced calibration
 - Consider **MoEQuant EBSS** (Expert-Balanced Self-Sampling) for proper MoE quantization
-- Example: `scripts/quantize/quantize_gemma4_gptq.sh` → `quantize_gemma4_gptq_step1.py` → `convert_gemma4_ct_to_awq.py`
+- Example: `scripts/quantize/quantize_gemma4_26b_thinking_vision.py` → `convert_gemma4_26b_ct_to_awq.py` (uses `moe_calibrate_all_experts=True` + unfused-experts wrapper)
 
 ### DeltaNet/Mamba/SSM layers — DO NOT quantize to INT4
 Models with recurrent state (DeltaNet, Mamba, SSM) accumulate quantization error across

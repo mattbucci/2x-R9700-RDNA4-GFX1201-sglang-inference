@@ -15,9 +15,10 @@ Combines three things the existing gemma4_gptq_step1.py pipeline was missing:
      stage (the vision tower is NOT quantized).  What matters is that the
      router sees the "describe this image" prompt distribution.
 
-  3. **Unfused experts with forced routing** — same monkey-patch as
-     quantize_gemma4_gptq_step1.py so every expert's Hessian is populated
-     (standard GPTQ skips ~94% of experts).
+  3. **Unfused experts with forced routing** — monkey-patches `Gemma4TextExperts`
+     to per-expert `nn.Linear` so every expert's Hessian is populated. Standard
+     GPTQ skips ~94% of experts; combined with `moe_calibrate_all_experts=True`
+     on `oneshot(...)` we get full per-expert coverage regardless of routing.
 
 Output: ~/AI/models/gemma-4-26B-A4B-it-CT-thinking-vision (compressed-tensors)
 

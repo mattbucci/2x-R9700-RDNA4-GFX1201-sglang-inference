@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Convert Qwen3.5-27B compressed-tensors format to native AWQ format.
 
-Takes the compressed-tensors output from quantize_qwen35_llmcompressor.py
+Takes the compressed-tensors output from quantize_qwen35_thinking_aware.py
 and converts to the native AWQ format that SGLang's triton AWQ kernel expects.
 
 compressed-tensors format (from Qwen3_5ForCausalLM):
@@ -42,7 +42,7 @@ AWQ_PACK_ORDER = [0, 4, 1, 5, 2, 6, 3, 7]
 
 if not os.path.isdir(SRC_DIR):
     print(f"Source not found: {SRC_DIR}")
-    print("Run quantize_qwen35_llmcompressor.py first.")
+    print("Run quantize_qwen35_thinking_aware.py first.")
     exit(1)
 
 # Auto-detect GROUP_SIZE from config

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Convert Devstral compressed-tensors to native AWQ format.
 
-Takes the compressed-tensors output from quantize_devstral_llmcompressor.py
+Takes the compressed-tensors output from quantize_devstral_code_vision.py
 and converts to native AWQ format for SGLang's Triton AWQ kernel.
 
 Key differences from Qwen3.5 conversion:
@@ -33,7 +33,7 @@ AWQ_PACK_ORDER = [0, 4, 1, 5, 2, 6, 3, 7]
 
 if not os.path.isdir(SRC_DIR):
     print(f"Source not found: {SRC_DIR}")
-    print("Run quantize_devstral_llmcompressor.py first.")
+    print("Run quantize_devstral_code_vision.py first.")
     exit(1)
 
 # Auto-detect GROUP_SIZE from config
