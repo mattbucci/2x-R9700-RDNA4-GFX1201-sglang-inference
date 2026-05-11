@@ -20,8 +20,8 @@ QUANT_ENV="${QUANT_ENV:-quant}"
 QUANT_PYTHON="$CONDA_BASE/envs/$QUANT_ENV/bin/python"
 MODELS_DIR="${MODELS_DIR:-$HOME/AI/models}"
 
-CT_OUTPUT="$MODELS_DIR/gemma-4-31B-it-CT-GPTQ-128g"
-AWQ_OUTPUT="$MODELS_DIR/gemma-4-31B-it-AWQ-GPTQ-128g"
+CT_OUTPUT="$MODELS_DIR/gemma-4-31B-it-CT-thinking-vision"
+AWQ_OUTPUT="$MODELS_DIR/gemma-4-31B-AWQ"
 
 # Check quant env exists
 if [ ! -f "$QUANT_PYTHON" ]; then
