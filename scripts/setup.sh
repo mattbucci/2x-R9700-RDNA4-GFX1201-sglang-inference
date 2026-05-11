@@ -154,25 +154,42 @@ else
 fi
 
 # -------------------------------------------------------------------
-# Step 3: Build + install triton 3.6.0 from source
+# Step 3: Install triton 3.6.0 from pip wheel (ROCm 7.2 channel)
 # -------------------------------------------------------------------
+# Was: editable source build from github triton-lang/triton:v3.6.0.
+# Switched to pip wheel 2026-05-11 because the source build had been
+# producing broken installs — `pip install -e .` returned 0, the wheel
+# said "Successfully installed", but `import triton` produced a module
+# with no __file__, no __version__, no jit attribute. The PyTorch ROCm
+# 7.2 channel ships a working triton 3.6.0 wheel (matches what the
+# calibration envs awq-quant / quant / gemma4-quant already run on),
+# and SGLang doesn't depend on any source-tree-only triton features
+# we'd lose by switching.
+# Override via TRITON_FROM_SOURCE=1 ./scripts/setup.sh to get the old
+# behavior (e.g. to test a triton fork or local patch).
 echo ""
-echo "[3/5] Building triton 3.6.0 from source..."
-
-TRITON_DIR="$REPO_DIR/components/triton-build"
-
-if [ ! -d "$TRITON_DIR" ] || [ ! -d "$TRITON_DIR/.git" ]; then
-    echo "Cloning triton v3.6.0..."
-    rm -rf "$TRITON_DIR"
-    mkdir -p "$(dirname "$TRITON_DIR")"
-    git clone --branch v3.6.0 --depth 1 https://github.com/triton-lang/triton.git "$TRITON_DIR"
+if [ "${TRITON_FROM_SOURCE:-0}" = "1" ]; then
+    echo "[3/5] Building triton 3.6.0 from source (TRITON_FROM_SOURCE=1)..."
+    TRITON_DIR="$REPO_DIR/components/triton-build"
+    if [ ! -d "$TRITON_DIR" ] || [ ! -d "$TRITON_DIR/.git" ]; then
+        echo "Cloning triton v3.6.0..."
+        rm -rf "$TRITON_DIR"
+        mkdir -p "$(dirname "$TRITON_DIR")"
+        git clone --branch v3.6.0 --depth 1 https://github.com/triton-lang/triton.git "$TRITON_DIR"
+    fi
+    cd "$TRITON_DIR"
+    pip install pybind11 2>/dev/null || true
+    pip install -e .
+else
+    echo "[3/5] Installing triton 3.6.0 wheel from PyTorch ROCm 7.2 channel..."
+    # Clear any prior (possibly broken) install so the wheel install isn't
+    # short-circuited by a "Requirement already satisfied" cache hit.
+    pip uninstall triton -y 2>/dev/null || true
+    pip install "triton==3.6.0" --index-url "$TORCH_INDEX" || \
+      pip install "triton==3.6.0"  # fall back to PyPI if ROCm channel lacks it
 fi
 
-cd "$TRITON_DIR"
-pip install pybind11 2>/dev/null || true
-pip install -e .
-
-python -c "import triton; print(f'triton {triton.__version__} OK')"
+python -c "import triton; print(f'triton {triton.__version__} OK at {triton.__file__}')"
 
 # -------------------------------------------------------------------
 # Step 4: Build + install sgl_kernel with native HIP ops
