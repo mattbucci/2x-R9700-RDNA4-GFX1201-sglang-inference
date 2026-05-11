@@ -42,6 +42,25 @@ if [[ ! -f "$REPO_DIR/patches/qwen3moe_unfused_experts.py" ]]; then
     exit 1
 fi
 
+# Apply REAM merger patches to the cloned repo. Idempotent: re-applies harmlessly
+# fail if already applied. See ream-patches/README.md for the patch index.
+if [[ -d "$REPO_DIR/ream-patches" ]] && ls "$REPO_DIR/ream-patches/"*.patch >/dev/null 2>&1; then
+    pushd "$REAM_REPO" >/dev/null
+    for _patch in "$REPO_DIR/ream-patches/"*.patch; do
+        if git apply --check "$_patch" >/dev/null 2>&1; then
+            git apply "$_patch" && echo "  [run_ream_qwen3moe] applied $(basename "$_patch")"
+        else
+            # --reverse --check passes iff the patch is already applied
+            if git apply --reverse --check "$_patch" >/dev/null 2>&1; then
+                echo "  [run_ream_qwen3moe] $(basename "$_patch") already applied (skipping)"
+            else
+                echo "  [run_ream_qwen3moe] WARN: $(basename "$_patch") fails to apply AND isn't already applied" >&2
+            fi
+        fi
+    done
+    popd >/dev/null
+fi
+
 source "$REPO_DIR/scripts/common.sh"
 activate_conda
 # REAM env: dedicated `ream` conda env (has scipy + lm-eval + transformers 5.6).
