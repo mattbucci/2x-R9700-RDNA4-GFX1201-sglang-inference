@@ -20,7 +20,7 @@ High-throughput LLM inference on 2x AMD Radeon AI PRO R9700 (gfx1201, RDNA4) wit
 In priority order:
 
 1. **Rebuild broken & under-calibrated MoE ships** — see task list. Two ships are confirmed broken (Coder-30B-REAP-AWQ outputs gibberish — random-init experts from pre-monkey-patch REAM merge; Qwen3.6-VL-REAP-26B-A3B-AWQ HSAILs on vision — no vision tower keys). Three more have rare-expert zero scales that today's `moe_calibrate_all_experts=True` recipe fix (commit `3662f05`) should clear on recal. Tasks #22 (Coder-30B-REAP rebuild), #24 (VL-REAP rebuild), #34 (Coder-30B-REAM recal), #35 (Coder-Next-REAM recal), #36 (Qwen3.6-REAM-A3B recal investigation).
-2. **Mgehre HIP wvSplitK MoE kernel wiring (#28)** — bench-first decision (#26 done). Recovered `kernels/awq_hip/awq_gemv_hip.cu:868 awq_gemv_moe_hip` is in-tree but unwired — `MoeWNA16Method.runner` is hardcoded `MoeRunnerBackend.TRITON`. Phase 3 wires it via new `HipAwqMoeRunnerCore` + `HIP_AWQ_MOE` backend enum + env-gated selection. Microbench (commit `f5df3da`) ready for the cutoff threshold call.
+2. **Wire HIP MoE kernel into SGLang MoeRunner (#28)** — kernel + microbench landed (patches 006 + 032); only the runner registration remains.
 3. **256K context sweeps for newly-shipped models** (Qwen3.5-28B-A3B-REAP-AWQ, Qwen3-VL-32B-AWQ, Qwen3-Coder-30B-A3B-REAM-AWQ) — primary target. Blocked by any in-flight recal (no benches during calibration). Tasks #19/#20/#21.
 
 ### REAM/REAP coverage matrix
