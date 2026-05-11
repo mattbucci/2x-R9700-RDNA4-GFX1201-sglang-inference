@@ -173,6 +173,58 @@ def bench_triton_path(m, args, weights):
     return time_fn(step, args.warmup, args.iters, device)
 
 
+def make_skinny_weights(E, K, N, group_size, device):
+    """wvSplitK skinny ExLlama-shuffled layout: qweight [E, N, K/8] int32,
+    scales [E, N, K/G] fp16. Per project_mgehre_moe_kernel_port.md memory."""
+    PACK = 8
+    num_groups = K // group_size
+    qweight = torch.randint(0, 2**31 - 1, (E, N, K // PACK), dtype=torch.int32, device=device)
+    scales = torch.randn(E, N, num_groups, dtype=torch.float16, device=device) * 0.01
+    return qweight, scales
+
+
+def bench_wvsplitk_path(m, args, weights):
+    """wvSplitK HIP path: same 2-call gate+up → silu+mul → down as awq_gemv path.
+    Implemented via the standalone hybrid_w4a16_moe_apply Python wrapper."""
+    import skinny_gemms_int4_ext  # noqa: F401  (raises if not built)
+    device = args.device
+    H, I = args.hidden, args.moe_inter
+    w13_qw, w13_sc = weights["w13"]
+    w2_qw, w2_sc = weights["w2"]
+
+    activation = torch.randn(m, H, dtype=torch.float16, device=device) * 0.1
+    num_slots = m * args.top_k
+    sorted_ids = torch.arange(num_slots, dtype=torch.int32, device=device)
+    expert_ids = torch.randint(0, args.num_experts, (num_slots,), dtype=torch.int32, device=device)
+    topk_w = torch.ones(num_slots, dtype=torch.float32, device=device) / args.top_k
+
+    gate_up = torch.empty(num_slots, I * 2, dtype=torch.float16, device=device)
+    output = torch.empty(num_slots, H, dtype=torch.float16, device=device)
+    cu_count = torch.cuda.get_device_properties(device).multi_processor_count
+
+    def step():
+        # gate+up
+        skinny_gemms_int4_ext.fused_moe_wvSplitK_int4_gemm(
+            activation, w13_qw, w13_sc, gate_up, expert_ids,
+            16, cu_count, args.group_size,
+            torch.empty(0, dtype=torch.float16, device=device),
+            sorted_ids, args.top_k,
+        )
+        # silu+mul
+        gate, up = gate_up.split(I, dim=-1)
+        torch.nn.functional.silu(gate, inplace=True)
+        intermediate = gate * up
+        # down
+        skinny_gemms_int4_ext.fused_moe_wvSplitK_int4_gemm(
+            intermediate, w2_qw, w2_sc, output, expert_ids,
+            16, cu_count, args.group_size,
+            torch.empty(0, dtype=torch.float16, device=device),
+            sorted_ids, 1,
+        )
+
+    return time_fn(step, args.warmup, args.iters, device)
+
+
 def main():
     args = get_args()
     print(f"Device: {torch.cuda.get_device_name(args.device)}")
@@ -192,17 +244,30 @@ def main():
         "w2": make_awq_weights_triton(args.num_experts, args.moe_inter, args.hidden,
                                       args.group_size, args.device),
     }
+    # wvSplitK uses skinny [E, N, K/8] layout — same total bytes but different stride.
+    weights_skinny = {
+        "w13": make_skinny_weights(args.num_experts, args.hidden, args.moe_inter * 2,
+                                   args.group_size, args.device),
+        "w2": make_skinny_weights(args.num_experts, args.moe_inter, args.hidden,
+                                  args.group_size, args.device),
+    }
 
-    print(f"{'M':>3} | {'HIP×2+silu (us)':>20} | {'Triton fused (us)':>20} | "
-          f"{'speedup':>8} | verdict")
-    print("-" * 80)
+    print(f"{'M':>3} | {'awq_gemv HIP (us)':>20} | {'wvSplitK HIP (us)':>20} | "
+          f"{'Triton fused (us)':>20} | best")
+    print("-" * 100)
 
     try:
         import awq_gemv_hip_ext  # noqa: F401
         hip_available = True
     except ImportError:
         hip_available = False
-        print("WARN: awq_gemv_hip_ext not importable — HIP path skipped")
+        print("WARN: awq_gemv_hip_ext not importable — awq_gemv path skipped")
+    try:
+        import skinny_gemms_int4_ext  # noqa: F401
+        wv_available = True
+    except ImportError:
+        wv_available = False
+        print("WARN: skinny_gemms_int4_ext not importable — wvSplitK path skipped")
 
     for m in args.m:
         if hip_available:
@@ -214,29 +279,39 @@ def main():
         else:
             hip_med, hip_str = float("inf"), "n/a"
 
+        if wv_available:
+            try:
+                wv_med, wv_min, wv_max = bench_wvsplitk_path(m, args, weights_skinny)
+                wv_str = f"{wv_med:>8.1f} ({wv_min:.1f}-{wv_max:.1f})"
+            except Exception as e:
+                wv_med, wv_str = float("inf"), f"CRASH: {type(e).__name__}: {e}"
+        else:
+            wv_med, wv_str = float("inf"), "n/a"
+
         try:
             tri_med, tri_min, tri_max = bench_triton_path(m, args, weights_triton)
             tri_str = f"{tri_med:>8.1f} ({tri_min:.1f}-{tri_max:.1f})"
         except Exception as e:
             tri_med, tri_str = float("inf"), f"CRASH: {type(e).__name__}: {e}"
 
-        if hip_med < tri_med:
-            verdict = f"HIP wins {tri_med/hip_med:.2f}x"
-            speedup = f"{tri_med/hip_med:.2f}x"
-        elif tri_med < hip_med:
-            verdict = f"Triton wins {hip_med/tri_med:.2f}x"
-            speedup = f"{hip_med/tri_med:.2f}x"
+        # Pick best
+        cands = [("awq_gemv", hip_med), ("wvSplitK", wv_med), ("triton", tri_med)]
+        cands.sort(key=lambda x: x[1])
+        winner, win_t = cands[0]
+        runner = cands[1]
+        if win_t == float("inf"):
+            best = "all-crash"
         else:
-            verdict = "tied"
-            speedup = "1.00x"
+            best = f"{winner} ({runner[1]/win_t:.2f}x vs {runner[0]})"
 
-        print(f"{m:>3} | {hip_str:>20} | {tri_str:>20} | {speedup:>8} | {verdict}")
+        print(f"{m:>3} | {hip_str:>20} | {wv_str:>20} | {tri_str:>20} | {best}")
 
-    print("\nDecision rule (per memory project_hip_awq_kernel_recovery.md):")
-    print("  HIP wins at M=1 → proceed to task #17 wiring (Phase 2).")
-    print("  Triton wins at M=1 → skip Phase 2; consider Phase 3 (mgehre wvSplitK).")
-    print("  Behavior at M=4,8 informs the MAX_SKINNY_BATCH_SIZE threshold for")
-    print("  hybrid HIP-decode + Triton-prefill dispatch (vLLM uses M≤5).")
+    print("\nDecision rules:")
+    print("  awq_gemv wins at M=1 → wire awq_gemv_moe_hip into MoeRunner (#17).")
+    print("  wvSplitK wins at M=1 → wire HybridW4A16MoEExperts into MoeRunner (mgehre port).")
+    print("  Triton wins at M=1 → skip both HIP paths; investigate Triton MoE further.")
+    print("  Cutoff for HIP→Triton dispatch on M>1 informs SGLANG_MOE_HYBRID_W4A16_MAX_BATCH.")
+    print("  Mgehre's vLLM defaults to M≤5 (RDNA 3.5 tuning). R9700 may differ — vary +/- 2 to confirm.")
 
 
 if __name__ == "__main__":
