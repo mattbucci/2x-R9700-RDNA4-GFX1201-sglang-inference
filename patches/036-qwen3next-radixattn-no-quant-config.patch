@@ -1,0 +1,63 @@
+# 036-qwen3next-radixattn-no-quant-config.patch
+#
+# Drop `quant_config=quant_config` from the RadixAttention init in
+# Qwen3NextAttention.__init__. Matches the pattern in qwen3_moe.py /
+# qwen3_5_moe.py / qwen3_5.py — none of which pass quant_config to RadixAttention.
+#
+# Symptom (without this patch):
+#   $ scripts/launch.sh coder-next-ream    # or coder-next
+#   ...
+#   File "components/sglang/python/sglang/srt/models/qwen3_next.py", line 672, in __init__
+#     self.attn = RadixAttention(
+#   File "components/sglang/python/sglang/srt/layers/radix_attention.py", line 98, in __init__
+#     self.quant_method.create_weights(self)
+#   TypeError: UnquantizedLinearMethod.create_weights() missing 5 required positional arguments:
+#     'input_size_per_partition', 'output_partition_sizes', 'input_size', 'output_size', 'params_dtype'
+#
+# Root cause:
+#   When `--quantization moe_wna16` is set (required for Qwen3MoE-family on RDNA4 — see patch
+#   031), MoeWna16Config.get_quant_method() returns UnquantizedLinearMethod for any module
+#   that isn't a FusedMoE. RadixAttention.__init__ then calls `self.quant_method.create_weights(self)`,
+#   passing only `self` (the RadixAttention instance, not a Linear).  UnquantizedLinearMethod.create_weights
+#   requires 6 positional args (layer + 5 size descriptors), so it raises TypeError immediately and the
+#   model class fails to construct.  Crash reproduces deterministically on first launch — no inference,
+#   not load-time, just module construction.
+#
+#   The attention layer's *projections* (q_proj, k_proj, v_proj, o_proj) ARE constructed with
+#   quant_config a few lines above this hunk and get quantized correctly.  RadixAttention itself
+#   only holds the KV cache and dispatches to the attention backend; it doesn't need a
+#   Linear-style quant_method.  qwen3_moe.py confirms this — its RadixAttention init has no
+#   quant_config arg and works cleanly with `--quantization moe_wna16`.
+#
+# Found:    2026-05-11 during ship validation re-test of Qwen3-Coder-Next-REAM-AWQ.
+# Surface: launch fails immediately at TP1 model_runner.initialize() → load_model()
+#          → _initialize_model() → Qwen3NextModel.__init__() → Qwen3NextAttention.__init__().
+# Affects: every Qwen3Next-family model launched with --quantization moe_wna16
+#          (Coder-Next, Coder-Next-REAM, any future Qwen3Next ships).
+# Cross-team: not yet reported to 3090; their stack uses awq_marlin not moe_wna16,
+#             different code path likely sidesteps the bug.
+
+diff --git a/python/sglang/srt/models/qwen3_next.py b/python/sglang/srt/models/qwen3_next.py
+--- a/python/sglang/srt/models/qwen3_next.py
++++ b/python/sglang/srt/models/qwen3_next.py
+@@ -669,13 +669,19 @@ class Qwen3NextAttention(nn.Module):
+             prefix=add_prefix("o_proj", prefix),
+         )
+
++        # 2026-05-11: don't pass quant_config to RadixAttention — matches qwen3_moe.py.
++        # With --quantization moe_wna16, MoeWna16Config.get_quant_method returns
++        # UnquantizedLinearMethod for non-MoE modules, then RadixAttention.__init__
++        # calls .create_weights(self) which crashes (UnquantizedLinearMethod.create_weights
++        # expects 6 positional args, not 1). The attn layer's q/k/v/o Linears are
++        # already constructed with quant_config above; RadixAttention itself just
++        # holds the kv cache and doesn't need quantization config.
+         self.attn = RadixAttention(
+             self.num_heads,
+             self.head_dim,
+             self.scaling,
+             num_kv_heads=self.num_kv_heads,
+             layer_id=layer_id,
+-            quant_config=quant_config,
+             prefix=f"{prefix}.attn",
+         )
+
