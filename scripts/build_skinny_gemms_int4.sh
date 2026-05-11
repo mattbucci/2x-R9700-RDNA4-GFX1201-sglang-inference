@@ -69,7 +69,15 @@ mod = load(
     name='skinny_gemms_int4_ext',
     sources=[src],
     extra_cflags=['-O3', '-DUSE_ROCM'],
-    extra_cuda_cflags=['-O3', '-DUSE_ROCM'],
+    extra_cuda_cflags=[
+        '-O3', '-DUSE_ROCM',
+        '-U__HIP_NO_HALF_OPERATORS__',
+        '-U__HIP_NO_HALF_CONVERSIONS__',
+        '-U__HIP_NO_HALF2_OPERATORS__',
+        '-U__HIP_NO_BFLOAT16_OPERATORS__',
+        '-U__HIP_NO_BFLOAT16_CONVERSIONS__',
+        '-U__HIP_NO_BFLOAT162_OPERATORS__',
+    ],
     build_directory=build_dir,
     verbose=False,
 )
