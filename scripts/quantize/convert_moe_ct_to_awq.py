@@ -334,6 +334,70 @@ def main():
     with open(os.path.join(dst_dir, "config.json"), "w") as fout:
         json.dump(config, fout, indent=2)
 
+    # Architecture-class rescue for text-only-recipe-on-multimodal-base saves.
+    # llmcompressor's `Qwen3_5MoeForCausalLM` (text-only class) writes a flat
+    # config with `model_type: qwen3_5_moe_text` and arch `Qwen3_5MoeForCausalLM`.
+    # SGLang only ships an implementation for the multimodal `Qwen3_5MoeForConditionalGeneration`
+    # class, so the flat save loads as: "Qwen3_5MoeForCausalLM has no SGLang implementation".
+    # The safetensors themselves already use the multimodal `model.language_model.*`
+    # naming convention because the REAM merger writes them that way, so the rescue is
+    # purely a config rewrite — wrap text fields into a `text_config` block and bump arch.
+    # Triggered when: architectures contains a known text-only class AND the safetensors
+    # index has `model.language_model.*` keys. See memory `project_qwen36_v2_loader_block.md`.
+    arch = config.get("architectures", [])
+    TEXT_ONLY_TO_MM = {
+        "Qwen3_5MoeForCausalLM":     "Qwen3_5MoeForConditionalGeneration",
+        "Qwen3MoeForCausalLM":       "Qwen3_5MoeForConditionalGeneration",  # CT-saved coder variants
+    }
+    needs_rescue_arch = (
+        len(arch) == 1
+        and arch[0] in TEXT_ONLY_TO_MM
+        and any(k.startswith("model.language_model.") for k in list(weight_map.keys())[:50])
+    )
+    if needs_rescue_arch:
+        print(f"\n  [arch-rescue] {arch[0]} → {TEXT_ONLY_TO_MM[arch[0]]} (multimodal class on text-only save)")
+        # Find a reference multimodal config in MODELS_DIR with the same backbone family,
+        # so we copy structure (text_config / vision_config / image_token_id / etc).
+        models_root = os.path.dirname(os.path.dirname(os.path.abspath(dst_dir)))
+        if not os.path.basename(models_root) == "models":
+            # fall back to ~/AI/models if dst_dir's parent isn't named "models"
+            models_root = os.path.expanduser("~/AI/models")
+        target_arch = TEXT_ONLY_TO_MM[arch[0]]
+        ref_config = None
+        ref_dir = None
+        for entry in sorted(os.listdir(models_root)):
+            cand = os.path.join(models_root, entry, "config.json")
+            if not os.path.isfile(cand) or os.path.samefile(os.path.dirname(cand), dst_dir):
+                continue
+            try:
+                with open(cand) as f: c = json.load(f)
+                if c.get("architectures") == [target_arch] and "text_config" in c:
+                    ref_config = c
+                    ref_dir = os.path.dirname(cand)
+                    break
+            except Exception:
+                continue
+        if ref_config is None:
+            print(f"  [arch-rescue] WARN: no reference multimodal config found under {models_root} — "
+                  f"keeping flat config (server load will FAIL on SGLang).")
+        else:
+            print(f"  [arch-rescue] using template from {ref_dir}")
+            new_config = dict(ref_config)
+            new_config["quantization_config"] = config["quantization_config"]
+            # Preserve any v2-only top-level keys that the reference lacks
+            for k in config:
+                if k not in new_config and k not in ("text_config", "vision_config"):
+                    new_config[k] = config[k]
+            if "transformers_version" in config:
+                new_config["transformers_version"] = config["transformers_version"]
+            with open(os.path.join(dst_dir, "config.json"), "w") as fout:
+                json.dump(new_config, fout, indent=2, ensure_ascii=False)
+            # Copy processor_config.json too — the multimodal class requires it at load time
+            ref_proc = os.path.join(ref_dir, "processor_config.json")
+            if os.path.isfile(ref_proc) and not os.path.isfile(os.path.join(dst_dir, "processor_config.json")):
+                shutil.copy2(ref_proc, dst_dir)
+                print(f"  [arch-rescue] copied processor_config.json from {ref_dir}")
+
     print(f"\nDone! {total_quantized} quantized, {total_passthrough} passthrough")
     print(f"AWQ model at: {dst_dir}")
     print(f"Config: AWQ 4-bit, group_size={group_size}")
