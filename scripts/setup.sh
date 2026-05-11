@@ -104,6 +104,14 @@ if [ "$SKIP_ENV" = false ]; then
     conda create -n "$ENV_NAME" python=3.12 -y
     conda activate "$ENV_NAME"
 
+    # SGLang v0.5.11 added a Rust gRPC component (python/sglang/srt/grpc_lib/)
+    # that needs `protoc` at build time to compile the .proto definitions.
+    # The compiler is not part of pip's wheel ecosystem; install via conda
+    # from libprotobuf which provides the binary alongside the lib. Required
+    # since 2026-05-11 (first hit when reviving the env build for task #25).
+    echo "Installing libprotobuf (provides protoc for SGLang v0.5.11+ Rust grpc build)..."
+    conda install -c conda-forge -y libprotobuf
+
     echo "Installing PyTorch $TORCH_VERSION..."
     pip install "torch==$TORCH_VERSION" --index-url "$TORCH_INDEX"
     pip install --no-deps \
