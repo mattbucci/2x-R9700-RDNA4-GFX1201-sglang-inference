@@ -43,6 +43,9 @@ if os.path.isfile(os.path.join(_PATCH_DIR, "qwen3moe_unfused_experts.py")):
     except ImportError as e:
         print(f"[quantize_moe_llmcompressor] WARNING: failed to apply unfused patch: {e}")
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from expert_utilization import ExpertUtilizationTracker
+
 parser = argparse.ArgumentParser()
 parser.add_argument("--model", required=True, help="HF model ID or local path")
 parser.add_argument("--output", default=None, help="Output dir (default: auto)")
@@ -175,9 +178,15 @@ recipe = GPTQModifier(
     offload_hessians=True,
 )
 
+top_k = getattr(model.config, "num_experts_per_tok", 8)
+tracker = ExpertUtilizationTracker(model, top_k=top_k) if num_experts > 0 else None
+
 print(f"\nStarting GPTQ calibration + quantization...")
 print(f"This will take several hours on CPU.")
 t0 = time.time()
+# moe_calibrate_all_experts=True forces every token through every expert during
+# calibration regardless of router output — fixes rare-routed expert under-cal.
+# See feedback_moe_quant_best_practices.md + project_ship_validation_2026_05_11.md.
 oneshot(
     model=model,
     dataset=ds,
@@ -185,12 +194,21 @@ oneshot(
     max_seq_length=args.seq_len,
     num_calibration_samples=args.samples,
     processor=tokenizer,
+    moe_calibrate_all_experts=True,
 )
 elapsed = time.time() - t0
 print(f"\nGPTQ quantization completed in {elapsed / 3600:.1f} hours ({elapsed:.0f}s)")
 
 # Save
 os.makedirs(OUTPUT_DIR, exist_ok=True)
+if tracker is not None:
+    print("\n" + tracker.summary())
+    tracker.dump_json(os.path.join(OUTPUT_DIR, "expert_utilization.json"))
+    if tracker.has_blocking_issues():
+        print("*** WARNING: at least one expert saw ZERO routing decisions during calibration. ***")
+        print("*** AWQ scales for these experts will be degenerate. Inspect expert_utilization.json ***")
+    tracker.remove()
+
 print(f"\nSaving to {OUTPUT_DIR}...")
 # max_shard_size="2GB" — default 5GB OOMs the safetensors write on 62GB hosts at 32B+ params.
 model.save_pretrained(OUTPUT_DIR, save_compressed=True, max_shard_size="2GB")

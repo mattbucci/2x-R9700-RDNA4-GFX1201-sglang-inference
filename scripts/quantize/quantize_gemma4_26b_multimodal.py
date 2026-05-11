@@ -77,6 +77,7 @@ oneshot(
     output_dir=OUTPUT_DIR,
     max_seq_length=1024,
     num_calibration_samples=NUM_SAMPLES,
+    moe_calibrate_all_experts=True,  # forces all-expert calibration; fixes rare-expert zero scales
 )
 
 print(f"\nDone! Output: {OUTPUT_DIR}")

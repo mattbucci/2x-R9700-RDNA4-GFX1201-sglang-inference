@@ -134,6 +134,7 @@ oneshot(
     max_seq_length=MAX_SEQUENCE_LENGTH,
     num_calibration_samples=NUM_CALIBRATION_SAMPLES,
     processor=tokenizer,
+    moe_calibrate_all_experts=True,  # forces all-expert calibration; fixes rare-expert zero scales
 )
 elapsed = time.time() - t0
 

@@ -23,12 +23,25 @@ os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+# Apply Qwen3MoeExperts unfused-experts monkey-patch BEFORE from_pretrained.
+# Required for self-rebuilt BF16-REAM/REAP bases that have per-expert keys.
+_REPO_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+_PATCH_DIR = os.path.join(_REPO_DIR, "patches")
+if os.path.isfile(os.path.join(_PATCH_DIR, "qwen3moe_unfused_experts.py")):
+    sys.path.insert(0, _PATCH_DIR)
+    try:
+        import qwen3moe_unfused_experts  # noqa: F401
+        print("[coder30b_code_thinking] Qwen3MoeExperts → Qwen3MoeExpertsUnfused (per-expert ModuleList)")
+    except ImportError as e:
+        print(f"[coder30b_code_thinking] WARNING: failed to apply unfused patch: {e}")
+
 from calibration_datasets import (
     build_calibration_dataset,
     rows_to_text,
     tokenize_text_dataset,
     verify_thinking_preserved,
 )
+from expert_utilization import ExpertUtilizationTracker
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from llmcompressor.modifiers.quantization import GPTQModifier
 from llmcompressor import oneshot
@@ -98,7 +111,15 @@ recipe = GPTQModifier(
     offload_hessians=True,
 )
 
+top_k = getattr(model.config, "num_experts_per_tok", 8)
+tracker = ExpertUtilizationTracker(model, top_k=top_k)
+
 t0 = time.time()
+# moe_calibrate_all_experts=True: forces every token through every expert during
+# calibration regardless of router output. Without this, rare-routed experts get
+# zero/few calibration samples → degenerate AWQ scales (per Phase 2 finding 2026-05-11,
+# 6/14 of our MoE ships had ONE rare expert with 50-72% zero gate_proj/up_proj scales).
+# Per user MoE rule (feedback_moe_quant_best_practices.md): "monitor expert utilization".
 oneshot(
     model=model,
     dataset=dataset,
@@ -106,11 +127,19 @@ oneshot(
     max_seq_length=MAX_SEQUENCE_LENGTH,
     num_calibration_samples=NUM_CALIBRATION_SAMPLES,
     processor=tokenizer,
+    moe_calibrate_all_experts=True,
 )
 elapsed = time.time() - t0
 print(f"\nGPTQ complete in {elapsed/3600:.1f}h ({elapsed:.0f}s)")
 
 os.makedirs(OUTPUT_DIR, exist_ok=True)
+print("\n" + tracker.summary())
+tracker.dump_json(os.path.join(OUTPUT_DIR, "expert_utilization.json"))
+if tracker.has_blocking_issues():
+    print("*** WARNING: at least one expert saw ZERO routing decisions during calibration. ***")
+    print("*** AWQ scales for these experts will be degenerate. Inspect expert_utilization.json ***")
+tracker.remove()
+
 print(f"Saving to {OUTPUT_DIR}...")
 # max_shard_size="2GB" — default 5GB OOMs the safetensors write on 62GB hosts at 32B+ params.
 model.save_pretrained(OUTPUT_DIR, save_compressed=True, max_shard_size="2GB")

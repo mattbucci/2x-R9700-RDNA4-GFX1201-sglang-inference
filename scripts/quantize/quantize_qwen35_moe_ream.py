@@ -177,6 +177,7 @@ oneshot(
     max_seq_length=args.seq_len,
     num_calibration_samples=args.samples,
     processor=tokenizer,
+    moe_calibrate_all_experts=True,  # forces all-expert calibration; fixes rare-expert zero scales
 )
 elapsed = time.time() - t0
 print(f"\nGPTQ completed in {elapsed / 3600:.1f} hours ({elapsed:.0f}s)")

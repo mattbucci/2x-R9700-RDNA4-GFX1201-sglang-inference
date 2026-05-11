@@ -141,7 +141,7 @@ def check_thinking(
     payload["chat_template_kwargs"] = thinking_kwargs or {"enable_thinking": True}
 
     try:
-        r = _http_post(f"{base_url}/v1/chat/completions", payload, timeout=300)
+        r = _http_post(f"{base_url}/v1/chat/completions", payload, timeout=600)
     except Exception as e:
         return False, f"request failed: {e!r}"
 
