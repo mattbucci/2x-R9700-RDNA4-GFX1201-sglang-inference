@@ -1,0 +1,44 @@
+From: R9700 team <noreply@anthropic.com>
+Date: 2026-05-11
+Subject: [PATCH] moe_wna16: accept gelu activation alongside silu
+
+The Triton fused MoE kernel in
+`sglang/srt/layers/moe/moe_runner/triton_utils/fused_moe.py` (lines ~528,
+564, 588, 590) supports BOTH silu and gelu activations, but
+`MoeWNA16Method.apply()` hardcodes a `== "silu"` assertion that
+short-circuits gelu before the kernel sees it.  This blocks Gemma 4 26B
+MoE on RDNA4 — the experts ship with `activation="gelu"` (Gemma 4 uses
+gelu_pytorch_tanh end-to-end).  Without this patch, gemma4 launch fails
+with `AssertionError: Only SiLU activation is supported.` from
+`moe_wna16.py:388`.
+
+Same model also requires:
+- patches/023 (gemma4-moe-mlp-no-quant-config) for the dense-MLP load
+- patches/024 (gemma4-mm-towers-no-quant-config) for vision tower BF16
+- patches/034 (gemma4-mm-per-expert-awq-mapping) for AWQ MoE expert load
+- launch.sh QUANT="moe_wna16" to force the AWQ MoE method (because
+  AWQConfig.get_quant_method returns None for FusedMoE on non-NPU)
+
+Root-caused 2026-05-11 via top-down NaN bisect on R9700.  See
+project_gemma4_v0511_root_cause.md memory for the full chain.
+
+diff --git a/python/sglang/srt/layers/quantization/moe_wna16.py b/python/sglang/srt/layers/quantization/moe_wna16.py
+--- a/python/sglang/srt/layers/quantization/moe_wna16.py
++++ b/python/sglang/srt/layers/quantization/moe_wna16.py
+@@ -384,9 +384,13 @@ class MoeWNA16Method(FusedMoEMethodBase):
+         layer: torch.nn.Module,
+         dispatch_output: StandardDispatchOutput,
+     ) -> CombineInput:
+-        assert (
+-            self.moe_runner_config.activation == "silu"
+-        ), "Only SiLU activation is supported."
++        # Triton fused MoE in moe_runner/triton_utils/fused_moe.py supports both
++        # silu and gelu (lines ~528/564/588/590), so accept either. Required by
++        # Gemma 4 26B MoE on RDNA4 — the experts use `activation="gelu"`.
++        assert self.moe_runner_config.activation in (
++            "silu",
++            "gelu",
++        ), f"Only SiLU/GeLU activation is supported, got {self.moe_runner_config.activation!r}."
+
+         quant_info = self.get_triton_quant_info(layer)
+         return self.runner.run(dispatch_output, quant_info)

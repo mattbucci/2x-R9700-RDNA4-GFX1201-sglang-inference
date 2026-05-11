@@ -107,9 +107,16 @@ apply_preset() {
             WATCHDOG=1800
             ;;
         gemma4)
-            # torch_native attention required — triton attention crashes with SWA on RDNA4
+            # torch_native attention required — triton attention crashes with SWA on RDNA4.
+            # QUANT=moe_wna16 required: AWQConfig.get_quant_method returns None
+            # for FusedMoE on non-NPU, leaving experts.w13_weight at random init
+            # (HSAIL 0x1016 in sampler.py:498 on first inference). moe_wna16 forces
+            # the AWQ MoE path that matches the per-expert checkpoint format.
+            # Root-caused 2026-05-11 — see project_gemma4_v0511_root_cause.md.
             MODEL="${MODEL:-$MODELS_DIR/gemma-4-26B-A4B-it-AWQ-GPTQ-v2-fixed}"
             TOKENIZER="--tokenizer-path $MODELS_DIR/gemma-4-26B-A4B-it-BF16"
+            QUANT="moe_wna16"
+            DTYPE="bfloat16"
             ATTN_BACKEND="torch_native"
             REASONING="--reasoning-parser gemma4"
             # Bumped CTX 4096 → 16384: at 4096, check_thinking max_tokens=4096

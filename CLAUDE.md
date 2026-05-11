@@ -104,3 +104,66 @@ Chat templates matter. We've been burned by:
 - Qwen3.5: thinking tags in template without calibrated thinking data → infinite `<think>` loop
 
 Any new model: inspect its chat template BEFORE launching, check BOS/EOS behavior, verify thinking token handling.
+
+## Debugging Silent Model Failures (NaN cascades, HSAIL crashes)
+
+When a model crashes with `HSAIL 0x1016` in `sampler.py`, or generates garbage tokens, or
+produces empty completions on RDNA4 — the visible traceback is almost never the root cause.
+HSAIL is an **async GPU exception**, raised at the next CPU sync after the offending kernel.
+Our standard top-down isolation pattern (proven 2026-05-11 on Gemma 4 26B):
+
+### Step 1 — Convert silent failures into loud, deterministic Python errors
+Sampling-level HSAIL is usually `multinomial`/`gather` faulting on a NaN/Inf logit row. Force the upstream NaN check to raise:
+```bash
+--enable-nan-detection                 # adds isnan(logits) check in Sampler._preprocess_logits
+SGLANG_IS_IN_CI=1                      # makes crash_on_warnings() return True → escalates to ValueError
+HIP_LAUNCH_BLOCKING=1                  # synchronizes GPU dispatch so traces point at the real kernel
+```
+A reproducible `ValueError: Detected errors during sampling! NaN in the logits.` confirms the path is "model produces NaN → sampler chokes" rather than a sampler kernel bug. Build the Python repro as a tiny standalone script (see `scripts/debug/repro_gemma4_hsail.py`) so subsequent iterations cost ~30 seconds, not a full server cycle.
+
+### Step 2 — Bisect down through the model with env-gated traces
+Add a `GEMMA4_DEBUG=1`-gated logger inside the model's main forward that reports `nan/inf/absmax` after every decoder layer's output. The first layer where `nan > 0` is the failing layer. Then drill into that `DecoderLayer.forward()` with the same trace style on every sub-step (`input_layernorm`, `self_attn`, `post_attn_norm`, `mlp`, `moe`, etc.). Then drill into the failing sub-module's `forward` (e.g. `Gemma3MLP.forward`: instrument before/after each of `gate_up_proj`, `act_fn`, `down_proj`).
+
+Keep the trace **env-gated and prefix-filtered** so it only fires for the layer of interest in production:
+```python
+_trace = (os.environ.get("GEMMA4_DEBUG") in ("1","true","True")
+          and ".layers.0." in (self.prefix or "")
+          and "vision" not in (self.prefix or ""))
+```
+Each sub-step trace is one `torch.no_grad()` block computing `int(t.isnan().sum())`, `int(t.isinf().sum())`, `float(t.abs().max())`. Cheap to run once at the boundary that matters; never check it in to production paths.
+
+### Step 3 — Test the kernel in isolation before blaming it
+Once the bisect lands on a single Linear / kernel call, write a standalone test (see `scripts/debug/awq_kernel_layer0_test.py` for the AWQ pattern):
+1. Load the **exact** safetensors slice for the suspect parameter (qweight/qzeros/scales).
+2. Load the BF16 ground-truth weight from the unquantized base (we keep both side by side: `gemma-4-26B-A4B-it-AWQ-GPTQ-v2-fixed` + `gemma-4-26B-A4B-it-BF16`).
+3. Call the kernel directly (e.g. `awq_dequantize_triton(qw, sc, qz)`) and check `nan/inf/absmax`.
+4. Compare to the Python reference implementation (e.g. `awq_dequantize_decomposition`) and to BF16 ground truth.
+5. Drive the matmul with input matching the production trace (same dtype, same `absmax`, same shape — the production sub-step trace tells you what those should be).
+
+If the kernel produces correct output in isolation but garbage in production, the bug is in the **dispatch context** (dtype mismatch, alignment, weight-loader mutation), not the kernel math. Common dispatch traps on RDNA4: `BF16 input @ FP16 dequant-output` mismatch in `torch.matmul`, FP16 scales loaded with model dtype BF16, parameter shape miscalculation in TP sharding.
+
+### Step 4 — Read the generated Triton kernel when isolation passes
+If the kernel works at TP=1 but fails at TP=2, or works for one layer but fails for another, inspect what Triton actually compiled. The relevant artifacts:
+
+```bash
+# Force Triton to dump every compiled kernel (IR + HIP assembly + binary)
+TRITON_KERNEL_DUMP=1 TRITON_DUMP_DIR=/tmp/triton-dump python <repro>
+
+# Show autotune decisions (which BLOCK_SIZE/num_warps combo Triton picked)
+TRITON_PRINT_AUTOTUNING=1 python <repro>
+
+# Triton's on-disk cache — kernels persist here between runs
+ls ~/.triton/cache/                                # one dir per (kernel hash, target)
+file ~/.triton/cache/<hash>/awq_dequantize_kernel.{ttir,ttgir,llir,amdgcn,hsaco}
+```
+
+What to look for in the dumped files:
+- **`*.ttir`** (Triton IR): The lowered kernel. Verify the dtype of `tl.load`/`tl.store` matches what you expect (e.g. if you see `f16` where you expect `bf16`, that's the bug).
+- **`*.ttgir`** (Triton GPU IR): Block layouts, async copies, reductions. Misaligned tensor shapes show up here as awkward layout conversions.
+- **`*.amdgcn`** (HIP assembly for gfx1201): Final kernel. Useful for spotting `v_div_fixup_f32` that wasn't expected, or `s_waitcnt` placement that suggests memory ordering issues. Can be diffed against a known-good kernel for the same shape on a different gpu.
+- **`*.hsaco`**: Object file; not human-readable but you can run `roc-obj-extract` + `llvm-objdump --disassemble` if needed.
+
+For ROCm-specific kernel dispatch problems, also check `~/.triton/cache/*/group_*` directories — Triton stores autotune results per `(num_warps, num_stages, BLOCK_SIZE_*)` tuple, and a regression often shows up as a different group-key being chosen on RDNA4 vs Ampere. If two adjacent layers give different `nan` results, compare their cache hash dirs side by side.
+
+### Step 5 — Document the bisect chain in commit + memory
+When a bug is found, the commit message should list every step: which layer, which sub-step, which kernel call, what the isolation test proved, and what the dispatch-context fix is. Save a memory file (`project_<bug>_root_cause.md`) so future debug sessions don't re-walk the same path.

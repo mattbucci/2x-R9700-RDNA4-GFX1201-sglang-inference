@@ -1,0 +1,94 @@
+From: R9700 team <noreply@anthropic.com>
+Date: 2026-05-11
+Subject: [PATCH] gemma4_mm: add per-expert AWQ/GPTQ load mapping
+
+`Gemma4ForConditionalGeneration.load_weights` (the multimodal entry-class
+load path used for gemma-4-26B-A4B-it-AWQ-GPTQ-v2-fixed and the
+mattbucci/gemma-4-26B-AWQ HF mirror) only had a fused-BF16 expert weight
+mapping (`experts.gate_up_proj` → `experts.w13_weight`).  Per-expert
+AWQ checkpoint keys (`experts.0.gate_proj.qweight`,
+`experts.0.up_proj.qweight`, etc.) silently failed to match anything,
+leaving `experts.w13_qweight` at random init.  Result: layer-0 MoE
+forward returns NaN, NaN cascades through every subsequent layer, lm_head
+produces all-NaN logits, sampler crashes with `HSAIL 0x1016` in
+`sampler.py:498` on first inference.
+
+This patch adds the per-expert mapping that already exists in
+`Gemma4ForCausalLM.load_weights` (gemma4_causal.py lines ~1011-1027) but
+was missing from the multimodal entry class.  The mapping uses
+`FusedMoE.make_expert_params_mapping(...)` to enumerate per-expert tuples
+and is checked BEFORE the fused-BF16 mapping (so AWQ checkpoints take
+priority when both formats are configured).
+
+Required for AWQ-quantized Gemma 4 26B MoE on R9700.  Companion to:
+- patches/023 (gemma4-moe-mlp-no-quant-config) — dense MLP load path
+- patches/024 (gemma4-mm-towers-no-quant-config) — vision tower BF16
+- patches/033 (moe-wna16-gelu-activation) — gelu activation in moe_wna16
+- launch.sh QUANT="moe_wna16" — forces AWQ MoE method dispatch
+
+Root-caused 2026-05-11 via top-down NaN bisect.  See memory file
+project_gemma4_v0511_root_cause.md for the full chain.
+
+diff --git a/python/sglang/srt/models/gemma4_mm.py b/python/sglang/srt/models/gemma4_mm.py
+--- a/python/sglang/srt/models/gemma4_mm.py
++++ b/python/sglang/srt/models/gemma4_mm.py
+@@ -741,9 +741,30 @@ class Gemma4ForConditionalGeneration(PreTrainedModel):
+     def load_weights(self, weights: Iterable[Tuple[str, torch.Tensor]]):
++        from sglang.srt.layers.moe.fused_moe_triton.layer import FusedMoE
++
+         k_eq_v_layers = self._get_k_eq_v_layers()
+
+         num_experts = getattr(self.config.text_config, "num_experts", 0) or 0
++        # Per-expert mapping for AWQ/GPTQ checkpoints (experts.0.gate_proj.qweight, …).
++        # Without this, AWQ-quantized expert weights silently fail to load — the
++        # FusedMoE param `experts.w13_qweight` stays at empty/random init, the
++        # MoE forward at layer 0 returns NaN, and the LM head produces all-NaN
++        # logits → HSAIL 0x1016 in sampler.py:498 on first inference.
++        # Same shape as the per-expert mapping in Gemma4ForCausalLM.load_weights;
++        # this multimodal entry class was missing it. Root-caused 2026-05-11.
++        per_expert_params_mapping = (
++            FusedMoE.make_expert_params_mapping(
++                ckpt_gate_proj_name="gate_proj",
++                ckpt_down_proj_name="down_proj",
++                ckpt_up_proj_name="up_proj",
++                num_experts=num_experts,
++            )
++            if num_experts > 0
++            else []
++        )
++        # Fused mapping for BF16 checkpoints (experts.gate_up_proj [E, 2*I, H]).
+         expert_params_mapping = [
+             # (param_name, ckpt_weight_name, shard_ids)
+             # gate_up_proj is fused [E, 2*I, H] — chunk into w1 (gate) + w3 (up)
+@@ -770,6 +791,30 @@ class Gemma4ForConditionalGeneration(PreTrainedModel):
+             # MoE expert weights checked first (gate_up_proj contains "up_proj"
+             # which would false-match the stacked dense MLP mapping).
+             orig_name = name
++
++            # --- Per-expert AWQ/GPTQ weights (experts.{i}.gate_proj.qweight) ---
++            is_expert_weight = False
++            for param_name, weight_name, expert_id, shard_id in per_expert_params_mapping:
++                if weight_name not in name:
++                    continue
++                is_expert_weight = True
++                name = name.replace(weight_name, param_name)
++                if name not in params_dict:
++                    continue
++                param = params_dict[name]
++                weight_loader = param.weight_loader
++                weight_loader(
++                    param, loaded_weight, name,
++                    shard_id=shard_id, expert_id=expert_id,
++                )
++                break
++            else:
++                if is_expert_weight:
++                    loaded_params.add(name)
++                    continue
++            if is_expert_weight:
++                loaded_params.add(name)
++                continue
++
+             for param_name, weight_name, shard_ids in expert_params_mapping:
+                 name = orig_name
+                 if weight_name not in name:
