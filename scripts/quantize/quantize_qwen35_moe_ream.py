@@ -37,6 +37,9 @@ if os.path.isfile(os.path.join(_PATCH_DIR, "qwen3moe_unfused_experts.py")):
     except ImportError as e:
         print(f"[quantize_qwen35_moe_ream] WARNING: failed to apply unfused patch: {e}")
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from expert_utilization import ExpertUtilizationTracker
+
 parser = argparse.ArgumentParser()
 parser.add_argument("--model", default=None,
                     help="BF16 model path (default: ~/AI/models/Qwen3.5-35B-A3B-REAM-BF16)")
@@ -168,6 +171,9 @@ recipe = GPTQModifier(
     offload_hessians=True,
 )
 
+top_k = getattr(model.config, "num_experts_per_tok", 8)
+tracker = ExpertUtilizationTracker(model, top_k=top_k)
+
 print(f"\nRunning GPTQ calibration (this will take several hours on CPU)...")
 t0 = time.time()
 oneshot(
@@ -183,6 +189,12 @@ elapsed = time.time() - t0
 print(f"\nGPTQ completed in {elapsed / 3600:.1f} hours ({elapsed:.0f}s)")
 
 os.makedirs(OUTPUT_DIR, exist_ok=True)
+print("\n" + tracker.summary())
+tracker.dump_json(os.path.join(OUTPUT_DIR, "expert_utilization.json"))
+if tracker.has_blocking_issues():
+    print("*** WARNING: at least one expert saw ZERO routing decisions during calibration. ***")
+tracker.remove()
+
 print(f"\nSaving to {OUTPUT_DIR}...")
 # max_shard_size="2GB" — default 5GB OOMs the safetensors write on 62GB hosts at 32B+ params.
 model.save_pretrained(OUTPUT_DIR, save_compressed=True, max_shard_size="2GB")

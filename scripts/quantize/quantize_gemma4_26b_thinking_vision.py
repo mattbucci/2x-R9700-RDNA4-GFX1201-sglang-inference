@@ -54,6 +54,7 @@ from calibration_datasets import (
     tokenize_text_dataset,
     verify_thinking_preserved,
 )
+from expert_utilization import ExpertUtilizationTracker
 
 BF16_MODEL = os.environ.get(
     "BF16_MODEL", os.path.expanduser("~/AI/models/gemma-4-26B-A4B-it-BF16")
@@ -321,6 +322,9 @@ _cb.BaseCompressor.compress_module = _patched_compress
 linear_count = sum(1 for m in model.modules() if isinstance(m, nn.Linear))
 print(f"Loaded model with {linear_count} nn.Linear layers (unfused)")
 
+top_k = getattr(model.config, "num_experts_per_tok", 4)
+tracker = ExpertUtilizationTracker(model, top_k=top_k)
+
 t0 = time.time()
 oneshot(
     model=model,
@@ -336,6 +340,12 @@ elapsed = time.time() - t0
 
 print(f"\nGPTQ complete in {elapsed/3600:.1f}h ({elapsed:.0f}s)")
 print(f"Output: {CT_OUTPUT}")
+
+print("\n" + tracker.summary())
+tracker.dump_json(os.path.join(CT_OUTPUT, "expert_utilization.json"))
+if tracker.has_blocking_issues():
+    print("*** WARNING: at least one expert saw ZERO routing decisions during calibration. ***")
+tracker.remove()
 
 # Also save the image+video processor — tokenizer.save_pretrained omits it,
 # and SGLang's tokenizer_manager requires preprocessor_config.json at launch.
