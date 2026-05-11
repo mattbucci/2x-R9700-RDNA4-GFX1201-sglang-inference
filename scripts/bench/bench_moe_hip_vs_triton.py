@@ -121,6 +121,12 @@ def bench_hip_path(m, args, weights):
 
 def bench_triton_path(m, args, weights):
     """Triton path: _fused_moe_kernel_sequence does everything in one fused call."""
+    # SGLang v0.5.11 reads enable_fused_moe_sum_all_reduce from the global
+    # ServerArgs singleton; stub it before importing so the import path resolves.
+    import sglang.srt.server_args as _sa
+    from types import SimpleNamespace
+    if _sa._global_server_args is None:
+        _sa._global_server_args = SimpleNamespace(enable_fused_moe_sum_all_reduce=False)
     from sglang.srt.layers.moe.moe_runner.triton_utils.fused_moe import (
         _fused_moe_kernel_sequence,
     )
@@ -206,7 +212,7 @@ def bench_wvsplitk_path(m, args, weights):
         # gate+up
         skinny_gemms_int4_ext.fused_moe_wvSplitK_int4_gemm(
             activation, w13_qw, w13_sc, gate_up, expert_ids,
-            16, cu_count, args.group_size,
+            1, cu_count, args.group_size,
             torch.empty(0, dtype=torch.float16, device=device),
             sorted_ids, args.top_k,
         )
@@ -217,7 +223,7 @@ def bench_wvsplitk_path(m, args, weights):
         # down
         skinny_gemms_int4_ext.fused_moe_wvSplitK_int4_gemm(
             intermediate, w2_qw, w2_sc, output, expert_ids,
-            16, cu_count, args.group_size,
+            1, cu_count, args.group_size,
             torch.empty(0, dtype=torch.float16, device=device),
             sorted_ids, 1,
         )
@@ -288,11 +294,14 @@ def main():
         else:
             wv_med, wv_str = float("inf"), "n/a"
 
-        try:
-            tri_med, tri_min, tri_max = bench_triton_path(m, args, weights_triton)
-            tri_str = f"{tri_med:>8.1f} ({tri_min:.1f}-{tri_max:.1f})"
-        except Exception as e:
-            tri_med, tri_str = float("inf"), f"CRASH: {type(e).__name__}: {e}"
+        if os.environ.get("BENCH_SKIP_TRITON", "0") == "1":
+            tri_med, tri_str = float("inf"), "SKIP (BENCH_SKIP_TRITON=1)"
+        else:
+            try:
+                tri_med, tri_min, tri_max = bench_triton_path(m, args, weights_triton)
+                tri_str = f"{tri_med:>8.1f} ({tri_min:.1f}-{tri_max:.1f})"
+            except Exception as e:
+                tri_med, tri_str = float("inf"), f"CRASH: {type(e).__name__}: {e}"
 
         # Pick best
         cands = [("awq_gemv", hip_med), ("wvSplitK", wv_med), ("triton", tri_med)]
