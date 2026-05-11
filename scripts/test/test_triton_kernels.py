@@ -2,8 +2,8 @@
 """Test individual Triton kernels on both torch 2.11 and 2.12 to isolate failures.
 
 Run with each env:
-  /home/letsrtfm/miniforge3/envs/sglang-clean/bin/python scripts/test_triton_kernels.py
-  /home/letsrtfm/miniforge3/envs/sglang-triton36/bin/python scripts/test_triton_kernels.py
+  conda run -n sglang-clean python scripts/test_triton_kernels.py
+  conda run -n sglang-triton36 python scripts/test_triton_kernels.py
 """
 import sys
 import os

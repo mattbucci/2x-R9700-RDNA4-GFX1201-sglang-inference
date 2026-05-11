@@ -99,7 +99,9 @@ setup_rdna4_env() {
     if [ -n "$_torch_lib" ]; then
         export LD_LIBRARY_PATH="${_torch_lib}:${LD_LIBRARY_PATH:-}"
     fi
-    local _gemv_dir="/home/letsrtfm/AI/rdna4-inference-triton36/build/awq_gemv"
+    local _repo_root
+    _repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+    local _gemv_dir="${_repo_root}/build/awq_gemv"
     if [ -f "$_gemv_dir/awq_gemv_hip_ext.so" ]; then
         export PYTHONPATH="${_gemv_dir}:${PYTHONPATH:-}"
     fi

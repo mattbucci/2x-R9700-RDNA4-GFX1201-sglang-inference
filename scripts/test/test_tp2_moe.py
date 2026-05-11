@@ -10,8 +10,9 @@ os.environ['HIP_FORCE_DEV_KERNARG'] = '1'
 os.environ['MASTER_ADDR'] = '127.0.0.1'
 os.environ['MASTER_PORT'] = '29500'
 
-sys.path.insert(0, '/home/letsrtfm/AI/rdna4-inference-triton36/components/sglang/python')
-sys.path.insert(0, '/home/letsrtfm/AI/rdna4-inference-triton36/components/sglang/sgl-kernel/python')
+_REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, os.path.join(_REPO_ROOT, 'components/sglang/python'))
+sys.path.insert(0, os.path.join(_REPO_ROOT, 'components/sglang/sgl-kernel/python'))
 
 
 def worker(rank, world_size):

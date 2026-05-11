@@ -7,7 +7,9 @@
 # skip_flags is a comma-separated subset of {thinking,vision,video}.
 
 set -uo pipefail
-cd /home/letsrtfm/AI/rdna4-inference-triton36
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+MODELS_DIR="${MODELS_DIR:-$HOME/AI/models}"
+cd "$REPO_ROOT"
 source scripts/common.sh
 activate_conda
 
@@ -23,11 +25,11 @@ mkdir -p "$(dirname "$RESULTS")"
 ROWS=(
   # text-only, non-thinking
   "Qwen3-Coder-30B-A3B-AWQ|coder-30b||thinking,vision,video|256"
-  "Qwen3-Coder-30B-A3B-REAM-AWQ|coder-30b|/home/letsrtfm/AI/models/Qwen3-Coder-30B-A3B-REAM-AWQ|thinking,vision,video|256"
-  "Qwen3-Coder-30B-A3B-REAP-AWQ|coder-30b|/home/letsrtfm/AI/models/Qwen3-Coder-30B-A3B-REAP-AWQ|thinking,vision,video|256"
+  "Qwen3-Coder-30B-A3B-REAM-AWQ|coder-30b|${MODELS_DIR}/Qwen3-Coder-30B-A3B-REAM-AWQ|thinking,vision,video|256"
+  "Qwen3-Coder-30B-A3B-REAP-AWQ|coder-30b|${MODELS_DIR}/Qwen3-Coder-30B-A3B-REAP-AWQ|thinking,vision,video|256"
   "Qwen3-Coder-REAP-25B-A3B-AWQ|coder-reap-25b||thinking,vision,video|256"
   "Qwen3-Coder-Next-REAM-AWQ|coder-next-ream||thinking,vision,video|256"
-  "Qwen3.6-REAM-A3B-AWQ|qwen36-moe|/home/letsrtfm/AI/models/Qwen3.6-REAM-A3B-AWQ-recal-1024|vision,video|2048"
+  "Qwen3.6-REAM-A3B-AWQ|qwen36-moe|${MODELS_DIR}/Qwen3.6-REAM-A3B-AWQ-recal-1024|vision,video|2048"
   # thinking, image only (Devstral has no video, image-capable per Mistral3 arch)
   "Devstral-24B-AWQ|devstral||thinking,video|512"
   # thinking + vision + video
@@ -35,7 +37,7 @@ ROWS=(
   "Qwen3.6-27B-AWQ|qwen36-27b||video|2048"
   "Qwen3.6-35B-A3B-AWQ|qwen36-moe||video|2048"
   "Qwen3-VL-32B-AWQ|qwen3vl-32b||video|2048"
-  "Qwen3.6-VL-REAP-26B-A3B-AWQ|qwen36-moe|/home/letsrtfm/AI/models/Qwen3.6-VL-REAP-26B-A3B-AWQ-native|video|2048"
+  "Qwen3.6-VL-REAP-26B-A3B-AWQ|qwen36-moe|${MODELS_DIR}/Qwen3.6-VL-REAP-26B-A3B-AWQ-native|video|2048"
   # gemma4 family — has audio/video too but our validator only does video
   "gemma-4-26B-AWQ|gemma4||video|2048"
   "gemma-4-31B-it-AutoRound-AWQ|gemma4-31b||video|2048"
@@ -90,7 +92,7 @@ run_one() {
   fi
 
   setsid bash -c "
-    cd /home/letsrtfm/AI/rdna4-inference-triton36
+    cd "$REPO_ROOT"
     source scripts/common.sh
     activate_conda
     setup_rdna4_env

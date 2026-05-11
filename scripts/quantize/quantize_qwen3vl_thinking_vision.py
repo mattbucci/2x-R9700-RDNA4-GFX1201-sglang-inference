@@ -8,8 +8,8 @@ qwen36_thinking_vision pipeline.
 
 Usage:
     conda activate quant
-    BASE_MODEL=/home/letsrtfm/AI/models/Qwen3-VL-32B-Instruct-BF16 \
-    OUTPUT_DIR=/home/letsrtfm/AI/models/Qwen3-VL-32B-AWQ-CT-balanced \
+    BASE_MODEL=~/AI/models/Qwen3-VL-32B-Instruct-BF16 \
+    OUTPUT_DIR=~/AI/models/Qwen3-VL-32B-AWQ-CT-balanced \
     RECIPE=balanced_thinking_vision NUM_SAMPLES=512 MAX_SEQ_LEN=2048 \
     CUDA_VISIBLE_DEVICES="" python scripts/quantize/quantize_qwen3vl_thinking_vision.py
 """

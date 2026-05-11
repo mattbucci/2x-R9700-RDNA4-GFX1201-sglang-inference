@@ -8,7 +8,7 @@ Outputs per-expert AWQ format (qweight/qzeros/scales) that our SGLang
 load_weights() already supports.
 
 Usage:
-    cd /home/letsrtfm/AI/rdna4-inference-triton36
+    cd <repo-root>
     source scripts/common.sh && activate_conda && setup_rdna4_env
     python scripts/quantize_gemma4_gptq.py \
         --model-path ~/AI/models/gemma-4-26B-A4B-it-BF16 \

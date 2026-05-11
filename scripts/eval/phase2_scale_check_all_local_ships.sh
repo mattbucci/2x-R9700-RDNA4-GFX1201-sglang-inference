@@ -3,7 +3,9 @@
 # corresponding to shipped mattbucci HF repos.
 
 set -uo pipefail
-cd /home/letsrtfm/AI/rdna4-inference-triton36
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+MODELS_DIR="${MODELS_DIR:-$HOME/AI/models}"
+cd "$REPO_ROOT"
 source scripts/common.sh
 activate_conda
 
@@ -30,7 +32,7 @@ PAIRS=(
 
 for p in "${PAIRS[@]}"; do
   IFS='|' read -r local_dir ship <<<"$p"
-  full="/home/letsrtfm/AI/models/${local_dir}"
+  full="${MODELS_DIR}/${local_dir}"
   echo "" >>"$OUT"
   echo "==================================================" >>"$OUT"
   echo "  ${ship}  ←  ${local_dir}" >>"$OUT"
