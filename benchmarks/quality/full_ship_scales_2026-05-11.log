@@ -1,0 +1,114 @@
+
+==================================================
+  mattbucci/Devstral-24B-AWQ  ←  Devstral-24B-AWQ-4bit-calibrated
+==================================================
+=== local /data/models/Devstral-24B-AWQ-4bit-calibrated ===
+Scanned 280 *.scales tensors, 0 flagged.
+All scales clean.
+
+==================================================
+  mattbucci/Qwen3-Coder-30B-A3B-AWQ  ←  Qwen3-Coder-30B-A3B-AWQ
+==================================================
+=== local /data/models/Qwen3-Coder-30B-A3B-AWQ ===
+Scanned 18624 *.scales tensors, 0 flagged.
+All scales clean.
+
+==================================================
+  mattbucci/Qwen3-Coder-30B-A3B-REAM-AWQ  ←  Qwen3-Coder-30B-A3B-REAM-AWQ
+==================================================
+Scanned 14016 *.scales tensors, 2 flagged.
+  [FAIL] model.safetensors::model.layers.1.mlp.experts.25.gate_proj.scales
+         - 52.1% zero scales (suspicious)
+  [FAIL] model.safetensors::model.layers.1.mlp.experts.25.up_proj.scales
+         - 52.1% zero scales (suspicious)
+
+==================================================
+  mattbucci/Qwen3-Coder-30B-A3B-REAP-AWQ  ←  Qwen3-Coder-30B-A3B-REAP-AWQ
+==================================================
+=== local /data/models/Qwen3-Coder-30B-A3B-REAP-AWQ ===
+Scanned 14016 *.scales tensors, 0 flagged.
+All scales clean.
+
+==================================================
+  mattbucci/Qwen3-Coder-Next-REAM-AWQ  ←  Qwen3-Coder-Next-REAM-AWQ
+==================================================
+         - 55.3% zero scales (suspicious)
+  [FAIL] model-00008-of-00008.safetensors::model.layers.47.mlp.experts.81.gate_proj.scales
+         - 83.4% zero scales (suspicious)
+  [FAIL] model-00008-of-00008.safetensors::model.layers.47.mlp.experts.81.up_proj.scales
+         - 83.4% zero scales (suspicious)
+
+==================================================
+  mattbucci/Qwen3-Coder-REAP-25B-A3B-AWQ  ←  Qwen3-Coder-REAP-25B-A3B-AWQ-native
+==================================================
+Scanned 15024 *.scales tensors, 2 flagged.
+  [FAIL] model.safetensors::model.layers.1.mlp.experts.22.gate_proj.scales
+         - 52.1% zero scales (suspicious)
+  [FAIL] model.safetensors::model.layers.1.mlp.experts.22.up_proj.scales
+         - 52.1% zero scales (suspicious)
+
+==================================================
+  mattbucci/Qwen3-VL-32B-AWQ  ←  Qwen3-VL-32B-AWQ-balanced
+==================================================
+=== local /data/models/Qwen3-VL-32B-AWQ-balanced ===
+Scanned 448 *.scales tensors, 0 flagged.
+All scales clean.
+
+==================================================
+  mattbucci/Qwen3.5-27B-AWQ  ←  Qwen3.5-27B-AWQ-4bit-calibrated
+==================================================
+=== local /data/models/Qwen3.5-27B-AWQ-4bit-calibrated ===
+Scanned 400 *.scales tensors, 0 flagged.
+All scales clean.
+
+==================================================
+  mattbucci/Qwen3.6-27B-AWQ  ←  Qwen3.6-27B-AWQ-native-thinking-vision
+==================================================
+=== local /data/models/Qwen3.6-27B-AWQ-native-thinking-vision ===
+Scanned 400 *.scales tensors, 0 flagged.
+All scales clean.
+
+==================================================
+  mattbucci/Qwen3.6-35B-A3B-AWQ  ←  Qwen3.6-35B-A3B-AWQ-native-thinking-vision
+==================================================
+         - 59.6% zero scales (suspicious)
+  [FAIL] model.safetensors::model.language_model.layers.1.mlp.experts.214.gate_proj.scales
+         - 72.5% zero scales (suspicious)
+  [FAIL] model.safetensors::model.language_model.layers.1.mlp.experts.214.up_proj.scales
+         - 72.5% zero scales (suspicious)
+
+==================================================
+  mattbucci/Qwen3.6-REAM-A3B-AWQ  ←  Qwen3.6-REAM-A3B-AWQ
+==================================================
+         - 50.8% zero scales (suspicious)
+  [FAIL] model.safetensors::model.language_model.layers.1.mlp.experts.159.gate_proj.scales
+         - 72.5% zero scales (suspicious)
+  [FAIL] model.safetensors::model.language_model.layers.1.mlp.experts.159.up_proj.scales
+         - 72.5% zero scales (suspicious)
+
+==================================================
+  mattbucci/Qwen3.6-VL-REAP-26B-A3B-AWQ  ←  Qwen3.6-VL-REAP-26B-A3B-AWQ-native
+==================================================
+         - 50.8% zero scales (suspicious)
+  [FAIL] model.safetensors::model.language_model.layers.1.mlp.experts.166.gate_proj.scales
+         - 72.5% zero scales (suspicious)
+  [FAIL] model.safetensors::model.language_model.layers.1.mlp.experts.166.up_proj.scales
+         - 72.5% zero scales (suspicious)
+
+==================================================
+  mattbucci/gemma-4-26B-AWQ  ←  gemma-4-26B-A4B-it-AWQ-GPTQ-v2-fixed
+==================================================
+=== local /data/models/gemma-4-26B-A4B-it-AWQ-GPTQ-v2-fixed ===
+Scanned 11725 *.scales tensors, 0 flagged.
+All scales clean.
+
+==================================================
+  mattbucci/gemma-4-31B-it-AutoRound-AWQ  ←  gemma-4-31B-it-AutoRound-AWQ
+==================================================
+=== local /data/models/gemma-4-31B-it-AutoRound-AWQ ===
+Scanned 410 *.scales tensors, 0 flagged.
+All scales clean.
+
+==================================================
+  mattbucci/Qwen3.5-28B-A3B-REAP-AWQ  ←  (HF only)
+==================================================

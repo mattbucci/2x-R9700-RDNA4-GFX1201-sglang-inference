@@ -86,7 +86,14 @@ apply_preset() {
             # Long-context target: 131K by default (can push to 256K with CLI
             # --context-length 262144 once VRAM headroom confirmed).  MoE + DeltaNet
             # hybrid, BF16 DeltaNet/attention = ~23 GB/GPU, small window for KV.
+            # 2026-05-11 — QUANT="moe_wna16" + DTYPE="bfloat16" required (same
+            # rule as coder-30b/qwen35-moe/qwen36-moe). AWQConfig.get_quant_method
+            # returns None for FusedMoE on non-NPU; default `awq`+`fp16` allocates
+            # experts as BF16 (768 MiB × num_layers) → OOM at model-load time.
+            # Surfaced via Phase 3 ship validation.
             MODEL="${MODEL:-$MODELS_DIR/Qwen3-Coder-Next-AWQ}"
+            QUANT="moe_wna16"
+            DTYPE="bfloat16"
             CTX=131072; MAX_RUNNING=8; CHUNKED=8192; DECODE_STEPS=32; MEM=0.85
             MAMBA_CACHE="--max-mamba-cache-size 8"
             WATCHDOG=1800
@@ -96,7 +103,12 @@ apply_preset() {
             # KV cache can stretch to full context without batched-request
             # contention.  BF16 DeltaNet/attention weights already dominate
             # per-GPU VRAM (~23 GB); KV cache at FP8 adds ~8 KB/token.
+            # 2026-05-11 — QUANT="moe_wna16" + DTYPE="bfloat16" required (same
+            # rule as coder-next above). Validation sweep confirmed default
+            # `awq`+`fp16` causes unquant.py expert allocation → OOM.
             MODEL="${MODEL:-$MODELS_DIR/Qwen3-Coder-Next-REAM-AWQ}"
+            QUANT="moe_wna16"
+            DTYPE="bfloat16"
             CTX=131072; MAX_RUNNING=8; CHUNKED=8192; DECODE_STEPS=24; MEM=0.85
             MAMBA_CACHE="--max-mamba-cache-size 8"
             WATCHDOG=1800

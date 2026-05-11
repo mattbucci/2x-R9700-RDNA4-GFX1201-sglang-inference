@@ -1,0 +1,274 @@
+{
+  "Qwen3-Coder-30B-A3B-AWQ": {
+    "tag": "Qwen3-Coder-30B-A3B-AWQ",
+    "model": "/home/letsrtfm/AI/models/Qwen3-Coder-30B-A3B-AWQ",
+    "timestamp": "2026-05-11 01:51",
+    "elapsed_sec": 1.1,
+    "checks": {
+      "basic": {
+        "passed": true,
+        "message": "finish=stop answer='paris'"
+      }
+    },
+    "summary": {
+      "passed": 1,
+      "total": 1
+    }
+  },
+  "Qwen3-Coder-30B-A3B-REAM-AWQ": {
+    "tag": "Qwen3-Coder-30B-A3B-REAM-AWQ",
+    "model": "/home/letsrtfm/AI/models/Qwen3-Coder-30B-A3B-REAM-AWQ",
+    "timestamp": "2026-05-11 01:52",
+    "elapsed_sec": 0.7,
+    "checks": {
+      "basic": {
+        "passed": true,
+        "message": "finish=stop answer='paris'"
+      }
+    },
+    "summary": {
+      "passed": 1,
+      "total": 1
+    }
+  },
+  "Qwen3-Coder-30B-A3B-REAP-AWQ": {
+    "tag": "Qwen3-Coder-30B-A3B-REAP-AWQ",
+    "model": "/home/letsrtfm/AI/models/Qwen3-Coder-30B-A3B-REAP-AWQ",
+    "timestamp": "2026-05-11 01:54",
+    "elapsed_sec": 12.2,
+    "checks": {
+      "basic": {
+        "passed": false,
+        "message": "finish=length answer='artial {_artial/productartialproduct_sensorartial solomon_st'"
+      }
+    },
+    "summary": {
+      "passed": 0,
+      "total": 1
+    }
+  },
+  "Qwen3-Coder-REAP-25B-A3B-AWQ": {
+    "tag": "Qwen3-Coder-REAP-25B-A3B-AWQ",
+    "model": "/home/letsrtfm/AI/models/Qwen3-Coder-REAP-25B-A3B-AWQ-native",
+    "timestamp": "2026-05-11 01:55",
+    "elapsed_sec": 0.7,
+    "checks": {
+      "basic": {
+        "passed": true,
+        "message": "finish=stop answer='paris'"
+      }
+    },
+    "summary": {
+      "passed": 1,
+      "total": 1
+    }
+  },
+  "Qwen3.6-REAM-A3B-AWQ": {
+    "tag": "Qwen3.6-REAM-A3B-AWQ",
+    "model": "/home/letsrtfm/AI/models/Qwen3.6-REAM-A3B-AWQ-recal-1024",
+    "timestamp": "2026-05-11 01:58",
+    "elapsed_sec": 43.8,
+    "checks": {
+      "basic": {
+        "passed": true,
+        "message": "finish=stop answer='paris'"
+      },
+      "thinking": {
+        "passed": true,
+        "message": "reasoning_seen terminated answer_ok (922 tok, finish=stop)"
+      }
+    },
+    "summary": {
+      "passed": 2,
+      "total": 2
+    }
+  },
+  "Devstral-24B-AWQ": {
+    "tag": "Devstral-24B-AWQ",
+    "model": "/home/letsrtfm/AI/models/Devstral-24B-AWQ-4bit-calibrated",
+    "timestamp": "2026-05-11 01:59",
+    "elapsed_sec": 3.3,
+    "checks": {
+      "basic": {
+        "passed": true,
+        "message": "finish=stop answer='paris'"
+      },
+      "vision": {
+        "passed": true,
+        "message": "saw=['red', 'circle', 'round']  response='this image is a close-up view of a red circle with a black border against a white background.'"
+      }
+    },
+    "summary": {
+      "passed": 2,
+      "total": 2
+    }
+  },
+  "Qwen3.5-27B-AWQ": {
+    "tag": "Qwen3.5-27B-AWQ",
+    "model": "/home/letsrtfm/AI/models/Qwen3.5-27B-AWQ-4bit-calibrated",
+    "timestamp": "2026-05-11 02:03",
+    "elapsed_sec": 164.1,
+    "checks": {
+      "basic": {
+        "passed": true,
+        "message": "finish=stop answer='paris'"
+      },
+      "thinking": {
+        "passed": true,
+        "message": "reasoning_seen terminated answer_ok (565 tok, finish=stop)"
+      },
+      "vision": {
+        "passed": true,
+        "message": "saw=['red', 'circle', 'round', 'sphere']  response=\"(reasoning)the user wants a short description of the image.\\n1.  **identify the main object:** it's a circle or a sphere.\\n2.  **iden\""
+      }
+    },
+    "summary": {
+      "passed": 3,
+      "total": 3
+    }
+  },
+  "Qwen3.6-27B-AWQ": {
+    "tag": "Qwen3.6-27B-AWQ",
+    "model": "/home/letsrtfm/AI/models/Qwen3.6-27B-AWQ-native-thinking-vision",
+    "timestamp": "2026-05-11 02:11",
+    "elapsed_sec": 331.1,
+    "checks": {
+      "basic": {
+        "passed": true,
+        "message": "finish=stop answer=' paris'"
+      },
+      "thinking": {
+        "passed": false,
+        "message": "request failed: TimeoutError('timed out')"
+      },
+      "vision": {
+        "passed": true,
+        "message": "saw=['red', 'circle', 'round']  response='(reasoning)the user wants a description of the image in one short sentence.\\n1.  **identify the main object:** it is a circle.\\n2.  *'"
+      }
+    },
+    "summary": {
+      "passed": 2,
+      "total": 3
+    }
+  },
+  "Qwen3.6-35B-A3B-AWQ": {
+    "tag": "Qwen3.6-35B-A3B-AWQ",
+    "model": "/home/letsrtfm/AI/models/Qwen3.6-35B-A3B-AWQ-native-thinking-vision",
+    "timestamp": "2026-05-11 02:13",
+    "elapsed_sec": 50.1,
+    "checks": {
+      "basic": {
+        "passed": true,
+        "message": "finish=stop answer='paris'"
+      },
+      "thinking": {
+        "passed": true,
+        "message": "reasoning_seen terminated answer_ok (921 tok, finish=stop)"
+      },
+      "vision": {
+        "passed": true,
+        "message": "saw=['red', 'circle', 'round']  response='a red circle with'"
+      }
+    },
+    "summary": {
+      "passed": 3,
+      "total": 3
+    }
+  },
+  "Qwen3-VL-32B-AWQ": {
+    "tag": "Qwen3-VL-32B-AWQ",
+    "model": "/home/letsrtfm/AI/models/Qwen3-VL-32B-AWQ-balanced",
+    "timestamp": "2026-05-11 02:15",
+    "elapsed_sec": 20.1,
+    "checks": {
+      "basic": {
+        "passed": true,
+        "message": "finish=stop answer='paris'"
+      },
+      "thinking": {
+        "passed": true,
+        "message": "reasoning_seen answer_ok       (107 tok, finish=stop)"
+      },
+      "vision": {
+        "passed": true,
+        "message": "saw=['red', 'circle', 'round']  response='(reasoning)a simple red circle with a black outline on a white background.'"
+      }
+    },
+    "summary": {
+      "passed": 3,
+      "total": 3
+    }
+  },
+  "Qwen3.6-VL-REAP-26B-A3B-AWQ": {
+    "tag": "Qwen3.6-VL-REAP-26B-A3B-AWQ",
+    "model": "/home/letsrtfm/AI/models/Qwen3.6-VL-REAP-26B-A3B-AWQ-native",
+    "timestamp": "2026-05-11 02:19",
+    "elapsed_sec": 155.3,
+    "checks": {
+      "basic": {
+        "passed": true,
+        "message": "finish=stop answer='paris'"
+      },
+      "thinking": {
+        "passed": true,
+        "message": "reasoning_seen answer_ok TRUNCATED (2048 tok, finish=length)"
+      },
+      "vision": {
+        "passed": false,
+        "message": "request failed: RemoteDisconnected('Remote end closed connection without response')"
+      }
+    },
+    "summary": {
+      "passed": 2,
+      "total": 3
+    }
+  },
+  "gemma-4-26B-AWQ": {
+    "tag": "gemma-4-26B-AWQ",
+    "model": "/home/letsrtfm/AI/models/gemma-4-26B-A4B-it-AWQ-GPTQ-v2-fixed",
+    "timestamp": "2026-05-11 02:21",
+    "elapsed_sec": 28.8,
+    "checks": {
+      "basic": {
+        "passed": true,
+        "message": "finish=stop answer='paris'"
+      },
+      "thinking": {
+        "passed": true,
+        "message": "reasoning_seen terminated answer_ok (543 tok, finish=stop)"
+      },
+      "vision": {
+        "passed": true,
+        "message": "saw=['red', 'circle', 'round']  response='a red circle with a black outline is centered on a white background.'"
+      }
+    },
+    "summary": {
+      "passed": 3,
+      "total": 3
+    }
+  },
+  "gemma-4-31B-it-AutoRound-AWQ": {
+    "tag": "gemma-4-31B-it-AutoRound-AWQ",
+    "model": "/home/letsrtfm/AI/models/gemma-4-31B-it-AutoRound-AWQ",
+    "timestamp": "2026-05-11 02:23",
+    "elapsed_sec": 87.2,
+    "checks": {
+      "basic": {
+        "passed": true,
+        "message": "finish=stop answer='paris'"
+      },
+      "thinking": {
+        "passed": true,
+        "message": "reasoning_seen terminated answer_ok (459 tok, finish=stop)"
+      },
+      "vision": {
+        "passed": false,
+        "message": "saw=[]  response='the image shows a single cuneiform character.'"
+      }
+    },
+    "summary": {
+      "passed": 2,
+      "total": 3
+    }
+  }
+}

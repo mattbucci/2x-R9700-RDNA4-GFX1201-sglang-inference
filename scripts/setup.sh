@@ -199,7 +199,7 @@ echo "[4/5] Building sgl_kernel with native HIP ops for gfx1201..."
 echo "  CRITICAL: Without this, rotary_embedding uses a Python fallback"
 echo "  that produces wrong results on non-contiguous tensors, causing"
 echo "  garbage output for dense AWQ models."
-"$SCRIPT_DIR/setup_sgl_kernel.sh"
+"$SCRIPT_DIR/setup_sgl_kernel.sh" --env "$ENV_NAME"
 
 # -------------------------------------------------------------------
 # Step 5: Build + install AWQ GEMV HIP kernel
@@ -207,7 +207,19 @@ echo "  garbage output for dense AWQ models."
 echo ""
 echo "[5/6] Building AWQ GEMV HIP kernel for gfx1201..."
 echo "  30% faster M=1 decode, fused MoE expert dispatch"
-"$SCRIPT_DIR/build_awq_gemv.sh"
+"$SCRIPT_DIR/build_awq_gemv.sh" --env "$ENV_NAME"
+
+# -------------------------------------------------------------------
+# Step 5b: Build wvSplitK INT4 MoE kernel (mgehre port, patches/032)
+# -------------------------------------------------------------------
+echo ""
+echo "[5b/6] Building wvSplitK INT4 MoE HIP kernel for gfx1201..."
+echo "  Hybrid W4A16 MoE kernel from mgehre-amd/vllm 0b992ff."
+echo "  See patches/032-rdna4-hybrid-w4a16-moe.patch."
+if [ -f "$SCRIPT_DIR/build_skinny_gemms_int4.sh" ]; then
+    "$SCRIPT_DIR/build_skinny_gemms_int4.sh" --env "$ENV_NAME" || \
+      echo "  WARNING: wvSplitK kernel build failed (non-fatal — Triton MoE fallback works)"
+fi
 
 # -------------------------------------------------------------------
 # Step 6: Verify installation

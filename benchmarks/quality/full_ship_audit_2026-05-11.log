@@ -1,0 +1,28 @@
+repo                                             arch                                       vis(b/q)    aud(b/q)    router(b/q)   deltanet(b/q)
+----------------------------------------------------------------------------------------------------------------------------------------------------------------
+mattbucci/Devstral-24B-AWQ                       Mistral3ForConditionalGeneration           222(222/0  ) 0(0/0  ) 0(0/0    ) 0(0/0)
+mattbucci/Qwen3-Coder-30B-A3B-AWQ                Qwen3MoeForCausalLM                        0(0/0  ) 0(0/0  ) 48(48/0    ) 0(0/0)
+mattbucci/Qwen3-Coder-30B-A3B-REAM-AWQ           Qwen3MoeForCausalLM                        0(0/0  ) 0(0/0  ) 48(48/0    ) 0(0/0)
+mattbucci/Qwen3-Coder-30B-A3B-REAP-AWQ           Qwen3MoeForCausalLM                        0(0/0  ) 0(0/0  ) 48(48/0    ) 0(0/0)
+mattbucci/Qwen3-Coder-Next-REAM-AWQ              Qwen3NextForCausalLM                       0(0/0  ) 0(0/0  ) 48(48/0    ) 0(0/0)
+mattbucci/Qwen3-Coder-REAP-25B-A3B-AWQ           Qwen3MoeForCausalLM                        0(0/0  ) 0(0/0  ) 48(48/0    ) 0(0/0)
+mattbucci/Qwen3-VL-32B-AWQ                       Qwen3VLForConditionalGeneration            351(351/0  ) 0(0/0  ) 0(0/0    ) 0(0/0)
+mattbucci/Qwen3.5-27B-AWQ                        Qwen3_5ForConditionalGeneration            333(333/0  ) 0(0/0  ) 0(0/0    ) 96(96/0)
+mattbucci/Qwen3.5-28B-A3B-REAP-AWQ               Qwen3_5MoeForConditionalGeneration         333(333/0  ) 0(0/0  ) 40(40/0    ) 60(60/0)
+mattbucci/Qwen3.6-27B-AWQ                        Qwen3_5ForConditionalGeneration            333(333/0  ) 0(0/0  ) 0(0/0    ) 96(96/0)
+mattbucci/Qwen3.6-27B-AWQ-CT                     Qwen3_5ForConditionalGeneration            333(333/0  ) 0(0/0  ) 0(0/0    ) 96(96/0)
+mattbucci/Qwen3.6-35B-A3B-AWQ                    Qwen3_5MoeForConditionalGeneration         333(333/0  ) 0(0/0  ) 40(40/0    ) 60(60/0)
+mattbucci/Qwen3.6-35B-A3B-AWQ-CT                 Qwen3_5MoeForConditionalGeneration         333(333/0  ) 0(0/0  ) 40(40/0    ) 60(60/0)
+mattbucci/Qwen3.6-REAM-A3B-AWQ                   Qwen3_5MoeForConditionalGeneration         0(0/0  ) 0(0/0  ) 40(40/0    ) 60(60/0)
+  ⚠ multimodal arch but NO vision_tower keys — verify base/recipe
+mattbucci/Qwen3.6-REAM-A3B-AWQ-CT                Qwen3_5MoeForCausalLM                      0(0/0  ) 0(0/0  ) 40(40/0    ) 60(60/0)
+mattbucci/Qwen3.6-VL-REAP-26B-A3B-AWQ            Qwen3_5MoeForConditionalGeneration         0(0/0  ) 0(0/0  ) 40(40/0    ) 60(60/0)
+  ⚠ multimodal arch but NO vision_tower keys — verify base/recipe
+mattbucci/gemma-4-21B-REAP-AWQ                   Gemma4ForConditionalGeneration             356(353/0  ) 0(0/0  ) 0(0/0    ) 0(0/0)
+mattbucci/gemma-4-26B-AWQ                        Gemma4ForConditionalGeneration             356(353/0  ) 0(0/0  ) 0(0/0    ) 0(0/0)
+mattbucci/gemma-4-31B-it-AutoRound-AWQ           Gemma4ForConditionalGeneration             356(353/0  ) 0(0/0  ) 0(0/0    ) 0(0/0)
+
+============================================================
+SUMMARY: 2 issues across 19 repos
+  mattbucci/Qwen3.6-REAM-A3B-AWQ: multimodal arch but NO vision_tower keys — verify base/recipe
+  mattbucci/Qwen3.6-VL-REAP-26B-A3B-AWQ: multimodal arch but NO vision_tower keys — verify base/recipe
