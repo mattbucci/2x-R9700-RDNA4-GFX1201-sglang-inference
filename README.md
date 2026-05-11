@@ -154,7 +154,7 @@ Every `mattbucci/*-AWQ` row below is built by our own scripts (`scripts/quantize
 
 Community checkpoints fail for several architectures (BOS issues, MoE under-calibration, DeltaNet destruction), which is why we self-calibrate.  Pipeline in `scripts/quantize/`.
 
-## Performance (2x R9700, TP=2, SGLang v0.5.10)
+## Performance (2x R9700, TP=2, SGLang v0.5.11)
 
 All context-sweep numbers: `sglang.bench_serving`, FP8 KV cache, `--disable-cuda-graph`, 1 user.  Results are in `benchmarks/<slug>/results.json`, charts in `benchmarks/<slug>/`.
 
@@ -209,7 +209,7 @@ All values tok/s single-user.  *Qwen3.5-27B 32K+ numbers collected with concurre
 
 ### Comparison: 2x R9700 RDNA4 vs 2x RTX 3090
 
-The sister [2x RTX 3090 repo](https://github.com/mattbucci/2x-3090-GA102-300-A1-sglang-inference) runs the same SGLang v0.5.10 + patches stack.
+The sister [2x RTX 3090 repo](https://github.com/mattbucci/2x-3090-GA102-300-A1-sglang-inference) runs the same SGLang v0.5.11 + patches stack.
 
 **Sister projects:**
 - [3090 GA102 repo](https://github.com/mattbucci/2x-3090-GA102-300-A1-sglang-inference) — Marlin INT4, FlashInfer, NVLink P2P, CUDA graphs.  Same SGLang stack.
@@ -247,7 +247,7 @@ Every new AWQ must pass `scripts/eval/validate_capabilities.py` (thinking + visi
 
 ## Infrastructure Summary
 
-- **SGLang v0.5.10** (vendored at `components/sglang/`) + 14 patches — see [patches/README.md](patches/README.md).
+- **SGLang v0.5.11** (vendored at `components/sglang/`) + RDNA4 patches — see [patches/README.md](patches/README.md).
 - **Triton 3.6.0** (upstream).  Do NOT clear `~/.triton/cache/` before benchmarking — cold cache produces 100x slower numbers.
 - **PyTorch 2.12+rocm7.2**.
 - **RCCL 2.27.7** (system ROCm, P2P/IPC on gfx1201 — no custom build).
@@ -274,7 +274,7 @@ No consumer RDNA4 GPU-to-GPU interconnect exists (no NVLink/XGMI equivalent).  T
 ## Structure
 
 ```
-patches/              # SGLang v0.5.10 RDNA4 patches + investigations archive
+patches/              # SGLang v0.5.11 RDNA4 patches + investigations archive
   README.md           #   Applied patches, architectural findings, solved-issue log
   0*.patch            #   14 patches, apply in order
 
@@ -291,5 +291,5 @@ scripts/
   eval/               # Quality evaluation + validator (thinking + vision gate)
   test/               # Tests, debug, profiling, sweeps
 
-components/sglang/    # SGLang v0.5.10 checkout + applied patches
+components/sglang/    # SGLang v0.5.11 checkout + applied patches
 ```

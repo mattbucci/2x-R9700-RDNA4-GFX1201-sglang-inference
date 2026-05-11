@@ -1,6 +1,6 @@
 # RDNA4 Inference Project
 
-Custom SGLang v0.5.10 + RDNA4 patches for 2x AMD Radeon AI PRO R9700.
+Custom SGLang v0.5.11 + RDNA4 patches for 2x AMD Radeon AI PRO R9700.
 
 **All inference MUST use SGLang.** Other engines (vLLM Docker, llama.cpp) are for comparison benchmarks only.
 
