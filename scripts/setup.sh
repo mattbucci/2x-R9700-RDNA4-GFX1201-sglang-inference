@@ -19,10 +19,19 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/common.sh"
 
 # PyTorch version pinning (March 10 2026 — March 14 has segfault)
-TORCH_VERSION="2.12.0.dev20260310+rocm7.2"
-TORCHVISION_VERSION="0.26.0.dev20260310+rocm7.2"
-TORCHAUDIO_VERSION="2.11.0.dev20260310+rocm7.2"
-TORCH_INDEX="https://download.pytorch.org/whl/nightly/rocm7.2"
+# PyTorch pin: stable torch 2.11.0+rocm7.2 since 2026-05-11.
+# Was 2.12 nightly pinned to March 10 2026 (March 14 had a segfault, picked
+# the last-known-good day before that). Switched to 2.11 stable because
+# (a) PyTorch's nightly index garbage-collects old daily wheels — the 0310
+# pin became unfetchable on 2026-05-11, and (b) torch 2.11 stable is what
+# the calibration envs (awq-quant / quant / gemma4-quant) already run on
+# without issue. The stable rocm7.2 channel ships exactly one version
+# (2.11.0+rocm7.2 with matching tv 0.26.0 / ta 2.11.0). Override via
+# `TORCH_VERSION=... TORCH_INDEX=... ./scripts/setup.sh` for nightly.
+TORCH_VERSION="${TORCH_VERSION:-2.11.0+rocm7.2}"
+TORCHVISION_VERSION="${TORCHVISION_VERSION:-0.26.0+rocm7.2}"
+TORCHAUDIO_VERSION="${TORCHAUDIO_VERSION:-2.11.0+rocm7.2}"
+TORCH_INDEX="${TORCH_INDEX:-https://download.pytorch.org/whl/rocm7.2}"
 
 SGLANG_REPO="https://github.com/sgl-project/sglang.git"
 SGLANG_TAG="v0.5.11"
