@@ -1,38 +1,62 @@
 # 038-rdna4-wire-hybrid-w4a16-moe-runner.patch
 #
 # Wire the wvSplitK INT4 MoE kernel (added by patch 032) into SGLang's
-# MoeRunner so MoeWNA16Method can dispatch decode-batch (M≤5) through HIP
-# wvSplitK and prefill through Triton fallback, gated by SGLANG_MOE_HYBRID_W4A16.
+# MoeRunner so MoeWNA16Method can dispatch through it via the new
+# MoeRunnerBackend.HYBRID_W4A16 backend, gated by SGLANG_MOE_HYBRID_W4A16.
 #
-# Pre-existing state (patch 032 partially applied):
-#   - hybrid_w4a16_moe.py landed (the standalone `hybrid_w4a16_moe_apply`)
-#   - skinny_gemms_int4.cu kernel landed + builds via scripts/build_skinny_gemms_int4.sh
-#   - environ.py env-var registration DID NOT land (this patch fixes that)
-#   - hybrid_w4a16_moe.py used `.value` for env access; SGLang API is `.get()`
-#     (this patch fixes that)
+# **2026-05-12 status: WIRING LANDED, KERNEL HANGS GPU (env defaults OFF).**
+# Patch 038 puts the entire dispatch path in place: enum + dispatcher branch
+# + new fused-func module + env-gated selection in MoeWNA16Method. Live
+# launch with SGLANG_MOE_HYBRID_W4A16=true confirms the fused func IS
+# invoked end-to-end and the wvSplitK kernel IS reached. But the kernel
+# itself hangs the GPU on real Coder-30B-A3B weights:
 #
-# This patch adds:
-#   - environ.py:160 — register SGLANG_MOE_HYBRID_W4A16 (default True) +
-#     SGLANG_MOE_HYBRID_W4A16_MAX_BATCH (default 5).
-#   - utils.py:81 — add MoeRunnerBackend.HYBRID_W4A16 + is_hybrid_w4a16() helper.
-#   - moe_runner/runner.py:50 — dispatch branch: when backend is HYBRID_W4A16,
-#     side-effect-import the new moe_runner/hybrid_w4a16 module (which registers
-#     the fused func), set runner_core = None.
-#   - moe_runner/hybrid_w4a16.py — NEW file. `@register_fused_func("none",
-#     "hybrid_w4a16")` decorated callable that builds moe_align metadata +
-#     invokes hybrid_w4a16_moe_apply with the layer's existing TritonMoeQuantInfo.
-#   - hybrid_w4a16_moe.py:230 — fix `.value` → `.get()` (SGLang env API).
-#   - moe_wna16.py:365 — env-gated backend selection: prefer HYBRID_W4A16 on
-#     ROCm when SGLANG_MOE_HYBRID_W4A16=true AND skinny_gemms_int4_ext is
-#     importable. Falls back to TRITON silently otherwise.
+#   HW Exception by GPU node-2 (Agent handle: ...) reason: GPU Hang
+#   Fatal Python error: Aborted
 #
-# Known caveat (deferred to follow-on patch): wvSplitK expects scales in
-# skinny `[E, N, K/G]` layout but TritonMoeQuantInfo stores `[E, K/G, N]`.
-# A scale transpose is needed at either the call site (per-forward overhead)
-# or at load time (process_weights_after_loading reshuffle hook). Without
-# that fix, the wiring is in place but the kernel will see wrong-layout scales.
-# Live serving validation is deferred until the transpose lands.
+# Matches memory project_moe_microbench_results.md: Triton baseline microbench
+# also hung GPU on synthetic AWQ weights. Kernel-side debug needed before
+# this can be enabled — likely related to qzeros handling (wvSplitK is
+# symmetric-quant), expert-dim layout, or group_size=32 not in supported set.
+#
+# Default flipped to False (environ.py) so wiring stays inert in production.
+# Set SGLANG_MOE_HYBRID_W4A16=true to opt in for kernel-debug benches.
+#
+# Components landed (~165 LOC):
+#   - environ.py: SGLANG_MOE_HYBRID_W4A16 + MAX_BATCH (was missing from 032)
+#   - utils.py: MoeRunnerBackend.HYBRID_W4A16 + is_hybrid_w4a16()
+#   - moe_runner/runner.py: dispatch branch (side-effect import)
+#   - moe_runner/hybrid_w4a16.py — NEW fused-func registration module
+#   - moe_wna16.py: env-gated backend selection (default OFF)
+#   - hybrid_w4a16_moe.py: .value → .get() fix (patch 032 used wrong API)
 
+diff --git a/python/sglang/srt/environ.py b/python/sglang/srt/environ.py
+index c7247261d..c2efddfa2 100644
+--- a/python/sglang/srt/environ.py
++++ b/python/sglang/srt/environ.py
+@@ -159,6 +159,22 @@ class ToolStrictLevel(IntEnum):
+ class Envs:
+     # fmt: off
+ 
++    # MoE hybrid W4A16 kernel (HIP wvSplitK INT4 GEMM for decode + Triton for
++    # prefill). Ported from mgehre-amd/vllm 0b992ff (2026-04-27).
++    # **2026-05-12 default flipped to False:** the wvSplitK kernel hangs the
++    # GPU on real Coder-30B-A3B weights at warmup ("HW Exception by GPU node-2
++    # reason: GPU Hang"). Wiring (patch 038) is in place but kernel-side debug
++    # is needed before this can be enabled in production. Set
++    # SGLANG_MOE_HYBRID_W4A16=true to opt in for kernel-debug benches; expect
++    # GPU hang on real MoE weights until the underlying kernel issue is fixed.
++    SGLANG_MOE_HYBRID_W4A16 = EnvBool(False)
++    # Threshold for HIP-vs-Triton dispatch in HybridW4A16MoEExperts: when
++    # num_tokens <= MAX_SKINNY_BATCH_SIZE, dispatch through the HIP kernel
++    # (decode-optimized); otherwise use Triton (prefill-optimized). Default
++    # matches mgehre's vLLM tuning of 5; raise to favor HIP on borderline
++    # batch sizes.
++    SGLANG_MOE_HYBRID_W4A16_MAX_BATCH = EnvInt(5)
++
+     # Model & File Download
+     SGLANG_USE_MODELSCOPE = EnvBool(False)
+     SGLANG_SORT_WEIGHT_FILES = EnvBool(False)
 diff --git a/python/sglang/srt/layers/moe/moe_runner/runner.py b/python/sglang/srt/layers/moe/moe_runner/runner.py
 index d53f57cc1..22a202beb 100644
 --- a/python/sglang/srt/layers/moe/moe_runner/runner.py
@@ -123,21 +147,6 @@ index 2da526402..84cce3e2e 100644
  
          quant_info = self.get_triton_quant_info(layer)
          return self.runner.run(dispatch_output, quant_info)
-
-diff --git a/python/sglang/srt/layers/moe/hybrid_w4a16_moe.py b/python/sglang/srt/layers/moe/hybrid_w4a16_moe.py
---- a/python/sglang/srt/layers/moe/hybrid_w4a16_moe.py
-+++ b/python/sglang/srt/layers/moe/hybrid_w4a16_moe.py
-@@ -227,8 +227,8 @@ def hybrid_w4a16_moe_apply(
-     if use_hip is None and not force_triton:
-         try:
-             from sglang.srt.environ import envs
--            cutoff = int(envs.SGLANG_MOE_HYBRID_W4A16_MAX_BATCH.value)
--            enabled = bool(envs.SGLANG_MOE_HYBRID_W4A16.value)
-+            cutoff = int(envs.SGLANG_MOE_HYBRID_W4A16_MAX_BATCH.get())
-+            enabled = bool(envs.SGLANG_MOE_HYBRID_W4A16.get())
-             use_hip = enabled and (num_tokens <= cutoff)
-         except Exception:
-             # Fallback if environ not importable (CI / unit tests):
 
 diff --git a/python/sglang/srt/layers/moe/moe_runner/hybrid_w4a16.py b/python/sglang/srt/layers/moe/moe_runner/hybrid_w4a16.py
 new file mode 100644
