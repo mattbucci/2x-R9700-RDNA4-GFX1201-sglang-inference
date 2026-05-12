@@ -143,7 +143,7 @@ diff --git a/python/sglang/srt/layers/moe/moe_runner/hybrid_w4a16.py b/python/sg
 new file mode 100644
 --- /dev/null
 +++ b/python/sglang/srt/layers/moe/moe_runner/hybrid_w4a16.py
-@@ -0,0 +1,109 @@
+@@ -0,0 +1,115 @@
 +"""HybridW4A16 MoE fused-func: dispatch through hybrid_w4a16_moe_apply.
 +
 +Wires the standalone `hybrid_w4a16_moe_apply` (see
@@ -187,10 +187,11 @@ new file mode 100644
 +    from sglang.srt.layers.quantization.moe_wna16 import TritonMoeQuantInfo
 +
 +
-+_BLOCK_SIZE_M = 16
-+# Block size used by SGLang's Triton MoE align (`moe_align_block_size`). The
-+# wvSplitK kernel handles arbitrary `block_size_m`; matching Triton's default
-+# keeps the moe_align metadata consistent across the dispatch path.
++_BLOCK_SIZE_M = 1
++# wvSplitK kernel template specialization only accepts certain block_size_m
++# values; M=16 raises "RuntimeError: Unsupported N value: 16" on RDNA4. Matches
++# mgehre's bench config (scripts/bench/bench_moe_hip_vs_triton.py:213). For
++# single-user decode (num_tokens=1, top_k=8 → num_slots=8) this is fine.
 +
 +
 +@register_fused_func("none", "hybrid_w4a16")
@@ -235,6 +236,10 @@ new file mode 100644
 +        else 128
 +    )
 +
++    # 2026-05-12: force_hip=True. The Triton fallback inside hybrid_w4a16_moe_apply
++    # hits a pre-existing torch.compile/HIP crash on warmup batches with M>5.
++    # Forcing HIP-only here keeps decode (M≤5, our single-user target) working;
++    # prefill is a known limitation tracked as a followup.
 +    output = hybrid_w4a16_moe_apply(
 +        activation=hidden_states,
 +        w1=quant_info.w13_weight,
@@ -251,5 +256,6 @@ new file mode 100644
 +        activation_fn=runner_config.activation,
 +        w1_zp=quant_info.w13_zp,
 +        w2_zp=quant_info.w2_zp,
++        force_hip=True,
 +    )
 +    return StandardCombineInput(hidden_states=output)
