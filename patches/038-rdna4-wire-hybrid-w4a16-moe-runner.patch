@@ -1,0 +1,255 @@
+# 038-rdna4-wire-hybrid-w4a16-moe-runner.patch
+#
+# Wire the wvSplitK INT4 MoE kernel (added by patch 032) into SGLang's
+# MoeRunner so MoeWNA16Method can dispatch decode-batch (M≤5) through HIP
+# wvSplitK and prefill through Triton fallback, gated by SGLANG_MOE_HYBRID_W4A16.
+#
+# Pre-existing state (patch 032 partially applied):
+#   - hybrid_w4a16_moe.py landed (the standalone `hybrid_w4a16_moe_apply`)
+#   - skinny_gemms_int4.cu kernel landed + builds via scripts/build_skinny_gemms_int4.sh
+#   - environ.py env-var registration DID NOT land (this patch fixes that)
+#   - hybrid_w4a16_moe.py used `.value` for env access; SGLang API is `.get()`
+#     (this patch fixes that)
+#
+# This patch adds:
+#   - environ.py:160 — register SGLANG_MOE_HYBRID_W4A16 (default True) +
+#     SGLANG_MOE_HYBRID_W4A16_MAX_BATCH (default 5).
+#   - utils.py:81 — add MoeRunnerBackend.HYBRID_W4A16 + is_hybrid_w4a16() helper.
+#   - moe_runner/runner.py:50 — dispatch branch: when backend is HYBRID_W4A16,
+#     side-effect-import the new moe_runner/hybrid_w4a16 module (which registers
+#     the fused func), set runner_core = None.
+#   - moe_runner/hybrid_w4a16.py — NEW file. `@register_fused_func("none",
+#     "hybrid_w4a16")` decorated callable that builds moe_align metadata +
+#     invokes hybrid_w4a16_moe_apply with the layer's existing TritonMoeQuantInfo.
+#   - hybrid_w4a16_moe.py:230 — fix `.value` → `.get()` (SGLang env API).
+#   - moe_wna16.py:365 — env-gated backend selection: prefer HYBRID_W4A16 on
+#     ROCm when SGLANG_MOE_HYBRID_W4A16=true AND skinny_gemms_int4_ext is
+#     importable. Falls back to TRITON silently otherwise.
+#
+# Known caveat (deferred to follow-on patch): wvSplitK expects scales in
+# skinny `[E, N, K/G]` layout but TritonMoeQuantInfo stores `[E, K/G, N]`.
+# A scale transpose is needed at either the call site (per-forward overhead)
+# or at load time (process_weights_after_loading reshuffle hook). Without
+# that fix, the wiring is in place but the kernel will see wrong-layout scales.
+# Live serving validation is deferred until the transpose lands.
+
+diff --git a/python/sglang/srt/layers/moe/moe_runner/runner.py b/python/sglang/srt/layers/moe/moe_runner/runner.py
+index d53f57cc1..22a202beb 100644
+--- a/python/sglang/srt/layers/moe/moe_runner/runner.py
++++ b/python/sglang/srt/layers/moe/moe_runner/runner.py
+@@ -48,6 +48,14 @@ class MoeRunner:
+             from sglang.srt.layers.moe.moe_runner import aiter  # noqa: F401
+ 
+             self.runner_core = None  # AITER only supports fused path
++        elif runner_backend.is_hybrid_w4a16():
++            # Side-effect import: registers the ("none", "hybrid_w4a16") fused func.
++            # Selected by MoeWNA16Method when SGLANG_MOE_HYBRID_W4A16=true on ROCm —
++            # routes through hybrid_w4a16_moe_apply (HIP wvSplitK decode + Triton
++            # prefill, switched by SGLANG_MOE_HYBRID_W4A16_MAX_BATCH).
++            from sglang.srt.layers.moe.moe_runner import hybrid_w4a16  # noqa: F401
++
++            self.runner_core = None  # HYBRID_W4A16 is fused-path only
+         elif runner_backend.is_marlin():
+             if lora_enabled:
+                 from sglang.srt.lora.lora_moe_runner_marlin import MarlinLoraRunnerCore
+diff --git a/python/sglang/srt/layers/moe/utils.py b/python/sglang/srt/layers/moe/utils.py
+index e05167da9..34d819f05 100644
+--- a/python/sglang/srt/layers/moe/utils.py
++++ b/python/sglang/srt/layers/moe/utils.py
+@@ -79,6 +79,10 @@ class MoeRunnerBackend(Enum):
+     CUTLASS = "cutlass"
+     MARLIN = "marlin"
+     AITER = "aiter"
++    # 2026-05-12: RDNA4 wvSplitK INT4 MoE kernel (mgehre-amd/vllm port via patch 032).
++    # Fused-func dispatch (M<=N: wvSplitK HIP; M>N: Triton fallback), gated by
++    # SGLANG_MOE_HYBRID_W4A16. See moe_runner/hybrid_w4a16.py.
++    HYBRID_W4A16 = "hybrid_w4a16"
+ 
+     def is_auto(self):
+         return self == MoeRunnerBackend.AUTO
+@@ -92,6 +96,9 @@ class MoeRunnerBackend(Enum):
+     def is_triton_kernels(self):
+         return self == MoeRunnerBackend.TRITON_KERNELS
+ 
++    def is_hybrid_w4a16(self):
++        return self == MoeRunnerBackend.HYBRID_W4A16
++
+     def is_flashinfer_trtllm(self):
+         return self == MoeRunnerBackend.FLASHINFER_TRTLLM
+ 
+diff --git a/python/sglang/srt/layers/quantization/moe_wna16.py b/python/sglang/srt/layers/quantization/moe_wna16.py
+index 2da526402..84cce3e2e 100644
+--- a/python/sglang/srt/layers/quantization/moe_wna16.py
++++ b/python/sglang/srt/layers/quantization/moe_wna16.py
+@@ -362,7 +362,23 @@ class MoeWNA16Method(FusedMoEMethodBase):
+         self, layer: torch.nn.Module, moe_runner_config: MoeRunnerConfig
+     ):
+         self.moe_runner_config = moe_runner_config
+-        self.runner = MoeRunner(MoeRunnerBackend.TRITON, moe_runner_config)
++        # 2026-05-12: prefer HYBRID_W4A16 backend on ROCm when the kernel is
++        # available + env-gated. Falls through to TRITON if either condition
++        # fails. SGLANG_MOE_HYBRID_W4A16 defaults True (see environ.py); set
++        # to False to force the legacy Triton path for A/B benchmarking.
++        backend = MoeRunnerBackend.TRITON
++        try:
++            from sglang.srt.environ import envs
++            from sglang.srt.utils import is_hip
++            if is_hip() and envs.SGLANG_MOE_HYBRID_W4A16.get():
++                try:
++                    import skinny_gemms_int4_ext  # noqa: F401  — must be built
++                    backend = MoeRunnerBackend.HYBRID_W4A16
++                except ImportError:
++                    pass  # kernel not built; stay on Triton silently
++        except Exception:
++            pass
++        self.runner = MoeRunner(backend, moe_runner_config)
+ 
+     def get_triton_quant_info(self, layer: torch.nn.Module) -> TritonMoeQuantInfo:
+         weight_bits = self.quant_config.weight_bits
+@@ -384,9 +400,13 @@ class MoeWNA16Method(FusedMoEMethodBase):
+         layer: torch.nn.Module,
+         dispatch_output: StandardDispatchOutput,
+     ) -> CombineInput:
+-        assert (
+-            self.moe_runner_config.activation == "silu"
+-        ), "Only SiLU activation is supported."
++        # Triton fused MoE in moe_runner/triton_utils/fused_moe.py supports both
++        # silu and gelu (lines ~528/564/588/590), so accept either. Required by
++        # Gemma 4 26B MoE on RDNA4 — the experts use `activation="gelu"`.
++        assert self.moe_runner_config.activation in (
++            "silu",
++            "gelu",
++        ), f"Only SiLU/GeLU activation is supported, got {self.moe_runner_config.activation!r}."
+ 
+         quant_info = self.get_triton_quant_info(layer)
+         return self.runner.run(dispatch_output, quant_info)
+
+diff --git a/python/sglang/srt/layers/moe/hybrid_w4a16_moe.py b/python/sglang/srt/layers/moe/hybrid_w4a16_moe.py
+--- a/python/sglang/srt/layers/moe/hybrid_w4a16_moe.py
++++ b/python/sglang/srt/layers/moe/hybrid_w4a16_moe.py
+@@ -227,8 +227,8 @@ def hybrid_w4a16_moe_apply(
+     if use_hip is None and not force_triton:
+         try:
+             from sglang.srt.environ import envs
+-            cutoff = int(envs.SGLANG_MOE_HYBRID_W4A16_MAX_BATCH.value)
+-            enabled = bool(envs.SGLANG_MOE_HYBRID_W4A16.value)
++            cutoff = int(envs.SGLANG_MOE_HYBRID_W4A16_MAX_BATCH.get())
++            enabled = bool(envs.SGLANG_MOE_HYBRID_W4A16.get())
+             use_hip = enabled and (num_tokens <= cutoff)
+         except Exception:
+             # Fallback if environ not importable (CI / unit tests):
+
+diff --git a/python/sglang/srt/layers/moe/moe_runner/hybrid_w4a16.py b/python/sglang/srt/layers/moe/moe_runner/hybrid_w4a16.py
+new file mode 100644
+--- /dev/null
++++ b/python/sglang/srt/layers/moe/moe_runner/hybrid_w4a16.py
+@@ -0,0 +1,109 @@
++"""HybridW4A16 MoE fused-func: dispatch through hybrid_w4a16_moe_apply.
++
++Wires the standalone `hybrid_w4a16_moe_apply` (see
++`sglang.srt.layers.moe.hybrid_w4a16_moe`) into SGLang's MoeRunner via the
++`@register_fused_func("none", "hybrid_w4a16")` decorator — same pattern as
++the AITER and Marlin paths. Selected by setting
++`MoeRunnerBackend.HYBRID_W4A16` on the MoeRunner.
++
++Importing this module is a side-effect registration step — once imported,
++the fused func is in FusedOpPool and the runner will use it when its
++backend is HYBRID_W4A16.
++
++Reuses :class:`TritonMoeQuantInfo` because the on-layer storage names are
++identical (`w13_qweight`, `w13_scales`, `w13_qzeros`, etc.). The wvSplitK
++kernel expects skinny `[E, N, K//8]` qweight + `[E, N, K//G]` scale layout
++— this is set up at load time in :meth:`MoeWNA16Method.process_weights_after_loading`
++via :func:`reshuffle_to_skinny_w4` / :func:`reshuffle_scales_for_skinny`.
++
++Per task #28 + memory `project_moe_microbench_results.md` (2026-05-11): the
++3-way synthetic microbench showed wvSplitK ~8% faster than awq_gemv_moe_hip
++at M=4-8 and near-tie at M=1 (our single-user decode target). Triton baseline
++hung on synthetic weights; real-weight comparison is deferred to live serving.
++"""
++from __future__ import annotations
++
++from typing import TYPE_CHECKING
++
++import torch
++
++from sglang.srt.layers.moe.hybrid_w4a16_moe import hybrid_w4a16_moe_apply
++from sglang.srt.layers.moe.moe_runner.base import (
++    MoeRunnerConfig,
++    register_fused_func,
++)
++
++if TYPE_CHECKING:
++    from sglang.srt.layers.moe.token_dispatcher.standard import (
++        StandardCombineInput,
++        StandardDispatchOutput,
++    )
++    from sglang.srt.layers.quantization.moe_wna16 import TritonMoeQuantInfo
++
++
++_BLOCK_SIZE_M = 16
++# Block size used by SGLang's Triton MoE align (`moe_align_block_size`). The
++# wvSplitK kernel handles arbitrary `block_size_m`; matching Triton's default
++# keeps the moe_align metadata consistent across the dispatch path.
++
++
++@register_fused_func("none", "hybrid_w4a16")
++def fused_experts_none_to_hybrid_w4a16(
++    dispatch_output: "StandardDispatchOutput",
++    quant_info: "TritonMoeQuantInfo",
++    runner_config: MoeRunnerConfig,
++) -> "StandardCombineInput":
++    """Run an MoE forward via :func:`hybrid_w4a16_moe_apply`.
++
++    HIP wvSplitK is used when ``num_tokens <= SGLANG_MOE_HYBRID_W4A16_MAX_BATCH``
++    (default 5) and ``SGLANG_MOE_HYBRID_W4A16`` is True; otherwise the Triton
++    fused-MoE kernel is invoked as a fallback. Both paths read the same
++    skinny-layout weights produced by ``reshuffle_to_skinny_w4`` at load time.
++    """
++    from sglang.srt.layers.moe.moe_runner.triton_utils.moe_align_block_size import (
++        moe_align_block_size,
++    )
++    from sglang.srt.layers.moe.token_dispatcher.standard import StandardCombineInput
++
++    assert not runner_config.no_combine, (
++        "no_combine=True is not supported by HYBRID_W4A16 (output is already "
++        "top-k-weighted and reduced inside hybrid_w4a16_moe_apply)."
++    )
++
++    hidden_states = dispatch_output.hidden_states
++    topk_weights, topk_ids, _ = dispatch_output.topk_output
++    topk_weights = topk_weights.to(torch.float32)
++    topk_ids = topk_ids.to(torch.int32)
++
++    E = quant_info.w13_weight.shape[0]
++
++    sorted_token_ids, expert_ids, num_tokens_post_padded = moe_align_block_size(
++        topk_ids, _BLOCK_SIZE_M, E
++    )
++
++    # block_shape[1] holds the group_size (block_shape[0]=0 means no row blocking).
++    # See `MoeWNA16Method.get_triton_quant_info` for the convention.
++    group_size = (
++        quant_info.block_shape[1]
++        if quant_info.block_shape is not None
++        else 128
++    )
++
++    output = hybrid_w4a16_moe_apply(
++        activation=hidden_states,
++        w1=quant_info.w13_weight,
++        w2=quant_info.w2_weight,
++        w1_scale=quant_info.w13_scale,
++        w2_scale=quant_info.w2_scale,
++        topk_weights=topk_weights,
++        topk_ids=topk_ids,
++        sorted_token_ids=sorted_token_ids,
++        expert_ids=expert_ids,
++        num_tokens_post_padded=num_tokens_post_padded,
++        block_size_m=_BLOCK_SIZE_M,
++        group_size=group_size,
++        activation_fn=runner_config.activation,
++        w1_zp=quant_info.w13_zp,
++        w2_zp=quant_info.w2_zp,
++    )
++    return StandardCombineInput(hidden_states=output)
