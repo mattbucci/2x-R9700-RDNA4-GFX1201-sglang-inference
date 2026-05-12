@@ -139,9 +139,29 @@ apply_preset() {
             EXTRA_ARGS="${EXTRA_ARGS:-} --enable-multimodal"
             ;;
         gemma4-31b)
-            # AutoRound GPTQ→AWQ converted (sym→asym re-quantized)
-            # torch_native attention required — triton attention crashes at ~400 tokens
-            # Triton GEMV handles M=1 decode at 15 tok/s with FP32 dequant
+            # 2026-05-12: in-house AWQ build (mattbucci/gemma-4-31B-AWQ).
+            # Calibrated end-to-end from upstream BF16 with balanced_thinking_vision
+            # corpus (#38). Phase 2 audit clean (0/410 flags); basic + thinking
+            # PASS; vision crashes mid-decode (HSAIL 0x1016 in torch_native_backend
+            # forward_decode — same upstream Gemma 4 31B Dense 400-token degradation
+            # issue). Use gemma-4-26B-AWQ or Qwen3.6-27B-AWQ for vision workloads.
+            # torch_native attention required — Triton attention crashes at ~400
+            # tokens. Triton GEMV handles M=1 decode at 15 tok/s with FP32 dequant.
+            MODEL="${MODEL:-$MODELS_DIR/gemma-4-31B-AWQ}"
+            QUANT="awq"
+            DTYPE="bfloat16"
+            ATTN_BACKEND="torch_native"
+            REASONING="--reasoning-parser gemma4"
+            CTX=8192; MAX_RUNNING=8; CHUNKED=4096
+            WARMUP="--skip-server-warmup"; WATCHDOG=1800
+            OVERLAP=""
+            ;;
+        gemma4-31b-autoround)
+            # Legacy AutoRound-derived ship (mattbucci/gemma-4-31B-it-AutoRound-AWQ).
+            # 50.4% negative scales (non-standard); vision returns wrong-but-short
+            # answer ("cuneiform character") instead of crashing. Kept for users
+            # who need vision-doesn't-crash even at the cost of vision-correctness.
+            # Superseded by `gemma4-31b` for basic + thinking workloads.
             MODEL="${MODEL:-$MODELS_DIR/gemma-4-31B-it-AutoRound-AWQ}"
             TOKENIZER="--tokenizer-path $MODELS_DIR/gemma-4-31B-it-BF16"
             QUANT="awq"
