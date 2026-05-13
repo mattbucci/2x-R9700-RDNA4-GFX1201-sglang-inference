@@ -43,6 +43,7 @@ CUDA_GRAPH="--disable-cuda-graph"
 MAMBA_CACHE=""
 CHAT_TEMPLATE=""
 REASONING=""
+TOOL_CALL_PARSER=""
 ATTN_BACKEND="${ATTN_BACKEND:-triton}"
 OVERLAP="--disable-overlap-schedule"
 WARMUP=""
@@ -59,6 +60,7 @@ apply_preset() {
             # user at 32K throughput, use: --context-length 32768 --max-running 64
             MODEL="${MODEL:-$MODELS_DIR/Devstral-24B-AWQ-4bit-calibrated}"
             CTX=131072; MEM=0.90; MAX_RUNNING=8; CHUNKED=8192
+            TOOL_CALL_PARSER="mistral"
             OVERLAP=""
             ;;
         coder-30b)
@@ -81,6 +83,7 @@ apply_preset() {
             CHUNKED="${_ENV_CHUNKED:-4096}"
             DECODE_STEPS="${_ENV_DECODE_STEPS:-8}"
             MEM="${_ENV_MEM:-$MEM}"
+            TOOL_CALL_PARSER="qwen3_coder"
             ;;
         coder-next)
             # Long-context target: 131K by default (can push to 256K with CLI
@@ -96,6 +99,7 @@ apply_preset() {
             DTYPE="bfloat16"
             CTX=131072; MAX_RUNNING=8; CHUNKED=8192; DECODE_STEPS=32; MEM=0.85
             MAMBA_CACHE="--max-mamba-cache-size 8"
+            TOOL_CALL_PARSER="qwen3_coder"
             WATCHDOG=1800
             ;;
         coder-next-ream)
@@ -111,11 +115,13 @@ apply_preset() {
             DTYPE="bfloat16"
             CTX=131072; MAX_RUNNING=8; CHUNKED=8192; DECODE_STEPS=24; MEM=0.85
             MAMBA_CACHE="--max-mamba-cache-size 8"
+            TOOL_CALL_PARSER="qwen3_coder"
             WATCHDOG=1800
             ;;
         glm45-air)
             MODEL="${MODEL:-$MODELS_DIR/GLM-4.5-Air-REAP-AWQ}"
             CTX=32768; MAX_RUNNING=32; CHUNKED=4096; DECODE_STEPS=8
+            TOOL_CALL_PARSER="glm"
             WATCHDOG=1800
             ;;
         gemma4)
@@ -131,6 +137,7 @@ apply_preset() {
             DTYPE="bfloat16"
             ATTN_BACKEND="torch_native"
             REASONING="--reasoning-parser gemma4"
+            TOOL_CALL_PARSER="gemma4"
             # Bumped CTX 4096 → 16384: at 4096, check_thinking max_tokens=4096
             # + small input exceeds the limit and SGLang returns 400.
             CTX=16384; MAX_RUNNING=8; CHUNKED=4096
@@ -152,6 +159,7 @@ apply_preset() {
             DTYPE="bfloat16"
             ATTN_BACKEND="torch_native"
             REASONING="--reasoning-parser gemma4"
+            TOOL_CALL_PARSER="gemma4"
             CTX=8192; MAX_RUNNING=8; CHUNKED=4096
             WARMUP="--skip-server-warmup"; WATCHDOG=1800
             OVERLAP=""
@@ -168,6 +176,7 @@ apply_preset() {
             DTYPE="bfloat16"
             ATTN_BACKEND="torch_native"
             REASONING="--reasoning-parser gemma4"
+            TOOL_CALL_PARSER="gemma4"
             CTX=8192; MAX_RUNNING=8; CHUNKED=4096
             WARMUP="--skip-server-warmup"; WATCHDOG=1800
             OVERLAP=""
@@ -178,6 +187,8 @@ apply_preset() {
             TOKENIZER="--tokenizer-path $MODELS_DIR/gemma-4-31B-it-BF16"
             QUANT="compressed-tensors"
             DTYPE="bfloat16"
+            REASONING="--reasoning-parser gemma4"
+            TOOL_CALL_PARSER="gemma4"
             CTX=8192; MAX_RUNNING=8; CHUNKED=4096
             WARMUP="--skip-server-warmup"; WATCHDOG=1800
             OVERLAP=""
@@ -193,6 +204,7 @@ apply_preset() {
             CTX=262144; MAX_RUNNING=8; CHUNKED=8192; DECODE_STEPS=8; MEM=0.85
             MAMBA_CACHE="--max-mamba-cache-size 8"
             REASONING="--reasoning-parser qwen3"
+            TOOL_CALL_PARSER="qwen3_coder"
             WARMUP="--skip-server-warmup"
             OVERLAP=""
             ;;
@@ -219,6 +231,7 @@ apply_preset() {
             CTX=262144; MAX_RUNNING=8; CHUNKED=8192; DECODE_STEPS=8; MEM=0.85
             MAMBA_CACHE="--max-mamba-cache-size 8"
             REASONING="--reasoning-parser qwen3"
+            TOOL_CALL_PARSER="qwen3_coder"
             WARMUP="--skip-server-warmup"
             OVERLAP=""
             ;;
@@ -244,6 +257,7 @@ apply_preset() {
             MAMBA_CACHE="--max-mamba-cache-size 8"
             CHAT_TEMPLATE="--chat-template \$MODEL/chat_template.jinja"
             REASONING="--reasoning-parser qwen3"
+            TOOL_CALL_PARSER="qwen3_coder"
             OVERLAP=""
             ;;
         coder-reap-25b)
@@ -260,6 +274,7 @@ apply_preset() {
             DTYPE="bfloat16"
             CTX=262144; MAX_RUNNING=8; CHUNKED=8192; DECODE_STEPS=8; MEM=0.85
             REASONING="--reasoning-parser qwen3"
+            TOOL_CALL_PARSER="qwen3_coder"
             OVERLAP=""
             ;;
         qwen36-27b)
@@ -293,6 +308,7 @@ apply_preset() {
             CUDA_GRAPH="--disable-cuda-graph"
             MAMBA_CACHE="--max-mamba-cache-size 8"
             REASONING="--reasoning-parser qwen3"
+            TOOL_CALL_PARSER="qwen3_coder"
             OVERLAP=""
             ;;
         qwen3vl-32b)
@@ -307,6 +323,7 @@ apply_preset() {
             DTYPE="bfloat16"
             CTX=32768; MEM=0.85; MAX_RUNNING=8; CHUNKED=4096; DECODE_STEPS=8
             REASONING="--reasoning-parser qwen3"
+            TOOL_CALL_PARSER="qwen"
             EXTRA_ARGS="${EXTRA_ARGS:-} --enable-multimodal"
             ;;
         *)
@@ -403,6 +420,7 @@ CMD=(python -m sglang.launch_server
 [[ -n "$MAMBA_CACHE" ]] && CMD+=($MAMBA_CACHE)
 [[ -n "$CHAT_TEMPLATE" ]] && CMD+=($CHAT_TEMPLATE)
 [[ -n "$REASONING" ]] && CMD+=($REASONING)
+[[ -n "$TOOL_CALL_PARSER" ]] && CMD+=(--tool-call-parser "$TOOL_CALL_PARSER")
 [[ -n "$WARMUP" ]] && CMD+=($WARMUP)
 [[ -n "$OVERLAP" ]] && CMD+=($OVERLAP)
 [[ -n "$EXTRA_ARGS" ]] && CMD+=($EXTRA_ARGS)
