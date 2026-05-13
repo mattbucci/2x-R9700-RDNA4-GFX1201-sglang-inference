@@ -96,6 +96,23 @@ def _thestack_code(row: dict) -> list[dict]:
     ]
 
 
+def _evol_code(row: dict) -> list[dict]:
+    """theblackcat102/evol-codealpaca-v1: open instruction-tuned code dataset.
+
+    Schema: `instruction` (problem) + `output` (solution with code blocks).
+    Used as the open alternative to `bigcode/the-stack-smol` which is gated
+    and requires per-dataset access approval. evol-codealpaca is multi-language
+    code (Python + JS + C++ + ...) in user/assistant format that matches how
+    Coder-30B is actually invoked.
+    """
+    instruction = row.get("instruction", "") or ""
+    output = row.get("output", "") or ""
+    return [
+        {"role": "user", "content": instruction[:4000]},
+        {"role": "assistant", "content": output[:4000]},
+    ]
+
+
 def _common_voice_audio(row: dict) -> list[dict]:
     """Mozilla Common Voice: short transcribed speech samples (Gemma 4 audio).
 
@@ -198,6 +215,14 @@ MIXES: dict[str, Mix] = {
         split="train", weight=0.0, format_fn=_thestack_code,
         config="data/python",
     ),
+    "evol_code": Mix(
+        # Open alternative to thestack_code. theblackcat102/evol-codealpaca-v1
+        # is instruction-tuned multi-language code, no gating, no access request.
+        # Preferred for Coder-30B / Coder-Next / Coder-REAP calibration since
+        # bigcode/the-stack-smol requires per-account dataset access approval.
+        "evol_code", "theblackcat102/evol-codealpaca-v1",
+        split="train", weight=0.0, format_fn=_evol_code,
+    ),
     "vatex_video": Mix(
         "vatex_video", "Multimodal-Fatima/VATEX",
         split="train", weight=0.0, format_fn=_vatex_video, streaming=True,
@@ -269,7 +294,7 @@ RECIPE_THINKING_VISION_VIDEO_AUDIO = {
 
 RECIPE_CODE_VISION = {
     # Coder + vision (Devstral).  Code heavy, vision preserved, minimal thinking.
-    "thestack_code": 0.45,
+    "evol_code": 0.45,
     "llava_instruct": 0.25,
     "ultrachat": 0.20,
     "numina_math": 0.10,
@@ -277,7 +302,9 @@ RECIPE_CODE_VISION = {
 
 RECIPE_CODE_THINKING = {
     # Coder with optional thinking (Qwen3-Coder-30B, Coder-Next 80B).
-    "thestack_code": 0.40,
+    # evol_code (theblackcat102/evol-codealpaca-v1) is the open alternative to
+    # bigcode/the-stack-smol which is gated and requires per-account access.
+    "evol_code": 0.40,
     "am_thinking": 0.25,
     "numina_math": 0.20,
     "ultrachat": 0.15,
@@ -296,9 +323,9 @@ RECIPE_BALANCED_THINKING_VISION = {
     "llava_instruct": 0.25,     # vision Q&A (no thinking tags)
     "ultrachat": 0.25,          # plain chat (no thinking tags)
     "numina_math": 0.10,        # math reasoning (mixed thinking)
-    "thestack_code": 0.10,      # code (no thinking)
+    "evol_code": 0.10,          # code (no thinking) — open alt for thestack_code
     # Effective: thinking ≈ 40% (am_thinking + numina_math),
-    #            non-thinking ≈ 60% (llava_instruct + ultrachat + thestack_code).
+    #            non-thinking ≈ 60% (llava_instruct + ultrachat + evol_code).
 }
 
 RECIPE_BALANCED_THINKING_TEXT = {
@@ -310,9 +337,9 @@ RECIPE_BALANCED_THINKING_TEXT = {
     "am_thinking": 0.30,        # explicit thinking traces (terminated </think>)
     "ultrachat": 0.35,          # plain chat (no thinking tags) — dominant non-thinking
     "numina_math": 0.15,        # math reasoning (mixed thinking)
-    "thestack_code": 0.20,      # code (no thinking)
+    "evol_code": 0.20,          # code (no thinking) — open alt for thestack_code
     # Effective: thinking ≈ 45% (am_thinking + numina_math),
-    #            non-thinking ≈ 55% (ultrachat + thestack_code).
+    #            non-thinking ≈ 55% (ultrachat + evol_code).
 }
 
 RECIPES = {
