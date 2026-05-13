@@ -177,18 +177,46 @@ class REAPSaliencyTracker:
         return out
 
 
+def _discover_mlp_modules(model: torch.nn.Module) -> dict[int, torch.nn.Module]:
+    """Walk the model and find {layer_idx: mlp_module} for every MoE layer.
+
+    Path-agnostic: works for Qwen3MoeForCausalLM (model.model.layers[i].mlp) AND
+    Qwen3.5/3.6-VL classes where the language model is nested deeper
+    (model.language_model.layers[i].mlp etc.). We match on the trailing
+    `.layers.{N}.mlp` suffix in named_modules and parse N from the path.
+    """
+    layer_to_mlp: dict[int, torch.nn.Module] = {}
+    for name, mod in model.named_modules():
+        # mlp module itself, not children — has both .gate and .experts attrs
+        if not (hasattr(mod, "gate") and hasattr(mod, "experts")):
+            continue
+        # name format: ...layers.{L}.mlp (or similar — strip trailing .mlp and look for layers)
+        if ".layers." not in name:
+            continue
+        try:
+            tail = name.split(".layers.", 1)[1]
+            layer_idx = int(tail.split(".")[0])
+        except (IndexError, ValueError):
+            continue
+        layer_to_mlp[layer_idx] = mod
+    return layer_to_mlp
+
+
 def prune_model(model: torch.nn.Module, survivors_per_layer: dict[int, list[int]]) -> None:
     """In-place: drop pruned experts and slice router gate weight rows to surviving set.
 
     Assumes Qwen3MoE-style ModuleList[Qwen3MoeMLP] for experts (the unfused-experts
     monkey-patch ensures this) and an `mlp.gate` Linear of shape [num_experts, hidden].
     """
+    mlp_by_layer = _discover_mlp_modules(model)
+    missing = sorted(set(survivors_per_layer) - set(mlp_by_layer))
+    if missing:
+        raise RuntimeError(
+            f"_discover_mlp_modules failed to find mlp for layers {missing[:5]}... "
+            f"(found {len(mlp_by_layer)} MoE layers; survivors expects {len(survivors_per_layer)})"
+        )
     for layer_idx, keep in survivors_per_layer.items():
-        layer_path = f"model.layers.{layer_idx}.mlp"
-        # Walk the module tree to find this layer's mlp
-        layer_mlp = model
-        for part in layer_path.split("."):
-            layer_mlp = getattr(layer_mlp, part)
+        layer_mlp = mlp_by_layer[layer_idx]
         # Slice the gate Linear weight (rows = experts)
         gate = layer_mlp.gate
         keep_t = torch.tensor(keep, dtype=torch.long, device=gate.weight.device)
