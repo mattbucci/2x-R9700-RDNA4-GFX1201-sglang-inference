@@ -42,6 +42,7 @@ Usage (text-only):
 from __future__ import annotations
 
 import argparse
+import gc
 import json
 import os
 import sys
@@ -299,7 +300,26 @@ def main():
     print(f"\n[4/4] Computing per-layer survivors (keep top-{args.keep_experts})...")
     survivors = tracker.survivors_per_layer(args.keep_experts)
     n_layers = len(survivors)
+    saliency_snapshot = {L: tracker.saliency[L].clone().cpu() for L in tracker.saliency}
     print(f"  {n_layers} MoE layers; example survivors layer 0: {survivors[0][:10]}...")
+
+    # Stage 2: reload the model to CPU only, then prune and save.
+    # device_map="auto" with CPU offload leaves params as meta tensors after
+    # dispatch, which crashes save_pretrained at safetensors._tobytes
+    # (NotImplementedError: Cannot copy out of meta tensor). Loading to CPU
+    # avoids the meta path entirely so save_pretrained gets real tensors.
+    print("\n[reload] Dropping GPU model and reloading on CPU for save...")
+    del model
+    gc.collect()
+    torch.cuda.empty_cache()
+    model = AutoModelForCausalLM.from_pretrained(
+        args.model,
+        device_map=None,
+        dtype=torch.bfloat16,
+        low_cpu_mem_usage=False,
+        trust_remote_code=True,
+    )
+    model.eval()
 
     print(f"\nPruning experts + slicing router weights in-place...")
     prune_model(model, survivors)
@@ -321,7 +341,7 @@ def main():
         "kept_experts_per_layer": args.keep_experts,
         "original_num_experts": num_experts,
         "saliency_per_layer": {
-            str(L): tracker.saliency[L].tolist() for L in tracker.saliency
+            str(L): saliency_snapshot[L].tolist() for L in saliency_snapshot
         },
         "survivors_per_layer": {str(L): survivors[L] for L in survivors},
     }
