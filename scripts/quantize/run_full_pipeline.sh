@@ -56,6 +56,27 @@ case "$MODEL_KEY" in
         LAUNCH_PRESET="gemma4"
         THINKING_KWARG='{"enable_thinking":true}'
         ;;
+    coder30b-reap)
+        # Post-REAP-prune AWQ ship pipeline. BF16 base must already exist
+        # (output of run_reap.sh on Qwen3-Coder-30B-A3B-BF16). Calibration
+        # is text-only (no vision tower); thinking optional via Qwen template.
+        CALIB_SCRIPT="scripts/quantize/quantize_coder30b_code_thinking.py"
+        CONVERT_SCRIPT="scripts/quantize/convert_moe_ct_to_awq.py"
+        CT_OUTPUT="$MODELS_DIR/Qwen3-Coder-30B-A3B-REAP-AWQ-CT"
+        AWQ_OUTPUT="$MODELS_DIR/Qwen3-Coder-30B-A3B-REAP-AWQ"
+        BF16_BASE="$MODELS_DIR/Qwen3-Coder-30B-A3B-REAP-BF16"
+        HAS_VISION=0
+        LAUNCH_PRESET="coder-30b"   # same SGLang preset, model path overridden via MODEL=
+        THINKING_KWARG='{"enable_thinking":true}'
+        # Force the calibration script to use the REAP-pruned BF16 base, not the
+        # default upstream Qwen/Qwen3-Coder-30B-A3B-Instruct in BASE_MODEL.
+        export BASE_MODEL="$BF16_BASE"
+        export OUTPUT_DIR="$CT_OUTPUT"
+        export NUM_SAMPLES="${NUM_SAMPLES:-1024}"
+        export MAX_SEQ_LEN="${MAX_SEQ_LEN:-2048}"
+        # convert_moe_ct_to_awq.py takes positional CT_SRC AWQ_DST args + flags.
+        # We use a wrapper to translate CT_INPUT/AWQ_OUTPUT envs to its CLI.
+        ;;
     *)
         echo "Unknown model key: $MODEL_KEY" >&2
         exit 1

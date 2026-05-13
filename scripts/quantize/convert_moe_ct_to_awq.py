@@ -116,11 +116,17 @@ def quantize_bf16_to_awq(weight: torch.Tensor, group_size: int):
 
 def main():
     parser = argparse.ArgumentParser(description="Convert compressed-tensors to AWQ")
-    parser.add_argument("src_dir", help="Source model directory (compressed-tensors)")
-    parser.add_argument("dst_dir", help="Output model directory (AWQ)")
+    # Env fallback for run_full_pipeline.sh which passes CT_INPUT/AWQ_OUTPUT envs.
+    parser.add_argument("src_dir", nargs="?", default=os.environ.get("CT_INPUT"),
+                        help="Source model directory (or CT_INPUT env)")
+    parser.add_argument("dst_dir", nargs="?", default=os.environ.get("AWQ_OUTPUT"),
+                        help="Output model directory (or AWQ_OUTPUT env)")
     parser.add_argument("--group-size", type=int, default=None,
                         help="Group size (auto-detected from config if not set)")
     args = parser.parse_args()
+
+    if not args.src_dir or not args.dst_dir:
+        parser.error("src_dir and dst_dir required (positional or CT_INPUT/AWQ_OUTPUT envs)")
 
     src_dir = os.path.expanduser(args.src_dir)
     dst_dir = os.path.expanduser(args.dst_dir)
