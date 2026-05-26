@@ -2149,3 +2149,10 @@ model.layers.6.linear_attn.conv1d.weight torch.Size([10240, 1, 4])Multi-thread 
 [2026-05-25 17:54:12 TP0] Decode batch, #running-req: 1, #full token: 201, full token usage: 0.00, mamba num: 2, mamba usage: 0.05, cuda graph: False, gen throughput (token/s): 4.87, #queue-req: 0
 [2026-05-25 17:54:14] INFO:     127.0.0.1:41238 - "POST /v1/chat/completions HTTP/1.1" 200 OK
 [2026-05-25 17:54:15 TP0] Prefill batch, #new-seq: 1, #new-token: 237, #cached-token: 0, full token usage: 0.00, mamba usage: 0.05, #running-req: 0, #queue-req: 0, #pending-token: 0, cuda graph: False, input throughput (token/s): 8.86
+[2026-05-25 17:54:21 TP0] Decode batch, #running-req: 1, #full token: 267, full token usage: 0.00, mamba num: 2, mamba usage: 0.05, cuda graph: False, gen throughput (token/s): 4.56, #queue-req: 0
+[2026-05-25 17:54:29 TP0] Decode batch, #running-req: 1, #full token: 307, full token usage: 0.00, mamba num: 2, mamba usage: 0.05, cuda graph: False, gen throughput (token/s): 4.87, #queue-req: 0
+[2026-05-25 17:54:32] INFO:     127.0.0.1:50174 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+/home/letsrtfm/miniforge3/envs/sglang-triton36/lib/python3.12/multiprocessing/resource_tracker.py:279: UserWarning: resource_tracker: There appear to be 2 leaked semaphore objects to clean up at shutdown
+  warnings.warn('resource_tracker: There appear to be %d '
+/home/letsrtfm/miniforge3/envs/sglang-triton36/lib/python3.12/multiprocessing/resource_tracker.py:279: UserWarning: resource_tracker: There appear to be 1 leaked shared_memory objects to clean up at shutdown
+  warnings.warn('resource_tracker: There appear to be %d '

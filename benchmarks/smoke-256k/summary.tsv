@@ -6,3 +6,12 @@ gemma-4-31B-AWQ	awq	8192	up	--- 2/4 passed in 71.0s ---
 Qwen3.5-27B-AWQ	awq	262144	up	--- 3/4 passed in 663.5s ---
 Qwen3.5-28B-A3B-REAP-AWQ	awq	262144	DOWN	Error
 Qwen3.6-35B-A3B-AWQ	awq	262144	DOWN	out of memory
+Qwen3.6-27B-AWQ	awq	262144	up	--- 3/4 passed in 644.5s ---
+Qwen3.6-REAM-A3B-AWQ	awq	262144	DOWN	Error
+Qwen3.6-VL-REAP-26B-A3B-AWQ	awq	262144	DOWN	Error
+Qwen3-Coder-REAP-25B-A3B-AWQ	awq	262144	up	--- 0/4 passed in 392.9s ---
+Qwen3-Coder-Next-REAM-AWQ	awq	262144	DOWN	out of memory
+Qwen3-Coder-30B-A3B-REAM-AWQ	awq	262144	up	--- 0/4 passed in 387.4s ---
+Qwen3-Coder-30B-A3B-REAP-AWQ	awq	262144	up	--- 0/4 passed in 387.9s ---
+Qwen3-VL-32B-AWQ	awq	262144	up	--- 3/4 passed in 24.7s ---
+gemma-4-21B-REAP-AWQ	awq	262144	up	--- 0/4 passed in 10.8s ---
