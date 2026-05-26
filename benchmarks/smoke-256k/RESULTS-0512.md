@@ -22,3 +22,6 @@ Env on **sglang v0.5.12**, TP2 @262144, fp8 KV, triton attn. Probe = determinist
 | 28B-REAP / 3.6-REAM / VL-REAP-26B / Coder-30B-CT | down | — | boot fail |
 
 **Verdict:** dense (Devstral/gemma-31B/VL-32B) + DeltaNet (Qwen3.5/3.6-27B) coherent. Qwen3 MoE-A3B coders emit gibberish — moe_wna16/per-expert AWQ path needs work; not a regression vs 0.5.11. Frontier MoE-correctness, flagged.
+
+## MoE-coder gibberish — root-cause hunt (2026-05-25)
+Same `mattbucci/*` weights serve coherent on 3090 (AWQ_Marlin) → fault is R9700 patch stack, not checkpoints. Suspect: `moe_wna16` per-expert AWQ Triton path (3090 uses marlin). HIP GEMV A/B inconclusive — interactive reboots wedge (server exits instant, empty log; bundled pkill reaps launcher). Confirmed gibberish: Coder-30B-REAM/REAP, REAP-25B. Next: in-proc per-expert load check vs 3090; isolate moe_wna16 dispatch.
