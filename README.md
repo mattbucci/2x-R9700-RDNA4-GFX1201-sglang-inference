@@ -15,6 +15,10 @@ High-throughput LLM inference on 2x AMD Radeon AI PRO R9700 (gfx1201, RDNA4) wit
 - Qwen3.5 / Qwen3.6: image + video (no audio)
 - Devstral 24B: image only
 
+### Next steps (2026-05-26, MoE A/B bisect env)
+
+The verdict is "v0.5.11 MoE coherent, v0.5.12 gibberish (20× expert squash) — kernel regression in int4 fused experts." To diff working-vs-broken kernels directly, building a parallel known-good env from repo commit `96160e0` (which pinned `SGLANG_TAG=v0.5.11`, same triton 3.6 + 2.11 torch, only sglang version differs): worktree `/data/sglang-0511-bisect`, conda env `sglang-0511-bisect`, build log `/tmp/sgl0511-build-logs/run.log`. Plan: run an int4-MoE coder on v0.5.11 (expect coherent) and v0.5.12 (gibberish), then diff `fused_moe_triton_kernels.py:fused_moe_kernel_gptq_awq` + the dequant path between tags to pinpoint the regression hunk. Earlier "0.5.10" was a misremember; 96160e0 is 0.5.11, which is the right working anchor anyway.
+
 ### Next steps (2026-05-25, on v0.5.12)
 
 Bumped v0.5.11→v0.5.12. Patch rebase: 8 hunks broke, only 2 needed rebasing (sgl_kernel degrade, decode fp32); 6 upstreamed/dup. 256K TP2 smoke 16/16 — verdict in `benchmarks/smoke-256k/RESULTS-0512.md`:
