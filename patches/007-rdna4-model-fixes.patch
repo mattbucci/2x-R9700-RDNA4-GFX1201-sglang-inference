@@ -1,141 +1,24 @@
 diff --git a/python/sglang/srt/models/llama.py b/python/sglang/srt/models/llama.py
-index dc39732ce..f1f81e4a9 100644
+index 9fc1687..8faf7e1 100644
 --- a/python/sglang/srt/models/llama.py
 +++ b/python/sglang/srt/models/llama.py
-@@ -203,6 +203,12 @@ class LlamaAttention(nn.Module):
+@@ -205,6 +205,7 @@ class LlamaAttention(nn.Module):
      def forward_prepare_native(self, positions, hidden_states):
          qkv, _ = self.qkv_proj(hidden_states)
          q, k, v = qkv.split([self.q_size, self.kv_size, self.kv_size], dim=-1)
-+        # Ensure contiguous — split() returns non-contiguous views and
-+        # in-place rotary embedding via .view() behaves inconsistently
-+        # across torch versions on non-contiguous tensors.
-+        q = q.contiguous()
-+        k = k.contiguous()
-+        v = v.contiguous()
++        q, k, v = q.contiguous(), k.contiguous(), v.contiguous()
          q, k = self.rotary_emb(positions, q, k)
          return q, k, v
  
-diff --git a/python/sglang/srt/models/llava.py b/python/sglang/srt/models/llava.py
-index 712c1f4f8..104df1ecd 100644
---- a/python/sglang/srt/models/llava.py
-+++ b/python/sglang/srt/models/llava.py
-@@ -867,15 +867,47 @@ class LlavaForConditionalGeneration(LlavaBaseForCausalLM):
-         # Create dictionaries for direct parameter loading
-         params_dict = dict(self.named_parameters())
- 
--        # Load weights directly without remapping
-+        # Load weights with prefix remapping for AWQ checkpoints
-+        # Some checkpoints (e.g. Devstral AWQ) store language model weights
-+        # under "model.*" instead of "language_model.model.*", and "lm_head.*"
-+        # instead of "language_model.lm_head.*".
-         for name, loaded_weight in weights:
-+            # Remap bare "model.*" → "language_model.model.*" when it is
-+            # not already correctly prefixed for a known sub-module.
-+            if name.startswith("model.") and not name.startswith(
-+                ("model.language_model.", "model.multi_modal_projector.", "model.vision_tower.")
-+            ):
-+                name = "language_model." + name  # model.X → language_model.model.X
-+
-+            # Remap bare "lm_head.*" → "language_model.lm_head.*"
-+            if name.startswith("lm_head."):
-+                name = "language_model." + name
-+
-+            # Handle both "vision_tower.X" and "model.vision_tower.X" formats
-+            # Some checkpoints (androiddrew Devstral AWQ) use "model." prefix
-+            if name.startswith("model.vision_tower."):
-+                name = name[len("model."):]  # model.vision_tower.X → vision_tower.X
-+            if name.startswith("model.multi_modal_projector."):
-+                name = name[len("model."):]  # model.multi_modal_projector.X → multi_modal_projector.X
-+
-+            # Cast BF16 vision/projector weights to model dtype (FP16)
-+            # AWQ checkpoints may store vision weights in BF16 while language
-+            # model runs in FP16 — mismatched dtypes cause silent matmul failures
-+            if (name.startswith("vision_tower.") or name.startswith("multi_modal_projector.")):
-+                if loaded_weight.dtype == torch.bfloat16:
-+                    loaded_weight = loaded_weight.to(torch.float16)
-+
-             for part in ("language_model", "vision_tower"):
-                 if name.startswith(part):
-                     name = name[len(part + ".") :]
-                     getattr(self, part).load_weights([(name, loaded_weight)])
-                     break
-             else:
--                param = params_dict[name]
-+                # multi_modal_projector weights go to params_dict directly
-+                param = params_dict.get(name)
-+                if param is None:
-+                    logger.warning(f"Skipping unknown weight: {name}")
-+                    continue
-                 weight_loader = getattr(param, "weight_loader", default_weight_loader)
-                 weight_loader(param, loaded_weight)
- 
 diff --git a/python/sglang/srt/models/ministral3.py b/python/sglang/srt/models/ministral3.py
-index 8d678ec54..37970f3c8 100644
+index 8d678ec..c342a76 100644
 --- a/python/sglang/srt/models/ministral3.py
 +++ b/python/sglang/srt/models/ministral3.py
-@@ -72,6 +72,13 @@ class Ministral3Attention(LlamaAttention):
+@@ -71,6 +71,7 @@ class Ministral3Attention(LlamaAttention):
+     ) -> torch.Tensor:
          qkv, _ = self.qkv_proj(hidden_states)
          q, k, v = qkv.split([self.q_size, self.kv_size, self.kv_size], dim=-1)
++        q, k, v = q.contiguous(), k.contiguous(), v.contiguous()
  
-+        # Ensure q/k/v are contiguous — split() returns non-contiguous views
-+        # and the sgl_kernel rotary_embedding fallback produces wrong results
-+        # on non-contiguous tensors on some torch versions.
-+        q = q.contiguous()
-+        k = k.contiguous()
-+        v = v.contiguous()
-+
          # Apply RoPE
          q, k = self.rotary_emb(positions, q, k)
- 
-@@ -80,13 +87,8 @@ class Ministral3Attention(LlamaAttention):
-             scale = _get_llama_4_attn_scale(
-                 positions, self.llama_4_scaling_beta, self.max_position_embeddings
-             ).to(q.dtype)
--            # q shape is [batch_size * seq_len, num_heads * head_dim] or [batch_size * seq_len, num_heads, head_dim]
--            # positions is [batch_size * seq_len]
--            # scale is [batch_size * seq_len, 1]
--            # We need to reshape q to apply scale correctly if it's flattened
--            # Assuming q is (total_tokens, num_heads * head_dim)
-             q = q.view(-1, self.num_heads, self.head_dim)
--            q = q * scale.unsqueeze(1)  # Broadcast over heads
-+            q = q * scale.unsqueeze(1)
-             q = q.view(-1, self.num_heads * self.head_dim)
- 
-         attn_output = self.attn(q, k, v, forward_batch)
-diff --git a/python/sglang/srt/models/qwen3_next.py b/python/sglang/srt/models/qwen3_next.py
-index b7df48232..c9bf1654e 100644
---- a/python/sglang/srt/models/qwen3_next.py
-+++ b/python/sglang/srt/models/qwen3_next.py
-@@ -232,14 +232,24 @@ class Qwen3GatedDeltaNet(nn.Module):
-         ModelWeightParameter exposes weight_loader as a read-only property
-         backed by _weight_loader, while plain parameters store it as a
-         regular attribute.  This helper handles both cases.
--        With AWQ quantization, module has qweight instead of weight — skip."""
--        if not hasattr(module, "weight"):
--            return  # AWQ quantization: qweight/scales/qzeros handle their own loading
--        param = module.weight
--        if hasattr(param, "_weight_loader"):
--            param._weight_loader = new_loader
--        else:
--            param.weight_loader = new_loader
-+        Also covers AWQ (qweight/scales/qzeros) and FP8 (weight_scale*) attrs."""
-+        for attr_name in (
-+            "weight",
-+            "qweight",
-+            "scales",
-+            "qzeros",
-+            "weight_scale_inv",
-+            "weight_scale",
-+            "input_scale",
-+            "weight_offset",
-+        ):
-+            param = getattr(module, attr_name, None)
-+            if param is None:
-+                continue
-+            if hasattr(param, "_weight_loader"):
-+                param._weight_loader = new_loader
-+            else:
-+                param.weight_loader = new_loader
- 
-     @staticmethod
-     def _make_packed_weight_loader(module):

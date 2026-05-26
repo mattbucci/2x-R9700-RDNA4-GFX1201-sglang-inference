@@ -32,8 +32,8 @@ index cf8bbff0b..19df856d5 100644
 +        "Gemma4ForCausalLM",
 +        "Gemma4ForConditionalGeneration",
          "Llama4ForConditionalGeneration",
-         "GptOssForCausalLM",
-         *MIMO_V2_MODEL_ARCHS,
+         "DeepseekV4ForCausalLM",
+         "DeepseekV4ForCausalLMNextN",
 @@ -1601,6 +1610,17 @@ def get_hybrid_layer_ids(
              for i, x in enumerate(layer_types)
              if x == "full_attention" and i < num_hidden_layers
@@ -381,15 +381,6 @@ index 544406119..8f83f4e43 100644
  
          self.num_kv_heads = max(1, self.total_num_kv_heads // tp_size)
  
-@@ -342,8 +345,6 @@ class Gemma4Attention(nn.Module):
- 
-         # Check if we should use shared KV cache
-         if self.is_kv_shared_layer and self.kv_shared_layer_index is not None:
--            # For KV shared layers, we skip K/V computation and normalization
--            # The RadixAttention will handle retrieving shared KV from cache
-             k = None
-             v = None
-         else:
 @@ -359,7 +360,6 @@ class Gemma4Attention(nn.Module):
              q, k = self.rotary_emb(positions, q, k)
              k = k.unflatten(-1, (self.num_kv_heads, self.head_dim))
@@ -597,18 +588,6 @@ index 544406119..8f83f4e43 100644
              loaded_params.add(name)
          unloaded_params = params_dict.keys() - loaded_params
          if unloaded_params:
-@@ -1006,4 +1053,10 @@ class Gemma4ForCausalLM(PreTrainedModel):
-         return loaded_params
- 
- 
--EntryClass = Gemma4ForCausalLM
-+# Text-only alias for multimodal architecture name
-+# Allows loading Gemma4ForConditionalGeneration models without vision
-+class Gemma4ForConditionalGeneration(Gemma4ForCausalLM):
-+    pass
-+
-+
-+EntryClass = [Gemma4ForCausalLM, Gemma4ForConditionalGeneration]
 diff --git a/python/sglang/srt/models/qwen3_5.py b/python/sglang/srt/models/qwen3_5.py
 index 2b3315fbf..dfd0bcc6e 100644
 --- a/python/sglang/srt/models/qwen3_5.py

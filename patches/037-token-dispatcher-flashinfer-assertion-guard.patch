@@ -1,44 +1,13 @@
-# 037-token-dispatcher-flashinfer-assertion-guard.patch
-#
-# Broaden the existing try/except in `token_dispatcher/flashinfer.py` to also
-# catch `AssertionError`. Without this, importing the SGLang scheduler on
-# ROCm crashes immediately during the `from flashinfer.comm import ...` line:
-#
-#   File "site-packages/flashinfer/comm/cuda_ipc.py", line 125, in __init__
-#     assert so_file is not None, "libcudart is not loaded in the current process"
-#   AssertionError: libcudart is not loaded in the current process
-#
-# Root cause: `flashinfer.comm` instantiates a `CudaRTLibrary()` at module
-# import time (`cuda_ipc.py:194`), which asserts that libcudart can be loaded
-# via dlopen. On a ROCm-only host that assertion fires at module-init —
-# before any `try/except ImportError` has a chance to catch it. The existing
-# try/except in `flashinfer.py` only catches `ImportError`, missing this
-# AssertionError, and the whole scheduler import chain dies.
-#
-# Fix: catch `(ImportError, AssertionError)` so that `use_flashinfer = False`
-# trips correctly on ROCm hosts. The flashinfer dispatcher is only used for
-# CUDA NVFP4 anyway, so disabling it on ROCm is the desired outcome.
-#
-# Found:    2026-05-12 trying to launch gemma-4-31B in-house AWQ build (#38).
-# Surface:  scheduler.py imports lora_manager → fused_moe_triton.layer →
-#           batch_overlap.two_batch_overlap → token_dispatcher → flashinfer →
-#           AssertionError before any model loading.
-# Affects:  every launch on a ROCm host running v0.5.11 stack with flashinfer
-#           installed (which our sglang-triton36 env has from a CUDA-tooling
-#           dependency chain). Probably hits the 3090 stack only when
-#           flashinfer is missing entirely, which is rare.
-
 diff --git a/python/sglang/srt/layers/moe/token_dispatcher/flashinfer.py b/python/sglang/srt/layers/moe/token_dispatcher/flashinfer.py
+index a49481c..9299461 100644
 --- a/python/sglang/srt/layers/moe/token_dispatcher/flashinfer.py
 +++ b/python/sglang/srt/layers/moe/token_dispatcher/flashinfer.py
-@@ -31,7 +31,9 @@ try:
-     from flashinfer.comm.mnnvl import MnnvlConfig
-
+@@ -33,7 +33,7 @@ try:
+     from sglang.srt.layers.quantization.fp4_utils import fp4_quantize
+ 
      use_flashinfer = True
 -except ImportError:
 +except (ImportError, AssertionError):
-+    # AssertionError from flashinfer.comm.cuda_ipc on ROCm: "libcudart is not loaded
-+    # in the current process" — flashinfer assumes CUDA at module-init time.
      use_flashinfer = False
-
+ 
  logger = logging.getLogger(__name__)
