@@ -40,3 +40,6 @@ Scales audit: 2/14016 flagged → weights clean. HIP kernel + topk exonerated. T
 
 ## Elimination chain (2026-05-25) — pinned to INT4 MoE dequant, both backends
 coder='coin' garbage with: HIP-on, HIP-off, topk softmax-all, AND wvSplitK hybrid. Weights clean(2/14016). All wna16-MoE fail (coder+gemma26); dense+deltanet fine. → shared bug in INT4 expert dequant (group_size/zeros) or per-expert bind, not backend. 3090=marlin avoids wna16. Next (deep kernel): dump expert0 dequant vs marlin ref tensor — needs kernel-correctness work.
+
+## Expert0 dequant SANE → bug is dispatch/dtype, not bind (2026-05-25)
+`scripts/debug/moe_wna16_expert0_dequant.py`: coder REAM expert0 gate w13 dequants clean via casper repack — absmax 0.18, std 0.02, 0 nan/inf, 15% zeros. Bind/repack exonerated. RC = downstream fused-kernel dispatch: fp16 scales × bf16 act (patch 030 forces bf16). dense AWQ dequants separately+bf16 matmul (works); MoE kernel inlines → dtype mix. Next A/B: relaunch coder --dtype float16 (everything fp16). Coherent=confirmed. (Edge: kernel-correctness, slow.)
