@@ -13,7 +13,7 @@ Recipe: abs snapshot path + `--attention-backend triton` + HF_HUB_OFFLINE=1, mem
 | gemma-21B-REAP | awq | ✅ 0/4 | |
 | Qwen3.6-35B-A3B (256exp) | awq | OOM | weight-load 31/32GB, NOT KV; 0.75 also OOM → prune is the lever |
 | Coder-Next-REAM 60B | awq | OOM | biggest weights |
-| 28B-REAP / REAM-A3B / VL-REAP | awq | err | KeyError experts.w2_qweight |
+| 28B-REAP / REAM-A3B / VL-REAP | awq | err | shipped PER-EXPERT unfused + language_model. prefix; loader wants fused experts.w2_qweight → needs fuse-convert |
 | Coder-30B-AWQ | CT! | err | mislabel → CT-w2 TP2 narrow bug |
 
 Devstral/Coder-30B/gemma-26/31 ran at old preset ctx before the 256K bump; all 256K-native, retest pending.
