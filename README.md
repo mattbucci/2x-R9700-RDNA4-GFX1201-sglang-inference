@@ -2,7 +2,7 @@
 
 > **Coding-task recommendation (cross-team, 3090 SWE-bench Lite, 2026-04-27): `Qwen3-Coder-REAP-25B-A3B-AWQ` — 88/300 = 29.3% (37.3% on instances where tests actually ran).** Same calibrated weights we ship at [`mattbucci/Qwen3-Coder-REAP-25B-A3B-AWQ`](https://huggingface.co/mattbucci/Qwen3-Coder-REAP-25B-A3B-AWQ); harness was opencode v1.14.25 on 3090 stack at 256K ctx, scored locally without Docker. ⚠ This ship was calibrated on Cerebras's pre-pruned BF16 — the in-house rebuild from upstream `Qwen/Qwen3-Coder-30B-A3B-Instruct` is tracked under task #22. Current ship stays live until in-house validates (don't break SWE-bench leadership). Three more models queued in the bake-off (Coder-30B / Qwen3.6-35B-A3B / Devstral-24B). Full disclaimer + raw artifacts in the [3090 repo](https://github.com/mattbucci/2x-3090-GA102-300-A1-sglang-inference) under `evals/swebench/runs/coder-reap-25b-lite/`.
 
-High-throughput LLM inference on 2x AMD Radeon AI PRO R9700 (gfx1201, RDNA4) with ROCm 7.2.  SGLang v0.5.11 + RDNA4 patches (see [patches/README.md](patches/README.md) for applied fixes, architectural investigations, and shipped-fix log).
+High-throughput LLM inference on 2x AMD Radeon AI PRO R9700 (gfx1201, RDNA4) with ROCm 7.2.  SGLang v0.5.12 + RDNA4 patches (see [patches/README.md](patches/README.md) for applied fixes, architectural investigations, and shipped-fix log).
 
 ## Current Focus
 
@@ -15,15 +15,15 @@ High-throughput LLM inference on 2x AMD Radeon AI PRO R9700 (gfx1201, RDNA4) wit
 - Qwen3.5 / Qwen3.6: image + video (no audio)
 - Devstral 24B: image only
 
-### Next steps (2026-05-25, fresh bring-up)
+### Next steps (2026-05-25, on v0.5.12)
 
-Local checkout is fresh — `components/sglang` and the conda envs were absent. Re-establishing the stack:
-1. **`scripts/setup.sh` running** (`/tmp/setup-logs/run.log`) — clone v0.5.11, apply patches, torch 2.11+rocm7.2, build Triton 3.6 + HIP GEMV + sgl_kernel. Gate for any serve/bench.
-2. **All 16 `mattbucci/*-AWQ` ships downloading** to `/data` (`scripts/download_all_awq.sh`, ~316 GB, `/tmp/dl-logs/run.log`).
-3. **TP-2 256K smoke matrix running** (`scripts/smoke_matrix.sh` → `benchmarks/smoke-256k/`). Boot recipe validated on devstral 2026-05-25: **absolute HF snapshot path + `--attention-backend triton` + `HF_HUB_OFFLINE=1`**. Three bring-up gotchas: (a) launch.sh presets point at gone `~/AI/models/*`; ships are in `/data/cache/huggingface`. (b) symlinking the snapshot breaks HF's relative `../../blobs` lookups → repo-id OSError; pass the resolved snapshot dir. (c) default attn backend is `aiter` (CDNA-only, `mha_batch_prefill_func` NameError) — triton mandatory. Devstral 24B used ~30GB/GPU @32K, so 256K-class ships are tight on 64GB.
-4. **Then: which models fit FP8 at full 256K (64 GB TP-2)?** Target class is ~13–30B (e.g. Coder-30B-REAM): FP8 weights ~2×AWQ but native WMMA may beat dequant. ⚠ `rules-for-agents.md`: FP8 WMMA runs but Arch comgr emits invalid HSACO for FP8 kernels — validate per-model, may be blocked until comgr fix. Memory math: KV at 256K must fit alongside weights; >30 GB ships (REAM-A3B, Coder-Next) likely won't.
+Bumped v0.5.11→v0.5.12. Patch rebase: 8 hunks broke, only 2 needed rebasing (sgl_kernel degrade, decode fp32); 6 upstreamed/dup. 256K TP2 smoke 16/16 — verdict in `benchmarks/smoke-256k/RESULTS-0512.md`:
+- **coherent ✅:** Devstral-24B, gemma-4-31B, Qwen3.5-27B, Qwen3.6-27B, Qwen3-VL-32B
+- **gibberish ❌ (all Qwen3 MoE-A3B coders):** Coder-30B-REAM/REAP, Coder-REAP-25B → moe_wna16/per-expert AWQ path
+- **OOM 256K:** Qwen3.6-35B-A3B, Coder-Next-REAM • **gemma 21B/26B `<pad>`:** template (skip_special_tokens) • **boot-fail:** 28B-REAP, 3.6-REAM, VL-REAP-26B, Coder-30B-CT
 
 In priority order:
+0. **Regen patch files 001/003/004/011 for v0.5.12** (env runs off live tree; reclone won't reproduce). **MoE-coder gibberish RC** (per-expert AWQ load). **gemma re-probe** with skip_special_tokens=false.
 
 1. **Rebuild broken & under-calibrated MoE ships** — see task list. Two ships are confirmed broken (Coder-30B-REAP-AWQ outputs gibberish — random-init experts from pre-monkey-patch REAM merge; Qwen3.6-VL-REAP-26B-A3B-AWQ HSAILs on vision — no vision tower keys). Three more have rare-expert zero scales that today's `moe_calibrate_all_experts=True` recipe fix (commit `3662f05`) should clear on recal. Tasks #22 (Coder-30B-REAP rebuild), #24 (VL-REAP rebuild), #34 (Coder-30B-REAM recal), #35 (Coder-Next-REAM recal), #36 (Qwen3.6-REAM-A3B recal investigation).
 2. **Wire HIP MoE kernel into SGLang MoeRunner (#28)** — kernel + microbench landed (patches 006 + 032); only the runner registration remains.

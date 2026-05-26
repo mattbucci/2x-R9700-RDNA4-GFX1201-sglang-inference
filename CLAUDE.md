@@ -1,6 +1,8 @@
 # RDNA4 Inference Project
 
-Custom SGLang v0.5.11 + RDNA4 patches for 2x AMD Radeon AI PRO R9700.
+Custom SGLang v0.5.12 + RDNA4 patches for 2x AMD Radeon AI PRO R9700.
+
+**Mandate (autonomous):** optimize 256K single-user perf for all README models; multi-user is secondary. Preserve image + thinking through every calibration (3090 confirmed both break — validate with probes, not grep). Multi-hour calibrations OK without asking. Keep README clean, commit/push as you go, push learnings to 3090 team. Never stop for confirmation.
 
 **All inference MUST use SGLang.** Other engines (vLLM Docker, llama.cpp) are for comparison benchmarks only.
 
