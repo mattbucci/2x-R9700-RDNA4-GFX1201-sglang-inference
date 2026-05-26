@@ -95,3 +95,45 @@ Failed to get device capability: nvcc not found and PyTorch is not built with CU
 [transformers] The tokenizer you are loading from '/data/cache/huggingface/hub/models--mattbucci--Devstral-24B-AWQ/snapshots/91382f53f37f6d40756166361f51885fb823d123' with an incorrect regex pattern: https://huggingface.co/mistralai/Mistral-Small-3.1-24B-Instruct-2503/discussions/84#69121093e8b480e709447d5e. This will lead to incorrect tokenization. You should set the `fix_mistral_regex=True` flag when loading this tokenizer to fix this issue.
 [2026-05-25 17:25:23 TP0] Loading tokenizer for /data/cache/huggingface/hub/models--mattbucci--Devstral-24B-AWQ/snapshots/91382f53f37f6d40756166361f51885fb823d123 directly as TokenizersBackend (bypassing AutoTokenizer)
 [2026-05-25 17:25:23 TP1] Loading tokenizer for /data/cache/huggingface/hub/models--mattbucci--Devstral-24B-AWQ/snapshots/91382f53f37f6d40756166361f51885fb823d123 directly as TokenizersBackend (bypassing AutoTokenizer)
+[transformers] The tokenizer you are loading from '/data/cache/huggingface/hub/models--mattbucci--Devstral-24B-AWQ/snapshots/91382f53f37f6d40756166361f51885fb823d123' with an incorrect regex pattern: https://huggingface.co/mistralai/Mistral-Small-3.1-24B-Instruct-2503/discussions/84#69121093e8b480e709447d5e. This will lead to incorrect tokenization. You should set the `fix_mistral_regex=True` flag when loading this tokenizer to fix this issue.
+[transformers] The tokenizer you are loading from '/data/cache/huggingface/hub/models--mattbucci--Devstral-24B-AWQ/snapshots/91382f53f37f6d40756166361f51885fb823d123' with an incorrect regex pattern: https://huggingface.co/mistralai/Mistral-Small-3.1-24B-Instruct-2503/discussions/84#69121093e8b480e709447d5e. This will lead to incorrect tokenization. You should set the `fix_mistral_regex=True` flag when loading this tokenizer to fix this issue.
+[2026-05-25 17:25:24 TP0] Tokenizer for /data/cache/huggingface/hub/models--mattbucci--Devstral-24B-AWQ/snapshots/91382f53f37f6d40756166361f51885fb823d123 loaded as generic TokenizersBackend. Set --trust-remote-code to load the model-specific tokenizer.
+[2026-05-25 17:25:24 TP1] Tokenizer for /data/cache/huggingface/hub/models--mattbucci--Devstral-24B-AWQ/snapshots/91382f53f37f6d40756166361f51885fb823d123 loaded as generic TokenizersBackend. Set --trust-remote-code to load the model-specific tokenizer.
+[2026-05-25 17:25:25 TP0] max_total_num_tokens=365084, chunked_prefill_size=2048, max_prefill_tokens=16384, max_running_requests=2048, context_len=131072, available_gpu_mem=3.51 GB
+[2026-05-25 17:25:25] INFO:     Started server process [21595]
+[2026-05-25 17:25:25] INFO:     Waiting for application startup.
+[2026-05-25 17:25:25] INFO:     Application startup complete.
+[2026-05-25 17:25:25] INFO:     Uvicorn running on http://127.0.0.1:23334 (Press CTRL+C to quit)
+[2026-05-25 17:25:26] INFO:     127.0.0.1:44034 - "GET /model_info HTTP/1.1" 200 OK
+[2026-05-25 17:25:28 TP0] Prefill batch, #new-seq: 1, #new-token: 14, #cached-token: 0, token usage: 0.00, #running-req: 0, #queue-req: 0, #pending-token: 0, cuda graph: False, input throughput (token/s): 0.70
+[2026-05-25 17:25:29] INFO:     127.0.0.1:44046 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[2026-05-25 17:25:29] The server is fired up and ready to roll!
+[2026-05-25 17:25:29 TP0] Prefill batch, #new-seq: 1, #new-token: 1, #cached-token: 0, token usage: 0.00, #running-req: 0, #queue-req: 0, #pending-token: 0, cuda graph: False, input throughput (token/s): 1.01
+[2026-05-25 17:25:30] INFO:     127.0.0.1:44058 - "GET /health HTTP/1.1" 200 OK
+[2026-05-25 17:25:30 TP0] Prefill batch, #new-seq: 1, #new-token: 1, #cached-token: 0, token usage: 0.00, #running-req: 0, #queue-req: 0, #pending-token: 0, cuda graph: False, input throughput (token/s): 0.99
+[2026-05-25 17:25:31] INFO:     127.0.0.1:44068 - "GET /health HTTP/1.1" 200 OK
+[2026-05-25 17:25:31 TP0] Prefill batch, #new-seq: 1, #new-token: 1, #cached-token: 0, token usage: 0.00, #running-req: 0, #queue-req: 0, #pending-token: 0, cuda graph: False, input throughput (token/s): 0.96
+[2026-05-25 17:25:32] INFO:     127.0.0.1:44076 - "GET /health HTTP/1.1" 200 OK
+/home/letsrtfm/miniforge3/envs/sglang-triton36/lib/python3.12/site-packages/fastapi/routing.py:120: FastAPIDeprecationWarning: ORJSONResponse is deprecated, FastAPI now serializes data directly to JSON bytes via Pydantic when a return type or response model is set, which is faster and doesn't need a custom response class. Read more in the FastAPI docs: https://fastapi.tiangolo.com/advanced/custom-response/#orjson-or-response-model and https://fastapi.tiangolo.com/tutorial/response-model/
+  response = await f(request)
+[2026-05-25 17:25:32] INFO:     127.0.0.1:44086 - "GET /v1/models HTTP/1.1" 200 OK
+[2026-05-25 17:25:32 TP0] Prefill batch, #new-seq: 1, #new-token: 14, #cached-token: 2, token usage: 0.00, #running-req: 0, #queue-req: 0, #pending-token: 0, cuda graph: False, input throughput (token/s): 10.40
+[2026-05-25 17:25:32] INFO:     127.0.0.1:44096 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[2026-05-25 17:25:32] INFO:     127.0.0.1:44108 - "GET /v1/models HTTP/1.1" 200 OK
+[2026-05-25 17:25:32 TP0] Prefill batch, #new-seq: 1, #new-token: 48, #cached-token: 2, token usage: 0.00, #running-req: 0, #queue-req: 0, #pending-token: 0, cuda graph: False, input throughput (token/s): 206.14
+[2026-05-25 17:25:36 TP0] Decode batch, #running-req: 1, #token: 82, token usage: 0.00, cuda graph: False, gen throughput (token/s): 1.44, #queue-req: 0
+[2026-05-25 17:25:40 TP0] Decode batch, #running-req: 1, #token: 122, token usage: 0.00, cuda graph: False, gen throughput (token/s): 9.85, #queue-req: 0
+[2026-05-25 17:25:44 TP0] Decode batch, #running-req: 1, #token: 162, token usage: 0.00, cuda graph: False, gen throughput (token/s): 9.87, #queue-req: 0
+[2026-05-25 17:25:48 TP0] Decode batch, #running-req: 1, #token: 202, token usage: 0.00, cuda graph: False, gen throughput (token/s): 9.87, #queue-req: 0
+[2026-05-25 17:25:52 TP0] Decode batch, #running-req: 1, #token: 242, token usage: 0.00, cuda graph: False, gen throughput (token/s): 9.87, #queue-req: 0
+[2026-05-25 17:25:56 TP0] Decode batch, #running-req: 1, #token: 282, token usage: 0.00, cuda graph: False, gen throughput (token/s): 9.86, #queue-req: 0
+[2026-05-25 17:25:57] INFO:     127.0.0.1:44114 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[2026-05-25 17:25:57 TP0] Prefill batch, #new-seq: 1, #new-token: 120, #cached-token: 2, token usage: 0.00, #running-req: 0, #queue-req: 0, #pending-token: 0, cuda graph: False, input throughput (token/s): 4.88
+[2026-05-25 17:26:00] INFO:     127.0.0.1:58850 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+/home/letsrtfm/AI/2x-R9700-RDNA4-GFX1201-sglang-inference/components/sglang/python/sglang/srt/entrypoints/openai/serving_base.py:115: FastAPIDeprecationWarning: ORJSONResponse is deprecated, FastAPI now serializes data directly to JSON bytes via Pydantic when a return type or response model is set, which is faster and doesn't need a custom response class. Read more in the FastAPI docs: https://fastapi.tiangolo.com/advanced/custom-response/#orjson-or-response-model and https://fastapi.tiangolo.com/tutorial/response-model/
+  return self.create_error_response(
+[2026-05-25 17:26:00] INFO:     127.0.0.1:58864 - "POST /v1/chat/completions HTTP/1.1" 400 Bad Request
+/home/letsrtfm/miniforge3/envs/sglang-triton36/lib/python3.12/multiprocessing/resource_tracker.py:279: UserWarning: resource_tracker: There appear to be 2 leaked semaphore objects to clean up at shutdown
+  warnings.warn('resource_tracker: There appear to be %d '
+/home/letsrtfm/miniforge3/envs/sglang-triton36/lib/python3.12/multiprocessing/resource_tracker.py:279: UserWarning: resource_tracker: There appear to be 1 leaked shared_memory objects to clean up at shutdown
+  warnings.warn('resource_tracker: There appear to be %d '

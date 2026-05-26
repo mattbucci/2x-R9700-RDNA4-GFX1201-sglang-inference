@@ -136,7 +136,7 @@ makepkg -si
 
 | Model | Type | Max context | Short-ctx tok/s | Long-ctx tok/s | Launch | Status |
 |-------|------|:----------:|:---------------:|:--------------:|:------:|:------:|
-| Devstral-24B AWQ | Dense | 131K | 37 | — | `launch.sh devstral` | Working |
+| Devstral-24B AWQ | Dense | 256K | 37 | — | `launch.sh devstral` | Working |
 | Coder-30B AWQ | MoE (128 experts) | 32K | 30 | — | `launch.sh coder-30b` | Working |
 | Gemma 4 26B AWQ | MoE (128 experts) | 4K | 30 | — | `launch.sh gemma4` | Working (3/4 validate: basic+thinking+vision PASS, video FAIL — `vision.py:254 assert bsz==1` triggered by 12-frame video, 2026-04-28) |
 | Gemma 4 31B AWQ | Dense | 8K | 15 | — | `launch.sh gemma4-31b` | Working (torch_native) |

@@ -1,1 +1,5 @@
 model	quant	ctx	health	validate
+Devstral-24B-AWQ	awq	131072	up	--- 2/4 passed in 28.2s ---
+Qwen3-Coder-30B-A3B-AWQ	compressed-tensors	32768	DOWN	Error
+gemma-4-26B-AWQ	awq	4096	up	--- 0/4 passed in 13.5s ---
+gemma-4-31B-AWQ	awq	8192	up	--- 2/4 passed in 71.0s ---
