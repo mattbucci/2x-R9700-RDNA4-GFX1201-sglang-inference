@@ -132,7 +132,10 @@ apply_preset() {
             # the AWQ MoE path that matches the per-expert checkpoint format.
             # Root-caused 2026-05-11 — see project_gemma4_v0511_root_cause.md.
             MODEL="${MODEL:-$MODELS_DIR/gemma-4-26B-A4B-it-AWQ-GPTQ-v2-fixed}"
-            TOKENIZER="--tokenizer-path $MODELS_DIR/gemma-4-26B-A4B-it-BF16"
+            # BF16 dir is reference-only; fall back to the AWQ dir's bundled
+            # tokenizer when it's absent (preset crashloops otherwise).
+            GEMMA_TOK="$MODELS_DIR/gemma-4-26B-A4B-it-BF16"; [ -d "$GEMMA_TOK" ] || GEMMA_TOK="$MODEL"
+            TOKENIZER="--tokenizer-path $GEMMA_TOK"
             QUANT="moe_wna16"
             DTYPE="bfloat16"
             ATTN_BACKEND="torch_native"
