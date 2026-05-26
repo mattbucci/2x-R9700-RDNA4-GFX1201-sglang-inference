@@ -3,3 +3,6 @@
 ### gemma-4-26B-AWQ ctx=4096 17:26:36
 ### gemma-4-31B-AWQ ctx=8192 17:27:31
 ### Qwen3.5-27B-AWQ ctx=262144 17:29:43
+### Qwen3.5-28B-A3B-REAP-AWQ ctx=262144 17:41:58
+### Qwen3.6-35B-A3B-AWQ ctx=262144 17:42:36
+### Qwen3.6-27B-AWQ ctx=262144 17:43:04
