@@ -17,3 +17,6 @@ Recipe: abs snapshot path + `--attention-backend triton` + HF_HUB_OFFLINE=1, mem
 | Coder-30B-AWQ | CT! | err | mislabel → CT-w2 TP2 narrow bug |
 
 Devstral/Coder-30B/gemma-26/31 ran at old preset ctx before the 256K bump; all 256K-native, retest pending.
+
+## FP8-at-256K sizing (2026-05-25)
+Coder-30B-REAM AWQ @256K: boots, 23GB/GPU, 21.5 tok/s (garbage at temp=0 — known greedy loop, retest temp 0.7). FP8 weights ≈26GB/GPU → still fits 64GB; blocker is NOT memory, it's RDNA4 comgr invalid-HSACO for FP8 kernels (rules-for-agents). Sweet spot = pruned 96-exp A3B; 256-exp (35B) OOM at load. No FP8 ships exist yet → FP8 path needs a quant + comgr validation.
