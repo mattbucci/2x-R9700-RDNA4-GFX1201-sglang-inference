@@ -1,0 +1,230 @@
+Failed to get device capability: nvcc not found and PyTorch is not built with CUDA support. Could not determine CUDA version..
+Failed to get device capability: nvcc not found and PyTorch is not built with CUDA support. Could not determine CUDA version..
+/home/letsrtfm/AI/2x-R9700-RDNA4-GFX1201-sglang-inference/components/sglang/python/sglang/launch_server.py:54: UserWarning: 'python -m sglang.launch_server' is still supported, but 'sglang serve' is the recommended entrypoint.
+  Example: sglang serve --model-path <model> [options]
+  warnings.warn(
+[2026-05-25 17:23:22] Multimodal is disabled for gemma4. To enable it, set --enable-multimodal.
+[2026-05-25 17:23:22] awq quantization is not fully optimized yet. The speed can be slower than non-quantized models.
+[2026-05-25 17:23:23] server_args=ServerArgs(model_path='/data/cache/huggingface/hub/models--mattbucci--gemma-4-26B-AWQ/snapshots/06b09ed1e6db19e5e704f26205dff599ffb14909', tokenizer_path='/data/cache/huggingface/hub/models--mattbucci--gemma-4-26B-AWQ/snapshots/06b09ed1e6db19e5e704f26205dff599ffb14909', tokenizer_mode='auto', tokenizer_backend='huggingface', tokenizer_worker_num=1, skip_tokenizer_init=False, load_format='auto', model_loader_extra_config='{}', trust_remote_code=False, context_length=4096, is_embedding=False, enable_multimodal=None, revision=None, model_impl='auto', host='127.0.0.1', port=23334, fastapi_root_path='', grpc_mode=False, skip_server_warmup=False, warmups=None, nccl_port=None, checkpoint_engine_wait_weights_before_ready=False, ssl_keyfile=None, ssl_certfile=None, ssl_ca_certs=None, ssl_keyfile_password=None, enable_ssl_refresh=False, enable_http2=False, dtype='auto', quantization='awq', quantization_param_path=None, kv_cache_dtype='fp8_e4m3', enable_fp32_lm_head=False, modelopt_quant=None, modelopt_checkpoint_restore_path=None, modelopt_checkpoint_save_path=None, modelopt_export_path=None, quantize_and_serve=False, rl_quant_profile=None, mem_fraction_static=0.85, max_running_requests=None, max_queued_requests=None, max_total_tokens=None, chunked_prefill_size=2048, enable_dynamic_chunking=False, max_prefill_tokens=16384, prefill_max_requests=None, schedule_policy='fcfs', enable_priority_scheduling=False, disable_priority_preemption=False, default_priority_value=None, abort_on_priority_when_disabled=False, schedule_low_priority_values_first=False, priority_scheduling_preemption_threshold=10, schedule_conservativeness=1.0, page_size=1, swa_full_tokens_ratio=0.8, disable_hybrid_swa_memory=False, radix_eviction_policy='lru', enable_prefill_delayer=False, prefill_delayer_max_delay_passes=30, prefill_delayer_token_usage_low_watermark=None, prefill_delayer_forward_passes_buckets=None, prefill_delayer_wait_seconds_buckets=None, device='cuda', tp_size=2, pp_size=1, pp_max_micro_batch_size=None, pp_async_batch_depth=0, stream_interval=1, batch_notify_size=16, stream_response_default_include_usage=False, incremental_streaming_output=False, enable_streaming_session=False, random_seed=250446205, constrained_json_whitespace_pattern=None, constrained_json_disable_any_whitespace=False, watchdog_timeout=300, soft_watchdog_timeout=None, dist_timeout=None, download_dir=None, model_checksum=None, base_gpu_id=0, gpu_id_step=1, sleep_on_idle=False, use_ray=False, custom_sigquit_handler=None, log_level='info', log_level_http=None, log_requests=False, log_requests_level=2, log_requests_format='text', log_requests_target=None, uvicorn_access_log_exclude_prefixes=[], crash_dump_folder=None, show_time_cost=False, enable_metrics=False, grpc_http_sidecar_port=None, enable_mfu_metrics=False, enable_metrics_for_all_schedulers=False, tokenizer_metrics_custom_labels_header='x-custom-labels', tokenizer_metrics_allowed_custom_labels=None, extra_metric_labels=None, bucket_time_to_first_token=None, bucket_inter_token_latency=None, bucket_e2e_request_latency=None, prompt_tokens_buckets=None, generation_tokens_buckets=None, gc_warning_threshold_secs=0.0, decode_log_interval=40, enable_request_time_stats_logging=False, kv_events_config=None, enable_trace=False, otlp_traces_endpoint='localhost:4317', export_metrics_to_file=False, export_metrics_to_file_dir=None, api_key=None, admin_api_key=None, served_model_name='/data/cache/huggingface/hub/models--mattbucci--gemma-4-26B-AWQ/snapshots/06b09ed1e6db19e5e704f26205dff599ffb14909', weight_version='default', chat_template=None, hf_chat_template_name=None, completion_template=None, file_storage_path='sglang_storage', enable_cache_report=False, reasoning_parser=None, strip_thinking_cache=False, tool_call_parser='gemma4', tool_server=None, sampling_defaults='model', dp_size=1, load_balance_method='round_robin', attn_cp_size=1, moe_dp_size=1, dist_init_addr=None, nnodes=1, node_rank=0, json_model_override_args='{}', preferred_sampling_params=None, enable_lora=None, enable_lora_overlap_loading=None, max_lora_rank=None, lora_target_modules=None, lora_paths=None, max_loaded_loras=None, max_loras_per_batch=8, lora_eviction_policy='lru', lora_backend='csgmv', max_lora_chunk_size=16, experts_shared_outer_loras=None, lora_use_virtual_experts=False, lora_strict_loading=False, attention_backend='triton', decode_attention_backend=None, prefill_attention_backend=None, sampling_backend='pytorch', grammar_backend='xgrammar', mm_attention_backend=None, fp8_gemm_runner_backend='auto', fp4_gemm_runner_backend='auto', nsa_prefill_backend=None, nsa_decode_backend=None, disable_flashinfer_autotune=False, mamba_backend='triton', speculative_algorithm=None, speculative_draft_model_path=None, speculative_draft_model_revision=None, speculative_draft_load_format=None, speculative_num_steps=None, speculative_eagle_topk=None, speculative_num_draft_tokens=None, speculative_dflash_block_size=None, speculative_dflash_draft_window_size=None, speculative_accept_threshold_single=1.0, speculative_accept_threshold_acc=1.0, speculative_token_map=None, speculative_attention_mode='prefill', speculative_draft_attention_backend=None, speculative_moe_runner_backend='auto', speculative_moe_a2a_backend=None, speculative_draft_model_quantization='awq', speculative_adaptive=False, speculative_adaptive_config=None, speculative_skip_dp_mlp_sync=False, speculative_ngram_min_bfs_breadth=1, speculative_ngram_max_bfs_breadth=10, speculative_ngram_match_type='BFS', speculative_ngram_max_trie_depth=18, speculative_ngram_capacity=10000000, speculative_ngram_external_corpus_path=None, speculative_ngram_external_sam_budget=0, speculative_ngram_external_corpus_max_tokens=10000000, enable_multi_layer_eagle=False, ep_size=1, moe_a2a_backend='none', moe_runner_backend='auto', record_nolora_graph=True, flashinfer_mxfp4_moe_precision='default', enable_flashinfer_allreduce_fusion=False, enforce_disable_flashinfer_allreduce_fusion=False, enable_aiter_allreduce_fusion=False, deepep_mode='auto', ep_num_redundant_experts=0, ep_dispatch_algorithm=None, init_expert_location='trivial', enable_eplb=False, eplb_algorithm='auto', eplb_rebalance_num_iterations=1000, eplb_rebalance_layers_per_chunk=None, eplb_min_rebalancing_utilization_threshold=1.0, expert_distribution_recorder_mode=None, expert_distribution_recorder_buffer_size=1000, enable_expert_distribution_metrics=False, deepep_config=None, moe_dense_tp_size=None, elastic_ep_backend=None, enable_elastic_expert_backup=False, mooncake_ib_device=None, elastic_ep_rejoin=False, max_mamba_cache_size=None, mamba_ssm_dtype=None, mamba_full_memory_ratio=0.9, mamba_scheduler_strategy='no_buffer', mamba_track_interval=256, linear_attn_backend='triton', linear_attn_decode_backend=None, linear_attn_prefill_backend=None, enable_hierarchical_cache=False, hicache_ratio=2.0, hicache_size=0, hicache_write_policy='write_through', hicache_io_backend='kernel', hicache_mem_layout='layer_first', hicache_storage_backend=None, hicache_storage_prefetch_policy='best_effort', hicache_storage_backend_extra_config=None, enable_hisparse=False, hisparse_config=None, enable_lmcache=False, kt_weight_path=None, kt_method='AMXINT4', kt_cpuinfer=None, kt_threadpool_count=2, kt_num_gpu_experts=None, kt_max_deferred_experts_per_token=None, dllm_algorithm=None, dllm_algorithm_config=None, cpu_offload_gb=0, offload_group_size=-1, offload_num_in_group=1, offload_prefetch_step=1, offload_mode='cpu', enable_mis=False, disable_radix_cache=False, cuda_graph_max_bs=24, cuda_graph_bs=[1, 2, 4, 8, 12, 16, 24], disable_cuda_graph=True, disable_cuda_graph_padding=False, enable_breakable_cuda_graph=False, enable_profile_cuda_graph=False, enable_cudagraph_gc=False, debug_cuda_graph=False, enable_layerwise_nvtx_marker=False, enable_nccl_nvls=False, enable_symm_mem=False, disable_flashinfer_cutlass_moe_fp4_allgather=False, enable_tokenizer_batch_encode=False, disable_tokenizer_batch_decode=False, disable_outlines_disk_cache=False, disable_custom_all_reduce=True, enable_mscclpp=False, enable_torch_symm_mem=False, pre_warm_nccl=False, disable_overlap_schedule=True, enable_mixed_chunk=False, enable_dp_attention=False, enable_dp_attention_local_control_broadcast=False, enable_dp_lm_head=False, enable_two_batch_overlap=False, enable_single_batch_overlap=False, tbo_token_distribution_threshold=0.48, enable_torch_compile=False, disable_piecewise_cuda_graph=True, enforce_piecewise_cuda_graph=False, enable_torch_compile_debug_mode=False, torch_compile_max_bs=32, piecewise_cuda_graph_max_tokens=2048, piecewise_cuda_graph_tokens=[4, 8, 12, 16, 20, 24, 28, 32, 48, 64, 80, 96, 112, 128, 144, 160, 176, 192, 208, 224, 240, 256, 288, 320, 352, 384, 416, 448, 480, 512, 576, 640, 704, 768, 832, 896, 960, 1024, 1280, 1536, 1792, 2048], piecewise_cuda_graph_compiler='eager', torchao_config='', enable_nan_detection=False, enable_p2p_check=False, triton_attention_reduce_in_fp32=False, triton_attention_num_kv_splits=16, triton_attention_split_tile_size=None, num_continuous_decode_steps=1, delete_ckpt_after_loading=False, enable_memory_saver=False, enable_weights_cpu_backup=False, enable_draft_weights_cpu_backup=False, allow_auto_truncate=False, enable_custom_logit_processor=False, flashinfer_mla_disable_ragged=False, disable_shared_experts_fusion=False, enforce_shared_experts_fusion=False, disable_chunked_prefix_cache=False, disable_fast_image_processor=False, keep_mm_feature_on_device=False, enable_return_hidden_states=False, enable_return_routed_experts=False, scheduler_recv_interval=1, numa_node=None, enable_deterministic_inference=False, rl_on_policy_target=None, enable_attn_tp_input_scattered=False, gc_threshold=None, enable_nsa_prefill_context_parallel=False, nsa_prefill_cp_mode='round-robin-split', enable_fused_qk_norm_rope=False, enable_precise_embedding_interpolation=False, enable_fused_moe_sum_all_reduce=False, enable_prefill_context_parallel=False, prefill_cp_mode='in-seq-split', enable_dynamic_batch_tokenizer=False, dynamic_batch_tokenizer_batch_size=32, dynamic_batch_tokenizer_batch_timeout=0.002, debug_tensor_dump_output_folder=None, debug_tensor_dump_layers=None, debug_tensor_dump_input_file=None, debug_tensor_dump_inject=False, disaggregation_mode='null', disaggregation_transfer_backend='mooncake', disaggregation_bootstrap_port=8998, disaggregation_ib_device=None, disaggregation_decode_enable_radix_cache=False, disaggregation_decode_enable_offload_kvcache=False, num_reserved_decode_tokens=512, disaggregation_decode_polling_interval=1, encoder_only=False, language_only=False, encoder_transfer_backend='zmq_to_scheduler', encoder_urls=[], enable_adaptive_dispatch_to_encoder=False, custom_weight_loader=[], weight_loader_disable_mmap=False, weight_loader_prefetch_checkpoints=False, weight_loader_prefetch_num_threads=4, remote_instance_weight_loader_seed_instance_ip=None, remote_instance_weight_loader_seed_instance_service_port=None, remote_instance_weight_loader_send_weights_group_ports=None, remote_instance_weight_loader_backend='nccl', remote_instance_weight_loader_start_seed_via_transfer_engine=False, engine_info_bootstrap_port=6789, modelexpress_config=None, enable_pdmux=False, pdmux_config_path=None, sm_group_num=8, enable_broadcast_mm_inputs_process=False, enable_prefix_mm_cache=False, mm_enable_dp_encoder=False, mm_process_config={}, limit_mm_data_per_request=None, enable_mm_global_cache=False, decrypted_config_file=None, decrypted_draft_config_file=None, forward_hooks=None, enable_quant_communications=False, msprobe_dump_config=None)
+[2026-05-25 17:23:23] Multimodal is disabled for gemma4. To enable it, set --enable-multimodal.
+[2026-05-25 17:23:23] awq quantization is not fully optimized yet. The speed can be slower than non-quantized models.
+Failed to get device capability: nvcc not found and PyTorch is not built with CUDA support. Could not determine CUDA version..
+Failed to get device capability: nvcc not found and PyTorch is not built with CUDA support. Could not determine CUDA version..
+Failed to get device capability: nvcc not found and PyTorch is not built with CUDA support. Could not determine CUDA version..
+Failed to get device capability: nvcc not found and PyTorch is not built with CUDA support. Could not determine CUDA version..
+Failed to get device capability: nvcc not found and PyTorch is not built with CUDA support. Could not determine CUDA version..
+Failed to get device capability: nvcc not found and PyTorch is not built with CUDA support. Could not determine CUDA version..
+[2026-05-25 17:23:25] Restoring add_bos_token=True for /data/cache/huggingface/hub/models--mattbucci--gemma-4-26B-AWQ/snapshots/06b09ed1e6db19e5e704f26205dff599ffb14909 (was False after v5 loading)
+[2026-05-25 17:23:25] Using default HuggingFace chat template with detected content format: openai
+[2026-05-25 17:23:27 TP0] Multimodal is disabled for gemma4. To enable it, set --enable-multimodal.
+[2026-05-25 17:23:27 TP0] awq quantization is not fully optimized yet. The speed can be slower than non-quantized models.
+[2026-05-25 17:23:27 TP1] Multimodal is disabled for gemma4. To enable it, set --enable-multimodal.
+[2026-05-25 17:23:27 TP1] awq quantization is not fully optimized yet. The speed can be slower than non-quantized models.
+[2026-05-25 17:23:29 TP0] Restoring add_bos_token=True for /data/cache/huggingface/hub/models--mattbucci--gemma-4-26B-AWQ/snapshots/06b09ed1e6db19e5e704f26205dff599ffb14909 (was False after v5 loading)
+[2026-05-25 17:23:29 TP0] Multimodal is disabled for gemma4. To enable it, set --enable-multimodal.
+[2026-05-25 17:23:29 TP0] awq quantization is not fully optimized yet. The speed can be slower than non-quantized models.
+[2026-05-25 17:23:29 TP0] Init torch distributed begin.
+[2026-05-25 17:23:29 TP0] Failed to import amdsmi with ModuleNotFoundError("No module named 'amdsmi'")
+[2026-05-25 17:23:29] Restoring add_bos_token=True for /data/cache/huggingface/hub/models--mattbucci--gemma-4-26B-AWQ/snapshots/06b09ed1e6db19e5e704f26205dff599ffb14909 (was False after v5 loading)
+[2026-05-25 17:23:29 TP1] Restoring add_bos_token=True for /data/cache/huggingface/hub/models--mattbucci--gemma-4-26B-AWQ/snapshots/06b09ed1e6db19e5e704f26205dff599ffb14909 (was False after v5 loading)
+[2026-05-25 17:23:29 TP1] Multimodal is disabled for gemma4. To enable it, set --enable-multimodal.
+[2026-05-25 17:23:29 TP1] awq quantization is not fully optimized yet. The speed can be slower than non-quantized models.
+[2026-05-25 17:23:29 TP1] Init torch distributed begin.
+[2026-05-25 17:23:29 TP1] Failed to import amdsmi with ModuleNotFoundError("No module named 'amdsmi'")
+[2026-05-25 17:23:29 TP0] [AR] All-reduce call path: NCCL (custom AR disabled)
+[2026-05-25 17:23:29 TP1] [AR] All-reduce call path: NCCL (custom AR disabled)
+[2026-05-25 17:23:29 TP0] sglang is using nccl==2.27.7
+[2026-05-25 17:23:31 TP0] [AR] All-reduce call path: NCCL (custom AR disabled)
+[2026-05-25 17:23:31 TP1] [AR] All-reduce call path: NCCL (custom AR disabled)
+[2026-05-25 17:23:31 TP1] Init torch distributed ends. elapsed=2.05 s, mem usage=0.30 GB
+[2026-05-25 17:23:31 TP0] Init torch distributed ends. elapsed=2.14 s, mem usage=0.30 GB
+[2026-05-25 17:23:31 TP0] Load weight begin. avail mem=31.49 GB
+[2026-05-25 17:23:31 TP1] Load weight begin. avail mem=31.49 GB
+Multi-thread loading shards:   0% Completed | 0/2 [00:00<?, ?it/s]Multi-thread loading shards:  50% Completed | 1/2 [00:04<00:04,  4.30s/it]Multi-thread loading shards: 100% Completed | 2/2 [00:04<00:00,  2.10s/it]Multi-thread loading shards: 100% Completed | 2/2 [00:04<00:00,  2.43s/it]
+[2026-05-25 17:23:37 TP1] Some weights are not initialized from checkpoints: ['language_model.layers.0.moe.experts.w13_weight', 'language_model.layers.0.moe.experts.w2_weight', 'language_model.layers.1.moe.experts.w13_weight', 'language_model.layers.1.moe.experts.w2_weight', 'language_model.layers.10.moe.experts.w13_weight', 'language_model.layers.10.moe.experts.w2_weight', 'language_model.layers.11.moe.experts.w13_weight', 'language_model.layers.11.moe.experts.w2_weight', 'language_model.layers.12.moe.experts.w13_weight', 'language_model.layers.12.moe.experts.w2_weight', 'language_model.layers.13.moe.experts.w13_weight', 'language_model.layers.13.moe.experts.w2_weight', 'language_model.layers.14.moe.experts.w13_weight', 'language_model.layers.14.moe.experts.w2_weight', 'language_model.layers.15.moe.experts.w13_weight', 'language_model.layers.15.moe.experts.w2_weight', 'language_model.layers.16.moe.experts.w13_weight', 'language_model.layers.16.moe.experts.w2_weight', 'language_model.layers.17.moe.experts.w13_weight', 'language_model.layers.17.moe.experts.w2_weight', 'language_model.layers.18.moe.experts.w13_weight', 'language_model.layers.18.moe.experts.w2_weight', 'language_model.layers.19.moe.experts.w13_weight', 'language_model.layers.19.moe.experts.w2_weight', 'language_model.layers.2.moe.experts.w13_weight', 'language_model.layers.2.moe.experts.w2_weight', 'language_model.layers.20.moe.experts.w13_weight', 'language_model.layers.20.moe.experts.w2_weight', 'language_model.layers.21.moe.experts.w13_weight', 'language_model.layers.21.moe.experts.w2_weight', 'language_model.layers.22.moe.experts.w13_weight', 'language_model.layers.22.moe.experts.w2_weight', 'language_model.layers.23.moe.experts.w13_weight', 'language_model.layers.23.moe.experts.w2_weight', 'language_model.layers.24.moe.experts.w13_weight', 'language_model.layers.24.moe.experts.w2_weight', 'language_model.layers.25.moe.experts.w13_weight', 'language_model.layers.25.moe.experts.w2_weight', 'language_model.layers.26.moe.experts.w13_weight', 'language_model.layers.26.moe.experts.w2_weight', 'language_model.layers.27.moe.experts.w13_weight', 'language_model.layers.27.moe.experts.w2_weight', 'language_model.layers.28.moe.experts.w13_weight', 'language_model.layers.28.moe.experts.w2_weight', 'language_model.layers.29.moe.experts.w13_weight', 'language_model.layers.29.moe.experts.w2_weight', 'language_model.layers.3.moe.experts.w13_weight', 'language_model.layers.3.moe.experts.w2_weight', 'language_model.layers.4.moe.experts.w13_weight', 'language_model.layers.4.moe.experts.w2_weight', 'language_model.layers.5.moe.experts.w13_weight', 'language_model.layers.5.moe.experts.w2_weight', 'language_model.layers.6.moe.experts.w13_weight', 'language_model.layers.6.moe.experts.w2_weight', 'language_model.layers.7.moe.experts.w13_weight', 'language_model.layers.7.moe.experts.w2_weight', 'language_model.layers.8.moe.experts.w13_weight', 'language_model.layers.8.moe.experts.w2_weight', 'language_model.layers.9.moe.experts.w13_weight', 'language_model.layers.9.moe.experts.w2_weight']
+[2026-05-25 17:23:37 TP0] Some weights are not initialized from checkpoints: ['language_model.layers.0.moe.experts.w13_weight', 'language_model.layers.0.moe.experts.w2_weight', 'language_model.layers.1.moe.experts.w13_weight', 'language_model.layers.1.moe.experts.w2_weight', 'language_model.layers.10.moe.experts.w13_weight', 'language_model.layers.10.moe.experts.w2_weight', 'language_model.layers.11.moe.experts.w13_weight', 'language_model.layers.11.moe.experts.w2_weight', 'language_model.layers.12.moe.experts.w13_weight', 'language_model.layers.12.moe.experts.w2_weight', 'language_model.layers.13.moe.experts.w13_weight', 'language_model.layers.13.moe.experts.w2_weight', 'language_model.layers.14.moe.experts.w13_weight', 'language_model.layers.14.moe.experts.w2_weight', 'language_model.layers.15.moe.experts.w13_weight', 'language_model.layers.15.moe.experts.w2_weight', 'language_model.layers.16.moe.experts.w13_weight', 'language_model.layers.16.moe.experts.w2_weight', 'language_model.layers.17.moe.experts.w13_weight', 'language_model.layers.17.moe.experts.w2_weight', 'language_model.layers.18.moe.experts.w13_weight', 'language_model.layers.18.moe.experts.w2_weight', 'language_model.layers.19.moe.experts.w13_weight', 'language_model.layers.19.moe.experts.w2_weight', 'language_model.layers.2.moe.experts.w13_weight', 'language_model.layers.2.moe.experts.w2_weight', 'language_model.layers.20.moe.experts.w13_weight', 'language_model.layers.20.moe.experts.w2_weight', 'language_model.layers.21.moe.experts.w13_weight', 'language_model.layers.21.moe.experts.w2_weight', 'language_model.layers.22.moe.experts.w13_weight', 'language_model.layers.22.moe.experts.w2_weight', 'language_model.layers.23.moe.experts.w13_weight', 'language_model.layers.23.moe.experts.w2_weight', 'language_model.layers.24.moe.experts.w13_weight', 'language_model.layers.24.moe.experts.w2_weight', 'language_model.layers.25.moe.experts.w13_weight', 'language_model.layers.25.moe.experts.w2_weight', 'language_model.layers.26.moe.experts.w13_weight', 'language_model.layers.26.moe.experts.w2_weight', 'language_model.layers.27.moe.experts.w13_weight', 'language_model.layers.27.moe.experts.w2_weight', 'language_model.layers.28.moe.experts.w13_weight', 'language_model.layers.28.moe.experts.w2_weight', 'language_model.layers.29.moe.experts.w13_weight', 'language_model.layers.29.moe.experts.w2_weight', 'language_model.layers.3.moe.experts.w13_weight', 'language_model.layers.3.moe.experts.w2_weight', 'language_model.layers.4.moe.experts.w13_weight', 'language_model.layers.4.moe.experts.w2_weight', 'language_model.layers.5.moe.experts.w13_weight', 'language_model.layers.5.moe.experts.w2_weight', 'language_model.layers.6.moe.experts.w13_weight', 'language_model.layers.6.moe.experts.w2_weight', 'language_model.layers.7.moe.experts.w13_weight', 'language_model.layers.7.moe.experts.w2_weight', 'language_model.layers.8.moe.experts.w13_weight', 'language_model.layers.8.moe.experts.w2_weight', 'language_model.layers.9.moe.experts.w13_weight', 'language_model.layers.9.moe.experts.w2_weight']
+[2026-05-25 17:23:37 TP1] Persistent buffers not in checkpoint (using default init): ['vision_tower.encoder.layers.0.layer_scalar', 'vision_tower.encoder.layers.1.layer_scalar', 'vision_tower.encoder.layers.10.layer_scalar', 'vision_tower.encoder.layers.11.layer_scalar', 'vision_tower.encoder.layers.12.layer_scalar', 'vision_tower.encoder.layers.13.layer_scalar', 'vision_tower.encoder.layers.14.layer_scalar', 'vision_tower.encoder.layers.15.layer_scalar', 'vision_tower.encoder.layers.16.layer_scalar', 'vision_tower.encoder.layers.17.layer_scalar', 'vision_tower.encoder.layers.18.layer_scalar', 'vision_tower.encoder.layers.19.layer_scalar', 'vision_tower.encoder.layers.2.layer_scalar', 'vision_tower.encoder.layers.20.layer_scalar', 'vision_tower.encoder.layers.21.layer_scalar', 'vision_tower.encoder.layers.22.layer_scalar', 'vision_tower.encoder.layers.23.layer_scalar', 'vision_tower.encoder.layers.24.layer_scalar', 'vision_tower.encoder.layers.25.layer_scalar', 'vision_tower.encoder.layers.26.layer_scalar', 'vision_tower.encoder.layers.3.layer_scalar', 'vision_tower.encoder.layers.4.layer_scalar', 'vision_tower.encoder.layers.5.layer_scalar', 'vision_tower.encoder.layers.6.layer_scalar', 'vision_tower.encoder.layers.7.layer_scalar', 'vision_tower.encoder.layers.8.layer_scalar', 'vision_tower.encoder.layers.9.layer_scalar']
+[2026-05-25 17:23:37 TP0] Persistent buffers not in checkpoint (using default init): ['vision_tower.encoder.layers.0.layer_scalar', 'vision_tower.encoder.layers.1.layer_scalar', 'vision_tower.encoder.layers.10.layer_scalar', 'vision_tower.encoder.layers.11.layer_scalar', 'vision_tower.encoder.layers.12.layer_scalar', 'vision_tower.encoder.layers.13.layer_scalar', 'vision_tower.encoder.layers.14.layer_scalar', 'vision_tower.encoder.layers.15.layer_scalar', 'vision_tower.encoder.layers.16.layer_scalar', 'vision_tower.encoder.layers.17.layer_scalar', 'vision_tower.encoder.layers.18.layer_scalar', 'vision_tower.encoder.layers.19.layer_scalar', 'vision_tower.encoder.layers.2.layer_scalar', 'vision_tower.encoder.layers.20.layer_scalar', 'vision_tower.encoder.layers.21.layer_scalar', 'vision_tower.encoder.layers.22.layer_scalar', 'vision_tower.encoder.layers.23.layer_scalar', 'vision_tower.encoder.layers.24.layer_scalar', 'vision_tower.encoder.layers.25.layer_scalar', 'vision_tower.encoder.layers.26.layer_scalar', 'vision_tower.encoder.layers.3.layer_scalar', 'vision_tower.encoder.layers.4.layer_scalar', 'vision_tower.encoder.layers.5.layer_scalar', 'vision_tower.encoder.layers.6.layer_scalar', 'vision_tower.encoder.layers.7.layer_scalar', 'vision_tower.encoder.layers.8.layer_scalar', 'vision_tower.encoder.layers.9.layer_scalar']
+[2026-05-25 17:23:37 TP1] Using FP8 KV cache but no scaling factors provided. Defaulting to scaling factors of 1.0. This may lead to less accurate results!
+[2026-05-25 17:23:37 TP1] Load weight end. elapsed=5.47 s, type=Gemma4ForConditionalGeneration, quant=awq, bits=4, avail mem=7.36 GB, mem usage=24.13 GB.
+[2026-05-25 17:23:37 TP0] Using FP8 KV cache but no scaling factors provided. Defaulting to scaling factors of 1.0. This may lead to less accurate results!
+[2026-05-25 17:23:37 TP0] Load weight end. elapsed=5.47 s, type=Gemma4ForConditionalGeneration, quant=awq, bits=4, avail mem=7.36 GB, mem usage=24.13 GB.
+[2026-05-25 17:23:37 TP0] Using KV cache dtype: torch.float8_e4m3fn
+[2026-05-25 17:23:37 TP0] Use sliding window memory pool. full_layer_tokens=61419, swa_layer_tokens=49135
+[2026-05-25 17:23:37 TP1] Use sliding window memory pool. full_layer_tokens=61419, swa_layer_tokens=49135
+[2026-05-25 17:23:37 TP1] KV Cache is allocated. #tokens: 49135, K size: 1.17 GB, V size: 1.17 GB
+[2026-05-25 17:23:37 TP0] KV Cache is allocated. #tokens: 49135, K size: 1.17 GB, V size: 1.17 GB
+[2026-05-25 17:23:37 TP1] KV Cache is allocated. #tokens: 61419, K size: 0.15 GB, V size: 0.15 GB
+[2026-05-25 17:23:37 TP1] SWAKVPool mem usage: 2.64 GB, swa size: 49135, full size: 61419
+[2026-05-25 17:23:37 TP0] KV Cache is allocated. #tokens: 61419, K size: 0.15 GB, V size: 0.15 GB
+[2026-05-25 17:23:37 TP0] SWAKVPool mem usage: 2.64 GB, swa size: 49135, full size: 61419
+[2026-05-25 17:23:37 TP1] Memory pool end. avail mem=4.66 GB
+[2026-05-25 17:23:37 TP0] Memory pool end. avail mem=4.66 GB
+[2026-05-25 17:23:37 TP1] Disable piecewise CUDA graph because --disable-piecewise-cuda-graph is set
+[2026-05-25 17:23:37 TP0] Disable piecewise CUDA graph because --disable-piecewise-cuda-graph is set
+[2026-05-25 17:23:39 TP0] Restoring add_bos_token=True for /data/cache/huggingface/hub/models--mattbucci--gemma-4-26B-AWQ/snapshots/06b09ed1e6db19e5e704f26205dff599ffb14909 (was False after v5 loading)
+[2026-05-25 17:23:39 TP1] Restoring add_bos_token=True for /data/cache/huggingface/hub/models--mattbucci--gemma-4-26B-AWQ/snapshots/06b09ed1e6db19e5e704f26205dff599ffb14909 (was False after v5 loading)
+[2026-05-25 17:23:39 TP0] max_total_num_tokens=61419, chunked_prefill_size=2048, max_prefill_tokens=16384, max_running_requests=4096, context_len=4096, available_gpu_mem=4.52 GB
+[2026-05-25 17:23:39] INFO:     Started server process [20912]
+[2026-05-25 17:23:39] INFO:     Waiting for application startup.
+[2026-05-25 17:23:39] Using default chat sampling params from model generation config: {'temperature': 1.0, 'top_k': 64, 'top_p': 0.95}
+[2026-05-25 17:23:39] INFO:     Application startup complete.
+[2026-05-25 17:23:39] INFO:     Uvicorn running on http://127.0.0.1:23334 (Press CTRL+C to quit)
+[2026-05-25 17:23:40] INFO:     127.0.0.1:56450 - "GET /model_info HTTP/1.1" 200 OK
+In file included from /home/letsrtfm/miniforge3/envs/sglang-triton36/include/python3.12/Python.h:12,
+                 from /tmp/tmpaguheiu1/__triton_launcher.c:5:
+/home/letsrtfm/miniforge3/envs/sglang-triton36/include/python3.12/pyconfig.h:1874:9: warning: ‘_POSIX_C_SOURCE’ redefined
+ 1874 | #define _POSIX_C_SOURCE 200809L
+      |         ^~~~~~~~~~~~~~~
+In file included from /usr/include/bits/libc-header-start.h:33,
+                 from /usr/include/stdint.h:26,
+                 from /usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stdint.h:11,
+                 from /home/letsrtfm/miniforge3/envs/sglang-triton36/lib/python3.12/site-packages/triton/backends/amd/include/hip/hip_runtime.h:48,
+                 from /tmp/tmpaguheiu1/__triton_launcher.c:3:
+/usr/include/features.h:319:10: note: this is the location of the previous definition
+  319 | # define _POSIX_C_SOURCE        202405L
+      |          ^~~~~~~~~~~~~~~
+In file included from /home/letsrtfm/miniforge3/envs/sglang-triton36/include/python3.12/Python.h:12,
+                 from /tmp/tmpp93o51o2/__triton_launcher.c:5:
+/home/letsrtfm/miniforge3/envs/sglang-triton36/include/python3.12/pyconfig.h:1874:9: warning: ‘_POSIX_C_SOURCE’ redefined
+ 1874 | #define _POSIX_C_SOURCE 200809L
+      |         ^~~~~~~~~~~~~~~
+In file included from /usr/include/bits/libc-header-start.h:33,
+                 from /usr/include/stdint.h:26,
+                 from /usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stdint.h:11,
+                 from /home/letsrtfm/miniforge3/envs/sglang-triton36/lib/python3.12/site-packages/triton/backends/amd/include/hip/hip_runtime.h:48,
+                 from /tmp/tmpp93o51o2/__triton_launcher.c:3:
+/usr/include/features.h:319:10: note: this is the location of the previous definition
+  319 | # define _POSIX_C_SOURCE        202405L
+      |          ^~~~~~~~~~~~~~~
+In file included from /home/letsrtfm/miniforge3/envs/sglang-triton36/include/python3.12/Python.h:12,
+                 from /tmp/tmpos5h1zzx/__triton_launcher.c:5:
+/home/letsrtfm/miniforge3/envs/sglang-triton36/include/python3.12/pyconfig.h:1874:9: warning: ‘_POSIX_C_SOURCE’ redefined
+ 1874 | #define _POSIX_C_SOURCE 200809L
+      |         ^~~~~~~~~~~~~~~
+In file included from /usr/include/bits/libc-header-start.h:33,
+                 from /usr/include/stdint.h:26,
+                 from /usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stdint.h:11,
+                 from /home/letsrtfm/miniforge3/envs/sglang-triton36/lib/python3.12/site-packages/triton/backends/amd/include/hip/hip_runtime.h:48,
+                 from /tmp/tmpos5h1zzx/__triton_launcher.c:3:
+/usr/include/features.h:319:10: note: this is the location of the previous definition
+  319 | # define _POSIX_C_SOURCE        202405L
+      |          ^~~~~~~~~~~~~~~
+In file included from /home/letsrtfm/miniforge3/envs/sglang-triton36/include/python3.12/Python.h:12,
+                 from /tmp/tmpnmpcwtyj/__triton_launcher.c:5:
+/home/letsrtfm/miniforge3/envs/sglang-triton36/include/python3.12/pyconfig.h:1874:9: warning: ‘_POSIX_C_SOURCE’ redefined
+ 1874 | #define _POSIX_C_SOURCE 200809L
+      |         ^~~~~~~~~~~~~~~
+In file included from /usr/include/bits/libc-header-start.h:33,
+                 from /usr/include/stdint.h:26,
+                 from /usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stdint.h:11,
+                 from /home/letsrtfm/miniforge3/envs/sglang-triton36/lib/python3.12/site-packages/triton/backends/amd/include/hip/hip_runtime.h:48,
+                 from /tmp/tmpnmpcwtyj/__triton_launcher.c:3:
+/usr/include/features.h:319:10: note: this is the location of the previous definition
+  319 | # define _POSIX_C_SOURCE        202405L
+      |          ^~~~~~~~~~~~~~~
+[2026-05-25 17:23:47 TP0] Using default MoE kernel config. Performance might be sub-optimal! Config file not found at /home/letsrtfm/AI/2x-R9700-RDNA4-GFX1201-sglang-inference/components/sglang/python/sglang/srt/layers/moe/moe_runner/triton_utils/configs/triton_3_6_0/E=128,N=352,device_name=AMD_Radeon_AI_PRO_R9700.json, you can create them with https://github.com/sgl-project/sglang/tree/main/benchmark/kernels/fused_moe_triton
+[2026-05-25 17:23:47 TP0] Using MoE kernel config with down_moe=False. Performance might be sub-optimal! Config file not found at /home/letsrtfm/AI/2x-R9700-RDNA4-GFX1201-sglang-inference/components/sglang/python/sglang/srt/layers/moe/moe_runner/triton_utils/configs/triton_3_6_0/E=128,N=352,device_name=AMD_Radeon_AI_PRO_R9700_down.json, you can create them with https://github.com/sgl-project/sglang/tree/main/benchmark/kernels/fused_moe_triton
+[2026-05-25 17:23:47 TP1] Using default MoE kernel config. Performance might be sub-optimal! Config file not found at /home/letsrtfm/AI/2x-R9700-RDNA4-GFX1201-sglang-inference/components/sglang/python/sglang/srt/layers/moe/moe_runner/triton_utils/configs/triton_3_6_0/E=128,N=352,device_name=AMD_Radeon_AI_PRO_R9700.json, you can create them with https://github.com/sgl-project/sglang/tree/main/benchmark/kernels/fused_moe_triton
+[2026-05-25 17:23:47 TP1] Using MoE kernel config with down_moe=False. Performance might be sub-optimal! Config file not found at /home/letsrtfm/AI/2x-R9700-RDNA4-GFX1201-sglang-inference/components/sglang/python/sglang/srt/layers/moe/moe_runner/triton_utils/configs/triton_3_6_0/E=128,N=352,device_name=AMD_Radeon_AI_PRO_R9700_down.json, you can create them with https://github.com/sgl-project/sglang/tree/main/benchmark/kernels/fused_moe_triton
+In file included from /home/letsrtfm/miniforge3/envs/sglang-triton36/include/python3.12/Python.h:12,
+                 from /tmp/tmpsxj8vbc2/__triton_launcher.c:5:
+/home/letsrtfm/miniforge3/envs/sglang-triton36/include/python3.12/pyconfig.h:1874:9: warning: ‘_POSIX_C_SOURCE’ redefined
+ 1874 | #define _POSIX_C_SOURCE 200809L
+      |         ^~~~~~~~~~~~~~~
+In file included from /usr/include/bits/libc-header-start.h:33,
+                 from /usr/include/stdint.h:26,
+                 from /usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stdint.h:11,
+                 from /home/letsrtfm/miniforge3/envs/sglang-triton36/lib/python3.12/site-packages/triton/backends/amd/include/hip/hip_runtime.h:48,
+                 from /tmp/tmpsxj8vbc2/__triton_launcher.c:3:
+/usr/include/features.h:319:10: note: this is the location of the previous definition
+  319 | # define _POSIX_C_SOURCE        202405L
+      |          ^~~~~~~~~~~~~~~
+In file included from /home/letsrtfm/miniforge3/envs/sglang-triton36/include/python3.12/Python.h:12,
+                 from /tmp/tmpkp1tzw4n/__triton_launcher.c:5:
+/home/letsrtfm/miniforge3/envs/sglang-triton36/include/python3.12/pyconfig.h:1874:9: warning: ‘_POSIX_C_SOURCE’ redefined
+ 1874 | #define _POSIX_C_SOURCE 200809L
+      |         ^~~~~~~~~~~~~~~
+In file included from /usr/include/bits/libc-header-start.h:33,
+                 from /usr/include/stdint.h:26,
+                 from /usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stdint.h:11,
+                 from /home/letsrtfm/miniforge3/envs/sglang-triton36/lib/python3.12/site-packages/triton/backends/amd/include/hip/hip_runtime.h:48,
+                 from /tmp/tmpkp1tzw4n/__triton_launcher.c:3:
+/usr/include/features.h:319:10: note: this is the location of the previous definition
+  319 | # define _POSIX_C_SOURCE        202405L
+      |          ^~~~~~~~~~~~~~~
+[2026-05-25 17:23:48] INFO:     127.0.0.1:51672 - "GET /health HTTP/1.1" 503 Service Unavailable
+[2026-05-25 17:23:58] INFO:     127.0.0.1:53218 - "GET /health HTTP/1.1" 503 Service Unavailable
+[2026-05-25 17:24:08] INFO:     127.0.0.1:58250 - "GET /health HTTP/1.1" 503 Service Unavailable
+In file included from /home/letsrtfm/miniforge3/envs/sglang-triton36/include/python3.12/Python.h:12,
+                 from /tmp/tmp6xws3r_i/__triton_launcher.c:5:
+/home/letsrtfm/miniforge3/envs/sglang-triton36/include/python3.12/pyconfig.h:1874:9: warning: ‘_POSIX_C_SOURCE’ redefined
+ 1874 | #define _POSIX_C_SOURCE 200809L
+      |         ^~~~~~~~~~~~~~~
+In file included from /usr/include/bits/libc-header-start.h:33,
+                 from /usr/include/stdint.h:26,
+                 from /usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stdint.h:11,
+                 from /home/letsrtfm/miniforge3/envs/sglang-triton36/lib/python3.12/site-packages/triton/backends/amd/include/hip/hip_runtime.h:48,
+                 from /tmp/tmp6xws3r_i/__triton_launcher.c:3:
+/usr/include/features.h:319:10: note: this is the location of the previous definition
+  319 | # define _POSIX_C_SOURCE        202405L
+      |          ^~~~~~~~~~~~~~~
+In file included from /home/letsrtfm/miniforge3/envs/sglang-triton36/include/python3.12/Python.h:12,
+                 from /tmp/tmp_hqclh43/__triton_launcher.c:5:
+/home/letsrtfm/miniforge3/envs/sglang-triton36/include/python3.12/pyconfig.h:1874:9: warning: ‘_POSIX_C_SOURCE’ redefined
+ 1874 | #define _POSIX_C_SOURCE 200809L
+      |         ^~~~~~~~~~~~~~~
+In file included from /usr/include/bits/libc-header-start.h:33,
+                 from /usr/include/stdint.h:26,
+                 from /usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stdint.h:11,
+                 from /home/letsrtfm/miniforge3/envs/sglang-triton36/lib/python3.12/site-packages/triton/backends/amd/include/hip/hip_runtime.h:48,
+                 from /tmp/tmp_hqclh43/__triton_launcher.c:3:
+/usr/include/features.h:319:10: note: this is the location of the previous definition
+  319 | # define _POSIX_C_SOURCE        202405L
+      |          ^~~~~~~~~~~~~~~
+[2026-05-25 17:24:10 TP0] Prefill batch, #new-seq: 1, #new-token: 7, #cached-token: 0, full token usage: 0.00, swa token usage: 0.00, #running-req: 0, #queue-req: 0, #pending-token: 0, cuda graph: False, input throughput (token/s): 0.16
+In file included from /home/letsrtfm/miniforge3/envs/sglang-triton36/include/python3.12/Python.h:12,
+                 from /tmp/tmpaya36bzi/__triton_launcher.c:5:
+/home/letsrtfm/miniforge3/envs/sglang-triton36/include/python3.12/pyconfig.h:1874:9: warning: ‘_POSIX_C_SOURCE’ redefined
+ 1874 | #define _POSIX_C_SOURCE 200809L
+      |         ^~~~~~~~~~~~~~~
+In file included from /usr/include/bits/libc-header-start.h:33,
+                 from /usr/include/stdint.h:26,
+                 from /usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stdint.h:11,
+                 from /home/letsrtfm/miniforge3/envs/sglang-triton36/lib/python3.12/site-packages/triton/backends/amd/include/hip/hip_runtime.h:48,
+                 from /tmp/tmpaya36bzi/__triton_launcher.c:3:
+/usr/include/features.h:319:10: note: this is the location of the previous definition
+  319 | # define _POSIX_C_SOURCE        202405L
+      |          ^~~~~~~~~~~~~~~
+In file included from /home/letsrtfm/miniforge3/envs/sglang-triton36/include/python3.12/Python.h:12,
+                 from /tmp/tmpx2kbn9er/__triton_launcher.c:5:
+/home/letsrtfm/miniforge3/envs/sglang-triton36/include/python3.12/pyconfig.h:1874:9: warning: ‘_POSIX_C_SOURCE’ redefined
+ 1874 | #define _POSIX_C_SOURCE 200809L
+      |         ^~~~~~~~~~~~~~~
+In file included from /usr/include/bits/libc-header-start.h:33,
+                 from /usr/include/stdint.h:26,
+                 from /usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stdint.h:11,
+                 from /home/letsrtfm/miniforge3/envs/sglang-triton36/lib/python3.12/site-packages/triton/backends/amd/include/hip/hip_runtime.h:48,
+                 from /tmp/tmpx2kbn9er/__triton_launcher.c:3:
+/usr/include/features.h:319:10: note: this is the location of the previous definition
+  319 | # define _POSIX_C_SOURCE        202405L
+      |          ^~~~~~~~~~~~~~~
+In file included from /home/letsrtfm/miniforge3/envs/sglang-triton36/include/python3.12/Python.h:12,
+                 from /tmp/tmpjre1k7a1/__triton_launcher.c:5:
+/home/letsrtfm/miniforge3/envs/sglang-triton36/include/python3.12/pyconfig.h:1874:9: warning: ‘_POSIX_C_SOURCE’ redefined
+ 1874 | #define _POSIX_C_SOURCE 200809L
+      |         ^~~~~~~~~~~~~~~
+In file included from /usr/include/bits/libc-header-start.h:33,
+                 from /usr/include/stdint.h:26,
+                 from /usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stdint.h:11,
+                 from /home/letsrtfm/miniforge3/envs/sglang-triton36/lib/python3.12/site-packages/triton/backends/amd/include/hip/hip_runtime.h:48,
+                 from /tmp/tmpjre1k7a1/__triton_launcher.c:3:
+/usr/include/features.h:319:10: note: this is the location of the previous definition
+  319 | # define _POSIX_C_SOURCE        202405L
+      |          ^~~~~~~~~~~~~~~
+[2026-05-25 17:24:19] INFO:     127.0.0.1:56460 - "POST /generate HTTP/1.1" 200 OK
+[2026-05-25 17:24:19] The server is fired up and ready to roll!
+/home/letsrtfm/miniforge3/envs/sglang-triton36/lib/python3.12/multiprocessing/resource_tracker.py:279: UserWarning: resource_tracker: There appear to be 2 leaked semaphore objects to clean up at shutdown
+  warnings.warn('resource_tracker: There appear to be %d '
+/home/letsrtfm/miniforge3/envs/sglang-triton36/lib/python3.12/multiprocessing/resource_tracker.py:279: UserWarning: resource_tracker: There appear to be 1 leaked shared_memory objects to clean up at shutdown
+  warnings.warn('resource_tracker: There appear to be %d '
