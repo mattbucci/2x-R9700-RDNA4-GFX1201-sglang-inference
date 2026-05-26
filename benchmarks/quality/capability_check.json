@@ -1,0 +1,22 @@
+{
+  "devstral256k": {
+    "tag": "devstral256k",
+    "model": "/home/letsrtfm/AI/models/Devstral-24B-AWQ-4bit-calibrated",
+    "timestamp": "2026-05-26 03:16",
+    "elapsed_sec": 1.7,
+    "checks": {
+      "basic": {
+        "passed": true,
+        "message": "finish=stop answer='paris'"
+      },
+      "vision": {
+        "passed": true,
+        "message": "saw=['red', 'circle', 'round']  response='the image shows a simple red circle on a white background.'"
+      }
+    },
+    "summary": {
+      "passed": 2,
+      "total": 2
+    }
+  }
+}
