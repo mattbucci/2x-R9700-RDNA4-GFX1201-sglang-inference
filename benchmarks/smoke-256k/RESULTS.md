@@ -20,3 +20,6 @@ Devstral/Coder-30B/gemma-26/31 ran at old preset ctx before the 256K bump; all 2
 
 ## FP8-at-256K sizing (2026-05-25)
 Coder-30B-REAM AWQ @256K: boots, 23GB/GPU, 21.5 tok/s (garbage at temp=0 — known greedy loop, retest temp 0.7). FP8 weights ≈26GB/GPU → still fits 64GB; blocker is NOT memory, it's RDNA4 comgr invalid-HSACO for FP8 kernels (rules-for-agents). Sweet spot = pruned 96-exp A3B; 256-exp (35B) OOM at load. No FP8 ships exist yet → FP8 path needs a quant + comgr validation.
+
+## ROOT CAUSE of MoE gibberish (2026-05-25): 3 patches failed silently
+setup.sh `git apply || echo WARNING` hid 3 failures: 035 (corrupt @L63), 038-wire-hybrid-w4a16-moe-runner (moe_wna16:384 drift), transformers_disable_qwen3moe_fusion. → MoE dispatch wrong → gibberish (3090 fine = had patches). FIX: setup hardened to patch-p1-fuzz fallback + ABORT-loud. TODO: regen patches vs this base; 038 fuzz works but pulls quark→aiter import (needs HIP guard). Not yet committed-fixed.
