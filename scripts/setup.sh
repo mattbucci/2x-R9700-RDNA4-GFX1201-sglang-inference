@@ -34,7 +34,7 @@ TORCHAUDIO_VERSION="${TORCHAUDIO_VERSION:-2.11.0+rocm7.2}"
 TORCH_INDEX="${TORCH_INDEX:-https://download.pytorch.org/whl/rocm7.2}"
 
 SGLANG_REPO="https://github.com/sgl-project/sglang.git"
-SGLANG_TAG="v0.5.11"
+SGLANG_TAG="v0.5.12"
 
 SKIP_ENV=false
 for arg in "$@"; do
@@ -75,11 +75,14 @@ if [ ! -d "$SGLANG_DIR" ] || [ ! -d "$SGLANG_DIR/.git" ]; then
     mkdir -p "$(dirname "$SGLANG_DIR")"
     git clone --branch "$SGLANG_TAG" --depth 1 "$SGLANG_REPO" "$SGLANG_DIR"
 
-    # Apply patches from patches/ if any exist
-    if ls "$REPO_DIR/patches/"*.patch 1>/dev/null 2>&1; then
+    # Apply numbered sglang patches only. transformers_disable_qwen3moe_fusion.patch
+    # targets the transformers package (calibration-time, applied via the
+    # qwen3moe_unfused_experts.py monkeypatch in scripts/quantize/*) — it must NOT
+    # be fed to the sglang tree or setup aborts on a guaranteed FATAL.
+    if ls "$REPO_DIR/patches/"[0-9]*.patch 1>/dev/null 2>&1; then
         cd "$SGLANG_DIR"
         FAILED_PATCHES=()
-        for patch in "$REPO_DIR/patches/"*.patch; do
+        for patch in "$REPO_DIR/patches/"[0-9]*.patch; do
             echo "  Applying $(basename "$patch")..."
             git apply "$patch" 2>/dev/null \
               || patch -p1 --fuzz=3 --forward <"$patch" >/dev/null 2>&1 \

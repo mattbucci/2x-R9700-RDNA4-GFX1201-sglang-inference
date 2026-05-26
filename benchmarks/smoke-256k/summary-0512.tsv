@@ -1,0 +1,12 @@
+model	quant	health	gen	note
+Devstral-24B-AWQ	awq	up	ALPHA42	nan
+gemma-4-21B-REAP-AWQ	awq	up	<pad><pad><pad><pad>	nan
+gemma-4-26B-AWQ	awq	up	<pad><pad><pad><pad>	nan
+gemma-4-31B-AWQ	awq	up	ALPHA42	nan
+Qwen3.5-27B-AWQ	awq	up	Thinking Process:
+
+1	nan
+Qwen3.5-28B-A3B-REAP-AWQ	awq	down	-	nan
+Qwen3.6-27B-AWQ	awq	up	Thinking Process:
+
+1	nan

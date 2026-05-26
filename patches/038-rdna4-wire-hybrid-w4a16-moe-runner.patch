@@ -130,24 +130,6 @@ index 2da526402..84cce3e2e 100644
  
      def get_triton_quant_info(self, layer: torch.nn.Module) -> TritonMoeQuantInfo:
          weight_bits = self.quant_config.weight_bits
-@@ -384,9 +400,13 @@ class MoeWNA16Method(FusedMoEMethodBase):
-         layer: torch.nn.Module,
-         dispatch_output: StandardDispatchOutput,
-     ) -> CombineInput:
--        assert (
--            self.moe_runner_config.activation == "silu"
--        ), "Only SiLU activation is supported."
-+        # Triton fused MoE in moe_runner/triton_utils/fused_moe.py supports both
-+        # silu and gelu (lines ~528/564/588/590), so accept either. Required by
-+        # Gemma 4 26B MoE on RDNA4 — the experts use `activation="gelu"`.
-+        assert self.moe_runner_config.activation in (
-+            "silu",
-+            "gelu",
-+        ), f"Only SiLU/GeLU activation is supported, got {self.moe_runner_config.activation!r}."
- 
-         quant_info = self.get_triton_quant_info(layer)
-         return self.runner.run(dispatch_output, quant_info)
-
 diff --git a/python/sglang/srt/layers/moe/moe_runner/hybrid_w4a16.py b/python/sglang/srt/layers/moe/moe_runner/hybrid_w4a16.py
 new file mode 100644
 --- /dev/null

@@ -29,15 +29,17 @@ Required for AWQ-quantized Gemma 4 26B MoE on R9700.  Companion to:
 Root-caused 2026-05-11 via top-down NaN bisect.  See memory file
 project_gemma4_v0511_root_cause.md for the full chain.
 
-diff --git a/python/sglang/srt/models/gemma4_mm.py b/python/sglang/srt/models/gemma4_mm.py
+index 06b5c9d..481df55 100644
 --- a/python/sglang/srt/models/gemma4_mm.py
 +++ b/python/sglang/srt/models/gemma4_mm.py
-@@ -741,9 +741,30 @@ class Gemma4ForConditionalGeneration(PreTrainedModel):
+@@ -739,9 +739,29 @@ class Gemma4ForConditionalGeneration(PreTrainedModel):
+         }
+ 
      def load_weights(self, weights: Iterable[Tuple[str, torch.Tensor]]):
 +        from sglang.srt.layers.moe.fused_moe_triton.layer import FusedMoE
 +
          k_eq_v_layers = self._get_k_eq_v_layers()
-
+ 
          num_experts = getattr(self.config.text_config, "num_experts", 0) or 0
 +        # Per-expert mapping for AWQ/GPTQ checkpoints (experts.0.gate_proj.qweight, …).
 +        # Without this, AWQ-quantized expert weights silently fail to load — the
@@ -60,7 +62,7 @@ diff --git a/python/sglang/srt/models/gemma4_mm.py b/python/sglang/srt/models/ge
          expert_params_mapping = [
              # (param_name, ckpt_weight_name, shard_ids)
              # gate_up_proj is fused [E, 2*I, H] — chunk into w1 (gate) + w3 (up)
-@@ -770,6 +791,30 @@ class Gemma4ForConditionalGeneration(PreTrainedModel):
+@@ -798,6 +818,31 @@ class Gemma4ForConditionalGeneration(PreTrainedModel):
              # MoE expert weights checked first (gate_up_proj contains "up_proj"
              # which would false-match the stacked dense MLP mapping).
              orig_name = name
