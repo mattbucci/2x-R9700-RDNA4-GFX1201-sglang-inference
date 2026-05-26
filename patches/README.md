@@ -1,8 +1,8 @@
-# SGLang v0.5.11 RDNA4 Patches
+# SGLang v0.5.12 RDNA4 Patches
 
-Patches applied in order on a stock `git checkout v0.5.11`.  This file is the source of truth for **what's been fixed and how** — the main [README.md](../README.md) documents current state only.
+25 patches applied in order on a stock `git checkout v0.5.12`. Source of truth for **what's fixed and how**; main [README.md](../README.md) tracks current state. v0.5.11→v0.5.12 rebase (2026-05-26): 001/003/004/007/011/037 regenerated, 008/029/038 dropped (upstreamed); MoE squash was 004 rejecting → BLOCK_SIZE_N+bf16-act restored. All 25 verified clean on pristine clone.
 
-## v0.5.10 → v0.5.11 audit (2026-05-07)
+## historical: v0.5.10 → v0.5.11 audit (2026-05-07)
 
 **7 patches dropped — fully upstreamed in v0.5.11** (moved to `upstreamed-in-v0.5.11/` for reference):
 - 006 (rdna4-awq-kernels) — DROPPED 2026-05-07: both hunks (HIP GEMV BF16-to-Triton fallback simplification + `AWQ_MOE_FORCE_LOOP` env var override) match v0.5.11 `awq/awq.py:496` and `awq/awq.py:761` exactly. **Note (2026-05-09):** the v0.5.10-era patch 006 ALSO contained the `awq_gemv_hip.{cu,hip}` kernel CSR (which mgehre-amd/vLLM originated and we ported in via patch 006 originally). The CSR was never upstreamed — only the Python glue was. The kernel source got orphaned 2026-04-14 (commit `1550f38`) when an over-aggressive patch shrink for an unrelated Gemma 4-31B Triton-AWQ-GEMV fix stripped the new-file blocks; only the compiled `.so` in conda envs survived. Restored 2026-05-09 as a separate kernel-CSR-only patch — see new `006-rdna4-awq-hip-kernels.patch` below.
@@ -25,7 +25,7 @@ Bonus: in 001-upstream-sync, the Gemma 4 config patching for SWA layer types was
 ## Apply
 
 ```bash
-cd components/sglang && git checkout v0.5.11
+cd components/sglang && git checkout v0.5.12
 for p in ../../patches/0*.patch; do
   git apply --3way "$p" || echo "WARN: $p failed — see patches/README.md upgrade audit"
 done
@@ -49,7 +49,7 @@ python scripts/eval/check_awq_scales.py /path/to/your/AWQ-dir
 | 005 | rdna4-fp8-fallbacks | 247 | FP8 torch-native paths, `BLOCK_SIZE_M=16` for gfx1201 block quant, Quark import guards |
 | 006 | rdna4-awq-hip-kernels | 2,107 | **Restored 2026-05-09.** HIP AWQ GEMV kernel CSR (`sgl-kernel/csrc/quantization/awq/awq_gemv_hip.{cu,hip}`) — ported from `mgehre-amd/vllm` matthias.awq_gemv. Provides `awq_gemv_hip` (M=1 dense decode, ExLlama-shuffle, +30% over Triton), `awq_gemv_bf16_hip` (BF16 model dispatch), `awq_gemv_moe_hip` (per-expert MoE dispatch). Build via `scripts/build_awq_gemv.sh --env <name>` after applying patches. **Note:** the kernel is NOT YET wired into SGLang's MoE dispatch (`MoeWNA16Method` is hardcoded to `MoeRunnerBackend.TRITON`); only the dense path uses the HIP GEMV via `awq.py`. Wiring the MoE kernel is a separate task gated by a microbench (HIP×2+silu vs Triton×1 fused) — see task #26 + memory `project_hip_awq_kernel_recovery.md`. |
 | 007 | rdna4-model-fixes | 811 | Gemma4 CT-GPTQ expert remap, Gemma4 num_experts None→0, Gemma4 MoE gelu, Qwen3.5 tp_world_size=1, Devstral BOS, Llama contiguous QKV |
-| 008 | rdna4-compressed-tensors-hip | — | Compressed-tensors HIP fallback for AWQ/GPTQ models |
+| ~~008~~ | ~~compressed-tensors-hip~~ | — | DROPPED 2026-05-26 — upstreamed in v0.5.12 (is_hip already in wNa16) |
 | 009 | qwen35-moe-causalLM / softcap-fp32 | — | Qwen3.5 MoE CausalLM shim + softcap FP32 for RDNA4 precision |
 | 010 | rdna4-gptq-hip-fallback | — | GPTQ HIP kernel fallback (`gptq_gemm`/`gptq_shuffle`) |
 | 011 | rdna4-triton-attention-fp32 | — | FP32 value-accumulation in Triton decode/extend attention (see investigation below) |
