@@ -20,7 +20,7 @@ High-throughput LLM inference on 2x AMD Radeon AI PRO R9700 (gfx1201, RDNA4) wit
 Local checkout is fresh — `components/sglang` and the conda envs were absent. Re-establishing the stack:
 1. **`scripts/setup.sh` running** (`/tmp/setup-logs/run.log`) — clone v0.5.11, apply patches, torch 2.11+rocm7.2, build Triton 3.6 + HIP GEMV + sgl_kernel. Gate for any serve/bench.
 2. **All 16 `mattbucci/*-AWQ` ships downloading** to `/data` (`scripts/download_all_awq.sh`, ~316 GB, `/tmp/dl-logs/run.log`).
-3. **TP-2 256K smoke matrix** once env builds: boot each, `validate_capabilities.py` + `probe_vision.py` (basic/thinking/image/video), confirm 256K boots, log tok/s. Don't bench while any calibration runs.
+3. **TP-2 256K smoke matrix running** (`scripts/smoke_matrix.sh` → `benchmarks/smoke-256k/`). Boot recipe validated on devstral 2026-05-25: **absolute HF snapshot path + `--attention-backend triton` + `HF_HUB_OFFLINE=1`**. Three bring-up gotchas: (a) launch.sh presets point at gone `~/AI/models/*`; ships are in `/data/cache/huggingface`. (b) symlinking the snapshot breaks HF's relative `../../blobs` lookups → repo-id OSError; pass the resolved snapshot dir. (c) default attn backend is `aiter` (CDNA-only, `mha_batch_prefill_func` NameError) — triton mandatory. Devstral 24B used ~30GB/GPU @32K, so 256K-class ships are tight on 64GB.
 4. **Then: which models fit FP8 at full 256K (64 GB TP-2)?** Target class is ~13–30B (e.g. Coder-30B-REAM): FP8 weights ~2×AWQ but native WMMA may beat dequant. ⚠ `rules-for-agents.md`: FP8 WMMA runs but Arch comgr emits invalid HSACO for FP8 kernels — validate per-model, may be blocked until comgr fix. Memory math: KV at 256K must fit alongside weights; >30 GB ships (REAM-A3B, Coder-Next) likely won't.
 
 In priority order:
