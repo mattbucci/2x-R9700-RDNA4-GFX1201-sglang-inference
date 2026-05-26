@@ -18,5 +18,29 @@
       "passed": 2,
       "total": 2
     }
+  },
+  "gemma31-256k": {
+    "tag": "gemma31-256k",
+    "model": "/home/letsrtfm/AI/models/gemma-4-31B-AWQ",
+    "timestamp": "2026-05-26 03:19",
+    "elapsed_sec": 87.0,
+    "checks": {
+      "basic": {
+        "passed": true,
+        "message": "finish=stop answer='paris'"
+      },
+      "thinking": {
+        "passed": true,
+        "message": "reasoning_seen terminated answer_ok (529 tok, finish=stop)"
+      },
+      "vision": {
+        "passed": false,
+        "message": "saw=[]  response='the image contains a single cuneiform character.'"
+      }
+    },
+    "summary": {
+      "passed": 2,
+      "total": 3
+    }
   }
 }
