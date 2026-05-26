@@ -52,3 +52,6 @@ Compiled gptq_awq for gfx1201: f16*f16→f32 dot, warp32, num_warps4, **num_stag
 
 ## SMOKING GUN: experts output ~50x too small, MoE near-passthrough (2026-05-25)
 MOE_DBG hook in qwen3_moe.forward_normal: in absmax=0.455 → expert out absmax=0.455 (passthrough), std=0.009 vs eager ref 0.47. router rl=8.4 + topk ids sane. Experts compute ~0 → MoE adds nothing → LM head collapses single-token gibberish. Window 0.5.10→0.5.12 = MoeRunner refactor (triton_utils +1284 new). weights/dequant bit-exact. RC = scale/zero bind into live MoeRunner zeroes experts. Next: call kernel in-proc on bound experts vs ref.
+
+## topk normalized fine — experts ~0 only at 96-expert scale
+topk_w sum=1.0 vals 0.09-0.14 sane. Iso 1-expert std0.82; prod 96-exp std0.008. All static clean → grouped-gemm/expert>0 bind zeroes, not math. Next: iso 8-expert grouped vs ref.
