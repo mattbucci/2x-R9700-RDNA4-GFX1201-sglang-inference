@@ -37,3 +37,6 @@ topk softmax-all rewrite still 'coin' gibberish → routing fine. Both kernel + 
 
 ## RC PINNED: moe_wna16 Triton dequant (not weights/kernel/topk)
 Scales audit: 2/14016 flagged → weights clean. HIP kernel + topk exonerated. Therefore Qwen3-MoE-A3B 'coin' gibberish = moe_wna16 per-expert dequant on gfx1201 (patches 030/031/033). 3090 marlin coherent. Next: A/B disable 030 awq-bf16-act, instrument expert0 dequant absmax vs bf16 ref.
+
+## Elimination chain (2026-05-25) — pinned to INT4 MoE dequant, both backends
+coder='coin' garbage with: HIP-on, HIP-off, topk softmax-all, AND wvSplitK hybrid. Weights clean(2/14016). All wna16-MoE fail (coder+gemma26); dense+deltanet fine. → shared bug in INT4 expert dequant (group_size/zeros) or per-expert bind, not backend. 3090=marlin avoids wna16. Next (deep kernel): dump expert0 dequant vs marlin ref tensor — needs kernel-correctness work.
