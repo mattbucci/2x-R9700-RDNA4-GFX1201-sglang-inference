@@ -11,7 +11,7 @@ Recipe: abs snapshot path + `--attention-backend triton` + HF_HUB_OFFLINE=1, mem
 | Coder-30B-REAM (A3B) | awq | ✅ 0/4 | FP8 target class |
 | Coder-30B-REAP (A3B) | awq | ✅ 0/4 | |
 | gemma-21B-REAP | awq | ✅ 0/4 | |
-| Qwen3.6-35B-A3B | awq | OOM | mem-frac 0.85 → retest 0.75 |
+| Qwen3.6-35B-A3B (256exp) | awq | OOM | weight-load 31/32GB, NOT KV; 0.75 also OOM → prune is the lever |
 | Coder-Next-REAM 60B | awq | OOM | biggest weights |
 | 28B-REAP / REAM-A3B / VL-REAP | awq | err | KeyError experts.w2_qweight |
 | Coder-30B-AWQ | CT! | err | mislabel → CT-w2 TP2 narrow bug |
