@@ -55,3 +55,6 @@ MOE_DBG hook in qwen3_moe.forward_normal: in absmax=0.455 → expert out absmax=
 
 ## topk normalized fine — experts ~0 only at 96-expert scale
 topk_w sum=1.0 vals 0.09-0.14 sane. Iso 1-expert std0.82; prod 96-exp std0.008. All static clean → grouped-gemm/expert>0 bind zeroes, not math. Next: iso 8-expert grouped vs ref.
+
+## PIVOT: 8-expert grouped kernel EXACT (ratio 0.99997) — moe_wna16 NOT the bug
+8-expert grouped fused_experts_impl == ref to 5 digits. MoE math/scales/zeros/group/topk all correct. Experts out small because INPUT small (absmax0.4). RC is UPSTREAM not MoE: hidden never grows → repeat collapse. Window 0.5.10→0.5.12 non-MoE: attn/rope/norm. Next: per-layer hidden absmax trace.
