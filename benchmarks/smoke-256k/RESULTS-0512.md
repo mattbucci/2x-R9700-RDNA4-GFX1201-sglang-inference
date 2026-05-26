@@ -31,3 +31,6 @@ HIP MoE topk does top-k of RAW logits then softmax over selected k; pristine sof
 
 ## A/B verdict (2026-05-25, systemd-user infra): NOT the HIP kernel
 Coder-30B-REAM HIP-on='coin Rever Rever', HIP-off='coincoin' — both gibberish → AWQ GEMV(006) exonerated. RC = moe_wna16/Triton per-expert routing; suspect topk.py:645 (raw-logit topk vs softmax-all). 3090 marlin coherent confirms checkpoint fine. Next: neutralize topk:645 HIP branch.
+
+## topk:645 exonerated — RC is per-expert AWQ dequant
+topk softmax-all rewrite still 'coin' gibberish → routing fine. Both kernel + topk ruled out. RC = moe_wna16 per-expert AWQ dequant/bind on RDNA4 (single-token repeat = experts compute garbage). 3090 marlin coherent. Next: check_awq_scales coder + dump w13 absmax.
