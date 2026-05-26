@@ -62,5 +62,29 @@
       "passed": 1,
       "total": 2
     }
+  },
+  "vl32b-256k": {
+    "tag": "vl32b-256k",
+    "model": "/home/letsrtfm/AI/models/Qwen3-VL-32B-AWQ-balanced",
+    "timestamp": "2026-05-26 03:26",
+    "elapsed_sec": 18.0,
+    "checks": {
+      "basic": {
+        "passed": true,
+        "message": "finish=stop answer='paris'"
+      },
+      "thinking": {
+        "passed": true,
+        "message": "reasoning_seen answer_ok       (108 tok, finish=stop)"
+      },
+      "vision": {
+        "passed": true,
+        "message": "saw=['red', 'circle', 'round']  response='(reasoning)a simple red circle with a black outline on a white background.'"
+      }
+    },
+    "summary": {
+      "passed": 3,
+      "total": 3
+    }
   }
 }
