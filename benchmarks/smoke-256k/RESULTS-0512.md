@@ -43,3 +43,6 @@ coder='coin' garbage with: HIP-on, HIP-off, topk softmax-all, AND wvSplitK hybri
 
 ## Expert0 dequant SANE → bug is dispatch/dtype, not bind (2026-05-25)
 `scripts/debug/moe_wna16_expert0_dequant.py`: coder REAM expert0 gate w13 dequants clean via casper repack — absmax 0.18, std 0.02, 0 nan/inf, 15% zeros. Bind/repack exonerated. RC = downstream fused-kernel dispatch: fp16 scales × bf16 act (patch 030 forces bf16). dense AWQ dequants separately+bf16 matmul (works); MoE kernel inlines → dtype mix. Next A/B: relaunch coder --dtype float16 (everything fp16). Coherent=confirmed.
+
+## fp16 A/B + prod-repack: both clean → suspect silu split / scale-group bind (2026-05-25)
+fp16 launch (--dtype float16, cast bf16→fp16): still '*<*<' gibberish → dtype exonerated (both fp16+bf16 fail). prodcheck.py: convert_awq_tensor int4 == casper ref EXACTLY → repack bind exact. So: weights/repack/dequant/kernel/topk/dtype ALL clean. Remaining: w13 gate/up half-order vs silu_and_mul split, or scale group-index in live kernel. Next: in-proc capture expert0 w13 output for one token vs 3090.
