@@ -28,3 +28,6 @@ Same `mattbucci/*` weights serve coherent on 3090 (AWQ_Marlin) → fault is R970
 
 ## Suspect pinned: topk.py:645 HIP routing (patch 004, fuzz-landed)
 HIP MoE topk does top-k of RAW logits then softmax over selected k; pristine softmaxes all experts first → wrong expert weights, plausible coder gibberish. UNVERIFIED — server reboots wedge (VRAM idle, no log) so A/B blocked. Next: fix launch infra, A/B topk pyTorch-vs-kernel, compare weights vs 3090.
+
+## A/B verdict (2026-05-25, systemd-user infra): NOT the HIP kernel
+Coder-30B-REAM HIP-on='coin Rever Rever', HIP-off='coincoin' — both gibberish → AWQ GEMV(006) exonerated. RC = moe_wna16/Triton per-expert routing; suspect topk.py:645 (raw-logit topk vs softmax-all). 3090 marlin coherent confirms checkpoint fine. Next: neutralize topk:645 HIP branch.
