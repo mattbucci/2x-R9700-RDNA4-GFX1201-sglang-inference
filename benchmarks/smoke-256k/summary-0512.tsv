@@ -10,3 +10,12 @@ Qwen3.5-28B-A3B-REAP-AWQ	awq	down	-	nan
 Qwen3.6-27B-AWQ	awq	up	Thinking Process:
 
 1	nan
+Qwen3.6-35B-A3B-AWQ	awq	down	-	out of memory
+Qwen3.6-REAM-A3B-AWQ	awq	down	-	nan
+Qwen3.6-VL-REAP-26B-A3B-AWQ	awq	down	-	nan
+Qwen3-Coder-30B-A3B-AWQ	compressed-tensors	down	-	nan
+Qwen3-Coder-30B-A3B-REAM-AWQ	awq	up	robert robert robert	nan
+Qwen3-Coder-30B-A3B-REAP-AWQ	awq	up	translatortranslator	nan
+Qwen3-Coder-Next-REAM-AWQ	awq	down	-	out of memory
+Qwen3-Coder-REAP-25B-A3B-AWQ	awq	up	-framework_framework	nan
+Qwen3-VL-32B-AWQ	awq	up	ALPHA42	nan
