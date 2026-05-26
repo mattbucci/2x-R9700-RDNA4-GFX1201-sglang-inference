@@ -13,3 +13,4 @@ build/
 # GPTQ calibration temp files
 gptqmodel_offload/
 gptq_log_*.log
+benchmarks/smoke-256k/*.log
