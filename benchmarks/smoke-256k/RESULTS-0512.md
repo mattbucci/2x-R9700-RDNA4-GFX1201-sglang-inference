@@ -48,4 +48,7 @@ coder='coin' garbage with: HIP-on, HIP-off, topk softmax-all, AND wvSplitK hybri
 fp16 launch (--dtype float16, cast bf16→fp16): still '*<*<' gibberish → dtype exonerated (both fp16+bf16 fail). prodcheck.py: convert_awq_tensor int4 == casper ref EXACTLY → repack bind exact. So: weights/repack/dequant/kernel/topk/dtype ALL clean. Remaining: w13 gate/up half-order vs silu_and_mul split, or scale group-index in live kernel. Next: in-proc capture expert0 w13 output for one token vs 3090.
 
 ## Triton cache: gptq_awq IR clean fp16, suspect = num_stages=2 pipelining (2026-05-25)
-Compiled gptq_awq for gfx1201: f16*f16→f32 dot, warp32, num_warps4, **num_stages2**, no bf16 anywhere. IR clean. Full expert0 MLP sane in eager. All static parts exonerated; only dynamic lever left = 2-stage SW pipeline on gfx1201 (known miscompile class). Next A/B: pin num_stages=1 in fused_moe_triton_config for wna16 + reprobe coder.
+Compiled gptq_awq for gfx1201: f16*f16→f32 dot, warp32, num_warps4, **num_stages2**, no bf16 anywhere. IR clean. Full expert0 MLP sane in eager. num_stages=0 A/B done: still gibberish, not RC (kept fix anyway, matches line18).
+
+## SMOKING GUN: experts output ~50x too small, MoE near-passthrough (2026-05-25)
+MOE_DBG hook in qwen3_moe.forward_normal: in absmax=0.455 → expert out absmax=0.455 (passthrough), std=0.009 vs eager ref 0.47. router rl=8.4 + topk ids sane. Experts compute ~0 → MoE adds nothing → LM head collapses single-token gibberish. Window 0.5.10→0.5.12 = MoeRunner refactor (triton_utils +1284 new). weights/dequant bit-exact. RC = scale/zero bind into live MoeRunner zeroes experts. Next: call kernel in-proc on bound experts vs ref.
