@@ -17,7 +17,7 @@ High-throughput LLM inference on 2x AMD Radeon AI PRO R9700 (gfx1201, RDNA4) wit
 
 ### v0.5.12 rebase + ship verified (2026-05-26)
 
-Mechanically rebased all 25 patches onto clean v0.5.12 (001/003/004/007/011/037 fixed; upstreamed 008/029/038 removed) — MoE squash GONE (root cause: 004 rejected so BLOCK_SIZE_N+bf16-act dropped). 256K sweep: Devstral basic+tool✅, Coder-REAP-25B+Coder-30B code+tool✅, Qwen3.5-27B basic+thinking✅ (256K), vision models in progress. **Coder-30B-A3B rebuilt native AWQ** (was CT-mislabel) → moe_wna16, 256K coherent+tool_calls, reshipped to `mattbucci/Qwen3-Coder-30B-A3B-AWQ`. Sweep: `scripts/eval/sweep_256k_quality.sh`.
+Mechanically rebased all 25 patches onto clean v0.5.12 (001/003/004/007/011/037 fixed; upstreamed 008/029/038 removed) — MoE squash GONE (root cause: 004 rejected so BLOCK_SIZE_N+bf16-act dropped). 256K sweep: Devstral basic+tool✅, Coder-REAP-25B+Coder-30B code+tool✅, Qwen3.5-27B basic+thinking✅ (256K), vision models in progress. **Coder-30B-A3B rebuilt native AWQ** (was CT-mislabel) → moe_wna16, 256K coherent+tool_calls, reshipped to `mattbucci/Qwen3-Coder-30B-A3B-AWQ`. Sweep: `scripts/eval/sweep_256k_quality.sh`. **256K matrix verified:** Devstral basic+tool✅, Coder-30B(native)+REAP-25B code+tool✅, Qwen3.5-27B basic+thinking✅, Qwen3.6-27B basic+thinking+vision✅ (red square seen). Validator needs mem≤0.80 at 256K (0.92 OOMs image encode) + pillow pinned. coder-30b reshipped native AWQ.
 
 ### Next steps (2026-05-26, MoE A/B bisect env)
 
