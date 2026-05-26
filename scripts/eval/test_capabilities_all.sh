@@ -108,10 +108,9 @@ run_one() {
         cd '$REPO_DIR'
         source '$REPO_DIR/scripts/common.sh'
         activate_conda
-        export CUDA_VISIBLE_DEVICES=0
-        setup_nvidia_env
-        export CUDA_VISIBLE_DEVICES=0
-        exec '$REPO_DIR/scripts/launch.sh' '$model' --tp 1 --context-length 8192 --mem-fraction 0.85
+        export HIP_VISIBLE_DEVICES=0,1
+        setup_rdna4_env
+        exec '$REPO_DIR/scripts/launch.sh' '$model' --tp 2 --context-length 262144 --mem-fraction 0.85
     " > "$logfile" 2>&1 </dev/null &
     local launcher_pid=$!
     disown
