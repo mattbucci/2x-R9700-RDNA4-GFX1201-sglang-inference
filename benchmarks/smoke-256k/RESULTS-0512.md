@@ -25,3 +25,6 @@ Env on **sglang v0.5.12**, TP2 @262144, fp8 KV, triton attn. Probe = determinist
 
 ## MoE-coder gibberish — root-cause hunt (2026-05-25)
 Same `mattbucci/*` weights serve coherent on 3090 (AWQ_Marlin) → fault is R9700 patch stack, not checkpoints. Suspect: `moe_wna16` per-expert AWQ Triton path (3090 uses marlin). HIP GEMV A/B inconclusive — interactive reboots wedge (server exits instant, empty log; bundled pkill reaps launcher). Confirmed gibberish: Coder-30B-REAM/REAP, REAP-25B. Next: in-proc per-expert load check vs 3090; isolate moe_wna16 dispatch.
+
+## Suspect pinned: topk.py:645 HIP routing (patch 004, fuzz-landed)
+HIP MoE topk does top-k of RAW logits then softmax over selected k; pristine softmaxes all experts first → wrong expert weights, plausible coder gibberish. UNVERIFIED — server reboots wedge (VRAM idle, no log) so A/B blocked. Next: fix launch infra, A/B topk pyTorch-vs-kernel, compare weights vs 3090.
