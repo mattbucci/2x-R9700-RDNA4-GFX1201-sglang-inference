@@ -34,3 +34,6 @@ Coder-30B-REAM HIP-on='coin Rever Rever', HIP-off='coincoin' — both gibberish 
 
 ## topk:645 exonerated — RC is per-expert AWQ dequant
 topk softmax-all rewrite still 'coin' gibberish → routing fine. Both kernel + topk ruled out. RC = moe_wna16 per-expert AWQ dequant/bind on RDNA4 (single-token repeat = experts compute garbage). 3090 marlin coherent. Next: check_awq_scales coder + dump w13 absmax.
+
+## RC PINNED: moe_wna16 Triton dequant (not weights/kernel/topk)
+Scales audit: 2/14016 flagged → weights clean. HIP kernel + topk exonerated. Therefore Qwen3-MoE-A3B 'coin' gibberish = moe_wna16 per-expert dequant on gfx1201 (patches 030/031/033). 3090 marlin coherent. Next: A/B disable 030 awq-bf16-act, instrument expert0 dequant absmax vs bf16 ref.
