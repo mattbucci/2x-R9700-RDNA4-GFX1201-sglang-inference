@@ -159,7 +159,7 @@ if [ "$SKIP_ENV" = false ]; then
     # skips with "no module named imageio" and you lose the modality.
     # Ported from 3090 commit 9ee3b0d.
     echo "Installing eval/validator deps..."
-    pip install "imageio[ffmpeg]"
+    pip install "imageio[ffmpeg]" pillow
 else
     echo "[2/5] Skipping conda env creation"
     init_conda
