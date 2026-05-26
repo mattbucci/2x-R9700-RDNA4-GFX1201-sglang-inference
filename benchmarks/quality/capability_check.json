@@ -42,5 +42,25 @@
       "passed": 2,
       "total": 3
     }
+  },
+  "qwen35-256k": {
+    "tag": "qwen35-256k",
+    "model": "/home/letsrtfm/AI/models/Qwen3.5-27B-AWQ-4bit-calibrated",
+    "timestamp": "2026-05-26 03:25",
+    "elapsed_sec": 285.9,
+    "checks": {
+      "basic": {
+        "passed": true,
+        "message": "finish=stop answer=' paris'"
+      },
+      "thinking": {
+        "passed": false,
+        "message": "request failed: RemoteDisconnected('Remote end closed connection without response')"
+      }
+    },
+    "summary": {
+      "passed": 1,
+      "total": 2
+    }
   }
 }
