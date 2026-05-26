@@ -78,10 +78,20 @@ if [ ! -d "$SGLANG_DIR" ] || [ ! -d "$SGLANG_DIR/.git" ]; then
     # Apply patches from patches/ if any exist
     if ls "$REPO_DIR/patches/"*.patch 1>/dev/null 2>&1; then
         cd "$SGLANG_DIR"
+        FAILED_PATCHES=()
         for patch in "$REPO_DIR/patches/"*.patch; do
             echo "  Applying $(basename "$patch")..."
-            git apply "$patch" || echo "  WARNING: $(basename "$patch") failed to apply"
+            git apply "$patch" 2>/dev/null \
+              || patch -p1 --fuzz=3 --forward <"$patch" >/dev/null 2>&1 \
+              || FAILED_PATCHES+=("$(basename "$patch")")
         done
+        if [ ${#FAILED_PATCHES[@]} -gt 0 ]; then
+            echo "=============================================="
+            echo "FATAL: ${#FAILED_PATCHES[@]} patch(es) FAILED — MoE/kernels will be broken: ${FAILED_PATCHES[*]}"
+            echo "Fix patches before serving. ABORTING."
+            echo "=============================================="
+            exit 1
+        fi
     else
         echo "  No patches to apply (stock install)"
     fi
