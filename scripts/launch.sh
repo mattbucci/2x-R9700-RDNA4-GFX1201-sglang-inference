@@ -221,7 +221,11 @@ apply_preset() {
             # Default path: native AWQ (moe_wna16) converted from CT via
             # scripts/quantize/convert_moe_ct_to_awq.py.  On RDNA4 this ran
             # 6x faster than the compressed-tensors kernel (21.6 vs 3.6 tok/s).
-            MODEL="${MODEL:-$MODELS_DIR/Qwen3.6-35B-A3B-AWQ-native-thinking-vision}"
+            # 2026-05-27: default → 3090-recal mattbucci/Qwen3.6-35B-A3B-AWQ
+            # (validated on RDNA4 256K: basic+thinking+vision PASS). Old
+            # -native-thinking-vision dir kept as fallback.
+            MODEL="${MODEL:-$MODELS_DIR/Qwen3.6-35B-A3B-AWQ}"
+            [[ -d "$MODEL" ]] || MODEL="$MODELS_DIR/Qwen3.6-35B-A3B-AWQ-native-thinking-vision"
             # Auto-detect quant format: CT ships compressed-tensors, our
             # native AWQ and palmfuture's GPTQ-Int4 both ship moe_wna16.
             if [[ -f "$MODEL/config.json" ]] && \
