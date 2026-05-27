@@ -9,13 +9,15 @@ FP8 matmul path. Keeps lm_head, vision tower, and DeltaNet/SSM gates in BF16.
 Usage:
   python quantize_fp8.py <bf16_src> <fp8_dst> [--ignore re:.*pattern ...]
 """
-import sys, argparse
+import sys, argparse, torch
+from transformers import AutoModelForCausalLM, AutoModelForImageTextToText, AutoConfig
 from llmcompressor import oneshot
 from llmcompressor.modifiers.quantization import QuantizationModifier
 
 p = argparse.ArgumentParser()
 p.add_argument("src"); p.add_argument("dst")
 p.add_argument("--ignore", nargs="*", default=[])
+p.add_argument("--device", default="cpu", help="cpu (stable, data-free) or auto (GPU)")
 a = p.parse_args()
 
 # Always keep lm_head FP16; vision/DeltaNet must stay BF16 (recurrent state / image
@@ -27,6 +29,21 @@ ignore = ["lm_head",
           "re:.*mlp.gate$", "re:.*\.gate$"] + a.ignore
 
 recipe = QuantizationModifier(targets="Linear", scheme="FP8_DYNAMIC", ignore=ignore)
-print(f"FP8_DYNAMIC {a.src} -> {a.dst}\nignore={ignore}")
-oneshot(model=a.src, recipe=recipe, output_dir=a.dst, trust_remote_code_model=True)
+print(f"FP8_DYNAMIC {a.src} -> {a.dst}\ndevice={a.device}\nignore={ignore}", flush=True)
+
+# Load explicitly so dispatch has a target (CPU is stable for data-free FP8 cast;
+# GPU across-card cast segfaults / OOMs the 32GB cards mid-run). Pick the arch class.
+cfg = AutoConfig.from_pretrained(a.src, trust_remote_code=True)
+arch = (cfg.architectures or [""])[0]
+Cls = AutoModelForImageTextToText if ("ImageText" in arch or "ConditionalGeneration" in arch or "Mistral3" in arch) else AutoModelForCausalLM
+mm = None
+if a.device == "auto":
+    # Cap each GPU below 32GB so FP8 copies during the cast don't OOM-segfault
+    # mid-run; overflow + the BF16 originals spill to CPU. gfx1201 = 2×32GB.
+    n = torch.cuda.device_count()
+    mm = {i: "26GiB" for i in range(n)}; mm["cpu"] = "90GiB"
+dmap = a.device
+print(f"loading {arch} via {Cls.__name__} device_map={dmap} max_memory={mm}", flush=True)
+model = Cls.from_pretrained(a.src, dtype=torch.bfloat16, device_map=dmap, max_memory=mm, low_cpu_mem_usage=True, trust_remote_code=True)
+oneshot(model=model, recipe=recipe, output_dir=a.dst)
 print("done")
