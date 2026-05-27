@@ -134,7 +134,10 @@ apply_preset() {
             MODEL="${MODEL:-$MODELS_DIR/gemma-4-26B-A4B-it-AWQ-GPTQ-v2-fixed}"
             # BF16 dir is reference-only; fall back to the AWQ dir's bundled
             # tokenizer when it's absent (preset crashloops otherwise).
-            GEMMA_TOK="$MODELS_DIR/gemma-4-26B-A4B-it-BF16"; [ -d "$GEMMA_TOK" ] || GEMMA_TOK="$MODEL"
+            # Prefer the BF16 dir's tokenizer, but only if it actually has one — the
+            # dir can exist as an empty/symlink placeholder (FP8 builds carry their own
+            # tokenizer), so test for tokenizer.json, not mere dir existence.
+            GEMMA_TOK="$MODELS_DIR/gemma-4-26B-A4B-it-BF16"; [ -f "$GEMMA_TOK/tokenizer.json" ] || GEMMA_TOK="$MODEL"
             TOKENIZER="--tokenizer-path $GEMMA_TOK"
             QUANT="moe_wna16"
             DTYPE="bfloat16"

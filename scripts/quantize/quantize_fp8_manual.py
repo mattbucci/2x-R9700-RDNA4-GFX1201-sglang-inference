@@ -40,7 +40,16 @@ IGNORE_RE = [r".*vision_tower.*", r".*visual.*", r".*vision_model.*",
              # in_proj_b, in_proj_qkv, in_proj_z (older variants: in_proj_qkvz, in_proj_ba)
              # — match ALL of them, not just _a/_b. (out_proj is post-state, OK to quant.)
              r".*\.in_proj_\w+$", r".*\.in_proj$", r".*conv1d.*",
-             r".*mlp\.gate$", r".*\.gate$", r"lm_head"] + a.ignore
+             # MoE routers (mlp.gate) AND shared-expert gates. Qwen3MoE names the
+             # shared-expert gate "...mlp.shared_expert_gate" (ends in _gate, NOT .gate),
+             # and SGLang keeps it BF16 — quantizing it orphans its scale and loads a
+             # raw-fp8 weight into a bf16 param (off by ~1/scale), corrupting the
+             # always-on shared expert every layer -> garbage. Match both .gate and _gate.
+             # MoE routers are named differently per arch and ALL must stay BF16:
+             # Qwen3MoE -> "...mlp.gate", Gemma4 -> "...router.proj" (+ router.scale,
+             # router.per_expert_scale, which are 1D and skipped anyway). Quantizing the
+             # router corrupts expert selection -> garbage. Match .gate, _gate, and .router.*
+             r".*mlp\.gate$", r".*\.gate$", r".*_gate$", r".*\.router\..*", r"lm_head"] + a.ignore
 IGNORE_PAT = [re.compile(x) for x in IGNORE_RE]
 
 def is_ignored(mod):  # mod = module name (key without trailing .weight)
@@ -64,28 +73,25 @@ def fp8_quant(w):
     q = (w.to(torch.float32) / scale.to(torch.float32)).clamp(-FP8_MAX, FP8_MAX).to(torch.float8_e4m3fn)
     return q, scale  # weight (fp8), weight_scale (bf16, [out,1])
 
-# 3D fused/stacked MoE experts (Qwen3_5Moe etc. store experts.gate_up_proj [E,2I,K] +
-# experts.down_proj [E,O,I] as single 3D params, no .weight). SGLang's FusedMoE loader
-# (make_expert_params_mapping) expects PER-EXPERT names experts.{e}.{gate,up,down}_proj.weight
-# (gate+up fused internally → w13), same as our AWQ ships. So UNFUSE: split gate_up on dim1
-# and emit each expert slice as its own FP8 Linear (+ per-channel weight_scale).
+def fp8_quant_3d(w):
+    # 3D fused MoE experts [E, out, in] — per (expert, output-channel) symmetric, reducing
+    # over the input dim (last axis). Mirrors fp8_quant exactly, one dim higher. Yields
+    # scale [E, out, 1], matching the CompressedTensors W8A8-FP8 MoE CHANNEL param shape
+    # (w13_weight_scale [E,2I,1] / w2_weight_scale [E,O,1]).
+    amax = w.to(torch.float32).abs().amax(dim=2, keepdim=True).clamp(min=1e-12)
+    scale = (amax / FP8_MAX).to(torch.bfloat16)
+    q = (w.to(torch.float32) / scale.to(torch.float32)).clamp(-FP8_MAX, FP8_MAX).to(torch.float8_e4m3fn)
+    return q, scale  # weight (fp8, [E,out,in]), weight_scale (bf16, [E,out,1])
+
+# 3D fused MoE experts (Qwen3_5Moe / Gemma4 store experts.gate_up_proj [E,2I,K] +
+# experts.down_proj [E,O,I] as single 3D params, no .weight). SGLang's loaders for these
+# (models/qwen3_5.py, models/gemma4_causal.py) take the FUSED 3D tensors directly: they
+# map experts.gate_up_proj -> experts.w13_weight and chunk gate/up themselves, and
+# experts.down_proj -> experts.w2_weight. So we MUST keep experts fused (an earlier
+# unfuse-to-per-expert attempt loaded into the wrong params -> garbage). See fp8 cast below.
 _FUSED_EXPERT_SUFFIXES = ("gate_up_proj", "gate_proj", "up_proj", "down_proj")
 def is_fused_expert(key, t):
     return t.dim() == 3 and "experts" in key and key.rsplit(".", 1)[-1] in _FUSED_EXPERT_SUFFIXES
-
-def unfuse_fused_expert(key, t):
-    """Yield (per_expert_key.weight, weight_tensor) for each expert slice."""
-    base = key.rsplit(".", 1)[0]          # ...mlp.experts
-    leaf = key.rsplit(".", 1)[-1]
-    E = t.shape[0]
-    if leaf == "gate_up_proj":
-        I = t.shape[1] // 2               # [E, gate(I)+up(I), K]
-        for e in range(E):
-            yield f"{base}.{e}.gate_proj.weight", t[e, :I, :]
-            yield f"{base}.{e}.up_proj.weight",   t[e, I:, :]
-    else:                                  # gate_proj / up_proj / down_proj  [E, out, in]
-        for e in range(E):
-            yield f"{base}.{e}.{leaf}.weight", t[e]
 
 os.makedirs(a.dst, exist_ok=True)
 shards = sorted(glob.glob(os.path.join(a.src, "*.safetensors")))
@@ -100,14 +106,18 @@ for si, sh in enumerate(shards):
         for k in f.keys():
             t = f.get_tensor(k)
             if is_fused_expert(k, t):
-                # SGLang's qwen3_5.py loader wants experts kept FUSED (it chunk(2,dim=-2)s
-                # gate_up itself). Unfusing to per-expert here produced incoherent output.
-                # Until the fused-FP8 format (experts.gate_up_proj fp8 3D + correctly-named
-                # per-expert-per-channel scales) is implemented + verified, refuse rather
-                # than ship silent garbage. See README "Fused-expert FP8 GAP".
-                raise NotImplementedError(
-                    f"3D fused MoE experts not yet supported by FP8 caster: {k} {tuple(t.shape)}. "
-                    "Keep fused (do NOT unfuse) — see README fused-expert GAP for the fix path.")
+                # Keep experts FUSED (3D). Both SGLang loaders (qwen3_5.py, gemma4_causal.py)
+                # consume experts.gate_up_proj/down_proj as 3D and chunk gate/up internally,
+                # mapping them to experts.w13_weight / experts.w2_weight. The FP8 scale must
+                # be the SAME 3D tensor with a "_scale" suffix: the loaders substring-match
+                # "experts.gate_up_proj" / "experts.down_proj" in the scale name too and apply
+                # the identical .replace(), so experts.gate_up_proj_scale -> experts.w13_weight_scale
+                # and experts.down_proj_scale -> experts.w2_weight_scale (the per-output-channel
+                # params CompressedTensorsW8A8Fp8MoE registers, [E,2I,1] / [E,O,1]).
+                q, scale = fp8_quant_3d(t.to(torch.bfloat16))
+                out[k] = q                  # experts.{gate_up,down}_proj      fp8  [E,out,in]
+                out[k + "_scale"] = scale    # experts.{gate_up,down}_proj_scale bf16 [E,out,1]
+                nq += 1
             elif quantizable(k, t):
                 q, scale = fp8_quant(t.to(torch.bfloat16))
                 out[k] = q
