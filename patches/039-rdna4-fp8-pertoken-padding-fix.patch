@@ -1,0 +1,19 @@
+diff --git a/python/sglang/srt/layers/quantization/fp8_kernel.py b/python/sglang/srt/layers/quantization/fp8_kernel.py
+index 65aa6bb..1f0e87d 100644
+--- a/python/sglang/srt/layers/quantization/fp8_kernel.py
++++ b/python/sglang/srt/layers/quantization/fp8_kernel.py
+@@ -1719,10 +1719,12 @@ if _is_hip:
+         absmax = input.abs().max(dim=1, keepdim=True).values
+         absmax = torch.clamp(absmax, min=eps)
+         scale_val = absmax / fp8_max
+-        scale.copy_(scale_val)
++        # output/scale may be padded to num_token_padding rows (>= M); the vLLM
++        # kernel writes only the first M, so the native fallback must too.
++        scale[:M].copy_(scale_val)
+         # Quantize
+         output_data = torch.clamp(input / scale_val, fp8_min, fp8_max).to(fp8_dtype)
+-        output.copy_(output_data)
++        output[:M].copy_(output_data)
+ 
+     def _native_dynamic_per_tensor_quant_fp8(output, input, scale):
+         """Native PyTorch fallback for dynamic per-tensor FP8 quantization when vLLM is unavailable."""
