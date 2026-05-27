@@ -30,7 +30,9 @@ a = p.parse_args()
 ignore = ["lm_head",
           "re:.*vision_tower.*", "re:.*visual.*", "re:.*vision_model.*",
           "re:.*multi_modal_projector.*", "re:.*embed_vision.*",
-          "re:.*in_proj_a$", "re:.*in_proj_b$", "re:.*conv1d.*",
+          # DeltaNet/SSM input projections stay BF16 (recurrent-state rule). Match ALL
+          # in_proj variants (in_proj_a/b/qkv/z/qkvz/ba), not just _a/_b.
+          "re:.*\.in_proj_\w+$", "re:.*\.in_proj$", "re:.*conv1d.*",
           "re:.*mlp.gate$", "re:.*\.gate$"] + a.ignore
 
 recipe = QuantizationModifier(targets="Linear", scheme="FP8_DYNAMIC", ignore=ignore)
@@ -45,12 +47,17 @@ print(f"FP8_DYNAMIC {a.src} -> {a.dst}\ndevice={a.device}\nignore={ignore}", flu
 # leaves zero blocks wrapped, so the data-free pass casts the plain per-expert Linears
 # (identical op to a dense model's Linears, which cast fine). Patched at the definition
 # module so it applies regardless of how the call site imported the name.
-import llmcompressor.modeling.moe_context as _moe_ctx
-_orig_is_registered = _moe_ctx._is_registered
-def _no_moe_replace(name, subclass):
-    return False
-_moe_ctx._is_registered = _no_moe_replace
-print("[fp8] MoE calibration-module replacement DISABLED (data-free FP8 casts plain expert Linears)", flush=True)
+# Gate: only disable for the *unfused* per-expert archs (Qwen3MoeForCausalLM, 128+ experts
+# as individual Linears → 18k+ modules → segfault). FUSED-expert archs (Qwen3_5Moe stores
+# experts as 3D stacked params, few modules) NEED the context ON so the experts are exposed
+# as quantizable — and won't segfault (low module count). Set FP8_NO_MOE_CONTEXT=1 to disable.
+import os as _os
+if _os.environ.get("FP8_NO_MOE_CONTEXT") in ("1", "true", "True"):
+    import llmcompressor.modeling.moe_context as _moe_ctx
+    _moe_ctx._is_registered = lambda name, subclass: False
+    print("[fp8] MoE calibration-module replacement DISABLED (unfused per-expert arch)", flush=True)
+else:
+    print("[fp8] MoE calibration context ENABLED (fused-expert arch path)", flush=True)
 
 # Load explicitly so dispatch has a target (CPU is stable for data-free FP8 cast;
 # GPU across-card cast segfaults / OOMs the 32GB cards mid-run). Pick the arch class.

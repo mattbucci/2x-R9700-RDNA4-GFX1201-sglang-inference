@@ -35,7 +35,11 @@ a = p.parse_args()
 # output config's `ignore` so SGLang loads them unquantized instead of expecting FP8.
 IGNORE_RE = [r".*vision_tower.*", r".*visual.*", r".*vision_model.*",
              r".*multi_modal_projector.*", r".*embed_vision.*",
-             r".*in_proj_a$", r".*in_proj_b$", r".*conv1d.*",
+             # DeltaNet/SSM input projections MUST stay BF16 (recurrent-state error
+             # accumulation — cardinal rule). Qwen3_5 DeltaNet names them in_proj_a,
+             # in_proj_b, in_proj_qkv, in_proj_z (older variants: in_proj_qkvz, in_proj_ba)
+             # — match ALL of them, not just _a/_b. (out_proj is post-state, OK to quant.)
+             r".*\.in_proj_\w+$", r".*\.in_proj$", r".*conv1d.*",
              r".*mlp\.gate$", r".*\.gate$", r"lm_head"] + a.ignore
 IGNORE_PAT = [re.compile(x) for x in IGNORE_RE]
 
@@ -60,6 +64,29 @@ def fp8_quant(w):
     q = (w.to(torch.float32) / scale.to(torch.float32)).clamp(-FP8_MAX, FP8_MAX).to(torch.float8_e4m3fn)
     return q, scale  # weight (fp8), weight_scale (bf16, [out,1])
 
+# 3D fused/stacked MoE experts (Qwen3_5Moe etc. store experts.gate_up_proj [E,2I,K] +
+# experts.down_proj [E,O,I] as single 3D params, no .weight). SGLang's FusedMoE loader
+# (make_expert_params_mapping) expects PER-EXPERT names experts.{e}.{gate,up,down}_proj.weight
+# (gate+up fused internally → w13), same as our AWQ ships. So UNFUSE: split gate_up on dim1
+# and emit each expert slice as its own FP8 Linear (+ per-channel weight_scale).
+_FUSED_EXPERT_SUFFIXES = ("gate_up_proj", "gate_proj", "up_proj", "down_proj")
+def is_fused_expert(key, t):
+    return t.dim() == 3 and "experts" in key and key.rsplit(".", 1)[-1] in _FUSED_EXPERT_SUFFIXES
+
+def unfuse_fused_expert(key, t):
+    """Yield (per_expert_key.weight, weight_tensor) for each expert slice."""
+    base = key.rsplit(".", 1)[0]          # ...mlp.experts
+    leaf = key.rsplit(".", 1)[-1]
+    E = t.shape[0]
+    if leaf == "gate_up_proj":
+        I = t.shape[1] // 2               # [E, gate(I)+up(I), K]
+        for e in range(E):
+            yield f"{base}.{e}.gate_proj.weight", t[e, :I, :]
+            yield f"{base}.{e}.up_proj.weight",   t[e, I:, :]
+    else:                                  # gate_proj / up_proj / down_proj  [E, out, in]
+        for e in range(E):
+            yield f"{base}.{e}.{leaf}.weight", t[e]
+
 os.makedirs(a.dst, exist_ok=True)
 shards = sorted(glob.glob(os.path.join(a.src, "*.safetensors")))
 assert shards, f"no safetensors in {a.src}"
@@ -72,7 +99,16 @@ for si, sh in enumerate(shards):
     with safe_open(sh, framework="pt", device="cpu") as f:
         for k in f.keys():
             t = f.get_tensor(k)
-            if quantizable(k, t):
+            if is_fused_expert(k, t):
+                # SGLang's qwen3_5.py loader wants experts kept FUSED (it chunk(2,dim=-2)s
+                # gate_up itself). Unfusing to per-expert here produced incoherent output.
+                # Until the fused-FP8 format (experts.gate_up_proj fp8 3D + correctly-named
+                # per-expert-per-channel scales) is implemented + verified, refuse rather
+                # than ship silent garbage. See README "Fused-expert FP8 GAP".
+                raise NotImplementedError(
+                    f"3D fused MoE experts not yet supported by FP8 caster: {k} {tuple(t.shape)}. "
+                    "Keep fused (do NOT unfuse) — see README fused-expert GAP for the fix path.")
+            elif quantizable(k, t):
                 q, scale = fp8_quant(t.to(torch.bfloat16))
                 out[k] = q
                 out[k[:-len(".weight")] + ".weight_scale"] = scale
