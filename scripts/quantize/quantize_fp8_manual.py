@@ -49,7 +49,15 @@ IGNORE_RE = [r".*vision_tower.*", r".*visual.*", r".*vision_model.*",
              # Qwen3MoE -> "...mlp.gate", Gemma4 -> "...router.proj" (+ router.scale,
              # router.per_expert_scale, which are 1D and skipped anyway). Quantizing the
              # router corrupts expert selection -> garbage. Match .gate, _gate, and .router.*
-             r".*mlp\.gate$", r".*\.gate$", r".*_gate$", r".*\.router\..*", r"lm_head"] + a.ignore
+             r".*mlp\.gate$", r".*\.gate$", r".*_gate$", r".*\.router\..*",
+             # MTP / NEXTN draft head (mtp.layers.*): keep the WHOLE draft layer BF16.
+             # Quantizing it — esp. the fc/eh_proj fusion projection — collapses
+             # speculative-decode acceptance to ~0 (documented Qwen3-Next MTP failure:
+             # "mtp.fc stays INT4 → 0% MTP acceptance"). The MTP layer is one tiny block,
+             # so BF16 costs ~nothing. Handled by the early-copy guard in the loop too,
+             # since is_fused_expert() bypasses the ignore check for 3D experts.
+             r"mtp\..*", r".*\.mtp\..*",
+             r"lm_head"] + a.ignore
 IGNORE_PAT = [re.compile(x) for x in IGNORE_RE]
 
 def is_ignored(mod):  # mod = module name (key without trailing .weight)
@@ -105,7 +113,13 @@ for si, sh in enumerate(shards):
     with safe_open(sh, framework="pt", device="cpu") as f:
         for k in f.keys():
             t = f.get_tensor(k)
-            if is_fused_expert(k, t):
+            if k.startswith("mtp.") or ".mtp." in k:
+                # Keep the entire MTP draft head BF16 (see IGNORE_RE note). Must come
+                # BEFORE is_fused_expert() — the MTP layer has its own 3D fused experts
+                # that would otherwise be FP8-quantized, breaking spec-decode acceptance.
+                out[k] = t
+                nc += 1
+            elif is_fused_expert(k, t):
                 # Keep experts FUSED (3D). Both SGLang loaders (qwen3_5.py, gemma4_causal.py)
                 # consume experts.gate_up_proj/down_proj as 3D and chunk gate/up internally,
                 # mapping them to experts.w13_weight / experts.w2_weight. The FP8 scale must
