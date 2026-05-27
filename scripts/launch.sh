@@ -377,6 +377,20 @@ fi
 
 apply_preset "$PRESET"
 
+# FP8 / compressed-tensors auto-detect (global, post-preset): the model's own
+# config is the source of truth for quant method. llmcompressor FP8_DYNAMIC writes
+# `quant_method: compressed-tensors` (format float-quantized) — so an FP8 variant of
+# any int4 preset (coder-30b moe_wna16, qwen35/qwen3vl-32b/gemma4-31b awq) must serve
+# via the CT loader, not the AWQ path. Lets `MODEL=<fp8-dir> launch.sh <preset>` work
+# for every preset while keeping all the proven per-model flags (parsers/decode-steps/
+# mamba-cache). Native-AWQ dirs have no quant_method here, so they keep their int4 QUANT.
+if [[ -f "$MODEL/config.json" ]] && \
+   grep -q '"quant_method": *"compressed-tensors"' "$MODEL/config.json" 2>/dev/null && \
+   [[ "$QUANT" != "compressed-tensors" ]]; then
+    echo "[launch] FP8/CT detected in config.json — overriding QUANT '$QUANT' → compressed-tensors"
+    QUANT="compressed-tensors"
+fi
+
 # CLI flags override preset values
 [[ -n "$CLI_CTX" ]] && CTX="$CLI_CTX"
 [[ -n "$CLI_PORT" ]] && PORT="$CLI_PORT"
