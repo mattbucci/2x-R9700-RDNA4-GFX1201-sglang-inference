@@ -28,6 +28,14 @@ FP8_MAX = 448.0  # float8_e4m3fn max finite magnitude
 p = argparse.ArgumentParser()
 p.add_argument("src"); p.add_argument("dst")
 p.add_argument("--ignore", nargs="*", default=[])
+# EXPERIMENTAL: drop default-ignored categories back into FP8 quantization, to shrink
+# VRAM for models that overflow the cards. ⚠️ TESTED 2026-05-27: `--quantize-also in_proj`
+# on Qwen3.5-27B (DeltaNet) → degenerate/repetitive output ("the the the"), no-spec AND
+# spec. So the SSM "in_proj stays BF16" rule holds for FP8 too (8-bit recurrent-state error
+# still accumulates), NOT just INT4. Do NOT FP8 DeltaNet in_proj. lm_head FP8 freed ~0 VRAM
+# (already vocab-sharded). e.g. --quantize-also lm_head conv1d (NOT in_proj for DeltaNet).
+p.add_argument("--quantize-also", nargs="*", default=[],
+               help="substrings of default-ignore patterns to RE-ENABLE for FP8 (e.g. in_proj lm_head conv1d)")
 a = p.parse_args()
 
 # Same ignore set as quantize_fp8.py (recipe-parity): keep lm_head + vision tower +
@@ -58,6 +66,12 @@ IGNORE_RE = [r".*vision_tower.*", r".*visual.*", r".*vision_model.*",
              # since is_fused_expert() bypasses the ignore check for 3D experts.
              r"mtp\..*", r".*\.mtp\..*",
              r"lm_head"] + a.ignore
+# EXPERIMENTAL re-enable: drop patterns matching --quantize-also so those weights get FP8'd.
+if a.quantize_also:
+    kept = [p for p in IGNORE_RE if not any(s in p for s in a.quantize_also)]
+    print(f"--quantize-also {a.quantize_also}: dropped {len(IGNORE_RE)-len(kept)} ignore patterns "
+          f"-> {[p for p in IGNORE_RE if p not in kept]}", flush=True)
+    IGNORE_RE = kept
 IGNORE_PAT = [re.compile(x) for x in IGNORE_RE]
 
 def is_ignored(mod):  # mod = module name (key without trailing .weight)
@@ -160,7 +174,10 @@ cfg["quantization_config"] = {
     # Every Linear we left in BF16 (vision tower, DeltaNet in_proj/conv1d, MoE routers,
     # lm_head) MUST be listed so SGLang loads it unquantized instead of expecting FP8.
     # This is exactly the set quantizable() skips → derive it from IGNORE_RE.
-    "ignore": ["lm_head"] + ["re:" + p for p in IGNORE_RE if p != "lm_head"],
+    # NOTE: lm_head is only added if it's still in IGNORE_RE. With `--quantize-also lm_head`
+    # it's been dropped (so weights are FP8 with a scale) — listing it in the ignore would
+    # tell SGLang to load it unquantized, then raw FP8 lands in a BF16 param (corruption).
+    "ignore": (["lm_head"] if "lm_head" in IGNORE_RE else []) + ["re:" + p for p in IGNORE_RE if p != "lm_head"],
     "config_groups": {"group_0": {
         "targets": ["Linear"],
         "weights": {"num_bits": 8, "type": "float", "symmetric": True, "strategy": "channel",
