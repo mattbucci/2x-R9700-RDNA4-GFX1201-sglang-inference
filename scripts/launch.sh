@@ -50,6 +50,10 @@ WARMUP=""
 WATCHDOG=600
 EXTRA_ARGS="${EXTRA_ARGS:-}"
 EXTRA_ENV="${EXTRA_ENV:-}"
+# Tensor-parallel size. Default 2 (both R9700s). Override `TP=1` to pin one
+# card — required for EAGLE3/spec-decode on MoE targets, which deadlock on the
+# TP all-reduce path at TP>1 (see README "Spec-decode on production AWQ").
+TP="${TP:-2}"
 
 # --- Model presets ---
 apply_preset() {
@@ -64,7 +68,16 @@ apply_preset() {
             OVERLAP=""
             ;;
         coder-30b)
-            MODEL="${MODEL:-$MODELS_DIR/Qwen3-Coder-30B-A3B-AWQ}"
+            # 2026-05-28 — default points at *-AWQ-native (the 16 GB native-AWQ
+            # moe_wna16 checkpoint, quant_method=awq). The plain `Qwen3-Coder-30B-A3B-AWQ`
+            # dir is a COMPLETE 16 GB model but in compressed-tensors format
+            # (quant_method=compressed-tensors) → forcing --quantization moe_wna16 on it
+            # crashes in compressed_tensors_wNa16.process_weights_after_loading. Native AWQ
+            # is also ~6x faster than the CT kernel on ROCm, so it's the right default.
+            # TODO(naming): per HF convention native should live at `-AWQ` and CT at
+            # `-AWQ-CT`; the two dirs are currently swapped/mislabeled. Rename via HF
+            # move_repo (user's domain — involves the mattbucci/ repos), don't blind-move.
+            MODEL="${MODEL:-$MODELS_DIR/Qwen3-Coder-30B-A3B-AWQ-native}"
             # Env-overridable defaults — coder-30b is 30B AWQ MoE; default
             # ctx=32K + max_running=32 doesn't fit on TP=1 / 24 GB cards.
             # Override via `CTX=2048 MEM=0.92 MAX_RUNNING=1 launch.sh coder-30b`
@@ -422,7 +435,7 @@ echo "=============================================="
 # --- Build command ---
 CMD=(python -m sglang.launch_server
     --model-path "$MODEL"
-    --tensor-parallel-size 2
+    --tensor-parallel-size "$TP"
     --dtype "$DTYPE"
     --kv-cache-dtype "$KV_DTYPE"
     --context-length "$CTX"
