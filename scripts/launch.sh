@@ -50,9 +50,12 @@ WARMUP=""
 WATCHDOG=600
 EXTRA_ARGS="${EXTRA_ARGS:-}"
 EXTRA_ENV="${EXTRA_ENV:-}"
-# Tensor-parallel size. Default 2 (both R9700s). Override `TP=1` to pin one
-# card — required for EAGLE3/spec-decode on MoE targets, which deadlock on the
-# TP all-reduce path at TP>1 (see README "Spec-decode on production AWQ").
+# Tensor-parallel size. Default 2 (both R9700s). `TP=1` pins one card.
+# EAGLE3/spec-decode on moe_wna16 MoE targets runs best at TP2 — BUT only with
+# `--speculative-attention-mode decode` in EXTRA_ARGS; without it the default
+# `prefill` mode DEADLOCKS at TP2 (boots, then zero forward progress). With
+# decode-mode, TP2+EAGLE3 reaches full 256K @ ~97 tok/s. See README "Spec-decode
+# coverage map" Coder-30B row for the exact recipe.
 TP="${TP:-2}"
 
 # --- Model presets ---
