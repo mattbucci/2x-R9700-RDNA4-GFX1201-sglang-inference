@@ -2,7 +2,7 @@
 
 25 patches applied in order on a stock `git checkout v0.5.12`. Source of truth for **what's fixed and how**; main [README.md](../README.md) tracks current state. v0.5.11→v0.5.12 rebase (2026-05-26): 001/003/004/007/011/037 regenerated, 008/029/038 dropped (upstreamed); MoE squash was 004 rejecting → BLOCK_SIZE_N+bf16-act restored. All 25 verified clean on pristine clone.
 
-## historical: v0.5.10 → v0.5.11 audit (2026-05-07)
+## historical: v0.5.10 → v0.5.11 audit (2026-05-07) — superseded by the v0.5.12 rebase (header); kept for reference
 
 **7 patches dropped — fully upstreamed in v0.5.11** (moved to `upstreamed-in-v0.5.11/` for reference):
 - 006 (rdna4-awq-kernels) — DROPPED 2026-05-07: both hunks (HIP GEMV BF16-to-Triton fallback simplification + `AWQ_MOE_FORCE_LOOP` env var override) match v0.5.11 `awq/awq.py:496` and `awq/awq.py:761` exactly. **Note (2026-05-09):** the v0.5.10-era patch 006 ALSO contained the `awq_gemv_hip.{cu,hip}` kernel CSR (which mgehre-amd/vLLM originated and we ported in via patch 006 originally). The CSR was never upstreamed — only the Python glue was. The kernel source got orphaned 2026-04-14 (commit `1550f38`) when an over-aggressive patch shrink for an unrelated Gemma 4-31B Triton-AWQ-GEMV fix stripped the new-file blocks; only the compiled `.so` in conda envs survived. Restored 2026-05-09 as a separate kernel-CSR-only patch — see new `006-rdna4-awq-hip-kernels.patch` below.
@@ -15,12 +15,7 @@
 
 Bonus: in 001-upstream-sync, the Gemma 4 config patching for SWA layer types was upstreamed too — `python/sglang/srt/utils/hf_transformers/config.py:176` matches the comment + logic our patch added. `hf_transformers_utils.py` itself is now a 17-line shim re-exporting from the new `hf_transformers` package.
 
-**11 patches apply cleanly to v0.5.11** after regeneration: 002, 003, 005, 008, 011, 012, 015, 016, 023, 024, 026.  The 002/003/005/008/011/012/015/016/023/024/026 patch files were regenerated 2026-05-07 against v0.5.11 by applying the v0.5.10-era patch via 3-way merge, resolving the qwen3_next.py/quark_int4fp8_moe.py conflicts, then `git diff` to capture the v0.5.11-correct hunks.
-
-**15 patches apply clean to v0.5.11 in setup-order** (post-2026-05-09 restoration): 001, 002, 003, 005, 006, 007, 008, 011, 012, 015, 016, 023, 024, 026, 027.  001 was the multi-file 3-way job (gemma4_causal, qwen3_next, triton_backend, communicator, layernorm, rope_variant) — auto-resolved by preferring our changes for semantic conflicts and accepting upstream's shim for `hf_transformers_utils.py` (content moved to `hf_transformers/config.py:176`).  006 added back 2026-05-09 as kernel-CSR-only (HIP AWQ GEMV source files; complementary to the upstreamed Python glue).  027 (softcap-fp32, was 009) renamed to apply after 011 since it now depends on `_is_rdna4` detection added by 011.
-
-**1 patch still needs v0.5.11-aware rewrite:**
-- 004-rdna4-moe-fixes — MoE module restructured upstream. v0.5.11 deleted `fused_moe.py`, `fused_moe_triton_config.py`, `fused_moe_triton_kernels.py` (renamed to `triton_kernels_moe.py`), `moe_align_block_size.py`, and added `moe_runner/` subdir with `aiter.py`, `base.py`, `deep_gemm.py`, `flashinfer_cutedsl.py`, `flashinfer_trtllm.py`. Our patch's hunks target the deleted files. Needs rewrite against new layout: identify which RDNA4 fixes (torch-native topk_softmax, moe_align fallback, R9700 wave32 Triton configs) still apply and where they go in v0.5.11. Triton config JSONs are file additions and likely still relevant; code mods need re-targeting.
+The remaining patches were regenerated against v0.5.11 via 3-way merge (001 was the multi-file job — gemma4_causal/qwen3_next/triton_backend/communicator/layernorm/rope; 006 re-added 2026-05-09 as kernel-CSR-only; 027/softcap-fp32, formerly 009, reordered after 011 for its `_is_rdna4` dependency). Per-patch detail in git history.
 
 ## Apply
 
@@ -75,10 +70,10 @@ python scripts/eval/check_awq_scales.py /path/to/your/AWQ-dir
 
 | Component | Version | Source |
 |-----------|---------|--------|
-| SGLang | v0.5.11 | stock + 14 patches clean apply (was 19; 7 dropped via v0.5.10→v0.5.11 audit, 1 still needs rework: 004 MoE refactor) |
+| SGLang | v0.5.12 | stock + 25 patches (rebased from v0.5.11 — see header) |
 | Triton | 3.6.0 | upstream triton-lang |
 | RCCL | system ROCm 7.2 (2.27.7) | no custom build |
-| PyTorch | 2.12.0+rocm7.2 | nightly |
+| PyTorch | 2.11.0+rocm7.2 | ROCm build (the 2.12 nightly is dead on RDNA4 — segfaults on import) |
 | ROCm | 7.2.1 | Arch Linux packages |
 
 ## Recent resolved items
