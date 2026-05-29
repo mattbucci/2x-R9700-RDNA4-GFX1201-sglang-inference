@@ -214,6 +214,63 @@ def make_combined_concurrency_chart(all_data):
     print(f"  {path}")
 
 
+def make_fp8_comparison_chart():
+    """FP8 (W8A8) vs AWQ-int4 across the validated fleet: single-user decode +
+    max context, grouped bars. Data is point-values from the FP8 lane sweep
+    (benchmarks/fp8-comparison.json), not full context sweeps."""
+    with open(os.path.join(BENCH_DIR, "fp8-comparison.json")) as f:
+        data = json.load(f)
+    models = data["models"]
+    x = np.arange(len(models))
+    w = 0.38
+    FP8C, AWQC = "#f0883e", "#58a6ff"
+    xlabels = [f'{m["name"]}\n{m["kind"]}' for m in models]
+
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 5.5))
+
+    # Panel 1 — single-user decode tok/s
+    for i, m in enumerate(models):
+        ax1.bar(x[i] - w / 2, m["fp8_toks"], w, color=FP8C, zorder=5,
+                label="FP8 W8A8" if i == 0 else None)
+        ax1.text(x[i] - w / 2, m["fp8_toks"] + 0.3, f'{m["fp8_toks"]:.1f}',
+                 ha="center", fontsize=8, color=FP8C, fontweight="bold")
+        if m["awq_toks"] is not None:
+            ax1.bar(x[i] + w / 2, m["awq_toks"], w, color=AWQC, zorder=5,
+                    label="AWQ int4" if i == 0 else None)
+            ax1.text(x[i] + w / 2, m["awq_toks"] + 0.3, f'{m["awq_toks"]:.0f}',
+                     ha="center", fontsize=8, color=AWQC, fontweight="bold")
+        else:
+            ax1.text(x[i] + w / 2, 0.6, "n/a", ha="center", fontsize=8, color="#8b949e")
+    ax1.set_xticks(x); ax1.set_xticklabels(xlabels, rotation=40, ha="right", fontsize=8)
+    ax1.set_ylabel("tok/s (single user)")
+    ax1.set_title("Single-user decode — FP8 vs AWQ-int4", fontsize=13, fontweight="bold", pad=10)
+    ax1.legend(loc="upper right", framealpha=0.5, edgecolor="#30363d", facecolor="#161b22")
+    ax1.grid(True, axis="y", linestyle="--"); ax1.set_ylim(bottom=0)
+
+    # Panel 2 — max context (K tokens) @ mem0.85
+    for i, m in enumerate(models):
+        ax2.bar(x[i] - w / 2, m["fp8_ctx_k"], w, color=FP8C, zorder=5,
+                label="FP8 W8A8" if i == 0 else None)
+        ax2.bar(x[i] + w / 2, m["awq_ctx_k"], w, color=AWQC, zorder=5,
+                label="AWQ int4" if i == 0 else None)
+        ax2.text(x[i] - w / 2, m["fp8_ctx_k"] + 4, f'{m["fp8_ctx_k"]}K',
+                 ha="center", fontsize=8, color=FP8C, fontweight="bold")
+        ax2.text(x[i] + w / 2, m["awq_ctx_k"] + 4, f'{m["awq_ctx_k"]}K',
+                 ha="center", fontsize=8, color=AWQC, fontweight="bold")
+    ax2.set_xticks(x); ax2.set_xticklabels(xlabels, rotation=40, ha="right", fontsize=8)
+    ax2.set_ylabel("max context @ mem0.85 (K tokens)")
+    ax2.set_title("Max context — FP8 vs AWQ-int4", fontsize=13, fontweight="bold", pad=10)
+    ax2.legend(loc="upper right", framealpha=0.5, edgecolor="#30363d", facecolor="#161b22")
+    ax2.grid(True, axis="y", linestyle="--"); ax2.set_ylim(bottom=0)
+
+    fig.suptitle(f'{data["title"]}  —  {data["subtitle"]}', fontsize=14, fontweight="bold", y=1.02)
+    fig.tight_layout()
+    path = os.path.join(BENCH_DIR, "fp8_vs_awq.png")
+    fig.savefig(path, dpi=150, bbox_inches="tight")
+    plt.close(fig)
+    print(f"  {path}")
+
+
 if __name__ == "__main__":
     print("Generating benchmark charts...\n")
 
@@ -231,5 +288,8 @@ if __name__ == "__main__":
     print("Combined:")
     make_combined_context_chart(all_data)
     make_combined_concurrency_chart(all_data)
+
+    print("FP8 vs AWQ:")
+    make_fp8_comparison_chart()
 
     print("\nDone!")

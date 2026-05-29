@@ -39,6 +39,12 @@ Next:
    | Qwen3.6-35B-A3B | MoE 256e (FUSED) + DeltaNet VL | basic+thinking+VISION PASS | ~15 / ~21.6 | **256K** (1.6M-tok KV) | fused-expert FP8 ✓ (see below) |
    | gemma-4-26B-A4B | MoE 128e (FUSED) hybrid VL | basic+thinking+VISION PASS | **18.7 / ~15** | **256K** (SWA, 290K-tok pool) | fused-expert FP8 ✓; FP8 *faster* than AWQ |
 
+   ![FP8 W8A8 vs AWQ-int4 — single-user decode tok/s and max context across the validated fleet](benchmarks/fp8_vs_awq.png)
+
+   *Chart regenerated 2026-05-29 from the FP8 lane sweep (`benchmarks/fp8-comparison.json`, `scripts/bench/generate_charts.py`). Takeaway in one picture: FP8 matches AWQ decode + keeps full 256K **only** for dense ≤24B (Devstral) and the A3B-MoE models; it loses single-user MoE/DeltaNet decode (int4 wins the M=1 bandwidth race) and costs max context above ~24B. gemma-4-26B-A4B is the lone decode win (native fused-expert fp8 WMMA).*
+
+   > **FP8 REAM-A3B variant — not built (2026-05-29).** A 256→192 FP8 re-merge would need the 67 GB parent BF16 resident in RAM, which **wedges this 61 GB box** (the merge ran to layer 31/40, then amdgpu GPU-SVM paging + swap thrash drove system-wide kernel page-allocation failures). And per the crossover above, an FP8 A3B-MoE has **no single-user benefit** here (AWQ-int4 wins M=1 decode). So REAM-A3B's vision fix ships in **AWQ** (see [REAM/REAP matrix](#reamreap-coverage-matrix)); a future FP8 build would need a CPU-only merge or a >64 GB-RAM host.
+
    **Findings (corrects the earlier optimistic context-math):** (1) **Dense ≤24B (Devstral) is the clean FP8 win** — par speed, fits 256K. (2) **FP8 weights are 2× int4, so max context DROPS for larger/hybrid models near the 32GB limit**: 32B-dense → ~159K, 31B-dense(Gemma SWA) → ~51K, 27B-DeltaNet (mamba-state cache eats VRAM) → ~34K. AWQ-int4 reaches 262K on all of these. So FP8 *costs* context above ~24B — NOT "all dense reach 256K". (3) **A3B-MoE keeps a huge KV budget** (coder-30B 522K, qwen36-35B 1.75M tokens) — only 3B active, weights/card modest. (4) Vision + thinking + DeltaNet all survive FP8 (towers/SSM-projections kept BF16). (5) **FP8 MoE vs AWQ is an M-crossover, not a flat 2× loss** — int4 wins single-token decode (M=1) by ~1.5× (bandwidth: 0.5 B/wt vs 1 B), FP8 wins M≥8 (native gfx1201 fp8 WMMA beats int4 dequant→bf16). See the perf analysis below.
 
    ⚠ **DeltaNet ignore fix (2026-05-27):** Qwen3_5 DeltaNet names its recurrent-state input projections `in_proj_qkv`/`in_proj_z` (not just `in_proj_a`/`in_proj_b`). The cast ignore now matches all `in_proj_*` so they stay BF16 (cardinal SSM rule). The two 27B DeltaNet FP8s above were cast *before* this fix (passed short probes anyway); re-cast recommended for long-context fidelity.
@@ -251,7 +257,11 @@ Community checkpoints fail for several architectures (BOS issues, MoE under-cali
 
 ## Performance (2x R9700, TP=2, SGLang v0.5.12)
 
-All context-sweep numbers: `sglang.bench_serving`, FP8 KV cache, `--disable-cuda-graph`, 1 user.  Results are in `benchmarks/<slug>/results.json`, charts in `benchmarks/<slug>/`.
+All context-sweep numbers: `sglang.bench_serving`, FP8 KV cache, `--disable-cuda-graph`, 1 user.  Results are in `benchmarks/<slug>/results.json`; charts (regenerate with `python scripts/bench/generate_charts.py`) in `benchmarks/`.
+
+![All models — single-user decode tok/s vs context length, unified 256K axis](benchmarks/all_models_context.png)
+
+See also the [FP8-vs-AWQ comparison chart](#status-2026-05-26-v0512--256k-matrix-verified) in the FP8 lane above.
 
 ### 256K single-user context sweeps (2026-04-18)
 
@@ -284,12 +294,6 @@ Re-ran `scripts/eval/validate_capabilities.py` against every shipped `mattbucci/
 | Qwen3-Coder-Next-REAM-AWQ | ✅ | n/a | n/a | clean code, 24 tok/s flat 128→16K |
 
 **Headline (updated 2026-05-02):** the M4-audited "AWQ reasoning is broken" was largely a validator artifact. Both regression-flagged models recalibrated and shipped — Qwen3.6-27B-AWQ (basic+thinking+vision PASS) and Qwen3.6-VL-REAP-26B-A3B-AWQ (basic+thinking PASS, vision HSAIL is structural — REAP variant has no vision tensors in safetensors). **Three reusable gotchas captured:** (1) text-only recipe on a multimodal model strips `model-vision.safetensors` AND saves text-only architecture; both must be restored from a v1 reference (`feedback_text_only_recipe_strips_vision.md`). (2) LLaVA-Instruct-150K loader needs `data_files="llava_instruct_150k.json"` pinning or it silently fails and falls back to ultrachat — 0 vision samples gets baked into your calibration (commit 054a10d, ported from 3090 commit 489db4f). (3) VL-REAP-26B has the multimodal class but zero vision tensors — vision crashes are structural from REAP pruning, not calibration.
-| **Coder-Next-REAM 60B AWQ (native, 2026-04-30)** | 23.5 | 24.5 | 23.3 | †FAIL | — | — | — |
-
-† Coder-Next-REAM at 32K+ trips the known HSAIL `invalid configuration argument` in `silu` (same RDNA4 long-decode kernel issue as full-weights Coder-Next, see Active work #1). Rebenched 2026-04-30 with current SGLang stack: short→16K is healthy at ~24 tok/s flat (modest improvement over Apr-12's 21 tok/s baseline, presumably from the post-04-24 Triton 3.6 + patch-set landings). Long-context benching is gated on the same gdn_backend / FLA bisect that gates the full-weights variant.
-| **Qwen3.6-35B-A3B AWQ v2 (audit-fix recipe, 2026-04-28)** | 21.7 | 21.7 | 21.9 | 21.2 | 21.3 | 20.8 | **16.1** |
-| Devstral-24B AWQ (131K) | 27.7 | 29.5 | 26.2 | 22.9 | 15.8 | 9.7 | n/a |
-| Coder-Next 80B AWQ | boots + short gen OK | | | | | | (HSAIL 0x1016 on long decode, see Known Issues) |
 
 All values tok/s single-user.  *Qwen3.5-27B 32K+ numbers collected with concurrent CPU calibration so are conservative (~30-40% under-reported); short context from clean run.  Both 35B-A3B MoE models hit the 256K target with similar characteristics; Qwen3.6 edges out Qwen3.5 at 256K (13.3 vs 12.4).  Dense Qwen3.5-27B drops to 5.8 @ 256K — quadratic full-attention layers dominate at long context.  3090 team measured Qwen3.6 at 14 tok/s @ 250K — parity within the bandwidth-bound regime.
 
