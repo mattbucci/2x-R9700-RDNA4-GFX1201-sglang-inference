@@ -1,0 +1,33 @@
+{
+  "_meta": {
+    "date": "2026-05-29",
+    "stack": "sglang v0.5.12 / ROCm 7.2 / 2x R9700 (32GB) TP=2",
+    "probe": "POST /v1/chat/completions, merge_intervals coding task, max_tokens=256, temp=0.3, after warmup (matches 3090 benchmarks/quality/specdec-v0512-2026-05-29.json for apples-to-apples)",
+    "purpose": "head-to-head vs 3090's AWQ+draft results (their 306 coder-30b / 126 qwen36)",
+    "verdict": "Absolute tok/s goes to the 3090 on both models, for structural reasons. R9700 wins the coder-30b speedup multiplier + acceptance (wide ladder its 32GB fits, the 3090's 24GB does not) and runs spec-decode at full context."
+  },
+  "coder-30b": {
+    "target": "Qwen3-Coder-30B-A3B-AWQ-native (moe_wna16)",
+    "algo": "EAGLE3, lmsys/SGLang-EAGLE3-Qwen3-Coder-30B-A3B-Instruct-SpecForge, wide ladder steps6/topk16/draft32, --speculative-attention-mode decode",
+    "context": 16384,
+    "r9700": {"baseline_tok_s": 22.4, "spec_tok_s": 108.1, "speedup_x": 4.83, "accept_len": 6.0},
+    "rtx3090": {"baseline_tok_s": 185.5, "spec_tok_s": 306.0, "speedup_x": 1.65, "accept_len": 4.12, "ladder": "steps4/topk4/draft8 (wide ladder OOMs draft graphs on 24GB)"},
+    "absolute_winner": "3090 (Marlin INT4 GEMM: ~8x our INT4 baseline; verify-step-bound, no draft closes it)",
+    "multiplier_winner": "R9700 (4.83x vs 1.65x); acceptance 6.0 vs 4.12 (wide ladder)"
+  },
+  "qwen36_family": {
+    "target_r9700": "Qwen3.6-REAM-A3B-AWQ (pruned 192e — our fastest A3B-MoE variant)",
+    "target_3090": "Qwen3.6-35B-A3B-AWQ (full 256e)",
+    "algo": "DFlash, z-lab/Qwen3.6-35B-A3B-DFlash (parent-transfer), --speculative-attention-mode decode",
+    "context": 32768,
+    "r9700": {"baseline_tok_s": 21.8, "spec_tok_s": 69.3, "speedup_x": 3.18, "accept_len": 3.75, "note": "no spec-v2: SGLANG_ENABLE_SPEC_V2 needs --mamba-scheduler-strategy extra_buffer which AssertionErrors on RDNA4 (CUDA/MUSA/NPU only)"},
+    "rtx3090": {"baseline_tok_s": 30.6, "spec_tok_s": 126.3, "speedup_x": 4.1, "accept_len": 5.62, "note": "SGLANG_ENABLE_SPEC_V2=1 + extra_buffer lifts DFlash acceptance to 5.62"},
+    "winner": "3090 (CUDA-only spec-v2 + extra_buffer; unavailable on RDNA4)"
+  },
+  "structural_gaps_on_rdna4": [
+    "Marlin INT4 GEMM: 3090 INT4 decode baseline ~8x R9700 (185 vs 22 on coder-30b). Spec-decode amplifies a faster verify step; it cannot make the verify step itself faster.",
+    "SGLANG_ENABLE_SPEC_V2 + --mamba-scheduler-strategy extra_buffer: gated to CUDA/MUSA/NPU (asserts on ROCm). It lifts DFlash acceptance 3.75->5.62 on Qwen3_5MoeForConditionalGeneration; unavailable to us.",
+    "Where R9700 could win absolute: DeltaNet dense (Qwen3.5/3.6-27B) where our baseline already beats the 3090 ~2x (Triton wave32). But spec-decode there is blocked on both stacks pending a BF16-MTP recast (DFlash drafts OOM the DeltaNet KV)."
+  ],
+  "note_on_our_prior_numbers": "Our README spec-decode summary lists tuned/workload-favorable figures (e.g. REAM-A3B 133 tok/s was a thinking-workload median, accept 7.49). On this standard coding probe REAM-A3B+DFlash = 69.3 (accept 3.75) and coder-30b+EAGLE3 = 108 @16K (vs the table's 97 @256K). Numbers are context- and workload-dependent; compare like-for-like."
+}
