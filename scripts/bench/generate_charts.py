@@ -222,30 +222,40 @@ def make_fp8_comparison_chart():
         data = json.load(f)
     models = data["models"]
     x = np.arange(len(models))
-    w = 0.38
-    FP8C, AWQC = "#f0883e", "#58a6ff"
+    w = 0.38     # Panel 2 (2-bar)
+    w3 = 0.27    # Panel 1 (3-bar)
+    FP8C, AWQC, SPECC = "#f0883e", "#58a6ff", "#3fb950"
     xlabels = [f'{m["name"]}\n{m["kind"]}' for m in models]
 
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 5.5))
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 6))
 
-    # Panel 1 — single-user decode tok/s
+    # Panel 1 — single-user decode tok/s: FP8 / AWQ / + draft (spec-decode).
+    # spec_toks == 0 → no usable draft on this box: show "0 / N/A".
+    seen = set()
+    def _lbl(key, text):
+        if key in seen:
+            return None
+        seen.add(key)
+        return text
     for i, m in enumerate(models):
-        ax1.bar(x[i] - w / 2, m["fp8_toks"], w, color=FP8C, zorder=5,
-                label="FP8 W8A8" if i == 0 else None)
-        ax1.text(x[i] - w / 2, m["fp8_toks"] + 0.3, f'{m["fp8_toks"]:.1f}',
-                 ha="center", fontsize=8, color=FP8C, fontweight="bold")
-        if m["awq_toks"] is not None:
-            ax1.bar(x[i] + w / 2, m["awq_toks"], w, color=AWQC, zorder=5,
-                    label="AWQ int4" if i == 0 else None)
-            ax1.text(x[i] + w / 2, m["awq_toks"] + 0.3, f'{m["awq_toks"]:.0f}',
-                     ha="center", fontsize=8, color=AWQC, fontweight="bold")
+        ax1.bar(x[i] - w3, m["fp8_toks"], w3, color=FP8C, zorder=5, label=_lbl("fp8", "FP8 W8A8 (no spec)"))
+        ax1.text(x[i] - w3, m["fp8_toks"] + 1.0, f'{m["fp8_toks"]:.1f}', ha="center", fontsize=7.5, color=FP8C, fontweight="bold")
+        awq = m["awq_toks"]
+        ax1.bar(x[i], awq if awq else 0, w3, color=AWQC, zorder=5, label=_lbl("awq", "AWQ int4 (no spec)"))
+        ax1.text(x[i], (awq + 1.0) if awq else 2.0, (f'{awq:.0f}' if awq else "n/a"),
+                 ha="center", fontsize=7.5, color=(AWQC if awq else "#8b949e"), fontweight="bold")
+        spec = m["spec_toks"] or 0
+        ax1.bar(x[i] + w3, spec, w3, color=SPECC, zorder=5, label=_lbl("spec", "+ draft (spec-decode)"))
+        if spec > 0:
+            ax1.text(x[i] + w3, spec + 1.0, f'{spec:.0f}\n{m["spec_draft"]}', ha="center", fontsize=6.6, color=SPECC, fontweight="bold")
         else:
-            ax1.text(x[i] + w / 2, 0.6, "n/a", ha="center", fontsize=8, color="#8b949e")
+            ax1.text(x[i] + w3, 2.0, "0\nN/A", ha="center", fontsize=6.6, color="#8b949e", fontweight="bold")
+    _alltoks = [m["fp8_toks"] for m in models] + [m["awq_toks"] or 0 for m in models] + [m["spec_toks"] or 0 for m in models]
     ax1.set_xticks(x); ax1.set_xticklabels(xlabels, rotation=40, ha="right", fontsize=8)
     ax1.set_ylabel("tok/s (single user)")
-    ax1.set_title("Single-user decode — FP8 vs AWQ-int4", fontsize=13, fontweight="bold", pad=10)
-    ax1.legend(loc="upper right", framealpha=0.5, edgecolor="#30363d", facecolor="#161b22")
-    ax1.grid(True, axis="y", linestyle="--"); ax1.set_ylim(bottom=0)
+    ax1.set_title("Single-user decode — FP8 vs AWQ vs + draft (spec-decode)", fontsize=12, fontweight="bold", pad=10)
+    ax1.legend(loc="upper right", framealpha=0.5, edgecolor="#30363d", facecolor="#161b22", fontsize=8)
+    ax1.grid(True, axis="y", linestyle="--"); ax1.set_ylim(bottom=0, top=max(_alltoks) * 1.25)
 
     # Panel 2 — max context (K tokens) @ mem0.85
     for i, m in enumerate(models):

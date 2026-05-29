@@ -1,15 +1,15 @@
 {
-  "title": "FP8 (W8A8 dynamic) vs AWQ-int4",
-  "subtitle": "2x R9700 TP=2, single-user, fp8 KV, 2026-05-27",
-  "note": "FP8 weights are 2x int4: par decode + full 256K for dense <=24B and A3B-MoE (small active set); but FP8 loses single-user MoE/DeltaNet decode (int4 wins M=1 bandwidth) and costs max context above ~24B dense/hybrid. gemma-4-26B-A4B MoE is the one decode win (native fused-expert fp8 WMMA).",
+  "title": "FP8 (W8A8 dynamic) vs AWQ-int4  (+ draft = production spec-decode)",
+  "subtitle": "2x R9700 TP=2, single-user, fp8 KV. no-spec 2026-05-27; spec-decode 2026-05-28",
+  "note": "Bars: FP8 W8A8 and AWQ-int4 are no-spec single-user decode. '+ draft' is the best production spec-decode tok/s (target + draft + --speculative-attention-mode decode @ TP2); 0/N-A means no usable draft on this box (no published draft, draft OOMs the DeltaNet/dense KV, gemma has no DFlash hook, or VL spec is broken sgl#17935). FP8 weights are 2x int4: par decode + full 256K only for dense <=24B and A3B-MoE; FP8 loses single-user MoE/DeltaNet decode (int4 wins M=1) and costs max context above ~24B. gemma-4-26B-A4B is the lone fp8-WMMA decode win.",
   "models": [
-    {"name": "Devstral-24B",        "kind": "dense ≤24B",   "fp8_toks": 37.0, "awq_toks": 37.0, "fp8_ctx_k": 256, "awq_ctx_k": 256},
-    {"name": "gemma-4-26B-A4B",     "kind": "MoE fused",         "fp8_toks": 18.7, "awq_toks": 15.0, "fp8_ctx_k": 256, "awq_ctx_k": 256},
-    {"name": "Qwen3.6-35B-A3B",     "kind": "MoE+DeltaNet",      "fp8_toks": 15.0, "awq_toks": 21.6, "fp8_ctx_k": 256, "awq_ctx_k": 256},
-    {"name": "Qwen3-Coder-30B-A3B", "kind": "MoE 128e",          "fp8_toks": 14.7, "awq_toks": 30.0, "fp8_ctx_k": 256, "awq_ctx_k": 256},
-    {"name": "Qwen3.6-27B",         "kind": "DeltaNet VL",       "fp8_toks": 12.8, "awq_toks": 24.0, "fp8_ctx_k": 34,  "awq_ctx_k": 256},
-    {"name": "Qwen3.5-27B",         "kind": "DeltaNet",          "fp8_toks": 13.1, "awq_toks": 26.0, "fp8_ctx_k": 34,  "awq_ctx_k": 256},
-    {"name": "gemma-4-31B",         "kind": "dense",             "fp8_toks": 11.6, "awq_toks": 15.0, "fp8_ctx_k": 51,  "awq_ctx_k": 256},
-    {"name": "Qwen3-VL-32B",        "kind": "dense VL",          "fp8_toks": 13.0, "awq_toks": null, "fp8_ctx_k": 159, "awq_ctx_k": 256}
+    {"name": "Devstral-24B",        "kind": "dense ≤24B",   "fp8_toks": 37.0, "awq_toks": 37.0, "spec_toks": 0,    "spec_draft": "none published",       "fp8_ctx_k": 256, "awq_ctx_k": 256},
+    {"name": "gemma-4-26B-A4B",     "kind": "MoE fused",         "fp8_toks": 18.7, "awq_toks": 15.0, "spec_toks": 0,    "spec_draft": "no DFlash hook",       "fp8_ctx_k": 256, "awq_ctx_k": 256},
+    {"name": "Qwen3.6-35B-A3B",     "kind": "MoE+DeltaNet",      "fp8_toks": 15.0, "awq_toks": 21.6, "spec_toks": 80.0, "spec_draft": "DFlash (z-lab)",       "fp8_ctx_k": 256, "awq_ctx_k": 256},
+    {"name": "Qwen3-Coder-30B-A3B", "kind": "MoE 128e",          "fp8_toks": 14.7, "awq_toks": 30.0, "spec_toks": 97.0, "spec_draft": "EAGLE3 (lmsys)",       "fp8_ctx_k": 256, "awq_ctx_k": 256},
+    {"name": "Qwen3.6-27B",         "kind": "DeltaNet VL",       "fp8_toks": 12.8, "awq_toks": 24.0, "spec_toks": 0,    "spec_draft": "draft OOMs KV",        "fp8_ctx_k": 34,  "awq_ctx_k": 256},
+    {"name": "Qwen3.5-27B",         "kind": "DeltaNet",          "fp8_toks": 13.1, "awq_toks": 26.0, "spec_toks": 0,    "spec_draft": "draft OOMs KV",        "fp8_ctx_k": 34,  "awq_ctx_k": 256},
+    {"name": "gemma-4-31B",         "kind": "dense",             "fp8_toks": 11.6, "awq_toks": 15.0, "spec_toks": 0,    "spec_draft": "no it-draft (~1.0x)",  "fp8_ctx_k": 51,  "awq_ctx_k": 256},
+    {"name": "Qwen3-VL-32B",        "kind": "dense VL",          "fp8_toks": 13.0, "awq_toks": null, "spec_toks": 0,    "spec_draft": "VL spec broken #17935","fp8_ctx_k": 159, "awq_ctx_k": 256}
   ]
 }
