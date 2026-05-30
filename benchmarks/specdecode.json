@@ -1,0 +1,23 @@
+{
+  "title": "Spec-decode coverage + decode tok/s across the fleet",
+  "subtitle": "2x R9700 TP=2, --speculative-attention-mode decode, full 256K unless noted (2026-05-28)",
+  "note": "Single-bar = best production spec-decode decode tok/s (target + draft + --speculative-attention-mode decode @ TP2). speedup x is over the family's ~22 tok/s no-spec baseline. 'untested' = a viable draft path exists but unbenched; 'blocked' = no working draft yet, with the blocker. As blocked/untested models get fixed, flip status->working + fill spec_toks and regenerate — no model should sit at a bare N/A. Data sourced from the README spec-decode summary + coverage map.",
+  "models": [
+    {"name": "Qwen3.6-REAM-A3B",        "kind": "MoE (merged)",        "status": "working", "spec_toks": 133.0, "speedup": 6.0,  "no_spec": 22.0, "draft": "35B DFlash (transfer)",        "ctx": "256K (text/thinking; vision via -vision dir)"},
+    {"name": "Qwen3-Coder-30B-REAM",    "kind": "MoE (merged)",        "status": "working", "spec_toks": 101.4, "speedup": 4.5, "no_spec": 22.0, "draft": "Coder-30B EAGLE3 (transfer)",   "ctx": "256K"},
+    {"name": "Qwen3-Coder-30B-A3B",     "kind": "MoE 128e",            "status": "working", "spec_toks": 96.9, "speedup": 4.4,  "no_spec": 22.0, "draft": "EAGLE3 (lmsys SpecForge)",     "ctx": "256K"},
+    {"name": "Qwen3-Coder-REAP-25B",    "kind": "MoE (pruned)",        "status": "working", "spec_toks": 90.6, "speedup": 4.0,  "no_spec": 22.6, "draft": "Coder-30B EAGLE3 (transfer)",   "ctx": "256K"},
+    {"name": "Qwen3-Coder-30B-REAP",    "kind": "MoE (pruned)",        "status": "working", "spec_toks": 89.5, "speedup": 4.0,  "no_spec": 22.0, "draft": "Coder-30B EAGLE3 (transfer)",   "ctx": "256K"},
+    {"name": "Qwen3.6-35B-A3B",         "kind": "MoE+DeltaNet",        "status": "working", "spec_toks": 80.0, "speedup": 3.7,  "no_spec": 21.6, "draft": "DFlash (z-lab)",               "ctx": "256K (4/4 incl vision)"},
+    {"name": "Qwen3-Coder-Next-REAM",   "kind": "MoE+DeltaNet (merged)","status": "working","spec_toks": 58.0, "speedup": 2.65, "no_spec": 22.0, "draft": "Aurora-Spec EAGLE3 (transfer)","ctx": "64K (DeltaNet+draft mem)"},
+
+    {"name": "Qwen3.5-28B-A3B-REAP",    "kind": "MoE (pruned)",        "status": "untested", "spec_toks": 0, "draft": "parent DFlash (transfer)", "reason": "parent-draft transfer expected OK; verify vision intact + bench"},
+    {"name": "Qwen3-Coder-Next-80B",    "kind": "MoE+DeltaNet",        "status": "untested", "spec_toks": 0, "draft": "Aurora-Spec EAGLE3",       "reason": "EAGLE path expected OK; unbenched"},
+
+    {"name": "Qwen3.5-27B / Qwen3.6-27B","kind": "dense DeltaNet(-VL)", "status": "blocked", "spec_toks": 0, "draft": "in-ckpt MTP", "reason": "z-lab DFlash 3.3GB OOMs DeltaNet even @16K; FP8 won't fit 2x32GB. Path = AWQ-int4 + BF16-MTP recast"},
+    {"name": "gemma-4-31B / 26B",       "kind": "dense / MoE",         "status": "blocked", "spec_toks": 0, "draft": "assistant MTP / EAGLE3", "reason": "no DFLASH hook; FROZEN_KV_MTP needs transformers 5.8 + SGLang fix; base EAGLE3 draft accept only 1.34 (needs it-matched draft)"},
+    {"name": "Qwen3-VL-32B",            "kind": "dense VL",            "status": "blocked", "spec_toks": 0, "draft": "EAGLE3", "reason": "SGLang VL spec-decode bug #17935 (missing get_embed_and_head)"},
+    {"name": "Qwen3.6-VL-REAP-26B",     "kind": "MoE VL (pruned)",     "status": "blocked", "spec_toks": 0, "draft": "parent transfer", "reason": "VL spec #17935; REAP strip removed vision tensors (needs rebuild)"},
+    {"name": "Devstral-24B",            "kind": "dense (Mistral)",     "status": "blocked", "spec_toks": 0, "draft": "none", "reason": "no published draft; MistralForCausalLMEagle would load one (SpecForge-train)"}
+  ]
+}

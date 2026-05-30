@@ -281,6 +281,49 @@ def make_fp8_comparison_chart():
     print(f"  {path}")
 
 
+def make_specdecode_chart():
+    """Spec-decode coverage + decode tok/s across the WHOLE fleet (benchmarks/specdecode.json),
+    not just the fp8-vs-awq subset. Working ships get a tok/s bar (draft + speedup label);
+    untested/blocked ships show the *reason* in place of a bare N/A. Fully data-driven: as a
+    blocked/untested model gets fixed, flip its status to 'working' + fill spec_toks in the
+    json and regenerate — nothing here hardcodes which models have a draft."""
+    from matplotlib.patches import Patch
+    with open(os.path.join(BENCH_DIR, "specdecode.json")) as f:
+        data = json.load(f)
+    order = {"working": 0, "untested": 1, "blocked": 2}
+    models = sorted(data["models"], key=lambda m: (order.get(m["status"], 3), -(m.get("spec_toks") or 0)))
+    COL = {"working": "#3fb950", "untested": "#d29922", "blocked": "#6e7681"}
+    maxtok = max((m.get("spec_toks") or 0) for m in models) or 100.0
+    y = list(range(len(models)))[::-1]   # first (best) model at top
+
+    fig, ax = plt.subplots(figsize=(13, 7.5))
+    for yi, m in zip(y, models):
+        st = m["status"]; tok = m.get("spec_toks") or 0
+        ax.barh(yi, tok, height=0.62, color=COL[st], zorder=5, edgecolor="#0d1117", linewidth=0.5)
+        if st == "working" and tok > 0:
+            ax.text(tok + maxtok * 0.012, yi,
+                    f'{tok:.0f} tok/s  ·  {m["speedup"]:g}×  ·  {m["draft"]}  ·  {m["ctx"]}',
+                    va="center", fontsize=8, color=COL["working"], fontweight="bold")
+        else:
+            ax.text(maxtok * 0.012, yi, f'{st}: {m.get("reason", "")}',
+                    va="center", fontsize=7.6, color=COL[st], style="italic")
+    ax.set_yticks(y)
+    ax.set_yticklabels([f'{m["name"]}\n{m["kind"]}' for m in models], fontsize=8)
+    ax.set_xlabel("spec-decode decode tok/s  (single-user, TP=2, --speculative-attention-mode decode)")
+    ax.set_xlim(0, maxtok * 1.55)
+    ax.set_title(data["title"], fontsize=13, fontweight="bold", pad=10)
+    ax.grid(True, axis="x", linestyle="--")
+    n = {s: sum(1 for m in models if m["status"] == s) for s in ("working", "untested", "blocked")}
+    ax.legend(handles=[Patch(color=COL[s], label=f"{s} ({n[s]})") for s in ("working", "untested", "blocked")],
+              loc="lower right", framealpha=0.6, edgecolor="#30363d", facecolor="#161b22", fontsize=9)
+    fig.suptitle(data["subtitle"], fontsize=9.5, y=0.965, color="#8b949e")
+    fig.tight_layout()
+    path = os.path.join(BENCH_DIR, "specdecode_fleet.png")
+    fig.savefig(path, dpi=150, bbox_inches="tight")
+    plt.close(fig)
+    print(f"  {path}")
+
+
 if __name__ == "__main__":
     print("Generating benchmark charts...\n")
 
@@ -301,5 +344,8 @@ if __name__ == "__main__":
 
     print("FP8 vs AWQ:")
     make_fp8_comparison_chart()
+
+    print("Spec-decode fleet:")
+    make_specdecode_chart()
 
     print("\nDone!")
