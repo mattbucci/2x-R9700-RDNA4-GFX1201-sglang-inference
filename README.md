@@ -118,6 +118,15 @@ Next:
 
 Multi-hour calibrations are authorized and run in the background via `setsid` + PID file; see `CLAUDE.md`.
 
+### Grafting BF16 components from the upstream base into a quantized ship
+
+When a quant pipeline drops a component, you can sometimes splice the BF16 original back from the upstream base instead of recalibrating — **but only for input-side / quant-decoupled components.**
+
+- ✅ **Vision tower (`model.visual.*`) — grafts cleanly.** It's an input-side feature extractor (pixels → embeddings), independent of how the LM is quantized. Splice the fp16/bf16 tensors into a new shard, add the keys to `model.safetensors.index.json`, and list them in `quantization_config.ignore` so the loader keeps them unquantized. Proven: **REAM-A3B vision FIXED 4/4** (R9700, `scripts/quantize/merge_vision_weights.py --vision-prefix model.visual`) and **qwen36-ream 5/5** (3090, same idea). The cheap fix for any REAM/REAP/text-only-calibrated VL ship that lost its tower — no re-merge, no recal.
+- ❌ **MTP / draft head (`mtp.*`) — does NOT graft onto int4/AWQ.** The MTP predicts the next token from the *backbone's hidden states*; int4 quant shifts those states enough that a BF16-trained MTP accepts ~0% (Qwen3.5-27B graft, 2026-05-29: accept_len 1.00, accept_rate 0.00, **0.1 tok/s — far worse than the 26 no-spec baseline**). It tolerates **FP8** (8-bit shift is small — the 35B-FP8 in-ckpt MTP accepts 2.26) but not int4. **For int4 spec-decode use a separately-trained, quant-robust draft (EAGLE3/DFlash), never a grafted in-ckpt MTP.** (Dense-27B has no fitting EAGLE3 draft and the z-lab DFlash OOMs → no AWQ spec-decode path on this HW.)
+
+**Principle:** graft components *decoupled* from the quantized weights (vision towers consume raw pixels). Don't graft components *coupled* to the exact backbone activations (MTP/draft heads are tuned to the BF16 hidden states; quantization breaks the coupling unless the shift is tiny, i.e. FP8).
+
 ## Known Issues
 
 Open issues only. Resolved items live in [patches/README.md](patches/README.md) and `git log -- README.md`.
