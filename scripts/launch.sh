@@ -10,6 +10,7 @@
 #
 # Models:
 #   devstral       Devstral-24B AWQ (32K context, best all-round)
+#   devstral2      Devstral-Small-2 24B FP8 (Mistral3 dense+vision, YaRN 256K, 68% SWE-bench Verified)
 #   coder-30b      Qwen3-Coder-30B MoE AWQ (32K, best throughput)
 #   coder-next     Qwen3-Coder-Next-80B MoE+DeltaNet AWQ (128K)
 #   coder-next-ream Qwen3-Coder-Next REAM 60B AWQ (128K, pruned 80→60B)
@@ -67,6 +68,33 @@ apply_preset() {
             # user at 32K throughput, use: --context-length 32768 --max-running 64
             MODEL="${MODEL:-$MODELS_DIR/Devstral-24B-AWQ-4bit-calibrated}"
             CTX=131072; MEM=0.90; MAX_RUNNING=8; CHUNKED=8192
+            TOOL_CALL_PARSER="mistral"
+            OVERLAP=""
+            ;;
+        devstral2)
+            # Devstral Small 2 (2512) — Mistral3, dense 24B + vision tower, YaRN
+            # rope (text_config.rope_parameters; max_position 393216, recommended
+            # max_seq_len 262144 = 256K). OFFICIAL Mistral FP8 — Mistral ships this
+            # model FP8-only (no BF16 upstream; both HF model-* and the Mistral-native
+            # consolidated-* are FP8). quant_method=fp8, activation_scheme=static,
+            # per-tensor (weight_block_size=null); vision_tower + multi_modal_projector
+            # + lm_head kept BF16 via modules_to_not_convert. So we serve their
+            # first-party FP8 via --quantization fp8 (NOT compressed-tensors — forcing CT
+            # builds the wrong param types and crashes the loader). NOTE the scale-name
+            # quirk: Mistral uses weight_scale_inv/activation_scale; if SGLang's mistral.py
+            # doesn't remap these (it only handles the older .qscale_act), patch the remap.
+            # 68% SWE-bench Verified base. Clean chat template (bos via {{ bos_token }}
+            # variable, no Devstral-1 BOS <unk> bug). New Mistral tool format
+            # [TOOL_CALLS]name[ARGS]args → mistral parser (verified: emits valid tool_calls).
+            # CONTEXT CEILING ~143K, NOT 256K: SGLang upcasts FP8 weights to BF16 in VRAM
+            # for this Llava/ministral3 arch on RDNA4 (~23 GB/card at TP2 — measured for
+            # BOTH --quantization fp8 AND a clean compressed-tensors recast), so the KV
+            # pool tops out max_total_num_tokens≈144936. Dense 24B can't reach 256K in FP8
+            # on 2×32GB (consistent w/ rdna4-fp8-lane: AWQ-int4 is the dense 256K format;
+            # only A3B-MoE FP8 keeps 256K). 143K >> SWE-bench prompts, so fine for the eval.
+            MODEL="${MODEL:-$MODELS_DIR/Devstral-Small-2-24B-FP8}"
+            CTX=262144; MEM=0.90; MAX_RUNNING=8; CHUNKED=8192
+            DTYPE="bfloat16"; QUANT="fp8"
             TOOL_CALL_PARSER="mistral"
             OVERLAP=""
             ;;

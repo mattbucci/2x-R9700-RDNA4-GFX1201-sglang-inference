@@ -65,7 +65,11 @@ IGNORE_RE = [r".*vision_tower.*", r".*visual.*", r".*vision_model.*",
              # so BF16 costs ~nothing. Handled by the early-copy guard in the loop too,
              # since is_fused_expert() bypasses the ignore check for 3D experts.
              r"mtp\..*", r".*\.mtp\..*",
-             r"lm_head"] + a.ignore
+             # lm_head MUST stay BF16 (logit precision). Wrap in .* — is_ignored() anchors
+             # with fullmatch/match, so a bare "lm_head" MISSES nested names like Mistral3's
+             # "language_model.lm_head" (Mistral3ForConditionalGeneration). 2026-05-30: that
+             # miss FP8'd Devstral-2's lm_head. .*lm_head.* matches flat and nested both.
+             r".*lm_head.*"] + a.ignore
 # EXPERIMENTAL re-enable: drop patterns matching --quantize-also so those weights get FP8'd.
 if a.quantize_also:
     kept = [p for p in IGNORE_RE if not any(s in p for s in a.quantize_also)]
