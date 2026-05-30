@@ -364,6 +364,18 @@ Run with `scripts/eval/eval_and_chart.py`: MMLU (100 samples), HumanEval pass@1 
 
 Every new AWQ must pass `scripts/eval/validate_capabilities.py` (thinking + vision + basic) before entering this table.
 
+### SWE-bench Lite — FP8 agentic coding (2026-05-30, buildable subset)
+
+opencode agent → local SGLang FP8 server → no-docker `score_local` (per-repo swebench specs in a uv venv; harness ported from the 3090 stack, driven via `evals/swebench/run_rollouts.py --model sglang/<name>`). Run on a **15-instance buildable subset** (django/seaborn/flask/requests/xarray/pylint) — excludes heavy C-extension repos (astropy/matplotlib/scikit-learn) and ancient instances that fail no-docker env-fidelity. Harness validated: gold patches resolve **2/2** on modern instances. Raw: `benchmarks/swebench/fp8-lite-2026-05-30.json`.
+
+| Model | Resolved | Notes |
+|-------|:--------:|-------|
+| Qwen3-Coder-30B-A3B-FP8 | **6/15 (40%)** | coder-specialized; **15/15 patches applied**; django 3/3, requests 1/1 |
+| Qwen3.6-35B-A3B-FP8 | 2/15 (13%) | generalist+thinking; **7/15 timed out at 600s** (thinking overhead → slow rollouts); several edits regressed p2p |
+| Devstral-Small-2-24B-FP8 | deferred | tool-call **tokenizer bug** — HF tekken regex mis-tokenizes `[TOOL_CALLS]` in multi-turn → model emits tool calls as text → empty diffs (0/15). Needs SGLang `mistral_common` routing (model ships `tekken.json`; `is_mistral_model` doesn't match "devstral"). 68% SWE-bench Verified base — would likely lead once fixed. |
+
+⚠ **Not comparable to full-Lite-300 numbers** (e.g. the 3090's Coder-REAP-25B 29.3% in the top banner) — this is a small, buildable-curated subset (higher % expected). It's a relative FP8-model comparison + end-to-end pipeline validation, not a leaderboard figure; full Lite-300 is the follow-up. Both A3B-MoE models serve **256K+ in FP8** (Coder-30B 524K-tok KV, Qwen3.6-35B 1.62M-tok KV — only 3B active); dense Devstral-2 caps ~145K (FP8 weights upcast to BF16 for the ministral3/Llava arch, both `fp8` and compressed-tensors formats).
+
 ## Infrastructure Summary
 
 - **SGLang v0.5.12** (vendored at `components/sglang/`) + RDNA4 patches — see [patches/README.md](patches/README.md).

@@ -1,0 +1,339 @@
+{
+  "date": "2026-05-30",
+  "stack": "2x R9700 RDNA4 gfx1201, ROCm 7.2, SGLang v0.5.12",
+  "harness": "opencode agent -> local SGLang (FP8) ; no-docker score_local (per-repo swebench specs, uv venv)",
+  "dataset": "princeton-nlp/SWE-bench_Lite test",
+  "subset": "15 buildable instances (django/seaborn/flask/requests/xarray/pylint); EXCLUDES hard C-ext (astropy/matplotlib/scikit-learn) + ancient requests \u2014 these fail no-docker env-fidelity",
+  "harness_validation": "gold patches resolve 2/2 on modern instances (flask-4992, requests-3362)",
+  "rollout_timeout_s": 600,
+  "models": {
+    "Qwen3-Coder-30B-A3B-FP8": {
+      "served_kv_tokens": 524859,
+      "context_len": 200000,
+      "tool_parser": "qwen3_coder"
+    },
+    "Qwen3.6-35B-A3B-FP8": {
+      "served_kv_tokens": 1621637,
+      "context_len": 200000,
+      "note": "thinking+DeltaNet; 7/15 hit 600s timeout"
+    },
+    "Devstral-Small-2-24B-FP8": {
+      "served_kv_tokens": 144936,
+      "context_len": 262144,
+      "status": "DEFERRED \u2014 tokenizer tool-call bug (HF tekken regex mis-tokenizes [TOOL_CALLS] in multi-turn -> empty diffs 0/15); needs SGLang mistral_common routing fix"
+    }
+  },
+  "results": {
+    "Qwen3-Coder-30B-A3B-FP8": {
+      "resolved": 6,
+      "total": 15,
+      "pct": 40.0,
+      "patch_applied": 15,
+      "rows": [
+        {
+          "instance_id": "django__django-10914",
+          "rollout_seconds": 54.7,
+          "resolved": true,
+          "patch_applied": true,
+          "f2p_passed": 1,
+          "f2p_total": 1,
+          "p2p_passed": 98,
+          "p2p_total": 98,
+          "score_seconds": 3.9
+        },
+        {
+          "instance_id": "django__django-10924",
+          "rollout_seconds": 134.6,
+          "resolved": true,
+          "patch_applied": true,
+          "f2p_passed": 1,
+          "f2p_total": 1,
+          "p2p_passed": 1,
+          "p2p_total": 1,
+          "score_seconds": 2.2
+        },
+        {
+          "instance_id": "django__django-11001",
+          "rollout_seconds": 113.9,
+          "resolved": true,
+          "patch_applied": true,
+          "f2p_passed": 2,
+          "f2p_total": 2,
+          "p2p_passed": 118,
+          "p2p_total": 118,
+          "score_seconds": 2.3
+        },
+        {
+          "instance_id": "mwaskom__seaborn-2848",
+          "rollout_seconds": 307.5,
+          "resolved": false,
+          "patch_applied": true,
+          "f2p_passed": 0,
+          "f2p_total": 1,
+          "p2p_passed": 50,
+          "p2p_total": 50,
+          "score_seconds": 16.6
+        },
+        {
+          "instance_id": "mwaskom__seaborn-3010",
+          "rollout_seconds": 45.6,
+          "resolved": true,
+          "patch_applied": true,
+          "f2p_passed": 1,
+          "f2p_total": 1,
+          "p2p_passed": 2,
+          "p2p_total": 2,
+          "score_seconds": 5.2
+        },
+        {
+          "instance_id": "mwaskom__seaborn-3190",
+          "rollout_seconds": 82.8,
+          "resolved": false,
+          "patch_applied": true,
+          "f2p_passed": 0,
+          "f2p_total": 1,
+          "p2p_passed": 84,
+          "p2p_total": 84,
+          "score_seconds": 6.7
+        },
+        {
+          "instance_id": "pallets__flask-4045",
+          "rollout_seconds": 120.1,
+          "resolved": false,
+          "patch_applied": true,
+          "f2p_passed": 0,
+          "f2p_total": 2,
+          "p2p_passed": 50,
+          "p2p_total": 50,
+          "score_seconds": 5.7
+        },
+        {
+          "instance_id": "pallets__flask-4992",
+          "rollout_seconds": 79.1,
+          "resolved": false,
+          "patch_applied": true,
+          "f2p_passed": 0,
+          "f2p_total": 1,
+          "p2p_passed": 18,
+          "p2p_total": 18,
+          "score_seconds": 2.0
+        },
+        {
+          "instance_id": "pallets__flask-5063",
+          "rollout_seconds": 592.8,
+          "resolved": false,
+          "patch_applied": true,
+          "f2p_passed": 0,
+          "f2p_total": 2,
+          "p2p_passed": 51,
+          "p2p_total": 54,
+          "score_seconds": 2.2
+        },
+        {
+          "instance_id": "psf__requests-3362",
+          "rollout_seconds": 69.4,
+          "resolved": true,
+          "patch_applied": true,
+          "f2p_passed": 1,
+          "f2p_total": 1,
+          "p2p_passed": 75,
+          "p2p_total": 75,
+          "score_seconds": 1.9
+        },
+        {
+          "instance_id": "pydata__xarray-3364",
+          "rollout_seconds": 368.9,
+          "resolved": true,
+          "patch_applied": true,
+          "f2p_passed": 2,
+          "f2p_total": 2,
+          "p2p_passed": 110,
+          "p2p_total": 110,
+          "score_seconds": 5.7
+        },
+        {
+          "instance_id": "pydata__xarray-4094",
+          "rollout_seconds": 523.9,
+          "resolved": false,
+          "patch_applied": true,
+          "f2p_passed": 0,
+          "f2p_total": 1,
+          "p2p_passed": 768,
+          "p2p_total": 862,
+          "score_seconds": 8.0
+        },
+        {
+          "instance_id": "pydata__xarray-4248",
+          "rollout_seconds": 353.1,
+          "resolved": false,
+          "patch_applied": true,
+          "f2p_passed": 0,
+          "f2p_total": 1,
+          "p2p_passed": 16,
+          "p2p_total": 18,
+          "score_seconds": 3.6
+        },
+        {
+          "instance_id": "pylint-dev__pylint-5859",
+          "rollout_seconds": 278.7,
+          "resolved": false,
+          "patch_applied": true,
+          "f2p_passed": 1,
+          "f2p_total": 1,
+          "p2p_passed": 9,
+          "p2p_total": 10,
+          "score_seconds": 2.2
+        },
+        {
+          "instance_id": "pylint-dev__pylint-6506",
+          "rollout_seconds": 101.2,
+          "resolved": false,
+          "patch_applied": true,
+          "f2p_passed": 0,
+          "f2p_total": 2,
+          "p2p_passed": 0,
+          "p2p_total": 6,
+          "score_seconds": 2.6
+        }
+      ]
+    },
+    "Qwen3.6-35B-A3B-FP8": {
+      "resolved": 2,
+      "total": 15,
+      "pct": 13.3,
+      "patch_applied": 8,
+      "rows": [
+        {
+          "instance_id": "django__django-10914",
+          "rollout_seconds": 383.8,
+          "resolved": true,
+          "patch_applied": true,
+          "f2p_passed": 1,
+          "f2p_total": 1,
+          "p2p_passed": 98,
+          "p2p_total": 98,
+          "score_seconds": 1.7
+        },
+        {
+          "instance_id": "django__django-10924",
+          "rollout_seconds": 495.8,
+          "resolved": false,
+          "patch_applied": false
+        },
+        {
+          "instance_id": "django__django-11001",
+          "rollout_seconds": 600.7,
+          "resolved": false,
+          "patch_applied": true,
+          "f2p_passed": 0,
+          "f2p_total": 2,
+          "p2p_passed": 118,
+          "p2p_total": 118,
+          "score_seconds": 1.7
+        },
+        {
+          "instance_id": "mwaskom__seaborn-2848",
+          "rollout_seconds": 532.9,
+          "resolved": false,
+          "patch_applied": false
+        },
+        {
+          "instance_id": "mwaskom__seaborn-3010",
+          "rollout_seconds": 600.2,
+          "resolved": false,
+          "patch_applied": true,
+          "f2p_passed": 0,
+          "f2p_total": 1,
+          "p2p_passed": 0,
+          "p2p_total": 2,
+          "score_seconds": 1.8
+        },
+        {
+          "instance_id": "mwaskom__seaborn-3190",
+          "rollout_seconds": 600.1,
+          "resolved": false,
+          "patch_applied": false
+        },
+        {
+          "instance_id": "pallets__flask-4045",
+          "rollout_seconds": 59.1,
+          "resolved": false,
+          "patch_applied": true,
+          "f2p_passed": 0,
+          "f2p_total": 2,
+          "p2p_passed": 50,
+          "p2p_total": 50,
+          "score_seconds": 5.0
+        },
+        {
+          "instance_id": "pallets__flask-4992",
+          "rollout_seconds": 499.8,
+          "resolved": false,
+          "patch_applied": false
+        },
+        {
+          "instance_id": "pallets__flask-5063",
+          "rollout_seconds": 600.1,
+          "resolved": false,
+          "patch_applied": false
+        },
+        {
+          "instance_id": "psf__requests-3362",
+          "rollout_seconds": 590.6,
+          "resolved": true,
+          "patch_applied": true,
+          "f2p_passed": 1,
+          "f2p_total": 1,
+          "p2p_passed": 75,
+          "p2p_total": 75,
+          "score_seconds": 1.9
+        },
+        {
+          "instance_id": "pydata__xarray-3364",
+          "rollout_seconds": 600.2,
+          "resolved": false,
+          "patch_applied": true,
+          "f2p_passed": 0,
+          "f2p_total": 2,
+          "p2p_passed": 0,
+          "p2p_total": 110,
+          "score_seconds": 2.2
+        },
+        {
+          "instance_id": "pydata__xarray-4094",
+          "rollout_seconds": 516.0,
+          "resolved": false,
+          "patch_applied": false
+        },
+        {
+          "instance_id": "pydata__xarray-4248",
+          "rollout_seconds": 600.1,
+          "resolved": false,
+          "patch_applied": true,
+          "f2p_passed": 0,
+          "f2p_total": 1,
+          "p2p_passed": 0,
+          "p2p_total": 18,
+          "score_seconds": 2.5
+        },
+        {
+          "instance_id": "pylint-dev__pylint-5859",
+          "rollout_seconds": 600.2,
+          "resolved": false,
+          "patch_applied": false
+        },
+        {
+          "instance_id": "pylint-dev__pylint-6506",
+          "rollout_seconds": 43.1,
+          "resolved": false,
+          "patch_applied": true,
+          "f2p_passed": 0,
+          "f2p_total": 2,
+          "p2p_passed": 0,
+          "p2p_total": 6,
+          "score_seconds": 2.5
+        }
+      ]
+    }
+  }
+}
