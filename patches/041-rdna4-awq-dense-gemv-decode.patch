@@ -1,0 +1,44 @@
+diff --git a/python/sglang/srt/hardware_backend/gpu/quantization/awq_kernels.py b/python/sglang/srt/hardware_backend/gpu/quantization/awq_kernels.py
+index 59ef742..f4ad410 100644
+--- a/python/sglang/srt/hardware_backend/gpu/quantization/awq_kernels.py
++++ b/python/sglang/srt/hardware_backend/gpu/quantization/awq_kernels.py
+@@ -75,6 +75,15 @@ else:
+ 
+ _, scalar_types = get_scalar_types()
+ 
++# R9700: fused int4 AWQ GEMV for M=1 decode (HIP/ROCm, BF16). Built from
++# components/.../awq/awq_gemv_hip.cu via scripts/build_awq_gemv.sh. Reads int4
++# weights directly instead of dequantizing the full weight to bf16 + a dense
++# rocBLAS GEMM (which together were 94% of qwen36-27b decode time at ~4.5 tok/s).
++try:
++    from awq_gemv_hip_ext import awq_gemv_bf16_hip as _awq_gemv_bf16
++except ImportError:
++    _awq_gemv_bf16 = None
++
+ 
+ class AWQLinearKernel:
+     def __init__(self, quant_config: Optional["QuantizationConfig"] = None):
+@@ -97,8 +106,21 @@ class AWQLinearKernel:
+         pack_factor = self.quant_config.pack_factor
+         out_shape = x.shape[:-1] + (qweight.shape[-1] * pack_factor,)
+         reshaped_x = x.reshape(-1, x.shape[-1])
+-        out = awq_dequantize(qweight, scales, qzeros)
+-        out = torch.matmul(reshaped_x, out)
++        # R9700 FIX: for M=1 decode use the fused int4 GEMV (memory-bound on int4)
++        # instead of dequantizing the whole weight to bf16 + a dense GEMM. The old
++        # path was ~20x under the int4 memory roofline (e.g. qwen36-27b 4.5 tok/s);
++        # awq_dequantize + rocBLAS GEMM were 94% of decode time. Validated cos~1.0
++        # vs that reference. M>1 (prefill/batched) and non-bf16 keep the old path.
++        if (
++            _awq_gemv_bf16 is not None
++            and reshaped_x.shape[0] == 1
++            and reshaped_x.dtype == torch.bfloat16
++            and scales.dtype == torch.bfloat16
++        ):
++            out = _awq_gemv_bf16(reshaped_x, qweight, scales, qzeros, 0).reshape(1, -1)
++        else:
++            out = awq_dequantize(qweight, scales, qzeros)
++            out = torch.matmul(reshaped_x, out)
+ 
+         if bias is not None:
+             out.add_(bias)
