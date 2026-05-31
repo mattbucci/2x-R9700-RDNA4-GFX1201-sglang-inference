@@ -11,6 +11,7 @@
     {"name": "Qwen3.6-27B",         "kind": "DeltaNet VL",       "fp8_toks": 12.8, "awq_toks": 24.0, "spec_toks": 0,    "spec_draft": "draft OOMs KV",        "fp8_ctx_k": 256, "awq_ctx_k": 256},
     {"name": "Qwen3.5-27B",         "kind": "DeltaNet",          "fp8_toks": 13.1, "awq_toks": 26.0, "spec_toks": 0,    "spec_draft": "draft OOMs KV",        "fp8_ctx_k": 256, "awq_ctx_k": 256},
     {"name": "gemma-4-31B",         "kind": "dense",             "fp8_toks": 11.6, "awq_toks": 15.0, "spec_toks": 0,    "spec_draft": "no it-draft (~1.0x)",  "fp8_ctx_k": 51,  "awq_ctx_k": 256},
-    {"name": "Qwen3-VL-32B",        "kind": "dense VL",          "fp8_toks": 13.0, "awq_toks": null, "spec_toks": 0,    "spec_draft": "VL spec broken #17935","fp8_ctx_k": 159, "awq_ctx_k": 256}
+    {"name": "Qwen3-VL-32B",        "kind": "dense VL",          "fp8_toks": 13.0, "awq_toks": null, "spec_toks": 0,    "spec_draft": "VL spec broken #17935","fp8_ctx_k": 159, "awq_ctx_k": 256},
+    {"name": "Nemotron-3-Nano-Omni-30B", "kind": "Mamba2 hybrid AVLM", "fp8_toks": 29.0, "awq_toks": null, "spec_toks": 0, "spec_draft": "none (no bundled/published draft)", "fp8_ctx_k": 256, "awq_ctx_k": null}
   ]
 }

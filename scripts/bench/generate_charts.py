@@ -259,14 +259,16 @@ def make_fp8_comparison_chart():
 
     # Panel 2 — max context (K tokens) @ mem0.85
     for i, m in enumerate(models):
-        ax2.bar(x[i] - w / 2, m["fp8_ctx_k"], w, color=FP8C, zorder=5,
+        fctx = m["fp8_ctx_k"]
+        actx = m["awq_ctx_k"]
+        ax2.bar(x[i] - w / 2, fctx if fctx else 0, w, color=FP8C, zorder=5,
                 label="FP8 W8A8" if i == 0 else None)
-        ax2.bar(x[i] + w / 2, m["awq_ctx_k"], w, color=AWQC, zorder=5,
+        ax2.bar(x[i] + w / 2, actx if actx else 0, w, color=AWQC, zorder=5,
                 label="AWQ int4" if i == 0 else None)
-        ax2.text(x[i] - w / 2, m["fp8_ctx_k"] + 4, f'{m["fp8_ctx_k"]}K',
-                 ha="center", fontsize=8, color=FP8C, fontweight="bold")
-        ax2.text(x[i] + w / 2, m["awq_ctx_k"] + 4, f'{m["awq_ctx_k"]}K',
-                 ha="center", fontsize=8, color=AWQC, fontweight="bold")
+        ax2.text(x[i] - w / 2, (fctx + 4) if fctx else 4, (f'{fctx}K' if fctx else "n/a"),
+                 ha="center", fontsize=8, color=(FP8C if fctx else "#8b949e"), fontweight="bold")
+        ax2.text(x[i] + w / 2, (actx + 4) if actx else 4, (f'{actx}K' if actx else "n/a"),
+                 ha="center", fontsize=8, color=(AWQC if actx else "#8b949e"), fontweight="bold")
     ax2.set_xticks(x); ax2.set_xticklabels(xlabels, rotation=40, ha="right", fontsize=8)
     ax2.set_ylabel("max context @ mem0.85 (K tokens)")
     ax2.set_title("Max context — FP8 vs AWQ-int4", fontsize=13, fontweight="bold", pad=10)
