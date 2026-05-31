@@ -39,7 +39,7 @@ Next:
    | FP8 model | type | quality | tok/s (FP8/AWQ) | max ctx @mem0.85 | notes |
    |---|---|---|:---:|:---:|---|
    | Devstral-24B (v1) | dense | code+tool PASS | 37 / 37 | **256K** (413K-tok KV) | text-only Devstral-Small-2507; clean win, FP8 par w/ AWQ |
-   | Devstral-2-24B | dense + vision | basic+vision+tool PASS | ~23 @32K / — | **~131K** single-seq @mem0.90 (pool 180K) | v2 Mistral3 (`devstral2`); BF16 vision tower eats KV → <256K @0.90; retest @0.92 (task #10); no draft |
+   | Devstral-2-24B | dense + vision | basic+vision+tool PASS | ~23 @32K / — | **~180K** single-seq (pool 180572@0.90; 164978@0.92) | v2 Mistral3 (`devstral2`); **256K NOT reachable** — mem-fraction doesn't help (transient floor, ~12.5 GB free @KV-sizing); BF16 vision tower eats KV; AWQ-int4 is the dense 256K path; no draft |
    | Qwen3-Coder-30B-A3B | MoE 128e | code PASS | ~18 @32K / ~30 | **256K** ✓ (522K-tok KV) | **FP8+EAGLE3 = 86 tok/s coherent @256K** — the one FP8+draft 256K win (tiny 361MB draft, pure MoE, accept ~5.5); no-spec flat 18/17 @32K/131K |
    | Qwen3-VL-32B | dense VL | basic+VISION PASS | 13.0 / — | ~159K (158K tok) | largest dense; vision survives FP8 |
    | gemma-4-31B | dense (Gemma4) | basic+thinking PASS | 11.6 / ~15 | ~51K (51K tok) | torch_native; vision = known AWQ HSAIL (not FP8) |

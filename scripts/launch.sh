@@ -86,16 +86,17 @@ apply_preset() {
             # 68% SWE-bench Verified base. Clean chat template (bos via {{ bos_token }}
             # variable, no Devstral-1 BOS <unk> bug). New Mistral tool format
             # [TOOL_CALLS]name[ARGS]args → mistral parser (verified: emits valid tool_calls).
-            # FULL 256K (corrected 2026-05-31 — the old "143K ceiling, FP8 upcasts to
-            # BF16" reading was WRONG). FP8 is NATIVE here: params are FP8 11.11 GB +
-            # BF16 1.82 GB = 12.93 GB/card; decode uses native FP8 GEMMs (rocBLAS F8BS),
-            # not BF16. The 143K cap was a memory LEAK — per-tensor FP8 requantize left
-            # ~11 GB/card of loading transients held by reference cycles, inflating the
-            # measured weight memory and starving the KV pool. patches/042 reclaims them
-            # (synchronize + gc.collect x2 + empty_cache before the KV-pool sizing):
-            # weight usage 23.56→14.45 GB/card, max_total_num_tokens 126K→413K → serves
-            # the full 256K context, coherent. (rdna4-fp8-lane "AWQ-int4 is the only dense
-            # 256K format" no longer holds for dense FP8 served via Fp8Config.)
+            # FP8 is NATIVE here (not upcast): params FP8 11.11 GB + BF16 1.82 GB =
+            # 12.93 GB/card; decode uses native FP8 GEMMs (rocBLAS F8BS). patches/042
+            # reclaims per-tensor-FP8 loading transients (synchronize + gc.collect x2 +
+            # empty_cache before KV-pool sizing). BUT max single-sequence context is
+            # ~180K, NOT 256K (re-measured 2026-05-31 post-iommu=pt: max_total_num_tokens
+            # = 180572 @mem0.90, 164978 @mem0.92 — raising mem-fraction does NOT help;
+            # only ~12.5 GB free at KV sizing). The earlier "126K→413K → full 256K" claim
+            # does NOT hold for THIS v2-with-vision build (the BF16 vision tower + residual
+            # transients eat the KV budget; that figure was likely the v1 text-only
+            # Devstral-Small-2507). FOLLOW-UP: why does patch-042 reclaim underdeliver for
+            # the VL build? For true dense single-user 256K, AWQ-int4 remains the path.
             MODEL="${MODEL:-$MODELS_DIR/Devstral-Small-2-24B-FP8}"
             # Ensure the agentic sampling defaults (see note below) live in the model's
             # generation_config.json so SGLang's --sampling-defaults model applies them
