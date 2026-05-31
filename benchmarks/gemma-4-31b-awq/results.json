@@ -1,0 +1,86 @@
+{
+  "model": "Gemma 4 31B AWQ",
+  "engine": "SGLang",
+  "method": "sglang.bench_serving",
+  "hardware": "2x R9700 TP=2",
+  "timestamp": "2026-05-31 16:22:44",
+  "output_tokens": 100,
+  "context_sweep": [
+    {
+      "context": 128,
+      "input_len": 64,
+      "tpot_ms": 87.2,
+      "tok_per_sec": 11.5,
+      "ttft_ms": 183.8,
+      "throughput": 4.8
+    },
+    {
+      "context": 256,
+      "input_len": 128,
+      "tpot_ms": 87.36,
+      "tok_per_sec": 11.4,
+      "ttft_ms": 182.62,
+      "throughput": 4.8
+    },
+    {
+      "context": 512,
+      "input_len": 256,
+      "tpot_ms": 87.33,
+      "tok_per_sec": 11.5,
+      "ttft_ms": 183.44,
+      "throughput": 4.8
+    },
+    {
+      "context": 1024,
+      "input_len": 512,
+      "tpot_ms": 87.46,
+      "tok_per_sec": 11.4,
+      "ttft_ms": 183.43,
+      "throughput": 4.8
+    },
+    {
+      "context": 2048,
+      "input_len": 1024,
+      "tpot_ms": 87.36,
+      "tok_per_sec": 11.4,
+      "ttft_ms": 183.77,
+      "throughput": 4.8
+    },
+    {
+      "context": 4096,
+      "input_len": 2048,
+      "tpot_ms": 98.08,
+      "tok_per_sec": 10.2,
+      "ttft_ms": 249.66,
+      "throughput": 4.43
+    },
+    {
+      "context": 8192,
+      "input_len": 4096,
+      "tpot_ms": 98.17,
+      "tok_per_sec": 10.2,
+      "ttft_ms": 249.4,
+      "throughput": 4.44
+    }
+  ],
+  "throughput_sweep": [
+    {
+      "concurrency": 1,
+      "throughput": 4.81,
+      "tpot_ms": 87.55,
+      "ttft_ms": 183.37
+    },
+    {
+      "concurrency": 2,
+      "throughput": 11.37,
+      "tpot_ms": 136.33,
+      "ttft_ms": 359.2
+    },
+    {
+      "concurrency": 4,
+      "throughput": 13.04,
+      "tpot_ms": 179.2,
+      "ttft_ms": 351.96
+    }
+  ]
+}
