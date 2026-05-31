@@ -233,6 +233,12 @@ PYEOF
             ATTN_BACKEND="torch_native"
             REASONING="--reasoning-parser gemma4"
             TOOL_CALL_PARSER="gemma4"
+            # R9700 FIX (2026-05-31): patched chat template closes assistant tool-call
+            # turns with <turn|>(106). The model-dir template left a tool-call turn
+            # UNCLOSED when followed by a user turn (e.g. opencode's title-gen), so the
+            # model never emitted the stop token -> ran to max_new_tokens (8192) ->
+            # opencode hung -> empty diff / fleet timeout. Fixes gemma4 + gemma4-31b.
+            CHAT_TEMPLATE="--chat-template $SCRIPT_DIR/gemma4_chat_template.jinja"
             # Bumped CTX 4096 → 16384: at 4096, check_thinking max_tokens=4096
             # + small input exceeds the limit and SGLang returns 400.
             CTX=16384; MAX_RUNNING=8; CHUNKED=4096
@@ -255,6 +261,9 @@ PYEOF
             ATTN_BACKEND="torch_native"
             REASONING="--reasoning-parser gemma4"
             TOOL_CALL_PARSER="gemma4"
+            # R9700 FIX (2026-05-31): same unclosed-tool-call-turn template bug as
+            # gemma4 (identical chat template) — runaway gen on multi-turn tool history.
+            CHAT_TEMPLATE="--chat-template $SCRIPT_DIR/gemma4_chat_template.jinja"
             CTX=8192; MAX_RUNNING=8; CHUNKED=4096
             WARMUP="--skip-server-warmup"; WATCHDOG=1800
             OVERLAP=""
@@ -289,11 +298,13 @@ PYEOF
             OVERLAP=""
             ;;
         qwen35-moe)
-            # Long-context target: single-user 256K.  Official Qwen GPTQ: only
-            # MoE experts quantized, attn + shared + DeltaNet stay BF16 (~15
-            # GB/GPU).  That leaves ~15 GB/GPU for KV cache — FP8 KV gives
-            # us 256K+ headroom for single user.
-            MODEL="${MODEL:-$MODELS_DIR/Qwen3.5-35B-A3B-GPTQ-Int4}"
+            # Long-context target: single-user 256K. Our own REAP-pruned (35B-A3B
+            # -> 28B-A3B) + native-AWQ build: MoE experts AWQ-int4, attn + shared +
+            # DeltaNet stay BF16, leaving ample KV headroom; FP8 KV gives 256K+ for
+            # single user. (2026-05-31: repointed from the never-built
+            # Qwen3.5-35B-A3B-GPTQ-Int4 path that caused the fleet SERVE_FAILED
+            # OSError to the on-disk Qwen3.5-28B-A3B-REAP-AWQ.)
+            MODEL="${MODEL:-$MODELS_DIR/Qwen3.5-28B-A3B-REAP-AWQ}"
             QUANT="moe_wna16"
             DTYPE="bfloat16"
             CTX=262144; MAX_RUNNING=8; CHUNKED=8192; DECODE_STEPS=8; MEM=0.85
