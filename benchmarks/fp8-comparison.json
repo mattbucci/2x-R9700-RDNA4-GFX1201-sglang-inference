@@ -7,7 +7,7 @@
     {"name": "Qwen3.6-35B-A3B",     "kind": "MoE+DeltaNet",      "fp8_toks": 15.0, "awq_toks": 21.6, "spec_toks": 45.0, "spec_draft": "DFlash @256K (cp2048)", "fp8_ctx_k": 256, "awq_ctx_k": 256},
     {"name": "Devstral-24B",        "kind": "dense ≤24B",        "fp8_toks": 37.0, "awq_toks": 37.0, "spec_toks": 0,    "spec_draft": "none published",       "fp8_ctx_k": 256, "awq_ctx_k": 256},
     {"name": "Devstral-2-24B",      "kind": "dense+vision",      "fp8_toks": 23.0, "awq_toks": null, "spec_toks": 0,    "spec_draft": "none (Mistral3 v2)",   "fp8_ctx_k": 131, "awq_ctx_k": 256},
-    {"name": "gemma-4-26B-A4B",     "kind": "MoE fused SWA",     "fp8_toks": 18.7, "awq_toks": 15.0, "spec_toks": 0,    "spec_draft": "no draft; triton→128K", "fp8_ctx_k": 128, "awq_ctx_k": 256},
+    {"name": "gemma-4-26B-A4B",     "kind": "MoE fused SWA",     "fp8_toks": 18.7, "awq_toks": 15.0, "spec_toks": 0,    "spec_draft": "no draft; triton→256K", "fp8_ctx_k": 256, "awq_ctx_k": 256},
     {"name": "Qwen3.6-27B",         "kind": "DeltaNet VL",       "fp8_toks": 12.8, "awq_toks": 24.0, "spec_toks": 0,    "spec_draft": "draft OOMs KV",        "fp8_ctx_k": 256, "awq_ctx_k": 256},
     {"name": "Qwen3.5-27B",         "kind": "DeltaNet",          "fp8_toks": 13.1, "awq_toks": 26.0, "spec_toks": 0,    "spec_draft": "draft OOMs KV",        "fp8_ctx_k": 256, "awq_ctx_k": 256},
     {"name": "gemma-4-31B",         "kind": "dense",             "fp8_toks": 11.6, "awq_toks": 15.0, "spec_toks": 0,    "spec_draft": "no it-draft (~1.0x)",  "fp8_ctx_k": 51,  "awq_ctx_k": 256},
