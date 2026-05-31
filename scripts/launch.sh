@@ -86,12 +86,16 @@ apply_preset() {
             # 68% SWE-bench Verified base. Clean chat template (bos via {{ bos_token }}
             # variable, no Devstral-1 BOS <unk> bug). New Mistral tool format
             # [TOOL_CALLS]name[ARGS]args → mistral parser (verified: emits valid tool_calls).
-            # CONTEXT CEILING ~143K, NOT 256K: SGLang upcasts FP8 weights to BF16 in VRAM
-            # for this Llava/ministral3 arch on RDNA4 (~23 GB/card at TP2 — measured for
-            # BOTH --quantization fp8 AND a clean compressed-tensors recast), so the KV
-            # pool tops out max_total_num_tokens≈144936. Dense 24B can't reach 256K in FP8
-            # on 2×32GB (consistent w/ rdna4-fp8-lane: AWQ-int4 is the dense 256K format;
-            # only A3B-MoE FP8 keeps 256K). 143K >> SWE-bench prompts, so fine for the eval.
+            # FULL 256K (corrected 2026-05-31 — the old "143K ceiling, FP8 upcasts to
+            # BF16" reading was WRONG). FP8 is NATIVE here: params are FP8 11.11 GB +
+            # BF16 1.82 GB = 12.93 GB/card; decode uses native FP8 GEMMs (rocBLAS F8BS),
+            # not BF16. The 143K cap was a memory LEAK — per-tensor FP8 requantize left
+            # ~11 GB/card of loading transients held by reference cycles, inflating the
+            # measured weight memory and starving the KV pool. patches/042 reclaims them
+            # (synchronize + gc.collect x2 + empty_cache before the KV-pool sizing):
+            # weight usage 23.56→14.45 GB/card, max_total_num_tokens 126K→413K → serves
+            # the full 256K context, coherent. (rdna4-fp8-lane "AWQ-int4 is the only dense
+            # 256K format" no longer holds for dense FP8 served via Fp8Config.)
             MODEL="${MODEL:-$MODELS_DIR/Devstral-Small-2-24B-FP8}"
             # Ensure the agentic sampling defaults (see note below) live in the model's
             # generation_config.json so SGLang's --sampling-defaults model applies them
