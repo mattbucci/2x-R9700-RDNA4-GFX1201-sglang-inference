@@ -31,10 +31,16 @@ plt.rcParams.update({
 })
 
 MODELS = {
-    "devstral-24b-awq":    {"label": "Devstral-24B AWQ",                    "color": "#58a6ff"},
-    "coder-30b-awq":       {"label": "Coder-30B AWQ (MoE)",                "color": "#3fb950"},
-    "gemma4-26b-awq":      {"label": "Gemma 4 26B AWQ (MoE)",              "color": "#d2a8ff"},
-    "coder-next-80b-awq":  {"label": "Coder-Next 80B AWQ (MoE+DeltaNet)",  "color": "#f0883e"},
+    "qwen3.5-27b-awq":          {"label": "Qwen3.5-27B AWQ (DeltaNet)",        "color": "#58a6ff"},
+    "devstral-24b-awq":         {"label": "Devstral-24B AWQ",                  "color": "#79c0ff"},
+    "coder-30b-awq":            {"label": "Coder-30B AWQ (MoE)",               "color": "#3fb950"},
+    "coder-next-80b-awq":       {"label": "Coder-Next 80B AWQ (MoE+DeltaNet)", "color": "#f0883e"},
+    "coder-next-ream-60b-awq":  {"label": "Coder-Next REAM 60B AWQ (MoE)",     "color": "#ffa657"},
+    "qwen3.5-35b-moe-gptq":     {"label": "Qwen3.5-35B MoE GPTQ",              "color": "#d2a8ff"},
+    "qwen3.6-35b-moe-awq":      {"label": "Qwen3.6-35B MoE AWQ",               "color": "#bc8cff"},
+    "gemma-4-26b-awq":          {"label": "Gemma 4 26B AWQ (MoE)",             "color": "#e3b341"},
+    "gemma-4-31b-awq":          {"label": "Gemma 4 31B AWQ (Dense)",           "color": "#db6d28"},
+    "nemotron-omni-30b-fp8":    {"label": "Nemotron-Omni-30B FP8 (Mamba2)",    "color": "#56d4dd"},
 }
 
 # Coder-Next 80B: concurrency 16 and 32 are OOM
@@ -54,6 +60,13 @@ def fmt_ctx(x, _):
     if x >= 1024:
         return f"{x / 1024:.0f}K"
     return f"{x:.0f}"
+
+
+def point_toks(p):
+    """Total tok/s for a sweep point. bench_all_unified writes 'throughput'
+    for the concurrency sweep; older result files used 'tok_per_sec'. Accept
+    either so charts render across schema versions."""
+    return p.get("tok_per_sec", p.get("throughput", 0)) or 0
 
 
 def load_results(model_key):
@@ -107,7 +120,7 @@ def make_context_chart(model_key, meta, results, out_dir):
 def make_concurrency_chart(model_key, meta, results, out_dir):
     """Total throughput vs concurrency, with OOM markers."""
     sweep = results["throughput_sweep"]
-    measured = {p["concurrency"]: p["tok_per_sec"] for p in sweep}
+    measured = {p["concurrency"]: point_toks(p) for p in sweep if "error" not in p}
     oom_levels = OOM_CONCURRENCY.get(model_key, [])
 
     conc_levels = sorted(set(STD_CONC) | set(measured.keys()) | set(oom_levels))
@@ -162,7 +175,8 @@ def make_combined_context_chart(all_data):
     fig, ax = plt.subplots(figsize=(8, 4.5))
 
     for key, (meta, results) in all_data.items():
-        sweep = results["context_sweep"]
+        sweep = [p for p in results["context_sweep"]
+                 if "error" not in p and p.get("tok_per_sec", 0) > 0]
         ctx = [p["context"] for p in sweep]
         toks = [p["tok_per_sec"] for p in sweep]
         ax.plot(ctx, toks, "o-", color=meta["color"], linewidth=2, markersize=5,
@@ -193,9 +207,9 @@ def make_combined_concurrency_chart(all_data):
     fig, ax = plt.subplots(figsize=(8, 4.5))
 
     for key, (meta, results) in all_data.items():
-        sweep = results["throughput_sweep"]
+        sweep = [p for p in results["throughput_sweep"] if "error" not in p]
         conc = [p["concurrency"] for p in sweep]
-        toks = [p["tok_per_sec"] for p in sweep]
+        toks = [point_toks(p) for p in sweep]
         ax.plot(conc, toks, "o-", color=meta["color"], linewidth=2, markersize=5,
                 label=meta["label"], zorder=5)
 
@@ -331,9 +345,20 @@ if __name__ == "__main__":
 
     all_data = {}
     for key, meta in MODELS.items():
+        # Models are swept sequentially over many hours; only render the ones
+        # whose results.json has already been written. Skip (don't crash) the
+        # rest so charts regenerate cleanly after each model completes.
+        path = os.path.join(BENCH_DIR, key, "results.json")
+        if not os.path.exists(path):
+            print(f"{meta['label']}: SKIP (no results.json yet)\n")
+            continue
+        try:
+            results = load_results(key)
+        except (json.JSONDecodeError, ValueError) as e:
+            print(f"{meta['label']}: SKIP (unreadable results.json: {e})\n")
+            continue
         out_dir = os.path.join(BENCH_DIR, key)
         os.makedirs(out_dir, exist_ok=True)
-        results = load_results(key)
         all_data[key] = (meta, results)
         print(f"{meta['label']}:")
         make_context_chart(key, meta, results, out_dir)
