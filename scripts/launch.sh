@@ -507,6 +507,19 @@ if [[ -f "$MODEL/config.json" ]] && \
     QUANT="compressed-tensors"
 fi
 
+# Dense Qwen3.5/3.6 DeltaNet-VL FP8 at long context: after patch 045 the model
+# boots full 256K (20.82 GB/card, KV pool 408K @mem0.90), but the FP8 fallback
+# GEMM's per-prefill-chunk transient (BF16 output*scale) OOMs at the default
+# chunked-prefill 8192 when 256K KV leaves only ~3 GB free. chunked-prefill 2048
+# shrinks the per-chunk transient → true 256K prefill fits (validated 245760-tok
+# prefill @mem0.90, 9.3 tok/s, coherent). Scoped to the dense qwen3_5 family —
+# A3B-MoE FP8 (coder-30b/qwen36-moe) has ample KV headroom and keeps 8192. A
+# CLI --chunked-prefill still overrides (applied just below).
+if [[ "$QUANT" == "compressed-tensors" ]] && [[ "$PRESET" == "qwen36-27b" || "$PRESET" == "qwen35" ]] && (( CHUNKED > 2048 )); then
+    echo "[launch] dense FP8 ($PRESET) → chunked-prefill 2048 (avoids the 256K fallback-GEMM prefill OOM)"
+    CHUNKED=2048
+fi
+
 # CLI flags override preset values
 [[ -n "$CLI_CTX" ]] && CTX="$CLI_CTX"
 [[ -n "$CLI_PORT" ]] && PORT="$CLI_PORT"
