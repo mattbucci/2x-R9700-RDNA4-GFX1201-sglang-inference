@@ -1,114 +1,124 @@
 {
-  "model": "coder-next-ream",
+  "model": "Coder-Next REAM 60B AWQ",
   "engine": "SGLang",
+  "method": "sglang.bench_serving",
   "hardware": "2x R9700 TP=2",
-  "timestamp": "2026-04-12 00:36:15",
-  "method": "sglang.bench_serving (TPOT-based)",
-  "output_tokens": 50,
+  "timestamp": "2026-05-31 16:05:53",
+  "output_tokens": 100,
   "context_sweep": [
     {
       "context": 128,
       "input_len": 64,
-      "tpot_ms": 46.49,
-      "tok_per_sec": 21.5,
-      "ttft_ms": 73.07,
-      "throughput": 21.18
+      "tpot_ms": 46.22,
+      "tok_per_sec": 21.6,
+      "ttft_ms": 64.42,
+      "throughput": 4.8
     },
     {
       "context": 256,
       "input_len": 128,
-      "tpot_ms": 47.5,
-      "tok_per_sec": 21.1,
-      "ttft_ms": 85.16,
-      "throughput": 20.64
+      "tpot_ms": 46.28,
+      "tok_per_sec": 21.6,
+      "ttft_ms": 62.77,
+      "throughput": 4.8
     },
     {
       "context": 512,
       "input_len": 256,
-      "tpot_ms": 46.97,
-      "tok_per_sec": 21.3,
-      "ttft_ms": 77.12,
-      "throughput": 20.95
+      "tpot_ms": 46.29,
+      "tok_per_sec": 21.6,
+      "ttft_ms": 63.25,
+      "throughput": 4.8
     },
     {
       "context": 1024,
       "input_len": 512,
-      "tpot_ms": 46.73,
-      "tok_per_sec": 21.4,
-      "ttft_ms": 83.51,
-      "throughput": 20.97
+      "tpot_ms": 46.93,
+      "tok_per_sec": 21.3,
+      "ttft_ms": 63.66,
+      "throughput": 4.8
     },
     {
       "context": 2048,
       "input_len": 1024,
-      "tpot_ms": 46.48,
-      "tok_per_sec": 21.5,
-      "ttft_ms": 80.87,
-      "throughput": 21.11
+      "tpot_ms": 46.2,
+      "tok_per_sec": 21.6,
+      "ttft_ms": 64.1,
+      "throughput": 4.8
     },
     {
       "context": 4096,
       "input_len": 2048,
-      "tpot_ms": 47.17,
-      "tok_per_sec": 21.2,
-      "ttft_ms": 171.46,
-      "throughput": 19.96
+      "tpot_ms": 46.65,
+      "tok_per_sec": 21.4,
+      "ttft_ms": 188.46,
+      "throughput": 4.8
     },
     {
       "context": 8192,
       "input_len": 4096,
-      "tpot_ms": 47.45,
-      "tok_per_sec": 21.1,
-      "ttft_ms": 171.08,
-      "throughput": 19.86
+      "tpot_ms": 46.58,
+      "tok_per_sec": 21.5,
+      "ttft_ms": 188.58,
+      "throughput": 4.81
     },
     {
       "context": 16384,
       "input_len": 8192,
-      "tpot_ms": 46.8,
-      "tok_per_sec": 21.4,
-      "ttft_ms": 648.2,
-      "throughput": 16.51
+      "tpot_ms": 46.31,
+      "tok_per_sec": 21.6,
+      "ttft_ms": 681.07,
+      "throughput": 4.8
     },
     {
       "context": 32768,
       "input_len": 16384,
-      "tpot_ms": 47.51,
-      "tok_per_sec": 21.0,
-      "ttft_ms": 1502.72,
-      "throughput": 12.39
+      "tpot_ms": 46.97,
+      "tok_per_sec": 21.3,
+      "ttft_ms": 1607.24,
+      "throughput": 4.81
+    },
+    {
+      "context": 65536,
+      "input_len": 32768,
+      "tpot_ms": 47.1,
+      "tok_per_sec": 21.2,
+      "ttft_ms": 2417.98,
+      "throughput": 4.35
+    },
+    {
+      "context": 131072,
+      "input_len": 65536,
+      "tpot_ms": 48.19,
+      "tok_per_sec": 20.8,
+      "ttft_ms": 4176.26,
+      "throughput": 2.73
     }
   ],
   "throughput_sweep": [
     {
       "concurrency": 1,
-      "tok_per_sec": 29.72,
-      "tpot_ms": 60.03,
-      "ttft_ms": 419.46
+      "throughput": 4.81,
+      "tpot_ms": 46.76,
+      "ttft_ms": 64.76
     },
     {
       "concurrency": 2,
-      "tok_per_sec": 34.52,
-      "tpot_ms": 53.77,
-      "ttft_ms": 267.46
+      "throughput": 21.88,
+      "tpot_ms": 67.38,
+      "ttft_ms": 311.32
     },
     {
       "concurrency": 4,
-      "tok_per_sec": 30.49,
-      "tpot_ms": 56.85,
-      "ttft_ms": 628.78
+      "throughput": 35.8,
+      "tpot_ms": 50.07,
+      "ttft_ms": 376.75
     },
     {
       "concurrency": 8,
-      "tok_per_sec": 47.29,
-      "tpot_ms": 52.39,
-      "ttft_ms": 2801.57
-    },
-    {
-      "concurrency": 16,
-      "tok_per_sec": 49.75,
-      "tpot_ms": 52.69,
-      "ttft_ms": 6318.29
+      "throughput": 36.15,
+      "tpot_ms": 48.95,
+      "ttft_ms": 3821.92
     }
   ]
 }
