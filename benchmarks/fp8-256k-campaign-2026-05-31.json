@@ -71,6 +71,20 @@
       "spec": {"draft": "none published", "note": "no spec path (MistralForCausalLMEagle would load a SpecForge-trained draft; none exists for Devstral)"},
       "validate": {"basic": "PASS", "vision": "PASS", "tool_call": "PASS (finish=tool_calls, get_weather city=Paris)"},
       "notes": "At devstral2 defaults (mem 0.90, fp8 KV) KV pool tops out at max_total=180572 < 262144 — a single sequence CANNOT reach full 256K; largest validated IN=131072. CONTRADICTS the devstral2 preset comment ('patch-042 reclaim -> 413K -> full 256K') — that figure was likely the v1 dense Devstral-24B-FP8 (no vision tower) or a pre-vision build; v2 carries a BF16 vision tower that eats the KV budget. FOLLOW-UP (#10): retest at mem 0.92 to see if 256K single-seq is reachable (documented +22% lever). basic+vision+tool all PASS; no draft."
+    },
+    "gemma-4-26B-A4B-it-FP8": {
+      "preset": "gemma4",
+      "kind": "MoE fused-expert, SWA, multimodal (image+video+audio)",
+      "served_256k": false,
+      "max_total_num_tokens": 290756,
+      "nospec_tok_s": {"in32768": 9.89, "in65536": "OOM", "in131072": "OOM"},
+      "post131k_interactive_s": 2.0,
+      "wedge": false,
+      "validate": {"basic": "PASS", "thinking": "PASS", "vision": "PASS", "raw": "3/3 in 29.4s; basic=paris, thinking 520tok terminated, vision saw red/circle/round"},
+      "spec": {"draft": "none (no DFlash hook; base-EAGLE3 accept ~1.34)", "note": "no usable spec path"},
+      "ctx_ceiling": "~32-64K single-seq prefill. KV pool is 290K (SWA) but torch_native attention has NO FlashAttention/chunked-KV -> Gemma's GLOBAL (full-attn) layers materialize chunk_q x full_kv per chunk -> >9GB transient at 131K -> OOM. 64K+ OOMs at every mem-fraction tested (0.85-0.62); Triton attn crashes with SWA on RDNA4 (no fallback). 32K validated PASS (9.89 tok/s, 3/3 caps).",
+      "bug_found": "torch_native + SWA: chunked_prefill_size(4096) > sliding_window(1024) crashes at torch_native_backend.py:104 on first long chunked prefill (redundant-query buffer capped to window). WORKAROUND --chunked-prefill 1024; gemma4 preset should set CHUNKED<=1024 for long ctx.",
+      "notes": "CORRECTS README FP8 table 'gemma-4-26B-A4B FP8 256K, 18.7 tok/s': 290K is the KV POOL, but a single sequence can't prefill past ~32-64K on torch_native; 18.7 was short-ctx decode (measured 9.89 @32K). NOT 256K-capable on this backend. fp8 native confirmed (fp8_w8a8, per_channel, fp8_e4m3 KV)."
     }
   }
 }
