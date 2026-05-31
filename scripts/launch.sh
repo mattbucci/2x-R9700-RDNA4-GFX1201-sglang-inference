@@ -24,7 +24,7 @@
 #   qwen36-27b     Qwen3.6-27B dense AWQ (thinking+vision, 262K)
 #   qwen3vl-32b    Qwen3-VL-32B dense AWQ (thinking+vision, self-recal balanced, 256K)
 #   coder-reap-25b Cerebras Qwen3-Coder-REAP-25B-A3B (pruned from Coder-30B, 256K)
-#   nemotron-omni  Nemotron-3-Nano-Omni-30B-A3B FP8 (Mamba2 hybrid AVLM+thinking, 128K; patch 046)
+#   nemotron-omni  Nemotron-3-Nano-Omni-30B-A3B FP8 (Mamba2 hybrid AVLM+thinking, 256K; triton, patches 046/047)
 
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -236,7 +236,13 @@ PYEOF
             TOKENIZER="--tokenizer-path $GEMMA_TOK"
             QUANT="moe_wna16"
             DTYPE="bfloat16"
-            ATTN_BACKEND="torch_native"
+            # TRITON flash attention (memory-efficient; SWA path comes from patch 001).
+            # Validated long-context unblock: gemma-4-26B serves a 110K-tok prefill on
+            # triton (no OOM, ~16.5 tok/s, image+thinking preserved), whereas torch_native
+            # (ROCm has only the MATH SDPA backend -> O(chunk x ctx) score materialization)
+            # OOMs the global-attention layers past ~32-64K. Override ATTN_BACKEND=torch_native
+            # for the old fallback (correct but caps long context).
+            ATTN_BACKEND="${ATTN_BACKEND:-triton}"
             REASONING="--reasoning-parser gemma4"
             TOOL_CALL_PARSER="gemma4"
             # R9700 FIX (2026-05-31): patched chat template closes assistant tool-call

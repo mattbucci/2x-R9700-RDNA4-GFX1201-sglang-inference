@@ -1,29 +1,35 @@
-RDNA4 fix: enable triton (flash) attention for NemotronH Mamba2-hybrid models.
+RDNA4 fix: enable triton attention for NemotronH Mamba2-hybrid models.
 
-TritonAttnBackend.__init__ samples the value head dim via get_value_buffer(0) on
-the KV pool. For a Mamba2-Transformer hybrid the full-attention layers live at
-sparse indices (NemotronH-Nano-Omni: [5,12,19,26,33,42]) and layer 0 is a Mamba
-layer with NO entry in the HybridLinearKVPool's full_attention_layer_id_mapping,
-so get_value_buffer(0) raises:
-  ValueError: layer_id=0 not in full attention layers: dict_keys([5,12,19,26,33,42])
-and triton attention can't initialize -> the model was stuck on torch_native,
-whose only available SDPA backend on ROCm is MATH (flash/mem-efficient report
-"No available kernel"), which materializes O(chunk x context) scores and OOMs
-past ~150K. The backend already special-cases hybrid_gdn_config / kimi_linear /
-linear_attn_model_spec to call get_v_head_dim() instead, but those miss the
-Nano-Omni config class (loaded via trust-remote-code; mamba2_config doesn't
-recognize it). Fix: also duck-type on the pool -- any HybridLinearKVPool exposes
+Applies AFTER patch 001 (upstream-sync), which already carries the SWA-aware
+triton attention path (swa_attn_logits, HybridLinearKVPool layers_mapping +
+translate_loc_from_full_to_swa in forward_extend/decode). This patch adds the
+one remaining piece for Mamba2-Transformer hybrids: TritonAttnBackend.__init__
+samples the value head dim via get_value_buffer(0), but in such a hybrid the
+full-attention layers live at sparse indices (NemotronH-Nano-Omni:
+[5,12,19,26,33,42]) and layer 0 is a Mamba layer with no entry in the
+HybridLinearKVPool's full_attention_layer_id_mapping -> "ValueError: layer_id=0
+not in full attention layers" -> triton attention can't init, so the model is
+stuck on torch_native (whose only ROCm SDPA backend is MATH -> materializes
+O(chunk x context) scores -> OOM past ~150K). The backend already special-cases
+hybrid_gdn / kimi_linear / linear_attn_model_spec, but those miss the Nano-Omni
+config class (loaded via trust-remote-code; mamba2_config doesn't recognize it).
+Fix: also duck-type on the pool -- any HybridLinearKVPool exposes
 get_v_head_dim() (samples the full_kv_pool's first full-attention layer), so use
-it whenever present. With triton flash attention the model serves full 256K
-memory-efficiently (247K-tok prefill, full-token-usage 0.07, ~109s, ~29 tok/s
-decode) with default mem-fraction/chunked-prefill. Pure-additive condition; CUDA
-and non-hybrid pools (MHATokenToKVPool, no get_v_head_dim) are unaffected.
+it whenever present.
+
+Unblocks triton flash attention (memory-efficient, full 256K) for NemotronH
+hybrids: Nemotron-Omni serves a 247K-tok prefill at full-token-usage 0.07 (no
+OOM), ~109s, ~29 tok/s. (gemma-4 SWA models reach triton via 001's SWA path +
+the triton preset default -- they take the sliding_window branch, not this
+hybrid branch -- e.g. gemma-4-26B: 110K-tok prefill, no OOM, ~16.5 tok/s.)
+Pure-additive condition; CUDA + non-hybrid pools (MHATokenToKVPool, no
+get_v_head_dim) unaffected. Applies after 001.
 
 diff --git a/python/sglang/srt/layers/attention/triton_backend.py b/python/sglang/srt/layers/attention/triton_backend.py
-index f6d27e9..22c9144 100644
+index 2514433..22c9144 100644
 --- a/python/sglang/srt/layers/attention/triton_backend.py
 +++ b/python/sglang/srt/layers/attention/triton_backend.py
-@@ -131,15 +131,31 @@ class TritonAttnBackend(AttentionBackend):
+@@ -131,8 +131,17 @@ class TritonAttnBackend(AttentionBackend):
              model_runner.hybrid_gdn_config is not None
              or model_runner.kimi_linear_config is not None
              or model_runner.linear_attn_model_spec is not None
@@ -42,106 +48,3 @@ index f6d27e9..22c9144 100644
              self.v_head_dim = model_runner.token_to_kv_pool.get_v_head_dim()
              self.swa_v_head_dim = None
          else:
-             self.v_head_dim = model_runner.token_to_kv_pool.get_value_buffer(0).shape[
-                 -1
-             ]
-+        # Track whether SWA layers need different v_head_dim
-+        full_v_head_dim = model_runner.model_config.v_head_dim
-+        swa_v_head_dim = model_runner.model_config.swa_v_head_dim
-+        if self.sliding_window_size is not None and swa_v_head_dim != full_v_head_dim:
-+            self.swa_v_head_dim = swa_v_head_dim
-+        else:
-             self.swa_v_head_dim = None
-+
-         self.max_context_len = model_runner.model_config.context_len
-         self.device = model_runner.device
-         self.device_core_count = get_device_core_count(model_runner.gpu_id)
-@@ -477,6 +493,10 @@ class TritonAttnBackend(AttentionBackend):
-             max_extend_len = max(forward_batch.extend_seq_lens_cpu)
-             num_kv_splits = None
- 
-+        # For non-decode modes, swa_attn_logits is not needed
-+        if not forward_batch.forward_mode.is_decode():
-+            swa_attn_logits = None
-+
-         self.forward_metadata = ForwardMetadata(
-             attn_logits,
-             attn_lse,
-@@ -508,12 +528,7 @@ class TritonAttnBackend(AttentionBackend):
-         )
-         if self.swa_v_head_dim is not None:
-             self.cuda_graph_swa_attn_logits = torch.zeros(
--                (
--                    max_num_tokens,
--                    self.num_head,
--                    self.max_kv_splits,
--                    self.swa_v_head_dim,
--                ),
-+                (max_num_tokens, self.num_head, self.max_kv_splits, self.swa_v_head_dim),
-                 dtype=torch.float32,
-                 device=self.device,
-             )
-@@ -722,6 +737,10 @@ class TritonAttnBackend(AttentionBackend):
-                 f"Invalid forward mode: {forward_mode=} for CUDA Graph capture."
-             )
- 
-+        # For non-decode CUDA graph modes, swa_attn_logits is not needed
-+        if not forward_mode.is_decode():
-+            swa_attn_logits = None
-+
-         self.forward_metadata = ForwardMetadata(
-             attn_logits,
-             attn_lse,
-@@ -897,6 +916,18 @@ class TritonAttnBackend(AttentionBackend):
-         save_kv_cache=True,
-         sinks=None,
-     ):
-+        # Handle KV-shared layers (Gemma4): k=None, v=None means retrieve from cache
-+        if k is None and v is None:
-+            pool = forward_batch.token_to_kv_pool
-+            cache_loc = forward_batch.out_cache_loc
-+            if hasattr(pool, 'layers_mapping') and pool.layers_mapping[layer.layer_id][1]:
-+                cache_loc = pool.translate_loc_from_full_to_swa(cache_loc)
-+            k_buffer, v_buffer = pool.get_kv_buffer(layer.layer_id)
-+            k = k_buffer[cache_loc]
-+            v = v_buffer[cache_loc]
-+        elif k is None or v is None:
-+            raise ValueError("Both k and v should be None or not None")
-+
-         # TODO: reuse the buffer across layers
-         if layer.qk_head_dim != layer.v_head_dim:
-             o = q.new_empty((q.shape[0], layer.tp_q_head_num * layer.v_head_dim))
-@@ -1164,6 +1195,18 @@ class TritonAttnBackend(AttentionBackend):
-         save_kv_cache=True,
-         sinks=None,
-     ):
-+        # Handle KV-shared layers (Gemma4): k=None, v=None means retrieve from cache
-+        if k is None and v is None:
-+            pool = forward_batch.token_to_kv_pool
-+            cache_loc = forward_batch.out_cache_loc
-+            if hasattr(pool, 'layers_mapping') and pool.layers_mapping[layer.layer_id][1]:
-+                cache_loc = pool.translate_loc_from_full_to_swa(cache_loc)
-+            k_buffer, v_buffer = pool.get_kv_buffer(layer.layer_id)
-+            k = k_buffer[cache_loc]
-+            v = v_buffer[cache_loc]
-+        elif k is None or v is None:
-+            raise ValueError("Both k and v should be None or not None")
-+
-         # During torch.compile, there is a bug in rotary_emb that causes the
-         # output value to have a 3D tensor shape. This reshapes the output correctly.
-         q = q.reshape(-1, layer.tp_q_head_num * layer.qk_head_dim)
-@@ -1213,12 +1256,11 @@ class TritonAttnBackend(AttentionBackend):
-             v_descale = 1.0
- 
-         # Select the correctly-sized attn_logits buffer for this layer.
--        # The triton kernel's // Lv stride trick requires attn_logits.shape[-1]
--        # to exactly match the layer's v_head_dim.
-         attn_logits = self.forward_metadata.attn_logits
-         if (
-             self.forward_metadata.swa_attn_logits is not None
--            and layer.v_head_dim == self.swa_v_head_dim
-+            and layer.sliding_window_size is not None
-+            and layer.sliding_window_size > -1
-         ):
-             attn_logits = self.forward_metadata.swa_attn_logits
- 
