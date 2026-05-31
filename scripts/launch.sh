@@ -96,10 +96,13 @@ apply_preset() {
             CTX=262144; MEM=0.90; MAX_RUNNING=8; CHUNKED=8192
             DTYPE="bfloat16"; QUANT="fp8"
             TOOL_CALL_PARSER="mistral"
-            # Patched template: upstream alternation guard mis-counts tool turns
-            # ([user, asst(tool_call), tool, user] → "roles must alternate" 400), which
-            # breaks opencode agentic rollouts. Patched copy drops the guard (formatting
-            # is unaffected). See scripts/devstral2_chat_template.jinja.
+            # Patched template drops the upstream alternation guard that mis-counts tool
+            # turns → "roles must alternate" 400 on opencode rollouts. (NOTE 2026-05-30: the
+            # mistral_common tokenizer — Mistral's recommended path, vLLM's --tokenizer-mode
+            # mistral — was tried to fix the intermittent [TOOL_CALLS]-as-text bug, but it
+            # has cascading SGLang integration failures on this multimodal Mistral3 model:
+            # pixtral add_special_tokens crash, then 1-token EOS. Reverted. HF tokenizer +
+            # this jinja is the least-bad path; agentic tool-calling stays intermittent.)
             CHAT_TEMPLATE="--chat-template $SCRIPT_DIR/devstral2_chat_template.jinja"
             OVERLAP=""
             ;;
