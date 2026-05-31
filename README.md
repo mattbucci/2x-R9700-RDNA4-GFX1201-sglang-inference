@@ -15,6 +15,12 @@ High-throughput LLM inference on 2x AMD Radeon AI PRO R9700 (gfx1201, RDNA4) wit
 - Qwen3.5 / Qwen3.6: image + video (no audio)
 - Devstral 24B: image only
 
+**Next steps:**
+1. **CT-FP8 dispatch fix** — `compressed-tensors` float-quantized FP8 (qwen35-fp8, qwen36-27b-fp8, likely gemma4-fp8) falls back to `UnquantizedLinearMethod` (BF16) on RDNA4 → OOM. The `CompressedTensorsW8A8Fp8` scheme works on ROCm; fix the `get_scheme` dispatch in `compressed_tensors.py` (format gate). Unlocks 3+ models.
+2. **Re-measure the 256K single-user TPOT sweep** with patches 041 (AWQ M=1 GEMV) + 042 (FP8 transient reclaim) applied.
+3. **Multi-token tool-name omission recovery** for devstral (`todowrite`/`webfetch` stream in pieces; current hold-back is single-token only).
+4. **Re-run the fleet SWE-bench sweep** with the new fixes (May-30 results are stale).
+
 ### Status (2026-05-26): v0.5.12 + 256K matrix verified
 
 All 25 patches rebased clean on v0.5.12; the int4-MoE squash regression is fixed (root cause + fix log in [patches/README.md](patches/README.md)). 256K: Devstral, Coder-30B(native)+REAP-25B (code+tool), Qwen3.5-27B (thinking), Qwen3.6-27B (thinking+vision) all coherent. **Coder-30B-A3B rebuilt CT→native AWQ** → moe_wna16, reshipped. Validator needs mem≤0.80 at 256K + pillow. Sweep: `scripts/eval/sweep_256k_quality.sh`.
@@ -140,7 +146,6 @@ Open issues only. Resolved items live in [patches/README.md](patches/README.md) 
 - **Coder-Next 80B long decode HSAIL 0x1016.** Boots + short-generates after patch 016 (TP=2 conv1d fix); generations past ~400 tokens abort with `HSA_STATUS_ERROR_EXCEPTION 0x1016` inside a Triton kernel — reproduces with `--attention-backend torch_native`, so it's DeltaNet (`causal_conv1d_update` / FLA gated-delta) or NCCL, not attention. Same exception class as Gemma4-31B long-decode crash → likely shared RDNA4-Triton miscompile (wave-32 reduction). Coder-Next-REAM (60B pruned) works. Tracked task #18.
 - **Gemma4 31B Dense — 400-token attention degradation.** 15 tok/s with `--attention-backend torch_native` + Triton GEMV. Triton attention degrades at ~400 tokens on Gemma4's 60-layer SWA (kernels pass in isolation; interaction bug). Use torch_native for quality; low priority.
 - **GLM-4.5-Air REAP — blocked.** HSA crash in PyTorch `scaled_dot_product_attention` during prefill. Also crashes on [Blackwell GPUs](https://github.com/sgl-project/sglang/issues/18874) (cross-vendor). Likely ROCm/HIP SDPA kernel bug with high GQA ratios.
-- **Gemma4-26B video probe — `bsz==1` assertion.** Validator's video step fires `AssertionError: flatten_batch is True, bsz must be 1` at `vision.py:254` because the synthetic 12-frame mp4 reaches the vision tower as bsz=12. Fixed on Ampere via 3090 patch 026 (`gemma4-mm-video-per-frame-batching`, commit `3b9e077`) — replaces the batched call with a per-frame loop. Already in our patches/. Image vision works (PASS), text + image paths unaffected.
 - **CT-format MoE TP=2 `_load_w2 narrow(start=4, length=4, size=4)` crash** (cross-stack; 3090 confirmed NOT RDNA4-specific 2026-05-09). Generic SGLang loader bug: CT pre-shards w2 to per-rank size, but loader still calls `loaded_weight.narrow(shard_dim, shard_size*tp_rank, shard_size)` → overflow. TP=1 fine on both stacks (tp_rank=0 makes narrow a no-op). Fix sketch: detect already-presharded `loaded_weight.shape[shard_dim] == shard_size` and skip narrow. Doesn't affect AWQ-native TP=2 path.
 - **Devstral pixtral warmup OOM at MEM≥0.95** (cross-stack). SGLang's automatic warmup sends an image-bearing test request → pixtral image processor's `torch.stack(images_list, dim=0)` allocates after MEM-fraction saturation → server dies before /health=200. Fix: bake `--skip-server-warmup` into devstral preset (3090 already did this in commit `2b3fcd5`). Decode path unaffected.
 - **CUDA graphs fragment VRAM at 32K+ context** (constraint, not bug). `--cuda-graph-bs` reserves 2+ GiB private pool that blocks AWQ forward alloc at long context. All long-context presets use `--disable-cuda-graph`; ~9% TPOT cost.
