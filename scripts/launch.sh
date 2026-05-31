@@ -385,7 +385,11 @@ apply_preset() {
             QUANT="awq"
             DTYPE="bfloat16"
             CTX=32768; MEM=0.85; MAX_RUNNING=8; CHUNKED=4096; DECODE_STEPS=8
-            REASONING="--reasoning-parser qwen3"
+            # NO --reasoning-parser: thinking is OFF by default here (no </think> emitted),
+            # and SGLang's qwen3 reasoning parser assumes 'reasoning until </think>' — so it
+            # routed ALL output (incl. the <tool_call> XML) into reasoning_content, leaving
+            # `content` EMPTY and the tool parser blind → 0/6 empty diffs (fleet smoke 2026-05-30).
+            # Drop it for agentic/tool use; re-enable only with explicit thinking (emits </think>).
             TOOL_CALL_PARSER="qwen"
             EXTRA_ARGS="${EXTRA_ARGS:-} --enable-multimodal"
             ;;
