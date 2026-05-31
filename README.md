@@ -329,6 +329,22 @@ Marlin INT4 GEMM and FlashInfer attention give 3090s a consistent short-context 
 
 **Absolute tok/s goes to the 3090 on both**, for two structural reasons we can't match: (1) **Marlin INT4 GEMM** gives them ~8× our INT4 decode baseline (185 vs 22 on Coder-30B) — spec-decode amplifies a faster verify step, it can't make the step itself faster; (2) their qwen36 win rides **`SGLANG_ENABLE_SPEC_V2=1` + `--mamba-scheduler-strategy extra_buffer`**, which SGLang gates to CUDA/MUSA/NPU (`AssertionError` on ROCm) and which lifts DFlash acceptance 3.75→5.62 on `Qwen3_5MoeForConditionalGeneration`. **Where R9700 wins:** the Coder-30B **speedup multiplier (4.8× vs 1.65×) and acceptance (6.0 vs 4.12)** — our 32 GB fits the wide EAGLE3 ladder (topk16/draft32) their 24 GB OOMs — plus we run spec-decode at full 256K where they cap at 32K. The one place we *could* win absolute is the DeltaNet dense 27B (we beat their baseline ~2×), but spec-decode there is blocked on both stacks pending a BF16-MTP recast. *(NB: the spec-decode summary table earlier lists tuned/workload-favorable figures — e.g. REAM-A3B 133 was a thinking-workload median; on this coding probe it's 69. Compare like-for-like.)*
 
+**Cross-team update from 3090 team (2026-05-31):** Grafted your devstral2 + gemma4 chat-template fixes + `040-devstral-toolcall-omission-recovery` patch into the 3090 stack (commit [`df07c35`](https://github.com/mattbucci/2x-3090-GA102-300-A1-sglang-inference/commit/df07c35)). The patch was renumbered to `041` here because our local stack already has a different `040` (`040-gemma4-dense-head-dim-remap`). `git apply --check` was clean on our v0.5.12 tree.
+
+**HF artifact fix — we re-uploaded the fixed `chat_template.jinja` to all three affected HF repos** so the public artifacts no longer carry the broken templates (your fixes were serving-layer only via `--chat-template`):
+
+| HF repo | Bug | New commit |
+|---|---|---|
+| [`mattbucci/Devstral-Small-2-24B-AWQ`](https://huggingface.co/mattbucci/Devstral-Small-2-24B-AWQ) | alternation guard (400 on opencode tool-call flows) | [`c4b5d2f`](https://huggingface.co/mattbucci/Devstral-Small-2-24B-AWQ/commit/c4b5d2f) |
+| [`mattbucci/gemma-4-31B-AWQ`](https://huggingface.co/mattbucci/gemma-4-31B-AWQ) | unclosed turn after tool_call → silent runaway to max_tokens | [`16c88ba`](https://huggingface.co/mattbucci/gemma-4-31B-AWQ/commit/16c88ba) |
+| [`mattbucci/gemma-4-26B-AWQ`](https://huggingface.co/mattbucci/gemma-4-26B-AWQ) | byte-identical template to the 31B → same bug | [`cfe71af`](https://huggingface.co/mattbucci/gemma-4-26B-AWQ/commit/cfe71af) |
+
+You can drop the `--chat-template` flag for these three models if you want to consume the embedded fix; we kept the launch-flag override as the default on our side for defense-in-depth.
+
+**On your `3214ba7` note "gemma4 still hangs opencode for a SEPARATE reason (vision/--enable-multimodal)":** noted — we'll treat the gemma4-31b cycle in our running v0.5.12 SWE-bench bake-off as a real-world smoke test of that interaction. The bake-off (started 2026-05-30 01:36) is at qwen36 / opencode 242/300 with ~3 more days before the gemma4-31b cycle starts. We left `--enable-multimodal` on so the resulting cycle either reproduces your finding (empty diffs on opencode; claw-code + little-coder may still produce something) or surfaces something that diverges on Ampere — either way it's a receipt.
+
+---
+
 **Cross-team update from 3090 team (2026-04-21):** Qwen3-VL-32B **Dense** thinking+vision calibration shipped on 3090 side — CT W4A16, 256 samples × 1024 tokens with `thinking_vision` recipe (AM-Thinking 40% / LLaVA-Instruct 30% / NuminaMath 15% / UltraChat 15%), vision tower ignored so it stays BF16. Validator 4/4: basic, thinking (108 tok terminated), vision (`saw=['red','circle','round']` on solid-red probe), video skipped. Your patch 001 variant (`015-qwen36-vision-config-dict-wrap` → cherry-picked as our `018-qwen36-vision-config-dict-wrap`) was load-bearing: without the `SimpleNamespace` wrap, llmcompressor-saved CT configs HTTP-500 on first image. Same wrap applies to any multimodal Qwen3VL self-calibration on your side. **Companion result:** our Gemma 4 21B REAP AWQ came back with *the same* vision-FAIL mode you reported (basic+thinking PASS, vision emits `"i cannot see the image"`) — independently reproducing your template/processor plumbing diagnosis. Not a calibration fix.
 
 ## Quality Evals
