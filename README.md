@@ -16,7 +16,7 @@ High-throughput LLM inference on 2x AMD Radeon AI PRO R9700 (gfx1201, RDNA4) wit
 - Devstral 24B: image only
 
 **Open work:**
-1. **gemma-4-26B-A4B-FP8 long-context attention** — `torch_native` (only SWA-safe backend on RDNA4) lacks FlashAttention, so global-attn layers OOM past ~32–64K prefill. A chunked-KV / FlashAttention-style SWA backend for gfx1201 would unlock gemma 256K. The preset's `chunked-prefill` must be ≤ sliding_window (1024) or torch_native crashes on first long prefill.
+1. **gemma-4-31B (dense) long-context on triton — untested.** gemma-4-**26B** is unblocked to its native 128K via the triton flash backend (gemma4 preset now defaults to triton; validated FP8 87K + AWQ 110K, no OOM). The 31B dense variant uses the same SWA path and should follow, but isn't yet serve-validated on triton — its preset still defaults to torch_native (capped ~32–64K: ROCm has only the MATH SDPA backend → global-attn layers materialize O(chunk×ctx) scores → OOM at long prefill). Flip + validate gemma4-31b next.
 2. **Multi-token tool-name omission recovery** for devstral (`todowrite`/`webfetch` stream in pieces; current hold-back is single-token only).
 
 ### FP8 lane
@@ -39,12 +39,12 @@ gfx1201 has native FP8 acceleration, so FP8 W8A8 is a serving option alongside t
    | Qwen3.5-27B | DeltaNet hybrid | thinking PASS | 13.1 / ~26 | **256K** (patch 045 + cp2048) | native FP8 20.82 GB/card; chunked-prefill 2048 (auto in launch.sh) clears the fallback-GEMM prefill OOM → full 245760-tok prefill @mem0.90, 9.3 tok/s |
    | Qwen3.6-27B | DeltaNet+attn VL | basic+thinking+VISION 3/3 PASS | 12.8 / ~24 | **256K** (patch 045 + cp2048) | same path as Qwen3.5-27B (shared `qwen3_5` model file); native FP8 20.82 GB/card, thinking+vision intact, 9.3 tok/s @256K |
    | Qwen3.6-35B-A3B | MoE 256e (FUSED) + DeltaNet VL | basic+thinking+VISION 3/3 PASS | ~18 @32K / ~21.6 | **256K** no-spec **+ DFlash@256K** | FP8 + DFlash reaches 256K (~45 tok/s coherent, accept ~3.9) via `--chunked-prefill 2048` (auto-applied for qwen36-moe FP8+spec); KV pool 782K |
-   | gemma-4-26B-A4B | MoE 128e (FUSED) hybrid VL | basic+thinking+VISION 3/3 PASS | ~9.9 @32K / ~15 | ⚠ **~32–64K** single-seq (pool 290K) | NOT 256K: torch_native attn (only SWA-safe backend on RDNA4) has no FlashAttention → global-attn layers OOM at long prefill; chunked-prefill must be ≤ SWA window 1024 |
+   | gemma-4-26B-A4B | MoE 128e (FUSED) hybrid VL | basic+thinking+VISION 3/3 PASS | ~16.5 @110K / ~15 | **128K** (model max) via triton | TRITON flash unblocks long-context (validated FP8 87K-tok + AWQ 110K-tok prefill, needle retrieved, no OOM). The old ~32–64K cap was torch_native-only (ROCm MATH SDPA → O(chunk×ctx) score OOM); gemma4 preset now defaults to triton. `ATTN_BACKEND=torch_native` for the fallback. |
    | Nemotron-3-Nano-Omni-30B-A3B | Mamba2-Transformer hybrid MoE, AVLM | basic+thinking+image+video+audio | ~29 / — | **256K** (262144) | NVIDIA ModelOpt FP8 (FP8-only, no AWQ variant); `launch.sh nemotron-omni`. Full AVLM (text+image+video+audio) + thinking — first Mamba2 hybrid on the box. Mamba2 hybrid stays fast at long context; attention-backend `triton` (torch_native is a slow fallback that OOMs past ~150K — ROCm only has the MATH SDPA backend). Requires patches 043/044/046/047 + `pip install librosa`. No spec-decode (no published draft; Nano excluded from MTP) |
 
    ![FP8 W8A8 vs AWQ-int4 — single-user decode tok/s and max context across the validated fleet](benchmarks/fp8_vs_awq.png)
 
-   *From [`benchmarks/fp8-256k-campaign-2026-05-31.json`](benchmarks/fp8-256k-campaign-2026-05-31.json) via `scripts/bench/generate_charts.py`. **Decode bars** are at short context, keeping the FP8-vs-AWQ comparison at one context. **Max-context panel** is single-sequence 256K reachability: in FP8 the two **A3B-MoE** models (Coder-30B, Qwen3.6-35B) and the dense DeltaNet-VL 27B reach true single-user 256K; dense/SWA cap lower — Devstral-2 ~180K, **gemma-4-26B ~32–64K** (torch_native OOM wall). **Green + draft** = FP8-target spec-decode: **Coder-30B + EAGLE3 = 86 tok/s @256K** (361 MB draft, pure MoE); Qwen3.6-35B + DFlash ~45 tok/s @256K (accept ~3.9) via `--chunked-prefill 2048`. The headline: for single-user 256K in FP8, the A3B-MoE pair wins both no-spec and with a draft.*
+   *From [`benchmarks/fp8-256k-campaign-2026-05-31.json`](benchmarks/fp8-256k-campaign-2026-05-31.json) via `scripts/bench/generate_charts.py`. **Decode bars** are at short context, keeping the FP8-vs-AWQ comparison at one context. **Max-context panel** is single-sequence 256K reachability: in FP8 the two **A3B-MoE** models (Coder-30B, Qwen3.6-35B) and the dense DeltaNet-VL 27B reach true single-user 256K; dense/SWA cap lower — Devstral-2 ~180K; **gemma-4-26B now 128K via triton flash** (the ~32–64K was a torch_native OOM wall, now unblocked). **Green + draft** = FP8-target spec-decode: **Coder-30B + EAGLE3 = 86 tok/s @256K** (361 MB draft, pure MoE); Qwen3.6-35B + DFlash ~45 tok/s @256K (accept ~3.9) via `--chunked-prefill 2048`. The headline: for single-user 256K in FP8, the A3B-MoE pair wins both no-spec and with a draft.*
 
    > **FP8 REAM-A3B variant — not built.** A 256→192 FP8 re-merge would need the 67 GB parent BF16 resident in RAM, which wedges this 64 GB box (amdgpu GPU-SVM paging + swap thrash drives system-wide kernel page-allocation failures). And per the crossover below, an FP8 A3B-MoE has no single-user benefit here (AWQ-int4 wins M=1 decode). So REAM-A3B's vision fix ships in **AWQ** (see [REAM/REAP matrix](#reamreap-coverage-matrix)); an FP8 build would need a CPU-only merge or a >64 GB-RAM host.
 
@@ -157,7 +157,7 @@ Open issues only. Resolved items live in [patches/README.md](patches/README.md) 
 ./scripts/launch.sh devstral            # Devstral-24B AWQ (256K)
 ./scripts/launch.sh coder-30b           # Coder-30B MoE AWQ (256K)
 ./scripts/launch.sh coder-next          # Coder-Next 80B AWQ (131K)
-./scripts/launch.sh gemma4              # Gemma 4 26B MoE AWQ (256K)
+./scripts/launch.sh gemma4              # Gemma 4 26B MoE AWQ (128K via triton flash; AVLM+thinking)
 ./scripts/launch.sh gemma4-31b          # Gemma 4 31B Dense AWQ (256K, torch_native)
 ./scripts/launch.sh qwen35              # Qwen3.5-27B DeltaNet AWQ (262K)
 ./scripts/launch.sh qwen35-moe          # Qwen3.5-35B-A3B MoE GPTQ (262K)
