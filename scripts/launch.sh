@@ -93,16 +93,53 @@ apply_preset() {
             # on 2×32GB (consistent w/ rdna4-fp8-lane: AWQ-int4 is the dense 256K format;
             # only A3B-MoE FP8 keeps 256K). 143K >> SWE-bench prompts, so fine for the eval.
             MODEL="${MODEL:-$MODELS_DIR/Devstral-Small-2-24B-FP8}"
+            # Ensure the agentic sampling defaults (see note below) live in the model's
+            # generation_config.json so SGLang's --sampling-defaults model applies them
+            # (opencode omits temperature/repetition_penalty, so the server fills them in).
+            # Idempotent: only writes when the values differ. set DEVSTRAL2_TEMP to override.
+            python3 - "$MODEL" "${DEVSTRAL2_TEMP:-0.5}" <<'PYEOF' 2>/dev/null || true
+import json, os, sys
+p = os.path.join(sys.argv[1], "generation_config.json")
+temp = float(sys.argv[2])
+try:
+    d = json.load(open(p))
+    if d.get("temperature") != temp or d.get("repetition_penalty") != 1.1:
+        d["temperature"] = temp; d["repetition_penalty"] = 1.1; d["do_sample"] = True
+        json.dump(d, open(p, "w"), indent=2)
+        print(f"  [devstral2] sampling defaults set: temperature={temp}, repetition_penalty=1.1")
+except Exception as e:
+    print(f"  [devstral2] WARN: could not set sampling defaults in {p}: {e}")
+PYEOF
             CTX=262144; MEM=0.90; MAX_RUNNING=8; CHUNKED=8192
             DTYPE="bfloat16"; QUANT="fp8"
             TOOL_CALL_PARSER="mistral"
             # Patched template drops the upstream alternation guard that mis-counts tool
-            # turns → "roles must alternate" 400 on opencode rollouts. (NOTE 2026-05-30: the
-            # mistral_common tokenizer — Mistral's recommended path, vLLM's --tokenizer-mode
-            # mistral — was tried to fix the intermittent [TOOL_CALLS]-as-text bug, but it
-            # has cascading SGLang integration failures on this multimodal Mistral3 model:
-            # pixtral add_special_tokens crash, then 1-token EOS. Reverted. HF tokenizer +
-            # this jinja is the least-bad path; agentic tool-calling stays intermittent.)
+            # turns → "roles must alternate" 400 on opencode rollouts.
+            #
+            # AGENTIC RELIABILITY (root-caused + fixed 2026-05-31, replaces the earlier
+            # "intermittent, unfixable" reading — that was WRONG; SGLang tool parsing is
+            # correct, proven by 179/179 valid calls + streaming unit tests). Two real
+            # failure modes, both now addressed:
+            #   1. In-context repetition-loop lock-in at the model's recommended temp 0.15
+            #      (e.g. django-10914: 412 identical glob calls → timeout-empty). Penalties
+            #      can't escape a locked loop; only a higher temperature avoids lock-in.
+            #      FIX: generation_config.json temperature 0.15→0.5 + repetition_penalty 1.1
+            #      (applied server-side via --sampling-defaults model, which SGLang fills in
+            #      because opencode omits both — no opencode/CLI change needed). django went
+            #      412-glob-loop → RESOLVED with this.
+            #   2. [TOOL_CALLS]-omission: the model intermittently emits `name[ARGS]{json}`
+            #      WITHOUT the leading [TOOL_CALLS] token (more often at higher temp), so the
+            #      whole call leaked as assistant text and opencode ended the episode empty.
+            #      FIX: patches/040-devstral-toolcall-omission-recovery.patch teaches
+            #      MistralDetector to anchor on [ARGS] (+ hold a trailing known tool name in
+            #      streaming, since SGLang streams the name token before [ARGS]). seaborn went
+            #      task-omission-empty → RESOLVED; requests empty → 1953B. Single-token tools
+            #      (glob/read/grep/bash/edit/write/task) fully covered; multi-token names
+            #      (todowrite/webfetch) are a documented residual.
+            # Net on the curated 6-subset: 2/6 resolved (django+seaborn) + 4/6 non-empty at
+            # timeout 300 (vs baseline ~loops/empties). Remaining empties are model capability
+            # (explains-instead-of-edits), not SGLang. mistral_common path stays a dead-end
+            # here (pixtral add_special_tokens crash → 1-token EOS on this multimodal Mistral3).
             CHAT_TEMPLATE="--chat-template $SCRIPT_DIR/devstral2_chat_template.jinja"
             OVERLAP=""
             ;;

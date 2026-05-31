@@ -1,0 +1,217 @@
+diff --git a/python/sglang/srt/function_call/mistral_detector.py b/python/sglang/srt/function_call/mistral_detector.py
+index 8cb412d..649a7c7 100644
+--- a/python/sglang/srt/function_call/mistral_detector.py
++++ b/python/sglang/srt/function_call/mistral_detector.py
+@@ -1,5 +1,6 @@
+ import json
+ import logging
++import re
+ from typing import Any, List, Optional, Tuple
+ 
+ from sglang.srt.entrypoints.openai.protocol import Tool
+@@ -28,6 +29,14 @@ class MistralDetector(BaseFormatDetector):
+        `[TOOL_CALLS]tool_name[ARGS]{...}`
+        (also tolerates missing delimiters like `]` after `[TOOL_CALLS` and/or `[ARGS]` while streaming)
+ 
++    3) [TOOL_CALLS]-omission recovery (R9700 patch): Devstral-Small-2 / Mistral-3
++       intermittently emit the compact call WITHOUT the leading `[TOOL_CALLS]`
++       special token — `tool_name[ARGS]{...}` — especially at higher temperature.
++       Without recovery the whole call is leaked as assistant text, so an agent
++       (e.g. opencode) sees no tool call and ends the episode with an empty diff.
++       We recover such calls only when the identifier before `[ARGS]` is a KNOWN
++       tool and the JSON payload is complete & valid (no false positives on prose).
++
+     Reference: https://huggingface.co/mistralai/Mistral-7B-Instruct-v0.3?chat_template=default
+     """
+ 
+@@ -38,12 +47,22 @@ class MistralDetector(BaseFormatDetector):
+         self.bot_token = "[TOOL_CALLS] ["
+         # Common marker shared by both JSON-array and compact formats.
+         self._tool_calls_marker = "[TOOL_CALLS"
++        # Args marker — also the anchor for [TOOL_CALLS]-omission recovery.
++        self._args_marker = "[ARGS"
+         self.eot_token = "]"
+         self.tool_call_separator = ", "
+ 
+     def has_tool_call(self, text: str) -> bool:
+-        """Return True if the text contains either supported tool-call marker."""
+-        return self._tool_calls_marker in text
++        """Return True if the text contains a supported tool-call marker.
++
++        Also returns True for the [TOOL_CALLS]-less compact form `name[ARGS]{...}`
++        so the omission-recovery path in detect_and_parse runs. The marker alone
++        is a gate; detect_and_parse still validates the tool name + JSON, so a
++        stray "[ARGS" in prose never produces a spurious tool call.
++        """
++        if self._tool_calls_marker in text:
++            return True
++        return bool(re.search(r"\[ARGS\]?\s*[{\[]", text))
+ 
+     def detect_and_parse(self, text: str, tools: List[Tool]) -> StreamingParseResult:
+         """
+@@ -55,6 +74,18 @@ class MistralDetector(BaseFormatDetector):
+         """
+         marker_idx = text.find(self._tool_calls_marker)
+         if marker_idx == -1:
++            # [TOOL_CALLS] omitted — try to recover a bare `name[ARGS]{json}` call.
++            argsonly = self._try_parse_argsonly_format(text, tools)
++            if argsonly:
++                normal_before, func_name, args_obj, consumed = argsonly
++                calls = self.parse_base_json(
++                    {"name": func_name, "arguments": args_obj}, tools
++                )
++                trailing = text[consumed:].strip()
++                normal_text = normal_before.strip()
++                if trailing:
++                    normal_text = (normal_text + " " + trailing).strip()
++                return StreamingParseResult(normal_text=normal_text, calls=calls)
+             return StreamingParseResult(normal_text=text, calls=[])
+ 
+         normal_text = text[:marker_idx].strip()
+@@ -127,7 +158,69 @@ class MistralDetector(BaseFormatDetector):
+ 
+         # No marker: either flush as normal text or keep buffering a partial marker.
+         if self._tool_calls_marker not in current_text:
++            if not hasattr(self, "_tool_indices"):
++                self._tool_indices = self._get_tool_indices(tools)
++            # [TOOL_CALLS]-omission recovery: the model may emit `name[ARGS]{json}`
++            # with no leading [TOOL_CALLS]. Anchor on [ARGS] when it's in the buffer.
++            # Only acts on a KNOWN tool + valid JSON, so prose with "[ARGS" is never
++            # misparsed.
++            if self._args_marker in current_text:
++                argsonly = self._try_parse_argsonly_format(current_text, tools)
++                if argsonly:
++                    normal_before, func_name, args_obj, consumed = argsonly
++                    if self.current_tool_id == -1:
++                        self.current_tool_id = 0
++                        self.prev_tool_call_arr = []
++                        self.streamed_args_for_tool = []
++                    args_json = json.dumps(args_obj, ensure_ascii=False)
++                    tool_id = self.current_tool_id
++                    while len(self.prev_tool_call_arr) <= tool_id:
++                        self.prev_tool_call_arr.append({})
++                    while len(self.streamed_args_for_tool) <= tool_id:
++                        self.streamed_args_for_tool.append("")
++                    self.prev_tool_call_arr[tool_id] = {
++                        "name": func_name,
++                        "arguments": args_obj,
++                    }
++                    self.streamed_args_for_tool[tool_id] = args_json
++                    calls = [
++                        ToolCallItem(tool_index=tool_id, name=func_name, parameters=""),
++                        ToolCallItem(tool_index=tool_id, name=None, parameters=args_json),
++                    ]
++                    self._buffer = current_text[consumed:]
++                    self.current_tool_id += 1
++                    self.current_tool_name_sent = False
++                    return StreamingParseResult(normal_text=normal_before, calls=calls)
++                # [ARGS] present, known tool, but JSON still streaming: hold the
++                # `name[ARGS…` tail in the buffer (flush only the text before it)
++                # so a partial tool call is never leaked as assistant content.
++                ap = current_text.find(self._args_marker)
++                kk = ap
++                while kk > 0 and (
++                    current_text[kk - 1].isalnum() or current_text[kk - 1] in "_.-"
++                ):
++                    kk -= 1
++                if current_text[kk:ap] in self._tool_indices:
++                    if kk > 0:
++                        self._buffer = current_text[kk:]
++                        return StreamingParseResult(normal_text=current_text[:kk])
++                    return StreamingParseResult()
+             if not self._ends_with_partial_token(self._buffer, self._tool_calls_marker):
++                # Hold back a trailing KNOWN tool name: SGLang streams the name
++                # token before the [ARGS] token, so without this the name would be
++                # flushed as content and an omitted-[TOOL_CALLS] call could never be
++                # recovered. Only exact tool names are held (prose words are not), so
++                # normal text is not truncated.
++                hold = self._trailing_known_tool_name_len(self._buffer)
++                if 0 < hold < len(self._buffer):
++                    flush = self._buffer[:-hold]
++                    self._buffer = self._buffer[-hold:]
++                    if self.eot_token in flush:
++                        flush = flush.replace(self.eot_token, "")
++                    return StreamingParseResult(normal_text=flush)
++                if hold and hold == len(self._buffer):
++                    # entire buffer is a tool name — hold it, waiting for [ARGS]
++                    return StreamingParseResult()
+                 normal_text = self._buffer
+                 self._buffer = ""
+                 if self.eot_token in normal_text:
+@@ -195,6 +288,76 @@ class MistralDetector(BaseFormatDetector):
+         # Otherwise, keep buffering.
+         return StreamingParseResult()
+ 
++    def _trailing_known_tool_name_len(self, buffer: str) -> int:
++        """Length of a trailing run that exactly equals a known tool name.
++
++        Used by streaming [TOOL_CALLS]-omission recovery: when the buffer ends
++        with a bare known tool name (e.g. ``…\\n\\ntask``), it may be the name of
++        a call whose [TOOL_CALLS] marker was dropped and whose [ARGS] token has
++        not streamed in yet, so it is held back rather than flushed as content.
++        Returns 0 when the trailing identifier is not an exact tool name (so
++        ordinary prose — including words that merely contain a tool name — is
++        flushed normally and never truncated).
++        """
++        if not getattr(self, "_tool_indices", None):
++            return 0
++        k = len(buffer)
++        while k > 0 and (buffer[k - 1].isalnum() or buffer[k - 1] in "_.-"):
++            k -= 1
++        trailing = buffer[k:]
++        return len(trailing) if trailing and trailing in self._tool_indices else 0
++
++    def _try_parse_argsonly_format(
++        self, text: str, tools: List[Tool]
++    ) -> Optional[Tuple[str, str, Any, int]]:
++        """Recover a tool call whose leading `[TOOL_CALLS]` marker was OMITTED:
++            `tool_name[ARGS]{...}`   (also tolerates a missing `]` after `[ARGS`)
++
++        Observed intermittently on Devstral-Small-2 / Mistral-3, more often at
++        higher temperature. To rule out false positives on prose, this only
++        succeeds when ALL hold:
++          * an `[ARGS` marker is present,
++          * the identifier run immediately before it is a KNOWN tool name, and
++          * the JSON payload after `[ARGS]` is complete and valid.
++
++        Returns (normal_text_before, tool_name, arguments_obj, consumed_end) or None.
++        """
++        args_pos = text.find(self._args_marker)
++        if args_pos == -1:
++            return None
++
++        # Tool name = the identifier run immediately preceding "[ARGS".
++        k = args_pos
++        while k > 0 and (text[k - 1].isalnum() or text[k - 1] in "_.-"):
++            k -= 1
++        func_name = text[k:args_pos]
++        if not func_name:
++            return None
++
++        if not hasattr(self, "_tool_indices"):
++            self._tool_indices = self._get_tool_indices(tools)
++        if func_name not in self._tool_indices:
++            return None
++
++        # JSON payload after "[ARGS" (tolerate a missing "]" like the compact path).
++        j = args_pos + len(self._args_marker)
++        if j < len(text) and text[j] == "]":
++            j += 1
++        while j < len(text) and text[j].isspace():
++            j += 1
++        if j >= len(text) or text[j] not in "{[":
++            return None
++
++        json_str, end_idx = self._extract_json_value(text, j)
++        if not json_str or not _is_complete_json(json_str):
++            return None
++        try:
++            args_obj = json.loads(json_str)
++        except json.JSONDecodeError:
++            return None
++
++        return text[:k], func_name, args_obj, end_idx
++
+     def _try_parse_compact_args_format(
+         self, text: str
+     ) -> Optional[Tuple[str, Any, int]]:
