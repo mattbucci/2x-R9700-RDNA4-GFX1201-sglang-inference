@@ -24,6 +24,7 @@
 #   qwen36-27b     Qwen3.6-27B dense AWQ (thinking+vision, 262K)
 #   qwen3vl-32b    Qwen3-VL-32B dense AWQ (thinking+vision, self-recal balanced, 256K)
 #   coder-reap-25b Cerebras Qwen3-Coder-REAP-25B-A3B (pruned from Coder-30B, 256K)
+#   nemotron-omni  Nemotron-3-Nano-Omni-30B-A3B FP8 (Mamba2 hybrid AVLM+thinking, 128K; patch 046)
 
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -448,6 +449,43 @@ PYEOF
             # Drop it for agentic/tool use; re-enable only with explicit thinking (emits </think>).
             TOOL_CALL_PARSER="qwen"
             EXTRA_ARGS="${EXTRA_ARGS:-} --enable-multimodal"
+            ;;
+        nemotron-omni)
+            # Nemotron-3-Nano-Omni-30B-A3B-Reasoning FP8 — NVIDIA Mamba2-Transformer
+            # HYBRID MoE (128 experts, 6 active per token), ModelOpt per-tensor FP8,
+            # full AVLM (text + image + video + audio via Parakeet) + thinking. The
+            # first Mamba2 hybrid to run on the box. Arch
+            # NemotronH_Nano_Omni_Reasoning_V3 is a registered EntryClass (loads as a
+            # full AVLM, no override). Requires ALL of:
+            #   - patch 043  HIP causal_conv1d  (external/CUDA conv1d absent on gfx1201)
+            #   - patch 044  modelopt_fp8 ROCm allowlist  (native FP8 GEMM + Triton MoE)
+            #   - patch 046  SSD divergent-ptr buffer-ops fix  (WITHOUT it the chunk-scan
+            #     + chunk-state Triton kernels abort the AMD canonicalize-pointers pass
+            #     the moment initial_states appears — i.e. any chunked prefill past one
+            #     chunk — which capped usable context at ~8K. With 046 the kernels keep
+            #     buffer ops ON and serve full context.)
+            #   - `pip install librosa`  (hard dep of the Parakeet sound encoder)
+            # modelopt_fp8 is NATIVE on RDNA4 via patch 044 (not upcast). KV is
+            # Mamba-state-based (multi-million-token pool) so memory is not the limiter.
+            # Context: 262144 (256K) — the nemotron_h llm backbone's max_position. The
+            # config's top-level max_sequence_length=131072 is NOT the real ceiling; we
+            # serve full 256K (SGLANG_ALLOW_OVERWRITE_LONGER_CONTEXT_LEN=1 from
+            # setup_rdna4_env permits the overwrite). bfloat16 compute (model is
+            # bf16-native; fp16 risks SSM-state range overflow over the long recurrence).
+            # Attention backend = TRITON flash (patch 047 fixes the hybrid-pool layer-0
+            # crash that previously forced torch_native). Triton flash is the memory-
+            # efficient path: validated full 256K (247K-tok prefill, full-token-usage
+            # 0.07, ~109s, ~29 tok/s decode at 247K) with DEFAULT mem/chunked — no
+            # capped-pool / tiny-chunk workarounds. torch_native is the math-SDPA
+            # fallback (override ATTN_BACKEND=torch_native): correct but materializes
+            # O(chunk x ctx) scores so it OOMs past ~150K and is far slower at long ctx.
+            MODEL="${MODEL:-$MODELS_DIR/Nemotron-3-Nano-Omni-30B-A3B-Reasoning-FP8}"
+            QUANT="modelopt_fp8"
+            DTYPE="bfloat16"
+            ATTN_BACKEND="${ATTN_BACKEND:-triton}"
+            CTX=262144; MEM=0.85; MAX_RUNNING=8; CHUNKED=4096; DECODE_STEPS=4
+            REASONING="--reasoning-parser nemotron_3"
+            TOOL_CALL_PARSER="qwen3_coder"
             ;;
         *)
             echo "Unknown model: $1"

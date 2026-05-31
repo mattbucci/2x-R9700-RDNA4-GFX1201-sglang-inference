@@ -1,0 +1,217 @@
+RDNA4 (gfx1201) fix: Mamba2/SSD chunk-scan + chunk-state divergent fat-pointer
+crashes the AMD buffer-ops pass, capping hybrid SSM models at ~8K context.
+
+Two SSD Triton kernels reassign a state pointer to a DIFFERENT base tensor inside
+an `if` branch and use it after the merge:
+  - ssd_chunk_scan.py  _chunk_scan_fwd_kernel : prev_states_ptr  (states vs initstates)
+  - ssd_chunk_state.py _chunk_state_varlen_kernel : past_states_ptrs (chunk_states vs initstates)
+Both only take that branch when initial_states != None, i.e. exactly the chunked-
+prefill / continuous-batching path a long sequence hits. With AMD buffer ops on
+(the default, AMDGCN_USE_BUFFER_OPS=1), TritonAMDGPUCanonicalizePointers must
+decompose the post-merge pointer into a (base, 32-bit offset) "fat pointer", but
+the two branches have different bases -> assertion
+  `fatPtrs.at(then)==fatPtrs.at(else)` (canNarrow) -> PassManager::run failed -> abort.
+This capped Nemotron-3-Nano-Omni-30B (first Mamba2 hybrid on the box) at ~8K.
+
+Fix: keep every pointer SINGLE-BASED. Record the branch decision in a runtime flag
++ index, build both candidate tile pointers independently, load both (masked), and
+select the VALUE with tl.where at the matmul site. Numerically identical to upstream
+(validated BIT-EXACT with buffer ops off; buffer-ops-on differs only by the buffer
+codegen's own rounding, rel<=2.2e-4 << bf16 eps). Buffer ops stay ENABLED everywhere
+(full perf) -- this is a kernel fix, not a buffer-ops disable. Pure RDNA4 codegen
+workaround; semantics unchanged on CUDA. Applies to ANY Mamba2/SSD hybrid using
+initial_states (chunked prefill / cont-batch), not just Nemotron-Omni.
+
+diff --git a/python/sglang/srt/layers/attention/mamba/ops/ssd_chunk_scan.py b/python/sglang/srt/layers/attention/mamba/ops/ssd_chunk_scan.py
+index 52b1971..37b705f 100644
+--- a/python/sglang/srt/layers/attention/mamba/ops/ssd_chunk_scan.py
++++ b/python/sglang/srt/layers/attention/mamba/ops/ssd_chunk_scan.py
+@@ -133,7 +133,6 @@ def _chunk_scan_fwd_kernel(
+     )
+ 
+     # M-block offsets and prev states
+-    #  - logic in next block may override these if there is an active offset
+     offs_m = pid_m * BLOCK_SIZE_M + c_off + tl.arange(0, BLOCK_SIZE_M)
+     prev_states_ptr = (
+         states_ptr
+@@ -144,6 +143,19 @@ def _chunk_scan_fwd_kernel(
+     prev_states_hdim = stride_states_hdim
+     prev_states_dstate = stride_states_dstate
+ 
++    # RDNA4 buffer-ops fix: the upstream kernel REASSIGNS prev_states_ptr to a
++    # different base tensor (initstates_ptr) inside the branch below. That makes
++    # prev_states_ptr a divergent fat-pointer at the scf.if merge, which aborts the
++    # AMD TritonAMDGPUCanonicalizePointers pass ("fatPtrs canNarrow" -> PassManager
++    # run failed) whenever buffer ops are on (the default) -- the bug that capped
++    # Nemotron-Omni (and any Mamba2/SSD hybrid using initial_states, i.e. chunked
++    # prefill / continuous batching) at ~8K on gfx1201. Instead we keep
++    # prev_states_ptr SINGLE-BASED, record the decision in a runtime flag
++    # (use_initstates) + the init seq index, and select the loaded VALUE against the
++    # init-state tile at the matmul site (see "RDNA4 init-state select" below).
++    # Identical numerics; every pointer stays single-based so buffer ops still apply.
++    use_initstates = False
++
+     chunk_size_limit = min(chunk_size, seqlen - c_idx * chunk_size)
+     if HAS_SEQ_IDX:
+         seq_idx_ptr += (
+@@ -157,7 +169,11 @@ def _chunk_scan_fwd_kernel(
+ 
+         if HAS_INITSTATES:
+             # if there are init states, we only need seq_idx_m to point
+-            # what is the current seq_idx
++            # what is the current seq_idx.
++            # init_seq_idx defaults to seq_idx_prev so the init-state pointer is
++            # always in-bounds even when the boundary condition is false (the loaded
++            # init tile is then discarded by the tl.where at the matmul site).
++            init_seq_idx = seq_idx_prev
+ 
+             # get current seq idx
+             if (pid_m * BLOCK_SIZE_M + c_off) < chunk_size_limit:
+@@ -176,15 +192,10 @@ def _chunk_scan_fwd_kernel(
+                     )  # if a seq is changed exactly on boundary
+                     or (c_off > 0)  # implies a new example (pseudo chunk)
+                 ):
+-
+-                    # - replace prev_states_ptr with init_states
+-                    prev_states_ptr = (
+-                        initstates_ptr
+-                        + seq_idx_m * stride_init_states_batch
+-                        + pid_h * stride_init_states_head
+-                    )
+-                    prev_states_hdim = stride_init_states_hdim  # override strides
+-                    prev_states_dstate = stride_init_states_dstate
++                    # - select init_states for prev_states at the matmul site
++                    #   (value-select, not pointer-reassign; see RDNA4 note above)
++                    use_initstates = True
++                    init_seq_idx = seq_idx_m
+ 
+     offs_n = pid_n * BLOCK_SIZE_N + tl.arange(0, BLOCK_SIZE_N)
+     dA_cs_m = tl.load(
+@@ -264,6 +275,19 @@ def _chunk_scan_fwd_kernel(
+             offs_n[None, :] * prev_states_hdim
+             + offs_k_dstate[:, None] * prev_states_dstate
+         )
++        if HAS_INITSTATES:
++            # RDNA4 init-state select: build the init-state tile pointer as its OWN
++            # single-based pointer (never aliased onto prev_states_ptr), so the AMD
++            # canonicalize-pointers pass can fat-ptr both cleanly. Selected by value
++            # via use_initstates at each load below.
++            init_states_ptrs = (
++                initstates_ptr
++                + init_seq_idx * stride_init_states_batch
++                + pid_h * stride_init_states_head
++            ) + (
++                offs_n[None, :] * stride_init_states_hdim
++                + offs_k_dstate[:, None] * stride_init_states_dstate
++            )
+         if HAS_SEQ_IDX:
+ 
+             if not HAS_INITSTATES:
+@@ -288,6 +312,13 @@ def _chunk_scan_fwd_kernel(
+                 mask=(offs_k_dstate[:, None] < dstate) & (offs_n[None, :] < hdim),
+                 other=0.0,
+             )
++            if HAS_INITSTATES:
++                init_states = tl.load(
++                    init_states_ptrs,
++                    mask=(offs_k_dstate[:, None] < dstate) & (offs_n[None, :] < hdim),
++                    other=0.0,
++                )
++                prev_states = tl.where(use_initstates, init_states, prev_states)
+             prev_states = prev_states.to(C_ptr.dtype.element_ty)
+             acc = tl.dot(C, prev_states) * scale_m[:, None]
+         else:
+@@ -305,10 +336,20 @@ def _chunk_scan_fwd_kernel(
+                     & (offs_n[None, :] < hdim),
+                     other=0.0,
+                 )
++                if HAS_INITSTATES:
++                    init_states = tl.load(
++                        init_states_ptrs,
++                        mask=(offs_k_dstate[:, None] < dstate - k)
++                        & (offs_n[None, :] < hdim),
++                        other=0.0,
++                    )
++                    prev_states = tl.where(use_initstates, init_states, prev_states)
+                 prev_states = prev_states.to(C_ptr.dtype.element_ty)
+                 acc += tl.dot(C, prev_states)
+                 C_ptrs += BLOCK_SIZE_K
+                 prev_states_ptrs += BLOCK_SIZE_K
++                if HAS_INITSTATES:
++                    init_states_ptrs += BLOCK_SIZE_K
+             acc *= scale_m[:, None]
+ 
+     offs_k = tl.arange(0, BLOCK_SIZE_K) + c_off
+diff --git a/python/sglang/srt/layers/attention/mamba/ops/ssd_chunk_state.py b/python/sglang/srt/layers/attention/mamba/ops/ssd_chunk_state.py
+index 162d859..ad72571 100644
+--- a/python/sglang/srt/layers/attention/mamba/ops/ssd_chunk_state.py
++++ b/python/sglang/srt/layers/attention/mamba/ops/ssd_chunk_state.py
+@@ -398,33 +398,42 @@ def _chunk_state_varlen_kernel(
+                 offs_m[:, None] * stride_chunk_states_hdim
+                 + offs_n[None, :] * stride_chunk_states_dstate
+             )
++            past_states = tl.load(
++                past_states_ptrs,
++                mask=(offs_m[:, None] < hdim) & (offs_n[None, :] < dstate),
++                other=0.0,
++            ).to(tl.float32)
+         else:
+-
+-            # - this seems repetitive, buts its to help the compiler
+-            if start_idx < pid_c * chunk_size:
+-                past_states_ptrs = chunk_states_ptr + (
+-                    offs_m[:, None] * stride_chunk_states_hdim
+-                    + offs_n[None, :] * stride_chunk_states_dstate
+-                )
+-            else:
+-                past_states_ptrs = initstates_ptr + (
+-                    pid_b * stride_init_states_batch
+-                    + offs_m[:, None] * stride_init_states_hdim
+-                    + offs_n[None, :] * stride_init_states_dstate
+-                )
+-
+-                # need to adjust the boundary
+-                if start_idx > pid_c * chunk_size:
+-                    dA_cs_boundary = tl.load(
+-                        dA_cumsum_ptr
+-                        + (start_idx - pid_c * chunk_size - 1) * stride_dA_cs_csize
+-                    ).to(tl.float32)
+-
+-        past_states = tl.load(
+-            past_states_ptrs,
+-            mask=(offs_m[:, None] < hdim) & (offs_n[None, :] < dstate),
+-            other=0.0,
+-        ).to(tl.float32)
++            # RDNA4 buffer-ops fix: upstream selects past_states_ptrs between two
++            # DIFFERENT base tensors (chunk_states_ptr vs initstates_ptr) across the
++            # branch, producing a divergent fat-pointer at the scf.if merge that
++            # aborts the AMD TritonAMDGPUCanonicalizePointers pass ("fatPtrs
++            # canNarrow" -> PassManager::run failed). Keep each pointer single-based,
++            # load BOTH tiles, and select the VALUE. Same numerics; buffer-ops safe.
++            # use_init mirrors the original `start_idx < pid_c*chunk_size` else-branch
++            # (i.e. start_idx >= pid_c*chunk_size -> insert initstates).
++            use_init = start_idx >= pid_c * chunk_size
++            chunk_past_ptrs = chunk_states_ptr + (
++                offs_m[:, None] * stride_chunk_states_hdim
++                + offs_n[None, :] * stride_chunk_states_dstate
++            )
++            init_past_ptrs = initstates_ptr + (
++                pid_b * stride_init_states_batch
++                + offs_m[:, None] * stride_init_states_hdim
++                + offs_n[None, :] * stride_init_states_dstate
++            )
++            mask = (offs_m[:, None] < hdim) & (offs_n[None, :] < dstate)
++            chunk_past = tl.load(chunk_past_ptrs, mask=mask, other=0.0).to(tl.float32)
++            init_past = tl.load(init_past_ptrs, mask=mask, other=0.0).to(tl.float32)
++            past_states = tl.where(use_init, init_past, chunk_past)
++
++            # need to adjust the boundary (only when inserting initstates strictly
++            # after the chunk start; implies use_init is True)
++            if start_idx > pid_c * chunk_size:
++                dA_cs_boundary = tl.load(
++                    dA_cumsum_ptr
++                    + (start_idx - pid_c * chunk_size - 1) * stride_dA_cs_csize
++                ).to(tl.float32)
+ 
+         scale = tl.exp(dA_cs_last - dA_cs_boundary)
+         acc += past_states * scale
