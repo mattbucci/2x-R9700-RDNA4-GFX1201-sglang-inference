@@ -332,7 +332,11 @@ apply_preset() {
             fi
             DTYPE="bfloat16"
             CTX=262144; MAX_RUNNING=8; CHUNKED=8192; DECODE_STEPS=8; MEM=0.85
-            REASONING="--reasoning-parser qwen3"
+            # NO --reasoning-parser: Qwen3-Coder-REAP-25B is a NON-thinking coder (pruned
+            # from Coder-30B-Instruct, emits no </think>) — the qwen3 reasoning parser then
+            # routed ALL output to reasoning_content, leaving `content` EMPTY, so the opencode
+            # agent saw nothing → 0/6 empty diffs on the SWE-bench fleet smoke (2026-05-30).
+            # Healthy coder-30b sets no reasoning parser; match it (REASONING stays "").
             TOOL_CALL_PARSER="qwen3_coder"
             OVERLAP=""
             ;;
