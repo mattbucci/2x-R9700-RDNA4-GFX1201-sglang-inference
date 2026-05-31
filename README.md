@@ -390,7 +390,7 @@ See [rules-for-agents.md](rules-for-agents.md) for RDNA4 constraints, launch fla
 
 ```
 OS:     EndeavourOS (Arch Linux)
-Kernel: 6.18.0-zen1-1-zen-p2p (custom linux-zen with CONFIG_HSA_AMD_P2P=y)
+Kernel: 7.0.9-zen1-1-zen (custom linux-zen, CONFIG_HSA_AMD_P2P=y + CONFIG_PCI_P2PDMA=y; boot cmdline iommu=pt — required for stable multi-GPU P2P at long context, see below)
 CPU:    AMD Ryzen 9 7900 12-Core Processor
 RAM:    64 GB DDR5
 GPU:    2x AMD Radeon AI PRO R9700 (gfx1201, 32 GB GDDR7 each)
