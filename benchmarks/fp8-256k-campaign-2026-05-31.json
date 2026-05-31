@@ -32,6 +32,31 @@
       },
       "quality": {"basic": "PASS (coherent code under no-spec and spec)"},
       "notes": "no-spec long-context curve + EAGLE3 coherent ~86 tok/s are post-iommu=pt real data; pilot pre-fix no-spec 256K (0.68) and spec (2.56/72) DISCARDED. accept_len 5.5 confirms topk16 tree active (chain would be ~2-3); the pilot's 'tree kernel unavailable/greedy' message did NOT recur. 256K random spec 2.44 is a no-wedge sanity check only (random tokens => ~0 draft acceptance), not coherent throughput."
+    },
+    "Qwen3.6-35B-A3B-FP8": {
+      "preset": "qwen36-moe",
+      "kind": "MoE 256e + DeltaNet, thinking+vision",
+      "served_256k_nospec": true,
+      "max_total_num_tokens": 1609758,
+      "nospec_tok_s": {"in32768": 18.01, "in131072": 17.08},
+      "nospec_ttft_ms": {"in131072": 6538.03},
+      "nospec_post131k_interactive_s": 1.8,
+      "nospec_wedge": false,
+      "validate": {"basic": "PASS", "thinking": "PASS", "vision": "PASS", "raw": "3/3; basic='paris', thinking 446tok finish=stop, vision saw red/circle/round"},
+      "spec": {
+        "draft": "DFlash (z-lab)",
+        "coherent_tok_s_median": 57.5,
+        "coherent_tok_s": {"merge_intervals": 42.08, "binary_search": 60.94, "france": 57.5},
+        "speedup_vs_nospec": 3.2,
+        "accept_len": 3.0,
+        "accept_rate": 0.13,
+        "tree_active": true,
+        "greedy_fallback_msg": false,
+        "served_256k": false,
+        "ctx_ceiling": "OOM at 262K prefill on 2x32GB — BF16 draft + DFlash verify + DeltaNet/fused-MoE prefill activations exceed VRAM at every mem-fraction that also yields a usable KV pool (0.85->17-tok KV; 0.88->110K KV short-only; 0.92->OOM gdn_backend conv1d @131K; 0.80->startup OOM)"
+      },
+      "quality": {"basic": "PASS", "thinking": "PASS", "vision": "PASS"},
+      "notes": "FP8 no-spec is the 256K-capable path (1.6M-tok KV, 17-18 tok/s, 3/3 caps). DFlash gives strong SHORT-context speedup (57.5 tok/s, 3.2x, accept 3.0, tree active) but is NOT 256K-capable in FP8 (draft+verify+hybrid-prefill OOM). For 256K+spec use the AWQ-int4 target (half the weight bytes -> headroom); the README/specdecode.json '80 tok/s @ 256K' was the AWQ ship, NOT FP8 — correct those."
     }
   }
 }
