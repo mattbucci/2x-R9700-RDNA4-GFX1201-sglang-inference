@@ -1,0 +1,22 @@
+--- a/python/sglang/srt/configs/model_config.py
++++ b/python/sglang/srt/configs/model_config.py
+@@ -1144,6 +1144,19 @@
+             # serving native AWQ) all hit "moe_wna16 quantization is currently
+             # not supported in ROCm" config-time rejection.
+             "moe_wna16",
++            # 2026-05-31 R9700 fix: NVIDIA ModelOpt per-tensor FP8 serving on
++            # ROCm. Same class of overly-conservative config-time gate as
++            # moe_wna16 above — the kernels actually run on RDNA4. ModelOpt FP8
++            # Linear falls back to the standard fp8 GEMM (cutlass_fp8_supported
++            # is False on ROCm), and ModelOpt FP8 MoE falls through to the
++            # Triton fused-MoE fp8_w8a8 path (no flashinfer on ROCm), both of
++            # which are the same native-FP8 paths the rocm-supported "fp8"
++            # method already uses on gfx1201. Unblocks NemotronH Omni MoE
++            # (Nemotron-3-Nano-Omni-30B-A3B FP8). Without it the model hits
++            # "modelopt_fp8 quantization is currently not supported in ROCm"
++            # at _verify_quantization() before model load.
++            "modelopt",
++            "modelopt_fp8",
+         ]
+         optimized_quantization_methods = [
+             "fp8",
