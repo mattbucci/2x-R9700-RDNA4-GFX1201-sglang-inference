@@ -42,9 +42,9 @@ Next:
    | Devstral-2-24B | dense + vision | basic+vision+tool PASS | ~23 @32K / — | **~180K** single-seq (pool 180572@0.90; 164978@0.92) | v2 Mistral3 (`devstral2`); **256K NOT reachable** — mem-fraction doesn't help (transient floor, ~12.5 GB free @KV-sizing); BF16 vision tower eats KV; AWQ-int4 is the dense 256K path; no draft |
    | Qwen3-Coder-30B-A3B | MoE 128e | code PASS | ~18 @32K / ~30 | **256K** ✓ (522K-tok KV) | **FP8+EAGLE3 = 86 tok/s coherent @256K** — the one FP8+draft 256K win (tiny 361MB draft, pure MoE, accept ~5.5); no-spec flat 18/17 @32K/131K |
    | Qwen3-VL-32B | dense VL | basic+VISION PASS | 13.0 / — | ~159K (158K tok) | largest dense; vision survives FP8 |
-   | gemma-4-31B | dense (Gemma4) | basic+thinking PASS | 11.6 / ~15 | ~51K (51K tok) | torch_native; vision = known AWQ HSAIL (not FP8) |
-   | Qwen3.5-27B | DeltaNet hybrid | thinking PASS | 13.1 / ~26 | ~34K (34.6K tok) | KV-starved (see below) |
-   | Qwen3.6-27B | DeltaNet+attn VL | basic+thinking+VISION PASS | 12.8 / ~24 | ~34K (34.6K tok) | KV-starved; vision survives FP8 |
+   | gemma-4-31B | dense (Gemma4) | basic+thinking PASS | 11.6 / ~15 | ~51K (51K tok) | serves **native FP8** (17.57 GB/card, no Linear fallback — not affected by patch 045); cap is memory not a bug; vision = known AWQ HSAIL (not FP8) |
+   | Qwen3.5-27B | DeltaNet hybrid | thinking PASS | 13.1 / ~26 | **256K boots / ~131K** (patch 045) | **was 34K — that was the replicated-MLP OOM bug.** Patch 045 TP-splits the FP8 MLP → native FP8 20.82 GB/card, boots full 256K (pool 408K); long-prefill validated ~131K @mem0.80 (9.78 tok/s). Residual: a 256K prefill OOMs in the FP8 fallback GEMM @mem0.90 |
+   | Qwen3.6-27B | DeltaNet+attn VL | basic+thinking+VISION 3/3 PASS | 12.8 / ~24 | **256K boots / ~131K** (patch 045) | same fix as Qwen3.5-27B (shared `qwen3_5` model file); native FP8 20.82 GB/card, thinking+vision intact; residual FP8-fallback-GEMM prefill OOM caps clean 256K |
    | Qwen3.6-35B-A3B | MoE 256e (FUSED) + DeltaNet VL | basic+thinking+VISION 3/3 PASS | ~18 @32K / ~21.6 | **256K** ✓ no-spec (1.6M-tok KV) | DFlash spec = 57 tok/s **SHORT-ctx only** (OOMs @256K in FP8: BF16 draft + DeltaNet prefill → use AWQ for 256K+draft, 80 tok/s) |
    | gemma-4-26B-A4B | MoE 128e (FUSED) hybrid VL | basic+thinking+VISION 3/3 PASS | ~9.9 @32K / ~15 | ⚠ **~32–64K** single-seq (pool 290K) | **NOT 256K**: torch_native attn (only SWA-safe backend on RDNA4) has no FlashAttention → global-attn layers OOM at long prefill. Bug: chunked-prefill must be ≤ SWA window 1024 |
 
