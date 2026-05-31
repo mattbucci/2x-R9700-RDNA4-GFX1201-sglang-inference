@@ -57,6 +57,20 @@
       },
       "quality": {"basic": "PASS", "thinking": "PASS", "vision": "PASS"},
       "notes": "FP8 no-spec is the 256K-capable path (1.6M-tok KV, 17-18 tok/s, 3/3 caps). DFlash gives strong SHORT-context speedup (57.5 tok/s, 3.2x, accept 3.0, tree active) but is NOT 256K-capable in FP8 (draft+verify+hybrid-prefill OOM). For 256K+spec use the AWQ-int4 target (half the weight bytes -> headroom); the README/specdecode.json '80 tok/s @ 256K' was the AWQ ship, NOT FP8 — correct those."
+    },
+    "Devstral-Small-2-24B-FP8": {
+      "preset": "devstral2",
+      "kind": "dense 24B + vision (Mistral3), native FP8",
+      "served_256k": false,
+      "max_total_num_tokens": 180572,
+      "mem_fraction": 0.90,
+      "nospec_tok_s": {"in32768": 22.79, "in65536": 19.51, "in131072": 15.53},
+      "nospec_ttft_ms": {"in131072": 1084.43},
+      "post131k_interactive_s": 2.63,
+      "wedge": false,
+      "spec": {"draft": "none published", "note": "no spec path (MistralForCausalLMEagle would load a SpecForge-trained draft; none exists for Devstral)"},
+      "validate": {"basic": "PASS", "vision": "PASS", "tool_call": "PASS (finish=tool_calls, get_weather city=Paris)"},
+      "notes": "At devstral2 defaults (mem 0.90, fp8 KV) KV pool tops out at max_total=180572 < 262144 — a single sequence CANNOT reach full 256K; largest validated IN=131072. CONTRADICTS the devstral2 preset comment ('patch-042 reclaim -> 413K -> full 256K') — that figure was likely the v1 dense Devstral-24B-FP8 (no vision tower) or a pre-vision build; v2 carries a BF16 vision tower that eats the KV budget. FOLLOW-UP (#10): retest at mem 0.92 to see if 256K single-seq is reachable (documented +22% lever). basic+vision+tool all PASS; no draft."
     }
   }
 }
