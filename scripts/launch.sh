@@ -515,8 +515,14 @@ fi
 # prefill @mem0.90, 9.3 tok/s, coherent). Scoped to the dense qwen3_5 family —
 # A3B-MoE FP8 (coder-30b/qwen36-moe) has ample KV headroom and keeps 8192. A
 # CLI --chunked-prefill still overrides (applied just below).
-if [[ "$QUANT" == "compressed-tensors" ]] && [[ "$PRESET" == "qwen36-27b" || "$PRESET" == "qwen35" ]] && (( CHUNKED > 2048 )); then
-    echo "[launch] dense FP8 ($PRESET) → chunked-prefill 2048 (avoids the 256K fallback-GEMM prefill OOM)"
+if [[ "$QUANT" == "compressed-tensors" ]] && (( CHUNKED > 2048 )) && { \
+     [[ "$PRESET" == "qwen36-27b" || "$PRESET" == "qwen35" ]] || \
+     { [[ "$PRESET" == "qwen36-moe" ]] && [[ "$EXTRA_ARGS" == *speculative* ]]; }; }; then
+    # Dense qwen3_5 FP8 (27B): the fallback-GEMM prefill transient OOMs at 256K.
+    # qwen36-moe (35B-A3B) FP8 no-spec is fine at 8192, but FP8 + DFlash spec-decode
+    # adds draft+verify prefill activations that OOM at 256K unless chunked small —
+    # validated: cp2048 @mem0.85 serves a 253K-tok prefill, ~45 tok/s, accept ~3.9.
+    echo "[launch] FP8 ($PRESET${EXTRA_ARGS:+ +spec}) → chunked-prefill 2048 (avoids the 256K prefill-transient OOM)"
     CHUNKED=2048
 fi
 

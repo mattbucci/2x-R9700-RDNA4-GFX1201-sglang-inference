@@ -52,11 +52,11 @@
         "accept_rate": 0.13,
         "tree_active": true,
         "greedy_fallback_msg": false,
-        "served_256k": false,
-        "ctx_ceiling": "OOM at 262K prefill on 2x32GB — BF16 draft + DFlash verify + DeltaNet/fused-MoE prefill activations exceed VRAM at every mem-fraction that also yields a usable KV pool (0.85->17-tok KV; 0.88->110K KV short-only; 0.92->OOM gdn_backend conv1d @131K; 0.80->startup OOM)"
+        "served_256k": true,
+        "ctx_ceiling": "RESOLVED 2026-05-31 via --chunked-prefill 2048 @mem0.85: 253K-tok prefill serves, ~45 tok/s coherent, accept ~3.9, max_total_num_tokens=782523 (KV pool was NEVER the limit). The earlier 'OOMs at every mem-fraction' was a prefill-transient (gdn_backend/fused-MoE per-chunk), NOT a draft+verify memory wall — cp2048 shrinks the per-chunk transient. launch.sh auto-applies cp2048 for qwen36-moe FP8 when spec-decode is on. So FP8+DFlash@256K works (2nd FP8+draft@256K model alongside Coder-30B EAGLE3)."
       },
       "quality": {"basic": "PASS", "thinking": "PASS", "vision": "PASS"},
-      "notes": "FP8 no-spec is the 256K-capable path (1.6M-tok KV, 17-18 tok/s, 3/3 caps). DFlash gives strong SHORT-context speedup (57.5 tok/s, 3.2x, accept 3.0, tree active) but is NOT 256K-capable in FP8 (draft+verify+hybrid-prefill OOM). For 256K+spec use the AWQ-int4 target (half the weight bytes -> headroom); the README/specdecode.json '80 tok/s @ 256K' was the AWQ ship, NOT FP8 — correct those."
+      "notes": "FP8 no-spec is the 256K-capable path (1.6M-tok KV, 17-18 tok/s, 3/3 caps). DFlash reaches 256K (~45 tok/s coherent, accept ~3.9) via --chunked-prefill 2048 — CORRECTION: the earlier 'NOT 256K-capable / OOMs at every mem-fraction' was wrong; the OOM was a prefill-transient (gdn_backend/fused-MoE per-chunk), not a draft+verify memory wall (KV pool 782K). cp2048 shrinks the per-chunk transient → 253K-tok prefill serves. So FP8+DFlash@256K works (2nd FP8+draft@256K model). AWQ-int4 is still faster absolute (80) but FP8 now reaches the same 256K."
     },
     "Devstral-Small-2-24B-FP8": {
       "preset": "devstral2",
