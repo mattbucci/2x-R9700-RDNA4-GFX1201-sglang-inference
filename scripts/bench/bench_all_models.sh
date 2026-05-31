@@ -35,7 +35,7 @@ ALL_MODELS=(
     "coder-next-ream|Coder-Next REAM 60B AWQ|131072|8"
     "qwen35-moe|Qwen3.5-35B MoE GPTQ|131072|8"
     "qwen36-moe|Qwen3.6-35B MoE AWQ|131072|8"
-    "gemma4|Gemma 4 26B AWQ|4096|16"
+    "gemma4|Gemma 4 26B AWQ|262144|8"
     "gemma4-31b|Gemma 4 31B AWQ|8192|4"
     "nemotron-omni|Nemotron-Omni-30B FP8|262144|8"
 )
