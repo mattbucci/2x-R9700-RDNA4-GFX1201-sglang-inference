@@ -1,0 +1,50 @@
+--- a/python/sglang/srt/models/qwen3_5.py
++++ b/python/sglang/srt/models/qwen3_5.py
+@@ -110,6 +110,30 @@
+ cached_get_processor = lru_cache(get_processor)
+ 
+ 
++def _is_compressed_tensors_fp8(quant_config: "QuantizationConfig") -> bool:
++    """True if a compressed-tensors config quantizes Linear layers to FP8.
++
++    compressed-tensors can carry either FP8 (float/8-bit) or int4/wNa16
++    (AWQ-like) Linear schemes under the single name "compressed_tensors".
++    Only the FP8 variant is too large to replicate the MLP across TP ranks.
++    """
++    target_scheme_map = getattr(quant_config, "target_scheme_map", None)
++    if not target_scheme_map:
++        return False
++    weights = None
++    for key in ("Linear", "FusedMoE"):
++        scheme = target_scheme_map.get(key)
++        if isinstance(scheme, dict) and scheme.get("weights") is not None:
++            weights = scheme["weights"]
++            break
++    if weights is None:
++        return False
++    num_bits = getattr(weights, "num_bits", None)
++    wtype = getattr(weights, "type", None)
++    wtype = getattr(wtype, "value", wtype)
++    return num_bits == 8 and wtype == "float"
++
++
+ def _should_replicate_deltanet_for_tp(
+     quant_config: Optional[QuantizationConfig],
+ ) -> bool:
+@@ -122,7 +146,15 @@
+     if quant_config is None:
+         return True
+     name = quant_config.get_name()
+-    return name not in ("fp8", "mxfp8", "w8a8_fp8")
++    if name in ("fp8", "mxfp8", "w8a8_fp8"):
++        return False
++    # compressed-tensors FP8 (e.g. format="float-quantized") is just as
++    # large as the dedicated fp8 path and must split the MLP across TP
++    # ranks; otherwise the replicated FP8 MLP doubles per-card weight
++    # memory and OOMs. AWQ/int4 compressed-tensors still replicate.
++    if name == "compressed_tensors" and _is_compressed_tensors_fp8(quant_config):
++        return False
++    return True
+ 
+ 
+ class Qwen3_5GatedDeltaNet(nn.Module):
