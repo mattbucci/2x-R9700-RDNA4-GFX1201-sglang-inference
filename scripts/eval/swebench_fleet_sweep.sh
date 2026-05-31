@@ -45,6 +45,7 @@ CELLS=(
  "qwen36-27b-fp8|qwen36-27b|Qwen3.6-27B-FP8|FP8"
  "qwen3vl-32b-awq|qwen3vl-32b||AWQ"
  "qwen3vl-32b-fp8|qwen3vl-32b|Qwen3-VL-32B-FP8|FP8"
+ "nemotron-omni-fp8|nemotron-omni||FP8"
 )
 
 for cell in "${CELLS[@]}"; do
