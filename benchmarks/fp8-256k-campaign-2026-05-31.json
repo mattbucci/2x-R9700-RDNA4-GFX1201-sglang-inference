@@ -1,0 +1,25 @@
+{
+  "campaign": "FP8 @ 256K re-measurement (single-user, with-draft / without-draft)",
+  "date": "2026-05-31",
+  "env": {
+    "kernel": "7.0.9-zen1-1-zen (custom linux-zen, HSA_AMD_P2P + PCI_P2PDMA)",
+    "iommu": "pt (passthrough — dmesg-confirmed)",
+    "tp": 2, "kv_cache_dtype": "fp8_e4m3", "nccl_debug": "WARN",
+    "sglang": "v0.5.12 + RDNA4 patches (incl. 041 AWQ GEMV, 042 FP8 reclaim)"
+  },
+  "infra_fix": "iommu=pt cleared the post-131K-prefill TP2 NCCL channel-renegotiation wedge: NCCL log lines 178278 -> 4 (events ceased, not just logging), no-spec 131K decode 0.68 -> 16.83 tok/s. Short-context P2P never tripped it (why the 97 tok/s short-ctx runs missed it).",
+  "method": "single-user decode tok/s = 1000 / Mean_TPOT_ms via sglang.bench_serving (random dataset); spec-decode also measured on coherent coding prompts. context label = bench random-input length (repo convention input=ctx/2).",
+  "models": {
+    "Qwen3-Coder-30B-A3B-FP8": {
+      "preset": "coder-30b",
+      "kind": "MoE 128e",
+      "served_256k": true,
+      "max_total_num_tokens": 522043,
+      "nospec_tok_s": {"in32768": 18.06, "in65536": 18.21, "in131072": 16.83},
+      "nospec_ttft_ms": {"in32768": 328.88, "in65536": 646.83, "in131072": 1294.76},
+      "spec": {"draft": "EAGLE3 (lmsys)", "status": "benching (post-iommu=pt redo; pilot's 2.56@256K and 72@short were on the wedged/random-token state)"},
+      "quality": {"basic": "PASS (coherent fibonacci under no-spec and spec)"},
+      "notes": "no-spec long-context curve is the post-fix real data; pilot pre-fix no-spec 256K (0.68) and spec (2.56) are DISCARDED."
+    }
+  }
+}
