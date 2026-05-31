@@ -1,0 +1,25 @@
+diff --git a/python/sglang/srt/model_executor/model_runner.py b/python/sglang/srt/model_executor/model_runner.py
+index ff937dd..758d732 100644
+--- a/python/sglang/srt/model_executor/model_runner.py
++++ b/python/sglang/srt/model_executor/model_runner.py
+@@ -1544,6 +1544,20 @@ class ModelRunner(ModelRunnerKVCacheMixin):
+ 
+         self.dtype = self.model_config.dtype
+ 
++        # R9700 FIX (2026-05-31): reclaim weight-loading transients BEFORE measuring
++        # available memory. Some quant load paths (notably per-tensor FP8 requantize,
++        # e.g. devstral2 / Mistral3) leave ~11 GB/card of intermediate GPU tensors held
++        # by reference CYCLES — torch.cuda.empty_cache() alone can't free them (the
++        # tensors are still referenced), so weight_load_mem_usage was inflated (23.56 GB
++        # for 12.93 GB of real params) and the KV pool was starved (devstral2 FP8 capped
++        # at ~125K instead of 256K). gc.collect() breaks the cycles; empty_cache() then
++        # returns the memory, so the KV-pool sizing below sees the true free memory.
++        import gc as _gc
++
++        torch.cuda.synchronize()
++        _gc.collect()
++        _gc.collect()
++        torch.cuda.empty_cache()
+         after_avail_memory = get_available_gpu_memory(self.device, self.gpu_id)
+         self.weight_load_mem_usage = before_avail_memory - after_avail_memory
+         # Get quantization config from ModelConfig
