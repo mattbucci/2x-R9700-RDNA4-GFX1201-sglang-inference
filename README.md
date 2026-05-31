@@ -186,20 +186,31 @@ bash scripts/bench/bench_256k_sweep.sh qwen35-moe # one model
 
 - 2x AMD Radeon AI PRO R9700 (or any gfx1201 RDNA4 GPU)
 - Linux with ROCm 7.2 (`/opt/rocm`)
-- **Custom kernel with `CONFIG_HSA_AMD_P2P=y`** (required for multi-GPU TP=2, see below)
+- **Custom kernel with `CONFIG_HSA_AMD_P2P=y` + `CONFIG_PCI_P2PDMA=y`** (required for multi-GPU TP=2)
+- **`iommu=pt` on the kernel boot cmdline** (IOMMU passthrough — required for *stable* multi-GPU P2P at long context; this is a boot parameter, separate from the kconfig above)
 - Miniforge3/Conda
 - `pacman -S rocprofiler rccl` (Arch Linux) or equivalent
 
-Without P2P, single-GPU inference still works; multi-GPU TP falls back to SHM transport (slower, may hang with CUDA graphs).  Verify: `zcat /proc/config.gz | grep HSA_AMD_P2P`.
+**P2P is two separate requirements on 2×R9700 — both are load-bearing:**
 
-On Arch Linux, build `linux-zen` with P2P enabled:
+1. **Kernel P2P config.** Without `CONFIG_HSA_AMD_P2P=y`, single-GPU inference still works but multi-GPU TP falls back to SHM transport (slower, may hang with CUDA graphs). Verify: `zcat /proc/config.gz | grep HSA_AMD_P2P`.
+2. **IOMMU passthrough (`iommu=pt`).** With the kconfig present but the IOMMU left in its default lazy DMA-translation mode, *short*-context TP=2 works fine — but **after a large prefill (~128K+ tokens) decode collapses to ~0.3–0.5 tok/s** as RCCL/NCCL endlessly renegotiates P2P channels (log fills with `minNChannels` / `post-adjustment`; NCCL prints `Missing iommu=pt ... can lead to instability or hang`). Passthrough bypasses IOMMU translation for trusted GPU DMA and fixes it. Measured on this box (Coder-30B-A3B-FP8, 256K): **NCCL log lines 178278 → 4, 131K-token decode 0.68 → 16.83 tok/s.** Short-context P2P never trips it — which is why it can hide until you run a long-context job. Verify: `grep iommu=pt /proc/cmdline` and `dmesg | grep -i passthrough` → `iommu: Default domain type: Passthrough`.
+
+On Arch/EndeavourOS, build `linux-zen` with P2P enabled (`asp` was removed from Arch — use devtools `pkgctl`):
 ```bash
-asp update linux-zen && asp checkout linux-zen
-cd linux-zen/trunk
+pkgctl repo clone --protocol=https linux-zen
+cd linux-zen
 echo "CONFIG_HSA_AMD_P2P=y" >> config
 echo "CONFIG_PCI_P2PDMA=y" >> config
 makepkg -si
 ```
+Then add `iommu=pt` to the boot cmdline. With systemd-boot + kernel-install (this box):
+```bash
+sudoedit /etc/kernel/cmdline      # append ' iommu=pt' (keep it a single space-separated line)
+sudo reinstall-kernels            # regenerates the systemd-boot entries from the new cmdline
+sudo reboot
+```
+(GRUB instead: add `iommu=pt` to `GRUB_CMDLINE_LINUX_DEFAULT` in `/etc/default/grub`, then `sudo grub-mkconfig -o /boot/grub/grub.cfg`.)
 
 ## Model Support
 
