@@ -1,0 +1,17 @@
+cell	format	result	detail
+coder-30b-awq	AWQ	resolved=3/6	applied=6 empty=0/6
+coder-reap-25b-awq	AWQ	resolved=0/6	applied=0 empty=6/6
+coder-next-ream-awq	AWQ	resolved=2/6	applied=5 empty=0/6
+qwen36-moe-awq	AWQ	resolved=2/6	applied=5 empty=1/6
+qwen35-moe-awq	AWQ	SERVE_FAILED	OSError
+gemma4-awq	AWQ	resolved=0/6	applied=0 empty=6/6
+gemma4-fp8	FP8	resolved=0/6	applied=0 empty=6/6
+gemma4-31b-awq	AWQ	resolved=0/6	applied=0 empty=6/6
+gemma4-31b-fp8	FP8	resolved=0/6	applied=0 empty=6/6
+qwen35-awq	AWQ	resolved=0/6	applied=0 empty=6/6
+qwen35-fp8	FP8	SERVE_FAILED	RuntimeError
+qwen36-27b-awq	AWQ	resolved=0/6	applied=0 empty=6/6
+qwen36-27b-fp8	FP8	SERVE_FAILED	RuntimeError
+qwen3vl-32b-awq	AWQ	resolved=0/6	applied=0 empty=6/6
+qwen3vl-32b-fp8	FP8	resolved=0/6	applied=0 empty=6/6
+FLEET_SWEEP_DONE	Sat May 30 08:09:45 PM PDT 2026
