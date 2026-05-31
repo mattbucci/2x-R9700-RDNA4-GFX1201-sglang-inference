@@ -17,9 +17,21 @@
       "max_total_num_tokens": 522043,
       "nospec_tok_s": {"in32768": 18.06, "in65536": 18.21, "in131072": 16.83},
       "nospec_ttft_ms": {"in32768": 328.88, "in65536": 646.83, "in131072": 1294.76},
-      "spec": {"draft": "EAGLE3 (lmsys)", "status": "benching (post-iommu=pt redo; pilot's 2.56@256K and 72@short were on the wedged/random-token state)"},
-      "quality": {"basic": "PASS (coherent fibonacci under no-spec and spec)"},
-      "notes": "no-spec long-context curve is the post-fix real data; pilot pre-fix no-spec 256K (0.68) and spec (2.56) are DISCARDED."
+      "spec": {
+        "draft": "EAGLE3 (lmsys)",
+        "coherent_tok_s_median": 85.74,
+        "coherent_tok_s": {"merge_intervals": 85.74, "quicksort": 92.49, "lru_cache": 83.19},
+        "speedup_vs_nospec": 4.8,
+        "accept_len": 5.53,
+        "accept_rate": 0.15,
+        "tree_active": true,
+        "greedy_fallback_msg": false,
+        "spec_256k_random_tok_s": 2.44,
+        "post_131k_interactive_s": 2.594,
+        "wedge": false
+      },
+      "quality": {"basic": "PASS (coherent code under no-spec and spec)"},
+      "notes": "no-spec long-context curve + EAGLE3 coherent ~86 tok/s are post-iommu=pt real data; pilot pre-fix no-spec 256K (0.68) and spec (2.56/72) DISCARDED. accept_len 5.5 confirms topk16 tree active (chain would be ~2-3); the pilot's 'tree kernel unavailable/greedy' message did NOT recur. 256K random spec 2.44 is a no-wedge sanity check only (random tokens => ~0 draft acceptance), not coherent throughput."
     }
   }
 }
