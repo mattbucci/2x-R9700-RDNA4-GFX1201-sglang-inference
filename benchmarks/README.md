@@ -6,13 +6,13 @@ Performance data for all models on 2x AMD Radeon AI PRO R9700 (gfx1201, RDNA4), 
 
 | Model | Single tok/s | Peak tok/s | Comparisons |
 |-------|:------------:|:----------:|:-----------:|
-| [Devstral-24B AWQ](devstral-24b-awq/) | 17 | 13 @32 | — |
-| [Coder-30B AWQ MoE](coder-30b-awq/) | 29 | 332 @32 | vLLM FP8, llama.cpp |
-| [Gemma 4 26B AWQ MoE](gemma4-26b-awq/) | 27 | 165 @32 | — |
+| [Devstral-24B AWQ](devstral-24b-awq/) | 37 | 841 @32 | — |
+| [Coder-30B AWQ MoE](coder-30b-awq/) | 30 | 332 @32 | vLLM FP8, llama.cpp |
+| [Gemma 4 26B AWQ MoE](gemma4-26b-awq/) | 30 | 165 @32 | — |
 | [Coder-Next 80B AWQ](coder-next-80b-awq/) | 24 | 25 @8 | llama.cpp |
-| [Qwen3.5-27B AWQ](qwen35-27b-awq/) | 21* | 55* @16 | — |
+| [Qwen3.5-27B AWQ](qwen35-27b-awq/) | 26 | 55 @16 | — |
 
-*Qwen3.5 is currently broken (causal_conv1d shape mismatch). Numbers are historical.
+The README at the repo root is the single source of truth for the full model fleet, FP8 numbers, and spec-decode coverage.
 
 ## Per-Model Directory
 
