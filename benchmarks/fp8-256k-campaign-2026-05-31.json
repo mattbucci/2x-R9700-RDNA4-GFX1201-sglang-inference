@@ -84,7 +84,22 @@
       "spec": {"draft": "none (no DFlash hook; base-EAGLE3 accept ~1.34)", "note": "no usable spec path"},
       "ctx_ceiling": "~32-64K single-seq prefill. KV pool is 290K (SWA) but torch_native attention has NO FlashAttention/chunked-KV -> Gemma's GLOBAL (full-attn) layers materialize chunk_q x full_kv per chunk -> >9GB transient at 131K -> OOM. 64K+ OOMs at every mem-fraction tested (0.85-0.62); Triton attn crashes with SWA on RDNA4 (no fallback). 32K validated PASS (9.89 tok/s, 3/3 caps).",
       "bug_found": "torch_native + SWA: chunked_prefill_size(4096) > sliding_window(1024) crashes at torch_native_backend.py:104 on first long chunked prefill (redundant-query buffer capped to window). WORKAROUND --chunked-prefill 1024; gemma4 preset should set CHUNKED<=1024 for long ctx.",
-      "notes": "CORRECTS README FP8 table 'gemma-4-26B-A4B FP8 256K, 18.7 tok/s': 290K is the KV POOL, but a single sequence can't prefill past ~32-64K on torch_native; 18.7 was short-ctx decode (measured 9.89 @32K). NOT 256K-capable on this backend. fp8 native confirmed (fp8_w8a8, per_channel, fp8_e4m3 KV)."
+      "notes": "CORRECTS README FP8 table 'gemma-4-26B-A4B FP8 256K, 18.7 tok/s': 290K is the KV POOL, but a single sequence can't prefill past ~32-64K on torch_native; 18.7 was short-ctx decode (measured 9.89 @32K). NOT 256K-capable on this backend. fp8 native confirmed (fp8_w8a8, per_channel, fp8_e4m3 KV). FOLLOW-UP: same torch_native root cause as Nemotron-Omni below — triton flash attention is the fix; gemma4's separate SWA-triton crash is a distinct bug to chase (like patch 047 chased Nemotron's hybrid-pool triton crash)."
+    },
+    "Nemotron-3-Nano-Omni-30B-A3B-FP8": {
+      "preset": "nemotron-omni",
+      "kind": "Mamba2-Transformer hybrid MoE (128e/6 active), AVLM (text+image+video+audio) + thinking, NVIDIA ModelOpt per-tensor FP8",
+      "served_256k": true,
+      "attention_backend": "triton (flash)",
+      "max_total_tokens_capped": 300000,
+      "nospec_tok_s": {"in28k": 30.5, "in247k": 29.0},
+      "prefill_247k_s": 109,
+      "full_token_usage_at_247k": 0.07,
+      "wedge": false,
+      "validate": {"basic": "PASS", "thinking": "PASS", "needle_28k": "PASS (VELVET-MERIDIAN-8842 retrieved)", "needle_247k": "INCONCLUSIVE — serving is fine (no OOM/crash, coherent) but the reasoning model exhausts its thinking budget at extreme depth; retrieval-quality, not a serving issue"},
+      "spec": {"draft": "none", "note": "0 mtp/eagle tensors in ckpt (19353 total); Nano excluded from MTP per Nemotron-3 white paper; none bundled or published/transferable"},
+      "unblock": "patches 046 + 047. 046 (SSD divergent-ptr buffer-ops): ssd_chunk_scan _chunk_scan_fwd_kernel + ssd_chunk_state _chunk_state_varlen_kernel reassigned a state pointer to a DIFFERENT base tensor (states vs initstates) inside an scf.if -> AMD TritonAMDGPUCanonicalizePointers abort (fatPtrs canNarrow) the moment initial_states appears (chunked prefill) -> ~8K cap; fixed BIT-EXACT via single-based ptrs + tl.where value-select, buffer ops stay ON. 047 (triton attn hybrid v_head_dim): TritonAttnBackend get_value_buffer(0) failed because layer 0 is a Mamba layer (full-attn layers sparse at [5,12,19,26,33,42]) -> ValueError -> forced torch_native; fixed by duck-typing HybridLinearKVPool.get_v_head_dim().",
+      "notes": "FULL 256K via TRITON flash attention — memory-efficient (247K-tok prefill, full-token-usage 0.07, NO OOM, ~109s) AND fast (~29 tok/s decode at 247K; Mamba2 hybrid stays fast at long ctx, faster than the dense/DeltaNet FP8 models). torch_native is the correct-but-slow fallback: ROCm has only the MATH SDPA backend (flash/mem-efficient report 'No available kernel') -> materializes O(chunk x ctx) scores -> OOM past ~150K, ~140 tok/s prefill. launch.sh nemotron-omni defaults to triton + CTX 262144, no memory workarounds (default mem 0.85 / cp 4096). The earlier '~8K ceiling / Triton-AMD chunk-scan compiler bug' verdict is SUPERSEDED. First Mamba2 hybrid on the box."
     }
   }
 }
