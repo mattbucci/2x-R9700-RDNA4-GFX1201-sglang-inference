@@ -1,9 +1,9 @@
 diff --git a/sgl-kernel/csrc/quantization/awq/awq_gemv_hip.cu b/sgl-kernel/csrc/quantization/awq/awq_gemv_hip.cu
 new file mode 100644
-index 0000000..0000001
+index 0000000..c1b2c6d
 --- /dev/null
 +++ b/sgl-kernel/csrc/quantization/awq/awq_gemv_hip.cu
-@@ -0,0 +1,1119 @@
+@@ -0,0 +1,1131 @@
 +// SPDX-License-Identifier: Apache-2.0
 +// SPDX-FileCopyrightText: Copyright contributors to the vLLM project
 +//
@@ -1024,14 +1024,26 @@ index 0000000..0000001
 +    }
 +
 +    size_t row_base = (start_group + grp) * G;
-+    for (size_t r = 0; r < G; r++) {
-+      size_t row = row_base + r;
-+      float act_f = static_cast<float>(activation[row]);
-+      uint32_t w_packed = qweight[row * weight_stride + tid];
-+
-+      for (int i = 0; i < OUTPUT_PER_THREAD; i++) {
-+        float w_val = static_cast<float>((w_packed >> (AWQ_ORDER[i] * 4)) & 0xF);
-+        acc[i] += act_f * (w_val - zp[i]) * sc[i];
++    // R9700: batch UNROLL independent loads before consuming -> more in-flight
++    // memory ops (this GEMV is memory-latency-bound). G (AWQ group size, 128) is
++    // divisible by UNROLL, so no remainder.
++    constexpr int UNROLL = 8;
++    for (size_t r = 0; r < G; r += UNROLL) {
++      float act_b[UNROLL];
++      uint32_t w_b[UNROLL];
++#pragma unroll
++      for (int u = 0; u < UNROLL; u++) {
++        size_t row = row_base + r + u;
++        act_b[u] = static_cast<float>(activation[row]);
++        w_b[u] = qweight[row * weight_stride + tid];
++      }
++#pragma unroll
++      for (int u = 0; u < UNROLL; u++) {
++#pragma unroll
++        for (int i = 0; i < OUTPUT_PER_THREAD; i++) {
++          float w_val = static_cast<float>((w_b[u] >> (AWQ_ORDER[i] * 4)) & 0xF);
++          acc[i] += act_b[u] * (w_val - zp[i]) * sc[i];
++        }
 +      }
 +    }
 +  }

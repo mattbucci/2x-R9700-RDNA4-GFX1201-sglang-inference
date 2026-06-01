@@ -1,0 +1,16 @@
+{
+  "change": "awq_gemv_bf16_kernel inner row-loop: batch UNROLL=8 independent (act,qweight) loads before dequant/FMA -> more in-flight memory ops. Persisted in patch 006.",
+  "date": "2026-05-31",
+  "root_cause": "GEMV was memory-LATENCY-bound (profiled 85.8% GPU util, 78% of decode, ~5x under weight-read roofline). Not dispatch (cuda-graph no help), not DeltaNet (0.6%), not occupancy (grid-split only helped most-starved shape).",
+  "microbench_cos": "1.00000 all shapes",
+  "microbench_speedup_per_shape": {"attn_o": "2.85x", "gate_up": "2.22x", "down": "2.30x", "qkv": "3.05x", "sum_us_per_token": "511 -> 202"},
+  "end_to_end_qwen36_27b_conc1": {
+    "in128":   {"pre_fix_toks": 14.5, "post_fix_toks": 24.96, "speedup": "1.73x", "note": "matches pre-v0.5.12 April-24 24.1 -> regression recovered"},
+    "in131072":{"pre_fix_toks": 9.9,  "post_fix_toks": 13.9,  "speedup": "1.40x", "note": "smaller mult at long ctx (context-dep attention dilutes GEMV gain)"}
+  },
+  "capabilities": "basic+thinking+vision 3/3 PASS (validate_capabilities, new kernel)",
+  "scope": "benefits every dense/hybrid AWQ model (qwen35, qwen36-27b, qwen3vl-32b, devstral, gemma4-31b)",
+  "persisted": "patches/006 regenerated, round-trip verified (git apply to empty tree reproduces optimized .cu/.hip byte-identical)",
+  "residual_optional": "uint4 (128-bit) loads + cheaper packed dequant could push past current ~50-80% roofline",
+  "pending": "full re-sweep of dense/hybrid AWQ decode tables (README numbers are pre-fix ~1.7x low; only qwen36-27b @128/@131K re-measured)"
+}
