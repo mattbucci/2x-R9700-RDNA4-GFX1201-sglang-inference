@@ -17,6 +17,7 @@ High-throughput LLM inference on 2x AMD Radeon AI PRO R9700 (gfx1201, RDNA4) wit
 
 **Open work:**
 1. **Multi-token tool-name omission recovery** for devstral (`todowrite`/`webfetch` stream in pieces; current hold-back is single-token only).
+2. **Reconcile dense-AWQ single-user decode + fill gaps.** The sweep table lists Qwen3.5-27B AWQ at 26 tok/s short-ctx but the Agent table says 14.4 — re-measure conc=1 cleanly and confirm the patch-041 GEMV path is engaged (note: on ROCm `--quantization awq` is a no-op vs auto-detect — `is_awq_marlin_compatible` gates on `_is_cuda`, so both resolve to the GEMV `AWQLinearKernel`). Also fill the **Qwen3-VL-32B** no-spec tok/s gap (`—` in the Agent table) at 256K.
 
 ### FP8 lane
 
