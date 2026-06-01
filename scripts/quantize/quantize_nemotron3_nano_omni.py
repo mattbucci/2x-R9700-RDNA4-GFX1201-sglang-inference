@@ -78,11 +78,6 @@ OUTPUT_DIR = os.environ.get(
 )
 # Full AVLM mix: preserve thinking + image + video + audio (the R9700 mandate).
 RECIPE = os.environ.get("RECIPE", "thinking_vision_video_audio")
-# GPU+CPU memory caps for device_map="auto" (no disk offload — see header). The
-# 2x R9700 are 32GB each; cap below that to leave room for calibration activations
-# + the all-expert MoE intermediates, and allow CPU spill.
-GPU_MEM_GB = os.environ.get("GPU_MEM_GB", "26")
-CPU_MEM_GB = os.environ.get("CPU_MEM_GB", "45")
 NUM_CALIBRATION_SAMPLES = int(os.environ.get("NUM_SAMPLES", "1024"))
 MAX_SEQUENCE_LENGTH = int(os.environ.get("MAX_SEQ_LEN", "2048"))
 
@@ -169,11 +164,13 @@ print(f"Tokenized {len(dataset)} samples at max_seq_len={MAX_SEQUENCE_LENGTH}")
 # ROCm has no flash-attn package -> force eager. 62GB on 64GB RAM -> device_map
 # auto + CPU cap + disk offload to /data; low_cpu_mem_usage avoids a full-RAM
 # transient at load.
-import torch as _t
-_ngpu = _t.cuda.device_count()
-_maxmem = {i: f"{GPU_MEM_GB}GiB" for i in range(_ngpu)}
-_maxmem["cpu"] = f"{CPU_MEM_GB}GiB"
-print(f"\n[3/5] Loading model (eager attn, device_map=auto over {_ngpu} GPU + CPU, max_memory={_maxmem})...")
+# NO device_map: accelerate's device_map hooks wrap module.forward as a
+# functools.partial, which breaks compressed_tensors' set_forward_quantized
+# (@wraps(module.forward.__func__)) AND its from_accelerate meta-device assertion.
+# Plain from_pretrained loads safetensors via mmap (low RSS — fits the 62GB model on
+# a 64GB/no-swap box), with NO accelerate hooks; llmcompressor's sequential pipeline
+# then onloads each layer to the GPU itself (set_onload_device) for fast GPTQ compute.
+print(f"\n[3/5] Loading model (eager attn, plain CPU mmap; llmcompressor onloads layers to GPU)...")
 t0 = time.time()
 from transformers import AutoConfig
 _cfg = AutoConfig.from_pretrained(BASE_MODEL, trust_remote_code=True)
@@ -186,8 +183,6 @@ for _c in [_cfg] + [getattr(_cfg, _a) for _a in dir(_cfg)
 model = AutoModelForCausalLM.from_pretrained(
     BASE_MODEL,
     config=_cfg,
-    device_map="auto",
-    max_memory=_maxmem,
     low_cpu_mem_usage=True,
     dtype=torch.bfloat16,
     attn_implementation="eager",
