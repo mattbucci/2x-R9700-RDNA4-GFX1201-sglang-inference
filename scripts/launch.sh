@@ -41,7 +41,7 @@ MEM=0.85
 MAX_RUNNING=32
 CHUNKED=4096
 DECODE_STEPS=4
-CUDA_GRAPH="--disable-cuda-graph"
+CUDA_GRAPH="--disable-cuda-graph"; [[ "${CUDA_GRAPH_ENABLE:-}" == "1" ]] && CUDA_GRAPH=""  # default off; CUDA_GRAPH_ENABLE=1 turns graphs on (overridden off again by DeltaNet/mamba presets below)
 MAMBA_CACHE=""
 CHAT_TEMPLATE=""
 REASONING=""
@@ -187,6 +187,12 @@ PYEOF
             DECODE_STEPS="${_ENV_DECODE_STEPS:-8}"
             MEM="${_ENV_MEM:-$MEM}"
             TOOL_CALL_PARSER="qwen3_coder"
+            # cuda-graph ON: pure-attention A3B MoE decode is DISPATCH-bound at M=1
+            # (~52% of TPOT is launch gap — 40.6ms wall vs 19.5ms GPU-busy at ctx8K),
+            # so graph capture ~2.3x's single-user decode (24.7 → 57.6 tok/s @short,
+            # 23.3 @128K; coherent; capture 0.39 GB). Opposite of the GPU-bound dense
+            # models where cuda-graph gives no help. No DeltaNet/mamba state here.
+            CUDA_GRAPH=""
             ;;
         coder-next)
             # Long-context target: 131K by default (can push to 256K with CLI
@@ -265,6 +271,10 @@ PYEOF
             WARMUP="--skip-server-warmup"; WATCHDOG=1800
             OVERLAP=""
             EXTRA_ARGS="${EXTRA_ARGS:-} --enable-multimodal"
+            # cuda-graph ON: pure-attention MoE (sliding+full), dispatch-bound M=1 decode
+            # → cuda-graph 1.67x (31.9 → 53.2 tok/s short). Triton SWA flash captures fine;
+            # validate_capabilities 3/3 PASS under graph (basic+thinking+VISION intact).
+            CUDA_GRAPH=""
             ;;
         gemma4-31b)
             # 2026-05-12: in-house AWQ build (mattbucci/gemma-4-31B-AWQ).
@@ -414,6 +424,9 @@ PYEOF
             # Healthy coder-30b sets no reasoning parser; match it (REASONING stays "").
             TOOL_CALL_PARSER="qwen3_coder"
             OVERLAP=""
+            # cuda-graph ON: REAP prune of Coder-30B-A3B = same pure-attention MoE
+            # family, same dispatch-bound M=1 decode → cuda-graph ~2.3x (see coder-30b).
+            CUDA_GRAPH=""
             ;;
         qwen36-27b)
             # Qwen3.6-27B (2026-04-21 release): DeltaNet+attn hybrid VL (3:1

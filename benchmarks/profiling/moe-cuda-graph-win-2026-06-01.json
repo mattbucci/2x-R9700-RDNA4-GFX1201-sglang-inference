@@ -1,0 +1,29 @@
+{
+  "experiment": "cuda-graph on pure-attention A3B MoE single-user decode (RDNA4 2x R9700, TP=2, v0.5.12 + patch-006)",
+  "date": "2026-06-01",
+  "hypothesis": "M=1 MoE decode is dispatch-bound (many tiny kernels, ~3B active params) so cuda-graph replay removes the launch gap — unlike the GPU-bound dense models where cuda-graph gave no help",
+  "profile_evidence": {
+    "model": "coder-30b @ctx8K, cuda-graph OFF, conc=1",
+    "per_step_wall_ms": 40.6,
+    "per_step_gpu_busy_ms": 19.53,
+    "implied_gpu_util_pct": 48,
+    "launch_gap_ms_per_step": 21.1,
+    "breakdown_pct_of_gpu_busy": {"elementwise_norm": 29.6, "nccl": 24.4, "moe": 20.1, "awq_gemv": 9.5, "rocblas_gemm": 8.6, "other": 7.8},
+    "note": "awq_gemv_moe_hip (task #26) would only touch the 20% moe kernel — NOT the lever. cuda-graph is.",
+    "receipt": "benchmarks/profiling/coder-30b-decode-profile-2026-06-01.json"
+  },
+  "decode_tok_s_conc1": {
+    "coder-30b":      {"off_short": 24.7, "on_short": 57.6, "on_128k": 23.3, "on_256k": 15.0, "speedup_short": 2.33, "coherent": true, "note": "256K = 218566-tok input, coherent summary"},
+    "coder-reap-25b": {"off_short": 22.9, "on_short": 58.1, "speedup_short": 2.54, "coherent": true, "note": "REAP prune of Coder-30B-A3B, same family"},
+    "gemma4-26b":     {"off_short": 31.9, "on_short": 53.2, "speedup_short": 1.67, "coherent": true, "note": "triton SWA flash captures fine; validate_capabilities 3/3 PASS incl. vision under graph"}
+  },
+  "cuda_graph_capture": {"mem_gb_per_card": "0.29-0.46", "batch_sizes": [1, 2, 4, 8, 12, 16, 24], "capture_seconds": "5-8", "works_at_262144": true, "max_total_at_256k": 817979},
+  "rollout": {
+    "enabled_presets": ["coder-30b", "coder-reap-25b", "gemma4"],
+    "mechanism": "launch.sh line-44 default --disable-cuda-graph; CUDA_GRAPH_ENABLE=1 env toggles on; the 3 MoE presets set CUDA_GRAPH=\"\" directly",
+    "left_off": ["qwen35-moe", "qwen36-moe", "coder-next", "nemotron-omni"],
+    "left_off_reason": "DeltaNet/Mamba recurrent-state graph capture untested/risky",
+    "dense_unaffected": "GPU-bound (qwen36-27b 85.8% util) — no launch gap to remove; global default stays OFF"
+  },
+  "conclusion": "cuda-graph is the MoE-decode lever (1.67-2.54x) the way patch-006 batched-load was the dense-GEMV lever. Both found by profiling util/roofline, not guessing. Largest at short ctx, positive through 256K."
+}

@@ -1,0 +1,33 @@
+{
+  "label": "coder-30b@8k",
+  "model": "/home/letsrtfm/AI/models/Qwen3-Coder-30B-A3B-AWQ-native",
+  "trace_file": "/tmp/prof/1780306992.2528243-TP-0.trace.json.gz",
+  "steps_captured": 40,
+  "completion_tokens": 44,
+  "gpu_busy_total_ms": 781.21,
+  "per_step_gpu_busy_ms": 19.53,
+  "breakdown_pct_of_gpu_busy": {
+    "elementwise_norm": 29.6,
+    "nccl": 24.4,
+    "moe": 20.1,
+    "awq_gemv": 9.5,
+    "rocblas_gemm": 8.6,
+    "other": 7.8,
+    "attention": 0.0
+  },
+  "top_kernels_ms_total": {
+    "ncclDevKernel_Generic_4(ncclDevKernelArgsStorage<4096ul>)": 190.39,
+    "fused_moe_kernel_gptq_awq": 135.21,
+    "void awq_gemv_bf16_kernel<8>(__hip_bfloat16 const*, unsigned int const": 74.24,
+    "void at::native::vectorized_templated_elementwise_kernel<4, at::native": 67.02,
+    "Cijk_Alik_Bljk_BBS_BH_Bias_HA_S_SAV_UserArgs_MT16x16x32_MI16x16x1_SN_L": 37.22,
+    "void at::native::reduce_kernel<512, 1, at::native::ReduceOp<float, at:": 35.11,
+    "void at::native::vectorized_elementwise_kernel<4, at::native::bfloat16": 30.34,
+    "Cijk_Alik_Bljk_BBS_BH_Bias_HA_S_SAV_UserArgs_MT128x128x32_MI16x16x1_SN": 27.38,
+    "void at::native::elementwise_kernel_manual_unroll<128, 4, at::native::": 19.5,
+    "void at::native::vectorized_elementwise_kernel<4, at::native::(anonymo": 16.2,
+    "void at::native::vectorized_elementwise_kernel<4, at::native::rsqrt_ke": 13.19
+  },
+  "active_weight_roofline_ms_per_step": 2.344,
+  "roofline_note": "1.5 GB active int4/card / 640.0 GB/s; per-step GPU busy runs 8.3x over roofline"
+}
