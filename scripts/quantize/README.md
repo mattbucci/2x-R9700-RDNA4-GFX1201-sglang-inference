@@ -74,3 +74,12 @@ See [REAM.md](REAM.md) for full documentation on shrinking MoE models by reducin
 | `expert_utilization.py` | `ExpertUtilizationTracker` — hook MoE routers during calibration |
 | `calibration_datasets.py` | Shared corpus builder: `code_thinking`, `balanced_thinking_vision`, etc. |
 | `upload_repo_per_file.py` | HF upload fallback when single-commit upload stalls (>30 GB) |
+
+## Grafting BF16 components from the upstream base into a quantized ship
+
+When a quant pipeline drops a component, you can sometimes splice the BF16 original back from the upstream base instead of recalibrating — **but only for input-side / quant-decoupled components.**
+
+- ✅ **Vision tower (`model.visual.*`) — grafts cleanly.** It's an input-side feature extractor (pixels → embeddings), independent of how the LM is quantized. Splice the fp16/bf16 tensors into a new shard, add the keys to `model.safetensors.index.json`, and list them in `quantization_config.ignore` so the loader keeps them unquantized (`merge_vision_weights.py --vision-prefix model.visual`). The cheap fix for any REAM/REAP/text-only-calibrated VL ship that lost its tower — no re-merge, no recal.
+- ❌ **MTP / draft head (`mtp.*`) — does NOT graft onto int4/AWQ.** The MTP predicts the next token from the *backbone's hidden states*; int4 quant shifts those states enough that a BF16-trained MTP accepts ~0% (Qwen3.5-27B graft: accept_len 1.00, accept_rate 0.00, 0.1 tok/s — far worse than the 26 no-spec baseline). It tolerates **FP8** (8-bit shift is small — the 35B-FP8 in-ckpt MTP accepts 2.26) but not int4. **For int4 spec-decode use a separately-trained, quant-robust draft (EAGLE3/DFlash), never a grafted in-ckpt MTP.** (Dense-27B has no fitting EAGLE3 draft and the z-lab DFlash OOMs → no AWQ spec-decode path on this HW.)
+
+**Principle:** graft components *decoupled* from the quantized weights (vision towers consume raw pixels). Don't graft components *coupled* to the exact backbone activations (MTP/draft heads are tuned to the BF16 hidden states; quantization breaks the coupling unless the shift is tiny, i.e. FP8).
