@@ -181,9 +181,14 @@ print(f"Tokenized {len(dataset)} samples at max_seq_len={MAX_SEQUENCE_LENGTH}")
 # compressed_tensors set_forward_quantized — patch_ct_set_forward (imported above) fixes
 # that. No offload_folder (DISK offload trips from_accelerate's meta-device assert; GPU
 # offload uses meta and passes). GPU_MEM_GB caps leave headroom for all-expert activations.
-GPU_MEM_GB = os.environ.get("GPU_MEM_GB", "24")
-CPU_MEM_GB = os.environ.get("CPU_MEM_GB", "32")
-print(f"\n[3/5] Loading model (eager attn, device_map=auto; {GPU_MEM_GB}GiB/GPU + {CPU_MEM_GB}GiB CPU)...")
+# Plain CPU load (NO device_map). device_map placed overflow modules on "meta"
+# (62GB barely fits GPU+CPU) and llmcompressor's OffloadCache can't offload meta
+# ("NotImplementedError: Offload of type meta"). Plain load keeps the whole model on
+# CPU, so llmcompressor's sequential pipeline offloads to "cpu" (supported) and onloads
+# each layer to the GPU for compute. The 62GB model exceeds the 61GB RAM, so a 64GB
+# NVMe swapfile on /data absorbs the cold (non-active-layer) model pages — the working
+# set per layer is small. patch_ct_set_forward handles the transformers-5 partial forwards.
+print(f"\n[3/5] Loading model (eager attn, plain CPU load; RAM+swap; llmcompressor onloads layers to GPU)...")
 t0 = time.time()
 from transformers import AutoConfig
 _cfg = AutoConfig.from_pretrained(BASE_MODEL, trust_remote_code=True)
@@ -193,14 +198,9 @@ for _c in [_cfg] + [getattr(_cfg, _a) for _a in dir(_cfg)
         _c._attn_implementation = "eager"
     except Exception:
         pass
-_ngpu = torch.cuda.device_count()
-_maxmem = {i: f"{GPU_MEM_GB}GiB" for i in range(_ngpu)}
-_maxmem["cpu"] = f"{CPU_MEM_GB}GiB"
 model = AutoModelForCausalLM.from_pretrained(
     BASE_MODEL,
     config=_cfg,
-    device_map="auto",
-    max_memory=_maxmem,
     low_cpu_mem_usage=True,
     dtype=torch.bfloat16,
     attn_implementation="eager",
