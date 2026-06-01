@@ -198,16 +198,16 @@ for _c in [_cfg] + [getattr(_cfg, _a) for _a in dir(_cfg)
         _c._attn_implementation = "eager"
     except Exception:
         pass
-# low_cpu_mem_usage=False: with True, transformers leaves computed/non-persistent
-# buffers on the "meta" device, and llmcompressor's set_onload_device then tries to
-# offload a meta module -> "NotImplementedError: Offload of type meta". False fully
-# materializes every module to CPU (no meta) so the offload device is "cpu" (CPUCache).
-# The fully-resident 62GB model + calibration accumulation exceeds 61GB RAM, but the
-# 64GB NVMe swapfile absorbs the cold pages (per-layer working set is small).
+# low_cpu_mem_usage=True is the PROVEN load: it materializes the model to CPU (~45GB
+# anon, offload_device=cpu -> CPUCache) and reached layer 24 before — it only died on
+# RAM (62GB model + quantized accumulation > 61GB), now absorbed by the 64GB /data
+# swapfile. (low_cpu_mem_usage=False counterintuitively left the model on "meta" ->
+# the meta-offload NotImplementedError; the meta issue came from the device_map detour,
+# not from low_cpu_mem_usage.) patch_ct_set_forward handles the transformers-5 partials.
 model = AutoModelForCausalLM.from_pretrained(
     BASE_MODEL,
     config=_cfg,
-    low_cpu_mem_usage=False,
+    low_cpu_mem_usage=True,
     dtype=torch.bfloat16,
     attn_implementation="eager",
     trust_remote_code=True,
