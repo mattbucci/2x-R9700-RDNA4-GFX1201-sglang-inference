@@ -347,6 +347,11 @@ PYEOF
             TOOL_CALL_PARSER="qwen3_coder"
             WARMUP="--skip-server-warmup"
             OVERLAP=""
+            # cuda-graph ON: DeltaNet+MoE M=1 decode is dispatch-bound like the
+            # pure-attention MoE → ~2.3-2.5x decode. Recurrent-state capture is
+            # numerically EXACT (qwen36-moe ON-vs-OFF temp-0 diff = bit-identical,
+            # similarity 1.000; 3/3 capabilities incl. thinking+vision under graph).
+            CUDA_GRAPH=""
             ;;
         qwen36-moe)
             # Qwen3.6-35B-A3B (2026-04-18).  Same architecture as Qwen3.5-35B
@@ -378,6 +383,11 @@ PYEOF
             TOOL_CALL_PARSER="qwen3_coder"
             WARMUP="--skip-server-warmup"
             OVERLAP=""
+            # cuda-graph ON: DeltaNet+MoE dispatch-bound M=1 decode → ~2.35x
+            # (qwen36-moe 26 → 61.2 tok/s; recurrent-state capture bit-exact vs OFF;
+            # 3/3 capabilities incl. thinking+vision). Also applies to REAM-A3B
+            # (served via this preset with a MODEL= override).
+            CUDA_GRAPH=""
             ;;
         qwen35)
             # CUDA graphs disabled: private-pool reservations (~2.2 GiB) fragment
