@@ -1,0 +1,23 @@
+{
+  "bench": "awq_gemv_bf16_hip microbench (scripts/bench/bench_awq_gemv.py), conc=1 M=1 decode GEMV, synthetic int4 weights, R9700 single-card",
+  "date": "2026-05-31",
+  "roofline_gbps_per_card": 640,
+  "correctness": "cos=1.00000 vs dequant+matmul reference on all shapes",
+  "baseline_auto_splitk": {
+    "attn_o_K5120xN5120":   {"us": 116.8, "gbps": 116.6, "pct_roofline": 18.2, "grid_blocks": 20},
+    "gate_up_K5120xN13824": {"us": 115.3, "gbps": 319.0, "pct_roofline": 49.8, "grid_blocks": 54},
+    "down_K13824xN5120":    {"us": 169.7, "gbps": 216.7, "pct_roofline": 33.9, "grid_blocks": 20},
+    "qkv_K5120xN7168":      {"us": 109.5, "gbps": 174.1, "pct_roofline": 27.2, "grid_blocks": 28}
+  },
+  "splitk_sweep_attn_o": {"sk1": 2.0, "sk4": 7.9, "sk8": 15.3, "sk16": 18.1, "unit": "pct_roofline"},
+  "splitk_sweep_down":   {"sk1": 1.9, "sk4": 8.0, "sk8": 11.9, "sk16": 23.3, "unit": "pct_roofline"},
+  "findings": [
+    "Kernel runs 18-50% of memory roofline; efficiency rises with N (output dim) because num_blocks = N/256 — small-N projections (N=5120 -> 20 blocks) underfill the 64-CU GPU.",
+    "SPLIT_K (warps-within-block K-split) is the existing knob: sk=1 is catastrophic (2%, latency-bound), climbs to ~18-34% by sk=16, then PLATEAUS under roofline -> a second cap beyond occupancy.",
+    "Likely caps: (a) grid too small for small N (only ~20 blocks); (b) per-int4 dequant ALU (~6 float ops/weight) + scalar 4-byte qweight loads (no 128-bit vectorization)."
+  ],
+  "next_levers": [
+    "Grid-level split-K: launch (N/256)*SK blocks each computing a K-slice partial + a reduction, instead of SK warps within N/256 blocks -> fills the 64 CUs for small N.",
+    "Vectorize qweight loads to uint4 (128-bit) and cut dequant ALU (fold zero-point / use bf16 dot intrinsics)."
+  ]
+}
