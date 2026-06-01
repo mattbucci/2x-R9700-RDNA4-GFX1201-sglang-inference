@@ -45,11 +45,13 @@ import os
 import sys
 import time
 
-# CPU calibration by default (env-overridable). The 62GB BF16 model does NOT fit
-# in this box's 64GB RAM, so we load via accelerate disk-offload (offload_folder
-# on /data) with a CPU RAM cap — llmcompressor's sequential pipeline onloads each
-# decoder layer for calibration, keeping peak RAM well under the cap.
-os.environ.setdefault("CUDA_VISIBLE_DEVICES", "")  # CPU calibration (keep GPUs free)
+# GPU calibration across both R9700s + CPU spill (env-overridable). The 62GB BF16
+# model doesn't fit in 64GB RAM, and llmcompressor 0.11.x's from_accelerate asserts
+# offloaded params are on `meta` (DISK offload -> "disk" device -> assertion fails),
+# so we DON'T use offload_folder. Instead device_map="auto" spreads the model over
+# the 2x32GB GPUs (+CPU) — ~119GB capacity for a 62GB model — which also makes
+# calibration far faster than CPU. Rule 1 means nothing else uses the GPUs meanwhile.
+os.environ.setdefault("CUDA_VISIBLE_DEVICES", "0,1")
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
@@ -76,11 +78,11 @@ OUTPUT_DIR = os.environ.get(
 )
 # Full AVLM mix: preserve thinking + image + video + audio (the R9700 mandate).
 RECIPE = os.environ.get("RECIPE", "thinking_vision_video_audio")
-# Disk-offload load (62GB model on 64GB box). offload_folder on /data (1.4T free);
-# cap CPU RAM so accelerate spills the overflow to disk and llmcompressor onloads
-# layers as it calibrates.
-OFFLOAD_DIR = os.environ.get("OFFLOAD_DIR", "/data/nemo-offload")
-CPU_MEM_GB = os.environ.get("CPU_MEM_GB", "44")
+# GPU+CPU memory caps for device_map="auto" (no disk offload — see header). The
+# 2x R9700 are 32GB each; cap below that to leave room for calibration activations
+# + the all-expert MoE intermediates, and allow CPU spill.
+GPU_MEM_GB = os.environ.get("GPU_MEM_GB", "26")
+CPU_MEM_GB = os.environ.get("CPU_MEM_GB", "45")
 NUM_CALIBRATION_SAMPLES = int(os.environ.get("NUM_SAMPLES", "1024"))
 MAX_SEQUENCE_LENGTH = int(os.environ.get("MAX_SEQ_LEN", "2048"))
 
@@ -167,8 +169,11 @@ print(f"Tokenized {len(dataset)} samples at max_seq_len={MAX_SEQUENCE_LENGTH}")
 # ROCm has no flash-attn package -> force eager. 62GB on 64GB RAM -> device_map
 # auto + CPU cap + disk offload to /data; low_cpu_mem_usage avoids a full-RAM
 # transient at load.
-print(f"\n[3/5] Loading model (eager attn, disk-offload to {OFFLOAD_DIR}, CPU cap {CPU_MEM_GB}GiB)...")
-os.makedirs(OFFLOAD_DIR, exist_ok=True)
+import torch as _t
+_ngpu = _t.cuda.device_count()
+_maxmem = {i: f"{GPU_MEM_GB}GiB" for i in range(_ngpu)}
+_maxmem["cpu"] = f"{CPU_MEM_GB}GiB"
+print(f"\n[3/5] Loading model (eager attn, device_map=auto over {_ngpu} GPU + CPU, max_memory={_maxmem})...")
 t0 = time.time()
 from transformers import AutoConfig
 _cfg = AutoConfig.from_pretrained(BASE_MODEL, trust_remote_code=True)
@@ -182,8 +187,7 @@ model = AutoModelForCausalLM.from_pretrained(
     BASE_MODEL,
     config=_cfg,
     device_map="auto",
-    max_memory={"cpu": f"{CPU_MEM_GB}GiB"},
-    offload_folder=OFFLOAD_DIR,
+    max_memory=_maxmem,
     low_cpu_mem_usage=True,
     dtype=torch.bfloat16,
     attn_implementation="eager",
