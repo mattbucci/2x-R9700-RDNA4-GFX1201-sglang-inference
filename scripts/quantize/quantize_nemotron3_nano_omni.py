@@ -1,0 +1,221 @@
+#!/usr/bin/env python3
+"""Nemotron-3-Nano-Omni-30B-A3B-Reasoning GPTQ W4A16 calibration (R9700).
+
+NVIDIA's NemotronH_Nano_Omni_Reasoning_V3 — a Mamba2-Transformer hybrid MoE
+(31B total / 3B active) with a CRADIO v4-H vision/video encoder + Parakeet
+(tdt-0.6b-v2) audio encoder + reasoning mode default ON. Modalities: text +
+image + video + audio. We already serve the NVIDIA ModelOpt FP8 build at full
+256K (triton flash, patches 043/044/046/047). This produces the AWQ int4 build
+so we can (a) compare AWQ vs FP8 single-user decode on R9700 and (b) hand the
+3090 stack (AWQ_Marlin) an int4 Omni it can serve. We are first to ship an AWQ
+of the Omni-Reasoning variant.
+
+Pipeline (R9700 standard, identical to coder-30b / qwen36 / gemma4 ships):
+  GPTQ W4A16 (this script) -> CT -> native AWQ (moe_wna16) via
+  convert_moe_ct_to_awq.py -> check_awq_scales.py --base -> validate -> ship.
+
+INT4 eligibility (from llm_config.hybrid_override_pattern; pre-flight derived by
+the 3090 team, task #18 — Mamba2/SSM cannot be INT4: recurrent-state error):
+    Mamba2 layers (BF16):  [0,2,4,7,9,11,14,16,18,21,23,25,28,30,32,35,37,39,41,44,46,48,50]
+    Attention   (BF16):    [5,12,19,26,33,42]
+    MLP/MoE     (INT4):    the remaining 23 layers
+Vision tower (RADIO/CRADIO), audio tower (Parakeet), MoE routers/gates,
+embeddings, and lm_head all stay BF16 (cardinal rule, same as gemma4/qwen35).
+Because the encoders AND their projectors stay BF16, calibration only needs to
+exercise the LM's text/placeholder token distribution (drop_images=True) across
+every modality's chat shape + reasoning — the `thinking_vision_video_audio`
+recipe (am_thinking + llava_instruct + llava_video_178k + common_voice +
+covost2 + numina + ultrachat).
+
+Usage:
+    conda activate quant      # the llmcompressor env (has compressed_tensors.distributed)
+    CUDA_VISIBLE_DEVICES="" python -u scripts/quantize/quantize_nemotron3_nano_omni.py \\
+        > /tmp/nemotron3-calib.log 2>&1 &
+    # (or detach via the setsid pattern in CLAUDE.md — this runs 12-20h)
+
+Override via env:  BASE_MODEL, OUTPUT_DIR, RECIPE, NUM_SAMPLES, MAX_SEQ_LEN.
+
+Credit: ignore-list + recipe scaffolding from the 3090 team's pre-flight
+(scripts/quantize/nemotron3_nano_omni_plan.md, quantize_nemotron3_nano_omni.py);
+adapted to the R9700 calibration_datasets recipe registry + paths.
+"""
+from __future__ import annotations
+
+import os
+import sys
+import time
+
+os.environ["CUDA_VISIBLE_DEVICES"] = ""  # CPU calibration — keep both R9700s free
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+from calibration_datasets import (
+    build_calibration_dataset,
+    rows_to_text,
+    tokenize_text_dataset,
+)
+import torch
+from transformers import AutoModelForCausalLM, AutoTokenizer, AutoProcessor
+from llmcompressor.modifiers.quantization import GPTQModifier
+from llmcompressor import oneshot
+
+MODELS_DIR = os.environ.get("MODELS_DIR", os.path.expanduser("~/AI/models"))
+BASE_MODEL = os.environ.get(
+    "BASE_MODEL", f"{MODELS_DIR}/Nemotron-3-Nano-Omni-30B-A3B-Reasoning-BF16"
+)
+OUTPUT_DIR = os.environ.get(
+    "OUTPUT_DIR", f"{MODELS_DIR}/Nemotron-3-Nano-Omni-30B-A3B-Reasoning-W4A16-CT"
+)
+# Full AVLM mix: preserve thinking + image + video + audio (the R9700 mandate).
+RECIPE = os.environ.get("RECIPE", "thinking_vision_video_audio")
+NUM_CALIBRATION_SAMPLES = int(os.environ.get("NUM_SAMPLES", "1024"))
+MAX_SEQUENCE_LENGTH = int(os.environ.get("MAX_SEQ_LEN", "2048"))
+
+# Nemotron-H names BOTH Mamba2 and attention mixers `mixer`, so a generic
+# re:.*mixer.* would over-quantize — ignore by explicit layer index instead.
+MAMBA_LAYERS = [0, 2, 4, 7, 9, 11, 14, 16, 18, 21, 23, 25, 28, 30, 32, 35, 37, 39, 41, 44, 46, 48, 50]
+ATTN_LAYERS = [5, 12, 19, 26, 33, 42]
+KEEP_BF16_LAYERS = sorted(MAMBA_LAYERS + ATTN_LAYERS)
+KEEP_BF16_LAYER_RE = "|".join(str(i) for i in KEEP_BF16_LAYERS)
+
+IGNORE_PATTERNS = [
+    "lm_head",
+    # All Mamba2 + Attention layers stay BF16 (recurrent state / few-layer attn)
+    rf"re:^.*\.layers\.({KEEP_BF16_LAYER_RE})\..*$",
+    # MoE routers / gates
+    "re:.*router.*",
+    r"re:.*\.gate$",
+    "re:.*_gate$",
+    # Vision encoder (CRADIO v4-H) + image projector
+    "re:.*vision_tower.*",
+    "re:.*radio.*",
+    "re:.*image_embed.*",
+    "re:.*image_projector.*",
+    "re:.*multi_modal_projector.*",
+    # Audio encoder (Parakeet) + audio projector
+    "re:.*audio_tower.*",
+    "re:.*sound_tower.*",
+    "re:.*parakeet.*",
+    "re:.*audio_embed.*",
+    "re:.*sound_embed.*",
+    "re:.*audio_projector.*",
+    "re:.*sound_projector.*",
+    # Embeddings
+    "re:.*embed_tokens.*",
+]
+
+ram_gb = os.sysconf("SC_PAGE_SIZE") * os.sysconf("SC_PHYS_PAGES") / (1024**3)
+print(f"Base:   {BASE_MODEL}")
+print(f"Output: {OUTPUT_DIR}")
+print(f"Recipe: {RECIPE}")
+print(f"RAM:    {ram_gb:.1f} GB")
+print(f"Calibration: {NUM_CALIBRATION_SAMPLES} samples x {MAX_SEQUENCE_LENGTH} tokens")
+print(f"KEEP-BF16 layers ({len(KEEP_BF16_LAYERS)}): {KEEP_BF16_LAYERS}")
+print(f"INT4-eligible MLP/MoE layers (52 - {len(KEEP_BF16_LAYERS)} = {52 - len(KEEP_BF16_LAYERS)})")
+
+# --- 1. Build calibration dataset ---
+print("\n[1/5] Building calibration dataset...")
+rows = build_calibration_dataset(recipe=RECIPE, num_samples=NUM_CALIBRATION_SAMPLES, seed=42)
+
+# --- 2. Tokenizer + chat template ---
+print("\n[2/5] Loading tokenizer + rendering chat template...")
+tokenizer = AutoTokenizer.from_pretrained(BASE_MODEL, trust_remote_code=True)
+if tokenizer.chat_template is None:
+    template_path = os.path.join(BASE_MODEL, "chat_template.jinja")
+    with open(template_path) as f:
+        tokenizer.chat_template = f.read()
+    print(f"  Loaded chat_template.jinja from {template_path}")
+
+text_dataset = rows_to_text(
+    rows,
+    tokenizer,
+    enable_thinking=True,   # reasoning default ON — exercise the </think> pathway
+    drop_images=True,       # encoders + projectors are BF16; LM sees placeholders
+    max_samples=NUM_CALIBRATION_SAMPLES,
+)
+print(f"Rendered {len(text_dataset)} calibration rows")
+
+# Thinking coverage is load-bearing (degenerates if absent). Tool-call coverage
+# is best-effort: this AVLM recipe has no tool data, so just report it.
+joined = "\n".join(r["text"] for r in text_dataset)
+n_think = joined.count("<think>")
+n_tool = joined.count("<tool_call>") + joined.count("[TOOL_CALLS]")
+print(f"  thinking coverage: <think>={n_think}   tool-call coverage: {n_tool} (best-effort)")
+if n_think < 10:
+    raise RuntimeError(
+        f"Thinking pathway under-represented (<think>={n_think}); am_thinking mix "
+        f"didn't render — fix before calibrating (reasoning would degenerate)."
+    )
+
+dataset = tokenize_text_dataset(text_dataset, tokenizer, MAX_SEQUENCE_LENGTH)
+print(f"Tokenized {len(dataset)} samples at max_seq_len={MAX_SEQUENCE_LENGTH}")
+
+# --- 3. Load model on CPU (full Omni wrapper; encoders stay attached) ---
+print("\n[3/5] Loading model on CPU (trust_remote_code=True, may be slow)...")
+t0 = time.time()
+model = AutoModelForCausalLM.from_pretrained(
+    BASE_MODEL, device_map="cpu", torch_dtype=torch.bfloat16, trust_remote_code=True,
+)
+print(f"Model loaded in {time.time() - t0:.0f}s ({type(model).__name__})")
+print(f"  Parameter count: {sum(p.numel() for p in model.parameters()) / 1e9:.2f}B")
+
+# --- 4. GPTQ W4A16 calibration ---
+print("\n[4/5] Running GPTQ calibration...")
+print(f"  Ignore patterns ({len(IGNORE_PATTERNS)}):")
+for p in IGNORE_PATTERNS:
+    print(f"    {p}")
+
+recipe = GPTQModifier(
+    targets="Linear",
+    scheme="W4A16",
+    ignore=IGNORE_PATTERNS,
+    # MoE: every expert must see calibration mass or rare experts get garbage
+    # scales (proven on our REAM/REAP/128-expert ships). ~3x calib time.
+    moe_calibrate_all_experts=True,
+    offload_hessians=True,
+)
+
+t0 = time.time()
+oneshot(
+    model=model,
+    dataset=dataset,
+    recipe=recipe,
+    max_seq_length=MAX_SEQUENCE_LENGTH,
+    num_calibration_samples=NUM_CALIBRATION_SAMPLES,
+    processor=tokenizer,
+)
+elapsed = time.time() - t0
+print(f"\nGPTQ complete in {elapsed/3600:.1f}h ({elapsed:.0f}s)")
+
+# --- 5. Save ---
+os.makedirs(OUTPUT_DIR, exist_ok=True)
+print(f"Saving to {OUTPUT_DIR}...")
+model.save_pretrained(OUTPUT_DIR, save_compressed=True, max_shard_size="2GB")
+tokenizer.save_pretrained(OUTPUT_DIR)
+
+# Preserve the Omni remote-code + processor (image + audio preprocessing) so the
+# trust_remote_code serve path works from OUTPUT_DIR.
+try:
+    proc = AutoProcessor.from_pretrained(BASE_MODEL, trust_remote_code=True)
+    proc.save_pretrained(OUTPUT_DIR)
+    print("  Saved processor (image + audio config)")
+except Exception as e:
+    print(f"  WARN: could not save AutoProcessor ({e!r}); copying remote-code files directly")
+import shutil
+for fname in os.listdir(BASE_MODEL):
+    if fname.endswith((".py", ".jinja")) or fname in (
+        "generation_config.json", "preprocessor_config.json", "tokenizer_config.json",
+    ):
+        src = os.path.join(BASE_MODEL, fname)
+        dst = os.path.join(OUTPUT_DIR, fname)
+        if os.path.isfile(src) and not os.path.exists(dst):
+            shutil.copy2(src, dst)
+            print(f"  Copied {fname}")
+
+print("\nDone.")
+print("Next:")
+print(f"  1. CT->AWQ:    python scripts/quantize/convert_moe_ct_to_awq.py {OUTPUT_DIR} \\")
+print(f"                   {MODELS_DIR}/Nemotron-3-Nano-Omni-30B-A3B-Reasoning-AWQ --group-size 128")
+print(f"  2. Scale audit: python scripts/eval/check_awq_scales.py <awq-dir> --base {BASE_MODEL}")
+print(f"  3. Validate:    launch.sh nemotron-omni (repoint MODEL=) + 4-modality probe")
+print(f"  4. Ship:        mattbucci/Nemotron-3-Nano-Omni-30B-A3B-Reasoning-AWQ")
