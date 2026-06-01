@@ -34,19 +34,14 @@ MODELS = {
     "qwen3.5-27b-awq":          {"label": "Qwen3.5-27B AWQ (DeltaNet)",        "color": "#58a6ff"},
     "devstral-24b-awq":         {"label": "Devstral-24B AWQ",                  "color": "#79c0ff"},
     "coder-30b-awq":            {"label": "Coder-30B AWQ (MoE)",               "color": "#3fb950"},
-    "coder-next-80b-awq":       {"label": "Coder-Next 80B AWQ (MoE+DeltaNet)", "color": "#f0883e"},
-    "coder-next-ream-60b-awq":  {"label": "Coder-Next REAM 60B AWQ (MoE)",     "color": "#ffa657"},
     "qwen3.5-35b-moe-gptq":     {"label": "Qwen3.5-35B MoE GPTQ",              "color": "#d2a8ff"},
     "qwen3.6-35b-moe-awq":      {"label": "Qwen3.6-35B MoE AWQ",               "color": "#bc8cff"},
     "gemma-4-26b-awq":          {"label": "Gemma 4 26B AWQ (MoE)",             "color": "#e3b341"},
-    "gemma-4-31b-awq":          {"label": "Gemma 4 31B AWQ (Dense)",           "color": "#db6d28"},
     "nemotron-omni-30b-fp8":    {"label": "Nemotron-Omni-30B FP8 (Mamba2)",    "color": "#56d4dd"},
 }
 
-# Coder-Next 80B: concurrency 16 and 32 are OOM
-OOM_CONCURRENCY = {
-    "coder-next-80b-awq": [16, 32],
-}
+# (no current models have OOM concurrency levels)
+OOM_CONCURRENCY = {}
 
 # Unified x-axis: 128 to 256K
 UNIFIED_XLIM = (96, 300_000)
@@ -229,68 +224,66 @@ def make_combined_concurrency_chart(all_data):
 
 
 def make_fp8_comparison_chart():
-    """FP8 (W8A8) vs AWQ-int4 across the validated fleet: single-user decode +
-    max context, grouped bars. Data is point-values from the FP8 lane sweep
-    (benchmarks/fp8-comparison.json), not full context sweeps."""
+    """256K single-user decode — AWQ vs FP8 (+ spec-decode draft), grouped bars.
+
+    Everything in this fleet reaches 256K in AWQ and/or FP8, so there is no longer
+    a max-context panel — it's a single grouped bar chart with up to 4 bars per
+    model: AWQ no-spec, AWQ+draft, FP8 no-spec, FP8+draft. Each value comes
+    straight from benchmarks/fp8-comparison.json (awq_nospec / awq_spec /
+    fp8_nospec / fp8_spec); null renders as a thin '—' placeholder + skipped bar."""
     with open(os.path.join(BENCH_DIR, "fp8-comparison.json")) as f:
         data = json.load(f)
     models = data["models"]
     x = np.arange(len(models))
-    w = 0.38     # Panel 2 (2-bar)
-    w3 = 0.27    # Panel 1 (3-bar)
-    FP8C, AWQC, SPECC = "#f0883e", "#58a6ff", "#3fb950"
+    w = 0.20  # 4 bars per model group
+
+    # AWQ family = blue (solid no-spec, lighter +draft); FP8 family = orange.
+    AWQ_NS, AWQ_SP = "#1f6feb", "#79c0ff"
+    FP8_NS, FP8_SP = "#d4621a", "#f0a868"
+    MISS = "#6e7681"
+    # (json key, x-offset, color, legend label)
+    SERIES = [
+        ("awq_nospec", -1.5 * w, AWQ_NS, "AWQ int4 — no spec"),
+        ("awq_spec",   -0.5 * w, AWQ_SP, "AWQ int4 — + draft"),
+        ("fp8_nospec",  0.5 * w, FP8_NS, "FP8 W8A8 — no spec"),
+        ("fp8_spec",    1.5 * w, FP8_SP, "FP8 W8A8 — + draft"),
+    ]
+
     xlabels = [f'{m["name"]}\n{m["kind"]}' for m in models]
+    allvals = [m[k] for m in models for k, *_ in SERIES if m.get(k)]
+    ymax = max(allvals) if allvals else 100.0
 
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 6))
+    fig, ax = plt.subplots(figsize=(15, 7))
+    for key, dx, color, label in SERIES:
+        ax.bar(x + dx, [m.get(key) or 0 for m in models], w, color=color,
+               zorder=5, label=label)
+        for i, m in enumerate(models):
+            v = m.get(key)
+            if v:
+                ax.text(x[i] + dx, v + ymax * 0.012, f"{v:.0f}", ha="center",
+                        fontsize=7.5, color=color, fontweight="bold")
+            else:
+                # null -> em-dash placeholder at the baseline (no bar drawn)
+                ax.text(x[i] + dx, ymax * 0.018, "—", ha="center",
+                        fontsize=9, color=MISS, fontweight="bold")
 
-    # Panel 1 — single-user decode tok/s: FP8 / AWQ / + draft (spec-decode).
-    # spec_toks == 0 → no usable draft on this box: show "0 / N/A".
-    seen = set()
-    def _lbl(key, text):
-        if key in seen:
-            return None
-        seen.add(key)
-        return text
-    for i, m in enumerate(models):
-        ax1.bar(x[i] - w3, m["fp8_toks"], w3, color=FP8C, zorder=5, label=_lbl("fp8", "FP8 W8A8 (no spec)"))
-        ax1.text(x[i] - w3, m["fp8_toks"] + 1.0, f'{m["fp8_toks"]:.1f}', ha="center", fontsize=7.5, color=FP8C, fontweight="bold")
-        awq = m["awq_toks"]
-        ax1.bar(x[i], awq if awq else 0, w3, color=AWQC, zorder=5, label=_lbl("awq", "AWQ int4 (no spec)"))
-        ax1.text(x[i], (awq + 1.0) if awq else 2.0, (f'{awq:.0f}' if awq else "n/a"),
-                 ha="center", fontsize=7.5, color=(AWQC if awq else "#8b949e"), fontweight="bold")
-        spec = m["spec_toks"] or 0
-        ax1.bar(x[i] + w3, spec, w3, color=SPECC, zorder=5, label=_lbl("spec", "+ draft (spec-decode)"))
-        if spec > 0:
-            ax1.text(x[i] + w3, spec + 1.0, f'{spec:.0f}\n{m["spec_draft"]}', ha="center", fontsize=6.6, color=SPECC, fontweight="bold")
-        else:
-            ax1.text(x[i] + w3, 2.0, "0\nN/A", ha="center", fontsize=6.6, color="#8b949e", fontweight="bold")
-    _alltoks = [m["fp8_toks"] for m in models] + [m["awq_toks"] or 0 for m in models] + [m["spec_toks"] or 0 for m in models]
-    ax1.set_xticks(x); ax1.set_xticklabels(xlabels, rotation=40, ha="right", fontsize=8)
-    ax1.set_ylabel("tok/s (single user)")
-    ax1.set_title("Single-user decode — FP8 vs AWQ vs + draft (spec-decode)", fontsize=12, fontweight="bold", pad=10)
-    ax1.legend(loc="upper right", framealpha=0.5, edgecolor="#30363d", facecolor="#161b22", fontsize=8)
-    ax1.grid(True, axis="y", linestyle="--"); ax1.set_ylim(bottom=0, top=max(_alltoks) * 1.25)
+    ax.set_xticks(x)
+    ax.set_xticklabels(xlabels, rotation=35, ha="right", fontsize=8.5)
+    ax.set_ylabel("decode tok/s (single user, 256K)")
+    ax.set_ylim(bottom=0, top=ymax * 1.18)
+    ax.grid(True, axis="y", linestyle="--")
+    ax.set_title("256K single-user decode — AWQ vs FP8 (+ spec-decode draft)",
+                 fontsize=14, fontweight="bold", pad=12)
+    ax.legend(loc="upper right", framealpha=0.6, edgecolor="#30363d",
+              facecolor="#161b22", fontsize=9, ncol=2, title="bar type")
+    fig.suptitle(data["subtitle"], fontsize=9.5, y=0.97, color="#8b949e")
 
-    # Panel 2 — max context (K tokens) @ mem0.85
-    for i, m in enumerate(models):
-        fctx = m["fp8_ctx_k"]
-        actx = m["awq_ctx_k"]
-        ax2.bar(x[i] - w / 2, fctx if fctx else 0, w, color=FP8C, zorder=5,
-                label="FP8 W8A8" if i == 0 else None)
-        ax2.bar(x[i] + w / 2, actx if actx else 0, w, color=AWQC, zorder=5,
-                label="AWQ int4" if i == 0 else None)
-        ax2.text(x[i] - w / 2, (fctx + 4) if fctx else 4, (f'{fctx}K' if fctx else "n/a"),
-                 ha="center", fontsize=8, color=(FP8C if fctx else "#8b949e"), fontweight="bold")
-        ax2.text(x[i] + w / 2, (actx + 4) if actx else 4, (f'{actx}K' if actx else "n/a"),
-                 ha="center", fontsize=8, color=(AWQC if actx else "#8b949e"), fontweight="bold")
-    ax2.set_xticks(x); ax2.set_xticklabels(xlabels, rotation=40, ha="right", fontsize=8)
-    ax2.set_ylabel("max context @ mem0.85 (K tokens)")
-    ax2.set_title("Max context — FP8 vs AWQ-int4", fontsize=13, fontweight="bold", pad=10)
-    ax2.legend(loc="upper right", framealpha=0.5, edgecolor="#30363d", facecolor="#161b22")
-    ax2.grid(True, axis="y", linestyle="--"); ax2.set_ylim(bottom=0)
+    # Footnote: '—' = not built / not reachable at 256K / no working draft.
+    ax.text(0.0, -0.30,
+            "Bars are tok/s; '—' = not built, not reachable at 256K, or no working draft on this box.",
+            transform=ax.transAxes, fontsize=8, color="#8b949e", style="italic")
 
-    fig.suptitle(f'{data["title"]}  —  {data["subtitle"]}', fontsize=14, fontweight="bold", y=1.02)
-    fig.tight_layout()
+    fig.tight_layout(rect=(0, 0.02, 1, 0.96))
     path = os.path.join(BENCH_DIR, "fp8_vs_awq.png")
     fig.savefig(path, dpi=150, bbox_inches="tight")
     plt.close(fig)
