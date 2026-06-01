@@ -1,0 +1,15 @@
+=== devstral ===
+devstral max_total=449372 context_len=262144 served_256k=YES gen='Paris'
+=== coder-30b ===
+coder-30b max_total=817979 context_len=262144 served_256k=YES gen='Paris'
+=== gemma4 ===
+gemma4 max_total=402759 context_len=262144 served_256k=YES gen='Paris'
+=== qwen35-moe ===
+qwen35-moe max_total=3707729 context_len=262144 served_256k=YES gen='Paris'
+=== qwen36-moe ===
+qwen36-moe max_total=3395205 context_len=262144 served_256k=YES gen='Paris'
+=== coder-reap-25b ===
+coder-reap-25b max_total=875579 context_len=262144 served_256k=YES gen='Paris'
+=== nemotron-omni ===
+nemotron-omni max_total=3488127 context_len=262144 served_256k=YES gen='Paris'
+AUDIT_DONE
