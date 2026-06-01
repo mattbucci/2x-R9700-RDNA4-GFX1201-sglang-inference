@@ -34,3 +34,32 @@ def _safe_set_forward_quantized(module):
 
 _ctf.set_forward_quantized = _safe_set_forward_quantized
 _init.set_forward_quantized = _safe_set_forward_quantized
+
+
+# Same partial-forward bug in compressed_tensors.offload.module.offload_module
+# (line ~46: `original_forward_func = module.forward.__func__`), hit when a
+# device_map'd model is converted to llmcompressor offloading (from_accelerate) and
+# by moe_calibration_context. offload_module CALLS the captured func later as
+# `self._original_forward_func(self, *args)`, so we expose the class-level forward as a
+# real bound method first — its __func__ is a true unbound function the wrapper can call.
+# Patch the source module + every binding that imported it (re-export + moe_context),
+# before llmcompressor binds it.
+import compressed_tensors.offload.module as _ctom
+import compressed_tensors.offload as _cto
+
+_orig_offload_module = _ctom.offload_module
+
+
+def _safe_offload_module(module, *args, **kwargs):
+    fwd = getattr(module, "forward", None)
+    if fwd is not None and not hasattr(fwd, "__func__"):
+        try:
+            module.forward = module.__class__.forward.__get__(module)
+        except Exception:
+            pass
+    return _orig_offload_module(module, *args, **kwargs)
+
+
+_ctom.offload_module = _safe_offload_module
+if hasattr(_cto, "offload_module"):
+    _cto.offload_module = _safe_offload_module
