@@ -3,88 +3,107 @@
   "engine": "SGLang",
   "method": "sglang.bench_serving",
   "hardware": "2x R9700 TP=2",
-  "timestamp": "2026-05-31 16:19:19",
+  "timestamp": "2026-05-31 16:47:53",
   "output_tokens": 100,
   "context_sweep": [
     {
       "context": 128,
       "input_len": 64,
-      "tpot_ms": 31.31,
-      "tok_per_sec": 31.9,
-      "ttft_ms": 69.09,
-      "throughput": 4.8
+      "tpot_ms": 31.75,
+      "tok_per_sec": 31.5,
+      "ttft_ms": 69.24,
+      "throughput": 4.81
     },
     {
       "context": 256,
       "input_len": 128,
-      "tpot_ms": 31.72,
-      "tok_per_sec": 31.5,
-      "ttft_ms": 68.61,
-      "throughput": 4.8
+      "tpot_ms": 31.14,
+      "tok_per_sec": 32.1,
+      "ttft_ms": 69.03,
+      "throughput": 4.79
     },
     {
       "context": 512,
       "input_len": 256,
-      "tpot_ms": 31.69,
-      "tok_per_sec": 31.6,
-      "ttft_ms": 70.86,
-      "throughput": 4.79
+      "tpot_ms": 31.33,
+      "tok_per_sec": 31.9,
+      "ttft_ms": 69.6,
+      "throughput": 4.81
     },
     {
       "context": 1024,
       "input_len": 512,
-      "tpot_ms": 31.45,
-      "tok_per_sec": 31.8,
-      "ttft_ms": 68.8,
-      "throughput": 4.8
+      "tpot_ms": 31.04,
+      "tok_per_sec": 32.2,
+      "ttft_ms": 69.54,
+      "throughput": 4.79
     },
     {
       "context": 2048,
       "input_len": 1024,
-      "tpot_ms": 31.43,
-      "tok_per_sec": 31.8,
-      "ttft_ms": 68.62,
+      "tpot_ms": 31.04,
+      "tok_per_sec": 32.2,
+      "ttft_ms": 68.23,
       "throughput": 4.79
     },
     {
       "context": 4096,
       "input_len": 2048,
-      "tpot_ms": 31.48,
+      "tpot_ms": 31.06,
+      "tok_per_sec": 32.2,
+      "ttft_ms": 83.93,
+      "throughput": 4.8
+    },
+    {
+      "context": 8192,
+      "input_len": 4096,
+      "tpot_ms": 31.03,
+      "tok_per_sec": 32.2,
+      "ttft_ms": 84.13,
+      "throughput": 4.8
+    },
+    {
+      "context": 16384,
+      "input_len": 8192,
+      "tpot_ms": 31.4,
       "tok_per_sec": 31.8,
-      "ttft_ms": 83.91,
-      "throughput": 4.79
+      "ttft_ms": 106.65,
+      "throughput": 4.8
+    },
+    {
+      "context": 32768,
+      "input_len": 16384,
+      "tpot_ms": 32.21,
+      "tok_per_sec": 31.0,
+      "ttft_ms": 146.12,
+      "throughput": 4.8
     }
   ],
   "throughput_sweep": [
     {
       "concurrency": 1,
       "throughput": 4.8,
-      "tpot_ms": 31.38,
-      "ttft_ms": 68.3
+      "tpot_ms": 30.82,
+      "ttft_ms": 68.89
     },
     {
       "concurrency": 2,
-      "throughput": 34.23,
-      "tpot_ms": 38.47,
-      "ttft_ms": 111.5
+      "throughput": 34.71,
+      "tpot_ms": 37.85,
+      "ttft_ms": 110.35
     },
     {
       "concurrency": 4,
-      "throughput": 51.02,
-      "tpot_ms": 44.34,
-      "ttft_ms": 90.78
+      "throughput": 51.36,
+      "tpot_ms": 44.18,
+      "ttft_ms": 91.2
     },
     {
       "concurrency": 8,
-      "throughput": 100.11,
-      "tpot_ms": 49.55,
-      "ttft_ms": 94.4
-    },
-    {
-      "concurrency": 16,
-      "throughput": 133.06,
-      "tpot_ms": 42.94,
-      "ttft_ms": 347.58
+      "throughput": 100.05,
+      "tpot_ms": 49.16,
+      "ttft_ms": 92.45
     }
-  ]
+  ],
+  "_note": "context_sweep truncated to <=32K: bench_serving --dataset-name random gives garbage long-ctx metrics for gemma (multimodal; ttft=0, tpot collapses to ~2ms). gemma-4-26B 256K serving is VALIDATED separately via a real 230K-tok needle prompt on triton (retrieved, no OOM, ~16.5 tok/s e2e) \u2014 see fp8-256k-campaign + README."
 }
