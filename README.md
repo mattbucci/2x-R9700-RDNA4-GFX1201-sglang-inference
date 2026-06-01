@@ -17,7 +17,7 @@ High-throughput LLM inference on 2x AMD Radeon AI PRO R9700 (gfx1201, RDNA4) wit
 
 **Open work:**
 1. **Multi-token tool-name omission recovery** for devstral (`todowrite`/`webfetch` stream in pieces; current hold-back is single-token only).
-2. **Reconcile dense-AWQ single-user decode + fill gaps.** The sweep table lists Qwen3.5-27B AWQ at 26 tok/s short-ctx but the Agent table says 14.4 — re-measure conc=1 cleanly and confirm the patch-041 GEMV path is engaged (note: on ROCm `--quantization awq` is a no-op vs auto-detect — `is_awq_marlin_compatible` gates on `_is_cuda`, so both resolve to the GEMV `AWQLinearKernel`). Also fill the **Qwen3-VL-32B** no-spec tok/s gap (`—` in the Agent table) at 256K.
+2. **Dense/hybrid AWQ decode regressed ~1.7× vs the pre-v0.5.12 stack** — recover it. Current v0.5.12 + patch-041 GEMV gives ~14.4 tok/s conc=1 for the DeltaNet-27B AWQ models (measured 2026-05-31, three sources agree); an April-24 sweep on the older SGLang recorded **24.1 tok/s (TPOT 41.5 ms)** on the same models. Not cuda-graph (verified: graphed decode still ~13) and not a `--quantization` flag (on ROCm `awq` == auto-detect — `is_awq_marlin_compatible` gates on `_is_cuda`). Likely a faster AWQ Linear kernel/dispatch in the older tree. Bisect the old vs v0.5.12 AWQ `apply()` path; this is a single-user lever across **every** dense/hybrid AWQ model (Devstral, Qwen3.5/3.6-27B, gemma4-31b, VL-32B). Also fill the **Qwen3-VL-32B** no-spec tok/s gap (`—` in the Agent table) at 256K.
 
 ### FP8 lane
 
@@ -126,7 +126,7 @@ This is the canonical per-model table — AWQ-int4 (the recommended RDNA4 runtim
 | Qwen3-VL-32B | Dense VL | 256K / NA | — / — | `launch.sh qwen3vl-32b` | FP8 caps ~159K (<256K) so FP8 = **NA** under the 256K-only mandate (`--mem-fraction 0.92` lifts it to ~195K, still short). AWQ build reaches 256K but has no measured no-spec tok/s here (—). basic+VISION PASS; VL spec broken (#17935). |
 | Qwen3.5-35B MoE | MoE+DeltaNet (256 experts) | 262K / — | 26.1 / — | `launch.sh qwen35-moe` | Working (GPTQ ship). AWQ/GPTQ no-spec 26.1 (2026-05-31 sweep); **12.4 @256K** long-ctx. No FP8 build. |
 | Qwen3.6-35B-A3B (MoE) | MoE 256e (FUSED) + DeltaNet VL | 262K / 256K | 26.5 / 15.0 | `launch.sh qwen36-moe` | Working — `mattbucci/Qwen3.6-35B-A3B-AWQ`, 256K basic+thinking+vision PASS. AWQ no-spec 26.5 (2026-05-31 sweep), FP8 15.0. FP8 reaches 256K no-spec **+ DFlash@256K** ~45 tok/s (accept ~3.9) via `--chunked-prefill 2048` (auto for qwen36-moe FP8+spec); KV pool 782K. AWQ + DFlash production = 80 tok/s @256K. |
-| Qwen3.6-27B | DeltaNet+attn hybrid (VL) | 262K / 256K | 24.0 / 12.8 | `launch.sh qwen36-27b` | Working (native AWQ); 64 layers in 3:1 linear/full pattern. FP8 same path as Qwen3.5-27B (shared `qwen3_5` file): native 20.82 GB/card, basic+thinking+VISION 3/3 PASS, 256K via patch 045 + cp2048, 9.3 tok/s @256K. No working draft (same block as Qwen3.5-27B). |
+| Qwen3.6-27B | DeltaNet+attn hybrid (VL) | 262K / 256K | 14.5 / 12.8 | `launch.sh qwen36-27b` | Working (native AWQ); 64 layers in 3:1 linear/full pattern. FP8 same path as Qwen3.5-27B (shared `qwen3_5` file): native 20.82 GB/card, basic+thinking+VISION 3/3 PASS, 256K via patch 045 + cp2048, 9.3 tok/s @256K. No working draft (same block as Qwen3.5-27B). |
 | Coder-REAP-25B | MoE (96 exp, REAP prune of Coder-30B) | 256K / — | 22.9 / — | `launch.sh coder-reap-25b` | Working (self-calibrated code_thinking + native AWQ). **21.9 @131K** long-ctx. |
 | Qwen3.6-REAM-A3B | MoE+DeltaNet (192 exp, REAM prune of 35B), VL | 262K / — | 21.8 / — | `MODEL=...REAM-A3B-AWQ-vision launch.sh qwen36-moe` | Working — 4/4 PASS basic+thinking+vision+video. Text-only build drops all `model.visual.*`, so serve the `-vision` dir (333-tensor tower spliced from parent BF16 via `merge_vision_weights.py --vision-prefix model.visual`). FP8 not built — a 256→192 FP8 re-merge needs the 67 GB parent BF16 resident, which wedges this 64 GB box; ships in AWQ. |
 | Nemotron-3-Nano-Omni-30B-A3B | Mamba2-Transformer hybrid MoE, AVLM | — / 256K | — / ~29 | `launch.sh nemotron-omni` | FP8-only (NVIDIA ModelOpt FP8, no AWQ variant). 256K (262144) via triton flash; full AVLM (text+image+video+audio) + thinking, first Mamba2 hybrid on the box. torch_native is a slow fallback that OOMs past ~150K (ROCm MATH SDPA only). Requires patches 043/044/046/047 + `pip install librosa`. No spec-decode (no published draft; Nano excluded from MTP). |
@@ -173,11 +173,11 @@ See also the [FP8-vs-AWQ comparison chart](#fp8-lane) in the FP8 lane above.
 
 | Model | 128 | 4K | 16K | 32K | 65K | 131K | 262K |
 |-------|:---:|:--:|:---:|:---:|:---:|:----:|:----:|
-| Qwen3.5-27B AWQ | 26 | 25 | 22.6 | 15.3* | 13.0* | 9.5* | **5.8\*** |
+| Qwen3.5-27B AWQ | 14.4 | 14.3 | 13.7 | 13.0 | 11.8 | 9.7 | **7.2†** |
 | Qwen3.5-35B MoE GPTQ | 14.4 | 15.8 | 14.4 | 16.7 | 14.7 | 15.3 | **12.4** |
 | **Qwen3.6-35B MoE GPTQ** | 15.5 | 14.2 | 15.4 | 16.8 | 12.5 | 14.6 | **13.3** |
 | **Qwen3.6-35B MoE AWQ (native)** | 21.6 | 21.5 | 20.7 | 21.6 | 21.2 | **20.6** | — |
-| **Qwen3.6-27B AWQ (native)** | 24.1 | 23.6 | 21.4 | 18.3 | 14.2 | **9.8** | — |
+| **Qwen3.6-27B AWQ (native)** | 14.5 | 14.4 | 13.7 | 13.2 | 11.8 | **9.9** | 7.2 |
 | **Coder-REAP-25B AWQ (native)** | 22.9 | 23.0 | 22.9 | 22.6 | 22.0 | **21.9** | — |
 | **Qwen3.6-REAM-A3B AWQ (native)** | 21.8 | 21.9 | 21.5 | 21.9 | 21.4 | 20.0 | **16.1** |
 | **Qwen3.6-VL-REAP-26B-A3B AWQ (native)** | 21.3 | 21.9 | 21.4 | 20.8 | 21.6 | 20.7 | **16.1** ‡ |
@@ -201,7 +201,7 @@ See also the [FP8-vs-AWQ comparison chart](#fp8-lane) in the FP8 lane above.
 
 **Calibration gotchas:** (1) a text-only recipe on a multimodal model strips `model-vision.safetensors` AND saves text-only architecture; both must be restored from a v1 reference. (2) the LLaVA-Instruct-150K loader needs `data_files="llava_instruct_150k.json"` pinning or it silently falls back to ultrachat — 0 vision samples baked into calibration. (3) VL-REAP-26B has the multimodal class but zero vision tensors — vision crashes are structural from REAP pruning, not calibration.
 
-All values tok/s single-user.  *Qwen3.5-27B 32K+ numbers collected with concurrent CPU calibration so are conservative (~30-40% under-reported); short context from clean run.  Both 35B-A3B MoE models hit the 256K target with similar characteristics; Qwen3.6 edges out Qwen3.5 at 256K (13.3 vs 12.4).  Dense Qwen3.5-27B drops to 5.8 @ 256K — quadratic full-attention layers dominate at long context.  3090 team measured Qwen3.6 at 14 tok/s @ 250K — parity within the bandwidth-bound regime.
+All values tok/s single-user, conc=1.  The Qwen3.5-27B / Qwen3.6-27B AWQ rows were **re-measured 2026-05-31** from the clean conc=1 sweep JSONLs (`sglang_0531_1_*`) + live spot-checks — the two DeltaNet-27B hybrids share one curve (~14.4 short → 13.0 @32K → 11.8 @65K → 9.7 @131K → ~7.2 @256K).  **This corrects the earlier 24–26 short-ctx figures, which the current v0.5.12 + patch-041 GEMV stack does not reproduce** (current dense/hybrid AWQ M=1 decode is ~14.4, confirmed by JSONL data + fresh runs; cuda-graph makes no difference — verified `Decode batch … cuda graph: True` still decodes ~13).  ⚠ **Open regression:** an April-24 sweep recorded **24.1 tok/s (TPOT 41.5 ms)** on a *pre-v0.5.12* stack — ~1.7× the current GEMV path.  Mechanism unknown (not cuda-graph); likely a faster AWQ Linear kernel in the older SGLang that the v0.5.12 GEMV path doesn't match.  Recovering it is a real ~1.7× single-user lever for every dense/hybrid AWQ model — see Open work.  †262K from the Qwen3.6-27B 245760-tok point (7.2 tok/s, TTFT 31 s); the family is measured-identical so it applies to both rows.  Both 35B-A3B MoE models hit the 256K target with similar characteristics; Qwen3.6 edges out Qwen3.5 at 256K (13.3 vs 12.4).
 
 ### Concurrency (short context)
 
@@ -224,12 +224,12 @@ The sister [2x RTX 3090 repo](https://github.com/mattbucci/2x-3090-GA102-300-A1-
 |-------|:----------:|:---------:|:---:|-----|
 | Devstral-24B AWQ | 37 | 87 | 2.4x | Marlin INT4 GEMM + CUDA graphs |
 | Coder-30B AWQ | 30 | 193 | 6.4x | Marlin GEMM (~4.5x alone) |
-| Qwen3.5-27B AWQ | 26 | 13.5 | **0.5x** | DeltaNet Triton faster on RDNA4 wave32 |
-| Qwen3.6-27B AWQ | 24 short / 9.8 @131K | 21 @131K (CT) | varies | Same DeltaNet hybrid family as Qwen3.5-27B (3:1 linear/full pattern, 64 layers) — and 3090 still beats us at 131K despite the arch.  Likely the 3090 number runs on their `qwen35` launcher (DeltaNet code path) while we use a different launcher; needs A/B with same flags + attn backend before drawing kernel-level conclusions. |
+| Qwen3.5-27B AWQ | 14.4 short | 13.5 | ~1.0x | ~parity short-ctx (the earlier "2× win" rested on a stale 26 tok/s — corrected 2026-05-31; real conc=1 GEMV-path decode is ~14.4) |
+| Qwen3.6-27B AWQ | 14.5 short / 9.9 @131K | 21 @131K (CT) | 3090 ~2x @131K | Same DeltaNet hybrid family as Qwen3.5-27B (3:1 linear/full, 64 layers); both ~14.4 short. 3090 beats us ~2x at 131K (21 vs 9.9) — bandwidth + their Marlin/FlashInfer edge, not a launcher artifact. |
 | Qwen3.5-35B MoE | 16 @32K, 12 @256K | 35 | 1.5-3x | Marlin MoE + FlashInfer |
 | Qwen3.6-35B MoE | 21.6 short / 20.6 @131K (native AWQ) | 33 short / 2.6 @250K (native) | varies | We're flatter at long ctx (ROCm-triton); they're faster at short (flashinfer).  Different curve shape. |
 
-Marlin INT4 GEMM and FlashInfer attention give 3090s a consistent short-context edge; we claw it back on DeltaNet hybrids and at long context (bandwidth-bound regardless of backend).  **Architecture is not the only axis** — Qwen3.5-27B (DeltaNet hybrid) we win 2x; Qwen3.6-27B is the *same* hybrid family but our 9.8 @131K vs 3090's 21 @131K suggests something else is in play (different launcher, attn backend, or kernel choice).  Worth A/B-ing flag-by-flag.
+Marlin INT4 GEMM and FlashInfer attention give 3090s a consistent edge across the board.  **Correction (2026-05-31):** the earlier "we win 2× on DeltaNet hybrids" claim was wrong — it rested on a stale 26 tok/s figure for Qwen3.5-27B.  Re-measured conc=1, both DeltaNet-27B AWQ hybrids decode ~14.4 short-ctx → ~9.8 @131K → ~7.2 @256K (patch-041 GEMV path; the two models are measured-identical).  Against the 3090 that's **~parity at short context** (14.4 vs 13.5) and the **3090 leads ~2× at 131K** (21 vs 9.9) — bandwidth + Marlin/FlashInfer, not a launcher artifact (the qwen35/qwen36-27b presets are flag-identical and both already on the GEMV path).  Where R9700 genuinely leads stays the long-context flatness of the MoE models and the spec-decode multiplier (below).
 
 **Spec-decode (AWQ + draft) cross-stack — same probe both sides** (`merge_intervals`, 256 tok, temp 0.3; receipt [`benchmarks/quality/specdec-vs-3090-2026-05-29.json`](benchmarks/quality/specdec-vs-3090-2026-05-29.json)):
 

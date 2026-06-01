@@ -3,122 +3,16 @@
   "engine": "SGLang",
   "method": "sglang.bench_serving",
   "hardware": "2x R9700 TP=2",
-  "timestamp": "2026-04-24 01:15:58",
-  "output_tokens": 100,
+  "timestamp": "2026-05-31 20:45:00",
+  "note": "Re-measured 2026-05-31 conc=1 (max-concurrency 1) on v0.5.12 + patch-041 GEMV, --disable-cuda-graph (preset default). SUPERSEDES the 2026-04-24 pre-v0.5.12 curve (24.1 short-ctx, TPOT 41.5 ms). The two DeltaNet-27B AWQ hybrids (this + Qwen3.5-27B) are measured-identical; 16K/65K here are from the Qwen3.5-27B twin's clean JSONL sweep (13.7 / 11.8). OPEN REGRESSION: the April-24 stack decoded these at 24.1 (~1.7x faster); enabling cuda-graph on v0.5.12 does NOT recover it (verified 'Decode batch ... cuda graph: True' still ~13 tok/s), so the gap is a slower AWQ Linear kernel/dispatch in v0.5.12, not graph capture. See README Open work #2.",
+  "output_tokens": 128,
   "context_sweep": [
-    {
-      "context": 128,
-      "input_len": 64,
-      "tpot_ms": 41.53,
-      "tok_per_sec": 24.1,
-      "ttft_ms": 4795.36,
-      "throughput": 2.45
-    },
-    {
-      "context": 256,
-      "input_len": 128,
-      "tpot_ms": 41.26,
-      "tok_per_sec": 24.2,
-      "ttft_ms": 4794.14,
-      "throughput": 2.46
-    },
-    {
-      "context": 512,
-      "input_len": 256,
-      "tpot_ms": 41.27,
-      "tok_per_sec": 24.2,
-      "ttft_ms": 4794.88,
-      "throughput": 2.46
-    },
-    {
-      "context": 1024,
-      "input_len": 512,
-      "tpot_ms": 41.31,
-      "tok_per_sec": 24.2,
-      "ttft_ms": 4791.53,
-      "throughput": 2.46
-    },
-    {
-      "context": 2048,
-      "input_len": 1024,
-      "tpot_ms": 41.36,
-      "tok_per_sec": 24.2,
-      "ttft_ms": 4794.68,
-      "throughput": 2.45
-    },
-    {
-      "context": 4096,
-      "input_len": 2048,
-      "tpot_ms": 42.39,
-      "tok_per_sec": 23.6,
-      "ttft_ms": 5368.44,
-      "throughput": 2.21
-    },
-    {
-      "context": 8192,
-      "input_len": 4096,
-      "tpot_ms": 42.21,
-      "tok_per_sec": 23.7,
-      "ttft_ms": 5369.94,
-      "throughput": 2.21
-    },
-    {
-      "context": 16384,
-      "input_len": 8192,
-      "tpot_ms": 46.83,
-      "tok_per_sec": 21.4,
-      "ttft_ms": 8724.62,
-      "throughput": 1.4
-    },
-    {
-      "context": 32768,
-      "input_len": 16384,
-      "tpot_ms": 54.55,
-      "tok_per_sec": 18.3,
-      "ttft_ms": 20015.78,
-      "throughput": 0.63
-    },
-    {
-      "context": 65536,
-      "input_len": 32768,
-      "tpot_ms": 70.37,
-      "tok_per_sec": 14.2,
-      "ttft_ms": 46842.37,
-      "throughput": 0.27
-    },
-    {
-      "context": 131072,
-      "input_len": 65536,
-      "tpot_ms": 102.39,
-      "tok_per_sec": 9.8,
-      "ttft_ms": 100702.94,
-      "throughput": 0.13
-    }
-  ],
-  "throughput_sweep": [
-    {
-      "concurrency": 1,
-      "throughput": 2.45,
-      "tpot_ms": 41.49,
-      "ttft_ms": 4794.17
-    },
-    {
-      "concurrency": 2,
-      "throughput": 1.24,
-      "tpot_ms": 2998.93,
-      "ttft_ms": 7195.63
-    },
-    {
-      "concurrency": 4,
-      "throughput": 0.47,
-      "tpot_ms": 4604.52,
-      "ttft_ms": 39302.92
-    },
-    {
-      "concurrency": 8,
-      "throughput": 0.4,
-      "tpot_ms": 4682.09,
-      "ttft_ms": 379366.61
-    }
+    {"context": 128,    "input_len": 128,    "tpot_ms": 69.02,  "tok_per_sec": 14.5, "ttft_ms": 248.92},
+    {"context": 4096,   "input_len": 4096,   "tpot_ms": 69.22,  "tok_per_sec": 14.4},
+    {"context": 16384,  "input_len": 16384,  "tpot_ms": 73.0,   "tok_per_sec": 13.7, "source": "qwen3.5-27b twin"},
+    {"context": 32768,  "input_len": 32768,  "tpot_ms": 75.87,  "tok_per_sec": 13.2},
+    {"context": 65536,  "input_len": 65536,  "tpot_ms": 84.7,   "tok_per_sec": 11.8, "source": "qwen3.5-27b twin"},
+    {"context": 131072, "input_len": 131072, "tpot_ms": 100.87, "tok_per_sec": 9.9},
+    {"context": 245760, "input_len": 245760, "tpot_ms": 138.71, "tok_per_sec": 7.2, "ttft_ms": 30849.18}
   ]
 }
