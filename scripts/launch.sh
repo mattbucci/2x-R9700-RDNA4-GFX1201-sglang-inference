@@ -270,13 +270,17 @@ PYEOF
             MODEL="${MODEL:-$MODELS_DIR/gemma-4-31B-AWQ}"
             QUANT="awq"
             DTYPE="bfloat16"
-            ATTN_BACKEND="torch_native"
+            # TRITON default (same Gemma4 SWA path as gemma4-26b via patch 001). Validated
+            # 2026-05-31: serves long context on triton (80K-tok needle retrieved, no OOM),
+            # KV pool ~105K @mem0.92 — pool/weight-bound by the dense 31B (NOT 256K like the
+            # 26B MoE; torch_native fallback capped ~32-64K). Override ATTN_BACKEND=torch_native.
+            ATTN_BACKEND="${ATTN_BACKEND:-triton}"
             REASONING="--reasoning-parser gemma4"
             TOOL_CALL_PARSER="gemma4"
             # R9700 FIX (2026-05-31): same unclosed-tool-call-turn template bug as
             # gemma4 (identical chat template) — runaway gen on multi-turn tool history.
             CHAT_TEMPLATE="--chat-template $SCRIPT_DIR/gemma4_chat_template.jinja"
-            CTX=8192; MAX_RUNNING=8; CHUNKED=4096
+            CTX=131072; MEM=0.92; MAX_RUNNING=8; CHUNKED=1024
             WARMUP="--skip-server-warmup"; WATCHDOG=1800
             OVERLAP=""
             ;;
