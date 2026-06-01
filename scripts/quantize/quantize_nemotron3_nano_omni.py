@@ -73,6 +73,9 @@ if ALLEXPERTS:
     import nemotron_moe_calibration  # noqa: F401
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer, AutoProcessor
+# Make compressed_tensors set_forward_quantized tolerate partial forwards (transformers-5
+# wraps every module forward -> the cosmetic @wraps(module.forward.__func__) crashes).
+import patch_ct_set_forward  # noqa: F401
 from llmcompressor.modifiers.quantization import GPTQModifier
 from llmcompressor import oneshot
 
