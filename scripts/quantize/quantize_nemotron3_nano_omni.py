@@ -174,13 +174,16 @@ print(f"Tokenized {len(dataset)} samples at max_seq_len={MAX_SEQUENCE_LENGTH}")
 # ROCm has no flash-attn package -> force eager. 62GB on 64GB RAM -> device_map
 # auto + CPU cap + disk offload to /data; low_cpu_mem_usage avoids a full-RAM
 # transient at load.
-# NO device_map: accelerate's device_map hooks wrap module.forward as a
-# functools.partial, which breaks compressed_tensors' set_forward_quantized
-# (@wraps(module.forward.__func__)) AND its from_accelerate meta-device assertion.
-# Plain from_pretrained loads safetensors via mmap (low RSS — fits the 62GB model on
-# a 64GB/no-swap box), with NO accelerate hooks; llmcompressor's sequential pipeline
-# then onloads each layer to the GPU itself (set_onload_device) for fast GPTQ compute.
-print(f"\n[3/5] Loading model (eager attn, plain CPU mmap; llmcompressor onloads layers to GPU)...")
+# device_map="auto" over the 2x32GB GPUs + a capped CPU budget: a plain CPU load
+# materialized the 62GB model into anon RAM (+ quantized accumulation) and OOM-killed
+# the 61GB/no-swap box mid-run. Placing most of the model on GPU keeps CPU RAM bounded.
+# accelerate's device_map hooks make module.forward a functools.partial, which breaks
+# compressed_tensors set_forward_quantized — patch_ct_set_forward (imported above) fixes
+# that. No offload_folder (DISK offload trips from_accelerate's meta-device assert; GPU
+# offload uses meta and passes). GPU_MEM_GB caps leave headroom for all-expert activations.
+GPU_MEM_GB = os.environ.get("GPU_MEM_GB", "24")
+CPU_MEM_GB = os.environ.get("CPU_MEM_GB", "32")
+print(f"\n[3/5] Loading model (eager attn, device_map=auto; {GPU_MEM_GB}GiB/GPU + {CPU_MEM_GB}GiB CPU)...")
 t0 = time.time()
 from transformers import AutoConfig
 _cfg = AutoConfig.from_pretrained(BASE_MODEL, trust_remote_code=True)
@@ -190,9 +193,14 @@ for _c in [_cfg] + [getattr(_cfg, _a) for _a in dir(_cfg)
         _c._attn_implementation = "eager"
     except Exception:
         pass
+_ngpu = torch.cuda.device_count()
+_maxmem = {i: f"{GPU_MEM_GB}GiB" for i in range(_ngpu)}
+_maxmem["cpu"] = f"{CPU_MEM_GB}GiB"
 model = AutoModelForCausalLM.from_pretrained(
     BASE_MODEL,
     config=_cfg,
+    device_map="auto",
+    max_memory=_maxmem,
     low_cpu_mem_usage=True,
     dtype=torch.bfloat16,
     attn_implementation="eager",
