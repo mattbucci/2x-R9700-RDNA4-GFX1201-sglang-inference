@@ -60,10 +60,17 @@ from calibration_datasets import (
     rows_to_text,
     tokenize_text_dataset,
 )
-# Registers a NemotronHMoE calibration module so oneshot's moe_calibration_context
-# (moe_calibrate_all_experts=True) routes all tokens through all experts — the
-# all-expert calibration moved out of GPTQModifier in llmcompressor 0.11.x.
-import nemotron_moe_calibration  # noqa: F401
+# All-expert MoE calibration: oneshot's moe_calibration_context replaces registered
+# MoE modules to route all tokens through all experts. In llmcompressor 0.11.x that
+# replacement offloads the module (offload_module), which makes module.forward a
+# functools.partial and then collides with compressed_tensors set_forward_quantized
+# (@wraps(module.forward.__func__) -> AttributeError). So gate it: ALLEXPERTS=1
+# registers NemotronHMoE (all-expert, hits the dev-lib bug until fixed); ALLEXPERTS=0
+# skips registration -> moe_calibration_context finds nothing -> router-only
+# calibration (no offload, no partial) which proceeds cleanly.
+ALLEXPERTS = os.environ.get("ALLEXPERTS", "1") == "1"
+if ALLEXPERTS:
+    import nemotron_moe_calibration  # noqa: F401
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer, AutoProcessor
 from llmcompressor.modifiers.quantization import GPTQModifier
@@ -234,9 +241,8 @@ oneshot(
     max_seq_length=MAX_SEQUENCE_LENGTH,
     num_calibration_samples=NUM_CALIBRATION_SAMPLES,
     processor=tokenizer,
-    # llmcompressor 0.11.x: all-expert MoE calibration is a oneshot/dataset arg
-    # (applied via moe_calibration_context to the registered NemotronHMoE module).
-    moe_calibrate_all_experts=True,
+    # all-expert only when registration is on (ALLEXPERTS=1); router-only otherwise
+    moe_calibrate_all_experts=ALLEXPERTS,
 )
 elapsed = time.time() - t0
 print(f"\nGPTQ complete in {elapsed/3600:.1f}h ({elapsed:.0f}s)")
