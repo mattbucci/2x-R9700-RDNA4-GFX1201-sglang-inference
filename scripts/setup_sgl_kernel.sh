@@ -108,7 +108,7 @@ fi
 # Step 1: Ensure sgl_kernel __init__.py patch is applied
 # -------------------------------------------------------------------
 echo "=== Checking sgl_kernel RDNA4 patch ==="
-PATCH_FILE="$PATCH_DIR/004-sgl-kernel-rdna4-fallbacks.patch"
+PATCH_FILE="$PATCH_DIR/003-rdna4-sgl-kernel-fallbacks.patch"  # renumbered from 004 (issue #1 note 3)
 
 if [ ! -f "$SGL_KERNEL_SRC/__init__.py" ]; then
     echo "ERROR: sgl_kernel source not found at $SGL_KERNEL_SRC"

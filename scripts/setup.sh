@@ -7,13 +7,17 @@
 # Prerequisites:
 #   - ROCm 7.2 installed at /opt/rocm (or set ROCM_PATH)
 #   - Miniforge3/Conda (auto-detected, or set CONDA_BASE)
-#   - pacman -S rocprofiler rccl
+#   - pacman -S rocprofiler rccl rust   (rust/cargo: SGLang v0.5.12 grpc build needs it)
 #
 # Usage:
 #   ./scripts/setup.sh
 #   ./scripts/setup.sh --skip-env   # Skip conda env creation
 
-set -e
+# pipefail so a failure inside a pipeline surfaces as non-zero instead of being
+# masked by the last stage. If you wrap this script in `setup.sh | tee log`, the
+# tee swallows the real exit code unless the *invoking* shell also sets pipefail
+# — prefer `set -o pipefail; setup.sh | tee log` or check ${PIPESTATUS[0]} (issue #1 note 2).
+set -eo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/common.sh"
@@ -136,6 +140,14 @@ if [ "$SKIP_ENV" = false ]; then
 
     echo "Installing SGLang from source..."
     cd "$SGLANG_DIR/python"
+    # SGLang v0.5.12's grpc extension compiles a Rust crate during the editable
+    # install, so a Rust toolchain (cargo/rustc) must be present — without it the
+    # install dies with "error: can't find Rust compiler" (issue #1 note 1).
+    if ! command -v cargo >/dev/null 2>&1; then
+        echo "FATAL: 'cargo' (Rust toolchain) not found — SGLang v0.5.12's grpc build needs it."
+        echo "  Install it, then re-run: pacman -S rust   (Arch/EndeavourOS)  |  rustup default stable  (rustup)"
+        exit 1
+    fi
     pip install -e ".[srt_hip]"
 
     # Re-pin PyTorch (SGLang deps may change it)
@@ -212,7 +224,13 @@ echo "[4/5] Building sgl_kernel with native HIP ops for gfx1201..."
 echo "  CRITICAL: Without this, rotary_embedding uses a Python fallback"
 echo "  that produces wrong results on non-contiguous tensors, causing"
 echo "  garbage output for dense AWQ models."
-"$SCRIPT_DIR/setup_sgl_kernel.sh" --env "$ENV_NAME"
+"$SCRIPT_DIR/setup_sgl_kernel.sh" --env "$ENV_NAME" || {
+    echo "FATAL: [4/5] sgl_kernel build failed."
+    echo "  On gfx1201 the usual cause is sgl-kernel/setup_rocm.py rejecting the arch;"
+    echo "  patches/008-rdna4-sgl-kernel-build-arch.patch adds gfx12xx to the whitelist"
+    echo "  and must have applied in step 1. Re-check the patch loop above."
+    exit 1
+}
 
 # -------------------------------------------------------------------
 # Step 5: Build + install AWQ GEMV HIP kernel
