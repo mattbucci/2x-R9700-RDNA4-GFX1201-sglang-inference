@@ -1,0 +1,13 @@
+{
+  "experiment": "grid-level split-K variant of awq_gemv_bf16_kernel (each (n_tile,k_split) = own 1-warp block, float-atomic accumulate, cast f32->bf16). Hypothesis: num_blocks=N/256 underfills 64 CUs for small N; grid-split -> (N/256)*k_splits blocks.",
+  "date": "2026-05-31",
+  "result": "NEGATIVE for general use; reverted (kept vendored source clean). Validated cos=1.00000 vs production kernel on all shapes.",
+  "head_to_head_speedup_grid_vs_old": {
+    "attn_o_K5120xN5120":   {"speedup": 1.31, "note": "smallest N -> most occupancy-starved -> grid-split wins"},
+    "gate_up_K5120xN13824": {"speedup": 0.61, "note": "N=13824 already 54 blocks; atomics+cast overhead > smem reduction"},
+    "down_K13824xN5120":    {"speedup": 0.85, "note": "108 groups -> OLD uses sk=18 intra-block; grid-split adds overhead"},
+    "qkv_K5120xN7168":      {"speedup": 0.91}
+  },
+  "conclusion": "Occupancy is only a PARTIAL lever — it helps only the most starved shape (small N AND few groups). For shapes where intra-block SPLIT_K already gives adequate occupancy, grid-split's float-atomic + cast overhead makes it slower. So the dominant cap (the plateau at ~30-50% roofline) is NOT occupancy but the inner-loop cost: per-int4 dequant ALU (~6 float ops/weight) + scalar 4-byte qweight loads.",
+  "next_lever": "Vectorize qweight loads to uint4 (128-bit, 4 uint32 = 32 nibbles at once) and cut dequant ALU (fold zero-point, fewer ops/weight). This attacks the plateau on ALL shapes, unlike grid-split."
+}
