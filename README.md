@@ -196,6 +196,8 @@ See also the [FP8-vs-AWQ comparison chart](#fp8-lane) in the FP8 lane above.
 
 ‡ Throughput is on the text path; vision is broken structurally (REAP-stripped tower, see the capability matrix and task #24).
 
+> **These sweeps predate the 2026-06-01 cuda-graph MoE win.** The pure-attention A3B MoE models — Coder-REAP-25B here, plus Coder-30B and gemma-4-26B (not in this table) — now decode **~2.3–2.5× faster with cuda-graph ON** (Coder-REAP-25B 22.9 → 58.1 @short). See [cuda-graph doubles pure-attention MoE decode](#cuda-graph-doubles-pure-attention-moe-decode). The Qwen DeltaNet rows are unchanged (GPU-bound; cuda-graph stays OFF). A full re-sweep of the MoE rows at cuda-graph-ON is pending.
+
 ### Capability matrix of shipped AWQ models
 
 `scripts/eval/validate_capabilities.py` against every shipped `mattbucci/*-AWQ` repo with `chat_template_kwargs={"enable_thinking":False}` for basic and `True` for thinking. Coder models skip thinking probe (no thinking gate).
