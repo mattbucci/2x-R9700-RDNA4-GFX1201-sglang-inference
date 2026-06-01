@@ -58,6 +58,10 @@ from calibration_datasets import (
     rows_to_text,
     tokenize_text_dataset,
 )
+# Registers a NemotronHMoE calibration module so oneshot's moe_calibration_context
+# (moe_calibrate_all_experts=True) routes all tokens through all experts — the
+# all-expert calibration moved out of GPTQModifier in llmcompressor 0.11.x.
+import nemotron_moe_calibration  # noqa: F401
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer, AutoProcessor
 from llmcompressor.modifiers.quantization import GPTQModifier
@@ -198,9 +202,6 @@ recipe = GPTQModifier(
     targets="Linear",
     scheme="W4A16",
     ignore=IGNORE_PATTERNS,
-    # MoE: every expert must see calibration mass or rare experts get garbage
-    # scales (proven on our REAM/REAP/128-expert ships). ~3x calib time.
-    moe_calibrate_all_experts=True,
     offload_hessians=True,
 )
 
@@ -212,6 +213,9 @@ oneshot(
     max_seq_length=MAX_SEQUENCE_LENGTH,
     num_calibration_samples=NUM_CALIBRATION_SAMPLES,
     processor=tokenizer,
+    # llmcompressor 0.11.x: all-expert MoE calibration is a oneshot/dataset arg
+    # (applied via moe_calibration_context to the registered NemotronHMoE module).
+    moe_calibrate_all_experts=True,
 )
 elapsed = time.time() - t0
 print(f"\nGPTQ complete in {elapsed/3600:.1f}h ({elapsed:.0f}s)")
