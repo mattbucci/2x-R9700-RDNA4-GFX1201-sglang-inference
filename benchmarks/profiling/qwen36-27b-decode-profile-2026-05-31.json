@@ -1,0 +1,27 @@
+{
+  "profile": "qwen36-27b AWQ decode, conc=1, v0.5.12 + patch-041 GEMV, --disable-cuda-graph, TP0 DECODE trace",
+  "date": "2026-05-31",
+  "steps_captured": 12,
+  "per_step_wall_ms": 79.17,
+  "per_step_gpu_busy_ms": 67.96,
+  "gpu_utilization_pct": 85.8,
+  "verdict": "GPU-compute-bound (85.8% util), NOT launch/dispatch-bound \u2014 explains why cuda-graph gives no speedup",
+  "decode_weight_read_roofline_ms_per_step": 10.5,
+  "roofline_note": "~13.5GB int4 weights / TP2 / ~640GB/s GDDR7; GEMV runs ~5x under this",
+  "breakdown_pct_of_gpu_busy": {
+    "awq_gemv_bf16_kernel": 78.3,
+    "nccl_allreduce": 7.7,
+    "deltanet_gated_delta_decode": 0.6
+  },
+  "top_kernels_ms_total": {
+    "void awq_gemv_bf16_kernel<17>(__hip_bfloat16 const*, un": 231.35,
+    "void awq_gemv_bf16_kernel<8>(__hip_bfloat16 const*, uns": 168.67,
+    "void awq_gemv_bf16_kernel<10>(__hip_bfloat16 const*, un": 120.78,
+    "void awq_gemv_bf16_kernel<12>(__hip_bfloat16 const*, un": 88.62,
+    "ncclDevKernel_Generic_4(ncclDevKernelArgsStorage<4096ul": 63.1,
+    "void awq_gemv_bf16_kernel<6>(__hip_bfloat16 const*, uns": 29.3,
+    "Cijk_Alik_Bljk_BBS_BH_Bias_HA_S_SAV_UserArgs_MT128x128x": 27.87,
+    "Cijk_Alik_Bljk_BBS_BH_Bias_HA_S_SAV_UserArgs_MT16x16x32": 17.45
+  },
+  "conclusion": "The patch-041 awq_gemv_bf16_kernel is the bottleneck (78% of decode GPU time) and runs ~5x under memory roofline. Optimizing this HIP kernel (occupancy/vectorization/split-k/tiling) is the single-user decode lever, NOT cuda-graph (no gaps to remove) and NOT DeltaNet (5ms). April-24's 24.1 tok/s predates patch-041 and likely used better-tuned rocBLAS dequant+GEMM."
+}
