@@ -72,6 +72,20 @@
       "validate": {"basic": "PASS", "vision": "PASS", "tool_call": "PASS (finish=tool_calls, get_weather city=Paris)"},
       "notes": "At devstral2 defaults (mem 0.90, fp8 KV) KV pool tops out at max_total=180572 < 262144 — a single sequence CANNOT reach full 256K; largest validated IN=131072. CONTRADICTS the devstral2 preset comment ('patch-042 reclaim -> 413K -> full 256K') — that figure was likely the v1 dense Devstral-24B-FP8 (no vision tower) or a pre-vision build; v2 carries a BF16 vision tower that eats the KV budget. FOLLOW-UP (#10): retest at mem 0.92 to see if 256K single-seq is reachable (documented +22% lever). basic+vision+tool all PASS; no draft."
     },
+    "Devstral-Small-2-24B-AWQ": {
+      "preset": "devstral2",
+      "kind": "dense 24B + vision (Mistral3), AWQ int4 (vision_tower/multi_modal_projector/lm_head BF16)",
+      "served_256k": true,
+      "max_total_num_tokens": 507683,
+      "mem_fraction": 0.92,
+      "nospec_tok_s": {"in2048": 24.0, "in32768": 20.8, "in65536": 18.2, "_method": "decode = 1000/MeanTPOT, conc=1"},
+      "nospec_ttft_ms": {"in2048": 559, "in32768": 9319, "in65536": 18547},
+      "needle_241k": {"result": "PASS", "prompt_tokens": 240996, "depth": 0.9, "latency_s": 562.1, "retrieved": "TANGERINE-47-FALCON-9920", "note": "coherent decode near 256K, not just KV alloc"},
+      "wedge": false,
+      "spec": {"draft": "none published", "note": "no SpecForge draft for Devstral; same as FP8"},
+      "validate": {"basic": "PASS", "vision": "PASS (genuinely correct: 'white background with a large red circle' — not fabricated)", "tool_call": "PASS (finish=tool_calls, get_weather city=Paris, content empty)"},
+      "notes": "AWQ int4 is the dense-VL 256K path for Devstral-2. int4 weights (~half FP8 bytes) free enough VRAM that the 507683-token KV pool clears full 262144 (256K) WITH the BF16 vision tower resident — vs FP8's 180572 cap. RESOLVES FP8 follow-up #10: the FP8 cap is WEIGHT-SIZE bound (patch-042 reclaim underdelivers because FP8 weights + BF16 vision leave <13 GB for KV); raising mem-fraction does not help, switching to AWQ does. ~24 tok/s short decode, gentle bandwidth-bound curve (20.8@32K, 18.2@65K). All capabilities preserved. Built from official FP8 via dequant_fp8_to_bf16.py -> code+vision AWQ calibration. Ships mattbucci/Devstral-Small-2-24B-AWQ."
+    },
     "gemma-4-26B-A4B-it-FP8": {
       "preset": "gemma4",
       "kind": "MoE fused-expert, SWA, multimodal (image+video+audio)",

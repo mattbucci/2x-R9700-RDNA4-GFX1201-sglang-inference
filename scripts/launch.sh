@@ -96,9 +96,17 @@ apply_preset() {
             # only ~12.5 GB free at KV sizing). The earlier "126K→413K → full 256K" claim
             # does NOT hold for THIS v2-with-vision build (the BF16 vision tower + residual
             # transients eat the KV budget; that figure was likely the v1 text-only
-            # Devstral-Small-2507). FOLLOW-UP: why does patch-042 reclaim underdeliver for
-            # the VL build? For true dense single-user 256K, AWQ-int4 remains the path.
-            MODEL="${MODEL:-$MODELS_DIR/Devstral-Small-2-24B-FP8}"
+            # Devstral-Small-2507).
+            # RESOLVED 2026-05-31: the FP8 ~180K cap is WEIGHT-SIZE bound, not a
+            # reclaimable transient — patch-042 underdelivers for the VL build because
+            # the FP8 weights (~12.9 GB/card) + BF16 vision tower simply leave <13 GB
+            # for KV. AWQ-int4 (~½ the weight bytes) is the dense-VL 256K path: it boots
+            # with max_total_num_tokens=507683 (full 262144 KV) at mem 0.92, basic+vision
+            # +tool-call PASS, 241K-tok needle PASS. So devstral2 now DEFAULTS TO AWQ.
+            # FP8 dir still serves via `QUANT=fp8 MODEL=<fp8-dir> launch.sh devstral2`
+            # (caps ~180K). Built from the official FP8 via dequant_fp8_to_bf16.py ->
+            # code+vision AWQ calibration; vision_tower/multi_modal_projector/lm_head BF16.
+            MODEL="${MODEL:-$MODELS_DIR/Devstral-Small-2-24B-AWQ}"
             # Ensure the agentic sampling defaults (see note below) live in the model's
             # generation_config.json so SGLang's --sampling-defaults model applies them
             # (opencode omits temperature/repetition_penalty, so the server fills them in).
@@ -116,8 +124,8 @@ try:
 except Exception as e:
     print(f"  [devstral2] WARN: could not set sampling defaults in {p}: {e}")
 PYEOF
-            CTX=262144; MEM=0.90; MAX_RUNNING=8; CHUNKED=8192
-            DTYPE="bfloat16"; QUANT="fp8"
+            CTX=262144; MEM="${MEM:-0.92}"; MAX_RUNNING=8; CHUNKED=8192
+            DTYPE="bfloat16"; QUANT="${QUANT:-awq}"
             TOOL_CALL_PARSER="mistral"
             # Patched template drops the upstream alternation guard that mis-counts tool
             # turns → "roles must alternate" 400 on opencode rollouts.
