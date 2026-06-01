@@ -61,5 +61,18 @@ def _safe_offload_module(module, *args, **kwargs):
 
 
 _ctom.offload_module = _safe_offload_module
-if hasattr(_cto, "offload_module"):
-    _cto.offload_module = _safe_offload_module
+# Patch EVERY binding that imported offload_module by name (from .module import
+# offload_module) — reassigning the source module alone misses callers like
+# dispatch.set_onload_device that captured the original at their import time.
+import importlib
+for _modname in (
+    "compressed_tensors.offload",
+    "compressed_tensors.offload.dispatch",
+    "compressed_tensors.offload.convert.from_accelerate",
+):
+    try:
+        _m = importlib.import_module(_modname)
+        if getattr(_m, "offload_module", None) is _orig_offload_module:
+            _m.offload_module = _safe_offload_module
+    except Exception:
+        pass
