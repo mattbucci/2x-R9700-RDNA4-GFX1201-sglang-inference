@@ -202,12 +202,25 @@ print(f"  Ignore patterns ({len(IGNORE_PATTERNS)}):")
 for p in IGNORE_PATTERNS:
     print(f"    {p}")
 
+# group_size=64, NOT the W4A16 preset's 128: the MoE expert down_proj input dim is
+# moe_intermediate_size=1856 = 64*29 (NOT divisible by 128 -> group-128 quantization
+# aborts on strict-division). 64 divides both 1856 and hidden_size 2688 (=64*42), so
+# every quantized Linear gets uniform clean groups. Coder-Next ships group_size=32, so
+# the RDNA4 moe_wna16/awq path serves non-128 groups.
+from compressed_tensors.quantization import (
+    QuantizationArgs, QuantizationScheme, QuantizationType, QuantizationStrategy,
+)
+GROUP_SIZE = int(os.environ.get("GROUP_SIZE", "64"))
+_w4 = QuantizationArgs(
+    num_bits=4, type=QuantizationType.INT, symmetric=True,
+    strategy=QuantizationStrategy.GROUP, group_size=GROUP_SIZE,
+)
 recipe = GPTQModifier(
-    targets="Linear",
-    scheme="W4A16",
+    config_groups={"group_0": QuantizationScheme(targets=["Linear"], weights=_w4)},
     ignore=IGNORE_PATTERNS,
     offload_hessians=True,
 )
+print(f"  scheme: W4A16 group_size={GROUP_SIZE} (1856 down_proj needs 64, not 128)")
 
 t0 = time.time()
 oneshot(
@@ -252,7 +265,7 @@ for fname in os.listdir(BASE_MODEL):
 print("\nDone.")
 print("Next:")
 print(f"  1. CT->AWQ:    python scripts/quantize/convert_moe_ct_to_awq.py {OUTPUT_DIR} \\")
-print(f"                   {MODELS_DIR}/Nemotron-3-Nano-Omni-30B-A3B-Reasoning-AWQ --group-size 128")
+print(f"                   {MODELS_DIR}/Nemotron-3-Nano-Omni-30B-A3B-Reasoning-AWQ --group-size {GROUP_SIZE}")
 print(f"  2. Scale audit: python scripts/eval/check_awq_scales.py <awq-dir> --base {BASE_MODEL}")
 print(f"  3. Validate:    launch.sh nemotron-omni (repoint MODEL=) + 4-modality probe")
 print(f"  4. Ship:        mattbucci/Nemotron-3-Nano-Omni-30B-A3B-Reasoning-AWQ")
