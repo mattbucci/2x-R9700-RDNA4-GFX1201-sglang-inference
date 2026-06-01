@@ -222,9 +222,18 @@ recipe = GPTQModifier(
 )
 print(f"  scheme: W4A16 group_size={GROUP_SIZE} (1856 down_proj needs 64, not 128)")
 
+# Calibrate the LM backbone directly, NOT the full Omni wrapper: the wrapper's
+# forward is `forward(pixel_values, ..., image_flags=None)` and does
+# `image_flags.squeeze(-1)` — it crashes on our text-only calibration (no images).
+# model.language_model (NemotronHForCausalLM) takes input_ids and runs the text
+# path; it holds all 23 MoE layers + lm_head, so GPTQ + the NemotronHMoE all-expert
+# context still apply. We then save the FULL model (compressed-tensors infers the
+# quantization config from the now-quantized backbone modules; vision/audio stay BF16).
+calib_target = getattr(model, "language_model", model)
+print(f"  calibration target: {type(calib_target).__name__} (text backbone; wrapper vision-forward bypassed)")
 t0 = time.time()
 oneshot(
-    model=model,
+    model=calib_target,
     dataset=dataset,
     recipe=recipe,
     max_seq_length=MAX_SEQUENCE_LENGTH,
