@@ -31,8 +31,6 @@ ALL_MODELS=(
     "qwen35|Qwen3.5-27B AWQ|262144|8"
     "devstral|Devstral-24B AWQ|131072|32"
     "coder-30b|Coder-30B AWQ|32768|32"
-    "coder-next|Coder-Next 80B AWQ|131072|8"
-    "coder-next-ream|Coder-Next REAM 60B AWQ|131072|8"
     "qwen35-moe|Qwen3.5-35B MoE GPTQ|131072|8"
     "qwen36-moe|Qwen3.6-35B MoE AWQ|131072|8"
     # gemma4 SERVES 256K on triton (validated via a 230K-tok needle prompt), but
@@ -40,7 +38,6 @@ ALL_MODELS=(
     # (multimodal: ttft=0, tpot collapses to ~2ms / 469 tok/s at 65K+). Cap the
     # SWEEP at 32K where --random is sane; 256K capability lives in the model table.
     "gemma4|Gemma 4 26B AWQ|32768|8"
-    "gemma4-31b|Gemma 4 31B AWQ|8192|4"
     "nemotron-omni|Nemotron-Omni-30B FP8|262144|8"
 )
 
