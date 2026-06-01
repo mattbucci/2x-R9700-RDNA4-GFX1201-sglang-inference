@@ -185,18 +185,19 @@ See also the [FP8-vs-AWQ comparison chart](#fp8-lane) in the FP8 lane above.
 
 | Model | 128 | 4K | 16K | 32K | 65K | 131K | 262K |
 |-------|:---:|:--:|:---:|:---:|:---:|:----:|:----:|
-| Qwen3.5-27B AWQ | 25.3 | 24.8 | 23.1 | 21.2 | 18.3 | 14.0 | **10.2** |
-| Qwen3.5-35B MoE GPTQ | 14.4 | 15.8 | 14.4 | 16.7 | 14.7 | 15.3 | **12.4** |
-| **Qwen3.6-35B MoE GPTQ** | 15.5 | 14.2 | 15.4 | 16.8 | 12.5 | 14.6 | **13.3** |
-| **Qwen3.6-35B MoE AWQ (native)** | 21.6 | 21.5 | 20.7 | 21.6 | 21.2 | **20.6** | — |
-| **Qwen3.6-27B AWQ (native)** | 25.3 | 24.8 | 23.1 | 21.2 | 18.3 | **13.9** | 10.2 |
-| **Coder-REAP-25B AWQ (native)** | 22.9 | 23.0 | 22.9 | 22.6 | 22.0 | **21.9** | — |
-| **Qwen3.6-REAM-A3B AWQ (native)** | 21.8 | 21.9 | 21.5 | 21.9 | 21.4 | 20.0 | **16.1** |
-| **Qwen3.6-VL-REAP-26B-A3B AWQ (native)** | 21.3 | 21.9 | 21.4 | 20.8 | 21.6 | 20.7 | **16.1** ‡ |
+| Qwen3.5-27B AWQ (DeltaNet dense) | 25.3 | 24.8 | 23.1 | 21.2 | 18.3 | 14.0 | **10.2** |
+| Qwen3.6-27B AWQ (DeltaNet dense) | 25.3 | 24.8 | 23.1 | 21.2 | 18.3 | 13.9 | **10.2** |
+| Coder-30B AWQ (MoE) † | 56.0 | 54.6 | 48.7 | 42.5 | 34.3 | 21.4 | **10.6** |
+| Gemma 4 26B AWQ (MoE) † | 52.9 | 49.6 | 44.1 | 36.9 | 29.7 | 21.4 | **14.3** |
+| Coder-REAP-25B AWQ (MoE) † | 56.8 | 48.9 | 48.9 | 42.5 | 34.1 | 23.7 | **15.2** |
+| Qwen3.5-35B MoE AWQ (DeltaNet+MoE) † | 60.7 | 58.3 | 53.6 | 48.0 | 39.4 | 27.8 | **20.0** |
+| Qwen3.6-35B MoE AWQ (DeltaNet+MoE) † | 60.2 | 58.5 | 53.5 | 48.1 | 39.6 | 28.1 | **19.9** |
+| Qwen3.6-REAM-A3B AWQ (DeltaNet+MoE) † | 58.9 | 58.5 | 53.7 | 48.1 | 39.6 | 28.1 | **20.0** |
+| Qwen3.6-VL-REAP-26B-A3B AWQ (MoE) ‡ | 21.3 | 21.9 | 21.4 | 20.8 | 21.6 | 20.7 | **16.1** |
 
-‡ Throughput is on the text path; vision is broken structurally (REAP-stripped tower, see the capability matrix and task #24).
+† **cuda-graph ON** — 2026-06-01 sweep (`scripts/bench/measure_decode_curve.py`, conc=1, streaming TPOT). Every MoE preset now captures graphs: M=1 MoE decode is dispatch-bound, so graph replay gives **~2.3–2.5× short-ctx decode** over eager (see [cuda-graph doubles pure-attention MoE decode](#cuda-graph-doubles-pure-attention-moe-decode)). The **DeltaNet+MoE** models (Qwen3.5/3.6-35B, REAM) hold long context best — **~20 tok/s @256K** — because their linear-attention state is O(1), so decode isn't dragged down by a growing KV read the way the pure-attention MoE are (Coder-30B 10.6, gemma-4 14.3 @256K). The two **DeltaNet *dense*** rows (Qwen3.5/3.6-27B) stay cuda-graph **OFF**: they're GPU-bound (~86% util), so there's no launch gap for a graph to remove.
 
-> **These sweeps predate the 2026-06-01 cuda-graph MoE win.** The pure-attention A3B MoE models — Coder-REAP-25B here, plus Coder-30B and gemma-4-26B (not in this table) — now decode **~2.3–2.5× faster with cuda-graph ON** (Coder-REAP-25B 22.9 → 58.1 @short). See [cuda-graph doubles pure-attention MoE decode](#cuda-graph-doubles-pure-attention-moe-decode). The Qwen DeltaNet rows are unchanged (GPU-bound; cuda-graph stays OFF). A full re-sweep of the MoE rows at cuda-graph-ON is pending.
+‡ Qwen3.6-VL-REAP-26B-A3B is the pre-cuda-graph text-path number; vision is broken structurally (REAP-stripped tower, capability matrix + task #24), so it's queued for rebuild rather than re-bench.
 
 ### Capability matrix of shipped AWQ models
 

@@ -3,80 +3,50 @@
   "engine": "SGLang",
   "method": "sglang.bench_serving",
   "hardware": "2x R9700 TP=2",
-  "timestamp": "2026-05-31 16:47:53",
+  "timestamp": "2026-06-01 cuda-graph ON",
   "output_tokens": 100,
   "context_sweep": [
     {
       "context": 128,
-      "input_len": 64,
-      "tpot_ms": 31.75,
-      "tok_per_sec": 31.5,
-      "ttft_ms": 69.24,
-      "throughput": 4.81
-    },
-    {
-      "context": 256,
-      "input_len": 128,
-      "tpot_ms": 31.14,
-      "tok_per_sec": 32.1,
-      "ttft_ms": 69.03,
-      "throughput": 4.79
-    },
-    {
-      "context": 512,
-      "input_len": 256,
-      "tpot_ms": 31.33,
-      "tok_per_sec": 31.9,
-      "ttft_ms": 69.6,
-      "throughput": 4.81
-    },
-    {
-      "context": 1024,
-      "input_len": 512,
-      "tpot_ms": 31.04,
-      "tok_per_sec": 32.2,
-      "ttft_ms": 69.54,
-      "throughput": 4.79
-    },
-    {
-      "context": 2048,
-      "input_len": 1024,
-      "tpot_ms": 31.04,
-      "tok_per_sec": 32.2,
-      "ttft_ms": 68.23,
-      "throughput": 4.79
+      "input_len": 25,
+      "tpot_ms": 18.91,
+      "tok_per_sec": 52.88
     },
     {
       "context": 4096,
-      "input_len": 2048,
-      "tpot_ms": 31.06,
-      "tok_per_sec": 32.2,
-      "ttft_ms": 83.93,
-      "throughput": 4.8
-    },
-    {
-      "context": 8192,
-      "input_len": 4096,
-      "tpot_ms": 31.03,
-      "tok_per_sec": 32.2,
-      "ttft_ms": 84.13,
-      "throughput": 4.8
+      "input_len": 3694,
+      "tpot_ms": 20.15,
+      "tok_per_sec": 49.63
     },
     {
       "context": 16384,
-      "input_len": 8192,
-      "tpot_ms": 31.4,
-      "tok_per_sec": 31.8,
-      "ttft_ms": 106.65,
-      "throughput": 4.8
+      "input_len": 14706,
+      "tpot_ms": 22.66,
+      "tok_per_sec": 44.14
     },
     {
       "context": 32768,
-      "input_len": 16384,
-      "tpot_ms": 32.21,
-      "tok_per_sec": 31.0,
-      "ttft_ms": 146.12,
-      "throughput": 4.8
+      "input_len": 29387,
+      "tpot_ms": 27.1,
+      "tok_per_sec": 36.9
+    },
+    {
+      "context": 65536,
+      "input_len": 58748,
+      "tpot_ms": 33.63,
+      "tok_per_sec": 29.74
+    },
+    {
+      "context": 131072,
+      "input_len": 117475,
+      "tpot_ms": 46.73,
+      "tok_per_sec": 21.4
+    },
+    {
+      "context": 245760,
+      "input_len": 220240,
+      "tpot_ms": 69.76,
+      "tok_per_sec": 14.34
     }
   ],
   "throughput_sweep": [
@@ -105,5 +75,6 @@
       "ttft_ms": 92.45
     }
   ],
-  "_note": "context_sweep truncated to <=32K: bench_serving --dataset-name random gives garbage long-ctx metrics for gemma (multimodal; ttft=0, tpot collapses to ~2ms). gemma-4-26B 256K serving is VALIDATED separately via a real 230K-tok needle prompt on triton (retrieved, no OOM, ~16.5 tok/s e2e) \u2014 see fp8-256k-campaign + README."
+  "_note": "context_sweep truncated to <=32K: bench_serving --dataset-name random gives garbage long-ctx metrics for gemma (multimodal; ttft=0, tpot collapses to ~2ms). gemma-4-26B 256K serving is VALIDATED separately via a real 230K-tok needle prompt on triton (retrieved, no OOM, ~16.5 tok/s e2e) \u2014 see fp8-256k-campaign + README.",
+  "note": "cuda-graph ON (2026-06-01)"
 }

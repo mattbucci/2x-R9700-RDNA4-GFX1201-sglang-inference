@@ -3,96 +3,50 @@
   "engine": "SGLang",
   "method": "sglang.bench_serving",
   "hardware": "2x R9700 TP=2",
-  "timestamp": "2026-04-28 06:54:26",
+  "timestamp": "2026-06-01 cuda-graph ON",
   "output_tokens": 100,
   "context_sweep": [
     {
       "context": 128,
-      "input_len": 64,
-      "tpot_ms": 45.92,
-      "tok_per_sec": 21.8,
-      "ttft_ms": 271.84,
-      "throughput": 4.78
-    },
-    {
-      "context": 256,
-      "input_len": 128,
-      "tpot_ms": 46.51,
-      "tok_per_sec": 21.5,
-      "ttft_ms": 270.14,
-      "throughput": 4.8
-    },
-    {
-      "context": 512,
-      "input_len": 256,
-      "tpot_ms": 46.77,
-      "tok_per_sec": 21.4,
-      "ttft_ms": 271.91,
-      "throughput": 4.8
-    },
-    {
-      "context": 1024,
-      "input_len": 512,
-      "tpot_ms": 46.38,
-      "tok_per_sec": 21.6,
-      "ttft_ms": 271.57,
-      "throughput": 4.79
-    },
-    {
-      "context": 2048,
-      "input_len": 1024,
-      "tpot_ms": 45.97,
-      "tok_per_sec": 21.8,
-      "ttft_ms": 270.64,
-      "throughput": 4.81
+      "input_len": 24,
+      "tpot_ms": 16.97,
+      "tok_per_sec": 58.91
     },
     {
       "context": 4096,
-      "input_len": 2048,
-      "tpot_ms": 45.61,
-      "tok_per_sec": 21.9,
-      "ttft_ms": 404.32,
-      "throughput": 4.8
-    },
-    {
-      "context": 8192,
-      "input_len": 4096,
-      "tpot_ms": 47.21,
-      "tok_per_sec": 21.2,
-      "ttft_ms": 403.35,
-      "throughput": 4.8
+      "input_len": 3677,
+      "tpot_ms": 17.1,
+      "tok_per_sec": 58.49
     },
     {
       "context": 16384,
-      "input_len": 8192,
-      "tpot_ms": 46.42,
-      "tok_per_sec": 21.5,
-      "ttft_ms": 1327.13,
-      "throughput": 4.8
+      "input_len": 14638,
+      "tpot_ms": 18.63,
+      "tok_per_sec": 53.68
     },
     {
       "context": 32768,
-      "input_len": 16384,
-      "tpot_ms": 45.59,
-      "tok_per_sec": 21.9,
-      "ttft_ms": 4848.04,
-      "throughput": 2.41
+      "input_len": 29253,
+      "tpot_ms": 20.78,
+      "tok_per_sec": 48.13
     },
     {
       "context": 65536,
-      "input_len": 32768,
-      "tpot_ms": 46.65,
-      "tok_per_sec": 21.4,
-      "ttft_ms": 12474.91,
-      "throughput": 1.0
+      "input_len": 58483,
+      "tpot_ms": 25.24,
+      "tok_per_sec": 39.62
     },
     {
       "context": 131072,
-      "input_len": 65536,
-      "tpot_ms": 50.07,
-      "tok_per_sec": 20.0,
-      "ttft_ms": 27625.38,
-      "throughput": 0.46
+      "input_len": 116944,
+      "tpot_ms": 35.53,
+      "tok_per_sec": 28.15
+    },
+    {
+      "context": 245760,
+      "input_len": 219248,
+      "tpot_ms": 50.1,
+      "tok_per_sec": 19.96
     }
   ],
   "throughput_sweep": [
@@ -120,5 +74,6 @@
       "tpot_ms": 227.05,
       "ttft_ms": 19637.46
     }
-  ]
+  ],
+  "note": "cuda-graph ON (2026-06-01)"
 }
