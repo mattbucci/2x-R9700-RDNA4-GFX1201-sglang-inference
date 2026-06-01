@@ -45,7 +45,11 @@ import os
 import sys
 import time
 
-os.environ["CUDA_VISIBLE_DEVICES"] = ""  # CPU calibration — keep both R9700s free
+# CPU calibration by default (env-overridable). The 62GB BF16 model does NOT fit
+# in this box's 64GB RAM, so we load via accelerate disk-offload (offload_folder
+# on /data) with a CPU RAM cap — llmcompressor's sequential pipeline onloads each
+# decoder layer for calibration, keeping peak RAM well under the cap.
+os.environ.setdefault("CUDA_VISIBLE_DEVICES", "")  # CPU calibration (keep GPUs free)
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
@@ -68,6 +72,11 @@ OUTPUT_DIR = os.environ.get(
 )
 # Full AVLM mix: preserve thinking + image + video + audio (the R9700 mandate).
 RECIPE = os.environ.get("RECIPE", "thinking_vision_video_audio")
+# Disk-offload load (62GB model on 64GB box). offload_folder on /data (1.4T free);
+# cap CPU RAM so accelerate spills the overflow to disk and llmcompressor onloads
+# layers as it calibrates.
+OFFLOAD_DIR = os.environ.get("OFFLOAD_DIR", "/data/nemo-offload")
+CPU_MEM_GB = os.environ.get("CPU_MEM_GB", "44")
 NUM_CALIBRATION_SAMPLES = int(os.environ.get("NUM_SAMPLES", "1024"))
 MAX_SEQUENCE_LENGTH = int(os.environ.get("MAX_SEQ_LEN", "2048"))
 
@@ -150,11 +159,31 @@ if n_think < 10:
 dataset = tokenize_text_dataset(text_dataset, tokenizer, MAX_SEQUENCE_LENGTH)
 print(f"Tokenized {len(dataset)} samples at max_seq_len={MAX_SEQUENCE_LENGTH}")
 
-# --- 3. Load model on CPU (full Omni wrapper; encoders stay attached) ---
-print("\n[3/5] Loading model on CPU (trust_remote_code=True, may be slow)...")
+# --- 3. Load model with accelerate disk-offload (full Omni wrapper) ---
+# ROCm has no flash-attn package -> force eager. 62GB on 64GB RAM -> device_map
+# auto + CPU cap + disk offload to /data; low_cpu_mem_usage avoids a full-RAM
+# transient at load.
+print(f"\n[3/5] Loading model (eager attn, disk-offload to {OFFLOAD_DIR}, CPU cap {CPU_MEM_GB}GiB)...")
+os.makedirs(OFFLOAD_DIR, exist_ok=True)
 t0 = time.time()
+from transformers import AutoConfig
+_cfg = AutoConfig.from_pretrained(BASE_MODEL, trust_remote_code=True)
+for _c in [_cfg] + [getattr(_cfg, _a) for _a in dir(_cfg)
+                    if _a.endswith("_config") and hasattr(getattr(_cfg, _a, None), "__dict__")]:
+    try:
+        _c._attn_implementation = "eager"
+    except Exception:
+        pass
 model = AutoModelForCausalLM.from_pretrained(
-    BASE_MODEL, device_map="cpu", torch_dtype=torch.bfloat16, trust_remote_code=True,
+    BASE_MODEL,
+    config=_cfg,
+    device_map="auto",
+    max_memory={"cpu": f"{CPU_MEM_GB}GiB"},
+    offload_folder=OFFLOAD_DIR,
+    low_cpu_mem_usage=True,
+    dtype=torch.bfloat16,
+    attn_implementation="eager",
+    trust_remote_code=True,
 )
 print(f"Model loaded in {time.time() - t0:.0f}s ({type(model).__name__})")
 print(f"  Parameter count: {sum(p.numel() for p in model.parameters()) / 1e9:.2f}B")
