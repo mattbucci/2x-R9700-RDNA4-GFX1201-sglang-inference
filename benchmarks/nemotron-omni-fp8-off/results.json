@@ -1,0 +1,47 @@
+{
+  "model": "Nemotron-Omni FP8 OFF",
+  "engine": "SGLang",
+  "hardware": "2x R9700 TP=2",
+  "timestamp": "2026-06-01 cuda-graph OFF",
+  "note": "cuda-graph OFF",
+  "context_sweep": [
+    {
+      "context": 128,
+      "input_len": 28,
+      "tpot_ms": 31.66,
+      "tok_per_sec": 31.58
+    },
+    {
+      "context": 4096,
+      "input_len": 3697,
+      "tpot_ms": 31.88,
+      "tok_per_sec": 31.36
+    },
+    {
+      "context": 32768,
+      "input_len": 29390,
+      "tpot_ms": 32.13,
+      "tok_per_sec": 31.12
+    },
+    {
+      "context": 131072,
+      "input_len": 117478,
+      "tpot_ms": 32.55,
+      "tok_per_sec": 30.72
+    },
+    {
+      "context": 245760,
+      "input_len": 220243,
+      "tpot_ms": 31.74,
+      "tok_per_sec": 31.51
+    }
+  ],
+  "throughput_sweep": [
+    {
+      "concurrency": 1,
+      "throughput": 31.58,
+      "tpot_ms": 31.66,
+      "ttft_ms": 0
+    }
+  ]
+}

@@ -525,6 +525,12 @@ PYEOF
             DTYPE="bfloat16"
             ATTN_BACKEND="${ATTN_BACKEND:-triton}"
             CTX=262144; MEM=0.85; MAX_RUNNING=8; CHUNKED=4096; DECODE_STEPS=4
+            # M=1 decode is launch/dispatch-bound across the whole 52-layer hybrid
+            # (Mamba2 conv1d + SSD scan + MoE dispatch + attn) — the cuda-graph-OFF
+            # decode curve is FLAT ~31 tok/s from 128 to 245K ctx. Capturing the graph
+            # collapses that launch overhead: ~2.0x short ctx, 1.43x at 256K (45 vs 31
+            # tok/s). Graph capture works cleanly on the Mamba2 hybrid. See README.
+            CUDA_GRAPH=""
             REASONING="--reasoning-parser nemotron_3"
             TOOL_CALL_PARSER="qwen3_coder"
             ;;
