@@ -226,6 +226,12 @@ PYEOF
             MAMBA_CACHE="--max-mamba-cache-size 8"
             TOOL_CALL_PARSER="qwen3_coder"
             WATCHDOG=1800
+            # M=1 decode is launch/dispatch-bound (DeltaNet+MoE, same class as
+            # qwen35/36-moe) — the cuda-graph-OFF curve is flat ~21 tok/s. Graph
+            # capture (bit-exact for DeltaNet+MoE) gives ~2.1x at short/mid ctx;
+            # at 131K the win flattens to ~1.07x as this 60B's real per-token
+            # compute (~45 ms) meets the launch-overhead ceiling — no regression.
+            CUDA_GRAPH=""
             ;;
         glm45-air)
             MODEL="${MODEL:-$MODELS_DIR/GLM-4.5-Air-REAP-AWQ}"
