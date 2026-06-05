@@ -1,0 +1,15 @@
+[
+  {"label": "tb256",            "override": {"custom_params": {"thinking_budget": 256}}},
+  {"label": "tb384",            "override": {"custom_params": {"thinking_budget": 384}}},
+  {"label": "tb512",            "override": {"custom_params": {"thinking_budget": 512}}},
+  {"label": "tb128",            "override": {"custom_params": {"thinking_budget": 128}}},
+  {"label": "tb256_temp0.3",    "override": {"custom_params": {"thinking_budget": 256}, "temperature": 0.3}},
+  {"label": "tb256_temp1.0",    "override": {"custom_params": {"thinking_budget": 256}, "temperature": 1.0}},
+  {"label": "tb256_minp0.05",   "override": {"custom_params": {"thinking_budget": 256}, "min_p": 0.05}},
+  {"label": "tb256_presence1",  "override": {"custom_params": {"thinking_budget": 256}, "presence_penalty": 1.0}},
+  {"label": "tb256_reppen1.1",  "override": {"custom_params": {"thinking_budget": 256}, "repetition_penalty": 1.1}},
+  {"label": "temp0.3",          "override": {"temperature": 0.3}},
+  {"label": "minp0.05",         "override": {"min_p": 0.05}},
+  {"label": "presence1.0",      "override": {"presence_penalty": 1.0}},
+  {"label": "reppen1.1",        "override": {"repetition_penalty": 1.1}}
+]

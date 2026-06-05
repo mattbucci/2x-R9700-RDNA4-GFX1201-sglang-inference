@@ -1,0 +1,47 @@
+{
+  "model": "qwen35-awq wedge RCA",
+  "engine": "SGLang",
+  "hardware": "2x R9700 TP=2",
+  "timestamp": "rca",
+  "note": "wedge RCA cuda-graph OFF",
+  "context_sweep": [
+    {
+      "context": 128,
+      "input_len": 24,
+      "tpot_ms": 39.5,
+      "tok_per_sec": 25.32
+    },
+    {
+      "context": 4096,
+      "input_len": 3677,
+      "tpot_ms": 40.54,
+      "tok_per_sec": 24.67
+    },
+    {
+      "context": 16384,
+      "input_len": 14638,
+      "tpot_ms": 42.98,
+      "tok_per_sec": 23.26
+    },
+    {
+      "context": 32768,
+      "input_len": 29253,
+      "tpot_ms": 46.37,
+      "tok_per_sec": 21.57
+    },
+    {
+      "context": 65536,
+      "input_len": 58483,
+      "tpot_ms": 53.21,
+      "tok_per_sec": 18.79
+    }
+  ],
+  "throughput_sweep": [
+    {
+      "concurrency": 1,
+      "throughput": 25.32,
+      "tpot_ms": 39.5,
+      "ttft_ms": 0
+    }
+  ]
+}

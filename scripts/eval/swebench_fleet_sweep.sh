@@ -62,7 +62,7 @@ for cell in "${CELLS[@]}"; do
   stop_server
   bash -c "$MODELENV ./scripts/launch.sh $preset --port 23334 --context-length $CTX" > "$OUT/serve.log" 2>&1 &
   ready=0
-  for _ in $(seq 1 200); do   # ~10 min
+  for _ in $(seq 1 500); do   # ~25 min (big TP2 models load slowly on cold page cache)
     curl -sf http://127.0.0.1:23334/health >/dev/null 2>&1 && { ready=1; break; }
     grep -qiE "OutOfMemory|Received sigquit|core dumped|RuntimeError|AssertionError|ValueError:" "$OUT/serve.log" 2>/dev/null && break
     sleep 3

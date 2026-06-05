@@ -1,0 +1,16 @@
+cell	format	result	detail
+coder-30b-awq	AWQ	resolved=1/6	applied=1 empty=5/6
+coder-reap-25b-awq	AWQ	SERVE_FAILED	ValueError
+coder-next-ream-awq	AWQ	SERVE_FAILED	ModuleNotFoundError
+qwen36-moe-awq	AWQ	SERVE_FAILED	ValueError
+coder-reap-25b-awq	AWQ	resolved=2/6	applied=5 empty=1/6
+coder-next-ream-awq	AWQ	resolved=3/6	applied=5 empty=1/6
+qwen36-moe-awq	AWQ	resolved=1/6	applied=2 empty=4/6
+qwen35-moe-awq	AWQ	resolved=3/6	applied=4 empty=2/6
+gemma4-awq	AWQ	resolved=2/6	applied=4 empty=2/6
+gemma4-fp8	FP8	resolved=5/6	applied=5 empty=1/6
+gemma4-31b-awq	AWQ	resolved=5/6	applied=6 empty=0/6
+gemma4-31b-fp8	FP8	resolved=4/6	applied=6 empty=0/6
+qwen35-awq	AWQ	resolved=0/6	applied=0 empty=6/6
+qwen35-fp8	FP8	resolved=5/6	applied=5 empty=1/6
+qwen36-27b-awq	AWQ	resolved=0/6	applied=0 empty=6/6

@@ -59,6 +59,14 @@ NUM_CALIBRATION_SAMPLES = int(os.environ.get("NUM_SAMPLES", "512"))
 MAX_SEQUENCE_LENGTH = int(os.environ.get("MAX_SEQ_LEN", "2048"))
 BASE_RECIPE = os.environ.get("RECIPE", "balanced_thinking_text")   # has 20% evol_code
 TOOLCALL_FRAC = float(os.environ.get("TOOLCALL_FRAC", "0.20"))     # ~20% native tool-call rows
+# PROTECT_GDN=1 keeps the FULL Gated-DeltaNet projection path (in_proj_qkv/z/out, not just the
+# a/b gates) in BF16. WHY: Qwen3.5-27B is 75% linear-attention (48/64 layers); int4 weight error
+# on in_proj_qkv (which writes the recurrent state every step) gets integrated + multiplied forward
+# by the GDN state over long agentic horizons → non-convergence (0/6 SWE-bench, while FP8 = 4/6).
+# Literature: recurrent-state quant error accumulates over the sequence, unlike isolated transformer
+# KV error (arXiv 2504.04823, 2507.06457). This is the selective-precision-hybrid test: BF16 GDN +
+# int4 MLP/full-attn. Default OFF preserves the committed (gates-only) behavior for a clean A/B.
+PROTECT_GDN = os.environ.get("PROTECT_GDN", "0") == "1"
 
 n_tool = int(round(NUM_CALIBRATION_SAMPLES * TOOLCALL_FRAC))
 n_base = NUM_CALIBRATION_SAMPLES - n_tool
@@ -116,18 +124,26 @@ print(f"Model loaded in {time.time()-t0:.0f}s ({type(model).__name__})")
 
 # --- 5. GPTQ W4A16 (identical ignore-list to thinking-aware recipe) ---
 print("\n[5/5] Running GPTQ calibration...")
+ignore = [
+    "lm_head",
+    "re:.*in_proj_b$",          # DeltaNet beta gate (recurrent — INT4 error accumulates)
+    "re:.*in_proj_a$",          # DeltaNet alpha gate
+    r"re:.*vision_tower.*",
+    r"re:.*visual\..*",
+    r"re:.*multi_modal_projector.*",
+    r"re:.*embed_vision.*",
+]
+if PROTECT_GDN:
+    # Keep the ENTIRE Gated-DeltaNet path in BF16, not just the a/b gates. `.*\.linear_attn\..*`
+    # catches in_proj_qkv (writes recurrent state), in_proj_z (output gate), out_proj — the 144
+    # tensors (3 x 48 GDN layers) currently int4. in_proj_a/b are already covered above.
+    ignore.append(r"re:.*\.linear_attn\..*")
+    print("PROTECT_GDN=1 → full linear_attn path stays BF16 "
+          "(in_proj_qkv/z/out + a/b gates); int4 only on MLP + full-attention layers.")
 recipe = GPTQModifier(
     targets="Linear",
     scheme="W4A16",
-    ignore=[
-        "lm_head",
-        "re:.*in_proj_b$",          # DeltaNet beta gate (recurrent — INT4 error accumulates)
-        "re:.*in_proj_a$",          # DeltaNet alpha gate
-        r"re:.*vision_tower.*",
-        r"re:.*visual\..*",
-        r"re:.*multi_modal_projector.*",
-        r"re:.*embed_vision.*",
-    ],
+    ignore=ignore,
     offload_hessians=True,
 )
 print(f"Recipe: {recipe}")

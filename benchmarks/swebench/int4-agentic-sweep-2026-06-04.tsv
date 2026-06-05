@@ -1,0 +1,14 @@
+label	resolved	applied	empty	edits_total	note
+tb256	0/6	1	5/6	1	
+tb384	0/6	1	5/6	1	
+tb512	0/6	0	6/6	0	
+tb128	0/6	0	6/6	0	
+tb256_temp0.3	0/6	1	5/6	1	
+tb256_temp1.0	0/6	0	6/6	0	
+tb256_minp0.05	0/6	0	6/6	0	
+tb256_presence1	0/6	0	6/6	0	
+tb256_reppen1.1	0/6	0	6/6	0	
+temp0.3	0/6	1	5/6	2	
+minp0.05	0/6	1	5/6	1	
+presence1.0	0/6	1	5/6	1	
+reppen1.1	0/6	0	6/6	0	
