@@ -60,6 +60,15 @@ def parse_args():
     p.add_argument("--no-venv", action="store_true",
                    help="Skip pre-rollout venv setup — agent runs read-edit-pray "
                         "without a working test loop. Compatible with v1 runs.")
+    p.add_argument("--scaffold", default="opencode",
+                   choices=["opencode", "little-coder", "claw-code"],
+                   help="Coding-agent scaffold to drive (host-side, no docker)")
+    p.add_argument("--shard", default=None,
+                   help="K/N: process only instances where index%%N==K (for concurrent "
+                        "rollouts against one server). Writes predictions.K_N.jsonl.")
+    p.add_argument("--claw-bin",
+                   default=os.path.expanduser("~/.local/bin/claw"),
+                   help="Path to the built claw binary (for --scaffold claw-code)")
     return p.parse_args()
 
 
@@ -194,16 +203,7 @@ captured as a `git diff`.
 """
 
 
-def run_opencode(model: str, repo_dir: Path, prompt: str, timeout: int, log_path: Path,
-                 extra_env: dict[str, str] | None = None) -> tuple[int, str, str]:
-    cmd = [
-        "opencode", "run",
-        "--dir", str(repo_dir),
-        "--model", model,
-        "--format", "json",
-        "--dangerously-skip-permissions",
-        prompt,
-    ]
+def _base_env(extra_env: dict[str, str] | None, scaffold_env: dict[str, str] | None = None) -> dict:
     env = os.environ.copy()
     env["PATH"] = f"{Path.home()}/.npm-global/bin:{env.get('PATH','')}"
     if extra_env:
@@ -216,20 +216,29 @@ def run_opencode(model: str, repo_dir: Path, prompt: str, timeout: int, log_path
         for k, v in extra_env.items():
             if k != "PATH":
                 env[k] = v
+    if scaffold_env:
+        env.update(scaffold_env)
+    return env
+
+
+def _popen_agent(cmd: list, cwd, env: dict, timeout: int, log_path: Path) -> tuple[int, str, str]:
+    """Shared agent invocation: fresh process group so SIGKILL on timeout reaps the
+    Node/Rust children too (default subprocess kill leaves them dangling — observed at
+    instance 23 where the parent died but a child kept the rollout stalled)."""
     t0 = time.time()
-    # Run in a fresh process group so SIGKILL on timeout reaps the Node spawned
-    # children too (default subprocess kill leaves them dangling — observed at
-    # instance 23 where the parent died but a child kept the rollout stalled).
+    # stdin=DEVNULL is load-bearing: the node CLIs (opencode, little-coder) wait for
+    # interactive input when stdout is a pipe and stdin is a TTY/inherited, hanging the
+    # whole rollout to timeout with no edits. /dev/null gives immediate EOF → one-shot run.
     proc = subprocess.Popen(
-        cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
-        env=env, start_new_session=True,
+        cmd, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        text=True, cwd=cwd, env=env, start_new_session=True,
     )
     try:
         stdout, stderr = proc.communicate(timeout=timeout)
         rc = proc.returncode
         elapsed = time.time() - t0
         log_path.write_text(
-            f"# command\n{' '.join(cmd[:-1])} <PROMPT>\n# elapsed {elapsed:.1f}s\n"
+            f"# command\n{' '.join(str(c) for c in cmd[:-1])} <PROMPT>\n# elapsed {elapsed:.1f}s\n"
             f"# returncode {rc}\n# stdout\n{stdout}\n# stderr\n{stderr}\n"
         )
         return rc, stdout, stderr
@@ -244,6 +253,45 @@ def run_opencode(model: str, repo_dir: Path, prompt: str, timeout: int, log_path
             stdout, stderr = "", ""
         log_path.write_text(f"# TIMEOUT after {timeout}s (process group SIGKILLed)\n# stdout\n{stdout}\n# stderr\n{stderr}\n")
         return 124, stdout or "", stderr or ""
+
+
+def run_opencode(model: str, repo_dir: Path, prompt: str, timeout: int, log_path: Path,
+                 extra_env: dict[str, str] | None = None) -> tuple[int, str, str]:
+    # NB: no `--format json` — it deadlocks on long multi-turn sessions under the
+    # subprocess pipe (simple tasks are fine, real SWE-bench rollouts hang >900s with
+    # no edits). The diff is captured from git, not opencode stdout, so plain mode is fine.
+    cmd = ["opencode", "run", "--dir", str(repo_dir), "--model", model,
+           "--dangerously-skip-permissions", prompt]
+    return _popen_agent(cmd, None, _base_env(extra_env), timeout, log_path)
+
+
+def run_little_coder(served: str, repo_dir: Path, prompt: str, timeout: int, log_path: Path,
+                     extra_env: dict[str, str] | None = None,
+                     server_url: str = "http://127.0.0.1:23334") -> tuple[int, str, str]:
+    # little-coder wraps pi-ai; the packaged `llamacpp` provider baseUrl is overridden
+    # by LLAMACPP_BASE_URL (config.ts LEGACY_BASE_URL_ENV). model id `llamacpp/<served>`
+    # routes there; pi warns "custom model id" for unknown ids but still sends the request.
+    # --print (-p) is REQUIRED: without it pi runs interactively and just *describes* the fix
+    # ("I cannot modify files in this environment") instead of using its edit/write tools.
+    cmd = ["little-coder", "--print", "--model", f"llamacpp/{served}", prompt]
+    env = _base_env(extra_env, {
+        "LLAMACPP_BASE_URL": f"{server_url.rstrip('/')}/v1",
+        "LLAMACPP_API_KEY": "noop",
+    })
+    return _popen_agent(cmd, str(repo_dir), env, timeout, log_path)
+
+
+def run_claw(served: str, claw_bin: str, repo_dir: Path, prompt: str, timeout: int, log_path: Path,
+             extra_env: dict[str, str] | None = None,
+             server_url: str = "http://127.0.0.1:23334") -> tuple[int, str, str]:
+    # claw natively speaks OpenAI-compat via OPENAI_BASE_URL/OPENAI_API_KEY; the openai/
+    # model-id prefix wins over claw's ambient credential sniffer (USAGE.md provider matrix).
+    cmd = [claw_bin, "--model", f"openai/{served}", "--output-format", "text", "prompt", prompt]
+    env = _base_env(extra_env, {
+        "OPENAI_BASE_URL": f"{server_url.rstrip('/')}/v1",
+        "OPENAI_API_KEY": "noop",
+    })
+    return _popen_agent(cmd, str(repo_dir), env, timeout, log_path)
 
 
 def capture_diff(repo_dir: Path) -> str:
@@ -285,7 +333,14 @@ def main():
         ds = list(ds)[: args.instances]
         print(f"  truncated to first {len(ds)} via --instances", flush=True)
 
-    predictions_path = out / "predictions.jsonl"
+    shard_sfx = ""
+    if args.shard:
+        k, n = (int(x) for x in args.shard.split("/"))
+        ds = [r for idx, r in enumerate(ds) if idx % n == k]
+        shard_sfx = f".{k}_{n}"
+        print(f"  shard {k}/{n}: {len(ds)} instances", flush=True)
+
+    predictions_path = out / f"predictions{shard_sfx}.jsonl"
     existing = set()
     if args.skip_existing and predictions_path.exists():
         for line in predictions_path.read_text().splitlines():
@@ -342,14 +397,29 @@ def main():
                         "VIRTUAL_ENV": str(venv),
                         "PATH": f"{venv}/bin",
                     }
-                rc, _stdout, _stderr = run_opencode(args.model, inst_dir, prompt, args.timeout,
-                                                    log_path, extra_env=extra_env)
+                if args.scaffold == "opencode":
+                    rc, _stdout, _stderr = run_opencode(args.model, inst_dir, prompt, args.timeout,
+                                                        log_path, extra_env=extra_env)
+                elif args.scaffold == "little-coder":
+                    rc, _stdout, _stderr = run_little_coder(served, inst_dir, prompt, args.timeout,
+                                                            log_path, extra_env=extra_env,
+                                                            server_url=args.server_url)
+                else:  # claw-code
+                    rc, _stdout, _stderr = run_claw(served, args.claw_bin, inst_dir, prompt, args.timeout,
+                                                    log_path, extra_env=extra_env,
+                                                    server_url=args.server_url)
+                # strip agent scratch dirs so they don't pollute the captured diff
+                subprocess.run(["rm", "-rf",
+                                str(inst_dir / ".claw"), str(inst_dir / ".opencode"),
+                                str(inst_dir / ".sandbox-tmp"), str(inst_dir / ".sandbox-home"),
+                                str(inst_dir / ".cache"), str(inst_dir / ".pi")], check=False)
                 diff = capture_diff(inst_dir)
                 (out / "predictions" / f"{iid}.diff").write_text(diff)
 
                 entry = {
                     "instance_id": iid,
                     "model_name_or_path": args.model,
+                    "scaffold": args.scaffold,
                     "model_patch": diff,
                     "rollout_returncode": rc,
                     "rollout_seconds": round(time.time() - t0, 1),
