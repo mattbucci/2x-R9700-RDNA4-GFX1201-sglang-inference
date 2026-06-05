@@ -128,12 +128,19 @@ def ensure_repo(repo: str, base_commit: str, work_root: Path, instance_id: str) 
     mirror = work_root / ".mirrors" / repo.replace("/", "__")
     inst_dir = work_root / instance_id
 
-    if not mirror.exists():
-        mirror.parent.mkdir(parents=True, exist_ok=True)
-        subprocess.run(
-            ["git", "clone", "--bare", f"https://github.com/{repo}.git", str(mirror)],
-            check=True,
-        )
+    # Serialize mirror creation across concurrent shards with a per-repo file lock: two
+    # shards racing `git clone --bare` into the same mirror leave it half-built, and the
+    # later `git checkout` fails with exit 128. Clone-from-mirror + checkout (below) are
+    # read-only on the mirror, so they run safely concurrent once the mirror exists.
+    import fcntl
+    mirror.parent.mkdir(parents=True, exist_ok=True)
+    with open(str(mirror) + ".lock", "w") as _lk:
+        fcntl.flock(_lk, fcntl.LOCK_EX)
+        if not mirror.exists():
+            subprocess.run(
+                ["git", "clone", "--bare", f"https://github.com/{repo}.git", str(mirror)],
+                check=True,
+            )
 
     if inst_dir.exists():
         # Rename-then-delete: rmtree on a tmpfs entry can SIGSEGV the process
