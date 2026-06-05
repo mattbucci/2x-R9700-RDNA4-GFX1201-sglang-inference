@@ -14,7 +14,16 @@ cd /home/letsrtfm/AI/2x-R9700-RDNA4-GFX1201-sglang-inference || exit 1
 PY=/data/swebench-harness-env/bin/python
 export PATH="$HOME/.npm-global/bin:$PATH"
 MODELS_DIR=$HOME/AI/models
-ROOT=/tmp/bakeoff
+# CRITICAL: everything lives on /data (1.4T NVMe). /tmp is a 31G tmpfs (RAM) — repo clones +
+# per-instance uv venvs (scoring) overflow it in minutes, silently failing every rollout
+# (ENOSPC → empty diffs). workdir/venvdir/ROOT/TMPDIR all point at /data.
+DATA=${DATA:-/data/bakeoff}
+ROOT=${ROOT:-$DATA/runs}
+WORKDIR=$DATA/swebench-work
+SCORE_WORKDIR=$DATA/swebench-work2
+VENVDIR=$DATA/swebench-venvs
+export TMPDIR=$DATA/agent-tmp                 # agent + uv scratch off tmpfs too
+mkdir -p "$ROOT" "$WORKDIR" "$SCORE_WORKDIR" "$VENVDIR" "$TMPDIR"
 SUMMARY=$ROOT/summary.tsv
 N=${N_INSTANCES:-0}                 # 0 = full 300 Lite
 SHARDS=${SHARDS:-6}                 # concurrent rollouts per cell
@@ -80,13 +89,14 @@ for entry in "${MODELS[@]}"; do
     for k in $(seq 0 $((SHARDS-1))); do
       $PY evals/swebench/run_rollouts.py --model sglang/sweep --served-name sweep --scaffold "$sc" \
           $ids_arg --shard "$k/$SHARDS" --out "$OUT" --no-venv --timeout "$TIMEOUT" --skip-existing \
-          --max-empty-streak 100000 --server-url http://127.0.0.1:23334 > "$OUT/rollout.$k.log" 2>&1 &
+          --workdir "$WORKDIR" --max-empty-streak 100000 \
+          --server-url http://127.0.0.1:23334 > "$OUT/rollout.$k.log" 2>&1 &
       pids+=($!)
     done
     wait "${pids[@]}" 2>/dev/null || true
     cat "$OUT"/predictions.*_${SHARDS}.jsonl > "$OUT/predictions.jsonl" 2>/dev/null || true
     $PY evals/swebench/score_local.py --predictions "$OUT/predictions.jsonl" --out "$OUT/scores.jsonl" \
-        > "$OUT/score.log" 2>&1 || true
+        --workdir "$SCORE_WORKDIR" --venvdir "$VENVDIR" > "$OUT/score.log" 2>&1 || true
     read res app emp <<<"$($PY - "$OUT" <<PYEOF
 import json,os
 d="$OUT"
