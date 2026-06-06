@@ -67,12 +67,16 @@ wait_health(){  # poll up to ~35min; 0 = healthy
   return 1
 }
 watchdog(){  # $1=preset $2=dir $3=label — restart the server when it HSAIL-crashes/hangs
-  local fails=0
+  local fails=0; mkdir -p "$ROOT/crashes"
   while true; do
     sleep 30
     if curl -sf -m5 http://127.0.0.1:23334/health >/dev/null 2>&1; then fails=0; continue; fi
     fails=$((fails+1)); [ "$fails" -lt 3 ] && continue   # 90s grace (transient busy)
-    echo "[watchdog $3] server unhealthy 90s — restarting $(date '+%F %H:%M')" >> "$ROOT/watchdog.log"
+    # PRESERVE the crashed serve log (HSAIL traceback) for root-cause BEFORE restart appends to it.
+    ts=$(date '+%Y%m%d-%H%M%S')
+    cp "$ROOT/serve-$3.log" "$ROOT/crashes/serve-$3-$ts.log" 2>/dev/null
+    hsa=$(grep -cE "HSA_STATUS_ERROR|Fatal Python error|Aborted" "$ROOT/serve-$3.log" 2>/dev/null || echo 0)
+    echo "[watchdog $3] DOWN 90s (HSA/abort markers=$hsa) — saved crashes/serve-$3-$ts.log — restart $ts" >> "$ROOT/watchdog.log"
     stop_server; serve_bg "$1" "$2" "$3"; wait_health || true; fails=0
   done
 }
