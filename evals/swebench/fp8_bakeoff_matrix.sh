@@ -26,7 +26,9 @@ export TMPDIR=$DATA/agent-tmp                 # agent + uv scratch off tmpfs too
 mkdir -p "$ROOT" "$WORKDIR" "$SCORE_WORKDIR" "$VENVDIR" "$TMPDIR"
 SUMMARY=$ROOT/summary.tsv
 N=${N_INSTANCES:-0}                 # 0 = full 300 Lite
-SHARDS=${SHARDS:-6}                 # concurrent rollouts per cell
+SHARDS=${SHARDS:-2}                 # concurrent rollouts per cell. RDNA4 HSAIL-crashes under
+                                    # heavy batch (6-way died in 18min); 2 is near the stable
+                                    # single-user regime. The watchdog recovers the rest.
 TIMEOUT=${ROLLOUT_TIMEOUT:-1800}    # per-instance (3090 uses 1800; concurrency slows decode)
 CTX=${CTX:-131072}                  # claw needs headroom; dense FP8 caps below 256K
 SCAFFOLDS=(opencode little-coder claw-code)
@@ -56,6 +58,25 @@ stop_server(){
 }
 cell_done(){ [ -f "$ROOT/$1-$2/scores.jsonl" ]; }
 
+serve_bg(){  # $1=preset $2=dir $3=label — launch server in background (no wait)
+  MODEL=$MODELS_DIR/$2 bash -c "./scripts/launch.sh $1 --port 23334 --context-length $CTX" \
+    >> "$ROOT/serve-$3.log" 2>&1 &
+}
+wait_health(){  # poll up to ~35min; 0 = healthy
+  for _ in $(seq 1 700); do curl -sf -m5 http://127.0.0.1:23334/health >/dev/null 2>&1 && return 0; sleep 3; done
+  return 1
+}
+watchdog(){  # $1=preset $2=dir $3=label — restart the server when it HSAIL-crashes/hangs
+  local fails=0
+  while true; do
+    sleep 30
+    if curl -sf -m5 http://127.0.0.1:23334/health >/dev/null 2>&1; then fails=0; continue; fi
+    fails=$((fails+1)); [ "$fails" -lt 3 ] && continue   # 90s grace (transient busy)
+    echo "[watchdog $3] server unhealthy 90s — restarting $(date '+%F %H:%M')" >> "$ROOT/watchdog.log"
+    stop_server; serve_bg "$1" "$2" "$3"; wait_health || true; fails=0
+  done
+}
+
 echo "BAKEOFF START $(date) — ${#MODELS[@]} models × ${#SCAFFOLDS[@]} scaffolds × $([ "$N" = 0 ] && echo 300 || echo "$N") inst, ${SHARDS}-way, ctx=$CTX, timeout=${TIMEOUT}s"
 for entry in "${MODELS[@]}"; do
   IFS='|' read -r label preset dir <<< "$entry"
@@ -78,6 +99,7 @@ for entry in "${MODELS[@]}"; do
     for sc in "${SCAFFOLDS[@]}"; do printf '%s\t%s\tSERVE_FAILED\t-\t-\n' "$label" "$sc" >> "$SUMMARY"; done
     stop_server; continue
   fi
+  watchdog "$preset" "$dir" "$label" & WD=$!   # restart server on HSAIL crash/hang during this model
 
   for sc in "${SCAFFOLDS[@]}"; do
     OUT=$ROOT/$label-$sc
@@ -110,6 +132,7 @@ PYEOF
     printf '%s\t%s\t%s/%s\t%s\t%s\n' "$label" "$sc" "$res" "$([ "$N" = 0 ] && echo 300 || echo "$N")" "$app" "$emp" >> "$SUMMARY"
     echo "[$label/$sc] RESULT resolved=$res applied=$app empty=$emp"
   done
+  kill "$WD" 2>/dev/null || true   # stop this model's watchdog before switching models
   stop_server
 done
 echo "BAKEOFF_DONE $(date)"

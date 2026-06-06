@@ -311,6 +311,24 @@ def capture_diff(repo_dir: Path) -> str:
     return res.stdout
 
 
+def _wait_server_healthy(server_url: str, max_wait: int = 1200, poll: int = 10) -> bool:
+    """Poll <server_url>/health until it responds 200 or max_wait elapses. RDNA4 servers
+    HSAIL-crash periodically under load; the orchestrator watchdog restarts them, so a shard
+    PAUSES here rather than burning a full rollout timeout writing an empty diff against a
+    dead server. Returns True if healthy, False if it never recovered."""
+    import urllib.request, time as _t
+    deadline = _t.time() + max_wait
+    while _t.time() < deadline:
+        try:
+            with urllib.request.urlopen(f"{server_url}/health", timeout=5) as r:
+                if getattr(r, "status", 200) == 200:
+                    return True
+        except Exception:
+            pass
+        _t.sleep(poll)
+    return False
+
+
 def main():
     args = parse_args()
 
@@ -404,6 +422,12 @@ def main():
                         "VIRTUAL_ENV": str(venv),
                         "PATH": f"{venv}/bin",
                     }
+                # RDNA4 HSAIL crashes happen mid-run; the orchestrator watchdog restarts the
+                # server. Wait for health here instead of burning a 1800s timeout + empty diff.
+                # If it never recovers (>20min), skip — leave no prediction so resume retries it.
+                if not _wait_server_healthy(args.server_url):
+                    print(f"  SERVER DOWN >20min — skip {iid} (no prediction; retry on resume)", flush=True)
+                    continue
                 if args.scaffold == "opencode":
                     rc, _stdout, _stderr = run_opencode(args.model, inst_dir, prompt, args.timeout,
                                                         log_path, extra_env=extra_env)
