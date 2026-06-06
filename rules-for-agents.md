@@ -9,6 +9,43 @@ used ONLY for comparison benchmarks — never as the primary serving solution.
 - 32 GB VRAM each, ROCm 7.2.1, Arch Linux
 - Consumer GPUs — NOT MI-series/CDNA. AITER not available.
 
+## Host OS gotchas (EndeavourOS / Arch — same OS as the 3090 box)
+
+Bleeding-edge Arch bites in ways a Debian/Ubuntu eval box never would. These cost real hours
+during the FP8 SWE-bench bake-off (2026-06-05); document/apply them on any same-OS machine.
+
+- **`/tmp` is a 31 GB tmpfs (RAM) — never put bulk job I/O there.** Repo clones, per-instance
+  uv venvs, build dirs, and model scratch will fill it in minutes → `ENOSPC` → **silent** failures
+  (empty outputs, *not* a crash — e.g. every SWE-bench rollout wrote an empty diff and scored 0/0).
+  Route everything to `/data` (1.8 TB NVMe): pass `--workdir`/`--venvdir`/output dirs under `/data`
+  and `export TMPDIR=/data/...` for builds. **Check `df -h /tmp` (Type=tmpfs) before any large job.**
+
+- **gcc is bleeding-edge (16.x) and defaults to C23 — it won't build old C extensions.** C23 makes
+  `nullptr` a reserved keyword and promotes `-Wincompatible-pointer-types` / `-Wimplicit-*` to hard
+  errors, so old bundled C (astropy's cfitsio, `fast_sigma_clip.c`, many scientific-Python C exts,
+  and potentially old kernel/Triton C) fails with `command '/usr/bin/cc' failed`,
+  `expected identifier before 'nullptr'`, or `initialization from incompatible pointer type`.
+  **Fix:** build with
+  ```bash
+  export CFLAGS="-std=gnu17 -Wno-error=incompatible-pointer-types -Wno-error=implicit-function-declaration -Wno-error=implicit-int -Wno-error=int-conversion -Wno-error=return-mismatch"
+  export CXXFLAGS="-std=gnu++17"
+  ```
+  `-std=gnu17` (revert to pre-C23) is the load-bearing flag; the `-Wno-error=*` cover the new
+  default-errors. (This is *not* a no-docker problem — docker eval images ship gcc <14.)
+
+- **Host-side SWE-bench scoring system deps** (we build test envs from source, no docker):
+  `sudo pacman -S --needed gcc-fortran openblas lapack freetype2 libpng gsl fftw pkgconf`
+  (scipy needs gfortran+BLAS, matplotlib needs freetype+libpng). And with
+  `PIP_NO_BUILD_ISOLATION=1`, pip **skips** the pyproject `[build-system].requires`, so pre-install
+  `cython extension-helpers setuptools_scm oldest-supported-numpy meson-python pybind11 ninja`
+  into the venv or editable builds fail at metadata gen (`ModuleNotFoundError: extension_helpers`).
+
+- **`sudo` is NOPASSWD here** (see `feedback_sudoers_ordering` memory for the drop-in ordering gotcha),
+  so host fixes like the pacman installs above are scriptable without prompts.
+
+Host-side coding-agent scaffold wiring (opencode / little-coder / claw-code, no docker) is in
+[`evals/swebench/FP8_BAKEOFF_SETUP.md`](evals/swebench/FP8_BAKEOFF_SETUP.md).
+
 ## RDNA4 Constraints
 
 ### Triton
