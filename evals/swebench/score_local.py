@@ -122,7 +122,15 @@ def install_deps(venv: Path, repo_dir: Path, spec: dict, log: Path) -> bool:
     # pointer-type errors.
     env = {**_os.environ, "VIRTUAL_ENV": str(venv),
            "PATH": f"{venv}/bin:" + _os.environ.get("PATH", ""),
-           "PIP_NO_BUILD_ISOLATION": "1"}
+           "PIP_NO_BUILD_ISOLATION": "1",
+           # gcc 14+ defaults to C23 (`nullptr` is a keyword) and promotes
+           # -Wimplicit-*/-Wincompatible-pointer-types to hard errors. SWE-bench's old C
+           # extensions (astropy's bundled cfitsio, etc.) only built on gcc <14 — pin C17
+           # + downgrade the new default-errors so they build the way they used to.
+           "CFLAGS": ("-std=gnu17 -Wno-error=incompatible-pointer-types "
+                      "-Wno-error=implicit-function-declaration -Wno-error=implicit-int "
+                      "-Wno-error=int-conversion -Wno-error=return-mismatch"),
+           "CXXFLAGS": "-std=gnu++17"}
 
     def _log(msg):
         log.write_text((log.read_text() if log.exists() else "") + msg + "\n")
@@ -147,6 +155,15 @@ def install_deps(venv: Path, repo_dir: Path, spec: dict, log: Path) -> bool:
         _log(f"# pip_packages rc={r.returncode}\n{r.stdout}\n{r.stderr}")
         if r.returncode != 0:
             return False
+
+    # Build-system requires: with PIP_NO_BUILD_ISOLATION=1, pip does NOT install the
+    # packages in pyproject [build-system].requires, so editable builds of C-extension
+    # projects fail at metadata generation (astropy needs extension_helpers; many
+    # scientific packages need cython/meson-python/pybind11/setuptools_scm). Pre-install
+    # the common set into the venv so the no-isolation build can find them.
+    sh(["uv", "pip", "install", "--python", str(venv / "bin" / "python"), "--quiet",
+        "cython", "extension-helpers", "setuptools_scm", "oldest-supported-numpy",
+        "meson-python", "pybind11", "ninja"], timeout=300)
 
     # Main install command (e.g. "python -m pip install -e .[test] --verbose")
     install_cmd = spec.get("install", "pip install -e .")
