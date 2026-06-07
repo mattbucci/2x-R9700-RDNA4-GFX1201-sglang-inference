@@ -21,6 +21,23 @@ scaffolds × 300 Lite, 6-way sharded concurrency. Driver: `fp8_bakeoff_matrix.sh
 - diff captured from `git` (not agent stdout), so output format is free to choose.
 - `--shard K/N` runs every Nth instance into `predictions.K_N.jsonl` for concurrent rollouts.
 
-## Caveat
-Host-side `--no-venv` + `score_local.py` (no docker). Internally consistent (ranks models×scaffolds);
-absolute resolve% runs LOWER than the 3090's official docker harness.
+## Scoring: docker (official eval images) — `score_docker.py`
+Scoring runs the official `swebench.harness.run_evaluation` inside the upstream per-instance eval
+image (`score_docker.py` wraps it + emits the same scores.jsonl), so resolve% is **comparable to the
+3090's docker numbers**. Agents still roll out host-side; only scoring is dockerized, and it runs
+**after** the rollout (GPU idle, `SCORE_WORKERS` eval containers). `score_local.py` (host-side venv
+build, ran a few pp low) is kept as a no-docker fallback.
+
+### Docker disk — MUST live on /data, and prune (3090 hit 600 GB)
+- **data-root on the secondary disk:** `/etc/docker/daemon.json` = `{"data-root":"/data/docker"}`
+  (mkdir `/etc/docker` first; `systemctl restart docker`; `chmod 666 /var/run/docker.sock` for
+  non-sudo access). Default `/var/lib/docker` on `/` would fill root.
+- **Why it piles up:** SWE-bench Lite = ~300 per-instance eval images ~2 GB each ≈ **~600 GB**,
+  pulled once then reused across all 30 cells (fits /data 1.3 T).
+- **Prune:** `docker container prune -f` periodically; `docker image prune -af --filter until=24h`
+  if /data is low (only removes stale images, not the in-use eval set); `docker system prune -af`
+  at matrix end to reclaim the ~600 GB. The 6 h health-check cron does the disk watch + prune.
+
+### Install (Arch)
+`sudo pacman -Sy && pacman -S --print docker` (verify it pulls only docker/runc/containerd — no
+kernel/ROCm upgrade), then `pacman -S docker`, `systemctl enable --now docker`, `usermod -aG docker $USER`.
