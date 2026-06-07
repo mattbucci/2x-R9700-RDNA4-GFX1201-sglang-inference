@@ -31,6 +31,8 @@ SHARDS=${SHARDS:-2}                 # concurrent rollouts per cell. RDNA4 HSAIL-
                                     # single-user regime. The watchdog recovers the rest.
 TIMEOUT=${ROLLOUT_TIMEOUT:-1800}    # per-instance (3090 uses 1800; concurrency slows decode)
 CTX=${CTX:-131072}                  # claw needs headroom; dense FP8 caps below 256K
+SCORE_WORKERS=${SCORE_WORKERS:-8}   # concurrent docker eval containers (scoring runs after the
+                                    # rollout, GPU idle; watch for the docker-IO kernel hang)
 SCAFFOLDS=(opencode little-coder claw-code)
 mkdir -p "$ROOT"
 [ -f "$SUMMARY" ] || printf 'model\tscaffold\tresolved\tapplied\tempty\n' > "$SUMMARY"
@@ -135,8 +137,11 @@ for entry in "${MODELS[@]}"; do
       printf '%s\t%s\t0PRED_RETRY\t-\t-\n' "$label" "$sc" >> "$SUMMARY"
       continue
     fi
-    $PY evals/swebench/score_local.py --predictions "$OUT/predictions.jsonl" --out "$OUT/scores.jsonl" \
-        --workdir "$SCORE_WORKDIR" --venvdir "$VENVDIR" > "$OUT/score.log" 2>&1 || true
+    # DOCKER scoring (official swebench eval images) — authoritative + comparable to the 3090.
+    # Runs after the rollout (sequential per cell), so the GPU server is idle during scoring;
+    # only SCORE_WORKERS eval containers run. Agents still roll out host-side.
+    $PY evals/swebench/score_docker.py --predictions "$OUT/predictions.jsonl" --out "$OUT/scores.jsonl" \
+        --run-id "$label-$sc" --max-workers "$SCORE_WORKERS" > "$OUT/score.log" 2>&1 || true
     read res app emp <<<"$($PY - "$OUT" <<PYEOF
 import json,os
 d="$OUT"
