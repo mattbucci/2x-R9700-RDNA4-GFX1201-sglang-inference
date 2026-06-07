@@ -334,10 +334,18 @@ def main():
 
     served = args.served_name or args.model.split("/", 1)[-1]
     print(f"Preflight: canary chat completion against {args.server_url} (model={served})...", flush=True)
-    ok, info = preflight_canary(args.server_url, served)
+    # RETRY: right after a heavy prior cell (or mid-watchdog-restart) the server can be slow to
+    # first-token and a single 30s canary times out — that previously fail-fast-exited the shard
+    # and produced a 0/0 cell. Poll ~10min for a healthy canary before giving up.
+    ok, info = False, "no attempt"
+    for attempt in range(12):
+        ok, info = preflight_canary(args.server_url, served)
+        if ok:
+            break
+        print(f"  preflight {attempt+1}/12 failed ({info}) — server warming/restarting, retry 45s", flush=True)
+        time.sleep(45)
     if not ok:
-        print(f"  PREFLIGHT FAILED: {info}", flush=True)
-        print(f"  refusing to start rollout — fix the server / chat template first", flush=True)
+        print(f"  PREFLIGHT FAILED after retries: {info} — refusing to start rollout", flush=True)
         sys.exit(2)
     print(f"  preflight {info}", flush=True)
 

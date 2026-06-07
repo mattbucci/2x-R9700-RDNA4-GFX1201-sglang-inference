@@ -109,6 +109,13 @@ for entry in "${MODELS[@]}"; do
     OUT=$ROOT/$label-$sc
     cell_done "$label" "$sc" && { echo "[$label/$sc] scored — skip"; continue; }
     mkdir -p "$OUT"
+    # Ensure the server is healthy BEFORE this cell's shards preflight — it may have died during
+    # the previous cell's heavy scoring (the prior bug: opencode ok, then little-coder/claw 0/0
+    # because the server was unresponsive and preflight bailed). Restart + wait if down.
+    if ! curl -sf -m10 http://127.0.0.1:23334/health >/dev/null 2>&1; then
+      echo "[$label/$sc] server unhealthy pre-cell — restarting $(date +%H:%M)"
+      stop_server; serve_bg "$preset" "$dir" "$label"; wait_health || true
+    fi
     ids_arg=""; [ "$N" != 0 ] && ids_arg="--instances $N"
     echo "--- [$label/$sc] ${SHARDS}-way rollout $(date +%H:%M) ---"
     pids=()
@@ -121,6 +128,13 @@ for entry in "${MODELS[@]}"; do
     done
     wait "${pids[@]}" 2>/dev/null || true
     cat "$OUT"/predictions.*_${SHARDS}.jsonl > "$OUT/predictions.jsonl" 2>/dev/null || true
+    # NEVER score/finalize a 0-prediction cell — that writes scores.jsonl and marks it done, so a
+    # transient server outage would permanently strand the cell at 0/0. Leave it unscored to retry.
+    if [ ! -s "$OUT/predictions.jsonl" ]; then
+      echo "[$label/$sc] 0 predictions (server issue) — NOT scoring; retries on resume"
+      printf '%s\t%s\t0PRED_RETRY\t-\t-\n' "$label" "$sc" >> "$SUMMARY"
+      continue
+    fi
     $PY evals/swebench/score_local.py --predictions "$OUT/predictions.jsonl" --out "$OUT/scores.jsonl" \
         --workdir "$SCORE_WORKDIR" --venvdir "$VENVDIR" > "$OUT/score.log" 2>&1 || true
     read res app emp <<<"$($PY - "$OUT" <<PYEOF
