@@ -24,6 +24,9 @@ def parse_args():
     p.add_argument("--dataset", default="princeton-nlp/SWE-bench_Lite")
     p.add_argument("--split", default="test")
     p.add_argument("--tmpdir", default="/data/dockerscore-tmp")
+    p.add_argument("--fresh", action="store_true",
+                   help="clear prior run_evaluation logs/report for this run_id before scoring "
+                        "(force a true re-evaluation instead of reusing skipped instances)")
     return p.parse_args()
 
 
@@ -46,6 +49,14 @@ def main():
     # run from a per-cell scoring dir — the harness writes <model>.<run_id>.json to CWD
     scoredir = Path(a.out).parent / "docker-score"
     scoredir.mkdir(parents=True, exist_ok=True)
+    # FRESH: run_evaluation SKIPS instances that already have logs under logs/run_evaluation/<run_id>,
+    # so re-scoring a previously-run cell silently reuses the old (possibly broken) results. Clear the
+    # prior per-instance logs + report so a re-score truly re-evaluates. (New cells have nothing here.)
+    if a.fresh:
+        import shutil as _sh
+        _sh.rmtree(scoredir / "logs" / "run_evaluation" / a.run_id, ignore_errors=True)
+        for old in scoredir.glob(f"*.{a.run_id}.json"):
+            old.unlink()
     # --cache_level instance: the Lite eval images aren't all on dockerhub (404 → local build),
     # so KEEP them after building. First cell builds the ~300 instance images (~600GB on /data),
     # every later cell reuses them — without this the harness rebuilds+discards per cell and the
