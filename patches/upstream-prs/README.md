@@ -12,3 +12,7 @@ Online softmax e_max/e_sum and p·V dot accumulate in BF16; error compounds acro
 Main parses compact `[TOOL_CALLS]name[ARGS]{json}` only when `[TOOL_CALLS]` survives; small targets drop it under sampling (call leaks as text → empty diffs; 179/179 valid post-fix). Holds trailing tool name across chunks + anchors on `[ARGS]`. NEEDS REBASE onto main's compact parser; recovery is additive.
 
 Rebase each onto main HEAD before opening; 3090 co-signs with Ampere repro.
+
+## Status 2026-06-10 (main @b0d888a)
+- `main/triton-attn-fp32.patch` + `main/mistral-toolcall-omission.patch` apply clean to main; ready for PR once a fork exists. **GH_TOKEN lacks fork scope (403)** — re-run `gh repo fork sgl-project/sglang --clone=false` with a broader PAT.
+- 034 ±Inf: NOT rebasable — `--enable-nan-detection` was removed upstream entirely; would be a new-feature PR (logits sanity gate), redesign with 3090.
