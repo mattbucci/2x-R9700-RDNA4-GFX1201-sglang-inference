@@ -26,7 +26,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 # Apply Qwen3MoeExperts unfused-experts monkey-patch BEFORE from_pretrained.
 # Required for self-rebuilt BF16-REAM/REAP bases that have per-expert keys.
 _REPO_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-_PATCH_DIR = os.path.join(_REPO_DIR, "patches")
+_PATCH_DIR = os.path.join(_REPO_DIR, "ream-patches")
 if os.path.isfile(os.path.join(_PATCH_DIR, "qwen3moe_unfused_experts.py")):
     sys.path.insert(0, _PATCH_DIR)
     try:

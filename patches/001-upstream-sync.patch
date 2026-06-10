@@ -729,15 +729,6 @@ index 2b3315fbf..dfd0bcc6e 100644
          if should_allreduce_fusion:
              hidden_states._sglang_needs_allreduce_fusion = True
          else:
-@@ -1565,7 +1606,7 @@ class Qwen3_5ForConditionalGeneration(Qwen3VLForConditionalGeneration):
-                     name = name.replace(r"attn.qkv.", r"attn.qkv_proj.")
-                     name = name.replace(r"model.visual.", r"visual.")
- 
--                # print(name, loaded_weight.shape)
-+                print(name, loaded_weight.shape)
-                 # Skip loading extra bias for GPTQ models.
-                 if name.endswith(".bias") and name not in params_dict:
-                     continue
 diff --git a/python/sglang/srt/models/qwen3_next.py b/python/sglang/srt/models/qwen3_next.py
 index 432b9fb54..b7df48232 100644
 --- a/python/sglang/srt/models/qwen3_next.py

@@ -13,7 +13,7 @@
 #   Result before this wrapper: mattbucci/Qwen3-Coder-30B-A3B-REAP-AWQ
 #   (2026-04-29 upload) emitted "sweat sweat aster aster" gibberish.
 #
-# Fix: apply patches/qwen3moe_unfused_experts.py BEFORE from_pretrained.
+# Fix: apply ream-patches/qwen3moe_unfused_experts.py BEFORE from_pretrained.
 #   That monkey-patches the class to use ModuleList[Qwen3MoeMLP] which
 #   matches the checkpoint shape; per-expert weights load cleanly.
 #
@@ -37,16 +37,16 @@ if [[ ! -f "$REAM_REPO/merge.py" ]]; then
     exit 1
 fi
 
-if [[ ! -f "$REPO_DIR/patches/qwen3moe_unfused_experts.py" ]]; then
-    echo "ERROR: unfused-experts patch missing at $REPO_DIR/patches/qwen3moe_unfused_experts.py" >&2
+if [[ ! -f "$REPO_DIR/ream-patches/qwen3moe_unfused_experts.py" ]]; then
+    echo "ERROR: unfused-experts patch missing at $REPO_DIR/ream-patches/qwen3moe_unfused_experts.py" >&2
     exit 1
 fi
 
 # Apply REAM merger patches to the cloned repo. Idempotent: re-applies harmlessly
 # fail if already applied. See ream-patches/README.md for the patch index.
-if [[ -d "$REPO_DIR/ream-patches" ]] && ls "$REPO_DIR/ream-patches/"*.patch >/dev/null 2>&1; then
+if [[ -d "$REPO_DIR/ream-patches" ]] && ls "$REPO_DIR/ream-patches/"[0-9]*.patch >/dev/null 2>&1; then
     pushd "$REAM_REPO" >/dev/null
-    for _patch in "$REPO_DIR/ream-patches/"*.patch; do
+    for _patch in "$REPO_DIR/ream-patches/"[0-9]*.patch; do
         if git apply --check "$_patch" >/dev/null 2>&1; then
             git apply "$_patch" && echo "  [run_ream_qwen3moe] applied $(basename "$_patch")"
         else
@@ -70,7 +70,7 @@ REAM_ENV="${REAM_ENV:-ream}"
 conda activate "$REAM_ENV"
 
 # Make the unfused-experts patch importable by REAM's merge.py.
-export PYTHONPATH="$REPO_DIR/patches:${PYTHONPATH:-}"
+export PYTHONPATH="$REPO_DIR/ream-patches:${PYTHONPATH:-}"
 
 # Apply patch via -c '<bootstrap>; exec ...' so we don't touch upstream merge.py.
 # The bootstrap:
@@ -80,7 +80,7 @@ export PYTHONPATH="$REPO_DIR/patches:${PYTHONPATH:-}"
 cd "$REAM_REPO"
 exec python -c "
 import sys, types
-sys.path.insert(0, '$REPO_DIR/patches')
+sys.path.insert(0, '$REPO_DIR/ream-patches')
 import qwen3moe_unfused_experts  # noqa: F401  — patches transformers in place
 print('[run_ream_qwen3moe] Qwen3MoeExperts monkey-patched to unfused ModuleList')
 

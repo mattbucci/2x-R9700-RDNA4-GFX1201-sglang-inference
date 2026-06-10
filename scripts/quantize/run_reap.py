@@ -58,7 +58,7 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 # Required so per-expert nn.Modules survive — the fused 3D Parameter form
 # can't be hook-instrumented per-expert.
 _REPO_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-_PATCH_DIR = os.path.join(_REPO_DIR, "patches")
+_PATCH_DIR = os.path.join(_REPO_DIR, "ream-patches")
 if os.path.isfile(os.path.join(_PATCH_DIR, "qwen3moe_unfused_experts.py")):
     sys.path.insert(0, _PATCH_DIR)
     try:

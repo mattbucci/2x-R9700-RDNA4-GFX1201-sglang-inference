@@ -15,7 +15,7 @@ Custom SGLang v0.5.12 + RDNA4 patches for 2x AMD Radeon AI PRO R9700.
 
 ## Key Commands
 ```bash
-scripts/setup.sh                       # Full setup (applies all 5 patches)
+scripts/setup.sh                       # Full setup (applies all 36 patches — index: patches/README.md)
 scripts/setup_sgl_kernel.sh --env X    # Native sgl_kernel (required)
 scripts/build_awq_gemv.sh --env X      # HIP GEMV kernel (required for MoE)
 scripts/launch.sh devstral             # Devstral 24B AWQ (131K long-context)
@@ -40,6 +40,7 @@ scripts/bench/bench_256k_sweep.sh                   # 256K single-user suite acr
 
 ## Critical Rules
 - **SGLang only** — all models must run on SGLang with our RDNA4 patches
+- **The live serving tree is `/data/vG`** (editable install in `sglang-triton36`), NOT `components/sglang` (rebase workspace). Patch live behavior in `/data/vG`; capture every live edit into `patches/` immediately (the 2026-06-10 audit found two uncaptured edits + a stale workspace with `.rej` leftovers). Equivalence gate after any patch edit: apply series to pristine v0.5.12, `diff -rq` vs `/data/vG`.
 - **Build models from scratch — never ship random community quants.** Always start from the **upstream BF16 base** and run our own pipeline end-to-end. When a model needs expert-pruning (REAM) or expert-dropping (REAP), do it ourselves via `scripts/quantize/run_ream_qwen3moe.sh` (Samsung SAIL `merge.py`) on the upstream BF16 — do not pull a third-party pruned BF16 (Cerebras, atbender, etc.) as the source. Then run our own llmcompressor calibration → CT → native AWQ. We control the recipe (thinking + vision + video + audio coverage), the ignore list (DeltaNet gates, MoE router, vision tower stay BF16), the prune saliency/grouping/merging knobs, and the architectures rescue. Pre-quantized 3rd-party AWQ or pre-pruned BF16 uploads (`QuantTrio/*`, `unsloth/*`, `cerebras/*`, `atbender/*`, etc.) are useful as **reference points only** — bench against ours, but the shipped `mattbucci/<name>-AWQ` repo must be our own prune+calibration so we can debug, recalibrate, and validate end-to-end.
 - **Never bench / validate / smoke / launch a server while a calibration is running.** Calibration uses 50-62 GB RAM and is sensitive to PCIe/RAM contention; a "GPU-only" bench still loads model weights into system RAM via SGLang, evicts the calibration's pages, and either (a) makes the bench number garbage or (b) OOM-kills the calibration. Both are unacceptable. Hard rule: check `ps aux | grep -E "calibrat|llmcompressor|oneshot|GPTQModifier|quantize_"` before any model-serving job. HF API metadata edits (one-file `config.json`, model cards) are safe; anything that touches `model.safetensors` is not. See `feedback_no_concurrent_eval_calib.md` memory.
 - **MoE quantization is hard** — standard GPTQ under-calibrates rare experts (see rules-for-agents.md)

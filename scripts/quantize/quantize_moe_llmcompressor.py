@@ -34,7 +34,7 @@ import time
 # transformers.models.qwen3_moe.modeling_qwen3_moe namespace.
 # See memory project_ream_qwen3moe_root_cause.md.
 _REPO_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-_PATCH_DIR = os.path.join(_REPO_DIR, "patches")
+_PATCH_DIR = os.path.join(_REPO_DIR, "ream-patches")
 if os.path.isfile(os.path.join(_PATCH_DIR, "qwen3moe_unfused_experts.py")):
     sys.path.insert(0, _PATCH_DIR)
     try:
