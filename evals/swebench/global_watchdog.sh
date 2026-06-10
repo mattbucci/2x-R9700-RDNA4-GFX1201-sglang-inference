@@ -8,7 +8,7 @@ MODELS_DIR=$HOME/AI/models; fails=0
 while true; do
   sleep 30
   # If matrix is paused (runner in T-state) skip restarts; experiments may own GPUs.
-  ps -o stat= -p $(cat /data/bakeoff/runner.pid 2>/dev/null) 2>/dev/null | grep -q T && { fails=0; continue; }
+  ps -o stat= -p $(cat /data/bakeoff/runner.pid 2>/dev/null) 2>/dev/null | grep -q T || { fails=0; continue; }   # act ONLY while runner paused; matrix watchdog covers running
   curl -sf -m5 http://127.0.0.1:23334/health >/dev/null && { fails=0; continue; }
   fails=$((fails+1)); [ $fails -lt 3 ] && continue
   label=$(ls -t $ROOT/serve-*.log 2>/dev/null | head -1 | sed 's|.*serve-||; s|\.log||'); [ -n "$label" ] || { fails=0; continue; }
