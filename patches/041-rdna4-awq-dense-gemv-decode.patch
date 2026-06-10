@@ -18,7 +18,20 @@ index 59ef742..f4ad410 100644
  
  class AWQLinearKernel:
      def __init__(self, quant_config: Optional["QuantizationConfig"] = None):
-@@ -97,8 +106,21 @@ class AWQLinearKernel:
+@@ -92,6 +101,11 @@ class AWQLinearKernel:
+     def process_weights_after_loading(self, layer: torch.nn.Module) -> None:
+         layer.qweight = torch.nn.Parameter(layer.qweight.data, requires_grad=False)
+         layer.qzeros = torch.nn.Parameter(layer.qzeros.data, requires_grad=False)
+-        layer.scales = torch.nn.Parameter(layer.scales.data, requires_grad=False)
++        scales = layer.scales.data
++        # R9700: checkpoints ship FP16 scales but the fused M=1 GEMV requires BF16
++        # scales — without this cast the dispatch silently never fires (4.6 tok/s).
++        if _awq_gemv_bf16 is not None and scales.dtype == torch.float16:
++            scales = scales.to(torch.bfloat16)
++        layer.scales = torch.nn.Parameter(scales, requires_grad=False)
+ 
+     def apply(
+@@ -97,8 +111,21 @@ class AWQLinearKernel:
          pack_factor = self.quant_config.pack_factor
          out_shape = x.shape[:-1] + (qweight.shape[-1] * pack_factor,)
          reshaped_x = x.reshape(-1, x.shape[-1])
