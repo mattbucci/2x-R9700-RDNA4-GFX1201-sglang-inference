@@ -1,8 +1,8 @@
 diff --git a/python/sglang/srt/hardware_backend/gpu/quantization/awq_kernels.py b/python/sglang/srt/hardware_backend/gpu/quantization/awq_kernels.py
-index 59ef742..f4ad410 100644
+index 59ef742..a2db836 100644
 --- a/python/sglang/srt/hardware_backend/gpu/quantization/awq_kernels.py
 +++ b/python/sglang/srt/hardware_backend/gpu/quantization/awq_kernels.py
-@@ -75,6 +75,15 @@ else:
+@@ -75,6 +75,17 @@ else:
  
  _, scalar_types = get_scalar_types()
  
@@ -12,26 +12,31 @@ index 59ef742..f4ad410 100644
 +# rocBLAS GEMM (which together were 94% of qwen36-27b decode time at ~4.5 tok/s).
 +try:
 +    from awq_gemv_hip_ext import awq_gemv_bf16_hip as _awq_gemv_bf16
++    from awq_gemv_hip_ext import awq_gemv_hip as _awq_gemv_fp16
 +except ImportError:
 +    _awq_gemv_bf16 = None
++    _awq_gemv_fp16 = None
 +
  
  class AWQLinearKernel:
      def __init__(self, quant_config: Optional["QuantizationConfig"] = None):
-@@ -92,6 +101,11 @@ class AWQLinearKernel:
+@@ -83,7 +94,14 @@ class AWQLinearKernel:
      def process_weights_after_loading(self, layer: torch.nn.Module) -> None:
          layer.qweight = torch.nn.Parameter(layer.qweight.data, requires_grad=False)
          layer.qzeros = torch.nn.Parameter(layer.qzeros.data, requires_grad=False)
 -        layer.scales = torch.nn.Parameter(layer.scales.data, requires_grad=False)
 +        scales = layer.scales.data
-+        # R9700: checkpoints ship FP16 scales but the fused M=1 GEMV requires BF16
-+        # scales — without this cast the dispatch silently never fires (4.6 tok/s).
-+        if _awq_gemv_bf16 is not None and scales.dtype == torch.float16:
-+            scales = scales.to(torch.bfloat16)
++        # R9700: checkpoints ship FP16 scales; the fused M=1 GEMV requires scales
++        # dtype == activation dtype (bf16 or fp16 entrypoints). Cast to the model
++        # compute dtype (SGLang sets torch default dtype = model dtype during load);
++        # without this the dispatch silently never fires (4.6 tok/s qwen36-27b).
++        if _awq_gemv_bf16 is not None and scales.dtype != torch.get_default_dtype():
++            scales = scales.to(torch.get_default_dtype())
 +        layer.scales = torch.nn.Parameter(scales, requires_grad=False)
  
      def apply(
-@@ -97,8 +111,21 @@ class AWQLinearKernel:
+         self,
+@@ -97,8 +115,30 @@ class AWQLinearKernel:
          pack_factor = self.quant_config.pack_factor
          out_shape = x.shape[:-1] + (qweight.shape[-1] * pack_factor,)
          reshaped_x = x.reshape(-1, x.shape[-1])
@@ -49,7 +54,16 @@ index 59ef742..f4ad410 100644
 +            and scales.dtype == torch.bfloat16
 +        ):
 +            out = _awq_gemv_bf16(reshaped_x, qweight, scales, qzeros, 0).reshape(1, -1)
++        elif (
++            _awq_gemv_fp16 is not None
++            and reshaped_x.shape[0] == 1
++            and reshaped_x.dtype == torch.float16
++            and scales.dtype == torch.float16
++        ):
++            out = _awq_gemv_fp16(reshaped_x, qweight, scales, qzeros, 0).reshape(1, -1)
 +        else:
++            if scales.dtype != reshaped_x.dtype:
++                scales = scales.to(reshaped_x.dtype)
 +            out = awq_dequantize(qweight, scales, qzeros)
 +            out = torch.matmul(reshaped_x, out)
  
