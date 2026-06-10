@@ -16,3 +16,6 @@ All runs: `HIP_LAUNCH_BLOCKING=1 SGLANG_IS_IN_CI=1 --enable-nan-detection` → f
 | B4 | B1 @ Coder-Next-REAM (works) vs 80B same prompts | size scaling | |
 
 Order A1→A3→A5 first (~2h GPU); B after bake-off frees box. Receipts gate: each verdict line filled before claiming.
+
+## A-track verdicts (2026-06-10)
+A1 clean bs1-8 @32K (blocking); A2 clean bs2/6 @131K (blocking); A2b clean bs6 @131K async 40min; A4 churn 25min one transient timeout. PARKED: needs multi-hour claw-shape decode. Live mitigations: pause-aware global_watchdog, crash-log preserve, 049 conv1d cast. A3/A5 run AT next live crash (watchdog preserves log).
