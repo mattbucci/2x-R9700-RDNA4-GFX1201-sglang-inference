@@ -276,7 +276,7 @@ PYEOF
             CTX=16384; MAX_RUNNING=8; CHUNKED=4096
             WARMUP="--skip-server-warmup"; WATCHDOG=1800
             OVERLAP=""
-            EXTRA_ARGS="${EXTRA_ARGS:-} --enable-multimodal"
+            EXTRA_ARGS="${EXTRA_ARGS:-} --enable-multimodal --swa-full-tokens-ratio 0.0625"  # 3090 Track A: SWA sub-pool default 0.8 wastes KV; ratio floor=window+chunk (UNVALIDATED here)
             # cuda-graph ON: pure-attention MoE (sliding+full), dispatch-bound M=1 decode
             # → cuda-graph 1.67x (31.9 → 53.2 tok/s short). Triton SWA flash captures fine;
             # validate_capabilities 3/3 PASS under graph (basic+thinking+VISION intact).
@@ -495,7 +495,7 @@ PYEOF
             # `content` EMPTY and the tool parser blind → 0/6 empty diffs (fleet smoke 2026-05-30).
             # Drop it for agentic/tool use; re-enable only with explicit thinking (emits </think>).
             TOOL_CALL_PARSER="qwen"
-            EXTRA_ARGS="${EXTRA_ARGS:-} --enable-multimodal"
+            EXTRA_ARGS="${EXTRA_ARGS:-} --enable-multimodal --swa-full-tokens-ratio 0.0625"  # 3090 Track A: SWA sub-pool default 0.8 wastes KV; ratio floor=window+chunk (UNVALIDATED here)
             ;;
         nemotron-omni)
             # Nemotron-3-Nano-Omni-30B-A3B-Reasoning FP8 — NVIDIA Mamba2-Transformer
