@@ -55,6 +55,9 @@ Grafting BF16 vision/MTP towers onto a quantized ship: see [scripts/quantize/REA
 
 ## Known Issues
 
+- **little-coder cells empty since 2026-06-05 (bake-off)**: packaged models.json shipped baseUrl :8888 (server is :23334) — every request silently failed; coder-30b ran pre-update so passed. Fixed live (baseUrl + sweep id, v1.8.2). **Residual:** single retest still 400s on chat (probed all fields individually 200; replay capture WIP) — qwen36/qwen35 little-coder cells need re-run + a queued one-instance retest at next idle window.
+
+
 Open issues only. Resolved items live in [patches/README.md](patches/README.md) and `git log -- README.md`.
 
 - **Nemotron-3-Nano-Omni `bench_serving --dataset-name random` is broken for this Omni model** — it injects an image + ~236 text tokens regardless of `--random-input`; use real long-text prompts to bench.
