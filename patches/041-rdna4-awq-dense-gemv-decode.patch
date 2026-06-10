@@ -1,8 +1,8 @@
 diff --git a/python/sglang/srt/hardware_backend/gpu/quantization/awq_kernels.py b/python/sglang/srt/hardware_backend/gpu/quantization/awq_kernels.py
-index 59ef742..a2db836 100644
+index 59ef742..2ed7ea7 100644
 --- a/python/sglang/srt/hardware_backend/gpu/quantization/awq_kernels.py
 +++ b/python/sglang/srt/hardware_backend/gpu/quantization/awq_kernels.py
-@@ -75,6 +75,17 @@ else:
+@@ -75,6 +75,25 @@ else:
  
  _, scalar_types = get_scalar_types()
  
@@ -16,11 +16,19 @@ index 59ef742..a2db836 100644
 +except ImportError:
 +    _awq_gemv_bf16 = None
 +    _awq_gemv_fp16 = None
++    import logging as _logging
++
++    # Fail-open detector: dense AWQ decode silently drops to dequant+rocBLAS
++    # (~5x slower) when the GEMV ext is missing — make the boot log say so.
++    _logging.getLogger(__name__).warning(
++        "awq_gemv_hip_ext NOT importable — dense AWQ M=1 decode will use the "
++        "slow dequant fallback (~5x). Build via scripts/build_awq_gemv.sh."
++    )
 +
  
  class AWQLinearKernel:
      def __init__(self, quant_config: Optional["QuantizationConfig"] = None):
-@@ -83,7 +94,14 @@ class AWQLinearKernel:
+@@ -83,7 +102,14 @@ class AWQLinearKernel:
      def process_weights_after_loading(self, layer: torch.nn.Module) -> None:
          layer.qweight = torch.nn.Parameter(layer.qweight.data, requires_grad=False)
          layer.qzeros = torch.nn.Parameter(layer.qzeros.data, requires_grad=False)
@@ -36,7 +44,7 @@ index 59ef742..a2db836 100644
  
      def apply(
          self,
-@@ -97,8 +115,30 @@ class AWQLinearKernel:
+@@ -97,8 +123,30 @@ class AWQLinearKernel:
          pack_factor = self.quant_config.pack_factor
          out_shape = x.shape[:-1] + (qweight.shape[-1] * pack_factor,)
          reshaped_x = x.reshape(-1, x.shape[-1])
