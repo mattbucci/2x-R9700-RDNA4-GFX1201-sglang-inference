@@ -54,6 +54,9 @@ Grafting BF16 vision/MTP towers onto a quantized ship: see [scripts/quantize/REA
 
 ## Known Issues
 
+- **qwen36-27b FP8 crash-loops under 2-way opencode @131K** (5 watchdog restarts, 3 saved crash logs 2026-06-10): bake-off relaunched SHARDS=1; stable repro on the dense DeltaNet FP8 cell — the A-track sweeps showed 1-way is stable. Live A3/A5 forensic queued on the saved logs.
+
+
 - **little-coder bake-off cells**: wiring fixed (baseUrl 8888→23334, `sweep` id); residual one-shot 400 unexplained — retest at cell boundary, then re-run qwen36-35b + qwen35-27b little-coder cells.
 
 
