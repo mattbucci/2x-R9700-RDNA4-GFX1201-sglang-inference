@@ -1,0 +1,35 @@
+diff --git a/python/sglang/srt/layers/attention/triton_ops/decode_attention.py b/python/sglang/srt/layers/attention/triton_ops/decode_attention.py
+index ccfbb40..7a80522 100644
+--- a/python/sglang/srt/layers/attention/triton_ops/decode_attention.py
++++ b/python/sglang/srt/layers/attention/triton_ops/decode_attention.py
+@@ -394,7 +394,7 @@ def _fwd_grouped_kernel_stage1(
+             re_scale = tl.exp(e_max - n_e_max)
+             p = tl.exp(qk - n_e_max[:, None])
+             acc *= re_scale[:, None]
+-            acc += tl.dot(p.to(v.dtype), v)
++            acc += tl.dot(p.to(tl.float32), v.to(tl.float32))
+ 
+             e_sum = e_sum * re_scale + tl.sum(p, 1)
+             e_max = n_e_max
+diff --git a/python/sglang/srt/layers/attention/triton_ops/extend_attention.py b/python/sglang/srt/layers/attention/triton_ops/extend_attention.py
+index 0303528..a4d4c58 100644
+--- a/python/sglang/srt/layers/attention/triton_ops/extend_attention.py
++++ b/python/sglang/srt/layers/attention/triton_ops/extend_attention.py
+@@ -383,7 +383,7 @@ def _fwd_kernel(
+                 mask=(mask_n[None, :]) & (mask_d[:, None]),
+                 other=0.0,
+             )
+-            qk = tl.dot(q.to(k.dtype), k)
++            qk = tl.dot(q, k.to(q.dtype))
+             if BLOCK_DPE > 0:
+                 offs_kpe = (
+                     offs_kv_loc[None, :] * stride_buf_kbs
+@@ -887,7 +887,7 @@ def _fwd_kernel_unified(
+                 other=0.0,
+             )
+ 
+-            qk = tl.dot(q.to(k.dtype), k)
++            qk = tl.dot(q, k.to(q.dtype))
+             if BLOCK_DPE > 0:
+                 offs_kpe = (
+                     offs_kv_loc[None, :] * stride_buf_kbs
