@@ -16,6 +16,8 @@ v0.5.11→v0.5.12 rebase (2026-05-26): 001/003/004/007/011/037 regenerated, old 
 | `components/sglang` | Stale rebase workspace (frozen 2026-05-26, has `.rej` leftovers). Refresh from the series before using; never assume it serves. |
 | `patches/` (this dir) | The series. After editing a patch here, re-apply to a pristine clone and `diff -rq` against `/data/vG` to verify equivalence. |
 
+**3-gate audit (per 3090 2026-06-10):** (1) byte-equality vs live; (2) pristine replay must report **N/N applied, 0 skipped** (an "already applied/skipped" line on pristine = a hunk silently lost to a sibling-patch conflict); (3) on the fully-patched tree `git apply --check` must **fail** for every patch (a "clean" check = a non-unique anchor that would double-apply into twin code blocks on a setup.sh rerun).
+
 ## historical: v0.5.10 → v0.5.11 audit (2026-05-07) — superseded by the v0.5.12 rebase (header); kept for reference
 
 **7 patches dropped — fully upstreamed in v0.5.11** (moved to `upstreamed-in-v0.5.11/` for reference):
