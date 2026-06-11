@@ -4,6 +4,41 @@ _Updated 2026-06-11 (source-grounded while the FP8 bake-off held the GPUs). Both
 repros need the box; experiments below are staged to fire the moment it's free.
 Resume `SHARDS=1` bake-off after each serve/test._
 
+---
+
+## RESULTS 2026-06-11 (campaign paused, GPUs taken for the repro)
+
+**WIN: the full 512-expert Coder-Next-80B now LOADS + SERVES on RDNA4** (was 100% blocked).
+Path: router-dequant (`dequant_autoround_router.py --out …-routerbf16`, 41 GB, validated) +
+`QUANT=auto-round` + **a 5-blocker chain of RDNA4 GPTQ/AutoRound fixes** (candidate patch
+`patches/050-rdna4-gptq-autoround-enablement.patch.CANDIDATE`):
+1. router `KeyError ...mlp.gate.qweight` → offline router-dequant → BF16.
+2. `gptq.py`: `gptq_gemm`/`gptq_shuffle` imported only `if _is_cuda` → added an `_is_hip` import branch.
+3. `marlin_utils.py`: `_check_marlin_supported` returns True on gfx1201 (it reports a high CUDA-style capability) but **no marlin kernels exist** → added `is_hip()` early-return False.
+4. `auto_round.py`: GPTQ FusedMoE branch was inverted vs the AWQ branch → `UnboundLocalError` on `quant_args_marlin` when `use_marlin=False`; route the non-marlin case to MoeWNA16.
+5. `gptq.py` GPTQLinearMethod: **no `gptq_gemm`/`gptq_shuffle` torch op is registered on the RDNA4 sgl_kernel at all** (only Python wrappers; our AWQ works via Triton+HIP-GEMV, not sgl_kernel ops) → added a ROCm BF16-dequant-at-load path (`torch.matmul` in apply).
+Server: `quant=auto-round bits=4`, 21.5 GB/card, KV pool 867K tok @131K, "ready to roll."
+
+**BUT the repro is CONFOUNDED — the build decodes INCOHERENTLY.** Chat → 1 token (instant EOS);
+forced 800-tok `ignore_eos` greedy → garbage (`"小 small small…"` → endless newlines). So one of
+{my GPTQ BF16-dequant zero-point/bit-order, the router dequant, **SGLang's `moe_wna16` with
+GPTQ-packed experts** (our production moe_wna16 is always AWQ-packed)} is mis-dequantizing.
+**KEY DATA POINT: 800 forced decode steps through the 512-expert MoE did NOT crash** (health stayed
+up). Even with the garbage→degenerate-routing confound, this weakens the "simple >400-tok
+512-expert decode crash" hypothesis — the original HSAIL may be coherence/build-specific, not a raw
+decode-length buffer overflow in expert dispatch.
+
+**RECOMMENDATION for a CLEAN repro:** build our **own Coder-Next-80B AWQ** from the upstream BF16
+(AWQ-packed → the proven RDNA4 AWQ path, router+DeltaNet BF16, coherent) — this robustly avoids ALL
+the GPTQ-packing dequant issues above regardless of which one is the culprit. That's the originally
+stated path; it needs the box (download ~160 GB BF16 + RTN/calibrate). Alternatively, debug the
+GPTQ-dequant coherence (isolate router vs dense vs `moe_wna16`-gptq with a per-layer trace) — cheaper
+but multi-step and may still not reproduce the crash. The 5 enablement fixes are independently
+valuable: they make **any AutoRound/GPTQ model loadable on RDNA4** (broadens the fleet) — validate
+coherence, then promote the candidate to the numbered series.
+
+---
+
 Repro vehicles are reference quants for DEBUGGING only; ships come from upstream BF16 if a fix proves out.
 
 ---

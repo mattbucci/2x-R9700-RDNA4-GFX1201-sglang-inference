@@ -1,0 +1,135 @@
+diff --git a/python/sglang/srt/layers/quantization/auto_round.py b/python/sglang/srt/layers/quantization/auto_round.py
+index 893a004..7b06739 100644
+--- a/python/sglang/srt/layers/quantization/auto_round.py
++++ b/python/sglang/srt/layers/quantization/auto_round.py
+@@ -407,7 +407,20 @@ class AutoRoundConfig(QuantizationConfig):
+                 return MoeWNA16Config.from_config(config).get_quant_method(
+                     layer, prefix
+                 )
+-            return GPTQMarlinMoEMethod(quant_args_marlin)
++            # use_marlin=False (RDNA4/ROCm has no marlin kernels): use the WNA16 MoE
++            # path too. The original `GPTQMarlinMoEMethod(quant_args_marlin)` here was an
++            # UnboundLocalError — quant_args_marlin is only defined under `if use_marlin`.
++            from sglang.srt.layers.quantization.moe_wna16 import MoeWNA16Config
++
++            return MoeWNA16Config.from_config(
++                {
++                    "quant_method": "gptq",
++                    "bits": weight_bits,
++                    "group_size": group_size,
++                    "sym": sym,
++                    "lm_head": False,
++                }
++            ).get_quant_method(layer, prefix)
+ 
+         if isinstance(layer, (LinearBase, ParallelLMHead)):
+             if use_marlin:
+diff --git a/python/sglang/srt/layers/quantization/gptq.py b/python/sglang/srt/layers/quantization/gptq.py
+index b13d843..5327658 100644
+--- a/python/sglang/srt/layers/quantization/gptq.py
++++ b/python/sglang/srt/layers/quantization/gptq.py
+@@ -52,7 +52,7 @@ from sglang.srt.layers.quantization.utils import (
+     replace_parameter,
+     unpack_cols,
+ )
+-from sglang.srt.utils import is_cuda, is_npu, set_weight_attrs
++from sglang.srt.utils import is_cuda, is_hip, is_npu, set_weight_attrs
+ from sglang.srt.utils.patch_torch import register_fake_if_exists
+ 
+ if TYPE_CHECKING:
+@@ -62,11 +62,18 @@ if TYPE_CHECKING:
+     )
+ 
+ _is_cuda = is_cuda()
++_is_hip = is_hip()
+ 
+ if _is_cuda:
+     from sgl_kernel import gptq_gemm, gptq_shuffle
+ 
+     from sglang.jit_kernel.gptq_marlin_repack import gptq_marlin_repack
++elif _is_hip:
++    # RDNA4 (gfx1201): sgl_kernel ships gptq_gemm + gptq_shuffle (the non-marlin GPTQ
++    # path) but NO marlin kernels (gptq_marlin_repack absent). Import the available
++    # kernels so GPTQLinearMethod works; checkpoints must select backend=gptq (not the
++    # default "auto", which picks the unavailable GPTQMarlinLinearMethod).
++    from sgl_kernel import gptq_gemm, gptq_shuffle
+ 
+ _is_npu = is_npu()
+ 
+@@ -574,6 +581,35 @@ class GPTQLinearMethod(LinearMethodBase):
+         layer.g_idx = torch.nn.Parameter(layer.g_idx.data, requires_grad=False)
+         layer.scales = torch.nn.Parameter(layer.scales.data, requires_grad=False)
+ 
++        # RDNA4/ROCm: sgl_kernel ships no gptq_gemm/gptq_shuffle torch op, so dequantize
++        # the int4 GPTQ weight to the activation dtype once here and use torch.matmul in
++        # apply(). AutoRound sets desc_act=False => contiguous groups (g_idx is identity),
++        # so each input row's group is row // group_size.
++        if _is_hip:
++            bits = self.quant_config.weight_bits
++            pack = 32 // bits
++            mask = (1 << bits) - 1
++            shifts = torch.arange(
++                0, 32, bits, device=layer.qweight.device, dtype=torch.int32
++            )
++            qw = layer.qweight.data  # [in//pack, out] int32
++            iw = ((qw.unsqueeze(1) >> shifts.view(1, -1, 1)) & mask).reshape(
++                qw.shape[0] * pack, qw.shape[1]
++            )  # [in, out]
++            qz = layer.qzeros.data  # [in//g, out//pack] int32
++            iz = ((qz.unsqueeze(-1) >> shifts.view(1, 1, -1)) & mask).reshape(
++                qz.shape[0], qz.shape[1] * pack
++            )  # [in//g, out]
++            sc = layer.scales.data  # [in//g, out]
++            ngroups = sc.shape[0]
++            g = iw.shape[0] // ngroups
++            w = iw.reshape(ngroups, g, iw.shape[1]).float() - (
++                iz.float() + 1.0
++            ).unsqueeze(1)
++            w = (w * sc.float().unsqueeze(1)).reshape(iw.shape[0], iw.shape[1])
++            layer.weight_dequant = torch.nn.Parameter(w.to(sc.dtype), requires_grad=False)
++            return
++
+         # exllama needs to shuffle the weight after the weight is loaded
+         # here we do the shuffle on first forward pass
+         if self.use_shuffle:
+@@ -591,6 +627,12 @@ class GPTQLinearMethod(LinearMethodBase):
+         x: torch.Tensor,
+         bias: Optional[torch.Tensor] = None,
+     ) -> torch.Tensor:
++        if _is_hip and hasattr(layer, "weight_dequant"):
++            w = layer.weight_dequant
++            out = torch.matmul(x.to(w.dtype), w)
++            if bias is not None:
++                out = out + bias
++            return out
+         out_shape = x.shape[:-1] + (layer.qweight.shape[-1],)
+         reshaped_x = x.reshape(-1, x.shape[-1])
+ 
+diff --git a/python/sglang/srt/layers/quantization/marlin_utils.py b/python/sglang/srt/layers/quantization/marlin_utils.py
+index 0c754b9..93e8b28 100644
+--- a/python/sglang/srt/layers/quantization/marlin_utils.py
++++ b/python/sglang/srt/layers/quantization/marlin_utils.py
+@@ -26,7 +26,7 @@ from sglang.srt.layers.quantization.utils import (
+     pack_cols,
+     unpack_cols,
+ )
+-from sglang.srt.utils import get_device_capability, is_cuda
++from sglang.srt.utils import get_device_capability, is_cuda, is_hip
+ from sglang.srt.utils.custom_op import register_custom_op
+ 
+ if TYPE_CHECKING:
+@@ -120,6 +120,14 @@ def _check_marlin_supported(
+     device_capability: Optional[int] = None,
+ ) -> tuple[bool, Optional[str]]:
+ 
++    # RDNA4 (gfx1201) reports a high CUDA-style capability via get_device_capability(),
++    # so the capability gate below would pass — but sgl_kernel ships NO marlin kernels
++    # on ROCm, so any marlin method selected here fails at runtime (e.g.
++    # gptq_marlin_repack NameError). Marlin is never available on HIP; report unsupported
++    # so callers fall back to the non-marlin paths (gptq_gemm / moe_wna16 / awq).
++    if is_hip():
++        return False, "Marlin kernels are not available on ROCm/HIP (RDNA4)."
++
+     if device_capability is None:
+         major, minor = get_device_capability()
+         capability = major * 10 + minor

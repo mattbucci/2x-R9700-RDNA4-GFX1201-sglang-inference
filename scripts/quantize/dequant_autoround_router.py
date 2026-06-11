@@ -129,9 +129,10 @@ def main():
     from safetensors.numpy import load_file, save_file
     os.makedirs(A.out, exist_ok=True)
     for fn in os.listdir(A.ckpt):
-        if fn.endswith(".safetensors"):
-            continue
-        shutil.copy2(os.path.join(A.ckpt, fn), os.path.join(A.out, fn))
+        src = os.path.join(A.ckpt, fn)
+        if fn.endswith(".safetensors") or os.path.isdir(src):
+            continue  # shards handled below; skip subdirs (e.g. .cache)
+        shutil.copy2(src, os.path.join(A.out, fn))
     # precompute dequant'd routers, keyed by the shard they should live in
     new_gate = {}  # shard -> {weightkey: arr}
     out_dtype = _bf16 if HAVE_BF16 else np.float16
