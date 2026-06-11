@@ -204,7 +204,7 @@ PYEOF
             # experts as BF16 (768 MiB × num_layers) → OOM at model-load time.
             # Surfaced via Phase 3 ship validation.
             MODEL="${MODEL:-$MODELS_DIR/Qwen3-Coder-Next-AWQ}"
-            QUANT="moe_wna16"
+            QUANT="${QUANT:-moe_wna16}"   # overridable: auto-round checkpoints need QUANT=auto-round (config-match)
             DTYPE="bfloat16"
             CTX=131072; MAX_RUNNING=8; CHUNKED=8192; DECODE_STEPS=32; MEM=0.85
             MAMBA_CACHE="--max-mamba-cache-size 8"
