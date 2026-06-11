@@ -35,9 +35,9 @@ textbook router weights.
 2. Serve: `MODEL=~/AI/models/Qwen3-Coder-Next-int4-AutoRound-routerbf16 QUANT=auto-round scripts/launch.sh coder-next` (preset QUANT is overridable as of the bake-off-prep commit).
 3. Repro: `python benchmarks/hsail/longdecode_probe.py --label cn80b-512exp` — brackets the crash token threshold. Expect a crash ~400–512 if the 512-expert hypothesis holds.
 4. **Bisect the 512-vs-384 delta** if it crashes:
-   - **TP1 vs TP2** — TP1 removes the expert all-to-all entirely. Clean at TP1 + crash at TP2 ⇒ NCCL all-to-all at 512 experts (then: RCCL channel/buffer sizing, `NCCL_DEBUG=INFO` at the crash window).
-   - **expert-dispatch instrumentation** — trace the token dispatcher / `fused_moe` align+sort for an index sized by num_experts that overflows a buffer at 512 (the moe_align / expert_ids path; compare the 384 vs 512 allocations).
-   - If both TP arms crash ⇒ not all-to-all; drill the per-expert dispatch memory.
+   - **Step 0 — confirm the dispatcher (source-narrowing 2026-06-11).** The EP/all-to-all token_dispatchers (`deepep`/`flashinfer`/`fuseep`) need CUDA/NVSHMEM-class kernels absent on gfx1201, so qwen-next at TP=2 almost certainly runs the **`standard`** dispatcher = TP-sharded experts, **no all-to-all**. Verify from the boot log (which dispatcher is selected). If standard ⇒ the **NCCL-all-to-all hypothesis is likely wrong**; prioritize the buffer path below.
+   - **expert-dispatch buffers (most likely)** — trace `moe_align_block_size` + the fused-MoE Triton grid for a `num_experts`-sized allocation/grid that a 512-expert config trips but 384 doesn't (`expert_ids`/`sorted_token_ids`/`num_tokens_post_padded`; `EM = num_experts * cdiv(...)`-style sizing; grid blocks over experts). Compare the 384-vs-512 shapes/grids directly. ⚠ note the trigger is *decode-length* (~400 tok) not token-1 — so look for a buffer indexed by `decode_step × per-expert` or a graph-captured fixed expert layout, not just a static alloc.
+   - **TP1 vs TP2** — still worth it as a cheap discriminator: clean at TP1 + crash at TP2 ⇒ a TP-rank-interaction (RCCL reduce, or per-rank expert-shard indexing) at 512 exp, not the kernel itself. Both arms crash ⇒ single-GPU expert-dispatch/kernel at 512.
 
 ---
 
