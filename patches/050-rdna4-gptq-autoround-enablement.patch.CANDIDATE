@@ -1,3 +1,13 @@
+# CANDIDATE — NOT in the numbered series, NOT coherence-verified (2026-06-11).
+# Enables AutoRound/GPTQ models to LOAD + SERVE on RDNA4 (gfx1201): HIP import of
+# gptq_gemm/gptq_shuffle; check_marlin_supported->False on HIP; auto_round GPTQ-MoE
+# branch UnboundLocalError fix; GPTQLinearMethod ROCm BF16-dequant-at-load path.
+# STATUS: the Coder-Next-80B (Intel AutoRound) loads + serves with these, but DECODES
+# INCOHERENTLY (dequant-coherence bug: my gptq/router dequant or moe_wna16-gptq-packing).
+# Validate coherence (per-layer trace: router vs dense vs expert) BEFORE promoting to
+# the numbered series. Currently LIVE (uncommitted) in /data/vG; inert for CT-FP8 models.
+# 3-gate equivalence audit must be re-run after promotion. See benchmarks/hsail/SERIOUS_TRY_PLAN.md.
+#
 diff --git a/python/sglang/srt/layers/quantization/auto_round.py b/python/sglang/srt/layers/quantization/auto_round.py
 index 893a004..7b06739 100644
 --- a/python/sglang/srt/layers/quantization/auto_round.py

@@ -37,6 +37,12 @@ but multi-step and may still not reproduce the crash. The 5 enablement fixes are
 valuable: they make **any AutoRound/GPTQ model loadable on RDNA4** (broadens the fleet) — validate
 coherence, then promote the candidate to the numbered series.
 
+**DECISION 2026-06-11 (per user): PARKED.** Did not pursue the coherent own-AWQ build or the
+dequant-coherence debug — REAM-60B stays the production qwen-next ship and is robust. Campaign
+resumed. Reopen task #18 only by building an own coherent Coder-Next-80B AWQ (needs the box). The
+candidate-050 enablement fixes remain LIVE in `/data/vG` (inert for the CT-FP8 bake-off); revert or
+coherence-validate+promote them the next time the box is free.
+
 ---
 
 Repro vehicles are reference quants for DEBUGGING only; ships come from upstream BF16 if a fix proves out.
