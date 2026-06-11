@@ -54,7 +54,7 @@ Grafting BF16 vision/MTP towers onto a quantized ship: see [scripts/quantize/REA
 
 ## Known Issues
 
-- **qwen36-27b FP8 crash-loops under 2-way opencode @131K** (5 watchdog restarts, 3 saved crash logs 2026-06-10): bake-off relaunched SHARDS=1; stable repro on the dense DeltaNet FP8 cell — the A-track sweeps showed 1-way is stable. Live A3/A5 forensic queued on the saved logs.
+- **qwen36-27b FP8 GPU-hang under 2-way bake-off @131K** — root-caused 2026-06-11 as EMERGENT under the full harness only (real agentic traffic + concurrent docker-image-build host-saturation + multi-hour). NOT reproducible by 6-way batch, 2-way agentic churn, or load-46 host saturation; serving path is robust in isolation. Ruled out: patch-049 (timestamp-falsified), host-OOM (no oom-kill). Mitigation: SHARDS=1 (stable) + pause-aware global watchdog. Receipts: benchmarks/hsail/.
 
 
 - **little-coder bake-off cells**: wiring fixed (baseUrl 8888→23334, `sweep` id); residual one-shot 400 unexplained — retest at cell boundary, then re-run qwen36-35b + qwen35-27b little-coder cells.
