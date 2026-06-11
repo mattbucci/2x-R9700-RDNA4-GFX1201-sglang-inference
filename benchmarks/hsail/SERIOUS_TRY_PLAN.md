@@ -1,22 +1,73 @@
-# Serious bring-up: Coder-Next-80B + GLM-4.5-Air (2026-06-11)
+# Serious bring-up: Coder-Next-80B + GLM-4.5-Air
 
-Repro vehicles (reference quants for DEBUGGING; ship-builds come from upstream BF16 if a fix proves out):
-- Coder-Next-80B: `Intel/Qwen3-Coder-Next-int4-AutoRound` (Qwen3NextForCausalLM, 512 exp, 48 layers, auto-round int4 g128 sym)
-- GLM-4.5-Air: `MidnightPhreaker/GLM-4.5-Air-REAP-82B-A12B-AWQ-4bit`
+_Updated 2026-06-11 (source-grounded while the FP8 bake-off held the GPUs). Both
+repros need the box; experiments below are staged to fire the moment it's free.
+Resume `SHARDS=1` bake-off after each serve/test._
 
-## Coder-Next-80B (>400-token HSAIL 0x1016, task #18)
-1. Serve: `MODEL=~/AI/models/Qwen3-Coder-Next-int4-AutoRound scripts/launch.sh coder-next` (QUANT=moe_wna16; auto-round may need a quant-method tweak — bring-up step).
-2. Repro: `longdecode_probe.py --label cn80b-049on` — brackets the crash token threshold.
-3. **A/B 049** (clean isolation of the conv1d dtype-cast):
-   - arm-ON = current /data/vG (049 live) → probe.
-   - arm-OFF = `git checkout v0.5.12 -- causal_conv1d_triton.py` in /data/vG, restart → probe; then re-apply 049.
-   - 049-ON clean & 049-OFF crash ⇒ 049 fixes it (huge — unblocks task #18).
-   - both crash ⇒ not conv1d; run torch_native (A3: attention vs DeltaNet/NCCL) + B1 layer trace.
-4. B2 conv1d isolation already written (kernel-level, model-free).
+Repro vehicles are reference quants for DEBUGGING only; ships come from upstream BF16 if a fix proves out.
 
-## GLM-4.5-Air (SDPA prefill HSA)
-1. Serve `glm45-air` preset (torch_native default per old note). Repro = first prefill.
-2. Lever matrix: ATTN_BACKEND ∈ {torch_native (baseline crash), triton}. The old note said triton crashes on SWA — verify on gfx1201 w/ current patches (001 SWA-aware triton may have changed this).
-3. If triton carries GLM attention → unblock. If not → the SDPA MATH path needs the high-GQA score materialization bounded (chunked-prefill smaller, or a kernel patch).
+---
 
-Bake-off stays paused only during serve/test; resume SHARDS=1 after.
+## Coder-Next-80B — >400-token HSAIL 0x1016 (task #18)
+
+**Crash is 512-expert/MoE-scale-specific, NOT conv1d/DeltaNet.** Our REAM-60B (384 exp,
+identical 48-layer DeltaNet/conv1d) decoded 128→2000 tokens ALL clean with 049 live
+(`longdecode_results.jsonl`); the full 80B (512 exp) aborts past ~400. 049 ruled out
+(60B clean, and worked pre-049). Remaining hypotheses: **NCCL all-to-all at 512 experts**
+or **expert-dispatch buffer/index** sized by num_experts.
+
+**Root-cause was blocked on a loadable full-80B — now UNBLOCKED.** `Intel/Qwen3-Coder-Next-int4-AutoRound`
+fails to load: `KeyError model.layers.0.mlp.gate.qweight`. Root cause (verified in source):
+the AutoRound build quantized the MoE router to int4, but SGLang builds the router as an
+unquantized BF16 `ReplicatedLinear` (the routers-stay-BF16 rule), so the int4 gate keys have
+no destination (`qwen3_next.py` load_weights `params_dict[name]`). It is the ONLY load blocker —
+**AutoRound's RDNA4 path is otherwise sound**: `AutoRoundConfig` falls back to `MoeWNA16Config`
+for FusedMoE (works via patch 031) and `AWQ/GPTQLinearMethod` for dense linears when Marlin is
+unsupported (always, on gfx1201). So fixing just the router makes the 80B load.
+
+**Unblock (done, validated):** `scripts/quantize/dequant_autoround_router.py` dequantizes the
+auto_gptq int4 router → BF16. Validated on layer 0 (CPU, no GPU): `gate.qweight[256,512]` →
+`weight[512,2048]` = [num_experts, hidden], stats min −0.63 / max 0.64 / std 0.044, finite —
+textbook router weights.
+
+**Run when box is free:**
+1. Rewrite (heavy IO, ~40 GB): `python scripts/quantize/dequant_autoround_router.py ~/AI/models/Qwen3-Coder-Next-int4-AutoRound --out ~/AI/models/Qwen3-Coder-Next-int4-AutoRound-routerbf16`
+2. Serve: `MODEL=~/AI/models/Qwen3-Coder-Next-int4-AutoRound-routerbf16 QUANT=auto-round scripts/launch.sh coder-next` (preset QUANT is overridable as of the bake-off-prep commit).
+3. Repro: `python benchmarks/hsail/longdecode_probe.py --label cn80b-512exp` — brackets the crash token threshold. Expect a crash ~400–512 if the 512-expert hypothesis holds.
+4. **Bisect the 512-vs-384 delta** if it crashes:
+   - **TP1 vs TP2** — TP1 removes the expert all-to-all entirely. Clean at TP1 + crash at TP2 ⇒ NCCL all-to-all at 512 experts (then: RCCL channel/buffer sizing, `NCCL_DEBUG=INFO` at the crash window).
+   - **expert-dispatch instrumentation** — trace the token dispatcher / `fused_moe` align+sort for an index sized by num_experts that overflows a buffer at 512 (the moe_align / expert_ids path; compare the 384 vs 512 allocations).
+   - If both TP arms crash ⇒ not all-to-all; drill the per-expert dispatch memory.
+
+---
+
+## GLM-4.5-Air — SDPA prefill HSA
+
+**Correction (2026-06-11): the on-disk `~/AI/models/GLM-4.5-Air-REAP-AWQ` is NOT AWQ.** It is
+`compressed-tensors` (CT-WNA16), `Glm4MoeForCausalLM`, 96 exp. CT-WNA16 dense linears are
+**Marlin-only** (`compressed_tensors/schemes/compressed_tensors_wNa16.py` — all Marlin imports,
+no `is_hip`/ROCm fallback), so it **won't load on gfx1201**. It is a *load* blocker, NOT the
+SDPA-crash repro vehicle the old plan assumed.
+
+**The actual target crash (SDPA prefill HSA) needs a loadable GLM first.** Two paths:
+- **(preferred) fetch an AWQ-format GLM-4.5-Air** (e.g. `MidnightPhreaker/GLM-4.5-Air-REAP-82B-A12B-AWQ-4bit`)
+  — loads via `awq`/`moe_wna16` (RDNA4-supported), bypassing the CT-WNA16-Marlin wall. Download is IO; stage detached.
+- (bigger) patch `CompressedTensorsWNA16` with a ROCm dequant fallback (like moe_wna16's 031) — speculative; defer.
+
+**SDPA-crash lever is just a flag — GLM uses RadixAttention.** `glm4_moe.py:261` builds
+`self.attn = RadixAttention(...)`, so attention routes through the pluggable backend.
+`--attention-backend triton` should move GLM off torch MATH-SDPA (the ROCm path that materializes
+the full high-GQA score tensor → HSA) onto our Triton flash path (patches 011/012/047 class).
+
+**Run when box is free (after a loadable AWQ GLM is on disk):**
+1. Serve `glm45-air` with `ATTN_BACKEND=triton`. Repro = first prefill.
+2. Matrix: `ATTN_BACKEND ∈ {torch_native (baseline crash), triton}`. 001's SWA-aware Triton path
+   may already carry GLM attention on gfx1201 — verify.
+3. If triton carries GLM attention → unblocked. If triton also faults → bound the SDPA score
+   materialization (smaller `--chunked-prefill-size`) or a kernel patch on GLM's attention shape.
+
+---
+
+## B-tracks (model-free, already written)
+- `b2_conv1d_isolation.py` — conv1d kernel-level stability under sustained decode (049 path), no model needed.
+- `repro_qwen36_2way.py` — the qwen36-27b 2-way bake-off GPU-hang (separate EMERGENT issue; see verdicts.jsonl).
