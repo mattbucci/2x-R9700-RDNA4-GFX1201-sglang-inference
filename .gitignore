@@ -15,3 +15,4 @@ gptqmodel_offload/
 gptq_log_*.log
 benchmarks/smoke-256k/*.log
 benchmarks/hsail/*.log
+benchmarks/hsail/repro_qwen36_2way.log

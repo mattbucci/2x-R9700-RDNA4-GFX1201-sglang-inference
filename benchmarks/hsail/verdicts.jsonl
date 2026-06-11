@@ -1,0 +1,7 @@
+{"A1":"clean bs1-8 @32K HIP_LAUNCH_BLOCKING; tok_s 2.15@1 -> 0.74-2.46@8; trigger needs long ctx or async timing"}
+{"A2":"clean bs2,6 @131K under HIP_LAUNCH_BLOCKING -> async-timing-dependent race"}
+{"A2b":"clean bs6 @131K async 40min uniform load — race needs churn (mixed prefill/decode) or claw-shaped traffic"}
+{"A4-churn":"25min mixed-load: one transient health timeout, no GPU hang; crash needs multi-hour sustained claw decode"}
+{"A-track":"PARKED unreproduced in 2.5h; mitigations live: global_watchdog (pause-aware), crash-log preserve, 049 conv1d cast; A3/A5 conditioned on next live crash"}
+{"049-vs-2way-crash":"FALSIFIED — 049 edited 10:21; all 4 qwen36-27b crash restarts 12:13-14:18 were fresh starts AFTER, so ran 049 and still crash-looped. 049 stays (correct dtype fix, 3090 hybrid-NGRAM class) but does NOT fix the 2-way HSAIL/-9 crash"}
+{"A-track-blindspot":"synthetic sweeps ran qwen35-27b; the real crash is qwen36-27b (different DeltaNet hybrid) never put under 2-way agentic load — repro_qwen36_2way.py corrects this"}
