@@ -374,6 +374,9 @@ PYEOF
             # -native-thinking-vision dir kept as fallback.
             MODEL="${MODEL:-$MODELS_DIR/Qwen3.6-35B-A3B-AWQ}"
             [[ -d "$MODEL" ]] || MODEL="$MODELS_DIR/Qwen3.6-35B-A3B-AWQ-native-thinking-vision"
+            # pi/little-coder sends a `developer` role the stock Qwen3.6 template rejects
+            # ("Unexpected message role" -> SGLang 400 -> empty 2s rollout); remap dev->system.
+            CHAT_TEMPLATE="--chat-template $SCRIPT_DIR/qwen3.6_devrole_chat_template.jinja"
             # Auto-detect quant format: CT ships compressed-tensors, our
             # native AWQ and palmfuture's GPTQ-Int4 both ship moe_wna16.
             if [[ -f "$MODEL/config.json" ]] && \
@@ -415,7 +418,9 @@ PYEOF
             CTX=262144; MEM=0.80; MAX_RUNNING=8; CHUNKED=8192; DECODE_STEPS=8
             CUDA_GRAPH="--disable-cuda-graph"
             MAMBA_CACHE="--max-mamba-cache-size 8"
-            CHAT_TEMPLATE="--chat-template \$MODEL/chat_template.jinja"
+            # pi/little-coder sends a `developer` role the stock template rejects (-> SGLang
+            # 400 -> empty 2s rollout); remap dev->system (was \$MODEL/chat_template.jinja).
+            CHAT_TEMPLATE="--chat-template $SCRIPT_DIR/qwen3.5_devrole_chat_template.jinja"
             REASONING="--reasoning-parser qwen3"
             TOOL_CALL_PARSER="qwen3_coder"
             OVERLAP=""
@@ -474,6 +479,9 @@ PYEOF
             CTX=262144; MEM=0.80; MAX_RUNNING=8; CHUNKED=8192; DECODE_STEPS=8
             CUDA_GRAPH="--disable-cuda-graph"
             MAMBA_CACHE="--max-mamba-cache-size 8"
+            # pi/little-coder sends a `developer` role the stock Qwen3.6 template rejects
+            # ("Unexpected message role" -> SGLang 400 -> empty 2s rollout); remap dev->system.
+            CHAT_TEMPLATE="--chat-template $SCRIPT_DIR/qwen3.6_devrole_chat_template.jinja"
             REASONING="--reasoning-parser qwen3"
             TOOL_CALL_PARSER="qwen3_coder"
             OVERLAP=""
