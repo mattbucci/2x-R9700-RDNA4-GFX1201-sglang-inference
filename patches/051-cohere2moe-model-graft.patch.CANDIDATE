@@ -1,0 +1,9 @@
+# CANDIDATE — cohere2_moe model graft (ported from 3090 patch 042) + R9700 fix.
+# FIX (2026-06-11): the decoder read getattr(config,'first_k_dense_replace',0) but
+#   Cohere2MoeConfig.__post_init__ POPS that key (stores mlp_layer_types instead) ->
+#   it returned 0 -> EVERY layer built as MoE -> the dense prefix layer(s) got
+#   uninitialized experts -> NaN logits on the first forward (HSAIL 0x1016 on RDNA4).
+#   Fix: decoder now uses config.mlp_layer_types[layer_id]=='dense'. North-Mini-Code
+#   FP8 then serves coherently. The 3090 never hit this (Ampere can't FP8) -> pushed back.
+# Live in /data/vG; promote to numbered series after the 3-gate equivalence audit.
+#

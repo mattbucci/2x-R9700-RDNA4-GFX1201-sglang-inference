@@ -540,6 +540,26 @@ PYEOF
             REASONING="--reasoning-parser nemotron_3"
             TOOL_CALL_PARSER="qwen3_coder"
             ;;
+        north-mini)
+            # North-Mini-Code-1.0 — Cohere2MoeForCausalLM (cohere2_moe): 128-expert MoE,
+            # 49 layers, hidden 2048, hybrid-SWA (window 4096, 1:3 full:sliding). Official
+            # FP8 = compressed-tensors float-quantized (~32 GB, zero cast). FP8 is RDNA4's
+            # lane (Ampere sm_86 can't FP8; 3090 handed it over). Arch grafted from 3090
+            # patches 042 (cohere2_moe model) + 051 (config + hybrid-SWA classification).
+            MODEL="${MODEL:-$MODELS_DIR/North-Mini-Code-1.0-fp8}"
+            QUANT="compressed-tensors"
+            DTYPE="bfloat16"
+            ATTN_BACKEND="${ATTN_BACKEND:-triton}"   # hybrid-SWA triton flash (patch 001 SWA path)
+            CTX="${_ENV_CTX:-131072}"; MAX_RUNNING="${_ENV_MAX_RUNNING:-8}"
+            CHUNKED="${_ENV_CHUNKED:-4096}"; DECODE_STEPS=8; MEM="${_ENV_MEM:-0.85}"
+            WATCHDOG=1800
+            # Hybrid-SWA KV economics: default 0.8x SWA sub-pool wastes KV (sliding layers
+            # reach only window=4096); frees KV for 256K beside the fp8 weights. Tune at bring-up.
+            EXTRA_ARGS="${EXTRA_ARGS:-} --swa-full-tokens-ratio 0.0625"
+            # TODO cohere_command4 tool parser (absent in v0.5.12) — needed for agentic/SWE-bench,
+            # not for the decode-curve bench. TODO cuda-graph (MoE dispatch-bound, ~2x) once
+            # capture is validated on cohere2_moe; eager for first bring-up.
+            ;;
         *)
             echo "Unknown model: $1"
             echo "Run with -h for available models."
