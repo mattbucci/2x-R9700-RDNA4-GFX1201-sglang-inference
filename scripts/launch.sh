@@ -555,10 +555,13 @@ PYEOF
             WATCHDOG=1800
             # Hybrid-SWA KV economics: default 0.8x SWA sub-pool wastes KV (sliding layers
             # reach only window=4096); frees KV for 256K beside the fp8 weights. Tune at bring-up.
-            EXTRA_ARGS="${EXTRA_ARGS:-} --swa-full-tokens-ratio 0.0625"
-            # TODO cohere_command4 tool parser (absent in v0.5.12) — needed for agentic/SWE-bench,
-            # not for the decode-curve bench. TODO cuda-graph (MoE dispatch-bound, ~2x) once
-            # capture is validated on cohere2_moe; eager for first bring-up.
+            EXTRA_ARGS="${EXTRA_ARGS:-} --swa-full-tokens-ratio 0.0625 --cuda-graph-max-bs 1"
+            # cuda-graph ON (validated 2026-06-11 on cohere2_moe): 128-expert MoE M=1 decode
+            # is dispatch-bound; single-bs capture (0.29 GB, ~2.5 s) gives ~2.4x — 27 -> 64
+            # tok/s, and the hybrid-SWA flat curve keeps the win across context. Capture clean,
+            # basic+code coherent. (single-bs because we only care about conc=1.)
+            CUDA_GRAPH=""
+            # TODO cohere_command4 tool/reasoning parser (absent in v0.5.12) — for agentic/SWE-bench.
             ;;
         *)
             echo "Unknown model: $1"

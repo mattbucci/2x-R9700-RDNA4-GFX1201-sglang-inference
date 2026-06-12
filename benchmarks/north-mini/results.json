@@ -6,44 +6,44 @@
     {
       "context": 128,
       "input_len": 128,
-      "tpot_ms": 36.09,
-      "tok_per_sec": 27.7
+      "tpot_ms": 15.3,
+      "tok_per_sec": 65.38
     },
     {
       "context": 4096,
       "input_len": 3781,
-      "tpot_ms": 35.96,
-      "tok_per_sec": 27.81
+      "tpot_ms": 16.03,
+      "tok_per_sec": 62.4
     },
     {
       "context": 16384,
       "input_len": 14742,
-      "tpot_ms": 36.57,
-      "tok_per_sec": 27.35
+      "tpot_ms": 16.7,
+      "tok_per_sec": 59.86
     },
     {
       "context": 32768,
       "input_len": 29357,
-      "tpot_ms": 36.68,
-      "tok_per_sec": 27.27
+      "tpot_ms": 17.76,
+      "tok_per_sec": 56.29
     },
     {
       "context": 65536,
       "input_len": 58587,
-      "tpot_ms": 37.16,
-      "tok_per_sec": 26.91
+      "tpot_ms": 19.92,
+      "tok_per_sec": 50.21
     },
     {
       "context": 131072,
       "input_len": 117048,
-      "tpot_ms": 37.43,
-      "tok_per_sec": 26.72
+      "tpot_ms": 24.81,
+      "tok_per_sec": 40.3
     },
     {
       "context": 245760,
       "input_len": 219352,
-      "tpot_ms": 36.87,
-      "tok_per_sec": 27.12
+      "tpot_ms": 29.75,
+      "tok_per_sec": 33.62
     }
   ],
   "throughput_sweep": [
