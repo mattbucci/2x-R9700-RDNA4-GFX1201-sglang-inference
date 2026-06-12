@@ -1,0 +1,57 @@
+{
+  "model": "North-Mini-Code-1.0 FP8",
+  "engine": "SGLang",
+  "hardware": "2x R9700 TP=2",
+  "context_sweep": [
+    {
+      "context": 128,
+      "input_len": 128,
+      "tpot_ms": 36.09,
+      "tok_per_sec": 27.7
+    },
+    {
+      "context": 4096,
+      "input_len": 3781,
+      "tpot_ms": 35.96,
+      "tok_per_sec": 27.81
+    },
+    {
+      "context": 16384,
+      "input_len": 14742,
+      "tpot_ms": 36.57,
+      "tok_per_sec": 27.35
+    },
+    {
+      "context": 32768,
+      "input_len": 29357,
+      "tpot_ms": 36.68,
+      "tok_per_sec": 27.27
+    },
+    {
+      "context": 65536,
+      "input_len": 58587,
+      "tpot_ms": 37.16,
+      "tok_per_sec": 26.91
+    },
+    {
+      "context": 131072,
+      "input_len": 117048,
+      "tpot_ms": 37.43,
+      "tok_per_sec": 26.72
+    },
+    {
+      "context": 245760,
+      "input_len": 219352,
+      "tpot_ms": 36.87,
+      "tok_per_sec": 27.12
+    }
+  ],
+  "throughput_sweep": [
+    {
+      "concurrency": 1,
+      "throughput": 27.7,
+      "tpot_ms": 36.09,
+      "ttft_ms": 0
+    }
+  ]
+}
