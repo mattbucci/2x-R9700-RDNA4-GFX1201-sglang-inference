@@ -569,7 +569,15 @@ PYEOF
             # tok/s, and the hybrid-SWA flat curve keeps the win across context. Capture clean,
             # basic+code coherent. (single-bs because we only care about conc=1.)
             CUDA_GRAPH=""
-            # TODO cohere_command4 tool/reasoning parser (absent in v0.5.12) — for agentic/SWE-bench.
+            # Reasoning parser grafted from upstream main (patch 053): routes the
+            # <|START_THINKING|>..<|END_THINKING|> block to reasoning_content and
+            # strips the <|START_TEXT|>..<|END_TEXT|> response wrapper from content
+            # (these delimiters are special=False, so skip_special_tokens can't).
+            REASONING="--reasoning-parser cohere_command4"
+            # TODO tool-call parser: <|START_ACTION|>[..json..]<|END_ACTION|> needs a
+            # cohere function_call detector (absent in v0.5.12) for structured tool_calls
+            # / agentic / SWE-bench. The reasoning parser leaves the ACTION block in
+            # content for that downstream parser to pick up.
             ;;
         *)
             echo "Unknown model: $1"
