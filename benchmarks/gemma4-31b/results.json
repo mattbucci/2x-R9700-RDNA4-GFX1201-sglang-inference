@@ -1,0 +1,40 @@
+{
+  "model": "Gemma 4 31B AWQ",
+  "engine": "SGLang",
+  "hardware": "2x R9700 TP=2",
+  "note": "256K via --swa-full-tokens-ratio 0.0625 (SWA-pool-bound, not weight-bound); dense, no-spec, TRITON flash, MEM0.92",
+  "context_sweep": [
+    {
+      "context": 128,
+      "input_len": 25,
+      "tpot_ms": 43.64,
+      "tok_per_sec": 22.91
+    },
+    {
+      "context": 32768,
+      "input_len": 29387,
+      "tpot_ms": 63.52,
+      "tok_per_sec": 15.74
+    },
+    {
+      "context": 131072,
+      "input_len": 117475,
+      "tpot_ms": 112.9,
+      "tok_per_sec": 8.86
+    },
+    {
+      "context": 245760,
+      "input_len": 220240,
+      "tpot_ms": 169.96,
+      "tok_per_sec": 5.88
+    }
+  ],
+  "throughput_sweep": [
+    {
+      "concurrency": 1,
+      "throughput": 22.91,
+      "tpot_ms": 43.64,
+      "ttft_ms": 0
+    }
+  ]
+}
