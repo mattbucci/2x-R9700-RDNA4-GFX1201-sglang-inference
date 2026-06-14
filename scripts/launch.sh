@@ -294,10 +294,12 @@ PYEOF
             MODEL="${MODEL:-$MODELS_DIR/gemma-4-31B-AWQ}"
             QUANT="awq"
             DTYPE="bfloat16"
-            # TRITON default (same Gemma4 SWA path as gemma4-26b via patch 001). Validated
-            # 2026-05-31: serves long context on triton (80K-tok needle retrieved, no OOM),
-            # KV pool ~105K @mem0.92 — pool/weight-bound by the dense 31B (NOT 256K like the
-            # 26B MoE; torch_native fallback capped ~32-64K). Override ATTN_BACKEND=torch_native.
+            # TRITON default (same Gemma4 SWA path as gemma4-26b via patch 001). The
+            # old "~105K @mem0.92, weight-bound" reading was WRONG — it was SWA-pool-
+            # bound: with --swa-full-tokens-ratio 0.0625 (below) the KV pool jumps to
+            # 570K-tok at full context_len=262144 (2026-06-14), so the dense 31B
+            # reaches full 256K in AWQ. Coherent + needle PASS at long ctx.
+            # torch_native fallback caps ~32-64K. Override ATTN_BACKEND=torch_native.
             ATTN_BACKEND="${ATTN_BACKEND:-triton}"
             REASONING="--reasoning-parser gemma4"
             TOOL_CALL_PARSER="gemma4"
@@ -305,6 +307,11 @@ PYEOF
             # gemma4 (identical chat template) — runaway gen on multi-turn tool history.
             CHAT_TEMPLATE="--chat-template $SCRIPT_DIR/gemma4_chat_template.jinja"
             CTX=131072; MEM=0.92; MAX_RUNNING=8; CHUNKED=1024
+            # Gemma hybrid-SWA KV economics (3090 hand-off): default 0.8x SWA sub-pool
+            # wastes KV since sliding layers (50/60, window=1024) only attend `window`
+            # tokens. Floor 0.0625*ctx >> window+chunk. Matches the gemma4-26b preset
+            # + 3090's validated value; frees KV beside the dense-31B weights.
+            EXTRA_ARGS="${EXTRA_ARGS:-} --swa-full-tokens-ratio 0.0625"
             WARMUP="--skip-server-warmup"; WATCHDOG=1800
             OVERLAP=""
             ;;
