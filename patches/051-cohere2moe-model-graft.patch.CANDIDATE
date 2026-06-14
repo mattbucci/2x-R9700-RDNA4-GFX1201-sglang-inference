@@ -1,16 +1,19 @@
-# CANDIDATE — cohere2_moe model graft (3090 patch 042) + R9700 dense-layer fix.
-# FIX (2026-06-11): decoder read getattr(config,'first_k_dense_replace',0) but
-#   Cohere2MoeConfig.__post_init__ POPS that key (stores mlp_layer_types) -> 0 ->
-#   every layer built as MoE -> dense prefix layer L0 got uninitialized experts ->
-#   NaN logits / HSAIL 0x1016. Fix: decoder uses config.mlp_layer_types[i]=='dense'.
+# CANDIDATE — cohere2_moe model graft (3090 patch 042) + R9700 dense-layer + force_rope fix.
+# Cohere2MoeConfig.__post_init__ POPS 'first_k_dense_replace' (stores mlp_layer_types
+# instead), so getattr(config,'first_k_dense_replace',0) -> 0 at decoder build time.
+# Two sites read it and both must use config.mlp_layer_types[i]=='dense' instead:
+#   1) MoE-block selection (2026-06-11): 0 -> every layer built as MoE -> dense prefix
+#      L0 got uninitialized experts -> NaN logits / HSAIL 0x1016.
+#   2) force_rope (2026-06-13, 3090 cross-team catch in their patch 042): 0 -> dense
+#      prefix L0 skipped force_rope -> ran NoPE instead of RoPE (silent quality bug).
 #   Live in /data/vG; coherence-verified on North-Mini-Code-1.0-fp8.
 #
 diff --git a/python/sglang/srt/models/cohere2_moe.py b/python/sglang/srt/models/cohere2_moe.py
 new file mode 100644
-index 0000000..f449d91
+index 0000000..8d3ed78
 --- /dev/null
 +++ b/python/sglang/srt/models/cohere2_moe.py
-@@ -0,0 +1,637 @@
+@@ -0,0 +1,647 @@
 +# GRAFTED from sgl-project/sglang main (2026-06-07) onto v0.5.12 rebase. Source: vLLM v0.21.0 cohere2_moe ref. Serving-side bringup for CohereLabs/BLS-Mini-Code-1.0. -MB
 +# SPDX-License-Identifier: Apache-2.0
 +# Copyright 2026 SGLang Team
@@ -186,14 +189,24 @@ index 0000000..f449d91
 +        self.is_sliding = (
 +            layer_types is not None and layer_types[layer_id] == "sliding_attention"
 +        )
-+        first_k_dense_replace = getattr(config, "first_k_dense_replace", 0)
++        # Cohere2MoeConfig.__post_init__ POPS `first_k_dense_replace` (it derives
++        # `mlp_layer_types` and never stores the int), so reading it here returns
++        # the getattr default 0 -> the dense prefix layer would be treated as a
++        # sparse/global layer and skip force_rope (NoPE instead of RoPE on L0).
++        # Use the canonical `mlp_layer_types` — same root cause as the MoE-block
++        # selection fix below. (3090 cross-team 2026-06-13: fixed both sites in
++        # their patch 042; we'd only fixed the MoE site, this fixes force_rope.)
++        _mlp_layer_types = getattr(config, "mlp_layer_types", None)
++        _is_dense_layer = (
++            _mlp_layer_types[layer_id] == "dense"
++            if _mlp_layer_types is not None
++            else layer_id < getattr(config, "first_k_dense_replace", 0)
++        )
 +        prefix_dense_sliding_window_pattern = getattr(
 +            config, "prefix_dense_sliding_window_pattern", 1
 +        )
 +        self.force_rope = bool(
-+            first_k_dense_replace
-+            and prefix_dense_sliding_window_pattern == 1
-+            and layer_id < first_k_dense_replace
++            _is_dense_layer and prefix_dense_sliding_window_pattern == 1
 +        )
 +        sliding_window = getattr(config, "sliding_window", None)
 +        self.sliding_window_size = (
