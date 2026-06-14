@@ -574,10 +574,11 @@ PYEOF
             # strips the <|START_TEXT|>..<|END_TEXT|> response wrapper from content
             # (these delimiters are special=False, so skip_special_tokens can't).
             REASONING="--reasoning-parser cohere_command4"
-            # TODO tool-call parser: <|START_ACTION|>[..json..]<|END_ACTION|> needs a
-            # cohere function_call detector (absent in v0.5.12) for structured tool_calls
-            # / agentic / SWE-bench. The reasoning parser leaves the ACTION block in
-            # content for that downstream parser to pick up.
+            # Tool-call parser grafted from upstream main (patch 054): parses
+            # <|START_ACTION|>[..json..]<|END_ACTION|> into structured tool_calls
+            # (normalizes Cohere's tool_name->name, drops tool_call_id). Composes
+            # with the reasoning parser (which passes the ACTION block through).
+            TOOL_CALL_PARSER="cohere_command4"
             ;;
         *)
             echo "Unknown model: $1"
