@@ -79,7 +79,7 @@
       "status": "blocked",
       "spec_toks": 0,
       "draft": "parent DFlash (transfer)",
-      "reason": "TESTED 2026-06-14: parent Qwen3.5-35B-A3B-DFlash transfer loads, coherent, 4/4 caps PASS (basic+thinking+vision+video), accepts tokens \u2014 but NET-NEGATIVE decode at every ctx (TPOT tok/s: 25.5@128 / 8.9@16K / 3.2@64K / 1.7@131K / 0.9@245K vs no-spec 60.7->20.0). Block-diffusion draft+verify overhead exceeds the acceptance benefit and compounds with context. Not a viable spec-decode win for this model."
+      "reason": "TESTED 2026-06-14: parent Qwen3.5-35B-A3B-DFlash transfer loads, coherent, 4/4 caps (basic+thinking+vision+video), accepts (len 2-8 workload-dep). Authoritative server-log sustained gen-throughput ~52 tok/s short-ctx vs ~60 no-spec = net-negative-to-neutral; block-diffusion draft+verify overhead cancels the acceptance benefit, and decode collapses deep (<=~2 tok/s by ~240K, DeltaNet+DFlash wall). No useful speedup; corroborates 3090's 'DFlash moot'. NOTE: client-tool TPOT under-measures spec ~2x (SSE buffering) - use server-log."
     },
     {
       "name": "Qwen3-Coder-Next-80B",
