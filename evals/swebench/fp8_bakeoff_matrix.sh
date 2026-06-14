@@ -51,12 +51,17 @@ MODELS=(
   "nemotron-omni|nemotron-omni|Nemotron-3-Nano-Omni-30B-A3B-Reasoning-FP8"
 )
 
-stop_server(){
+stop_server(){   # kill sglang, wait for BOTH R9700s' VRAM to drain. rc=0 drained / rc=1 stuck (orphan or off-bus → reboot)
   pkill -9 -f '[s]glang.launch_server' 2>/dev/null || true
   for _ in $(seq 1 30); do
-    u=$(rocm-smi --showmeminfo vram 2>/dev/null | awk '/Used Memory/{print $NF}' | head -1)
-    [ -n "$u" ] && [ "$u" -lt 2000000000 ] && break; sleep 2
+    # MAX used-VRAM across the two R9700 compute cards (GPU[0],GPU[1]); ignore the iGPU (GPU[2]). The old
+    # `head -1` read GPU[0] ONLY and false-"drained" when an orphaned/hung allocation sat on GPU[1] — that is
+    # what let the watchdog restart-loop forever on the 2026-06-13 GPU[1] PCIe bus-drop (see RESUME.md).
+    u=$(rocm-smi --showmeminfo vram 2>/dev/null | awk '/Used Memory/{print $NF}' | head -2 | sort -n | tail -1)
+    [ -n "$u" ] && [ "$u" -lt 2000000000 ] && return 0
+    sleep 2
   done
+  return 1
 }
 cell_done(){ [ -f "$ROOT/$1-$2/scores.jsonl" ]; }
 
@@ -79,7 +84,11 @@ watchdog(){  # $1=preset $2=dir $3=label — restart the server when it HSAIL-cr
     cp "$ROOT/serve-$3.log" "$ROOT/crashes/serve-$3-$ts.log" 2>/dev/null
     hsa=$(grep -cE "HSA_STATUS_ERROR|Fatal Python error|Aborted" "$ROOT/serve-$3.log" 2>/dev/null || echo 0)
     echo "[watchdog $3] DOWN 90s (HSA/abort markers=$hsa) — saved crashes/serve-$3-$ts.log — restart $ts" >> "$ROOT/watchdog.log"
-    stop_server; serve_bg "$1" "$2" "$3"; wait_health || true; fails=0
+    if ! stop_server; then
+      echo "[watchdog $3] VRAM did NOT drain after kill (>2GB stuck on a card with no process) — GPU likely hung/off-bus (dmesg: 'device lost from bus'); a restart cannot recover this, it needs a reboot. Watchdog stopping for $3 — resume via /data/bakeoff/RESUME.md after reboot." >> "$ROOT/watchdog.log"
+      return 0
+    fi
+    serve_bg "$1" "$2" "$3"; wait_health || true; fails=0
   done
 }
 
@@ -91,7 +100,10 @@ for entry in "${MODELS[@]}"; do
   [ -d "$MODELS_DIR/$dir" ] || { echo "[$label] MISSING $dir — skip"; continue; }
 
   echo "=== [$label] serve $preset ($dir) ctx=$CTX $(date +%H:%M) ==="
-  stop_server
+  if ! stop_server; then
+    echo "[$label] VRAM stuck before serve (>2GB on a card with no process) — GPU hung/off-bus, needs a reboot. Stopping the campaign; resume via /data/bakeoff/RESUME.md after reboot." | tee -a "$ROOT/watchdog.log"
+    exit 3
+  fi
   MODEL=$MODELS_DIR/$dir bash -c "./scripts/launch.sh $preset --port 23334 --context-length $CTX" \
     > "$ROOT/serve-$label.log" 2>&1 &
   ready=0
