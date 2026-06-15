@@ -42,7 +42,8 @@ run_arm(){  # $1=label $2=MODEL $3=QUANT
   mkdir -p "$OUT"
   echo "=== [$LAB] boot coder-30b ($QUANT) + EAGLE3 @ CTX=262144  $(date +%H:%M) ==="
   stop_server
-  bash -c "CTX=262144 MEM=0.92 MAX_RUNNING=1 MODEL=$MODEL QUANT=$QUANT EXTRA_ARGS='$SPEC_ARGS' ./scripts/launch.sh coder-30b --port $PORT" > "$OUT/serve.log" 2>&1 &
+  # coder-30b reads _ENV_CTX (not CTX); use the reliable CLI overrides (launch.sh L677/679 map them to CTX/MEM)
+  bash -c "MODEL=$MODEL QUANT=$QUANT EXTRA_ARGS='$SPEC_ARGS' ./scripts/launch.sh coder-30b --port $PORT --context-length 262144 --mem-fraction 0.92" > "$OUT/serve.log" 2>&1 &
   local ready=0
   for _ in $(seq 1 900); do
     curl -sf http://127.0.0.1:$PORT/health >/dev/null 2>&1 && { ready=1; break; }
