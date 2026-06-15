@@ -1,0 +1,41 @@
+=== probe1 (prefill 79K) ===
+[probe] prompt chars=350190 (~87547 tok est), max_tokens=64, timeout=300s
+[probe] OK in 27.1s | finish=length | prompt_tokens=79351 completion_tokens=64
+[probe] decode_tps≈2.4 (incl prefill)
+=== probe2 (prefill 118K, near cap) ===
+[probe] prompt chars=520190 (~130047 tok est), max_tokens=64, timeout=360s
+[probe] OK in 26.6s | finish=length | prompt_tokens=118083 completion_tokens=64
+[probe] decode_tps≈2.4 (incl prefill)
+=== probe3 (decode @110K + 744 tok) ===
+[probe] prompt chars=480190 (~120047 tok est), max_tokens=3000, timeout=600s
+[probe] OK in 17.4s | finish=stop | prompt_tokens=109422 completion_tokens=744
+[probe] decode_tps≈42.9 (incl prefill)
+=== multiturn (radix reuse to 108K) ===
+[mt] code pool chars=18666520
+[mt] turn  1 OK  16.4s | prompt_tok= 56573 cached=- compl=85 | 'apply_deepseek_v4_defaults'
+[mt] turn  2 OK   4.3s | prompt_tok= 63155 cached=- compl=70 | 'validate_deepseek_v4_cp'
+[mt] turn  3 OK   9.2s | prompt_tok= 69446 cached=- compl=300 | 'The user wants to see more function names from the files, wi'
+[mt] turn  4 OK   4.3s | prompt_tok= 75686 cached=- compl=44 | "I'll provide one more function from the file:  `try_detect_f"
+[mt] turn  5 OK   9.9s | prompt_tok= 81992 cached=- compl=300 | 'We need to continue providing more functions from the remain'
+[mt] turn  6 OK  10.2s | prompt_tok= 88253 cached=- compl=300 | 'The user wants another function name from the remaining file'
+[mt] turn  7 OK  10.7s | prompt_tok= 94821 cached=- compl=300 | 'The user wants me to identify and list functions from the pr'
+[mt] turn  8 OK  11.1s | prompt_tok=101413 cached=- compl=300 | 'We have a large number of files provided. The task is to ide'
+[mt] turn  9 OK  11.4s | prompt_tok=107955 cached=- compl=300 | "We need to provide another function from the file. Let's sea"
+[mt] ALL TURNS COMPLETED — no hang in this multi-turn run
+=== churn (20 distinct ~90K cold) ===
+[churn] iter 18 OK  38.5s | prompt_tok= 96955 compl=80 finish=length
+[churn] iter 19 OK  34.6s | prompt_tok= 90637 compl=80 finish=length
+[churn] ALL ITERS COMPLETED — no hang under eviction churn
+=== soak (168 req / 25 min) ===
+t+  1517s convo21 turn7 req#168   6.6s ptok=83626 ctok=155
+SOAK COMPLETE: 168 requests over 25.3 min, NO stall
+=== host-saturation (load ~13) + deep-ctx 113K ===
+[probe] prompt chars=500190 (~125047 tok est), max_tokens=200, timeout=300s
+[probe] OK in 52.3s | finish=length | prompt_tokens=113770 completion_tokens=200
+[probe] decode_tps≈3.8 (incl prefill)
+[probe] prompt chars=500190 (~125047 tok est), max_tokens=200, timeout=300s
+[probe] OK in 5.2s | finish=length | prompt_tokens=113770 completion_tokens=200
+[probe] decode_tps≈38.5 (incl prefill)
+[probe] prompt chars=500190 (~125047 tok est), max_tokens=200, timeout=300s
+[probe] OK in 5.2s | finish=length | prompt_tokens=113770 completion_tokens=200
+[probe] decode_tps≈38.6 (incl prefill)
