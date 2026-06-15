@@ -1,0 +1,8 @@
+Devstral-Small-2-24B-FP8 multi-turn tool-call probe — 2026-06-15 (patches 040+056)
+Server: launch.sh devstral2 (QUANT=fp8 MODEL=Devstral-Small-2-24B-FP8), ctx 16384, TP2, gfx1201
+Tool: scripts/eval/devstral2_toolprobe.py <port>
+
+RESULT (re-run capture):
+  TURN1 (read, single-token):                 finish=tool_calls  tool_calls=['read']       leaked=False  PASS
+  TURN2 (todowrite, MULTI-TOKEN, multi-turn): finish=tool_calls  tool_calls=['todowrite']  leaked=False  PASS
+  OVERALL: PASS — FP8 multi-turn tool path + multi-token name both structured, no [TOOL_CALLS]/[ARGS] leak into content.
