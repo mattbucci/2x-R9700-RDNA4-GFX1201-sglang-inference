@@ -22,3 +22,8 @@ Video crash root cause (scheduler exception -> server died -> client RemoteDisco
     all_miss_embedding = all_miss_embedding.reshape(
                          ^^^^^^^^^^^^^^^^^^^^^^^^^^
 AttributeError: 'EVSEmbeddingResult' object has no attribute 'reshape'
+
+=== FIXED 2026-06-15 (patch 057) ===
+Routed EVS items to the combined chunked-prefill path (is_per_image now excludes EVSDataItem).
+Re-validate after fix: validate_capabilities 4/4 — basic+thinking+vision+VIDEO all PASS, server stays alive, 0 reshape errors.
+Video response: 'a red circle moves from left to right.'
