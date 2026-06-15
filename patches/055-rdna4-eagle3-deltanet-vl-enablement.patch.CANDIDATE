@@ -1,8 +1,8 @@
 diff --git a/python/sglang/srt/models/qwen3_vl.py b/python/sglang/srt/models/qwen3_vl.py
-index 1b6c185..bd53b93 100644
+index 1b6c185..33f2cc9 100644
 --- a/python/sglang/srt/models/qwen3_vl.py
 +++ b/python/sglang/srt/models/qwen3_vl.py
-@@ -1400,13 +1400,23 @@ class Qwen3VLForConditionalGeneration(nn.Module):
+@@ -1400,13 +1400,31 @@ class Qwen3VLForConditionalGeneration(nn.Module):
          self.model.capture_aux_hidden_states = True
          if layer_ids is None:
              num_layers = self.config.num_hidden_layers
@@ -15,16 +15,24 @@ index 1b6c185..bd53b93 100644
          else:
 -            self.model.layers_to_capture = [val + 1 for val in layer_ids]
 +            capture = [val + 1 for val in layer_ids]
-+        # Route through the text model's capture setter so each layer module gets
-+        # ``_is_layer_to_capture=True`` — the qwen3_5 DeltaNet backbone has no
-+        # dedicated EAGLE3 setter (only DFLASH), and the forward at
-+        # ``qwen3_5.py`` appends a layer's output to ``aux_hidden_states`` ONLY
-+        # when that flag is set.  Assigning ``self.model.layers_to_capture``
-+        # alone (the old code) left the flag unset, so nothing was captured and
-+        # the bare-tensor return tripped ``hidden_states, aux = hidden_states``
-+        # ("too many values to unpack").  The marking mechanism is shared
-+        # between DFLASH and EAGLE3 capture.
-+        self.model.set_dflash_layers_to_capture(capture)
++        # This wrapper hosts TWO different text backbones with TWO different
++        # aux-capture mechanisms, so drive BOTH:
++        #   * dense ``Qwen3LLMModel`` (Qwen3-VL-32B etc.) reads the
++        #     ``layers_to_capture`` LIST in its forward (``layer_idx in
++        #     self.layers_to_capture``) — and ``Qwen3Model`` has NO
++        #     ``set_dflash_layers_to_capture`` method;
++        #   * the ``qwen3_5`` DeltaNet backbone (Qwen3.5/3.6) reads a per-layer
++        #     ``_is_layer_to_capture`` flag instead.
++        # Setting only the list (old code) left DeltaNet capturing nothing -> the
++        # bare-tensor return tripped ``hidden, aux = hidden`` ("too many values to
++        # unpack"); routing through ``set_dflash_layers_to_capture`` (also old)
++        # AttributeError'd on the dense backbone. Set the list AND mark the flags
++        # so EAGLE3 works on whichever backbone is loaded (each forward reads one;
++        # the other write is a harmless no-op).
++        self.model.layers_to_capture = capture
++        for layer_id in capture:
++            if 0 <= layer_id < len(self.model.layers):
++                setattr(self.model.layers[layer_id], "_is_layer_to_capture", True)
  
  
  EntryClass = Qwen3VLForConditionalGeneration
