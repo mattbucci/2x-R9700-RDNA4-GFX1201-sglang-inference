@@ -1,0 +1,87 @@
+diff --git a/python/sglang/srt/models/qwen3_vl.py b/python/sglang/srt/models/qwen3_vl.py
+index 1b6c185..bd53b93 100644
+--- a/python/sglang/srt/models/qwen3_vl.py
++++ b/python/sglang/srt/models/qwen3_vl.py
+@@ -1400,13 +1400,23 @@ class Qwen3VLForConditionalGeneration(nn.Module):
+         self.model.capture_aux_hidden_states = True
+         if layer_ids is None:
+             num_layers = self.config.num_hidden_layers
+-            self.model.layers_to_capture = [
++            capture = [
+                 2,
+                 num_layers // 2,
+                 num_layers - 3,
+             ]  # Specific layers for EAGLE3 support
+         else:
+-            self.model.layers_to_capture = [val + 1 for val in layer_ids]
++            capture = [val + 1 for val in layer_ids]
++        # Route through the text model's capture setter so each layer module gets
++        # ``_is_layer_to_capture=True`` — the qwen3_5 DeltaNet backbone has no
++        # dedicated EAGLE3 setter (only DFLASH), and the forward at
++        # ``qwen3_5.py`` appends a layer's output to ``aux_hidden_states`` ONLY
++        # when that flag is set.  Assigning ``self.model.layers_to_capture``
++        # alone (the old code) left the flag unset, so nothing was captured and
++        # the bare-tensor return tripped ``hidden_states, aux = hidden_states``
++        # ("too many values to unpack").  The marking mechanism is shared
++        # between DFLASH and EAGLE3 capture.
++        self.model.set_dflash_layers_to_capture(capture)
+ 
+ 
+ EntryClass = Qwen3VLForConditionalGeneration
+diff --git a/python/sglang/srt/utils/hf_transformers_patches.py b/python/sglang/srt/utils/hf_transformers_patches.py
+index dbf9726..be508b2 100644
+--- a/python/sglang/srt/utils/hf_transformers_patches.py
++++ b/python/sglang/srt/utils/hf_transformers_patches.py
+@@ -56,6 +56,7 @@ def apply_all():
+     # v5.4 patches
+     _patch_flash_attn_availability()
+     _patch_rope_parameters_validation()
++    _patch_llama_head_dim_validation()
+     _patch_removed_symbols()
+     _patch_image_processor_kwargs()
+     _patch_image_process_cuda_tensor()
+@@ -184,6 +185,44 @@ def _patch_rope_parameters_validation():
+         PretrainedConfig.standardize_rope_params = _safe_standardize
+ 
+ 
++def _patch_llama_head_dim_validation():
++    """Allow decoupled-head-dim LlamaConfig (explicit head_dim, so hidden_size
++    need NOT be divisible by num_attention_heads).
++
++    transformers v5 ``LlamaConfig`` is ``@strict`` and its
++    ``validate_architecture`` unconditionally requires
++    ``hidden_size % num_attention_heads == 0`` — even when ``head_dim`` is set
++    independently.  Modern EAGLE3 / speculative drafts use a decoupled head_dim
++    (e.g. hidden 5120, 24 heads, head_dim 256 -> q_proj 6144 != hidden), which
++    is a *valid* geometry but is rejected at config-load with
++    "The hidden size (5120) is not a multiple of the number of attention heads
++    (24)".  The check is not load-bearing (the model uses ``head_dim``, not
++    ``hidden_size // num_attention_heads``), and conventional models pass it
++    trivially, so dropping it is monotonic: it only *admits* previously-rejected
++    decoupled drafts and changes nothing for configs that already passed.
++
++    ``@strict`` snapshots class validators into ``cls.__class_validators__`` at
++    decoration time and ``validate()`` iterates that list, so we must edit the
++    list directly — re-binding the ``validate_architecture`` attribute would
++    have no effect.
++
++    TODO(upstream): ``LlamaConfig.validate_architecture`` should skip the
++    divisibility check whenever ``head_dim`` is explicitly provided.
++    """
++    try:
++        from transformers.models.llama.configuration_llama import LlamaConfig
++    except ImportError:
++        return
++    validators = getattr(LlamaConfig, "__class_validators__", None)
++    if not validators:
++        return
++    kept = [
++        v for v in validators if getattr(v, "__name__", "") != "validate_architecture"
++    ]
++    if len(kept) != len(validators):
++        LlamaConfig.__class_validators__ = kept
++
++
+ def _patch_flash_attn_availability():
+     """Prevent flash-attn-4 from masquerading as flash-attn-2.
+ 

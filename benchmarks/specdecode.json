@@ -94,8 +94,8 @@
       "kind": "dense DeltaNet(-VL)",
       "status": "blocked",
       "spec_toks": 0,
-      "draft": "in-ckpt MTP",
-      "reason": "z-lab DFlash 3.3GB OOMs DeltaNet even @16K; FP8 won't fit 2x32GB. Path = AWQ-int4 + BF16-MTP recast"
+      "draft": "EAGLE3 specdrift / DFlash / in-ckpt MTP",
+      "reason": "TESTED EAGLE3 2026-06-14 (Qwen3.6-27B-EAGLE3-specdrift, LlamaForCausalLMEagle3 1.25GB): now LOADS+runs+coherent on the DeltaNet-VL target after patch 055 (LlamaConfig decoupled-head-dim validator + qwen3_vl EAGLE3 capture-layer marking — both were hard load blockers). Accepts WELL (accept len 4.0, topk4/steps3/draft8) but NET-NEGATIVE: server-log gen throughput ~18 tok/s vs ~25 no-spec. ROOT CAUSE: spec step is GPU-COMPUTE-bound, not dispatch-bound — the dense 27B is 75% DeltaNet (3:1 linear/full) and DeltaNet's recurrent verify is SEQUENTIAL in num-draft-tokens (verifying 8 tree tokens ~= 8 serial state updates), so the step costs ~5.5x a plain decode while yielding only 4x tokens. cuda-graph gives ZERO help (18.3 ON vs 18.1 OFF) confirming compute-bound not launch-bound. Deeper trees make verify MORE expensive -> no tuning fixes it. Extends 3090's 'DFlash moot on DeltaNet' to EAGLE3, isolating the wall to recurrent verify cost (not draft quality). DFlash also OOMs/net-neg; FP8 won't fit 2x32GB. The only lever would be a DeltaNet-aware chunked/parallel verify kernel (deep kernel work). Patch 055 still unblocks EAGLE3 LOADING for the whole qwen3_5/qwen3_vl VL family (helps any pure-attention member, e.g. it's a prerequisite for Qwen3-VL-32B EAGLE3 once #17935 is past)."
     },
     {
       "name": "gemma-4-31B / 26B",

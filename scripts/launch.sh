@@ -484,6 +484,11 @@ PYEOF
             # passes 3/3, so 8 is the proven-safe value across the family.
             # Cost: slightly slower batch decode; Benefit: thinking works.
             CTX=262144; MEM=0.80; MAX_RUNNING=8; CHUNKED=8192; DECODE_STEPS=8
+            # cuda-graph OFF: dense DeltaNet 27B is GPU-bound at M=1 (no launch gap).
+            # Measured 2026-06-14: even under EAGLE3 spec-decode, cuda-graph gives 0
+            # help (18.3 ON vs 18.1 OFF) — the spec step is GPU-COMPUTE-bound (sequential
+            # DeltaNet verify), not dispatch-bound, so there's nothing for a graph to
+            # recover. Stays OFF.
             CUDA_GRAPH="--disable-cuda-graph"
             MAMBA_CACHE="--max-mamba-cache-size 8"
             # pi/little-coder sends a `developer` role the stock Qwen3.6 template rejects
