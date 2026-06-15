@@ -1,0 +1,24 @@
+Nemotron-3-Nano-Omni-30B-A3B-Reasoning-FP8 — capability validation + video crash, 2026-06-15
+Server: launch.sh nemotron-omni (FP8, modelopt_fp8), ctx 16384, TP2, gfx1201
+validate_capabilities --port 23389: 3/4 — basic PASS, thinking PASS, vision PASS, VIDEO FAIL (server crash).
+
+Video crash root cause (scheduler exception -> server died -> client RemoteDisconnected):
+  File "/data/vG/python/sglang/srt/models/nano_nemotron_vl.py", line 324, in forward
+    hidden_states = general_mm_embed_routine(
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/data/vG/python/sglang/srt/managers/mm_utils.py", line 1052, in general_mm_embed_routine
+    input_embeds, other_info = embed_mm_inputs(
+                               ^^^^^^^^^^^^^^^^
+  File "/data/vG/python/sglang/srt/managers/mm_utils.py", line 822, in embed_mm_inputs
+    embedding, mask, input_ids = get_embedding_and_mask(
+                                 ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/data/vG/python/sglang/srt/managers/mm_utils.py", line 728, in get_embedding_and_mask
+    embedding, input_ids = _get_chunked_prefill_embedding(
+                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/data/vG/python/sglang/srt/managers/mm_utils.py", line 628, in _get_chunked_prefill_embedding
+    chunk_embedding = _get_chunked_embedding_by_item(
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/data/vG/python/sglang/srt/managers/mm_utils.py", line 564, in _get_chunked_embedding_by_item
+    all_miss_embedding = all_miss_embedding.reshape(
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'EVSEmbeddingResult' object has no attribute 'reshape'
