@@ -1,0 +1,10 @@
+int4 over-thinking — attention-backend A/B (bounded, short-ctx), 2026-06-15
+Model: Qwen3.5-27B-AWQ (int4), ctx 16384, TP2, gfx1201, temp0.7/top_p0.95/top_k20, enable_thinking=true.
+3 hard reasoning puzzles (short prompts). over-think = finish_reason=length + empty content (never commits an answer).
+  TRITON attn:       OVER-THINK 2/3 (bat-ball, missing-dollar; syllogism terminated)
+  TORCH_NATIVE attn: OVER-THINK 2/3 (missing-dollar, syllogism; bat-ball terminated)
+Rate identical (2/3); which questions flip = temp-0.7 sampling noise, not a systematic backend effect.
+CONCLUSION: at SHORT context the int4 over-thinking is attention-backend-INDEPENDENT -> int4 weight noise
+(README root cause), NOT triton-attn precision (3090 counter-hypothesis). Caveat: 3090's hypothesis was
+triton-attn precision compounding over LONG KV; this short-ctx A/B doesn't test the long-KV agentic regime
+(the 0/6 SWE-bench), which still needs the full opencode harness to attribute. Small n (3, temp noise).
