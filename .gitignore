@@ -10,6 +10,9 @@ __pycache__/
 *.jsonl
 build/
 
+# SWE-bench eval run scratch (predictions/logs/scores — receipts get folded into benchmarks/)
+evals/swebench/runs/
+
 # GPTQ calibration temp files
 gptqmodel_offload/
 gptq_log_*.log
