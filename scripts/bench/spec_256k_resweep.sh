@@ -15,7 +15,9 @@ DRAFT=$MODELS_DIR/EAGLE3-Coder-30B-A3B
 CTXFILE=/tmp/spec256k-context.txt
 ROOT=/tmp/dbg/spec256k
 mkdir -p "$ROOT"
-SPEC_ARGS="--speculative-algorithm EAGLE3 --speculative-draft-model-path $DRAFT --speculative-draft-model-quantization unquant --speculative-num-steps 6 --speculative-eagle-topk 16 --speculative-num-draft-tokens 32 --speculative-attention-mode decode"
+# --cuda-graph-max-bs 1: single-user (conc=1) only needs the bs=1 graph; the preset's multi-bs
+# capture [1..24] OOMs at 262144+EAGLE3 (graph capture found 0 bytes free at mem 0.92).
+SPEC_ARGS="--speculative-algorithm EAGLE3 --speculative-draft-model-path $DRAFT --speculative-draft-model-quantization unquant --speculative-num-steps 6 --speculative-eagle-topk 16 --speculative-num-draft-tokens 32 --speculative-attention-mode decode --cuda-graph-max-bs 1"
 
 [ -s "$CTXFILE" ] || { echo "MISSING $CTXFILE (build it first)"; exit 1; }
 
@@ -43,7 +45,7 @@ run_arm(){  # $1=label $2=MODEL $3=QUANT
   echo "=== [$LAB] boot coder-30b ($QUANT) + EAGLE3 @ CTX=262144  $(date +%H:%M) ==="
   stop_server
   # coder-30b reads _ENV_CTX (not CTX); use the reliable CLI overrides (launch.sh L677/679 map them to CTX/MEM)
-  bash -c "MODEL=$MODEL QUANT=$QUANT EXTRA_ARGS='$SPEC_ARGS' ./scripts/launch.sh coder-30b --port $PORT --context-length 262144 --mem-fraction 0.92" > "$OUT/serve.log" 2>&1 &
+  bash -c "MODEL=$MODEL QUANT=$QUANT EXTRA_ARGS='$SPEC_ARGS' ./scripts/launch.sh coder-30b --port $PORT --context-length 262144 --mem-fraction 0.85" > "$OUT/serve.log" 2>&1 &
   local ready=0
   for _ in $(seq 1 900); do
     curl -sf http://127.0.0.1:$PORT/health >/dev/null 2>&1 && { ready=1; break; }
