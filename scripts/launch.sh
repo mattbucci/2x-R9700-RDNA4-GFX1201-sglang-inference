@@ -148,8 +148,12 @@ PYEOF
             #      MistralDetector to anchor on [ARGS] (+ hold a trailing known tool name in
             #      streaming, since SGLang streams the name token before [ARGS]). seaborn went
             #      task-omission-empty → RESOLVED; requests empty → 1953B. Single-token tools
-            #      (glob/read/grep/bash/edit/write/task) fully covered; multi-token names
-            #      (todowrite/webfetch) are a documented residual.
+            #      (glob/read/grep/bash/edit/write/task) covered by patch 040; multi-token
+            #      names (todowrite/webfetch) now covered by patch 056 (2026-06-15) — the
+            #      streaming name hold-back matches a trailing PREFIX of a known tool, not
+            #      just an exact name, so a name split across stream chunks (todo+write)
+            #      stays intact until [ARGS] arrives. Unit-tested (multi+single+canonical
+            #      recover; prose with tool-name-prefix words preserved, no drops).
             # Net on the curated 6-subset: 2/6 resolved (django+seaborn) + 4/6 non-empty at
             # timeout 300 (vs baseline ~loops/empties). Remaining empties are model capability
             # (explains-instead-of-edits), not SGLang. mistral_common path stays a dead-end

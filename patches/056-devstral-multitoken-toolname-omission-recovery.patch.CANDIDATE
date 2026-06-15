@@ -1,0 +1,58 @@
+--- a/python/sglang/srt/function_call/mistral_detector.py	2026-06-15 03:14:59.450402116 -0700
++++ b/python/sglang/srt/function_call/mistral_detector.py	2026-06-15 03:14:59.450445866 -0700
+@@ -289,23 +289,46 @@
+         return StreamingParseResult()
+ 
+     def _trailing_known_tool_name_len(self, buffer: str) -> int:
+-        """Length of a trailing run that exactly equals a known tool name.
++        """Length of a trailing run that is a known tool name OR a PREFIX of one.
+ 
+         Used by streaming [TOOL_CALLS]-omission recovery: when the buffer ends
+-        with a bare known tool name (e.g. ``…\n\ntask``), it may be the name of
+-        a call whose [TOOL_CALLS] marker was dropped and whose [ARGS] token has
+-        not streamed in yet, so it is held back rather than flushed as content.
+-        Returns 0 when the trailing identifier is not an exact tool name (so
+-        ordinary prose — including words that merely contain a tool name — is
+-        flushed normally and never truncated).
++        with a bare (partial) tool name, it may be the name of a call whose
++        [TOOL_CALLS] marker was dropped and whose [ARGS] token has not streamed in
++        yet, so it is held back rather than flushed as content.
++
++        Exact match alone (the original patch-040 behavior) only covers
++        SINGLE-token names: SGLang streams the name token(s) before [ARGS], and a
++        MULTI-token name (``todowrite`` -> ``todo``+``write``, ``webfetch`` ->
++        ``web``+``fetch``) arrives in pieces — the first piece (``todo``) is not an
++        exact tool name, so it was flushed as content and the name split across the
++        flush boundary, defeating recovery. Matching a trailing *prefix* of any
++        known tool name (an exact name is a prefix of itself) holds the partial
++        name so the full identifier stays intact in the buffer until [ARGS]
++        arrives, where the exact-match recovery then succeeds.
++
++        Returns 0 when the trailing run is not a prefix of any tool name, so
++        ordinary prose is flushed normally. A prose word that happens to be a
++        tool-name prefix (e.g. "web", "todo", "read") is held at most until the
++        next increment disambiguates it (a following space/punct makes the
++        trailing run no longer a prefix -> flushed) — it is never dropped. This is
++        the same delay-then-flush tradeoff patch 040 already accepted for exact
++        tool-name words; the prefix match extends it to multi-token names
++        (R9700, 2026-06-15).
+         """
+-        if not getattr(self, "_tool_indices", None):
++        indices = getattr(self, "_tool_indices", None)
++        if not indices:
+             return 0
+         k = len(buffer)
+         while k > 0 and (buffer[k - 1].isalnum() or buffer[k - 1] in "_.-"):
+             k -= 1
+         trailing = buffer[k:]
+-        return len(trailing) if trailing and trailing in self._tool_indices else 0
++        if not trailing:
++            return 0
++        for name in indices:
++            if name.startswith(trailing):
++                return len(trailing)
++        return 0
++
+     def _try_parse_argsonly_format(
+         self, text: str, tools: List[Tool]
+     ) -> Optional[Tuple[str, str, Any, int]]:
