@@ -110,8 +110,8 @@
       "kind": "dense VL",
       "status": "blocked",
       "spec_toks": 0,
-      "draft": "EAGLE3",
-      "reason": "SGLang VL spec-decode bug #17935 (missing get_embed_and_head)"
+      "draft": "EAGLE3 (needs SpecForge train)",
+      "reason": "BLOCKER SHIFTED 2026-06-14: the SGLang-side #17935 gap is gone — qwen3_vl.get_embed_and_head is present AND patch 055 fixes the EAGLE3 capture-layer marking, so the VL EAGLE3 path now loads/engages. Remaining gap = NO off-the-shelf draft: taobao-mnn/Qwen3-VL-2B-Instruct-Eagle3 is 2B (wrong geometry, won't transfer to 32B); RedHatAI/Qwen3-32B-speculator.eagle3 targets the TEXT 32B not VL. Needs a 32B-matched EAGLE3 draft trained via SpecForge (~27 H20-GPU-hrs). HIGH VALUE: Qwen3-VL-32B is PURE DENSE (head_dim 128, no DeltaNet, no MoE) so it has NO sequential-verify wall — EAGLE3 would actually WIN here like it does on Coder-30B (2.3x), unlike the DeltaNet 27B. The single best spec-decode target left on the fleet; gated only on training the draft."
     },
     {
       "name": "Qwen3.6-VL-REAP-26B",
