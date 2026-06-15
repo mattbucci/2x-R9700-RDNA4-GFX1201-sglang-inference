@@ -18,7 +18,7 @@ High-throughput LLM inference on 2x AMD Radeon AI PRO R9700 (gfx1201, RDNA4) wit
 ### Next steps (prioritized — single-user 256K)
 
 1. **Train an EAGLE3 draft for Qwen3-VL-32B (SpecForge) — best remaining positive spec win.** Patch 055 + the now-present `qwen3_vl.get_embed_and_head` mean the VL EAGLE3 path is SGLang-unblocked; the only gap is a 32B-geometry-matched draft (no off-the-shelf one — the HF Qwen3-VL eagle3 is 2B, RedHatAI's 32B eagle3 targets the text model). **Worth the ~27 H20-GPU-hr train:** Qwen3-VL-32B is pure dense (head_dim 128, no DeltaNet) → no sequential-verify wall, so EAGLE3 should win ~2× (like Coder-30B 56→128), unlike the net-negative DeltaNet 27B. A primary 256K model stuck at 25.5 short / no draft.
-2. **Re-measure the two working spec bars at full 256K** (server-log method) — Coder-30B EAGLE3 (97/86) + Qwen3.6-35B DFlash (80/45). Spot-check 2026-06-15 confirmed the short-ctx numbers + method are sound (no client-under-measurement error), so this is lower-priority confirmation of the @256K figures.
+2. **Re-measure the two working spec bars at full 256K** (server-log method) — Coder-30B EAGLE3 (97/86) + Qwen3.6-35B DFlash (80/45). Short-ctx spot-checks 2026-06-15 confirm the path + numbers are sound on the current stack: Coder-30B EAGLE3 **AWQ ~128 t/s (accept 6.7)** and **FP8 ~120 t/s (accept 6.2)** — spec amortizes the FP8-vs-int4 gap, both consistent with the documented @256K (86 FP8). Remaining = the full **256K** re-sweep + the Qwen3.6-35B **FP8** DFlash bar (only AWQ DFlash short, ~60, was spot-checked). Lower-priority confirmation.
 3. **Upstream the 10 PR candidates** — blocked on a `GH_TOKEN` with fork scope.
 
 **Open work:**
