@@ -1,11 +1,11 @@
 diff --git a/python/sglang/srt/models/gemma4_causal.py b/python/sglang/srt/models/gemma4_causal.py
-index 544406119..0ddf9eb61 100644
+index e054fd062..6876d1a30 100644
 --- a/python/sglang/srt/models/gemma4_causal.py
 +++ b/python/sglang/srt/models/gemma4_causal.py
-@@ -422,11 +422,45 @@ class Gemma4DecoderLayer(nn.Module):
+@@ -560,11 +560,45 @@ class Gemma4DecoderLayer(nn.Module):
              2 if use_double_wide_mlp else 1
          )
-
+ 
 +        # On MoE-block layers (parallel dense+MoE Gemma 4 architecture, e.g.
 +        # 26B), the dense-MLP branch CAN ship as either:
 +        #   (a) PLAIN BF16 (mlp.{gate,up,down}_proj.weight) — original recipe
@@ -48,4 +48,4 @@ index 544406119..0ddf9eb61 100644
 +            quant_config=_mlp_quant_config,
              prefix=add_prefix("mlp", prefix),
          )
-
+ 

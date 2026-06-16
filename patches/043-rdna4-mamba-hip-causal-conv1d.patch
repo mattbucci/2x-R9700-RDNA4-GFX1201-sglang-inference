@@ -1,15 +1,16 @@
 diff --git a/python/sglang/srt/layers/attention/mamba/mamba.py b/python/sglang/srt/layers/attention/mamba/mamba.py
+index 0ae2566e5..df5e3afa4 100644
 --- a/python/sglang/srt/layers/attention/mamba/mamba.py
 +++ b/python/sglang/srt/layers/attention/mamba/mamba.py
-@@ -33,6 +33,7 @@ from sglang.srt.model_loader.weight_utils import (
+@@ -34,6 +34,7 @@ from sglang.srt.model_loader.weight_utils import (
  from sglang.srt.utils import (
      is_cpu,
      is_cuda,
 +    is_hip,
      is_npu,
+     is_xpu,
      set_weight_attrs,
- )
-@@ -48,6 +49,18 @@ if is_cuda():
+@@ -50,6 +51,18 @@ if is_cuda():
      from sglang.srt.layers.attention.mamba.causal_conv1d_triton import (
          causal_conv1d_update as causal_conv1d_update_triton,
      )

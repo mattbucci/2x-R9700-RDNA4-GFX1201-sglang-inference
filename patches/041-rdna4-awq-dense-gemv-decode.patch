@@ -1,5 +1,5 @@
 diff --git a/python/sglang/srt/hardware_backend/gpu/quantization/awq_kernels.py b/python/sglang/srt/hardware_backend/gpu/quantization/awq_kernels.py
-index 59ef742..2ed7ea7 100644
+index 59ef742e8..2ed7ea7b3 100644
 --- a/python/sglang/srt/hardware_backend/gpu/quantization/awq_kernels.py
 +++ b/python/sglang/srt/hardware_backend/gpu/quantization/awq_kernels.py
 @@ -75,6 +75,25 @@ else:

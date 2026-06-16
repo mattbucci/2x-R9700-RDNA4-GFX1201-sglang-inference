@@ -1,8 +1,8 @@
 diff --git a/python/sglang/srt/environ.py b/python/sglang/srt/environ.py
-index c7247261d..9ba17bba3 100644
+index 435c30a5c..fae15e510 100644
 --- a/python/sglang/srt/environ.py
 +++ b/python/sglang/srt/environ.py
-@@ -159,6 +159,21 @@ class ToolStrictLevel(IntEnum):
+@@ -194,6 +194,21 @@ class ToolStrictLevel(IntEnum):
  class Envs:
      # fmt: off
  
@@ -23,7 +23,7 @@ index c7247261d..9ba17bba3 100644
 +
      # Model & File Download
      SGLANG_USE_MODELSCOPE = EnvBool(False)
-     SGLANG_SORT_WEIGHT_FILES = EnvBool(False)
+     # Controls weight-file ordering for load-time I/O optimization.
 diff --git a/python/sglang/srt/layers/moe/hybrid_w4a16_moe.py b/python/sglang/srt/layers/moe/hybrid_w4a16_moe.py
 new file mode 100644
 index 000000000..f669d8232

@@ -1,5 +1,5 @@
 diff --git a/python/sglang/srt/layers/quantization/fp8_kernel.py b/python/sglang/srt/layers/quantization/fp8_kernel.py
-index 65aa6bb..1f0e87d 100644
+index 2fae46c82..128005ea3 100644
 --- a/python/sglang/srt/layers/quantization/fp8_kernel.py
 +++ b/python/sglang/srt/layers/quantization/fp8_kernel.py
 @@ -1719,10 +1719,12 @@ if _is_hip:

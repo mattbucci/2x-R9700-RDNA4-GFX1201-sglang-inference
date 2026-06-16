@@ -1,18 +1,13 @@
-R9700: raise unbalanced-loading timeout for big TP2 models on cold page cache
-(40-60 GB FP8/AWQ models read from NVMe; rank skew exceeds upstream's 480s,
-killing the slower scheduler rank during load → "model loading unbalanced"
-crash before serving. 1800s covers a 62 GB worst case at ~40 MB/s tail).
-Was a live-only edit on /data/vG (2026-06-02); captured into the series 2026-06-10.
-
 diff --git a/python/sglang/srt/model_executor/model_runner.py b/python/sglang/srt/model_executor/model_runner.py
+index e5fa16e76..b9057a223 100644
 --- a/python/sglang/srt/model_executor/model_runner.py
 +++ b/python/sglang/srt/model_executor/model_runner.py
-@@ -284,7 +284,7 @@
-
-
+@@ -306,7 +306,7 @@ def add_chunked_prefix_cache_attention_backend(backend_name):
+ 
+ 
  # Detect stragger ranks in model loading
 -UNBALANCED_MODEL_LOADING_TIMEOUT_S = 480  # leave more time for post data processing
 +UNBALANCED_MODEL_LOADING_TIMEOUT_S = 1800  # leave more time for post data processing (R9700: big TP2 models on cold page cache skew >480s between ranks)
-
-
+ 
+ 
  logger = logging.getLogger(__name__)

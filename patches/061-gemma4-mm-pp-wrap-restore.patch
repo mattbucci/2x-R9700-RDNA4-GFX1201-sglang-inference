@@ -1,0 +1,64 @@
+diff --git a/python/sglang/srt/models/gemma4_mm.py b/python/sglang/srt/models/gemma4_mm.py
+index 64ddd25b8..6a5f570e8 100644
+--- a/python/sglang/srt/models/gemma4_mm.py
++++ b/python/sglang/srt/models/gemma4_mm.py
+@@ -200,42 +200,38 @@ class Gemma4ForConditionalGeneration(PreTrainedModel):
+         # hallucinates content.  Same shape as patch 023 (dense MLP on MoE
+         # layers).  Bug surfaced 2026-05-03 via "Some weights not initialized"
+         # log in the gemma4-26b-mm-arch-fix-May03 run.
+-        self.vision_tower = Gemma4VisionEncoder(
+-            config=config.vision_config,
+-            quant_config=None,
+-            prefix=add_prefix("vision_tower", prefix),
+-        )
+-
+-        self.embed_vision = Gemma4MultimodalEmbedder(
+-            config.vision_config,
+-            config.text_config,
+-            quant_config=None,
+-            prefix=add_prefix("embed_vision", prefix),
+-        )
+-
+-        # Audio components
+-        if getattr(config, "audio_config", None) is not None:
+-            self.audio_tower = Gemma4AudioEncoder(
+-                config=config.audio_config,
++        # PP-rank wrap restored from v0.5.13 (the 024 "theirs" merge had dropped
++        # it, collapsing the `else: PPMissingLayer` onto the audio-config if/else
++        # so vision_tower was nuked to PPMissingLayer whenever audio_config is
++        # None — crashing get_image_feature at `vt.device`). Patch 024's
++        # vision-critical quant_config=None is preserved on all 4 towers
++        # (vision_tower / embed_vision / audio_tower / embed_audio stay BF16 per
++        # the calibration ignore-list). At PP=1 is_first_rank is always True.
++        if self.pp_group.is_first_rank:
++            self.vision_tower = Gemma4VisionEncoder(
++                config=config.vision_config,
+                 quant_config=None,
+-                prefix=add_prefix("audio_tower", prefix),
++                prefix=add_prefix("vision_tower", prefix),
+             )
++
+             self.embed_vision = Gemma4MultimodalEmbedder(
+                 config.vision_config,
+                 config.text_config,
+                 quant_config=None,
+-                prefix=add_prefix("embed_audio", prefix),
++                prefix=add_prefix("embed_vision", prefix),
+             )
++
++            # Audio components
+             if getattr(config, "audio_config", None) is not None:
+                 self.audio_tower = Gemma4AudioEncoder(
+                     config=config.audio_config,
+-                    quant_config=quant_config,
++                    quant_config=None,
+                     prefix=add_prefix("audio_tower", prefix),
+                 )
+                 self.embed_audio = Gemma4MultimodalEmbedder(
+                     config.audio_config,
+                     config.text_config,
+-                    quant_config=quant_config,
++                    quant_config=None,
+                     prefix=add_prefix("embed_audio", prefix),
+                 )
+             else:

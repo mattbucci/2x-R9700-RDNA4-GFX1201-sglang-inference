@@ -1,0 +1,22 @@
+diff --git a/python/sglang/srt/layers/quantization/quark/schemes/quark_w4a4_mxfp4_moe.py b/python/sglang/srt/layers/quantization/quark/schemes/quark_w4a4_mxfp4_moe.py
+index c6890dfd5..c14ee07b0 100644
+--- a/python/sglang/srt/layers/quantization/quark/schemes/quark_w4a4_mxfp4_moe.py
++++ b/python/sglang/srt/layers/quantization/quark/schemes/quark_w4a4_mxfp4_moe.py
+@@ -37,7 +37,16 @@ if _use_aiter:
+     from aiter.utility.fp4_utils import e8m0_shuffle
+ 
+ if _is_hip:
+-    from aiter.ops.triton.quant import dynamic_mxfp4_quant
++    try:
++        from aiter.ops.triton.quant import dynamic_mxfp4_quant
++    except ImportError:
++        # RDNA4/gfx12xx: aiter (a CDNA gfx94x/gfx95x library) is not installed,
++        # and Quark-MXFP4 is unused on RDNA4. Degrade gracefully rather than
++        # crashing the entire quantization module import on `import
++        # QUANTIZATION_METHODS`. Extends patch 005's try/except guard to
++        # v0.5.13's new _moe sibling (the non-_moe file was already guarded).
++        # See patches/005-rdna4-fp8-fallbacks.
++        dynamic_mxfp4_quant = None
+ else:
+     dynamic_mxfp4_quant = None
+ 

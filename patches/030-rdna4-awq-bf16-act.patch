@@ -1,38 +1,10 @@
-From: R9700 team <noreply@anthropic.com>
-Date: 2026-05-08
-Subject: [PATCH] AWQConfig: extend bf16 act dtype support to HIP (R9700/RDNA4)
-
-`AWQConfig.get_supported_act_dtypes` upstream v0.5.11 only allows bf16
-activations on Ascend NPU (`_is_npu` carve-out at line 105).  R9700 ROCm
-falls into the bare `AWQConfig` (no Marlin path on HIP), so loading a
-Qwen3.5-arch AWQ model with bf16 weights is rejected:
-
-  ValueError: torch.bfloat16 is not supported for quantization method awq.
-              Supported dtypes: [torch.float16]
-
-Forcing fp16 instead surfaces a downstream Triton kernel-compile crash
-("Mismatched type for col0 between then block (bf16) and else block
-(fp16)" in `triton_ops/decode_attention.py`) because the model's actual
-weights are bf16 and the kernel's then-branch produces bf16 output.
-
-3090 has patch 006 (`AWQMarlinConfig.get_supported_act_dtypes` returns
-`[half, bfloat16]`) which v0.5.11 picked up upstream — but only for the
-Marlin variant.  The bare non-Marlin `AWQConfig` was missed.  Same fix
-shape, different class.
-
-After patch: R9700 loads Qwen3-VL-32B-AWQ-balanced cleanly at TP=2 / 4K
-with `dtype=bfloat16`; validate_capabilities 3/3 PASS in 20.3s, vision
-content-aware ('a simple red circle with a black outline on a white
-background').  Receipt at evals/awq-audit-2026-05-08-r9700-validate-receipt.md.
-
-Discovered 2026-05-08 during R9700 hardware launch test (R9700 commit 9dc1ea5).
-
 diff --git a/python/sglang/srt/layers/quantization/awq/awq.py b/python/sglang/srt/layers/quantization/awq/awq.py
+index 0b63dcb58..df8490086 100644
 --- a/python/sglang/srt/layers/quantization/awq/awq.py
 +++ b/python/sglang/srt/layers/quantization/awq/awq.py
 @@ -102,7 +102,15 @@ class AWQConfig(QuantizationConfig):
          return "awq"
-
+ 
      def get_supported_act_dtypes(self) -> List[torch.dtype]:
 -        return [torch.float16] if not _is_npu else [torch.float16, torch.bfloat16]
 +        # 2026-05-08 RDNA4 fix: extend bf16 support from NPU-only to also
@@ -44,6 +16,6 @@ diff --git a/python/sglang/srt/layers/quantization/awq/awq.py b/python/sglang/sr
 +        if _is_hip or _is_npu:
 +            return [torch.float16, torch.bfloat16]
 +        return [torch.float16]
-
+ 
      @classmethod
      def get_min_capability(cls) -> int:

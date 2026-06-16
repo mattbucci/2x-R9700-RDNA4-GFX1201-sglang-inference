@@ -1,8 +1,8 @@
 diff --git a/sgl-kernel/setup_rocm.py b/sgl-kernel/setup_rocm.py
-index 8dddf02..f40f1dc 100644
+index 9762787aa..338dbb736 100644
 --- a/sgl-kernel/setup_rocm.py
 +++ b/sgl-kernel/setup_rocm.py
-@@ -72,21 +72,31 @@ if torch.cuda.is_available():
+@@ -74,21 +74,31 @@ if torch.cuda.is_available():
  else:
      print(f"Warning: torch.cuda not available. Using default target: {amdgpu_target}")
  

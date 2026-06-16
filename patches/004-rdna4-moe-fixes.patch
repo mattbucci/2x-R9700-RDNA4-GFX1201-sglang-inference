@@ -1,8 +1,8 @@
 diff --git a/python/sglang/srt/layers/moe/fused_moe_triton/layer.py b/python/sglang/srt/layers/moe/fused_moe_triton/layer.py
-index f34ffc10f..8e764f7a1 100644
+index 59ca3f9cc..df4f45b8e 100644
 --- a/python/sglang/srt/layers/moe/fused_moe_triton/layer.py
 +++ b/python/sglang/srt/layers/moe/fused_moe_triton/layer.py
-@@ -39,7 +39,10 @@ from sglang.srt.layers.moe.kt_ep_wrapper import (
+@@ -41,7 +41,10 @@ from sglang.srt.layers.moe.kt_ep_wrapper import (
  )
  from sglang.srt.layers.moe.token_dispatcher import CombineInput, DispatchOutput
  from sglang.srt.layers.moe.token_dispatcher.base import BaseDispatcher
@@ -15,7 +15,7 @@ index f34ffc10f..8e764f7a1 100644
      StandardDispatcher,
  )
 diff --git a/python/sglang/srt/layers/moe/moe_runner/triton.py b/python/sglang/srt/layers/moe/moe_runner/triton.py
-index 840d70b0b..36f18de65 100644
+index 96e431d4e..b8a99c77b 100644
 --- a/python/sglang/srt/layers/moe/moe_runner/triton.py
 +++ b/python/sglang/srt/layers/moe/moe_runner/triton.py
 @@ -24,6 +24,61 @@ if TYPE_CHECKING:
@@ -793,10 +793,10 @@ index 000000000..fd7c245f7
 +triton_3_6_0
 \ No newline at end of file
 diff --git a/python/sglang/srt/layers/moe/moe_runner/triton_utils/fused_moe.py b/python/sglang/srt/layers/moe/moe_runner/triton_utils/fused_moe.py
-index eded81834..01edb763f 100644
+index a2f739b2d..55f417e11 100644
 --- a/python/sglang/srt/layers/moe/moe_runner/triton_utils/fused_moe.py
 +++ b/python/sglang/srt/layers/moe/moe_runner/triton_utils/fused_moe.py
-@@ -54,7 +54,17 @@ if _is_cuda:
+@@ -58,7 +58,17 @@ if _is_cuda:
  elif _is_cpu and _is_cpu_amx_available:
      pass
  elif _is_hip:
@@ -815,7 +815,7 @@ index eded81834..01edb763f 100644
  
      if _use_aiter:
          try:
-@@ -296,13 +306,13 @@ def fused_experts(
+@@ -306,13 +316,13 @@ def fused_experts(
          )
  
  
@@ -831,7 +831,7 @@ index eded81834..01edb763f 100644
  def _swiglu_silu_clamp_mul(x, gemm1_limit):
      gate, up = x.chunk(2, dim=-1)
      gate = F.silu(gate)
-@@ -311,8 +321,7 @@ def _swiglu_silu_clamp_mul(x, gemm1_limit):
+@@ -321,8 +331,7 @@ def _swiglu_silu_clamp_mul(x, gemm1_limit):
      return gate * up
  
  
@@ -842,7 +842,7 @@ index eded81834..01edb763f 100644
      # At present, only GPT-OSS uses this variant.
      gate, up = x[..., ::2], x[..., 1::2]
 diff --git a/python/sglang/srt/layers/moe/moe_runner/triton_utils/fused_moe_triton_config.py b/python/sglang/srt/layers/moe/moe_runner/triton_utils/fused_moe_triton_config.py
-index fb1387808..a4054e018 100644
+index beedad2ac..eef9d3769 100644
 --- a/python/sglang/srt/layers/moe/moe_runner/triton_utils/fused_moe_triton_config.py
 +++ b/python/sglang/srt/layers/moe/moe_runner/triton_utils/fused_moe_triton_config.py
 @@ -15,6 +15,19 @@ from sglang.srt.utils import get_device_name, is_hip
@@ -865,7 +865,7 @@ index fb1387808..a4054e018 100644
  
  def get_config_file_name(
      E: int,
-@@ -175,12 +188,12 @@ def get_default_config(
+@@ -183,12 +196,12 @@ def get_default_config(
          else:
              # Block-wise quant: BLOCK_SIZE_K must be divisible by block_shape[1]
              config = {
@@ -882,7 +882,7 @@ index fb1387808..a4054e018 100644
      else:
          config = {
 diff --git a/python/sglang/srt/layers/moe/moe_runner/triton_utils/fused_moe_triton_kernels.py b/python/sglang/srt/layers/moe/moe_runner/triton_utils/fused_moe_triton_kernels.py
-index e50b9ed..f0c182c 100644
+index d0ca5abaa..f0ec1f862 100644
 --- a/python/sglang/srt/layers/moe/moe_runner/triton_utils/fused_moe_triton_kernels.py
 +++ b/python/sglang/srt/layers/moe/moe_runner/triton_utils/fused_moe_triton_kernels.py
 @@ -42,6 +42,26 @@ _is_cpu_amx_available = cpu_has_amx_support()
@@ -1064,7 +1064,7 @@ index e50b9ed..f0c182c 100644
              else:
                  if use_fp8_w8a8:
                      if swap_ab:
-@@ -699,6 +812,103 @@ def _get_b_tma_desc_cached(B: torch.Tensor, block_n: int, block_k: int):
+@@ -711,6 +824,103 @@ def _get_b_tma_desc_cached(B: torch.Tensor, block_n: int, block_k: int):
      return desc
  
  
@@ -1168,7 +1168,7 @@ index e50b9ed..f0c182c 100644
  def invoke_fused_moe_kernel(
      A: torch.Tensor,
      B: torch.Tensor,
-@@ -735,6 +945,18 @@ def invoke_fused_moe_kernel(
+@@ -749,6 +959,18 @@ def invoke_fused_moe_kernel(
      assert topk_weights.stride(1) == 1
      assert sorted_token_ids.stride(0) == 1
  
@@ -1187,7 +1187,7 @@ index e50b9ed..f0c182c 100644
      if use_fp8_w8a8:
          swap_ab = should_enable_swap_ab(config["BLOCK_SIZE_M"], config["BLOCK_SIZE_N"])
      else:
-@@ -792,12 +1014,24 @@ def invoke_fused_moe_kernel(
+@@ -806,12 +1028,24 @@ def invoke_fused_moe_kernel(
          * triton.cdiv(B.shape[1], META["BLOCK_SIZE_N"]),
      )
  
@@ -1213,10 +1213,10 @@ index e50b9ed..f0c182c 100644
          assert not c_sorted, "fuse_sum_all_reduce only supports c_sorted=False"
      if fuse_add_to_output:
 diff --git a/python/sglang/srt/layers/moe/moe_runner/triton_utils/moe_align_block_size.py b/python/sglang/srt/layers/moe/moe_runner/triton_utils/moe_align_block_size.py
-index 5be9b5136..0c0855f3f 100644
+index 5d6f45666..9fdb3c75d 100644
 --- a/python/sglang/srt/layers/moe/moe_runner/triton_utils/moe_align_block_size.py
 +++ b/python/sglang/srt/layers/moe/moe_runner/triton_utils/moe_align_block_size.py
-@@ -12,8 +12,11 @@ _is_hip = is_hip()
+@@ -15,8 +15,11 @@ _is_hip = is_hip()
  _is_xpu = is_xpu()
  _is_musa = is_musa()
  
@@ -1230,33 +1230,21 @@ index 5be9b5136..0c0855f3f 100644
  
  
  def moe_align_block_size(
-@@ -74,14 +77,64 @@ def moe_align_block_size(
-         (num_experts + 2,), dtype=torch.int32, device=topk_ids.device
-     )
- 
--    sgl_moe_align_block_size(
--        topk_ids,
--        num_experts + 1,
--        block_size,
--        sorted_ids,
--        expert_ids,
--        num_tokens_post_pad,
--        cumsum_buffer,
--        True,
--    )
-+    if sgl_moe_align_block_size is not None:
-+        sgl_moe_align_block_size(
-+            topk_ids,
-+            num_experts + 1,
-+            block_size,
-+            sorted_ids,
-+            expert_ids,
-+            num_tokens_post_pad,
-+            cumsum_buffer,
-+            True,
-+        )
+@@ -99,7 +102,7 @@ def moe_align_block_size(
+             True,
+         )
+     # ===== END TO BE REFACTORED ====
+-    else:
++    elif sgl_moe_align_block_size is not None:
+         sgl_moe_align_block_size(
+             topk_ids,
+             num_experts + 1,
+@@ -110,4 +113,53 @@ def moe_align_block_size(
+             cumsum_buffer,
+             True,
+         )
 +    else:
-+        # Torch fallback for moe_align_block_size
++        # RDNA4 (patch 004): sgl_moe_align_block_size may be None on gfx1201 — torch fallback.
 +        # Sort token assignments by expert, pad to block boundaries
 +        flat_ids = topk_ids.flatten()  # [num_tokens * top_k]
 +        num_tokens_total = flat_ids.numel()
@@ -1306,10 +1294,10 @@ index 5be9b5136..0c0855f3f 100644
 +
      return sorted_ids, expert_ids, num_tokens_post_pad
 diff --git a/python/sglang/srt/layers/moe/token_dispatcher/__init__.py b/python/sglang/srt/layers/moe/token_dispatcher/__init__.py
-index cb6909660..b3b34392d 100644
+index f1ebac970..86b1f478f 100644
 --- a/python/sglang/srt/layers/moe/token_dispatcher/__init__.py
 +++ b/python/sglang/srt/layers/moe/token_dispatcher/__init__.py
-@@ -16,10 +16,14 @@ from sglang.srt.layers.moe.token_dispatcher.deepep import (
+@@ -16,10 +16,15 @@ from sglang.srt.layers.moe.token_dispatcher.deepep import (
      DeepEPNormalCombineInput,
      DeepEPNormalDispatchOutput,
  )
@@ -1325,14 +1313,15 @@ index cb6909660..b3b34392d 100644
 +except (ImportError, AssertionError):
 +    FlashinferDispatcher = None
 +    FlashinferDispatchOutput = None
- from sglang.srt.layers.moe.token_dispatcher.fuseep import NpuFuseEPDispatcher
++from sglang.srt.layers.moe.token_dispatcher.fuseep import NpuFuseEPDispatcher
  from sglang.srt.layers.moe.token_dispatcher.mooncake import (
      MooncakeCombineInput,
+     MooncakeDispatchOutput,
 diff --git a/python/sglang/srt/layers/moe/topk.py b/python/sglang/srt/layers/moe/topk.py
-index 2eba4f094..a52a96388 100644
+index b104e40d7..23d16e178 100644
 --- a/python/sglang/srt/layers/moe/topk.py
 +++ b/python/sglang/srt/layers/moe/topk.py
-@@ -127,12 +127,15 @@ if _is_cuda:
+@@ -174,12 +174,15 @@ if _is_cuda:
          pass
  
  if _is_cuda or _is_hip or _is_xpu:
@@ -1350,7 +1339,7 @@ index 2eba4f094..a52a96388 100644
  if _use_aiter:
      try:
          from aiter import biased_grouped_topk as aiter_biased_grouped_topk
-@@ -527,8 +530,6 @@ def fused_topk(
+@@ -728,8 +731,6 @@ def fused_topk(
  
      if scoring_func == "softmax":
          if _use_aiter:
@@ -1359,10 +1348,10 @@ index 2eba4f094..a52a96388 100644
              topk_weights, topk_ids = aiter_fused_topk(
                  hidden_states,
                  gating_output,
-@@ -537,6 +538,14 @@ def fused_topk(
-                 topk_ids=topk_ids,
-                 topk_weights=topk_weights,
+@@ -755,6 +756,14 @@ def fused_topk(
+                 num_token_non_padded=num_token_non_padded,
              )
+         # ===== END TO BE REFACTORED ====
 +        elif _is_hip:
 +            # RDNA4: sgl_kernel.topk_softmax produces deferred hipErrorLaunchFailure
 +            # on gfx1201. Use pure PyTorch instead.
@@ -1374,7 +1363,7 @@ index 2eba4f094..a52a96388 100644
          else:
              topk_softmax(
                  topk_weights,
-@@ -570,7 +579,7 @@ def fused_topk(
+@@ -788,7 +797,7 @@ def fused_topk(
  
  
  # This is used by the Deepseek V2/V3/R1 series models
@@ -1383,7 +1372,7 @@ index 2eba4f094..a52a96388 100644
  def grouped_topk_gpu(
      hidden_states: torch.Tensor,
      gating_output: torch.Tensor,
-@@ -661,7 +670,7 @@ def grouped_topk_cpu(
+@@ -879,7 +888,7 @@ def grouped_topk_cpu(
      )
  
  
@@ -1392,8 +1381,8 @@ index 2eba4f094..a52a96388 100644
  def kimi_k2_biased_topk_impl(
      hidden_states: torch.Tensor,
      gating_output: torch.Tensor,
-@@ -699,7 +708,7 @@ def kimi_k2_biased_topk_impl(
-     return topk_weights, topk_ids
+@@ -1034,7 +1043,7 @@ def biased_topk_jit_kernel_impl(
+         return topk_weights, topk_ids
  
  
 -@torch.compile(dynamic=True, backend=get_compiler_backend(), disable=_is_npu)

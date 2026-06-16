@@ -1,35 +1,8 @@
-RDNA4 fix: enable triton attention for NemotronH Mamba2-hybrid models.
-
-Applies AFTER patch 001 (upstream-sync), which already carries the SWA-aware
-triton attention path (swa_attn_logits, HybridLinearKVPool layers_mapping +
-translate_loc_from_full_to_swa in forward_extend/decode). This patch adds the
-one remaining piece for Mamba2-Transformer hybrids: TritonAttnBackend.__init__
-samples the value head dim via get_value_buffer(0), but in such a hybrid the
-full-attention layers live at sparse indices (NemotronH-Nano-Omni:
-[5,12,19,26,33,42]) and layer 0 is a Mamba layer with no entry in the
-HybridLinearKVPool's full_attention_layer_id_mapping -> "ValueError: layer_id=0
-not in full attention layers" -> triton attention can't init, so the model is
-stuck on torch_native (whose only ROCm SDPA backend is MATH -> materializes
-O(chunk x context) scores -> OOM past ~150K). The backend already special-cases
-hybrid_gdn / kimi_linear / linear_attn_model_spec, but those miss the Nano-Omni
-config class (loaded via trust-remote-code; mamba2_config doesn't recognize it).
-Fix: also duck-type on the pool -- any HybridLinearKVPool exposes
-get_v_head_dim() (samples the full_kv_pool's first full-attention layer), so use
-it whenever present.
-
-Unblocks triton flash attention (memory-efficient, full 256K) for NemotronH
-hybrids: Nemotron-Omni serves a 247K-tok prefill at full-token-usage 0.07 (no
-OOM), ~109s, ~29 tok/s. (gemma-4 SWA models reach triton via 001's SWA path +
-the triton preset default -- they take the sliding_window branch, not this
-hybrid branch -- e.g. gemma-4-26B: 110K-tok prefill, no OOM, ~16.5 tok/s.)
-Pure-additive condition; CUDA + non-hybrid pools (MHATokenToKVPool, no
-get_v_head_dim) unaffected. Applies after 001.
-
 diff --git a/python/sglang/srt/layers/attention/triton_backend.py b/python/sglang/srt/layers/attention/triton_backend.py
-index 2514433..22c9144 100644
+index 00a73862b..475770828 100644
 --- a/python/sglang/srt/layers/attention/triton_backend.py
 +++ b/python/sglang/srt/layers/attention/triton_backend.py
-@@ -131,8 +131,17 @@ class TritonAttnBackend(AttentionBackend):
+@@ -150,8 +150,17 @@ class TritonAttnBackend(AttentionBackend):
              model_runner.hybrid_gdn_config is not None
              or model_runner.kimi_linear_config is not None
              or model_runner.linear_attn_model_spec is not None

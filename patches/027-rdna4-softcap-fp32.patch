@@ -1,5 +1,5 @@
 diff --git a/python/sglang/srt/layers/attention/triton_ops/decode_attention.py b/python/sglang/srt/layers/attention/triton_ops/decode_attention.py
-index a09615429..a05895e64 100644
+index 02e7d7ef7..7a805222c 100644
 --- a/python/sglang/srt/layers/attention/triton_ops/decode_attention.py
 +++ b/python/sglang/srt/layers/attention/triton_ops/decode_attention.py
 @@ -25,9 +25,10 @@ import logging
@@ -24,7 +24,7 @@ index a09615429..a05895e64 100644
  
  
  @triton.jit
-@@ -198,7 +200,7 @@ def _decode_att_m_fwd(
+@@ -196,7 +198,7 @@ def _decode_att_m_fwd(
      BLOCK = 64
      # [TODO] work around SGPR limit on MI3xx
      if _is_hip:
@@ -33,7 +33,7 @@ index a09615429..a05895e64 100644
      MAX_KV_SPLITS = max_kv_splits
      Lk = k_buffer.shape[-1]
      Lv = v_buffer.shape[-1]
-@@ -212,7 +214,7 @@ def _decode_att_m_fwd(
+@@ -210,7 +212,7 @@ def _decode_att_m_fwd(
          num_warps = 4
      else:
          num_warps = 2
@@ -43,10 +43,10 @@ index a09615429..a05895e64 100644
  
      BLOCK_DMODEL = triton.next_power_of_2(Lk)
 diff --git a/python/sglang/srt/layers/attention/triton_ops/extend_attention.py b/python/sglang/srt/layers/attention/triton_ops/extend_attention.py
-index 172762d44..2ef7c6932 100644
+index c4d42e3f2..fb46fd7dd 100644
 --- a/python/sglang/srt/layers/attention/triton_ops/extend_attention.py
 +++ b/python/sglang/srt/layers/attention/triton_ops/extend_attention.py
-@@ -116,7 +116,8 @@ def _get_block_sizes_for_extend_attention(Lq: int, Lv: int):
+@@ -117,7 +117,8 @@ def _get_block_sizes_for_extend_attention(Lq: int, Lv: int):
  @triton.jit
  def tanh(x):
      # Tanh is just a scaled sigmoid
@@ -56,11 +56,11 @@ index 172762d44..2ef7c6932 100644
  
  
  @triton.jit
-diff --git a/python/sglang/srt/layers/logits_processor.py b/python/sglang/srt/layers/logits_processor.py
-index 0f13dc9eb..02331b24b 100644
---- a/python/sglang/srt/layers/logits_processor.py
-+++ b/python/sglang/srt/layers/logits_processor.py
-@@ -1124,10 +1124,10 @@ def fused_softcap_kernel(
+diff --git a/python/sglang/srt/layers/triton_ops/softcap.py b/python/sglang/srt/layers/triton_ops/softcap.py
+index 5d39de6f8..032819ef3 100644
+--- a/python/sglang/srt/layers/triton_ops/softcap.py
++++ b/python/sglang/srt/layers/triton_ops/softcap.py
+@@ -86,10 +86,11 @@ def softcap_inplace_logits_kernel(
      row_ptr = full_logits_ptr + row * row_stride
      x = tl.load(row_ptr + offsets, mask=mask)
  
@@ -68,7 +68,8 @@ index 0f13dc9eb..02331b24b 100644
 -    x = x / softcapping_value
 -    x = libdevice.tanh(x)
 -    x = x * softcapping_value
-+    # Perform softcapping in FP32 for precision (BF16 tanh is lossy)
++    # Perform softcapping in FP32 for precision (BF16 tanh is lossy) — RDNA4 patch 027,
++    # relocated here in v0.5.13 (kernel moved out of logits_processor.py).
 +    x_fp32 = x.to(tl.float32) / softcapping_value
 +    x_fp32 = libdevice.tanh(x_fp32)
 +    x = (x_fp32 * softcapping_value).to(x.dtype)

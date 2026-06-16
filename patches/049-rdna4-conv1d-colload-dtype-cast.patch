@@ -1,8 +1,8 @@
 diff --git a/python/sglang/srt/layers/attention/mamba/causal_conv1d_triton.py b/python/sglang/srt/layers/attention/mamba/causal_conv1d_triton.py
-index 3f9b89e..ab06ad4 100644
+index d70f176e8..5936731ea 100644
 --- a/python/sglang/srt/layers/attention/mamba/causal_conv1d_triton.py
 +++ b/python/sglang/srt/layers/attention/mamba/causal_conv1d_triton.py
-@@ -124,28 +124,28 @@ def _causal_conv1d_fwd_kernel(  # continuous batching
+@@ -126,28 +126,28 @@ def _causal_conv1d_fwd_kernel(  # continuous batching
              mask_w = idx_feats < dim
              if KERNEL_WIDTH == 2:
                  conv_states_ptrs = prior_tokens  # [BLOCK_N]
@@ -41,7 +41,7 @@ index 3f9b89e..ab06ad4 100644
          else:
              # prior-tokens are zeros
              if KERNEL_WIDTH >= 2:  # STRATEGY1
-@@ -684,16 +684,16 @@ def _causal_conv1d_update_kernel(
+@@ -690,16 +690,16 @@ def _causal_conv1d_update_kernel(
      prior_tokens = conv_states_base + conv_state_token_offset * stride_conv_state_tok
      if KERNEL_WIDTH >= 2:
          conv_states_ptrs = prior_tokens  # [BLOCK_N]

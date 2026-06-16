@@ -38,7 +38,7 @@ TORCHAUDIO_VERSION="${TORCHAUDIO_VERSION:-2.11.0+rocm7.2}"
 TORCH_INDEX="${TORCH_INDEX:-https://download.pytorch.org/whl/rocm7.2}"
 
 SGLANG_REPO="https://github.com/sgl-project/sglang.git"
-SGLANG_TAG="${SGLANG_TAG:-v0.5.12}"  # overridable for version rebases (e.g. v0.5.13.post1)
+SGLANG_TAG="${SGLANG_TAG:-v0.5.13.post1}"  # rebased 2026-06-16 (was v0.5.12); overridable for version rebases
 
 SKIP_ENV=false
 for arg in "$@"; do

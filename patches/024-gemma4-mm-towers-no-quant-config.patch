@@ -1,11 +1,18 @@
 diff --git a/python/sglang/srt/models/gemma4_mm.py b/python/sglang/srt/models/gemma4_mm.py
-index 4618129fa..187e70cd2 100644
+index 3629782ca..8b17c1443 100644
 --- a/python/sglang/srt/models/gemma4_mm.py
 +++ b/python/sglang/srt/models/gemma4_mm.py
-@@ -175,16 +175,28 @@ class Gemma4ForConditionalGeneration(PreTrainedModel):
+@@ -188,19 +188,43 @@ class Gemma4ForConditionalGeneration(PreTrainedModel):
  
          prefix = add_prefix("model", prefix)
  
+-        # Vision/audio encoders + their projection embedders are only consumed
+-        # at the input-embedding stage, so they live on the first PP rank only.
+-        if self.pp_group.is_first_rank:
+-            self.vision_tower = Gemma4VisionEncoder(
+-                config=config.vision_config,
+-                quant_config=quant_config,
+-                prefix=add_prefix("vision_tower", prefix),
 +        # Gemma 4 calibration recipes preserve the multimodal towers in BF16
 +        # (recipe.yaml ignore: re:.*vision_tower.*, re:.*embed_vision.*,
 +        # re:.*audio_tower.*, re:.*embed_audio.*).  The checkpoint stores them
@@ -18,34 +25,33 @@ index 4618129fa..187e70cd2 100644
 +        # hallucinates content.  Same shape as patch 023 (dense MLP on MoE
 +        # layers).  Bug surfaced 2026-05-03 via "Some weights not initialized"
 +        # log in the gemma4-26b-mm-arch-fix-May03 run.
-         self.vision_tower = Gemma4VisionEncoder(
-             config=config.vision_config,
--            quant_config=quant_config,
++        self.vision_tower = Gemma4VisionEncoder(
++            config=config.vision_config,
 +            quant_config=None,
-             prefix=add_prefix("vision_tower", prefix),
-         )
- 
-         self.embed_vision = Gemma4MultimodalEmbedder(
-             config.vision_config,
-             config.text_config,
--            quant_config=quant_config,
++            prefix=add_prefix("vision_tower", prefix),
++        )
++
++        self.embed_vision = Gemma4MultimodalEmbedder(
++            config.vision_config,
++            config.text_config,
 +            quant_config=None,
-             prefix=add_prefix("embed_vision", prefix),
-         )
- 
-@@ -192,13 +204,13 @@ class Gemma4ForConditionalGeneration(PreTrainedModel):
-         if getattr(config, "audio_config", None) is not None:
-             self.audio_tower = Gemma4AudioEncoder(
-                 config=config.audio_config,
--                quant_config=quant_config,
++            prefix=add_prefix("embed_vision", prefix),
++        )
++
++        # Audio components
++        if getattr(config, "audio_config", None) is not None:
++            self.audio_tower = Gemma4AudioEncoder(
++                config=config.audio_config,
 +                quant_config=None,
-                 prefix=add_prefix("audio_tower", prefix),
++                prefix=add_prefix("audio_tower", prefix),
              )
-             self.embed_audio = Gemma4MultimodalEmbedder(
-                 config.audio_config,
+             self.embed_vision = Gemma4MultimodalEmbedder(
+                 config.vision_config,
                  config.text_config,
 -                quant_config=quant_config,
+-                prefix=add_prefix("embed_vision", prefix),
 +                quant_config=None,
-                 prefix=add_prefix("embed_audio", prefix),
++                prefix=add_prefix("embed_audio", prefix),
              )
-         else:
+             if getattr(config, "audio_config", None) is not None:
+                 self.audio_tower = Gemma4AudioEncoder(

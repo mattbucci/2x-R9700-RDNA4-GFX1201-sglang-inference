@@ -1,7 +1,9 @@
+diff --git a/python/sglang/srt/models/qwen3_5.py b/python/sglang/srt/models/qwen3_5.py
+index dd3d84e83..57a1a45af 100644
 --- a/python/sglang/srt/models/qwen3_5.py
 +++ b/python/sglang/srt/models/qwen3_5.py
-@@ -110,6 +110,30 @@
- cached_get_processor = lru_cache(get_processor)
+@@ -129,6 +129,30 @@ if _is_npu:
+     )
  
  
 +def _is_compressed_tensors_fp8(quant_config: "QuantizationConfig") -> bool:
@@ -31,7 +33,7 @@
  def _should_replicate_deltanet_for_tp(
      quant_config: Optional[QuantizationConfig],
  ) -> bool:
-@@ -122,7 +146,15 @@
+@@ -141,7 +165,15 @@ def _should_replicate_deltanet_for_tp(
      if quant_config is None:
          return True
      name = quant_config.get_name()

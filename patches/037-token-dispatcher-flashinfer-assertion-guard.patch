@@ -1,5 +1,5 @@
 diff --git a/python/sglang/srt/layers/moe/token_dispatcher/flashinfer.py b/python/sglang/srt/layers/moe/token_dispatcher/flashinfer.py
-index a49481c..9299461 100644
+index bbdadc7c8..209f3a20b 100644
 --- a/python/sglang/srt/layers/moe/token_dispatcher/flashinfer.py
 +++ b/python/sglang/srt/layers/moe/token_dispatcher/flashinfer.py
 @@ -33,7 +33,7 @@ try:

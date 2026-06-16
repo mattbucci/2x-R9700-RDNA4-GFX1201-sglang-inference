@@ -1,29 +1,5 @@
-RDNA4 (gfx1201) fix: Mamba2/SSD chunk-scan + chunk-state divergent fat-pointer
-crashes the AMD buffer-ops pass, capping hybrid SSM models at ~8K context.
-
-Two SSD Triton kernels reassign a state pointer to a DIFFERENT base tensor inside
-an `if` branch and use it after the merge:
-  - ssd_chunk_scan.py  _chunk_scan_fwd_kernel : prev_states_ptr  (states vs initstates)
-  - ssd_chunk_state.py _chunk_state_varlen_kernel : past_states_ptrs (chunk_states vs initstates)
-Both only take that branch when initial_states != None, i.e. exactly the chunked-
-prefill / continuous-batching path a long sequence hits. With AMD buffer ops on
-(the default, AMDGCN_USE_BUFFER_OPS=1), TritonAMDGPUCanonicalizePointers must
-decompose the post-merge pointer into a (base, 32-bit offset) "fat pointer", but
-the two branches have different bases -> assertion
-  `fatPtrs.at(then)==fatPtrs.at(else)` (canNarrow) -> PassManager::run failed -> abort.
-This capped Nemotron-3-Nano-Omni-30B (first Mamba2 hybrid on the box) at ~8K.
-
-Fix: keep every pointer SINGLE-BASED. Record the branch decision in a runtime flag
-+ index, build both candidate tile pointers independently, load both (masked), and
-select the VALUE with tl.where at the matmul site. Numerically identical to upstream
-(validated BIT-EXACT with buffer ops off; buffer-ops-on differs only by the buffer
-codegen's own rounding, rel<=2.2e-4 << bf16 eps). Buffer ops stay ENABLED everywhere
-(full perf) -- this is a kernel fix, not a buffer-ops disable. Pure RDNA4 codegen
-workaround; semantics unchanged on CUDA. Applies to ANY Mamba2/SSD hybrid using
-initial_states (chunked prefill / cont-batch), not just Nemotron-Omni.
-
 diff --git a/python/sglang/srt/layers/attention/mamba/ops/ssd_chunk_scan.py b/python/sglang/srt/layers/attention/mamba/ops/ssd_chunk_scan.py
-index 52b1971..37b705f 100644
+index 52b197139..37b705f02 100644
 --- a/python/sglang/srt/layers/attention/mamba/ops/ssd_chunk_scan.py
 +++ b/python/sglang/srt/layers/attention/mamba/ops/ssd_chunk_scan.py
 @@ -133,7 +133,6 @@ def _chunk_scan_fwd_kernel(
@@ -143,7 +119,7 @@ index 52b1971..37b705f 100644
  
      offs_k = tl.arange(0, BLOCK_SIZE_K) + c_off
 diff --git a/python/sglang/srt/layers/attention/mamba/ops/ssd_chunk_state.py b/python/sglang/srt/layers/attention/mamba/ops/ssd_chunk_state.py
-index 162d859..ad72571 100644
+index 162d859d4..ad725710d 100644
 --- a/python/sglang/srt/layers/attention/mamba/ops/ssd_chunk_state.py
 +++ b/python/sglang/srt/layers/attention/mamba/ops/ssd_chunk_state.py
 @@ -398,33 +398,42 @@ def _chunk_state_varlen_kernel(

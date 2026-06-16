@@ -41,10 +41,10 @@ index 98de12f7e..35252ef9b 100644
  class Qwen3_5Config(PretrainedConfig):
      r"""
 diff --git a/python/sglang/srt/configs/qwen3_next.py b/python/sglang/srt/configs/qwen3_next.py
-index 3bf153a22..ba8fb1912 100644
+index c3b950f30..236c9928e 100644
 --- a/python/sglang/srt/configs/qwen3_next.py
 +++ b/python/sglang/srt/configs/qwen3_next.py
-@@ -287,6 +287,10 @@ class Qwen3NextConfig(PretrainedConfig):
+@@ -291,6 +291,10 @@ class Qwen3NextConfig(PretrainedConfig):
              world_size = get_attention_tp_size()
              adjust_tp_num_heads_if_necessary(self, world_size, False)
  
