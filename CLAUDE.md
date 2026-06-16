@@ -55,6 +55,15 @@ scripts/bench/bench_256k_sweep.sh                   # 256K single-user suite acr
 
 **Operate autonomously.** The user reads all output and interrupts with feedback — do not stop for confirmation. Multi-hour calibrations and benchmark sweeps are allowed without asking.
 
+**The iterative loop (operating rhythm — never idle between user check-ins).** Each cycle:
+1. **Assess** — `ps aux | grep -E "calibrat|llmcompressor|oneshot"` (never serve/bench while calib runs) + `rocm-smi` for a free GPU; re-read README "Next steps (prioritized)"; skim sister-team git logs for new learnings to integrate.
+2. **Pick** the highest-value *immediately-actionable* item — one not blocked on hardware we don't have (e.g. H20 train) or a missing credential (e.g. `GH_TOKEN`). Prefer the single-user-256K mandate.
+3. **Execute** (detached via `setsid` if >30 min).
+4. **Measure** with the authoritative method, not the convenient one — spec decode = server-log `gen throughput` (client TPOT under-measures bursty spec ~2×); capability = the `probe_*` trio (STRONG/DEGRADED/FAIL), not keyword-grep.
+5. **Document** in layers, concise: README = single source of truth (live state + planning only; forensics → `patches/README.md`, CLAUDE.md, git log); update `benchmarks/*.json` + regen charts; write a memory only for what the repo can't re-derive.
+6. **Commit + push** as the step lands (don't batch); **share** cross-team learnings by pushing to the sister team's README.
+7. **Repeat** — pick the next item. The user interrupts to redirect; absent that, keep iterating.
+
 **Detach long-running jobs from the shell session.** `run_in_background: true` alone does NOT survive a session interrupt — the 3090 team lost 7h 45min of Qwen3.5-28B calibration (layer 13/41) when the harness restarted. Launch via `setsid` + redirect all std streams + write PID to a file so the process gets PPID=1 and its own session ID. Verify: `ps -p $PID -o ppid=` must print `1`. Pattern:
 ```bash
 mkdir -p /tmp/<job>-logs
