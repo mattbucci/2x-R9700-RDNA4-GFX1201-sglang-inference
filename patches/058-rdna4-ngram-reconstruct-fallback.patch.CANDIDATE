@@ -1,0 +1,90 @@
+# 058 — RDNA4 NGRAM reconstruct_indices_from_tree_mask torch fallback (CANDIDATE)
+#
+# Our RDNA4 sgl_kernel build (May-25) lacks the native reconstruct_indices_from_tree_mask op
+# (csrc/speculative/ngram_utils.cu — in the CMakeLists but not compiled into the installed .so),
+# so NGRAM spec-decode CRASHES on the first request (AttributeError on torch.ops.sgl_kernel...).
+# This wraps the import with a sync-FREE GPU-vectorized torch port (validated kernel-exact on
+# 300/300 random trees; lossless in-server — temp=0 NGRAM output == no-spec). It makes NGRAM RUN
+# correctly on RDNA4.
+#
+# CANDIDATE / not promoted: NGRAM is still net-NEGATIVE at depth on this stack (~0.6-1.4 t/s @244K
+# vs 12.2 no-spec) — the bottleneck is NOT the reconstruct (this fixes that) but a ~2s/step verify
+# (~24x our no-spec forward), likely the serialized CPU n-gram trie work over the deep context
+# (NGRAM disables the overlap scheduler) + eager verify. So the 3090's draft-free-NGRAM depth win
+# (Ampere/FlashInfer, native kernel: 235 t/s @172K) does NOT transfer to RDNA4/triton. Keep this
+# as graceful-degradation + a correctness reference; drop it once sgl_kernel is rebuilt with
+# ngram_utils AND the verify-cost is addressed. Receipt: benchmarks/ngram-rdna4-at-depth-2026-06-15.md
+diff --git a/python/sglang/srt/speculative/ngram_worker.py b/python/sglang/srt/speculative/ngram_worker.py
+index 49cbe70..3a769bc 100644
+--- a/python/sglang/srt/speculative/ngram_worker.py
++++ b/python/sglang/srt/speculative/ngram_worker.py
+@@ -3,7 +3,68 @@ from typing import List, Optional
+ 
+ import numpy as np
+ import torch
+-from sgl_kernel.speculative import reconstruct_indices_from_tree_mask
++from sgl_kernel.speculative import (
++    reconstruct_indices_from_tree_mask as _native_reconstruct_indices_from_tree_mask,
++)
++
++
++def reconstruct_indices_from_tree_mask(
++    tree_mask,
++    verified_seq_len,
++    positions,
++    retrive_index,
++    retrive_next_token,
++    retrive_next_sibling,
++    batch_size,
++    draft_token_num,
++):
++    # RDNA4: our sgl_kernel build (May-25) lacks the native reconstruct_indices_from_tree_mask op —
++    # ngram_utils.cu is in the CMakeLists but was not compiled into the installed .so, so NGRAM
++    # spec-decode crashes on the first request (AttributeError on torch.ops.sgl_kernel...).
++    # The kernel is pure index manipulation over a small [bs, D, D] tree mask (D=draft_token_num),
++    # so fall back to an EXACT pure-torch port when the native op is absent. Lossless by construction
++    # (temp=0 NGRAM output must equal no-spec — that gates fallback correctness). Single-user bs=1/D=8
++    # → ~64 element-ops/verify, negligible. Drop this shim once sgl_kernel is rebuilt with ngram_utils.
++    try:
++        return _native_reconstruct_indices_from_tree_mask(
++            tree_mask,
++            verified_seq_len,
++            positions,
++            retrive_index,
++            retrive_next_token,
++            retrive_next_sibling,
++            batch_size,
++            draft_token_num,
++        )
++    except (AttributeError, RuntimeError):
++        # Sync-FREE GPU-vectorized port (validated kernel-exact, 300/300 random trees). A .cpu()
++        # round-trip stalls the busy deep-KV queue (~80ms/sync → NGRAM net-negative at depth, ~0.8
++        # t/s @244K); this stays on-device (~20 tiny kernels, no sync). D = draft_token_num (small).
++        D = draft_token_num
++        bs = batch_size
++        dev = positions.device
++        tm = tree_mask.view(bs, D, D).bool()  # tm[b, t, i]
++        vsl = verified_seq_len.view(bs).to(torch.int64)
++        r = torch.arange(D, device=dev)
++        idx = r.view(1, 1, D).expand(bs, D, D).to(torch.int64)  # [b,t,i] = i
++        lt = (r.view(1, D) < r.view(D, 1)).view(1, D, D)  # [t,i] = i < t
++        gt = (r.view(1, D) > r.view(D, 1)).view(1, D, D)  # [t,i] = i > t
++        neg1 = torch.full((bs, D, D), -1, device=dev, dtype=torch.int64)
++        big = torch.full((bs, D, D), D, device=dev, dtype=torch.int64)
++        # positions[b,t] = #{i<t : tm[b,t,i]} (tree depth) + verified_seq_len[b]
++        depth = (tm & lt).sum(-1).to(torch.int64)
++        positions.view(-1).copy_((depth + vsl.view(bs, 1)).view(-1))
++        retrive_index.view(-1).copy_(torch.arange(bs * D, device=dev, dtype=torch.int64))
++        # parent[b,t] = max i<t with tm[b,t,i] else -1
++        parent = torch.where(tm & lt, idx, neg1).amax(-1)
++        # next_token[b,t] = min i>t with tm[b,i,t] else -1
++        nt = torch.where(tm.transpose(1, 2) & gt, idx, big).amin(-1)
++        retrive_next_token.view(-1).copy_(torch.where(nt == D, neg1[:, :, 0], nt).view(-1))
++        # next_sibling[b,t] = min i>t with parent[b,i]==parent[b,t] (and parent[b,t]!=-1)
++        sib = (parent.view(bs, 1, D) == parent.view(bs, D, 1)) & gt & (parent.view(bs, D, 1) != -1)
++        sm = torch.where(sib, idx, big).amin(-1)
++        retrive_next_sibling.view(-1).copy_(torch.where(sm == D, neg1[:, :, 0], sm).view(-1))
++        return None
+ 
+ from sglang.srt.layers.utils.logprob import add_output_logprobs_for_spec_v1
+ from sglang.srt.managers.schedule_batch import ScheduleBatch
