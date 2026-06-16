@@ -327,11 +327,11 @@ opencode agent → local SGLang FP8 server → no-docker `score_local` (per-repo
 
 ## Infrastructure Summary
 
-- **SGLang v0.5.12** (vendored at `components/sglang/`) + RDNA4 patches — see [patches/README.md](patches/README.md).
+- **SGLang v0.5.12** on the **live serving tree** (`/data/vG`, env `sglang-triton36`) + RDNA4 patches — see [patches/README.md](patches/README.md). **`setup.sh` now defaults to v0.5.13.post1**: the patch series was rebased onto v0.5.13.post1 (2026-06-16, 34 core + 3 fixes, gate-verified byte-equivalent) and validated in env `sglang-triton36-v0513` (tree `/data/sgl-rebase`) — coder-30b + gemma4-26B probe clean (text/thinking/vision/video). **The v0.5.13 stack is staged, not yet promoted to live** — the `/data/vG` swap is a separate deliberate step. Receipt: [patches/v0513-rebase-2026-06-16.md](patches/v0513-rebase-2026-06-16.md).
 - **Triton 3.6.0** (upstream).  Do NOT clear `~/.triton/cache/` before benchmarking — cold cache produces 100x slower numbers.
 - **PyTorch 2.12+rocm7.2**.
 - **RCCL 2.27.7** (system ROCm, P2P/IPC on gfx1201 — no custom build).
-- **Conda envs**: `sglang-triton36` (inference), `quant` (calibration — llmcompressor pins transformers 4.x, incompatible with SGLang).
+- **Conda envs**: `sglang-triton36` (live inference, v0.5.12), `sglang-triton36-v0513` (validated v0.5.13.post1 rebase, promotion-ready), `quant` (calibration — llmcompressor pins transformers 4.x, incompatible with SGLang).
 
 See [rules-for-agents.md](rules-for-agents.md) for RDNA4 constraints, launch flags, and quantization rules.  See [CLAUDE.md](CLAUDE.md) for working-mode directives.
 

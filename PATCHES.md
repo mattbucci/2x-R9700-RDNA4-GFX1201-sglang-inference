@@ -8,6 +8,13 @@ _Last reconciled 2026-06-11 against the on-disk series. SGLang series byte-verif
 serving tree (`/data/vG`) on 2026-06-10 (36 patches); 048 + 049 added post-audit and spot-confirmed
 live (the cold-cache load-timeout and the conv1d col-load dtype cast)._
 
+> **⚠ v0.5.13.post1 rebase staged (2026-06-16).** This map still describes the **live v0.5.12** tree
+> (`/data/vG`). The series was rebased onto v0.5.13.post1 — **34 core patches + 3 post-validation fixes
+> (059/060/061)**, 012/034/035 retired, gate-verified byte-equivalent on a pristine v0.5.13.post1 clone,
+> validated in env `sglang-triton36-v0513`. `setup.sh` now defaults to v0.5.13.post1. **Not yet promoted
+> to live.** Counts/lanes/scorecard below will need re-tally at promotion. Receipt:
+> [`patches/v0513-rebase-2026-06-16.md`](patches/v0513-rebase-2026-06-16.md).
+
 ## The work at a glance
 
 **39 patches actively applied across 3 environments**, + 7 retired-to-upstream, + 10 queued as
