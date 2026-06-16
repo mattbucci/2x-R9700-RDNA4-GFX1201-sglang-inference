@@ -8,12 +8,13 @@
 # correctly on RDNA4.
 #
 # CANDIDATE / not promoted: NGRAM is still net-NEGATIVE at depth on this stack (~0.6-1.4 t/s @244K
-# vs 12.2 no-spec) — the bottleneck is NOT the reconstruct (this fixes that) but a ~2s/step verify
-# (~24x our no-spec forward), likely the serialized CPU n-gram trie work over the deep context
-# (NGRAM disables the overlap scheduler) + eager verify. So the 3090's draft-free-NGRAM depth win
-# (Ampere/FlashInfer, native kernel: 235 t/s @172K) does NOT transfer to RDNA4/triton. Keep this
-# as graceful-degradation + a correctness reference; drop it once sgl_kernel is rebuilt with
-# ngram_utils AND the verify-cost is addressed. Receipt: benchmarks/ngram-rdna4-at-depth-2026-06-15.md
+# vs 12.2 no-spec) — but NOT because of this reconstruct (it fixes the crash). Profiled at true 244K
+# depth (NGRAM_PROF): CPU prepare (trie+reconstruct) = 1.2ms (negligible); the GPU verify forward =
+# ~2.7s, under cuda_graph=True. So it's NOT CPU and NOT eager — the triton tree-attention verify
+# re-reads the 244K KV ~per-draft-token (overhead 2x@8K -> 33x@244K) instead of sharing one read like
+# FlashInfer does on the 3090 (235 t/s @172K). The only lever is an efficient tree-attention verify
+# kernel; a native ngram_utils op would just drop this fallback, not change the verdict. Keep this as
+# graceful-degradation + correctness reference. Receipt: benchmarks/ngram-rdna4-at-depth-2026-06-15.md
 diff --git a/python/sglang/srt/speculative/ngram_worker.py b/python/sglang/srt/speculative/ngram_worker.py
 index 49cbe70..3a769bc 100644
 --- a/python/sglang/srt/speculative/ngram_worker.py

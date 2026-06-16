@@ -15,7 +15,14 @@ The op (`csrc/speculative/ngram_utils.cu` — tree-mask → token-index reconstr
 | no-spec (control) | **12.2** (steady, n=19) | — | 1× |
 | NGRAM (`--speculative-num-draft-tokens 8`) | **0.6–1.4** | 1.1–2.8 | **~0.06–0.1× (10–20× SLOWER)** |
 
-Decode-log batches land **~81s apart at the default interval-40** → **~2s per spec step**, i.e. **~24× our no-spec forward (82ms)**. The reconstruct fallback is *not* the cost (sync-free, ~µs); the cost is the NGRAM **verify step** itself. Most likely the **serialized CPU n-gram trie work over the 244K-token context** — NGRAM disables the overlap scheduler + mixed chunked prefill, so the per-step CPU trie build/match runs serial with the GPU forward — plus an eager (non-graph) verify. This is **independent of acceptance**: even at a perfect accept of 8, 8 tokens / 2s = 4 t/s < 12.2 no-spec.
+**Profiled per-step at true 244K depth** (`NGRAM_PROF` timers around prepare vs the verify forward; prompt_tokens 243944):
+
+| per spec step @244K | time | on |
+|---|---|---|
+| prepare (CPU n-gram trie + my reconstruct) | **1.2 ms** | CPU — negligible |
+| verify forward | **~2700 ms** (`cuda_graph=True`) | **GPU** — the entire cost |
+
+So the cost is **the GPU verify forward, not CPU and not eager** — the CPU prepare is 1.2ms and the verify runs *under cuda-graph* (eager ruled out). The verify-vs-no-spec overhead **grows with depth**: ~2× the no-spec forward @8K (41 vs 18ms) → **~33× @244K (2700 vs 82ms)**. That super-linear growth means the **triton tree-attention verify re-reads the deep 244K KV roughly per-draft-token instead of sharing one read across the 8-token tree** — the FlashInfer path shares it (cheap on the 3090); the RDNA4 triton attention path doesn't. It is **independent of acceptance**: even a perfect accept of 8 = 8 tokens / 2.7s = ~3 t/s < 12.2 no-spec. *(Earlier I attributed this to "serialized CPU trie" — wrong; the profile shows CPU = 1.2ms. The bottleneck is the GPU tree-attention kernel.)*
 
 (Acceptance here was also low, 1.1–2.8, vs the 3090's 6–7.6 — our "reproduce the source verbatim" copy task hits the trie less cleanly than their per-file task. But it doesn't matter: the ~2s/step verify disqualifies NGRAM regardless.)
 
@@ -27,6 +34,6 @@ The 3090 gets 235 t/s @172K = ~4ms/token; their per-step (accept ~6) is ~24ms �
 
 - **NGRAM is enabled but not shipped** on RDNA4 (net-negative). Patch `058...CANDIDATE` keeps it correct + graceful (runs instead of crashing) as a reference; **not** wired as a preset default.
 - **For the single-user 256K mandate, no-spec remains the path at depth on RDNA4** — consistent with the model-draft depth-collapse finding; NGRAM does not change it here.
-- **To make NGRAM viable on RDNA4 would need** (a) the native `ngram_utils` kernel in a sgl_kernel rebuild (removes the fallback, minor) and — the real lever — (b) cutting the ~2s/step verify: profile the trie-build/match vs the verify forward (is it the CPU trie over 244K, or eager verify?), keep the overlap scheduler if possible, and get the verify under cuda-graph. Until then, the 3090's NGRAM win is Ampere-only.
+- **To make NGRAM viable on RDNA4 the only lever is an efficient tree-attention VERIFY kernel** — the profile rules out the cheap fixes: CPU prepare is already 1.2ms, the verify is already under cuda-graph (not eager), and the reconstruct is already sync-free. The verify forward must share one deep-KV read across the draft tree (as FlashInfer does) instead of the ~per-draft-token re-read the triton attention path does at depth. That's deep attention-kernel work (same class as the project's broader "triton attention is the RDNA4 long-context bottleneck"), not a config or CPU→GPU move. Until then, the 3090's NGRAM win is Ampere-only; **no-spec is the RDNA4 256K path.** (The native `ngram_utils` op in a future sgl_kernel rebuild would drop the reconstruct fallback, but that's not the bottleneck — it wouldn't change the verdict.)
 
 Harness: `scripts/bench/ngram_256k_depth.sh` (copy-heavy no-spec vs NGRAM @244K, server-log gen-throughput). Fallback test: `scripts/test/test_ngram_reconstruct_fallback.py`.
