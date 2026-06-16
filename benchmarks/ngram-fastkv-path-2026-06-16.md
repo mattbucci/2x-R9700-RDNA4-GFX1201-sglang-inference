@@ -35,3 +35,13 @@ Infra already present: `triton_ops/decode_attention.py` (split-KV for 1 query) +
 - **Cost:** a focused triton kernel dev task (not a flag, not a CPU→GPU move — the verify is already all-GPU under cuda-graph; the issue is purely the kernel's SM parallelism on the deep read). Until built, **no-spec stays the RDNA4 256K path.**
 
 Evidence: profiler `scripts/bench/ngram_prof.sh`; depth receipt `benchmarks/ngram-rdna4-at-depth-2026-06-15.md`; code `srt/layers/attention/triton_backend.py` (`is_target_verify` num_kv_splits=None @~376, `_forward_extend` @909/1018) + `triton_ops/{decode_attention,extend_attention,merge_state}.py`.
+
+## Corroboration: num_kv_splits is already optimal for decode (2026-06-16)
+
+A quick flag sweep (`scripts/bench/kvsplit_sweep.sh`, coder-30b no-spec @244K, server-log gen-throughput) ruled out tuning the *decode* path as a shortcut:
+
+| `--triton-attention-num-kv-splits` | 16 (default) | 32 | 64 |
+|---|:---:|:---:|:---:|
+| gen tok/s @244K | 12.21 | 12.18 | 12.21 |
+
+Flat within noise → the **decode** deep-KV read is *already* split-optimal at 16 (1 query × heads × 16 splits saturates the SMs). The anomaly is that the **verify** sets `num_kv_splits=None` and gets zero splitting — confirming the lever is to give the verify the same flash-decoding split the decode already has, not to raise the global split count. (Also confirms no-spec 256K decode isn't attention-split-bound — it's MoE/per-layer-compute bound, already cuda-graph'd.)
