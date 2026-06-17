@@ -1,0 +1,50 @@
+diff --git a/python/sglang/srt/models/glm4_moe.py b/python/sglang/srt/models/glm4_moe.py
+index 7ca23d6aa..ad2e95652 100644
+--- a/python/sglang/srt/models/glm4_moe.py
++++ b/python/sglang/srt/models/glm4_moe.py
+@@ -123,6 +123,25 @@ if _is_npu:
+     )
+ 
+ 
++def _mlp_quant_config(quant_config, mlp_prefix):
++    """Return None (BF16) when this MLP's gate/up/down are in modules_to_not_convert.
++
++    Glm4MoeMLP MERGES gate+up into a single ``gate_up_proj`` Linear, but the quant config's
++    ``modules_to_not_convert`` lists ``gate_proj``/``up_proj`` SEPARATELY. The skip-check is a
++    substring match, and ``"...mlp.gate_proj"`` is NOT a substring of ``"...mlp.gate_up_proj"``
++    (it's gate_UP_proj), so the merged Linear misses the skip and is built quantized while the
++    checkpoint weights are BF16 -> the weights don't bind -> NaN logits (RDNA4 2026-06-17,
++    glm45-air layer-0 dense MLP + every layer's shared_experts; `down_proj` matched fine). When the
++    MLP is BF16 (gate_proj in the ignore list) pass quant_config=None so the whole MLP — including
++    the merged gate_up_proj — loads unquantized. Fleet-safe: a quantized MLP (gate_proj not in the
++    list) is unchanged.
++    """
++    mtnc = getattr(quant_config, "modules_to_not_convert", None) or []
++    if f"{mlp_prefix}.gate_proj" in mtnc:
++        return None
++    return quant_config
++
++
+ class Glm4MoeMLP(nn.Module):
+     def __init__(
+         self,
+@@ -470,7 +489,9 @@ class Glm4MoeSparseMoeBlock(nn.Module):
+                 hidden_size=config.hidden_size,
+                 intermediate_size=intermediate_size,
+                 hidden_act=config.hidden_act,
+-                quant_config=quant_config,
++                quant_config=_mlp_quant_config(
++                    quant_config, add_prefix("shared_experts", prefix)
++                ),
+                 reduce_results=False,
+                 prefix=add_prefix("shared_experts", prefix),
+                 **(
+@@ -862,7 +883,7 @@ class Glm4MoeDecoderLayer(nn.Module):
+                 hidden_size=config.hidden_size,
+                 intermediate_size=config.intermediate_size,
+                 hidden_act=config.hidden_act,
+-                quant_config=quant_config,
++                quant_config=_mlp_quant_config(quant_config, add_prefix("mlp", prefix)),
+                 prefix=add_prefix("mlp", prefix),
+                 tp_rank=mlp_tp_rank,
+                 tp_size=mlp_tp_size,

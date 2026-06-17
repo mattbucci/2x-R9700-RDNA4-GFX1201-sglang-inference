@@ -238,7 +238,13 @@ PYEOF
             CUDA_GRAPH=""
             ;;
         glm45-air)
-            MODEL="${MODEL:-$MODELS_DIR/GLM-4.5-Air-REAP-AWQ}"
+            # Serves on RDNA4 as of 2026-06-17 (patch 066 fixes the BF16 dense-MLP/shared_experts
+            # gate_up_proj skip-miss that NaN'd). Use the native-AWQ conversion (CT→AWQ via
+            # convert_moe_ct_to_awq) + moe_wna16; the on-disk *-AWQ is compressed-tensors (Marlin-only,
+            # won't load on gfx1201). ⚠ checkpoint = converted 3rd-party REAP, not yet our own
+            # upstream-BF16 prune+calibration (provenance task, future) — works but not a canonical ship.
+            MODEL="${MODEL:-$MODELS_DIR/GLM-4.5-Air-REAP-AWQ-native}"
+            QUANT="${QUANT:-moe_wna16}"
             CTX=32768; MAX_RUNNING=32; CHUNKED=4096; DECODE_STEPS=8
             TOOL_CALL_PARSER="glm"
             WATCHDOG=1800
