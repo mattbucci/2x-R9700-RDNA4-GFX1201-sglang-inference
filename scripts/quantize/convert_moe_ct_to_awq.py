@@ -327,6 +327,12 @@ def main():
     # downstream audit tools (3090 team's audit script flagged us 2026-04-25
     # because empty ignore=[] looked like a broken calibration even though
     # the actual safetensors still have BF16 router/vision/shared_expert).
+    # CRITICAL (2026-06-17): SGLang's AWQ loader skips BF16 modules via
+    # `modules_to_not_convert` (substring match in is_layer_skipped_awq), NOT
+    # `ignore`. Leaving it [] makes the loader try to AWQ-load the BF16-ignored
+    # Linears → ValueError "input size not aligned" (e.g. GLM-4.5-Air dense MLP
+    # down_proj in=10944 → 5472 @TP=2, not %128). Harmless only when the source
+    # had no ignore list (e.g. Coder-30B). Populate it from the ignore list.
     src_ignore = config.get("quantization_config", {}).get("ignore", [])
     config["quantization_config"] = {
         "bits": 4,
@@ -334,7 +340,7 @@ def main():
         "quant_method": "awq",
         "version": "gemm",
         "zero_point": True,
-        "modules_to_not_convert": [],
+        "modules_to_not_convert": list(src_ignore),
         "ignore": src_ignore,
     }
     with open(os.path.join(dst_dir, "config.json"), "w") as fout:
