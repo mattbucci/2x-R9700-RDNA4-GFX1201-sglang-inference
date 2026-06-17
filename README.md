@@ -327,11 +327,11 @@ opencode agent → local SGLang FP8 server → no-docker `score_local` (per-repo
 
 ## Infrastructure Summary
 
-- **SGLang v0.5.12** on the **live serving tree** (`/data/vG`, env `sglang-triton36`) + RDNA4 patches — see [patches/README.md](patches/README.md). **`setup.sh` now defaults to v0.5.13.post1**: the patch series was rebased onto v0.5.13.post1 (2026-06-16, 34 core + 3 fixes, gate-verified byte-equivalent) and validated in env `sglang-triton36-v0513` (tree `/data/sgl-rebase`) — coder-30b + gemma4-26B probe clean (text/thinking/vision/video). **The v0.5.13 stack is staged, not yet promoted to live** — the `/data/vG` swap is a separate deliberate step. Receipt: [patches/v0513-rebase-2026-06-16.md](patches/v0513-rebase-2026-06-16.md).
+- **SGLang v0.5.13.post1** on the **live serving tree** (`/data/sgl-rebase`, env `sglang-triton36-v0513`) + 34 core RDNA4 patches + 3 fixes — see [patches/README.md](patches/README.md). **Promoted to live 2026-06-16** (rebased from v0.5.12: gate-verified byte-equivalent, validated coder-30b + gemma4-26B text/thinking/vision/video, then `launch.sh` default re-pointed via `common.sh`). **Rollback** = the retained v0.5.12 stack (`/data/vG`, env `sglang-triton36`): `ENV_NAME=sglang-triton36 SGLANG_DIR=/data/vG scripts/launch.sh …`. Receipt: [patches/v0513-rebase-2026-06-16.md](patches/v0513-rebase-2026-06-16.md). ⚠ Note: per-model perf/status tables below were measured on the v0.5.12 stack (2026-05/06) — re-sweep on v0.5.13 pending.
 - **Triton 3.6.0** (upstream).  Do NOT clear `~/.triton/cache/` before benchmarking — cold cache produces 100x slower numbers.
 - **PyTorch 2.12+rocm7.2**.
 - **RCCL 2.27.7** (system ROCm, P2P/IPC on gfx1201 — no custom build).
-- **Conda envs**: `sglang-triton36` (live inference, v0.5.12), `sglang-triton36-v0513` (validated v0.5.13.post1 rebase, promotion-ready), `quant` (calibration — llmcompressor pins transformers 4.x, incompatible with SGLang).
+- **Conda envs**: `sglang-triton36-v0513` (**live** inference, v0.5.13.post1), `sglang-triton36` (v0.5.12 rollback), `quant` (calibration — llmcompressor pins transformers 4.x, incompatible with SGLang).
 
 See [rules-for-agents.md](rules-for-agents.md) for RDNA4 constraints, launch flags, and quantization rules.  See [CLAUDE.md](CLAUDE.md) for working-mode directives.
 
