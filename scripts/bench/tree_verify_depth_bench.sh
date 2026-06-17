@@ -14,7 +14,7 @@ mkdir -p "$OUT"
 pkill -9 -f '[s]glang.launch_server' 2>/dev/null || true; sleep 4
 PY=/data/swebench-harness-env/bin/python
 echo "=== boot coder-30b + NGRAM @262144, SGLANG_TREE_VERIFY_SPLITKV=$FLAG $(date +%H:%M:%S) ==="
-setsid bash -c "SGLANG_TREE_VERIFY_SPLITKV=$FLAG MODEL=\$HOME/AI/models/Qwen3-Coder-30B-A3B-AWQ-native QUANT=moe_wna16 MAX_RUNNING=1 EXTRA_ARGS='--speculative-algorithm NGRAM --speculative-num-draft-tokens 8' ./scripts/launch.sh coder-30b --port $PORT --context-length $CTXLEN --mem-fraction 0.85" > "$OUT/serve.log" 2>&1 &
+setsid bash -c "SGLANG_TREE_VERIFY_SPLITKV=$FLAG MODEL=\$HOME/AI/models/Qwen3-Coder-30B-A3B-AWQ-native QUANT=moe_wna16 MAX_RUNNING=1 EXTRA_ARGS='--speculative-algorithm NGRAM --speculative-num-draft-tokens 8' ./scripts/launch.sh coder-30b --port $PORT --context-length $CTXLEN --mem-fraction ${MEM:-0.85}" > "$OUT/serve.log" 2>&1 &
 ready=0
 for _ in $(seq 1 400); do
   curl -sf http://127.0.0.1:$PORT/health >/dev/null 2>&1 && { ready=1; break; }

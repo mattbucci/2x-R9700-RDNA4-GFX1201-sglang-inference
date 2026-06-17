@@ -90,7 +90,9 @@ def main():
     print(f"[bench] target_prompt_tokens≈{args.target_prompt_tokens} output_tokens={args.output_tokens}", flush=True)
     print(f"[bench] >>>MARKER_START {time.strftime('%H:%M:%S')}", flush=True)
     t0 = time.time()
-    r = requests.post(f"{base}/v1/chat/completions", json=payload, timeout=2400)
+    # Timeout MUST exceed the full cold prefill — a 244K cold prefill is ~40min @ ~100 tok/s, and
+    # aborting it mid-flight wedges a TP rank into un-drainable D-state (R9700 2026-06-17). 1hr margin.
+    r = requests.post(f"{base}/v1/chat/completions", json=payload, timeout=3600)
     dt = time.time() - t0
     print(f"[bench] >>>MARKER_END {time.strftime('%H:%M:%S')}", flush=True)
     r.raise_for_status()

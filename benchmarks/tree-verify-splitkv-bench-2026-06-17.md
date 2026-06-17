@@ -18,18 +18,38 @@ Server-log `gen throughput` (authoritative); same prompt/depth/seed, **only the 
 | **split-KV (FLAG=1)** | **median 53.7 / max 74.3 t/s** | 1.12→1.77→2.60→**2.80** |
 | stock unsplit (FLAG=0) | median 4.18 / max 5.88 t/s | 1.77→2.60→2.35→**2.80** (identical) |
 
-**~12.8× verify speedup** (53.7 / 4.18). The accept_len profiles are **identical** between arms
+**~12.8× verify speedup @~53K** (53.7 / 4.18). The accept_len profiles are **identical** between arms
 (NGRAM drafts the same tree; the verify accepts the same tokens) → the throughput gap is **purely the
-verify forward speed**, isolating the kernel. Matches the design estimate (~16×; grows with depth, so
-the ratio is larger at 244K). **Turns NGRAM at depth from net-NEGATIVE (4.18 t/s, far below no-spec
-~30–40 @53K) to net-POSITIVE (53.7 t/s)** on copy-heavy agentic coding — the mandate's workload.
+verify forward speed**, isolating the kernel. **Net-POSITIVE @53K** (53.7 t/s vs no-spec ~30–40).
 
-Notes: prompt_tokens≈52.9K (the harness's CHARS_PER_TOK estimate undershot the 64K target — fine, the
-comparison is matched). Accept ~1.8–2.8 here vs the 3090's 6–7.6: coder-30b copies less verbatim on
-our run (a per-checkpoint copy-fidelity effect the 3090 flagged), but the **relative** verify win is
-checkpoint-independent. Deeper (244K) bench deferred (cold prefill ~40min; use the radix-cache trick,
-**never abort a deep prefill mid-flight** — that wedged a TP rank into un-drainable D-state, see the
-impl receipt; box was rebooted to clear it).
+## ⚠ 244K depth — the win COLLAPSES (corrected 2026-06-17)
+
+Re-ran at the mandate's TRUE depth (`TGT_TOK=244000`, `CTXLEN=262144`, OUT_TOK=300):
+
+| depth | split-KV (FLAG=1) | no-spec | verdict |
+|---|---|---|---|
+| ~53K | **53.7 t/s** (12.8× over stock) | ~30–40 | net-positive ✅ |
+| ~244K | **0.57 t/s** (accept 1.25) | **12.2** | **net-NEGATIVE ❌** (~20× slower than no-spec) |
+
+At 244K the spec step is ~2.2s (0.57 t/s / accept 1.25) — i.e. the verify forward is ~2.2s, **≈ the
+unsplit stock verify (~2.7s)**: the split-KV parallelism **does not hold at deep KV**. Almost certainly
+**occupancy-bound** — the prefix stage1 block is `acc[BLOCK_R=64, 128]` (8 draft × 8 heads = 64 rows)
+fp32, a large register/LDS footprint → low wave occupancy → the 244K KV-read latency isn't hidden. At
+53K the read is ~4.6× shorter so low occupancy is tolerable; at 244K the read dominates and the kernel
+degrades to ~unsplit speed. **So the "256K win" was a 53K measurement — premature.** (FLAG=0 @244K
+matched-control re-run in progress to pin the exact split-vs-stock ratio at depth; the headline
+net-negative-vs-no-spec is already certain from FLAG=1.)
+
+**Path to a real 256K win:** cut the per-block footprint so the deep read is hidden — process fewer
+rows per block (split the D draft tokens across more grid blocks, or smaller `BLOCK_R`), trading more
+blocks for higher occupancy (the decode kernel sustains 12.2 t/s @244K with BLOCK_H=16/1-query blocks).
+Until then the kernel is a **mid-depth (≤~64K) opt-in win only**, NOT a 256K win.
+
+Notes: @53K prompt_tokens≈52.9K (harness CHARS_PER_TOK estimate undershot the 64K target — matched
+comparison so fine). Accept ~1.8–2.8 @53K / ~1.25 @244K (lower at 244K partly from OUT_TOK=300 = small
+copy span, partly the target buried in 244K). The earlier FIRST 244K attempt wedged a TP rank into
+un-drainable D-state (curl timeout aborted the prefill mid-flight) → reboot; fixed by raising the
+copyheavy timeout to 3600s (>> the ~41min prefill) so it never aborts mid-flight.
 
 ## Correctness / losslessness
 - Standalone harness (`scripts/debug/tree_verify_splitkv_test.py`): **7/7 shapes** match PyTorch
@@ -42,8 +62,10 @@ impl receipt; box was rebooted to clear it).
   stage1 accumulation (one online-softmax pass, no separate merge)** — the path to flip the flag default-ON.
 
 ## Status
-**Opt-in (flag default OFF)** — ships today for anyone wanting the copy-heavy NGRAM speedup at depth,
-accepting the tiny numerical gap. Default-ON gated on the bit-exact v2. The kernel also speeds the
-verify half of EAGLE3/DFlash (they still pay the separate draft-attention cost — the depth-collapse
-driver — so this doesn't rescue model-draft spec, only NGRAM, whose draft is a CPU trie). Harness:
+**Opt-in (flag default OFF), MID-depth win only.** Ships today as a ≤~64K copy-heavy NGRAM speedup
+(~12.8× verify @53K); **NOT a 256K win** — at 244K it's net-negative vs no-spec (occupancy collapse,
+above). Default-OFF is correct (default-ON would *hurt* at 256K). The real blocker for the mandate is
+now the **occupancy/depth-scaling fix** (smaller per-block footprint), NOT bit-exactness (which is
+separately infeasible for any parallel tree-verify — see `ngram-fastkv-impl-2026-06-17.md`). The kernel
+also speeds the verify half of EAGLE3/DFlash at mid-depth. Harness:
 `scripts/bench/tree_verify_depth_bench.sh` (FLAG=0/1) + `scripts/bench/copyheavy_decode_bench.py` (from 3090).
