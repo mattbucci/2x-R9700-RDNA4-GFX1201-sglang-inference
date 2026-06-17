@@ -66,6 +66,7 @@ _What it takes for stock SGLang to boot at all on gfx1201._
 | 002 | rdna4-torch-compile-disable | 56 |  | `@torch.compile` stalls 30+ min on HIP — disable on rotary/sampler/embedding |
 | 003 | rdna4-sgl-kernel-fallbacks | 669 |  | sgl-kernel is CUDA-only; torch-native fallbacks for silu/gelu/rmsnorm/rotary/topk |
 | 008 | rdna4-sgl-kernel-build-arch | 40 |  | Adds gfx12xx to sgl-kernel's ROCm arch whitelist so the native build targets RDNA4. Slot reuse — old 008 was upstreamed. |
+| 063 | rdna4-relu2-hip-fallback | 21 | PR-candidate | **Added 2026-06-16 (v0.5.13 resweep).** v0.5.13 imports the native `relu2` op only under `_is_cuda` (`sglang.jit_kernel.activation`); the `_is_hip` branch imports gelu/silu but **not** relu2, so `ReLU2.forward_cuda()` NameErrors on RDNA4 at cuda-graph capture (hit by `nemotron_h`'s squared-ReLU MLP — Nemotron-Omni). Torch fallback (`max(0,x)^2`, == `ReLU2.forward_native`) in the HIP import branch. Same family as 003. Generic → upstream PR candidate. (Nemotron-Omni also needs `librosa` in the env for the Parakeet audio extractor — added to `setup.sh`, not a patch.) |
 
 ### MoE serving
 _Fused-MoE path on RDNA4 (Coder-30B, qwen35/36-moe, gemma4, REAP/REAM fleet)._

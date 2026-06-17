@@ -171,7 +171,11 @@ if [ "$SKIP_ENV" = false ]; then
     # skips with "no module named imageio" and you lose the modality.
     # Ported from 3090 commit 9ee3b0d.
     echo "Installing eval/validator deps..."
-    pip install "imageio[ffmpeg]" pillow
+    # librosa: required by the Parakeet audio extractor (nemotron-omni / any
+    # Nemotron-Omni AVLM). Without it the model crashes at processor init with
+    # "ParakeetExtractor requires the librosa library" (caught in the 2026-06-16
+    # v0.5.13 resweep — the fresh env omitted it; v0.5.12 env had 0.11.0).
+    pip install "imageio[ffmpeg]" pillow "librosa==0.11.0"
 else
     echo "[2/5] Skipping conda env creation"
     init_conda
