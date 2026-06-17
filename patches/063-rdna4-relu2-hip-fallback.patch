@@ -1,0 +1,21 @@
+diff --git a/python/sglang/srt/layers/activation.py b/python/sglang/srt/layers/activation.py
+index 27f3c297c..849831779 100644
+--- a/python/sglang/srt/layers/activation.py
++++ b/python/sglang/srt/layers/activation.py
+@@ -64,6 +64,16 @@ elif _is_xpu:
+     from sgl_kernel import gelu_and_mul, gelu_tanh_and_mul, silu_and_mul
+ elif _is_hip:
+     from sgl_kernel import gelu_and_mul, gelu_quick, gelu_tanh_and_mul, silu_and_mul
++
++    def relu2(x: torch.Tensor) -> torch.Tensor:
++        # RDNA4/gfx12xx: the native `relu2` op is CUDA-only (imported from
++        # sglang.jit_kernel.activation under _is_cuda); it is NOT in the HIP
++        # sgl_kernel build, so ReLU2.forward_cuda() would NameError on RDNA4
++        # (hit by nemotron_h's squared-ReLU MLP). Torch fallback == ReLU2's own
++        # forward_native (max(0,x)^2).
++        x = F.relu(x)
++        return x * x
++
+ elif _is_musa:
+     from sglang.srt.utils.patch_torch import register_fake_if_exists
+ 
