@@ -1,0 +1,114 @@
+{
+  "model": "North-Mini-Code FP8 v0513",
+  "engine": "SGLang",
+  "method": "sglang.bench_serving",
+  "hardware": "2x R9700 TP=2",
+  "timestamp": "2026-06-16 19:06:11",
+  "output_tokens": 100,
+  "context_sweep": [
+    {
+      "context": 128,
+      "input_len": 64,
+      "tpot_ms": 15.36,
+      "tok_per_sec": 65.1,
+      "ttft_ms": 157.38,
+      "throughput": 4.78
+    },
+    {
+      "context": 256,
+      "input_len": 128,
+      "tpot_ms": 15.3,
+      "tok_per_sec": 65.4,
+      "ttft_ms": 41.22,
+      "throughput": 4.81
+    },
+    {
+      "context": 512,
+      "input_len": 256,
+      "tpot_ms": 15.28,
+      "tok_per_sec": 65.4,
+      "ttft_ms": 41.81,
+      "throughput": 4.79
+    },
+    {
+      "context": 1024,
+      "input_len": 512,
+      "tpot_ms": 15.32,
+      "tok_per_sec": 65.3,
+      "ttft_ms": 41.74,
+      "throughput": 4.79
+    },
+    {
+      "context": 2048,
+      "input_len": 1024,
+      "tpot_ms": 15.31,
+      "tok_per_sec": 65.3,
+      "ttft_ms": 44.59,
+      "throughput": 4.79
+    },
+    {
+      "context": 4096,
+      "input_len": 2048,
+      "tpot_ms": 15.65,
+      "tok_per_sec": 63.9,
+      "ttft_ms": 46.75,
+      "throughput": 4.79
+    },
+    {
+      "context": 8192,
+      "input_len": 4096,
+      "tpot_ms": 15.55,
+      "tok_per_sec": 64.3,
+      "ttft_ms": 44.31,
+      "throughput": 4.79
+    },
+    {
+      "context": 16384,
+      "input_len": 8192,
+      "tpot_ms": 16.28,
+      "tok_per_sec": 61.4,
+      "ttft_ms": 85.35,
+      "throughput": 4.79
+    },
+    {
+      "context": 32768,
+      "input_len": 16384,
+      "tpot_ms": 16.77,
+      "tok_per_sec": 59.6,
+      "ttft_ms": 117.91,
+      "throughput": 4.79
+    },
+    {
+      "context": 65536,
+      "input_len": 32768,
+      "tpot_ms": 17.64,
+      "tok_per_sec": 56.7,
+      "ttft_ms": 182.35,
+      "throughput": 4.8
+    },
+    {
+      "context": 131072,
+      "input_len": 65536,
+      "tpot_ms": 19.98,
+      "tok_per_sec": 50.1,
+      "ttft_ms": 315.03,
+      "throughput": 4.8
+    },
+    {
+      "context": 262144,
+      "input_len": 131072,
+      "tpot_ms": 24.22,
+      "tok_per_sec": 41.3,
+      "ttft_ms": 564.92,
+      "throughput": 4.8
+    }
+  ],
+  "throughput_sweep": [
+    {
+      "concurrency": 1,
+      "throughput": 4.79,
+      "tpot_ms": 15.35,
+      "ttft_ms": 42.11
+    }
+  ]
+}
