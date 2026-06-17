@@ -160,6 +160,12 @@ def run_case(bs, d, prefix):
             max_len_extend=d, sm_scale=SM,
         )
         ok &= report(f"[{tag}] split-KV vs gt", o.float(), gt)
+        # Bit-exactness gap vs the STOCK extend kernel (which ~matches no-spec). A nonzero gap here
+        # = the source of near-tie token flips. Inherent to split-KV (reorders the bf16 reduction).
+        try:
+            report(f"[{tag}] split-KV vs STOCK-extend (flip source)", o.float(), ext)
+        except NameError:
+            pass
     except Exception as e:
         print(f"  [FAIL] [{tag}] split-KV raised: {type(e).__name__}: {e}")
         ok = False
