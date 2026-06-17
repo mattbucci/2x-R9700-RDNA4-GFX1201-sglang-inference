@@ -37,62 +37,65 @@ def build_inputs():
     q = torch.randn(BS * D, H, DH, device=DEV, dtype=DT) * 0.5
     k_ext = torch.randn(BS * D, KVH, DH, device=DEV, dtype=DT) * 0.5
     v_ext = torch.randn(BS * D, KVH, DH, device=DEV, dtype=DT) * 0.5
-    # KV pool holds exactly the prefix tokens (kv_indices = arange).
-    k_buf = torch.randn(BS * PREFIX, KVH, DH, device=DEV, dtype=DT) * 0.5
-    v_buf = torch.randn(BS * PREFIX, KVH, DH, device=DEV, dtype=DT) * 0.5
+    # KV pool: seq b's prefix occupies tokens [b*PREFIX, (b+1)*PREFIX); kv_indices = arange.
+    k_buf = torch.randn(max(BS * PREFIX, 1), KVH, DH, device=DEV, dtype=DT) * 0.5
+    v_buf = torch.randn(max(BS * PREFIX, 1), KVH, DH, device=DEV, dtype=DT) * 0.5
 
-    qo_indptr = torch.tensor([0, D], dtype=torch.int32, device=DEV)        # bs=1
-    kv_indptr = torch.tensor([0, PREFIX], dtype=torch.int32, device=DEV)
-    kv_indices = torch.arange(PREFIX, dtype=torch.int32, device=DEV)
+    qo_indptr = (torch.arange(BS + 1, dtype=torch.int32, device=DEV) * D)
+    kv_indptr = (torch.arange(BS + 1, dtype=torch.int32, device=DEV) * PREFIX)
+    kv_indices = torch.arange(BS * PREFIX, dtype=torch.int32, device=DEV)
 
-    # Tree over the D draft tokens: a random parent for each (parent < self) => an ancestor
-    # chain. draft token q attends draft token j iff j is on q's path to the root (incl. self).
-    parent = [-1] * D
-    for i in range(1, D):
-        parent[i] = torch.randint(0, i, (1,)).item()
-    tree = torch.zeros(D, D, dtype=torch.bool)
-    for q_i in range(D):
-        j = q_i
-        while j != -1:
-            tree[q_i, j] = True
-            j = parent[j]
-
-    # custom_mask: uint8, length D*(PREFIX+D) per seq, row-major [q, prefix_cols + ext_cols].
-    # With skip_prefix_custom_mask=True the prefix cols are NOT read; fill 1, set ext block to tree.
-    mask = torch.ones(D, PREFIX + D, dtype=torch.uint8, device=DEV)
-    mask[:, PREFIX:] = tree.to(torch.uint8).to(DEV)
-    custom_mask = mask.reshape(-1).contiguous()
-    mask_indptr = torch.tensor([0, D * (PREFIX + D)], dtype=torch.int64, device=DEV)
+    # Per-seq tree over the D draft tokens: random parent (< self) => an ancestor chain.
+    # draft q attends draft j iff j is on q's path to the root (incl. self).
+    trees, masks = [], []
+    for _b in range(BS):
+        parent = [-1] * D
+        for i in range(1, D):
+            parent[i] = torch.randint(0, i, (1,)).item()
+        tree = torch.zeros(D, D, dtype=torch.bool)
+        for q_i in range(D):
+            j = q_i
+            while j != -1:
+                tree[q_i, j] = True
+                j = parent[j]
+        trees.append(tree.to(DEV))
+        # custom_mask: uint8, D*(PREFIX+D) per seq, row-major [q, prefix_cols + ext_cols].
+        # skip_prefix_custom_mask=True => prefix cols unread; fill 1, ext block = tree.
+        m = torch.ones(D, PREFIX + D, dtype=torch.uint8, device=DEV)
+        m[:, PREFIX:] = tree.to(torch.uint8).to(DEV)
+        masks.append(m.reshape(-1))
+    custom_mask = torch.cat(masks).contiguous()
+    mask_indptr = (torch.arange(BS + 1, dtype=torch.int64, device=DEV) * (D * (PREFIX + D)))
     return dict(
         q=q, k_ext=k_ext, v_ext=v_ext, k_buf=k_buf, v_buf=v_buf,
         qo_indptr=qo_indptr, kv_indptr=kv_indptr, kv_indices=kv_indices,
-        custom_mask=custom_mask, mask_indptr=mask_indptr, tree=tree.to(DEV),
+        custom_mask=custom_mask, mask_indptr=mask_indptr, trees=trees,
     )
 
 
 def ground_truth(inp):
-    """Brute-force fp32 attention. Each draft query attends: ALL prefix tokens (mask-free) +
-    the tree-allowed draft tokens. GQA: q head h -> kv head h // (H//KVH)."""
-    q = inp["q"].float()                  # [D, H, DH]
-    k_ext = inp["k_ext"].float()          # [D, KVH, DH]
-    v_ext = inp["v_ext"].float()
-    k_buf = inp["k_buf"].float()          # [PREFIX, KVH, DH]
-    v_buf = inp["v_buf"].float()
-    tree = inp["tree"]                    # [D, D] bool
+    """Brute-force fp32 attention. Each draft query attends: ALL of its seq's prefix tokens
+    (mask-free) + the tree-allowed draft tokens. GQA: q head h -> kv head h // (H//KVH)."""
+    q = inp["q"].float(); k_ext = inp["k_ext"].float(); v_ext = inp["v_ext"].float()
+    k_buf = inp["k_buf"].float(); v_buf = inp["v_buf"].float()
+    trees = inp["trees"]
     grp = H // KVH
-    out = torch.zeros(D, H, DH, device=DEV, dtype=torch.float32)
-    for h in range(H):
-        kh = h // grp
-        # keys/values seen by every draft query: [PREFIX prefix ; D draft]
-        K = torch.cat([k_buf[:, kh, :], k_ext[:, kh, :]], dim=0)   # [PREFIX+D, DH]
-        V = torch.cat([v_buf[:, kh, :], v_ext[:, kh, :]], dim=0)
-        for qi in range(D):
-            scores = (q[qi, h, :] @ K.T) * SM                      # [PREFIX+D]
-            allow = torch.ones(PREFIX + D, dtype=torch.bool, device=DEV)
-            allow[PREFIX:] = tree[qi]                              # tree mask on the draft block
-            scores = scores.masked_fill(~allow, float("-inf"))
-            p = torch.softmax(scores, dim=-1)
-            out[qi, h, :] = p @ V
+    out = torch.zeros(BS * D, H, DH, device=DEV, dtype=torch.float32)
+    for b in range(BS):
+        kbf = k_buf[b * PREFIX:(b + 1) * PREFIX]; vbf = v_buf[b * PREFIX:(b + 1) * PREFIX]
+        kxt = k_ext[b * D:(b + 1) * D]; vxt = v_ext[b * D:(b + 1) * D]
+        tree = trees[b]
+        for h in range(H):
+            kh = h // grp
+            K = torch.cat([kbf[:, kh, :], kxt[:, kh, :]], dim=0)   # [PREFIX+D, DH]
+            V = torch.cat([vbf[:, kh, :], vxt[:, kh, :]], dim=0)
+            for qi in range(D):
+                scores = (q[b * D + qi, h, :] @ K.T) * SM
+                allow = torch.ones(PREFIX + D, dtype=torch.bool, device=DEV)
+                allow[PREFIX:] = tree[qi]
+                scores = scores.masked_fill(~allow, float("-inf"))
+                p = torch.softmax(scores, dim=-1)
+                out[b * D + qi, h, :] = p @ V
     return out
 
 
@@ -131,34 +134,53 @@ def report(name, a, b):
     return ok
 
 
-def main():
+def run_case(bs, d, prefix):
+    """Set the shape globals (funcs read them at call-time) and validate one case."""
+    global BS, D, PREFIX
+    BS, D, PREFIX = bs, d, prefix
     inp = build_inputs()
     gt = ground_truth(inp)
-    print(f"=== tree-verify harness: bs={BS} D={D} prefix={PREFIX} H={H} kvh={KVH} dh={DH} ===")
-    print(f"  ground-truth out: shape={tuple(gt.shape)} absmax={gt.abs().max().item():.3f}")
+    tag = f"bs={bs} D={d} prefix={prefix}"
     ok = True
     try:
         ext = run_extend_reference(inp)
-        ok &= report("extend_attention_fwd vs ground-truth", ext, gt)
+        ok &= report(f"[{tag}] extend  vs gt", ext, gt)
     except Exception as e:
-        print(f"  [FAIL] extend_attention_fwd raised: {type(e).__name__}: {e}")
+        print(f"  [FAIL] [{tag}] extend raised: {type(e).__name__}: {e}")
         ok = False
-    # Hook for the kernel-under-test (added once written):
     try:
         from sglang.srt.layers.attention.triton_ops.tree_verify_attention import (
             tree_verify_attention_fwd,
         )
-        o = torch.empty(BS * D, H, DH, device=DEV, dtype=DT)
+        o = torch.empty(bs * d, H, DH, device=DEV, dtype=DT)
         tree_verify_attention_fwd(
             inp["q"], inp["k_ext"], inp["v_ext"], o,
             inp["k_buf"], inp["v_buf"], inp["qo_indptr"], inp["kv_indptr"],
             inp["kv_indices"], inp["custom_mask"], inp["mask_indptr"],
-            max_len_extend=D, sm_scale=SM,
+            max_len_extend=d, sm_scale=SM,
         )
-        ok &= report("tree_verify_attention_fwd (split-KV) vs ground-truth", o.float(), gt)
-    except ImportError:
-        print("  [skip] tree_verify_attention_fwd not implemented yet (expected at this stage)")
-    print(f"=== {'PASS' if ok else 'FAIL'} ===")
+        ok &= report(f"[{tag}] split-KV vs gt", o.float(), gt)
+    except Exception as e:
+        print(f"  [FAIL] [{tag}] split-KV raised: {type(e).__name__}: {e}")
+        ok = False
+    return ok
+
+
+def main():
+    print("=== tree-verify split-KV kernel — per-shape correctness sweep ===")
+    cases = [
+        (1, 8, 2048),    # main shape
+        (1, 1, 2048),    # D=1 == decode
+        (1, 2, 127),     # tiny prefix
+        (1, 8, 1),       # 1-token prefix
+        (1, 8, 0),       # EMPTY prefix (suffix only) — merge edge case
+        (2, 8, 2048),    # multi-batch
+        (1, 8, 16384),   # deeper prefix (multi-split)
+    ]
+    ok = True
+    for bs, d, prefix in cases:
+        ok &= run_case(bs, d, prefix)
+    print(f"=== {'ALL PASS' if ok else 'FAIL'} ===")
     sys.exit(0 if ok else 1)
 
 
