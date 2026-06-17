@@ -8,12 +8,16 @@ _Last reconciled 2026-06-11 against the on-disk series. SGLang series byte-verif
 serving tree (`/data/vG`) on 2026-06-10 (36 patches); 048 + 049 added post-audit and spot-confirmed
 live (the cold-cache load-timeout and the conv1d col-load dtype cast)._
 
-> **✅ v0.5.13.post1 rebase PROMOTED TO LIVE (2026-06-16).** Live serving tree is now **`/data/sgl-rebase`
-> (v0.5.13.post1, env `sglang-triton36-v0513`)** — **34 core patches + 3 post-validation fixes (059/060/061)**,
-> 012/034/035 retired, gate-verified byte-equivalent on a pristine v0.5.13.post1 clone. Rollback = v0.5.12
-> stack (`/data/vG`, env `sglang-triton36`), retained. ⚠ **This map's counts/lanes/scorecard below still
-> reflect the v0.5.12 series numbering and need a re-tally** (012/034/035 → retired; 059/060/061 added).
-> Receipt: [`patches/v0513-rebase-2026-06-16.md`](patches/v0513-rebase-2026-06-16.md).
+> **✅ v0.5.13.post1 rebase PROMOTED TO LIVE (2026-06-16); second-pass CANDIDATEs landed (2026-06-17).** Live
+> serving tree is now **`/data/sgl-rebase` (v0.5.13.post1, env `sglang-triton36-v0513`)** — **44 patches**:
+> 34 core + 6 boot/inference fixes (059–064) + 4 promoted second-pass patches (055–058: eagle3-VL, devstral
+> multitoken-toolname, EVS-video, ngram-reconstruct); 012/034/035 retired; cohere2moe 051–054 superseded by
+> native v0.5.13 + patch 062 (archived `.SUPERSEDED`); 050 gptq-autoround still deferred (`.CANDIDATE`, no live
+> consumer + needs a rebase onto v0.5.13's restructured quant module). Gate-verified byte-equivalent on a
+> pristine v0.5.13.post1 clone (44/44, 0 skipped, re-gated 2026-06-17). Rollback = v0.5.12 stack (`/data/vG`,
+> env `sglang-triton36`), retained. ⚠ **This map's per-lane counts/scorecard below still reflect the v0.5.12
+> series numbering** — the authoritative current index is [`patches/README.md`](patches/README.md).
+> Receipts: [`patches/v0513-rebase-2026-06-16.md`](patches/v0513-rebase-2026-06-16.md), [`benchmarks/v0513-resweep-2026-06-16.md`](benchmarks/v0513-resweep-2026-06-16.md).
 
 ## The work at a glance
 

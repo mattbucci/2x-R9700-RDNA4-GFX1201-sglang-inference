@@ -1,0 +1,45 @@
+diff --git a/python/sglang/srt/function_call/mistral_detector.py b/python/sglang/srt/function_call/mistral_detector.py
+index 649a7c78b..06f45d465 100644
+--- a/python/sglang/srt/function_call/mistral_detector.py
++++ b/python/sglang/srt/function_call/mistral_detector.py
+@@ -289,7 +289,7 @@ class MistralDetector(BaseFormatDetector):
+         return StreamingParseResult()
+ 
+     def _trailing_known_tool_name_len(self, buffer: str) -> int:
+-        """Length of a trailing run that exactly equals a known tool name.
++        """Length of a trailing run that is a known tool name OR a PREFIX of one.
+ 
+         Used by streaming [TOOL_CALLS]-omission recovery: when the buffer ends
+         with a bare known tool name (e.g. ``…\\n\\ntask``), it may be the name of
+@@ -299,13 +299,29 @@ class MistralDetector(BaseFormatDetector):
+         ordinary prose — including words that merely contain a tool name — is
+         flushed normally and never truncated).
+         """
+-        if not getattr(self, "_tool_indices", None):
++        indices = getattr(self, "_tool_indices", None)
++        if not indices:
+             return 0
+         k = len(buffer)
+         while k > 0 and (buffer[k - 1].isalnum() or buffer[k - 1] in "_.-"):
+             k -= 1
+         trailing = buffer[k:]
+-        return len(trailing) if trailing and trailing in self._tool_indices else 0
++        if not trailing:
++            return 0
++        # Match a trailing *prefix* of any known tool name (an exact name is a
++        # prefix of itself). Exact-match alone (patch 040) only covers
++        # single-token names; a MULTI-token name (``todowrite`` -> ``todo``+
++        # ``write``, ``webfetch`` -> ``web``+``fetch``) streams in pieces, so the
++        # first piece is not an exact name and was flushed as content, splitting
++        # the name across the flush boundary and defeating [TOOL_CALLS]-omission
++        # recovery. Holding the partial name keeps the full identifier in the
++        # buffer until [ARGS] arrives. A prose word that is a tool-name prefix is
++        # held at most until the next increment disambiguates it (never dropped)
++        # — same delay-then-flush tradeoff 040 already accepted (R9700 2026-06-15).
++        for name in indices:
++            if name.startswith(trailing):
++                return len(trailing)
++        return 0
+ 
+     def _try_parse_argsonly_format(
+         self, text: str, tools: List[Tool]

@@ -1,5 +1,5 @@
 diff --git a/python/sglang/srt/managers/mm_utils.py b/python/sglang/srt/managers/mm_utils.py
-index c71b0e1..823c816 100644
+index 1810d9cd0..0ed978216 100644
 --- a/python/sglang/srt/managers/mm_utils.py
 +++ b/python/sglang/srt/managers/mm_utils.py
 @@ -25,6 +25,7 @@ from sglang.srt.managers.schedule_batch import (
@@ -10,7 +10,7 @@ index c71b0e1..823c816 100644
  from sglang.srt.server_args import get_global_server_args
  from sglang.srt.utils import flatten_nested_list, is_npu, print_warning_once
  from sglang.utils import logger
-@@ -621,8 +622,17 @@ def _get_chunked_prefill_embedding(
+@@ -654,8 +655,17 @@ def _get_chunked_prefill_embedding(
  
          # Use per-image path when all items have exactly one offset (already
          # split per-image) — this avoids encoding images not in this chunk.
