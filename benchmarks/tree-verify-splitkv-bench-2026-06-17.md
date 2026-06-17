@@ -26,24 +26,40 @@ verify forward speed**, isolating the kernel. **Net-POSITIVE @53K** (53.7 t/s vs
 
 Re-ran at the mandate's TRUE depth (`TGT_TOK=244000`, `CTXLEN=262144`, OUT_TOK=300):
 
-| depth | split-KV (FLAG=1) | no-spec | verdict |
-|---|---|---|---|
-| ~53K | **53.7 t/s** (12.8× over stock) | ~30–40 | net-positive ✅ |
-| ~244K | **0.57 t/s** (accept 1.25) | **12.2** | **net-NEGATIVE ❌** (~20× slower than no-spec) |
+| depth | split-KV (FLAG=1) | stock unsplit (FLAG=0) | no-spec | verdict |
+|---|---|---|---|---|
+| ~53K | **53.7 t/s** | 4.18 t/s | ~30–40 | split-KV **12.8× over stock**, net-positive ✅ |
+| ~207K | **0.57 t/s** | **0.76 t/s** | **12.2** | split-KV **~25% SLOWER than stock**, both net-NEGATIVE ❌ |
 
-At 244K the spec step is ~2.2s (0.57 t/s / accept 1.25) — i.e. the verify forward is ~2.2s, **≈ the
-unsplit stock verify (~2.7s)**: the split-KV parallelism **does not hold at deep KV**. Almost certainly
+(Both 244K runs used the same deterministic copy-heavy prompt; actual depth ~207K — the harness's
+`CHARS_PER_TOK=3.6` overestimates code density, so the 244000 target undershoots. accept 1.25 both.)
+**The kernel CROSSES OVER**: a 12.8× win at mid-depth → a ~25% *regression* vs stock at deep KV.
+
+At ~207K the spec step is ~2.2s (0.57 t/s / accept 1.25) — i.e. the verify forward is ~2.2s, **slightly
+WORSE than the unsplit stock verify** (FLAG=0 0.76 t/s, ~1.6s): the split-KV parallelism **does not hold
+at deep KV — it's a net regression vs stock there**. Almost certainly
 **occupancy-bound** — the prefix stage1 block is `acc[BLOCK_R=64, 128]` (8 draft × 8 heads = 64 rows)
 fp32, a large register/LDS footprint → low wave occupancy → the 244K KV-read latency isn't hidden. At
 53K the read is ~4.6× shorter so low occupancy is tolerable; at 244K the read dominates and the kernel
-degrades to ~unsplit speed. **So the "256K win" was a 53K measurement — premature.** (FLAG=0 @244K
-matched-control re-run in progress to pin the exact split-vs-stock ratio at depth; the headline
-net-negative-vs-no-spec is already certain from FLAG=1.)
+degrades to *below* unsplit speed (the split's extra stage2 + merge overhead isn't repaid when each
+split is starved of occupancy). **So the "256K win" was a 53K measurement — premature.**
 
-**Path to a real 256K win:** cut the per-block footprint so the deep read is hidden — process fewer
-rows per block (split the D draft tokens across more grid blocks, or smaller `BLOCK_R`), trading more
-blocks for higher occupancy (the decode kernel sustains 12.2 t/s @244K with BLOCK_H=16/1-query blocks).
-Until then the kernel is a **mid-depth (≤~64K) opt-in win only**, NOT a 256K win.
+**Is a real 256K win even reachable? Probably not via NGRAM — TWO factors fight it at depth:**
+1. **Verify occupancy** (above) — fixable in principle: cut the per-block footprint (split the D draft
+   tokens across more grid blocks / smaller `BLOCK_R`) to raise occupancy. BUT there's a tension —
+   splitting tokens into separate blocks re-reads the KV per block (losing the shared read that's the
+   whole point), so it's a non-trivial shared-read-vs-occupancy tradeoff, not a quick win.
+2. **Copy-accept at depth** — at ~207K the accept_len is only ~1.25 and **not climbing** (1.18→1.30→1.25),
+   vs climbing to 2.8 @53K. The trie barely matches the target file buried in 207K → low copy fidelity
+   at depth. **Even a perfect (free) verify caps NGRAM at ~1.25× ≈ no-spec at 207K — not a win.**
+   (Caveat: this run used OUT_TOK=300, a small copy span; a definitive check would re-run @244K with
+   OUT_TOK=1200 — but the *non-climbing from the first sample* already points to a trie-match ceiling at
+   depth, not just a short output.)
+
+**⇒ The split-KV kernel is a confirmed mid-depth (≤~64K) opt-in win; a 256K NGRAM win is not reachable
+by fixing occupancy alone (accept-limited at depth). This corroborates the standing conclusion: no-spec
+is the 256K path; spec is a ≤~32–64K optimization (README Evergreen lessons).** Occupancy fix (task #16)
+deprioritized accordingly — pursue only if a high-accept-at-depth path (e.g. external corpus) appears.
 
 Notes: @53K prompt_tokens≈52.9K (harness CHARS_PER_TOK estimate undershot the 64K target — matched
 comparison so fine). Accept ~1.8–2.8 @53K / ~1.25 @244K (lower at 244K partly from OUT_TOK=300 = small
