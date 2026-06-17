@@ -32,4 +32,6 @@ The decisive fact: **verify runs `extend_attention_fwd` with `skip_prefix_custom
 New module `srt/layers/attention/triton_ops/tree_verify_attention.py` (`tree_verify_attention_fwd(...)`). Wire into `triton_backend.py` `_forward_extend` `is_target_verify()` branch behind an env flag `SGLANG_TREE_VERIFY_SPLITKV=1` (default off until bench-proven, then flip). Allocate split scratch (`attn_logits[bs*D, H, max_kv_splits, Dv]`, `attn_lse[bs*D, H, max_kv_splits]`) + `num_kv_splits[bs]` via the existing `get_num_kv_splits` (seq_lens = prefix lens). Capture as a numbered patch once validated; cross-team to 3090 (FlashInfer already does this → it's the RDNA4/triton gap, but the merge-decomposition is portable).
 
 ## Status
-- [x] Design confirmed (recon brief).  [ ] prefix kernel  [ ] suffix  [ ] merge wiring  [ ] standalone harness  [ ] correctness  [ ] integrate+flag  [ ] in-server lossless  [ ] depth bench
+- [x] Design confirmed (recon brief).
+- [x] **Standalone harness built + validated** (`scripts/debug/tree_verify_splitkv_test.py`): PyTorch brute-force ground truth == live `extend_attention_fwd` to `max|d|=1.2e-04` (bf16) on bs=1/D=8/prefix=2048/H=16/kvh=2/dh=128 + a random ancestor-tree mask → data layout (tree custom_mask, paged prefix, skip_prefix_custom_mask, GQA map) confirmed correct. The new kernel compares against the same ground truth (hook wired).
+- [ ] prefix split-KV kernel  [ ] suffix (D×D tree)  [ ] merge_state wiring  [ ] correctness vs ground-truth  [ ] integrate behind `SGLANG_TREE_VERIFY_SPLITKV`  [ ] in-server lossless  [ ] depth bench
