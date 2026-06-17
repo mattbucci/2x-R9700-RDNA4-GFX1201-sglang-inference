@@ -1,0 +1,53 @@
+diff --git a/python/sglang/srt/models/ministral3.py b/python/sglang/srt/models/ministral3.py
+index c342a76cb..001258c3f 100644
+--- a/python/sglang/srt/models/ministral3.py
++++ b/python/sglang/srt/models/ministral3.py
+@@ -39,19 +39,22 @@ class Ministral3Attention(LlamaAttention):
+         prefix: str = "",
+         bias: bool = False,
+     ) -> None:
++        # Keyword args: v0.5.13 inserted `start_layer` into LlamaAttention.__init__
++        # (after layer_id), so the old positional order shifted rope_theta→start_layer
++        # and prefix→quant_config etc. Keyword binding is robust to such additions.
+         super().__init__(
+             config,
+-            hidden_size,
+-            num_heads,
+-            num_kv_heads,
+-            layer_id,
+-            rope_theta,
+-            rope_scaling,
+-            rope_is_neox_style,
+-            max_position_embeddings,
+-            quant_config,
+-            prefix,
+-            bias,
++            hidden_size=hidden_size,
++            num_heads=num_heads,
++            num_kv_heads=num_kv_heads,
++            layer_id=layer_id,
++            rope_theta=rope_theta,
++            rope_scaling=rope_scaling,
++            rope_is_neox_style=rope_is_neox_style,
++            max_position_embeddings=max_position_embeddings,
++            quant_config=quant_config,
++            prefix=prefix,
++            bias=bias,
+         )
+         # Ministral3 specific: llama 4 style scaling beta
+         self.llama_4_scaling_beta = config.rope_parameters.get("llama_4_scaling_beta")
+@@ -97,7 +100,13 @@ class Ministral3Attention(LlamaAttention):
+ 
+ class Ministral3DecoderLayer(LlamaDecoderLayer):
+     def __init__(self, config, layer_id=0, quant_config=None, prefix=""):
+-        super().__init__(config, layer_id, quant_config, prefix)
++        # Keyword args: v0.5.13 inserted `start_layer` into LlamaDecoderLayer.__init__
++        # (after layer_id); positional passing landed quant_config in start_layer and
++        # the prefix string in quant_config → 'str' object has no attribute
++        # 'get_quant_method' (crashed Devstral-Small-2-24B-AWQ / any Mistral3 AWQ).
++        super().__init__(
++            config, layer_id=layer_id, quant_config=quant_config, prefix=prefix
++        )
+         self.self_attn = Ministral3Attention(
+             config=config,
+             hidden_size=self.hidden_size,
