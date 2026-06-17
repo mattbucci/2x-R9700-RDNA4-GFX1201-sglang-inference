@@ -1,0 +1,432 @@
+diff --git a/python/sglang/srt/layers/attention/triton_backend.py b/python/sglang/srt/layers/attention/triton_backend.py
+index 475770828..149a58b71 100644
+--- a/python/sglang/srt/layers/attention/triton_backend.py
++++ b/python/sglang/srt/layers/attention/triton_backend.py
+@@ -1,11 +1,17 @@
+ from __future__ import annotations
+ 
++import os
+ from dataclasses import dataclass
+ from typing import TYPE_CHECKING, List, Optional
+ 
+ import torch
+ import triton
+ 
++# RDNA4: opt-in split-KV (flash-decoding) tree-verify kernel for spec-decode (task #10).
++# The default extend verify reads the deep prefix KV unsplit (~2.7s @244K); this splits it
++# across SMs like decode does. Off by default until depth-bench-proven.
++_TREE_VERIFY_SPLITKV = os.environ.get("SGLANG_TREE_VERIFY_SPLITKV", "") in ("1", "true", "True")
++
+ from sglang.srt.configs.model_config import AttentionArch
+ from sglang.srt.layers.attention.base_attn_backend import AttentionBackend
+ from sglang.srt.layers.attention.triton_ops.kv_indices import (
+@@ -1163,6 +1169,43 @@ class TritonAttnBackend(AttentionBackend):
+             k_descale = 1.0
+             v_descale = 1.0
+ 
++        # RDNA4 task #10 (opt-in): split-KV tree-verify reads the deep prefix KV split across
++        # SMs (decode-style flash-decoding) instead of the unsplit extend prefill kernel that
++        # leaves ~15/16 of SMs idle (~2.7s @244K). Standard GQA verify only; falls through to
++        # the stock kernel for SWA/MLA/no-mask/decoupled-head-dim.
++        if (
++            _TREE_VERIFY_SPLITKV
++            and forward_batch.forward_mode.is_target_verify()
++            and sliding_window_size == -1
++            and not self.use_mla
++            and self.forward_metadata.custom_mask is not None
++            and layer.qk_head_dim == layer.v_head_dim
++        ):
++            from sglang.srt.layers.attention.triton_ops.tree_verify_attention import (
++                tree_verify_attention_fwd,
++            )
++
++            tree_verify_attention_fwd(
++                q.view(-1, layer.tp_q_head_num, layer.qk_head_dim),
++                k.contiguous(),
++                v.contiguous(),
++                o.view(-1, layer.tp_q_head_num, layer.v_head_dim),
++                self.token_to_kv_pool.get_key_buffer(layer.layer_id),
++                self.token_to_kv_pool.get_value_buffer(layer.layer_id),
++                self.forward_metadata.qo_indptr,
++                kv_indptr,
++                kv_indices,
++                self.forward_metadata.custom_mask,
++                self.forward_metadata.mask_indptr,
++                self.forward_metadata.max_extend_len,
++                layer.scaling,
++                logit_cap=logits_soft_cap,
++                k_descale=k_descale,
++                v_descale=v_descale,
++                max_kv_splits=self.max_kv_splits,
++            )
++            return o
++
+         self.extend_attention_fwd(
+             q.view(-1, layer.tp_q_head_num, layer.qk_head_dim),
+             k.contiguous(),
+diff --git a/python/sglang/srt/layers/attention/triton_ops/tree_verify_attention.py b/python/sglang/srt/layers/attention/triton_ops/tree_verify_attention.py
+new file mode 100644
+index 000000000..1986dd968
+--- /dev/null
++++ b/python/sglang/srt/layers/attention/triton_ops/tree_verify_attention.py
+@@ -0,0 +1,360 @@
++"""Split-KV (flash-decoding) tree-verify attention for RDNA4 (task #10).
++
++The spec verify reads the deep prefix KV with NO SM-split (extend_attention_fwd parallelizes
++over query blocks; with ~D=8 draft tokens that's one block → ~15/16 of SMs idle → ~2.7s @244K).
++Decode splits the same read 16 ways (flash-decoding) → 82ms. This kernel gives verify the same
++split.
++
++Decomposition (verify uses skip_prefix_custom_mask=True, so the tree mask is extend-only):
++  prefix = D draft queries × the shared cached prefix KV, MASK-FREE, split-KV across SMs;
++  suffix = the cheap D×D tree-masked draft self-attention;
++  out    = merge_state(prefix, suffix)   (flash-attn state combine).
++
++The prefix kernel generalizes decode's grouped split-KV stage1/stage2: the row dim is
++(GRP q-heads × D draft tokens) so ONE K/V tile load serves all D tokens (the shared read).
++"""
++from typing import Optional
++
++import torch
++import triton
++import triton.language as tl
++
++from sglang.srt.layers.attention.triton_ops.merge_state import merge_state_triton
++
++try:
++    from sglang.srt.utils import is_hip
++
++    _is_hip = is_hip()
++except Exception:
++    _is_hip = False
++
++_MIN_BLOCK_KV = 32
++
++
++@triton.jit
++def _tree_prefix_stage1(
++    Q,                # [N_TOK, H, DH]   N_TOK = bs*D
++    K_Buffer,         # [pool, KVH, DH]
++    V_Buffer,         # [pool, KVH, DV]
++    sm_scale,
++    kv_indptr,        # [bs+1]
++    kv_indices,       # [sum prefix lens]
++    num_kv_splits,    # [bs]
++    Att_Out,          # [N_TOK, H, MAX_KV_SPLITS, DV]
++    Att_Lse,          # [N_TOK, H, MAX_KV_SPLITS]
++    stride_qbs, stride_qh,
++    stride_kbs, stride_kh,
++    stride_vbs, stride_vh,
++    stride_ob, stride_oh, stride_os,
++    stride_lb, stride_lh,
++    D: tl.constexpr,          # draft tokens
++    GRP: tl.constexpr,        # q heads per kv head (kv_group_num)
++    BLOCK_R: tl.constexpr,    # next_pow2(GRP*D)
++    BLOCK_DMODEL: tl.constexpr,
++    BLOCK_DV: tl.constexpr,
++    BLOCK_N: tl.constexpr,
++    MIN_BLOCK_KV: tl.constexpr,
++    logit_cap: tl.constexpr,
++    Lk: tl.constexpr,
++    Lv: tl.constexpr,
++):
++    cur_batch = tl.program_id(0)
++    cur_kv_head = tl.program_id(1)
++    split_kv_id = tl.program_id(2)
++
++    offs_d = tl.arange(0, BLOCK_DMODEL)
++    offs_dv = tl.arange(0, BLOCK_DV)
++    mask_d = offs_d < Lk
++    mask_dv = offs_dv < Lv
++
++    # row r -> (head-in-group hg = r // D, draft token t = r % D)
++    r = tl.arange(0, BLOCK_R)
++    row_mask = r < (GRP * D)
++    t = r % D
++    hg = r // D
++    tok_row = cur_batch * D + t           # row into N_TOK
++    head = cur_kv_head * GRP + hg         # absolute q head
++
++    cur_batch_kv_start = tl.load(kv_indptr + cur_batch)
++    cur_batch_seq_len = tl.load(kv_indptr + cur_batch + 1) - cur_batch_kv_start
++    kv_splits = tl.load(num_kv_splits + cur_batch)
++
++    kv_len_per_split = (
++        tl.cdiv(tl.cdiv(cur_batch_seq_len, kv_splits), MIN_BLOCK_KV) * MIN_BLOCK_KV
++    )
++    split_kv_start = kv_len_per_split * split_kv_id
++    split_kv_end = tl.minimum(split_kv_start + kv_len_per_split, cur_batch_seq_len)
++
++    e_max = tl.zeros([BLOCK_R], dtype=tl.float32) - float("inf")
++    e_sum = tl.zeros([BLOCK_R], dtype=tl.float32)
++    acc = tl.zeros([BLOCK_R, BLOCK_DV], dtype=tl.float32)
++
++    offs_q = tok_row[:, None] * stride_qbs + head[:, None] * stride_qh + offs_d[None, :]
++    base_offs_k = cur_kv_head * stride_kh + offs_d[:, None]
++    base_offs_v = cur_kv_head * stride_vh + offs_dv[None, :]
++
++    if split_kv_end > split_kv_start:
++        q = tl.load(Q + offs_q, mask=row_mask[:, None] & mask_d[None, :], other=0.0)
++        q = q.to(K_Buffer.dtype.element_ty)
++        for start_n in tl.range(split_kv_start, split_kv_end, BLOCK_N):
++            offs_n = start_n + tl.arange(0, BLOCK_N)
++            n_mask = offs_n < split_kv_end
++            kv_loc = tl.load(
++                kv_indices + cur_batch_kv_start + offs_n, mask=n_mask, other=0
++            )
++            offs_buf_k = kv_loc[None, :] * stride_kbs + base_offs_k
++            k = tl.load(
++                K_Buffer + offs_buf_k,
++                mask=n_mask[None, :] & mask_d[:, None],
++                other=0.0,
++            )
++            qk = tl.dot(q, k)              # [BLOCK_R, BLOCK_N]
++            qk *= sm_scale
++            if logit_cap > 0:
++                qk = logit_cap * tl.extra.cuda.libdevice.tanh(qk / logit_cap)
++            qk = tl.where(row_mask[:, None] & n_mask[None, :], qk, float("-inf"))
++
++            offs_buf_v = kv_loc[:, None] * stride_vbs + base_offs_v
++            v = tl.load(
++                V_Buffer + offs_buf_v,
++                mask=n_mask[:, None] & mask_dv[None, :],
++                other=0.0,
++            )
++            n_e_max = tl.maximum(tl.max(qk, 1), e_max)
++            re_scale = tl.exp(e_max - n_e_max)
++            p = tl.exp(qk - n_e_max[:, None])
++            acc *= re_scale[:, None]
++            acc += tl.dot(p.to(v.dtype), v)
++            e_sum = e_sum * re_scale + tl.sum(p, 1)
++            e_max = n_e_max
++
++    # store partial (guard empty split: lse=-inf, o=0)
++    has = e_sum > 0
++    inv = tl.where(has, 1.0 / e_sum, 0.0)
++    offs_o = (
++        tok_row[:, None] * stride_ob
++        + head[:, None] * stride_oh
++        + split_kv_id * stride_os
++        + offs_dv[None, :]
++    )
++    tl.store(Att_Out + offs_o, acc * inv[:, None], mask=row_mask[:, None] & mask_dv[None, :])
++    lse = tl.where(has, e_max + tl.log(e_sum), float("-inf"))
++    offs_l = tok_row * stride_lb + head * stride_lh + split_kv_id
++    tl.store(Att_Lse + offs_l, lse, mask=row_mask)
++
++
++@triton.jit
++def _tree_prefix_stage2(
++    Mid_O,            # [N_TOK, H, MAX_KV_SPLITS, DV]
++    Mid_Lse,          # [N_TOK, H, MAX_KV_SPLITS]
++    O,                # [N_TOK, H, DV]
++    O_Lse,            # [N_TOK, H]
++    kv_indptr,        # [bs+1]
++    num_kv_splits,    # [bs]
++    stride_mb, stride_mh, stride_ms,
++    stride_lb, stride_lh,
++    stride_ob, stride_oh,
++    stride_olb, stride_olh,
++    D: tl.constexpr,
++    MAX_KV_SPLITS: tl.constexpr,
++    MIN_BLOCK_KV: tl.constexpr,
++    BLOCK_DV: tl.constexpr,
++    Lv: tl.constexpr,
++):
++    cur_tok = tl.program_id(0)
++    cur_head = tl.program_id(1)
++    cur_batch = cur_tok // D
++
++    offs_dv = tl.arange(0, BLOCK_DV)
++    mask_dv = offs_dv < Lv
++
++    cur_batch_seq_len = tl.load(kv_indptr + cur_batch + 1) - tl.load(kv_indptr + cur_batch)
++    kv_splits = tl.load(num_kv_splits + cur_batch)
++    kv_len_per_split = (
++        tl.cdiv(tl.cdiv(cur_batch_seq_len, kv_splits), MIN_BLOCK_KV) * MIN_BLOCK_KV
++    )
++
++    e_sum = 0.0
++    e_max = -float("inf")
++    acc = tl.zeros([BLOCK_DV], dtype=tl.float32)
++    base_m = cur_tok * stride_mb + cur_head * stride_mh
++    base_l = cur_tok * stride_lb + cur_head * stride_lh
++
++    for split_kv_id in tl.range(0, MAX_KV_SPLITS):
++        split_kv_start = kv_len_per_split * split_kv_id
++        split_kv_end = tl.minimum(split_kv_start + kv_len_per_split, cur_batch_seq_len)
++        if split_kv_end > split_kv_start:
++            tlogic = tl.load(Mid_Lse + base_l + split_kv_id)
++            if tlogic > -float("inf"):
++                tv = tl.load(Mid_O + base_m + split_kv_id * stride_ms + offs_dv, mask=mask_dv, other=0.0)
++                n_e_max = tl.maximum(tlogic, e_max)
++                old_scale = tl.exp(e_max - n_e_max)
++                acc *= old_scale
++                exp_logic = tl.exp(tlogic - n_e_max)
++                acc += exp_logic * tv
++                e_sum = e_sum * old_scale + exp_logic
++                e_max = n_e_max
++
++    has = e_sum > 0
++    inv = tl.where(has, 1.0 / e_sum, 0.0)
++    tl.store(O + cur_tok * stride_ob + cur_head * stride_oh + offs_dv, acc * inv, mask=mask_dv)
++    out_lse = tl.where(has, e_max + tl.log(e_sum), float("-inf"))
++    tl.store(O_Lse + cur_tok * stride_olb + cur_head * stride_olh, out_lse)
++
++
++@triton.jit
++def _tree_suffix_kernel(
++    Q,                # [N_TOK, H, DH]
++    K_Ext,            # [N_TOK, KVH, DH]
++    V_Ext,            # [N_TOK, KVH, DV]
++    O,                # [N_TOK, H, DV]
++    O_Lse,            # [N_TOK, H]
++    Mask,             # custom_mask uint8 (flat)
++    mask_indptr,      # [bs+1]
++    kv_indptr,        # [bs+1]  (prefix lens, for the mask col offset)
++    sm_scale,
++    stride_qbs, stride_qh,
++    stride_kbs, stride_kh,
++    stride_vbs, stride_vh,
++    stride_ob, stride_oh,
++    stride_olb, stride_olh,
++    D: tl.constexpr,
++    GRP: tl.constexpr,
++    BLOCK_D: tl.constexpr,       # next_pow2(D)
++    BLOCK_DMODEL: tl.constexpr,
++    BLOCK_DV: tl.constexpr,
++    logit_cap: tl.constexpr,
++    Lk: tl.constexpr,
++    Lv: tl.constexpr,
++):
++    cur_tok = tl.program_id(0)       # query draft token (row into N_TOK)
++    cur_head = tl.program_id(1)
++    cur_batch = cur_tok // D
++    q_in_batch = cur_tok % D
++    cur_kv_head = cur_head // GRP
++
++    offs_d = tl.arange(0, BLOCK_DMODEL)
++    offs_dv = tl.arange(0, BLOCK_DV)
++    mask_d = offs_d < Lk
++    mask_dv = offs_dv < Lv
++    j = tl.arange(0, BLOCK_D)
++    j_mask = j < D
++
++    # query vector
++    q = tl.load(Q + cur_tok * stride_qbs + cur_head * stride_qh + offs_d, mask=mask_d, other=0.0)
++    # draft keys/values for this batch: rows [cur_batch*D : cur_batch*D + D]
++    k_rows = cur_batch * D + j
++    k = tl.load(
++        K_Ext + k_rows[:, None] * stride_kbs + cur_kv_head * stride_kh + offs_d[None, :],
++        mask=j_mask[:, None] & mask_d[None, :], other=0.0,
++    )                                 # [BLOCK_D, DH]
++    v = tl.load(
++        V_Ext + k_rows[:, None] * stride_vbs + cur_kv_head * stride_vh + offs_dv[None, :],
++        mask=j_mask[:, None] & mask_dv[None, :], other=0.0,
++    )                                 # [BLOCK_D, DV]
++    qk = tl.sum(q[None, :].to(tl.float32) * k.to(tl.float32), 1)   # [BLOCK_D]
++    qk *= sm_scale
++    if logit_cap > 0:
++        qk = logit_cap * tl.extra.cuda.libdevice.tanh(qk / logit_cap)
++
++    # tree mask: row q_in_batch, extend cols start at prefix_len
++    prefix_len = tl.load(kv_indptr + cur_batch + 1) - tl.load(kv_indptr + cur_batch)
++    mstart = tl.load(mask_indptr + cur_batch)
++    row_cols = prefix_len + D                  # cols per mask row
++    moff = mstart + q_in_batch * row_cols + prefix_len + j
++    allow = tl.load(Mask + moff, mask=j_mask, other=0).to(tl.int1)
++    qk = tl.where(j_mask & allow, qk, float("-inf"))
++
++    m = tl.max(qk, 0)
++    p = tl.exp(qk - m)
++    s = tl.sum(p, 0)
++    out = tl.sum(p[:, None] * v.to(tl.float32), 0) / s     # [DV]
++    tl.store(O + cur_tok * stride_ob + cur_head * stride_oh + offs_dv, out, mask=mask_dv)
++    lse = m + tl.log(s)
++    tl.store(O_Lse + cur_tok * stride_olb + cur_head * stride_olh, lse)
++
++
++def tree_verify_attention_fwd(
++    q,                # [N_TOK, H, DH]
++    k_extend,         # [N_TOK, KVH, DH]
++    v_extend,         # [N_TOK, KVH, DV]
++    o,                # [N_TOK, H, DV] (out)
++    k_buffer,         # [pool, KVH, DH]
++    v_buffer,         # [pool, KVH, DV]
++    qo_indptr,        # [bs+1]
++    kv_indptr,        # [bs+1]
++    kv_indices,
++    custom_mask,
++    mask_indptr,
++    max_len_extend,   # D
++    sm_scale,
++    logit_cap: float = 0.0,
++    k_descale: float = 1.0,   # fp8-KV recover for the POOL prefix (k_extend/v_extend are fresh bf16)
++    v_descale: float = 1.0,
++    num_kv_splits: Optional[torch.Tensor] = None,
++    max_kv_splits: int = 16,
++):
++    N_TOK, H, DH = q.shape
++    KVH = k_buffer.shape[1]
++    DV = v_buffer.shape[-1]
++    D = max_len_extend
++    bs = kv_indptr.shape[0] - 1
++    GRP = H // KVH
++    dev = q.device
++
++    BLOCK_DMODEL = triton.next_power_of_2(DH)
++    BLOCK_DV = triton.next_power_of_2(DV)
++    # >=16 so the tl.dot M-dim satisfies the AMD matrix_instr_nonkdim=16 lowering (D=1 -> GRP*D=8).
++    BLOCK_R = max(16, triton.next_power_of_2(GRP * D))
++    BLOCK_D = triton.next_power_of_2(D)
++    BLOCK_N = 32 if DH <= 128 else 16
++
++    if num_kv_splits is None:
++        num_kv_splits = torch.full((bs,), max_kv_splits, dtype=torch.int32, device=dev)
++
++    mid_o = torch.empty((N_TOK, H, max_kv_splits, DV), dtype=torch.float32, device=dev)
++    mid_lse = torch.empty((N_TOK, H, max_kv_splits), dtype=torch.float32, device=dev)
++    pre_o = torch.empty((N_TOK, H, DV), dtype=torch.float32, device=dev)
++    pre_lse = torch.empty((N_TOK, H), dtype=torch.float32, device=dev)
++    suf_o = torch.empty((N_TOK, H, DV), dtype=torch.float32, device=dev)
++    suf_lse = torch.empty((N_TOK, H), dtype=torch.float32, device=dev)
++
++    extra = {"waves_per_eu": 4, "matrix_instr_nonkdim": 16, "kpack": 2} if _is_hip else {}
++
++    # prefix reads the (possibly fp8) KV pool: fold k_descale into the score scale.
++    _tree_prefix_stage1[(bs, KVH, max_kv_splits)](
++        q, k_buffer, v_buffer, sm_scale * k_descale, kv_indptr, kv_indices, num_kv_splits,
++        mid_o, mid_lse,
++        q.stride(0), q.stride(1),
++        k_buffer.stride(0), k_buffer.stride(1),
++        v_buffer.stride(0), v_buffer.stride(1),
++        mid_o.stride(0), mid_o.stride(1), mid_o.stride(2),
++        mid_lse.stride(0), mid_lse.stride(1),
++        D=D, GRP=GRP, BLOCK_R=BLOCK_R, BLOCK_DMODEL=BLOCK_DMODEL, BLOCK_DV=BLOCK_DV,
++        BLOCK_N=BLOCK_N, MIN_BLOCK_KV=_MIN_BLOCK_KV, logit_cap=logit_cap, Lk=DH, Lv=DV,
++        num_warps=4, num_stages=1 if _is_hip else 2, **extra,
++    )
++    _tree_prefix_stage2[(N_TOK, H)](
++        mid_o, mid_lse, pre_o, pre_lse, kv_indptr, num_kv_splits,
++        mid_o.stride(0), mid_o.stride(1), mid_o.stride(2),
++        mid_lse.stride(0), mid_lse.stride(1),
++        pre_o.stride(0), pre_o.stride(1),
++        pre_lse.stride(0), pre_lse.stride(1),
++        D=D, MAX_KV_SPLITS=max_kv_splits, MIN_BLOCK_KV=_MIN_BLOCK_KV,
++        BLOCK_DV=BLOCK_DV, Lv=DV, num_warps=4, num_stages=2,
++    )
++    if v_descale != 1.0:
++        pre_o.mul_(v_descale)   # recover fp8-pool values (lse unaffected: v_scale is a constant)
++    _tree_suffix_kernel[(N_TOK, H)](
++        q, k_extend, v_extend, suf_o, suf_lse, custom_mask, mask_indptr, kv_indptr, sm_scale,
++        q.stride(0), q.stride(1),
++        k_extend.stride(0), k_extend.stride(1),
++        v_extend.stride(0), v_extend.stride(1),
++        suf_o.stride(0), suf_o.stride(1),
++        suf_lse.stride(0), suf_lse.stride(1),
++        D=D, GRP=GRP, BLOCK_D=BLOCK_D, BLOCK_DMODEL=BLOCK_DMODEL, BLOCK_DV=BLOCK_DV,
++        logit_cap=logit_cap, Lk=DH, Lv=DV, num_warps=4, num_stages=2,
++    )
++    merged, _ = merge_state_triton(pre_o, pre_lse, suf_o, suf_lse)
++    o.copy_(merged.to(o.dtype))
++    return o

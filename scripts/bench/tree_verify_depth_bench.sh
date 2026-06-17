@@ -23,17 +23,10 @@ for _ in $(seq 1 400); do
 done
 [ "$ready" = 1 ] || { echo "BOOT FAILED"; grep -aiE "error|exception|hsail|traceback" "$OUT/serve.log" | grep -avE NCCL | tail -6; pkill -9 -f '[s]glang.launch_server'; echo DEPTH_BENCH_DONE; exit 1; }
 echo "=== healthy; deep copy-heavy gen (~244K prefix, reproduce verbatim) $(date +%H:%M:%S) ==="
-$PY - "$OUT/req.json" <<'PYEOF'
-import json,sys,os
-chars=int(os.environ.get("CHARS","280000"))
-ctx=open("/tmp/spec256k-context.txt").read()[:chars]
-content=ctx+"\n\n---\nReproduce the source code above VERBATIM starting from the first character."
-json.dump({"model":"coder-30b","temperature":0,"max_tokens":200,
-           "messages":[{"role":"user","content":content}]}, open(sys.argv[1],"w"))
-print("prompt chars:",len(content))
-PYEOF
-curl -s --max-time 1800 http://127.0.0.1:$PORT/v1/chat/completions -H 'Content-Type: application/json' -d @"$OUT/req.json" > "$OUT/gen.json" 2>&1
-$PY -c "import json;d=json.load(open('$OUT/gen.json'));u=d.get('usage',{});print('prompt_tokens',u.get('prompt_tokens'),'completion',u.get('completion_tokens'))" 2>&1 | head -1
+# Use the 3090's proven copy-heavy harness (reproduce ONE medium file shown verbatim, padded to
+# depth) — elicits high NGRAM acceptance (accept 6-7.6) instead of the whole-codebase refusal.
+TGT_TOK="${TGT_TOK:-64000}"; OUT_TOK="${OUT_TOK:-1200}"
+$PY scripts/bench/copyheavy_decode_bench.py --port "$PORT" --target-prompt-tokens "$TGT_TOK" --output-tokens "$OUT_TOK" 2>&1 | tee "$OUT/client.json" | grep -aE "bench\]|prompt_tokens|completion_tokens|client_decode" | tail -8
 echo "=== decode gen-throughput at depth (FLAG=$FLAG) ==="
 grep -aE "Decode batch" "$OUT/serve.log" | grep -aoE "accept len: [0-9.]+.*gen throughput \(token/s\): [0-9.]+" | tail -10
 echo "--- summary ---"
