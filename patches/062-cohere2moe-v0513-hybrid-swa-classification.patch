@@ -1,0 +1,37 @@
+diff --git a/python/sglang/srt/configs/model_config.py b/python/sglang/srt/configs/model_config.py
+index 0773a1b53..d6a4b1668 100644
+--- a/python/sglang/srt/configs/model_config.py
++++ b/python/sglang/srt/configs/model_config.py
+@@ -1725,6 +1725,12 @@ def is_hybrid_swa_model(
+         "Gemma4ForConditionalGeneration",
+         "Gemma4UnifiedForConditionalGeneration",
+         "LagunaForCausalLM",
++        # Cohere2Moe (North-Mini-Code) — 1:3 full:sliding (window 4096). v0.5.13 has
++        # native cohere2_moe but does NOT classify it hybrid-SWA, so model_runner
++        # never sets sliding_window_size → triton SWA decode gets window_kv_indptr=None
++        # → AttributeError at cuda-graph capture. (Rebased from the v0.5.12 cohere2moe
++        # graft; the rest of that graft is subsumed by v0.5.13's native support.)
++        "Cohere2MoeForCausalLM",
+     }
+     if any(arch in hybrid_swa_archs for arch in model_architectures):
+         return True
+@@ -1815,6 +1821,19 @@ def get_hybrid_layer_ids(
+         full_attention_layer_ids = [
+             i for i, x in enumerate(layer_types) if x == "full_attention"
+         ]
++    elif "Cohere2MoeForCausalLM" in model_architectures:
++        # North-Mini-Code (cohere2_moe): Cohere2MoeConfig.__post_init__ materializes
++        # layer_types (full_attention / sliding_attention) from sliding_window_pattern.
++        # v0.5.13 has native cohere2_moe but no get_hybrid_layer_ids branch → returned
++        # None → adjust_hybrid_swa_layers_for_pp iterated None. (Companion to the
++        # is_hybrid_swa allowlist add above; both rebased from the v0.5.12 graft.)
++        layer_types = getattr(hf_text_config, "layer_types", [])
++        swa_attention_layer_ids = [
++            i for i, x in enumerate(layer_types) if x == "sliding_attention"
++        ]
++        full_attention_layer_ids = [
++            i for i, x in enumerate(layer_types) if x == "full_attention"
++        ]
+     elif getattr(hf_text_config, "hybrid_layer_pattern", None) is not None:
+         # Generic fallback for custom hybrid SWA models that opt in via
+         # hf_text_config.is_hybrid_swa and expose a hybrid_layer_pattern
