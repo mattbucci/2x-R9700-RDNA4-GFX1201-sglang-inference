@@ -33,6 +33,10 @@ source "$SCRIPT_DIR/common.sh"
 # --- Defaults (overridden by model preset, then by CLI flags) ---
 MODEL="${MODEL:-}"
 TOKENIZER=""
+# ⚠ This pins QUANT=awq NOW, before the preset case runs — so a preset CANNOT set a
+# non-awq default via QUANT="${QUANT:-moe_wna16}" (the :- no-ops, QUANT is already "awq").
+# Presets that need a non-awq default MUST hard-set (QUANT="moe_wna16"). Env override still
+# works either way. (This trap silently shipped awq → OOM for glm45-air + coder-next; 2026-06-17.)
 QUANT="${QUANT:-awq}"
 DTYPE="float16"
 CTX=32768
@@ -208,7 +212,13 @@ PYEOF
             # experts as BF16 (768 MiB × num_layers) → OOM at model-load time.
             # Surfaced via Phase 3 ship validation.
             MODEL="${MODEL:-$MODELS_DIR/Qwen3-Coder-Next-AWQ}"
-            QUANT="${QUANT:-moe_wna16}"   # overridable: auto-round checkpoints need QUANT=auto-round (config-match)
+            # Hard-set (NOT ${QUANT:-...}): the override-default no-ops because the global
+            # default at line ~36 already pins QUANT=awq before this case runs — so the
+            # documented "default awq+fp16 → experts BF16 → OOM" failure above is exactly
+            # what shipped. moe_wna16 is required, same as coder-30b/gemma4 (which hard-set
+            # it). Env override still works (QUANT=auto-round propagates through line 36).
+            # (Latent since written; caught 2026-06-17 alongside the same glm45-air trap.)
+            QUANT="moe_wna16"
             DTYPE="bfloat16"
             CTX=131072; MAX_RUNNING=8; CHUNKED=8192; DECODE_STEPS=32; MEM=0.85
             MAMBA_CACHE="--max-mamba-cache-size 8"
@@ -244,9 +254,22 @@ PYEOF
             # won't load on gfx1201). ⚠ checkpoint = converted 3rd-party REAP, not yet our own
             # upstream-BF16 prune+calibration (provenance task, future) — works but not a canonical ship.
             MODEL="${MODEL:-$MODELS_DIR/GLM-4.5-Air-REAP-AWQ-native}"
-            QUANT="${QUANT:-moe_wna16}"
+            # Hard-set (NOT ${QUANT:-...}): the global default at line 36 already pins
+            # QUANT=awq, so an override-default no-ops here and boots AWQ → AWQConfig
+            # leaves FusedMoE experts unquantized (BF16) → OOM at weight load. moe_wna16
+            # is required, same as gemma4. (Caught 2026-06-17 by the post-patch-066 preset
+            # validation; manual boots had passed only because they set QUANT=moe_wna16 explicitly.)
+            QUANT="moe_wna16"
             CTX=32768; MAX_RUNNING=32; CHUNKED=4096; DECODE_STEPS=8
             TOOL_CALL_PARSER="glm"
+            REASONING="--reasoning-parser glm45"   # split <think>…</think> into reasoning_content
+            # Recommended sampling (temp 0.6 / top_p 0.95 / repetition_penalty 1.05) is baked into
+            # the checkpoint's generation_config.json — REQUIRED: without rep-penalty this REAP+AWQ
+            # checkpoint repetition-collapses after correct reasoning (validated 2026-06-17). ⚠ tool-
+            # calling is degraded on this 3rd-party REAP conversion: it emits MALFORMED tool-call
+            # delimiters the glm parser can't extract (finish_reason=tool_calls but tool_calls=null),
+            # so it's chat/reasoning-capable but NOT agentic-ready — the canonical own-build (#17,
+            # upstream BF16 → our REAP → our calibration) is the real fix for tool use.
             WATCHDOG=1800
             ;;
         gemma4)
