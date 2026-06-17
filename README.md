@@ -212,7 +212,7 @@ Community checkpoints fail for several architectures (BOS issues, MoE under-cali
 
 ## Performance (2x R9700, TP=2, SGLang v0.5.12)
 
-> **⏳ v0.5.13.post1 resweep in progress (2026-06-16)** — re-measuring this table on the promoted v0.5.13 stack. Confirmed so far: **North-Mini-Code FP8 = parity** (65.4 short *exact* match; ~31 @231K vs 33.6 @256K baseline) — required new **patch 062** (cohere2_moe hybrid-SWA classification). Running log + method: [`benchmarks/v0513-resweep-2026-06-16.md`](benchmarks/v0513-resweep-2026-06-16.md). The numbers below are still the v0.5.12 baselines until each row is re-confirmed.
+> **⏳ v0.5.13.post1 resweep in progress (2026-06-16)** — re-measuring this table on the promoted v0.5.13 stack; **all parity so far**. Confirmed: **North-Mini-Code FP8** (65.4 short *exact*; ~31 @231K vs 33.6 @256K) — required new **patch 062** (cohere2_moe hybrid-SWA classification); **Qwen3.6-27B AWQ** DeltaNet-VL (25.05 short *exact*; 10.58 @230K vs 10.2 @256K) — clean, no patch, thinking+vision validated. Running log + method: [`benchmarks/v0513-resweep-2026-06-16.md`](benchmarks/v0513-resweep-2026-06-16.md). Numbers below are still v0.5.12 baselines until each row is re-confirmed.
 
 All context-sweep numbers: `sglang.bench_serving`, FP8 KV cache, 1 user. cuda-graph follows each preset's default — eager for the GPU-bound dense rows, **ON** for the MoE/hybrid rows (marked `†` in the sweep table below). Results are in `benchmarks/<slug>/results.json`; charts (regenerate with `python scripts/bench/generate_charts.py`) in `benchmarks/`.
 
