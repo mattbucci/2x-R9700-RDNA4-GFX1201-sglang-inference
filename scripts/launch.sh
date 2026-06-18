@@ -263,13 +263,16 @@ PYEOF
             CTX=32768; MAX_RUNNING=32; CHUNKED=4096; DECODE_STEPS=8
             TOOL_CALL_PARSER="glm"
             REASONING="--reasoning-parser glm45"   # split <think>…</think> into reasoning_content
-            # Recommended sampling (temp 0.6 / top_p 0.95 / repetition_penalty 1.05) is baked into
-            # the checkpoint's generation_config.json — REQUIRED: without rep-penalty this REAP+AWQ
-            # checkpoint repetition-collapses after correct reasoning (validated 2026-06-17). ⚠ tool-
-            # calling is degraded on this 3rd-party REAP conversion: it emits MALFORMED tool-call
-            # delimiters the glm parser can't extract (finish_reason=tool_calls but tool_calls=null),
-            # so it's chat/reasoning-capable but NOT agentic-ready — the canonical own-build (#17,
-            # upstream BF16 → our REAP → our calibration) is the real fix for tool use.
+            # Recommended sampling (temp 0.6 / top_p 0.95 / repetition_penalty 1.1) is baked into
+            # the checkpoint's generation_config.json — REQUIRED: this REAP+AWQ checkpoint
+            # repetition-collapses (TheTheThe…, prompt-echo, runaway thinking) without it. 1.05 was
+            # too weak — the eval_comprehensive sweep (2026-06-17: 29/36 greedy) showed 1.1 rescues
+            # ~4/5 of the collapse failures (1.3 over-penalizes → empty). ⚠ Quality is still middling
+            # on this 3rd-party REAP conversion: occasional casing slips, token glitches, one runaway
+            # (to_binary), and TOOL-CALLING is degraded (MALFORMED tool-call delimiters the glm parser
+            # can't extract → finish_reason=tool_calls but tool_calls=null). Serve THINKING-ON only —
+            # the non-thinking path (enable_thinking:false) is broken (answers wrong + leaks </think>).
+            # Chat/reasoning-usable, NOT agentic; canonical own-build (#17) is the real fix.
             WATCHDOG=1800
             ;;
         gemma4)
