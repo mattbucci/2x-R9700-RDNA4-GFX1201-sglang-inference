@@ -1,0 +1,29 @@
+{
+ "model": "GLM-4.5-Air-REAP AWQ (glm4_moe)",
+ "engine": "SGLang",
+ "method": "sglang.bench_serving",
+ "hardware": "2x R9700 TP=2",
+ "timestamp": "2026-06-19",
+ "output_tokens": 128,
+ "note": "3rd-party REAP-96e CT->AWQ (moe_wna16), TP=2, triton. Caps ~112K (max_total_num_tokens=112314 at --context-length 131072), NOT 256K -> excluded from the fp8-256K bar chart. Serves coherently after this session's QUANT/sampling/reasoning-parser fixes; tool-calling degraded (see README known-issue).",
+ "context_sweep": [
+  {
+   "context": 256,
+   "input_len": 256,
+   "tpot_ms": 39.12,
+   "tok_per_sec": 25.6
+  },
+  {
+   "context": 32768,
+   "input_len": 32768,
+   "tpot_ms": 43.94,
+   "tok_per_sec": 22.8
+  },
+  {
+   "context": 65536,
+   "input_len": 65536,
+   "tpot_ms": 51.3,
+   "tok_per_sec": 19.5
+  }
+ ]
+}

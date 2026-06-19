@@ -39,6 +39,7 @@ MODELS = {
     "gemma-4-26b-awq":          {"label": "Gemma 4 26B AWQ (MoE)",             "color": "#e3b341"},
     "nemotron-omni-30b-fp8":    {"label": "Nemotron-Omni-30B FP8 (Mamba2)",    "color": "#56d4dd"},
     "north-mini":               {"label": "North-Mini-Code FP8 (cohere2_moe)", "color": "#ff7b72"},
+    "glm45-air-awq":            {"label": "GLM-4.5-Air-REAP AWQ (glm4_moe)",   "color": "#a371f7"},
 }
 
 # (no current models have OOM concurrency levels)
@@ -115,6 +116,9 @@ def make_context_chart(model_key, meta, results, out_dir):
 
 def make_concurrency_chart(model_key, meta, results, out_dir):
     """Total throughput vs concurrency, with OOM markers."""
+    if "throughput_sweep" not in results:
+        print(f"  (no throughput_sweep — skipping concurrency chart for {model_key})")
+        return
     sweep = results["throughput_sweep"]
     measured = {p["concurrency"]: point_toks(p) for p in sweep if "error" not in p}
     oom_levels = OOM_CONCURRENCY.get(model_key, [])
@@ -203,6 +207,8 @@ def make_combined_concurrency_chart(all_data):
     fig, ax = plt.subplots(figsize=(8, 4.5))
 
     for key, (meta, results) in all_data.items():
+        if "throughput_sweep" not in results:
+            continue  # context-only models (e.g. glm45-air-awq) have no concurrency data
         sweep = [p for p in results["throughput_sweep"] if "error" not in p]
         conc = [p["concurrency"] for p in sweep]
         toks = [point_toks(p) for p in sweep]
