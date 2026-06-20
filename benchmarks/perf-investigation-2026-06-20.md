@@ -32,6 +32,13 @@ the attention-*work* and dispatch paths, not in KV-byte reduction.
    into 2 HIP launches + silu would add dispatches and risk breaking cuda-graph. Both `.so`s are built,
    so the bench is cheap — run to *settle*. Surfaced the real M=1 MoE compute split: **NCCL all-reduce
    ~24% + elementwise/norm ~30%** (a future TP-allreduce lever), expert-GEMV is a sideshow.
+   **RESULT (#30, 2026-06-20): don't-wire confirmed.** `bench_moe_hip_vs_triton.py --m 1 2 4 8 --iters 200`
+   **GPU-faults** on gfx1201 (`Memory access fault by GPU node-1` — consistent with the K-major
+   `[E,K,N/8]` layout the HIP kernel expects vs the harness/production N-major; the fault crashed
+   cleanly, no VRAM wedge). Getting a clean A/B would require debugging the HIP kernel/layout for a
+   lever whose ceiling is ~5% wall and which would risk breaking the cuda-graph win — not worth it.
+   Decision: **don't wire; leave Triton MoE + cuda-graph.** (The NCCL-allreduce ~24% finding is the
+   real MoE M=1 lever if revisited — separate from the expert GEMV.)
 
 5. **Scheduler/cuda-graph/prefill (#5 → task #31).** Two corrections: (a) `num_continuous_decode_steps`
    is a **DEAD FLAG** in v0.5.13 (zero readers under `srt/`) — the launch.sh `DECODE_STEPS` tuning has
@@ -61,7 +68,7 @@ then sweep the layer-subset/window-size recall tradeoff; gate quality on needle-
 | order | task | type | expected |
 |---|---|---|---|
 | ✅ #29 | size windowing prize (zero GPU) | analysis | ~2.5-3× ceiling → build #32 |
-| #30 | MoE HIP-GEMV bench (no server) | settle | confirm don't-wire |
+| ✅ #30 | MoE HIP-GEMV bench (no server) | settle | **don't-wire confirmed** (bench GPU-faults on gfx1201) |
 | #31 | `--cuda-graph-bs 1` A/B + dead-flag cleanup | capacity | more KV headroom @256K, neutral speed |
 | #32 | build+bench `--force-decode-window` | **the speed win** | ~2.5-3× dense decode @256K (recall-gated) |
 | #33 | decode-QK FP32 A/B | quality | may fix int4 agentic long-KV |
