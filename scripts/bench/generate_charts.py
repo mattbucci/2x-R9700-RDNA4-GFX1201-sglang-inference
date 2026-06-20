@@ -309,33 +309,48 @@ def make_specdecode_chart():
     order = {"working": 0, "untested": 1, "blocked": 2}
     models = sorted(data["models"], key=lambda m: (order.get(m["status"], 3), -(m.get("spec_toks") or 0)))
     COL = {"working": "#3fb950", "untested": "#d29922", "blocked": "#6e7681"}
+    DEPTH_COL = "#f85149"   # red — at-256K-depth collapse
     maxtok = max((m.get("spec_toks") or 0) for m in models) or 100.0
     y = list(range(len(models)))[::-1]   # first (best) model at top
 
-    fig, ax = plt.subplots(figsize=(13, 7.5))
+    # Fixed canvas (bbox_inches=None below) so long labels CLIP at the figure edge
+    # instead of expanding the PNG to thousands of px wide (the old readability bug).
+    # Blocked/untested render a curated one-line `short`, never the multi-paragraph `reason`.
+    fig, ax = plt.subplots(figsize=(14, 7.5))
+    XMAX = maxtok * 2.7
     for yi, m in zip(y, models):
         st = m["status"]; tok = m.get("spec_toks") or 0
         ax.barh(yi, tok, height=0.62, color=COL[st], zorder=5, edgecolor="#0d1117", linewidth=0.5)
         if st == "working" and tok > 0:
-            ax.text(tok + maxtok * 0.012, yi,
-                    f'{tok:.0f} tok/s  ·  {m["speedup"]:g}×  ·  {m["draft"]}  ·  {m["ctx"]}',
-                    va="center", fontsize=8, color=COL["working"], fontweight="bold")
+            ctx = m["ctx"].split("(")[0].strip()   # drop verbose parenthetical → "256K"/"64K"
+            ax.text(tok + maxtok * 0.02, yi,
+                    f'{tok:.0f} t/s · {m["speedup"]:g}× · {m["draft"]} · {ctx}',
+                    va="center", fontsize=8, color=COL["working"], fontweight="bold", clip_on=True)
+            ad = m.get("at_depth")
+            if ad is not None:   # measured at true 256K — show the collapse in red on the bar
+                ax.text(tok - maxtok * 0.02, yi, f'→{ad:g} @256K',
+                        va="center", ha="right", fontsize=7.5, color=DEPTH_COL,
+                        fontweight="bold", zorder=6, clip_on=True)
         else:
-            ax.text(maxtok * 0.012, yi, f'{st}: {m.get("reason", "")}',
-                    va="center", fontsize=7.6, color=COL[st], style="italic")
+            label = m.get("short") or (m.get("reason", "")[:80] + "…")
+            ax.text(maxtok * 0.02, yi, f'{st}: {label}',
+                    va="center", fontsize=8, color=COL[st], style="italic", clip_on=True)
     ax.set_yticks(y)
     ax.set_yticklabels([f'{m["name"]}\n{m["kind"]}' for m in models], fontsize=8)
-    ax.set_xlabel("spec-decode decode tok/s  (single-user, TP=2, --speculative-attention-mode decode)")
-    ax.set_xlim(0, maxtok * 1.55)
-    ax.set_title(data["title"], fontsize=13, fontweight="bold", pad=10)
-    ax.grid(True, axis="x", linestyle="--")
+    ax.set_xlabel("SHORT-DEPTH decode tok/s (≤~32–64K)  ·  red →N = measured at TRUE 256K depth (collapse)  ·  TP=2",
+                  fontsize=9)
+    ax.set_xlim(0, XMAX)
+    ax.set_title(data["title"], fontsize=12.5, fontweight="bold", pad=10)
+    ax.grid(True, axis="x", linestyle="--", alpha=0.4)
     n = {s: sum(1 for m in models if m["status"] == s) for s in ("working", "untested", "blocked")}
-    ax.legend(handles=[Patch(color=COL[s], label=f"{s} ({n[s]})") for s in ("working", "untested", "blocked")],
-              loc="lower right", framealpha=0.6, edgecolor="#30363d", facecolor="#161b22", fontsize=9)
-    fig.suptitle(data["subtitle"], fontsize=9.5, y=0.965, color="#8b949e")
-    fig.tight_layout()
+    handles = [Patch(color=COL[s], label=f"{s} ({n[s]})") for s in ("working", "untested", "blocked")]
+    handles.append(Patch(color=DEPTH_COL, label="at true 256K (collapse)"))
+    ax.legend(handles=handles, loc="lower right", framealpha=0.6,
+              edgecolor="#30363d", facecolor="#161b22", fontsize=9)
+    fig.suptitle(data["subtitle"], fontsize=9, y=0.965, color="#8b949e")
+    fig.tight_layout(rect=(0, 0, 1, 0.96))
     path = os.path.join(BENCH_DIR, "specdecode_fleet.png")
-    fig.savefig(path, dpi=150, bbox_inches="tight")
+    fig.savefig(path, dpi=150, bbox_inches=None)   # fixed-size canvas — no runaway width
     plt.close(fig)
     print(f"  {path}")
 
