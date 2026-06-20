@@ -71,6 +71,32 @@ layers can stay full while keeping most of the win) is the real design question 
 **Decision: prize clears the ≥2× bar → BUILD #32** (ceiling-bench window-all first to confirm ~2.5-3×,
 then sweep the layer-subset/window-size recall tradeoff; gate quality on needle-in-haystack + probe trio).
 
+### #32 — `--force-decode-window` BUILT + ceiling CONFIRMED (2026-06-20)
+
+Patch `067-force-decode-window.patch.CANDIDATE` (server_args `--force-decode-window N` +
+model_runner injection): forces a recent-N sliding window on the DECODE path of full-attention layers
+by injecting N into the existing `sliding_window_size` fields (backend + every RadixAttention layer),
+**reusing the fully-tested SWA decode path with NO kernel/metadata logic change.** Inert by default
+(-1). Confirmed live: "windowed 64 full-attention decode layers to 4096 recent tokens."
+
+**Ceiling bench (qwen3vl-32b AWQ, pure dense full-attention, @262144, server-log gen-throughput @~245K):**
+
+| config | decode tok/s @245K | vs baseline |
+|---|---|---|
+| baseline (no window) | 8.2 | 1× |
+| **`--force-decode-window 4096`** | **25.1** (n=16, median=max) | **3.06×** |
+
+25.1 ≈ the model's short-ctx ceiling (25.9) → windowing **recovers essentially the entire depth
+penalty**, confirming dense full-attention decode at depth is dominated by attention-over-deep-KV
+(consistent with #2: it's *attention-work*-bound, and windowing cuts the work, not the per-byte cost).
+
+**NEXT: quality gate (the shippability question).** Pure recent-window means decode cannot attend
+beyond the last N tokens → deep retrieval (needle in the first ~95% of ctx) WILL fail by construction;
+local-coherence continuation is unaffected. So this is a **targeted** win: large for recent-context-
+dominated single-user generation, inappropriate for long-range retrieval/agentic-deep-lookup. Run a
+needle early-vs-late probe for the receipt, sweep N for the speed/recall Pareto, ship opt-in with
+clear guidance (and a sink+window variant later if it materially helps recall).
+
 ## Serial test plan (ranked; cheap-and-decisive first)
 
 | order | task | type | expected |
@@ -78,7 +104,7 @@ then sweep the layer-subset/window-size recall tradeoff; gate quality on needle-
 | ✅ #29 | size windowing prize (zero GPU) | analysis | ~2.5-3× ceiling → build #32 |
 | ✅ #30 | MoE HIP-GEMV bench (no server) | settle | **don't-wire confirmed** (bench GPU-faults on gfx1201) |
 | ✅ #31 | `--cuda-graph-bs 1` A/B + dead-flag cleanup | capacity | **negligible** (frees 80MB, max_total unchanged) — dead-flag comment landed |
-| #32 | build+bench `--force-decode-window` | **the speed win** | ~2.5-3× dense decode @256K (recall-gated) |
+| ⏳ #32 | build+bench `--force-decode-window` | **the speed win** | ✅ **3.06× CONFIRMED** (qwen3vl-32b 8.2→25.1 @245K); quality-gate next |
 | #33 | decode-QK FP32 A/B | quality | may fix int4 agentic long-KV |
 | #34 | KV4/FP4 capacity port | PARKED | capacity for FP8-tight dense, multi-day |
 

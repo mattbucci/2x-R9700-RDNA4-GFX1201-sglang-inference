@@ -1,0 +1,68 @@
+diff --git a/python/sglang/srt/model_executor/model_runner.py b/python/sglang/srt/model_executor/model_runner.py
+index b9057a223..f060460aa 100644
+--- a/python/sglang/srt/model_executor/model_runner.py
++++ b/python/sglang/srt/model_executor/model_runner.py
+@@ -1422,6 +1422,34 @@ class ModelRunner(ModelRunnerKVCacheMixin):
+                 f"Setting sliding_window_size to be attention_chunk_size: {self.sliding_window_size}"
+             )
+ 
++        # R9700 perf-investigation #32 (2026-06-20): --force-decode-window N forces a
++        # recent-token sliding window of size N on the DECODE path of otherwise-full-
++        # attention layers, REUSING the (fully-tested) SWA decode path with no kernel/
++        # metadata logic changes — we only inject N into the existing sliding_window_size
++        # fields (backend-level here + per-RadixAttention-layer below), which the backend's
++        # forward_decode switch + update_sliding_window_buffer already key off. Caps the
++        # O(ctx) KV read at long context (single-user 256K decode speedup for dense full-
++        # attention models). APPROXIMATE attention (drops mid-context KV → recall loss);
++        # opt-in only, default off. Inert unless --force-decode-window > 0.
++        fw = getattr(self.server_args, "force_decode_window", -1)
++        if fw and fw > 0:
++            from sglang.srt.layers.radix_attention import RadixAttention
++
++            if self.sliding_window_size is None or self.sliding_window_size <= 0:
++                self.sliding_window_size = fw
++            n_forced = 0
++            for module in self.model.modules():
++                if isinstance(module, RadixAttention) and (
++                    module.sliding_window_size is None or module.sliding_window_size <= 0
++                ):
++                    module.sliding_window_size = fw
++                    n_forced += 1
++            logger.warning(
++                f"[force-decode-window] APPROXIMATE attention: windowed {n_forced} full-attention "
++                f"decode layers to {fw} recent tokens (backend swa={self.sliding_window_size}). "
++                f"Long-range recall degraded — opt-in perf experiment only."
++            )
++
+         self.dtype = self.model_config.dtype
+ 
+         # R9700 FIX (2026-05-31): reclaim weight-loading transients BEFORE measuring
+diff --git a/python/sglang/srt/server_args.py b/python/sglang/srt/server_args.py
+index 6c77ff64f..fae2291cc 100644
+--- a/python/sglang/srt/server_args.py
++++ b/python/sglang/srt/server_args.py
+@@ -774,6 +774,7 @@ class ServerArgs:
+     triton_attention_reduce_in_fp32: bool = False
+     triton_attention_num_kv_splits: int = 8
+     triton_attention_split_tile_size: Optional[int] = None
++    force_decode_window: int = -1
+     num_continuous_decode_steps: int = 1
+     delete_ckpt_after_loading: bool = False
+     enable_memory_saver: bool = False
+@@ -6725,6 +6726,16 @@ class ServerArgs:
+             default=ServerArgs.triton_attention_split_tile_size,
+             help="The size of split KV tile in flash decoding Triton kernel. Used for deterministic inference.",
+         )
++        parser.add_argument(
++            "--force-decode-window",
++            type=int,
++            default=ServerArgs.force_decode_window,
++            help="[RDNA4 experimental] Force a sliding-window of N tokens on the DECODE path of "
++            "otherwise-full-attention layers, reusing the SWA decode path to cut the O(ctx) KV read "
++            "at long context (single-user 256K decode speedup for dense full-attention models). "
++            "-1 (default) = off. WARNING: this is APPROXIMATE attention — it drops mid-context KV, "
++            "degrading long-range recall (needle/retrieval). Quality-gate before use.",
++        )
+         parser.add_argument(
+             "--num-continuous-decode-steps",
+             type=int,
