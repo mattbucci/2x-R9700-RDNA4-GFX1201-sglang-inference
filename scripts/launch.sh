@@ -6,7 +6,12 @@
 #   ./scripts/launch.sh devstral
 #   ./scripts/launch.sh coder-30b --context-length 16384
 #   ./scripts/launch.sh gemma4 --port 8000
+#   ./scripts/launch.sh coder-30b --spec --context-length 65536  # ≤64K spec lane (EAGLE3 + split-KV verify)
 #   MODEL=/path/to/weights ./scripts/launch.sh coder-next
+#
+# --spec : enable the validated short/mid-ctx (≤64K) speculative-decode lane for the
+#          Coder-30B-A3B family (EAGLE3 draft + split-KV verify kernel). HARD ≤64K guard —
+#          spec COLLAPSES at true 256K; no-spec is the 256K path (SPEC_ALLOW_DEEP=1 to force).
 #
 # Models:
 #   devstral       Devstral-24B AWQ (32K context, best all-round)
@@ -640,10 +645,11 @@ PYEOF
 # --- Parse arguments (saved for post-preset override) ---
 PRESET=""
 CLI_CTX="" CLI_PORT="" CLI_MEM="" CLI_MAX_RUNNING="" CLI_DECODE_STEPS="" CLI_CHUNKED="" CLI_WATCHDOG=""
+WANT_SPEC=""
 while [[ $# -gt 0 ]]; do
     case "$1" in
         -h|--help)
-            head -19 "$0" | tail -18
+            head -23 "$0" | tail -22
             exit 0
             ;;
         --context-length) CLI_CTX="$2"; shift 2 ;;
@@ -653,6 +659,7 @@ while [[ $# -gt 0 ]]; do
         --decode-steps) CLI_DECODE_STEPS="$2"; shift 2 ;;
         --chunked-prefill) CLI_CHUNKED="$2"; shift 2 ;;
         --watchdog) CLI_WATCHDOG="$2"; shift 2 ;;
+        --spec) WANT_SPEC=1; shift ;;
         -*)
             echo "Unknown option: $1"; exit 1 ;;
         *)
@@ -714,6 +721,46 @@ fi
 [[ -n "$CLI_DECODE_STEPS" ]] && DECODE_STEPS="$CLI_DECODE_STEPS"
 [[ -n "$CLI_CHUNKED" ]] && CHUNKED="$CLI_CHUNKED"
 [[ -n "$CLI_WATCHDOG" ]] && WATCHDOG="$CLI_WATCHDOG"
+
+# --- Spec-decode (--spec): validated SHORT/MID-ctx (≤64K) speculative lane -----
+# Wires the preset's known draft + the split-KV tree-verify kernel (patch 065,
+# SGLANG_TREE_VERIFY_SPLITKV=1: ~12.8× faster verify @≤64K). HARD ≤64K guard:
+# spec COLLAPSES at true 256K (draft acceptance craters + the draft attends the
+# full KV every micro-step) — at 244K Coder-30B EAGLE3 is 0.8 tok/s vs no-spec
+# 12.3, i.e. net-NEGATIVE. NO-SPEC is the 256K path. See README "Spec-decode:
+# where we are". Force at-depth (for testing only) with SPEC_ALLOW_DEEP=1.
+# Tunables: SPEC_NUM_STEPS / SPEC_EAGLE_TOPK / SPEC_NUM_DRAFT.
+if [[ -n "$WANT_SPEC" ]]; then
+    case "$PRESET" in
+        coder-30b|coder-30b-ream|coder-30b-reap|coder-reap-25b)
+            # EAGLE3 draft transfers across the Coder-30B-A3B family (base + REAM/REAP).
+            SPEC_DRAFT="${SPEC_DRAFT:-$HOME/AI/models/EAGLE3-Coder-30B-A3B}"
+            SPEC_ALGO="EAGLE3" ;;
+        *)
+            echo "[launch] --spec: no validated draft for preset '$PRESET'." >&2
+            echo "         Validated net-positive lane: coder-30b / coder-30b-ream / coder-30b-reap / coder-reap-25b (EAGLE3)." >&2
+            echo "         (qwen36-moe DFlash is net-neutral; dense/DeltaNet/VL/Mamba have no working draft — see benchmarks/specdecode.json.)" >&2
+            exit 1 ;;
+    esac
+    [[ -f "$SPEC_DRAFT/config.json" ]] || { echo "[launch] --spec: draft model not found at $SPEC_DRAFT" >&2; exit 1; }
+    if (( CTX > 65536 )); then
+        if [[ -z "${SPEC_ALLOW_DEEP:-}" ]]; then
+            echo "[launch] --spec REFUSED at context $CTX (>64K): spec-decode COLLAPSES at depth." >&2
+            echo "         Coder-30B EAGLE3 = 0.8 tok/s @244K vs no-spec 12.3 (net-NEGATIVE). No-spec is the 256K path." >&2
+            echo "         Re-run with --context-length 65536 (or smaller), or SPEC_ALLOW_DEEP=1 to force (testing only)." >&2
+            exit 1
+        fi
+        echo "[launch] ⚠ --spec at $CTX >64K (SPEC_ALLOW_DEEP set): EXPECT net-negative vs no-spec — testing only."
+    fi
+    # --speculative-draft-model-quantization unquant is REQUIRED: the EAGLE3 draft is an
+    # unquantized 361 MB BF16 Llama; without it SGLang inherits the target's moe_wna16 quant
+    # → "Cannot find the config file for moe_wna16" at eagle_worker init.
+    # --speculative-attention-mode decode is REQUIRED: TP2 DEADLOCKS in the default prefill mode.
+    SPEC_ARGS="--speculative-algorithm $SPEC_ALGO --speculative-draft-model-path $SPEC_DRAFT --speculative-draft-model-quantization unquant --speculative-num-steps ${SPEC_NUM_STEPS:-6} --speculative-eagle-topk ${SPEC_EAGLE_TOPK:-16} --speculative-num-draft-tokens ${SPEC_NUM_DRAFT:-32} --speculative-attention-mode decode"
+    EXTRA_ARGS="${EXTRA_ARGS:+$EXTRA_ARGS }$SPEC_ARGS"
+    export SGLANG_TREE_VERIFY_SPLITKV=1
+    echo "[launch] --spec: $SPEC_ALGO draft=$SPEC_DRAFT + split-KV verify (SGLANG_TREE_VERIFY_SPLITKV=1) · ctx $CTX (≤64K spec lane)"
+fi
 
 # Resolve chat template (deferred $MODEL expansion)
 CHAT_TEMPLATE=$(eval echo "$CHAT_TEMPLATE")
