@@ -87,11 +87,11 @@
     {
       "name": "Qwen3-Coder-Next-80B",
       "kind": "MoE+DeltaNet",
-      "status": "untested",
+      "status": "blocked",
       "spec_toks": 0,
       "draft": "Aurora-Spec EAGLE3",
-      "short": "Aurora-Spec EAGLE3 path expected OK — unbenched",
-      "reason": "EAGLE path expected OK; unbenched"
+      "short": "target 80B incoherent on RDNA4 (parked) — REAM-60B is the Coder-Next spec ship (58 t/s)",
+      "reason": "RECLASSIFIED 2026-06-20 (was 'untested'): the Aurora-Spec EAGLE3 path is fine, but the full 80B itself decodes INCOHERENTLY on RDNA4 (PARKED 2026-06-11 — GPTQ/AutoRound dequant-coherence bug; reopen only with an own-built coherent Coder-Next-80B AWQ, see Known Issues). Spec cannot be meaningfully benched on an incoherent target (acceptance/throughput against garbage output are meaningless), so it's blocked-by-target, not merely unbenched. The production Coder-Next spec slot is ALREADY covered by Qwen3-Coder-Next-REAM (working, 58 tok/s, same Aurora-Spec EAGLE3 transfer draft). Reopen if/when a coherent own-built 80B AWQ exists."
     },
     {
       "name": "Qwen3.5-27B / Qwen3.6-27B",
