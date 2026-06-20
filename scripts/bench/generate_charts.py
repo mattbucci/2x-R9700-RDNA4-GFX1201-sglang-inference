@@ -276,18 +276,18 @@ def make_fp8_comparison_chart():
 
     ax.set_xticks(x)
     ax.set_xticklabels(xlabels, rotation=35, ha="right", fontsize=8.5)
-    ax.set_ylabel("decode tok/s (single user, 256K)")
+    ax.set_ylabel("decode tok/s (single user, short-ctx)")
     ax.set_ylim(bottom=0, top=ymax * 1.18)
     ax.grid(True, axis="y", linestyle="--")
-    ax.set_title("256K single-user decode — AWQ vs FP8 (+ spec-decode draft)",
-                 fontsize=14, fontweight="bold", pad=12)
+    ax.set_title("Single-user decode — AWQ vs FP8 · 256K-capable fleet (short-ctx bars)",
+                 fontsize=13, fontweight="bold", pad=12)
     ax.legend(loc="upper right", framealpha=0.6, edgecolor="#30363d",
               facecolor="#161b22", fontsize=9, ncol=2, title="bar type")
     fig.suptitle(data["subtitle"], fontsize=9.5, y=0.97, color="#8b949e")
 
     # Footnote: '—' = not built / not reachable at 256K / no working draft.
     ax.text(0.0, -0.30,
-            "Bars are tok/s; '—' = not built, not reachable at 256K, or no working draft on this box.",
+            "SHORT-ctx decode bars (format comparison) — at TRUE 256K depth all far lower (Coder-30B 14.9, Qwen3.6-MoE 18.6; see resweep doc), spec collapses. '—' = not built / unreachable / no draft.",
             transform=ax.transAxes, fontsize=8, color="#8b949e", style="italic")
 
     fig.tight_layout(rect=(0, 0.02, 1, 0.96))
