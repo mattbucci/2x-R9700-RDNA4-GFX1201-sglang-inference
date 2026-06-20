@@ -107,10 +107,33 @@ with SWA; qwen3vl-32b's are not.)
 
 **⇒ Plain `--force-decode-window` is not shippable for full-attention models. The sink+window variant
 (StreamingLLM: gather `[first S] ++ [recent N-S]`) is REQUIRED for coherence — that is the next experiment.**
-The cached K already carries absolute-position RoPE, so a first-cut sink gather may not even need RoPE
-remapping (StreamingLLM's position-shift is a refinement). If sinks restore coherence at 4096, we get
-3.06× AND usable output → a major win; if not, windowing needs SWA-trained weights and isn't viable for
-full-attention models on this stack. Speed remains established either way.
+
+**Window-size sweep (does a bigger window restore coherence? NO):**
+
+| config | decode tok/s @245K | speedup | coherent? |
+|---|---|---|---|
+| baseline (full attention) | 8.2 | 1× | ✅ |
+| `--force-decode-window 32768` | 20.6 | 2.5× | ❌ garbage (`[::]…`) |
+| `--force-decode-window 4096` | 25.1 | 3.06× | ❌ garbage (backticks) |
+
+**Window SIZE is not the lever** — both 4096 and 32768 collapse. Windowing reliably delivers 2.5-3×
+decode (the mechanism works) but is **incoherent at every size** on full-attention-trained weights.
+This firmly isolates the cause to the **missing attention sink** (StreamingLLM), not window size.
+
+**#32 OUTCOME: speed lever PROVEN (2.5-3×), but plain windowing is unusable on full-attention models
+(incoherent). Made it a follow-up task — two hypotheses to test, both opt-in/gated so native SWA
+(Gemma) is untouched:**
+1. **Attention sinks** (StreamingLLM): gather `[first S] ++ [recent N-S]` in BOTH the extend (prefill)
+   and decode window paths — the sink must be present during prefill too, since windowed-no-sink prefill
+   builds the broken hidden states that get cached. Cached K carries absolute-position RoPE so a first
+   cut may skip RoPE remapping.
+2. **Decode-only windowing** (full prefill, windowed decode only): keep prefill full-attention so the
+   model builds a coherent full-context representation once, then window ONLY the decode KV read. May
+   still hit the decode-side sink-collapse, but isolates "is it the windowed prefill or the windowed
+   decode that breaks coherence?" Cheap to test (gate the window switch to `forward_decode` only).
+
+These are research-grade (uncertain payoff, may ultimately need SWA-trained weights like Gemma). The
+2.5-3× SPEED is established regardless; coherence is the gate.
 
 ## Serial test plan (ranked; cheap-and-decisive first)
 
@@ -119,7 +142,7 @@ full-attention models on this stack. Speed remains established either way.
 | ✅ #29 | size windowing prize (zero GPU) | analysis | ~2.5-3× ceiling → build #32 |
 | ✅ #30 | MoE HIP-GEMV bench (no server) | settle | **don't-wire confirmed** (bench GPU-faults on gfx1201) |
 | ✅ #31 | `--cuda-graph-bs 1` A/B + dead-flag cleanup | capacity | **negligible** (frees 80MB, max_total unchanged) — dead-flag comment landed |
-| ⏳ #32 | build+bench `--force-decode-window` | **the speed win** | ✅ **3.06× CONFIRMED** (qwen3vl-32b 8.2→25.1 @245K); quality-gate next |
+| ✅ #32 | build+bench `--force-decode-window` | **the speed win** | speed PROVEN 2.5-3× (8.2→20.6→25.1), but plain window INCOHERENT at every size → sinks needed (follow-up task) |
 | #33 | decode-QK FP32 A/B | quality | may fix int4 agentic long-KV |
 | #34 | KV4/FP4 capacity port | PARKED | capacity for FP8-tight dense, multi-day |
 
