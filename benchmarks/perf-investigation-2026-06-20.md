@@ -90,12 +90,27 @@ by injecting N into the existing `sliding_window_size` fields (backend + every R
 penalty**, confirming dense full-attention decode at depth is dominated by attention-over-deep-KV
 (consistent with #2: it's *attention-work*-bound, and windowing cuts the work, not the per-byte cost).
 
-**NEXT: quality gate (the shippability question).** Pure recent-window means decode cannot attend
-beyond the last N tokens → deep retrieval (needle in the first ~95% of ctx) WILL fail by construction;
-local-coherence continuation is unaffected. So this is a **targeted** win: large for recent-context-
-dominated single-user generation, inappropriate for long-range retrieval/agentic-deep-lookup. Run a
-needle early-vs-late probe for the receipt, sweep N for the speed/recall Pareto, ship opt-in with
-clear guidance (and a sink+window variant later if it materially helps recall).
+**QUALITY GATE RESULT (2026-06-20): plain recent-window is FAST-BUT-INCOHERENT → needs attention sinks.**
+Needle test on the windowed server (qwen3vl-32b, N=4096, ~230K depth, self-calibrated full=919352 tok):
+
+| needle position | result | response |
+|---|---|---|
+| EARLY (~5% depth, outside window) | FAIL | "This is the final output message. The response is complete…" |
+| LATE (end, INSIDE the 4096 window) | **FAIL — garbage** | ` ``````````````… ` (degenerate) |
+
+The LATE failure is the decisive one: the model produces **garbage even for in-window content**. Forcing a
+recent-window on a model **trained for full attention** collapses the attention softmax — the classic
+**StreamingLLM** result: windowed attention WITHOUT **attention sinks** (the first few tokens) is unstable.
+My initial build is plain recent-window (no sink), so the **3.06× speed is real but the output is incoherent**
+— not a recall-vs-speed tradeoff, an outright collapse. (This is why Gemma works: its weights are *trained*
+with SWA; qwen3vl-32b's are not.)
+
+**⇒ Plain `--force-decode-window` is not shippable for full-attention models. The sink+window variant
+(StreamingLLM: gather `[first S] ++ [recent N-S]`) is REQUIRED for coherence — that is the next experiment.**
+The cached K already carries absolute-position RoPE, so a first-cut sink gather may not even need RoPE
+remapping (StreamingLLM's position-shift is a refinement). If sinks restore coherence at 4096, we get
+3.06× AND usable output → a major win; if not, windowing needs SWA-trained weights and isn't viable for
+full-attention models on this stack. Speed remains established either way.
 
 ## Serial test plan (ranked; cheap-and-decisive first)
 
