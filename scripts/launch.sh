@@ -788,6 +788,10 @@ CMD=(python -m sglang.launch_server
     --mem-fraction-static "$MEM"
     --max-running-requests "$MAX_RUNNING"
     --chunked-prefill-size "$CHUNKED"
+    # NOTE: --num-continuous-decode-steps is INERT in v0.5.13 (verified 2026-06-20:
+    # zero readers under srt/ in /data/sgl-rebase AND /data/vG — only the dataclass
+    # default + argparse def). The per-preset DECODE_STEPS values have NO runtime
+    # effect; kept harmless for forward-compat. Do NOT tune DECODE_STEPS for perf.
     --num-continuous-decode-steps "$DECODE_STEPS"
     --attention-backend "$ATTN_BACKEND"
     --disable-custom-all-reduce

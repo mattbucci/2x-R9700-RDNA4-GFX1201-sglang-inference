@@ -45,6 +45,14 @@ the attention-*work* and dispatch paths, not in KV-byte reduction.
    NO effect; (b) the cuda-graph pool is **~0.3-0.5 GB, not 2+GiB**. The lever: `--cuda-graph-bs 1` for
    single-user presets → frees bs2-8 graph allocations (more contiguous VRAM for 256K KV), neutral
    decode speed, faster capture. A **capacity/fragmentation** win, not a speed win.
+   **RESULT (#31, 2026-06-20): negligible — don't change presets.** A/B coder-30b @262144:
+   `--cuda-graph-bs 1` vs baseline [1,2,4,8] → **max_total_num_tokens identical (817,979)**, graph
+   mem 0.33→0.25 GB (frees **80 MB**), capture 10.7s→3.2s. The KV pool is allocated BEFORE graph
+   capture at mem-fraction, so bs=1 does NOT raise capacity; 80 MB ≈ 3,500 tokens of an 817,979 pool
+   = immaterial. The "graph pool fragments long-ctx allocation" premise is **refuted** (pool is 0.33
+   GB, not 2+GiB). Not worth a preset change (and it would drop multi-user graph coverage). The real
+   #31 deliverable = the **dead-flag comment in launch.sh** (`--num-continuous-decode-steps` is inert
+   in v0.5.13 AND v0.5.12, verified zero readers).
 
 ## #29 — windowing prize, sized from existing data (DONE 2026-06-20)
 
@@ -69,7 +77,7 @@ then sweep the layer-subset/window-size recall tradeoff; gate quality on needle-
 |---|---|---|---|
 | ✅ #29 | size windowing prize (zero GPU) | analysis | ~2.5-3× ceiling → build #32 |
 | ✅ #30 | MoE HIP-GEMV bench (no server) | settle | **don't-wire confirmed** (bench GPU-faults on gfx1201) |
-| #31 | `--cuda-graph-bs 1` A/B + dead-flag cleanup | capacity | more KV headroom @256K, neutral speed |
+| ✅ #31 | `--cuda-graph-bs 1` A/B + dead-flag cleanup | capacity | **negligible** (frees 80MB, max_total unchanged) — dead-flag comment landed |
 | #32 | build+bench `--force-decode-window` | **the speed win** | ~2.5-3× dense decode @256K (recall-gated) |
 | #33 | decode-QK FP32 A/B | quality | may fix int4 agentic long-KV |
 | #34 | KV4/FP4 capacity port | PARKED | capacity for FP8-tight dense, multi-day |
