@@ -377,3 +377,12 @@ budget 8192 moved deep needles from total hallucination to **near-exact** (LATE 
 control (running):** does BASELINE full-attention recall EXACTLY at 245K? If baseline also near-misses at
 this extreme depth, #39@8192 ≈ baseline quality at 1.63× = win; if baseline is exact, #39 loses a little
 deep fidelity (→ try bigger budget / smaller page, both ~free on speed since rep-scan dominates).
+
+**Control result (2026-06-21): BASELINE full-attention recalls EXACTLY at 245K** — all three needles
+`ZEPHYR-4419`. So the #39 near-miss at budget 8192 is **NOT a depth limit — it's a #39 sparse-selection
+fidelity cost** (deep needles drop 1–2 chars where full attention is exact). Since throughput is
+budget-independent, the fix is a bigger budget at ~no speed cost. Testing K=256 (16384 = 6.7%) for the
+exact-recall operating point at 256K. Honest framing: **#39 @128K is exact-recall-preserving (validated);
+@256K it needs a context-scaled budget (≥16384, TBD) to match baseline-exact, still at ~1.6×.** The strict
+single-needle bar may be harsher than agentic use needs — the **#44 harness eval** (agentic quality at
+#39's operating point) is the decision-relevant quality gate, not exact char recall of one token.
