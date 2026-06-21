@@ -17,14 +17,16 @@ Scorers (one score per page, top-K pages selected, all token-budget-matched to r
   - maxtok : oracle per-page max q.k (ceiling — not buildable cheaply)
   - recency: the last `budget` tokens == what --force-decode-window ships today
 
-KEY RESULT (2026-06-20): on IID keys every scorer is perfect; on STRUCTURED keys (shared DC +
-low-rank factors + positional drift — closer to real attention keys) **Quest bounding-box
-COLLAPSES to 0.04-0.17 recall** (its upper bound is dominated by the shared structure's per-dim
-extremes, not the needle) while **mean-centroid stays ~1.0** (a shared DC shifts all page scores
-equally -> cancels in the ranking; averaging suppresses per-token noise). recency is 0.0 in both.
-=> Disqualifies the Quest scorer we were about to lift from quest_algorithm.py; centroid is the
-leading candidate (also half the rep memory). CAVEAT: synthetic needles carry no shared structure;
-confirm the scorer + page size on REAL model keys before committing kernel work.
+SYNTHETIC RESULT (2026-06-20): on IID keys every scorer is perfect; on STRUCTURED keys (shared DC
++ low-rank factors + drift) Quest bbox appeared to COLLAPSE while centroid stayed ~1.0. >>> THIS
+CONCLUSION WAS WRONG / UNREPRESENTATIVE. <<< The real-key test (topk_scorer_realkey.py) REVERSED it:
+on actual post-rope keys from Qwen3-4B, Quest bounding-box is the BEST scorer (captures 0.79-0.87
+of true attention mass @PAGE=8/budget2048 vs recency's 0.08-0.27 — a 3-11x win), beating centroid
+especially as pages shrink. My "structured" synthetic was an adversarial caricature (the injected DC
+/low-rank was too strong relative to the needle) that broke bbox in a way real keys do not. Lesson:
+this synthetic gate is good for the recency-is-blind result and the page-size sensitivity, but DO
+NOT trust its bbox-vs-centroid verdict — that decision MUST be made on real keys. Production scorer
+= bbox @PAGE=8 (see perf-investigation-2026-06-20.md #39).
 
 GQA NOTE: query is built head-major (q-heads h*group..(h+1)*group share kv-head h) so that
 view(H_KV, group, D).mean(1) recovers the per-kv-head query — getting this layout wrong silently

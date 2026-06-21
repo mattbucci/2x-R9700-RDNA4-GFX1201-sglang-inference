@@ -190,25 +190,40 @@ buffer `cuda_graph_window_kv_indices` is fixed-size `max_num_tokens × window` �
 K×PAGE**. Key insight: `forward_decode` runs **per-layer**, so per-layer/per-query selection can live
 there with one reused scratch buffer — the "per-layer index set" problem dissolves (layers are sequential).
 
-**Scorer-selection gate (synthetic, `scripts/bench/topk_scorer_recall_proto.py`, CPU).** Before any
-kernel work, decided *which* page-scorer picks the top-K pages. Plant aligned needles at mid-context,
-measure needle-token recall at equal token budget (2048):
+**Scorer-selection — synthetic gate then REAL-KEY confirmation (the real test reversed the synthetic).**
 
-| regime | recency (shipped) | Quest bbox | centroid | oracle |
+Step 1, synthetic (`scripts/bench/topk_scorer_recall_proto.py`, CPU, needle-recall): established the
+robust part — **recency (shipped `--force-decode-window`) = 0.0 needle-recall** (retrieval-blind, #39
+justified) — but its bbox-vs-centroid verdict (bbox "collapses", centroid "wins") was an artifact of an
+**adversarial-caricature** structured key model and did NOT survive real keys. Kept as a recency-blind +
+page-sensitivity probe only; its scorer verdict is explicitly disavowed in its docstring.
+
+Step 2, REAL keys (`scripts/bench/topk_scorer_realkey.py`, GPU): Qwen3-4B (pure full-attention GQA+rope,
+same generation as our fleet), 8170 real tokens, **post-rope** q/k captured by wrapping the rope fn,
+metric = **fraction of true attention probability mass captured** by the selected pages (0.95 ≈ lossless
+windowed decode). Deep layers (retrieval lives there), budget=2048 (~25% of ctx):
+
+| layer | recency (shipped) | **bbox @PAGE8** | cent @PAGE8 | oracle (top-2048 tok) |
 |---|---|---|---|---|
-| iid keys | **0.000** | 1.000 | 1.000 | 1.000 |
-| **structured (DC+low-rank+drift, realistic)** | **0.000** | **0.04–0.17** | **~1.000** | 1.000 |
+| 9  | 0.186 | **0.799** | 0.800 | 0.972 |
+| 18 | 0.267 | **0.799** | 0.764 | 0.996 |
+| 27 | 0.077 | **0.868** | 0.757 | 0.994 |
+| 34 | 0.113 | **0.790** | 0.721 | 0.994 |
 
-- **recency = 0 recall both regimes** → confirms the shipped window is retrieval-blind; #39 justified.
-- **Quest bounding-box (the scorer planned to lift from `quest_algorithm.py`) COLLAPSES on realistic
-  keys** — its `where(q≥0,q·kmax,q·kmin)` upper bound is dominated by the shared structure's per-dim
-  extremes, not the needle. **Disqualified** (would have silently failed in production).
-- **Mean-pooled centroid is robust** — matches oracle, half the rep memory (1 vec/page vs min+max),
-  simpler incremental maintenance. A shared DC shifts all page scores equally → cancels in the ranking.
-- Rep memory budget (page reps, fp32): ~0.4–0.8 GB/model (computed in proto). cuda-graph-resident.
+- **#39 premise CONFIRMED on real keys:** criticality top-K captures **3–11× more attention mass than
+  recency** at the same decode cost (layer 27: 0.868 vs 0.077), nearly reaching the token-level oracle.
+- **Quest bounding-box is the production scorer** — best on real keys, beating centroid as pages shrink.
+  The synthetic "disqualification" was wrong; the original plan to lift `quest_algorithm.py`'s scorer holds.
+- **PAGE=8 is the sweet spot** (bbox 0.87@PAGE8 vs 0.78@PAGE32 vs 0.72@PAGE64 on layer 27). Smaller pages =
+  finer selection, closer to oracle, at ~2× the rep memory of PAGE=16 — a tunable knob.
+- `cent_c == cent` exactly on real keys → real keys lack the dominant shared DC the synthetic injected.
 
-**Caveat / next gate:** synthetic needles carry no shared structure (flatters centroid). The scorer +
-page size MUST be confirmed on **REAL post-rope model keys** (env-gated K-dump from a real long-context
-prefill, offline recall analysis) before committing kernel work. That is the next executable step.
-A harness footgun caught here: GQA query layout must be head-major or the needle is silently swamped
-(mismeasured 5.7 vs the correct 48) — see proto docstring.
+**Decision for the build:** scorer = Quest bbox (min/max page reps), PAGE=8 default (configurable),
+budget = the existing window size. Rep memory at PAGE=8/256K is non-trivial (min+max per page per
+kv-head per layer) — make page-size + scorer (bbox vs cheaper centroid) configurable so the
+recall/memory tradeoff is tunable per model. Footgun caught: GQA query layout must be head-major or
+the needle is silently swamped (mismeasured 5.7 vs correct 48) — see proto docstring.
+
+**Next: the build** — maintain per-layer page reps (built at prefill, last partial page updated each
+decode step), and in `forward_decode` (per-layer, query available) compute bbox criticality → top-K
+pages → gather token slots into the windowed `kv_indices` buffer (cuda-graph: K static, budget=K×PAGE).
