@@ -136,12 +136,21 @@ D×D tree-mask geometry derives from the windowed `kv_indptr`.
 full-verify EAGLE3 ~6.8). → the suffix-mask-under-windowing is **correct** (the one real risk, cleared) and
 the windowed verify is lossless-enough at mid-ctx. Flag default-off → inert until enabled.
 
-**Next — depth payoff bench (the open question):** does windowing the verify fix the 065 256K collapse? Key
-nuance: #38 windows the VERIFY only. For **NGRAM** (draft-free → the verify IS the entire GPU cost; the 065
-bench showed NGRAM collapses purely from the 2.7s @244K verify read) → #38 should fix it → **NGRAM + #38 @
-256K is the decisive bench** (vs no-spec 12.2). For **EAGLE3**, the *draft* also reads the full KV every
-micro-step (a separate cost #38 doesn't touch), so #38 fixes only the verify half there. Bench NGRAM + #38
-at ~200K with the copyheavy harness (3600s timeout — never abort a deep prefill, the TP-rank-wedge hazard).
+**Depth payoff — DERIVED from existing data (no risky deep run needed), 2026-06-20.** The 065 bench
+(`tree-verify-splitkv-bench-2026-06-17.md`) already established verbatim: *"Even a perfect (free) verify caps
+NGRAM at ~1.25× ≈ no-spec at 207K — not a win"* (NGRAM copy-accept @207K is ~1.25 and **not climbing**). #38
+*provides* that near-free verify → so **NGRAM + #38 @256K ≈ neutral (accept-bound), not a 256K win.** For
+**EAGLE3**, the *draft* also reads the full KV every micro-step (a cost #38 doesn't touch) → also not a 256K
+win. Running the deep bench would confirm a pre-determined result and carries the TP-rank-wedge→reboot hazard
+of a 200K cold prefill — skipped as not worth it.
+
+**#38's actual value (honest):** it is a **correct, composable verify-windowing primitive**, not a 256K win
+on its own. (a) It removes the verify-cost wall in the **mid-depth band** (≤~128K, where NGRAM accept is
+still > ~1.5 — the 065 bench showed accept climbing to 2.8 @53K), extending where the split-KV verify is
+net-positive. (b) It is the building block that **would** yield a real 256K win **if composed with a
+high-accept-at-depth draft** (which doesn't exist on our stack — self-spec #37 blocked, long-ctx draft is the
+3090 EAGLE-3.1 ask). Ships **opt-in, default-off**, correctness-validated. Cuda-graph verify buffers are
+unwired (eager-only) — wire them only if a use-case enables it by default.
 
 ## Combined #37 + #36 verdict on MTP-based self-spec on RDNA4
 
