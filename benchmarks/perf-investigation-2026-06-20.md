@@ -454,3 +454,26 @@ neutral cuda-graph prereq with no 256K gain). **v3 perf investigation CLOSED.** 
 1.15–1.24× exact-recall; 256K ~1.77× near-exact recall. v3.3 cuda-graph re-scoped to LOW priority for
 256K (potential shorter-context win only); the remaining open item is the #44 agentic-quality gate
 (downstream) + the clean 069 patch + equivalence gate (capture discipline).
+
+### #44 PASSED — #39 does NOT regress agentic coding quality (2026-06-21)
+
+Ran the agentic-quality gate (`scripts/eval/decode_topk_agentic_ab.sh`): Coder-30B-AWQ, 6 SWE-bench
+Lite instances, opencode cap 8192, ctx 64K, the ONLY variable = #39 (`--decode-topk-pages 128
+--decode-topk-page-size 32`, budget 4096).
+
+| arm | resolved | applied | empty |
+|---|---|---|---|
+| OFF (baseline) | **2/6** (django, requests) | 5/6 | 1/6 |
+| TOPK (#39 on) | **2/6** (django, requests) | 6/6 | 0/6 |
+
+**No regression: identical resolve rate, SAME two instances solved; #39-on marginally cleaner (6/6
+applied vs 5/6, 0 empty vs 1).** #39's sparse-KV selection preserves multi-turn agentic coding quality
+where it engages — the single-needle ±1-char artifact at extreme depth did NOT translate to any coding
+regression. Combined with needle recall (128K exact / 256K near-exact) + 1.77× @256K, **#39 is fully
+validated for agentic use.** The clean 069 patch is equivalence-gate-clean → #39 is ready to promote
+from CANDIDATE to the applied series (opt-in, default off).
+
+**Bonus — closes the int4/#33 caveat:** Coder-30B resolved 2/6 through this SAME harness → the harness
+produces non-empty/resolving diffs for a good model → the int4 0/6-all-empty (both backends) was a REAL
+model result, not a harness artifact. **#33 (decode-QK FP32) confirmed NOT justified** (see
+`int4-attention-backend-ab-2026-06-21.md`).

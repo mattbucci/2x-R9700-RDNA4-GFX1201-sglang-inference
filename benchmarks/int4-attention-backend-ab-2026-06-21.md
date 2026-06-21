@@ -25,11 +25,11 @@ attention precision** → **#33 (decode-QK FP32) would not fix int4 agentic** �
 agentic-format-completion ceiling (the model can't complete edits under int4 regardless of attention
 backend). **#33 decode-QK-FP32 build is NOT justified by this evidence.**
 
-**Caveat (closing via #44):** both arms "all empty" — to rule out a harness artifact (empty diffs
-regardless of model), the Coder-30B run (the #44 #39-OFF baseline, documented ~40% resolve) is the
-harness-health control: if Coder-30B produces non-empty/resolving diffs through this same harness, the
-int4 all-empty is a real model result and the conclusion stands. (The triton-arm reproducing the exact
-documented int4 0/6 already strongly indicates the harness is consistent.)
+**Caveat — CLOSED (2026-06-21):** the #44 Coder-30B run through this SAME harness resolved **2/6**
+(django, requests; 5/6 applied, 1 empty). So the harness produces non-empty/resolving diffs for a good
+model → the int4 0/6-all-empty (both backends) is a **REAL model result, not a harness artifact**. The
+conclusion stands: **#33 decode-QK-FP32 not justified** — int4 agentic failure is a weight/format
+ceiling, not attention precision.
 
 **Cross-team (for 3090):** your isolator came back — on RDNA4, torch_native does not rescue int4 agentic
 (0/6 = triton 0/6). So the int4 0/6 is not the triton BF16-QK path; decode-QK-FP32 won't recover it. The
