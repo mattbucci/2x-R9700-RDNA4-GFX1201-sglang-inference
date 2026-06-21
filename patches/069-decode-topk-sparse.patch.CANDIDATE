@@ -1,5 +1,5 @@
 diff --git a/python/sglang/srt/layers/attention/triton_backend.py b/python/sglang/srt/layers/attention/triton_backend.py
-index 149a58b71..278678031 100644
+index ed5ac5c84..278678031 100644
 --- a/python/sglang/srt/layers/attention/triton_backend.py
 +++ b/python/sglang/srt/layers/attention/triton_backend.py
 @@ -6,6 +6,38 @@ from typing import TYPE_CHECKING, List, Optional
@@ -41,25 +41,10 @@ index 149a58b71..278678031 100644
  
  # RDNA4: opt-in split-KV (flash-decoding) tree-verify kernel for spec-decode (task #10).
  # The default extend verify reads the deep prefix KV unsplit (~2.7s @244K); this splits it
-@@ -125,6 +157,46 @@ class TritonAttnBackend(AttentionBackend):
-         self.skip_prefill = skip_prefill
-         max_bs = model_runner.req_to_token_pool.size
-         self.sliding_window_size = model_runner.sliding_window_size
-+        # R9700 #35: --force-decode-window decode-only mode. When >0, the prefill
-+        # (extend) path keeps FULL attention (so the model builds a coherent full-
-+        # context representation), and only the DECODE path windows. Gated on this
-+        # flag (default -1) so native-SWA models (Gemma) are unaffected.
-+        self.force_decode_window = (
-+            getattr(model_runner.server_args, "force_decode_window", -1) or -1
-+        )
-+        # R9700 #38: --force-verify-window N (+ --verify-sink S) windows the spec-VERIFY's
-+        # prefix KV read (last N + first S sink tokens). The verify prefix is mask-free
-+        # (skip_prefix_custom_mask), so feeding the verify a windowed kv_indptr/kv_indices is
-+        # clean. Default -1 (off) → verify reads the full prefix as before. LOSSY spec.
-+        self.force_verify_window = (
-+            getattr(model_runner.server_args, "force_verify_window", -1) or -1
-+        )
-+        self.verify_sink = getattr(model_runner.server_args, "verify_sink", 0) or 0
+@@ -140,6 +172,31 @@ class TritonAttnBackend(AttentionBackend):
+             getattr(model_runner.server_args, "force_verify_window", -1) or -1
+         )
+         self.verify_sink = getattr(model_runner.server_args, "verify_sink", 0) or 0
 +        # R9700 #39: --decode-topk-pages K — recall-preserving sparse-KV decode. Instead of the
 +        # last-N recency window (--force-decode-window), the DECODE path reads the K most
 +        # query-relevant KV pages (Quest bounding-box criticality) + sink + recent page. Leaves
@@ -88,95 +73,7 @@ index 149a58b71..278678031 100644
          # Pool refs — captured at construction so they survive deletion of the
          # corresponding ForwardBatch fields.
          self.req_to_token_pool = model_runner.req_to_token_pool
-@@ -349,6 +421,47 @@ class TritonAttnBackend(AttentionBackend):
-         )
-         return kv_indptr
- 
-+    def _build_windowed_verify_indices(
-+        self,
-+        bs: int,
-+        seq_lens: torch.Tensor,
-+        req_pool_indices: torch.Tensor,
-+        window: int,
-+        sink: int,
-+    ):
-+        """R9700 #38 partial-verification: build (kv_indptr, kv_indices) keeping only the last
-+        ``window - sink`` tokens + the first ``sink`` sink tokens of each request's prefix, for the
-+        spec verify. The verify prefix attention is mask-free (skip_prefix_custom_mask), so the
-+        verify reads only this windowed set instead of the full deep KV. Per-request gather (bs is
-+        small for single-user verify); eager only (.tolist() syncs) — not for cuda-graph capture."""
-+        seq_lens_cpu = seq_lens.tolist()
-+        rpi = req_pool_indices.tolist()
-+        recent = max(int(window) - int(sink), 1)
-+        chunks = []
-+        lens = []
-+        for b in range(bs):
-+            L = int(seq_lens_cpu[b])
-+            rb = int(rpi[b])
-+            if L <= int(window):
-+                sel = self.req_to_token[rb, :L]
-+            else:
-+                s = min(int(sink), L)
-+                r = min(recent, L - s)
-+                if s > 0:
-+                    sel = torch.cat(
-+                        [self.req_to_token[rb, :s], self.req_to_token[rb, L - r : L]]
-+                    )
-+                else:
-+                    sel = self.req_to_token[rb, L - r : L]
-+            chunks.append(sel)
-+            lens.append(sel.numel())
-+        kv_indices = torch.cat(chunks).to(torch.int64)
-+        kv_indptr = torch.zeros(bs + 1, dtype=torch.int32, device=self.device)
-+        kv_indptr[1:] = torch.cumsum(
-+            torch.tensor(lens, dtype=torch.int32, device=self.device), dim=0
-+        )
-+        return kv_indptr, kv_indices
-+
-     def _update_decode_kv_buffers(
-         self,
-         bs: int,
-@@ -683,6 +796,20 @@ class TritonAttnBackend(AttentionBackend):
-                 kv_indices,
-             )
- 
-+            # R9700 #38 partial-verification (eager path; cuda-graph verify untouched → use with
-+            # --disable-cuda-graph). Replace the full verify prefix indices with a windowed set
-+            # (last N + first S sink). The verify prefix is mask-free (skip_prefix_custom_mask), so
-+            # this is safe arithmetically; the suffix tree-mask must stay consistent under the
-+            # shrunk prefix — SMOKE-VALIDATE (temp=0 coherence) before trusting. Default off.
-+            if self.force_verify_window is not None and self.force_verify_window > 0:
-+                kv_indptr, kv_indices = self._build_windowed_verify_indices(
-+                    bs,
-+                    forward_batch.seq_lens,
-+                    forward_batch.req_pool_indices,
-+                    self.force_verify_window,
-+                    self.verify_sink,
-+                )
-+
-             if self.sliding_window_size is not None and self.sliding_window_size > 0:
-                 # window_kv_offsets is used to calculate the start position in custom mask
-                 (
-@@ -1148,8 +1275,16 @@ class TritonAttnBackend(AttentionBackend):
-                 q, o, layer, forward_batch, causal, logits_soft_cap, sinks
-             )
- 
--        # Normal mode: use original 2-stage kernel
--        if layer.sliding_window_size is not None and layer.sliding_window_size > -1:
-+        # Normal mode: use original 2-stage kernel.
-+        # R9700 #35 decode-only: when force_decode_window>0, the EXTEND (prefill) path
-+        # stays FULL even on windowed layers — only DECODE windows (forward_decode is
-+        # unchanged). Native-SWA models have force_decode_window=-1 → window as before.
-+        _decode_only_full_prefill = self.force_decode_window is not None and self.force_decode_window > 0
-+        if (
-+            layer.sliding_window_size is not None
-+            and layer.sliding_window_size > -1
-+            and not _decode_only_full_prefill
-+        ):
-             sliding_window_size = (
-                 layer.sliding_window_size
-             )  # Needed for sliding window mask
-@@ -1368,6 +1503,125 @@ class TritonAttnBackend(AttentionBackend):
+@@ -1446,6 +1503,125 @@ class TritonAttnBackend(AttentionBackend):
  
          return o
  
@@ -302,7 +199,7 @@ index 149a58b71..278678031 100644
      def forward_decode(
          self,
          q: torch.Tensor,
-@@ -1441,6 +1695,24 @@ class TritonAttnBackend(AttentionBackend):
+@@ -1519,6 +1695,24 @@ class TritonAttnBackend(AttentionBackend):
              kv_indptr = self.forward_metadata.kv_indptr
              kv_indices = self.forward_metadata.kv_indices
  
@@ -328,23 +225,20 @@ index 149a58b71..278678031 100644
              k_descale = layer.k_scale_float
              v_descale = layer.v_scale_float
 diff --git a/python/sglang/srt/server_args.py b/python/sglang/srt/server_args.py
-index 6c77ff64f..2366e7190 100644
+index 1c1d85b66..2366e7190 100644
 --- a/python/sglang/srt/server_args.py
 +++ b/python/sglang/srt/server_args.py
-@@ -774,6 +774,12 @@ class ServerArgs:
-     triton_attention_reduce_in_fp32: bool = False
-     triton_attention_num_kv_splits: int = 8
-     triton_attention_split_tile_size: Optional[int] = None
-+    force_decode_window: int = -1
-+    force_verify_window: int = -1
-+    verify_sink: int = 0
+@@ -777,6 +777,9 @@ class ServerArgs:
+     force_decode_window: int = -1
+     force_verify_window: int = -1
+     verify_sink: int = 0
 +    decode_topk_pages: int = -1
 +    decode_topk_page_size: int = 32
 +    decode_topk_scorer: str = "bbox"
      num_continuous_decode_steps: int = 1
      delete_ckpt_after_loading: bool = False
      enable_memory_saver: bool = False
-@@ -918,6 +924,18 @@ class ServerArgs:
+@@ -921,6 +924,18 @@ class ServerArgs:
          # short-circuit). The backend check is run later after backends settle.
          self._validate_prefill_only_disable_kv_cache_args()
  
@@ -363,38 +257,10 @@ index 6c77ff64f..2366e7190 100644
          if self.model_path.lower() in ["none", "dummy"]:
              # Skip for dummy models
              return
-@@ -6725,6 +6743,64 @@ class ServerArgs:
-             default=ServerArgs.triton_attention_split_tile_size,
-             help="The size of split KV tile in flash decoding Triton kernel. Used for deterministic inference.",
+@@ -6756,6 +6771,36 @@ class ServerArgs:
+             help="[RDNA4 #38] Number of leading 'sink' tokens to always keep in the windowed verify "
+             "(StreamingLLM-style, paired with --force-verify-window). 0 (default) = recent-only.",
          )
-+        parser.add_argument(
-+            "--force-decode-window",
-+            type=int,
-+            default=ServerArgs.force_decode_window,
-+            help="[RDNA4 experimental] Force a sliding-window of N tokens on the DECODE path of "
-+            "otherwise-full-attention layers, reusing the SWA decode path to cut the O(ctx) KV read "
-+            "at long context (single-user 256K decode speedup for dense full-attention models). "
-+            "-1 (default) = off. WARNING: this is APPROXIMATE attention — it drops mid-context KV, "
-+            "degrading long-range recall (needle/retrieval). Quality-gate before use.",
-+        )
-+        parser.add_argument(
-+            "--force-verify-window",
-+            type=int,
-+            default=ServerArgs.force_verify_window,
-+            help="[RDNA4 experimental, #38 partial-verification] Window the spec-VERIFY's prefix KV "
-+            "read to the last N tokens (+ --verify-sink first S), reusing the split-KV tree-verify "
-+            "kernel. The verify prefix attention is mask-free (skip_prefix_custom_mask), so windowing "
-+            "is clean (suffix tree-mask geometry derives from the windowed kv_indptr). Cuts the O(ctx) "
-+            "verify read that collapses split-KV verify at depth. -1 (default) = off. LOSSY spec "
-+            "(reduced-KV verify changes accept/reject) — quality-gate at depth before use.",
-+        )
-+        parser.add_argument(
-+            "--verify-sink",
-+            type=int,
-+            default=ServerArgs.verify_sink,
-+            help="[RDNA4 #38] Number of leading 'sink' tokens to always keep in the windowed verify "
-+            "(StreamingLLM-style, paired with --force-verify-window). 0 (default) = recent-only.",
-+        )
 +        parser.add_argument(
 +            "--decode-topk-pages",
 +            type=int,

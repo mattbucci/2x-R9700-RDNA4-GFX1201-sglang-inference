@@ -1,18 +1,11 @@
 diff --git a/python/sglang/srt/layers/attention/triton_backend.py b/python/sglang/srt/layers/attention/triton_backend.py
-index 149a58b71..ed5ac5c84 100644
+index 6fc73eb05..ed5ac5c84 100644
 --- a/python/sglang/srt/layers/attention/triton_backend.py
 +++ b/python/sglang/srt/layers/attention/triton_backend.py
-@@ -125,6 +125,21 @@ class TritonAttnBackend(AttentionBackend):
-         self.skip_prefill = skip_prefill
-         max_bs = model_runner.req_to_token_pool.size
-         self.sliding_window_size = model_runner.sliding_window_size
-+        # R9700 #35: --force-decode-window decode-only mode. When >0, the prefill
-+        # (extend) path keeps FULL attention (so the model builds a coherent full-
-+        # context representation), and only the DECODE path windows. Gated on this
-+        # flag (default -1) so native-SWA models (Gemma) are unaffected.
-+        self.force_decode_window = (
-+            getattr(model_runner.server_args, "force_decode_window", -1) or -1
-+        )
+@@ -132,6 +132,14 @@ class TritonAttnBackend(AttentionBackend):
+         self.force_decode_window = (
+             getattr(model_runner.server_args, "force_decode_window", -1) or -1
+         )
 +        # R9700 #38: --force-verify-window N (+ --verify-sink S) windows the spec-VERIFY's
 +        # prefix KV read (last N + first S sink tokens). The verify prefix is mask-free
 +        # (skip_prefix_custom_mask), so feeding the verify a windowed kv_indptr/kv_indices is
@@ -24,7 +17,7 @@ index 149a58b71..ed5ac5c84 100644
          # Pool refs — captured at construction so they survive deletion of the
          # corresponding ForwardBatch fields.
          self.req_to_token_pool = model_runner.req_to_token_pool
-@@ -349,6 +364,47 @@ class TritonAttnBackend(AttentionBackend):
+@@ -356,6 +364,47 @@ class TritonAttnBackend(AttentionBackend):
          )
          return kv_indptr
  
@@ -72,7 +65,7 @@ index 149a58b71..ed5ac5c84 100644
      def _update_decode_kv_buffers(
          self,
          bs: int,
-@@ -683,6 +739,20 @@ class TritonAttnBackend(AttentionBackend):
+@@ -690,6 +739,20 @@ class TritonAttnBackend(AttentionBackend):
                  kv_indices,
              )
  
@@ -93,53 +86,23 @@ index 149a58b71..ed5ac5c84 100644
              if self.sliding_window_size is not None and self.sliding_window_size > 0:
                  # window_kv_offsets is used to calculate the start position in custom mask
                  (
-@@ -1148,8 +1218,16 @@ class TritonAttnBackend(AttentionBackend):
-                 q, o, layer, forward_batch, causal, logits_soft_cap, sinks
-             )
- 
--        # Normal mode: use original 2-stage kernel
--        if layer.sliding_window_size is not None and layer.sliding_window_size > -1:
-+        # Normal mode: use original 2-stage kernel.
-+        # R9700 #35 decode-only: when force_decode_window>0, the EXTEND (prefill) path
-+        # stays FULL even on windowed layers — only DECODE windows (forward_decode is
-+        # unchanged). Native-SWA models have force_decode_window=-1 → window as before.
-+        _decode_only_full_prefill = self.force_decode_window is not None and self.force_decode_window > 0
-+        if (
-+            layer.sliding_window_size is not None
-+            and layer.sliding_window_size > -1
-+            and not _decode_only_full_prefill
-+        ):
-             sliding_window_size = (
-                 layer.sliding_window_size
-             )  # Needed for sliding window mask
 diff --git a/python/sglang/srt/server_args.py b/python/sglang/srt/server_args.py
-index 6c77ff64f..1c1d85b66 100644
+index fae2291cc..1c1d85b66 100644
 --- a/python/sglang/srt/server_args.py
 +++ b/python/sglang/srt/server_args.py
-@@ -774,6 +774,9 @@ class ServerArgs:
-     triton_attention_reduce_in_fp32: bool = False
+@@ -775,6 +775,8 @@ class ServerArgs:
      triton_attention_num_kv_splits: int = 8
      triton_attention_split_tile_size: Optional[int] = None
-+    force_decode_window: int = -1
+     force_decode_window: int = -1
 +    force_verify_window: int = -1
 +    verify_sink: int = 0
      num_continuous_decode_steps: int = 1
      delete_ckpt_after_loading: bool = False
      enable_memory_saver: bool = False
-@@ -6725,6 +6728,34 @@ class ServerArgs:
-             default=ServerArgs.triton_attention_split_tile_size,
-             help="The size of split KV tile in flash decoding Triton kernel. Used for deterministic inference.",
+@@ -6736,6 +6738,24 @@ class ServerArgs:
+             "-1 (default) = off. WARNING: this is APPROXIMATE attention — it drops mid-context KV, "
+             "degrading long-range recall (needle/retrieval). Quality-gate before use.",
          )
-+        parser.add_argument(
-+            "--force-decode-window",
-+            type=int,
-+            default=ServerArgs.force_decode_window,
-+            help="[RDNA4 experimental] Force a sliding-window of N tokens on the DECODE path of "
-+            "otherwise-full-attention layers, reusing the SWA decode path to cut the O(ctx) KV read "
-+            "at long context (single-user 256K decode speedup for dense full-attention models). "
-+            "-1 (default) = off. WARNING: this is APPROXIMATE attention — it drops mid-context KV, "
-+            "degrading long-range recall (needle/retrieval). Quality-gate before use.",
-+        )
 +        parser.add_argument(
 +            "--force-verify-window",
 +            type=int,
