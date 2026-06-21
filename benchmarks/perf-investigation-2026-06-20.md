@@ -401,3 +401,17 @@ char recall. #39's *speedup* targets the DENSE fleet (qwen3vl-32b etc.); on MoE 
 dispatch-bound so #39 there is a recall/quality feature, not a speed one — so #44 splits into: (a) a
 256K reasoning/retrieval quality probe on a dense #39-target (does sparse decode preserve quality at
 depth), and (b) the agentic coding harness on coder-30b (does sparse selection break multi-turn coding).
+
+### #43 v3 increment 1 — fused bbox-criticality kernel (the rep-scan lever, 2026-06-21)
+
+The budget-independence finding said the per-step **rep-scan dominates** (throughput identical at budget
+2048 vs 16384 -> not the decode-read, not the K-sized gather loop; the score over ALL pages). So v3's
+first lever is fusing that score. The eager `where(q>=0,q*pmax,q*pmin).sum((1,2))` materializes fp32 reps
++ multiple passes over the dominant rep data; the fused triton kernel (`fused_bbox_score` /
+`_bbox_crit_kernel` in triton_backend.py) does ONE pass, one program/page, reducing Hkv*D in-register.
+- **Offline (synthetic): identical ranking (top-64 overlap 1.000, max_rel_err 0.0), ~11x faster scoring**
+  (n=3828: 0.152 -> 0.014 ms/call). Wired into `_build_topk_kv_indices_v2` with an eager fallback.
+- **Live-path correctness: needle EARLY/MID/LATE all PASS** (qwen3vl-32b @32K, page32) - selection
+  unchanged by the kernel. Eager score was ~9 ms/step (0.152x64 layers) -> ~1 ms; expected ~1.6x->~1.85x
+  at 256K (throughput re-measure pending). The safe, correctness-preserving v3 lever; cuda-graph (cuts
+  launch overhead, smaller at 256K where per-step work is large) is the higher-risk secondary lever.
