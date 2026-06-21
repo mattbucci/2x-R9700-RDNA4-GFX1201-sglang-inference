@@ -80,3 +80,33 @@ index set to the same index-agnostic kernel":**
 **Next:** #37 cheap test first (boot STANDALONE draft==target short-ctx, no code) — it validates the whole
 self-spec premise before any build. Then #38/#39 stack on top. All measured at depth on real content
 (server-log gen-throughput), one server at a time.
+
+---
+
+## ⚠ UPDATE (2026-06-20, #37 cheap test) — self-spec premise CORRECTED
+
+The #37 cheap test (coder-30b STANDALONE draft==target @8192) **crashed at boot**: `'NoneType' has no
+attribute 'is_contiguous'` at layernorm, in **`qwen3_moe_mtp.forward`** during draft cuda-graph capture.
+Root cause: `model_config.py` remaps a draft model's arch to its **NextN/MTP variant** when
+`is_draft_model` → STANDALONE loaded the coder-30b draft as `qwen3_moe_mtp`, but the base AWQ checkpoint
+has `num_nextn_predict_layers: None` + **zero MTP tensors** → the MTP block's hidden_states input is None.
+
+**Correction:** SGLang's STANDALONE self-spec is **NOT "use the target's own base weights"** (agent 1's
+reasoned-but-untested premise was wrong). It **requires a checkpoint with a bundled MTP/NextN head.** Our
+dense coders (Coder-30B, Devstral, VL-32B) are base models with no MTP head → STANDALONE won't serve them.
+True TriForce/MagicDec self-spec (base model as its own draft + windowed KV, **no** MTP head) is **not a
+built-in SGLang algorithm** → it would need genuine new-worker engine work, not the ~3 small adds estimated.
+
+**Revised priorities:**
+- **Self-spec is NOT the easy 256K revival for our dense coders.** Parked as engine work (reopen only if
+  #36/#38/#39 don't suffice).
+- **The 3090 trained-draft ask (EAGLE 3.1) is CONFIRMED as the path** — self-spec does *not* reduce the need
+  (cross-team note to be updated accordingly).
+- **#36 (Gemma) is now the highest-value spec test** — Gemma *ships* a bundled it-matched MTP drafter (on
+  disk), so it's exactly the "MTP head exists" case STANDALONE/MTP needs. GLM-4.5-Air (`Glm4MoeForCausalLMNextN`)
+  and Qwen3-Coder-Next (Next arch) also have bundled MTP heads — but those are MoE/DeltaNet (compute-bound).
+- **#38 (partial-verify) + #39 (top-K sparse) stand** — they extend the 067 windowing primitive on the
+  verify/decode KV, independent of the draft-arch problem.
+
+Lesson: agent reasoning ("STANDALONE = base-weight self-spec") needed the empirical boot to falsify — the
+cheap-test-first discipline paid off (no wasted build on a wrong premise).
