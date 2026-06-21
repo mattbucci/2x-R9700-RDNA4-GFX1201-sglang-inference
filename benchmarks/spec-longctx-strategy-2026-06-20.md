@@ -124,7 +124,28 @@ drafter) — so it *should* be the MTP-self-spec path that coder-30b (#37) could
   expects the prefill-sized `[35]` buffers → broadcast fail. A non-trivial spec-worker/buffer-registry bug,
   almost certainly never exercised on RDNA4. **Deprioritized** (Gemma ≤64K spec is medium value; deep fix).
 
-**Combined #37 + #36 verdict on MTP-based self-spec on RDNA4:** blocked **both** ways — the *no-head* case
+## ✅ #38 partial-verification BUILT + correctness-VALIDATED (2026-06-20, patch 068, default-off)
+
+`--force-verify-window N` (+ `--verify-sink S`): windows the spec-VERIFY's prefix KV read (last N + first S
+sink), reusing the split-KV tree-verify (065) + a windowed-index helper. The verify prefix is **mask-free**
+(`skip_prefix_custom_mask`), so feeding windowed `kv_indptr/kv_indices` is arithmetically clean; the suffix
+D×D tree-mask geometry derives from the windowed `kv_indptr`.
+
+**Correctness smoke (coder-30b `--spec` + `--disable-cuda-graph` + `--force-verify-window 4096 --verify-sink
+128`, ~17.7K depth so windowing engages):** output **COHERENT** (1998 chars) + **accept len 6.40** (≈ the
+full-verify EAGLE3 ~6.8). → the suffix-mask-under-windowing is **correct** (the one real risk, cleared) and
+the windowed verify is lossless-enough at mid-ctx. Flag default-off → inert until enabled.
+
+**Next — depth payoff bench (the open question):** does windowing the verify fix the 065 256K collapse? Key
+nuance: #38 windows the VERIFY only. For **NGRAM** (draft-free → the verify IS the entire GPU cost; the 065
+bench showed NGRAM collapses purely from the 2.7s @244K verify read) → #38 should fix it → **NGRAM + #38 @
+256K is the decisive bench** (vs no-spec 12.2). For **EAGLE3**, the *draft* also reads the full KV every
+micro-step (a separate cost #38 doesn't touch), so #38 fixes only the verify half there. Bench NGRAM + #38
+at ~200K with the copyheavy harness (3600s timeout — never abort a deep prefill, the TP-rank-wedge hazard).
+
+## Combined #37 + #36 verdict on MTP-based self-spec on RDNA4
+
+Blocked **both** ways — the *no-head* case
 (dense coders Coder-30B/Devstral/VL-32B → STANDALONE crashes, no MTP weights) AND the *has-head* case (Gemma
 → boots but the frozen_kv_mtp draft-decode buffer bug). So **MTP-based self-spec is not a free RDNA4 unblock.**
 → The 3090 trained-draft (EAGLE 3.1) ask is the path for the dense coders; the RDNA4-native levers **#38
