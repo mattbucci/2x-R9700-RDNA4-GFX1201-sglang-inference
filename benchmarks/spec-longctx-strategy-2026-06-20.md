@@ -110,3 +110,23 @@ built-in SGLang algorithm** → it would need genuine new-worker engine work, no
 
 Lesson: agent reasoning ("STANDALONE = base-weight self-spec") needed the empirical boot to falsify — the
 cheap-test-first discipline paid off (no wasted build on a wrong premise).
+
+## ⚠ UPDATE (2026-06-20, #36 Gemma FROZEN_KV_MTP) — boot-blocker stale, but a new inference bug
+
+Gemma is the "bundled MTP head exists" case (ships `gemma-4-31B-it-assistant`, the it-matched 4-layer MTP
+drafter) — so it *should* be the MTP-self-spec path that coder-30b (#37) couldn't be. Result:
+- **Boot-blocker CONFIRMED STALE** (good): gemma4-31b + FROZEN_KV_MTP **boots clean** ("server is fired up",
+  max_total 511K @8192). The recorded "needs tf5.8 + SGLang verify fix" is obsolete (tf5.8.1 live, old verify
+  crash gone).
+- **But crashes on the first request:** `RuntimeError [1] vs broadcast [35]` (35 = prompt len) at
+  `frozen_kv_mtp_worker.py:676` (draft seed iter) → `_eager_fb_view` → `cuda_graph_buffer_registry.
+  _grouped_foreach_copy_`. The MTP draft seed forward uses the `[1]` bonus token but the buffer-registry copy
+  expects the prefill-sized `[35]` buffers → broadcast fail. A non-trivial spec-worker/buffer-registry bug,
+  almost certainly never exercised on RDNA4. **Deprioritized** (Gemma ≤64K spec is medium value; deep fix).
+
+**Combined #37 + #36 verdict on MTP-based self-spec on RDNA4:** blocked **both** ways — the *no-head* case
+(dense coders Coder-30B/Devstral/VL-32B → STANDALONE crashes, no MTP weights) AND the *has-head* case (Gemma
+→ boots but the frozen_kv_mtp draft-decode buffer bug). So **MTP-based self-spec is not a free RDNA4 unblock.**
+→ The 3090 trained-draft (EAGLE 3.1) ask is the path for the dense coders; the RDNA4-native levers **#38
+(partial-verify)** + **#39 (top-K sparse)** — which extend our *own* proven 067 windowing primitive, no
+dependency on the upstream spec-worker — are the way forward on our own hardware. Loop continues with #38.
