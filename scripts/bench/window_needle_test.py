@@ -43,7 +43,7 @@ def build(depth_frac):
     cut = int(len(base) * depth_frac)
     return base[:cut] + NEEDLE + base[cut:]
 
-for label, frac in [("EARLY(~5%)", 0.05), ("LATE(end)", 0.999)]:
+for label, frac in [("EARLY(~5%)", 0.05), ("MID(~50%)", 0.50), ("LATE(end)", 0.999)]:
     ans, err = send_raw(build(frac))
     if err:
         print(f"needle {label:12s}: ERR {err[:80]!r}"); continue

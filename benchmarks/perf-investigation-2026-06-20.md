@@ -243,3 +243,46 @@ the needle is silently swamped (mismeasured 5.7 vs correct 48) — see proto doc
    read budget). Expect ~0.8–0.87 attention-mass recall per the real-key gate.
 Reuses the patch-067 insight end-to-end: the decode kernel is index-agnostic — #39 just feeds it a
 criticality-selected index set instead of a recency one.
+
+### #40 v1 BUILT + VALIDATED — recall win PROVEN on the real serving stack (2026-06-20)
+
+Built v1 (correctness-first, eager) on `/data/sgl-rebase` and validated end-to-end. v1 deviates from
+the turnkey plan in one way that *shrinks* blast radius: it does NOT set `sliding_window_size` (so it
+never touches `model_runner` or the 067 SWA-injection path), and instead leaves the FULL `kv_indices`
+in the metadata and SELECTS in `forward_decode`. Edits (compiled, WIP-captured in
+`patches/069-decode-topk-sparse.WIP.diff`):
+- `server_args.py`: `--decode-topk-pages` / `--decode-topk-page-size` (default 8) / `--decode-topk-scorer`
+  (bbox|centroid) + `__post_init__` auto-disables cuda-graph for the eager v1.
+- `triton_backend.py`: flag captures in `__init__`; new `_build_topk_kv_indices` (per request: Quest bbox
+  criticality over per-page min/max of the full KV vs the decode query → top-K pages + page-0 sink +
+  recent partial page → shortened kv_indptr/kv_indices); `forward_decode` interception that swaps the
+  full indices for the selected set, consumed by the unchanged decode kernel.
+
+**Needle validation (`scripts/bench/window_needle_test.py`, EARLY/MID/LATE, 30K ctx, 2048-tok budget):**
+
+coder-30b (MoE, full-attention layers): TOPK EARLY ✅ + LATE ✅ recalled `ZEPHYR-4419`.
+qwen3vl-32b (pure dense, the primary #39 target) — clean SAME-MODEL A/B, same budget:
+
+| needle | RECENCY `--force-decode-window 2048` | **TOPK `--decode-topk-pages 256×8`** |
+|---|---|---|
+| EARLY(~5%) | ❌ FAIL (garbage `ZAPPAQAAQ…`) | ✅ PASS `ZEPHYR-4419` |
+| MID(~50%)  | ❌ FAIL (garbage `ZAPPAQQUQU…`) | ✅ PASS `ZEPHYR-4419` |
+| LATE(end)  | ✅ PASS | ✅ PASS |
+
+The MID(~50%) pass (needle at ~15K tok, far from both sink and recent window) is recovered purely by
+criticality selection → the mechanism works, not an artifact. **v1 proves the RECALL claim** (the novel/
+risky part): sparse criticality selection gives the model full-context retrieval at a windowed decode
+read budget, where plain recency windowing garbles everything outside its window.
+
+**Bonus finding — `--force-decode-window` (#35) is BROKEN on qwen3_moe (coder-30b):** boot crashes with
+`'MHATokenToKVPool' object has no attribute 'full_to_swa_index_mapping'` in qwen3_moe.py
+`apply_qk_norm_rope → create_fused_set_kv_buffer_arg` — setting `sliding_window_size` on a non-SWA pool
+trips the fused kv-buffer SWA path. 067 was only validated on qwen3vl-32b. #39 sidesteps it (never sets
+`sliding_window_size`). Tracked as a separate fix-or-document item.
+
+**v1 is NOT the perf version.** It computes per-page min/max over the FULL KV every layer every step
+(O(ctx), eager, Python per-request loop, CPU syncs) — so it validates recall, not speed (likely a decode
+regression). The speedup needs **v2 (task #41):** incremental reps (built at prefill, last-page update per
+step) + a fixed-shape cuda-graph-capturable scoring/gather kernel. v1's recall validation de-risks v2:
+the selection logic is proven correct on the real stack; v2 is a pure perf/mechanics rebuild of the same
+math. Clean `069` patch + equivalence gate to be cut when the code settles (after v2 or v1-ship decision).
