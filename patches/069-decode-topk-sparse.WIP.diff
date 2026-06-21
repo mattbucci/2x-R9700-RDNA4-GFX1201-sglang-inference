@@ -1,5 +1,5 @@
 diff --git a/python/sglang/srt/layers/attention/triton_backend.py b/python/sglang/srt/layers/attention/triton_backend.py
-index 149a58b71..bdeb2d7bc 100644
+index 149a58b71..278678031 100644
 --- a/python/sglang/srt/layers/attention/triton_backend.py
 +++ b/python/sglang/srt/layers/attention/triton_backend.py
 @@ -6,6 +6,38 @@ from typing import TYPE_CHECKING, List, Optional
@@ -176,7 +176,7 @@ index 149a58b71..bdeb2d7bc 100644
              sliding_window_size = (
                  layer.sliding_window_size
              )  # Needed for sliding window mask
-@@ -1368,6 +1503,119 @@ class TritonAttnBackend(AttentionBackend):
+@@ -1368,6 +1503,125 @@ class TritonAttnBackend(AttentionBackend):
  
          return o
  
@@ -239,12 +239,18 @@ index 149a58b71..bdeb2d7bc 100644
 +            qv = qb.unsqueeze(0)
 +            score = torch.where(qv >= 0, qv * pmax.float(), qv * pmin.float()).sum(dim=(1, 2))
 +        ksel = max(1, K_total - 2)
-+        top = torch.topk(score, min(ksel, n)).indices
-+        keep = sorted(set(top.tolist()) | {0, n - 1})
-+        parts = [slots[p * page:(p + 1) * page] for p in keep]
-+        if n * page < L:
-+            parts.append(slots[n * page:])  # recent partial page
-+        sel = torch.cat(parts)
++        # #43 v3.2: vectorized gather (was a Python loop + set()/tolist()/cat + per-elem int() syncs,
++        # ~64 layers/step of CPU-sync overhead). All tensor ops now: topk -> +sink/+recent -> page
++        # token positions via broadcast -> gather. Same SELECTED SET as before (attention is order-
++        # invariant). Also the fixed-shape-friendly form needed for v3.3 cuda-graph.
++        top = torch.topk(score, min(ksel, n)).indices  # [m]
++        extra = torch.tensor([0, n - 1], device=top.device, dtype=top.dtype)
++        keep = torch.unique(torch.cat([top, extra]))  # sorted+dedup [M]
++        offs = torch.arange(page, device=slots.device)
++        sel_pos = (keep.unsqueeze(1) * page + offs.unsqueeze(0)).reshape(-1)  # [M*page]
++        if n * page < L:  # recent partial page (newest tokens beyond last complete page)
++            sel_pos = torch.cat([sel_pos, torch.arange(n * page, L, device=slots.device)])
++        sel = slots[sel_pos]
 +        out_indptr = torch.tensor([0, sel.numel()], dtype=kv_indptr.dtype, device=kv_indptr.device)
 +        return out_indptr, sel.to(kv_indices.dtype)
 +
@@ -296,7 +302,7 @@ index 149a58b71..bdeb2d7bc 100644
      def forward_decode(
          self,
          q: torch.Tensor,
-@@ -1441,6 +1689,24 @@ class TritonAttnBackend(AttentionBackend):
+@@ -1441,6 +1695,24 @@ class TritonAttnBackend(AttentionBackend):
              kv_indptr = self.forward_metadata.kv_indptr
              kv_indices = self.forward_metadata.kv_indices
  

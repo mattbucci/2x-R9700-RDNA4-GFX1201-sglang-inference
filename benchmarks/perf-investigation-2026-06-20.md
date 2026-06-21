@@ -423,3 +423,19 @@ keep*page`, `(starts[:,None]+arange(page)).flatten()`, gather) — cuts per-laye
 the prerequisite for (v3.3) cuda-graph (fixed-shape capture, cuts all launch overhead — smaller win at
 256K where per-step work is large). Both are the same low-risk correctness-preserving pattern as v3.1.
 v3.1 is a clean shippable milestone; v3.2/v3.3 are future increments.
+
+**v3.2 DONE — vectorized gather (correctness-validated):** replaced the Python loop+set()+tolist()+cat
++per-elem int() syncs (~64 layers/step of CPU-sync overhead) with tensor ops (topk → +sink/+recent →
+`keep*page + arange(page)` broadcast → gather). Needle EARLY/MID/LATE all PASS (identical selected set;
+attention is order-invariant). Throughput re-measure pending.
+
+**v3.3 (cuda-graph) — IMPORTANT tension, not a free win.** #39 currently disables cuda-graph for the
+WHOLE decode (so #39's 14.71 BEATS baseline 8.29 *despite* running fully eager — re-enabling would help
+the whole forward). BUT #39's selection is **per-layer + query-dependent** (the criticality needs each
+layer's decode query, available only inside the forward), which fights SGLang's standard pattern of
+writing kv_indices in the CPU metadata phase then replaying a captured graph. To cuda-graph #39 the whole
+selection must run INSIDE the graph, fixed-shape: drop `torch.unique` dedup (fixed M, accept rare dup
+pages), handle the variable recent-partial (pad), make rep maintenance a fixed scatter-update (no
+rebuild-vs-incremental Python branch — move the initial rep-build to the extend/prefill path). That's a
+substantial delicate refactor with uncertain payoff — #39's eager v3.1/v3.2 (~1.77×, recall-preserving)
+may be the practical optimum. v3.3 staged as a deliberate future effort, not a session-tail rush.
