@@ -1,0 +1,51 @@
+# R9700 #36 Gemma FROZEN_KV_MTP spec unblock (2026-06-21) — WIP capture.
+# Fix A: frozen_kv_mtp_worker.py out_cache_loc resize (below).
+# Fix B: triton_backend.py — 2x 'pool = forward_batch.token_to_kv_pool' -> 'pool = self.token_to_kv_pool'
+#        (kv-shared branch in forward_extend + forward_decode; #36 comment marks them; split from 069 later).
+# Required flags: --speculative-algorithm NEXTN --speculative-draft-model-path <gemma-assistant> --speculative-eagle-topk 1 --speculative-num-steps N
+# Result: coherent + accept len 2.73 @ short ctx.
+###
+diff --git a/python/sglang/srt/speculative/frozen_kv_mtp_worker.py b/python/sglang/srt/speculative/frozen_kv_mtp_worker.py
+index adb556452..e777e745e 100644
+--- a/python/sglang/srt/speculative/frozen_kv_mtp_worker.py
++++ b/python/sglang/srt/speculative/frozen_kv_mtp_worker.py
+@@ -592,6 +592,23 @@ class FrozenKVMTPWorker(TpModelWorker):
+         self._set_positions(forward_batch)
+         self._expand_for_topk_draft(forward_batch)
+ 
++        # R9700 #36: the fb-view registry (cuda_graph_buffer_registry.fill_from, used by BOTH the
++        # eager _eager_fb_view and the cuda-graph replay paths) copies out_cache_loc into a
++        # decode-sized buffer. The FROZEN_KV draft inherits the target PREFILL's out_cache_loc
++        # (size = prefill seq len, e.g. 35) which mismatches the draft decode token count (bs*topk)
++        # -> "output with shape [N] doesn't match the broadcast shape [prefill_len]". The draft's
++        # attention layers are kv-shared (read the FROZEN target KV at the fixed seq_len-1 rope
++        # position, no new KV writes), so out_cache_loc is unused for writing — resize it to the
++        # draft decode token count (reusing valid existing slot ids) so the registry copy matches.
++        _n_tok = forward_batch.positions.numel()
++        _oc = forward_batch.out_cache_loc
++        if _oc is not None and _oc.numel() != _n_tok:
++            forward_batch.out_cache_loc = (
++                _oc[:_n_tok].contiguous()
++                if _oc.numel() >= _n_tok
++                else _oc[:1].repeat(_n_tok)
++            )
++
+         can_run_cuda_graph = self.cuda_graph_runner and self.cuda_graph_runner.can_run(
+             forward_batch
+         )
+### triton_backend.py #36 pool hunks:
++            # R9700 #36: use the backend's pool ref, not forward_batch's. Equivalent for normal
++            # Gemma serving (same pool from the same model_runner), but required for the FROZEN_KV
++            # MTP draft — which swaps the pool on the backend (target_kv_pool_view) to read the
++            # frozen target KV, and whose draft forward_batch has no token_to_kv_pool attribute.
++            pool = self.token_to_kv_pool
+             cache_loc = forward_batch.out_cache_loc
+             if hasattr(pool, 'layers_mapping') and pool.layers_mapping[layer.layer_id][1]:
+--
++            # R9700 #36: use the backend's pool ref, not forward_batch's. Equivalent for normal
++            # Gemma serving (same pool from the same model_runner), but required for the FROZEN_KV
++            # MTP draft — which swaps the pool on the backend (target_kv_pool_view) to read the
++            # frozen target KV, and whose draft forward_batch has no token_to_kv_pool attribute.
++            pool = self.token_to_kv_pool
+             cache_loc = forward_batch.out_cache_loc
+             if hasattr(pool, 'layers_mapping') and pool.layers_mapping[layer.layer_id][1]:
