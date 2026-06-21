@@ -288,3 +288,34 @@ regression). The speedup needs **v2 (task #41):** incremental reps (built at pre
 step) + a fixed-shape cuda-graph-capturable scoring/gather kernel. v1's recall validation de-risks v2:
 the selection logic is proven correct on the real stack; v2 is a pure perf/mechanics rebuild of the same
 math. Clean `069` patch + equivalence gate to be cut when the code settles (after v2 or v1-ship decision).
+
+### #41 v2 BUILT — recall preserved, but a PERF REGRESSION → v3 (cuda-graph) required (2026-06-20)
+
+Built v2 (`_build_topk_kv_indices_v2`): cached per-layer page reps, extended incrementally (a page's
+bbox min/max computed once when it completes), bf16 reps (fp32 OOM'd at 128K — ~8.6GB on top of a full
+KV pool; bf16 + native-dtype min/max fixed it). Recall is bit-identical to v1 (EARLY/MID/LATE all PASS
+on qwen3vl-32b @32K).
+
+**Throughput A/B @128K depth (qwen3vl-32b, server-log gen tok/s, real ~120K prompt):**
+
+| config | gen tok/s | vs baseline | recall |
+|---|---|---|---|
+| BASELINE (full attention) | 12.85 | 1.00× | ✅ complete |
+| RECENCY `--force-decode-window 2048` | 24.93 | **1.94×** | ❌ recent-only |
+| **TOPK_v2 `--decode-topk-pages 256` (page8)** | **9.58** | **0.75× (REGRESSION)** | ✅ complete (coherent) |
+
+**v2 is SLOWER than baseline.** The eager per-step overhead dominates: cuda-graph is DISABLED (v1/v2 use
+data-dependent shapes), and the selection does heavy Python/small-op work every layer every step —
+`int(kv_indptr)` CPU syncs, `topk().tolist()`, `set()`, a Python list-comp gather, `torch.cat` — ×64
+layers. That launch/sync overhead + the rep-read bandwidth (page8 reps ≈ ¼ of K) exceeds what windowing
+the decode read saves. RECENCY (24.93) is the windowed-decode **ceiling** at 128K (1.94×); any #39 win
+must come out of that budget minus rep-scoring cost.
+
+**Conclusion: the recall mechanism is proven (v1/v2), but the speedup needs v3.** v3 = make the whole
+select path cuda-graph-capturable: max-sized graph-resident rep buffer; per-step scatter-update of the
+current page's running min/max (fixed op, no completion branch); score all pages (mask invalid→-inf);
+fixed-K `topk`; fixed-shape gather of K×page_size slots (+sink+recent) via arithmetic indexing (no Python
+control flow); re-enable cuda-graph. Pure torch, fixed shapes — no custom triton kernel needed. Then the
+per-step overhead collapses into the graph and the only residual cost is rep-read bandwidth (tunable via
+page size: bigger pages = less rep bandwidth + less memory, lower recall). Realistic target: a fraction
+of the 1.94×/2.95× windowed ceiling, WITH full-context recall. Tracked as #43.

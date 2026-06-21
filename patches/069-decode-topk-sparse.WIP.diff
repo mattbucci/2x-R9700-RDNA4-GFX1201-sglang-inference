@@ -1,8 +1,8 @@
 diff --git a/python/sglang/srt/layers/attention/triton_backend.py b/python/sglang/srt/layers/attention/triton_backend.py
-index 149a58b71..e85cc423b 100644
+index 149a58b71..7147ced7c 100644
 --- a/python/sglang/srt/layers/attention/triton_backend.py
 +++ b/python/sglang/srt/layers/attention/triton_backend.py
-@@ -125,6 +125,36 @@ class TritonAttnBackend(AttentionBackend):
+@@ -125,6 +125,45 @@ class TritonAttnBackend(AttentionBackend):
          self.skip_prefill = skip_prefill
          max_bs = model_runner.req_to_token_pool.size
          self.sliding_window_size = model_runner.sliding_window_size
@@ -36,10 +36,19 @@ index 149a58b71..e85cc423b 100644
 +        self.decode_topk_scorer = getattr(
 +            model_runner.server_args, "decode_topk_scorer", "bbox"
 +        )
++        # R9700 #41 v2: cached per-layer page reps (bbox min/max) for the bs==1 fast path.
++        # Built/extended incrementally — a page's rep is computed once when the page COMPLETES
++        # (every page_size decode steps), so steady-state maintenance is O(page) not O(ctx).
++        # Keyed by layer_id; lazily (re)built from full KV on any structural mismatch (safe:
++        # worst case = v1 O(ctx)). Identical per-page min/max to v1 → identical selection/recall.
++        self._topk_pmin = {}
++        self._topk_pmax = {}
++        self._topk_n = {}       # layer_id -> #pages currently repped
++        self._topk_len = {}     # layer_id -> seq_len at last update (staleness detect)
          # Pool refs — captured at construction so they survive deletion of the
          # corresponding ForwardBatch fields.
          self.req_to_token_pool = model_runner.req_to_token_pool
-@@ -349,6 +379,47 @@ class TritonAttnBackend(AttentionBackend):
+@@ -349,6 +388,47 @@ class TritonAttnBackend(AttentionBackend):
          )
          return kv_indptr
  
@@ -87,7 +96,7 @@ index 149a58b71..e85cc423b 100644
      def _update_decode_kv_buffers(
          self,
          bs: int,
-@@ -683,6 +754,20 @@ class TritonAttnBackend(AttentionBackend):
+@@ -683,6 +763,20 @@ class TritonAttnBackend(AttentionBackend):
                  kv_indices,
              )
  
@@ -108,7 +117,7 @@ index 149a58b71..e85cc423b 100644
              if self.sliding_window_size is not None and self.sliding_window_size > 0:
                  # window_kv_offsets is used to calculate the start position in custom mask
                  (
-@@ -1148,8 +1233,16 @@ class TritonAttnBackend(AttentionBackend):
+@@ -1148,8 +1242,16 @@ class TritonAttnBackend(AttentionBackend):
                  q, o, layer, forward_batch, causal, logits_soft_cap, sinks
              )
  
@@ -127,10 +136,69 @@ index 149a58b71..e85cc423b 100644
              sliding_window_size = (
                  layer.sliding_window_size
              )  # Needed for sliding window mask
-@@ -1368,6 +1461,51 @@ class TritonAttnBackend(AttentionBackend):
+@@ -1368,6 +1470,110 @@ class TritonAttnBackend(AttentionBackend):
  
          return o
  
++    def _build_topk_kv_indices_v2(self, q, layer, kv_indptr, kv_indices):
++        """R9700 #41 v2 fast path (bs==1, bbox): same Quest selection as v1 but page reps are
++        CACHED and extended incrementally — a page's min/max is computed once when it completes
++        (every page_size steps), so per-step cost is O(reps)+O(page) instead of v1's O(ctx).
++        Per-page reps are bit-identical to v1 → identical selection/recall. Falls back to v1 on
++        any structural mismatch. Caller guarantees bs==1 and scorer=='bbox'."""
++        page = self.decode_topk_page_size
++        K_total = self.decode_topk_pages
++        budget = K_total * page
++        L = int(kv_indptr[1] - kv_indptr[0])
++        slots = kv_indices[int(kv_indptr[0]):int(kv_indptr[1])]
++        if L <= budget or L < 2 * page:
++            return kv_indptr, kv_indices  # within budget — keep all
++        n = L // page
++        lid = layer.layer_id
++        k_buffer = self.token_to_kv_pool.get_key_buffer(layer.layer_id)
++        Hkv, D = k_buffer.shape[1], k_buffer.shape[2]
++        Hq = q.shape[1]
++        group = max(1, Hq // Hkv)
++        pmin = self._topk_pmin.get(lid)
++        old_n = self._topk_n.get(lid, 0)
++        tracked = self._topk_len.get(lid, -1)
++        # Rebuild fully if no state, fewer pages stored than needed minus a normal growth step,
++        # the sequence shrank (new request), or a non-incremental jump occurred.
++        rebuild = (
++            pmin is None or old_n > n or tracked > L or tracked < 0
++            or (L - tracked) > 4 * page
++        )
++        # Reps stored in bf16 (half the memory; fp32 reps OOM at depth — 8.6GB @128K page8).
++        # min/max computed in native KV dtype (no full-K fp32 upcast transient); cast to fp32
++        # only the small per-page reps at score time. fp8 KV → cast gather to bf16 for amin/amax.
++        def _pagereps(seg_slots, npg):
++            kb = k_buffer[seg_slots].view(npg, page, Hkv, D)
++            if kb.dtype not in (torch.float16, torch.bfloat16, torch.float32):
++                kb = kb.to(torch.bfloat16)
++            return kb.amin(1).to(torch.bfloat16), kb.amax(1).to(torch.bfloat16)
++        if rebuild:
++            pmin, pmax = _pagereps(slots[:n * page], n)
++        else:
++            pmax = self._topk_pmax[lid]
++            if n > old_n:  # one or more pages completed since last step — rep just those
++                nmin, nmax = _pagereps(slots[old_n * page:n * page], n - old_n)
++                pmin = torch.cat([pmin[:old_n], nmin], dim=0)
++                pmax = torch.cat([pmax[:old_n], nmax], dim=0)
++        self._topk_pmin[lid] = pmin; self._topk_pmax[lid] = pmax
++        self._topk_n[lid] = n; self._topk_len[lid] = L
++        qb = q[0].view(Hkv, group, D).mean(1).float()
++        qv = qb.unsqueeze(0)
++        score = torch.where(qv >= 0, qv * pmax.float(), qv * pmin.float()).sum(dim=(1, 2))  # [n]
++        ksel = max(1, K_total - 2)
++        top = torch.topk(score, min(ksel, n)).indices
++        keep = sorted(set(top.tolist()) | {0, n - 1})
++        parts = [slots[p * page:(p + 1) * page] for p in keep]
++        if n * page < L:
++            parts.append(slots[n * page:])  # recent partial page
++        sel = torch.cat(parts)
++        out_indptr = torch.tensor([0, sel.numel()], dtype=kv_indptr.dtype, device=kv_indptr.device)
++        return out_indptr, sel.to(kv_indices.dtype)
++
 +    def _build_topk_kv_indices(self, q, layer, kv_indptr, kv_indices):
 +        """R9700 #39 v1 (eager, correctness-first): for each request, score KV pages by Quest
 +        bounding-box criticality against the decode query and keep the top-K pages (+ page-0 sink
@@ -179,7 +247,7 @@ index 149a58b71..e85cc423b 100644
      def forward_decode(
          self,
          q: torch.Tensor,
-@@ -1441,6 +1579,20 @@ class TritonAttnBackend(AttentionBackend):
+@@ -1441,6 +1647,24 @@ class TritonAttnBackend(AttentionBackend):
              kv_indptr = self.forward_metadata.kv_indptr
              kv_indices = self.forward_metadata.kv_indices
  
@@ -190,12 +258,16 @@ index 149a58b71..e85cc423b 100644
 +            self.decode_topk_pages > 0
 +            and (layer.sliding_window_size is None or layer.sliding_window_size <= -1)
 +        ):
-+            kv_indptr, kv_indices = self._build_topk_kv_indices(
-+                q.view(-1, layer.tp_q_head_num, layer.qk_head_dim),
-+                layer,
-+                kv_indptr,
-+                kv_indices,
-+            )
++            qv = q.view(-1, layer.tp_q_head_num, layer.qk_head_dim)
++            bs = kv_indptr.shape[0] - 1
++            if bs == 1 and self.decode_topk_scorer == "bbox":
++                kv_indptr, kv_indices = self._build_topk_kv_indices_v2(
++                    qv, layer, kv_indptr, kv_indices
++                )
++            else:  # v1 fallback (bs>1 or centroid): correct, slower (O(ctx)/step)
++                kv_indptr, kv_indices = self._build_topk_kv_indices(
++                    qv, layer, kv_indptr, kv_indices
++                )
 +
          if layer.k_scale is not None and layer.v_scale is not None:
              k_descale = layer.k_scale_float
