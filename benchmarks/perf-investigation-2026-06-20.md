@@ -278,7 +278,9 @@ read budget, where plain recency windowing garbles everything outside its window
 `'MHATokenToKVPool' object has no attribute 'full_to_swa_index_mapping'` in qwen3_moe.py
 `apply_qk_norm_rope → create_fused_set_kv_buffer_arg` — setting `sliding_window_size` on a non-SWA pool
 trips the fused kv-buffer SWA path. 067 was only validated on qwen3vl-32b. #39 sidesteps it (never sets
-`sliding_window_size`). Tracked as a separate fix-or-document item.
+`sliding_window_size`). **FIXED (patch 070, validated):** `getattr` guard → `None` when the pool has no
+`full_to_swa_index_mapping` (correct: full pool needs no full→swa remap). coder-30b now boots with
+`--force-decode-window 2048` and generates coherently — the shipped #35 feature works on qwen3_moe.
 
 **v1 is NOT the perf version.** It computes per-page min/max over the FULL KV every layer every step
 (O(ctx), eager, Python per-request loop, CPU syncs) — so it validates recall, not speed (likely a decode

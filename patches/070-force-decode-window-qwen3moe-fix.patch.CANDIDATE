@@ -1,0 +1,21 @@
+diff --git a/python/sglang/srt/models/utils.py b/python/sglang/srt/models/utils.py
+index fa77d4afa..f7470c83a 100644
+--- a/python/sglang/srt/models/utils.py
++++ b/python/sglang/srt/models/utils.py
+@@ -316,9 +316,14 @@ def create_fused_set_kv_buffer_arg(
+         )
+     else:
+         page_size = token_to_kv_pool.page_size
++        # R9700 #42: --force-decode-window (#35) sets sliding_window_size on a layer whose pool
++        # is the FULL MHA pool (not an SWA ring buffer), which has no full_to_swa_index_mapping.
++        # Guard with getattr → None (no full→swa remap needed; 067 windows the full pool's indices
++        # directly). Without this, --force-decode-window boot-crashes on qwen3_moe (coder-30b).
++        _swa_map = getattr(token_to_kv_pool, "full_to_swa_index_mapping", None)
+         slot_mapping_swa = (
+-            token_to_kv_pool.full_to_swa_index_mapping.long()
+-            if layer.sliding_window_size > 0
++            _swa_map.long()
++            if (layer.sliding_window_size > 0 and _swa_map is not None)
+             else None
+         )
+         # SHUFFLE 5D pools (k_buffer.ndim == 5) consumed natively by
