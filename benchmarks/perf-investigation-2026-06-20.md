@@ -174,3 +174,41 @@ Harnesses: `scripts/bench/window_sweep.sh`, `scripts/bench/window_needle_test.py
 Measurement discipline (per `feedback-spec-decode-measure-serverlog`): server-log `gen throughput` AT
 TRUE DEPTH on real content; never client TPOT or short-depth-on-a-big-server. One server at a time
 (no concurrent serving/calib).
+
+## #39 IN PROGRESS — top-K attention-mass sparse KV (recall-preserving the decode-window win)
+
+The shipped `--force-decode-window` (#35, 2.95×) is **retrieval-blind**: it keeps only the recent
+window, dropping all mid-context KV. #39 replaces "last-N tokens" with "top-K most-relevant pages"
+feeding the *same* index-agnostic decode kernel (`forward_decode` reads `kv_indices` opaquely —
+triton_backend.py:1515-1557), so recall is preserved at a fraction of the O(ctx) KV read.
+
+**Injection map (Explore agent, 2026-06-20).** Recency indices are built by
+`update_sliding_window_buffer()` (triton_backend.py:1736-1780): `window_kv_start_idx = seq_lens -
+min(seq_lens, window)` → literally the tail. #39 rewrites `window_kv_indices` in-place (respecting the
+`window_kv_indptr` per-request spans) to the selected pages' token slots. Hard constraint: cuda-graph
+buffer `cuda_graph_window_kv_indices` is fixed-size `max_num_tokens × window` → **K is static, budget =
+K×PAGE**. Key insight: `forward_decode` runs **per-layer**, so per-layer/per-query selection can live
+there with one reused scratch buffer — the "per-layer index set" problem dissolves (layers are sequential).
+
+**Scorer-selection gate (synthetic, `scripts/bench/topk_scorer_recall_proto.py`, CPU).** Before any
+kernel work, decided *which* page-scorer picks the top-K pages. Plant aligned needles at mid-context,
+measure needle-token recall at equal token budget (2048):
+
+| regime | recency (shipped) | Quest bbox | centroid | oracle |
+|---|---|---|---|---|
+| iid keys | **0.000** | 1.000 | 1.000 | 1.000 |
+| **structured (DC+low-rank+drift, realistic)** | **0.000** | **0.04–0.17** | **~1.000** | 1.000 |
+
+- **recency = 0 recall both regimes** → confirms the shipped window is retrieval-blind; #39 justified.
+- **Quest bounding-box (the scorer planned to lift from `quest_algorithm.py`) COLLAPSES on realistic
+  keys** — its `where(q≥0,q·kmax,q·kmin)` upper bound is dominated by the shared structure's per-dim
+  extremes, not the needle. **Disqualified** (would have silently failed in production).
+- **Mean-pooled centroid is robust** — matches oracle, half the rep memory (1 vec/page vs min+max),
+  simpler incremental maintenance. A shared DC shifts all page scores equally → cancels in the ranking.
+- Rep memory budget (page reps, fp32): ~0.4–0.8 GB/model (computed in proto). cuda-graph-resident.
+
+**Caveat / next gate:** synthetic needles carry no shared structure (flatters centroid). The scorer +
+page size MUST be confirmed on **REAL post-rope model keys** (env-gated K-dump from a real long-context
+prefill, offline recall analysis) before committing kernel work. That is the next executable step.
+A harness footgun caught here: GQA query layout must be head-major or the needle is silently swamped
+(mismeasured 5.7 vs the correct 48) — see proto docstring.
