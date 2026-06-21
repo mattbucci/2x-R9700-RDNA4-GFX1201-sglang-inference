@@ -273,7 +273,7 @@ index 149a58b71..7147ced7c 100644
              k_descale = layer.k_scale_float
              v_descale = layer.v_scale_float
 diff --git a/python/sglang/srt/server_args.py b/python/sglang/srt/server_args.py
-index 6c77ff64f..6df24d0fd 100644
+index 6c77ff64f..2366e7190 100644
 --- a/python/sglang/srt/server_args.py
 +++ b/python/sglang/srt/server_args.py
 @@ -774,6 +774,12 @@ class ServerArgs:
@@ -284,7 +284,7 @@ index 6c77ff64f..6df24d0fd 100644
 +    force_verify_window: int = -1
 +    verify_sink: int = 0
 +    decode_topk_pages: int = -1
-+    decode_topk_page_size: int = 8
++    decode_topk_page_size: int = 32
 +    decode_topk_scorer: str = "bbox"
      num_continuous_decode_steps: int = 1
      delete_ckpt_after_loading: bool = False
@@ -308,7 +308,7 @@ index 6c77ff64f..6df24d0fd 100644
          if self.model_path.lower() in ["none", "dummy"]:
              # Skip for dummy models
              return
-@@ -6725,6 +6743,61 @@ class ServerArgs:
+@@ -6725,6 +6743,64 @@ class ServerArgs:
              default=ServerArgs.triton_attention_split_tile_size,
              help="The size of split KV tile in flash decoding Triton kernel. Used for deterministic inference.",
          )
@@ -356,8 +356,11 @@ index 6c77ff64f..6df24d0fd 100644
 +            "--decode-topk-page-size",
 +            type=int,
 +            default=ServerArgs.decode_topk_page_size,
-+            help="[RDNA4 #39] KV page granularity for top-K selection (default 8). Smaller = finer "
-+            "selection / higher recall but more page-rep memory (min/max per page per kv-head per layer).",
++            help="[RDNA4 #39] KV page granularity for top-K selection (default 32). LARGER pages are "
++            "FASTER (less rep-scan bandwidth + memory) at slightly lower recall; SMALLER pages give "
++            "higher recall but can regress speed. Measured @128K qwen3vl-32b (eager, vs baseline 12.85 "
++            "tok/s; needle EARLY/MID/LATE all recovered at every size): page8=9.58 (0.75x), page32=14.83 "
++            "(1.15x), page64=15.90 (1.24x). Recommend 32-64. rep mem = pages*Hkv*D*2*bf16*layers.",
 +        )
 +        parser.add_argument(
 +            "--decode-topk-scorer",

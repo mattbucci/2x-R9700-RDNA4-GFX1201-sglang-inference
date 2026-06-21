@@ -319,3 +319,23 @@ control flow); re-enable cuda-graph. Pure torch, fixed shapes — no custom trit
 per-step overhead collapses into the graph and the only residual cost is rep-read bandwidth (tunable via
 page size: bigger pages = less rep bandwidth + less memory, lower recall). Realistic target: a fraction
 of the 1.94×/2.95× windowed ceiling, WITH full-context recall. Tracked as #43.
+
+### #43 RESOLVED-ish — page size fixes the regression; #39 is SHIPPABLE NOW (eager), v3 is upside
+
+The page-8 regression was page-count + rep-scan-bandwidth overhead, not fundamental. Sweeping page size
+at FIXED 2048-token budget @128K (qwen3vl-32b) flips it positive — and needle recall (EARLY/MID/LATE)
+holds at every size:
+
+| config (budget 2048) | gen tok/s | vs baseline | needle EARLY/MID/LATE |
+|---|---|---|---|
+| baseline (full attention) | 12.85 | 1.00× | ✅ (full) |
+| recency window 2048 | 24.93 | 1.94× | ❌ EARLY+MID FAIL (garbage) |
+| topk page 8 (K=256) | 9.58 | 0.75× | ✅✅✅ |
+| topk page 32 (K=64) | 14.83 | **1.15×** | ✅✅✅ |
+| topk page 64 (K=32) | 15.90 | **1.24×** | ✅✅✅ |
+
+**#39 is a shippable recall-preserving decode speedup TODAY** (page 32/64, eager v2 already in tree):
+1.15–1.24× over baseline at 128K *while recovering* the mid-context needles recency garbles. Default
+page size set to 32 (balanced; 64 for more speed, 8 for max recall/slower). v3 (cuda-graph, #43-remaining)
+is now UPSIDE toward the 1.94×/2.95× windowed ceiling, not a prerequisite. Next: confirm at **256K**
+(the mandate target, where the windowed ceiling is ~2.95× → bigger headroom) and rep memory at depth.
