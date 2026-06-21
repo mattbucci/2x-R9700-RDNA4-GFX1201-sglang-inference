@@ -386,3 +386,18 @@ exact-recall operating point at 256K. Honest framing: **#39 @128K is exact-recal
 @256K it needs a context-scaled budget (≥16384, TBD) to match baseline-exact, still at ~1.6×.** The strict
 single-needle bar may be harsher than agentic use needs — the **#44 harness eval** (agentic quality at
 #39's operating point) is the decision-relevant quality gate, not exact char recall of one token.
+
+**Budget hunt result (2026-06-21): the deep near-miss is BUDGET-INSENSITIVE.** K=256/16384 (6.7%) MID
+@245K = `ZEPHY-4419` — same 1-char miss as budget 8192. Doubling the budget did NOT fix it. So this is
+**not a recall/budget failure** (the needle is clearly RETRIEVED — `ZEPHY…4419`, not a hallucinated
+passphrase) but a **sparse-attention fidelity artifact at extreme depth**: the model reads the selected
+needle page but reproduces one char fuzzily where full attention is byte-exact. (Possibly more selected
+pages = more distractors dilute the needle's attention; bigger budget doesn't help and may slightly
+hurt.) **Complete #39 characterization:** @128K exact-recall-preserving + 1.15–1.24×; @256K ~1.6×
+(budget-independent) with **near-exact** deep recall (needle retrieved, ±1 char). Stopping the
+single-needle micro-opt here — diminishing returns, and the ±1-char artifact on a strict needle is
+likely immaterial to agentic/reasoning use. **The quality eval (#44) is the ship-decision**, not exact
+char recall. #39's *speedup* targets the DENSE fleet (qwen3vl-32b etc.); on MoE coders decode is
+dispatch-bound so #39 there is a recall/quality feature, not a speed one — so #44 splits into: (a) a
+256K reasoning/retrieval quality probe on a dense #39-target (does sparse decode preserve quality at
+depth), and (b) the agentic coding harness on coder-30b (does sparse selection break multi-turn coding).
