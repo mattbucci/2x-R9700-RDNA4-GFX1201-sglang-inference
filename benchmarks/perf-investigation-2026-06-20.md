@@ -135,6 +135,31 @@ This firmly isolates the cause to the **missing attention sink** (StreamingLLM),
 These are research-grade (uncertain payoff, may ultimately need SWA-trained weights like Gemma). The
 2.5-3× SPEED is established regardless; coherence is the gate.
 
+### #35 RESOLVED — decode-only windowing WINS (full prefill + windowed decode, 2026-06-20)
+
+Implemented the **decode-only** variant (patch 067 extended): `forward_extend` keeps FULL attention when
+`--force-decode-window>0` (so the model builds a coherent full-context representation), and only
+`forward_decode` windows. Gated on the flag → native-SWA (Gemma) untouched.
+
+| config (qwen3vl-32b @262144) | decode tok/s @245K | speedup | coherence (needle) |
+|---|---|---|---|
+| baseline (full attention) | 8.2 | 1× | ✅ recalls anywhere |
+| window-BOTH prefill+decode, N=4096 | 25.1 | 3.06× | ❌ garbage (incoherent) |
+| window-BOTH, N=32768 | 20.6 | 2.5× | ❌ garbage |
+| **decode-only (full prefill), N=4096** | **24.2** | **2.95×** | ✅ **LATE needle PASS (`ZEPHYR-4419`)** |
+
+**Verdict: the windowed PREFILL was the coherence-killer** — keeping prefill full and windowing only the
+decode gives **2.95× AND coherent in-window output**. The EARLY-needle FAIL (`Z444…`) is the *expected*
+recall tradeoff (decode can't attend beyond the window), NOT incoherence. So no attention-sink machinery
+was needed for basic coherence; full-prefill alone fixes it.
+
+**What it is / isn't:** a **decode-throughput** win for single-user long-context *generation* (full prefill
+means TTFT/prefill cost is unchanged — O(N) — so this helps decode-heavy workloads, not short-gen or
+explicit deep-retrieval-at-decode). The model understands the whole context (full prefill) but generates
+attending only the recent window. Ship as **opt-in `--force-decode-window N`** with that guidance. Sinks
+(StreamingLLM) remain an optional future enhancement to extend recall, not required for coherence.
+Harnesses: `scripts/bench/window_sweep.sh`, `scripts/bench/window_needle_test.py`.
+
 ## Serial test plan (ranked; cheap-and-decisive first)
 
 | order | task | type | expected |
