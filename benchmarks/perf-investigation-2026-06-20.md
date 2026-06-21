@@ -360,3 +360,20 @@ recall-preserving 256K budget (testing K=128 = 8192 = 3.3%). Expect lower speedu
 recall-complete. The honest operating-point question: at 256K, what's the speedup at the SMALLEST budget
 that still recovers needles? That (not the recall-blind 1.56×) is the real #39 deliverable at the mandate
 depth. v3 cuda-graph remains the path to push that operating point toward the windowed ceiling.
+
+**256K budget sweep + key insight (2026-06-21).** Throughput @256K is **budget-INDEPENDENT** (~1.6×):
+K=32/budget2048 → 12.93 (1.56×), K=128/budget8192 → 13.47 (1.63×). The per-step **rep-scan over ALL
+pages dominates**, not the decode read — so a bigger budget costs ~nothing in speed but buys recall.
+v3's real speed lever is therefore making the rep-scan cheap (fused kernel + cuda-graph), not shrinking
+the budget. Recall vs budget @245K:
+
+| budget | EARLY | MID | LATE | tok/s |
+|---|---|---|---|---|
+| 2048 (0.8%) | `ZEP10R` ❌ | `L0g1n2` ❌ | ❌ | 12.93 |
+| 8192 (3.3%) | `ZEPHY-4419` (off 1) | `ZEPH-4419` (off 2) | ✅ exact | 13.47 |
+
+budget 8192 moved deep needles from total hallucination to **near-exact** (LATE exact; EARLY/MID off by
+1–2 chars). The needle page IS selected at 8192; deep reproduction is marginally imperfect. **Open
+control (running):** does BASELINE full-attention recall EXACTLY at 245K? If baseline also near-misses at
+this extreme depth, #39@8192 ≈ baseline quality at 1.63× = win; if baseline is exact, #39 loses a little
+deep fidelity (→ try bigger budget / smaller page, both ~free on speed since rep-scan dominates).
