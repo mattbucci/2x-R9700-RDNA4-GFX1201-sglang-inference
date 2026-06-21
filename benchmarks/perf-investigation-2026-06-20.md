@@ -224,6 +224,22 @@ kv-head per layer) — make page-size + scorer (bbox vs cheaper centroid) config
 recall/memory tradeoff is tunable per model. Footgun caught: GQA query layout must be head-major or
 the needle is silently swamped (mismeasured 5.7 vs correct 48) — see proto docstring.
 
-**Next: the build** — maintain per-layer page reps (built at prefill, last partial page updated each
-decode step), and in `forward_decode` (per-layer, query available) compute bbox criticality → top-K
-pages → gather token slots into the windowed `kv_indices` buffer (cuda-graph: K static, budget=K×PAGE).
+**Next: the build (turnkey checklist, task #40).** All on `/data/sgl-rebase`; capture each edit into a
+`patches/0NN-decode-topk-sparse.patch.CANDIDATE` immediately; equivalence-gate vs pristine clone; boot
++ needle test to validate; NEVER abort a TP=2 prefill mid-flight.
+1. `server_args.py`: add `decode_topk_pages: int = -1` (K pages; -1=off), `decode_topk_page_size: int = 8`,
+   `decode_topk_scorer: str = "bbox"` (`bbox`|`centroid`) + argparse. Window/budget = K × page_size.
+2. Rep storage (new, per attention layer, per kv-head): `page_k_min/page_k_max` `[n_pages, Hkv, D]` bf16.
+   Allocate in `init_cuda_graph_state`-adjacent path sized to max ctx; graph-resident. Memory note in help.
+3. Rep build: hook the EXTEND/prefill write (where KV is written to pool) to compute per-page min/max over
+   the just-written tokens. Decode: update only the growing last partial page each step (cheap).
+4. `forward_decode` (per-layer, query in hand): when `decode_topk_pages>0`, compute Quest criticality
+   `where(q≥0,q·kmax,q·kmin).sum` over (Hkv,D) per page (lift from `quest_algorithm.py:_retrieve_page_scores`),
+   `topk(K)` (+ always-include sink page 0 + recent page), gather those pages' token slots into the
+   pre-allocated `window_kv_indices` (respect `window_kv_indptr` spans), then the existing windowed decode
+   dispatch consumes it unchanged. K static → cuda-graph-safe; topk fixed-shape.
+5. Validate: `scripts/bench/window_needle_test.py` with `--decode-topk-pages 256` (=2048 tok @page8) must
+   recover MID-context needles that plain `--force-decode-window 2048` misses; decode tok/s ≈ window (same
+   read budget). Expect ~0.8–0.87 attention-mass recall per the real-key gate.
+Reuses the patch-067 insight end-to-end: the decode kernel is index-agnostic — #39 just feeds it a
+criticality-selected index set instead of a recency one.
