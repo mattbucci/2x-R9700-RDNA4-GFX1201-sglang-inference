@@ -1,8 +1,8 @@
 diff --git a/python/sglang/srt/layers/attention/triton_backend.py b/python/sglang/srt/layers/attention/triton_backend.py
-index 149a58b71..7147ced7c 100644
+index 149a58b71..36cb3e003 100644
 --- a/python/sglang/srt/layers/attention/triton_backend.py
 +++ b/python/sglang/srt/layers/attention/triton_backend.py
-@@ -125,6 +125,45 @@ class TritonAttnBackend(AttentionBackend):
+@@ -125,6 +125,46 @@ class TritonAttnBackend(AttentionBackend):
          self.skip_prefill = skip_prefill
          max_bs = model_runner.req_to_token_pool.size
          self.sliding_window_size = model_runner.sliding_window_size
@@ -45,10 +45,11 @@ index 149a58b71..7147ced7c 100644
 +        self._topk_pmax = {}
 +        self._topk_n = {}       # layer_id -> #pages currently repped
 +        self._topk_len = {}     # layer_id -> seq_len at last update (staleness detect)
++        self._topk_slot0 = {}   # layer_id -> first physical slot (request-identity, staleness detect)
          # Pool refs — captured at construction so they survive deletion of the
          # corresponding ForwardBatch fields.
          self.req_to_token_pool = model_runner.req_to_token_pool
-@@ -349,6 +388,47 @@ class TritonAttnBackend(AttentionBackend):
+@@ -349,6 +389,47 @@ class TritonAttnBackend(AttentionBackend):
          )
          return kv_indptr
  
@@ -96,7 +97,7 @@ index 149a58b71..7147ced7c 100644
      def _update_decode_kv_buffers(
          self,
          bs: int,
-@@ -683,6 +763,20 @@ class TritonAttnBackend(AttentionBackend):
+@@ -683,6 +764,20 @@ class TritonAttnBackend(AttentionBackend):
                  kv_indices,
              )
  
@@ -117,7 +118,7 @@ index 149a58b71..7147ced7c 100644
              if self.sliding_window_size is not None and self.sliding_window_size > 0:
                  # window_kv_offsets is used to calculate the start position in custom mask
                  (
-@@ -1148,8 +1242,16 @@ class TritonAttnBackend(AttentionBackend):
+@@ -1148,8 +1243,16 @@ class TritonAttnBackend(AttentionBackend):
                  q, o, layer, forward_batch, causal, logits_soft_cap, sinks
              )
  
@@ -136,7 +137,7 @@ index 149a58b71..7147ced7c 100644
              sliding_window_size = (
                  layer.sliding_window_size
              )  # Needed for sliding window mask
-@@ -1368,6 +1470,110 @@ class TritonAttnBackend(AttentionBackend):
+@@ -1368,6 +1471,114 @@ class TritonAttnBackend(AttentionBackend):
  
          return o
  
@@ -162,11 +163,15 @@ index 149a58b71..7147ced7c 100644
 +        pmin = self._topk_pmin.get(lid)
 +        old_n = self._topk_n.get(lid, 0)
 +        tracked = self._topk_len.get(lid, -1)
-+        # Rebuild fully if no state, fewer pages stored than needed minus a normal growth step,
-+        # the sequence shrank (new request), or a non-incremental jump occurred.
++        slot0 = int(slots[0])
++        # Rebuild fully if no state, fewer pages stored than needed, the sequence shrank/jumped,
++        # OR a DIFFERENT request now occupies this layer's cache (slot0 changed) — keying staleness
++        # on seq_len alone would let a back-to-back same-length request reuse stale reps. slot0 is
++        # the request fingerprint (radix-shared prefixes keep slot0 → shared-page reps stay valid).
 +        rebuild = (
 +            pmin is None or old_n > n or tracked > L or tracked < 0
 +            or (L - tracked) > 4 * page
++            or self._topk_slot0.get(lid) != slot0
 +        )
 +        # Reps stored in bf16 (half the memory; fp32 reps OOM at depth — 8.6GB @128K page8).
 +        # min/max computed in native KV dtype (no full-K fp32 upcast transient); cast to fp32
@@ -185,7 +190,7 @@ index 149a58b71..7147ced7c 100644
 +                pmin = torch.cat([pmin[:old_n], nmin], dim=0)
 +                pmax = torch.cat([pmax[:old_n], nmax], dim=0)
 +        self._topk_pmin[lid] = pmin; self._topk_pmax[lid] = pmax
-+        self._topk_n[lid] = n; self._topk_len[lid] = L
++        self._topk_n[lid] = n; self._topk_len[lid] = L; self._topk_slot0[lid] = slot0
 +        qb = q[0].view(Hkv, group, D).mean(1).float()
 +        qv = qb.unsqueeze(0)
 +        score = torch.where(qv >= 0, qv * pmax.float(), qv * pmin.float()).sum(dim=(1, 2))  # [n]
@@ -247,7 +252,7 @@ index 149a58b71..7147ced7c 100644
      def forward_decode(
          self,
          q: torch.Tensor,
-@@ -1441,6 +1647,24 @@ class TritonAttnBackend(AttentionBackend):
+@@ -1441,6 +1652,24 @@ class TritonAttnBackend(AttentionBackend):
              kv_indptr = self.forward_metadata.kv_indptr
              kv_indices = self.forward_metadata.kv_indices
  

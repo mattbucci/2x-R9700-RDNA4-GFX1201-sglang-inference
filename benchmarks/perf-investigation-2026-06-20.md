@@ -339,3 +339,24 @@ holds at every size:
 page size set to 32 (balanced; 64 for more speed, 8 for max recall/slower). v3 (cuda-graph, #43-remaining)
 is now UPSIDE toward the 1.94×/2.95× windowed ceiling, not a prerequisite. Next: confirm at **256K**
 (the mandate target, where the windowed ceiling is ~2.95× → bigger headroom) and rep memory at depth.
+
+### #43 256K CORRECTION — a fixed budget does NOT preserve recall at depth (budget must scale)
+
+256K validation (qwen3vl-32b @262144, page64 K=32 = budget 2048):
+- **Throughput: TOPK64 12.93 vs baseline 8.29 tok/s = 1.56×** (speedup grows with depth, as expected).
+- **BUT needle recall FAILED at 245K — all three (EARLY/MID/LATE)**, model hallucinated partial
+  passphrases (`ZEP10R` ≈ corrupted `ZEPHYR-4419`). **The 1.56× was NOT recall-preserving.**
+
+Root cause: **budget must scale with context.** budget 2048 = 0.8% of 245K, vs 1.6% @128K (passed) and
+25% in the real-key gate. At 0.8% selection over ~3828 pages, bbox can't surface the needle page in the
+top-K — far more pages dilute the fixed budget and loosen the bbox upper-bound's discrimination. So the
+"shippable @128K, budget 2048" result holds at ~128K but a FIXED 2048 budget under-selects at 256K.
+(The committed 128K claim — page32/64, budget 2048, 1.15–1.24×, recall PASS — remains valid for ~128K.)
+
+Two fixes: (a) **staleness bug** — the v2 rep cache keyed on seq_len only, so back-to-back same-length
+requests could reuse stale reps; now also keyed on the first physical slot (request fingerprint;
+radix-shared prefixes keep slot0 so shared-page reps stay valid). (b) **budget scaling** — re-finding the
+recall-preserving 256K budget (testing K=128 = 8192 = 3.3%). Expect lower speedup than 1.56× but
+recall-complete. The honest operating-point question: at 256K, what's the speedup at the SMALLEST budget
+that still recovers needles? That (not the recall-blind 1.56×) is the real #39 deliverable at the mandate
+depth. v3 cuda-graph remains the path to push that operating point toward the windowed ceiling.
