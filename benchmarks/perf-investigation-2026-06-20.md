@@ -439,3 +439,18 @@ pages), handle the variable recent-partial (pad), make rep maintenance a fixed s
 rebuild-vs-incremental Python branch — move the initial rep-build to the extend/prefill path). That's a
 substantial delicate refactor with uncertain payoff — #39's eager v3.1/v3.2 (~1.77×, recall-preserving)
 may be the practical optimum. v3.3 staged as a deliberate future effort, not a session-tail rush.
+
+### #43 v3 CLOSURE — #39 is at its practical eager optimum (~1.77×) for the 256K mandate (2026-06-21)
+
+v3.2 throughput @256K = **14.27 tok/s = v3.1's 14.71 within noise → the vectorized gather gave NO
+standalone gain at 256K.** Informative null: the Python gather's CPU-sync overhead is *negligible* at
+256K, so the per-step cost there is dominated by **actual GPU work** (model-forward MLP + the fused
+rep-scan + windowed attention), not launch/CPU overhead. **This predicts v3.3 (cuda-graph) also gains
+little at 256K** (it removes the same overhead class v3.2 just showed is immaterial there) — cuda-graph
+would help mostly at SHORTER contexts (32–128K) where per-step work is smaller and launch overhead is a
+bigger fraction. So for the **256K single-user mandate, #39 is at its practical eager optimum: ~1.77×
+recall-preserving** (v3.1 fused rep-scan was the decisive lever, 1.63→1.77×; v3.2 is a correctness-
+neutral cuda-graph prereq with no 256K gain). **v3 perf investigation CLOSED.** Net #39 result: 128K
+1.15–1.24× exact-recall; 256K ~1.77× near-exact recall. v3.3 cuda-graph re-scoped to LOW priority for
+256K (potential shorter-context win only); the remaining open item is the #44 agentic-quality gate
+(downstream) + the clean 069 patch + equivalence gate (capture discipline).
