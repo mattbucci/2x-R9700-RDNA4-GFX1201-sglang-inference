@@ -71,17 +71,13 @@ The single most actionable view of "what's left." Source of truth = the `main` c
 (Triton AMD divergent-pointer fix — also Triton-upstream material). Rebased-onto-main drafts staged
 in [`patches/upstream-prs/main/`](patches/upstream-prs/) for 011 + 040; **currently blocked on a
 `GH_TOKEN` without fork scope** (403 on `gh repo fork`). 034 is *not* cleanly rebasable —
-`--enable-nan-detection` was removed upstream, so it's a new-feature (logits-sanity) PR, co-designed
-with the 3090 ([design note](patches/upstream-prs/logits-sanity-design.md)).
+`--enable-nan-detection` was removed upstream, so it's a new-feature (logits-sanity) PR ([design note](patches/upstream-prs/logits-sanity-design.md)).
 
-011 + 034 + 040 are **joint R9700+3090 PRs** — both stacks carry them, main has none of the three,
-3090 co-signs with Ampere repro.
+011 + 034 + 040 are upstream-PR candidates (main carries none of the three).
 
-## Why 37 atomic patches (not collapsed like the 3090's 24)
+## Why 37 atomic patches
 
-The 3090 stack consolidated its series 33→24 logical patches (their 2026-06-10 banner; cross-ref
-mapping captured in [README §Evergreen cross-team lessons](README.md)). **We deliberately keep ours
-atomic** because **14 of the 37 have individual upstream lifecycles** that depend on
+**We keep the patches atomic** because **14 of the 37 have individual upstream lifecycles** that depend on
 one-patch-one-change granularity:
 
 - **10 PR candidates** — each is a standalone, submittable fix. Folding 033 (gelu assert) into 004
@@ -91,9 +87,7 @@ one-patch-one-change granularity:
 - **2 rebase** (001, 040) — re-generated individually against each sgl release.
 
 Collapsing the remaining 23 RDNA4-permanent patches within a lane would be cosmetically tidier but
-breaks (a) the byte-equivalence bookkeeping against `/data/vG`, and (b) the patch-number references
-across both repos' READMEs and all memories (the 3090 maintains a cross-reference table to *our*
-numbers). **The consolidation that adds value here is this unified map, not fewer files.** Revisit a
+breaks (a) the byte-equivalence bookkeeping against `/data/vG`, and (b) the patch-number references across this repo's READMEs and memories. **The consolidation that adds value here is this unified map, not fewer files.** Revisit a
 physical collapse only after the PR pipeline drains.
 
 ## Calibration & pruning patches (the other two environments)

@@ -9,7 +9,7 @@ used ONLY for comparison benchmarks — never as the primary serving solution.
 - 32 GB VRAM each, ROCm 7.2.1, Arch Linux
 - Consumer GPUs — NOT MI-series/CDNA. AITER not available.
 
-## Host OS gotchas (EndeavourOS / Arch — same OS as the 3090 box)
+## Host OS gotchas (EndeavourOS / Arch)
 
 Bleeding-edge Arch bites in ways a Debian/Ubuntu eval box never would. These cost real hours
 during the FP8 SWE-bench bake-off (2026-06-05); document/apply them on any same-OS machine.
@@ -112,7 +112,7 @@ BF16 model → llmcompressor oneshot GPTQ → compressed-tensors (CT) format
 - Drop caches first: `echo 3 | sudo tee /proc/sys/vm/drop_caches`
 - Output: compressed-tensors safetensors with `weight_packed` + `weight_scale` per layer
 - Use `scheme="W4A16"` for standard group_size=128
-- Use `config_groups` with `QuantizationScheme` for custom group_size (see 3090 repo README)
+- Use `config_groups` with `QuantizationScheme` for custom group_size
 
 ### Step 2: CT → AWQ conversion (either env)
 ```
