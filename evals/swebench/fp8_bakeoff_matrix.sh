@@ -49,6 +49,10 @@ MODELS=(
   "gemma4-31b|gemma4-31b|gemma-4-31b-it-FP8"
   "qwen3vl-32b|qwen3vl-32b|Qwen3-VL-32B-FP8"
   "nemotron-omni|nemotron-omni|Nemotron-3-Nano-Omni-30B-A3B-Reasoning-FP8"
+  "gemma4-12b|gemma4-12b|gemma-4-12B-it-BF16"
+  "coder-reap-25b|coder-30b|Qwen3-Coder-REAP-25B-A3B-BF16"
+  "vl-reap-26b|qwen36-moe|Qwen3.6-VL-REAP-26B-A3B-BF16"
+  "glm-air-82b|glm45-air|GLM-4.5-Air-REAP-82B-A12B-BF16"
 )
 
 stop_server(){   # kill sglang, wait for BOTH R9700s' VRAM to drain. rc=0 drained / rc=1 stuck (orphan or off-bus → reboot)
@@ -66,7 +70,8 @@ stop_server(){   # kill sglang, wait for BOTH R9700s' VRAM to drain. rc=0 draine
 cell_done(){ [ -f "$ROOT/$1-$2/scores.jsonl" ]; }
 
 serve_bg(){  # $1=preset $2=dir $3=label — launch server in background (no wait)
-  MODEL=$MODELS_DIR/$2 bash -c "./scripts/launch.sh $1 --port 23334 --context-length $CTX" \
+  local ff=""; [[ "$2" == *BF16* ]] && ff="FORCE_FP8=1 "
+  MODEL=$MODELS_DIR/$2 bash -c "${ff}./scripts/launch.sh $1 --port 23334 --context-length $CTX" \
     >> "$ROOT/serve-$3.log" 2>&1 &
 }
 wait_health(){  # poll up to ~35min; 0 = healthy
@@ -104,7 +109,8 @@ for entry in "${MODELS[@]}"; do
     echo "[$label] VRAM stuck before serve (>2GB on a card with no process) — GPU hung/off-bus, needs a reboot. Stopping the campaign; resume via /data/bakeoff/RESUME.md after reboot." | tee -a "$ROOT/watchdog.log"
     exit 3
   fi
-  MODEL=$MODELS_DIR/$dir bash -c "./scripts/launch.sh $preset --port 23334 --context-length $CTX" \
+  FF=""; [[ "$dir" == *BF16* ]] && FF="FORCE_FP8=1 "   # BF16 dir -> runtime FP8
+  MODEL=$MODELS_DIR/$dir bash -c "${FF}./scripts/launch.sh $preset --port 23334 --context-length $CTX" \
     > "$ROOT/serve-$label.log" 2>&1 &
   ready=0
   for _ in $(seq 1 700); do

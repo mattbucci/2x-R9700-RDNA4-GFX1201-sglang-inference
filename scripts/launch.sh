@@ -821,6 +821,10 @@ CMD=(python -m sglang.launch_server
     --enable-metrics
 )
 
+# FORCE_FP8=1 → runtime FP8 quantization of a BF16/FP16 base (serve a BF16 dir as FP8), applied
+# after all preset + config-detect logic so it wins regardless of the preset's hard-set QUANT.
+# Used by the FP8 bake-off matrix to serve BF16 bases (no prebuilt FP8 checkpoint) as runtime-FP8.
+[[ "${FORCE_FP8:-}" == "1" ]] && QUANT="fp8"
 [[ -n "$QUANT" ]] && CMD+=(--quantization "$QUANT")
 [[ -n "$TOKENIZER" ]] && CMD+=($TOKENIZER)
 [[ -n "$MAMBA_CACHE" ]] && CMD+=($MAMBA_CACHE)
