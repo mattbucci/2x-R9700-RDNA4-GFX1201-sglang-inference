@@ -37,7 +37,12 @@ MODELS = {
     "qwen3.5-35b-moe-gptq":     {"label": "Qwen3.5-35B MoE GPTQ",              "color": "#d2a8ff"},
     "qwen3.6-35b-moe-awq":      {"label": "Qwen3.6-35B MoE AWQ",               "color": "#bc8cff"},
     "gemma-4-26b-awq":          {"label": "Gemma 4 26B AWQ (MoE)",             "color": "#e3b341"},
+    "gemma4-31b":               {"label": "Gemma 4 31B AWQ (Dense)",           "color": "#f0883e"},
+    "gemma4-12b":               {"label": "Gemma 4 12B AWQ (omni)",            "color": "#ffdf5d"},
     "nemotron-omni-30b-fp8":    {"label": "Nemotron-Omni-30B FP8 (Mamba2)",    "color": "#56d4dd"},
+    "qwen3.6-27b-awq-native":   {"label": "Qwen3.6-27B AWQ (Dense)",           "color": "#8957e5"},
+    "qwen3-coder-reap-25b-a3b-awq": {"label": "Coder-REAP-25B AWQ (MoE)",      "color": "#238636"},
+    "qwen3.6-vl-reap-26b-a3b-awq":  {"label": "Qwen3.6-VL-REAP-26B AWQ",       "color": "#db61a2"},
     "north-mini":               {"label": "North-Mini-Code FP8 (cohere2_moe)", "color": "#ff7b72"},
     "glm45-air-awq":            {"label": "GLM-4.5-Air-REAP AWQ (glm4_moe)",   "color": "#a371f7"},
 }

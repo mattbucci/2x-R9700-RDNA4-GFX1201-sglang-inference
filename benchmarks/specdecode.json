@@ -1,151 +1,151 @@
 {
-  "title": "Spec-decode: SHORT-DEPTH coverage  (collapses at true 256K — no-spec is the 256K path)",
-  "subtitle": "Green = short-depth tok/s (≤32–64K). At TRUE 256K depth spec COLLAPSES (red @depth) — no-spec is the 256K path. 2x R9700 TP=2.",
-  "note": "⚠ DEPTH CAVEAT (2026-06-15): every spec_toks below is SHORT-DEPTH on a 256K-CAPABLE server, NOT decode at 256K depth. At TRUE 256K depth on real content, spec COLLAPSES: Coder-30B EAGLE3 AWQ 107 (short) -> 0.8 @244K (accept 6.12->1.75) = ~15x slower than no-spec @244K (12.3); Qwen3.6-35B DFlash AWQ ~1.2 @240K (accept ~1.4) vs the '80' here. Universal across arch+draft (draft accept craters at depth + draft attends the full KV every micro-step). These bars measure server CAPABILITY, not 256K-depth throughput; for the 256K mandate no-spec is the path, spec is <=~32-64K only. See benchmarks/spec-at-depth-collapse-2026-06-15.md. --- Single-bar = best production spec-decode decode tok/s (target + draft + --speculative-attention-mode decode @ TP2). speedup x is over the family's ~22 tok/s no-spec baseline. 'untested' = a viable draft path exists but unbenched; 'blocked' = no working draft yet, with the blocker. As blocked/untested models get fixed, flip status->working + fill spec_toks and regenerate \u2014 no model should sit at a bare N/A. Data sourced from the README spec-decode summary + coverage map. FP8-TARGET note (2026-05-31, post-iommu=pt): these bars are AWQ-target production numbers (short-ctx spec works without iommu=pt, so they stand). FP8 targets differ: Coder-30B-FP8+EAGLE3 = ~86 tok/s coherent (256K served, tiny 361MB draft); Qwen3.6-35B-FP8+DFlash = ~45 tok/s coherent AT 256K (accept ~3.9) via --chunked-prefill 2048 \u2014 the prior 'OOMs@256K' was a prefill-transient, not a draft wall (KV pool 782K was never the limit). So BOTH A3B-MoE FP8 models do FP8+draft@256K (Coder-30B EAGLE3 ~86, Qwen3.6-35B DFlash ~45). The 80 here is the AWQ ship (faster \u2014 Marlin-class int4 verify); FP8 trails AWQ on absolute tok/s but both reach 256K.",
-  "models": [
-    {
-      "name": "Qwen3.6-REAM-A3B",
-      "kind": "MoE (merged)",
-      "status": "working",
-      "spec_toks": 133.0,
-      "speedup": 6.0,
-      "no_spec": 22.0,
-      "draft": "35B DFlash (transfer)",
-      "ctx": "256K (text/thinking; vision via -vision dir)"
-    },
-    {
-      "name": "Qwen3-Coder-30B-REAM",
-      "kind": "MoE (merged)",
-      "status": "working",
-      "spec_toks": 101.4,
-      "speedup": 4.5,
-      "no_spec": 22.0,
-      "draft": "Coder-30B EAGLE3 (transfer)",
-      "ctx": "256K"
-    },
-    {
-      "name": "Qwen3-Coder-30B-A3B",
-      "kind": "MoE 128e",
-      "status": "working",
-      "spec_toks": 96.9,
-      "speedup": 4.4,
-      "no_spec": 22.0,
-      "at_depth": 0.8,
-      "draft": "EAGLE3 (lmsys SpecForge)",
-      "ctx": "256K"
-    },
-    {
-      "name": "Qwen3-Coder-REAP-25B",
-      "kind": "MoE (pruned)",
-      "status": "working",
-      "spec_toks": 90.6,
-      "speedup": 4.0,
-      "no_spec": 22.6,
-      "draft": "Coder-30B EAGLE3 (transfer)",
-      "ctx": "256K"
-    },
-    {
-      "name": "Qwen3-Coder-30B-REAP",
-      "kind": "MoE (pruned)",
-      "status": "working",
-      "spec_toks": 89.5,
-      "speedup": 4.0,
-      "no_spec": 22.0,
-      "draft": "Coder-30B EAGLE3 (transfer)",
-      "ctx": "256K"
-    },
-    {
-      "name": "Qwen3.6-35B-A3B",
-      "kind": "MoE+DeltaNet",
-      "status": "working",
-      "spec_toks": 80.0,
-      "speedup": 3.7,
-      "no_spec": 21.6,
-      "at_depth": 1.2,
-      "draft": "DFlash (z-lab)",
-      "ctx": "256K (4/4 incl vision)"
-    },
-    {
-      "name": "Qwen3-Coder-Next-REAM",
-      "kind": "MoE+DeltaNet (merged)",
-      "status": "working",
-      "spec_toks": 58.0,
-      "speedup": 2.65,
-      "no_spec": 22.0,
-      "draft": "Aurora-Spec EAGLE3 (transfer)",
-      "ctx": "64K (DeltaNet+draft mem)"
-    },
-    {
-      "name": "Qwen3.5-28B-A3B-REAP",
-      "kind": "MoE (pruned)",
-      "status": "blocked",
-      "spec_toks": 0,
-      "draft": "parent DFlash (transfer)",
-      "short": "DFlash net-neg (~52 vs 60 no-spec); ≤2 t/s @240K — DeltaNet+DFlash wall",
-      "reason": "TESTED 2026-06-14: parent Qwen3.5-35B-A3B-DFlash transfer loads, coherent, 4/4 caps (basic+thinking+vision+video), accepts (len 2-8 workload-dep). Authoritative server-log sustained gen-throughput ~52 tok/s short-ctx vs ~60 no-spec = net-negative-to-neutral; block-diffusion draft+verify overhead cancels the acceptance benefit, and decode collapses deep (<=~2 tok/s by ~240K, DeltaNet+DFlash wall). No useful speedup; corroborates 3090's 'DFlash moot'. NOTE: client-tool TPOT under-measures spec ~2x (SSE buffering) - use server-log."
-    },
-    {
-      "name": "Qwen3-Coder-Next-80B",
-      "kind": "MoE+DeltaNet",
-      "status": "blocked",
-      "spec_toks": 0,
-      "draft": "Aurora-Spec EAGLE3",
-      "short": "target 80B incoherent on RDNA4 (parked) — REAM-60B is the Coder-Next spec ship (58 t/s)",
-      "reason": "RECLASSIFIED 2026-06-20 (was 'untested'): the Aurora-Spec EAGLE3 path is fine, but the full 80B itself decodes INCOHERENTLY on RDNA4 (PARKED 2026-06-11 — GPTQ/AutoRound dequant-coherence bug; reopen only with an own-built coherent Coder-Next-80B AWQ, see Known Issues). Spec cannot be meaningfully benched on an incoherent target (acceptance/throughput against garbage output are meaningless), so it's blocked-by-target, not merely unbenched. The production Coder-Next spec slot is ALREADY covered by Qwen3-Coder-Next-REAM (working, 58 tok/s, same Aurora-Spec EAGLE3 transfer draft). Reopen if/when a coherent own-built 80B AWQ exists."
-    },
-    {
-      "name": "Qwen3.5-27B / Qwen3.6-27B",
-      "kind": "dense DeltaNet(-VL)",
-      "status": "blocked",
-      "spec_toks": 0,
-      "draft": "EAGLE3 specdrift / DFlash / in-ckpt MTP",
-      "short": "DeltaNet recurrent-verify wall: net-neg even at accept 4.0 (step ~5.5× for 4× toks)",
-      "reason": "TESTED EAGLE3 2026-06-14 (Qwen3.6-27B-EAGLE3-specdrift, LlamaForCausalLMEagle3 1.25GB): now LOADS+runs+coherent on the DeltaNet-VL target after patch 055 (LlamaConfig decoupled-head-dim validator + qwen3_vl EAGLE3 capture-layer marking — both were hard load blockers). Accepts WELL (accept len 4.0, topk4/steps3/draft8) but NET-NEGATIVE: server-log gen throughput ~18 tok/s vs ~25 no-spec. ROOT CAUSE: spec step is GPU-COMPUTE-bound, not dispatch-bound — the dense 27B is 75% DeltaNet (3:1 linear/full) and DeltaNet's recurrent verify is SEQUENTIAL in num-draft-tokens (verifying 8 tree tokens ~= 8 serial state updates), so the step costs ~5.5x a plain decode while yielding only 4x tokens. cuda-graph gives ZERO help (18.3 ON vs 18.1 OFF) confirming compute-bound not launch-bound. Deeper trees make verify MORE expensive -> no tuning fixes it. Extends 3090's 'DFlash moot on DeltaNet' to EAGLE3, isolating the wall to recurrent verify cost (not draft quality). DFlash also OOMs/net-neg; FP8 won't fit 2x32GB. The only lever would be a DeltaNet-aware chunked/parallel verify kernel (deep kernel work). Patch 055 still unblocks EAGLE3 LOADING for the whole qwen3_5/qwen3_vl VL family (helps any pure-attention member, e.g. it's a prerequisite for Qwen3-VL-32B EAGLE3 once #17935 is past)."
-    },
-    {
-      "name": "gemma-4-31B / 26B",
-      "kind": "dense / MoE",
-      "status": "blocked",
-      "spec_toks": 0,
-      "draft": "assistant MTP / EAGLE3",
-      "short": "no DFLASH hook; MTP needs tf5.8+SGLang fix; base EAGLE3 accept only 1.34",
-      "reason": "no DFLASH hook; FROZEN_KV_MTP needs transformers 5.8 + SGLang fix; base EAGLE3 draft accept only 1.34 (needs it-matched draft)"
-    },
-    {
-      "name": "Qwen3-VL-32B",
-      "kind": "dense VL",
-      "status": "blocked",
-      "spec_toks": 0,
-      "draft": "EAGLE3 (needs SpecForge train)",
-      "short": "loads (patch 055) but no 32B-matched VL draft — needs SpecForge train (~27 H20-hr)",
-      "reason": "BLOCKER SHIFTED 2026-06-14: the SGLang-side #17935 gap is gone — qwen3_vl.get_embed_and_head is present AND patch 055 fixes the EAGLE3 capture-layer marking, so the VL EAGLE3 path now loads/engages. Remaining gap = NO off-the-shelf draft: taobao-mnn/Qwen3-VL-2B-Instruct-Eagle3 is 2B (wrong geometry, won't transfer to 32B); RedHatAI/Qwen3-32B-speculator.eagle3 targets the TEXT 32B not VL. Needs a 32B-matched EAGLE3 draft trained via SpecForge (~27 H20-GPU-hrs). HIGH VALUE: Qwen3-VL-32B is PURE DENSE (head_dim 128, no DeltaNet, no MoE) so it has NO sequential-verify wall — EAGLE3 would actually WIN here like it does on Coder-30B (2.3x), unlike the DeltaNet 27B. The single best spec-decode target left on the fleet; gated only on training the draft."
-    },
-    {
-      "name": "Qwen3.6-VL-REAP-26B",
-      "kind": "MoE VL (pruned)",
-      "status": "blocked",
-      "spec_toks": 0,
-      "draft": "parent transfer",
-      "short": "REAP strip removed vision tensors — needs rebuild (VL spec #17935)",
-      "reason": "VL spec #17935; REAP strip removed vision tensors (needs rebuild)"
-    },
-    {
-      "name": "Devstral-24B",
-      "kind": "dense (Mistral)",
-      "status": "blocked",
-      "spec_toks": 0,
-      "draft": "none",
-      "short": "no published draft — MistralEagle would load a SpecForge-trained one",
-      "reason": "no published draft; MistralForCausalLMEagle would load one (SpecForge-train)"
-    },
-    {
-      "name": "Nemotron-3-Nano-Omni-30B",
-      "kind": "Mamba2 hybrid AVLM",
-      "status": "blocked",
-      "spec_toks": 0,
-      "draft": "none",
-      "short": "no draft (Nano excluded from MTP per white paper); no-spec ~29 t/s @256K",
-      "reason": "no bundled/published draft (0 mtp/eagle tensors in ckpt; Nano excluded from MTP per white paper). Serves no-spec ~29 tok/s @256K (triton flash, patches 046/047)"
-    }
-  ]
+ "title": "Spec-decode: SHORT-DEPTH coverage  (collapses at true 256K \u2014 no-spec is the 256K path)",
+ "subtitle": "Green = short-depth tok/s (\u226432\u201364K). At TRUE 256K depth spec COLLAPSES (red @depth) \u2014 no-spec is the 256K path. 2x R9700 TP=2.",
+ "note": "\u26a0 DEPTH CAVEAT (2026-06-15): every spec_toks below is SHORT-DEPTH on a 256K-CAPABLE server, NOT decode at 256K depth. At TRUE 256K depth on real content, spec COLLAPSES: Coder-30B EAGLE3 AWQ 107 (short) -> 0.8 @244K (accept 6.12->1.75) = ~15x slower than no-spec @244K (12.3); Qwen3.6-35B DFlash AWQ ~1.2 @240K (accept ~1.4) vs the '80' here. Universal across arch+draft (draft accept craters at depth + draft attends the full KV every micro-step). These bars measure server CAPABILITY, not 256K-depth throughput; for the 256K mandate no-spec is the path, spec is <=~32-64K only. See benchmarks/spec-at-depth-collapse-2026-06-15.md. --- Single-bar = best production spec-decode decode tok/s (target + draft + --speculative-attention-mode decode @ TP2). speedup x is over the family's ~22 tok/s no-spec baseline. 'untested' = a viable draft path exists but unbenched; 'blocked' = no working draft yet, with the blocker. As blocked/untested models get fixed, flip status->working + fill spec_toks and regenerate \u2014 no model should sit at a bare N/A. Data sourced from the README spec-decode summary + coverage map. FP8-TARGET note (2026-05-31, post-iommu=pt): these bars are AWQ-target production numbers (short-ctx spec works without iommu=pt, so they stand). FP8 targets differ: Coder-30B-FP8+EAGLE3 = ~86 tok/s coherent (256K served, tiny 361MB draft); Qwen3.6-35B-FP8+DFlash = ~45 tok/s coherent AT 256K (accept ~3.9) via --chunked-prefill 2048 \u2014 the prior 'OOMs@256K' was a prefill-transient, not a draft wall (KV pool 782K was never the limit). So BOTH A3B-MoE FP8 models do FP8+draft@256K (Coder-30B EAGLE3 ~86, Qwen3.6-35B DFlash ~45). The 80 here is the AWQ ship (faster \u2014 Marlin-class int4 verify); FP8 trails AWQ on absolute tok/s but both reach 256K.",
+ "models": [
+  {
+   "name": "Qwen3.6-REAM-A3B",
+   "kind": "MoE (merged)",
+   "status": "working",
+   "spec_toks": 133.0,
+   "speedup": 6.0,
+   "no_spec": 22.0,
+   "draft": "35B DFlash (transfer)",
+   "ctx": "256K (text/thinking; vision via -vision dir)"
+  },
+  {
+   "name": "Qwen3-Coder-30B-REAM",
+   "kind": "MoE (merged)",
+   "status": "working",
+   "spec_toks": 101.4,
+   "speedup": 4.5,
+   "no_spec": 22.0,
+   "draft": "Coder-30B EAGLE3 (transfer)",
+   "ctx": "256K"
+  },
+  {
+   "name": "Qwen3-Coder-30B-A3B",
+   "kind": "MoE 128e",
+   "status": "working",
+   "spec_toks": 96.9,
+   "speedup": 4.4,
+   "no_spec": 22.0,
+   "at_depth": 0.8,
+   "draft": "EAGLE3 (lmsys SpecForge)",
+   "ctx": "256K"
+  },
+  {
+   "name": "Qwen3-Coder-REAP-25B",
+   "kind": "MoE (pruned)",
+   "status": "working",
+   "spec_toks": 90.6,
+   "speedup": 4.0,
+   "no_spec": 22.6,
+   "draft": "Coder-30B EAGLE3 (transfer)",
+   "ctx": "256K"
+  },
+  {
+   "name": "Qwen3-Coder-30B-REAP",
+   "kind": "MoE (pruned)",
+   "status": "working",
+   "spec_toks": 89.5,
+   "speedup": 4.0,
+   "no_spec": 22.0,
+   "draft": "Coder-30B EAGLE3 (transfer)",
+   "ctx": "256K"
+  },
+  {
+   "name": "Qwen3.6-35B-A3B",
+   "kind": "MoE+DeltaNet",
+   "status": "working",
+   "spec_toks": 80.0,
+   "speedup": 3.7,
+   "no_spec": 21.6,
+   "at_depth": 1.2,
+   "draft": "DFlash (z-lab)",
+   "ctx": "256K (4/4 incl vision)"
+  },
+  {
+   "name": "Qwen3-Coder-Next-REAM",
+   "kind": "MoE+DeltaNet (merged)",
+   "status": "working",
+   "spec_toks": 58.0,
+   "speedup": 2.65,
+   "no_spec": 22.0,
+   "draft": "Aurora-Spec EAGLE3 (transfer)",
+   "ctx": "64K (DeltaNet+draft mem)"
+  },
+  {
+   "name": "Qwen3.5-28B-A3B-REAP",
+   "kind": "MoE (pruned)",
+   "status": "blocked",
+   "spec_toks": 0,
+   "draft": "parent DFlash (transfer)",
+   "short": "DFlash net-neg (~52 vs 60 no-spec); \u22642 t/s @240K \u2014 DeltaNet+DFlash wall",
+   "reason": "TESTED 2026-06-14: parent Qwen3.5-35B-A3B-DFlash transfer loads, coherent, 4/4 caps (basic+thinking+vision+video), accepts (len 2-8 workload-dep). Authoritative server-log sustained gen-throughput ~52 tok/s short-ctx vs ~60 no-spec = net-negative-to-neutral; block-diffusion draft+verify overhead cancels the acceptance benefit, and decode collapses deep (<=~2 tok/s by ~240K, DeltaNet+DFlash wall). No useful speedup; corroborates 3090's 'DFlash moot'. NOTE: client-tool TPOT under-measures spec ~2x (SSE buffering) - use server-log."
+  },
+  {
+   "name": "Qwen3-Coder-Next-80B",
+   "kind": "MoE+DeltaNet",
+   "status": "blocked",
+   "spec_toks": 0,
+   "draft": "Aurora-Spec EAGLE3",
+   "short": "target 80B incoherent on RDNA4 (parked) \u2014 REAM-60B is the Coder-Next spec ship (58 t/s)",
+   "reason": "RECLASSIFIED 2026-06-20 (was 'untested'): the Aurora-Spec EAGLE3 path is fine, but the full 80B itself decodes INCOHERENTLY on RDNA4 (PARKED 2026-06-11 \u2014 GPTQ/AutoRound dequant-coherence bug; reopen only with an own-built coherent Coder-Next-80B AWQ, see Known Issues). Spec cannot be meaningfully benched on an incoherent target (acceptance/throughput against garbage output are meaningless), so it's blocked-by-target, not merely unbenched. The production Coder-Next spec slot is ALREADY covered by Qwen3-Coder-Next-REAM (working, 58 tok/s, same Aurora-Spec EAGLE3 transfer draft). Reopen if/when a coherent own-built 80B AWQ exists."
+  },
+  {
+   "name": "Qwen3.5-27B / Qwen3.6-27B",
+   "kind": "dense DeltaNet(-VL)",
+   "status": "blocked",
+   "spec_toks": 0,
+   "draft": "EAGLE3 specdrift / DFlash / in-ckpt MTP",
+   "short": "DeltaNet recurrent-verify wall: net-neg even at accept 4.0 (step ~5.5\u00d7 for 4\u00d7 toks)",
+   "reason": "TESTED EAGLE3 2026-06-14 (Qwen3.6-27B-EAGLE3-specdrift, LlamaForCausalLMEagle3 1.25GB): now LOADS+runs+coherent on the DeltaNet-VL target after patch 055 (LlamaConfig decoupled-head-dim validator + qwen3_vl EAGLE3 capture-layer marking \u2014 both were hard load blockers). Accepts WELL (accept len 4.0, topk4/steps3/draft8) but NET-NEGATIVE: server-log gen throughput ~18 tok/s vs ~25 no-spec. ROOT CAUSE: spec step is GPU-COMPUTE-bound, not dispatch-bound \u2014 the dense 27B is 75% DeltaNet (3:1 linear/full) and DeltaNet's recurrent verify is SEQUENTIAL in num-draft-tokens (verifying 8 tree tokens ~= 8 serial state updates), so the step costs ~5.5x a plain decode while yielding only 4x tokens. cuda-graph gives ZERO help (18.3 ON vs 18.1 OFF) confirming compute-bound not launch-bound. Deeper trees make verify MORE expensive -> no tuning fixes it. Extends 3090's 'DFlash moot on DeltaNet' to EAGLE3, isolating the wall to recurrent verify cost (not draft quality). DFlash also OOMs/net-neg; FP8 won't fit 2x32GB. The only lever would be a DeltaNet-aware chunked/parallel verify kernel (deep kernel work). Patch 055 still unblocks EAGLE3 LOADING for the whole qwen3_5/qwen3_vl VL family (helps any pure-attention member, e.g. it's a prerequisite for Qwen3-VL-32B EAGLE3 once #17935 is past)."
+  },
+  {
+   "name": "gemma-4-31B / 26B / 12B",
+   "kind": "dense / MoE / omni",
+   "status": "blocked",
+   "spec_toks": 0,
+   "draft": "assistant MTP / EAGLE3",
+   "short": "MTP now WORKS (patch 071) but net-negative (~\u00bd no-spec); base EAGLE3 accept 1.34",
+   "reason": "FROZEN_KV_MTP FIXED + functional (R9700 patch 071: gemma it-matched assistant MTP boots, coherent, accept ~2.9) but NET-NEGATIVE \u2014 spec ~half no-spec even with the draft cuda-graph captured (3 draft-fwds + 31B verify-extend > accept gain on the dense target; gemma4-31b 23 no-spec vs 8-12 spec). gemma4-12b (gemma4_unified omni) same. No DFLASH hook; base EAGLE3 accept only 1.34. => no-spec is the path for Gemma."
+  },
+  {
+   "name": "Qwen3-VL-32B",
+   "kind": "dense VL",
+   "status": "blocked",
+   "spec_toks": 0,
+   "draft": "EAGLE3 (needs SpecForge train)",
+   "short": "loads (patch 055) but no 32B-matched VL draft \u2014 needs SpecForge train (~27 H20-hr)",
+   "reason": "BLOCKER SHIFTED 2026-06-14: the SGLang-side #17935 gap is gone \u2014 qwen3_vl.get_embed_and_head is present AND patch 055 fixes the EAGLE3 capture-layer marking, so the VL EAGLE3 path now loads/engages. Remaining gap = NO off-the-shelf draft: taobao-mnn/Qwen3-VL-2B-Instruct-Eagle3 is 2B (wrong geometry, won't transfer to 32B); RedHatAI/Qwen3-32B-speculator.eagle3 targets the TEXT 32B not VL. Needs a 32B-matched EAGLE3 draft trained via SpecForge (~27 H20-GPU-hrs). HIGH VALUE: Qwen3-VL-32B is PURE DENSE (head_dim 128, no DeltaNet, no MoE) so it has NO sequential-verify wall \u2014 EAGLE3 would actually WIN here like it does on Coder-30B (2.3x), unlike the DeltaNet 27B. The single best spec-decode target left on the fleet; gated only on training the draft."
+  },
+  {
+   "name": "Qwen3.6-VL-REAP-26B",
+   "kind": "MoE VL (pruned)",
+   "status": "blocked",
+   "spec_toks": 0,
+   "draft": "parent transfer",
+   "short": "REAP strip removed vision tensors \u2014 needs rebuild (VL spec #17935)",
+   "reason": "VL spec #17935; REAP strip removed vision tensors (needs rebuild)"
+  },
+  {
+   "name": "Devstral-24B",
+   "kind": "dense (Mistral)",
+   "status": "blocked",
+   "spec_toks": 0,
+   "draft": "none",
+   "short": "no published draft \u2014 MistralEagle would load a SpecForge-trained one",
+   "reason": "no published draft; MistralForCausalLMEagle would load one (SpecForge-train)"
+  },
+  {
+   "name": "Nemotron-3-Nano-Omni-30B",
+   "kind": "Mamba2 hybrid AVLM",
+   "status": "blocked",
+   "spec_toks": 0,
+   "draft": "none",
+   "short": "no draft (Nano excluded from MTP per white paper); no-spec ~29 t/s @256K",
+   "reason": "no bundled/published draft (0 mtp/eagle tensors in ckpt; Nano excluded from MTP per white paper). Serves no-spec ~29 tok/s @256K (triton flash, patches 046/047)"
+  }
+ ]
 }

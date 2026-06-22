@@ -83,6 +83,51 @@
    "fp8_nospec": 33.62,
    "fp8_spec": null,
    "note": "FP8-only on RDNA4 (Ampere can't FP8; the 3090 handed it over). cohere2_moe thinking coder, 500K-native. 256K=33.6 tok/s (short ~60-65), 1.58M-tok KV pool, cuda-graph ON, --context-length 262144 (preset default 131K). No published draft. Re-confirmed serving 2026-06-19."
+  },
+  {
+   "name": "Gemma 4 31B",
+   "kind": "Dense SWA",
+   "awq_nospec": 22.9,
+   "awq_spec": null,
+   "fp8_nospec": null,
+   "fp8_spec": null,
+   "note": "AWQ 256K only (FP8 caps ~51K, sub-256K \u2192 no FP8 bar). 60-layer dense, eager/GPU-bound (cuda-graph ~0). 22.9@short\u21925.9@256K. No draft; vision crashes (text+thinking)."
+  },
+  {
+   "name": "Gemma 4 12B",
+   "kind": "Dense SWA omni",
+   "awq_nospec": 33.2,
+   "awq_spec": null,
+   "fp8_nospec": null,
+   "fp8_spec": null,
+   "note": "AWQ 256K (no FP8 build). gemma4_unified FULL OMNI (text+thinking+vision+video). 48-layer dense eager. 33.2@short\u21929.2@244K. No draft."
+  },
+  {
+   "name": "Qwen3-Coder-REAP-25B",
+   "kind": "MoE REAP",
+   "awq_nospec": 56.8,
+   "awq_spec": null,
+   "fp8_nospec": null,
+   "fp8_spec": null,
+   "note": "AWQ 256K (REAP-pruned MoE). cuda-graph ON. 56.8@short. FP8/draft n/a here."
+  },
+  {
+   "name": "Qwen3.6-VL-REAP-26B",
+   "kind": "MoE VL REAP",
+   "awq_nospec": 21.3,
+   "awq_spec": null,
+   "fp8_nospec": null,
+   "fp8_spec": null,
+   "note": "AWQ 256K (vision). cuda-graph ON. 21.3@short. FP8/draft n/a here."
+  },
+  {
+   "name": "GLM-4.5-Air-REAP-82B",
+   "kind": "MoE REAP",
+   "awq_nospec": 25.6,
+   "awq_spec": null,
+   "fp8_nospec": null,
+   "fp8_spec": null,
+   "note": "AWQ 256K (REAP-pruned 82B MoE, glm4_moe). 25.6@short. FP8/draft n/a here."
   }
  ]
 }
