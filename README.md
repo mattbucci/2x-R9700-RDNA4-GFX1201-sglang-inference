@@ -270,18 +270,30 @@ Run with `scripts/eval/eval_and_chart.py`: MMLU (100 samples), HumanEval pass@1 
 
 Every new AWQ must pass `scripts/eval/validate_capabilities.py` (thinking + vision + basic) before entering this table.
 
-### SWE-bench Lite — FP8 agentic coding (buildable subset)
+### SWE-bench Lite 300 — FP8 bake-off (model × harness)
 
-opencode agent → local SGLang FP8 server → no-docker `score_local` (per-repo swebench specs in a uv venv; driven via `evals/swebench/run_rollouts.py --model sglang/<name>`). Run on a **15-instance buildable subset** (django/seaborn/flask/requests/xarray/pylint) — excludes heavy C-extension repos (astropy/matplotlib/scikit-learn) and ancient instances that fail no-docker env-fidelity. Harness validated: gold patches resolve **2/2** on modern instances. Raw: `benchmarks/swebench/fp8-lite-2026-05-30.json`.
+Resolve rate (resolved/300) per coding harness on FP8 weights, **docker-scored** (official swebench eval images → comparable to the 3090's AWQ bake-off). Driver: `evals/swebench/fp8_bakeoff_matrix.sh` (prebuilt-FP8 models × opencode/little-coder/claw-code × 300 Lite, 2-way shard, resumable, watchdog). `⟨rt-fp8⟩` rows are served **BF16 + `--quantization fp8`** (runtime FP8 — no prebuilt FP8 checkpoint needed). Regenerate from live cell scores: `python scripts/bench/gen_bakeoff_table.py`.
 
-| Model | Resolved | Notes |
-|-------|:--------:|-------|
-| Qwen3-Coder-30B-A3B-FP8 | **6/15 (40%)** | coder-specialized; **15/15 patches applied**; django 3/3, requests 1/1 |
-| Qwen3.6-35B-A3B-FP8 | 2/15 (13%) | generalist+thinking; **7/15 timed out at 600s** (thinking overhead → slow rollouts); several edits regressed p2p |
-| Devstral-Small-2-24B-FP8 | **2/15 (13%)** · django 2/2 | **Tool path works end-to-end** (patches 040+056): **9/15 patches applied, no `[TOOL_CALLS]`/`[ARGS]` leak** in a real multi-turn run (the earlier 0/15 was the omission + multi-token-name `todowrite`/`webfetch` gaps; closed by 040 anchor-on-`[ARGS]` + 056 prefix-match). **But it does NOT lead** despite the 68% SWE-bench Verified base — ties qwen36 (2/15), below Coder-30B (6/15). Two limiters: **5/15 hit the 600s timeout** (verbose Mistral agentic loops × 40-layer dense decode ~41 tok/s short → slow rollouts), and **7 applied-but-unresolved** (the 30B incomplete-fix mode — patches the symptom). Resolved: django-10914, django-11001. The Verified→buildable-15 gap is harness fidelity (no-docker `score_local`) + the 600s cap, not a serving defect. Receipt: `benchmarks/swebench/devstral2-fp8-buildable15-2026-06-15.json`; harness `scripts/eval/devstral2_fp8_buildable15.sh`. |
-| North-Mini-Code-1.0-FP8 (`cohere2_moe`) | **3/12 buildable (25%)** · django 6/9 | First agentic validation of the 2026-06-14 parser grafts (force_rope + `cohere_command4` reasoning + tool-call) — drives real edits end-to-end. **django-strong, weak elsewhere:** on the diverse buildable subset it scored **3/12 (25%) — django 3/3 but seaborn/flask/requests/xarray 0/9** (patches apply, tests don't pass), so the standalone **django run was 6/9 (66.7%) but django-flattering**; the representative number is ~25% (≈ qwen36 13% < Coder-30B 40%). ⚠ **Partial: 12/15** — the buildable-15 run **hung on a large xarray prompt** (3 unreached: xarray-4248 + 2 pylint; see Known Issues — long-ctx agentic scheduler stall). 2 apply-fails (seaborn-3190, flask-4045). Raw: `evals/swebench/runs/north-mini-15/` + `north-mini-buildable15/`. |
+<!--BAKEOFF_TABLE_START-->
+| Model | opencode | little-coder | claw-code | best |
+|-------|:---:|:---:|:---:|:---:|
+| Qwen3-Coder-30B-A3B | 108/300 (36%) | 75/300 (25%) | 52/300 (17%) | **36%** |
+| Qwen3.6-35B-A3B | 140/300 (46%) | 127/300 (42%) | — | **46%** |
+| Qwen3.5-27B | — | — | — | — |
+| Qwen3.6-27B | — | — | — | — |
+| Devstral-2-24B | — | — | — | — |
+| Devstral-24B | — | — | — | — |
+| Gemma-4-26B | — | — | — | — |
+| Gemma-4-31B | — | — | — | — |
+| Qwen3-VL-32B | — | — | — | — |
+| Nemotron-3-Nano-Omni-30B | — | — | — | — |
+| Gemma-4-12B ⟨rt-fp8⟩ | — | — | — | — |
+| Qwen3-Coder-REAP-25B-A3B ⟨rt-fp8⟩ | — | — | — | — |
+| Qwen3.6-VL-REAP-26B-A3B ⟨rt-fp8⟩ | — | — | — | — |
+| GLM-4.5-Air-REAP-82B ⟨rt-fp8⟩ | — | — | — | — |
+<!--BAKEOFF_TABLE_END-->
 
-⚠ **Not comparable to full-Lite-300 numbers** — this is a small, buildable-curated subset (higher % expected). It's a relative FP8-model comparison + end-to-end pipeline validation, not a leaderboard figure; full Lite-300 is the follow-up. Both A3B-MoE models serve **256K+ in FP8** (Coder-30B 524K-tok KV, Qwen3.6-35B 1.62M-tok KV — only 3B active); dense Devstral-2 caps ~180K (the BF16 vision tower eats KV).
+Running — cells fill as the matrix completes (`—` = pending; `(running)` = partial). Supersedes the earlier no-docker buildable-15 subset (`benchmarks/swebench/fp8-lite-2026-05-30.json`).
 
 ## Infrastructure Summary
 
