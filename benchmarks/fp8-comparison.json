@@ -128,6 +128,15 @@
    "fp8_nospec": null,
    "fp8_spec": null,
    "note": "AWQ 256K (REAP-pruned 82B MoE, glm4_moe). 25.6@short. FP8/draft n/a here."
+  },
+  {
+   "name": "Devstral-2-24B",
+   "kind": "Dense (Mistral)",
+   "awq_nospec": 41.0,
+   "awq_spec": null,
+   "fp8_nospec": null,
+   "fp8_spec": null,
+   "note": "AWQ 256K (was FP8-only ~180K; AWQ reaches full 256K). 41.0@short\u219215.0@244K. No working draft."
   }
  ]
 }

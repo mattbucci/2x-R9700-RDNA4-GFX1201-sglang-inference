@@ -43,6 +43,8 @@ MODELS = {
     "qwen3.6-27b-awq-native":   {"label": "Qwen3.6-27B AWQ (Dense)",           "color": "#8957e5"},
     "qwen3-coder-reap-25b-a3b-awq": {"label": "Coder-REAP-25B AWQ (MoE)",      "color": "#238636"},
     "qwen3.6-vl-reap-26b-a3b-awq":  {"label": "Qwen3.6-VL-REAP-26B AWQ",       "color": "#db61a2"},
+    "devstral2-awq":            {"label": "Devstral-2-24B AWQ (Dense)",        "color": "#1f6feb"},
+    "qwen3vl-32b-awq":          {"label": "Qwen3-VL-32B AWQ (Dense VL)",       "color": "#f778ba"},
     "north-mini":               {"label": "North-Mini-Code FP8 (cohere2_moe)", "color": "#ff7b72"},
     "glm45-air-awq":            {"label": "GLM-4.5-Air-REAP AWQ (glm4_moe)",   "color": "#a371f7"},
 }
