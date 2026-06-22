@@ -1,0 +1,41 @@
+{
+  "model": "Gemma4-12B",
+  "engine": "SGLang",
+  "hardware": "2x R9700 TP=2",
+  "timestamp": "gemma4-12b-depth-2026-06-21",
+  "note": "no-spec decode depth curve; gemma4_unified omni ship",
+  "context_sweep": [
+    {
+      "context": 128,
+      "input_len": 25,
+      "tpot_ms": 30.12,
+      "tok_per_sec": 33.2
+    },
+    {
+      "context": 32000,
+      "input_len": 28699,
+      "tpot_ms": 39.64,
+      "tok_per_sec": 25.23
+    },
+    {
+      "context": 131000,
+      "input_len": 117408,
+      "tpot_ms": 71.6,
+      "tok_per_sec": 13.97
+    },
+    {
+      "context": 244000,
+      "input_len": 218664,
+      "tpot_ms": 108.36,
+      "tok_per_sec": 9.23
+    }
+  ],
+  "throughput_sweep": [
+    {
+      "concurrency": 1,
+      "throughput": 33.2,
+      "tpot_ms": 30.12,
+      "ttft_ms": 0
+    }
+  ]
+}
