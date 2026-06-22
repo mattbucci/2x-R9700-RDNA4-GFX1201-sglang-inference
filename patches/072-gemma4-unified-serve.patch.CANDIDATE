@@ -1,0 +1,132 @@
+# R9700 #45: serve Google's gemma4_unified checkpoints (mattbucci/gemma-4-12B-AWQ) on the
+# v0.5.13.post1 + transformers 5.8.1 stack. transformers has NO gemma4_unified module (nor does
+# upstream sglang main — nothing to pull). SGLang ships the Gemma4Unified MODEL class but never
+# registered the config/processor + its embedder reads dims under a different schema than Google's
+# released checkpoint. Three fixes (all portable, no checkpoint edits):
+#  A) common.py: register gemma4_unified config (permissive vision/audio configs preserve the
+#     checkpoint's real dims; aliasing to gemma4 configs imposed wrong defaults) + processor
+#     (AutoProcessor/Image/FE register + namespace name-resolution -> Gemma4 processor stack).
+#  B) gemma4_unified.py: model_patch_size = patch_size*pooling (checkpoint omits it); multimodal
+#     projection input = audio_embed_dim for audio (640), output_proj_dims for vision (3840).
+# Result: gemma4-12b boots full 262144 (1.89M-tok KV pool), coherent text+reasoning, 34.8 tok/s.
+# Multimodal embedders build + load correct shapes; image/audio FORWARD untested.
+###
+diff --git a/python/sglang/srt/models/gemma4_unified.py b/python/sglang/srt/models/gemma4_unified.py
+index 67d0771d4..e64c87b9a 100644
+--- a/python/sglang/srt/models/gemma4_unified.py
++++ b/python/sglang/srt/models/gemma4_unified.py
+@@ -70,7 +70,12 @@ class Gemma4UnifiedVisionEmbedder(nn.Module):
+ 
+     def __init__(self, config):
+         super().__init__()
+-        patch_dim = config.model_patch_size**2 * 3  # 48*48*3 = 6912
++        # R9700 #45: mattbucci/gemma-4-12B-AWQ (gemma4_unified) stores the merged-patch size as
++        # patch_size*pooling_kernel_size; older unified checkpoints exposed model_patch_size directly.
++        _mps = getattr(config, "model_patch_size", None) or (
++            config.patch_size * config.pooling_kernel_size
++        )
++        patch_dim = _mps**2 * 3  # 48*48*3 = 6912
+         mm_embed_dim = config.mm_embed_dim
+ 
+         self.patch_ln1 = nn.LayerNorm(patch_dim)
+@@ -110,7 +115,14 @@ class Gemma4UnifiedMultimodalEmbedder(nn.Module):
+ 
+     def __init__(self, multimodal_config, text_config):
+         super().__init__()
+-        self.multimodal_hidden_size = multimodal_config.output_proj_dims
++        # R9700 #45: the projection-input dim is per-modality — VISION uses output_proj_dims (3840),
++        # but this checkpoint's AUDIO uses audio_embed_dim (640) for it (the audio config ALSO carries
++        # an output_proj_dims=1536, which is the audio-encoder internal dim, NOT the LM-projection input
++        # -> would build the wrong shape). Prefer audio_embed_dim when present, else output_proj_dims.
++        # Self-validating: a wrong dim fails the embedding_projection.weight load loudly.
++        self.multimodal_hidden_size = getattr(
++            multimodal_config, "audio_embed_dim", None
++        ) or multimodal_config.output_proj_dims
+         self.text_hidden_size = text_config.hidden_size
+         self.embedding_pre_projection_norm = Gemma4RMSNorm(
+             self.multimodal_hidden_size,
+diff --git a/python/sglang/srt/utils/hf_transformers/common.py b/python/sglang/srt/utils/hf_transformers/common.py
+index 1f93ae852..9a9994e25 100644
+--- a/python/sglang/srt/utils/hf_transformers/common.py
++++ b/python/sglang/srt/utils/hf_transformers/common.py
+@@ -138,6 +138,80 @@ try:
+ except ImportError:
+     pass
+ 
++# R9700 #45: Gemma4 "unified" checkpoints (e.g. mattbucci/gemma-4-12B-AWQ) use a newer model_type
++# naming (gemma4_unified*) for the encoder-free tri-modal Gemma4 — SGLang ships the
++# Gemma4UnifiedForConditionalGeneration model subclass + processor + the SWA-attr remap
++# (utils/hf_transformers/config.py), but transformers 5.8.1 has NO gemma4_unified module at all
++# (confirmed: not in upstream sglang main either — nothing to pull), so AutoConfig.from_pretrained
++# rejects it. Register the config here. The TEXT config maps to Gemma4TextConfig (standard fields),
++# but the VISION/AUDIO configs MUST be permissive (PretrainedConfig) — the unified vision/audio
++# configs carry fields the gemma4 vision/audio configs lack (model_patch_size derivation, output_proj_dims,
++# mm_embed_dim, audio_embed_dim); subclassing the gemma4 configs imposes their defaults and DROPS the
++# checkpoint's real dims (e.g. output_proj_dims 3840 -> a 1536 default -> wrong projection shape).
++try:
++    from transformers import Gemma4Config as _HFGemma4Config
++    from transformers import Gemma4TextConfig as _HFGemma4TextConfig
++    from transformers import PretrainedConfig as _HFPretrainedConfig
++
++    class _Gemma4UnifiedTextConfig(_HFGemma4TextConfig):
++        model_type = "gemma4_unified_text"
++
++    class _Gemma4UnifiedVisionConfig(_HFPretrainedConfig):
++        model_type = "gemma4_unified_vision"
++
++    class _Gemma4UnifiedAudioConfig(_HFPretrainedConfig):
++        model_type = "gemma4_unified_audio"
++
++    class _Gemma4UnifiedConfig(_HFGemma4Config):
++        model_type = "gemma4_unified"
++        sub_configs = {
++            "text_config": _Gemma4UnifiedTextConfig,
++            "vision_config": _Gemma4UnifiedVisionConfig,
++            "audio_config": _Gemma4UnifiedAudioConfig,
++        }
++
++    _CONFIG_REGISTRY["gemma4_unified"] = _Gemma4UnifiedConfig
++    _CONFIG_REGISTRY["gemma4_unified_text"] = _Gemma4UnifiedTextConfig
++    _CONFIG_REGISTRY["gemma4_unified_vision"] = _Gemma4UnifiedVisionConfig
++    _CONFIG_REGISTRY["gemma4_unified_audio"] = _Gemma4UnifiedAudioConfig
++
++    # Processor: transformers 5.8.1 has no Gemma4UnifiedProcessor, so AutoProcessor.from_pretrained
++    # falls through to the bare tokenizer (which the mm-processor wrapper then chokes on for `.tokenizer`).
++    # Route the gemma4_unified config -> the gemma4 processor stack; the unified preprocessing params
++    # load into the gemma4 image/audio/video processors fine (same tri-modal Gemma4 family).
++    from transformers import AutoFeatureExtractor as _AutoFE
++    from transformers import AutoImageProcessor as _AutoIP
++    from transformers import AutoProcessor as _AutoProc
++    from transformers import Gemma4AudioFeatureExtractor as _HFGemma4AudioFE
++    from transformers import Gemma4ImageProcessor as _HFGemma4ImageProc
++    from transformers import Gemma4Processor as _HFGemma4Processor
++
++    _AutoIP.register(
++        _Gemma4UnifiedConfig,
++        slow_image_processor_class=_HFGemma4ImageProc,
++        fast_image_processor_class=_HFGemma4ImageProc,
++        exist_ok=True,
++    )
++    _AutoFE.register(_Gemma4UnifiedConfig, _HFGemma4AudioFE, exist_ok=True)
++    _AutoProc.register(_Gemma4UnifiedConfig, _HFGemma4Processor, exist_ok=True)
++
++    # AutoProcessor resolves the processor_config.json `*_type` strings BY NAME first (and falls to
++    # the bare tokenizer if unresolved), so the config-class mapping above isn't enough. Expose the
++    # unified class names as gemma4 subclasses on the transformers namespace so the names resolve.
++    import transformers as _tfm
++    from transformers import Gemma4VideoProcessor as _HFGemma4VideoProc
++
++    for _nm, _base in (
++        ("Gemma4UnifiedProcessor", _HFGemma4Processor),
++        ("Gemma4UnifiedImageProcessor", _HFGemma4ImageProc),
++        ("Gemma4UnifiedAudioFeatureExtractor", _HFGemma4AudioFE),
++        ("Gemma4UnifiedVideoProcessor", _HFGemma4VideoProc),
++    ):
++        if not hasattr(_tfm, _nm):
++            setattr(_tfm, _nm, type(_nm, (_base,), {}))
++except ImportError:
++    pass
++
+ for name, cls in _CONFIG_REGISTRY.items():
+     try:
+         AutoConfig.register(name, cls)

@@ -41,6 +41,7 @@ ROWS=(
   # gemma4 family — has audio/video too but our validator only does video
   "gemma-4-26B-AWQ|gemma4||video|2048"
   "gemma-4-31B-it-AutoRound-AWQ|gemma4-31b||video|2048"
+  "gemma-4-12B-AWQ|gemma4-12b||video|2048"
 )
 
 wait_ready() {

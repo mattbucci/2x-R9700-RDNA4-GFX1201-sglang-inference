@@ -25,6 +25,7 @@ scripts/launch.sh coder-next-ream      # Coder-Next REAM 60B AWQ (131K, pruned)
 scripts/launch.sh glm45-air            # GLM-4.5-Air REAP 82B MoE AWQ
 scripts/launch.sh gemma4               # Gemma 4 26B MoE AWQ
 scripts/launch.sh gemma4-31b           # Gemma 4 31B Dense AWQ
+scripts/launch.sh gemma4-12b           # Gemma 4 12B Dense AWQ (gemma4_unified arch, patch 072; 256K)
 scripts/launch.sh qwen35               # Qwen3.5-27B DeltaNet AWQ (262K)
 scripts/launch.sh qwen35-moe           # Qwen3.5-35B MoE GPTQ (262K)
 scripts/launch.sh qwen36-moe           # Qwen3.6-35B-A3B MoE AWQ thinking+vision (262K, native AWQ)

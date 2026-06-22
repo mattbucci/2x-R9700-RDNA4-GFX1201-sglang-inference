@@ -357,6 +357,25 @@ PYEOF
             WARMUP="--skip-server-warmup"; WATCHDOG=1800
             OVERLAP=""
             ;;
+        gemma4-12b)
+            # gemma4-12b: in-house AWQ (mattbucci/gemma-4-12B-AWQ). Dense Gemma 4 12B —
+            # same triton SWA path + gemma4 reasoning/tool/chat-template family as gemma4-31b
+            # (reasons in `content`, not a <think> channel — see README CoT-elicit note).
+            # Smallest dense Gemma => most KV headroom: 3090 measured a 565K-tok pool at full
+            # ctx via --swa-full-tokens-ratio 0.0625, so it reaches full 256K comfortably.
+            # gfx1201 native e4m3 FP8 KV (no e5m2 needed, unlike the 3090's triton-forced path).
+            MODEL="${MODEL:-$MODELS_DIR/gemma-4-12B-AWQ}"
+            QUANT="awq"
+            DTYPE="bfloat16"
+            ATTN_BACKEND="${ATTN_BACKEND:-triton}"   # torch_native fallback caps ~32-64K
+            REASONING="--reasoning-parser gemma4"
+            TOOL_CALL_PARSER="gemma4"
+            CHAT_TEMPLATE="--chat-template $SCRIPT_DIR/gemma4_chat_template.jinja"
+            CTX=262144; MEM=0.92; MAX_RUNNING=8; CHUNKED=1024
+            EXTRA_ARGS="${EXTRA_ARGS:-} --swa-full-tokens-ratio 0.0625"  # Gemma hybrid-SWA KV floor (see gemma4-31b)
+            WARMUP="--skip-server-warmup"; WATCHDOG=1800
+            OVERLAP=""
+            ;;
         gemma4-31b-autoround)
             # Legacy AutoRound-derived ship (mattbucci/gemma-4-31B-it-AutoRound-AWQ).
             # 50.4% negative scales (non-standard); vision returns wrong-but-short
@@ -808,6 +827,10 @@ CMD=(python -m sglang.launch_server
 [[ -n "$CHAT_TEMPLATE" ]] && CMD+=($CHAT_TEMPLATE)
 [[ -n "$REASONING" ]] && CMD+=($REASONING)
 [[ -n "$TOOL_CALL_PARSER" ]] && CMD+=(--tool-call-parser "$TOOL_CALL_PARSER")
+# R9700 #36: ENABLE_WARMUP=1 overrides any preset's --skip-server-warmup so warmup runs and the
+# CUDA graphs CAPTURE (skip-warmup returns health=200 before capture -> everything runs eager).
+# Needed for spec decode, where the small draft is launch-bound and only fast under cuda-graph.
+[ -n "${ENABLE_WARMUP:-}" ] && WARMUP=""
 [[ -n "$WARMUP" ]] && CMD+=($WARMUP)
 [[ -n "$OVERLAP" ]] && CMD+=($OVERLAP)
 [[ -n "$EXTRA_ARGS" ]] && CMD+=($EXTRA_ARGS)

@@ -3,7 +3,7 @@
 set -uo pipefail
 R=~/AI/2x-R9700-RDNA4-GFX1201-sglang-inference; P=23398; O=/tmp/sweep256k; mkdir -p $O; pip install -q pillow imageio requests 2>/dev/null
 # preset:thinking:vision:quant
-M=(qwen36-27b:1:1: gemma4-31b:1:1: qwen36-moe:1:1: qwen3vl-32b:1:1:)
+M=(qwen36-27b:1:1: gemma4-31b:1:1: gemma4-12b:1:1: qwen36-moe:1:1: qwen3vl-32b:1:1:)
 for spec in "${M[@]}"; do pr=$(echo $spec|cut -d: -f1); th=$(echo $spec|cut -d: -f2); vi=$(echo $spec|cut -d: -f3); q=$(echo $spec|cut -d: -f4); L=$O/$pr.log
   pkill -9 -f "port $P" 2>/dev/null; sleep 5
   Q=""; [ -n "$q" ] && Q="QUANT=$q"; eval "CTX=262144 MEM=0.80 MAX_RUNNING=1 PORT=$P $Q setsid bash $R/scripts/launch.sh $pr --context-length 262144 >$L 2>&1 &" ; disown
