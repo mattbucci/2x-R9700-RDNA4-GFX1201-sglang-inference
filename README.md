@@ -279,7 +279,7 @@ Resolve rate (resolved/300) per coding harness on FP8 weights, **docker-scored**
 | Model | opencode | little-coder | claw-code | best |
 |-------|:---:|:---:|:---:|:---:|
 | Qwen3-Coder-30B-A3B | 108/300 (36%) | 75/300 (25%) | 52/300 (17%) | **36%** |
-| Qwen3.6-35B-A3B | 140/300 (46%) | 127/300 (42%) | — | **46%** |
+| Qwen3.6-35B-A3B | 140/300 (46%) | 127/300 (42%) | 75/300 (25%) | **46%** |
 | Qwen3.5-27B | — | — | — | — |
 | Qwen3.6-27B | — | — | — | — |
 | Devstral-2-24B | — | — | — | — |
