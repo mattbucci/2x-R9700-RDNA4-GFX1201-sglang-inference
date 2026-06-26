@@ -1,8 +1,8 @@
 diff --git a/python/sglang/srt/layers/moe/token_dispatcher/flashinfer.py b/python/sglang/srt/layers/moe/token_dispatcher/flashinfer.py
-index bbdadc7c8..209f3a20b 100644
+index f66c831374..7e9c0face0 100644
 --- a/python/sglang/srt/layers/moe/token_dispatcher/flashinfer.py
 +++ b/python/sglang/srt/layers/moe/token_dispatcher/flashinfer.py
-@@ -33,7 +33,7 @@ try:
+@@ -34,7 +34,7 @@ try:
      from sglang.srt.layers.quantization.fp4_utils import fp4_quantize
  
      use_flashinfer = True

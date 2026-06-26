@@ -1,5 +1,5 @@
 diff --git a/python/sglang/srt/configs/qwen3_5.py b/python/sglang/srt/configs/qwen3_5.py
-index 98de12f7e..35252ef9b 100644
+index 98de12f7ef..35252ef9bc 100644
 --- a/python/sglang/srt/configs/qwen3_5.py
 +++ b/python/sglang/srt/configs/qwen3_5.py
 @@ -1,5 +1,10 @@
@@ -41,7 +41,7 @@ index 98de12f7e..35252ef9b 100644
  class Qwen3_5Config(PretrainedConfig):
      r"""
 diff --git a/python/sglang/srt/configs/qwen3_next.py b/python/sglang/srt/configs/qwen3_next.py
-index c3b950f30..236c9928e 100644
+index c3b950f306..236c9928eb 100644
 --- a/python/sglang/srt/configs/qwen3_next.py
 +++ b/python/sglang/srt/configs/qwen3_next.py
 @@ -291,6 +291,10 @@ class Qwen3NextConfig(PretrainedConfig):

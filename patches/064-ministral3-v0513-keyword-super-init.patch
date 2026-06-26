@@ -1,5 +1,5 @@
 diff --git a/python/sglang/srt/models/ministral3.py b/python/sglang/srt/models/ministral3.py
-index c342a76cb..001258c3f 100644
+index c342a76cbd..001258c3fc 100644
 --- a/python/sglang/srt/models/ministral3.py
 +++ b/python/sglang/srt/models/ministral3.py
 @@ -39,19 +39,22 @@ class Ministral3Attention(LlamaAttention):

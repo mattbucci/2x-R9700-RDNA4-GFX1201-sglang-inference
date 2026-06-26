@@ -1,5 +1,5 @@
 diff --git a/python/sglang/srt/models/gemma4_mm.py b/python/sglang/srt/models/gemma4_mm.py
-index 3629782ca..8b17c1443 100644
+index 06eefc2822..0a3a0b091a 100644
 --- a/python/sglang/srt/models/gemma4_mm.py
 +++ b/python/sglang/srt/models/gemma4_mm.py
 @@ -188,19 +188,43 @@ class Gemma4ForConditionalGeneration(PreTrainedModel):

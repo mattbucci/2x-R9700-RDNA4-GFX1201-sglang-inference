@@ -1,5 +1,5 @@
 diff --git a/python/sglang/srt/environ.py b/python/sglang/srt/environ.py
-index 435c30a5c..fae15e510 100644
+index ef5c46119d..2d813b1d57 100644
 --- a/python/sglang/srt/environ.py
 +++ b/python/sglang/srt/environ.py
 @@ -194,6 +194,21 @@ class ToolStrictLevel(IntEnum):
@@ -26,7 +26,7 @@ index 435c30a5c..fae15e510 100644
      # Controls weight-file ordering for load-time I/O optimization.
 diff --git a/python/sglang/srt/layers/moe/hybrid_w4a16_moe.py b/python/sglang/srt/layers/moe/hybrid_w4a16_moe.py
 new file mode 100644
-index 000000000..f669d8232
+index 0000000000..f669d8232d
 --- /dev/null
 +++ b/python/sglang/srt/layers/moe/hybrid_w4a16_moe.py
 @@ -0,0 +1,297 @@
@@ -329,7 +329,7 @@ index 000000000..f669d8232
 +    )
 diff --git a/sgl-kernel/csrc/quantization/awq/skinny_gemms_int4.cu b/sgl-kernel/csrc/quantization/awq/skinny_gemms_int4.cu
 new file mode 100644
-index 000000000..a9ba68b1c
+index 0000000000..a9ba68b1c4
 --- /dev/null
 +++ b/sgl-kernel/csrc/quantization/awq/skinny_gemms_int4.cu
 @@ -0,0 +1,1484 @@

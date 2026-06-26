@@ -1,8 +1,8 @@
 diff --git a/python/sglang/srt/model_executor/model_runner.py b/python/sglang/srt/model_executor/model_runner.py
-index e5fa16e76..b9057a223 100644
+index 39ce13cfbe..2da33482e7 100644
 --- a/python/sglang/srt/model_executor/model_runner.py
 +++ b/python/sglang/srt/model_executor/model_runner.py
-@@ -306,7 +306,7 @@ def add_chunked_prefix_cache_attention_backend(backend_name):
+@@ -298,7 +298,7 @@ def add_chunked_prefix_cache_attention_backend(backend_name):
  
  
  # Detect stragger ranks in model loading

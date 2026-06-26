@@ -1,8 +1,8 @@
 diff --git a/python/sglang/srt/configs/model_config.py b/python/sglang/srt/configs/model_config.py
-index a8e7d0277..bcff0e68a 100644
+index 795e3a58fe..9f740448d6 100644
 --- a/python/sglang/srt/configs/model_config.py
 +++ b/python/sglang/srt/configs/model_config.py
-@@ -1153,6 +1153,14 @@ class ModelConfig:
+@@ -1278,6 +1278,14 @@ class ModelConfig:
              "auto-round",
              "quark_int4fp8_moe",
              "quark_mxfp4",

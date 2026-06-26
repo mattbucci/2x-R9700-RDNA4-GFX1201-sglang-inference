@@ -1,8 +1,8 @@
 diff --git a/python/sglang/srt/layers/quantization/fp8_kernel.py b/python/sglang/srt/layers/quantization/fp8_kernel.py
-index 2fae46c82..128005ea3 100644
+index a6756c8957..2b8ce400f0 100644
 --- a/python/sglang/srt/layers/quantization/fp8_kernel.py
 +++ b/python/sglang/srt/layers/quantization/fp8_kernel.py
-@@ -1719,10 +1719,12 @@ if _is_hip:
+@@ -1816,10 +1816,12 @@ if _is_hip:
          absmax = input.abs().max(dim=1, keepdim=True).values
          absmax = torch.clamp(absmax, min=eps)
          scale_val = absmax / fp8_max

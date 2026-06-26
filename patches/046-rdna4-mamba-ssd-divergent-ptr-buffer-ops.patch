@@ -1,5 +1,5 @@
 diff --git a/python/sglang/srt/layers/attention/mamba/ops/ssd_chunk_scan.py b/python/sglang/srt/layers/attention/mamba/ops/ssd_chunk_scan.py
-index 52b197139..37b705f02 100644
+index 52b1971392..37b705f020 100644
 --- a/python/sglang/srt/layers/attention/mamba/ops/ssd_chunk_scan.py
 +++ b/python/sglang/srt/layers/attention/mamba/ops/ssd_chunk_scan.py
 @@ -133,7 +133,6 @@ def _chunk_scan_fwd_kernel(
@@ -119,7 +119,7 @@ index 52b197139..37b705f02 100644
  
      offs_k = tl.arange(0, BLOCK_SIZE_K) + c_off
 diff --git a/python/sglang/srt/layers/attention/mamba/ops/ssd_chunk_state.py b/python/sglang/srt/layers/attention/mamba/ops/ssd_chunk_state.py
-index 162d859d4..ad725710d 100644
+index 162d859d47..ad725710d5 100644
 --- a/python/sglang/srt/layers/attention/mamba/ops/ssd_chunk_state.py
 +++ b/python/sglang/srt/layers/attention/mamba/ops/ssd_chunk_state.py
 @@ -398,33 +398,42 @@ def _chunk_state_varlen_kernel(

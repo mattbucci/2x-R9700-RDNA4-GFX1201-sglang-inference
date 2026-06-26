@@ -1,5 +1,5 @@
 diff --git a/python/sglang/srt/layers/attention/mamba/causal_conv1d_triton.py b/python/sglang/srt/layers/attention/mamba/causal_conv1d_triton.py
-index d70f176e8..5936731ea 100644
+index d70f176e86..5936731eab 100644
 --- a/python/sglang/srt/layers/attention/mamba/causal_conv1d_triton.py
 +++ b/python/sglang/srt/layers/attention/mamba/causal_conv1d_triton.py
 @@ -126,28 +126,28 @@ def _causal_conv1d_fwd_kernel(  # continuous batching

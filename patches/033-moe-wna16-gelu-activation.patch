@@ -1,5 +1,5 @@
 diff --git a/python/sglang/srt/layers/quantization/moe_wna16.py b/python/sglang/srt/layers/quantization/moe_wna16.py
-index a7d87c638..a6fa1d4ad 100644
+index e5221c8a9c..684917561a 100644
 --- a/python/sglang/srt/layers/quantization/moe_wna16.py
 +++ b/python/sglang/srt/layers/quantization/moe_wna16.py
 @@ -386,9 +386,13 @@ class MoeWNA16Method(FusedMoEMethodBase):

@@ -1,8 +1,8 @@
 diff --git a/python/sglang/srt/models/gemma4_causal.py b/python/sglang/srt/models/gemma4_causal.py
-index e054fd062..6876d1a30 100644
+index 5d42de0d42..769c16dac3 100644
 --- a/python/sglang/srt/models/gemma4_causal.py
 +++ b/python/sglang/srt/models/gemma4_causal.py
-@@ -560,11 +560,45 @@ class Gemma4DecoderLayer(nn.Module):
+@@ -561,11 +561,45 @@ class Gemma4DecoderLayer(nn.Module):
              2 if use_double_wide_mlp else 1
          )
  

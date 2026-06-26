@@ -1,8 +1,8 @@
 diff --git a/python/sglang/srt/models/qwen3_vl.py b/python/sglang/srt/models/qwen3_vl.py
-index 3ffe4dde7..13f3d8a0f 100644
+index 76d6922ac0..aa46bff19e 100644
 --- a/python/sglang/srt/models/qwen3_vl.py
 +++ b/python/sglang/srt/models/qwen3_vl.py
-@@ -1405,13 +1405,31 @@ class Qwen3VLForConditionalGeneration(nn.Module):
+@@ -1401,13 +1401,31 @@ class Qwen3VLForConditionalGeneration(nn.Module):
          self.model.capture_aux_hidden_states = True
          if layer_ids is None:
              num_layers = self.config.num_hidden_layers
@@ -37,7 +37,7 @@ index 3ffe4dde7..13f3d8a0f 100644
  
  EntryClass = Qwen3VLForConditionalGeneration
 diff --git a/python/sglang/srt/utils/hf_transformers_patches.py b/python/sglang/srt/utils/hf_transformers_patches.py
-index dbf9726a0..be508b240 100644
+index 17a394190a..277ce62e7b 100644
 --- a/python/sglang/srt/utils/hf_transformers_patches.py
 +++ b/python/sglang/srt/utils/hf_transformers_patches.py
 @@ -56,6 +56,7 @@ def apply_all():
@@ -48,7 +48,7 @@ index dbf9726a0..be508b240 100644
      _patch_removed_symbols()
      _patch_image_processor_kwargs()
      _patch_image_process_cuda_tensor()
-@@ -184,6 +185,44 @@ def _patch_rope_parameters_validation():
+@@ -161,6 +162,44 @@ def _patch_rope_parameters_validation():
          PretrainedConfig.standardize_rope_params = _safe_standardize
  
  

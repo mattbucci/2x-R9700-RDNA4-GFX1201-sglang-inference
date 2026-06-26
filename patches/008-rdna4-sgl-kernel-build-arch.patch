@@ -1,5 +1,5 @@
 diff --git a/sgl-kernel/setup_rocm.py b/sgl-kernel/setup_rocm.py
-index 9762787aa..338dbb736 100644
+index 9762787aa7..338dbb7360 100644
 --- a/sgl-kernel/setup_rocm.py
 +++ b/sgl-kernel/setup_rocm.py
 @@ -74,21 +74,31 @@ if torch.cuda.is_available():

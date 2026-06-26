@@ -1,5 +1,5 @@
 diff --git a/python/sglang/srt/speculative/ngram_worker.py b/python/sglang/srt/speculative/ngram_worker.py
-index d53522d6b..a9085a012 100644
+index 4cbcb7f0ef..250326c31c 100644
 --- a/python/sglang/srt/speculative/ngram_worker.py
 +++ b/python/sglang/srt/speculative/ngram_worker.py
 @@ -3,7 +3,68 @@ from typing import List, Optional
@@ -70,5 +70,5 @@ index d53522d6b..a9085a012 100644
 +        retrive_next_sibling.view(-1).copy_(torch.where(sm == D, neg1[:, :, 0], sm).view(-1))
 +        return None
  
- from sglang.srt.layers.utils.logprob import add_output_logprobs_for_spec_v1
+ from sglang.srt.layers.utils.logprob import compute_spec_v2_logprobs
  from sglang.srt.managers.schedule_batch import ScheduleBatch

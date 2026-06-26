@@ -1,5 +1,13 @@
 # SGLang v0.5.13.post1 RDNA4 Patches
 
+> 🚧 **v0.5.14 rebase STAGED 2026-06-26 (not promoted).** The series is rebased onto **v0.5.14** in tree
+> `/data/sgl-v0514` + fresh env `sglang-triton36-v0514` — **45 patches** (065 split-KV tree-verify **archived
+> `.SUPERSEDED`**: v0.5.14 upstreamed it natively as `verify_splitkv`). 4 conflicts resolved (001/005/028 +
+> the 065 integration); equivalence gate 45/45 byte-equivalent; eager-import smoke 21/21; coder-30b
+> `eval_comprehensive` 35/36 + gemma4 `validate_capabilities` 4/4. **Promotion blocked on one item:** v0.5.14's
+> new cuda-graph backend (`backend='full'`) **hangs at warmup-capture on RDNA4** — works with cuda-graph OFF or
+> `--skip-server-warmup`. Live serving remains v0.5.13. Full receipt: [v0514-rebase-2026-06-26.md](v0514-rebase-2026-06-26.md).
+
 **46 patches** applied in numeric order on a stock `git checkout v0.5.13.post1` — **34 rebased core patches** (001–049, with **012/034/035 retired**, see below) + **6 boot/inference fixes** (059–064, found during env-validation + the resweep) + **4 promoted second-pass patches** (055–058, the surviving v0.5.12 CANDIDATEs re-applied 2026-06-17) + **1 perf kernel** (065 split-KV tree-verify, opt-in `SGLANG_TREE_VERIFY_SPLITKV`, default OFF → inert unless enabled) + **066 glm4_moe BF16-dense-MLP gate_up skip-miss fix** (unblocks glm45-air; fleet-inert). Source of truth for **what's fixed and how**; main [README.md](../README.md) tracks current state. Cross-collection map (all 4 patch dirs + upstream-lifecycle scorecard): [PATCHES.md](../PATCHES.md).
 
 **Verified 2026-06-16 (rebase), re-gated 2026-06-17 (second pass):** the full **44-patch** series applies clean (44/44, 0 skipped) on a pristine `v0.5.13.post1` clone and reproduces the live tree (`/data/sgl-rebase`, env `sglang-triton36-v0513`) **byte-for-byte** (git-diff equivalence gate, empty; and every patch's `--check` fails on the patched tree = no double-apply anchor). Validated by booting two presets TP=2: coder-30b codegen STRONG; gemma4-26B basic+thinking+vision (content-aware probe) + `validate_capabilities` 4/4 (basic/thinking/vision/video). Full receipt: [v0513-rebase-2026-06-16.md](v0513-rebase-2026-06-16.md). ✅ **Promoted to live 2026-06-16**: the live serving tree is now **`/data/sgl-rebase` (v0.5.13.post1, env `sglang-triton36-v0513`)**; `launch.sh` default re-pointed via `common.sh`. **Rollback** = the retained, untouched v0.5.12 stack (`/data/vG`, env `sglang-triton36`). `components/sglang` remains a stale scratch workspace (see "Tree layout").

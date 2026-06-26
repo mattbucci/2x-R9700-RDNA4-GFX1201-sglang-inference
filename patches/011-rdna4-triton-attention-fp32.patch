@@ -1,5 +1,5 @@
 diff --git a/python/sglang/srt/layers/attention/triton_ops/decode_attention.py b/python/sglang/srt/layers/attention/triton_ops/decode_attention.py
-index b42ffa433..02e7d7ef7 100644
+index b42ffa4336..02e7d7ef71 100644
 --- a/python/sglang/srt/layers/attention/triton_ops/decode_attention.py
 +++ b/python/sglang/srt/layers/attention/triton_ops/decode_attention.py
 @@ -392,7 +392,7 @@ def _fwd_grouped_kernel_stage1(
@@ -12,10 +12,10 @@ index b42ffa433..02e7d7ef7 100644
              e_sum = e_sum * re_scale + tl.sum(p, 1)
              e_max = n_e_max
 diff --git a/python/sglang/srt/layers/attention/triton_ops/extend_attention.py b/python/sglang/srt/layers/attention/triton_ops/extend_attention.py
-index 870ca88cd..c4d42e3f2 100644
+index 9945fec73b..48abb9fbe0 100644
 --- a/python/sglang/srt/layers/attention/triton_ops/extend_attention.py
 +++ b/python/sglang/srt/layers/attention/triton_ops/extend_attention.py
-@@ -384,7 +384,7 @@ def _fwd_kernel(
+@@ -394,7 +394,7 @@ def _fwd_kernel(
                  mask=(mask_n[None, :]) & (mask_d[:, None]),
                  other=0.0,
              )
@@ -24,7 +24,7 @@ index 870ca88cd..c4d42e3f2 100644
              if BLOCK_DPE > 0:
                  offs_kpe = (
                      offs_kv_loc[None, :] * stride_buf_kbs
-@@ -888,7 +888,7 @@ def _fwd_kernel_unified(
+@@ -898,7 +898,7 @@ def _fwd_kernel_unified(
                  other=0.0,
              )
  

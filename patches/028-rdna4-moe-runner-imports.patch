@@ -1,5 +1,5 @@
 diff --git a/python/sglang/srt/layers/moe/moe_runner/triton.py b/python/sglang/srt/layers/moe/moe_runner/triton.py
-index b8a99c77b..aa0042fd8 100644
+index d5be19737b..2f54d47422 100644
 --- a/python/sglang/srt/layers/moe/moe_runner/triton.py
 +++ b/python/sglang/srt/layers/moe/moe_runner/triton.py
 @@ -1,5 +1,6 @@
@@ -9,14 +9,16 @@ index b8a99c77b..aa0042fd8 100644
  from dataclasses import dataclass
  from typing import TYPE_CHECKING, Any, List, Optional
  
-@@ -16,6 +17,13 @@ from sglang.srt.layers.moe.moe_runner.base import (
+@@ -16,7 +17,14 @@ from sglang.srt.layers.moe.moe_runner.base import (
      register_pre_permute,
  )
  from sglang.srt.layers.moe.utils import MoeRunnerBackend
+-from sglang.srt.utils import is_cuda, is_gfx95_supported, is_hip
 +from sglang.srt.utils import (
 +    cpu_has_amx_support,
 +    is_cpu,
 +    is_cuda,
++    is_gfx95_supported,
 +    is_hip,
 +    is_xpu,
 +)

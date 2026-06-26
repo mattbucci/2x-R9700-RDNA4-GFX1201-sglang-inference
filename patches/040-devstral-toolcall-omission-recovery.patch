@@ -1,5 +1,5 @@
 diff --git a/python/sglang/srt/function_call/mistral_detector.py b/python/sglang/srt/function_call/mistral_detector.py
-index 8cb412d3f..649a7c78b 100644
+index 8cb412d3f0..649a7c78b0 100644
 --- a/python/sglang/srt/function_call/mistral_detector.py
 +++ b/python/sglang/srt/function_call/mistral_detector.py
 @@ -1,5 +1,6 @@

@@ -1,8 +1,8 @@
 diff --git a/python/sglang/srt/layers/attention/triton_backend.py b/python/sglang/srt/layers/attention/triton_backend.py
-index 00a73862b..475770828 100644
+index 9457d35dd9..6d01980cd4 100644
 --- a/python/sglang/srt/layers/attention/triton_backend.py
 +++ b/python/sglang/srt/layers/attention/triton_backend.py
-@@ -150,8 +150,17 @@ class TritonAttnBackend(AttentionBackend):
+@@ -175,8 +175,17 @@ class TritonAttnBackend(AttentionBackend):
              model_runner.hybrid_gdn_config is not None
              or model_runner.kimi_linear_config is not None
              or model_runner.linear_attn_model_spec is not None

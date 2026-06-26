@@ -1,5 +1,5 @@
 diff --git a/python/sglang/srt/layers/quantization/awq/awq.py b/python/sglang/srt/layers/quantization/awq/awq.py
-index 0b63dcb58..df8490086 100644
+index 0b63dcb586..df8490086b 100644
 --- a/python/sglang/srt/layers/quantization/awq/awq.py
 +++ b/python/sglang/srt/layers/quantization/awq/awq.py
 @@ -102,7 +102,15 @@ class AWQConfig(QuantizationConfig):

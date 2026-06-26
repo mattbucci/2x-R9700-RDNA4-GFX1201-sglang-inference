@@ -1,8 +1,8 @@
 diff --git a/python/sglang/srt/models/gemma4_mm.py b/python/sglang/srt/models/gemma4_mm.py
-index 8b17c1443..64ddd25b8 100644
+index 0a3a0b091a..18b882d08e 100644
 --- a/python/sglang/srt/models/gemma4_mm.py
 +++ b/python/sglang/srt/models/gemma4_mm.py
-@@ -456,10 +456,26 @@ class Gemma4ForConditionalGeneration(PreTrainedModel):
+@@ -464,10 +464,26 @@ class Gemma4ForConditionalGeneration(PreTrainedModel):
                  pv = pv.to(device=vt.device, dtype=self.language_model.dtype())
                  pp = pp.to(device=vt.device)
  

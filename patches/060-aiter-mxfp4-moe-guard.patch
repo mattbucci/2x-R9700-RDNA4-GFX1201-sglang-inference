@@ -1,5 +1,5 @@
 diff --git a/python/sglang/srt/layers/quantization/quark/schemes/quark_w4a4_mxfp4_moe.py b/python/sglang/srt/layers/quantization/quark/schemes/quark_w4a4_mxfp4_moe.py
-index c6890dfd5..c14ee07b0 100644
+index c6890dfd50..c14ee07b08 100644
 --- a/python/sglang/srt/layers/quantization/quark/schemes/quark_w4a4_mxfp4_moe.py
 +++ b/python/sglang/srt/layers/quantization/quark/schemes/quark_w4a4_mxfp4_moe.py
 @@ -37,7 +37,16 @@ if _use_aiter:

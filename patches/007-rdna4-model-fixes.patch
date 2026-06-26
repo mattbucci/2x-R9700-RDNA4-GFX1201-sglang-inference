@@ -1,8 +1,8 @@
 diff --git a/python/sglang/srt/models/llama.py b/python/sglang/srt/models/llama.py
-index 742f810ac..81ce9ff3c 100644
+index d887890992..bb44780dd7 100644
 --- a/python/sglang/srt/models/llama.py
 +++ b/python/sglang/srt/models/llama.py
-@@ -208,6 +208,7 @@ class LlamaAttention(nn.Module):
+@@ -207,6 +207,7 @@ class LlamaAttention(nn.Module):
      def forward_prepare_native(self, positions, hidden_states):
          qkv, _ = self.qkv_proj(hidden_states)
          q, k, v = qkv.split([self.q_size, self.kv_size, self.kv_size], dim=-1)
@@ -11,7 +11,7 @@ index 742f810ac..81ce9ff3c 100644
          return q, k, v
  
 diff --git a/python/sglang/srt/models/ministral3.py b/python/sglang/srt/models/ministral3.py
-index 8d678ec54..c342a76cb 100644
+index 8d678ec543..c342a76cbd 100644
 --- a/python/sglang/srt/models/ministral3.py
 +++ b/python/sglang/srt/models/ministral3.py
 @@ -71,6 +71,7 @@ class Ministral3Attention(LlamaAttention):
