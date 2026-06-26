@@ -814,6 +814,15 @@ CMD=(python -m sglang.launch_server
     --num-continuous-decode-steps "$DECODE_STEPS"
     --attention-backend "$ATTN_BACKEND"
     --disable-custom-all-reduce
+    # RDNA4 + v0.5.14 cuda-graph fix (2026-06-26): v0.5.14's new FULL decode-graph
+    # backend captures the TP all-reduce INTO the graph; without an RCCL communicator
+    # warmed up FIRST, channel-init runs *during* hipGraph capture and DEADLOCKS at TP=2
+    # (server boots, prints "ready", then wedges before serving — TP0 busy / TP1 futex).
+    # pre_warm_nccl does one warmup all_reduce before capture so the channels already
+    # exist at replay. Its docstring claims "default: enabled for AMD/HIP" but the code
+    # never sets it (stays False) — upstream bug; PR-candidate to default it True on HIP.
+    # HIP-only-applicable + a ~0.2s no-op at TP=1 / cuda-graph-off, so pass unconditionally.
+    --pre-warm-nccl
     --trust-remote-code
     --watchdog-timeout "$WATCHDOG"
     --port "$PORT"

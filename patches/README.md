@@ -4,9 +4,12 @@
 > `/data/sgl-v0514` + fresh env `sglang-triton36-v0514` — **45 patches** (065 split-KV tree-verify **archived
 > `.SUPERSEDED`**: v0.5.14 upstreamed it natively as `verify_splitkv`). 4 conflicts resolved (001/005/028 +
 > the 065 integration); equivalence gate 45/45 byte-equivalent; eager-import smoke 21/21; coder-30b
-> `eval_comprehensive` 35/36 + gemma4 `validate_capabilities` 4/4. **Promotion blocked on one item:** v0.5.14's
-> new cuda-graph backend (`backend='full'`) **hangs at warmup-capture on RDNA4** — works with cuda-graph OFF or
-> `--skip-server-warmup`. Live serving remains v0.5.13. Full receipt: [v0514-rebase-2026-06-26.md](v0514-rebase-2026-06-26.md).
+> `eval_comprehensive` 35/36 + gemma4 `validate_capabilities` 4/4 (basic/thinking/vision/video). **cuda-graph
+> blocker RESOLVED:** v0.5.14's new `backend='full'` decode-graph capture deadlocked RCCL at warmup on RDNA4
+> because `pre_warm_nccl` (docstring says HIP-default-on, but the code never enables it) was off → fixed by
+> passing `--pre-warm-nccl` in `launch.sh` (validated: cuda-graph captures clean, coder-30b 53.9 tok/s vs ~24
+> eager, ~2.2×). **Staged, ready to promote after a 256K resweep.** Live serving remains v0.5.13. Full receipt:
+> [v0514-rebase-2026-06-26.md](v0514-rebase-2026-06-26.md).
 
 **46 patches** applied in numeric order on a stock `git checkout v0.5.13.post1` — **34 rebased core patches** (001–049, with **012/034/035 retired**, see below) + **6 boot/inference fixes** (059–064, found during env-validation + the resweep) + **4 promoted second-pass patches** (055–058, the surviving v0.5.12 CANDIDATEs re-applied 2026-06-17) + **1 perf kernel** (065 split-KV tree-verify, opt-in `SGLANG_TREE_VERIFY_SPLITKV`, default OFF → inert unless enabled) + **066 glm4_moe BF16-dense-MLP gate_up skip-miss fix** (unblocks glm45-air; fleet-inert). Source of truth for **what's fixed and how**; main [README.md](../README.md) tracks current state. Cross-collection map (all 4 patch dirs + upstream-lifecycle scorecard): [PATCHES.md](../PATCHES.md).
 
