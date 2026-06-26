@@ -1,6 +1,6 @@
 # RDNA4 Inference: SGLang on 2x R9700
 
-High-throughput LLM inference on 2x AMD Radeon AI PRO R9700 (gfx1201, RDNA4) with ROCm 7.2.  **SGLang v0.5.13.post1 + 44 RDNA4 patches** (live tree `/data/sgl-rebase`, env `sglang-triton36-v0513`; promoted 2026-06-16, + CANDIDATEs 055–058, 065–072 (spec split-KV verify, --force-decode-window, --decode-topk-pages, gemma4_unified omni) — see [patches/README.md](patches/README.md) for applied fixes, architectural investigations, and shipped-fix log).
+High-throughput LLM inference on 2x AMD Radeon AI PRO R9700 (gfx1201, RDNA4) with ROCm 7.2.  **SGLang v0.5.14 + 46 RDNA4 patches** (live tree `/data/sgl-v0514`, env `sglang-triton36-v0514`; promoted 2026-06-26 — resweep 7/8 presets parity-or-better, cuda-graph fixed via launch.sh `--pre-warm-nccl`, DeltaNet class fixed by patch 073; rollback = v0.5.13.post1 stack `/data/sgl-rebase` / `sglang-triton36-v0513`. CANDIDATEs 050, 067–072 (--force-decode-window, --decode-topk-pages, gemma4_unified omni) pending the v0.5.14 second-pass — see [patches/README.md](patches/README.md) for applied fixes, architectural investigations, and shipped-fix log).
 
 ## Current Focus
 
@@ -302,11 +302,11 @@ Running — cells fill as the matrix completes (`—` = pending; `(running)` = p
 
 ## Infrastructure Summary
 
-- **SGLang v0.5.13.post1** on the **live serving tree** (`/data/sgl-rebase`, env `sglang-triton36-v0513`) + 34 core RDNA4 patches + 3 fixes — see [patches/README.md](patches/README.md). **Promoted to live 2026-06-16** (rebased from v0.5.12: gate-verified byte-equivalent, validated coder-30b + gemma4-26B text/thinking/vision/video, then `launch.sh` default re-pointed via `common.sh`). **Rollback** = the retained v0.5.12 stack (`/data/vG`, env `sglang-triton36`): `ENV_NAME=sglang-triton36 SGLANG_DIR=/data/vG scripts/launch.sh …`. Receipt: [patches/v0513-rebase-2026-06-16.md](patches/v0513-rebase-2026-06-16.md). ⚠ Note: per-model perf/status tables below were measured on the v0.5.12 stack (2026-05/06) — re-sweep on v0.5.13 pending.
+- **SGLang v0.5.14** on the **live serving tree** (`/data/sgl-v0514`, env `sglang-triton36-v0514`) + 46 RDNA4 patches — see [patches/README.md](patches/README.md). **Promoted to live 2026-06-26** (rebased from v0.5.13.post1: gate-verified byte-equivalent, resweep 7/8 presets parity-or-better; cuda-graph FULL capture deadlock fixed via launch.sh `--pre-warm-nccl`, DeltaNet/mamba class fixed by patch 073). Receipt: [patches/v0514-rebase-2026-06-26.md](patches/v0514-rebase-2026-06-26.md); resweep: [benchmarks/v0514-resweep-2026-06-26.md](benchmarks/v0514-resweep-2026-06-26.md). **Rollback** = the retained v0.5.13.post1 stack (`/data/sgl-rebase`, env `sglang-triton36-v0513`): `ENV_NAME=sglang-triton36-v0513 SGLANG_DIR=/data/sgl-rebase scripts/launch.sh …` (older v0.5.12: `/data/vG` / `sglang-triton36`). ⚠ Note: per-model 256K-depth perf tables below predate v0.5.14 — deep-context re-sweep pending.
 - **Triton 3.6.0** (upstream).  Do NOT clear `~/.triton/cache/` before benchmarking — cold cache produces 100x slower numbers.
 - **PyTorch 2.12+rocm7.2**.
 - **RCCL 2.27.7** (system ROCm, P2P/IPC on gfx1201 — no custom build).
-- **Conda envs**: `sglang-triton36-v0513` (**live** inference, v0.5.13.post1), `sglang-triton36` (v0.5.12 rollback), `quant` (calibration — llmcompressor pins transformers 4.x, incompatible with SGLang).
+- **Conda envs**: `sglang-triton36-v0514` (**live** inference, v0.5.14), `sglang-triton36-v0513` (v0.5.13.post1 rollback), `sglang-triton36` (v0.5.12 rollback), `quant` (calibration — llmcompressor pins transformers 4.x, incompatible with SGLang).
 
 See [rules-for-agents.md](rules-for-agents.md) for RDNA4 constraints, launch flags, and quantization rules.  See [CLAUDE.md](CLAUDE.md) for working-mode directives.
 
