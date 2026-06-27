@@ -7,7 +7,18 @@ ROOT=/tmp/v0514-smoke; SUBSET=${SUBSET:-$ROOT/subset15.txt}; CTX=65536
 IDS=$(tr '\n' ' ' < "$SUBSET"); N=$(wc -l < "$SUBSET")
 SUM=$ROOT/SMOKE.md; : > "$SUM"
 echo "| model | served | resolved | applied | empty-diff | note |" >> "$SUM"
-stopsrv(){ for p in $(ps -eo pid,comm|awk '$2~/scheduler_TP/{print $1}'); do kill -9 $p 2>/dev/null; done; sleep 5; }
+# NOTE: scheduler comm truncates to "sglang::schedul" (15 chars) so an "scheduler_TP" awk
+# pattern never matches. Kill by the launch_server cmdline ([s] avoids self-match) and the
+# truncated comm, then WAIT for VRAM to actually drain before the next cell loads (else collide).
+stopsrv(){
+  pkill -9 -f '[s]glang.launch_server' 2>/dev/null || true
+  for p in $(ps -eo pid,comm | awk '$2 ~ /schedul/{print $1}'); do kill -9 "$p" 2>/dev/null; done
+  for _ in $(seq 1 25); do
+    u=$(rocm-smi --showmeminfo vram 2>/dev/null | awk '/Used Memory/{print $NF}' | head -1)
+    [ -n "$u" ] && [ "$u" -lt 2000000000 ] && break
+    sleep 2
+  done
+}
 CELLS=( coder-30b qwen35 qwen36-moe devstral2 )
 for preset in "${CELLS[@]}"; do
   OUT=$ROOT/$preset; mkdir -p "$OUT"
