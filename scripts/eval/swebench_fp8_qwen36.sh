@@ -13,10 +13,14 @@ ROOT=${ROOT:-/tmp/swebench-fp8}; CTX=${CTX:-65536}; SCAFFOLD=${SCAFFOLD:-opencod
 SHARDS=${SHARDS:-4}; MAXRUN=${MAXRUN:-8}
 mkdir -p "$ROOT"; SUMMARY=$ROOT/summary.tsv
 [ -f "$SUMMARY" ] || printf 'cell\tresolved\tapplied\tempty\tdate\n' > "$SUMMARY"
-# cell | preset | FP8 model dir
+# cell | preset | FP8 model dir | spec args (empty = no-spec)
+# Dense 27B has an EAGLE3 draft -> topk=1 chain spec drives the RDNA4 split-KV verify kernel
+# (patch 065, SGLANG_TREE_VERIFY_SPLITKV). The MoE only has a DFlash draft (block-diffusion,
+# net-neg in our data, doesn't drive the topk=1 verify path) -> run it no-spec at 256K.
+SPEC27B="--speculative-algorithm EAGLE3 --speculative-draft-model-path $HOME/AI/models/Qwen3.6-27B-EAGLE3-specdrift --speculative-draft-model-quantization unquant --speculative-num-steps 4 --speculative-eagle-topk 1 --speculative-num-draft-tokens 5 --speculative-attention-mode decode"
 CELLS=(
- "qwen36-moe-fp8|qwen36-moe|Qwen3.6-35B-A3B-FP8"
- "qwen36-27b-fp8|qwen36-27b|Qwen3.6-27B-FP8"
+ "qwen36-27b-fp8|qwen36-27b|Qwen3.6-27B-FP8|$SPEC27B"
+ "qwen36-moe-fp8|qwen36-moe|Qwen3.6-35B-A3B-FP8|"
 )
 stop_server(){
   pkill -9 -f '[s]glang.launch_server' 2>/dev/null || true
@@ -27,13 +31,19 @@ stop_server(){
   done
 }
 for cell in "${CELLS[@]}"; do
-  IFS='|' read -r label preset modeldir <<< "$cell"
+  IFS='|' read -r label preset modeldir spec <<< "$cell"
   OUT=$ROOT/${label}-${SCAFFOLD}
   [ -f "$OUT/scores.jsonl" ] && { echo "[$label] already scored — skip"; continue; }
   mkdir -p "$OUT"
-  echo "=== [$label] serve FP8 cuda-graph ($SCAFFOLD, shards=$SHARDS) $(date +%H:%M) ==="
+  # spec cell: EAGLE3 chain + RDNA4 split-KV verify (065) -> needs higher mem-fraction (draft+KV) + small chunked-prefill
+  SPECENV=""; SPECARGS=""
+  if [ -n "$spec" ]; then
+    SPECENV="EXTRA_ARGS=\"$spec\" SGLANG_TREE_VERIFY_SPLITKV=1 SGLANG_ENABLE_SPLITKV_VERIFY=1 MEM=0.92"
+    SPECARGS="--mem-fraction 0.92 --chunked-prefill 2048"
+  fi
+  echo "=== [$label] serve FP8 ${spec:+SPEC+splitKV }cuda-graph ($SCAFFOLD, shards=$SHARDS) $(date +%H:%M) ==="
   stop_server
-  setsid bash -c "MODEL=$HOME/AI/models/$modeldir HF_HUB_OFFLINE=1 bash scripts/launch.sh $preset --port 23334 --context-length $CTX --max-running $MAXRUN > $OUT/serve.log 2>&1 & echo \$! > $OUT/pid; disown" </dev/null >/dev/null 2>&1 &
+  setsid bash -c "MODEL=$HOME/AI/models/$modeldir $SPECENV HF_HUB_OFFLINE=1 bash scripts/launch.sh $preset --port 23334 --context-length $CTX --max-running $MAXRUN $SPECARGS > $OUT/serve.log 2>&1 & echo \$! > $OUT/pid; disown" </dev/null >/dev/null 2>&1 &
   sleep 2; lp=$(cat $OUT/pid 2>/dev/null); ready=0
   for _ in $(seq 1 400); do
     curl -sf --max-time 4 http://127.0.0.1:23334/health >/dev/null 2>&1 && { ready=1; break; }
