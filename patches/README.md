@@ -1,10 +1,12 @@
 # SGLang v0.5.13.post1 RDNA4 Patches
 
 > 🚧 **v0.5.14 rebase STAGED 2026-06-26 (not promoted).** The series is rebased onto **v0.5.14** in tree
-> `/data/sgl-v0514` + fresh env `sglang-triton36-v0514` — **46 patches** (065 split-KV tree-verify **archived
+> `/data/sgl-v0514` + fresh env `sglang-triton36-v0514` — **47 patches** (065 split-KV tree-verify **archived
 > `.SUPERSEDED`**: v0.5.14 upstreamed it natively as `verify_splitkv`; **+073** mamba-extra_buffer HIP fallback,
 > found in the resweep — v0.5.14's CUDA/MUSA/NPU-only `extra_buffer` strategy crashed all DeltaNet/mamba models
-> at startup on RDNA4). 4 conflicts resolved (001/005/028 +
+> at startup on RDNA4; **+072** gemma4_unified promoted from CANDIDATE — v0.5.14 has the sglang model natively
+> but not the transformers-config, so gemma4-12b needs 072's vendored config/processor stack; validated 4/4 omni
+> @256K). 4 conflicts resolved (001/005/028 +
 > the 065 integration); equivalence gate 45/45 byte-equivalent; eager-import smoke 21/21; coder-30b
 > `eval_comprehensive` 35/36 + gemma4 `validate_capabilities` 4/4 (basic/thinking/vision/video). **cuda-graph
 > blocker RESOLVED:** v0.5.14's new `backend='full'` decode-graph capture deadlocked RCCL at warmup on RDNA4
