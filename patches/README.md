@@ -1,8 +1,9 @@
 # SGLang v0.5.13.post1 RDNA4 Patches
 
 > 🚧 **v0.5.14 rebase STAGED 2026-06-26 (not promoted).** The series is rebased onto **v0.5.14** in tree
-> `/data/sgl-v0514` + fresh env `sglang-triton36-v0514` — **47 patches** (065 split-KV tree-verify **archived
-> `.SUPERSEDED`**: v0.5.14 upstreamed it natively as `verify_splitkv`; **+073** mamba-extra_buffer HIP fallback,
+> `/data/sgl-v0514` + fresh env `sglang-triton36-v0514` — **48 patches** (065 split-KV tree-verify **RESTORED**:
+> first dropped as "upstreamed" but v0.5.14's native `verify_splitkv` is **gfx95/CDNA4-only** (`is_gfx95_supported()`),
+> so it's inert on our gfx1201 — our 065 kernel is the RDNA4 path, re-integrated alongside the native one; **+073** mamba-extra_buffer HIP fallback,
 > found in the resweep — v0.5.14's CUDA/MUSA/NPU-only `extra_buffer` strategy crashed all DeltaNet/mamba models
 > at startup on RDNA4; **+072** gemma4_unified promoted from CANDIDATE — v0.5.14 has the sglang model natively
 > but not the transformers-config, so gemma4-12b needs 072's vendored config/processor stack; validated 4/4 omni
