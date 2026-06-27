@@ -1,8 +1,9 @@
 #!/bin/bash
-# SWE-bench Lite 300 bake-off on the v0.5.14 stack — EAGER (cuda-graph off; agentic-quality
-# reason: see launch.sh DISABLE_CUDA_GRAPH note + benchmarks/v0514-agentic-smoke-2026-06-26.md).
-# Per cell: stop server -> serve preset (DISABLE_CUDA_GRAPH=1) -> wait health -> run_rollouts (full
-# 300 via shards) -> score_local -> record -> stop. Resumable: a cell with scores.jsonl is skipped;
+# SWE-bench Lite 300 bake-off on the v0.5.14 stack. Per-model cuda-graph policy from the agentic
+# smoke (benchmarks/v0514-agentic-smoke-2026-06-26.md): non-thinking coders run EAGER (better quality),
+# thinking models keep cuda-graph ON (eager is too slow -> reasoning traces exceed the timeout).
+# Per cell: stop server -> serve preset -> wait health -> run_rollouts (full 300 via shards, --timeout
+# 1800) -> score_local -> record -> stop. Resumable: a cell with scores.jsonl is skipped;
 # rollouts use --skip-existing. Run detached:
 #   setsid bash scripts/eval/swebench_fleet_v0514.sh > /tmp/swebench-v0514/driver.log 2>&1 &
 set -uo pipefail
