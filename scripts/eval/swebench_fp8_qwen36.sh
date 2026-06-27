@@ -18,8 +18,11 @@ mkdir -p "$ROOT"; SUMMARY=$ROOT/summary.tsv
 # (patch 065, SGLANG_TREE_VERIFY_SPLITKV). The MoE only has a DFlash draft (block-diffusion,
 # net-neg in our data, doesn't drive the topk=1 verify path) -> run it no-spec at 256K.
 SPEC27B="--speculative-algorithm EAGLE3 --speculative-draft-model-path $HOME/AI/models/Qwen3.6-27B-EAGLE3-specdrift --speculative-draft-model-quantization unquant --speculative-num-steps 4 --speculative-eagle-topk 1 --speculative-num-draft-tokens 5 --speculative-attention-mode decode"
+# Default = NO-SPEC at 256K (max t/s at depth; spec collapses at deep KV: 0.2 t/s @188K vs no-spec
+# 14.8 even with 065 — the split-KV verify fixes verify-cost, not draft-acceptance). Set SPEC_LANE=1
+# to run the dense EAGLE3+065 split-KV lane (net-positive only ≤64K: 46.8 vs 14.8).
 CELLS=(
- "qwen36-27b-fp8|qwen36-27b|Qwen3.6-27B-FP8|$SPEC27B"
+ "qwen36-27b-fp8|qwen36-27b|Qwen3.6-27B-FP8|${SPEC_LANE:+$SPEC27B}"
  "qwen36-moe-fp8|qwen36-moe|Qwen3.6-35B-A3B-FP8|"
 )
 stop_server(){
