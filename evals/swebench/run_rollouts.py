@@ -98,7 +98,10 @@ def preflight_canary(server_url: str, served_name: str) -> tuple[bool, str]:
         headers={"Content-Type": "application/json"},
     )
     try:
-        with urllib.request.urlopen(req, timeout=30) as r:
+        # 150s (was 30s): thinking models (qwen3.6 dense/MoE) spend the whole canary turn on a
+        # reasoning trace before first content token; 30s timed out -> 12 retries -> 0/0 cell
+        # (qwen36-27b-fp8 @256K, 2026-06-27). FP8 dense decode is ~15 tok/s, so a canary can take 1-2 min.
+        with urllib.request.urlopen(req, timeout=150) as r:
             body = json.loads(r.read())
             if "choices" in body and body["choices"]:
                 content = body["choices"][0]["message"].get("content") or ""
