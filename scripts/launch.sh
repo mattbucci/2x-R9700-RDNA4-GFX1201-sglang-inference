@@ -848,7 +848,14 @@ CMD=(python -m sglang.launch_server
 [[ -n "$OVERLAP" ]] && CMD+=($OVERLAP)
 [[ -n "$EXTRA_ARGS" ]] && CMD+=($EXTRA_ARGS)
 
-# CUDA graph: either --disable-cuda-graph or --cuda-graph-bs <sizes>
+# CUDA graph: either --disable-cuda-graph or --cuda-graph-bs <sizes>.
+# DISABLE_CUDA_GRAPH=1 forces graphs OFF regardless of preset — use for AGENTIC evals.
+# Hypothesis under test (2026-06-26): v0.5.14's FULL decode-graph (padded fixed-bs capture)
+# diverges slightly from eager and, at temp=0 over a long multi-turn rollout, compounds into
+# different trajectories/resolves (coder-30b SWE-bench smoke: graph-on 5/15 vs a v0.5.13
+# reference of 9/15 — eager A/B on v0.5.14 pending to confirm). Prior bake-offs ran
+# --disable-cuda-graph, so keep evals eager; cuda-graph-on stays the throughput default.
+[[ "${DISABLE_CUDA_GRAPH:-}" == "1" ]] && CUDA_GRAPH="--disable-cuda-graph"
 CMD+=($CUDA_GRAPH)
 
 exec "${CMD[@]}"
