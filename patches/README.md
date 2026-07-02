@@ -1,6 +1,6 @@
-# SGLang v0.5.13.post1 RDNA4 Patches
+# SGLang v0.5.14 RDNA4 Patches (rebased from v0.5.13.post1)
 
-> 🚧 **v0.5.14 rebase STAGED 2026-06-26 (not promoted).** The series is rebased onto **v0.5.14** in tree
+> ✅ **v0.5.14 PROMOTED to live 2026-06-26.** The series is rebased onto **v0.5.14** in tree
 > `/data/sgl-v0514` + fresh env `sglang-triton36-v0514` — **48 patches** (065 split-KV tree-verify **RESTORED**:
 > first dropped as "upstreamed" but v0.5.14's native `verify_splitkv` is **gfx95/CDNA4-only** (`is_gfx95_supported()`),
 > so it's inert on our gfx1201 — our 065 kernel is the RDNA4 path, re-integrated alongside the native one; **+073** mamba-extra_buffer HIP fallback,
@@ -13,8 +13,8 @@
 > blocker RESOLVED:** v0.5.14's new `backend='full'` decode-graph capture deadlocked RCCL at warmup on RDNA4
 > because `pre_warm_nccl` (docstring says HIP-default-on, but the code never enables it) was off → fixed by
 > passing `--pre-warm-nccl` in `launch.sh` (validated: cuda-graph captures clean, coder-30b 53.9 tok/s vs ~24
-> eager, ~2.2×). **Staged, ready to promote after a 256K resweep.** Live serving remains v0.5.13. Full receipt:
-> [v0514-rebase-2026-06-26.md](v0514-rebase-2026-06-26.md).
+> eager, ~2.2×). **Promoted to live 2026-06-26** (post-promotion resweep 7/8 presets parity-or-better; deep-context 256K re-sweep pending). Rollback = the retained v0.5.13.post1 stack (`/data/sgl-rebase`, env `sglang-triton36-v0513`). Full receipt:
+> [v0514-rebase-2026-06-26.md](v0514-rebase-2026-06-26.md); resweep: [../benchmarks/v0514-resweep-2026-06-26.md](../benchmarks/v0514-resweep-2026-06-26.md).
 
 **46 patches** applied in numeric order on a stock `git checkout v0.5.13.post1` — **34 rebased core patches** (001–049, with **012/034/035 retired**, see below) + **6 boot/inference fixes** (059–064, found during env-validation + the resweep) + **4 promoted second-pass patches** (055–058, the surviving v0.5.12 CANDIDATEs re-applied 2026-06-17) + **1 perf kernel** (065 split-KV tree-verify, opt-in `SGLANG_TREE_VERIFY_SPLITKV`, default OFF → inert unless enabled) + **066 glm4_moe BF16-dense-MLP gate_up skip-miss fix** (unblocks glm45-air; fleet-inert). Source of truth for **what's fixed and how**; main [README.md](../README.md) tracks current state. Cross-collection map (all 4 patch dirs + upstream-lifecycle scorecard): [PATCHES.md](../PATCHES.md).
 
