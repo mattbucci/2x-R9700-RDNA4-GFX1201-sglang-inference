@@ -1,0 +1,28 @@
+diff --git a/python/sglang/srt/utils/hf_transformers/tokenizer.py b/python/sglang/srt/utils/hf_transformers/tokenizer.py
+index 40b16938d6..e596de3fd5 100644
+--- a/python/sglang/srt/utils/hf_transformers/tokenizer.py
++++ b/python/sglang/srt/utils/hf_transformers/tokenizer.py
+@@ -500,12 +500,23 @@ def get_tokenizer(
+             tokenizer_name, *args, **common_kwargs
+         )
+ 
++        # MistralCommonBackend does not parse special tokens from rendered text,
++        # which breaks SGLang's render-then-encode chat path. Passing this kwarg
++        # makes transformers use TokenizersBackend with tokenizer.json unchanged.
++        mistral_common_rerouted = False
++        if type(tokenizer).__name__ == "MistralCommonBackend":
++            tokenizer = _auto_tokenizer_from_pretrained(
++                tokenizer_name, *args, fix_mistral_regex=False, **common_kwargs
++            )
++            mistral_common_rerouted = True
++
+         # With fastokens, the patched TokenizersBackend.from_pretrained already
+         # returned a tokenizer whose backend is a fastokens shim. Re-resolving via
+         # the declared class (e.g. Qwen2Tokenizer) would discard that work.
+         if (
+             type(tokenizer).__name__ == _TOKENIZERS_BACKEND
+             and tokenizer_backend != "fastokens"
++            and not mistral_common_rerouted
+         ):
+             tokenizer = _resolve_tokenizers_backend(
+                 tokenizer_name, *args, **common_kwargs

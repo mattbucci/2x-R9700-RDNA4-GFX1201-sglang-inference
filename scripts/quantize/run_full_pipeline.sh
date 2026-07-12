@@ -41,7 +41,7 @@ case "$MODEL_KEY" in
         CONVERT_SCRIPT="scripts/quantize/convert_qwen35_ct_to_awq.py"
         CT_OUTPUT="$MODELS_DIR/Qwen3.5-27B-AWQ-CT-thinking"
         AWQ_OUTPUT="$MODELS_DIR/Qwen3.5-27B-AWQ-thinking"
-        BF16_BASE="Qwen/Qwen3.5-27B"   # HF ref; vision tower is not local
+        BF16_BASE="$MODELS_DIR/Qwen3.5-27B-BF16"
         HAS_VISION=0                   # text-only backbone; vision lives in a separate tensor
         LAUNCH_PRESET="qwen35"
         THINKING_KWARG=""              # always-on for Qwen3.5
@@ -121,7 +121,7 @@ fi
 # regardless of which CONVERT_SCRIPT was used. Non-zero exit blocks ship.
 echo ""
 echo "=== Step 3b: AWQ scales sanity check ==="
-if ! python scripts/eval/check_awq_scales.py "$AWQ_OUTPUT" 2>&1 | tee "$LOG_DIR/${MODEL_KEY}_check_scales.log"; then
+if ! python scripts/eval/check_awq_scales.py "$AWQ_OUTPUT" --base "$BF16_BASE" 2>&1 | tee "$LOG_DIR/${MODEL_KEY}_check_scales.log"; then
     echo ""
     echo "🛑 check_awq_scales.py FAILED — DO NOT SHIP $AWQ_OUTPUT" >&2
     echo "   Investigate flagged tensors before proceeding." >&2

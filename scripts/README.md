@@ -10,13 +10,18 @@
 ./scripts/launch.sh gemma4               # Gemma 4 26B MoE AWQ
 ./scripts/launch.sh qwen35               # Qwen3.5-27B DeltaNet AWQ
 ./scripts/launch.sh nemotron-omni        # Nemotron-3-Nano-Omni-30B-A3B FP8 (Mamba2 hybrid AVLM)
+./scripts/launch.sh north-mini           # North-Mini-Code FP8
+./scripts/launch.sh laguna               # Laguna XS.2 FP8
 
 # Override defaults
 ./scripts/launch.sh devstral --context-length 262144 --port 8000
 MODEL=/path/to/weights ./scripts/launch.sh coder-30b
 
-# Benchmark
+# Benchmark (fleet harness)
 python scripts/bench/bench_all_unified.py --name "Model Name" --port 23334
+
+# Focused single-user streaming TPOT
+python scripts/bench/measure_decode_curve.py --help
 
 # Evaluate quality
 python scripts/eval/eval_comprehensive.py --port 23334 --parallel 4

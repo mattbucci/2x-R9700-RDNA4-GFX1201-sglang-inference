@@ -1,6 +1,7 @@
 # Benchmark Scripts
 
-All SGLang benchmarks use `sglang.bench_serving` for proper TPOT/TTFT separation.
+Fleet sweeps use `sglang.bench_serving`. Focused kernel campaigns may use the
+streaming-TPOT harness; receipts must identify the method and actual token counts.
 
 ## Scripts
 
@@ -11,6 +12,7 @@ All SGLang benchmarks use `sglang.bench_serving` for proper TPOT/TTFT separation
 | `bench_quick.sh` | Fast 3-point check (1/8/16 concurrent) for A/B testing patches |
 | `bench_regression.sh` | Regression detection vs stored baselines |
 | `generate_charts.py` | Generate PNG charts from results.json files |
+| `measure_decode_curve.py` | Single-user streaming TPOT at controlled context depths |
 
 ## Usage
 

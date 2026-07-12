@@ -2,7 +2,9 @@
 
 | Script | Purpose |
 |--------|---------|
-| `eval_comprehensive.py` | 39-test quality suite (math, code, reasoning, vision, parallel) |
+| `eval_comprehensive.py` | Math, code, reasoning, and multimodal quality suite |
+| `validate_capabilities.py` | Basic/reasoning/tool and applicable modality checks |
+| `check_awq_scales.py` | AWQ scale/qweight integrity, with optional BF16-base comparison |
 | `warmup.py` | Server warmup utility |
 
 ## Quality Evaluation
@@ -18,3 +20,9 @@ Designed to catch TP=2 precision errors:
 - Vision/multimodal regressions
 
 Run after kernel changes or patch updates to verify model quality.
+
+For AWQ ships, also run:
+
+```bash
+python scripts/eval/check_awq_scales.py /path/to/awq --base /path/to/bf16
+```

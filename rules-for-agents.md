@@ -1,263 +1,136 @@
-# Rules for AI Agents
+# Operational rules
 
-## Inference Engine
-**All inference MUST use SGLang** with our RDNA4 patches. vLLM Docker and llama.cpp are
-used ONLY for comparison benchmarks — never as the primary serving solution.
+These rules apply to automation and model work in this repository.
 
-## Hardware
-- 2x AMD Radeon AI PRO R9700 (gfx1201, RDNA4, Wave32)
-- 32 GB VRAM each, ROCm 7.2.1, Arch Linux
-- Consumer GPUs — NOT MI-series/CDNA. AITER not available.
+## Serving environment
 
-## Host OS gotchas (EndeavourOS / Arch)
+- Engine: SGLang only.
+- Default source: \`/data/sgl-v0515\`.
+- Default conda environment: \`sglang-triton36-v0515\`.
+- GPUs: 2× Radeon AI PRO R9700, gfx1201, 32 GiB each.
+- ROCm: 7.2.
+- Triton: 3.6.0.
+- AITER is unsupported on gfx1201 and must remain disabled.
 
-Bleeding-edge Arch bites in ways a Debian/Ubuntu eval box never would. These cost real hours
-during the FP8 SWE-bench bake-off (2026-06-05); document/apply them on any same-OS machine.
+Use \`scripts/common.sh\` to activate the environment and install the standard RDNA4 runtime variables.
 
-- **`/tmp` is a 31 GB tmpfs (RAM) — never put bulk job I/O there.** Repo clones, per-instance
-  uv venvs, build dirs, and model scratch will fill it in minutes → `ENOSPC` → **silent** failures
-  (empty outputs, *not* a crash — e.g. every SWE-bench rollout wrote an empty diff and scored 0/0).
-  Route everything to `/data` (1.8 TB NVMe): pass `--workdir`/`--venvdir`/output dirs under `/data`
-  and `export TMPDIR=/data/...` for builds. **Check `df -h /tmp` (Type=tmpfs) before any large job.**
+## Host requirements
 
-- **gcc is bleeding-edge (16.x) and defaults to C23 — it won't build old C extensions.** C23 makes
-  `nullptr` a reserved keyword and promotes `-Wincompatible-pointer-types` / `-Wimplicit-*` to hard
-  errors, so old bundled C (astropy's cfitsio, `fast_sigma_clip.c`, many scientific-Python C exts,
-  and potentially old kernel/Triton C) fails with `command '/usr/bin/cc' failed`,
-  `expected identifier before 'nullptr'`, or `initialization from incompatible pointer type`.
-  **Fix:** build with
-  ```bash
-  export CFLAGS="-std=gnu17 -Wno-error=incompatible-pointer-types -Wno-error=implicit-function-declaration -Wno-error=implicit-int -Wno-error=int-conversion -Wno-error=return-mismatch"
-  export CXXFLAGS="-std=gnu++17"
-  ```
-  `-std=gnu17` (revert to pre-C23) is the load-bearing flag; the `-Wno-error=*` cover the new
-  default-errors. (This is *not* a no-docker problem — docker eval images ship gcc <14.)
+TP=2 requires:
 
-- **Host-side SWE-bench scoring system deps** (we build test envs from source, no docker):
-  `sudo pacman -S --needed gcc-fortran openblas lapack freetype2 libpng gsl fftw pkgconf`
-  (scipy needs gfortran+BLAS, matplotlib needs freetype+libpng). And with
-  `PIP_NO_BUILD_ISOLATION=1`, pip **skips** the pyproject `[build-system].requires`, so pre-install
-  `cython extension-helpers setuptools_scm oldest-supported-numpy meson-python pybind11 ninja`
-  into the venv or editable builds fail at metadata gen (`ModuleNotFoundError: extension_helpers`).
+- \`CONFIG_HSA_AMD_P2P=y\`
+- \`CONFIG_PCI_P2PDMA=y\`
+- \`iommu=pt\` in the kernel command line
 
-- **`sudo` is NOPASSWD here** (see `feedback_sudoers_ordering` memory for the drop-in ordering gotcha),
-  so host fixes like the pacman installs above are scriptable without prompts.
+Verify before diagnosing collective performance:
 
-Host-side coding-agent scaffold wiring (opencode / little-coder / claw-code, no docker) is in
-[`evals/swebench/FP8_BAKEOFF_SETUP.md`](evals/swebench/FP8_BAKEOFF_SETUP.md).
+\`\`\`bash
+zcat /proc/config.gz | grep -E 'CONFIG_HSA_AMD_P2P|CONFIG_PCI_P2PDMA'
+grep -o 'iommu=pt' /proc/cmdline
+\`\`\`
 
-## RDNA4 Constraints
+On Arch Linux, use current \`pkgctl\` tooling rather than retired \`asp\` workflows. Do not replace distro ROCm or RCCL packages casually; this repository assumes the system ROCm layout under \`/opt/rocm\`.
 
-### Triton
-- Triton 3.6 generates valid gfx1201 ISA but is fragile in multi-kernel context
-- AWQ GEMM uses dequant+matmul (no Triton) for M>1, HIP GEMV for M=1
-- sgl_kernel.topk_softmax crashes — replaced with torch-native topk in topk.py
-- FP8 WMMA instruction works but Arch comgr generates invalid HSACO for FP8 kernels
+## Safe GPU operation
 
-### Server Launch
-- Always: `--disable-cuda-graph --disable-custom-all-reduce --disable-overlap-schedule`
-- Always: `--attention-backend triton` (or `torch_native` as fallback)
-- Always: `PYTHONDONTWRITEBYTECODE=1` and clear `__pycache__` before testing changes
-- Always: source `scripts/common.sh`, `activate_conda`, `setup_rdna4_env` — this sets
-  `LD_LIBRARY_PATH` for libc10.so and `PYTHONPATH` for HIP GEMV kernel
-- `@torch.compile` stalls 30+ min on ROCm — disabled in patches
+Before launching a server or benchmark:
 
-### Triton Cache
-- Triton kernels compile on first use for each unique shape — this takes 2+ seconds per kernel
-- **Never clear the Triton cache** (`~/.triton/cache/` or `$TRITON_CACHE_DIR`) without expecting cold-start latency
-- After clearing cache, the first ~10 requests will be extremely slow (2s+ per token) as kernels recompile
-- Always warm the cache before benchmarking: send several varied requests first
-- A cold Triton cache can make 35 tok/s appear as 0.5 tok/s — this is NOT a regression
+\`\`\`bash
+pgrep -af 'calibrat|llmcompressor|oneshot|GPTQModifier|quantize_|run_reap|merge.py'
+pgrep -af 'sglang.launch_server|launch_server.py'
+\`\`\`
 
-### GPU Recovery
-- After hang/reset, wait 10-15 seconds before retrying
-- Check `dmesg` for amdgpu reset messages
+Never overlap model serving with calibration, pruning, large checkpoint conversion, or another server. These jobs compete for RAM, PCIe bandwidth, and page cache, invalidating measurements and risking OOM termination.
 
-## Quantization Pipeline
+Use the repository watchdog for long-running servers. If one TP rank stalls, capture process stacks before cleanup when possible.
 
-All models served on SGLang use **AWQ 4-bit** format. The pipeline produces weights at each step:
+## SGLang changes
 
-```
-BF16 model → GPTQ calibration (llmcompressor, quant env) → compressed-tensors → CT→AWQ conversion → native AWQ
-```
+- Edit the live v0.5.15 tree only for experiments intended for that stack.
+- Retained changes must become atomic numeric patches.
+- Replay the full series from pristine v0.5.15 after every patch edit.
+- Require strict application, path/mode equivalence, and focused tests.
+- Preserve unrelated user changes in both repositories and live source trees.
+- Keep opt-out environment switches for risky backend-specific optimizations until their fallback has been validated.
 
-Both intermediate formats are loadable by SGLang:
-- **AWQ** (preferred): `--quantization awq` — uses our Triton AWQ GEMM + HIP GEMV kernels
-- **compressed-tensors** (fallback): `--quantization compressed-tensors` — if CT→AWQ conversion degrades quality, load the CT weights directly. Uses Marlin on CUDA or torch dequant on RDNA4.
+## Quantization pipeline
 
-### Environment Setup
+Use the separate \`quant\` environment for calibration. A typical build is:
 
-**CRITICAL: Use a separate conda env.** llmcompressor conflicts with SGLang deps.
+1. Start from the upstream BF16 checkpoint.
+2. Apply REAP/REAM only when expert pruning or merging is required.
+3. Calibrate with the model’s real capabilities represented.
+4. Export compressed-tensors weights.
+5. Convert to the native AWQ layout when that is the validated serving path.
+6. Merge any preserved BF16 vision or state-space components.
+7. Audit weights and scales against the BF16 base.
+8. Launch and validate all applicable capabilities.
+9. Run long-context coherence and performance checks.
 
-```bash
-conda create -n quant python=3.12 -y
-conda activate quant
-pip install llmcompressor transformers compressed-tensors accelerate datasets safetensors sentencepiece protobuf
+Never publish a third-party quantization as a local ship. Community artifacts may be used as baselines or compatibility probes.
 
-# Or install dev versions for latest model support:
-pip install git+https://github.com/vllm-project/llm-compressor.git --no-deps
-pip install git+https://github.com/neuralmagic/compressed-tensors.git --no-deps
-```
+## Calibration coverage
 
-**Why a separate env?**
-- llmcompressor pins `transformers==4.x`, SGLang needs `transformers>=5.x`
-- llmcompressor pulls `compressed-tensors` which conflicts with SGLang's quantization code
-- **Installing llmcompressor into sglang-triton36 WILL break SGLang**
+Calibration data must cover every behavior the ship promises:
 
-### Step 1: GPTQ calibration (quant env, CPU)
-```
-BF16 model → llmcompressor oneshot GPTQ → compressed-tensors (CT) format
-```
-- Always `CUDA_VISIBLE_DEVICES=""` — run on CPU only
-- Drop caches first: `echo 3 | sudo tee /proc/sys/vm/drop_caches`
-- Output: compressed-tensors safetensors with `weight_packed` + `weight_scale` per layer
-- Use `scheme="W4A16"` for standard group_size=128
-- Use `config_groups` with `QuantizationScheme` for custom group_size
+- code and tool use for coding models;
+- reasoning for thinking models;
+- image/video/audio for multimodal models;
+- representative chat roles and multi-turn tool results.
 
-### Step 2: CT → AWQ conversion (either env)
-```
-compressed-tensors → native AWQ format (qweight + scales + qzeros)
-```
-- Uses `torch` + `safetensors` only — can run in either env
-- Use model-specific converter (e.g. `convert_gemma4_31b_ct_to_awq.py`, `convert_qwen35_ct_to_awq.py`)
-- **Clamp scales** to [-65504, 65504] before `.to(torch.float16)` to prevent inf overflow
-- Verify output: `torch.isinf(scales).any()` must be False for every tensor
-- **Do NOT mix formats**: compressed-tensors (`weight_packed`) and GPTQ (`qweight/g_idx`) are different formats — use the correct converter for your input
+MoE calibration needs enough samples to activate rare experts. Do not infer expert coverage from aggregate loss alone.
 
-### Step 3: Post-processing fixes (if needed)
-```
-AWQ checkpoint → fix naming, dequant router, verify
-```
-- Expert naming: must be `experts.{id}.{proj}.{suffix}` (SGLang format)
-- Router: if quantized by GPTQ, dequant back to BF16
-- Use `scripts/quantize/fix_gemma4_awq_checkpoint.py` as reference
+Keep DeltaNet, Mamba/SSM recurrent projections, routers, gates, embeddings, output heads, and fragile multimodal components in their validated dtype unless a dedicated experiment proves safe quantization.
 
-### Dense model calibration
-- No monkey-patching needed — all layers are nn.Linear
-- 128 samples × 512 tokens is sufficient
-- Examples: `scripts/quantize/quantize_devstral_code_vision.py`, `scripts/quantize/quantize_qwen35_thinking_aware.py`
+## AWQ integrity
 
-### MoE model calibration — CRITICAL
-Standard GPTQ/AWQ **FAILS** for MoE models due to expert routing imbalance (MoEQuant, ICML 2025):
-1. **Inter-expert imbalance**: uneven routing → rarely-activated experts get zero/garbage
-   calibration. We hit this on Gemma 4 26B: expert 0 calibrated, experts 1-127 got inf scales.
-2. **Intra-expert imbalance**: samples have varying correlation with different experts.
+Run:
 
-**MoE calibration rules:**
-- Use **at least 512 calibration samples** with sequence length ≥1024
-- **Verify all experts receive calibration data** — check CT output scales for inf/nan/zero
-- For fused expert Parameters (Gemma4TextExperts): monkey-patch to per-expert nn.Linear
-  BEFORE loading, otherwise GPTQ skips expert calibration
-- After conversion, **always check scales**: `torch.isinf(scales).any()` must be False
-- Consider **GPTQModel** with `MoE.Routing` FailSafe mode for expert-balanced calibration
-- Consider **MoEQuant EBSS** (Expert-Balanced Self-Sampling) for proper MoE quantization
-- Example: `scripts/quantize/quantize_gemma4_26b_thinking_vision.py` → `convert_gemma4_26b_ct_to_awq.py` (uses `moe_calibrate_all_experts=True` + unfused-experts wrapper)
+\`\`\`bash
+python scripts/eval/check_awq_scales.py /path/to/awq --base /path/to/bf16
+\`\`\`
 
-### DeltaNet/Mamba/SSM layers — DO NOT quantize to INT4
-Models with recurrent state (DeltaNet, Mamba, SSM) accumulate quantization error across
-tokens via `S(t) = gating * S(t-1) + delta`. INT4 quantization destroys output quality.
-- **Coder-Next 80B / Qwen3.5-27B**: DeltaNet + attention layers are intentionally BF16
-- Community AWQ checkpoints use `modules_to_not_convert` to skip these — this is correct
-- The resulting BF16 weight reads (~2.4 GB/token for 36 DeltaNet layers) limit decode
-  speed to ~15 tok/s on our hardware — this is the architectural limit, not a bug
+The checker validates scale tensors and packed weights. The base comparison distinguishes structural dead-channel zero scales from zero scales over live weights. An unmapped or shape-mismatched zero remains flagged.
 
-### AWQ checkpoint format rules
-- Expert naming: `experts.{id}.{proj}.{suffix}`, not `experts.{proj}.{id}.{suffix}`
-- Router projection: dequant to BF16 if GPTQ quantized it (SGLang creates router unquantized)
-- Activation fn: `AWQTritonMoEMethod` reads `MoeRunnerConfig.activation` — Gemma4=gelu, Qwen=silu
+For conversion correctness, compare dequantized weights against the source tensor and investigate any substantial cosine-similarity or magnitude loss.
 
-## Diagnostics
+## Chat and capability validation
 
-### Chat template verification
-Before debugging model output quality, **always verify the chat template is loaded**:
-```python
-from transformers import AutoTokenizer
-t = AutoTokenizer.from_pretrained("path/to/tokenizer", trust_remote_code=True)
-# Must have chat_template — if None, SGLang uses a generic default
-assert t.chat_template is not None, "Missing chat_template in tokenizer_config.json!"
-# Verify formatting
-msgs = [{"role": "user", "content": "Hello"}]
-print(t.apply_chat_template(msgs, tokenize=False, add_generation_prompt=True))
-```
-If `chat_template` is missing from `tokenizer_config.json` but a `chat_template.jinja` file
-exists, embed it: read the jinja file and add it as the `chat_template` field in
-`tokenizer_config.json`. SGLang reads from the tokenizer, not the standalone jinja file.
+For every model:
 
-### AWQ weight quality verification
-After any CT→AWQ or GPTQ→AWQ conversion, verify weight quality with cosine similarity:
-```python
-# For each projection in the model, compare AWQ dequant vs BF16 source:
-x = torch.randn(1, in_dim, dtype=torch.float16)
-y_awq = x.float() @ dequant_weight.float()
-y_bf16 = x.float() @ bf16_weight.float().T
-cos = F.cosine_similarity(y_awq, y_bf16, dim=-1)
-# Must be >0.99 for all projections. Below 0.95 = broken conversion.
-```
-Known issue: CT→AWQ conversion with group_size=32 produces poor quality for large output
-dimensions (q_proj cosine ~0.84, gate_proj ~0.92). This is a conversion bug, not a model bug.
+- confirm the checkpoint supplies the intended chat template;
+- confirm special tokens encode as single IDs;
+- select the matching reasoning and tool-call parsers;
+- test a real structured tool call and a multi-turn tool result;
+- use content-specific vision/video/audio probes;
+- verify long-context output is coherent, not merely allocatable.
 
-### FP16 overflow detection
-Large dense models (hidden_size > 4096) can overflow FP16 range (65504) during MLP:
-- Add per-layer sync + range check: `torch.cuda.synchronize(); print(hidden_states.max())`
-- If MLP output exceeds ~10000, the model needs BF16 activations
-- Fix: `--dtype bfloat16` + AWQ BF16 support patch (see awq.py get_supported_act_dtypes)
+Keyword presence alone is not a multimodal correctness test.
 
-## Benchmarking
+## Benchmark methodology
 
-### Methodology
-- **Always use `sglang.bench_serving`** for performance numbers — it measures TPOT (Time Per Output Token) and TTFT (Time To First Token) separately from prefill
-- **Never use wall-clock-time / total-tokens** — this mixes prefill and decode, producing misleadingly low tok/s numbers
-- Concurrency sweep: 1, 2, 4, 8, 16, 32
-- Context sweep: all powers of 2 from 128 up to the model's max context length
-- Default benchmark: `--random-input 256 --random-output 256 --num-prompts 4 --request-rate 1` (single user)
-- Save to `benchmarks/{model}/results.json` (structured data) and `benchmarks/{model}/README.md` (prose + comparison tables)
-- After updating results.json, **always regenerate charts**: `python scripts/bench/generate_charts.py`
-- Charts are embedded in README.md — all context charts use a unified 256K x-axis for comparison
-- Concurrency charts must show OOM for levels that exceed VRAM (don't just omit them)
-- Run `scripts/eval/eval_comprehensive.py` after kernel changes
-- Always use timeouts on GPU/Docker commands
-- DeltaNet hybrid models: throughput is flat (VRAM-limited by BF16 weight reads)
+Single-user decode is the primary metric. Record:
 
-### Regression detection
-After any patch change, **run the regression test before committing**:
-```bash
-# Launch the model, then:
-./scripts/bench/bench_regression.sh devstral   # Test against baseline
-BASELINE=save ./scripts/bench/bench_regression.sh devstral  # Save new baseline
-```
+- exact model/checkpoint;
+- source commit and patch stack;
+- actual input and output token counts;
+- TP size, graph state, attention/MoE backend, KV dtype, and memory fraction;
+- warm/cold cache state;
+- individual runs and the reported statistic;
+- output coherence and capability result.
 
-- Baselines stored in `benchmarks/baselines.json`
-- Regression threshold: >10% TPOT increase or >10% throughput decrease
-- **Key metrics:** single-user TPOT (ms), single-user throughput (tok/s), multi@8 throughput (tok/s)
-- Always run regression test on a clean system (no other GPU/CPU-heavy processes)
+Keep comparison methods identical. Do not compare a server-log throughput number with a streaming-TPOT number as if they were the same metric.
 
-## Model Status
+At least one deep-context point must use diverse real content. Repetitive filler can inflate prefix reuse and speculative acceptance.
 
-See [README.md](README.md) for current model status, benchmarks, and known issues.
+## Regression policy
 
-## GPTQ → AWQ Conversion
+A change is retained only when it:
 
-When converting GPTQ-calibrated models to AWQ format for HIP GEMV:
+1. passes an isolated correctness check;
+2. improves the intended serving metric or capacity;
+3. preserves coherent output;
+4. survives a reverse or fallback A/B when practical;
+5. does not silently broaden risk to unrelated model families.
 
-### Key differences between GPTQ and AWQ INT4 formats
-- **Packing axis**: GPTQ packs 8 values along **input** dim → qweight `[in/8, out]`. AWQ packs along **output** dim → qweight `[in, out/8]`.
-- **Bit order**: GPTQ is sequential (0,1,2,3,4,5,6,7). AWQ is interleaved (0,4,1,5,2,6,3,7).
-- **Zero point**: GPTQ symmetric uses zp=7. AWQ typically uses zp=8. **Preserve the source zero point** in qzeros — don't hardcode 8.
-- **g_idx**: GPTQ includes activation group indices; AWQ doesn't use them. Drop `g_idx` during conversion.
-- **Scales**: Same format `[num_groups, out_features]` in both — copy directly.
-
-### Conversion steps
-1. Unpack GPTQ qweight `[in/8, out]` → full int8 `[in, out]` (sequential bit extraction)
-2. Repack as AWQ qweight `[in, out/8]` using AWQ interleaved bit order
-3. Repack qzeros from sequential to AWQ interleaved (preserving original zp values)
-4. Copy scales as-is (both use `[num_groups, out_features]`)
-5. Drop `g_idx` tensors
-6. Skip vision tower weights (text-only inference)
-7. Update config: `quant_method: awq`, `version: gemm`, `zero_point: true`
-
-### Verification
-Always verify conversion by comparing dequantized values:
-```
-dequant = (q_val - zero_point) * scale
-```
-GPTQ and AWQ should produce identical dequantized weights for the same layer.
+Document rejected experiments in [benchmarks/FINDINGS.md](benchmarks/FINDINGS.md) as final dispositions, not chronological debugging narratives.

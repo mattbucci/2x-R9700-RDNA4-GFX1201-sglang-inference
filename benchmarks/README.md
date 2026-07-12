@@ -1,104 +1,67 @@
 # Benchmarks
 
-Performance data for all models on 2x AMD Radeon AI PRO R9700 (gfx1201, RDNA4), TP=2.
+Measurements for tensor-parallel inference on two AMD Radeon AI PRO R9700 GPUs (gfx1201). Results are
+only comparable when the model, SGLang stack, context depth, graph mode, quantization, and measurement
+method match.
 
-## Models
+## Current v0.5.15 results
 
-| Model | Single tok/s | Peak tok/s | Comparisons |
-|-------|:------------:|:----------:|:-----------:|
-| [Devstral-24B AWQ](devstral-24b-awq/) | 37 | 841 @32 | — |
-| [Coder-30B AWQ MoE](coder-30b-awq/) | 30 | 332 @32 | vLLM FP8, llama.cpp |
-| [Gemma 4 26B AWQ MoE](gemma4-26b-awq/) | 30 | 165 @32 | — |
-| [Coder-Next 80B AWQ](coder-next-80b-awq/) | 24 | 25 @8 | llama.cpp |
-| [Qwen3.5-27B AWQ](qwen35-27b-awq/) | 26 | 55 @16 | — |
-| [North Mini Code FP8](north-mini/) | **71.1** | — | final 074–082 stack; coherent through input 219,352 |
-| [Laguna XS.2 FP8](laguna-xs2/) | **49.0** | — | reverse-confirmed fused-KV A/B; coherent at input 220,277 |
+The current focused campaign used ROCm 7.2, TP=2, Triton attention/MoE, FP8 weights and KV cache, and
+HIP graph capture at batch size 1.
 
-North/Laguna stage-by-stage results, method caveats, and rejected experiments are in the focused
-[`v0.5.15 R9700 receipt`](north-laguna-v0515-r9700-2026-07-12.md). The README at the repo root remains
-the single source of truth for the full model fleet, FP8 numbers, and spec-decode coverage.
+| Model | Input tokens | Decode tok/s | Correctness |
+|---|---:|---:|---|
+| [North Mini Code FP8](north-mini/) | 128 / 29,357 / 117,048 / 219,352 | **71.053 / 60.714 / 42.298 / 33.905** | 34/36; tool call passed |
+| [Laguna XS.2 FP8](laguna-xs2/) | 62 / 7,403 / 58,785 / 220,277 | **48.999 / 47.485 / 39.959 / 29.270** | 34/36; capabilities 2/2; tool call passed |
 
-## Per-Model Directory
+See the [v0.5.15 receipt](north-laguna-v0515-r9700-2026-07-12.md) and its
+[structured data](north-laguna-v0515-r9700-2026-07-12.json) for configuration, A/B controls, and test
+counts.
 
-Each model directory contains:
+## Reference model data
 
-- **`README.md`** — Results with context sweep, throughput sweep, engine comparisons, and notes
-- **`results.json`** — Structured data from `scripts/bench/bench_all_unified.py`
+These cards describe the checked-in JSON data and are not claims about the current stack.
 
-## Benchmark Method
+| Model | Measurement date | Data |
+|---|---|---|
+| [Coder-30B AWQ](coder-30b-awq/) | 2026-06-01 | Context and concurrency sweep, graph enabled |
+| [Devstral-24B AWQ](devstral-24b-awq/) | 2026-05-31 | Context and concurrency sweep |
+| [Gemma 4 26B AWQ](gemma4-26b-awq/) | 2026-04-11 | 4K context and concurrency sweep |
+| [Qwen3.5-27B AWQ](qwen35-27b-awq/) | 2026-04-12 | 16K context sweep |
 
-### Key principle: always measure TPOT, not wall clock
+Final experiment conclusions are consolidated in [FINDINGS.md](FINDINGS.md).
 
-**Never divide completion_tokens by total wall-clock time.** That mixes prefill and decode latency, producing misleadingly low tok/s (e.g. 16 tok/s instead of 78 tok/s for the same model).
+## Measurement method
 
-Instead, use `sglang.bench_serving` which measures:
-- **TPOT** (Time Per Output Token) — pure decode latency per token
-- **TTFT** (Time To First Token) — prefill latency
-- **Output token throughput** — aggregate decode tok/s
+Use TPOT for single-user decode speed:
 
-### SGLang (primary)
-
-```bash
-# Quick regression test against baseline
-./scripts/bench/bench_regression.sh devstral
-
-# Save a new baseline after verified patch
-BASELINE=save ./scripts/bench/bench_regression.sh devstral
-
-# Full benchmark suite with charts
-python scripts/bench/bench_all_unified.py --name "Model Name" --port 23334 --output benchmarks/model/results.json
+```text
+decode tok/s = 1000 / median TPOT_ms
 ```
 
-Two sweeps per model:
-1. **Context sweep** — Single-user, `sglang.bench_serving` with `--random-input N --random-output 256`, input length from 128 to model max context. Reports TPOT at each context length.
-2. **Throughput sweep** — Concurrency 1/2/4/8/16/32, `--random-input 256 --random-output 256`. Reports aggregate output tok/s.
+Do not divide output tokens by total request time; that mixes prefill latency with decode latency.
+Report actual input tokens, output length, run count, graph mode, and whether the value came from TPOT
+or server-log generation throughput.
 
-### Regression detection
-
-Run after every patch change, before committing:
 ```bash
+# Fast regression check
 ./scripts/bench/bench_regression.sh <model>
-```
-- Compares TPOT and throughput against stored baselines (`benchmarks/baselines.json`)
-- Flags regressions >10% slower
-- Must run on clean system (no other GPU/CPU-heavy processes — a background GPTQ calibration can cause 5x slowdown)
 
-### vLLM Docker (comparison)
+# Context and concurrency sweeps
+python scripts/bench/bench_all_unified.py \
+  --name "Model Name" --port 23334 --output benchmarks/<model>/results.json
 
-```bash
-./scripts/bench/bench_vllm_docker.sh [hf_model_id] [label]
-```
-
-Runs `vllm/vllm-openai-rocm` Docker image with FP8 quantization. Uses `sglang.bench_serving` for throughput sweep (256 in / 256 out). Only used for models where SGLang FP8 is blocked (Arch `comgr` bug).
-
-### llama.cpp (comparison)
-
-```bash
-./scripts/bench/bench_llamacpp.sh <model.gguf> [label]
-```
-
-Runs `llama-bench` for raw kernel performance (pp256, tg256) with Vulkan backend on 2 GPUs via layer split. Single-user only — no batched serving.
-
-### Quality Evaluation
-
-```bash
+# Text quality: 36 tests; supported vision models add 3 tests
 python scripts/eval/eval_comprehensive.py --port 23334 --parallel 4
 ```
 
-39-test suite covering math, code generation, reasoning, edge cases, parallel execution, and vision. Designed to catch TP=2 precision errors.
+Run one server at a time on an otherwise idle system. For speculative decoding, measure at the real KV
+depth with non-repetitive content; a short prompt on a large-capacity server is not a long-context result.
 
-## Scripts (in `scripts/bench/`)
+## Data layout
 
-| Script | Purpose |
-|--------|---------|
-| `bench_all_unified.py` | Primary benchmark — context + throughput sweep, JSON output |
-| `bench_comprehensive.sh` | Shell wrapper using `sglang.bench_serving` with concurrency sweep |
-| `bench_all_models.sh` | Launches each model server and runs benchmarks sequentially |
-| `bench_quick.sh` | Fast 3-point check (1/8/16 concurrent) for A/B testing patches |
-| `bench_long_context.py` | Context-length-specific sweep via `/v1/completions` |
-| `bench_llamacpp.sh` | llama.cpp Vulkan benchmark (`llama-bench` + optional server) |
-| `bench_vllm_docker.sh` | vLLM ROCm Docker benchmark (FP8, `sglang.bench_serving`) |
-
-## Raw Data
-
-The `raw/` directory contains JSONL output from `sglang.bench_serving` runs.
+- Per-model `results.json` files are immutable inputs for their charts.
+- The current North/Laguna campaign uses the consolidated JSON linked above.
+- `raw/` contains retained `sglang.bench_serving` JSONL output.
+- Benchmark and diagnostic harnesses live in `scripts/bench/`, `scripts/eval/`, `scripts/debug/`, and
+  `scripts/test/`.

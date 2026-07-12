@@ -9,7 +9,7 @@ Development and investigation tools. Not part of the production workflow.
 | `test_tp2_attn.py` | Test TP=2 attention layer correctness |
 | `test_tp2_moe.py` | Test TP=2 MoE dispatch correctness |
 | `test_tp2_quality.py` | End-to-end TP=2 quality validation |
-| `test_triton_kernels.py` | Test individual Triton kernels (torch 2.11 vs 2.12) |
+| `test_triton_kernels.py` | Test individual Triton kernels in the current environment |
 
 ## AWQ Tuning
 

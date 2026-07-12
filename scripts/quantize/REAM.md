@@ -1,129 +1,70 @@
-# MoE Expert Compression: REAM & REAP
+# REAM and REAP expert compression
 
-Two methods to shrink MoE models by reducing expert count. Both run on CPU with ~60GB RAM.
+REAM merges experts; REAP removes low-impact experts. Both reduce total MoE weight storage while leaving the active-expert count per token unchanged.
 
-| Method | What it does | Quality | Code |
-|--------|-------------|---------|------|
-| **REAM** | Merges expert groups | >=94% retained | [SamsungSAILMontreal/ream](https://github.com/SamsungSAILMontreal/ream) |
-| **REAP** | Prunes low-impact experts | Better on generative tasks | [CerebrasResearch/reap](https://github.com/CerebrasResearch/reap) |
+Compression is useful when it improves decode bandwidth or frees KV capacity, but it is not quality-neutral. Every compressed variant must be compared with its uncompressed base on the intended agentic scaffold.
 
-## Why compress?
+## Repository entry points
 
-With 64GB VRAM (2x R9700), MoE models fit comfortably at AWQ 4-bit. Compression helps by:
-- Reducing weight reads per token (faster decode for bandwidth-bound models)
-- Freeing VRAM for larger KV cache (longer context or more concurrent users)
-- Making DeltaNet hybrid models practical (DeltaNet layers stay BF16, so MoE expert savings matter more)
+| Tool | Purpose |
+|---|---|
+| \`run_reap.py\` | Local pruning and saliency workflow |
+| \`run_ream_qwen3moe.sh\` | Clone and run Samsung SAIL REAM with local patches |
+| \`quantize_qwen35_moe_ream.py\` | Calibrate a compressed Qwen3.5/3.6 MoE |
+| \`convert_moe_ct_to_awq.py\` | Convert calibrated MoE weights to native AWQ |
+| [ream-patches/](../../ream-patches/README.md) | Merger memory and checkpoint-recovery fixes |
 
-## Candidate models
+Current architecture coverage is strongest for Qwen3-family MoE checkpoints. Gemma and Mamba2-hybrid layouts require explicit model support before use.
 
-### Primary target: Qwen3.5-35B-A3B (DeltaNet hybrid MoE)
+## Resource planning
 
-35B total / 3B active, 256 experts, 40 layers (30 DeltaNet + 10 full attention).
-Same hybrid architecture as Qwen3.5-27B but with MoE FFN blocks instead of dense MLP.
+Large merges normally require:
 
-| Variant | Experts | ~Params | AWQ est. | Notes |
-|---------|:-------:|:-------:|:--------:|-------|
-| Full | 256 | 35B | ~18 GB | Fits 2x R9700, plenty of KV cache room |
-| REAM 75% | 192 | ~27B | ~14 GB | Sweet spot: minimal quality loss |
-| REAP 50% | 128 | ~20B | ~10 GB | Aggressive but may be OK for coding |
+- roughly 70 GiB or more of system RAM;
+- source BF16, compressed BF16, calibration output, and final checkpoint storage;
+- several hours for saliency/merging plus calibration;
+- a detached process with persistent logs and checkpoints.
 
-DeltaNet layers MUST stay BF16 — INT4 quantization destroys recurrent state quality (same as Qwen3.5-27B and Coder-Next).
+Do not run serving workloads concurrently.
 
-### Pre-made REAP variants on HuggingFace
+## Workflow
 
-| Model | Experts | Pruned | Source |
-|-------|:-------:|:------:|--------|
-| [0xSero/Qwen-3.5-28B-A3B-REAP](https://huggingface.co/0xSero/Qwen-3.5-28B-A3B-REAP) | 205/256 | 20% | BF16, MMLU 80.9 (-3.4pp) |
-| [atbender/Qwen3.5-REAP-20B-A3B](https://huggingface.co/atbender/Qwen3.5-REAP-20B-A3B) | 128/256 | 50% | BF16 + W4A16 AutoRound |
+\`\`\`bash
+# REAP example
+setsid bash -lc '
+  conda activate quant
+  CUDA_VISIBLE_DEVICES="" python -u scripts/quantize/run_reap.py \
+    --model /path/to/bf16 \
+    --save-path /path/to/reap-bf16 \
+    --keep-experts 96
+' > /data/logs/reap.log 2>&1 < /dev/null &
 
-No AWQ versions exist — must self-calibrate with DeltaNet-aware pipeline.
+# REAM wrapper
+setsid bash -lc '
+  conda activate quant
+  scripts/quantize/run_ream_qwen3moe.sh /path/to/bf16 /path/to/ream-bf16
+' > /data/logs/ream.log 2>&1 < /dev/null &
 
-### Other MoE models (pure MoE, no DeltaNet)
+# Calibrate and convert
+CUDA_VISIBLE_DEVICES="" python scripts/quantize/quantize_qwen35_moe_ream.py \
+  --model /path/to/compressed-bf16
+python scripts/quantize/convert_moe_ct_to_awq.py /path/to/ct /path/to/awq
 
-| Model | Params | Experts | After | AWQ est. | Method | Status |
-|-------|--------|:-------:|:-----:|:--------:|--------|--------|
-| Qwen3-Coder-30B | 30B | 128 | 96 (23B) | ~12 GB | REAM/REAP | Already working at 128 experts |
-| Gemma 4 26B MoE | 26B | 128 | 103 (21B) | ~10 GB | REAP | Already working at 128 experts |
-| Qwen3-Coder-REAP-25B | 25B | 103 | — | ~13 GB | REAP | [Pre-made](https://huggingface.co/cerebras/Qwen3-Coder-REAP-25B-A3B) |
+# Integrity gate
+python scripts/eval/check_awq_scales.py /path/to/awq --base /path/to/compressed-bf16
+\`\`\`
 
-## REAM Setup (SamsungSAIL)
+Keep DeltaNet, Mamba/SSM, routers, gates, and other ignored components in their validated dtype.
 
-REAM merges experts instead of dropping them. Currently supports **Qwen3** and **GLM** only.
-Qwen3.5 MoE may need model support added (similar architecture to Qwen3 MoE).
+## Acceptance criteria
 
-```bash
-git clone https://github.com/SamsungSAILMontreal/ream.git
-cd ream
-conda create -n ream python=3.12 -y
-conda activate ream
-pip install -r requirements.txt
-```
+A compressed ship must:
 
-### REAM Qwen3.5-35B-A3B (256 -> 192 experts)
+1. load all expected expert weights and scales;
+2. pass the BF16-base integrity audit;
+3. preserve reasoning, tools, and modalities;
+4. remain coherent at long context;
+5. beat or materially shrink the uncompressed serving option;
+6. pass a same-scaffold quality comparison.
 
-```bash
-# Code-heavy calibration mix
-CUDA_VISIBLE_DEVICES="" python merge.py \
-    --model Qwen/Qwen3.5-35B-A3B \
-    --merge_size 192 \
-    --saliency reap \
-    --merging logits+weights \
-    --grouping ream \
-    --dataset "c4+math+code" \
-    --mix_ratio "0.0,0.3,0.7" \
-    --save_path ~/AI/models/Qwen3.5-35B-A3B-REAM-BF16
-```
-
-**Note:** If REAM doesn't support `qwen3_5_moe` yet, you may need to add it:
-1. Check REAP's `src/reap/model_util.py` for the model's `MODEL_ATTRS` entry
-2. Add the same tokenizer/model detection to REAM's `merge.py`
-3. Port the MoE layer access patterns to REAM's `merger.py`
-
-## REAP Setup (Cerebras)
-
-REAP supports more model families out of the box. Wider architecture coverage.
-
-```bash
-git clone https://github.com/CerebrasResearch/reap.git
-cd reap
-bash scripts/build.sh
-```
-
-### REAP Qwen3.5-35B-A3B (256 -> 192 experts)
-
-```bash
-bash experiments/pruning-cli.sh 0 \
-    Qwen/Qwen3.5-35B-A3B \
-    reap 42 0.25 \
-    "theblackcat102/evol-codealpaca-v1:4096,open-r1/Mixture-of-Thoughts[code]:4096,open-r1/Mixture-of-Thoughts[math]:4096" \
-    true true false false false
-```
-
-## After compression: quantize to AWQ
-
-The compressed BF16 model goes through the standard DeltaNet-aware pipeline:
-
-```bash
-source scripts/common.sh && activate_conda && setup_rdna4_env
-
-# Full pipeline (GPTQ calibration + CT->AWQ conversion)
-./scripts/quantize/quantize_qwen35_moe_ream.sh
-
-# Or step by step:
-# Step 1: GPTQ calibration (CPU, ~6-8h, skips DeltaNet layers)
-CUDA_VISIBLE_DEVICES="" python scripts/quantize/quantize_qwen35_moe_ream.py
-
-# Step 2: CT -> AWQ conversion (preserves DeltaNet layers in BF16)
-python scripts/quantize/convert_moe_ct_to_awq.py \
-    ~/AI/models/Qwen3.5-35B-A3B-REAM-AWQ-CT \
-    ~/AI/models/Qwen3.5-35B-A3B-REAM-AWQ
-```
-
-**DeltaNet handling:** The calibration script excludes `in_proj_a`, `in_proj_b` (DeltaNet gates, dim 48) from INT4 quantization. The CT->AWQ converter preserves all non-quantized layers (including DeltaNet recurrent weights) in their original dtype.
-
-## Requirements
-
-- **RAM**: ~70GB (BF16 model loaded on CPU + GPTQ Hessians)
-- **GPU**: Optional — speeds up saliency computation but not required
-- **Disk**: ~140GB (source BF16 + REAM BF16 + CT + AWQ outputs)
-- **Time**: Several hours for REAM/REAP merging, then ~6-8 hours for GPTQ calibration
+If quality falls materially, retain the artifact for research but remove it from recommended presets and tables.

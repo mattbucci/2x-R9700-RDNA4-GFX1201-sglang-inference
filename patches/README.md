@@ -1,438 +1,180 @@
-# SGLang v0.5.15 RDNA4 Patches (rebased from v0.5.14)
+# SGLang v0.5.15 RDNA4 patches
 
-> ✅ **v0.5.15 LIVE; NORTH/LAGUNA EXTENSION 2026-07-12.** The current series targets **v0.5.15**
-> (tag `d80c135a`) in `/data/sgl-v0515` + fresh env `sglang-triton36-v0515` — **56 patches**. The original
-> 2026-07-11 promotion contained 47 patches (real `git rebase --onto`; upstream
-> delta v0.5.14→v0.5.15 was large: **547 commits / 1789 files**, yet only **4 conflicts** — 004 topk
-> `_is_hip` vs upstream's new `_is_cuda` JIT router, 005 fp8 `_is_rdna4_device` vs `materialize_bpreshuffle_fp8_scale`,
-> 062 cohere2 hybrid-SWA vs `UnlimitedOCRForCausalLM`, 073 mamba-radix **relocated** to the new
-> `arg_groups/overrides.py` post-process pass). **1 dropped (064 ministral3 keyword-init — upstreamed:
-> v0.5.15 adopted keyword-binding + `start_layer` itself).** 3-gate equivalence audit: 47/47 apply to
-> pristine v0.5.15, **byte-equal** to the rebased tree, only 026 the benign re-appliable exception (same as
-> v0.5.14). Import smoke 29/29. GPU: coder-30b `eval_comprehensive` 35/36 + cuda-graph clean (pre-warm-nccl
-> holds), qwen36-moe caps 3/3 + mamba `no_buffer` (073), gemma4 caps **4/4 incl. video**, North-Mini
-> `SWARadixCache hybrid_swa=True` (062) + FP8. **Rollback** = the retained v0.5.14 stack (`/data/sgl-v0514`,
-> env `sglang-triton36-v0514`). Full receipt: [v0515-rebase-2026-07-11.md](v0515-rebase-2026-07-11.md).
->
-> **Post-promotion 074–082:** compressed-tensors FP8-KV metadata/loading, model-aware MoE tuning,
-> sigmoid-topk HIP fallback, mixed-head/FP8-KV attention correctness, measured gfx1201 MoE configs,
-> fused HIP sigmoid routing + native Laguna BF16 gate, a Laguna-scoped BF16 attention collective,
-> one-launch HIP Triton RMSNorm/fused q-k norm, and a fused static-scale FP8 K/V cache store. Final
-> focused results are North **71.053 tok/s** short and Laguna **48.999 tok/s** short; Laguna's
-> reverse-confirmed fused-store A/B is +2.57%/+20.70%/+46.89% across the three measured depths. Patch
-> 003 is also revised in place for the CUDA-only
-> `sgl_kernel.infllm_v2` import from [issue #3](https://github.com/mattbucci/2x-R9700-RDNA4-GFX1201-sglang-inference/issues/3).
-> Extension receipt: [v0515-north-laguna-2026-07-12.md](v0515-north-laguna-2026-07-12.md); performance:
-> [north-laguna-v0515-r9700-2026-07-12.md](../benchmarks/north-laguna-v0515-r9700-2026-07-12.md).
+This directory contains the **56 active numeric patches** applied to pristine SGLang v0.5.15 for the
+2× Radeon AI PRO R9700 serving stack. The default tree is `/data/sgl-v0515`; the default conda environment
+is `sglang-triton36-v0515`.
 
-<details><summary>Prior promotion: v0.5.14 (2026-06-26) — historical</summary>
+Patch 072 is not part of the series because transformers 5.12.1 supplies the Gemma 4 unified configuration
+and processor. Patch 083 adds the tokenizer-backend correction required for Mistral checkpoints that ship
+`tekken.json`. Patch 003 includes safe fallbacks for both the base CUDA-only `sgl_kernel` imports and the
+optional `infllm_v2` extension reported in [issue #3](https://github.com/mattbucci/2x-R9700-RDNA4-GFX1201-sglang-inference/issues/3).
 
-> ✅ **v0.5.14 PROMOTED to live 2026-06-26.** The series is rebased onto **v0.5.14** in tree
-> `/data/sgl-v0514` + fresh env `sglang-triton36-v0514` — **48 patches** (065 split-KV tree-verify **RESTORED**:
-> first dropped as "upstreamed" but v0.5.14's native `verify_splitkv` is **gfx95/CDNA4-only** (`is_gfx95_supported()`),
-> so it's inert on our gfx1201 — our 065 kernel is the RDNA4 path, re-integrated alongside the native one; **+073** mamba-extra_buffer HIP fallback,
-> found in the resweep — v0.5.14's CUDA/MUSA/NPU-only `extra_buffer` strategy crashed all DeltaNet/mamba models
-> at startup on RDNA4; **+072** gemma4_unified promoted from CANDIDATE — v0.5.14 has the sglang model natively
-> but not the transformers-config, so gemma4-12b needs 072's vendored config/processor stack; validated 4/4 omni
-> @256K). 4 conflicts resolved (001/005/028 +
-> the 065 integration); equivalence gate 45/45 byte-equivalent; eager-import smoke 21/21; coder-30b
-> `eval_comprehensive` 35/36 + gemma4 `validate_capabilities` 4/4 (basic/thinking/vision/video). **cuda-graph
-> blocker RESOLVED:** v0.5.14's new `backend='full'` decode-graph capture deadlocked RCCL at warmup on RDNA4
-> because `pre_warm_nccl` (docstring says HIP-default-on, but the code never enables it) was off → fixed by
-> passing `--pre-warm-nccl` in `launch.sh` (validated: cuda-graph captures clean, coder-30b 53.9 tok/s vs ~24
-> eager, ~2.2×). **Promoted to live 2026-06-26** (post-promotion resweep 7/8 presets parity-or-better; deep-context 256K re-sweep pending). Rollback = the retained v0.5.13.post1 stack (`/data/sgl-rebase`, env `sglang-triton36-v0513`). Full receipt:
-> [v0514-rebase-2026-06-26.md](v0514-rebase-2026-06-26.md); resweep: [../benchmarks/v0514-resweep-2026-06-26.md](../benchmarks/v0514-resweep-2026-06-26.md).
+Validation receipts:
 
-</details>
+- [v0.5.15 base](v0515-rebase-2026-07-11.md)
+- [North Mini Code and Laguna extension](v0515-north-laguna-2026-07-12.md)
+- [North/Laguna performance](../benchmarks/north-laguna-v0515-r9700-2026-07-12.md)
 
-**56 patches** applied in numeric order on a stock `git checkout v0.5.15` (see the banner above; the
-v0.5.14→v0.5.15 rebase kept the whole v0.5.14 series minus **064**, which v0.5.15 upstreamed). Numbers: 001–008,
-011, 015–016, 023–028, 030–033, 036–037, 039–049, 055–063, 065–066, 072–082. **34 rebased core patches**
-(001–049) + **boot/inference fixes** (059–061) + **promoted second-pass patches** (055–058, 062–063) + **1 perf
-kernel** (065 split-KV tree-verify, opt-in `SGLANG_TREE_VERIFY_SPLITKV`, default OFF → inert unless enabled) +
-**066** glm4_moe BF16-dense-MLP gate_up skip-miss (glm45-air; fleet-inert) + **072** gemma4_unified config
-(**redundant-but-harmless on the v0.5.15 transformers-5.12.1 pin**, which ships gemma4_unified natively —
-dup-tolerant no-op, drop candidate; see receipt) + **073** mamba-extra_buffer HIP fallback (relocated to
-`arg_groups/overrides.py` in v0.5.15) + **9 North/Laguna FP8 correctness/performance patches**
-(074–082). Source of truth for
-**what's fixed and how**; main [README.md](../README.md) tracks current state. Cross-collection map: [PATCHES.md](../PATCHES.md).
+## Apply and replay
 
-<details><summary>v0.5.14-era series description (historical)</summary>
-
-**46 patches** applied in numeric order on a stock `git checkout v0.5.13.post1` — **34 rebased core patches** (001–049, with **012/034/035 retired**, see below) + **6 boot/inference fixes** (059–064, found during env-validation + the resweep) + **4 promoted second-pass patches** (055–058, the surviving v0.5.12 CANDIDATEs re-applied 2026-06-17) + **1 perf kernel** (065 split-KV tree-verify, opt-in `SGLANG_TREE_VERIFY_SPLITKV`, default OFF → inert unless enabled) + **066 glm4_moe BF16-dense-MLP gate_up skip-miss fix** (unblocks glm45-air; fleet-inert). Source of truth for **what's fixed and how**; main [README.md](../README.md) tracks current state. Cross-collection map (all 4 patch dirs + upstream-lifecycle scorecard): [PATCHES.md](../PATCHES.md).
-
-</details>
-
-**Verified 2026-06-16 (rebase), re-gated 2026-06-17 (second pass):** the full **44-patch** series applies clean (44/44, 0 skipped) on a pristine `v0.5.13.post1` clone and reproduces the live tree (`/data/sgl-rebase`, env `sglang-triton36-v0513`) **byte-for-byte** (git-diff equivalence gate, empty; and every patch's `--check` fails on the patched tree = no double-apply anchor). Validated by booting two presets TP=2: coder-30b codegen STRONG; gemma4-26B basic+thinking+vision (content-aware probe) + `validate_capabilities` 4/4 (basic/thinking/vision/video). Full receipt: [v0513-rebase-2026-06-16.md](v0513-rebase-2026-06-16.md). ✅ **Promoted to live 2026-06-16**: the live serving tree is now **`/data/sgl-rebase` (v0.5.13.post1, env `sglang-triton36-v0513`)**; `launch.sh` default re-pointed via `common.sh`. **Rollback** = the retained, untouched v0.5.12 stack (`/data/vG`, env `sglang-triton36`). `components/sglang` remains a stale scratch workspace (see "Tree layout").
-
-**Retired this rebase (3):** **012** (rdna4-sliding-window-decode-fix) — v0.5.13 `torch_native_backend.py` has native SWA-decode, superseding it. **035** (gemma4-mm-per-expert-awq-mapping) — v0.5.13 `gemma4_mm.py` has native `make_expert_params_mapping` (validated: gemma4-AWQ experts load + vision STRONG). **034** (sampler-inf-detection) — v0.5.13 removed the `use_nan_detection` flag 034 guarded on; **re-implement as the planned opt-in logits-sanity PR** (co-design with 3090) if HSAIL-on-±Inf recurs.
-
-**Post-rebase fixes (3 — found at boot/inference, not patch-apply; merge kept v0.5.12 remnants v0.5.13 had deleted):** **059** token-dispatcher-fuseep-drop (004 follow-on — v0.5.13 removed the `fuseep` module; stale import crashed scheduler load). **060** aiter-mxfp4-moe-guard (005 follow-on — v0.5.13's new `quark_w4a4_mxfp4_moe.py` had an unguarded `aiter` import that crashed the quantization module on RDNA4). **061** gemma4-mm-pp-wrap-restore (024 follow-on — dropped PP-rank wrap collapsed the `else: PPMissingLayer` onto the audio-config branch → vision_tower nuked → SIGQUIT on first image).
-
-**Second pass — surviving v0.5.12 CANDIDATEs re-applied (2026-06-17):** **055** eagle3-deltanet-vl, **056** devstral-multitoken-toolname, **057** EVS-video, **058** ngram-reconstruct — all apply clean on v0.5.13 (056 hand-rebased — the v0.5.12 unified diff line-drifted, target method byte-identical) and are now numbered `.patch` in the series. Validated live: **057** nemotron-omni `validate_capabilities` **4/4 incl. video** (the mandate's video modality — 3090 cross-confirmed as their patch 053); **056** prefix-match unit-test 8/8; **058** NGRAM runs (coder-30b, accept-len > 0, no crash); **055** decoupled-head-dim `LlamaConfig` admitted. **Superseded (archived `.patch.SUPERSEDED`):** **051–054** cohere2moe — v0.5.13's native `cohere2_moe` + patch **062** subsume the graft/256k/reasoning/toolcall set. **Still deferred (`.patch.CANDIDATE`):** **050** gptq-autoround-enablement — v0.5.13 restructured the quantization module (`layers/quantization/gptq.py` no longer exists), so 050 needs a full rebase onto the new layout, and there is **no live consumer** (coder-next-80B parked; glm45-air pursued via CT→AWQ) — left as a candidate to revive only if a GPTQ/AutoRound ship returns.
-
-**Upstream-main status (audited 2026-06-10 vs `sgl-project/sglang@70c71ba`):** 012 + 035 confirmed upstream (now dropped). 040 is half-upstream (compact `[TOOL_CALLS]name[ARGS]` parsing landed; our marker-omission recovery didn't → kept). Still missing upstream — PR candidates, smallest first: 031/044 (ROCm quant allowlist one-liners), 037 (flashinfer import guard), 033 (gelu assert), 043 (HIP causal-conv1d), 047 (hybrid v_head_dim duck-type), 049 (conv1d col-load dtype cast), 046 (Triton AMD divergent-pointer fix), 048 (cold-cache load timeout) + the new 060 (aiter mxfp4-moe RDNA4 guard). The index `main:PR` column is the source of truth.
-
-v0.5.12→v0.5.13.post1 rebase (2026-06-16): real `git rebase --onto` of the 37-commit branch; 34 applied (12 needed 3-way merge), 3 dropped, 3 post-validation fixes added. v0.5.11→v0.5.12 rebase (2026-05-26): 001/003/004/007/011/037 regenerated, old 008/029/038 dropped (upstreamed); the current 008 (sgl-kernel build arch) is an unrelated new patch reusing the freed slot.
-
-## Tree layout (what serves vs what's scratch)
-
-| Tree | Role |
-|---|---|
-| `/data/sgl-v0515` | **Live serving tree** — editable install in `sglang-triton36-v0515`; what launch presets import by default. == v0.5.15 + this series. |
-| `/data/sgl-v0514` | Retained v0.5.14 rollback tree; use only with `sglang-triton36-v0514`. |
-| `components/sglang` | Stale rebase workspace (frozen 2026-05-26, has `.rej` leftovers). Refresh from the series before using; never assume it serves. |
-| `patches/` (this dir) | The series. After editing a patch here, replay onto pristine v0.5.15 and compare with the intended `/data/sgl-v0515` delta. |
-
-**3-gate audit (per 3090 2026-06-10):** (1) byte-equality vs live; (2) pristine replay must report **N/N applied, 0 skipped** (an "already applied/skipped" line on pristine = a hunk silently lost to a sibling-patch conflict); (3) on the fully-patched tree `git apply --check` must **fail** for every patch (a "clean" check = a non-unique anchor that would double-apply into twin code blocks on a setup.sh rerun).
-
-## historical: v0.5.10 → v0.5.11 audit (2026-05-07) — superseded by the v0.5.12 rebase (header); kept for reference
-
-**7 patches dropped — fully upstreamed in v0.5.11** (moved to `upstreamed-in-v0.5.11/` for reference):
-- 006 (rdna4-awq-kernels) — DROPPED 2026-05-07: both hunks (HIP GEMV BF16-to-Triton fallback simplification + `AWQ_MOE_FORCE_LOOP` env var override) match v0.5.11 `awq/awq.py:496` and `awq/awq.py:761` exactly. **Note (2026-05-09):** the v0.5.10-era patch 006 ALSO contained the `awq_gemv_hip.{cu,hip}` kernel CSR (which mgehre-amd/vLLM originated and we ported in via patch 006 originally). The CSR was never upstreamed — only the Python glue was. The kernel source got orphaned 2026-04-14 (commit `1550f38`) when an over-aggressive patch shrink for an unrelated Gemma 4-31B Triton-AWQ-GEMV fix stripped the new-file blocks; only the compiled `.so` in conda envs survived. Restored 2026-05-09 as a separate kernel-CSR-only patch — see new `006-rdna4-awq-hip-kernels.patch` below.
-- 009-qwen35-moe-causalLM — DROPPED 2026-05-07: upstream v0.5.11 ships `Qwen3_5ForCausalLM` (qwen3_5.py:935) and `Qwen3_5MoeForCausalLM` (qwen3_5.py:1230) — the wrapper classes our patch added. The diagnostic logging in `process_weights_after_loading` was temporary debug.
-- 010 (rdna4-gptq-hip-fallback) — DROPPED 2026-05-07: gptq.py portion was already duplicated into 011 (FP32 attention work), and marlin_utils.py HIP-disable is upstreamed in v0.5.11. Both halves now elsewhere; 010 redundant.
-- 013 (gemma4-multimodal) — upstream now ships `gemma4_mm.py` (878 lines), `gemma4_vision.py` (599), `gemma4_audio.py` (873). Our 956-line patch matched in spirit; upstream's is more complete.
-- 014 (gemma4-reasoning-parser) — `Gemma4Detector` at `parser/reasoning_parser.py:510` (matches our cherry-pick of PR #21952).
-- 020 (clippable-linear-shim) — upstream has the **full implementation** at `layers/clippable_linear.py` (283 lines vs our 33-line shim).  Our patch comment said "If multimodal looks degraded, port the actual ClippableLinear from upstream" — that's now done upstream.
-- 022 (gemma4-causal-dedup-entry-class) — `EntryClass = Gemma4ForCausalLM` (singular, no list with multimodal alias).
-
-Bonus: in 001-upstream-sync, the Gemma 4 config patching for SWA layer types was upstreamed too — `python/sglang/srt/utils/hf_transformers/config.py:176` matches the comment + logic our patch added. `hf_transformers_utils.py` itself is now a 17-line shim re-exporting from the new `hf_transformers` package.
-
-The remaining patches were regenerated against v0.5.11 via 3-way merge (001 was the multi-file job — gemma4_causal/qwen3_next/triton_backend/communicator/layernorm/rope; 006 re-added 2026-05-09 as kernel-CSR-only; 027/softcap-fp32, formerly 009, reordered after 011 for its `_is_rdna4` dependency). Per-patch detail in git history.
-
-## Apply
+The supported setup path applies the numeric series in filename order:
 
 ```bash
-cd components/sglang && git checkout v0.5.15
-for p in ../../patches/0*.patch; do
-  git apply --3way "$p" || echo "WARN: $p failed — see patches/README.md upgrade audit"
+scripts/setup.sh
+```
+
+For an isolated replay, start with a pristine v0.5.15 worktree and fail immediately on any bad patch:
+
+```bash
+target=/tmp/sglang-v0515-replay
+git clone --branch v0.5.15 --depth 1 https://github.com/sgl-project/sglang.git "$target"
+for patch in "$PWD"/patches/0*.patch; do
+    git -C "$target" apply --check "$patch"
+    git -C "$target" apply "$patch"
 done
 ```
 
-## Sanity check after apply
+Every series change must pass:
 
-```bash
-# Confirm no zero-scale regressions vs base AWQ — the v3 disaster was caught here, not by validate
-python scripts/eval/check_awq_scales.py /path/to/your/AWQ-dir
-```
+1. **Pristine replay:** every numeric patch applies, with no skips or fallback mode.
+2. **Tree equivalence:** the replayed delta matches the intended `/data/sgl-v0515` delta byte-for-byte.
+3. **No double apply:** each patch is rejected on the fully patched tree. Patch 026 is the documented
+   non-unique-anchor exception and must be checked explicitly.
 
-## Patch Index
+Also run `git diff --check`, focused unit/GPU tests, and the affected model capability checks.
 
-Grouped by lane (apply order stays numeric — groups interleave; deps: 027→011, 044→031, 045/047→001). `main`: ✓ drop = upstreamed in sgl main, drop at next bump; ½ = partially upstreamed, rebase; PR = small/clean upstream-contribution candidate.
+## Current tree roles
+
+| Path | Role |
+|---|---|
+| `/data/sgl-v0515` | Serving and development tree for v0.5.15 plus this series |
+| `patches/` | Reviewable source of truth for the serving-tree delta |
+| temporary pristine worktree | Replay and equivalence validation only |
+
+## Active patch index
+
+`Carry` denotes hardware- or fleet-specific work retained locally. `Candidate` denotes a generic change that
+can be proposed upstream. `Partial` requires a fresh comparison with upstream before the next rebase.
 
 ### Core RDNA4 enablement
-_What it takes for stock SGLang to boot at all on gfx1201._
 
-| # | Patch | LOC | main | What it fixes |
-|---|-------|-----|------|----------------|
-| 001 | upstream-sync | 3,000 | ½ | Cherry-picks from main: Gemma 4, Qwen3.5/Next, attention, SWA, pool_configurator |
-| 002 | rdna4-torch-compile-disable | 56 |  | `@torch.compile` stalls 30+ min on HIP — disable on rotary/sampler/embedding |
-| 003 | rdna4-sgl-kernel-fallbacks | 669+ |  | sgl-kernel is CUDA-only; torch-native fallbacks for silu/gelu/rmsnorm/rotary/topk. Revised 2026-07-12 to also guard `sgl_kernel.infllm_v2` and expose `None` sentinels when that CUDA-only extension is absent (issue #3). |
-| 008 | rdna4-sgl-kernel-build-arch | 40 |  | Adds gfx12xx to sgl-kernel's ROCm arch whitelist so the native build targets RDNA4. Slot reuse — old 008 was upstreamed. |
-| 063 | rdna4-relu2-hip-fallback | 21 | PR-candidate | **Added 2026-06-16 (v0.5.13 resweep).** v0.5.13 imports the native `relu2` op only under `_is_cuda` (`sglang.jit_kernel.activation`); the `_is_hip` branch imports gelu/silu but **not** relu2, so `ReLU2.forward_cuda()` NameErrors on RDNA4 at cuda-graph capture (hit by `nemotron_h`'s squared-ReLU MLP — Nemotron-Omni). Torch fallback (`max(0,x)^2`, == `ReLU2.forward_native`) in the HIP import branch. Same family as 003. Generic → upstream PR candidate. (Nemotron-Omni also needs `librosa` in the env for the Parakeet audio extractor — added to `setup.sh`, not a patch.) |
+| # | Patch | Upstream | Current purpose |
+|---:|---|---|---|
+| 001 | `upstream-sync` | Partial | Supplies model, configuration, attention, and cache compatibility required by the supported model set. |
+| 002 | `rdna4-torch-compile-disable` | Carry | Disables compile paths that stall on HIP for rotary, sampling, and embedding operations. |
+| 003 | `rdna4-sgl-kernel-fallbacks` | Carry | Guards CUDA-only `sgl_kernel` and `infllm_v2` imports and provides safe native fallbacks or sentinels. |
+| 008 | `rdna4-sgl-kernel-build-arch` | Carry | Adds gfx12xx to the native `sgl_kernel` ROCm architecture list. |
+| 059 | `token-dispatcher-fuseep-drop` | Carry | Removes an import of the deleted FuseEP dispatcher from the HIP scheduler path. |
+| 060 | `aiter-mxfp4-moe-guard` | Candidate | Guards the optional AITER MXFP4 MoE import when AITER is unavailable. |
+| 063 | `rdna4-relu2-hip-fallback` | Candidate | Provides the squared-ReLU implementation used by Nemotron on HIP. |
 
-### MoE serving
-_Fused-MoE path on RDNA4 (Coder-30B, qwen35/36-moe, gemma4, REAP/REAM fleet)._
+### MoE serving and routing
 
-| # | Patch | LOC | main | What it fixes |
-|---|-------|-----|------|----------------|
-| 004 | rdna4-moe-fixes | 1,386 |  | Torch-native topk_softmax (gfx1201 crash), moe_align fallback, 8 Triton configs for R9700 wave32 |
-| 028 | rdna4-moe-runner-imports | 47 |  | Guards CUDA-only moe_runner imports on ROCm. |
-| 031 | rdna4-moe-wna16-rocm-supported | 48 | PR | Adds moe_wna16 to rocm_supported_quantization — config-time gate, kernels run fine. |
-| 033 | moe-wna16-gelu-activation | 14 | PR | **Added 2026-05-11.** Relaxes `MoeWNA16Method.apply()` activation assertion from `== "silu"` to `in ("silu", "gelu")`. The Triton fused MoE kernel in `moe_runner/triton_utils/fused_moe.py` already supports both; only the assertion needed widening. Required for Gemma 4 26B MoE (uses `activation="gelu"`) to dispatch via `--quantization=moe_wna16`. |
-| 037 | token-dispatcher-flashinfer-assertion-guard | 5 | PR | **Added 2026-05-12.** Broaden `try/except ImportError` → `except (ImportError, AssertionError)` in `token_dispatcher/flashinfer.py:34`. `flashinfer.comm` instantiates a `CudaRTLibrary()` at module-init time which asserts `libcudart` can be dlopen'd — fires immediately on ROCm-only hosts. The existing ImportError-only guard misses this AssertionError, killing the scheduler import chain before any model loads. flashinfer dispatcher is CUDA-NVFP4-only anyway, so falling back to `use_flashinfer = False` on ROCm is the desired behavior. Surfaced 2026-05-12 trying to launch the in-house gemma-4-31B AWQ build (#38). |
-| 075 | rdna4-fused-moe-tuner-model-support | 890 |  | Adds North/Laguna compressed-tensors FP8 model discovery, shape extraction, and safe config output to the fused-MoE tuner. Tuned paired kernels improved about 11.2% for North and 5.1% for Laguna; end-to-end gains are recorded in the 2026-07-12 receipt. |
-| 076 | rdna4-sigmoid-topk-hip-fallback | 123 |  | Correct Torch fallback for sigmoid-scored top-k routers on HIP, including group selection/renormalization behavior. It remains the escape path when the fused router in 079 is disabled. |
-| 078 | r9700-north-laguna-fp8-moe-configs | 613 |  | Installs the measured gfx1201 FP8 MoE configs for both models. Fair reverse A/B: North 63.715/54.602→65.993/56.386 tok/s; Laguna 34.606/33.894/30.299→34.673/34.130/30.736. |
-| 079 | 079-rdna4-fused-sigmoid-router-laguna-bf16-gate.patch | 164 | PR-candidate | Enables SGLang's unified Triton sigmoid router on HIP and removes North's custom-callable bypass. Laguna keeps its BF16 checkpoint router weight in model dtype for GEMV, then promotes logits to FP32. Router microbench 3.4–3.9× and Laguna gate GEMV 3.2×; end-to-end North 67.868 and Laguna 38.026 tok/s short before later collective/norm work. |
+| # | Patch | Upstream | Current purpose |
+|---:|---|---|---|
+| 004 | `rdna4-moe-fixes` | Carry | Adds HIP-safe routing, alignment fallbacks, and gfx1201 Triton MoE configuration support. |
+| 028 | `rdna4-moe-runner-imports` | Carry | Prevents CUDA-only MoE runner imports from breaking ROCm startup. |
+| 031 | `rdna4-moe-wna16-rocm-supported` | Candidate | Enables the existing W4A16 MoE backend on ROCm. |
+| 033 | `moe-wna16-gelu-activation` | Candidate | Allows the fused W4A16 MoE runner to serve GELU experts such as Gemma 4. |
+| 037 | `token-dispatcher-flashinfer-assertion-guard` | Candidate | Treats FlashInfer's missing-CUDA assertion as an unavailable optional backend on ROCm. |
+| 066 | `glm4moe-bf16-mlp-gateup-skip` | Candidate | Preserves merged GLM gate/up projections in BF16 when the checkpoint excludes their component projections from quantization. |
+| 075 | `rdna4-fused-moe-tuner-model-support` | Carry | Adds compressed-tensors FP8 shape discovery and output support for North and Laguna to the MoE tuner. |
+| 076 | `rdna4-sigmoid-topk-hip-fallback` | Carry | Implements correct grouped sigmoid top-k routing when the fused router is disabled. |
+| 078 | `r9700-north-laguna-fp8-moe-configs` | Carry | Installs measured gfx1201 FP8 MoE configurations for North and Laguna. |
+| 079 | `rdna4-fused-sigmoid-router-laguna-bf16-gate` | Candidate | Enables the unified Triton sigmoid router on HIP and keeps Laguna's gate GEMV in checkpoint BF16 before FP32 logits. |
 
-### Attention & numerics
-_BF16 precision repairs; NaN/Inf containment._
+### Attention and numerics
 
-| # | Patch | LOC | main | What it fixes |
-|---|-------|-----|------|----------------|
-| 011 | rdna4-triton-attention-fp32 | — |  | FP32 value-accumulation in Triton decode/extend attention (see investigation below) |
-| 027 | rdna4-softcap-fp32 | 77 |  | FP32 softcap in triton attention + logits processor (tanh in BF16 lost rescale precision; was the 009/softcap half). Depends on 011. |
-| ~~012~~ | rdna4-sliding-window-decode-fix | — | **RETIRED v0.5.13** | Superseded by v0.5.13's native `torch_native_backend.py` SWA-decode (`sliding_window_size`/`encoder_lens`). Was: `torch_native` SWA support for decode/extend; translate full pool → SWA pool. No longer in the series. |
-| ~~034~~ | sampler-inf-detection | — | **RETIRED v0.5.13 (re-impl pending)** | v0.5.13 removed the `use_nan_detection` flag 034's block guarded on. Dropped = stock v0.5.13 sampler (no nan/inf net; stock v0.5.12 had none either — 034 *added* it). **Re-implement as a standalone opt-in logits-sanity PR** (co-design with 3090) if HSAIL-0x1016-on-±Inf recurs. Was: `isinf(logits)` check parallel to `isnan` in `Sampler._preprocess_logits`. |
-| 077 | triton-mixed-head-fp8-kv-correctness | 364 | PR-candidate | Sizes Triton attention scratch for unequal q/k head counts and derives FP8 descales/clamps from the actual KV dtype. Required by Laguna's 24/4 and 32/4 mixed-head attention shapes. |
-| 080 | 080-laguna-bf16-attention-allreduce.patch | 84 | PR-candidate | Adds a communicator-level `hip_fp32_allreduce` switch. FP32 remains the HIP default for recurrent/DeltaNet protection; Laguna opts out and sends its normal BF16 attention activations, avoiding cast kernels and 2× collective payload. Laguna 38.026/37.065/32.643→38.141/37.316/33.443 tok/s. |
-| 081 | 081-rdna4-triton-rmsnorm-laguna-fused-qk.patch | 491 | PR-candidate | Generalizes the existing Gemma Triton RMSNorm kernels to standard weights and uses them when HIP lacks the CUDA extension; adds a combined standard q/k head-norm kernel for Laguna. Microbench: standard RMSNorm 5–5.5×, q/k norm 4–8×. RMSNorm-stage short/mid Laguna result 39.709/38.725 tok/s; longer-output long A/B +0.34%. Environment switches retain the old path for diagnosis. |
+| # | Patch | Upstream | Current purpose |
+|---:|---|---|---|
+| 011 | `rdna4-triton-attention-fp32` | Carry | Uses FP32 value accumulation in Triton attention to limit long-context BF16 error. |
+| 027 | `rdna4-softcap-fp32` | Carry | Computes attention and logits softcapping in FP32. |
+| 065 | `rdna4-split-kv-tree-verify` | Carry | Adds an opt-in split-KV speculative-verification kernel for mid-depth workloads; it remains off by default. |
+| 077 | `triton-mixed-head-fp8-kv-correctness` | Candidate | Sizes scratch buffers for unequal query/KV head counts and derives descales from the actual KV dtype. |
+| 080 | `laguna-bf16-attention-allreduce` | Candidate | Lets Laguna use its native BF16 attention collective while retaining the defensive HIP FP32 default elsewhere. |
+| 081 | `rdna4-triton-rmsnorm-laguna-fused-qk` | Candidate | Extends the HIP Triton RMSNorm path to standard weights and fuses Laguna's query/key head norms. |
 
-### AWQ int4 lane
-_The M=1 decode format. HIP GEMV kernels + dispatch._
+### AWQ int4
 
-| # | Patch | LOC | main | What it fixes |
-|---|-------|-----|------|----------------|
-| 030 | rdna4-awq-bf16-act | 49 |  | AWQ dequant honors activation dtype (BF16) instead of FP16 — fixes Gemma 60-layer collapse at ~30 tok. |
-| 006 | rdna4-awq-hip-kernels | 2,129 |  | **Restored 2026-05-09.** HIP AWQ GEMV kernel CSR (`sgl-kernel/csrc/quantization/awq/awq_gemv_hip.{cu,hip}`) — ported from `mgehre-amd/vllm` matthias.awq_gemv. Provides `awq_gemv_hip` (M=1 dense decode, ExLlama-shuffle, +30% over Triton), `awq_gemv_bf16_hip` (BF16 model dispatch), `awq_gemv_moe_hip` (per-expert MoE dispatch). Build via `scripts/build_awq_gemv.sh --env <name>` after applying patches. **OPT 2026-05-31:** `awq_gemv_bf16_kernel` inner row-loop now batches `UNROLL=8` independent (act, qweight) loads before consuming → more in-flight memory ops (the GEMV was memory-latency-bound: profiled 85.8% GPU util / 78% of decode but ~5× under roofline). Microbench (`scripts/bench/bench_awq_gemv.py`) **2.2–3× per shape, cos=1.0**; **end-to-end qwen36-27b decode 14.4 → 24.96 tok/s @128 (1.73×, recovers the pre-v0.5.12 regression), basic+thinking+vision 3/3 PASS.** Benefits every dense/hybrid AWQ model. (Grid-level split-K was tried + reverted — only helped the most occupancy-starved shape; receipt in `benchmarks/profiling/`.) **Note:** the kernel is NOT YET wired into SGLang's MoE dispatch (`MoeWNA16Method` is hardcoded to `MoeRunnerBackend.TRITON`); only the dense path uses the HIP GEMV via `awq.py`. Wiring the MoE kernel is a separate task gated by a microbench (HIP×2+silu vs Triton×1 fused) — see task #26 + memory `project_hip_awq_kernel_recovery.md`. |
-| 041 | rdna4-awq-dense-gemv-decode | — |  | Wires the fused int4 `awq_gemv_bf16_hip` into dense-AWQ M=1 decode (was dequant→bf16+rocBLAS, 20× under roofline). qwen36-27b 4.5→24.7 tok/s. ⚠ FP16-scales gate bug fixed 2026-06-10: checkpoints ship FP16 scales, GEMV gate needed BF16 → silently never fired (4.6); load-time cast restores. Benefits all dense AWQ + 256K TPOT. |
-| 032 | rdna4-hybrid-w4a16-moe | 1819 |  | **Added 2026-05-11.** Ports `mgehre-amd/vllm` commit `0b992ff` (matthias.awq_gemv branch, 2026-04-27): the **wvSplitK INT4 MoE kernel** (`fused_moe_wvSplitK_int4_gemm`) + Python dispatch module `sglang.srt.layers.moe.hybrid_w4a16_moe` + env vars `SGLANG_MOE_HYBRID_W4A16` (default `True`) and `SGLANG_MOE_HYBRID_W4A16_MAX_BATCH` (default 5). Kernel is a NEW file at `sgl-kernel/csrc/quantization/awq/skinny_gemms_int4.cu` (1448 LOC of vendored mgehre + 30-line pybind11 binding); included pybind module is `skinny_gemms_int4_ext`. Build via `scripts/build_skinny_gemms_int4.sh --env <name>`. The kernel uses `[E, N, K//8] int32` skinny ExLlama-shuffle weight layout (different from our existing `awq_gemv_moe_hip` which expects `[E, K, N//8]`); the Python module includes `reshuffle_to_skinny_w4` / `reshuffle_scales_for_skinny` helpers for the one-time load-time conversion. Mgehre's TPOT win on Strix Halo Qwen3-Omni-30B-A3B AWQ vs Triton baseline: **-5.4% TPOT, -15.6% TTFT** (mostly batch=1 decode). RDNA4 numbers TBD — microbench at `scripts/bench/bench_moe_hip_vs_triton.py` extended to 3-way A/B (awq_gemv_moe_hip vs wvSplitK vs Triton) gates wiring decision (#26). Phase 2 (wire into SGLang's `MoeRunner` via a `HybridW4A16RunnerCore`) deferred until bench shows the kernel wins at the cutoff threshold. |
+| # | Patch | Upstream | Current purpose |
+|---:|---|---|---|
+| 006 | `rdna4-awq-hip-kernels` | Carry | Provides native HIP AWQ GEMV kernels for gfx1201. |
+| 030 | `rdna4-awq-bf16-act` | Carry | Makes AWQ dequantization honor BF16 activation dtype. |
+| 032 | `rdna4-hybrid-w4a16-moe` | Carry | Adds the gfx1201 skinny W4A16 MoE kernel and load-time layout conversion. |
+| 041 | `rdna4-awq-dense-gemv-decode` | Carry | Dispatches dense batch-one AWQ decode through the native HIP GEMV path. |
 
-### FP8 lane
-_Native gfx1201 FP8 serving._
+### FP8
 
-| # | Patch | LOC | main | What it fixes |
-|---|-------|-----|------|----------------|
-| 005 | rdna4-fp8-fallbacks | 247 |  | FP8 torch-native paths, `BLOCK_SIZE_M=16` for gfx1201 block quant, Quark import guards |
-| 039 | rdna4-fp8-pertoken-padding-fix | — |  | Fixes the RDNA4 native per-token activation FP8 quant (`_native_dynamic_per_token_quant_fp8` padding) so FP8 W8A8 serving is correct on gfx1201. |
-| 042 | rdna4-reclaim-fp8-load-transients | — |  | `synchronize + gc.collect()×2 + empty_cache` before KV-pool sizing reclaims per-tensor-FP8 load transients held by ref cycles (reclaims ~9 GB/card). Note: underdelivers for the Devstral-2 v2-with-vision build (caps ~180K, not 256K — see launch.sh devstral2). |
-| 044 | rdna4-modelopt-fp8-rocm-allowlist | 13 | PR | **Added 2026-05-31. Runtime-verified.** Adds `modelopt`/`modelopt_fp8` to `rocm_supported_quantization` in `model_config.py` (same over-conservative config-time gate as 031's moe_wna16). NVIDIA ModelOpt per-tensor FP8 Linear falls back to the native fp8 GEMM and ModelOpt FP8 MoE to the Triton fused-MoE `fp8_w8a8` path — both already rocm-supported. Without it, modelopt-FP8 models (NemotronH Omni) are rejected at `_verify_quantization()` before load. Applies after 031. |
-| 045 | rdna4-ct-fp8-deltanet-mlp-tp-split | 32 |  | **Added 2026-05-31. Runtime-verified.** Dense compressed-tensors FP8 (Qwen3.5/3.6 DeltaNet-VL — e.g. Qwen3.6-27B-FP8) OOM'd because `qwen3_5.py:_should_replicate_deltanet_for_tp()` gated MLP TP-splitting on `name not in ("fp8","mxfp8","w8a8_fp8")`; compressed-tensors FP8 reports `get_name()=="compressed_tensors"` → fell into "replicate everything" (meant for unquantized/AWQ) → each TP rank held a FULL ~17 GB FP8 MLP → **28.7 GB/card → OOM**. Fix: new `_is_compressed_tensors_fp8()` helper (inspects `target_scheme_map["Linear"\|"FusedMoE"].weights` for num_bits==8 + type=="float") extends the check to TP-split the MLP for CT-FP8 too; DeltaNet `in_proj` stays replicated by design. Result: Qwen3.6-27B-FP8 serves native FP8 W8A8 at **20.82 GB/card** (was 28.70), basic+thinking+vision 3/3 PASS; coder-30b-fp8 MoE unaffected. ⚠ The visible symptom (CT "non-quantized schemes → UnquantizedLinearMethod" warning) was a RED HERRING — `get_scheme` correctly resolves `CompressedTensorsW8A8Fp8` for all real linears; that warning fires only for the intentionally-ignored DeltaNet `in_proj`. Applies after 001. |
-| 074 | compressed-tensors-fp8-kv-cache | 289 | PR-candidate | Preserves compressed-tensors KV-cache metadata through config/load mapping so North and Laguna honor checkpoint FP8 KV instead of silently losing the scheme. Adds compatibility for the v0.5.15 CT layout. |
-| 082 | 082-rdna4-fused-fp8-kv-cache-store.patch | 328 | PR-candidate | Fuses static-scale FP8 K/V cache divide, clamp, cast, and scatter into one Triton launch. Byte-identical to the existing path at M=1/8/64/4096; kernel A/B speedups 1.77×/2.56×/2.57×/6.36×. Laguna server reverse A/B: 48.999/47.485/39.959 ON vs 47.772/39.342/27.202 OFF = +2.57%/+20.70%/+46.89%. North's final ON curve is 71.053/60.714/42.298/33.905, but its OFF control was too unstable for an attribution percentage. |
+| # | Patch | Upstream | Current purpose |
+|---:|---|---|---|
+| 005 | `rdna4-fp8-fallbacks` | Carry | Adds gfx1201 FP8 quantization fallbacks and guards unsupported Quark paths. |
+| 039 | `rdna4-fp8-pertoken-padding-fix` | Carry | Corrects padding in native dynamic per-token FP8 activation quantization. |
+| 042 | `rdna4-reclaim-fp8-load-transients` | Carry | Reclaims temporary FP8 load allocations before KV-pool sizing. |
+| 044 | `rdna4-modelopt-fp8-rocm-allowlist` | Candidate | Enables ModelOpt FP8 checkpoints on the ROCm backends they already support. |
+| 045 | `rdna4-ct-fp8-deltanet-mlp-tp-split` | Carry | TP-shards compressed-tensors FP8 MLPs while preserving replicated DeltaNet state projections. |
+| 074 | `compressed-tensors-fp8-kv-cache` | Candidate | Carries compressed-tensors FP8 KV metadata through SGLang configuration and loading. |
+| 082 | `rdna4-fused-fp8-kv-cache-store` | Candidate | Fuses static-scale FP8 K/V conversion and cache scatter into one Triton launch. |
 
 ### Mamba2 hybrids
-_Nemotron-Omni full-256K enablement._
 
-| # | Patch | LOC | main | What it fixes |
-|---|-------|-----|------|----------------|
-| 043 | rdna4-mamba-hip-causal-conv1d | 13 | PR | **Added 2026-05-31. Runtime-verified.** Adds an `is_hip()` branch to `mamba/mamba.py` so `MambaMixer2`'s `causal_conv1d` resolves to SGLang's vendored **Triton** impl on gfx1201 (the external/CUDA conv1d is absent; the import was CUDA-gated with no HIP branch). The SSD scan ops (`mamba.ops`) are already backend-agnostic Triton. **Unblocks Mamba2-hybrid models on RDNA4** — NemotronH (Nemotron-3-Nano-Omni-30B-A3B FP8) serves + generates coherently. (Long context was then unblocked to full 256K by patches 046 + 047.) |
-| 046 | rdna4-mamba-ssd-divergent-ptr-buffer-ops | 87 | PR | **Added 2026-05-31. Runtime-verified.** Two SSD Triton kernels (`ssd_chunk_scan.py` `_chunk_scan_fwd_kernel`, `ssd_chunk_state.py` `_chunk_state_varlen_kernel`) reassign a state pointer to a DIFFERENT base tensor (states vs initstates) inside an `scf.if` and use it after the merge. With AMD buffer ops on (default), `TritonAMDGPUCanonicalizePointers` can't narrow the divergent fat-pointer → assertion `fatPtrs.at(then)==fatPtrs.at(else)` → `PassManager::run failed` → abort, the moment `initial_states` appears (any chunked prefill past one chunk). This capped Nemotron-Omni at ~8K. Fix: keep each pointer single-based; record the branch decision in a runtime flag + index, load BOTH candidate tiles, select the VALUE with `tl.where` at the matmul site. Numerically BIT-EXACT vs upstream (buffer ops off); buffer-ops-on differs only by buffer-codegen rounding (rel ≤ 2.2e-4 « bf16 eps). Buffer ops stay ENABLED (full perf) — a kernel fix, not a buffer-ops disable. Applies to ANY Mamba2/SSD hybrid using initial_states. |
-| 049 | rdna4-conv1d-colload-dtype-cast | 30 | PR | Cast conv_state col loads to x dtype — fp16/bf16 flip in `tl.static_range` (3090's hybrid-NGRAM blocker; same uncast crashes Triton AMD canonicalizer; B-track HSAIL candidate). |
-| 047 | rdna4-triton-attn-hybrid-mamba-vhead-dim | 13 | PR | **Added 2026-05-31. Runtime-verified.** `TritonAttnBackend.__init__` sampled the value head dim via `get_value_buffer(0)`, but in a Mamba2-Transformer hybrid the full-attention layers live at sparse indices (NemotronH-Nano-Omni: [5,12,19,26,33,42]) and layer 0 is a Mamba layer with no entry in `HybridLinearKVPool.full_attention_layer_id_mapping` → `ValueError: layer_id=0 not in full attention layers`, so triton attention couldn't init and the model was stuck on torch_native (ROCm only has MATH SDPA → materializes O(chunk×ctx) scores → OOM past ~150K). The backend special-cased hybrid_gdn/kimi/linear_attn configs but missed the Nano-Omni config (trust-remote-code; `mamba2_config` doesn't recognize it). Fix: also duck-type — any `HybridLinearKVPool` exposes `get_v_head_dim()` (samples the full_kv_pool's first full-attention layer), so use it whenever present. With triton flash attention Nemotron-Omni serves FULL 256K memory-efficiently (247K-tok prefill, full-token-usage 0.07, ~109s, ~29 tok/s decode) at default mem/chunked. **Applies AFTER 001**, which already carries the SWA-aware triton path (`swa_attn_logits`, `HybridLinearKVPool.layers_mapping` + `translate_loc_from_full_to_swa` in forward_extend/decode) — this patch is ONLY the hybrid `get_v_head_dim` duck-type (10+/1-). **gemma-4 SWA models reach triton via 001's SWA path + the triton preset default** (they take the `sliding_window` branch, not this hybrid branch — e.g. gemma-4-26B: 110K-tok prefill, no OOM, ~16.5 tok/s, image+thinking preserved). Pure-additive; CUDA + non-hybrid pools (MHATokenToKVPool) unaffected. |
-| 057 | rdna4-evs-video-combined-path-routing | 12 | PR-candidate | **Added 2026-06-15; promoted to applied 2026-06-17 — re-validated on v0.5.13 live (nemotron-omni `validate_capabilities` 4/4 incl. video "move/right/across/circle/red", server stays alive). 3090 cross-confirmed (their patch 053, CUDA/int4, identical bug+fix).** Fixes a Nemotron-Omni FP8 **video crash**: validate_capabilities was 3/4 (video killed the scheduler with `AttributeError: 'EVSEmbeddingResult' object has no attribute 'reshape'`). EVS (Efficient Video Sampling, `video_pruning_rate=0.7`) returns an `EVSEmbeddingResult` (pruned video embeddings + per-frame token counts), which only the **combined** chunked-prefill path unwraps (`.embedding` + `redistribute_pruned_frames_placeholders`). But the routing in `_get_chunked_prefill_embedding` chose the per-image path purely on `all(len(item.offsets)==1)`, never checking EVS — a single-offset EVS video matched → went to `_get_chunked_embedding_by_item` → `.reshape()` on the result object → abort. The code's own comment already said "Fall back to combined path for non-split items **or EVS**"; the EVS half was just never implemented. Fix: `is_per_image` also requires `not any(isinstance(item, EVSDataItem) ...)`, routing EVS to the combined path. **Result: Nemotron-Omni FP8 validate_capabilities 4/4 (basic+thinking+vision+video), server stays alive, 0 reshape errors.** Generic `mm_utils` (not RDNA4/FP8-specific) → upstream PR candidate. Receipts: `benchmarks/hsail/nemotron-omni-video/`. |
-
-### Cohere2 (hybrid-SWA)
-| # | name | Δlines | main:PR | what + why |
-|---|------|--------|---------|------------|
-| 062 | cohere2moe-v0513-hybrid-swa-classification | 22 | PR-candidate | **Added 2026-06-16 (v0.5.13 resweep).** v0.5.13 has **native** cohere2_moe (model + config + `cohere_command4` reasoning/tool parsers), so the v0.5.12 cohere2moe CANDIDATEs **051 (model graft) / 053 (reasoning) / 054 (toolcall) are subsumed**; the surviving delta is hybrid-SWA classification. v0.5.13 does **not** list `Cohere2MoeForCausalLM` as hybrid-SWA → (1) `is_hybrid_swa_model()` omits it → `model_runner` never sets `sliding_window_size` → triton SWA decode gets `window_kv_indptr=None` → `AttributeError: 'NoneType'.shape` at cuda-graph capture; (2) `get_hybrid_layer_ids()` has no cohere2_moe branch → returns `None` → `adjust_hybrid_swa_layers_for_pp` iterates `None`. Fix: add the arch to the `hybrid_swa_archs` allowlist + a `layer_types`-based branch (1:3 full:sliding, window 4096). **Validated: North-Mini-Code-1.0-fp8 boots `SWARadixCache hybrid_swa=True`, L0-RoPE positional gate PASS (`ember,copper`), thinking + no delimiter leak.** v0.5.13's native cohere2_moe RoPE/dense handling is correct (no config-pop NoPE bug → the v0.5.12 052 force_rope fix is also subsumed). **051–054 are archived as `.patch.SUPERSEDED` (2026-06-17).** Generic (not RDNA4-specific) → upstream PR candidate. |
+| # | Patch | Upstream | Current purpose |
+|---:|---|---|---|
+| 043 | `rdna4-mamba-hip-causal-conv1d` | Candidate | Selects SGLang's Triton causal-conv1d implementation on HIP. |
+| 046 | `rdna4-mamba-ssd-divergent-ptr-buffer-ops` | Candidate | Rewrites divergent SSD state-pointer selection into value selection accepted by AMD buffer-op lowering. |
+| 047 | `rdna4-triton-attn-hybrid-mamba-vhead-dim` | Candidate | Obtains value-head dimensions from hybrid KV pools without assuming layer zero is attention. |
+| 049 | `rdna4-conv1d-colload-dtype-cast` | Candidate | Casts recurrent convolution state loads to the input dtype before arithmetic. |
+| 073 | `rdna4-mamba-extra-buffer-hip-fallback` | Carry | Resolves automatic Mamba radix-cache selection to the supported `no_buffer` strategy on HIP. |
 
 ### Gemma 4
-_26B MoE-AWQ load mapping + vision/video._
 
-| # | Patch | LOC | main | What it fixes |
-|---|-------|-----|------|----------------|
-| 023 | gemma4-moe-mlp-no-quant-config | 36 |  | **Verified working on R9700 2026-05-11 (task #29 root-cause).** Detection-upgrade version. Parses `quantization_config.ignore` and picks `quant_config=None` only when the recipe's ignore list contains `mlp.{gate,up,down}_proj` (case a, BF16-preserved dense MLP); otherwise passes `quant_config` (case b, AWQ-quantized dense MLP — what `gemma-4-26B-A4B-it-AWQ-GPTQ-v2-fixed` ships, with empty `ignore` list). The OLD hardcoded `quant_config=None if _enable_moe else quant_config` left the dense MLP at random-init `nn.Linear.weight`, producing 48553 NaN + 22 Inf in layer 0 gate_up_proj output and HSAIL 0x1016 in sampler.py:498. **MUST be applied alongside 024 + 033 + 034 + 035 + launch.sh `QUANT="moe_wna16"` for the gemma4 26B AWQ path to work**; see `project_gemma4_v0511_root_cause.md` memory for the full chain. |
-| 024 | gemma4-mm-towers-no-quant-config | 16 |  | **Verified working on R9700 2026-05-11.** Sets `quant_config=None` on `vision_tower`, `embed_vision`, `audio_tower`, `embed_audio` so the BF16 `.linear.weight` checkpoint keys load (calibration recipes preserve these towers in BF16 via `re:.*vision_tower.*` ignore patterns). Confirmed compatible with R9700 — combined with 023+033+034+035 the gemma 4 26B AWQ produces clean vision tower output and clean LM output. The 2026-05-09 "NOT portable to R9700" warning is OBSOLETE; the previous symptom was caused by patch 023 being unapplied + missing AWQ MoE expert mapping (see 035), not by 024 itself. |
-| 025 | gemma4-vision-pooler-padding-fp32 | 31 |  | Gemma4 vision pooler pads in FP32 (FP16 padding overflowed after 27 SigLIP layers). |
-| 026 | gemma4-mm-video-per-frame-batching | 26 |  | **Ported from 3090 2026-05-04 (commit `3b9e077`), applied + smoked on R9700 2026-05-06 (task #69).** Replaces `pooled, pooler_mask = vt(pv, pp)` (batched call materializing `num_frames × num_patches × 2 × position_embedding_size` one_hot tensor — ~1.24 GB peak at 12 frames) with a per-frame `for f in range(num_frames): pooled_f, pooler_mask_f = vt(pv[f:f+1], pp[f:f+1])` loop. Closes both: (a) R9700's pre-existing `bsz==1` assertion at `vision.py:254` (frames pre-flattened expected `cu_seqlens` path that didn't accept batched), and (b) Ampere's OOM in `Gemma4VisionPatchEmbedder._position_embeddings` at the same shape. **Smoke result on R9700**: `mattbucci/gemma-4-26B-AWQ` v2-fixed, 3/4 PASS (basic + thinking + vision; video reaches LM decode path now instead of the bsz==1 assert, then crashes downstream — exit -6 in LM forward — same Gemma 4 video LM-side limitation 3090 saw post-026 returning "static image" for the moving circle, traced upstream per `project_gemma4_66_upstream_limit.md`). Vision PASS confirms no regression on the path the patch touches. |
-| ~~035~~ | gemma4-mm-per-expert-awq-mapping | — | **RETIRED v0.5.13** | Subsumed by v0.5.13's native `make_expert_params_mapping` in `gemma4_mm.py` (folds AWQ generically via suffix-preserving `name.replace`). **Validated 2026-06-16**: gemma4-26B AWQ experts load correctly (text+thinking+vision STRONG) with v0.5.13's native mapping — no graft needed. Was: per-expert AWQ/GPTQ load mapping added to `Gemma4ForConditionalGeneration.load_weights`. |
+| # | Patch | Upstream | Current purpose |
+|---:|---|---|---|
+| 023 | `gemma4-moe-mlp-no-quant-config` | Carry | Chooses BF16 or quantized dense Gemma MLP construction from the checkpoint ignore rules. |
+| 024 | `gemma4-mm-towers-no-quant-config` | Carry | Loads vision and audio towers through their preserved BF16 Linear modules. |
+| 025 | `gemma4-vision-pooler-padding-fp32` | Carry | Performs vision-pooler padding in FP32 to avoid overflow. |
+| 026 | `gemma4-mm-video-per-frame-batching` | Carry | Processes video frames individually to avoid invalid batched pooler shapes and peak allocation. |
+| 061 | `gemma4-mm-pp-wrap-restore` | Carry | Restores correct pipeline-parallel wrapping for Gemma multimodal towers. |
 
-### Qwen family
-_Config/TP plumbing for Qwen3.5/3.6/Next._
+### Model, parser, and speculative-decode plumbing
 
-| # | Patch | LOC | main | What it fixes |
-|---|-------|-----|------|----------------|
-| 015 | qwen36-vision-config-dict-wrap | — |  | Wrap dict `vision_config` in `SimpleNamespace` so Qwen3.6 VL loads through our rebuilt config |
-| 016 | qwen3next-conv1d-tp | — |  | Split Qwen3-Next vs Qwen3.5 mamba2_cache_params: Coder-Next 80B uses TP-sharded conv/SSM state; Qwen3.5 overrides to `tp_world_size=1` to match its replicated DeltaNet |
-| 036 | qwen3next-radixattn-no-quant-config | 18 |  | **Added 2026-05-11.** Drops `quant_config=quant_config` from the `RadixAttention(...)` call in `Qwen3NextAttention.__init__` (qwen3_next.py:672). Without this, launching any Qwen3Next-family model with `--quantization moe_wna16` (required for Qwen3MoE on RDNA4 — see patch 031) crashes immediately at `radix_attention.py:98`: `MoeWna16Config.get_quant_method()` returns `UnquantizedLinearMethod` for non-MoE modules, then `RadixAttention.__init__` calls `.create_weights(self)` which raises `TypeError: missing 5 required positional arguments`. The attn layer's q/k/v/o Linears are constructed with `quant_config` a few lines above; RadixAttention itself only holds the KV cache and doesn't need a quant_method. Matches the qwen3_moe.py / qwen3_5_moe.py / qwen3_5.py pattern (none of those pass `quant_config` to RadixAttention). Affects Coder-Next, Coder-Next-REAM, and any future Qwen3Next ships. Surfaced 2026-05-11 during ship validation re-test of `Qwen3-Coder-Next-REAM-AWQ`. |
-| 055 | rdna4-eagle3-deltanet-vl-enablement | 51 |  | **Added 2026-06-14; promoted to applied 2026-06-17.** ⚠ **v0.5.13 note:** part (a)'s `LlamaConfig.validate_architecture` is no longer present in the v0513 env's transformers (fixed upstream) → that half is now an inert no-op; part (b) (the qwen3_vl dual-backbone capture) is the load-bearing half. Two fixes that unblock EAGLE3 spec-decode *loading* on the qwen3_5/qwen3_vl VL family. (a) `hf_transformers_patches.py`: a new `_patch_llama_head_dim_validation()` strips transformers-v5's over-strict `LlamaConfig.validate_architecture` (it demands `hidden_size % num_attention_heads == 0` even when `head_dim` is explicit) from `cls.__class_validators__` — EAGLE3 drafts use a *decoupled* head_dim (e.g. hidden 5120 / 24 heads / head_dim 256 → q_proj 6144), which it wrongly rejects at config-load. Monotonic (normal configs pass it anyway). (b) `qwen3_vl.py` `set_eagle3_layers_to_capture`: this wrapper hosts **two** text backbones with **two** capture mechanisms, so it now drives **both** — sets the `layers_to_capture` **list** (the dense `Qwen3LLMModel` backbone, e.g. Qwen3-VL-32B, reads `layer_idx in self.layers_to_capture` in its forward; `Qwen3Model` has no `set_dflash_layers_to_capture`) **and** marks `_is_layer_to_capture` on each captured layer (the `qwen3_5` DeltaNet backbone reads that per-layer flag instead). The old code set only the list → DeltaNet captured nothing → bare-tensor return tripped `hidden, aux = hidden` ("too many values to unpack"). ⚠ An earlier rev of this patch routed through `set_dflash_layers_to_capture` — that fixed DeltaNet but would have `AttributeError`'d the dense VL-32B path (the very target it was meant to enable); the list+flag form is correct for both. ⚠ Enables *loading*, not a win on DeltaNet targets: EAGLE3 on the dense DeltaNet 27B accepts well (4.0) but is net-negative (~18 vs ~25) — sequential DeltaNet verify, see spec-decode coverage map. **For the pure-dense VL-32B (no DeltaNet wall) this is the prerequisite for a real ~2× spec win once a draft is trained.** Inert for non-EAGLE3 serving; coherence-validated on Qwen3.6-27B (DeltaNet) before promotion; dense-VL path correct-by-construction (validated by code, untested end-to-end pending a VL-32B draft). |
-| 058 | rdna4-ngram-reconstruct-fallback | 63 |  | **Added 2026-06-15; promoted to applied 2026-06-17.** Our RDNA4 sgl_kernel build lacks the native `reconstruct_indices_from_tree_mask` op (`ngram_utils.cu` is in CMakeLists but not compiled into the `.so`) → NGRAM spec-decode crashes on the first request (`AttributeError`). Wraps the import in try/except + a **sync-free GPU-vectorized torch port** (kernel-exact 300/300 random trees, lossless). Keeps NGRAM **running** on RDNA4 as graceful-degradation; the at-depth perf win still needs the split-KV tree-verify kernel (Next-steps #2 / task #10) — NGRAM stays net-negative at true depth until then (~0.6–1.4 t/s @244K vs 12.2 no-spec; the triton verify re-reads the deep KV per-draft-token). Validated: coder-30b NGRAM copy-heavy temp=0 runs (Decode batch accept-len 1.12–1.23, cuda-graph True), coherent, no crash. |
-| 065 | rdna4-split-kv-tree-verify `opt-in` | 432 |  | **Added 2026-06-17. Split-KV tree-verify behind `SGLANG_TREE_VERIFY_SPLITKV=1` (default OFF). ⚠ MID-depth win only — COLLAPSES at true 256K.** Gives the spec verify the SM-split decode has (stock `extend_attention_fwd` reads the deep prefix KV unsplit). Decomposition (verify is `skip_prefix_custom_mask=True`): **prefix** = D draft queries × shared cached KV, mask-free, split-KV (generalize the grouped decode kernel to (GRP heads × D tokens) flattened rows so one K/V tile read serves all D) + stage2 reduce emitting lse; **suffix** = cheap D×D tree-masked self-attn; **`merge_state`** combines. fp8-KV: `k_descale` into prefix score scale, `v_descale` post-stage2. Gated on standard-GQA verify (SWA/MLA/no-mask/decoupled-head-dim → stock). **Measured: ~12.8× @~53K (split-KV 53.7 vs stock 4.18 t/s, matched accept → NGRAM net-positive) BUT @244K only 0.57 t/s — net-NEGATIVE vs no-spec 12.2** ([receipt](../benchmarks/tree-verify-splitkv-bench-2026-06-17.md)). The split-KV parallelism doesn't hold at deep KV — **occupancy-bound** (`acc[BLOCK_R=64,128]` = 8 draft × 8 heads, too large a footprint to hide the 244K read). **A real 256K win needs an occupancy fix (smaller per-block footprint)** — that, not bit-exactness (separately infeasible for any parallel tree-verify), is the blocker. Correctness: harness 7/7 vs ground truth (`max|d|~1e-4` bf16); numerically lossless. Default-OFF correct (default-ON hurts @256K). Also speeds EAGLE3/DFlash verify at mid-depth. |
-| 066 | glm4moe-bf16-mlp-gateup-skip | 22 | PR-candidate | **Added 2026-06-17. UNBLOCKS glm45-air on RDNA4** (was a months-long pre-existing block). `Glm4MoeMLP` MERGES gate+up into a single `gate_up_proj` Linear, but `quantization_config.modules_to_not_convert` lists `gate_proj`/`up_proj` **separately** → the substring skip-check misses the merged name (`"mlp.gate_proj"` is NOT in `"mlp.gate_up_proj"` — gate_**UP**_proj) → the merged Linear is built **quantized** while its checkpoint weights are **BF16** → weights don't bind → NaN logits → the **HSAIL 0x1016** (async sampler on NaN; `HIP_LAUNCH_BLOCKING=1` reveals it as `!!!!!` garbage instead of crashing). Root-caused by a per-layer NaN-trace (layer-0 dense MLP) + a `get_quant_method` log (`down_proj` skipped=True, `gate_up_proj` skipped=False). Fix: `_mlp_quant_config()` passes `quant_config=None` to a `Glm4MoeMLP` whose `gate_proj` is in `modules_to_not_convert` (whole MLP is BF16), applied to the dense MLP (layer 0) + `shared_experts` (every MoE layer). **Fleet-inert** (a quantized MLP — gate_proj not in the list — is unchanged). Generic (any merged-gate_up model with separately-ignored gate/up) → upstream PR candidate. Validated: glm45-air-native (CT→AWQ, `moe_wna16`, TP=2) serves COHERENTLY (12+30=42 with `<think>`; code task coherent). Receipt: task #15. |
-
-### Mistral + ops
-_Devstral agentic + load ops._
-
-| # | Patch | LOC | main | What it fixes |
-|---|-------|-----|------|----------------|
-| 007 | rdna4-model-fixes | 811 |  | Gemma4 CT-GPTQ expert remap, Gemma4 num_experts None→0, Gemma4 MoE gelu, Qwen3.5 tp_world_size=1, Devstral BOS, Llama contiguous QKV |
-| 040 | devstral-toolcall-omission-recovery | — | ½ | Teaches `MistralDetector` to anchor tool calls on `[ARGS]` + hold a trailing known tool name across stream chunks — recovers Devstral-2 `[TOOL_CALLS]`-omission (call leaked as assistant text → empty diffs). |
-| 064 | ministral3-v0513-keyword-super-init | 53 | PR-candidate | **Added 2026-06-16 (v0.5.13 resweep).** Rebase positional-arg mismatch: v0.5.13 inserted `start_layer` into **both** `LlamaAttention.__init__` (pos 6) and `LlamaDecoderLayer.__init__` (pos 3), but `ministral3.py`'s `Ministral3Attention`/`Ministral3DecoderLayer` called `super().__init__(...)` **positionally** with the old order — every later arg shifted by one, so the **prefix string** landed in `quant_config` → `'str' object has no attribute 'get_quant_method'`, crashing **Devstral-Small-2-24B-AWQ** (`Mistral3ForConditionalGeneration` → LLaVA → ministral3) at model init. Fix: bind both `super().__init__` calls by **keyword** (robust to future param insertions). Passes apply + py_compile + import; only fails at instantiation — the canonical rebase-bug class. Validated: devstral2 boots, basic OK, short 40.9 tok/s (= baseline 41). Generic → upstream PR candidate. |
-| 056 | devstral-multitoken-toolname-omission-recovery `.CANDIDATE` | 23 |  | **Added 2026-06-15.** Extends 040's streaming hold-back from exact tool-name match to **prefix** match (`_trailing_known_tool_name_len`). SGLang streams the name token(s) before `[ARGS]`; a multi-token name (`todowrite`→`todo`+`write`, `webfetch`→`web`+`fetch`) arrived in pieces and the first piece — not an exact tool — was flushed as content, splitting the name across the flush boundary so omission-recovery failed (Open work #1 residual). Holding a trailing run that is a *prefix* of any known tool keeps the full name intact until `[ARGS]` arrives, where 040's exact-match recovery then succeeds. Prose-safe: a prefix-word ("web"/"todo"/"read") is held at most one increment then flushed on divergence — never dropped (same delay-then-flush class 040 already accepted for exact names). Unit-tested: multi-token (todowrite/webfetch) + single-token + canonical `[TOOL_CALLS]` all recover; prose with tool-name-prefix words preserved verbatim, 0 spurious calls. SWE-bench end-to-end validation pending. |
-| 048 | rdna4-loading-timeout-cold-cache | 18 | PR | UNBALANCED_MODEL_LOADING_TIMEOUT_S 480→1800: big TP2 weights on cold page cache skew ranks past upstream timeout. Captured from live tree 2026-06-10. |
+| # | Patch | Upstream | Current purpose |
+|---:|---|---|---|
+| 007 | `rdna4-model-fixes` | Carry | Collects small model-loader fixes for Gemma, Qwen, Devstral, and Llama checkpoints used on this stack. |
+| 015 | `qwen36-vision-config-dict-wrap` | Carry | Wraps dictionary Qwen vision configuration for attribute-based SGLang access. |
+| 016 | `qwen3next-conv1d-tp` | Carry | Separates Qwen3-Next TP-sharded recurrent state from Qwen3.5's replicated DeltaNet state. |
+| 036 | `qwen3next-radixattn-no-quant-config` | Candidate | Keeps RadixAttention out of the W4A16 quant-method construction path. |
+| 040 | `devstral-toolcall-omission-recovery` | Partial | Recovers streamed Devstral tool calls that omit the outer marker. |
+| 048 | `rdna4-loading-timeout-cold-cache` | Candidate | Extends the unbalanced-loading timeout for large TP checkpoints on a cold page cache. |
+| 055 | `rdna4-eagle3-deltanet-vl-enablement` | Carry | Captures the correct hidden layers for EAGLE3 across dense and DeltaNet Qwen VL wrappers. |
+| 056 | `devstral-multitoken-toolname-omission-recovery` | Candidate | Holds streamed tool-name prefixes until Devstral's argument marker resolves the call. |
+| 057 | `rdna4-evs-video-combined-path-routing` | Candidate | Routes EVS video embeddings through the combined path that unwraps and redistributes pruned frames. |
+| 058 | `rdna4-ngram-reconstruct-fallback` | Candidate | Provides a GPU-vectorized reconstruction fallback when the optional native NGRAM operation is absent. |
+| 062 | `cohere2moe-v0513-hybrid-swa-classification` | Candidate | Classifies Cohere2 MoE as hybrid SWA so North receives valid layer and window cache metadata. |
+| 083 | `mistral-common-backend-optout` | Candidate | Reroutes MistralCommonBackend tokenizers to TokenizersBackend so rendered special tokens retain their IDs. |
 
 ## Build stack
 
-| Component | Version | Source |
-|-----------|---------|--------|
-| SGLang | v0.5.15 | stock + 56 patches; original rebase promoted 2026-07-11, North/Laguna extension 2026-07-12 |
-| Triton | 3.6.0 | upstream triton-lang |
-| RCCL | system ROCm 7.2 (2.27.7) | no custom build |
-| PyTorch | 2.11.0+rocm7.2 | ROCm build in `sglang-triton36-v0515` |
-| ROCm | 7.2.1 | Arch Linux packages |
+| Component | Version |
+|---|---|
+| SGLang | v0.5.15 plus this 56-patch series |
+| transformers | 5.12.1 |
+| Triton | 3.6.0 |
+| PyTorch | 2.11.0+rocm7.2 |
+| ROCm | 7.2 |
+| RCCL | 2.27.7 from the system ROCm installation |
 
-## Recent resolved items
-
-Chronological log of fixes that have shipped.  Anything here has landed in `main` — open issues live in the top-level [README.md](../README.md).
-
-- **2026-05-02 — Qwen3.6-VL-REAP-26B-A3B-AWQ recal SHIPPED.** balanced_thinking_vision recipe (33h GPTQ on CPU) fixed the thinking TRUNCATED-at-4096-tok regression — now basic+thinking PASS (977 tok, finish=stop). Vision still HSAILs but **structurally**: inspecting v1 + v2 safetensors shows zero vision-named tensors — REAP pruning stripped the vision tower from `atbender/Qwen3.6-VL-REAP-26B-A3B` BF16 base entirely. Multimodal arch class + `vision_config` claim vision support but vision params are uninitialized; vision PASS would need a different REAP variant, not a re-recal. Same architectures-class rescue applied as 27B (commit 5200af5). Memory: `feedback_text_only_recipe_strips_vision.md` (sister rule for text-only recipes), commit `1d0bd1e` for the diagnosis + ship.
-- **2026-05-01 — Qwen3.6-27B-AWQ recal SHIPPED.** balanced_thinking_text recipe (19h GPTQ on CPU) fixed the M4-flagged thinking-loop regression — now basic+thinking+vision all PASS. **3090 cross-validated 3/3 PASS on Ampere** (their commit 0db6979) — same recal weights serve clean across RDNA4 and Ampere. Two reusable gotchas captured: (a) text-only recipe on a multimodal model strips both `model-vision.safetensors` AND saves text-only architecture; rescue = config rewrite (`Qwen3_5ForConditionalGeneration` + `text_config`/`vision_config` from a v1 reference) + copy vision shard + merge index (commit 5200af5). (b) LLaVA-Instruct-150K loader needs `data_files="llava_instruct_150k.json"` pinning or it silently falls back to ultrachat → 0 vision samples in calibration (commit 054a10d, ported from 3090 commit 489db4f).
-- **2026-04-30 — `quantization_config.ignore=[]` audit hit FIXED.** 3090's 2026-04-25 audit flagged that all our native AWQ uploads shipped with empty `ignore=[]` — actual weights kept BF16 fallback for router/vision (verified in safetensors), but the field wasn't propagated through `convert_moe_ct_to_awq.py`. Cosmetic for SGLang runtime, but breaks downstream audit scripts. Convert script now copies the source CT `ignore` list into the AWQ output config; backfilled the field server-side on the 5 already-shipped repos (Qwen3.5-27B-AWQ, Qwen3.6-VL-REAP-26B-A3B-AWQ, Devstral-24B-AWQ, gemma-4-26B-AWQ, gemma-4-31B-it-AutoRound-AWQ) via HfApi.upload_file.
-- **2026-04-30 — Confirmed Gemma 4 26B `<pad>`-token bug is Ampere-only, not RDNA4.** 3090's audit reported gemma-4-26B-AWQ produces `1-1-1-1-1-…` repetition + thinking timeout + vision crash on their stack. R9700 audit shipped the same checkpoint as **4/4 PASS** (basic + thinking + vision + video). Confirms the bug is in the 3090 Gemma 4 forward path (Ampere/Triton lane), not in our calibration. Useful narrowing data for their hypothesis tree (they've since traced it to lm_head logit collapse, see 3090 commit f932198).
-- **2026-04-29 — Qwen3-Coder chat template `tool_calls.arguments` JSON-string FIXED.** 3090 hit a TypeError on multi-turn opencode rollouts: shipped `chat_template.jinja` did `tool_call.arguments|items` assuming a dict, but the OpenAI spec sends `arguments` as a JSON-encoded string. Fix: added `{%- if tool_call.arguments is string %}{%- set _args = tool_call.arguments | from_json %}{%- else %}{%- set _args = tool_call.arguments %}{%- endif %}` ahead of the loop, then iterate `_args|items`. Re-uploaded chat_template.jinja to both `mattbucci/Qwen3-Coder-30B-A3B-AWQ` and `mattbucci/Qwen3-Coder-REAP-25B-A3B-AWQ` via HfApi.upload_file. 3090 SWE-bench rollouts unblocked.
-- **2026-04-30 — 3090 cross-validated 4/4 mattbucci AWQs on a single 24 GB Ampere card.** With one 3090 offline (PCIe adapter swap), 3090 ran our Apr-30 audit subset on TP=1 / 8K ctx using the orchestrator both teams now share. Four checkpoints basic-PASS: `qwen3-ream` (REAM-Instruct-2507 self-build), `coder-30b` (local Apr-17), `mattbucci/Qwen3-Coder-30B-A3B-AWQ` (Apr-29 CT mirror, byte-matches HF), `mattbucci/Qwen3-Coder-REAP-25B-A3B-AWQ` (byte-matches HF). Thinking probe correctly skipped via `NON_THINKING` orchestrator list — no false-FAIL noise. Net: the 7/9-clean headline holds across stacks for the working repos.
-- **2026-04-26 — Qwen3.6-35B v2 calibration ship-blockers diagnosed.** 16h recal with corrected `re:.*shared_expert\..*` (singular+dot) ignore — exit=0, 19GB v2 CT + 19GB v2 native AWQ saved with 261-entry ignore list.  Two separate blockers found: **(a) llmcompressor downgrades `architectures` to `Qwen3_5MoeForCausalLM` (text-only)** instead of v1's `Qwen3_5MoeForConditionalGeneration` (multimodal wrapper) and strips `text_config` + `vision_config` + `{vision,image,video}_token_id`.  Same safetensors keys but the SGLang loader's `language_model.` strip is calibrated for the wrapper class, so the post-strip lookup misses on text-only registration.  Fixed by patching v2 config.json (rewrite architectures + model_type, copy missing fields from v1 reference).  After patch v2 boots clean.  **(b) BF16 shared_expert load-side bug** — loader's `stacked_params_mapping` for `gate_proj`→`gate_up_proj` cumulatively re-applies `up_proj`→`gate_up_proj` on already-mapped names, producing impossible `gate_gate_up_proj` lookups; 80 distinct missing-param warnings (40 layers × 2 ranks × 2 patterns).  v1 sidestepped this because its shared_expert was AWQ-quantized (qweight load path, no fusion remap).  Symptom of (b): forward runs with garbage shared_expert → NaN logits → `torch.multinomial` HSAIL 0x1016 in sampler.py:479.  Pre-fusing offline (concat dim 0) eliminates the first warning but breaks TP=2 sharding (MergedColumnParallelLinear expects per-rank reception).  Real fix is loader-side patch (deferred).  v1 stays in production.  Open follow-up in main README: `convert_moe_ct_to_awq.py --reference-config` flag to script the (a) config-rescue.
-- **2026-04-26 — opencode SWE-bench harness ported (commit `ba3d457`).** Mirrored 3090's `evals/swebench/{run_rollouts,score_local}.py` verbatim — platform-agnostic since it talks opencode → local SGLang and our launch.sh preset names match (`coder-reap-25b`, `qwen36-moe`).  First overlap target for head-to-head once 3090 publishes a scored result: Coder-REAP-25B.
-- **2026-04-25 — Qwen3-Coder-REAP-25B-A3B AWQ shipped.** Self-calibrated `code_thinking` → CT → native AWQ in one pipeline run, validator basic+thinking PASS, 22.9 short / 21.9 @131K flat.  HF upload `mattbucci/Qwen3-Coder-REAP-25B-A3B-AWQ`; launch preset `coder-reap-25b`.  Adds a 25B Cerebras-pruned variant alongside the 30B Coder for VRAM-tight runs.  3090 team can serve from the same HF repo directly with `--disable-piecewise-cuda-graph` (their CUDA-graph capture hangs without it).
-- **2026-04-25 — Qwen3.6-27B clean re-bench (TTFT-thinking caveat).** Re-benched without concurrent HF uploads to test the "uploads contaminated bench" hypothesis: numbers match prior bench (24/23/21/18/14/9.8 across 128–131K).  The 4.8s TTFT floor is **intrinsic to thinking models**, not contamination — `bench_serving` measures TTFT to first **content** token, which on Qwen3.6/Qwen3.5 includes the entire reasoning pass (~115 thinking tokens × 41ms TPOT = 4.7s).  Decode TPOT is the metric to watch.  Documented as a TTFT note in main README bench section.
-- **2026-04-25 — Patch 014 Gemma4 reasoning parser landed.** Cherry-picked upstream PR #21952: `Gemma4Detector` for `<|channel>` / `<channel|>` tokens — enables `--reasoning-parser gemma4` for Gemma4-26B/31B agent workloads.  Streaming verification next.
-- **2026-04-24 — Qwen3.6-35B-A3B CT→native AWQ, 6× decode speedup.** CompressedTensorsWNA16TritonMoE on ROCm ran 3.6 tok/s short / 3.4 @131K; repacking the same weights into native AWQ via `scripts/quantize/convert_moe_ct_to_awq.py` (unpack → AWQ interleave → repack for SGLang's fused Triton AWQ GEMM, with RTN re-quantization of non-CT BF16 expert weights and BF16 dequant fallback for `shared_expert_gate [1, H]` whose out dim isn't divisible by 8) gets **21.6 tok/s short / 20.6 @131K**.  `launch.sh qwen36-moe` default now points at `Qwen3.6-35B-A3B-AWQ-native-thinking-vision`.  Commit `b6777e1`.  3090 team picked up the same converter and measured **33 tok/s** on NVIDIA (awq_marlin kernel is faster at this size), validator 4/4 PASS.
-- **2026-04-24 — Coder-Next 80B conv1d TP=2 shape mismatch (patch 016).** `x=[4096,6] weight=[4096,4] conv_states=[9,8192,3]` — conv_state was allocated full-dim 8192 while Qwen3-Next DeltaNet projections are TP-sharded to 4096.  Root cause: RDNA4 DeltaNet-replication fix leaked into `Qwen3NextConfig.mamba2_cache_params` as a hard-coded `tp_world_size=1`.  Fix: restore upstream `tp_world_size=get_attention_tp_size()` on Qwen3-Next; override in `Qwen3_5TextConfig.mamba2_cache_params` to keep `tp_world_size=1` for the Qwen3.5 replicated-DeltaNet path.  Coder-Next 80B now boots + short-generates.  (HSAIL 0x1016 on long decode is a separate open issue.)  Commit `343e6c3`.
-- **2026-04-19 — Qwen3.5 thinking regression.** v1 AWQ (`mattbucci/Qwen3.5-27B-AWQ-4bit-calibrated`) entered infinite `<think>` loops because Open-Platypus calibration had zero thinking traces — the model never saw a terminated `</think>`.  v2 recalibrated via `quantize_qwen35_thinking_aware.py` on AM-Thinking-v1-Distilled + NuminaMath-CoT terminates cleanly with `finish=stop` and answer in `reasoning_content`.  Shipped in-place to the same HF repo so existing pulls auto-upgrade.
-- **2026-04-19 — Cross-team multimodal calibration upgrade.** Replaced VATEX with `lmms-lab/LLaVA-Video-178K` (178K caps + 960K open-ended QA + 196K MC, FPS=1 untrimmed, already chat-template formatted) and added `google/covost2` for instruction-style audio.  Available as `thinking_vision_video` and `thinking_vision_video_audio` recipes in `scripts/quantize/calibration_datasets.py`.  3090 team pulled the same recipes.
-
-## Key findings
-
-1. **System RCCL 7.2 has P2P/IPC for gfx1201** — no custom RCCL build needed.
-2. **Upstream triton 3.6.0 works on RDNA4** — `triton-rocm` 3.6 (AMD's PyTorch fork) deadlocks with `LD_PRELOAD`; the upstream release does not.
-3. **Fused AWQ GEMM is the single highest-impact change** — 4x decode TPOT improvement vs dequant+matmul.
-4. **Qwen3.5 TP=2 needs replicated DeltaNet** — `W_0@x_0 + W_1@x_1` differs from `W@x` by ~1 ULP in FP16; DeltaNet's recurrent state `S(t) = g*S(t-1) + delta` compounds across 48 layers.  Fix: `tp_size=1` on DeltaNet + MLP, FP32 all-reduce, FP32 split_k, SSM state `tp_world_size=1`.
-5. **sgl_kernel is CUDA-only** — pip package fails on ROCm; patch 003 wraps imports with torch fallbacks.
-6. **CUDA graphs fragment VRAM on RDNA4** — `--cuda-graph-bs` reserves 2+ GiB in private pools that blocks AWQ forward alloc at 32K+ context.  All long-context presets use `--disable-cuda-graph`.
-
-## Architectural investigations (solved)
-
-### Triton attention BF16 precision — patch 011
-
-Affects every model with >30 layers on BF16 RDNA4 (Gemma 4 31B, Qwen3.5-27B, Coder-Next).  Root cause: online softmax `e_max`/`e_sum`/`re_scale` accumulate in BF16, and `p.to(v.dtype)` truncates FP32 softmax weights to BF16 before the value dot product.
-
-**Audit findings:**
-1. Online softmax `e_max`/`e_sum`/`re_scale` accumulate in BF16 — catastrophic over 4000+ KV tokens.
-2. `tl.dot()` calls lack explicit `out_dtype=tl.float32` — BF16 accumulation on RDNA4.
-3. Split-K stage-2 reduction: `tl.exp(e_max - n_e_max)` in BF16 loses rescaling precision.
-4. Softcapping: `tanh()` computes FP32 internally but result multiplied back in BF16.
-5. `k_scale` missing from extend stage (line 498 vs 392) — FP8 KV attention logit mismatch.
-6. `p.to(v.dtype)` before value accumulation — FP32 softmax weights truncated.
-7. `window_kv_offsets` discarded in decode mode (`triton_backend.py:278`).
-
-**Fix:** `tl.dot(p.to(tl.float32), v.to(tl.float32))` instead of `tl.dot(p.to(v.dtype), v)`.  Extend kernel uses reduced block sizes (32×64) to fit FP32 in RDNA4's 64KB shared memory.  Cross-vendor finding: [NVIDIA DGX Spark thread](https://forums.developer.nvidia.com/t/qwen3-5-27b-optimisation-thread-starting-at-30-t-s-tp-1/366009) hit the same issue on Blackwell SM12.x with 100KB SMEM — FP32 accumulation is the fix on both architectures.
-
-### Gemma 4 31B Dense — FP16 dequant precision loss
-
-Gemma models were [never designed for FP16 inference](https://huggingface.co/google/gemma-3-27b-it/discussions/45).  Must use `--dtype bfloat16`.
-
-**Two compounding issues:**
-1. AWQ `awq_dequantize_decomposition` dequantized in FP16 regardless of activation dtype → precision loss compounded through Gemma's 60 layers, output collapsed at ~30 tokens.  Fixed in patch 006 (dequant uses activation dtype).
-2. Uniform INT4 quantization through 60 layers still degrades at ~60-100 tokens in some configs.  Mitigated by the Triton attention fix (patch 011) and torch_native fallback.
-
-**What we tried (all history, for future debugging reference):**
-
-| Approach | Quality | Speed |
-|----------|---------|:-----:|
-| RTN group_size=128 (FP16 dequant) | Garbage at 30 tokens | ~19 tok/s |
-| RTN group_size=32 (FP16 dequant) | Garbage at 30 tokens | — |
-| GPTQ via GPTQModel | Crashed | — |
-| GPTQ via llmcompressor (FP16 dequant) | Garbage at 30 tokens | — |
-| Compressed-tensors direct (BF16 torch dequant) | Coherent ~100 tokens | 0.28 tok/s |
-| AWQ + BF16 torch dequant fallback | Coherent ~100 tokens | 0.34 tok/s |
-| AWQ + BF16 HIP GEMV | Coherent ~60 tokens | 12.4 tok/s |
-| AWQ + Triton GEMV (FP16 dequant) | Degrades ~400 tokens | 17 tok/s |
-| AWQ + Triton GEMV (FP32 dequant) | Degrades ~400 tokens | 17 tok/s |
-| HIP GEMV + BF16→FP16 cast | HSA crash | — |
-| Mixed-precision CT (23 BF16 + 37 INT4) | Degrades at ~50 tokens | 0.9 tok/s |
-| **torch_native attention + Triton GEMV (final)** | **Clean at 659 tokens** | **15 tok/s** |
-| Triton attention + Triton GEMV | Degrades at ~400 tokens | 17 tok/s |
-
-**Conclusion:** The 400-token degradation is a triton-attention bug, not a GEMV/dequant bug.  Patch 011 FP32 fix helps but insufficient for Gemma4's 60-layer SWA pipeline.  Use `--attention-backend torch_native` for reference quality; retain the 17 tok/s triton path for future rekernel work.
-
-AutoRound calibration path (tested on Intel/gemma-4-31B-it-int4-AutoRound): even FP32 dequant + FP32 matmul still degrades, confirming the issue is attention-side.  RedHatAI and ISTA-DASLab report 99.4%+ quality with uniform GPTQ on CUDA — this is an RDNA4 kernel issue, not a quantization one.
-
-The 59 GB BF16 Gemma 4 31B does not fit in our 2×30 GB + 62 GB RAM budget for AutoRound on our hardware; would need single GPU with >60 GB VRAM (A100-80G, H100).
-
-### Gemma 4 26B MoE vision — patches 006 + 012 + 013
-
-Vision originally crashed with HSA exception on FP16 overflow + SWA pool mis-indexing.  Three fixes landed:
-1. BF16 vision encoder forward (FP16 overflows after 27 transformer layers — patch 013).
-2. `torch_native` SWA decode/extend fix (full pool indices on SWA buffer → HSA crash — patch 012).
-3. ATTN_BACKEND override in `launch.sh` so `gemma4` preset uses torch_native.
-
-Launch with vision: `EXTRA_ARGS="--enable-multimodal" scripts/launch.sh gemma4`.
-
-### Triton kv_indices kernel on RDNA4 — patch 012
-
-`create_flashinfer_kv_indices_triton` crashes with HSA exception on gfx1201.  All 9 call sites in `triton_backend.py` replaced with a PyTorch fallback `_create_kv_indices()`.  Negligible perf impact for small-batch decode.
-
-### Qwen3.5-27B TP=2 via DeltaNet replication
-
-See "Key findings" #4.  Resulting VRAM budget (per GPU, 32 GB): ~14.3 GB model (replicated) + ~4.0 GB KV cache (256K FP8) + ~2.0 GB overhead = ~20 GB used.  Leaves room for long-context KV at single-user.
-
-### MoE quantization (Gemma 4 26B, Qwen3.5-35B)
-
-Standard GPTQ/AWQ **fails** for MoE models (MoEQuant, ICML 2025):
-1. **Inter-expert imbalance** — router unevenly distributes calibration data; rare experts get zero/garbage calibration (Gemma 4 26B GPTQ initial run: 1/128 experts calibrated, rest got inf scales).
-2. **DeltaNet/SSM sensitivity** — recurrent state `S(t) = g*S(t-1) + delta` accumulates INT4 noise; DeltaNet layers MUST stay BF16 (Coder-Next AWQ is bandwidth-bound at 15 tok/s by BF16 weight reads).
-
-Fix: expert-balanced calibration (MoEQuant EBSS, GPTQModel FailSafe, or our unfused-expert monkey-patch that forces uniform routing — see `quantize_gemma4_26b_thinking_vision.py`).  Skip DeltaNet/SSM from INT4 (`in_proj_a`, `in_proj_b` in Qwen3.5; `mlp.gate` router heads in MoE).
-
-### Quantization pipeline
-
-AWQ-4bit via GPTQ calibration + format conversion.  Community AWQ models produce garbage on DeltaNet + under-calibrate MoE, which is why we self-calibrate.
+Build the optional native components with:
 
 ```bash
-# Setup quant env (separate from sglang-triton36 — llmcompressor pins transformers 4.x)
-conda create -n quant python=3.12 -y
-conda activate quant
-pip install git+https://github.com/vllm-project/llm-compressor.git --no-deps
-pip install git+https://github.com/neuralmagic/compressed-tensors.git --no-deps
-pip install transformers compressed-tensors accelerate datasets safetensors sentencepiece protobuf
-
-# End-to-end pipeline
-bash scripts/quantize/run_full_pipeline.sh qwen35       # calibrate → CT→AWQ → launch → validate
-bash scripts/quantize/run_full_pipeline.sh gemma4-26b   # same, thinking+vision recipe
+scripts/setup_sgl_kernel.sh --env sglang-triton36-v0515
+scripts/build_awq_gemv.sh --env sglang-triton36-v0515
+scripts/build_skinny_gemms_int4.sh --env sglang-triton36-v0515
 ```
 
-See [rules-for-agents.md](../rules-for-agents.md) for full rules (calibration samples, DeltaNet exclusions, AWQ checkpoint format).
+## Related documentation
 
-## REAM tooling files — MOVED
-
-The transformers-side REAM/calibration tooling (`qwen3moe_unfused_experts.py`, `transformers_disable_qwen3moe_fusion.patch`) moved to [`ream-patches/`](../ream-patches/README.md) (2026-06-10) so this dir is purely the SGLang series.
-
-## FP8 serving on RDNA4 (detail)
-
-gfx1201 has native FP8 acceleration, so FP8 W8A8 is a serving option alongside the int4 ships. FP8_DYNAMIC = per-output-channel symmetric FP8 weights (compressed-tensors `float-quantized`) + dynamic per-token FP8 activations; lm_head/vision/DeltaNet (`in_proj_*`,`conv1d`)/all gating (`mlp.gate`, `*_gate`, `*.router.*`) stay BF16. (The condensed lane lives in the main [README](../README.md#fp8-lane); full casting/serving/perf detail is here.)
-
-**Casting — use `scripts/quantize/quantize_fp8_manual.py` (NOT llmcompressor for MoE).** llmcompressor 0.10.0.2 `oneshot` SIGSEGVs (heap corruption ~2/3 through the weight pass, iter ~12,470) on large-expert-count MoE — Qwen3-Coder-30B-A3B (128 exp = 18,624 quantized Linears) dies regardless of device (CPU+GPU), GPU mem cap, or MoE-context. Plain-torch `.to(float8_e4m3fn)` casts those exact (finite) weights fine → the bug is in llmcompressor's many-module observer machinery, not the math. The manual caster does the FP8_DYNAMIC math directly, streams shard-by-shard (RAM ~one-shard bounded), writes the identical CT layout, and works dense+MoE+VL+DeltaNet via the ignore regexes. (`quantize_fp8.py` GPU path: skip the Ryzen iGPU — it enumerates as cuda:2 with a ~31GB GTT aperture that a memory filter won't catch, so filter by name; and a `--gpu-mem` cap.) Audit scales with the weight_scale scan (0 non-finite / 0 zero-scale gate).
-
-**Serving:** patch 039 fixes the RDNA4 native per-token act-quant (`_native_dynamic_per_token_quant_fp8` padding); patch 004 fixes the RDNA4 fused-MoE fallback (`_rdna4_torch_moe` hardcoded `block_m=16` ≠ real `BLOCK_SIZE_M` → walked into uninitialized `expert_ids` → garbage index). RDNA4 FP8/INT8 MoE defaults to the real Triton `fused_moe_kernel` (`RDNA4_TORCH_FP8_MOE=1` opt-in restores the torch loop; `scaled_fp8_quant` uses native PyTorch on HIP, no Triton compile). `launch.sh` auto-detects `compressed-tensors` in config.json and serves any int4 preset's FP8 dir via the CT path (`MODEL=<fp8-dir> launch.sh <preset>`).
-
-**Validated FP8 equivalents (TP2, fp8 KV)** — the per-model FP8 max-context / tok/s data is folded into the canonical [Agent / coding workloads](../README.md#agent--coding-workloads-single-user-max-context) table under Model Support (one table, `AWQ / FP8` columns); full per-model FP8 detail in [`benchmarks/fp8-256k-campaign-2026-05-31.json`](../benchmarks/fp8-256k-campaign-2026-05-31.json). There, FP8 `max ctx` = largest *single-sequence* context that actually serves (NOT the KV-pool size — they differ sharply for SWA/dense).
-
-> **FP8 REAM-A3B variant — not built.** A 256→192 FP8 re-merge would need the 67 GB parent BF16 resident in RAM, which wedges this 64 GB box (amdgpu GPU-SVM paging + swap thrash drives system-wide kernel page-allocation failures). And per the crossover below, an FP8 A3B-MoE has no single-user benefit here (AWQ-int4 wins M=1 decode). So REAM-A3B's vision fix ships in **AWQ** (see [REAM/REAP matrix](../README.md#reamreap-coverage-matrix)); an FP8 build would need a CPU-only merge or a >64 GB-RAM host.
-
-**Findings:** (1) **Dense ≤24B (Devstral) is the clean FP8 win** — par speed, fits 256K. (2) **FP8 weights are 2× int4, so max context drops for larger/hybrid models near the 32GB limit**: 32B-dense → ~159K, 31B-dense (Gemma SWA) → ~51K. AWQ-int4 reaches 262K on all of these, so FP8 costs context above ~24B. (3) **A3B-MoE keeps a huge KV budget** (coder-30B 522K, qwen36-35B tokens) — only 3B active, weights/card modest. (4) Vision + thinking + DeltaNet all survive FP8 (towers/SSM-projections kept BF16). (5) **FP8 MoE vs AWQ is an M-crossover, not a flat 2× loss** — int4 wins single-token decode (M=1) by ~1.5× (bandwidth: 0.5 B/wt vs 1 B), FP8 wins M≥8 (native gfx1201 fp8 WMMA beats int4 dequant→bf16). See the perf analysis below.
-
-📉 **FP8 long-context memory levers (RDNA4 floor).** For the non-fitters (VL-32B 159K, gemma-31B 51K @mem0.85): (1) **`--mem-fraction 0.92` on text-only long-context = a free +22%** — VL-32B-FP8 159K→195K (weights 16.9 GB/card, KV 11.9, ~2.5 spare); use it as the long-context override (keep the 0.85 default for vision+batch headroom). (2) **`--cpu-offload-gb` is broken for FP8 on RDNA4** — offloading 8 GB grows the KV pool to 330K tokens, but the model crashes at first inference: `RuntimeError: Only multiplication of row-major and column-major matrices is supported by cuBLASLt` in `fp8_utils._apply_fallback_scaled_mm` (the streamed-back fp8 weight layout breaks hipBLASLt; candidate fix = force a column-major/contiguous operand). (3) **Sub-fp8 KV is unavailable on RDNA4** — `fp8_e4m3` is the floor; `fp4_e2m1` KV is CUDA 12.8+ only. **Net: true 256K for the >24B dense/hybrid models is not reachable in FP8 on 2×32 GB — AWQ-int4 (half the weight bytes, `in_proj` stays BF16) is their 256K format; FP8's clean 256K wins stay the A3B-MoE models. `--mem-fraction 0.92` is the one free squeeze.**
-
-**DeltaNet ignore rule:** Qwen3_5 DeltaNet names its recurrent-state input projections `in_proj_qkv`/`in_proj_z` (not just `in_proj_a`/`in_proj_b`). The cast ignore matches all `in_proj_*` so they stay BF16 (cardinal SSM rule).
-
-**Production call:** plain (no-spec) single-user decode → AWQ-int4 wins by ~1.5× (bandwidth, M=1). But **FP8 + MTP spec-decode flips it: 34.5 tok/s, ~2× the FP8 no-spec baseline and faster than AWQ-int4's ~30** — MTP's verify step batches the tokens into the M≥2–3 regime where native fp8 WMMA wins. So for MTP-capable models (qwen36-35B), **FP8 + BF16-MTP-head + NEXTN is the decode-throughput winner**; for non-MTP MoE (coder-30B) AWQ-int4 stays best at M=1. FP8 also wins any batched/multi-user/prefill regime. Dense FP8 (Devstral, par with AWQ at 256K) is unaffected. (Microbench used per-tensor fp8 as a tiling proxy; per-channel scale granularity is negligible at the kernel level.)
-
-**Why MoE doesn't beat dense at M=1 despite fewer active params:** the win is bandwidth × *efficiency*, and MoE decode runs at ~10–15% of peak. Microbench: the MoE call at M=1 loads ~19 MB of active expert weights (a ~15–30 µs bandwidth floor) but takes **194 µs** — dominated by fixed overhead (routing → token sort/align → gate_up → silu → down → reduce, multiple launches) and scattered tiny per-expert GEMVs, none of which a dense FFN's one contiguous matmul pays. Sublinear M-scaling proves it (194 µs@M=1 → 287@M=8 → 699@M=256: 8× tokens, 1.5× time). Dense saturates because it's one huge contiguous transfer; sparse MoE at M=1 is latency-bound. The fix is to raise effective M (batch / spec-decode), not relayout weights — routing is dynamic, so you can't statically pack the active set.
-
-**Two perf levers (single-user decode coder-30B/qwen36-35B FP8 baseline ≈ 17.7 tok/s @8K):**
-- **AITER (`SGLANG_USE_AITER=1`) — N/A on RDNA4.** AMD's AITER is a CDNA/Instinct (gfx94x/95x MFMA) library, not installed and not gfx1201-targeted; SGLang's aiter MoE path (`shuffle_weight` + `AiterMoeQuantInfo`) needs kernels that don't exist for RDNA4 WMMA. (The PyPI `aiter` is an unrelated 2019 async-iterator lib — not AMD's.) The Triton native-fp8-WMMA path is the only fp8 MoE path here.
-- **MTP speculative decode (NEXTN) — 2× decode win.** qwen36-35B ships a 1-layer MTP head (`mtp_num_hidden_layers=1`); SGLang maps `Qwen3_5MoeForConditionalGeneration`→`Qwen3_5ForCausalLMMTP` draft. **The MTP head must stay BF16** (FP8-quantizing it collapses accept rate to ~0 — a 1-layer next-token predictor is far more quant-sensitive than the backbone). The caster keeps the whole `mtp.*` block BF16 (`mtp\..*` in the ignore set + an early-copy guard, since `is_fused_expert()` would otherwise FP8 the MTP's 3D experts). With `--speculative-algorithm NEXTN --speculative-num-steps 3 --speculative-eagle-topk 1 --speculative-num-draft-tokens 4`: accept length 2.26, decode 34.5 tok/s (2× no-spec), thinking preserved. Tree-tuned to 45.25 tok/s at `--speculative-eagle-topk 8 --speculative-num-steps 5 --speculative-num-draft-tokens 16` (accept 3.25, 4/4 validator PASS incl. vision) — the 35B's mamba/DeltaNet memory caps it at topk≈8 (topk=16 OOMs). MTP lifts effective M into the regime where native fp8 WMMA wins. (SGLang auto-disables radix cache for spec+this arch on ROCm; harmless. The BF16 MTP head costs ~0.7 GB.)
-
-- **🏁 Spec-decode summary — production ships sped up at TP2.** The key flag is **`--speculative-attention-mode decode`**: it fixes the TP2 deadlock for EAGLE3+`moe_wna16` and is the difference that makes DFlash win — without it spec-decode either hangs at TP2 or loses. The recipe is uniform: **`<draft> + --speculative-attention-mode decode @ TP2`**. Ships & wins (all ~4× over the ~22 tok/s no-spec baseline unless noted):
-
-  | Ship | draft | tok/s | × | ctx |
-  |---|---|---|---|---|
-  | Qwen3-Coder-30B-A3B | EAGLE3 (lmsys) | 97 | 4.4× | 256K |
-  | Qwen3.6-35B-A3B | DFlash (z-lab) | 80 | 3.7× | 256K, 4/4 incl vision |
-  | Qwen3-Coder-REAP-25B | Coder-30B EAGLE3 (transfer) | 90 | 4.0× | 256K |
-  | Qwen3-Coder-30B-REAP | Coder-30B EAGLE3 (transfer) | 89 | 4.0× | 256K |
-  | Qwen3-Coder-30B-REAM | Coder-30B EAGLE3 (transfer) | 101 | ~4.5× | 256K |
-  | Qwen3.6-REAM-A3B | 35B DFlash (transfer) | 133 | ~6× | 256K, text/thinking only* |
-  | Qwen3-Coder-Next-REAM | Aurora-Spec EAGLE3 (transfer) | 58 | 2.65× | caps 64K (DeltaNet+draft mem) |
-
-  ![Spec-decode coverage + decode tok/s across the fleet](../benchmarks/specdecode_fleet.png)
-
-  *Full-fleet spec-decode landscape (`benchmarks/specdecode.json` → `scripts/bench/generate_charts.py::make_specdecode_chart`). Green = working (tok/s · ×speedup · draft · ctx); amber = untested-but-viable path; gray = blocked, labelled with the blocker rather than a bare N/A. It's data-driven over the whole zoo — as a blocked/untested model gets a working draft, flip its `status`→`working` + fill `spec_toks` in the JSON and regenerate; the bar appears automatically (no model silently sits at N/A).*
-
-  **Three reusable findings:** (1) **drafts TRANSFER parent→pruned-child** (REAP/REAM keep arch/layers/hidden — reuse the parent's draft, no recast/download/SpecForge); (2) **AWQ ships have NO MTP head** (dropped in CT→AWQ conversion — NEXTN needs grafting, so external/transferred drafts are the path); (3) **limits** — big external drafts OOM VRAM-tight DeltaNet (27B dense 3.3 GB draft OOMs even @16K); DeltaNet+draft caps context (Coder-Next-REAM 64K). Still blocked: gemma (transformers+frozen-KV bug), VL-REAP (no vision tensors — structural REAP strip, needs rebuild), Qwen3-VL-32B (sgl #17935), dense-27B (draft too big).
-
-**Spec-decode coverage map (per model) — "working params" + draft source.** The EAGLE verify path works on RDNA4 (it's what NEXTN resolves to). **NGRAM does NOT** — it needs `sgl_kernel.reconstruct_indices_from_tree_mask`, absent from our RDNA4 sgl_kernel build (crashes on first inference). **Tree drafting (topk>1) is the throughput lever — RDNA4 supports EAGLE tree-verify** (unlike NGRAM). Start `--speculative-num-steps 3 --speculative-eagle-topk 1 --speculative-num-draft-tokens 4` (chain), then widen topk for big gains: Coder-30B EAGLE3 went 54→65→81→**97 tok/s** at topk 1→4→8→16 (accept 3.4→6.0; topk=32 collapses). Pure-MoE (Coder) tolerates topk=16/draft=32; DeltaNet-MoE (35B) caps at topk≈8/draft=16 (mamba cache memory; topk=16 OOMs). **Two cardinal rules:** (1) the draft/MTP head must stay full-precision (BF16) — quantizing it collapses acceptance to ~0; (2) for an external BF16 draft against a quantized target, pass **`--speculative-draft-model-quantization unquant`** or SGLang tries to load the draft as the target's quant format and crashes (`CompressedTensorsConfig.__init__() missing ... arguments`).
-
-| Model(s) | Draft | Source | Status |
-|---|---|---|---|
-| Qwen3.6-35B-A3B | in-ckpt MTP (FP8) / **DFlash (AWQ ship)** | self (NEXTN) / `z-lab/Qwen3.6-35B-A3B-DFlash` | FP8+MTP: 34.5→tuned 45 tok/s. **AWQ production: DFlash + `--speculative-attention-mode decode` @ TP2 = 21.8→80 tok/s (3.7×, accept 4.85), full 256K, 4/4 validator PASS (basic+thinking+vision+video).** The AWQ ship's bundled MTP head is int4 (dead → ~0 accept), so DFlash is the path. Recipe: `MODEL=…/Qwen3.6-35B-A3B-AWQ NCCL_DEBUG=WARN EXTRA_ARGS="--speculative-algorithm DFLASH --speculative-draft-model-path …/Qwen3.6-35B-A3B-DFlash --speculative-draft-model-quantization unquant --speculative-attention-mode decode --disable-overlap-schedule" scripts/launch.sh qwen36-moe`. |
-| **Qwen3-Coder-30B-A3B** | EAGLE3 (external) | `lmsys/SGLang-EAGLE3-Qwen3-Coder-30B-A3B-Instruct-SpecForge` (361 MB) | **AWQ/`moe_wna16` production @ full 256K: TP2 + EAGLE3 + `--speculative-attention-mode decode` = ~22→97 tok/s (4.4×, accept ~5.4), coherent, context_len=262144 with max_total=817979.** The EAGLE3 draft is target-agnostic (lifts both int4 and FP8). Needs `--speculative-draft-model-quantization unquant`. (topk=32 collapses — draft drifts at depth.) Use the `…-AWQ-native` dir (`quant_method=awq`); the plain `…-AWQ` dir is *compressed-tensors* and crashes the `moe_wna16` preset. **The key flag is `--speculative-attention-mode decode`** — without it (default `prefill`) EAGLE3+`moe_wna16` at TP2 deadlocks (boots, warmup passes, then real requests make zero progress); with it, TP2 beats TP1 (97 vs 72–80) because spec-decode's batched verify likes TP2's compute parallelism. Production recipe: `MODEL=…/Qwen3-Coder-30B-A3B-AWQ-native NCCL_DEBUG=WARN _ENV_CTX=262144 _ENV_MAX_RUNNING=8 EXTRA_ARGS="--speculative-algorithm EAGLE3 --speculative-draft-model-path …/EAGLE3-Coder-30B-A3B --speculative-draft-model-quantization unquant --speculative-num-steps 6 --speculative-eagle-topk 16 --speculative-num-draft-tokens 32 --speculative-attention-mode decode" scripts/launch.sh coder-30b`. (TP1 also works — 72–80 tok/s, caps ~131K — but TP2+decode-mode is strictly better and reaches 256K.) |
-| Qwen3.5-27B / Qwen3.6-27B (**dense** DeltaNet-VL) | in-ckpt MTP | self (NEXTN) | **No viable FP8 spec-decode on 2×32 GB.** FP8 weights load ~28.7 GB/card: the main weights stay fp8 (~13.5/card) but the mandatory-BF16 parts replicate per-card — DeltaNet `in_proj` (192 tensors, BF16 by SSM rule) + vision tower (333) + embed/lm_head ≈ 15 GB/card — leaving no room for a draft. FP8'ing `in_proj`+`lm_head` to fit produces degenerate garbage (the SSM "in_proj stays BF16" rule holds for FP8 too, not just INT4). **AWQ-int4 (half the main-weight bytes, keeps `in_proj` BF16) is the correct format.** ⚠ **EAGLE3 on AWQ-int4 TESTED 2026-06-14** (`Qwen3.6-27B-EAGLE3-specdrift`, after patch 055 unblocked loading): loads+coherent, accepts len 4.0 — **but net-negative ~18 vs ~25 no-spec**. Root cause is NOT the draft/format: DeltaNet's recurrent verify is **sequential in num-draft-tokens**, so the spec step is GPU-compute-bound (~5.5× a plain decode, cuda-graph no help) — the same wall that makes DFlash/MTP moot here. So a BF16-MTP recast would hit the same ceiling; the real blocker is the verify kernel, not the draft. |
-| **Qwen3-Coder REAP/REAM family** (pruned from Coder-30B) | **parent's EAGLE3 draft (TRANSFERS across pruning)** | `EAGLE3-Coder-30B-A3B` (the Coder-30B draft, reused as-is) | All three pruned text-Coder children are sped up by the parent's draft (no recast/download/SpecForge): Coder-**REAP-25B** 22.6→**90.6** tok/s (4.0×, accept 5.16, 256K); Coder-30B-**REAP** **89.5** tok/s (accept 5.14); Coder-30B-**REAM** **101.4** tok/s (accept 5.46, full 256K). REAP/REAM prune/merge experts but keep arch (`Qwen3MoeForCausalLM`), layers (48), hidden_size (2048) identical → the parent's EAGLE3 draft predicts the child's hidden states with high acceptance. All coherent (basic validator PASS). Recipe: `MODEL=…/<pruned-ship> EXTRA_ARGS="--speculative-algorithm EAGLE3 --speculative-draft-model-path …/EAGLE3-Coder-30B-A3B --speculative-draft-model-quantization unquant --speculative-num-steps 6 --speculative-eagle-topk 16 --speculative-num-draft-tokens 32 --speculative-attention-mode decode" scripts/launch.sh coder-30b` (use `_ENV_CTX=262144` for 256K). |
-| Qwen3.5-28B-REAP, Qwen3.6-REAM-A3B, Qwen3.6-VL-REAP-26B (**MoE**) | parent draft transfer (preferred) / in-ckpt MTP | parent's DFlash/EAGLE3 draft | The AWQ ships have no int4 MTP head (the MTP layer is dropped entirely in CT→AWQ conversion — config says `mtp_num_hidden_layers=1` but only layers 0..N-1 exist). So NEXTN can't load a head; reuse the **parent model's draft** instead. Qwen3.6-REAM-A3B + Qwen3.6-35B-A3B-DFlash (parent transfer): text/thinking = 133 tok/s median (231 max), accept 7.49, basic+thinking validator PASS. DFlash+vision works (the parent 35B passes vision under DFlash); REAM-A3B vision ships on the `-vision` dir (333-tensor `model.visual.*` tower spliced from the parent BF16 via `merge_vision_weights.py --vision-prefix model.visual`, 4/4 PASS). For other vision MoE ships with intact vision, DFlash+vision is viable. 28B-REAP ← Qwen3.5-35B-A3B-DFlash (download; check its vision is intact first). VL-REAP still blocked by the VL spec-decode bug (#17935). |
-| Qwen3-Coder-Next | spec draft (external) | `togethercomputer/Aurora-Spec-Qwen3-Coder-Next-FP8` | untested (expected OK — EAGLE path) |
-| gemma-4-31B / 26B | assistant MTP drafter (external) | `google/gemma-4-31B-it-assistant` (927 MB, official, 4-layer shared-KV, ~3× lossless). Params: `--speculative-algorithm NEXTN --speculative-num-steps 5 --speculative-num-draft-tokens 6 --speculative-eagle-topk 1` (+ `--tp 2`) | Assistant/FROZEN_KV_MTP path blocked by two layers: (1) `Gemma4AssistantConfig` needs transformers 5.8.x but our SGLang pins `transformers==5.6.0`; (2) even with the bump, SGLang v0.5.12 crashes at verify (`frozen_kv_mtp_worker.py:733 assert seq_lens.shape==extend_prefix_lens.shape`, `extend_prefix_lens is None`). **Use the EAGLE3 path instead** (see below). |
-| Qwen3-VL-32B (dense) | EAGLE3 | only `modal-labs/qwen3-vl-30b-a3b-eagle3-v0` exists (30B-A3B MoE, ≠ 32B dense); SGLang VL spec broken (sgl bug #17935) | blocked |
-| Devstral-24B (Mistral) | none found | — | no public draft; would need SpecForge training |
-
-**Web-sourced options for the blocked models:**
-- **gemma-4-31B — EAGLE3 path.** `--attention-backend triton --speculative-algorithm EAGLE3`. gemma-4-31B-FP8 + `thoughtworks/Gemma-4-31B-Eagle3` (`LlamaForCausalLMEagle3`) loads and is coherent, but accept is only 1.34 (~no speedup) because that draft targets the *base* `gemma-4-31B`; the it-matched draft `RedHatAI/gemma-4-31B-it-speculator.eagle3` is `Eagle3DraftModel` arch which SGLang can't load (only `LlamaForCausalLMEagle3`). Remaining gap = an it-matched SGLang-format draft (convert RedHatAI's, or SpecForge-train one).
-- **Qwen3.5-27B (dense) — DFlash does not fit.** `z-lab/Qwen3.5-27B-DFlash` is a 3.3 GB draft (4× the 35B's 0.9 GB). On 2×32 GB the AWQ-27B weights load at 14.5 GB/card; the 3.3 GB draft + the DeltaNet mamba-state caches for both target and draft overflow the KV pool at every context down to 16K. **The 27B's own in-checkpoint MTP head, BF16-recast, is the right path** — a ~0.7 GB head (like the 35B's) fits where the 3.3 GB DFlash draft can't, then NEXTN + `--speculative-attention-mode decode`. So dense-27B spec-decode is blocked on the BF16-MTP recast, not on the algorithm.
-- **Qwen3.5-35B-A3B (MoE)** — `z-lab/Qwen3.5-35B-A3B-DFlash` exists; could beat MTP, but needs the 3.5-35B FP8 base (≈ duplicates our 3.6-35B MTP win).
-- **Devstral-24B** — SGLang ships `MistralForCausalLMEagle` (`mistral_eagle.py`), so a Mistral-Small-24B EAGLE draft *would* load; none found published for Devstral specifically (SpecForge-train).
-- **Qwen3-VL-32B** — blocked: SGLang VL spec-decode bug (#17935, missing `get_embed_and_head` on the VL wrapper).
-
-**DFlash (block-diffusion drafter).** `z-lab/*-DFlash` drafts exist for almost the whole zoo (Coder-30B, Coder-Next, Qwen3.6-27B, **Qwen3.6-35B-A3B**, gemma-4-31B/26B-it, Qwen3.5-27B/35B-A3B). SGLang's `DFLASH` algo auto-selects the **triton** draft backend on ROCm (no NVIDIA deps). DFlash-capable target classes (implement `set_dflash_layers_to_capture`): `qwen3_moe`, `qwen3_5`, `qwen3_next`, `qwen3_vl`, `qwen3`, `llama`, deepseek_v2, gpt_oss, kimi — **but NOT `gemma4`** (it has the EAGLE3 hook, not the DFLASH one → gemma DFlash errors `does not implement set_dflash_layers_to_capture`). With `--speculative-attention-mode decode` @ TP2, DFlash is the best spec-decode for the AWQ 35B ship (80 tok/s median, 145 max, accept 4.85, 4/4 validator PASS, full 256K). It is especially valuable for AWQ MoE ships whose bundled int4 MTP head is dead (~0 accept). Remaining DFlash gaps: gemma can't use it (no hook); Qwen3-VL-32B has the hook but no published z-lab DFlash draft.
+- Cross-collection counts and lifecycle: [`../PATCHES.md`](../PATCHES.md)
+- Launch presets and supported models: [`../README.md`](../README.md)
+- Quantization pipeline: [`../scripts/quantize/README.md`](../scripts/quantize/README.md)
+- Calibration and pruning patches: [`../llmcompressor-patches/README.md`](../llmcompressor-patches/README.md), [`../ream-patches/README.md`](../ream-patches/README.md)
+- Benchmark data and methodology: [`../benchmarks/README.md`](../benchmarks/README.md)

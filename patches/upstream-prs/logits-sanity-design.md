@@ -1,7 +1,17 @@
-# Logits sanity gate (new-feature PR; replaces our 034 — upstream removed --enable-nan-detection)
+# Logits finite-value diagnostics
 
-**Problem.** A single NaN/±Inf logit row faults `multinomial` asynchronously (HSAIL 0x1016 on ROCm; cryptic device-side asserts on CUDA), losing the batch with no actionable error.
+## Problem
 
-**Proposal.** `--logits-sanity off|warn|raise` in `Sampler.forward`: one fused `~isfinite(logits).any(dim=-1)` check (covers NaN AND ±Inf — old isnan missed Inf; cost negligible @M=1). warn = replace row with uniform + log req-id; raise = ValueError with row idx. Default off.
+A NaN or infinite logit row can surface later as an asynchronous multinomial or device assertion, obscuring the originating request and layer.
 
-**Receipts both stacks:** R9700 gemma4 +Inf softcap (HSAIL in sampler.py:498), 3090 warmup NaN ValueErrors. Co-sign: 3090.
+## Proposal
+
+Add an opt-in sampler setting:
+
+\`\`\`text
+--logits-sanity off|warn|raise
+\`\`\`
+
+Use one finite-value reduction per row. In \`warn\` mode, log the request and row and replace the invalid row with a safe distribution. In \`raise\` mode, raise a synchronous error containing the row index. Keep the default \`off\`.
+
+The implementation should cover NaN and both infinities, include unit tests for all modes, and report measured overhead at M=1.
