@@ -21,10 +21,10 @@ index 882c682414..fc55ee0e99 100644
      q: torch.Tensor,
      k: torch.Tensor,
 diff --git a/python/sglang/srt/layers/sampler.py b/python/sglang/srt/layers/sampler.py
-index 941cdb353c..2449bdae3a 100644
+index e83e4157fa..82ed790e2b 100644
 --- a/python/sglang/srt/layers/sampler.py
 +++ b/python/sglang/srt/layers/sampler.py
-@@ -599,7 +599,7 @@ def top_k_top_p_min_p_sampling_from_logits_ascend(
+@@ -600,7 +600,7 @@ def top_k_top_p_min_p_sampling_from_logits_ascend(
      return batch_next_token_ids.view(-1)
  
  
@@ -34,7 +34,7 @@ index 941cdb353c..2449bdae3a 100644
      logprobs: torch.Tensor, seed: torch.Tensor, positions: torch.Tensor
  ) -> torch.Tensor:
 diff --git a/python/sglang/srt/layers/vocab_parallel_embedding.py b/python/sglang/srt/layers/vocab_parallel_embedding.py
-index 46c711aa7d..45fab9c119 100644
+index 8f553060ec..a56c78b657 100644
 --- a/python/sglang/srt/layers/vocab_parallel_embedding.py
 +++ b/python/sglang/srt/layers/vocab_parallel_embedding.py
 @@ -37,6 +37,7 @@ from sglang.srt.utils import (

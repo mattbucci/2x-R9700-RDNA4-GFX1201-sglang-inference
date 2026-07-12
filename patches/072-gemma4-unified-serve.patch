@@ -1687,10 +1687,10 @@ index 0000000000..be7a591c11
 +
 +__all__ = ["Gemma4UnifiedVideoProcessor"]
 diff --git a/python/sglang/srt/utils/hf_transformers/common.py b/python/sglang/srt/utils/hf_transformers/common.py
-index 1f93ae8520..9cc8061e1c 100644
+index eef80dc7a9..f3857a3996 100644
 --- a/python/sglang/srt/utils/hf_transformers/common.py
 +++ b/python/sglang/srt/utils/hf_transformers/common.py
-@@ -138,6 +138,18 @@ try:
+@@ -140,6 +140,18 @@ try:
  except ImportError:
      pass
  
@@ -1709,7 +1709,7 @@ index 1f93ae8520..9cc8061e1c 100644
  for name, cls in _CONFIG_REGISTRY.items():
      try:
          AutoConfig.register(name, cls)
-@@ -146,6 +158,18 @@ for name, cls in _CONFIG_REGISTRY.items():
+@@ -148,6 +160,18 @@ for name, cls in _CONFIG_REGISTRY.items():
          if "already registered" not in err and "already used" not in err:
              logger.warning("Failed to register config %s: %s", name, e)
  

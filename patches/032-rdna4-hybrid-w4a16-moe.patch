@@ -1,10 +1,10 @@
 diff --git a/python/sglang/srt/environ.py b/python/sglang/srt/environ.py
-index ef5c46119d..2d813b1d57 100644
+index 790acce902..2dc3ec88f2 100644
 --- a/python/sglang/srt/environ.py
 +++ b/python/sglang/srt/environ.py
-@@ -194,6 +194,21 @@ class ToolStrictLevel(IntEnum):
+@@ -188,6 +188,21 @@ class ToolStrictLevel(IntEnum):
+ 
  class Envs:
-     # fmt: off
  
 +    # MoE hybrid W4A16 kernel (HIP wvSplitK INT4 GEMM for decode + Triton for
 +    # prefill). Ported from mgehre-amd/vllm 0b992ff (2026-04-27). Enabled by

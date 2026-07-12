@@ -1,8 +1,8 @@
 diff --git a/python/sglang/srt/models/qwen3_vl.py b/python/sglang/srt/models/qwen3_vl.py
-index 76d6922ac0..aa46bff19e 100644
+index 75c807a5d7..f1683f6407 100644
 --- a/python/sglang/srt/models/qwen3_vl.py
 +++ b/python/sglang/srt/models/qwen3_vl.py
-@@ -1401,13 +1401,31 @@ class Qwen3VLForConditionalGeneration(nn.Module):
+@@ -1540,13 +1540,31 @@ class Qwen3VLForConditionalGeneration(nn.Module):
          self.model.capture_aux_hidden_states = True
          if layer_ids is None:
              num_layers = self.config.num_hidden_layers

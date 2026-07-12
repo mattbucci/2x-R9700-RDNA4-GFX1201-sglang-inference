@@ -1,8 +1,8 @@
 diff --git a/python/sglang/srt/models/qwen3_5.py b/python/sglang/srt/models/qwen3_5.py
-index dc8dcddb5d..9673918138 100644
+index d7803ed25d..9f5a2afafc 100644
 --- a/python/sglang/srt/models/qwen3_5.py
 +++ b/python/sglang/srt/models/qwen3_5.py
-@@ -141,6 +141,30 @@ if _is_npu:
+@@ -154,6 +154,30 @@ if _is_npu:
      )
  
  
@@ -33,7 +33,7 @@ index dc8dcddb5d..9673918138 100644
  def _should_replicate_deltanet_for_tp(
      quant_config: Optional[QuantizationConfig],
  ) -> bool:
-@@ -153,7 +177,15 @@ def _should_replicate_deltanet_for_tp(
+@@ -166,7 +190,15 @@ def _should_replicate_deltanet_for_tp(
      if quant_config is None:
          return True
      name = quant_config.get_name()

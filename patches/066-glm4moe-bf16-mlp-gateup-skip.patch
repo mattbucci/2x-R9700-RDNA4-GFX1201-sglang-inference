@@ -1,5 +1,5 @@
 diff --git a/python/sglang/srt/models/glm4_moe.py b/python/sglang/srt/models/glm4_moe.py
-index 5bc6346c59..f9287dd24d 100644
+index 558a83b380..9ee560114c 100644
 --- a/python/sglang/srt/models/glm4_moe.py
 +++ b/python/sglang/srt/models/glm4_moe.py
 @@ -119,6 +119,25 @@ if _is_npu:
@@ -28,7 +28,7 @@ index 5bc6346c59..f9287dd24d 100644
  class Glm4MoeMLP(nn.Module):
      def __init__(
          self,
-@@ -466,7 +485,9 @@ class Glm4MoeSparseMoeBlock(nn.Module):
+@@ -464,7 +483,9 @@ class Glm4MoeSparseMoeBlock(nn.Module):
                  hidden_size=config.hidden_size,
                  intermediate_size=intermediate_size,
                  hidden_act=config.hidden_act,
@@ -39,7 +39,7 @@ index 5bc6346c59..f9287dd24d 100644
                  reduce_results=False,
                  prefix=add_prefix("shared_experts", prefix),
                  **(
-@@ -858,7 +879,7 @@ class Glm4MoeDecoderLayer(nn.Module):
+@@ -856,7 +877,7 @@ class Glm4MoeDecoderLayer(nn.Module):
                  hidden_size=config.hidden_size,
                  intermediate_size=config.intermediate_size,
                  hidden_act=config.hidden_act,

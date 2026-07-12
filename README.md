@@ -1,6 +1,6 @@
 # RDNA4 Inference: SGLang on 2x R9700
 
-High-throughput LLM inference on 2x AMD Radeon AI PRO R9700 (gfx1201, RDNA4) with ROCm 7.2.  **SGLang v0.5.14 + 46 RDNA4 patches** (live tree `/data/sgl-v0514`, env `sglang-triton36-v0514`; promoted 2026-06-26 — resweep 7/8 presets parity-or-better, cuda-graph fixed via launch.sh `--pre-warm-nccl`, DeltaNet class fixed by patch 073; rollback = v0.5.13.post1 stack `/data/sgl-rebase` / `sglang-triton36-v0513`. CANDIDATEs 050, 067–072 (--force-decode-window, --decode-topk-pages, gemma4_unified omni) pending the v0.5.14 second-pass — see [patches/README.md](patches/README.md) for applied fixes, architectural investigations, and shipped-fix log).
+High-throughput LLM inference on 2x AMD Radeon AI PRO R9700 (gfx1201, RDNA4) with ROCm 7.2.  **SGLang v0.5.15 + 47 RDNA4 patches** (live tree `/data/sgl-v0515`, env `sglang-triton36-v0515`; promoted 2026-07-11 — rebased from v0.5.14 across a 547-commit upstream delta with only 4 conflicts (064 upstreamed); equivalence gate byte-equal, import smoke 29/29, GPU: coder-30b 35/36 + qwen36-moe caps 3/3 + gemma4 4/4-incl-video + North-Mini 062; cuda-graph pre-warm-nccl holds; patch 073 relocated to `arg_groups/overrides.py`; rollback = v0.5.14 stack `/data/sgl-v0514` / `sglang-triton36-v0514`. CANDIDATEs 050, 067–071 pending — see [patches/README.md](patches/README.md) for applied fixes, architectural investigations, and shipped-fix log).
 
 ## Current Focus
 
@@ -199,9 +199,9 @@ Every `mattbucci/*-AWQ` row below is built by our own scripts (`scripts/quantize
 
 Community checkpoints fail for several architectures (BOS issues, MoE under-calibration, DeltaNet destruction), which is why we self-calibrate.  Pipeline in `scripts/quantize/`.
 
-## Performance (2x R9700, TP=2, SGLang v0.5.14)
+## Performance (2x R9700, TP=2, SGLang v0.5.15)
 
-> **✅ Fleet resweep complete — carried onto the live v0.5.14 stack (promoted 2026-06-26; [`v0514-resweep`](benchmarks/v0514-resweep-2026-06-26.md), 7/8 presets parity-or-better, deep-context re-sweep pending).** The v0.5.13.post1 resweep (2026-06-16) validated all 14 downloaded presets at **perf parity-or-better** vs v0.5.12 (short-decode + the full fleet deep-measured at true ~242-245K depth, 2026-06-20). **4 needed a small RDNA4 graft** (all caught at boot/inference, not patch-apply): **062** cohere2_moe hybrid-SWA classification (North-Mini), **063** relu2 HIP fallback + `librosa` dep (nemotron-omni), **064** ministral3 keyword super-init (devstral2). Clean/no-patch: qwen36-27b, qwen36-moe, qwen35, qwen35-moe, devstral, coder-30b, coder-reap-25b, coder-next-ream, qwen3vl-32b, gemma4-31b, gemma4-26B. `glm45-air` stays **blocked** (compressed-tensors-W4A16 Marlin path on RDNA4 — pre-existing on v0.5.12, not a regression). Full table + method: [`benchmarks/v0513-resweep-2026-06-16.md`](benchmarks/v0513-resweep-2026-06-16.md). The per-model numbers below are v0.5.12-era but **hold on v0.5.13** (and carry onto the live v0.5.14 — a v0.5.14 deep re-sweep is pending): the full fleet is now deep-measured at true ~242-245K depth (2026-06-20, no-spec server-log gen-throughput) and confirms **parity-or-better with no depth regression** — DeltaNet/Mamba-MoE hybrids (qwen36-moe 18.6, qwen35-moe 18.5, nemotron-omni 49) lead at 256K (O(1) recurrent layers); pure-dense full-attention (gemma4-31b 5.2, qwen3vl-32b 8.2) is slowest. Per-model deep table (all 12 256K-capable models): [`benchmarks/v0513-resweep-2026-06-16.md`](benchmarks/v0513-resweep-2026-06-16.md).
+> **✅ Fleet resweep complete — carried onto the live v0.5.15 stack (rebased from v0.5.14, promoted 2026-07-11 — boot+caps parity re-confirmed: coder-30b 35/36, gemma4 4/4 incl. video, qwen36-moe caps 3/3, North-Mini 062; deep-context 256K re-sweep pending; prior [`v0514-resweep`](benchmarks/v0514-resweep-2026-06-26.md) was 7/8 presets parity-or-better).** The v0.5.13.post1 resweep (2026-06-16) validated all 14 downloaded presets at **perf parity-or-better** vs v0.5.12 (short-decode + the full fleet deep-measured at true ~242-245K depth, 2026-06-20). **4 needed a small RDNA4 graft** (all caught at boot/inference, not patch-apply): **062** cohere2_moe hybrid-SWA classification (North-Mini), **063** relu2 HIP fallback + `librosa` dep (nemotron-omni), **064** ministral3 keyword super-init (devstral2). Clean/no-patch: qwen36-27b, qwen36-moe, qwen35, qwen35-moe, devstral, coder-30b, coder-reap-25b, coder-next-ream, qwen3vl-32b, gemma4-31b, gemma4-26B. `glm45-air` stays **blocked** (compressed-tensors-W4A16 Marlin path on RDNA4 — pre-existing on v0.5.12, not a regression). Full table + method: [`benchmarks/v0513-resweep-2026-06-16.md`](benchmarks/v0513-resweep-2026-06-16.md). The per-model numbers below are v0.5.12-era but **hold on v0.5.13** (and carry onto the live v0.5.15 — a v0.5.15 deep re-sweep is pending): the full fleet is now deep-measured at true ~242-245K depth (2026-06-20, no-spec server-log gen-throughput) and confirms **parity-or-better with no depth regression** — DeltaNet/Mamba-MoE hybrids (qwen36-moe 18.6, qwen35-moe 18.5, nemotron-omni 49) lead at 256K (O(1) recurrent layers); pure-dense full-attention (gemma4-31b 5.2, qwen3vl-32b 8.2) is slowest. Per-model deep table (all 12 256K-capable models): [`benchmarks/v0513-resweep-2026-06-16.md`](benchmarks/v0513-resweep-2026-06-16.md).
 
 All context-sweep numbers: `sglang.bench_serving`, FP8 KV cache, 1 user. cuda-graph follows each preset's default — eager for the GPU-bound dense rows, **ON** for the MoE/hybrid rows (marked `†` in the sweep table below). Results are in `benchmarks/<slug>/results.json`; charts (regenerate with `python scripts/bench/generate_charts.py`) in `benchmarks/`.
 
@@ -302,11 +302,11 @@ Running — cells fill as the matrix completes (`—` = pending; `(running)` = p
 
 ## Infrastructure Summary
 
-- **SGLang v0.5.14** on the **live serving tree** (`/data/sgl-v0514`, env `sglang-triton36-v0514`) + 46 RDNA4 patches — see [patches/README.md](patches/README.md). **Promoted to live 2026-06-26** (rebased from v0.5.13.post1: gate-verified byte-equivalent, resweep 7/8 presets parity-or-better; cuda-graph FULL capture deadlock fixed via launch.sh `--pre-warm-nccl`, DeltaNet/mamba class fixed by patch 073). Receipt: [patches/v0514-rebase-2026-06-26.md](patches/v0514-rebase-2026-06-26.md); resweep: [benchmarks/v0514-resweep-2026-06-26.md](benchmarks/v0514-resweep-2026-06-26.md). **Rollback** = the retained v0.5.13.post1 stack (`/data/sgl-rebase`, env `sglang-triton36-v0513`): `ENV_NAME=sglang-triton36-v0513 SGLANG_DIR=/data/sgl-rebase scripts/launch.sh …` (older v0.5.12: `/data/vG` / `sglang-triton36`). ⚠ Note: the per-model 256K-depth perf tables above predate v0.5.14 — deep-context re-sweep pending.
+- **SGLang v0.5.15** on the **live serving tree** (`/data/sgl-v0515`, env `sglang-triton36-v0515`) + 47 RDNA4 patches — see [patches/README.md](patches/README.md). **Promoted to live 2026-07-11** (rebased from v0.5.14 across a 547-commit / 1789-file upstream delta with only 4 conflicts + 064 upstreamed: gate-verified byte-equivalent, import smoke 29/29; GPU coder-30b `eval_comprehensive` 35/36 + cuda-graph pre-warm-nccl clean, qwen36-moe caps 3/3 + mamba `no_buffer` (patch 073 relocated to `arg_groups/overrides.py`), gemma4 caps 4/4 incl. video, North-Mini `SWARadixCache hybrid_swa=True` (062) + FP8). Receipt: [patches/v0515-rebase-2026-07-11.md](patches/v0515-rebase-2026-07-11.md). **Rollback** = the retained v0.5.14 stack (`/data/sgl-v0514`, env `sglang-triton36-v0514`): `ENV_NAME=sglang-triton36-v0514 SGLANG_DIR=/data/sgl-v0514 scripts/launch.sh …` (older v0.5.13.post1: `/data/sgl-rebase` / `sglang-triton36-v0513`). ⚠ Note: the per-model 256K-depth perf tables above predate v0.5.15 — deep-context re-sweep pending.
 - **Triton 3.6.0** (upstream).  Do NOT clear `~/.triton/cache/` before benchmarking — cold cache produces 100x slower numbers.
 - **PyTorch 2.12+rocm7.2**.
 - **RCCL 2.27.7** (system ROCm, P2P/IPC on gfx1201 — no custom build).
-- **Conda envs**: `sglang-triton36-v0514` (**live** inference, v0.5.14), `sglang-triton36-v0513` (v0.5.13.post1 rollback), `sglang-triton36` (v0.5.12 rollback), `quant` (calibration — llmcompressor pins transformers 4.x, incompatible with SGLang).
+- **Conda envs**: `sglang-triton36-v0515` (**live** inference, v0.5.15), `sglang-triton36-v0514` (v0.5.14 rollback), `sglang-triton36-v0513` (v0.5.13.post1 rollback), `sglang-triton36` (v0.5.12 rollback), `quant` (calibration — llmcompressor pins transformers 4.x, incompatible with SGLang).
 
 See [rules-for-agents.md](rules-for-agents.md) for RDNA4 constraints, launch flags, and quantization rules.  See [CLAUDE.md](CLAUDE.md) for working-mode directives.
 
@@ -331,7 +331,7 @@ No consumer RDNA4 GPU-to-GPU interconnect exists (no NVLink/XGMI equivalent).  T
 ```
 PATCHES.md            # Cross-collection patch map — all 4 dirs
 
-patches/              # SGLang v0.5.14 RDNA4 patches + investigations archive (46, numeric order)
+patches/              # SGLang v0.5.15 RDNA4 patches + investigations archive (47, numeric order)
   README.md           #   Applied patches, architectural findings, solved-issue log
   0*.patch            #   46 patches, apply in numeric order
   upstream-prs/       #   rebased-onto-main drafts of the 10 upstream PR candidates
@@ -352,5 +352,5 @@ scripts/
   eval/               # Quality evaluation + validator (thinking + vision gate)
   test/               # Tests, debug, profiling, sweeps
 
-components/sglang/    # stale rebase workspace — NOT the serving tree (/data/sgl-v0514 serves)
+components/sglang/    # stale rebase workspace — NOT the serving tree (/data/sgl-v0515 serves)
 ```

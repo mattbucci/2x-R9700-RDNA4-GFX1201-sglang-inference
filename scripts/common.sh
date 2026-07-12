@@ -28,12 +28,12 @@ if [ -z "${CONDA_BASE:-}" ]; then
 fi
 export CONDA_BASE
 
-# LIVE = v0.5.14 (promoted 2026-06-26; cuda-graph fixed via launch.sh --pre-warm-nccl).
-# ROLLBACK to v0.5.13.post1: set ENV_NAME=sglang-triton36-v0513 SGLANG_DIR=/data/sgl-rebase
-# (that stack is retained, untouched). Older v0.5.12 rollback: ENV_NAME=sglang-triton36 SGLANG_DIR=/data/vG.
-ENV_NAME="${ENV_NAME:-sglang-triton36-v0514}"
+# LIVE = v0.5.15 (promoted 2026-07-11; rebased from v0.5.14 — see patches/v0515-rebase-2026-07-11.md).
+# ROLLBACK to v0.5.14: set ENV_NAME=sglang-triton36-v0514 SGLANG_DIR=/data/sgl-v0514 (retained, untouched).
+# Older rollbacks: v0.5.13.post1 = ENV_NAME=sglang-triton36-v0513 SGLANG_DIR=/data/sgl-rebase; v0.5.12 = sglang-triton36 /data/vG.
+ENV_NAME="${ENV_NAME:-sglang-triton36-v0515}"
 ROCM_PATH="${ROCM_PATH:-/opt/rocm}"
-SGLANG_DIR="${SGLANG_DIR:-/data/sgl-v0514}"
+SGLANG_DIR="${SGLANG_DIR:-/data/sgl-v0515}"
 MODELS_DIR="${MODELS_DIR:-$HOME/AI/models}"
 TRITON_CACHE_DIR="${TRITON_CACHE_DIR:-$HOME/.cache/triton_rdna4_t36}"
 PORT="${PORT:-23334}"

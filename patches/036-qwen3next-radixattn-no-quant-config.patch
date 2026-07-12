@@ -1,8 +1,8 @@
 diff --git a/python/sglang/srt/models/qwen3_next.py b/python/sglang/srt/models/qwen3_next.py
-index 24911ee533..befaae51b6 100644
+index 2b5bcffd01..6a1d36d5cf 100644
 --- a/python/sglang/srt/models/qwen3_next.py
 +++ b/python/sglang/srt/models/qwen3_next.py
-@@ -679,13 +679,19 @@ class Qwen3HybridAttentionDecoderLayer(nn.Module):
+@@ -678,13 +678,19 @@ class Qwen3HybridAttentionDecoderLayer(nn.Module):
              prefix=add_prefix("o_proj", prefix),
          )
  

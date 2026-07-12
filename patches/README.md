@@ -1,4 +1,19 @@
-# SGLang v0.5.14 RDNA4 Patches (rebased from v0.5.13.post1)
+# SGLang v0.5.15 RDNA4 Patches (rebased from v0.5.14)
+
+> ✅ **v0.5.15 PROMOTED to live 2026-07-11.** The series is rebased onto **v0.5.15** (tag `d80c135a`) in tree
+> `/data/sgl-v0515` + fresh env `sglang-triton36-v0515` — **47 patches** (real `git rebase --onto`; upstream
+> delta v0.5.14→v0.5.15 was large: **547 commits / 1789 files**, yet only **4 conflicts** — 004 topk
+> `_is_hip` vs upstream's new `_is_cuda` JIT router, 005 fp8 `_is_rdna4_device` vs `materialize_bpreshuffle_fp8_scale`,
+> 062 cohere2 hybrid-SWA vs `UnlimitedOCRForCausalLM`, 073 mamba-radix **relocated** to the new
+> `arg_groups/overrides.py` post-process pass). **1 dropped (064 ministral3 keyword-init — upstreamed:
+> v0.5.15 adopted keyword-binding + `start_layer` itself).** 3-gate equivalence audit: 47/47 apply to
+> pristine v0.5.15, **byte-equal** to the rebased tree, only 026 the benign re-appliable exception (same as
+> v0.5.14). Import smoke 29/29. GPU: coder-30b `eval_comprehensive` 35/36 + cuda-graph clean (pre-warm-nccl
+> holds), qwen36-moe caps 3/3 + mamba `no_buffer` (073), gemma4 caps **4/4 incl. video**, North-Mini
+> `SWARadixCache hybrid_swa=True` (062) + FP8. **Rollback** = the retained v0.5.14 stack (`/data/sgl-v0514`,
+> env `sglang-triton36-v0514`). Full receipt: [v0515-rebase-2026-07-11.md](v0515-rebase-2026-07-11.md).
+
+<details><summary>Prior promotion: v0.5.14 (2026-06-26) — historical</summary>
 
 > ✅ **v0.5.14 PROMOTED to live 2026-06-26.** The series is rebased onto **v0.5.14** in tree
 > `/data/sgl-v0514` + fresh env `sglang-triton36-v0514` — **48 patches** (065 split-KV tree-verify **RESTORED**:
@@ -16,7 +31,22 @@
 > eager, ~2.2×). **Promoted to live 2026-06-26** (post-promotion resweep 7/8 presets parity-or-better; deep-context 256K re-sweep pending). Rollback = the retained v0.5.13.post1 stack (`/data/sgl-rebase`, env `sglang-triton36-v0513`). Full receipt:
 > [v0514-rebase-2026-06-26.md](v0514-rebase-2026-06-26.md); resweep: [../benchmarks/v0514-resweep-2026-06-26.md](../benchmarks/v0514-resweep-2026-06-26.md).
 
+</details>
+
+**47 patches** applied in numeric order on a stock `git checkout v0.5.15` (see the v0.5.15 banner above; the
+v0.5.14→v0.5.15 rebase kept the whole v0.5.14 series minus **064**, which v0.5.15 upstreamed). Numbers: 001–008,
+011, 015–016, 023–028, 030–033, 036–037, 039–049, 055–063, 065–066, 072–073. **34 rebased core patches**
+(001–049) + **boot/inference fixes** (059–061) + **promoted second-pass patches** (055–058, 062–063) + **1 perf
+kernel** (065 split-KV tree-verify, opt-in `SGLANG_TREE_VERIFY_SPLITKV`, default OFF → inert unless enabled) +
+**066** glm4_moe BF16-dense-MLP gate_up skip-miss (glm45-air; fleet-inert) + **072** gemma4_unified config +
+**073** mamba-extra_buffer HIP fallback (relocated to `arg_groups/overrides.py` in v0.5.15). Source of truth for
+**what's fixed and how**; main [README.md](../README.md) tracks current state. Cross-collection map: [PATCHES.md](../PATCHES.md).
+
+<details><summary>v0.5.14-era series description (historical)</summary>
+
 **46 patches** applied in numeric order on a stock `git checkout v0.5.13.post1` — **34 rebased core patches** (001–049, with **012/034/035 retired**, see below) + **6 boot/inference fixes** (059–064, found during env-validation + the resweep) + **4 promoted second-pass patches** (055–058, the surviving v0.5.12 CANDIDATEs re-applied 2026-06-17) + **1 perf kernel** (065 split-KV tree-verify, opt-in `SGLANG_TREE_VERIFY_SPLITKV`, default OFF → inert unless enabled) + **066 glm4_moe BF16-dense-MLP gate_up skip-miss fix** (unblocks glm45-air; fleet-inert). Source of truth for **what's fixed and how**; main [README.md](../README.md) tracks current state. Cross-collection map (all 4 patch dirs + upstream-lifecycle scorecard): [PATCHES.md](../PATCHES.md).
+
+</details>
 
 **Verified 2026-06-16 (rebase), re-gated 2026-06-17 (second pass):** the full **44-patch** series applies clean (44/44, 0 skipped) on a pristine `v0.5.13.post1` clone and reproduces the live tree (`/data/sgl-rebase`, env `sglang-triton36-v0513`) **byte-for-byte** (git-diff equivalence gate, empty; and every patch's `--check` fails on the patched tree = no double-apply anchor). Validated by booting two presets TP=2: coder-30b codegen STRONG; gemma4-26B basic+thinking+vision (content-aware probe) + `validate_capabilities` 4/4 (basic/thinking/vision/video). Full receipt: [v0513-rebase-2026-06-16.md](v0513-rebase-2026-06-16.md). ✅ **Promoted to live 2026-06-16**: the live serving tree is now **`/data/sgl-rebase` (v0.5.13.post1, env `sglang-triton36-v0513`)**; `launch.sh` default re-pointed via `common.sh`. **Rollback** = the retained, untouched v0.5.12 stack (`/data/vG`, env `sglang-triton36`). `components/sglang` remains a stale scratch workspace (see "Tree layout").
 

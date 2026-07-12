@@ -1,8 +1,8 @@
 diff --git a/python/sglang/srt/model_executor/model_runner.py b/python/sglang/srt/model_executor/model_runner.py
-index 1cff5c9839..39ce13cfbe 100644
+index ea17a25587..e916d56719 100644
 --- a/python/sglang/srt/model_executor/model_runner.py
 +++ b/python/sglang/srt/model_executor/model_runner.py
-@@ -1483,6 +1483,20 @@ class ModelRunner(ModelRunnerKVCacheMixin):
+@@ -1575,6 +1575,20 @@ class ModelRunner(ModelRunnerKVCacheMixin):
  
          self.dtype = self.model_config.dtype
  

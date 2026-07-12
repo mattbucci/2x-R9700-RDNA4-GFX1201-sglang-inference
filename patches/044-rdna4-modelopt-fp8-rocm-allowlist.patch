@@ -1,8 +1,8 @@
 diff --git a/python/sglang/srt/configs/model_config.py b/python/sglang/srt/configs/model_config.py
-index 9f740448d6..23f59ac6b1 100644
+index 4f16bfbb37..34ef001a6e 100644
 --- a/python/sglang/srt/configs/model_config.py
 +++ b/python/sglang/srt/configs/model_config.py
-@@ -1286,6 +1286,19 @@ class ModelConfig:
+@@ -1302,6 +1302,19 @@ class ModelConfig:
              # serving native AWQ) all hit "moe_wna16 quantization is currently
              # not supported in ROCm" config-time rejection.
              "moe_wna16",

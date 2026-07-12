@@ -1,5 +1,5 @@
 diff --git a/python/sglang/srt/layers/moe/fused_moe_triton/layer.py b/python/sglang/srt/layers/moe/fused_moe_triton/layer.py
-index 6acd20ed08..2f06c9fb01 100644
+index 3d4cbfc445..0128e892e7 100644
 --- a/python/sglang/srt/layers/moe/fused_moe_triton/layer.py
 +++ b/python/sglang/srt/layers/moe/fused_moe_triton/layer.py
 @@ -34,7 +34,10 @@ from sglang.srt.layers.moe.kt_ep_wrapper import (
@@ -15,7 +15,7 @@ index 6acd20ed08..2f06c9fb01 100644
      StandardDispatcher,
  )
 diff --git a/python/sglang/srt/layers/moe/moe_runner/triton.py b/python/sglang/srt/layers/moe/moe_runner/triton.py
-index 4b9cc7bf6a..d5be19737b 100644
+index 84a9a79102..fb8d7a10af 100644
 --- a/python/sglang/srt/layers/moe/moe_runner/triton.py
 +++ b/python/sglang/srt/layers/moe/moe_runner/triton.py
 @@ -25,6 +25,61 @@ if TYPE_CHECKING:
@@ -793,7 +793,7 @@ index 0000000000..fd7c245f7f
 +triton_3_6_0
 \ No newline at end of file
 diff --git a/python/sglang/srt/layers/moe/moe_runner/triton_utils/fused_moe.py b/python/sglang/srt/layers/moe/moe_runner/triton_utils/fused_moe.py
-index b92654f217..54f9f76ecc 100644
+index 95fc3ec647..3147ca31e8 100644
 --- a/python/sglang/srt/layers/moe/moe_runner/triton_utils/fused_moe.py
 +++ b/python/sglang/srt/layers/moe/moe_runner/triton_utils/fused_moe.py
 @@ -59,7 +59,17 @@ if _is_cuda:
@@ -882,7 +882,7 @@ index 5f402913e4..bfc998efde 100644
      else:
          config = {
 diff --git a/python/sglang/srt/layers/moe/moe_runner/triton_utils/fused_moe_triton_kernels.py b/python/sglang/srt/layers/moe/moe_runner/triton_utils/fused_moe_triton_kernels.py
-index 9650ed9c3a..1476d081dd 100644
+index e727e0f6d8..e9fbf102fe 100644
 --- a/python/sglang/srt/layers/moe/moe_runner/triton_utils/fused_moe_triton_kernels.py
 +++ b/python/sglang/srt/layers/moe/moe_runner/triton_utils/fused_moe_triton_kernels.py
 @@ -42,6 +42,26 @@ _is_cpu_amx_available = cpu_has_amx_support()
@@ -1318,11 +1318,11 @@ index f1ebac9708..86b1f478f5 100644
      MooncakeCombineInput,
      MooncakeDispatchOutput,
 diff --git a/python/sglang/srt/layers/moe/topk.py b/python/sglang/srt/layers/moe/topk.py
-index 4f504e2a2a..2b1feaf170 100644
+index 27933521b1..0977088741 100644
 --- a/python/sglang/srt/layers/moe/topk.py
 +++ b/python/sglang/srt/layers/moe/topk.py
-@@ -174,12 +174,15 @@ if _is_cuda:
-         pass
+@@ -179,12 +179,15 @@ if _is_cuda:
+         fused_topk_deepseek = None
  
  if _is_cuda or _is_hip or _is_xpu:
 -    from sgl_kernel import topk_softmax
@@ -1339,7 +1339,7 @@ index 4f504e2a2a..2b1feaf170 100644
  if _use_aiter:
      try:
          from aiter import biased_grouped_topk as aiter_biased_grouped_topk
-@@ -751,8 +754,6 @@ def fused_topk(
+@@ -763,8 +766,6 @@ def fused_topk(
  
      if scoring_func == "softmax":
          if _use_aiter:
@@ -1348,10 +1348,10 @@ index 4f504e2a2a..2b1feaf170 100644
              topk_weights, topk_ids = aiter_fused_topk(
                  hidden_states,
                  gating_output,
-@@ -778,6 +779,14 @@ def fused_topk(
-                 num_token_non_padded=num_token_non_padded,
+@@ -808,6 +809,14 @@ def fused_topk(
+                 scoring_func="softmax",
+                 renormalize=renormalize,
              )
-         # ===== END TO BE REFACTORED ====
 +        elif _is_hip:
 +            # RDNA4: sgl_kernel.topk_softmax produces deferred hipErrorLaunchFailure
 +            # on gfx1201. Use pure PyTorch instead.
@@ -1363,7 +1363,7 @@ index 4f504e2a2a..2b1feaf170 100644
          else:
              topk_softmax(
                  topk_weights,
-@@ -811,7 +820,7 @@ def fused_topk(
+@@ -863,7 +872,7 @@ def fused_topk(
  
  
  # This is used by the Deepseek V2/V3/R1 series models
@@ -1372,7 +1372,7 @@ index 4f504e2a2a..2b1feaf170 100644
  def grouped_topk_gpu(
      hidden_states: torch.Tensor,
      gating_output: torch.Tensor,
-@@ -902,7 +911,7 @@ def grouped_topk_cpu(
+@@ -954,7 +963,7 @@ def grouped_topk_cpu(
      )
  
  
@@ -1381,7 +1381,7 @@ index 4f504e2a2a..2b1feaf170 100644
  def kimi_k2_biased_topk_impl(
      hidden_states: torch.Tensor,
      gating_output: torch.Tensor,
-@@ -1057,7 +1066,7 @@ def biased_topk_jit_kernel_impl(
+@@ -1109,7 +1118,7 @@ def biased_topk_jit_kernel_impl(
          return topk_weights, topk_ids
  
  

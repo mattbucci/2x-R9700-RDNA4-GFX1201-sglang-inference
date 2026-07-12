@@ -1,9 +1,9 @@
 diff --git a/python/sglang/srt/configs/model_config.py b/python/sglang/srt/configs/model_config.py
-index 795e3a58fe..9f740448d6 100644
+index 7c6b0836a5..4f16bfbb37 100644
 --- a/python/sglang/srt/configs/model_config.py
 +++ b/python/sglang/srt/configs/model_config.py
-@@ -1278,6 +1278,14 @@ class ModelConfig:
-             "auto-round",
+@@ -1294,6 +1294,14 @@ class ModelConfig:
+             "auto-round-int8",
              "quark_int4fp8_moe",
              "quark_mxfp4",
 +            # 2026-05-08 R9700 fix: moe_wna16 native-AWQ MoE serving on ROCm.

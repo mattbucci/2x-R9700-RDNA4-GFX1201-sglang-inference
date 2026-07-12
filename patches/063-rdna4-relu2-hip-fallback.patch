@@ -1,5 +1,5 @@
 diff --git a/python/sglang/srt/layers/activation.py b/python/sglang/srt/layers/activation.py
-index 292be3c019..c171841f69 100644
+index 3ea6ceeae8..813d8a7c1a 100644
 --- a/python/sglang/srt/layers/activation.py
 +++ b/python/sglang/srt/layers/activation.py
 @@ -68,6 +68,16 @@ elif _is_xpu:

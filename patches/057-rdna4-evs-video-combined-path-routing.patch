@@ -1,8 +1,8 @@
 diff --git a/python/sglang/srt/managers/mm_utils.py b/python/sglang/srt/managers/mm_utils.py
-index b63bc53237..1b4b7434ac 100644
+index 67cf53e23f..cd1997a29a 100644
 --- a/python/sglang/srt/managers/mm_utils.py
 +++ b/python/sglang/srt/managers/mm_utils.py
-@@ -25,6 +25,7 @@ from sglang.srt.managers.schedule_batch import (
+@@ -30,6 +30,7 @@ from sglang.srt.managers.schedule_batch import (
  from sglang.srt.mem_cache.multimodal_cache import EmbeddingResult, MultiModalStaticCache
  from sglang.srt.model_executor.forward_batch_info import ForwardBatch
  from sglang.srt.multimodal.evs import EVSEmbeddingResult
@@ -10,7 +10,7 @@ index b63bc53237..1b4b7434ac 100644
  from sglang.srt.server_args import get_global_server_args
  from sglang.srt.utils import flatten_nested_list, is_npu, print_warning_once
  from sglang.srt.utils.stale_shm_cleanup import make_shm_name
-@@ -655,8 +656,17 @@ def _get_chunked_prefill_embedding(
+@@ -660,8 +661,17 @@ def _get_chunked_prefill_embedding(
  
          # Use per-image path when all items have exactly one offset (already
          # split per-image) — this avoids encoding images not in this chunk.

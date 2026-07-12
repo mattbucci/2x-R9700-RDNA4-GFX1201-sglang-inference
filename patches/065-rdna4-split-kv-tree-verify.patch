@@ -1,5 +1,5 @@
 diff --git a/python/sglang/srt/layers/attention/triton_backend.py b/python/sglang/srt/layers/attention/triton_backend.py
-index 6d01980cd4..5946103e5a 100644
+index 3127f6c75f..9b72943846 100644
 --- a/python/sglang/srt/layers/attention/triton_backend.py
 +++ b/python/sglang/srt/layers/attention/triton_backend.py
 @@ -1,5 +1,6 @@
@@ -9,7 +9,7 @@ index 6d01980cd4..5946103e5a 100644
  from dataclasses import dataclass
  from typing import TYPE_CHECKING, List, Optional
  
-@@ -18,6 +19,13 @@ from sglang.srt.mem_cache.memory_pool import KVWriteLoc
+@@ -27,6 +28,13 @@ from sglang.srt.mem_cache.memory_pool import KVWriteLoc
  from sglang.srt.mem_cache.swa_memory_pool import SWAKVPool
  from sglang.srt.model_executor.cuda_graph_config import cuda_graph_fully_disabled
  from sglang.srt.model_executor.forward_batch_info import ForwardBatch, ForwardMode
@@ -23,7 +23,7 @@ index 6d01980cd4..5946103e5a 100644
  from sglang.srt.runtime_context import get_parallel
  from sglang.srt.speculative.spec_utils import (
      draft_kv_indices_buffer_width,
-@@ -1180,6 +1188,44 @@ class TritonAttnBackend(AttentionBackend):
+@@ -1364,6 +1372,44 @@ class TritonAttnBackend(AttentionBackend):
          ):
              return o
  

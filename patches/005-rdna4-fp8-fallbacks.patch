@@ -106,11 +106,11 @@ index 0bd72ccb08..a6756c8957 100644
  
  # Copied and adapted from https://github.com/triton-lang/triton/blob/main/python/tutorials/10-block-scaled-matmul.py
 diff --git a/python/sglang/srt/layers/quantization/fp8_utils.py b/python/sglang/srt/layers/quantization/fp8_utils.py
-index 70cff5edf9..83bd189e53 100755
+index 72d4942faa..785542cffb 100755
 --- a/python/sglang/srt/layers/quantization/fp8_utils.py
 +++ b/python/sglang/srt/layers/quantization/fp8_utils.py
-@@ -82,6 +82,17 @@ def set_force_ck_w8a8(enabled: bool = True) -> None:
-     _FORCE_CK_W8A8 = enabled
+@@ -120,6 +120,17 @@ def materialize_bpreshuffle_fp8_scale_tuple(
+     )
  
  
 +def _is_rdna4_device() -> bool:
@@ -127,7 +127,7 @@ index 70cff5edf9..83bd189e53 100755
  def use_aiter_triton_gemm_w8a8_tuned_gfx950(n: int, k: int) -> bool:
      if _FORCE_CK_W8A8:
          return False
-@@ -151,7 +162,15 @@ def use_rowwise_torch_scaled_mm():
+@@ -189,7 +200,15 @@ def use_rowwise_torch_scaled_mm():
          # torch._scaled_mm rowwise feature.
          # The condition is determined once as the operations
          # are time consuming.
@@ -144,7 +144,7 @@ index 70cff5edf9..83bd189e53 100755
      return False
  
  
-@@ -493,7 +512,8 @@ def _dispatch_auto_backend() -> Callable:
+@@ -524,7 +543,8 @@ def _dispatch_auto_backend() -> Callable:
      # 2. FlashInfer TRTLLM (if Blackwell GPU and FlashInfer available)
      # 3. CUTLASS (if Hopper+ GPU and CUDA 12.0+)
      # 4. AITER (if AMD GPU with AITER enabled)
@@ -154,7 +154,7 @@ index 70cff5edf9..83bd189e53 100755
  
      if deep_gemm_wrapper.ENABLE_JIT_DEEPGEMM:
          return deepgemm_w8a8_block_fp8_linear_with_fallback
-@@ -503,6 +523,9 @@ def _dispatch_auto_backend() -> Callable:
+@@ -534,6 +554,9 @@ def _dispatch_auto_backend() -> Callable:
          return cutlass_w8a8_block_fp8_linear_with_fallback
      elif _use_aiter:
          return aiter_w8a8_block_fp8_linear
@@ -164,7 +164,7 @@ index 70cff5edf9..83bd189e53 100755
      else:
          return triton_w8a8_block_fp8_linear
  
-@@ -893,6 +916,31 @@ def triton_w8a8_block_fp8_linear(
+@@ -945,6 +968,31 @@ def triton_w8a8_block_fp8_linear(
      return output.to(dtype=input_2d.dtype).view(*output_shape)
  
  
