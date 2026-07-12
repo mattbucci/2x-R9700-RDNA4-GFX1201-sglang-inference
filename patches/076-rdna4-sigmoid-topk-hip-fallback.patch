@@ -1,0 +1,123 @@
+diff --git a/python/sglang/srt/layers/moe/topk.py b/python/sglang/srt/layers/moe/topk.py
+index 0977088741..970d1d306b 100644
+--- a/python/sglang/srt/layers/moe/topk.py
++++ b/python/sglang/srt/layers/moe/topk.py
+@@ -857,6 +857,22 @@ def fused_topk(
+                 scoring_func="sigmoid",
+                 renormalize=renormalize,
+             )
++        elif _is_hip:
++            # sgl_kernel.topk_sigmoid aborts in its HIP AOT kernel on gfx1201.
++            # Keep correction_bias exclusively in expert selection: the returned
++            # weights must be gathered from the original sigmoid scores, matching
++            # the CUDA kernel and Laguna's sigmoid-renormalized router semantics.
++            topk_weights, topk_ids = fused_topk_torch_native(
++                hidden_states=hidden_states,
++                gating_output=gating_output,
++                topk=topk,
++                renormalize=renormalize,
++                correction_bias=correction_bias,
++                scoring_func="sigmoid",
++            )
++            # Downstream Triton MoE runners require the standard carrier dtypes.
++            topk_weights = topk_weights.to(torch.float32)
++            topk_ids = topk_ids.to(torch.int32)
+         else:
+             topk_sigmoid(
+                 topk_weights,
+diff --git a/test/registered/unit/layers/moe/test_rdna4_sigmoid_topk.py b/test/registered/unit/layers/moe/test_rdna4_sigmoid_topk.py
+new file mode 100644
+index 0000000000..b735084634
+--- /dev/null
++++ b/test/registered/unit/layers/moe/test_rdna4_sigmoid_topk.py
+@@ -0,0 +1,89 @@
++"""CPU regression coverage for the HIP sigmoid top-k fallback."""
++
++import unittest
++from unittest.mock import patch
++
++import torch
++
++from sglang.test.ci.ci_register import register_cpu_ci
++
++register_cpu_ci(est_time=5, suite="base-a-test-cpu")
++
++from sglang.srt.layers.moe import topk as topk_module
++from sglang.test.test_utils import CustomTestCase
++
++
++class TestRDNA4SigmoidTopK(CustomTestCase):
++    def test_hip_branch_preserves_correction_bias_selection_semantics(self):
++        hidden_states = torch.zeros((2, 4), dtype=torch.bfloat16)
++        gating_output = torch.tensor(
++            [[4.0, 3.0, 2.0, 1.0], [-2.0, 0.0, 1.0, 3.0]],
++            dtype=torch.float32,
++        )
++        correction_bias = torch.tensor(
++            [-10.0, 0.25, 10.0, -0.5], dtype=torch.float32
++        )
++
++        # If dispatch regresses to the broken AOT HIP op, fail before it can run.
++        with (
++            patch.object(topk_module, "_is_hip", True),
++            patch.object(topk_module, "_is_cuda", False),
++            patch.object(topk_module, "_use_aiter", False),
++            patch.object(
++                topk_module,
++                "topk_sigmoid",
++                side_effect=AssertionError("AOT topk_sigmoid must not run on HIP"),
++            ),
++        ):
++            weights, ids = topk_module.fused_topk(
++                hidden_states=hidden_states,
++                gating_output=gating_output,
++                topk=2,
++                renormalize=True,
++                correction_bias=correction_bias,
++                scoring_func="sigmoid",
++            )
++
++        scores = gating_output.sigmoid()
++        expected_ids = torch.topk(
++            scores + correction_bias.unsqueeze(0),
++            k=2,
++            dim=-1,
++            sorted=False,
++        ).indices
++        expected_weights = scores.gather(1, expected_ids)
++        expected_weights /= expected_weights.sum(dim=-1, keepdim=True)
++
++        self.assertEqual(weights.dtype, torch.float32)
++        self.assertEqual(ids.dtype, torch.int32)
++        torch.testing.assert_close(ids, expected_ids.to(torch.int32), rtol=0, atol=0)
++        torch.testing.assert_close(weights, expected_weights, rtol=0, atol=0)
++
++    def test_hip_branch_returns_standard_dtypes_without_bias(self):
++        hidden_states = torch.zeros((3, 8), dtype=torch.bfloat16)
++        gating_output = torch.randn((3, 16), dtype=torch.bfloat16)
++
++        with (
++            patch.object(topk_module, "_is_hip", True),
++            patch.object(topk_module, "_is_cuda", False),
++            patch.object(topk_module, "_use_aiter", False),
++        ):
++            weights, ids = topk_module.fused_topk(
++                hidden_states=hidden_states,
++                gating_output=gating_output,
++                topk=4,
++                renormalize=False,
++                correction_bias=None,
++                scoring_func="sigmoid",
++            )
++
++        self.assertEqual(weights.dtype, torch.float32)
++        self.assertEqual(ids.dtype, torch.int32)
++        expected_scores = gating_output.float().sigmoid()
++        expected_weights, expected_ids = torch.topk(expected_scores, 4, dim=-1)
++        torch.testing.assert_close(ids, expected_ids.to(torch.int32), rtol=0, atol=0)
++        torch.testing.assert_close(weights, expected_weights, rtol=0, atol=0)
++
++
++if __name__ == "__main__":
++    unittest.main()
+

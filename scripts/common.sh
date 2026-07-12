@@ -1,8 +1,7 @@
 #!/bin/bash
 # Common configuration for rdna4-inference (triton 3.6 experiment)
 #
-# Minimal setup: stock SGLang + system RCCL + triton 3.6.0 from source
-# Patches applied only as needed for gfx1201 correctness.
+# Reproducible v0.5.15 setup: numbered RDNA4 patches + system RCCL + Triton 3.6.0.
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="$(dirname "$SCRIPT_DIR")"

@@ -10,7 +10,7 @@ kv_indptr/kv_indices paged prefix, qo_indptr, skip_prefix_custom_mask) BEFORE we
 split-KV kernel — which will then be compared against the same ground-truth A.
 
 Run:  python scripts/debug/tree_verify_splitkv_test.py
-(env: sglang-triton36-v0513; source scripts/common.sh; activate_conda; setup_rdna4_env)
+(env: source scripts/common.sh; activate_conda; setup_rdna4_env)
 """
 import os
 import sys

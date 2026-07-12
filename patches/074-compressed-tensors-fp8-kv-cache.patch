@@ -1,0 +1,289 @@
+diff --git a/python/sglang/srt/layers/quantization/compressed_tensors/compressed_tensors.py b/python/sglang/srt/layers/quantization/compressed_tensors/compressed_tensors.py
+index 0495e951ff..97c3cc3a72 100644
+--- a/python/sglang/srt/layers/quantization/compressed_tensors/compressed_tensors.py
++++ b/python/sglang/srt/layers/quantization/compressed_tensors/compressed_tensors.py
+@@ -62,6 +62,7 @@ from sglang.srt.layers.quantization.compressed_tensors.utils import (
+     should_ignore_layer,
+ )
+ from sglang.srt.layers.quantization.fp8 import Fp8LinearMethod
++from sglang.srt.layers.quantization.kv_cache import BaseKVCacheMethod
+ from sglang.srt.layers.quantization.unquant import (
+     UnquantizedFusedMoEMethod,
+     UnquantizedLinearMethod,
+@@ -128,6 +129,12 @@ class CompressedTensorsConfig(QuantizationConfig):
+         self.config = config
+         self.packed_modules_mapping = packed_modules_mapping or {}
+         self.linear_fp8_config = linear_fp8_config
++        self.kv_cache_quant_algo = None
++        if self.kv_cache_scheme is not None:
++            CompressedTensorsKVCacheMethod.validate_kv_cache_scheme(
++                self.kv_cache_scheme
++            )
++            self.kv_cache_quant_algo = "FP8"
+ 
+     def get_linear_method(self) -> CompressedTensorsLinearMethod:
+         return CompressedTensorsLinearMethod(self)
+@@ -163,6 +170,7 @@ class CompressedTensorsConfig(QuantizationConfig):
+         prefix: str,
+     ) -> Optional[QuantizeMethodBase]:
+         from sglang.srt.layers.linear import LinearBase
++        from sglang.srt.layers.radix_attention import RadixAttention
+ 
+         if isinstance(layer, LinearBase):
+             # If linear_fp8_config is set, use FP8 for linear layers
+@@ -174,6 +182,8 @@ class CompressedTensorsConfig(QuantizationConfig):
+                 return UnquantizedLinearMethod()
+             layer.scheme = scheme
+             return CompressedTensorsLinearMethod(self)
++        if isinstance(layer, RadixAttention) and self.kv_cache_scheme is not None:
++            return CompressedTensorsKVCacheMethod(self)
+         from sglang.srt.layers.moe.fused_moe_triton import FusedMoE
+ 
+         if isinstance(layer, FusedMoE):
+@@ -250,6 +260,7 @@ class CompressedTensorsConfig(QuantizationConfig):
+             config=config,
+             packed_modules_mapping=packed_modules_mapping,
+             linear_fp8_config=linear_fp8_config,
++            kv_cache_scheme=config.get("kv_cache_scheme"),
+         )
+ 
+     @classmethod
+@@ -922,6 +933,43 @@ class CompressedTensorsConfig(QuantizationConfig):
+         return weight_quant.num_bits == input_quant.num_bits == 8
+ 
+ 
++class CompressedTensorsKVCacheMethod(BaseKVCacheMethod):
++    """Load static FP8 KV-cache scales from compressed-tensors checkpoints."""
++
++    def __init__(self, quant_config: CompressedTensorsConfig):
++        self.validate_kv_cache_scheme(quant_config.kv_cache_scheme)
++        super().__init__(quant_config)
++
++    @staticmethod
++    def validate_kv_cache_scheme(
++        kv_cache_scheme: Optional[Dict[str, Any]],
++    ) -> None:
++        if kv_cache_scheme is None:
++            return
++
++        type_ = kv_cache_scheme.get("type")
++        num_bits = kv_cache_scheme.get("num_bits")
++        if type_ != "float" or num_bits != 8:
++            raise NotImplementedError(
++                "Compressed-tensors KV cache currently supports only "
++                "num_bits=8, type=float; "
++                f"got num_bits={num_bits}, type={type_}."
++            )
++
++        strategy = QuantizationStrategy(kv_cache_scheme.get("strategy"))
++        if strategy != QuantizationStrategy.TENSOR:
++            raise NotImplementedError(
++                "Compressed-tensors KV cache currently supports only per-tensor "
++                f"scales; got strategy={strategy.value}."
++            )
++
++        if not kv_cache_scheme.get("symmetric"):
++            raise NotImplementedError(
++                "Compressed-tensors KV cache currently supports only symmetric "
++                "quantization."
++            )
++
++
+ class CompressedTensorsLinearMethod(LinearMethodBase):
+ 
+     def __init__(self, quantization_config: CompressedTensorsConfig):
+diff --git a/python/sglang/srt/models/laguna.py b/python/sglang/srt/models/laguna.py
+index 81b5e29af6..b8af8ab2ad 100644
+--- a/python/sglang/srt/models/laguna.py
++++ b/python/sglang/srt/models/laguna.py
+@@ -51,7 +51,10 @@ from sglang.srt.layers.vocab_parallel_embedding import (
+     VocabParallelEmbedding,
+ )
+ from sglang.srt.model_executor.forward_batch_info import ForwardBatch, PPProxyTensors
+-from sglang.srt.model_loader.weight_utils import default_weight_loader
++from sglang.srt.model_loader.weight_utils import (
++    default_weight_loader,
++    maybe_remap_kv_scale_name,
++)
+ from sglang.srt.models.utils import apply_qk_norm
+ from sglang.srt.runtime_context import get_flags, get_parallel
+ from sglang.srt.server_args import get_global_server_args
+@@ -640,6 +643,7 @@ class LagunaForCausalLM(nn.Module):
+         super().__init__()
+         self.pp_group = get_pp_group()
+         self.config = config
++        self.quant_config = quant_config
+         self.model = LagunaModel(
+             config, quant_config=quant_config, prefix=add_prefix("model", prefix)
+         )
+@@ -745,6 +749,10 @@ class LagunaForCausalLM(nn.Module):
+             if self.config.tie_word_embeddings and "lm_head.weight" in name:
+                 continue
+ 
++            name = maybe_remap_kv_scale_name(name, params_dict)
++            if name is None:
++                continue
++
+             # HF stores the router correction bias under the experts namespace;
+             # our parameter lives on the gate. Remap before dispatch.
+             if name.endswith("mlp.experts.e_score_correction_bias"):
+diff --git a/test/registered/unit/layers/quantization/test_compressed_tensors_kv_cache.py b/test/registered/unit/layers/quantization/test_compressed_tensors_kv_cache.py
+new file mode 100644
+index 0000000000..e85798713a
+--- /dev/null
++++ b/test/registered/unit/layers/quantization/test_compressed_tensors_kv_cache.py
+@@ -0,0 +1,153 @@
++"""CPU coverage for compressed-tensors FP8 KV-cache metadata and scales."""
++
++import unittest
++from types import SimpleNamespace
++from unittest import mock
++
++import torch
++
++from sglang.test.ci.ci_register import register_cpu_ci
++
++register_cpu_ci(est_time=5, suite="base-a-test-cpu")
++
++from sglang.srt.layers.quantization.compressed_tensors.compressed_tensors import (
++    CompressedTensorsConfig,
++    CompressedTensorsKVCacheMethod,
++)
++from sglang.srt.layers.radix_attention import RadixAttention
++from sglang.srt.models.laguna import LagunaForCausalLM
++from sglang.test.test_utils import CustomTestCase
++
++
++def _make_config(kv_cache_scheme=None):
++    config = {
++        "quant_method": "compressed-tensors",
++        "format": "float-quantized",
++        "config_groups": {},
++        "ignore": [],
++    }
++    if kv_cache_scheme is not None:
++        config["kv_cache_scheme"] = kv_cache_scheme
++    return config
++
++
++FP8_TENSOR_KV_SCHEME = {
++    "num_bits": 8,
++    "type": "float",
++    "strategy": "tensor",
++    "symmetric": True,
++    "dynamic": False,
++}
++
++
++class TestCompressedTensorsKVCache(CustomTestCase):
++    def test_config_preserves_fp8_kv_scheme_and_selects_fp8_pool(self):
++        quant_config = CompressedTensorsConfig.from_config(
++            _make_config(FP8_TENSOR_KV_SCHEME)
++        )
++
++        self.assertEqual(quant_config.kv_cache_scheme, FP8_TENSOR_KV_SCHEME)
++        self.assertEqual(quant_config.kv_cache_quant_algo, "FP8")
++
++    def test_laguna_exposes_quant_config_for_kv_cache_auto_selection(self):
++        quant_config = CompressedTensorsConfig.from_config(
++            _make_config(FP8_TENSOR_KV_SCHEME)
++        )
++        model_body = torch.nn.Module()
++        model_body.layers = torch.nn.ModuleList()
++        model_body.start_layer = 0
++        model_body.end_layer = 0
++
++        with (
++            mock.patch(
++                "sglang.srt.models.laguna.get_pp_group",
++                return_value=SimpleNamespace(is_last_rank=False),
++            ),
++            mock.patch(
++                "sglang.srt.models.laguna.LagunaModel", return_value=model_body
++            ),
++            mock.patch(
++                "sglang.srt.models.laguna.PPMissingLayer",
++                return_value=torch.nn.Identity(),
++            ),
++            mock.patch("sglang.srt.models.laguna.LogitsProcessor"),
++        ):
++            model = LagunaForCausalLM(SimpleNamespace(), quant_config=quant_config)
++
++        self.assertIs(model.quant_config, quant_config)
++        self.assertEqual(model.quant_config.kv_cache_quant_algo, "FP8")
++
++    def test_radix_attention_creates_and_processes_static_scales(self):
++        quant_config = CompressedTensorsConfig.from_config(
++            _make_config(FP8_TENSOR_KV_SCHEME)
++        )
++        layer = RadixAttention(
++            num_heads=2,
++            head_dim=8,
++            scaling=8**-0.5,
++            num_kv_heads=1,
++            layer_id=0,
++            quant_config=quant_config,
++            prefix="model.layers.0.self_attn.attn",
++        )
++
++        self.assertIsInstance(layer.quant_method, CompressedTensorsKVCacheMethod)
++        self.assertEqual(layer.k_scale.item(), -1.0)
++        self.assertEqual(layer.v_scale.item(), -1.0)
++
++        layer.k_scale.data.fill_(0.25)
++        layer.v_scale.data.fill_(0.5)
++        layer.quant_method.process_weights_after_loading(layer)
++        self.assertEqual(layer.k_scale_float, 0.25)
++        self.assertEqual(layer.v_scale_float, 0.5)
++
++    def test_laguna_loader_remaps_checkpoint_scale_names(self):
++        model = LagunaForCausalLM.__new__(LagunaForCausalLM)
++        torch.nn.Module.__init__(model)
++        model.config = SimpleNamespace(
++            num_experts=0,
++            mlp_layer_types=["dense"],
++            tie_word_embeddings=False,
++        )
++
++        decoder = torch.nn.Module()
++        decoder.self_attn = torch.nn.Module()
++        decoder.self_attn.attn = torch.nn.Module()
++        decoder.self_attn.attn.register_parameter(
++            "k_scale",
++            torch.nn.Parameter(torch.tensor(-1.0), requires_grad=False),
++        )
++        decoder.self_attn.attn.register_parameter(
++            "v_scale",
++            torch.nn.Parameter(torch.tensor(-1.0), requires_grad=False),
++        )
++        decoder.mlp = torch.nn.Identity()
++
++        model.model = torch.nn.Module()
++        model.model.layers = torch.nn.ModuleList([decoder])
++        model.model.start_layer = 0
++        model.model.end_layer = 1
++
++        model.load_weights(
++            [
++                ("model.layers.0.self_attn.k_scale", torch.tensor(0.125)),
++                ("model.layers.0.self_attn.v_scale", torch.tensor(0.375)),
++            ]
++        )
++
++        self.assertEqual(decoder.self_attn.attn.k_scale.item(), 0.125)
++        self.assertEqual(decoder.self_attn.attn.v_scale.item(), 0.375)
++
++    def test_rejects_non_tensor_kv_scales(self):
++        unsupported = dict(FP8_TENSOR_KV_SCHEME, strategy="attn_head")
++        with self.assertRaisesRegex(NotImplementedError, "per-tensor"):
++            CompressedTensorsConfig.from_config(_make_config(unsupported))
++
++    def test_config_without_kv_scheme_keeps_existing_behavior(self):
++        quant_config = CompressedTensorsConfig.from_config(_make_config())
++        self.assertIsNone(quant_config.kv_cache_scheme)
++        self.assertIsNone(quant_config.kv_cache_quant_algo)
++
++
++if __name__ == "__main__":
++    unittest.main()
+

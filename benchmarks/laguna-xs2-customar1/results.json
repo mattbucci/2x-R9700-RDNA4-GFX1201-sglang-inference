@@ -1,0 +1,35 @@
+{
+  "model": "Laguna XS.2 FP8 v0.5.15 graph + custom AR",
+  "engine": "SGLang",
+  "hardware": "2x R9700 TP=2",
+  "timestamp": "v0515-graph-customar1-corrected",
+  "note": "TP2; Triton attention/MoE; auto checkpoint FP8 KV; graph bs1; custom AR on; SGLANG_USE_1STAGE_ALLREDUCE=1",
+  "context_sweep": [
+    {
+      "context": 128,
+      "input_len": 62,
+      "tpot_ms": 28.9,
+      "tok_per_sec": 34.6
+    },
+    {
+      "context": 8192,
+      "input_len": 7403,
+      "tpot_ms": 29.54,
+      "tok_per_sec": 33.86
+    },
+    {
+      "context": 65536,
+      "input_len": 58785,
+      "tpot_ms": 32.9,
+      "tok_per_sec": 30.4
+    }
+  ],
+  "throughput_sweep": [
+    {
+      "concurrency": 1,
+      "throughput": 34.6,
+      "tpot_ms": 28.9,
+      "ttft_ms": 0
+    }
+  ]
+}

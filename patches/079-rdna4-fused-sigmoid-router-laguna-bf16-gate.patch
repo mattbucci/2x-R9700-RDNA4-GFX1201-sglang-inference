@@ -1,0 +1,164 @@
+diff --git a/python/sglang/srt/layers/moe/topk.py b/python/sglang/srt/layers/moe/topk.py
+--- a/python/sglang/srt/layers/moe/topk.py
++++ b/python/sglang/srt/layers/moe/topk.py
+@@ -835,8 +835,13 @@ def fused_topk(
+                 topk_group=1,
+                 need_renorm=renormalize,
+             )
+-        elif _is_cuda and envs.SGLANG_OPT_USE_JIT_KERNEL_FUSED_TOPK.get():
+-            # Unified Triton router (subsumes the AOT topk_sigmoid CUDA kernel).
++        elif (
++            _is_cuda or _is_hip
++        ) and envs.SGLANG_OPT_USE_JIT_KERNEL_FUSED_TOPK.get():
++            # Unified Triton router. Unlike the AOT topk_sigmoid HIP op, this
++            # kernel is backend-portable and runs correctly on gfx1201. It also
++            # collapses sigmoid + bias + top-k + gather + renormalize into one
++            # launch instead of the multi-op torch fallback below.
+             from sglang.jit_kernel.moe_fused_gate import (
+                 moe_fused_gate as _jit_moe_fused_gate,
+             )
+diff --git a/python/sglang/srt/models/cohere2_moe.py b/python/sglang/srt/models/cohere2_moe.py
+--- a/python/sglang/srt/models/cohere2_moe.py
++++ b/python/sglang/srt/models/cohere2_moe.py
+@@ -248,7 +248,10 @@ class Cohere2MoeSparseMoeBlock(nn.Module):
+         self.norm_topk_prob = getattr(config, "norm_topk_prob", True)
+ 
+         if self.expert_selection_fn == "sigmoid":
+-            custom_routing_function = cohere2_sigmoid_topk
++            # The generic TopK path now has the same sigmoid semantics and can
++            # use the fused Triton router on HIP. Keeping the legacy custom
++            # callable here would bypass that fused path.
++            custom_routing_function = None
+             scoring_func = "sigmoid"
+             routing_method_type = (
+                 RoutingMethodType.SigmoidRenorm
+diff --git a/python/sglang/srt/models/laguna.py b/python/sglang/srt/models/laguna.py
+--- a/python/sglang/srt/models/laguna.py
++++ b/python/sglang/srt/models/laguna.py
+@@ -127,7 +127,7 @@ class LagunaMoEGate(nn.Module):
+     ):
+         super().__init__()
+         self.weight = nn.Parameter(
+-            torch.empty(config.num_experts, config.hidden_size, dtype=torch.float32)
++            torch.empty(config.num_experts, config.hidden_size, dtype=config.dtype)
+         )
+         # Released checkpoint stores this under `mlp.experts.e_score_correction_bias`
+         # (load_weights remaps it) but every value is 0.0; zero-init keeps us
+@@ -138,7 +138,11 @@ class LagunaMoEGate(nn.Module):
+         )
+ 
+     def forward(self, hidden_states: torch.Tensor) -> torch.Tensor:
+-        return F.linear(hidden_states.to(torch.float32), self.weight, None)
++        # The released router weights and HF reference both use the model
++        # dtype (BF16 for Laguna), then expose FP32 logits. Keeping the GEMV in
++        # FP32 was both semantically divergent and ~3.2x slower at M=1 on
++        # gfx1201.
++        return F.linear(hidden_states, self.weight, None).float()
+ 
+ 
+ class LagunaMoE(nn.Module):
+diff --git a/test/registered/unit/layers/moe/test_rdna4_sigmoid_topk.py b/test/registered/unit/layers/moe/test_rdna4_sigmoid_topk.py
+--- a/test/registered/unit/layers/moe/test_rdna4_sigmoid_topk.py
++++ b/test/registered/unit/layers/moe/test_rdna4_sigmoid_topk.py
+@@ -30,6 +30,11 @@ class TestRDNA4SigmoidTopK(unittest.TestCase):
+             patch.object(topk_module, "_is_cuda", False),
+             patch.object(topk_module, "_use_aiter", False),
+             patch.object(
++                topk_module.envs.SGLANG_OPT_USE_JIT_KERNEL_FUSED_TOPK,
++                "get",
++                return_value=False,
++            ),
++            patch.object(
+                 topk_module,
+                 "topk_sigmoid",
+                 side_effect=AssertionError("AOT topk_sigmoid must not run on HIP"),
+@@ -67,6 +72,11 @@ class TestRDNA4SigmoidTopK(unittest.TestCase):
+             patch.object(topk_module, "_is_hip", True),
+             patch.object(topk_module, "_is_cuda", False),
+             patch.object(topk_module, "_use_aiter", False),
++            patch.object(
++                topk_module.envs.SGLANG_OPT_USE_JIT_KERNEL_FUSED_TOPK,
++                "get",
++                return_value=False,
++            ),
+         ):
+             weights, ids = topk_module.fused_topk(
+                 hidden_states=hidden_states,
+@@ -84,6 +94,39 @@ class TestRDNA4SigmoidTopK(unittest.TestCase):
+         torch.testing.assert_close(ids, expected_ids.to(torch.int32), rtol=0, atol=0)
+         torch.testing.assert_close(weights, expected_weights, rtol=0, atol=0)
+ 
++    def test_hip_prefers_fused_triton_router_when_enabled(self):
++        hidden_states = torch.zeros((1, 8), dtype=torch.bfloat16)
++        gating_output = torch.randn((1, 16), dtype=torch.float32)
++        expected_weights = torch.randn((1, 4), dtype=torch.float32)
++        expected_ids = torch.tensor([[1, 3, 5, 7]], dtype=torch.int32)
++
++        with (
++            patch.object(topk_module, "_is_hip", True),
++            patch.object(topk_module, "_is_cuda", False),
++            patch.object(topk_module, "_use_aiter", False),
++            patch.object(
++                topk_module.envs.SGLANG_OPT_USE_JIT_KERNEL_FUSED_TOPK,
++                "get",
++                return_value=True,
++            ),
++            patch(
++                "sglang.jit_kernel.moe_fused_gate.moe_fused_gate",
++                return_value=(expected_weights, expected_ids),
++            ) as fused_gate,
++        ):
++            weights, ids = topk_module.fused_topk(
++                hidden_states=hidden_states,
++                gating_output=gating_output,
++                topk=4,
++                renormalize=True,
++                correction_bias=None,
++                scoring_func="sigmoid",
++            )
++
++        fused_gate.assert_called_once()
++        self.assertIs(weights, expected_weights)
++        self.assertIs(ids, expected_ids)
++
+ 
+ if __name__ == "__main__":
+     unittest.main()
+diff --git a/test/registered/unit/models/test_laguna_router.py b/test/registered/unit/models/test_laguna_router.py
+new file mode 100644
+--- /dev/null
++++ b/test/registered/unit/models/test_laguna_router.py
+@@ -0,0 +1,33 @@
++import unittest
++from types import SimpleNamespace
++
++import torch
++
++from sglang.srt.models.laguna import LagunaMoEGate
++
++
++class TestLagunaRouter(unittest.TestCase):
++    def test_router_uses_checkpoint_dtype_and_returns_fp32_logits(self):
++        config = SimpleNamespace(
++            num_experts=8,
++            hidden_size=16,
++            dtype=torch.bfloat16,
++        )
++        gate = LagunaMoEGate(config)
++        with torch.no_grad():
++            gate.weight.copy_(torch.randn_like(gate.weight))
++        hidden_states = torch.randn(3, 16, dtype=torch.bfloat16)
++
++        self.assertEqual(gate.weight.dtype, torch.bfloat16)
++        output = gate(hidden_states)
++        self.assertEqual(output.dtype, torch.float32)
++        torch.testing.assert_close(
++            output,
++            torch.nn.functional.linear(hidden_states, gate.weight).float(),
++            rtol=0,
++            atol=0,
++        )
++
++
++if __name__ == "__main__":
++    unittest.main()

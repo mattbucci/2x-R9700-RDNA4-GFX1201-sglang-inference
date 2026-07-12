@@ -11,8 +11,12 @@ Performance data for all models on 2x AMD Radeon AI PRO R9700 (gfx1201, RDNA4), 
 | [Gemma 4 26B AWQ MoE](gemma4-26b-awq/) | 30 | 165 @32 | — |
 | [Coder-Next 80B AWQ](coder-next-80b-awq/) | 24 | 25 @8 | llama.cpp |
 | [Qwen3.5-27B AWQ](qwen35-27b-awq/) | 26 | 55 @16 | — |
+| [North Mini Code FP8](north-mini/) | **71.1** | — | final 074–082 stack; coherent through input 219,352 |
+| [Laguna XS.2 FP8](laguna-xs2/) | **49.0** | — | reverse-confirmed fused-KV A/B; coherent at input 220,277 |
 
-The README at the repo root is the single source of truth for the full model fleet, FP8 numbers, and spec-decode coverage.
+North/Laguna stage-by-stage results, method caveats, and rejected experiments are in the focused
+[`v0.5.15 R9700 receipt`](north-laguna-v0515-r9700-2026-07-12.md). The README at the repo root remains
+the single source of truth for the full model fleet, FP8 numbers, and spec-decode coverage.
 
 ## Per-Model Directory
 

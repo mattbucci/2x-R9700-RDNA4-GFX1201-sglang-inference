@@ -11,7 +11,7 @@ tokenizer so the prompt lands just under the 262144 pool with room for ~600 gen 
 Target 244000 tokens → every decode batch sits at >200K depth (the harness's at-depth filter) and
 244000 + 600 gen + chat-template wrap stays well under 262144.
 
-Usage (in the sglang-triton36 conda env, which has transformers):
+Usage (in the repo-default SGLang conda env, which has transformers):
     python scripts/bench/build_spec256k_context.py
     python scripts/bench/build_spec256k_context.py --target-tokens 244000 --out /tmp/spec256k-context.txt
 """
@@ -20,7 +20,9 @@ import hashlib
 import os
 import sys
 
-DEFAULT_SRC = "/data/vG/python/sglang/srt"
+DEFAULT_SRC = os.path.join(
+    os.environ.get("SGLANG_DIR", "/data/sgl-v0515"), "python/sglang/srt"
+)
 DEFAULT_TOKENIZER = os.path.expanduser("~/AI/models/Qwen3-Coder-30B-A3B-AWQ-native")
 DEFAULT_OUT = "/tmp/spec256k-context.txt"
 

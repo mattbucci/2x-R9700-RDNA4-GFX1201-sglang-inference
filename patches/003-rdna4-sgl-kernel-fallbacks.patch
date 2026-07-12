@@ -1,5 +1,5 @@
 diff --git a/sgl-kernel/python/sgl_kernel/__init__.py b/sgl-kernel/python/sgl_kernel/__init__.py
-index 4cbe4b3558..b62e46e796 100644
+index 4cbe4b3558..6546b342f0 100644
 --- a/sgl-kernel/python/sgl_kernel/__init__.py
 +++ b/sgl-kernel/python/sgl_kernel/__init__.py
 @@ -15,8 +15,12 @@ else:
@@ -17,3 +17,25 @@ index 4cbe4b3558..b62e46e796 100644
  
      # Preload the CUDA library to avoid the issue of libcudart.so.12 not found
      if torch.version.cuda is not None:
+@@ -71,10 +75,17 @@ else:
+         shuffle_rows,
+     )
+     from sgl_kernel.grammar import apply_token_bitmask_inplace_cuda
+-    from sgl_kernel.infllm_v2 import (
+-        infllmv2_attn_stage1,
+-        max_pooling_1d_varlen,
+-    )
++    # RDNA4/ROCm: infllm_v2 is backed by CUDA-only kernels and may be absent
++    # from ROCm builds. Keep package import usable when that optional backend
++    # is unavailable.
++    try:
++        from sgl_kernel.infllm_v2 import (
++            infllmv2_attn_stage1,
++            max_pooling_1d_varlen,
++        )
++    except ImportError:
++        infllmv2_attn_stage1 = None
++        max_pooling_1d_varlen = None
+     from sgl_kernel.kvcacheio import (
+         transfer_kv_all_layer,
+         transfer_kv_all_layer_mla,

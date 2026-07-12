@@ -7,7 +7,7 @@ shared prefix (cached-token climbs) — exactly the pattern a SWE-bench rollout 
 on the server, which the single-shot probes don't. Grows toward the ctx cap over
 N turns; reports the turn where it stalls (no completion within --turn-timeout).
 """
-import argparse, glob, time, json, sys, urllib.request
+import argparse, glob, time, json, os, sys, urllib.request
 
 ap = argparse.ArgumentParser()
 ap.add_argument("--port", type=int, default=23380)
@@ -20,7 +20,10 @@ A = ap.parse_args()
 
 # Pull a big pool of real code to slice growing chunks from
 pool = []
-for f in sorted(glob.glob("/data/vG/python/sglang/srt/**/*.py", recursive=True)):
+sglang_src = os.path.join(
+    os.environ.get("SGLANG_DIR", "/data/sgl-v0515"), "python/sglang/srt"
+)
+for f in sorted(glob.glob(os.path.join(sglang_src, "**/*.py"), recursive=True)):
     try: pool.append(open(f, encoding="utf-8", errors="ignore").read())
     except Exception: pass
 allcode = "\n".join(pool)

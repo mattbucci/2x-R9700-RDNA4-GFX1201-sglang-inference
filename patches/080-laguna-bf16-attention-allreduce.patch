@@ -1,0 +1,84 @@
+diff --git a/python/sglang/srt/layers/communicator.py b/python/sglang/srt/layers/communicator.py
+--- a/python/sglang/srt/layers/communicator.py
++++ b/python/sglang/srt/layers/communicator.py
+@@ -447,6 +447,7 @@ class LayerCommunicator:
+         is_last_layer: bool = False,
+         qkv_latent_func: Optional[Callable] = None,
+         force_layernorm_before_dp_gather: bool = False,
++        hip_fp32_allreduce: bool = True,
+     ):
+         self.layer_scatter_modes = layer_scatter_modes
+         self.input_layernorm = input_layernorm
+@@ -460,6 +461,7 @@ class LayerCommunicator:
+         self._context.force_layernorm_before_dp_gather = (
+             force_layernorm_before_dp_gather
+         )
++        self._context.hip_fp32_allreduce = hip_fp32_allreduce
+         self._post_init_communicate()
+         self._speculative_algo = SpeculativeAlgorithm.from_string(
+             get_global_server_args().speculative_algorithm
+@@ -830,6 +832,7 @@ class CommunicateContext:
+     cache = None
+     tp_rank: int
+     force_layernorm_before_dp_gather: bool = False
++    hip_fp32_allreduce: bool = True
+ 
+     def is_same_group_size(self, a: ScatterMode, b: ScatterMode):
+         return self.process_group_sizes[a] == self.process_group_sizes[b]
+@@ -1113,16 +1116,32 @@ class CommunicateWithAllReduceAndLayerNormFn:
+                 handled = True
+ 
+             if not handled:
+-                # Float32 all-reduce for TP precision on HIP (prevents
+-                # FP16 rounding accumulation through DeltaNet recurrence).
+-                orig_dtype = hidden_states.dtype
+-                if _is_hip and orig_dtype != torch.float32:
+-                    hidden_states = hidden_states.float()
+-                hidden_states = attention_tensor_model_parallel_all_reduce(
+-                    hidden_states
+-                )
+-                if _is_hip and hidden_states.dtype != orig_dtype:
+-                    hidden_states = hidden_states.to(orig_dtype)
++                if _is_hip and context.hip_fp32_allreduce:
++                    # FP32 TP reduction is required by recurrent hybrids whose
++                    # state compounds small reduction errors across layers.
++                    orig_dtype = hidden_states.dtype
++                    if orig_dtype != torch.float32:
++                        hidden_states = hidden_states.float()
++                    hidden_states = attention_tensor_model_parallel_all_reduce(
++                        hidden_states
++                    )
++                    if hidden_states.dtype != orig_dtype:
++                        hidden_states = hidden_states.to(orig_dtype)
++                else:
++                    # Conventional attention models use the upstream activation-
++                    # dtype collective. Avoid two casts and a 2x RCCL payload.
++                    quantize_communications = (
++                        not forward_batch.forward_mode.is_decode_or_idle()
++                        and get_global_server_args().enable_quant_communications
++                    )
++                    if quantize_communications:
++                        hidden_states = attention_tensor_model_parallel_quant_all_reduce(
++                            hidden_states
++                        )
++                    else:
++                        hidden_states = attention_tensor_model_parallel_all_reduce(
++                            hidden_states
++                        )
+                 if _is_npu and context.cache is not None:
+                     _ = prepare_weight_cache(hidden_states, context.cache)
+                 hidden_states, residual = layernorm(hidden_states, residual)
+diff --git a/python/sglang/srt/models/laguna.py b/python/sglang/srt/models/laguna.py
+--- a/python/sglang/srt/models/laguna.py
++++ b/python/sglang/srt/models/laguna.py
+@@ -485,6 +485,10 @@ class LagunaDecoderLayer(nn.Module):
+             post_attention_layernorm=self.post_attention_layernorm,
+             allow_reduce_scatter=True,
+             is_last_layer=(layer_id == config.num_hidden_layers - 1),
++            # Laguna is a conventional attention model. The global HIP FP32
++            # reduction workaround exists for recurrent DeltaNet/Mamba state
++            # and only adds casts plus a 2x payload here.
++            hip_fp32_allreduce=False,
+         )
+ 
+     def forward(

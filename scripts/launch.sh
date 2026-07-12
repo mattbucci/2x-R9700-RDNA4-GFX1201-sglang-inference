@@ -30,6 +30,8 @@
 #   qwen3vl-32b    Qwen3-VL-32B dense AWQ (thinking+vision, self-recal balanced, 256K)
 #   coder-reap-25b Cerebras Qwen3-Coder-REAP-25B-A3B (pruned from Coder-30B, 256K)
 #   nemotron-omni  Nemotron-3-Nano-Omni-30B-A3B FP8 (Mamba2 hybrid AVLM+thinking, 256K; triton, patches 046/047)
+#   north-mini     Cohere North-Mini-Code-1.0 FP8 (hybrid-SWA MoE, 256K)
+#   laguna         Poolside Laguna-XS.2-FP8 (hybrid-SWA MoE coding model, 256K)
 
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -45,7 +47,8 @@ TOKENIZER=""
 QUANT="${QUANT:-awq}"
 DTYPE="float16"
 CTX=32768
-KV_DTYPE="fp8_e4m3"
+_ENV_KV_DTYPE="${KV_DTYPE:-}"
+KV_DTYPE="${_ENV_KV_DTYPE:-fp8_e4m3}"
 MEM=0.85
 MAX_RUNNING=32
 CHUNKED=4096
@@ -61,6 +64,8 @@ WARMUP=""
 WATCHDOG=600
 EXTRA_ARGS="${EXTRA_ARGS:-}"
 EXTRA_ENV="${EXTRA_ENV:-}"
+CUSTOM_AR="--disable-custom-all-reduce"
+[[ "${ENABLE_CUSTOM_ALL_REDUCE:-}" == "1" ]] && CUSTOM_AR=""
 # Tensor-parallel size. Default 2 (both R9700s). `TP=1` pins one card.
 # EAGLE3/spec-decode on moe_wna16 MoE targets runs best at TP2 — BUT only with
 # `--speculative-attention-mode decode` in EXTRA_ARGS; without it the default
@@ -625,33 +630,66 @@ PYEOF
             # North-Mini-Code-1.0 — Cohere2MoeForCausalLM (cohere2_moe): 128-expert MoE,
             # 49 layers, hidden 2048, hybrid-SWA (window 4096, 1:3 full:sliding). Official
             # FP8 = compressed-tensors float-quantized (~32 GB, zero cast). FP8 is RDNA4's
-            # lane (Ampere sm_86 can't FP8; 3090 handed it over). Arch grafted from 3090
-            # patches 042 (cohere2_moe model) + 051 (config + hybrid-SWA classification).
+            # lane (Ampere sm_86 can't FP8; 3090 handed it over). v0.5.15 supplies the
+            # model and Cohere parsers natively; patch 062 adds the missing hybrid-SWA
+            # classification, and 074/076/078/079/081/082 cover FP8 correctness and
+            # the measured gfx1201 performance paths.
             MODEL="${MODEL:-$MODELS_DIR/North-Mini-Code-1.0-fp8}"
             QUANT="compressed-tensors"
             DTYPE="bfloat16"
             ATTN_BACKEND="${ATTN_BACKEND:-triton}"   # hybrid-SWA triton flash (patch 001 SWA path)
-            CTX="${_ENV_CTX:-131072}"; MAX_RUNNING="${_ENV_MAX_RUNNING:-8}"
+            CTX="${_ENV_CTX:-262144}"; MAX_RUNNING="${_ENV_MAX_RUNNING:-8}"
             CHUNKED="${_ENV_CHUNKED:-4096}"; DECODE_STEPS=8; MEM="${_ENV_MEM:-0.85}"
             WATCHDOG=1800
-            # Hybrid-SWA KV economics: default 0.8x SWA sub-pool wastes KV (sliding layers
-            # reach only window=4096); frees KV for 256K beside the fp8 weights. Tune at bring-up.
-            EXTRA_ARGS="${EXTRA_ARGS:-} --swa-full-tokens-ratio 0.0625 --cuda-graph-max-bs 1"
+            # Hybrid-SWA KV economics: a large SWA sub-pool is wasted because sliding
+            # layers can reach only window=4096. The validated 0.0625 ratio leaves
+            # 1.57M full-layer tokens while keeping ample SWA concurrency at 256K.
+            EXTRA_ARGS="${EXTRA_ARGS:-} --swa-full-tokens-ratio ${SWA_FULL_TOKENS_RATIO:-0.0625} --cuda-graph-max-bs-decode 1"
             # cuda-graph ON (validated 2026-06-11 on cohere2_moe): 128-expert MoE M=1 decode
-            # is dispatch-bound; single-bs capture (0.29 GB, ~2.5 s) gives ~2.4x — 27 -> 64
-            # tok/s, and the hybrid-SWA flat curve keeps the win across context. Capture clean,
-            # basic+code coherent. (single-bs because we only care about conc=1.)
+            # is dispatch-bound; single-bs capture is the conc=1 throughput path.
+            # With the v0.5.15 internal fusions the measured curve is 71.1 tok/s
+            # short, 60.7 at 29K, 42.3 at 117K, and 33.9 at 219K input tokens.
             CUDA_GRAPH=""
-            # Reasoning parser grafted from upstream main (patch 053): routes the
-            # <|START_THINKING|>..<|END_THINKING|> block to reasoning_content and
+            # Native reasoning parser routes the <|START_THINKING|>..
+            # <|END_THINKING|> block to reasoning_content and
             # strips the <|START_TEXT|>..<|END_TEXT|> response wrapper from content
             # (these delimiters are special=False, so skip_special_tokens can't).
             REASONING="--reasoning-parser cohere_command4"
-            # Tool-call parser grafted from upstream main (patch 054): parses
-            # <|START_ACTION|>[..json..]<|END_ACTION|> into structured tool_calls
+            # Native tool-call parser turns <|START_ACTION|>[..json..]
+            # <|END_ACTION|> into structured tool_calls
             # (normalizes Cohere's tool_name->name, drops tool_call_id). Composes
             # with the reasoning parser (which passes the ACTION block through).
             TOOL_CALL_PARSER="cohere_command4"
+            ;;
+        laguna)
+            # Laguna XS.2 — Poolside's 33B-total / 3B-active agentic coding MoE.
+            # 40 layers: 10 full-attention + 30 SWA (window 512), 256 routed
+            # experts top-8 + one shared expert. The official FP8 checkpoint is
+            # compressed-tensors block-FP8 (128x128) with an FP8 KV-cache scheme.
+            # Patch 074 exposes the checkpoint's FP8 KV scheme, so auto selects
+            # FP8 and its static K/V scales while an explicit env override remains
+            # possible. Patches 076–082 add the validated HIP routing, attention,
+            # RMSNorm, collective, and fused FP8 cache-write paths.
+            MODEL="${MODEL:-${LAGUNA_MODEL:-/data/models/Laguna-XS.2-FP8}}"
+            QUANT="compressed-tensors"
+            DTYPE="bfloat16"
+            KV_DTYPE="${_ENV_KV_DTYPE:-auto}"
+            ATTN_BACKEND="${ATTN_BACKEND:-triton}"
+            CTX="${_ENV_CTX:-262144}"; MAX_RUNNING="${_ENV_MAX_RUNNING:-8}"
+            CHUNKED="${_ENV_CHUNKED:-4096}"; DECODE_STEPS=8; MEM="${_ENV_MEM:-0.85}"
+            WATCHDOG=1800
+            # FP8 ratio 0.01 yielded 1,009,385 full-layer tokens (+15.3% vs
+            # 0.0625) and passed 8-way, >window concurrency. A BF16 override
+            # halves the absolute SWA slots, so reserve 0.02 to keep a 4K
+            # prefill chunk plus the live 512-token window schedulable.
+            local laguna_swa_ratio=0.01
+            case "$KV_DTYPE" in
+                bf16|bfloat16|fp16|float16) laguna_swa_ratio=0.02 ;;
+            esac
+            EXTRA_ARGS="${EXTRA_ARGS:-} --swa-full-tokens-ratio ${SWA_FULL_TOKENS_RATIO:-$laguna_swa_ratio} --cuda-graph-max-bs-decode 1"
+            CUDA_GRAPH=""
+            REASONING="--reasoning-parser poolside_v1"
+            TOOL_CALL_PARSER="poolside_v1"
             ;;
         *)
             echo "Unknown model: $1"
@@ -807,13 +845,13 @@ CMD=(python -m sglang.launch_server
     --mem-fraction-static "$MEM"
     --max-running-requests "$MAX_RUNNING"
     --chunked-prefill-size "$CHUNKED"
-    # NOTE: --num-continuous-decode-steps is INERT in v0.5.13 (verified 2026-06-20:
-    # zero readers under srt/ in /data/sgl-rebase AND /data/vG — only the dataclass
-    # default + argparse def). The per-preset DECODE_STEPS values have NO runtime
+    # NOTE: --num-continuous-decode-steps remains INERT in v0.5.15 (rechecked
+    # 2026-07-12: zero runtime readers under /data/sgl-v0515/python/sglang/srt;
+    # only the dataclass default + argparse def). The per-preset DECODE_STEPS
+    # values have NO runtime
     # effect; kept harmless for forward-compat. Do NOT tune DECODE_STEPS for perf.
     --num-continuous-decode-steps "$DECODE_STEPS"
     --attention-backend "$ATTN_BACKEND"
-    --disable-custom-all-reduce
     # RDNA4 + v0.5.14 cuda-graph fix (2026-06-26): v0.5.14's new FULL decode-graph
     # backend captures the TP all-reduce INTO the graph; without an RCCL communicator
     # warmed up FIRST, channel-init runs *during* hipGraph capture and DEADLOCKS at TP=2
@@ -840,6 +878,7 @@ CMD=(python -m sglang.launch_server
 [[ -n "$CHAT_TEMPLATE" ]] && CMD+=($CHAT_TEMPLATE)
 [[ -n "$REASONING" ]] && CMD+=($REASONING)
 [[ -n "$TOOL_CALL_PARSER" ]] && CMD+=(--tool-call-parser "$TOOL_CALL_PARSER")
+[[ -n "$CUSTOM_AR" ]] && CMD+=($CUSTOM_AR)
 # R9700 #36: ENABLE_WARMUP=1 overrides any preset's --skip-server-warmup so warmup runs and the
 # CUDA graphs CAPTURE (skip-warmup returns health=200 before capture -> everything runs eager).
 # Needed for spec decode, where the small draft is launch-bound and only fast under cuda-graph.

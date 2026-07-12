@@ -1,0 +1,491 @@
+diff --git a/python/sglang/jit_kernel/minimax_m3/rmsnorm.py b/python/sglang/jit_kernel/minimax_m3/rmsnorm.py
+--- a/python/sglang/jit_kernel/minimax_m3/rmsnorm.py
++++ b/python/sglang/jit_kernel/minimax_m3/rmsnorm.py
+@@ -25,6 +25,7 @@ def _gemma_rmsnorm_kernel(
+     stride_col,
+     eps,
+     BLOCK_N: tl.constexpr,
++    ADD_ONE: tl.constexpr,
+ ):
+     row = tl.program_id(0)
+     cols = tl.arange(0, BLOCK_N)
+@@ -35,7 +36,9 @@ def _gemma_rmsnorm_kernel(
+     var = tl.sum(x * x, axis=0) / n_cols
+     rstd = 1.0 / tl.sqrt(var + eps)
+     w = tl.load(w_ptr + cols, mask=mask, other=0.0).to(tl.float32)
+-    out = x * rstd * (1.0 + w)
++    if ADD_ONE:
++        w = 1.0 + w
++    out = x * rstd * w
+     tl.store(
+         out_ptr + row * n_cols + cols,
+         out.to(out_ptr.dtype.element_ty),
+@@ -57,6 +60,7 @@ def _gemma_fused_add_rmsnorm_kernel(
+     stride_rcol,
+     eps,
+     BLOCK_N: tl.constexpr,
++    ADD_ONE: tl.constexpr,
+ ):
+     row = tl.program_id(0)
+     cols = tl.arange(0, BLOCK_N)
+@@ -77,7 +81,9 @@ def _gemma_fused_add_rmsnorm_kernel(
+     var = tl.sum(s * s, axis=0) / n_cols
+     rstd = 1.0 / tl.sqrt(var + eps)
+     w = tl.load(w_ptr + cols, mask=mask, other=0.0).to(tl.float32)
+-    out = s * rstd * (1.0 + w)
++    if ADD_ONE:
++        w = 1.0 + w
++    out = s * rstd * w
+     tl.store(
+         out_ptr + row * n_cols + cols,
+         out.to(out_ptr.dtype.element_ty),
+@@ -95,6 +101,21 @@ def _num_warps(block_n: int) -> int:
+ 
+ def gemma_rmsnorm(x: torch.Tensor, weight: torch.Tensor, eps: float) -> torch.Tensor:
+     """Gemma RMSNorm = normalize(x) * (1 + weight), fp32 math, single pass."""
++    return _rmsnorm_impl(x, weight, eps, add_one=True)
++
++
++def rmsnorm(x: torch.Tensor, weight: torch.Tensor, eps: float) -> torch.Tensor:
++    """Standard RMSNorm = normalize(x) * weight, fp32 math, single pass."""
++    return _rmsnorm_impl(x, weight, eps, add_one=False)
++
++
++def _rmsnorm_impl(
++    x: torch.Tensor,
++    weight: torch.Tensor,
++    eps: float,
++    *,
++    add_one: bool,
++) -> torch.Tensor:
+     orig_shape = x.shape
+     n = orig_shape[-1]
+     x2 = x.reshape(-1, n)
+@@ -110,6 +131,7 @@ def gemma_rmsnorm(x: torch.Tensor, weight: torch.Tensor, eps: float) -> torch.Te
+         x2.stride(1),
+         eps,
+         BLOCK_N=block_n,
++        ADD_ONE=add_one,
+         num_warps=_num_warps(block_n),
+     )
+     return out.reshape(orig_shape)
+@@ -122,6 +144,27 @@ def gemma_fused_add_rmsnorm(
+     eps: float,
+ ):
+     """Fused (x + residual) then Gemma RMSNorm; returns (normed, pre-norm sum)."""
++    return _fused_add_rmsnorm_impl(x, residual, weight, eps, add_one=True)
++
++
++def fused_add_rmsnorm(
++    x: torch.Tensor,
++    residual: torch.Tensor,
++    weight: torch.Tensor,
++    eps: float,
++):
++    """Fused residual add + standard RMSNorm, both with fp32 accumulation."""
++    return _fused_add_rmsnorm_impl(x, residual, weight, eps, add_one=False)
++
++
++def _fused_add_rmsnorm_impl(
++    x: torch.Tensor,
++    residual: torch.Tensor,
++    weight: torch.Tensor,
++    eps: float,
++    *,
++    add_one: bool,
++):
+     orig_shape = x.shape
+     n = orig_shape[-1]
+     x2 = x.reshape(-1, n)
+@@ -143,6 +186,7 @@ def gemma_fused_add_rmsnorm(
+         r2.stride(1),
+         eps,
+         BLOCK_N=block_n,
++        ADD_ONE=add_one,
+         num_warps=_num_warps(block_n),
+     )
+     return out.reshape(orig_shape), res_out.reshape(orig_shape)
+diff --git a/python/sglang/srt/layers/layernorm.py b/python/sglang/srt/layers/layernorm.py
+--- a/python/sglang/srt/layers/layernorm.py
++++ b/python/sglang/srt/layers/layernorm.py
+@@ -55,6 +55,9 @@ _is_cpu = is_cpu()
+ _is_cpu = is_cpu()
+ _is_xpu = is_xpu()
+ _flashinfer_layernorm_available = False
++_use_triton_hip_rmsnorm = _is_hip and get_bool_env_var(
++    "SGLANG_RDNA4_TRITON_RMSNORM", "True"
++)
+ 
+ if _is_cuda or _is_xpu or _is_musa:
+     if _is_flashinfer_available:
+@@ -107,7 +110,14 @@ elif _is_hip:
+ 
+         _has_vllm_rms_norm = True
+     except ImportError:
+-        # Fallback: vllm not available, will use forward_native
++        # vLLM is optional in a standalone SGLang environment. Keep a
++        # one-launch Triton fallback instead of expanding every RMSNorm into a
++        # chain of torch cast/pow/mean/rsqrt/mul kernels on HIP.
++        from sglang.jit_kernel.minimax_m3.rmsnorm import (
++            fused_add_rmsnorm as _triton_fused_add_rmsnorm,
++        )
++        from sglang.jit_kernel.minimax_m3.rmsnorm import rmsnorm as _triton_rmsnorm
++
+         _has_vllm_rms_norm = False
+ 
+ if _is_cuda:
+@@ -424,9 +434,30 @@ class RMSNorm(MultiPlatformOp):
+         residual: Optional[torch.Tensor] = None,
+         post_residual_addition: Optional[torch.Tensor] = None,
+     ) -> Union[torch.Tensor, Tuple[torch.Tensor, torch.Tensor]]:
+-        # Fallback to native implementation if vllm is not available
++        # Standalone HIP installs do not carry vLLM's custom ops. Use the
++        # portable Triton kernels for the standard semantics they support.
+         if not _has_vllm_rms_norm:
+-            return self.forward_native(x, residual, post_residual_addition)
++            if not _use_triton_hip_rmsnorm:
++                return self.forward_native(x, residual, post_residual_addition)
++            if (
++                self.variance_size_override is not None
++                or self.cast_x_before_out_mul
++                or self.fp32_residual
++                or post_residual_addition is not None
++                or is_batch_invariant_mode_enabled()
++            ):
++                return self.forward_native(x, residual, post_residual_addition)
++            if x.numel() == 0:
++                return (x, residual) if residual is not None else x
++            if not x.is_contiguous():
++                x = x.contiguous()
++            if residual is not None:
++                if not residual.is_contiguous():
++                    residual = residual.contiguous()
++                return _triton_fused_add_rmsnorm(
++                    x, residual, self.weight.data, self.variance_epsilon
++                )
++            return _triton_rmsnorm(x, self.weight.data, self.variance_epsilon)
+ 
+         if is_batch_invariant_mode_enabled():
+             if (
+diff --git a/python/sglang/srt/models/utils.py b/python/sglang/srt/models/utils.py
+--- a/python/sglang/srt/models/utils.py
++++ b/python/sglang/srt/models/utils.py
+@@ -522,36 +522,51 @@ def _fused_qk_gemma_rmsnorm_kernel(
+     K_out_ptr,
+     QW_ptr,
+     KW_ptr,
+-    q_stride,
+-    k_stride,
++    q_token_stride,
++    q_head_stride,
++    k_token_stride,
++    k_head_stride,
++    q_heads,
++    k_heads,
+     k_rows,
+     HEAD_DIM: tl.constexpr,
+     BLOCK_HD: tl.constexpr,
+     EPS: tl.constexpr,
+     FP16: tl.constexpr,
++    ADD_ONE: tl.constexpr,
+ ):
+     pid = tl.program_id(0)
+     cols = tl.arange(0, BLOCK_HD)
+     mask = cols < HEAD_DIM
+     out_dtype = tl.float16 if FP16 else tl.bfloat16
+ 
+-    # Q norm (every block) — use q_stride to handle non-contiguous input
+-    q_off = pid * q_stride + cols
++    # Q norm (every block). Index the original token/head split view directly;
++    # flattening it first can silently allocate for multi-token prefills because
++    # the next token starts after the complete packed QKV row.
++    q_token = pid // q_heads
++    q_head = pid % q_heads
++    q_off = q_token * q_token_stride + q_head * q_head_stride + cols
+     q = tl.load(Q_ptr + q_off, mask=mask, other=0.0).to(tl.float32)
+     w_q = tl.load(QW_ptr + cols, mask=mask, other=0.0).to(tl.float32)
+     q_var = tl.sum(q * q, axis=0) / HEAD_DIM
+-    q_normed = (q * tl.rsqrt(q_var + EPS) * (w_q + 1.0)).to(out_dtype)
++    if ADD_ONE:
++        w_q = w_q + 1.0
++    q_normed = (q * tl.rsqrt(q_var + EPS) * w_q).to(out_dtype)
+     # output is always contiguous
+     q_out_off = pid * HEAD_DIM + cols
+     tl.store(Q_out_ptr + q_out_off, q_normed, mask=mask)
+ 
+-    # K norm (first k_rows blocks only) — use k_stride for input
++    # K norm (first k_rows blocks only), using the same direct view indexing.
+     if pid < k_rows:
+-        k_off = pid * k_stride + cols
++        k_token = pid // k_heads
++        k_head = pid % k_heads
++        k_off = k_token * k_token_stride + k_head * k_head_stride + cols
+         k = tl.load(K_ptr + k_off, mask=mask, other=0.0).to(tl.float32)
+         w_k = tl.load(KW_ptr + cols, mask=mask, other=0.0).to(tl.float32)
+         k_var = tl.sum(k * k, axis=0) / HEAD_DIM
+-        k_normed = (k * tl.rsqrt(k_var + EPS) * (w_k + 1.0)).to(out_dtype)
++        if ADD_ONE:
++            w_k = w_k + 1.0
++        k_normed = (k * tl.rsqrt(k_var + EPS) * w_k).to(out_dtype)
+         k_out_off = pid * HEAD_DIM + cols
+         tl.store(K_out_ptr + k_out_off, k_normed, mask=mask)
+ 
+@@ -571,11 +586,67 @@ def fused_qk_gemma_rmsnorm(
+     Passes input strides to the kernel so non-contiguous tensors (e.g. from
+     qkv.split()) are read correctly without an extra .contiguous() copy.
+     """
+-    q_flat = q.reshape(-1, head_dim)
+-    k_flat = k.reshape(-1, head_dim)
++    return _fused_qk_rmsnorm_impl(
++        q,
++        k,
++        q_weight,
++        k_weight,
++        eps,
++        head_dim,
++        add_one=True,
++    )
+ 
+-    q_rows = q_flat.shape[0]
+-    k_rows = k_flat.shape[0]
++
++def fused_qk_rmsnorm(
++    q: torch.Tensor,
++    k: torch.Tensor,
++    q_weight: torch.Tensor,
++    k_weight: torch.Tensor,
++    eps: float,
++    head_dim: int,
++) -> Tuple[torch.Tensor, torch.Tensor]:
++    """Fused standard RMSNorm for strided Q/K views on HIP."""
++    return _fused_qk_rmsnorm_impl(
++        q,
++        k,
++        q_weight,
++        k_weight,
++        eps,
++        head_dim,
++        add_one=False,
++    )
++
++
++def _fused_qk_rmsnorm_impl(
++    q: torch.Tensor,
++    k: torch.Tensor,
++    q_weight: torch.Tensor,
++    k_weight: torch.Tensor,
++    eps: float,
++    head_dim: int,
++    *,
++    add_one: bool,
++) -> Tuple[torch.Tensor, torch.Tensor]:
++    if q.ndim != 2 or k.ndim != 2:
++        raise ValueError(
++            "fused_qk_rmsnorm expects packed 2-D Q/K tensors, got "
++            f"q.shape={tuple(q.shape)}, k.shape={tuple(k.shape)}"
++        )
++    if q.stride(1) != 1 or k.stride(1) != 1:
++        raise ValueError(
++            "fused_qk_rmsnorm requires a contiguous head dimension, got "
++            f"q.stride={q.stride()}, k.stride={k.stride()}"
++        )
++    if q.shape[1] % head_dim or k.shape[1] % head_dim:
++        raise ValueError(
++            f"Q/K widths must be divisible by head_dim={head_dim}, got "
++            f"{q.shape[1]} and {k.shape[1]}"
++        )
++
++    q_heads = q.shape[1] // head_dim
++    k_heads = k.shape[1] // head_dim
++    q_rows = q.shape[0] * q_heads
++    k_rows = k.shape[0] * k_heads
+ 
+     q_out = torch.empty(q_rows, head_dim, dtype=q.dtype, device=q.device)
+     k_out = torch.empty(k_rows, head_dim, dtype=k.dtype, device=k.device)
+@@ -583,19 +654,24 @@ def fused_qk_gemma_rmsnorm(
+     BLOCK_HD = triton.next_power_of_2(head_dim)
+ 
+     _fused_qk_gemma_rmsnorm_kernel[(q_rows,)](
+-        q_flat,
+-        k_flat,
++        q,
++        k,
+         q_out,
+         k_out,
+         q_weight,
+         k_weight,
+-        q_flat.stride(0),
+-        k_flat.stride(0),
++        q.stride(0),
++        head_dim,
++        k.stride(0),
++        head_dim,
++        q_heads,
++        k_heads,
+         k_rows,
+         HEAD_DIM=head_dim,
+         BLOCK_HD=BLOCK_HD,
+         EPS=eps,
+         FP16=(q.dtype == torch.float16),
++        ADD_ONE=add_one,
+     )
+ 
+     return q_out, k_out
+diff --git a/python/sglang/srt/models/laguna.py b/python/sglang/srt/models/laguna.py
+--- a/python/sglang/srt/models/laguna.py
++++ b/python/sglang/srt/models/laguna.py
+@@ -55,12 +55,16 @@ from sglang.srt.model_loader.weight_utils import (
+     default_weight_loader,
+     maybe_remap_kv_scale_name,
+ )
+-from sglang.srt.models.utils import apply_qk_norm
++from sglang.srt.models.utils import apply_qk_norm, fused_qk_rmsnorm
+ from sglang.srt.runtime_context import get_flags, get_parallel
+ from sglang.srt.server_args import get_global_server_args
+-from sglang.srt.utils import LazyValue, add_prefix, make_layers
++from sglang.srt.utils import LazyValue, add_prefix, get_bool_env_var, make_layers
+ 
+ logger = logging.getLogger(__name__)
++_is_hip = torch.version.hip is not None
++_use_fused_qk_rmsnorm = _is_hip and get_bool_env_var(
++    "SGLANG_LAGUNA_FUSED_QK_RMSNORM", "True"
++)
+ 
+ 
+ class LagunaMLP(nn.Module):
+@@ -369,13 +373,25 @@ class LagunaAttention(nn.Module):
+         qkv, _ = self.qkv_proj(hidden_states)
+         q, k, v = qkv.split([self.q_size, self.kv_size, self.kv_size], dim=-1)
+ 
+-        q, k = apply_qk_norm(
+-            q=q,
+-            k=k,
+-            q_norm=self.q_norm,
+-            k_norm=self.k_norm,
+-            head_dim=self.head_dim,
+-        )
++        if _use_fused_qk_rmsnorm:
++            q_shape, k_shape = q.shape, k.shape
++            q, k = fused_qk_rmsnorm(
++                q=q,
++                k=k,
++                q_weight=self.q_norm.weight,
++                k_weight=self.k_norm.weight,
++                eps=self.q_norm.variance_epsilon,
++                head_dim=self.head_dim,
++            )
++            q, k = q.view(q_shape), k.view(k_shape)
++        else:
++            q, k = apply_qk_norm(
++                q=q,
++                k=k,
++                q_norm=self.q_norm,
++                k_norm=self.k_norm,
++                head_dim=self.head_dim,
++            )
+         q, k = self.rotary_emb(positions, q, k)
+ 
+         attn_output = self.attn(q, k, v, forward_batch)
+diff --git a/test/registered/jit/test_rdna4_standard_rmsnorm.py b/test/registered/jit/test_rdna4_standard_rmsnorm.py
+new file mode 100644
+--- /dev/null
++++ b/test/registered/jit/test_rdna4_standard_rmsnorm.py
+@@ -0,0 +1,98 @@
++# SPDX-License-Identifier: Apache-2.0
++"""ROCm reference tests for the standard RMSNorm fusion paths."""
++
++import unittest
++
++import torch
++
++from sglang.jit_kernel.minimax_m3.rmsnorm import fused_add_rmsnorm, rmsnorm
++from sglang.srt.models.utils import fused_qk_rmsnorm
++from sglang.srt.utils import is_hip
++from sglang.test.ci.ci_register import register_amd_ci
++
++register_amd_ci(est_time=10, stage="jit-kernel-unit", runner_config="amd")
++
++EPS = 1e-6
++
++
++def _reference(x: torch.Tensor, weight: torch.Tensor) -> torch.Tensor:
++    xf = x.float()
++    return (
++        xf * torch.rsqrt(xf.square().mean(dim=-1, keepdim=True) + EPS)
++        * weight.float()
++    ).to(x.dtype)
++
++
++@unittest.skipUnless(is_hip() and torch.cuda.is_available(), "ROCm GPU required")
++class TestRDNA4StandardRMSNorm(unittest.TestCase):
++    def test_plain_and_fused_add_match_reference(self):
++        for rows, hidden in ((1, 128), (8, 2048), (64, 2048)):
++            with self.subTest(rows=rows, hidden=hidden):
++                x = torch.randn(rows, hidden, dtype=torch.bfloat16, device="cuda")
++                residual = torch.randn_like(x)
++                weight = torch.randn(hidden, dtype=torch.bfloat16, device="cuda")
++
++                torch.testing.assert_close(
++                    rmsnorm(x, weight, EPS),
++                    _reference(x, weight),
++                    rtol=0.008,
++                    atol=0.0078125,
++                )
++                out, residual_out = fused_add_rmsnorm(x, residual, weight, EPS)
++                summed = x.float() + residual.float()
++                expected_residual = summed.to(x.dtype)
++                torch.testing.assert_close(
++                    residual_out, expected_residual, rtol=0, atol=0
++                )
++                torch.testing.assert_close(
++                    out,
++                    (
++                        summed
++                        * torch.rsqrt(
++                            summed.square().mean(dim=-1, keepdim=True) + EPS
++                        )
++                        * weight.float()
++                    ).to(x.dtype),
++                    rtol=0.008,
++                    atol=0.0078125,
++                )
++
++    def test_qk_fusion_reads_strided_prefill_views_without_copy(self):
++        for tokens, query_heads in ((1, 24), (8, 32), (64, 24)):
++            with self.subTest(tokens=tokens, query_heads=query_heads):
++                kv_heads, head_dim = 4, 128
++                packed_width = (query_heads + 2 * kv_heads) * head_dim
++                packed = torch.randn(
++                    tokens,
++                    packed_width,
++                    dtype=torch.bfloat16,
++                    device="cuda",
++                )
++                q, k, _ = packed.split(
++                    [query_heads * head_dim, kv_heads * head_dim, kv_heads * head_dim],
++                    dim=-1,
++                )
++                q_weight = torch.randn(
++                    head_dim, dtype=torch.bfloat16, device="cuda"
++                )
++                k_weight = torch.randn_like(q_weight)
++
++                q_out, k_out = fused_qk_rmsnorm(
++                    q, k, q_weight, k_weight, EPS, head_dim
++                )
++                torch.testing.assert_close(
++                    q_out,
++                    _reference(q.reshape(-1, head_dim), q_weight),
++                    rtol=0.008,
++                    atol=0.0078125,
++                )
++                torch.testing.assert_close(
++                    k_out,
++                    _reference(k.reshape(-1, head_dim), k_weight),
++                    rtol=0.008,
++                    atol=0.0078125,
++                )
++
++
++if __name__ == "__main__":
++    unittest.main()

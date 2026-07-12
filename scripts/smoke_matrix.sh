@@ -2,7 +2,12 @@
 # TP-2 256K smoke across all AWQ ships. Recipe (validated devstral 2026-05-25):
 # absolute HF snapshot path + --attention-backend triton + HF_HUB_OFFLINE=1
 # (symlink dirs break relative blob lookups; aiter backend is CDNA-only).
-set -u; cd "$(dirname "$0")/.."; PY=~/miniforge3/envs/sglang-triton36/bin/python
+set -u
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_DIR="$(dirname "$SCRIPT_DIR")"
+source "$SCRIPT_DIR/common.sh"
+cd "$REPO_DIR" || exit 1
+PY="$CONDA_BASE/envs/$ENV_NAME/bin/python"
 OUT=benchmarks/smoke-256k; mkdir -p "$OUT"; S="$OUT/summary.tsv"; PORT=23334
 echo -e "model\tquant\tctx\thealth\tvalidate" > "$S"
 parser(){ case $1 in *Coder*|*Qwen3.5*|*Qwen3.6*|*VL*) echo qwen3_coder;; *gemma*) echo gemma4;; *Devstral*) echo mistral;; *) echo "";; esac; }

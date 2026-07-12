@@ -3,10 +3,11 @@
 # One boot per N: run needle (coherence: LATE must PASS) + deep speed (server-log gen-throughput).
 set -uo pipefail
 cd /home/letsrtfm/AI/2x-R9700-RDNA4-GFX1201-sglang-inference || exit 1
+source scripts/common.sh
 PORT=23345
 N="${1:-32768}"
 OUT=/tmp/dbg/window-ceiling; mkdir -p "$OUT"
-PY=/home/letsrtfm/miniforge3/envs/sglang-triton36-v0513/bin/python
+PY="$CONDA_BASE/envs/$ENV_NAME/bin/python"
 log="$OUT/sweep-serve-N$N.log"
 
 stop_server(){

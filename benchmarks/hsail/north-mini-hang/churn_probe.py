@@ -6,7 +6,7 @@ so no prefix reuse -> distinct radix entries -> the 1.58M-tok pool fills and EVI
 mimicking many separate SWE-bench instances hitting one long-lived server. Reports
 the iteration where it stalls (no completion within --timeout).
 """
-import argparse, glob, time, json, sys, urllib.request
+import argparse, glob, time, json, os, sys, urllib.request
 
 ap = argparse.ArgumentParser()
 ap.add_argument("--port", type=int, default=23380)
@@ -17,7 +17,10 @@ ap.add_argument("--timeout", type=int, default=240)
 A = ap.parse_args()
 
 pool = []
-for f in sorted(glob.glob("/data/vG/python/sglang/srt/**/*.py", recursive=True)):
+sglang_src = os.path.join(
+    os.environ.get("SGLANG_DIR", "/data/sgl-v0515"), "python/sglang/srt"
+)
+for f in sorted(glob.glob(os.path.join(sglang_src, "**/*.py"), recursive=True)):
     try: pool.append(open(f, encoding="utf-8", errors="ignore").read())
     except Exception: pass
 allcode = "\n".join(pool)

@@ -1,13 +1,14 @@
 #!/bin/bash
-# Minimal RDNA4 inference setup: stock SGLang + system RCCL + triton 3.6.0
+# Reproducible RDNA4 inference setup: SGLang v0.5.15 + numbered patch series
+# + system RCCL + Triton 3.6.0.
 #
-# No custom RCCL build. No SGLang patches (initially).
-# Triton 3.6.0 built from source for gfx12 improvements.
+# No custom RCCL build. The repository's ordered patches are applied to a
+# pristine tag checkout before the editable install.
 #
 # Prerequisites:
 #   - ROCm 7.2 installed at /opt/rocm (or set ROCM_PATH)
 #   - Miniforge3/Conda (auto-detected, or set CONDA_BASE)
-#   - pacman -S rocprofiler rccl rust   (rust/cargo: SGLang v0.5.12 grpc build needs it)
+#   - pacman -S rocprofiler rccl rust   (rust/cargo: SGLang's grpc build needs it)
 #
 # Usage:
 #   ./scripts/setup.sh
@@ -38,7 +39,7 @@ TORCHAUDIO_VERSION="${TORCHAUDIO_VERSION:-2.11.0+rocm7.2}"
 TORCH_INDEX="${TORCH_INDEX:-https://download.pytorch.org/whl/rocm7.2}"
 
 SGLANG_REPO="https://github.com/sgl-project/sglang.git"
-SGLANG_TAG="${SGLANG_TAG:-v0.5.13.post1}"  # rebased 2026-06-16 (was v0.5.12); overridable for version rebases
+SGLANG_TAG="${SGLANG_TAG:-v0.5.15}"  # live baseline promoted 2026-07-11; overridable for version rebases
 
 SKIP_ENV=false
 for arg in "$@"; do
@@ -51,7 +52,7 @@ done
 echo "=============================================="
 echo "RDNA4 Inference — Minimal Setup"
 echo "=============================================="
-echo "SGLang:  $SGLANG_TAG (stock)"
+echo "SGLang:  $SGLANG_TAG + repository patch series"
 echo "Triton:  3.6.0 (upstream, from source)"
 echo "RCCL:    system (${ROCM_PATH}/lib/librccl.so)"
 echo "PyTorch: $TORCH_VERSION"
@@ -70,11 +71,11 @@ if ! ldconfig -p | grep -q librocprofiler-sdk.so.1; then
 fi
 
 # -------------------------------------------------------------------
-# Step 1: Clone SGLang (stock, no patches)
+# Step 1: Clone pristine SGLang and apply the ordered patch series
 # -------------------------------------------------------------------
 echo ""
 if [ ! -d "$SGLANG_DIR" ] || [ ! -d "$SGLANG_DIR/.git" ]; then
-    echo "[1/5] Cloning SGLang $SGLANG_TAG (stock)..."
+    echo "[1/5] Cloning pristine SGLang $SGLANG_TAG..."
     rm -rf "$SGLANG_DIR"
     mkdir -p "$(dirname "$SGLANG_DIR")"
     git clone --branch "$SGLANG_TAG" --depth 1 "$SGLANG_REPO" "$SGLANG_DIR"
@@ -100,7 +101,7 @@ if [ ! -d "$SGLANG_DIR" ] || [ ! -d "$SGLANG_DIR/.git" ]; then
             exit 1
         fi
     else
-        echo "  No patches to apply (stock install)"
+        echo "  No numbered patches found; continuing with a pristine install"
     fi
 else
     echo "[1/5] Using existing SGLang source at $SGLANG_DIR"
@@ -140,11 +141,11 @@ if [ "$SKIP_ENV" = false ]; then
 
     echo "Installing SGLang from source..."
     cd "$SGLANG_DIR/python"
-    # SGLang v0.5.12's grpc extension compiles a Rust crate during the editable
+    # SGLang's grpc extension compiles a Rust crate during the editable
     # install, so a Rust toolchain (cargo/rustc) must be present — without it the
     # install dies with "error: can't find Rust compiler" (issue #1 note 1).
     if ! command -v cargo >/dev/null 2>&1; then
-        echo "FATAL: 'cargo' (Rust toolchain) not found — SGLang v0.5.12's grpc build needs it."
+        echo "FATAL: 'cargo' (Rust toolchain) not found — SGLang's grpc build needs it."
         echo "  Install it, then re-run: pacman -S rust   (Arch/EndeavourOS)  |  rustup default stable  (rustup)"
         exit 1
     fi

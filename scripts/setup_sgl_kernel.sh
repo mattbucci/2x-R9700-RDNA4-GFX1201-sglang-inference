@@ -8,9 +8,9 @@
 # __init__.py that preserves native imports.
 #
 # What this patches (upstream sgl_kernel code):
-#   sgl-kernel/python/sgl_kernel/__init__.py — complete rewrite for RDNA4
-#   graceful degradation. See patches/004-sgl-kernel-rdna4-fallbacks.patch
-#   for the full diff and rationale.
+#   sgl-kernel/python/sgl_kernel/__init__.py — graceful degradation when
+#   optional CUDA-only extensions are unavailable. See
+#   patches/003-rdna4-sgl-kernel-fallbacks.patch for the full diff.
 #
 # Usage:
 #   ./scripts/setup_sgl_kernel.sh                    # Build + install to current env
@@ -116,21 +116,37 @@ if [ ! -f "$SGL_KERNEL_SRC/__init__.py" ]; then
     exit 1
 fi
 
-# Check if our patch is already applied by looking for the graceful degradation marker
-if grep -q "_common_ops_available" "$SGL_KERNEL_SRC/__init__.py"; then
-    echo "  Patch already applied (found _common_ops_available marker)"
+# Check both guards so a partially applied patch cannot pass as complete.
+has_common_ops_guard=false
+has_infllm_guard=false
+grep -Fq "common_ops = None" "$SGL_KERNEL_SRC/__init__.py" && has_common_ops_guard=true
+grep -Fq "infllmv2_attn_stage1 = None" "$SGL_KERNEL_SRC/__init__.py" && has_infllm_guard=true
+
+if $has_common_ops_guard && $has_infllm_guard; then
+    echo "  Patch already fully applied (common_ops and infllm_v2 guards found)"
+elif $has_common_ops_guard || $has_infllm_guard; then
+    echo "ERROR: sgl_kernel RDNA4 patch is only partially applied."
+    echo "  common_ops guard: $has_common_ops_guard"
+    echo "  infllm_v2 guard:  $has_infllm_guard"
+    echo "Restore a clean v0.5.15 sgl_kernel tree and re-run the repository patch series."
+    exit 1
 else
-    if [ -f "$PATCH_FILE" ]; then
-        echo "  Applying patch: $(basename "$PATCH_FILE")"
-        cd "$REPO_DIR/components/sglang"
-        git apply "$PATCH_FILE" || {
-            echo "  WARNING: git apply failed — patch may be partially applied or source has diverged"
-            echo "  Continuing with existing __init__.py"
-        }
-    else
-        echo "  WARNING: Patch file not found: $PATCH_FILE"
-        echo "  The __init__.py may use upstream logic that overwrites native imports."
-        echo "  Dense AWQ output may be incorrect."
+    if [ ! -f "$PATCH_FILE" ]; then
+        echo "ERROR: Patch file not found: $PATCH_FILE"
+        exit 1
+    fi
+
+    echo "  Applying patch: $(basename "$PATCH_FILE")"
+    if ! git -C "$SGL_KERNEL_DIR" apply "$PATCH_FILE"; then
+        echo "ERROR: Failed to apply $(basename "$PATCH_FILE")."
+        echo "The source may have diverged; refusing to continue with an unverified __init__.py."
+        exit 1
+    fi
+
+    if ! grep -Fq "common_ops = None" "$SGL_KERNEL_SRC/__init__.py" ||
+       ! grep -Fq "infllmv2_attn_stage1 = None" "$SGL_KERNEL_SRC/__init__.py"; then
+        echo "ERROR: Patch application completed without both required RDNA4 guards."
+        exit 1
     fi
 fi
 

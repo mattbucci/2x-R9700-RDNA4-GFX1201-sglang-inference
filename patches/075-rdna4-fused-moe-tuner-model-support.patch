@@ -1,0 +1,890 @@
+diff --git a/benchmark/kernels/fused_moe_triton/common_utils.py b/benchmark/kernels/fused_moe_triton/common_utils.py
+index ea669a1fab..4763beba54 100644
+--- a/benchmark/kernels/fused_moe_triton/common_utils.py
++++ b/benchmark/kernels/fused_moe_triton/common_utils.py
+@@ -1,11 +1,13 @@
+ import json
++import re
++from pathlib import Path
+ from types import SimpleNamespace
+-from typing import Dict, List, TypedDict
++from typing import Dict, List, Tuple, TypedDict
+ 
+ import torch
+ 
+-from sglang.srt.layers.moe.moe_runner.triton_utils.fused_moe import get_config_dtype_str
+ from sglang.srt.layers.moe.moe_runner.triton_utils.fused_moe_triton_config import (
++    get_config_dtype_str,
+     get_config_file_name,
+ )
+ from sglang.srt.utils import is_gfx95_supported, is_hip
+@@ -21,6 +23,45 @@ class BenchmarkConfig(TypedDict):
+     num_stages: int
+ 
+ 
++_TOPK_IDS_FILENAME_RE = re.compile(
++    r"topk_ids_layer(?P<layer>\d+)_idx(?P<capture>\d+)\.pt"
++)
++
++
++def discover_topk_ids_files(topk_ids_dir: str) -> Tuple[str, ...]:
++    """Return captured router outputs in capture-major, layer-minor order.
++
++    Layer counts and dense-layer prefixes vary across model architectures.  The
++    capture filenames already contain both coordinates, so derive the sequence
++    from the files instead of embedding one model's layer layout in the tuner.
++    """
++    directory = Path(topk_ids_dir).expanduser()
++    captures = []
++    for path in directory.iterdir():
++        match = _TOPK_IDS_FILENAME_RE.fullmatch(path.name)
++        if match is not None and path.is_file():
++            captures.append(
++                (int(match["capture"]), int(match["layer"]), str(path))
++            )
++
++    if not captures:
++        raise FileNotFoundError(
++            f"No top-k captures matching topk_ids_layer<layer>_idx<capture>.pt "
++            f"were found in {directory}"
++        )
++
++    captures.sort(key=lambda capture: (capture[0], capture[1]))
++    return tuple(capture[2] for capture in captures)
++
++
++def get_topk_ids_file(topk_ids_dir: str, index: int) -> str:
++    """Select a capture, cycling when fewer than the benchmark iteration count."""
++    if index < 0:
++        raise ValueError(f"top-k capture index must be non-negative, got {index}")
++    captures = discover_topk_ids_files(topk_ids_dir)
++    return captures[index % len(captures)]
++
++
+ def calculate_shard_intermediate_size(
+     intermediate_size: int, tp_size: int, ep_size: int = 1
+ ) -> int:
+@@ -30,6 +71,20 @@ def calculate_shard_intermediate_size(
+     return 2 * intermediate_size // moe_tp_size
+ 
+ 
++def get_fp8_scale_shapes(
++    num_experts: int,
++    shard_intermediate_size: int,
++    hidden_size: int,
++    per_channel_quant: bool,
++) -> Tuple[Tuple[int, ...], Tuple[int, ...]]:
++    if per_channel_quant:
++        return (
++            (num_experts, shard_intermediate_size),
++            (num_experts, hidden_size),
++        )
++    return (num_experts,), (num_experts,)
++
++
+ def get_model_config(
+     model_name: str,
+     tp_size: int,
+@@ -52,12 +107,19 @@ def get_model_config(
+         and "config_groups" in config.quantization_config
+     ):
+         config_groups = config.quantization_config["config_groups"]
+-        # Get group_size from the first group's weights config
++        # Compressed-tensors records block quantization in the weights scheme,
++        # while group quantization uses group_size.  Channel/tensor schemes
++        # leave both unset and must not be mistaken for [0, None].
+         first_group = next(iter(config_groups.values()), {})
+         weights_config = first_group.get("weights", {})
+-        group_size = weights_config.get("group_size")
+-        block_shape = [0, group_size]
+-        assert len(block_shape) == 2
++        weights_block_structure = weights_config.get("block_structure")
++        if weights_block_structure is not None:
++            block_shape = weights_block_structure
++            assert len(block_shape) == 2
++        else:
++            group_size = weights_config.get("group_size")
++            if group_size is not None:
++                block_shape = [0, group_size]
+     # Replace config with text_config for encoder-decoder models after getting block_shape and architecture
+     if hasattr(config, "text_config"):
+         text_config = config.get_text_config()
+@@ -155,6 +217,14 @@ def get_model_config(
+         E = config.num_experts // ep_size
+         topk = config.num_experts_per_tok
+         intermediate_size = config.moe_intermediate_size
++    elif architecture == "Cohere2MoeForCausalLM":
++        E = config.num_experts // ep_size
++        topk = config.num_experts_per_tok
++        intermediate_size = config.intermediate_size
++    elif architecture == "LagunaForCausalLM":
++        E = config.num_experts // ep_size
++        topk = config.num_experts_per_tok
++        intermediate_size = config.moe_intermediate_size
+     elif architecture == "MiniMaxM3SparseForConditionalGeneration":
+         # Serving fuses the shared expert into the routed-expert tensor by
+         # default (E = num_local_experts + 1), so tune for that shape unless
+@@ -207,8 +277,8 @@ def get_model_config(
+ def get_rocm_configs_compute_bound() -> List[Dict[str, int]]:
+     configs: List[BenchmarkConfig] = []
+     waves_per_eu_range = 0
+-    for num_stages in [2]:
+-        for block_m in [32, 64, 128, 256]:
++    for num_stages in [0, 2]:
++        for block_m in [16, 32, 64, 128, 256]:
+             for block_k in [32, 64, 128, 256]:
+                 for block_n in [16, 32, 64, 128, 256]:
+                     for num_warps in [1, 2, 4, 8]:
+@@ -288,6 +358,7 @@ def get_config_filename(
+     use_int4_w4a16: bool,
+     per_channel_quant: bool,
+     block_shape: List[int],
++    down_moe: bool = False,
+ ) -> str:
+     dtype_str = get_config_dtype_str(
+         dtype,
+@@ -309,6 +380,7 @@ def get_config_filename(
+         dtype_str,
+         block_shape,
+         per_channel_quant,
++        down_moe=down_moe,
+     )
+ 
+     return filename
+diff --git a/benchmark/kernels/fused_moe_triton/tuning_fused_moe_triton.py b/benchmark/kernels/fused_moe_triton/tuning_fused_moe_triton.py
+index 536cc69135..1956d647d5 100644
+--- a/benchmark/kernels/fused_moe_triton/tuning_fused_moe_triton.py
++++ b/benchmark/kernels/fused_moe_triton/tuning_fused_moe_triton.py
+@@ -15,6 +15,7 @@ from common_utils import (
+     get_config_filename,
+     get_configs_compute_bound,
+     get_default_batch_sizes,
++    get_fp8_scale_shapes,
+     get_model_config,
+     save_configs,
+     sort_config,
+@@ -23,6 +24,7 @@ from ray.experimental.tqdm_ray import tqdm
+ 
+ from sglang.srt.layers.moe.fused_moe_triton import override_config
+ from sglang.srt.layers.moe.moe_runner import MoeRunnerConfig
++from sglang.srt.layers.quantization.fp8_kernel import fp8_dtype
+ from sglang.srt.layers.moe.moe_runner.triton_utils.fused_moe import fused_moe
+ from sglang.srt.layers.moe.moe_runner.triton_utils.fused_moe_triton_config import (
+     get_config_dtype_str,
+@@ -139,10 +141,17 @@ def benchmark_config(
+             )
+             w2_scale = torch.randn(num_experts, hidden_size, dtype=torch.float32)
+         elif block_shape is None:
+-            w1_scale = torch.randn(num_experts, dtype=torch.float32)
+-            w2_scale = torch.randn(num_experts, dtype=torch.float32)
+-            a1_scale = torch.randn(1, dtype=torch.float32)
+-            a2_scale = torch.randn(1, dtype=torch.float32)
++            w1_scale_shape, w2_scale_shape = get_fp8_scale_shapes(
++                num_experts,
++                shard_intermediate_size,
++                hidden_size,
++                per_channel_quant,
++            )
++            w1_scale = torch.randn(w1_scale_shape, dtype=torch.float32)
++            w2_scale = torch.randn(w2_scale_shape, dtype=torch.float32)
++            if not per_channel_quant:
++                a1_scale = torch.randn(1, dtype=torch.float32)
++                a2_scale = torch.randn(1, dtype=torch.float32)
+         else:
+             block_n, block_k = block_shape[0], block_shape[1]
+             n_tiles_w1 = (shard_intermediate_size + block_n - 1) // block_n
+@@ -157,8 +166,8 @@ def benchmark_config(
+             )
+ 
+     if use_fp8_w8a8:
+-        w1 = w1.to(torch.float8_e4m3fnuz if _is_hip else torch.float8_e4m3fn)
+-        w2 = w2.to(torch.float8_e4m3fnuz if _is_hip else torch.float8_e4m3fn)
++        w1 = w1.to(fp8_dtype)
++        w2 = w2.to(fp8_dtype)
+ 
+     input_gating = torch.randn(num_tokens, num_experts, dtype=torch.float32)
+     topk_config = TopKConfig(
+diff --git a/benchmark/kernels/fused_moe_triton/tuning_fused_moe_triton_sep.py b/benchmark/kernels/fused_moe_triton/tuning_fused_moe_triton_sep.py
+index 0167bf7a08..c63ef9fc0d 100644
+--- a/benchmark/kernels/fused_moe_triton/tuning_fused_moe_triton_sep.py
++++ b/benchmark/kernels/fused_moe_triton/tuning_fused_moe_triton_sep.py
+@@ -10,7 +10,6 @@ from contextlib import nullcontext
+ from datetime import datetime
+ from typing import Any, Dict, List, Tuple
+ 
+-import ray
+ import torch
+ import triton
+ import triton.language as tl
+@@ -19,20 +18,27 @@ from common_utils import (
+     get_config_filename,
+     get_configs_compute_bound,
+     get_default_batch_sizes,
++    get_fp8_scale_shapes,
+     get_model_config,
++    get_topk_ids_file,
+     sort_config,
+ )
+-from ray.experimental.tqdm_ray import tqdm
++try:
++    import ray
++    from ray.experimental.tqdm_ray import tqdm
++except ImportError:
++    # Single-batch tuning runs in-process and does not need Ray. Keep that
++    # lightweight path usable in serving environments without the optional
++    # distributed-tuning dependency.
++    ray = None
++    from tqdm import tqdm
+ 
+ from sglang.srt.layers.moe.moe_runner import MoeRunnerConfig
+ from sglang.srt.layers.moe.moe_runner.triton_utils.fused_moe import (
+-    get_config_dtype_str,
+     invoke_fused_moe_kernel,
+     moe_align_block_size,
+ )
+-from sglang.srt.layers.moe.moe_runner.triton_utils.fused_moe_triton_config import (
+-    get_config_file_name,
+-)
++from sglang.srt.layers.quantization.fp8_kernel import fp8_dtype
+ from sglang.srt.layers.moe.topk import TopKConfig, select_experts
+ from sglang.srt.server_args import (
+     ServerArgs,
+@@ -119,12 +125,7 @@ class KernelWrapper:
+ 
+ 
+ def load_topk_ids(topk_ids_dir, i: int):
+-    num_layers = 61
+-    dense_layers = 3
+-    moe_layers = num_layers - dense_layers
+-    return torch.load(
+-        f"{topk_ids_dir}/topk_ids_layer{i % moe_layers + dense_layers}_idx{i // moe_layers}.pt"
+-    )
++    return torch.load(get_topk_ids_file(topk_ids_dir, i))
+ 
+ 
+ def benchmark_config(
+@@ -139,6 +140,7 @@ def benchmark_config(
+     use_int8_w8a8: bool,
+     use_int8_w8a16: bool,
+     use_int4_w4a16: bool,
++    per_channel_quant: bool,
+     topk_ids_list,
+     block_shape: List[int] = None,
+     ep_size: int = 1,
+@@ -228,10 +230,17 @@ def benchmark_config(
+             )
+             w2_scale = torch.randn(num_experts, hidden_size, dtype=torch.float32)
+         elif block_shape is None:
+-            w1_scale = torch.randn(num_experts, dtype=torch.float32)
+-            w2_scale = torch.randn(num_experts, dtype=torch.float32)
+-            a1_scale = torch.randn(1, dtype=torch.float32)
+-            a2_scale = torch.randn(1, dtype=torch.float32)
++            w1_scale_shape, w2_scale_shape = get_fp8_scale_shapes(
++                num_experts,
++                shard_intermediate_size,
++                hidden_size,
++                per_channel_quant,
++            )
++            w1_scale = torch.randn(w1_scale_shape, dtype=torch.float32)
++            w2_scale = torch.randn(w2_scale_shape, dtype=torch.float32)
++            if not per_channel_quant:
++                a1_scale = torch.randn(1, dtype=torch.float32)
++                a2_scale = torch.randn(1, dtype=torch.float32)
+         else:
+             block_n, block_k = block_shape[0], block_shape[1]
+             n_tiles_w1 = (shard_intermediate_size + block_n - 1) // block_n
+@@ -246,8 +255,11 @@ def benchmark_config(
+             )
+ 
+     if use_fp8_w8a8:
+-        w1 = w1.to(torch.float8_e4m3fnuz if _is_hip else torch.float8_e4m3fn)
+-        w2 = w2.to(torch.float8_e4m3fnuz if _is_hip else torch.float8_e4m3fn)
++        # Match the serving path: gfx94 uses FNUZ, while RDNA4 and CUDA use FN.
++        # Treating every HIP target as FNUZ makes gfx1201 compile an illegal
++        # FNUZ-to-FN dot conversion before tuning can begin.
++        w1 = w1.to(fp8_dtype)
++        w2 = w2.to(fp8_dtype)
+ 
+     input_gating = torch.randn(num_tokens, num_experts, dtype=torch.float32)
+     topk_config = TopKConfig(
+@@ -338,7 +350,7 @@ def benchmark_config(
+             use_int8_w8a8=use_int8_w8a8,
+             use_int8_w8a16=use_int8_w8a16,
+             use_int4_w4a16=use_int4_w4a16,
+-            per_channel_quant=False,
++            per_channel_quant=per_channel_quant,
+             block_shape=block_shape,
+             b_use_tma=moe_use_tma,
+             c_sorted=moe_use_tma,
+@@ -364,7 +376,7 @@ def benchmark_config(
+             use_int8_w8a8=use_int8_w8a8,
+             use_int8_w8a16=use_int8_w8a16,
+             use_int4_w4a16=use_int4_w4a16,
+-            per_channel_quant=False,
++            per_channel_quant=per_channel_quant,
+             block_shape=block_shape,
+             a_use_tma=moe_use_tma,
+             b_use_tma=moe_use_tma,
+@@ -377,14 +389,19 @@ def benchmark_config(
+     use_cuda_graph = True if not ncu_enable else False
+ 
+     kernel0, kernel1 = get_kernel_wrapper(False, inner_iter, use_cuda_graph)
+-    kernel_tma0, kernel_tma1 = get_kernel_wrapper(True, inner_iter, use_cuda_graph)
++    kernel_tma0 = kernel_tma1 = None
++    if not _is_hip:
++        kernel_tma0, kernel_tma1 = get_kernel_wrapper(
++            True, inner_iter, use_cuda_graph
++        )
+ 
+     # JIT compilation & warmup
+     if not ncu_enable:
+         kernel0.forward_cost()
+         kernel1.forward_cost()
+-        kernel_tma0.forward_cost()
+-        kernel_tma1.forward_cost()
++        if kernel_tma0 is not None:
++            kernel_tma0.forward_cost()
++            kernel_tma1.forward_cost()
+ 
+     ts0 = []
+     ts1 = []
+@@ -395,14 +412,15 @@ def benchmark_config(
+         prepare(i, inner_iter)
+         ts0.append(kernel0.forward_cost())
+         ts1.append(kernel1.forward_cost())
+-        ts_tma0.append(kernel_tma0.forward_cost())
+-        ts_tma1.append(kernel_tma1.forward_cost())
++        if kernel_tma0 is not None:
++            ts_tma0.append(kernel_tma0.forward_cost())
++            ts_tma1.append(kernel_tma1.forward_cost())
+     torch.cuda.synchronize()
+ 
+     avg = sum(ts0) / (num_iters) * 1000  # us
+     avg1 = sum(ts1) / (num_iters) * 1000  # us
+-    avg_tma = sum(ts_tma0) / (num_iters) * 1000  # us
+-    avg1_tma = sum(ts_tma1) / (num_iters) * 1000  # us
++    avg_tma = sum(ts_tma0) / (num_iters) * 1000 if ts_tma0 else float("inf")
++    avg1_tma = sum(ts_tma1) / (num_iters) * 1000 if ts_tma1 else float("inf")
+ 
+     return avg, avg_tma, avg1, avg1_tma
+ 
+@@ -437,11 +455,12 @@ class BestConfigTrace:
+         config, _, time_cost_all = self.best_costs_m[block_m]
+         if not self.down_moe:
+             return config
+-        else:
++        elif not _is_hip:
+             return {
+                 **config,
+                 "USE_TMA": time_cost_all[2] > time_cost_all[3],
+             }
++        return config
+ 
+ 
+ class BenchmarkWorker:
+@@ -467,6 +486,7 @@ class BenchmarkWorker:
+         use_int8_w8a8: bool,
+         use_int8_w8a16: bool,
+         use_int4_w4a16: bool,
++        per_channel_quant: bool,
+         block_shape: List[int],
+         cfg: Dict[str, int],
+         topk_ids_dir: str,
+@@ -487,6 +507,7 @@ class BenchmarkWorker:
+                 use_int8_w8a8,
+                 use_int8_w8a16,
+                 use_int4_w4a16,
++                per_channel_quant,
+                 topk_ids_list,
+                 block_shape,
+                 ep_size=ep_size,
+@@ -505,6 +526,7 @@ class BenchmarkWorker:
+         use_int8_w8a8: bool,
+         use_int8_w8a16: bool,
+         use_int4_w4a16: bool,
++        per_channel_quant: bool,
+         block_shape: List[int],
+         search_space: List[Dict[str, int]],
+         topk_ids_dir: str,
+@@ -529,12 +551,13 @@ class BenchmarkWorker:
+                         use_int8_w8a8,
+                         use_int8_w8a16,
+                         use_int4_w4a16,
++                        per_channel_quant,
+                         topk_ids_list,
+                         block_shape,
+                         ep_size=ep_size,
+                         num_iters=100,
+                     )
+-                except triton.runtime.autotuner.OutOfResources:
++                except (triton.runtime.autotuner.OutOfResources, RuntimeError):
+                     # Some configurations may be invalid and fail to compile.
+                     continue
+                 trace0.update(
+@@ -574,6 +597,7 @@ class BenchmarkWorker:
+         use_int8_w8a8: bool,
+         use_int8_w8a16: bool,
+         use_int4_w4a16: bool,
++        per_channel_quant: bool,
+         block_shape: List[int],
+         cmp_config_files: List[str],
+         topk_ids_dir: str,
+@@ -610,6 +634,7 @@ class BenchmarkWorker:
+                         use_int8_w8a8,
+                         use_int8_w8a16,
+                         use_int4_w4a16,
++                        per_channel_quant,
+                         topk_ids_list,
+                         block_shape,
+                         ep_size=ep_size,
+@@ -631,23 +656,21 @@ def save_configs_sep(
+     use_int8_w8a8: bool,
+     use_int8_w8a16: bool,
+     use_int4_w4a16: bool,
++    per_channel_quant: bool,
+     block_shape: List[int],
+     down_moe: bool = False,
+ ) -> None:
+-    dtype_str = get_config_dtype_str(
+-        dtype,
+-        use_int8_w8a16=use_int8_w8a16,
+-        use_fp8_w8a8=use_fp8_w8a8,
+-        use_int8_w8a8=use_int8_w8a8,
+-        use_int4_w4a16=use_int4_w4a16,
+-    )
+-
+-    # NOTE(woosuk): The current naming convention uses w2.shape[2], which
+-    # is the intermediate size after silu_and_mul.
+-    filename = get_config_file_name(
++    filename = get_config_filename(
+         num_experts,
+-        shard_intermediate_size // 2,
+-        dtype_str,
++        shard_intermediate_size,
++        hidden_size,
++        topk,
++        dtype,
++        use_fp8_w8a8,
++        use_int8_w8a8,
++        use_int8_w8a16,
++        use_int4_w4a16,
++        per_channel_quant,
+         block_shape,
+         down_moe=down_moe,
+     )
+@@ -684,6 +707,7 @@ def main(args: argparse.Namespace):
+     use_int8_w8a8 = args.dtype == "int8_w8a8"
+     use_int8_w8a16 = args.dtype == "int8_w8a16"
+     use_int4_w4a16 = args.dtype == "int4_w4a16"
++    per_channel_quant = args.per_channel_quant
+ 
+     topk_ids_dir = args.topk_ids_dir
+     if args.batch_size is None:
+@@ -705,6 +729,7 @@ def main(args: argparse.Namespace):
+             use_int8_w8a8,
+             use_int8_w8a16,
+             use_int4_w4a16,
++            per_channel_quant,
+             block_shape,
+             args.cmp_configs,
+             topk_ids_dir,
+@@ -716,7 +741,14 @@ def main(args: argparse.Namespace):
+         worker = BenchmarkWorker(args.seed, server_args)
+         if args.tune:
+             search_space = get_configs_compute_bound()
+-            worker.tune(
++            if block_shape is not None:
++                block_k = block_shape[1]
++                search_space = [
++                    config
++                    for config in search_space
++                    if block_k % config["BLOCK_SIZE_K"] == 0
++                ]
++            config0, config1, _, _ = worker.tune(
+                 batch_sizes[0],
+                 E,
+                 shard_intermediate_size,
+@@ -727,11 +759,41 @@ def main(args: argparse.Namespace):
+                 use_int8_w8a8,
+                 use_int8_w8a16,
+                 use_int4_w4a16,
++                per_channel_quant,
+                 block_shape,
+                 search_space,
+                 topk_ids_dir,
+                 args.ep_size,
+             )
++            save_configs_sep(
++                {batch_sizes[0]: sort_config(config0)},
++                E,
++                shard_intermediate_size,
++                hidden_size,
++                topk,
++                dtype,
++                use_fp8_w8a8,
++                use_int8_w8a8,
++                use_int8_w8a16,
++                use_int4_w4a16,
++                per_channel_quant,
++                block_shape,
++            )
++            save_configs_sep(
++                {batch_sizes[0]: sort_config(config1)},
++                E,
++                shard_intermediate_size,
++                hidden_size,
++                topk,
++                dtype,
++                use_fp8_w8a8,
++                use_int8_w8a8,
++                use_int8_w8a16,
++                use_int4_w4a16,
++                per_channel_quant,
++                block_shape,
++                down_moe=True,
++            )
+         else:
+             cfg = {
+                 "BLOCK_SIZE_M": args.configs[0],
+@@ -753,6 +815,7 @@ def main(args: argparse.Namespace):
+                 use_int8_w8a8,
+                 use_int8_w8a16,
+                 use_int4_w4a16,
++                per_channel_quant,
+                 block_shape,
+                 cfg,
+                 topk_ids_dir,
+@@ -763,6 +826,11 @@ def main(args: argparse.Namespace):
+ 
+     assert args.tune
+ 
++    if ray is None:
++        raise RuntimeError(
++            "Multi-batch tuning requires the optional 'ray' package; "
++            "use --batch-size for the in-process tuner or install ray."
++        )
+     ray.init()
+     num_gpus = int(ray.available_resources()["GPU"])
+     workers = [
+@@ -797,7 +865,7 @@ def main(args: argparse.Namespace):
+         use_int8_w8a8,
+         use_int8_w8a16,
+         use_int4_w4a16,
+-        False,
++        per_channel_quant,
+         block_shape,
+     )
+     print(
+@@ -819,6 +887,7 @@ def main(args: argparse.Namespace):
+                 use_int8_w8a8,
+                 use_int8_w8a16,
+                 use_int4_w4a16,
++                per_channel_quant,
+                 block_shape,
+                 search_space,
+                 topk_ids_dir,
+@@ -848,6 +917,7 @@ def main(args: argparse.Namespace):
+         use_int8_w8a8,
+         use_int8_w8a16,
+         use_int4_w4a16,
++        per_channel_quant,
+         block_shape,
+     )
+ 
+@@ -863,6 +933,7 @@ def main(args: argparse.Namespace):
+         use_int8_w8a8,
+         use_int8_w8a16,
+         use_int4_w4a16,
++        per_channel_quant,
+         block_shape,
+         down_moe=True,
+     )
+@@ -886,9 +957,18 @@ if __name__ == "__main__":
+     parser.add_argument("--seed", type=int, default=0)
+     parser.add_argument("--batch-size", type=int, required=False)
+     parser.add_argument("--tune", action="store_true")
++    parser.add_argument("--per-channel-quant", action="store_true")
+     parser.add_argument("--disable-shared-experts-fusion", action="store_true")
+     parser.add_argument("--configs", type=int, nargs="+", required=False)
+-    parser.add_argument("--topk-ids-dir", type=str, required=True)
++    parser.add_argument(
++        "--topk-ids-dir",
++        type=str,
++        required=True,
++        help=(
++            "Directory containing topk_ids_layer<layer>_idx<capture>.pt files; "
++            "available routed layers and capture indices are discovered automatically"
++        ),
++    )
+     parser.add_argument("--cmp-configs", type=str, nargs="+", required=False)
+     args = parser.parse_args()
+ 
+diff --git a/test/registered/unit/test_fused_moe_tuner_common_utils.py b/test/registered/unit/test_fused_moe_tuner_common_utils.py
+new file mode 100644
+index 0000000000..1d55bfe0db
+--- /dev/null
++++ b/test/registered/unit/test_fused_moe_tuner_common_utils.py
+@@ -0,0 +1,262 @@
++import importlib.util
++import sys
++import tempfile
++import unittest
++from pathlib import Path
++from types import ModuleType, SimpleNamespace
++from unittest import mock
++
++import torch
++
++
++def _module(name, *, package=False, **attributes):
++    module = ModuleType(name)
++    if package:
++        module.__path__ = []
++    module.__dict__.update(attributes)
++    return module
++
++
++def _load_common_utils():
++    package_names = [
++        "sglang",
++        "sglang.srt",
++        "sglang.srt.layers",
++        "sglang.srt.layers.moe",
++        "sglang.srt.layers.moe.moe_runner",
++        "sglang.srt.layers.moe.moe_runner.triton_utils",
++        "sglang.srt.utils",
++    ]
++    stubs = {name: _module(name, package=True) for name in package_names}
++    stubs.update(
++        {
++            "sglang.srt.layers.moe.moe_runner.triton_utils.fused_moe_triton_config": _module(
++                "sglang.srt.layers.moe.moe_runner.triton_utils.fused_moe_triton_config",
++                get_config_dtype_str=lambda *args, **kwargs: "",
++                get_config_file_name=lambda *args, **kwargs: "",
++            ),
++            "sglang.srt.utils.hf_transformers_utils": _module(
++                "sglang.srt.utils.hf_transformers_utils",
++                get_config=lambda *args, **kwargs: None,
++            ),
++        }
++    )
++    stubs["sglang.srt.utils"].is_gfx95_supported = lambda: False
++    stubs["sglang.srt.utils"].is_hip = lambda: False
++
++    common_utils_path = (
++        Path(__file__).parents[3]
++        / "benchmark/kernels/fused_moe_triton/common_utils.py"
++    )
++    spec = importlib.util.spec_from_file_location(
++        "_fused_moe_tuner_common_utils", common_utils_path
++    )
++    module = importlib.util.module_from_spec(spec)
++    with mock.patch.dict(sys.modules, stubs):
++        spec.loader.exec_module(module)
++    return module
++
++
++common_utils = _load_common_utils()
++
++
++def _config(architecture, *, weights, **kwargs):
++    return SimpleNamespace(
++        architectures=[architecture],
++        hidden_size=2048,
++        torch_dtype=torch.bfloat16,
++        quantization_config={"config_groups": {"group_0": {"weights": weights}}},
++        **kwargs,
++    )
++
++
++class TestFusedMoeTunerCommonUtils(unittest.TestCase):
++    def test_discovers_north_routed_layers_without_architecture_constants(self):
++        with tempfile.TemporaryDirectory() as tmpdir:
++            directory = Path(tmpdir)
++            # North has 49 transformer layers with one dense prefix layer.
++            for layer in range(1, 49):
++                (directory / f"topk_ids_layer{layer}_idx0.pt").touch()
++
++            captures = common_utils.discover_topk_ids_files(tmpdir)
++
++        self.assertEqual(len(captures), 48)
++        self.assertEqual(Path(captures[0]).name, "topk_ids_layer1_idx0.pt")
++        self.assertEqual(Path(captures[-1]).name, "topk_ids_layer48_idx0.pt")
++
++    def test_discovers_laguna_captures_in_numeric_capture_then_layer_order(self):
++        with tempfile.TemporaryDirectory() as tmpdir:
++            directory = Path(tmpdir)
++            # Laguna has 40 transformer layers with one dense prefix layer.
++            for capture in range(2):
++                for layer in range(1, 40):
++                    (directory / f"topk_ids_layer{layer}_idx{capture}.pt").touch()
++            (directory / "topk_ids_layer1_idx0.pt.backup").touch()
++            (directory / "notes.txt").touch()
++
++            captures = common_utils.discover_topk_ids_files(tmpdir)
++
++        self.assertEqual(len(captures), 78)
++        self.assertEqual(Path(captures[9]).name, "topk_ids_layer10_idx0.pt")
++        self.assertEqual(Path(captures[38]).name, "topk_ids_layer39_idx0.pt")
++        self.assertEqual(Path(captures[39]).name, "topk_ids_layer1_idx1.pt")
++
++    def test_topk_capture_selection_cycles_available_files(self):
++        with tempfile.TemporaryDirectory() as tmpdir:
++            directory = Path(tmpdir)
++            for layer in (3, 7):
++                (directory / f"topk_ids_layer{layer}_idx0.pt").touch()
++
++            selected = [
++                Path(common_utils.get_topk_ids_file(tmpdir, i)).name
++                for i in range(3)
++            ]
++
++        self.assertEqual(
++            selected,
++            [
++                "topk_ids_layer3_idx0.pt",
++                "topk_ids_layer7_idx0.pt",
++                "topk_ids_layer3_idx0.pt",
++            ],
++        )
++
++    def test_topk_capture_discovery_rejects_empty_directory(self):
++        with tempfile.TemporaryDirectory() as tmpdir:
++            with self.assertRaisesRegex(FileNotFoundError, "No top-k captures"):
++                common_utils.discover_topk_ids_files(tmpdir)
++
++    def test_laguna_compressed_tensors_block_shape_and_moe_shape(self):
++        config = _config(
++            "LagunaForCausalLM",
++            weights={"block_structure": [128, 128], "group_size": None},
++            num_experts=256,
++            num_experts_per_tok=8,
++            moe_intermediate_size=512,
++        )
++        with mock.patch.object(common_utils, "get_config", return_value=config):
++            model_config = common_utils.get_model_config("laguna", tp_size=2)
++
++        self.assertEqual(
++            model_config,
++            {
++                "num_experts": 256,
++                "topk": 8,
++                "hidden_size": 2048,
++                "shard_intermediate_size": 512,
++                "dtype": torch.bfloat16,
++                "block_shape": [128, 128],
++                "architecture": "LagunaForCausalLM",
++            },
++        )
++
++    def test_north_channel_quantization_has_no_block_shape(self):
++        config = _config(
++            "Cohere2MoeForCausalLM",
++            weights={"block_structure": None, "group_size": None},
++            num_experts=128,
++            num_experts_per_tok=8,
++            intermediate_size=768,
++        )
++        with mock.patch.object(common_utils, "get_config", return_value=config):
++            model_config = common_utils.get_model_config("north", tp_size=2)
++
++        self.assertEqual(model_config["num_experts"], 128)
++        self.assertEqual(model_config["topk"], 8)
++        self.assertEqual(model_config["shard_intermediate_size"], 768)
++        self.assertIsNone(model_config["block_shape"])
++
++    def test_compressed_tensors_group_quantization_uses_group_size(self):
++        config = _config(
++            "Cohere2MoeForCausalLM",
++            weights={"block_structure": None, "group_size": 64},
++            num_experts=128,
++            num_experts_per_tok=8,
++            intermediate_size=768,
++        )
++        with mock.patch.object(common_utils, "get_config", return_value=config):
++            model_config = common_utils.get_model_config("grouped", tp_size=2)
++
++        self.assertEqual(model_config["block_shape"], [0, 64])
++
++    def test_rocm_search_grid_includes_rdna4_decode_candidates(self):
++        configs = common_utils.get_rocm_configs_compute_bound()
++
++        self.assertEqual({config["num_stages"] for config in configs}, {0, 2})
++        self.assertEqual(
++            {config["BLOCK_SIZE_M"] for config in configs}, {16, 32, 64, 128, 256}
++        )
++
++    def test_fp8_scale_shapes_match_channel_quantized_weights(self):
++        self.assertEqual(
++            common_utils.get_fp8_scale_shapes(128, 768, 2048, True),
++            ((128, 768), (128, 2048)),
++        )
++        self.assertEqual(
++            common_utils.get_fp8_scale_shapes(64, 1536, 2048, True),
++            ((64, 1536), (64, 2048)),
++        )
++        self.assertEqual(
++            common_utils.get_fp8_scale_shapes(128, 768, 2048, False),
++            ((128,), (128,)),
++        )
++
++    def test_per_channel_config_names_distinguish_up_and_down_kernels(self):
++        up_name = (
++            "E=128,N=384,device_name=AMD_Radeon_AI_PRO_R9700,"
++            "dtype=fp8_w8a8,per_channel_quant=True.json"
++        )
++        down_name = up_name.removesuffix(".json") + "_down.json"
++
++        with (
++            mock.patch.object(
++                common_utils, "get_config_dtype_str", return_value="fp8_w8a8"
++            ),
++            mock.patch.object(
++                common_utils,
++                "get_config_file_name",
++                side_effect=[up_name, down_name],
++            ) as get_config_file_name,
++        ):
++            common_args = (
++                128,
++                768,
++                2048,
++                8,
++                torch.bfloat16,
++                True,
++                False,
++                False,
++                False,
++                True,
++                None,
++            )
++            self.assertEqual(common_utils.get_config_filename(*common_args), up_name)
++            self.assertEqual(
++                common_utils.get_config_filename(*common_args, down_moe=True), down_name
++            )
++
++        get_config_file_name.assert_has_calls(
++            [
++                mock.call(
++                    128,
++                    384,
++                    "fp8_w8a8",
++                    None,
++                    True,
++                    down_moe=False,
++                ),
++                mock.call(
++                    128,
++                    384,
++                    "fp8_w8a8",
++                    None,
++                    True,
++                    down_moe=True,
++                ),
++            ]
++        )
++
++
++if __name__ == "__main__":
++    unittest.main()
+

@@ -19,8 +19,10 @@ Usage:
 import argparse, glob, json, os, sys, time
 import requests
 
-# Real, diverse Python from the sglang tree (non-repetitive) for context padding.
-SRC_GLOB = "/data/sgl-rebase/python/sglang/srt/**/*.py"
+# Real, diverse Python from the live SGLang tree (non-repetitive) for context padding.
+SRC_GLOB = os.path.join(
+    os.environ.get("SGLANG_DIR", "/data/sgl-v0515"), "python/sglang/srt/**/*.py"
+)
 CHARS_PER_TOK = 3.6  # rough code estimate, used only to hit a target depth
 
 

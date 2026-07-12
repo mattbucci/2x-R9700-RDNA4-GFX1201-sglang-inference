@@ -1,0 +1,328 @@
+diff --git a/python/sglang/jit_kernel/triton_store_cache.py b/python/sglang/jit_kernel/triton_store_cache.py
+--- a/python/sglang/jit_kernel/triton_store_cache.py
++++ b/python/sglang/jit_kernel/triton_store_cache.py
+@@ -235,3 +235,123 @@ def triton_fused_store_cache(
+         triton_fused_store_flashmla(input, cache, indices, page_size)
+     else:
+         triton_fused_store_indexer(input, cache, indices, page_size)
++
++
++@triton.jit
++def _triton_fused_static_fp8_kv_store_kernel(
++    key_ptr,
++    value_ptr,
++    key_cache_ptr,
++    value_cache_ptr,
++    indices_ptr,
++    row_dim,
++    key_token_stride,
++    value_token_stride,
++    size_limit,
++    k_scale,
++    v_scale,
++    FP8_MIN: tl.constexpr,
++    FP8_MAX: tl.constexpr,
++    BLOCK: tl.constexpr,
++    USE_K_SCALE: tl.constexpr,
++    USE_V_SCALE: tl.constexpr,
++    K_SCALE_IS_TENSOR: tl.constexpr,
++    V_SCALE_IS_TENSOR: tl.constexpr,
++):
++    """Scale, saturate, cast, and scatter one ordinary MHA K/V row."""
++    token_id = tl.program_id(0)
++    block_id = tl.program_id(1)
++    cols = block_id * BLOCK + tl.arange(0, BLOCK)
++    loc = tl.load(indices_ptr + token_id)
++    mask = (cols < row_dim) & (loc >= 0) & (loc < size_limit)
++
++    key = tl.load(
++        key_ptr + token_id * key_token_stride + cols, mask=mask, other=0.0
++    ).to(tl.float32)
++    value = tl.load(
++        value_ptr + token_id * value_token_stride + cols, mask=mask, other=0.0
++    ).to(tl.float32)
++    if USE_K_SCALE:
++        if K_SCALE_IS_TENSOR:
++            key /= tl.load(k_scale)
++        else:
++            key /= k_scale
++    if USE_V_SCALE:
++        if V_SCALE_IS_TENSOR:
++            value /= tl.load(v_scale)
++        else:
++            value /= v_scale
++
++    key = tl.clamp(key, FP8_MIN, FP8_MAX).to(key_cache_ptr.dtype.element_ty)
++    value = tl.clamp(value, FP8_MIN, FP8_MAX).to(
++        value_cache_ptr.dtype.element_ty
++    )
++    dst = loc * row_dim + cols
++    tl.store(key_cache_ptr + dst, key, mask=mask)
++    tl.store(value_cache_ptr + dst, value, mask=mask)
++
++
++def triton_fused_static_fp8_kv_store(
++    key: torch.Tensor,
++    value: torch.Tensor,
++    key_cache: torch.Tensor,
++    value_cache: torch.Tensor,
++    indices: torch.Tensor,
++    *,
++    fp8_dtype: torch.dtype,
++    k_scale: float | torch.Tensor | None,
++    v_scale: float | torch.Tensor | None,
++    size_limit: int,
++) -> None:
++    """Fused static-scale FP8 quantization and NHD cache scatter.
++
++    ``key_cache`` and ``value_cache`` may use uint8 storage; typed FP8 views
++    ensure Triton writes the floating-point encodings rather than numeric uint8
++    conversions. Source token rows may be strided QKV split views, but their
++    head/dimension payload must be contiguous.
++    """
++    if key.shape[0] == 0:
++        return
++    if key.shape != value.shape or key.ndim != 3:
++        raise ValueError(
++            "fused FP8 KV store requires matching [tokens, heads, dim] inputs, "
++            f"got key={tuple(key.shape)} and value={tuple(value.shape)}"
++        )
++    if key.stride(2) != 1 or value.stride(2) != 1:
++        raise ValueError("fused FP8 KV store requires contiguous head dimensions")
++    if key.stride(1) != key.shape[2] or value.stride(1) != value.shape[2]:
++        raise ValueError(
++            "fused FP8 KV store requires contiguous rows within a token"
++        )
++
++    row_dim = key.shape[1] * key.shape[2]
++    block = min(triton.next_power_of_2(row_dim), 1024)
++    fp8_info = torch.finfo(fp8_dtype)
++    key_cache_fp8 = key_cache.view(fp8_dtype)
++    value_cache_fp8 = value_cache.view(fp8_dtype)
++    k_scale_is_tensor = isinstance(k_scale, torch.Tensor)
++    v_scale_is_tensor = isinstance(v_scale, torch.Tensor)
++
++    _triton_fused_static_fp8_kv_store_kernel[
++        (key.shape[0], triton.cdiv(row_dim, block))
++    ](
++        key,
++        value,
++        key_cache_fp8,
++        value_cache_fp8,
++        indices,
++        row_dim,
++        key.stride(0),
++        value.stride(0),
++        size_limit,
++        key if k_scale is None else k_scale,
++        value if v_scale is None else v_scale,
++        FP8_MIN=fp8_info.min,
++        FP8_MAX=fp8_info.max,
++        BLOCK=block,
++        USE_K_SCALE=(k_scale is not None),
++        USE_V_SCALE=(v_scale is not None),
++        K_SCALE_IS_TENSOR=k_scale_is_tensor,
++        V_SCALE_IS_TENSOR=v_scale_is_tensor,
++        num_warps=8 if block >= 512 else 4,
++    )
+diff --git a/python/sglang/srt/mem_cache/memory_pool.py b/python/sglang/srt/mem_cache/memory_pool.py
+--- a/python/sglang/srt/mem_cache/memory_pool.py
++++ b/python/sglang/srt/mem_cache/memory_pool.py
+@@ -73,6 +73,7 @@ from sglang.srt.platforms import current_platform
+ from sglang.srt.platforms import current_platform
+ from sglang.srt.utils import (
+     cpu_has_amx_support,
++    get_bool_env_var,
+     is_cpu,
+     is_cuda,
+     is_hip,
+@@ -106,6 +107,9 @@ _use_aiter = bool(envs.SGLANG_USE_AITER.get()) and _is_hip
+ # the SHUFFLE 5D pool layout has no consumer kernels, so the env var is
+ # silently ignored and the legacy NHD layout is used.
+ _use_aiter = bool(envs.SGLANG_USE_AITER.get()) and _is_hip
++_use_fused_fp8_kv_store = _is_hip and get_bool_env_var(
++    "SGLANG_RDNA4_FUSED_FP8_KV_STORE", "True"
++)
+ 
+ 
+ def conv_window_dedup_enabled(
+@@ -1694,6 +1698,39 @@ class MHATokenToKVPool(KVCache):
+             layer_id = layer_id_override
+         else:
+             layer_id = layer.layer_id
++        if (
++            _use_fused_fp8_kv_store
++            and cache_k.is_cuda
++            and cache_v.is_cuda
++            and cache_k.dtype != self.dtype
++            # gfx1201 uses the IEEE-style E4M3 encoding exercised below. Keep
++            # E5M2/FNUZ on the conservative path until they have equivalent
++            # byte-level and end-to-end coverage.
++            and self.dtype == torch.float8_e4m3fn
++            and self.kv_cache_layout == "nhd"
++            and self.same_kv_dim
++            and dcp_kv_mask is None
++        ):
++            # The ordinary HIP path expands this into scale/clamp/cast chains
++            # for K and V followed by a separate scatter. Collapse up to seven
++            # graph nodes into one typed FP8 Triton store while preserving
++            # strided QKV-split token rows and the reserved padding slot.
++            from sglang.jit_kernel.triton_store_cache import (
++                triton_fused_static_fp8_kv_store,
++            )
++
++            triton_fused_static_fp8_kv_store(
++                cache_k,
++                cache_v,
++                self.k_buffer[layer_id - self.start_layer],
++                self.v_buffer[layer_id - self.start_layer],
++                loc,
++                fp8_dtype=self.dtype,
++                k_scale=k_scale,
++                v_scale=v_scale,
++                size_limit=self.size + self.page_size,
++            )
++            return
+         if cache_k.dtype != self.dtype:
+             if self.dtype in _FP8_KV_CACHE_DTYPES:
+                 if k_scale is not None:
+diff --git a/test/registered/jit/test_rdna4_fp8_kv_store.py b/test/registered/jit/test_rdna4_fp8_kv_store.py
+new file mode 100644
+--- /dev/null
++++ b/test/registered/jit/test_rdna4_fp8_kv_store.py
+@@ -0,0 +1,135 @@
++# SPDX-License-Identifier: Apache-2.0
++"""Correctness coverage for the RDNA4 fused static-scale FP8 KV writer."""
++
++import unittest
++
++import torch
++
++from sglang.jit_kernel.triton_store_cache import triton_fused_static_fp8_kv_store
++from sglang.srt.utils import is_hip
++from sglang.test.ci.ci_register import register_amd_ci
++
++register_amd_ci(est_time=10, stage="jit-kernel-unit", runner_config="amd")
++
++
++@unittest.skipUnless(is_hip() and torch.cuda.is_available(), "ROCm GPU required")
++class TestRDNA4FP8KVStore(unittest.TestCase):
++    def test_matches_saturating_torch_path_byte_for_byte(self):
++        dtype = torch.float8_e4m3fn
++        fp8_info = torch.finfo(dtype)
++
++        for num_tokens in (1, 8, 64):
++            with self.subTest(num_tokens=num_tokens):
++                num_heads, head_dim = 4, 128
++                row_dim = num_heads * head_dim
++                packed = (
++                    torch.randn(
++                        num_tokens,
++                        3 * row_dim,
++                        dtype=torch.bfloat16,
++                        device="cuda",
++                    )
++                    * 100
++                )
++                key, value, _ = packed.split([row_dim, row_dim, row_dim], dim=-1)
++                key = key.view(num_tokens, num_heads, head_dim)
++                value = value.view(num_tokens, num_heads, head_dim)
++                key[0, 0, :8] = torch.tensor(
++                    [-1000, -448, -447, -1, 0, 447, 448, 1000],
++                    dtype=torch.bfloat16,
++                    device="cuda",
++                )
++                value[0, 0, :4] = torch.tensor(
++                    [float("-inf"), -500, 500, float("inf")],
++                    dtype=torch.bfloat16,
++                    device="cuda",
++                )
++
++                num_slots = max(128, num_tokens + 16)
++                locations = torch.arange(
++                    3, 3 + num_tokens, dtype=torch.int64, device="cuda"
++                )
++                key_cache = torch.full(
++                    (num_slots, num_heads, head_dim),
++                    0xA5,
++                    dtype=torch.uint8,
++                    device="cuda",
++                )
++                value_cache = key_cache.clone()
++
++                triton_fused_static_fp8_kv_store(
++                    key,
++                    value,
++                    key_cache,
++                    value_cache,
++                    locations,
++                    fp8_dtype=dtype,
++                    k_scale=torch.tensor(0.75, dtype=torch.float32, device="cuda"),
++                    v_scale=torch.tensor(1.25, dtype=torch.float32, device="cuda"),
++                    size_limit=num_slots,
++                )
++
++                expected_key = key.clone()
++                expected_value = value.clone()
++                expected_key.div_(0.75).clamp_(fp8_info.min, fp8_info.max)
++                expected_value.div_(1.25).clamp_(fp8_info.min, fp8_info.max)
++                expected_key = expected_key.to(dtype).view(torch.uint8)
++                expected_value = expected_value.to(dtype).view(torch.uint8)
++
++                torch.testing.assert_close(
++                    key_cache[locations], expected_key, rtol=0, atol=0
++                )
++                torch.testing.assert_close(
++                    value_cache[locations], expected_value, rtol=0, atol=0
++                )
++                self.assertTrue(torch.all(key_cache[:3] == 0xA5).item())
++                self.assertTrue(torch.all(value_cache[:3] == 0xA5).item())
++
++    def test_unscaled_path_matches_direct_fp8_cast(self):
++        dtype = torch.float8_e4m3fn
++        num_tokens, num_heads, head_dim, num_slots = 8, 4, 128, 32
++        packed = torch.randn(
++            num_tokens,
++            3 * num_heads * head_dim,
++            dtype=torch.bfloat16,
++            device="cuda",
++        )
++        key, value, _ = packed.split(
++            [num_heads * head_dim] * 3,
++            dim=-1,
++        )
++        key = key.view(num_tokens, num_heads, head_dim)
++        value = value.view(num_tokens, num_heads, head_dim)
++        locations = torch.arange(
++            2, 2 + num_tokens, dtype=torch.int32, device="cuda"
++        )
++        key_cache = torch.zeros(
++            num_slots, num_heads, head_dim, dtype=torch.uint8, device="cuda"
++        )
++        value_cache = torch.zeros_like(key_cache)
++
++        triton_fused_static_fp8_kv_store(
++            key,
++            value,
++            key_cache,
++            value_cache,
++            locations,
++            fp8_dtype=dtype,
++            k_scale=None,
++            v_scale=None,
++            size_limit=num_slots,
++        )
++
++        torch.testing.assert_close(
++            key_cache[locations], key.to(dtype).view(torch.uint8), rtol=0, atol=0
++        )
++        torch.testing.assert_close(
++            value_cache[locations],
++            value.to(dtype).view(torch.uint8),
++            rtol=0,
++            atol=0,
++        )
++
++
++if __name__ == "__main__":
++    unittest.main()

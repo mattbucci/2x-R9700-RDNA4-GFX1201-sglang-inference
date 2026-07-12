@@ -1,6 +1,6 @@
 # RDNA4 Inference: SGLang on 2x R9700
 
-High-throughput LLM inference on 2x AMD Radeon AI PRO R9700 (gfx1201, RDNA4) with ROCm 7.2.  **SGLang v0.5.15 + 47 RDNA4 patches** (live tree `/data/sgl-v0515`, env `sglang-triton36-v0515`; promoted 2026-07-11 — rebased from v0.5.14 across a 547-commit upstream delta with only 4 conflicts (064 upstreamed); equivalence gate byte-equal, import smoke 29/29, GPU: coder-30b 35/36 + qwen36-moe caps 3/3 + gemma4 4/4-incl-video + North-Mini 062; cuda-graph pre-warm-nccl holds; patch 073 relocated to `arg_groups/overrides.py`; rollback = v0.5.14 stack `/data/sgl-v0514` / `sglang-triton36-v0514`. CANDIDATEs 050, 067–071 pending — see [patches/README.md](patches/README.md) for applied fixes, architectural investigations, and shipped-fix log).
+High-throughput LLM inference on 2x AMD Radeon AI PRO R9700 (gfx1201, RDNA4) with ROCm 7.2. **SGLang v0.5.15 + 56 RDNA4 patches** (live tree `/data/sgl-v0515`, fresh env `sglang-triton36-v0515`; promoted 2026-07-11, then extended 2026-07-12 for North Mini Code + Laguna XS.2). The original 47-patch rebase crossed a 547-commit upstream delta with only 4 conflicts and passed byte-equivalence/import/GPU gates; patches 074–082 add FP8-KV correctness, measured gfx1201 MoE configs, fused HIP routing, a Laguna-scoped BF16 attention collective, one-launch HIP RMSNorm/q-k norm, and fused static-scale FP8 K/V cache stores. Final focused results: North **71.1 tok/s** short and Laguna **49.0 tok/s** short; Laguna's reverse-confirmed fused-KV A/B is +2.57% / +20.70% / +46.89% at inputs 62 / 7,403 / 58,785. Full method and quality caveats are in the [benchmark receipt](benchmarks/north-laguna-v0515-r9700-2026-07-12.md). Rollback = v0.5.14 stack `/data/sgl-v0514` / `sglang-triton36-v0514`. CANDIDATEs 050, 067–071 remain pending — see [patches/README.md](patches/README.md).
 
 ## Current Focus
 
@@ -154,9 +154,15 @@ This is the canonical per-model table — AWQ-int4 (the recommended RDNA4 runtim
 | Coder-REAP-25B | MoE (96 exp, REAP prune of Coder-30B) | 256K / — | 56.8 / — | `launch.sh coder-reap-25b` | Working (self-calibrated code_thinking + native AWQ). Same pure-attention A3B MoE family as Coder-30B. |
 | Qwen3.6-REAM-A3B | MoE+DeltaNet (192 exp, REAM prune of 35B), VL | 262K / — | 58.9 / — | `MODEL=...REAM-A3B-AWQ-vision launch.sh qwen36-moe` | Working — 4/4 PASS basic+thinking+vision+video. Text-only build drops all `model.visual.*`, so serve the `-vision` dir (333-tensor tower spliced from parent BF16 via `merge_vision_weights.py --vision-prefix model.visual`). FP8 not built — a 256→192 FP8 re-merge needs the 67 GB parent BF16 resident, which wedges this 64 GB box; ships in AWQ. |
 | Nemotron-3-Nano-Omni-30B-A3B | Mamba2-Transformer hybrid MoE, AVLM | — / 256K | — / 64 | `launch.sh nemotron-omni` | FP8-only (NVIDIA ModelOpt FP8, no AWQ variant). 256K (262144) via triton flash; first Mamba2 hybrid on the box. **validate_capabilities 4/4 (2026-06-15): basic+thinking+vision+video PASS** — video was crashing on an EVS embedding-routing bug (the pruned-video `EVSEmbeddingResult` hit the per-image path's `.reshape`), fixed by **patch 057** (route EVS items to the combined path that unwraps + redistributes them). Full AVLM text+image+video + thinking; audio untested (no validator check). torch_native is a slow fallback that OOMs past ~150K (ROCm MATH SDPA only). Requires patches 043/044/046/047 + `pip install librosa`. No spec-decode (no published draft; Nano excluded from MTP). |
-| North-Mini-Code-1.0 | MoE 128e top-8 sigmoid + hybrid-SWA (`cohere2_moe`) | — / 256K | — / 65 | `launch.sh north-mini` | **Working (2026-06-11).** FP8-only **thinking coding MoE** — `CohereLabs/North-Mini-Code-1.0-fp8` (official CT `float-quantized`, zero cast; FP8 is our lane). Arch with a **dense-layer fix** (config pops `first_k_dense_replace` → decoder must use `mlp_layer_types`, else the dense L0 NaNs). **cuda-graph ON: 65 tok/s short → 34 @256K** (single-bs capture, 2.36× over eager; hybrid-SWA window 4096, 1.58M-tok KV pool — a genuine 256K model on 32 GB). `cohere_command4` tool/reasoning parser **now wired in the `north-mini` preset** (`--reasoning-parser`/`--tool-call-parser cohere_command4`, launch.sh:649/654); end-to-end agentic/SWE-bench validation still pending. |
+| North-Mini-Code-1.0 | MoE 128e top-8 sigmoid + hybrid-SWA (`cohere2_moe`) | — / 256K | — / **71.1** | `launch.sh north-mini` | **Working; optimized on v0.5.15 (2026-07-12).** FP8-only thinking coding MoE — official CT `float-quantized`. The final tuned/internal stack, including fused static-scale FP8 K/V stores, measured **71.053 / 60.714 / 42.298 / 33.905 tok/s** at inputs 128 / 29,357 / 117,048 / 219,352, all coherent. The reverse-OFF run was allocator/hardware-unstable, so no fused-KV percentage is claimed for North. Comprehensive evaluation was 34/36 (one exact-answer evaluator false-negative and one matrix miss); tool calling passed. Hybrid-SWA window 4096; `cohere_command4` tool/reasoning parsers enabled. [Receipt](benchmarks/north-laguna-v0515-r9700-2026-07-12.md). |
+| Laguna-XS.2-FP8 | MoE 256e top-8 sigmoid + hybrid-SWA (`laguna`) | — / 256K | — / **49.0** | `launch.sh laguna` | **Working; optimized on v0.5.15 (2026-07-12).** Official `poolside/Laguna-XS.2-FP8`. The conservative reverse-confirmed final medians are **48.999 / 47.485 / 39.959 tok/s** at inputs 62 / 7,403 / 58,785 with fused FP8 K/V stores, versus 47.772 / 39.342 / 27.202 without (+2.57% / +20.70% / +46.89%). A coherent 220,277-input run reached **29.270 tok/s**. FP8 KV + SWA full ratio 0.01 raises capacity to 1,009,385 tokens. Comprehensive evaluation was 34/36 (exact speed-of-light answer mis-scored plus the pre-existing `-7 % 3` miss); capabilities 2/2 and tool calling passed. [Receipt](benchmarks/north-laguna-v0515-r9700-2026-07-12.md). |
 
-All numbers measured with `sglang.bench_serving`.  TPOT = Time Per Output Token (decode only), TTFT = Time To First Token (prefill). Full per-context decode curves: [§256K single-user context sweeps](#256k-single-user-context-sweeps); cuda-graph speedup over eager: [§cuda-graph doubles MoE decode](#cuda-graph-doubles-moe-decode) just below.
+Fleet rows use `sglang.bench_serving`; the focused North/Laguna rows use the
+streaming-TPOT harness documented in their linked receipt. TPOT = Time Per
+Output Token (decode only), TTFT = Time To First Token (prefill). Full
+per-context decode curves: [§256K single-user context sweeps](#256k-single-user-context-sweeps);
+cuda-graph speedup over eager: [§cuda-graph doubles MoE decode](#cuda-graph-doubles-moe-decode)
+just below.
 
 #### cuda-graph doubles MoE decode
 
@@ -226,13 +232,22 @@ See also the [FP8-vs-AWQ comparison chart](#fp8-lane) in the FP8 lane above.
 | Qwen3.6-35B MoE AWQ (DeltaNet+MoE) † | 60.2 | 58.5 | 53.5 | 48.1 | 39.6 | 28.1 | **19.9** |
 | Qwen3.6-REAM-A3B AWQ (DeltaNet+MoE) † | 58.9 | 58.5 | 53.7 | 48.1 | 39.6 | 28.1 | **20.0** |
 | Qwen3.6-VL-REAP-26B-A3B AWQ (MoE) ‡ | 21.3 | 21.9 | 21.4 | 20.8 | 21.6 | 20.7 | **16.1** |
-| North-Mini-Code FP8 (cohere2_moe, MoE+SWA) ◆ | 65.4 | 62.4 | 59.9 | 56.3 | 50.2 | 40.3 | **33.6** |
+| North-Mini-Code FP8 (cohere2_moe, MoE+SWA) ◆ | **71.1** | — | — | **60.7** | — | **42.3** | **33.9** |
+| Laguna XS.2 FP8 (laguna, MoE+SWA) ◇ | **49.0** | — | — | — | **40.0** | — | — |
 
 † **cuda-graph ON** — 2026-06-01 sweep (`scripts/bench/measure_decode_curve.py`, conc=1, streaming TPOT). Every MoE preset now captures graphs: M=1 MoE decode is dispatch-bound, so graph replay gives **~2.3–2.5× short-ctx decode** over eager (see [cuda-graph doubles MoE decode](#cuda-graph-doubles-moe-decode)). The **DeltaNet+MoE** models (Qwen3.5/3.6-35B, REAM) hold long context best — **~20 tok/s @256K** — because their linear-attention state is O(1), so decode isn't dragged down by a growing KV read the way the pure-attention MoE are (Coder-30B 10.6, gemma-4 14.3 @256K). The two **DeltaNet *dense*** rows (Qwen3.5/3.6-27B) stay cuda-graph **OFF**: they're GPU-bound (~86% util), so there's no launch gap for a graph to remove.
 
 ‡ Qwen3.6-VL-REAP-26B-A3B is the pre-cuda-graph text-path number; vision is broken structurally (REAP-stripped tower, capability matrix + task #24), so it's queued for rebuild rather than re-bench.
 
-◆ North-Mini-Code FP8 is **cuda-graph ON** (single-bs capture, 0.29 GB; validated 2026-06-11 on `cohere2_moe`). M=1 decode is dispatch-bound, so capture removes the launch gap: **2.36× short** (eager was a flat ~27 — launch-bound — vs **65** under graph). The ON curve then *slopes* (65→34 @256K) because removing the gap exposes the full-attention layers' growing KV read; the hybrid-SWA sliding layers stay window-capped. Always faster than eager (1.24× even @256K).
+◆ North-Mini-Code FP8 is **cuda-graph ON**. The 32K/131K/262K cells are the nearest measured inputs rather
+than the exact column labels: 29,357 / 117,048 / 219,352. All four final-stack generations were
+coherent. Its reverse-OFF data was highly variable, so the table reports absolute ON results without a
+fused-KV speedup claim.
+
+◇ Laguna is **cuda-graph ON**. Its 65K cell is input 58,785. The omitted input-7,403 point is
+47.485 tok/s. These are the conservative medians from the reverse-confirmed patch-082 ON run; the
+first ON pass was slightly higher at 49.875 / 48.597 / 41.597. See the focused
+[v0.5.15 receipt](benchmarks/north-laguna-v0515-r9700-2026-07-12.md).
 
 ### Capability matrix of shipped AWQ models
 
@@ -306,9 +321,9 @@ Running — cells fill as the matrix completes (`—` = pending; `(running)` = p
 
 ## Infrastructure Summary
 
-- **SGLang v0.5.15** on the **live serving tree** (`/data/sgl-v0515`, env `sglang-triton36-v0515`) + 47 RDNA4 patches — see [patches/README.md](patches/README.md). **Promoted to live 2026-07-11** (rebased from v0.5.14 across a 547-commit / 1789-file upstream delta with only 4 conflicts + 064 upstreamed: gate-verified byte-equivalent, import smoke 29/29; GPU coder-30b `eval_comprehensive` 35/36 + cuda-graph pre-warm-nccl clean, qwen36-moe caps 3/3 + mamba `no_buffer` (patch 073 relocated to `arg_groups/overrides.py`), gemma4 caps 4/4 incl. video, North-Mini `SWARadixCache hybrid_swa=True` (062) + FP8). Receipt: [patches/v0515-rebase-2026-07-11.md](patches/v0515-rebase-2026-07-11.md). **Rollback** = the retained v0.5.14 stack (`/data/sgl-v0514`, env `sglang-triton36-v0514`): `ENV_NAME=sglang-triton36-v0514 SGLANG_DIR=/data/sgl-v0514 scripts/launch.sh …` (older v0.5.13.post1: `/data/sgl-rebase` / `sglang-triton36-v0513`). ⚠ Note: the per-model 256K-depth perf tables above predate v0.5.15 — deep-context re-sweep pending.
+- **SGLang v0.5.15** on the **live serving tree** (`/data/sgl-v0515`, env `sglang-triton36-v0515`) + **56 RDNA4 patches** — see [patches/README.md](patches/README.md). **Promoted 2026-07-11** with the original 47-patch gate (byte-equivalence, import smoke 29/29, coder/qwen/gemma/North GPU checks), then extended with 074–082 on 2026-07-12. Receipts: [base rebase](patches/v0515-rebase-2026-07-11.md) and [North/Laguna extension](patches/v0515-north-laguna-2026-07-12.md). **Rollback** = retained v0.5.14 (`/data/sgl-v0514`, `sglang-triton36-v0514`). Most fleet-wide 256K-depth rows predate v0.5.15; only the focused North/Laguna points explicitly identified above were re-run.
 - **Triton 3.6.0** (upstream).  Do NOT clear `~/.triton/cache/` before benchmarking — cold cache produces 100x slower numbers.
-- **PyTorch 2.12+rocm7.2**.
+- **PyTorch 2.11.0+rocm7.2**.
 - **RCCL 2.27.7** (system ROCm, P2P/IPC on gfx1201 — no custom build).
 - **Conda envs**: `sglang-triton36-v0515` (**live** inference, v0.5.15), `sglang-triton36-v0514` (v0.5.14 rollback), `sglang-triton36-v0513` (v0.5.13.post1 rollback), `sglang-triton36` (v0.5.12 rollback), `quant` (calibration — llmcompressor pins transformers 4.x, incompatible with SGLang).
 
@@ -335,9 +350,9 @@ No consumer RDNA4 GPU-to-GPU interconnect exists (no NVLink/XGMI equivalent).  T
 ```
 PATCHES.md            # Cross-collection patch map — all 4 dirs
 
-patches/              # SGLang v0.5.15 RDNA4 patches + investigations archive (47, numeric order)
+patches/              # SGLang v0.5.15 RDNA4 patches + investigations archive (56, numeric order)
   README.md           #   Applied patches, architectural findings, solved-issue log
-  0*.patch            #   46 patches, apply in numeric order
+  0*.patch            #   56 active patches, apply in numeric order
   upstream-prs/       #   rebased-onto-main drafts of the 10 upstream PR candidates
   upstreamed-in-v0.5.11/ # archive — fully upstreamed in the v0.5.11 rebase
 llmcompressor-patches/ # 1 patch — Qwen3MoE unfuse for GPTQ calibration (quant env)

@@ -9,11 +9,9 @@
 set -uo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO="$(cd "$SCRIPT_DIR/../.." && pwd)"
-export ENV_NAME="${ENV_NAME:-sglang-v0512}"
-export SGLANG_DIR="${SGLANG_DIR:-/data/sglang-rebase-v0512}"
-export PATH="/home/letsrtfm/miniforge3/envs/$ENV_NAME/bin:$PATH"
+source "$REPO/scripts/common.sh"
+export PATH="$CONDA_BASE/envs/$ENV_NAME/bin:$PATH"
 export CUDA_HOME="${CUDA_HOME:-/opt/cuda}"
-source "$REPO/scripts/common.sh" 2>/dev/null || true
 cd "$REPO" || exit 1
 
 PRESET="${PRESET:-qwen36-27b}"

@@ -1,7 +1,8 @@
 # SGLang v0.5.15 RDNA4 Patches (rebased from v0.5.14)
 
-> ✅ **v0.5.15 PROMOTED to live 2026-07-11.** The series is rebased onto **v0.5.15** (tag `d80c135a`) in tree
-> `/data/sgl-v0515` + fresh env `sglang-triton36-v0515` — **47 patches** (real `git rebase --onto`; upstream
+> ✅ **v0.5.15 LIVE; NORTH/LAGUNA EXTENSION 2026-07-12.** The current series targets **v0.5.15**
+> (tag `d80c135a`) in `/data/sgl-v0515` + fresh env `sglang-triton36-v0515` — **56 patches**. The original
+> 2026-07-11 promotion contained 47 patches (real `git rebase --onto`; upstream
 > delta v0.5.14→v0.5.15 was large: **547 commits / 1789 files**, yet only **4 conflicts** — 004 topk
 > `_is_hip` vs upstream's new `_is_cuda` JIT router, 005 fp8 `_is_rdna4_device` vs `materialize_bpreshuffle_fp8_scale`,
 > 062 cohere2 hybrid-SWA vs `UnlimitedOCRForCausalLM`, 073 mamba-radix **relocated** to the new
@@ -12,6 +13,17 @@
 > holds), qwen36-moe caps 3/3 + mamba `no_buffer` (073), gemma4 caps **4/4 incl. video**, North-Mini
 > `SWARadixCache hybrid_swa=True` (062) + FP8. **Rollback** = the retained v0.5.14 stack (`/data/sgl-v0514`,
 > env `sglang-triton36-v0514`). Full receipt: [v0515-rebase-2026-07-11.md](v0515-rebase-2026-07-11.md).
+>
+> **Post-promotion 074–082:** compressed-tensors FP8-KV metadata/loading, model-aware MoE tuning,
+> sigmoid-topk HIP fallback, mixed-head/FP8-KV attention correctness, measured gfx1201 MoE configs,
+> fused HIP sigmoid routing + native Laguna BF16 gate, a Laguna-scoped BF16 attention collective,
+> one-launch HIP Triton RMSNorm/fused q-k norm, and a fused static-scale FP8 K/V cache store. Final
+> focused results are North **71.053 tok/s** short and Laguna **48.999 tok/s** short; Laguna's
+> reverse-confirmed fused-store A/B is +2.57%/+20.70%/+46.89% across the three measured depths. Patch
+> 003 is also revised in place for the CUDA-only
+> `sgl_kernel.infllm_v2` import from [issue #3](https://github.com/mattbucci/2x-R9700-RDNA4-GFX1201-sglang-inference/issues/3).
+> Extension receipt: [v0515-north-laguna-2026-07-12.md](v0515-north-laguna-2026-07-12.md); performance:
+> [north-laguna-v0515-r9700-2026-07-12.md](../benchmarks/north-laguna-v0515-r9700-2026-07-12.md).
 
 <details><summary>Prior promotion: v0.5.14 (2026-06-26) — historical</summary>
 
@@ -33,15 +45,16 @@
 
 </details>
 
-**47 patches** applied in numeric order on a stock `git checkout v0.5.15` (see the v0.5.15 banner above; the
+**56 patches** applied in numeric order on a stock `git checkout v0.5.15` (see the banner above; the
 v0.5.14→v0.5.15 rebase kept the whole v0.5.14 series minus **064**, which v0.5.15 upstreamed). Numbers: 001–008,
-011, 015–016, 023–028, 030–033, 036–037, 039–049, 055–063, 065–066, 072–073. **34 rebased core patches**
+011, 015–016, 023–028, 030–033, 036–037, 039–049, 055–063, 065–066, 072–082. **34 rebased core patches**
 (001–049) + **boot/inference fixes** (059–061) + **promoted second-pass patches** (055–058, 062–063) + **1 perf
 kernel** (065 split-KV tree-verify, opt-in `SGLANG_TREE_VERIFY_SPLITKV`, default OFF → inert unless enabled) +
 **066** glm4_moe BF16-dense-MLP gate_up skip-miss (glm45-air; fleet-inert) + **072** gemma4_unified config
 (**redundant-but-harmless on the v0.5.15 transformers-5.12.1 pin**, which ships gemma4_unified natively —
 dup-tolerant no-op, drop candidate; see receipt) + **073** mamba-extra_buffer HIP fallback (relocated to
-`arg_groups/overrides.py` in v0.5.15). Source of truth for
+`arg_groups/overrides.py` in v0.5.15) + **9 North/Laguna FP8 correctness/performance patches**
+(074–082). Source of truth for
 **what's fixed and how**; main [README.md](../README.md) tracks current state. Cross-collection map: [PATCHES.md](../PATCHES.md).
 
 <details><summary>v0.5.14-era series description (historical)</summary>
@@ -66,9 +79,10 @@ v0.5.12→v0.5.13.post1 rebase (2026-06-16): real `git rebase --onto` of the 37-
 
 | Tree | Role |
 |---|---|
-| `/data/vG` | **Live serving tree** — editable install in `sglang-triton36`; what every launch.sh preset imports. == v0.5.12 + this series. |
+| `/data/sgl-v0515` | **Live serving tree** — editable install in `sglang-triton36-v0515`; what launch presets import by default. == v0.5.15 + this series. |
+| `/data/sgl-v0514` | Retained v0.5.14 rollback tree; use only with `sglang-triton36-v0514`. |
 | `components/sglang` | Stale rebase workspace (frozen 2026-05-26, has `.rej` leftovers). Refresh from the series before using; never assume it serves. |
-| `patches/` (this dir) | The series. After editing a patch here, re-apply to a pristine clone and `diff -rq` against `/data/vG` to verify equivalence. |
+| `patches/` (this dir) | The series. After editing a patch here, replay onto pristine v0.5.15 and compare with the intended `/data/sgl-v0515` delta. |
 
 **3-gate audit (per 3090 2026-06-10):** (1) byte-equality vs live; (2) pristine replay must report **N/N applied, 0 skipped** (an "already applied/skipped" line on pristine = a hunk silently lost to a sibling-patch conflict); (3) on the fully-patched tree `git apply --check` must **fail** for every patch (a "clean" check = a non-unique anchor that would double-apply into twin code blocks on a setup.sh rerun).
 
@@ -90,7 +104,7 @@ The remaining patches were regenerated against v0.5.11 via 3-way merge (001 was 
 ## Apply
 
 ```bash
-cd components/sglang && git checkout v0.5.12
+cd components/sglang && git checkout v0.5.15
 for p in ../../patches/0*.patch; do
   git apply --3way "$p" || echo "WARN: $p failed — see patches/README.md upgrade audit"
 done
@@ -114,7 +128,7 @@ _What it takes for stock SGLang to boot at all on gfx1201._
 |---|-------|-----|------|----------------|
 | 001 | upstream-sync | 3,000 | ½ | Cherry-picks from main: Gemma 4, Qwen3.5/Next, attention, SWA, pool_configurator |
 | 002 | rdna4-torch-compile-disable | 56 |  | `@torch.compile` stalls 30+ min on HIP — disable on rotary/sampler/embedding |
-| 003 | rdna4-sgl-kernel-fallbacks | 669 |  | sgl-kernel is CUDA-only; torch-native fallbacks for silu/gelu/rmsnorm/rotary/topk |
+| 003 | rdna4-sgl-kernel-fallbacks | 669+ |  | sgl-kernel is CUDA-only; torch-native fallbacks for silu/gelu/rmsnorm/rotary/topk. Revised 2026-07-12 to also guard `sgl_kernel.infllm_v2` and expose `None` sentinels when that CUDA-only extension is absent (issue #3). |
 | 008 | rdna4-sgl-kernel-build-arch | 40 |  | Adds gfx12xx to sgl-kernel's ROCm arch whitelist so the native build targets RDNA4. Slot reuse — old 008 was upstreamed. |
 | 063 | rdna4-relu2-hip-fallback | 21 | PR-candidate | **Added 2026-06-16 (v0.5.13 resweep).** v0.5.13 imports the native `relu2` op only under `_is_cuda` (`sglang.jit_kernel.activation`); the `_is_hip` branch imports gelu/silu but **not** relu2, so `ReLU2.forward_cuda()` NameErrors on RDNA4 at cuda-graph capture (hit by `nemotron_h`'s squared-ReLU MLP — Nemotron-Omni). Torch fallback (`max(0,x)^2`, == `ReLU2.forward_native`) in the HIP import branch. Same family as 003. Generic → upstream PR candidate. (Nemotron-Omni also needs `librosa` in the env for the Parakeet audio extractor — added to `setup.sh`, not a patch.) |
 
@@ -128,6 +142,10 @@ _Fused-MoE path on RDNA4 (Coder-30B, qwen35/36-moe, gemma4, REAP/REAM fleet)._
 | 031 | rdna4-moe-wna16-rocm-supported | 48 | PR | Adds moe_wna16 to rocm_supported_quantization — config-time gate, kernels run fine. |
 | 033 | moe-wna16-gelu-activation | 14 | PR | **Added 2026-05-11.** Relaxes `MoeWNA16Method.apply()` activation assertion from `== "silu"` to `in ("silu", "gelu")`. The Triton fused MoE kernel in `moe_runner/triton_utils/fused_moe.py` already supports both; only the assertion needed widening. Required for Gemma 4 26B MoE (uses `activation="gelu"`) to dispatch via `--quantization=moe_wna16`. |
 | 037 | token-dispatcher-flashinfer-assertion-guard | 5 | PR | **Added 2026-05-12.** Broaden `try/except ImportError` → `except (ImportError, AssertionError)` in `token_dispatcher/flashinfer.py:34`. `flashinfer.comm` instantiates a `CudaRTLibrary()` at module-init time which asserts `libcudart` can be dlopen'd — fires immediately on ROCm-only hosts. The existing ImportError-only guard misses this AssertionError, killing the scheduler import chain before any model loads. flashinfer dispatcher is CUDA-NVFP4-only anyway, so falling back to `use_flashinfer = False` on ROCm is the desired behavior. Surfaced 2026-05-12 trying to launch the in-house gemma-4-31B AWQ build (#38). |
+| 075 | rdna4-fused-moe-tuner-model-support | 890 |  | Adds North/Laguna compressed-tensors FP8 model discovery, shape extraction, and safe config output to the fused-MoE tuner. Tuned paired kernels improved about 11.2% for North and 5.1% for Laguna; end-to-end gains are recorded in the 2026-07-12 receipt. |
+| 076 | rdna4-sigmoid-topk-hip-fallback | 123 |  | Correct Torch fallback for sigmoid-scored top-k routers on HIP, including group selection/renormalization behavior. It remains the escape path when the fused router in 079 is disabled. |
+| 078 | r9700-north-laguna-fp8-moe-configs | 613 |  | Installs the measured gfx1201 FP8 MoE configs for both models. Fair reverse A/B: North 63.715/54.602→65.993/56.386 tok/s; Laguna 34.606/33.894/30.299→34.673/34.130/30.736. |
+| 079 | 079-rdna4-fused-sigmoid-router-laguna-bf16-gate.patch | 164 | PR-candidate | Enables SGLang's unified Triton sigmoid router on HIP and removes North's custom-callable bypass. Laguna keeps its BF16 checkpoint router weight in model dtype for GEMV, then promotes logits to FP32. Router microbench 3.4–3.9× and Laguna gate GEMV 3.2×; end-to-end North 67.868 and Laguna 38.026 tok/s short before later collective/norm work. |
 
 ### Attention & numerics
 _BF16 precision repairs; NaN/Inf containment._
@@ -138,6 +156,9 @@ _BF16 precision repairs; NaN/Inf containment._
 | 027 | rdna4-softcap-fp32 | 77 |  | FP32 softcap in triton attention + logits processor (tanh in BF16 lost rescale precision; was the 009/softcap half). Depends on 011. |
 | ~~012~~ | rdna4-sliding-window-decode-fix | — | **RETIRED v0.5.13** | Superseded by v0.5.13's native `torch_native_backend.py` SWA-decode (`sliding_window_size`/`encoder_lens`). Was: `torch_native` SWA support for decode/extend; translate full pool → SWA pool. No longer in the series. |
 | ~~034~~ | sampler-inf-detection | — | **RETIRED v0.5.13 (re-impl pending)** | v0.5.13 removed the `use_nan_detection` flag 034's block guarded on. Dropped = stock v0.5.13 sampler (no nan/inf net; stock v0.5.12 had none either — 034 *added* it). **Re-implement as a standalone opt-in logits-sanity PR** (co-design with 3090) if HSAIL-0x1016-on-±Inf recurs. Was: `isinf(logits)` check parallel to `isnan` in `Sampler._preprocess_logits`. |
+| 077 | triton-mixed-head-fp8-kv-correctness | 364 | PR-candidate | Sizes Triton attention scratch for unequal q/k head counts and derives FP8 descales/clamps from the actual KV dtype. Required by Laguna's 24/4 and 32/4 mixed-head attention shapes. |
+| 080 | 080-laguna-bf16-attention-allreduce.patch | 84 | PR-candidate | Adds a communicator-level `hip_fp32_allreduce` switch. FP32 remains the HIP default for recurrent/DeltaNet protection; Laguna opts out and sends its normal BF16 attention activations, avoiding cast kernels and 2× collective payload. Laguna 38.026/37.065/32.643→38.141/37.316/33.443 tok/s. |
+| 081 | 081-rdna4-triton-rmsnorm-laguna-fused-qk.patch | 491 | PR-candidate | Generalizes the existing Gemma Triton RMSNorm kernels to standard weights and uses them when HIP lacks the CUDA extension; adds a combined standard q/k head-norm kernel for Laguna. Microbench: standard RMSNorm 5–5.5×, q/k norm 4–8×. RMSNorm-stage short/mid Laguna result 39.709/38.725 tok/s; longer-output long A/B +0.34%. Environment switches retain the old path for diagnosis. |
 
 ### AWQ int4 lane
 _The M=1 decode format. HIP GEMV kernels + dispatch._
@@ -159,6 +180,8 @@ _Native gfx1201 FP8 serving._
 | 042 | rdna4-reclaim-fp8-load-transients | — |  | `synchronize + gc.collect()×2 + empty_cache` before KV-pool sizing reclaims per-tensor-FP8 load transients held by ref cycles (reclaims ~9 GB/card). Note: underdelivers for the Devstral-2 v2-with-vision build (caps ~180K, not 256K — see launch.sh devstral2). |
 | 044 | rdna4-modelopt-fp8-rocm-allowlist | 13 | PR | **Added 2026-05-31. Runtime-verified.** Adds `modelopt`/`modelopt_fp8` to `rocm_supported_quantization` in `model_config.py` (same over-conservative config-time gate as 031's moe_wna16). NVIDIA ModelOpt per-tensor FP8 Linear falls back to the native fp8 GEMM and ModelOpt FP8 MoE to the Triton fused-MoE `fp8_w8a8` path — both already rocm-supported. Without it, modelopt-FP8 models (NemotronH Omni) are rejected at `_verify_quantization()` before load. Applies after 031. |
 | 045 | rdna4-ct-fp8-deltanet-mlp-tp-split | 32 |  | **Added 2026-05-31. Runtime-verified.** Dense compressed-tensors FP8 (Qwen3.5/3.6 DeltaNet-VL — e.g. Qwen3.6-27B-FP8) OOM'd because `qwen3_5.py:_should_replicate_deltanet_for_tp()` gated MLP TP-splitting on `name not in ("fp8","mxfp8","w8a8_fp8")`; compressed-tensors FP8 reports `get_name()=="compressed_tensors"` → fell into "replicate everything" (meant for unquantized/AWQ) → each TP rank held a FULL ~17 GB FP8 MLP → **28.7 GB/card → OOM**. Fix: new `_is_compressed_tensors_fp8()` helper (inspects `target_scheme_map["Linear"\|"FusedMoE"].weights` for num_bits==8 + type=="float") extends the check to TP-split the MLP for CT-FP8 too; DeltaNet `in_proj` stays replicated by design. Result: Qwen3.6-27B-FP8 serves native FP8 W8A8 at **20.82 GB/card** (was 28.70), basic+thinking+vision 3/3 PASS; coder-30b-fp8 MoE unaffected. ⚠ The visible symptom (CT "non-quantized schemes → UnquantizedLinearMethod" warning) was a RED HERRING — `get_scheme` correctly resolves `CompressedTensorsW8A8Fp8` for all real linears; that warning fires only for the intentionally-ignored DeltaNet `in_proj`. Applies after 001. |
+| 074 | compressed-tensors-fp8-kv-cache | 289 | PR-candidate | Preserves compressed-tensors KV-cache metadata through config/load mapping so North and Laguna honor checkpoint FP8 KV instead of silently losing the scheme. Adds compatibility for the v0.5.15 CT layout. |
+| 082 | 082-rdna4-fused-fp8-kv-cache-store.patch | 328 | PR-candidate | Fuses static-scale FP8 K/V cache divide, clamp, cast, and scatter into one Triton launch. Byte-identical to the existing path at M=1/8/64/4096; kernel A/B speedups 1.77×/2.56×/2.57×/6.36×. Laguna server reverse A/B: 48.999/47.485/39.959 ON vs 47.772/39.342/27.202 OFF = +2.57%/+20.70%/+46.89%. North's final ON curve is 71.053/60.714/42.298/33.905, but its OFF control was too unstable for an attribution percentage. |
 
 ### Mamba2 hybrids
 _Nemotron-Omni full-256K enablement._
@@ -215,10 +238,10 @@ _Devstral agentic + load ops._
 
 | Component | Version | Source |
 |-----------|---------|--------|
-| SGLang | v0.5.13.post1 | stock + 37 patches (34 core + 3 fixes; rebased from v0.5.12 2026-06-16 — see header) |
+| SGLang | v0.5.15 | stock + 56 patches; original rebase promoted 2026-07-11, North/Laguna extension 2026-07-12 |
 | Triton | 3.6.0 | upstream triton-lang |
 | RCCL | system ROCm 7.2 (2.27.7) | no custom build |
-| PyTorch | 2.11.0+rocm7.2 | ROCm build (the 2.12 nightly is dead on RDNA4 — segfaults on import) |
+| PyTorch | 2.11.0+rocm7.2 | ROCm build in `sglang-triton36-v0515` |
 | ROCm | 7.2.1 | Arch Linux packages |
 
 ## Recent resolved items
@@ -413,4 +436,3 @@ gfx1201 has native FP8 acceleration, so FP8 W8A8 is a serving option alongside t
 - **Qwen3-VL-32B** — blocked: SGLang VL spec-decode bug (#17935, missing `get_embed_and_head` on the VL wrapper).
 
 **DFlash (block-diffusion drafter).** `z-lab/*-DFlash` drafts exist for almost the whole zoo (Coder-30B, Coder-Next, Qwen3.6-27B, **Qwen3.6-35B-A3B**, gemma-4-31B/26B-it, Qwen3.5-27B/35B-A3B). SGLang's `DFLASH` algo auto-selects the **triton** draft backend on ROCm (no NVIDIA deps). DFlash-capable target classes (implement `set_dflash_layers_to_capture`): `qwen3_moe`, `qwen3_5`, `qwen3_next`, `qwen3_vl`, `qwen3`, `llama`, deepseek_v2, gpt_oss, kimi — **but NOT `gemma4`** (it has the EAGLE3 hook, not the DFLASH one → gemma DFlash errors `does not implement set_dflash_layers_to_capture`). With `--speculative-attention-mode decode` @ TP2, DFlash is the best spec-decode for the AWQ 35B ship (80 tok/s median, 145 max, accept 4.85, 4/4 validator PASS, full 256K). It is especially valuable for AWQ MoE ships whose bundled int4 MTP head is dead (~0 accept). Remaining DFlash gaps: gemma can't use it (no hook); Qwen3-VL-32B has the hook but no published z-lab DFlash draft.
-

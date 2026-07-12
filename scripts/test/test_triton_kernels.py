@@ -3,7 +3,7 @@
 
 Run with each env:
   conda run -n sglang-clean python scripts/test_triton_kernels.py
-  conda run -n sglang-triton36 python scripts/test_triton_kernels.py
+  conda run -n sglang-triton36-v0515 python scripts/test/test_triton_kernels.py
 """
 import sys
 import os

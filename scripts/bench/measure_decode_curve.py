@@ -55,13 +55,24 @@ def stream_tpot(base, model, prompt, maxtok, think_off):
                 usage = d["usage"]
             ch = d.get("choices") or []
             if ch:
-                delta = ch[0]["delta"].get("content")
-                if delta:
+                delta = ch[0]["delta"]
+                # Thinking models stream most benchmark tokens through
+                # reasoning_content. Counting only content silently produced
+                # 0 tok/s for North-Mini and Laguna until their final answer.
+                piece = "".join(
+                    part
+                    for part in (
+                        delta.get("reasoning_content"),
+                        delta.get("content"),
+                    )
+                    if part
+                )
+                if piece:
                     now = time.perf_counter()
                     if last is not None:
                         deltas.append(now - last)
                     last = now
-                    txt += delta
+                    txt += piece
     if len(deltas) > 3:
         deltas = sorted(deltas)[1:-1]  # drop fastest+slowest (prefill/jitter)
     tpot = sum(deltas) / len(deltas) if deltas else 0

@@ -8,7 +8,7 @@ context size where the scheduler stalls.
 
 Usage: python hang_probe.py --port 23380 --kchars 400 --max-tokens 64 --timeout 240
 """
-import argparse, glob, time, json, sys, urllib.request
+import argparse, glob, time, json, os, sys, urllib.request
 
 ap = argparse.ArgumentParser()
 ap.add_argument("--port", type=int, default=23380)
@@ -22,7 +22,10 @@ A = ap.parse_args()
 budget = A.kchars * 1000
 buf = []
 total = 0
-srcs = sorted(glob.glob("/data/vG/python/sglang/srt/**/*.py", recursive=True))
+sglang_src = os.path.join(
+    os.environ.get("SGLANG_DIR", "/data/sgl-v0515"), "python/sglang/srt"
+)
+srcs = sorted(glob.glob(os.path.join(sglang_src, "**/*.py"), recursive=True))
 for f in srcs:
     try:
         t = open(f, encoding="utf-8", errors="ignore").read()

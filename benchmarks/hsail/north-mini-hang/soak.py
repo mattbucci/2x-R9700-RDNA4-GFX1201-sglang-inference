@@ -8,7 +8,7 @@ a hard timeout; on the FIRST request that doesn't return, it records the stall a
 keeps the server in its hung state (does NOT kill it) so the scheduler can be
 inspected (py-spy/gdb). Logs every request with wall time + a rolling heartbeat.
 """
-import argparse, glob, time, json, sys, urllib.request
+import argparse, glob, time, json, os, sys, urllib.request
 
 ap = argparse.ArgumentParser()
 ap.add_argument("--port", type=int, default=23380)
@@ -20,7 +20,10 @@ ap.add_argument("--turns", type=int, default=8)
 A = ap.parse_args()
 
 pool = []
-for f in sorted(glob.glob("/data/vG/python/sglang/srt/**/*.py", recursive=True)):
+sglang_src = os.path.join(
+    os.environ.get("SGLANG_DIR", "/data/sgl-v0515"), "python/sglang/srt"
+)
+for f in sorted(glob.glob(os.path.join(sglang_src, "**/*.py"), recursive=True)):
     try: pool.append(open(f, encoding="utf-8", errors="ignore").read())
     except Exception: pass
 allcode = "\n".join(pool)

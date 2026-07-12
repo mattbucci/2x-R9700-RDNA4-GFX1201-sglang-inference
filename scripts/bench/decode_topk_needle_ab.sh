@@ -6,9 +6,10 @@
 set -uo pipefail
 REPO=/home/letsrtfm/AI/2x-R9700-RDNA4-GFX1201-sglang-inference
 cd "$REPO" || exit 1
+source "$REPO/scripts/common.sh"
 PORT=23352
 OUT=/tmp/dbg/topk-sparse/logs; mkdir -p "$OUT"
-PY=/home/letsrtfm/miniforge3/envs/sglang-triton36-v0513/bin/python
+PY="$CONDA_BASE/envs/$ENV_NAME/bin/python"
 CTX=/tmp/spec256k-context.txt
 CTXLEN=32768
 TOKBUDGET=30000

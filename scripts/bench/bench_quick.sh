@@ -8,8 +8,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="$(dirname "$(dirname "$SCRIPT_DIR")")"
 RESULTS_FILE="$REPO_DIR/benchmarks.log"
 
-eval "$($HOME/miniforge3/bin/conda shell.bash hook)"
-conda activate sglang-triton36
+source "$REPO_DIR/scripts/common.sh"
+activate_conda
 
 LABEL="${1:-unnamed}"
 MODEL="mistralai/Devstral-Small-2-24B-Instruct-2512"
@@ -40,8 +40,8 @@ for CONC in 1 8 16; do
         --base-url "$BASE_URL" \
         --model "$MODEL" \
         --dataset-name random \
-        --random-input 256 \
-        --random-output 256 \
+        --random-input-len 256 \
+        --random-output-len 256 \
         --num-prompts $NP \
         --request-rate $RR 2>&1)
 

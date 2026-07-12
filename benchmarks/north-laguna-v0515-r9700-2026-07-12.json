@@ -1,0 +1,152 @@
+{
+  "campaign": "North Mini Code + Laguna XS.2 SGLang v0.5.15 RDNA4 optimization",
+  "date": "2026-07-12",
+  "hardware": {
+    "gpus": "2x AMD Radeon AI PRO R9700",
+    "arch": "gfx1201",
+    "vram_gb_each": 32,
+    "tensor_parallel": 2,
+    "rocm": "7.2",
+    "rccl": "2.27.7"
+  },
+  "software": {
+    "conda_env": "sglang-triton36-v0515",
+    "source_tree": "/data/sgl-v0515",
+    "base": "SGLang v0.5.15",
+    "reported_version": "0.5.16.dev47+..."
+  },
+  "north_mini_code": {
+    "model": "CohereLabs/North-Mini-Code-1.0-fp8",
+    "input_lengths": [
+      62,
+      29357,
+      117048,
+      219352
+    ],
+    "corrected_v0515_baseline_tok_s": [
+      63.3,
+      52.7,
+      40.2,
+      29.0
+    ],
+    "tuned_tok_s": {
+      "input_lengths": [62, 29357],
+      "values": [65.993, 56.386]
+    },
+    "internal_router_tok_s": {
+      "input_lengths": [62, 29357],
+      "values": [67.868, 57.849]
+    },
+    "final_074_082_stack_tok_s": {
+      "input_lengths": [128, 29357, 117048, 219352],
+      "run_counts": [5, 5, 3, 1],
+      "values": [71.053, 60.714, 42.298, 33.905],
+      "correctness": "all generations coherent"
+    },
+    "fused_kv_reverse_off_tok_s": {
+      "input_lengths": [128, 29357, 117048],
+      "medians": [53.662, 28.475, 12.863],
+      "individual_values": [
+        null,
+        [25.378, 28.475, 36.700],
+        [9.936, 12.863, 15.052]
+      ],
+      "disposition": "hardware/allocator instability; not a clean speed-percentage comparison"
+    },
+    "quality_before_internal_pass": "35/36 comprehensive",
+    "quality_final": {
+      "comprehensive": "34/36",
+      "failures": [
+        "speed-of-light evaluator false-negative despite exact answer",
+        "matrix test miss"
+      ],
+      "tool_call": "pass"
+    }
+  },
+  "laguna_xs2": {
+    "model": "poolside/Laguna-XS.2-FP8",
+    "standard_input_lengths": [62, 7403, 58785],
+    "eager_baseline_tok_s": [20.9, 21.3, 20.9],
+    "graph_baseline_tok_s": [34.49, 33.84, 30.06],
+    "tuned_tok_s": [34.673, 34.13, 30.736],
+    "bf16_gate_fused_router_fp32_collective_tok_s": [38.026, 37.065, 32.643],
+    "bf16_gate_fused_router_bf16_collective_tok_s": [38.141, 37.316, 33.443],
+    "final_norm_80_output_tokens_tok_s": [39.709, 38.725, 31.095],
+    "final_norm_reverse_ab_256_output_tokens": {
+      "input_lengths": [62, 58785],
+      "norm_on_tok_s": [38.587, 33.158],
+      "norm_off_tok_s": [38.314, 33.045]
+    },
+    "fused_kv_first_on_five_run_medians_tok_s": {
+      "input_lengths": [62, 7403, 58785],
+      "values": [49.875, 48.597, 41.597],
+      "disposition": "first ON pass; retained but not used for conservative headline"
+    },
+    "fused_kv_reverse_confirmed": {
+      "input_lengths": [62, 7403, 58785],
+      "on_medians_tok_s": [48.999, 47.485, 39.959],
+      "off_medians_tok_s": [47.772, 39.342, 27.202],
+      "speedup_percent": [2.57, 20.70, 46.89]
+    },
+    "deep_graph_baseline": {
+      "input_len": 219596,
+      "tok_s": 22.93,
+      "note": "coherent historical baseline; final stack used a nearby 220277-token input"
+    },
+    "deep_final_stack": {
+      "input_len": 220277,
+      "tok_s": 29.270,
+      "note": "coherent"
+    },
+    "quality_before_internal_pass": "35/36 comprehensive; thinking/tools passed",
+    "quality_final": {
+      "comprehensive": "34/36",
+      "failures": [
+        "speed-of-light evaluator false-negative despite exact answer",
+        "pre-existing -7 % 3 model miss"
+      ],
+      "capabilities": "2/2 pass",
+      "tool_call": "pass"
+    }
+  },
+  "microbenchmarks": {
+    "sigmoid_router": {
+      "triton_ms": 0.0082,
+      "torch_ms_range": [0.028, 0.032],
+      "speedup_range": [3.4, 3.9],
+      "correctness": "exact expert IDs; score max error <= 3e-8"
+    },
+    "laguna_bf16_gate_gemv": {
+      "bf16_ms": 0.02,
+      "fp32_ms": 0.064,
+      "speedup": 3.2,
+      "correctness": "same sampled top-k IDs"
+    },
+    "standard_rmsnorm": {
+      "triton_ms": 0.0077,
+      "native_ms_range": [0.039, 0.053],
+      "speedup_range": [5.0, 5.5]
+    },
+    "laguna_fused_qk_rmsnorm": {
+      "speedup_range": [4.0, 8.0],
+      "correctness": "M=1 exact to fallback; larger-M differences at BF16 scale"
+    },
+    "static_scale_fp8_kv_store": {
+      "token_counts": [1, 8, 64, 4096],
+      "speedups": [1.77, 2.56, 2.57, 6.36],
+      "correctness": "byte-identical K and V cache output at every tested size",
+      "end_to_end_status": "Laguna reverse-confirmed +2.57%/+20.70%/+46.89% at inputs 62/7403/58785; North OFF control unstable"
+    }
+  },
+  "memory": {
+    "laguna_swa_full_ratio_0_0625_capacity_tokens": 875509,
+    "laguna_swa_full_ratio_0_01_capacity_tokens": 1009385,
+    "capacity_gain_percent": 15.3
+  },
+  "rejected": [
+    "Laguna custom all-reduce + one-stage all-reduce: neutral",
+    "Forced BF16 KV: neutral decode, lower capacity",
+    "Fused Laguna attention softplus gate: isolated kernel faster but server regressed to 37.085/36.232/31.423 tok/s",
+    "Universal BF16 attention collective: rejected in favor of Laguna-scoped opt-out from the FP32 workaround"
+  ]
+}

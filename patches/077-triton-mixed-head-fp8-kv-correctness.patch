@@ -1,0 +1,364 @@
+diff --git a/python/sglang/srt/layers/attention/triton_backend.py b/python/sglang/srt/layers/attention/triton_backend.py
+index 9b72943846..ddf70e168c 100644
+--- a/python/sglang/srt/layers/attention/triton_backend.py
++++ b/python/sglang/srt/layers/attention/triton_backend.py
+@@ -66,6 +66,11 @@ if TYPE_CHECKING:
+ 
+ 
+ _MLA_DECODE_MIN_BLOCK_KV = 32
++_FP8_KV_CACHE_DTYPES = (
++    torch.float8_e4m3fn,
++    torch.float8_e4m3fnuz,
++    torch.float8_e5m2,
++)
+ 
+ 
+ def _mla_decode_kv_splits_cap(
+@@ -78,6 +83,45 @@ def _mla_decode_kv_splits_cap(
+     return max(base_max_kv_splits, min(sm_cap, ctx_cap))
+ 
+ 
++def _max_num_attention_heads(model_config) -> int:
++    """Return the largest query-head count used by any attention layer.
++
++    Most architectures use one global head count, but Laguna uses fewer query
++    heads in full-attention layers than in sliding-window layers.  Decode
++    scratch buffers are shared across layers, so they must be sized for the
++    largest layer rather than only ``config.num_attention_heads``.
++    """
++    default = model_config.num_attention_heads
++    per_layer = getattr(model_config, "num_attention_heads_per_layer", None)
++    if per_layer is None:
++        per_layer = getattr(
++            getattr(model_config, "hf_config", None),
++            "num_attention_heads_per_layer",
++            None,
++        )
++    return max(per_layer) if per_layer else default
++
++
++def _kv_cache_uses_fp8(token_to_kv_pool) -> bool:
++    return getattr(token_to_kv_pool, "dtype", None) in _FP8_KV_CACHE_DTYPES
++
++
++def _get_kv_cache_descales(layer, token_to_kv_pool):
++    """Return checkpoint KV descales only when the physical cache is FP8.
++
++    Quantized checkpoints can carry static K/V scales even when the operator
++    overrides ``--kv-cache-dtype`` to BF16.  Applying those scales while
++    reading an unscaled BF16 cache shrinks attention values by roughly 1e3.
++    """
++    if (
++        _kv_cache_uses_fp8(token_to_kv_pool)
++        and layer.k_scale is not None
++        and layer.v_scale is not None
++    ):
++        return layer.k_scale_float, layer.v_scale_float
++    return 1.0, 1.0
++
++
+ def logit_capping_mod(logit_capping_method, logit_cap):
+     # positive logit_cap -> tanh cap
+     if logit_capping_method == "tanh":
+@@ -177,7 +221,8 @@ class TritonAttnBackend(AttentionBackend):
+         self.dcp_size = getattr(model_runner, "dcp_size", 1)
+         self.dcp_rank = getattr(model_runner, "dcp_rank", 0)
+         self.num_head = (
+-            model_runner.model_config.num_attention_heads // get_parallel().attn_tp_size
++            _max_num_attention_heads(model_runner.model_config)
++            // get_parallel().attn_tp_size
+         ) * self.dcp_size
+         self.num_kv_head = model_runner.model_config.get_num_kv_heads(
+             get_parallel().attn_tp_size
+@@ -1272,7 +1317,9 @@ class TritonAttnBackend(AttentionBackend):
+                     # For MLA, scale K manually before storing since MLATokenToKVPool
+                     # doesn't accept scale parameters. Clone to protect k from mutation
+                     # since it's used later in the attention kernel.
+-                    k_scaled = k.clone().div_(layer.k_scale)
++                    k_scaled = k
++                    if _kv_cache_uses_fp8(self.token_to_kv_pool):
++                        k_scaled = k.clone().div_(layer.k_scale)
+                     self.token_to_kv_pool.set_kv_buffer(
+                         layer,
+                         loc_info,
+@@ -1328,12 +1375,9 @@ class TritonAttnBackend(AttentionBackend):
+             kv_indices = self.forward_metadata.kv_indices
+             window_kv_offsets = None
+ 
+-        if layer.k_scale is not None and layer.v_scale is not None:
+-            k_descale = layer.k_scale_float
+-            v_descale = layer.v_scale_float
+-        else:
+-            k_descale = 1.0
+-            v_descale = 1.0
++        k_descale, v_descale = _get_kv_cache_descales(
++            layer, self.token_to_kv_pool
++        )
+ 
+         # Split-KV EAGLE-verify fast path (ROCm/Triton). On target-verify
+         # (topk=1 causal chain), run the bandwidth-efficient split-KV kernel
+@@ -1464,12 +1508,9 @@ class TritonAttnBackend(AttentionBackend):
+         kv_indices = self.forward_metadata.kv_indices
+         max_extend_len = self.forward_metadata.max_extend_len
+ 
+-        if layer.k_scale is not None and layer.v_scale is not None:
+-            k_descale = layer.k_scale_float
+-            v_descale = layer.v_scale_float
+-        else:
+-            k_descale = 1.0
+-            v_descale = 1.0
++        k_descale, v_descale = _get_kv_cache_descales(
++            layer, self.token_to_kv_pool
++        )
+ 
+         k_buffer = self.token_to_kv_pool.get_key_buffer(layer.layer_id)
+         v_buffer = self.token_to_kv_pool.get_value_buffer(layer.layer_id)
+@@ -1673,12 +1714,9 @@ class TritonAttnBackend(AttentionBackend):
+         # Convert prefix_lens to int32 for the kernel
+         prefix_lens = prefix_lens.to(torch.int32)
+ 
+-        if layer.k_scale is not None and layer.v_scale is not None:
+-            k_descale = layer.k_scale_float
+-            v_descale = layer.v_scale_float
+-        else:
+-            k_descale = 1.0
+-            v_descale = 1.0
++        k_descale, v_descale = _get_kv_cache_descales(
++            layer, self.token_to_kv_pool
++        )
+ 
+         # Call unified kernel
+         self.extend_attention_fwd_unified(
+@@ -1743,7 +1781,9 @@ class TritonAttnBackend(AttentionBackend):
+ 
+         if save_kv_cache:
+             if self.use_mla:
+-                if layer.k_scale is not None:
++                if layer.k_scale is not None and _kv_cache_uses_fp8(
++                    self.token_to_kv_pool
++                ):
+                     # MLATokenToKVPool doesn't accept scale parameters; k is unused
+                     # after this point in decode, so scale in place.
+                     k.div_(layer.k_scale)
+@@ -1775,12 +1815,9 @@ class TritonAttnBackend(AttentionBackend):
+             kv_indptr = self.forward_metadata.kv_indptr
+             kv_indices = self.forward_metadata.kv_indices
+ 
+-        if layer.k_scale is not None and layer.v_scale is not None:
+-            k_descale = layer.k_scale_float
+-            v_descale = layer.v_scale_float
+-        else:
+-            k_descale = 1.0
+-            v_descale = 1.0
++        k_descale, v_descale = _get_kv_cache_descales(
++            layer, self.token_to_kv_pool
++        )
+ 
+         # Select the correctly-sized attn_logits buffer for this layer.
+         attn_logits = self.forward_metadata.attn_logits
+@@ -1891,7 +1928,8 @@ class TritonMultiStepDraftBackend:
+             )
+         self.max_context_len = self.attn_backends[0].max_context_len
+         self.num_head = (
+-            model_runner.model_config.num_attention_heads // get_parallel().attn_tp_size
++            _max_num_attention_heads(model_runner.model_config)
++            // get_parallel().attn_tp_size
+         )
+         self.device = model_runner.device
+         # Cached variables for generate_draft_decode_kv_indices
+diff --git a/python/sglang/srt/mem_cache/memory_pool.py b/python/sglang/srt/mem_cache/memory_pool.py
+index 87e2638c1b..111793e863 100644
+--- a/python/sglang/srt/mem_cache/memory_pool.py
++++ b/python/sglang/srt/mem_cache/memory_pool.py
+@@ -96,6 +96,11 @@ _is_cpu = is_cpu()
+ _cpu_has_amx_support = cpu_has_amx_support()
+ _is_hip = is_hip()
+ _is_fp8_fnuz = is_fp8_fnuz()
++_FP8_KV_CACHE_DTYPES = (
++    torch.float8_e4m3fn,
++    torch.float8_e4m3fnuz,
++    torch.float8_e5m2,
++)
+ # `SGLANG_AITER_KV_CACHE_LAYOUT` is only meaningful on the ROCm AITER backend
+ # (HIP + --enable-aiter / SGLANG_USE_AITER=1). On any other platform / backend
+ # the SHUFFLE 5D pool layout has no consumer kernels, so the env var is
+@@ -1690,10 +1695,18 @@ class MHATokenToKVPool(KVCache):
+         else:
+             layer_id = layer.layer_id
+         if cache_k.dtype != self.dtype:
+-            if k_scale is not None:
+-                cache_k.div_(k_scale)
+-            if v_scale is not None:
+-                cache_v.div_(v_scale)
++            if self.dtype in _FP8_KV_CACHE_DTYPES:
++                if k_scale is not None:
++                    cache_k.div_(k_scale)
++                if v_scale is not None:
++                    cache_v.div_(v_scale)
++                # Native FP8 casts can encode finite out-of-range values as
++                # NaN on ROCm. Static checkpoint scales can be exceeded by an
++                # unseen prompt, so saturate before casting instead of
++                # poisoning the cache and every subsequent decode token.
++                fp8_info = torch.finfo(self.dtype)
++                cache_k.clamp_(min=fp8_info.min, max=fp8_info.max)
++                cache_v.clamp_(min=fp8_info.min, max=fp8_info.max)
+             cache_k = cache_k.to(self.dtype)
+             cache_v = cache_v.to(self.dtype)
+ 
+diff --git a/test/registered/unit/layers/attention/test_triton_backend_head_count.py b/test/registered/unit/layers/attention/test_triton_backend_head_count.py
+new file mode 100644
+index 0000000000..0cb69b60c3
+--- /dev/null
++++ b/test/registered/unit/layers/attention/test_triton_backend_head_count.py
+@@ -0,0 +1,61 @@
++import unittest
++from types import SimpleNamespace
++
++import torch
++
++from sglang.srt.layers.attention.triton_backend import (
++    _get_kv_cache_descales,
++    _max_num_attention_heads,
++)
++
++
++class TestMaxNumAttentionHeads(unittest.TestCase):
++    def test_uses_global_head_count_for_uniform_models(self):
++        config = SimpleNamespace(num_attention_heads=48, hf_config=SimpleNamespace())
++        self.assertEqual(_max_num_attention_heads(config), 48)
++
++    def test_uses_largest_per_layer_head_count(self):
++        config = SimpleNamespace(
++            num_attention_heads=48,
++            hf_config=SimpleNamespace(
++                num_attention_heads_per_layer=[48, 64, 64, 64]
++            ),
++        )
++        self.assertEqual(_max_num_attention_heads(config), 64)
++
++    def test_prefers_normalized_model_config_field(self):
++        config = SimpleNamespace(
++            num_attention_heads=32,
++            num_attention_heads_per_layer=[32, 40],
++            hf_config=SimpleNamespace(num_attention_heads_per_layer=[32, 64]),
++        )
++        self.assertEqual(_max_num_attention_heads(config), 40)
++
++
++class TestKVCacheDescales(unittest.TestCase):
++    def setUp(self):
++        self.layer = SimpleNamespace(
++            k_scale=object(),
++            v_scale=object(),
++            k_scale_float=0.00125,
++            v_scale_float=0.0025,
++        )
++
++    def test_uses_checkpoint_scales_for_fp8_cache(self):
++        pool = SimpleNamespace(dtype=torch.float8_e4m3fn)
++        self.assertEqual(
++            _get_kv_cache_descales(self.layer, pool), (0.00125, 0.0025)
++        )
++
++    def test_ignores_checkpoint_scales_for_bf16_override(self):
++        pool = SimpleNamespace(dtype=torch.bfloat16)
++        self.assertEqual(_get_kv_cache_descales(self.layer, pool), (1.0, 1.0))
++
++    def test_missing_checkpoint_scales_use_identity(self):
++        self.layer.k_scale = None
++        pool = SimpleNamespace(dtype=torch.float8_e4m3fn)
++        self.assertEqual(_get_kv_cache_descales(self.layer, pool), (1.0, 1.0))
++
++
++if __name__ == "__main__":
++    unittest.main()
+diff --git a/test/registered/unit/test_kv_cache_dtype_handling.py b/test/registered/unit/test_kv_cache_dtype_handling.py
+new file mode 100644
+index 0000000000..a9cca8f36d
+--- /dev/null
++++ b/test/registered/unit/test_kv_cache_dtype_handling.py
+@@ -0,0 +1,83 @@
++"""CPU regression coverage for KV-cache casting and static FP8 scales."""
++
++import unittest
++from types import SimpleNamespace
++from unittest import mock
++
++import torch
++
++from sglang.srt.mem_cache.memory_pool import MHATokenToKVPool
++from sglang.test.ci.ci_register import register_cpu_ci
++
++register_cpu_ci(est_time=5, suite="base-a-test-cpu")
++
++
++def _make_pool(dtype):
++    return MHATokenToKVPool(
++        size=2,
++        page_size=1,
++        dtype=dtype,
++        head_num=1,
++        head_dim=4,
++        layer_num=1,
++        device="cpu",
++        enable_memory_saver=False,
++        enable_alt_stream=False,
++    )
++
++
++class TestKVCacheDtypeHandling(unittest.TestCase):
++    def test_fp8_write_saturates_out_of_range_values(self):
++        pool = _make_pool(torch.float8_e4m3fn)
++        k = torch.tensor([[[1000.0, -1000.0, 300.0, -300.0]]])
++        v = torch.tensor([[[2000.0, -2000.0, 100.0, -100.0]]])
++
++        with mock.patch(
++            "sglang.srt.mem_cache.memory_pool.can_use_store_cache",
++            return_value=False,
++        ):
++            pool.set_kv_buffer(
++                SimpleNamespace(layer_id=0),
++                torch.tensor([1]),
++                k,
++                v,
++                k_scale=0.5,
++                v_scale=0.25,
++            )
++
++        cached_k, cached_v = pool.get_kv_buffer(0)
++        cached_k = cached_k[1].float()
++        cached_v = cached_v[1].float()
++        limit = torch.finfo(torch.float8_e4m3fn).max
++        self.assertTrue(torch.isfinite(cached_k).all())
++        self.assertTrue(torch.isfinite(cached_v).all())
++        self.assertLessEqual(cached_k.abs().max().item(), limit)
++        self.assertLessEqual(cached_v.abs().max().item(), limit)
++        self.assertEqual(cached_k[0, 0].item(), limit)
++        self.assertEqual(cached_v[0, 0].item(), limit)
++
++    def test_bf16_override_does_not_apply_fp8_checkpoint_scales(self):
++        pool = _make_pool(torch.bfloat16)
++        k = torch.tensor([[[1.0, 2.0, 3.0, 4.0]]])
++        v = torch.tensor([[[5.0, 6.0, 7.0, 8.0]]])
++
++        with mock.patch(
++            "sglang.srt.mem_cache.memory_pool.can_use_store_cache",
++            return_value=False,
++        ):
++            pool.set_kv_buffer(
++                SimpleNamespace(layer_id=0),
++                torch.tensor([1]),
++                k,
++                v,
++                k_scale=0.001,
++                v_scale=0.002,
++            )
++
++        cached_k, cached_v = pool.get_kv_buffer(0)
++        torch.testing.assert_close(cached_k[1].float(), k[0], rtol=0, atol=0)
++        torch.testing.assert_close(cached_v[1].float(), v[0], rtol=0, atol=0)
++
++
++if __name__ == "__main__":
++    unittest.main()
+
