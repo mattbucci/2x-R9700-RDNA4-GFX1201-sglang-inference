@@ -38,8 +38,10 @@ v0.5.14→v0.5.15 rebase kept the whole v0.5.14 series minus **064**, which v0.5
 011, 015–016, 023–028, 030–033, 036–037, 039–049, 055–063, 065–066, 072–073. **34 rebased core patches**
 (001–049) + **boot/inference fixes** (059–061) + **promoted second-pass patches** (055–058, 062–063) + **1 perf
 kernel** (065 split-KV tree-verify, opt-in `SGLANG_TREE_VERIFY_SPLITKV`, default OFF → inert unless enabled) +
-**066** glm4_moe BF16-dense-MLP gate_up skip-miss (glm45-air; fleet-inert) + **072** gemma4_unified config +
-**073** mamba-extra_buffer HIP fallback (relocated to `arg_groups/overrides.py` in v0.5.15). Source of truth for
+**066** glm4_moe BF16-dense-MLP gate_up skip-miss (glm45-air; fleet-inert) + **072** gemma4_unified config
+(**redundant-but-harmless on the v0.5.15 transformers-5.12.1 pin**, which ships gemma4_unified natively —
+dup-tolerant no-op, drop candidate; see receipt) + **073** mamba-extra_buffer HIP fallback (relocated to
+`arg_groups/overrides.py` in v0.5.15). Source of truth for
 **what's fixed and how**; main [README.md](../README.md) tracks current state. Cross-collection map: [PATCHES.md](../PATCHES.md).
 
 <details><summary>v0.5.14-era series description (historical)</summary>
