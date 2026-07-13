@@ -9,26 +9,12 @@ ARG SGLANG_TAG=v0.5.15
 ENV DEBIAN_FRONTEND=noninteractive PIP_NO_CACHE_DIR=1 ROCM_PATH=/opt/rocm \
     PYTORCH_ROCM_ARCH=gfx1201 CONDA_BASE=/opt/conda ENV_NAME=sglang-rdna4 \
     REPO_DIR=/opt/rdna4-inference SGLANG_DIR=/opt/rdna4-inference/components/sglang
-RUN apt-get update && apt-get install -y --no-install-recommends git curl ca-certificates build-essential python3-pip \
-    && rm -rf /var/lib/apt/lists/*
 ENV RUSTUP_HOME=/opt/rust/rustup CARGO_HOME=/opt/rust/cargo PATH=/opt/rust/cargo/bin:${PATH}
-RUN curl --proto '=https' --tlsv1.2 -fsSL https://sh.rustup.rs | sh -s -- -y --no-modify-path --profile minimal --default-toolchain stable
-RUN curl -fsSL "https://github.com/conda-forge/miniforge/releases/download/${MINIFORGE_VERSION}/Miniforge3-${MINIFORGE_VERSION}-Linux-x86_64.sh" -o /tmp/miniforge.sh \
-    && bash /tmp/miniforge.sh -b -p "${CONDA_BASE}" && rm /tmp/miniforge.sh
+COPY --chmod=0755 docker/build-sglang.sh /usr/local/bin/build-sglang
+RUN MINIFORGE_VERSION="${MINIFORGE_VERSION}" /usr/local/bin/build-sglang install-toolchain
 WORKDIR ${REPO_DIR}
 COPY . ${REPO_DIR}
-# setup.sh's verification assertion is the only required GPU access; retain its zero-device-safe check.
-RUN sed -i "s|assert torch.cuda.is_available(), 'CUDA not available'; ||" scripts/setup.sh \
-    && ! grep -q "assert torch.cuda.is_available" scripts/setup.sh \
-    && STRICT_PATCHES=1 SGLANG_TAG="${SGLANG_TAG}" ./scripts/setup.sh \
-    && sed -i '/^def can_use_store_cache(size: int) -> bool:$/a\    if __import__("os").environ.get("SGLANG_RDNA4_DISABLE_STORE_CACHE") == "1":\n        return False  # RDNA4 TP=1: JIT store_cache crashes' "${SGLANG_DIR}/python/sglang/jit_kernel/kvcache.py" \
-    && grep -A2 '^def can_use_store_cache(size: int) -> bool:$' "${SGLANG_DIR}/python/sglang/jit_kernel/kvcache.py" | grep -q 'SGLANG_RDNA4_DISABLE_STORE_CACHE' \
-    && grep -A3 '^def can_use_store_cache(size: int) -> bool:$' "${SGLANG_DIR}/python/sglang/jit_kernel/kvcache.py" | grep -q 'return False  # RDNA4 TP=1' \
-    && sed -i 's|^        if SYNC_TOKEN_IDS_ACROSS_TP or sampling_info.grammars:$|        if (SYNC_TOKEN_IDS_ACROSS_TP or sampling_info.grammars) and dist.get_world_size(group=self.tp_sync_group) > 1:|' "${SGLANG_DIR}/python/sglang/srt/layers/sampler.py" \
-    && grep -q 'get_world_size(group=self.tp_sync_group) > 1' "${SGLANG_DIR}/python/sglang/srt/layers/sampler.py" \
-    && ("${CONDA_BASE}/bin/conda" run -n "${ENV_NAME}" pip uninstall kernels -y 2>/dev/null || true) \
-    && "${CONDA_BASE}/bin/conda" run -n "${ENV_NAME}" python -c "import sglang; print(sglang.__version__)" \
-    && "${CONDA_BASE}/bin/conda" clean -afy
+RUN SGLANG_TAG="${SGLANG_TAG}" /usr/local/bin/build-sglang build-sglang
 
 FROM ${ROCM_RUNTIME_IMAGE}
 ENV ROCM_PATH=/opt/rocm CONDA_BASE=/opt/conda ENV_NAME=sglang-rdna4 \
