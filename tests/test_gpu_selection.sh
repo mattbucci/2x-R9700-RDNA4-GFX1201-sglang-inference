@@ -6,8 +6,11 @@ entrypoint="$repo_dir/docker/entrypoint.sh"
 
 check() {
     local ids=$1 tp=$2 expected=$3
-    GPU_IDS="$ids" TP="$tp" bash -c "source '$entrypoint'; configure_gpu_selection 0; printf '%s/%s/%s' \"\$HIP_VISIBLE_DEVICES\" \"\$TP\" \"\${SGLANG_RDNA4_DISABLE_STORE_CACHE:-0}\"" | grep -qx "$expected"
+    GPU_IDS="$ids" TP="$tp" bash -c \
+        "source '$entrypoint'; configure_gpu_selection 0; printf '%s/%s/%s' \"\$HIP_VISIBLE_DEVICES\" \"\$TP\" \"\${SGLANG_RDNA4_DISABLE_STORE_CACHE:-0}\"" \
+        | grep -qx "$expected"
 }
+
 reject() {
     if env "$@" bash -c "source '$entrypoint'; configure_gpu_selection 0" >/dev/null 2>&1; then
         return 1

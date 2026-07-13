@@ -898,7 +898,9 @@ CMD=(python -m sglang.launch_server
 CMD+=($CUDA_GRAPH)
 
 if [[ "${LAUNCH_DRY_RUN:-}" == "1" ]]; then
-    printf '[launch dry-run]'; printf ' %q' "${CMD[@]}"; printf '\n'
+    printf '[launch dry-run]'
+    printf ' %q' "${CMD[@]}"
+    printf '\n'
     exit 0
 fi
 

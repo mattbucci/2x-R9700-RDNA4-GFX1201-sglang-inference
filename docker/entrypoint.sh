@@ -2,8 +2,12 @@
 set -euo pipefail
 
 repo_dir="${REPO_DIR:-/opt/rdna4-inference}"
-[[ -f "$repo_dir/scripts/gpu-selection.sh" ]] || repo_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-source "$repo_dir/scripts/gpu-selection.sh"
+gpu_selection="$repo_dir/scripts/gpu-selection.sh"
+if [[ ! -f "$gpu_selection" ]]; then
+    repo_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+    gpu_selection="$repo_dir/scripts/gpu-selection.sh"
+fi
+source "$gpu_selection"
 
 if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
     configure_gpu_selection 0
