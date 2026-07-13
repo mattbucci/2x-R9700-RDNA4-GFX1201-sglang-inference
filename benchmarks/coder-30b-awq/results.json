@@ -3,32 +3,32 @@
   "engine": "SGLang",
   "method": "streaming-TPOT median (decode_ab, 3-run)",
   "hardware": "2x R9700 TP=2",
-  "timestamp": "2026-07-12 v0.5.15+074-082",
+  "timestamp": "2026-07-12 v0.5.15+084",
   "output_tokens": 80,
   "context_sweep": [
     {
       "context": 128,
       "input_len": 20,
-      "tpot_ms": 11.6,
-      "tok_per_sec": 86.214
+      "tpot_ms": 11.33,
+      "tok_per_sec": 88.254
     },
     {
       "context": 4096,
       "input_len": 3673,
-      "tpot_ms": 12.34,
-      "tok_per_sec": 81.005
+      "tpot_ms": 12.19,
+      "tok_per_sec": 82.053
     },
     {
       "context": 16384,
       "input_len": 14634,
-      "tpot_ms": 14.54,
-      "tok_per_sec": 68.776
+      "tpot_ms": 14.52,
+      "tok_per_sec": 68.879
     },
     {
       "context": 32768,
       "input_len": 29249,
-      "tpot_ms": 17.53,
-      "tok_per_sec": 57.058
+      "tpot_ms": 17.47,
+      "tok_per_sec": 57.229
     }
   ],
   "throughput_sweep": [
@@ -69,5 +69,5 @@
       "ttft_ms": 84.77
     }
   ],
-  "note": "Phase0 fleet rebench, streaming-TPOT 3-run median, graphs ON TP2, current tree"
+  "note": "patch 084 BF16 attention collective (3-run median)"
 }

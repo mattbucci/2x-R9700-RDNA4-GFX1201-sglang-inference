@@ -83,8 +83,8 @@ Single-user decode throughput across the fleet, measured with one consistent met
 | North-Mini-Code-1.0 | FP8 MoE + hybrid SWA | 71.8 (128) | 35.6 (197K) |
 | Laguna-XS.2 | FP8 MoE + hybrid SWA | 48.5 (62) | 30.9 (198K) |
 | Nemotron-3-Nano-Omni-30B | FP8 Mamba2 hybrid MoE | 95.6 (28) | 60.9 (198K) |
-| Qwen3-Coder-30B-A3B | AWQ MoE | 86.2 (20) | 57.1 (29K) |
-| Qwen3-Coder-REAP-25B-A3B | AWQ MoE | 87.1 (20) | 18.2 (197K) |
+| Qwen3-Coder-30B-A3B | AWQ MoE | 88.3 (20) | 57.2 (29K) |
+| Qwen3-Coder-REAP-25B-A3B | AWQ MoE | 89.5 (20) | 18.4 (197K) |
 | Qwen3-Coder-Next-REAM-60B | AWQ MoE + DeltaNet | 48.6 (20) | 22.7 (110K) |
 | GLM-4.5-Air-REAP | AWQ MoE | 25.7 (17) | 25.6 (27K) |
 | Qwen3.5-28B-A3B-REAP | AWQ MoE + DeltaNet | 66.7 (22) | 21.1 (197K) |
