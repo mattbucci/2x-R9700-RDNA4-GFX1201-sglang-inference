@@ -5,6 +5,7 @@
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="$(dirname "$SCRIPT_DIR")"
+source "$SCRIPT_DIR/gpu-selection.sh"
 
 # --- Conda ---
 if [ -z "${CONDA_BASE:-}" ]; then
@@ -54,11 +55,8 @@ setup_rccl() {
 
 # Minimal RDNA4 env vars
 setup_rdna4_env() {
-    # Skip Ryzen iGPU
-    export HIP_VISIBLE_DEVICES=${HIP_VISIBLE_DEVICES:-0,1}
-    export ROCR_VISIBLE_DEVICES=${ROCR_VISIBLE_DEVICES:-0,1}
-    export GPU_DEVICE_ORDINAL=${GPU_DEVICE_ORDINAL:-0,1}
-    export CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES:-0,1}
+    # Skip Ryzen iGPU. GPU_IDS defaults to both cards for existing bare-metal use.
+    configure_gpu_selection 0,1
 
     # P2P
     export NCCL_P2P_DISABLE=0

@@ -40,6 +40,7 @@ TORCH_INDEX="${TORCH_INDEX:-https://download.pytorch.org/whl/rocm7.2}"
 
 SGLANG_REPO="https://github.com/sgl-project/sglang.git"
 SGLANG_TAG="${SGLANG_TAG:-v0.5.15}"  # live baseline promoted 2026-07-11; overridable for version rebases
+STRICT_PATCHES="${STRICT_PATCHES:-0}"
 
 SKIP_ENV=false
 for arg in "$@"; do
@@ -89,9 +90,13 @@ if [ ! -d "$SGLANG_DIR" ] || [ ! -d "$SGLANG_DIR/.git" ]; then
         FAILED_PATCHES=()
         for patch in "$REPO_DIR/patches/"[0-9]*.patch; do
             echo "  Applying $(basename "$patch")..."
-            git apply "$patch" 2>/dev/null \
-              || patch -p1 --fuzz=3 --forward <"$patch" >/dev/null 2>&1 \
-              || FAILED_PATCHES+=("$(basename "$patch")")
+            if [ "$STRICT_PATCHES" = "1" ]; then
+                git apply "$patch" 2>/dev/null || FAILED_PATCHES+=("$(basename "$patch")")
+            else
+                git apply "$patch" 2>/dev/null \
+                  || patch -p1 --fuzz=3 --forward <"$patch" >/dev/null 2>&1 \
+                  || FAILED_PATCHES+=("$(basename "$patch")")
+            fi
         done
         if [ ${#FAILED_PATCHES[@]} -gt 0 ]; then
             echo "=============================================="
@@ -100,6 +105,7 @@ if [ ! -d "$SGLANG_DIR" ] || [ ! -d "$SGLANG_DIR/.git" ]; then
             echo "=============================================="
             exit 1
         fi
+        git diff --check
     else
         echo "  No numbered patches found; continuing with a pristine install"
     fi

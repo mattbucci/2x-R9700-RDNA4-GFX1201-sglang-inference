@@ -21,6 +21,7 @@ Common overrides:
 CTX=262144 MEM=0.90 PORT=23335 ./scripts/launch.sh laguna
 MODEL=/path/to/checkpoint ./scripts/launch.sh qwen36-moe
 ENV_NAME=other-env SGLANG_DIR=/path/to/sglang ./scripts/launch.sh coder-30b
+GPU_IDS=0 TP=1 ./scripts/launch.sh coder-30b
 ```
 
 The model checkpoint controls compressed-tensors FP8 detection. Presets supply the validated attention backend, quantization path, parsers, memory settings, and graph policy.
@@ -46,6 +47,36 @@ grep -o 'iommu=pt' /proc/cmdline
 ```
 
 Required kernel settings are `CONFIG_HSA_AMD_P2P=y`, `CONFIG_PCI_P2PDMA=y`, and the boot argument `iommu=pt`. `HSA_FORCE_FINE_GRAIN_PCIE=1` remains enabled but is not a substitute for those requirements.
+
+## OCI image
+
+`Dockerfile` builds the pinned ROCm 7.2/v0.5.15 stack without a GPU. GitHub Actions verifies PR builds and publishes commit-addressed `sha-*` tags on default-branch pushes plus version tags to `ghcr.io/<owner>/sglang-rdna4`; pin deployments by digest.
+
+The image defaults to `GPU_IDS=0`; `TP` defaults to the comma-separated `GPU_IDS` count. For example, use `GPU_IDS=0 TP=1` or `GPU_IDS=0,1 TP=2`. It exports the selection through `HIP_VISIBLE_DEVICES`, `ROCR_VISIBLE_DEVICES`, `GPU_DEVICE_ORDINAL`, and `CUDA_VISIBLE_DEVICES`, and rejects TP values larger than the selection. The TP=1-only `SGLANG_RDNA4_DISABLE_STORE_CACHE=1` fallback avoids the RDNA4 JIT KV-store crash; TP=2 leaves the store-cache path unchanged.
+
+Host-side AMD device selection (`/dev/kfd` plus selected `/dev/dri` render nodes, or AMD CDI) determines whether one or two GPUs are available; the image is generic. P2P settings apply only to two-GPU TP workloads and still require the kernel/IOMMU prerequisites above.
+
+Run a preset explicitly so `TP` reaches SGLang's `--tensor-parallel-size`:
+
+```bash
+# One GPU (replace renderD128 and model path for the host).
+docker run --rm -p 8000:23334 --device /dev/kfd --device /dev/dri/renderD128 \
+  -e MODELS_DIR=/models -v /path/to/models:/models:ro ghcr.io/<owner>/sglang-rdna4:sha-<commit> \
+  scripts/launch.sh coder-30b
+
+# Two GPUs; the selected render nodes and GPU_IDS must agree.
+docker run --rm -p 8000:23334 --device /dev/kfd --device /dev/dri/renderD128 --device /dev/dri/renderD129 \
+  -e GPU_IDS=0,1 -e TP=2 -e MODELS_DIR=/models -v /path/to/models:/models:ro \
+  ghcr.io/<owner>/sglang-rdna4:sha-<commit> scripts/launch.sh coder-30b
+```
+
+The entrypoint preserves arbitrary commands (for example, `python -m sglang.launch_server --help`). With no command it prints usage.
+
+Offline validation (no Docker or GPU):
+
+```bash
+bash tests/test_gpu_selection.sh
+```
 
 ## Supported presets
 
