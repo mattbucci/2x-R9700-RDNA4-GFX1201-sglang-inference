@@ -1,27 +1,27 @@
 # RDNA4 inference on 2× R9700
 
-SGLang v0.5.15 with 56 local RDNA4 patches, optimized for single-user long-context inference on two AMD Radeon AI PRO R9700 GPUs. The default serving tree is \`/data/sgl-v0515\`; the default conda environment is \`sglang-triton36-v0515\`.
+SGLang v0.5.15 with 56 local RDNA4 patches, optimized for single-user long-context inference on two AMD Radeon AI PRO R9700 GPUs. The default serving tree is `/data/sgl-v0515`; the default conda environment is `sglang-triton36-v0515`.
 
 The current optimization focus is FP8 coding MoE inference, especially Cohere North Mini Code and Poolside Laguna XS.2. Current measurements and test details are in the [North/Laguna receipt](benchmarks/north-laguna-v0515-r9700-2026-07-12.md).
 
 ## Quick start
 
-\`\`\`bash
+```bash
 ./scripts/setup.sh
 ./scripts/launch.sh north-mini
 ./scripts/launch.sh laguna
 
 python scripts/eval/validate_capabilities.py --port 23334
 bash scripts/bench/bench_256k_sweep.sh north-mini
-\`\`\`
+```
 
 Common overrides:
 
-\`\`\`bash
+```bash
 CTX=262144 MEM=0.90 PORT=23335 ./scripts/launch.sh laguna
 MODEL=/path/to/checkpoint ./scripts/launch.sh qwen36-moe
 ENV_NAME=other-env SGLANG_DIR=/path/to/sglang ./scripts/launch.sh coder-30b
-\`\`\`
+```
 
 The model checkpoint controls compressed-tensors FP8 detection. Presets supply the validated attention backend, quantization path, parsers, memory settings, and graph policy.
 
@@ -40,39 +40,39 @@ The model checkpoint controls compressed-tensors FP8 detection. Presets supply t
 
 TP=2 requires both kernel P2P support and IOMMU passthrough:
 
-\`\`\`bash
+```bash
 zcat /proc/config.gz | grep -E 'CONFIG_HSA_AMD_P2P|CONFIG_PCI_P2PDMA'
 grep -o 'iommu=pt' /proc/cmdline
-\`\`\`
+```
 
-Required kernel settings are \`CONFIG_HSA_AMD_P2P=y\`, \`CONFIG_PCI_P2PDMA=y\`, and the boot argument \`iommu=pt\`. \`HSA_FORCE_FINE_GRAIN_PCIE=1\` remains enabled but is not a substitute for those requirements.
+Required kernel settings are `CONFIG_HSA_AMD_P2P=y`, `CONFIG_PCI_P2PDMA=y`, and the boot argument `iommu=pt`. `HSA_FORCE_FINE_GRAIN_PCIE=1` remains enabled but is not a substitute for those requirements.
 
 ## Supported presets
 
-\`scripts/launch.sh\` is the source of truth for model paths and runtime flags.
+`scripts/launch.sh` is the source of truth for model paths and runtime flags.
 
 | Preset | Model family | Primary lane | Context |
 |---|---|---|---:|
-| \`north-mini\` | North-Mini-Code-1.0 | FP8 MoE + hybrid SWA | 256K |
-| \`laguna\` | Laguna-XS.2 | FP8 MoE + hybrid SWA | 256K |
-| \`coder-30b\` | Qwen3-Coder-30B-A3B | AWQ MoE | 32K default; 256K capable |
-| \`coder-reap-25b\` | Qwen3-Coder REAP 25B-A3B | AWQ MoE | 256K |
-| \`coder-next\` | Qwen3-Coder-Next-80B | AWQ MoE + DeltaNet | 128K |
-| \`coder-next-ream\` | Coder-Next REAM | AWQ MoE + DeltaNet | 128K |
-| \`devstral\` | Devstral-24B | AWQ dense | model preset |
-| \`devstral2\` | Devstral-Small-2-24B | AWQ dense + vision | 256K |
-| \`qwen35\` | Qwen3.5-27B | AWQ/FP8 DeltaNet | 256K |
-| \`qwen35-moe\` | Qwen3.5-35B-A3B | AWQ MoE + DeltaNet | 256K |
-| \`qwen36-27b\` | Qwen3.6-27B | AWQ/FP8 DeltaNet + vision | 256K |
-| \`qwen36-moe\` | Qwen3.6-35B-A3B | AWQ/FP8 MoE + DeltaNet | 256K |
-| \`qwen3vl-32b\` | Qwen3-VL-32B | AWQ dense + vision | 256K override |
-| \`gemma4\` | Gemma 4 26B-A4B | AWQ/FP8 MoE + vision | 256K |
-| \`gemma4-12b\` | Gemma 4 12B Unified | AWQ multimodal | 256K |
-| \`gemma4-31b\` | Gemma 4 31B | AWQ dense + vision | 256K override |
-| \`nemotron-omni\` | Nemotron-3-Nano-Omni | FP8 Mamba2 hybrid MoE | 256K |
-| \`glm45-air\` | GLM-4.5-Air REAP | AWQ MoE | 32K |
+| `north-mini` | North-Mini-Code-1.0 | FP8 MoE + hybrid SWA | 256K |
+| `laguna` | Laguna-XS.2 | FP8 MoE + hybrid SWA | 256K |
+| `coder-30b` | Qwen3-Coder-30B-A3B | AWQ MoE | 32K default; 256K capable |
+| `coder-reap-25b` | Qwen3-Coder REAP 25B-A3B | AWQ MoE | 256K |
+| `coder-next` | Qwen3-Coder-Next-80B | AWQ MoE + DeltaNet | 128K |
+| `coder-next-ream` | Coder-Next REAM | AWQ MoE + DeltaNet | 128K |
+| `devstral` | Devstral-24B | AWQ dense | model preset |
+| `devstral2` | Devstral-Small-2-24B | AWQ dense + vision | 256K |
+| `qwen35` | Qwen3.5-27B | AWQ/FP8 DeltaNet | 256K |
+| `qwen35-moe` | Qwen3.5-35B-A3B | AWQ MoE + DeltaNet | 256K |
+| `qwen36-27b` | Qwen3.6-27B | AWQ/FP8 DeltaNet + vision | 256K |
+| `qwen36-moe` | Qwen3.6-35B-A3B | AWQ/FP8 MoE + DeltaNet | 256K |
+| `qwen3vl-32b` | Qwen3-VL-32B | AWQ dense + vision | 256K override |
+| `gemma4` | Gemma 4 26B-A4B | AWQ/FP8 MoE + vision | 256K |
+| `gemma4-12b` | Gemma 4 12B Unified | AWQ multimodal | 256K |
+| `gemma4-31b` | Gemma 4 31B | AWQ dense + vision | 256K override |
+| `nemotron-omni` | Nemotron-3-Nano-Omni | FP8 Mamba2 hybrid MoE | 256K |
+| `glm45-air` | GLM-4.5-Air REAP | AWQ MoE | 32K |
 
-Additional fallback presets are available for Gemma 4 31B checkpoint formats. Use \`./scripts/launch.sh -h\` for the complete list.
+Additional fallback presets are available for Gemma 4 31B checkpoint formats. Use `./scripts/launch.sh -h` for the complete list.
 
 ## Current performance
 
@@ -97,6 +97,10 @@ Single-user decode throughput across the fleet, measured with one consistent met
 | Qwen3-VL-32B | AWQ dense + vision | 23.4 (20) | 16.5 (27K) |
 | Gemma 4 31B | AWQ dense + SWA | 29.4 (25) | 10.5 (110K) |
 | Gemma 4 12B | AWQ omni + SWA | 38.6 (25) | 10.9 (198K) |
+
+![Fleet single-user decode throughput vs context length](benchmarks/all_models_context.png)
+
+Per-model curves are in each [`benchmarks/<model>/`](benchmarks/) directory (`context_vs_toks.png`).
 
 North-Mini and Laguna carry detailed A/B campaign receipts (router/gate fusion, model-scoped BF16 attention collective, Triton RMSNorm, fused FP8 K/V-store) in the [North/Laguna receipt](benchmarks/north-laguna-v0515-r9700-2026-07-12.md); their rows above reproduce those optimized results under the uniform method. Notes: Gemma 4 26B-A4B (MoE) caps near ~16–30K in the current SWA config; the Coder-Next-80B AWQ checkpoint is pending (the REAM-60B variant is measured); GLM-4.5-Air runs eager and its short-context points are noisy.
 
@@ -123,17 +127,17 @@ Every new or modified ship must pass:
 
 For AWQ:
 
-\`\`\`bash
+```bash
 python scripts/eval/check_awq_scales.py /path/to/awq --base /path/to/bf16
-\`\`\`
+```
 
 The base comparator distinguishes benign zero scales over dead MoE channels from zero scales over live weights. The full pipeline passes its local BF16 base automatically:
 
-\`\`\`bash
+```bash
 bash scripts/quantize/run_full_pipeline.sh qwen35
-\`\`\`
+```
 
-Build \`mattbucci/*\` releases from the upstream BF16 checkpoint with the repository’s own calibration and pruning scripts. Community quantizations are reference data, not release inputs.
+Build `mattbucci/*` releases from the upstream BF16 checkpoint with the repository’s own calibration and pruning scripts. Community quantizations are reference data, not release inputs.
 
 ## Known limitations
 
@@ -142,7 +146,7 @@ Build \`mattbucci/*\` releases from the upstream BF16 checkpoint with the reposi
 - Qwen3-Coder-30B REAM is research-only until it passes a local same-scaffold quality comparison against the unmerged checkpoint.
 - Gemma 4 31B vision quality is degraded; use the 12B or 26B Gemma presets for multimodal workloads.
 - Dense Qwen3.5/3.6 int4 checkpoints are throughput options, but FP8 is the preferred agentic format.
-- Devstral tokenization requires patch 083 so rendered \`[INST]\` and \`[TOOL_CALLS]\` markers remain single special tokens.
+- Devstral tokenization requires patch 083 so rendered `[INST]` and `[TOOL_CALLS]` markers remain single special tokens.
 
 Final experiment dispositions are summarized in [benchmarks/FINDINGS.md](benchmarks/FINDINGS.md).
 
