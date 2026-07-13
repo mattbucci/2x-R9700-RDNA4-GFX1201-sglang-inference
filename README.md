@@ -86,7 +86,7 @@ Single-user decode throughput across the fleet, measured with one consistent met
 | Qwen3-Coder-30B-A3B | AWQ MoE | 86.2 (20) | 57.1 (29K) |
 | Qwen3-Coder-REAP-25B-A3B | AWQ MoE | 87.1 (20) | 18.2 (197K) |
 | Qwen3-Coder-Next-REAM-60B | AWQ MoE + DeltaNet | 48.6 (20) | 22.7 (110K) |
-| GLM-4.5-Air-REAP | AWQ MoE | 22.3 (17) | 18.3 (27K) |
+| GLM-4.5-Air-REAP | AWQ MoE | 25.7 (17) | 25.6 (27K) |
 | Qwen3.5-28B-A3B-REAP | AWQ MoE + DeltaNet | 66.7 (22) | 21.1 (197K) |
 | Qwen3.6-35B-A3B | AWQ MoE + DeltaNet | 67.0 (22) | 22.0 (197K) |
 | Gemma 4 26B-A4B | AWQ MoE + SWA | 74.8 (25) | 58.3 (15K) |
