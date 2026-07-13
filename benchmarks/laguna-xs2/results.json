@@ -1,27 +1,33 @@
 {
-  "model": "Laguna XS.2 FP8 v0.5.15 graph corrected",
+  "model": "Laguna XS.2 FP8 (MoE)",
   "engine": "SGLang",
   "hardware": "2x R9700 TP=2",
-  "timestamp": "v0515-graph-corrected",
-  "note": "TP2; Triton attention/MoE; auto checkpoint FP8 KV; graph bs1; custom AR off",
+  "timestamp": "2026-07-12 v0.5.15+074-082",
+  "note": "Phase0 fleet rebench, streaming-TPOT 3-run median, current tree",
   "context_sweep": [
     {
       "context": 128,
       "input_len": 62,
-      "tpot_ms": 29.0,
-      "tok_per_sec": 34.49
+      "tpot_ms": 20.6,
+      "tok_per_sec": 48.534
     },
     {
       "context": 8192,
       "input_len": 7403,
-      "tpot_ms": 29.55,
-      "tok_per_sec": 33.84
+      "tpot_ms": 21.3,
+      "tok_per_sec": 46.948
     },
     {
       "context": 65536,
       "input_len": 58785,
-      "tpot_ms": 33.27,
-      "tok_per_sec": 30.06
+      "tpot_ms": 26.9,
+      "tok_per_sec": 37.18
+    },
+    {
+      "context": 221184,
+      "input_len": 198256,
+      "tpot_ms": 32.39,
+      "tok_per_sec": 30.872
     }
   ],
   "throughput_sweep": [
@@ -31,5 +37,7 @@
       "tpot_ms": 29.0,
       "ttft_ms": 0
     }
-  ]
+  ],
+  "method": "streaming-TPOT median (decode_ab, 3-run)",
+  "output_tokens": 80
 }

@@ -1,33 +1,33 @@
 {
-  "model": "Devstral-2-24B AWQ",
+  "model": "Devstral-2-24B AWQ (Dense)",
   "engine": "SGLang",
   "hardware": "2x R9700 TP=2",
-  "timestamp": "devstral2-awq-2026-06-21",
-  "note": "no-spec decode depth curve (chart coverage)",
+  "timestamp": "2026-07-12 v0.5.15+074-082",
+  "note": "Phase0 fleet rebench, streaming-TPOT 3-run median, current tree",
   "context_sweep": [
     {
       "context": 128,
       "input_len": 15,
-      "tpot_ms": 24.37,
-      "tok_per_sec": 41.03
+      "tpot_ms": 18.98,
+      "tok_per_sec": 52.677
     },
     {
-      "context": 32000,
-      "input_len": 28689,
-      "tpot_ms": 29.92,
-      "tok_per_sec": 33.42
+      "context": 8192,
+      "input_len": 7356,
+      "tpot_ms": 20.59,
+      "tok_per_sec": 48.577
     },
     {
-      "context": 131000,
-      "input_len": 117398,
-      "tpot_ms": 46.95,
-      "tok_per_sec": 21.3
+      "context": 65536,
+      "input_len": 58738,
+      "tpot_ms": 32.6,
+      "tok_per_sec": 30.675
     },
     {
-      "context": 244000,
-      "input_len": 218654,
-      "tpot_ms": 66.73,
-      "tok_per_sec": 14.99
+      "context": 221184,
+      "input_len": 198208,
+      "tpot_ms": 58.68,
+      "tok_per_sec": 17.043
     }
   ],
   "throughput_sweep": [
@@ -37,5 +37,7 @@
       "tpot_ms": 24.37,
       "ttft_ms": 0
     }
-  ]
+  ],
+  "method": "streaming-TPOT median (decode_ab, 3-run)",
+  "output_tokens": 80
 }

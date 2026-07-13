@@ -6,28 +6,22 @@ method match.
 
 ## Current v0.5.15 results
 
-The current focused campaign used ROCm 7.2, TP=2, Triton attention/MoE, FP8 weights and KV cache, and
-HIP graph capture at batch size 1.
+The whole servable fleet is now measured with one consistent method on the current v0.5.15 + patches
+074–082 tree: streaming-TPOT median (3 runs, decode-only, actual input-token counts), ROCm 7.2, TP=2,
+each model under its production launch preset (quant, graph policy, and KV dtype per preset). The full
+decode table is in the [top-level README](../README.md#current-performance); each `<model>/` directory
+here holds that model's `results.json` and regenerated `context_vs_toks.png` / `concurrency_vs_toks.png`.
+
+North-Mini and Laguna additionally have a full A/B optimization campaign with correctness scoring:
 
 | Model | Input tokens | Decode tok/s | Correctness |
 |---|---:|---:|---|
-| [North Mini Code FP8](north-mini/) | 128 / 29,357 / 117,048 / 219,352 | **71.053 / 60.714 / 42.298 / 33.905** | 34/36; tool call passed |
-| [Laguna XS.2 FP8](laguna-xs2/) | 62 / 7,403 / 58,785 / 220,277 | **48.999 / 47.485 / 39.959 / 29.270** | 34/36; capabilities 2/2; tool call passed |
+| [North Mini Code FP8](north-mini/) | 128 / 29,357 / 117,048 / 219,352 | 71.053 / 60.714 / 42.298 / 33.905 | 34/36; tool call passed |
+| [Laguna XS.2 FP8](laguna-xs2/) | 62 / 7,403 / 58,785 / 220,277 | 48.999 / 47.485 / 39.959 / 29.270 | 34/36; capabilities 2/2; tool call passed |
 
 See the [v0.5.15 receipt](north-laguna-v0515-r9700-2026-07-12.md) and its
 [structured data](north-laguna-v0515-r9700-2026-07-12.json) for configuration, A/B controls, and test
-counts.
-
-## Reference model data
-
-These cards describe the checked-in JSON data and are not claims about the current stack.
-
-| Model | Measurement date | Data |
-|---|---|---|
-| [Coder-30B AWQ](coder-30b-awq/) | 2026-06-01 | Context and concurrency sweep, graph enabled |
-| [Devstral-24B AWQ](devstral-24b-awq/) | 2026-05-31 | Context and concurrency sweep |
-| [Gemma 4 26B AWQ](gemma4-26b-awq/) | 2026-04-11 | 4K context and concurrency sweep |
-| [Qwen3.5-27B AWQ](qwen35-27b-awq/) | 2026-04-12 | 16K context sweep |
+counts. Those are the campaign's own runs; the uniform fleet re-bench reproduces them within run variance.
 
 Final experiment conclusions are consolidated in [FINDINGS.md](FINDINGS.md).
 

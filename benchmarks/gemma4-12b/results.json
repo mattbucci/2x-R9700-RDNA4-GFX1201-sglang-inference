@@ -1,33 +1,33 @@
 {
-  "model": "Gemma4-12B",
+  "model": "Gemma 4 12B AWQ (omni)",
   "engine": "SGLang",
   "hardware": "2x R9700 TP=2",
-  "timestamp": "gemma4-12b-depth-2026-06-21",
-  "note": "no-spec decode depth curve; gemma4_unified omni ship",
+  "timestamp": "2026-07-12 v0.5.15+074-082",
+  "note": "Phase0 fleet rebench, streaming-TPOT 3-run median, current tree",
   "context_sweep": [
     {
       "context": 128,
       "input_len": 25,
-      "tpot_ms": 30.12,
-      "tok_per_sec": 33.2
+      "tpot_ms": 25.87,
+      "tok_per_sec": 38.65
     },
     {
-      "context": 32000,
-      "input_len": 28699,
-      "tpot_ms": 39.64,
-      "tok_per_sec": 25.23
+      "context": 8192,
+      "input_len": 7366,
+      "tpot_ms": 26.11,
+      "tok_per_sec": 38.301
     },
     {
-      "context": 131000,
-      "input_len": 117408,
-      "tpot_ms": 71.6,
-      "tok_per_sec": 13.97
+      "context": 65536,
+      "input_len": 58748,
+      "tpot_ms": 42.38,
+      "tok_per_sec": 23.593
     },
     {
-      "context": 244000,
-      "input_len": 218664,
-      "tpot_ms": 108.36,
-      "tok_per_sec": 9.23
+      "context": 221184,
+      "input_len": 198219,
+      "tpot_ms": 92.03,
+      "tok_per_sec": 10.866
     }
   ],
   "throughput_sweep": [
@@ -37,5 +37,7 @@
       "tpot_ms": 30.12,
       "ttft_ms": 0
     }
-  ]
+  ],
+  "method": "streaming-TPOT median (decode_ab, 3-run)",
+  "output_tokens": 80
 }

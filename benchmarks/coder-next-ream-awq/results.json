@@ -1,0 +1,43 @@
+{
+  "model": "Coder-Next-REAM-60B AWQ (MoE+DeltaNet)",
+  "engine": "SGLang",
+  "hardware": "2x R9700 TP=2",
+  "method": "streaming-TPOT median (decode_ab, 3-run)",
+  "timestamp": "2026-07-12 v0.5.15+074-082",
+  "note": "Phase0 fleet rebench, streaming-TPOT 3-run median, current tree",
+  "output_tokens": 80,
+  "context_sweep": [
+    {
+      "context": 128,
+      "input_len": 20,
+      "tpot_ms": 20.56,
+      "tok_per_sec": 48.636
+    },
+    {
+      "context": 8192,
+      "input_len": 7327,
+      "tpot_ms": 22.38,
+      "tok_per_sec": 44.674
+    },
+    {
+      "context": 32768,
+      "input_len": 29249,
+      "tpot_ms": 26.53,
+      "tok_per_sec": 37.693
+    },
+    {
+      "context": 122880,
+      "input_len": 109631,
+      "tpot_ms": 44.1,
+      "tok_per_sec": 22.677
+    }
+  ],
+  "throughput_sweep": [
+    {
+      "concurrency": 1,
+      "throughput": 48.636,
+      "tpot_ms": 20.56,
+      "ttft_ms": 0
+    }
+  ]
+}

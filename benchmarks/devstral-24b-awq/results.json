@@ -1,98 +1,34 @@
 {
   "model": "Devstral-24B AWQ",
   "engine": "SGLang",
-  "method": "sglang.bench_serving",
+  "method": "streaming-TPOT median (decode_ab, 3-run)",
   "hardware": "2x R9700 TP=2",
-  "timestamp": "2026-05-31 15:51:19",
-  "output_tokens": 100,
+  "timestamp": "2026-07-12 v0.5.15+074-082",
+  "output_tokens": 80,
   "context_sweep": [
     {
       "context": 128,
-      "input_len": 64,
-      "tpot_ms": 98.15,
-      "tok_per_sec": 10.2,
-      "ttft_ms": 115.99,
-      "throughput": 4.8
-    },
-    {
-      "context": 256,
-      "input_len": 128,
-      "tpot_ms": 98.12,
-      "tok_per_sec": 10.2,
-      "ttft_ms": 109.19,
-      "throughput": 4.81
-    },
-    {
-      "context": 512,
-      "input_len": 256,
-      "tpot_ms": 98.12,
-      "tok_per_sec": 10.2,
-      "ttft_ms": 109.58,
-      "throughput": 4.8
-    },
-    {
-      "context": 1024,
-      "input_len": 512,
-      "tpot_ms": 98.13,
-      "tok_per_sec": 10.2,
-      "ttft_ms": 109.03,
-      "throughput": 4.8
-    },
-    {
-      "context": 2048,
-      "input_len": 1024,
-      "tpot_ms": 98.08,
-      "tok_per_sec": 10.2,
-      "ttft_ms": 108.31,
-      "throughput": 4.8
-    },
-    {
-      "context": 4096,
-      "input_len": 2048,
-      "tpot_ms": 98.41,
-      "tok_per_sec": 10.2,
-      "ttft_ms": 130.98,
-      "throughput": 4.8
+      "input_len": 15,
+      "tpot_ms": 20.89,
+      "tok_per_sec": 47.867
     },
     {
       "context": 8192,
-      "input_len": 4096,
-      "tpot_ms": 98.43,
-      "tok_per_sec": 10.2,
-      "ttft_ms": 129.8,
-      "throughput": 4.8
-    },
-    {
-      "context": 16384,
-      "input_len": 8192,
-      "tpot_ms": 98.65,
-      "tok_per_sec": 10.1,
-      "ttft_ms": 222.36,
-      "throughput": 4.8
+      "input_len": 7356,
+      "tpot_ms": 22.6,
+      "tok_per_sec": 44.238
     },
     {
       "context": 32768,
-      "input_len": 16384,
-      "tpot_ms": 100.2,
-      "tok_per_sec": 10.0,
-      "ttft_ms": 386.11,
-      "throughput": 4.81
+      "input_len": 29377,
+      "tpot_ms": 27.1,
+      "tok_per_sec": 36.901
     },
     {
-      "context": 65536,
-      "input_len": 32768,
-      "tpot_ms": 103.92,
-      "tok_per_sec": 9.6,
-      "ttft_ms": 721.28,
-      "throughput": 4.81
-    },
-    {
-      "context": 131072,
-      "input_len": 65536,
-      "tpot_ms": 110.1,
-      "tok_per_sec": 9.1,
-      "ttft_ms": 1352.59,
-      "throughput": 4.67
+      "context": 122880,
+      "input_len": 110121,
+      "tpot_ms": 43.44,
+      "tok_per_sec": 23.018
     }
   ],
   "throughput_sweep": [
@@ -132,5 +68,6 @@
       "tpot_ms": 105.86,
       "ttft_ms": 7852.43
     }
-  ]
+  ],
+  "note": "Phase0 fleet rebench, streaming-TPOT 3-run median, current tree"
 }

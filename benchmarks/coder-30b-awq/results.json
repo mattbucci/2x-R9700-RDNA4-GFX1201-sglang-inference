@@ -1,52 +1,34 @@
 {
-  "model": "Coder-30B AWQ",
+  "model": "Coder-30B AWQ (MoE)",
   "engine": "SGLang",
-  "method": "sglang.bench_serving",
+  "method": "streaming-TPOT median (decode_ab, 3-run)",
   "hardware": "2x R9700 TP=2",
-  "timestamp": "2026-06-01 cuda-graph ON",
-  "output_tokens": 100,
+  "timestamp": "2026-07-12 v0.5.15+074-082",
+  "output_tokens": 80,
   "context_sweep": [
     {
       "context": 128,
       "input_len": 20,
-      "tpot_ms": 17.87,
-      "tok_per_sec": 55.96
+      "tpot_ms": 11.6,
+      "tok_per_sec": 86.214
     },
     {
       "context": 4096,
       "input_len": 3673,
-      "tpot_ms": 18.32,
-      "tok_per_sec": 54.57
+      "tpot_ms": 12.34,
+      "tok_per_sec": 81.005
     },
     {
       "context": 16384,
       "input_len": 14634,
-      "tpot_ms": 20.53,
-      "tok_per_sec": 48.71
+      "tpot_ms": 14.54,
+      "tok_per_sec": 68.776
     },
     {
       "context": 32768,
       "input_len": 29249,
-      "tpot_ms": 23.56,
-      "tok_per_sec": 42.45
-    },
-    {
-      "context": 65536,
-      "input_len": 58479,
-      "tpot_ms": 29.15,
-      "tok_per_sec": 34.3
-    },
-    {
-      "context": 131072,
-      "input_len": 116940,
-      "tpot_ms": 46.65,
-      "tok_per_sec": 21.44
-    },
-    {
-      "context": 245760,
-      "input_len": 219244,
-      "tpot_ms": 94.41,
-      "tok_per_sec": 10.59
+      "tpot_ms": 17.53,
+      "tok_per_sec": 57.058
     }
   ],
   "throughput_sweep": [
@@ -87,5 +69,5 @@
       "ttft_ms": 84.77
     }
   ],
-  "note": "cuda-graph ON (2026-06-01)"
+  "note": "Phase0 fleet rebench, streaming-TPOT 3-run median, graphs ON TP2, current tree"
 }

@@ -76,20 +76,29 @@ Additional fallback presets are available for Gemma 4 31B checkpoint formats. Us
 
 ## Current performance
 
-Focused v0.5.15 single-user streaming-TPOT results:
+Single-user decode throughput across the fleet, measured with one consistent method on the current v0.5.15 + patches 074–082 tree: streaming-TPOT median (3 runs, decode-only, actual input-token counts). "Short" ≈ 128-token input; "Deep" = the deepest measured input. Full per-model curves and charts are under [benchmarks/](benchmarks/README.md).
 
-| Model | Input tokens | Decode tok/s |
-|---|---:|---:|
-| North Mini Code | 128 | 71.053 |
-| North Mini Code | 29,357 | 60.714 |
-| North Mini Code | 117,048 | 42.298 |
-| North Mini Code | 219,352 | 33.905 |
-| Laguna XS.2 | 62 | 48.999 |
-| Laguna XS.2 | 7,403 | 47.485 |
-| Laguna XS.2 | 58,785 | 39.959 |
-| Laguna XS.2 | 220,277 | 29.270 |
+| Model | Class | Short tok/s (input) | Deep tok/s (input) |
+|---|---|---:|---:|
+| North-Mini-Code-1.0 | FP8 MoE + hybrid SWA | 71.8 (128) | 35.6 (197K) |
+| Laguna-XS.2 | FP8 MoE + hybrid SWA | 48.5 (62) | 30.9 (198K) |
+| Nemotron-3-Nano-Omni-30B | FP8 Mamba2 hybrid MoE | 95.6 (28) | 60.9 (198K) |
+| Qwen3-Coder-30B-A3B | AWQ MoE | 86.2 (20) | 57.1 (29K) |
+| Qwen3-Coder-REAP-25B-A3B | AWQ MoE | 87.1 (20) | 18.2 (197K) |
+| Qwen3-Coder-Next-REAM-60B | AWQ MoE + DeltaNet | 48.6 (20) | 22.7 (110K) |
+| GLM-4.5-Air-REAP | AWQ MoE | 22.3 (17) | 18.3 (27K) |
+| Qwen3.5-28B-A3B-REAP | AWQ MoE + DeltaNet | 66.7 (22) | 21.1 (197K) |
+| Qwen3.6-35B-A3B | AWQ MoE + DeltaNet | 67.0 (22) | 22.0 (197K) |
+| Gemma 4 26B-A4B | AWQ MoE + SWA | 74.8 (25) | 58.3 (15K) |
+| Devstral-24B | AWQ dense | 47.9 (15) | 23.0 (110K) |
+| Devstral-Small-2-24B | AWQ dense + vision | 52.7 (15) | 17.0 (198K) |
+| Qwen3.5-27B | AWQ dense + DeltaNet | 24.5 (22) | 11.2 (197K) |
+| Qwen3.6-27B | AWQ dense + vision | 24.9 (22) | 11.5 (197K) |
+| Qwen3-VL-32B | AWQ dense + vision | 23.4 (20) | 16.5 (27K) |
+| Gemma 4 31B | AWQ dense + SWA | 29.4 (25) | 10.5 (110K) |
+| Gemma 4 12B | AWQ omni + SWA | 38.6 (25) | 10.9 (198K) |
 
-Laguna’s fused FP8 K/V-store reverse A/B measured +2.57%, +20.70%, and +46.89% at the first three depths. Both models remained coherent at the deepest tested inputs. Full baselines, run counts, correctness results, and rejected experiments are stored in the [receipt](benchmarks/north-laguna-v0515-r9700-2026-07-12.md) and its [JSON data](benchmarks/north-laguna-v0515-r9700-2026-07-12.json).
+North-Mini and Laguna carry detailed A/B campaign receipts (router/gate fusion, model-scoped BF16 attention collective, Triton RMSNorm, fused FP8 K/V-store) in the [North/Laguna receipt](benchmarks/north-laguna-v0515-r9700-2026-07-12.md); their rows above reproduce those optimized results under the uniform method. Notes: Gemma 4 26B-A4B (MoE) caps near ~16–30K in the current SWA config; the Coder-Next-80B AWQ checkpoint is pending (the REAM-60B variant is measured); GLM-4.5-Air runs eager and its short-context points are noisy.
 
 Reference fleet measurements are indexed in [benchmarks/README.md](benchmarks/README.md) and labeled by stack. Do not present a short prompt on a 256K-capable server as 256K-depth throughput.
 

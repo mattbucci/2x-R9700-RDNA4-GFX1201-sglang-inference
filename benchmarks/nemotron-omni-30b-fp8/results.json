@@ -1,106 +1,34 @@
 {
-  "model": "Nemotron-Omni-30B FP8",
+  "model": "Nemotron-Omni-30B FP8 (Mamba2)",
   "engine": "SGLang",
-  "method": "sglang.bench_serving",
+  "method": "streaming-TPOT median (decode_ab, 3-run)",
   "hardware": "2x R9700 TP=2",
-  "timestamp": "2026-05-31 16:27:39",
-  "output_tokens": 100,
+  "timestamp": "2026-07-12 v0.5.15+074-082",
+  "output_tokens": 80,
   "context_sweep": [
     {
       "context": 128,
-      "input_len": 64,
-      "tpot_ms": 32.56,
-      "tok_per_sec": 30.7,
-      "ttft_ms": 43.32,
-      "throughput": 4.79
-    },
-    {
-      "context": 256,
-      "input_len": 128,
-      "tpot_ms": 31.64,
-      "tok_per_sec": 31.6,
-      "ttft_ms": 42.05,
-      "throughput": 4.79
-    },
-    {
-      "context": 512,
-      "input_len": 256,
-      "tpot_ms": 32.48,
-      "tok_per_sec": 30.8,
-      "ttft_ms": 42.36,
-      "throughput": 4.8
-    },
-    {
-      "context": 1024,
-      "input_len": 512,
-      "tpot_ms": 31.75,
-      "tok_per_sec": 31.5,
-      "ttft_ms": 42.6,
-      "throughput": 4.81
-    },
-    {
-      "context": 2048,
-      "input_len": 1024,
-      "tpot_ms": 31.94,
-      "tok_per_sec": 31.3,
-      "ttft_ms": 41.93,
-      "throughput": 4.79
-    },
-    {
-      "context": 4096,
-      "input_len": 2048,
-      "tpot_ms": 31.79,
-      "tok_per_sec": 31.5,
-      "ttft_ms": 113.33,
-      "throughput": 4.8
+      "input_len": 28,
+      "tpot_ms": 10.46,
+      "tok_per_sec": 95.568
     },
     {
       "context": 8192,
-      "input_len": 4096,
-      "tpot_ms": 31.82,
-      "tok_per_sec": 31.4,
-      "ttft_ms": 112.77,
-      "throughput": 4.8
-    },
-    {
-      "context": 16384,
-      "input_len": 8192,
-      "tpot_ms": 32.03,
-      "tok_per_sec": 31.2,
-      "ttft_ms": 378.35,
-      "throughput": 3.69
-    },
-    {
-      "context": 32768,
-      "input_len": 16384,
-      "tpot_ms": 31.9,
-      "tok_per_sec": 31.3,
-      "ttft_ms": 466.07,
-      "throughput": 4.8
+      "input_len": 7369,
+      "tpot_ms": 10.79,
+      "tok_per_sec": 92.675
     },
     {
       "context": 65536,
-      "input_len": 32768,
-      "tpot_ms": 32.53,
-      "tok_per_sec": 30.7,
-      "ttft_ms": 637.57,
-      "throughput": 4.81
+      "input_len": 58751,
+      "tpot_ms": 12.18,
+      "tok_per_sec": 82.125
     },
     {
-      "context": 131072,
-      "input_len": 65536,
-      "tpot_ms": 32.63,
-      "tok_per_sec": 30.6,
-      "ttft_ms": 1001.03,
-      "throughput": 4.8
-    },
-    {
-      "context": 262144,
-      "input_len": 131072,
-      "tpot_ms": 32.97,
-      "tok_per_sec": 30.3,
-      "ttft_ms": 1738.91,
-      "throughput": 4.81
+      "context": 221184,
+      "input_len": 198221,
+      "tpot_ms": 16.41,
+      "tok_per_sec": 60.948
     }
   ],
   "throughput_sweep": [
@@ -128,5 +56,6 @@
       "tpot_ms": 181.37,
       "ttft_ms": 185.0
     }
-  ]
+  ],
+  "note": "Phase0 fleet rebench, streaming-TPOT 3-run median, current tree"
 }

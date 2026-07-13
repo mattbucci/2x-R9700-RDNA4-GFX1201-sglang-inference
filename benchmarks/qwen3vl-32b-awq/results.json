@@ -1,33 +1,33 @@
 {
-  "model": "Qwen3-VL-32B AWQ",
+  "model": "Qwen3-VL-32B AWQ (Dense VL)",
   "engine": "SGLang",
   "hardware": "2x R9700 TP=2",
-  "timestamp": "qwen3vl-32b-awq-2026-06-21",
-  "note": "no-spec decode depth curve (chart coverage); ctx 262144",
+  "timestamp": "2026-07-12 v0.5.15+074-082",
+  "note": "Phase0 fleet rebench, streaming-TPOT 3-run median, current tree",
   "context_sweep": [
     {
       "context": 128,
       "input_len": 20,
-      "tpot_ms": 40.42,
-      "tok_per_sec": 24.74
+      "tpot_ms": 42.8,
+      "tok_per_sec": 23.366
     },
     {
-      "context": 32000,
-      "input_len": 28564,
-      "tpot_ms": 50.87,
-      "tok_per_sec": 19.66
+      "context": 4096,
+      "input_len": 3673,
+      "tpot_ms": 42.52,
+      "tok_per_sec": 23.521
     },
     {
-      "context": 131000,
-      "input_len": 116875,
-      "tpot_ms": 75.5,
-      "tok_per_sec": 13.24
+      "context": 16384,
+      "input_len": 14634,
+      "tpot_ms": 45.47,
+      "tok_per_sec": 21.992
     },
     {
-      "context": 244000,
-      "input_len": 217675,
-      "tpot_ms": 105.3,
-      "tok_per_sec": 9.5
+      "context": 29696,
+      "input_len": 26509,
+      "tpot_ms": 60.75,
+      "tok_per_sec": 16.462
     }
   ],
   "throughput_sweep": [
@@ -37,5 +37,7 @@
       "tpot_ms": 38.79,
       "ttft_ms": 0
     }
-  ]
+  ],
+  "method": "streaming-TPOT median (decode_ab, 3-run)",
+  "output_tokens": 80
 }
