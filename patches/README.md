@@ -1,6 +1,6 @@
 # SGLang v0.5.15 RDNA4 patches
 
-This directory contains the **56 active numeric patches** applied to pristine SGLang v0.5.15 for the
+This directory contains the **57 active numeric patches** applied to pristine SGLang v0.5.15 for the
 2× Radeon AI PRO R9700 serving stack. The default tree is `/data/sgl-v0515`; the default conda environment
 is `sglang-triton36-v0515`.
 
@@ -151,6 +151,7 @@ can be proposed upstream. `Partial` requires a fresh comparison with upstream be
 | 058 | `rdna4-ngram-reconstruct-fallback` | Candidate | Provides a GPU-vectorized reconstruction fallback when the optional native NGRAM operation is absent. |
 | 062 | `cohere2moe-v0513-hybrid-swa-classification` | Candidate | Classifies Cohere2 MoE as hybrid SWA so North receives valid layer and window cache metadata. |
 | 083 | `mistral-common-backend-optout` | Candidate | Reroutes MistralCommonBackend tokenizers to TokenizersBackend so rendered special tokens retain their IDs. |
+| 084 | `rdna4-qwen3moe-bf16-attention-allreduce` | Candidate | Opts Qwen3-MoE (coder-30b, coder-reap-25b) out of the HIP FP32 attention all-reduce, using the BF16 collective. Measured +1-3% single-user decode, coherent; FP32 stays the default for recurrent hybrids. |
 
 ## Build stack
 

@@ -1,0 +1,17 @@
+diff --git a/python/sglang/srt/models/qwen3_moe.py b/python/sglang/srt/models/qwen3_moe.py
+index a7d0ae45ef..9ab3585df7 100644
+--- a/python/sglang/srt/models/qwen3_moe.py
++++ b/python/sglang/srt/models/qwen3_moe.py
+@@ -797,6 +797,12 @@ class Qwen3MoeDecoderLayer(nn.Module):
+             post_attention_layernorm=self.post_attention_layernorm,
+             allow_reduce_scatter=True,
+             is_last_layer=(self.layer_id == self.config.num_hidden_layers - 1),
++            # Qwen3-MoE is a conventional attention model (no recurrent DeltaNet/Mamba
++            # state), so opt out of the universal HIP FP32 attention all-reduce and use
++            # the normal BF16 collective. Also covers coder-reap-25b (same file). Patch
++            # 080 established this switch for Laguna; FP32 stays the default for recurrent
++            # users. A/B measured on 2x R9700 before retaining.
++            hip_fp32_allreduce=False,
+         )
+ 
+     def forward(
