@@ -1,0 +1,32 @@
+{
+  "label": "coder-reap-25b @255K decode (v0.5.15, TP2)",
+  "model": "/home/letsrtfm/AI/models/Qwen3-Coder-REAP-25B-A3B-AWQ-native",
+  "trace_file": "/tmp/claude-1000/-home-letsrtfm-AI-2x-R9700-RDNA4-GFX1201-sglang-inference/58d0482d-d878-4be2-882e-59f588ff7e56/scratchpad/prof/1784003190.123432-TP-1.trace.json.gz",
+  "steps_captured": 40,
+  "completion_tokens": 44,
+  "gpu_busy_total_ms": 4099.4,
+  "per_step_gpu_busy_ms": 102.485,
+  "breakdown_pct_of_gpu_busy": {
+    "attention": 89.8,
+    "moe": 3.1,
+    "nccl": 2.8,
+    "rocblas_gemm": 1.7,
+    "awq_gemv": 1.5,
+    "elementwise_norm": 0.6,
+    "other": 0.5
+  },
+  "top_kernels_ms_total": {
+    "_fwd_grouped_kernel_stage1": 1835.93,
+    "_fwd_kernel": 1829.49,
+    "fused_moe_kernel_gptq_awq": 118.53,
+    "ncclDevKernel_Generic_4(ncclDevKernelArgsStorage<4096ul>)": 115.39,
+    "void awq_gemv_bf16_kernel<8>(__hip_bfloat16 const*, unsigned int const": 60.12,
+    "Cijk_Alik_Bljk_BBS_BH_Bias_HA_S_SAV_UserArgs_MT16x16x32_MI16x16x1_SN_L": 28.18,
+    "Cijk_Alik_Bljk_BBS_BH_Bias_HA_S_SAV_UserArgs_MT128x128x32_MI16x16x1_SN": 28.06,
+    "_fwd_kernel_stage2": 10.42,
+    "void at::native::warptopk::warpMergeSortTopK<1, 1, 128, 1, c10::BFloat": 7.76,
+    "_gemma_fused_add_rmsnorm_kernel": 7.75,
+    "_gemma_rmsnorm_kernel": 7.41,
+    "_fused_qk_rope_reshape_and_cache_kernel": 6.27
+  }
+}
