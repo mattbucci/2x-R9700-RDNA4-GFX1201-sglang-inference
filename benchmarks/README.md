@@ -52,6 +52,13 @@ python scripts/eval/eval_comprehensive.py --port 23334 --parallel 4
 Run one server at a time on an otherwise idle system. For speculative decoding, measure at the real KV
 depth with non-repetitive content; a short prompt on a large-capacity server is not a long-context result.
 
+**Depth-measurement warning.** `bench_all_unified.py` drives `sglang.bench_serving --dataset-name random`,
+whose `--random-range-ratio` defaults to `0.0` — that draws each prompt's length uniform in `[1, N]`, so
+"depth" rows silently measure ~half the label. The harness now pins `--random-range-ratio 1`. The fleet
+table and charts instead come from `decode_ab.py` (one deterministic full-length prompt, actual
+input-token counts). Older `results.json` files whose `method` is `sglang.bench_serving` are
+depth-suspect — see [bench-serving-audit-2026-07-14.md](bench-serving-audit-2026-07-14.md).
+
 ## Data layout
 
 - Per-model `results.json` files are immutable inputs for their charts.
