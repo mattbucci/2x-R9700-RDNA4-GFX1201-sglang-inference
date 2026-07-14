@@ -22,6 +22,15 @@ HIP GEMV path.
 The isolated Devstral down-projection measured 0.157 ms in FP16 and 0.178 ms in BF16, with cosine
 similarity 1.0 against unpack-and-dequantize Torch.
 
+### Dense GEMV narrow-N under-population (open — designed, not implemented)
+
+The same dense HIP GEMV launches `ceil(N/256)` blocks, so narrow-output projections (attn_o
+N=5120 → 20 blocks, qkv → 28) under-populate the 64 CUs and reach only ~45–82% of the bandwidth
+roofline, versus ~95–110% for the wide projections (gate_up/down). `split_k` cannot fix it (it
+adds threads within a block, not blocks). Fix = grid-level split-K (~1.6× on attn_o, low-single-
+digit % on dense TPOT, shared across all AWQ-dense models). Full root cause, design, and test
+plan: [dense-gemv-narrow-n-splitk-handoff.md](dense-gemv-narrow-n-splitk-handoff.md).
+
 ### Rejected decode changes
 
 | Experiment | Measurement | Disposition |
