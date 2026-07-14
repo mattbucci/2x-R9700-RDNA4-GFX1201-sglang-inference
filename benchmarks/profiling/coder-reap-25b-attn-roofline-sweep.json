@@ -1,0 +1,48 @@
+{
+  "roofline_gbps": 1280.0,
+  "kv_heads": 4,
+  "head_dim": 128,
+  "layers": 48,
+  "rows": [
+    {
+      "ctx": 8192,
+      "attn_ms_per_step": 0.04,
+      "kv_gb": 0.4,
+      "gbps": 9474.2,
+      "pct_roofline": 740.2,
+      "per_step_gpu_ms": 2.326
+    },
+    {
+      "ctx": 32768,
+      "attn_ms_per_step": 0.15,
+      "kv_gb": 1.61,
+      "gbps": 10509.7,
+      "pct_roofline": 821.1,
+      "per_step_gpu_ms": 7.237
+    },
+    {
+      "ctx": 65536,
+      "attn_ms_per_step": 11.64,
+      "kv_gb": 3.22,
+      "gbps": 276.6,
+      "pct_roofline": 21.6,
+      "per_step_gpu_ms": 33.726
+    },
+    {
+      "ctx": 131072,
+      "attn_ms_per_step": 23.48,
+      "kv_gb": 6.44,
+      "gbps": 274.4,
+      "pct_roofline": 21.4,
+      "per_step_gpu_ms": 57.998
+    },
+    {
+      "ctx": 255000,
+      "attn_ms_per_step": 46.59,
+      "kv_gb": 12.53,
+      "gbps": 269.0,
+      "pct_roofline": 21.0,
+      "per_step_gpu_ms": 113.791
+    }
+  ]
+}
