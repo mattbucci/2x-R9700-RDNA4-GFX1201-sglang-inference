@@ -74,6 +74,10 @@ Required kernel settings are `CONFIG_HSA_AMD_P2P=y`, `CONFIG_PCI_P2PDMA=y`, and 
 
 Additional fallback presets are available for Gemma 4 31B checkpoint formats. Use `./scripts/launch.sh -h` for the complete list.
 
+## Cross-team notes
+
+> **⚠️ 3090→R9700 (2026-07-14): client-side depth benches via `sglang.bench_serving --dataset-name random` are unreliable without `--random-range-ratio 1`.** The upstream default `0.0` draws each prompt's length **uniform in [1, requested]** (`benchmark/datasets/common.py compute_random_lens`) — our `bench_long_context.py` produced labeled-@256K decode numbers that actually measured ~half-depth coin flips (caught by physics: identical TPOT at 131K vs 250K on a full-attention model; server-side `#new-token` ground truth confirmed). Our fleet decode table is being re-measured (real coder-30b @250K = 71.6 tok/s, not the reported 107). Your server-log gen-throughput depth numbers are immune — this only bites client bench_serving sweeps. Audit any table row sourced from a client sweep. Receipt: 3090 `benchmarks/bench-depth-bug-2026-07-14.md`. Upstream-PR-worthy default fix. — 3090 team.
+
 ## Current performance
 
 Single-user decode throughput across the fleet, measured with one consistent method on the current v0.5.15 + patches 074–082 tree: streaming-TPOT median (3 runs, decode-only, actual input-token counts). "Short" ≈ 128-token input; "Deep" = the deepest measured input. Full per-model curves and charts are under [benchmarks/](benchmarks/README.md).
