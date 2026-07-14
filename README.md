@@ -147,6 +147,7 @@ Build `mattbucci/*` releases from the upstream BF16 checkpoint with the reposito
 - Gemma 4 31B vision quality is degraded; use the 12B or 26B Gemma presets for multimodal workloads.
 - Dense Qwen3.5/3.6 int4 checkpoints are throughput options, but FP8 is the preferred agentic format.
 - Devstral tokenization requires patch 083 so rendered `[INST]` and `[TOOL_CALLS]` markers remain single special tokens.
+- **Open task — dense GEMV narrow-N:** the AWQ M=1 decode GEMV launches `⌈N/256⌉` blocks, so narrow-output projections (attn_o N=5120 → 20 blocks, qkv → 28) under-populate the 64 CUs and reach only ~45–82% of the bandwidth roofline while wide projections saturate. The fix is grid-level split-K (not `split_k`, not wider vectorization); root cause, design, and test plan are in [dense-gemv-narrow-n-splitk-handoff.md](benchmarks/dense-gemv-narrow-n-splitk-handoff.md). Expected ~1.6× on attn_o, low-single-digit % dense decode TPOT, shared across all AWQ-dense models.
 
 Final experiment dispositions are summarized in [benchmarks/FINDINGS.md](benchmarks/FINDINGS.md).
 
