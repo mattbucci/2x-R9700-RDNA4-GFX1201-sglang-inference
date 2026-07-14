@@ -31,6 +31,16 @@ adds threads within a block, not blocks). Fix = grid-level split-K (~1.6× on at
 digit % on dense TPOT, shared across all AWQ-dense models). Full root cause, design, and test
 plan: [dense-gemv-narrow-n-splitk-handoff.md](dense-gemv-narrow-n-splitk-handoff.md).
 
+### 256K attention split-KV CU occupancy (fixed — patch 086)
+
+At true 256K, single-user decode is ~85–90% attention (KV-read). The Triton flash-decode was
+KV-read-bound at only ~21% of the 1280 GB/s roofline because the decode grid is
+`head_groups × num_kv_splits` and the upstream AMD default hard-set `num_kv_splits=16` — ~32 blocks on
+gfx1201's 64 CUs (half idle). Raising it to 64 fills the CUs at depth: **2.14× 256K decode**
+(14.4→30.7 tok/s, coder-reap-25b; A/B 16/32/48/64 splits → 21/38/46/51% roofline), short context
+unregressed. Patch 086; full evidence chain in
+[attention-decode-256k-kvsplit.md](attention-decode-256k-kvsplit.md).
+
 ### Rejected decode changes
 
 | Experiment | Measurement | Disposition |

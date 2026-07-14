@@ -1,6 +1,6 @@
 # RDNA4 inference on 2× R9700
 
-SGLang v0.5.15 with 56 local RDNA4 patches, optimized for single-user long-context inference on two AMD Radeon AI PRO R9700 GPUs. The default serving tree is `/data/sgl-v0515`; the default conda environment is `sglang-triton36-v0515`.
+SGLang v0.5.15 with 59 local RDNA4 patches, optimized for single-user long-context inference on two AMD Radeon AI PRO R9700 GPUs. The default serving tree is `/data/sgl-v0515`; the default conda environment is `sglang-triton36-v0515`.
 
 The current optimization focus is FP8 coding MoE inference, especially Cohere North Mini Code and Poolside Laguna XS.2. Current measurements and test details are in the [North/Laguna receipt](benchmarks/north-laguna-v0515-r9700-2026-07-12.md).
 
@@ -30,7 +30,7 @@ The model checkpoint controls compressed-tensors FP8 detection. Presets supply t
 | Component | Version |
 |---|---|
 | GPUs | 2× AMD Radeon AI PRO R9700, gfx1201, 32 GiB each |
-| SGLang | v0.5.15 + 56 patches |
+| SGLang | v0.5.15 + 59 patches |
 | Python | 3.12 |
 | PyTorch | 2.11.0+rocm7.2 |
 | ROCm | 7.2 |
@@ -118,6 +118,7 @@ Reference fleet measurements are indexed in [benchmarks/README.md](benchmarks/RE
 - Use no speculative decoding at true 256K depth. The validated speculative lane is limited to short and medium context.
 - Treat tool-call and reasoning parsers as model-specific correctness settings, not optional presentation features.
 - Keep the Triton cache warm when collecting comparative numbers.
+- On gfx1201 the Triton flash-decode `num_kv_splits` defaults to 64 (patch 086), not the upstream AMD 16, so the decode grid fills the 64 CUs at long context: ~2.14× 256K single-user decode (14.4→30.7 tok/s on coder-reap-25b), short context unregressed. Tune with `SGLANG_KV_SPLITS_OVERRIDE`. Deep-context rows in the results table predate this and understate full-attention 256K decode.
 
 ## Validation and quantization
 
