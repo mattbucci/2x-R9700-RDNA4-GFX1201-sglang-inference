@@ -46,18 +46,11 @@ MODELS=(
 )
 # coder-next (80B AWQ) omitted — checkpoint absent (same as fleet_rebench).
 
-kill_server(){
-  pkill -f "sglang.launch_server" 2>/dev/null || true
-  sleep 5
-  local i used
-  for i in $(seq 1 25); do
-    used=$(rocm-smi --showmemuse 2>/dev/null | awk -F: '/GPU\[0/{gsub(/[^0-9]/,"",$NF); print $NF; exit}')
-    if [ -n "$used" ] && [ "$used" -le 2 ] 2>/dev/null; then return 0; fi
-    if [ "$i" -eq 8 ]; then pkill -f "AI/models/" 2>/dev/null || true; fi
-    sleep 3
-  done
-  return 0
-}
+# Route teardown through free_gpu.sh: kills workers by PID, waits for VRAM, prunes the
+# leaked RCCL /dev/shm IPC segments that cause the rapid-relaunch boot coredump (see
+# README Known limitations), and settles before the next boot. This is what makes
+# back-to-back model cycling boot cleanly instead of hitting the ~20% coredump.
+kill_server(){ bash "$REPO/scripts/free_gpu.sh"; }
 wait_health(){
   local i
   for i in $(seq 1 240); do
@@ -97,8 +90,7 @@ run_one(){
   fi
 
   echo "[$slug] DONE"
-  kill_server
-  sleep 8
+  kill_server   # free_gpu.sh already settles; next model's start-of-run_one kill also prunes
 }
 
 ONLY="${1:-}"
