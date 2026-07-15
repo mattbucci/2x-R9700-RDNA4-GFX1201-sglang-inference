@@ -1,0 +1,62 @@
+{
+  "north-mini-kv64-8k": {
+    "slug": "north-mini-kv64-8k",
+    "model": "/home/letsrtfm/AI/models/North-Mini-Code-1.0-fp8",
+    "requested_tokens": 8000,
+    "actual_prompt_tokens": 7333,
+    "full_attn": false,
+    "late_recall": true,
+    "mid_recall": true,
+    "coherent": true,
+    "finish_reason": "stop",
+    "truncated_inconclusive": false,
+    "elapsed_sec": 3.8,
+    "sample": "MID=COBALT-2291 LATE=MELON-7734 The user asks: \"two passcodes were stated in the document above, one labeled MID and one labeled LATE. Reply with EXACTLY two lines and nothing else: MID=<value> LATE=<",
+    "timestamp": "2026-07-14 21:32"
+  },
+  "north-mini-kv64-197k": {
+    "slug": "north-mini-kv64-197k",
+    "model": "/home/letsrtfm/AI/models/North-Mini-Code-1.0-fp8",
+    "requested_tokens": 221184,
+    "actual_prompt_tokens": 197498,
+    "full_attn": false,
+    "late_recall": true,
+    "mid_recall": false,
+    "coherent": true,
+    "finish_reason": "stop",
+    "truncated_inconclusive": false,
+    "elapsed_sec": 145.4,
+    "sample": "MID=<unknown> LATE=MELON-7734 The user asks: \"MID=<value> LATE=<value>\" They want me to reply with exactly two lines, nothing else, presumably filling in the values. But what values? The user says \"On",
+    "timestamp": "2026-07-14 21:35"
+  },
+  "north-mini-kv16-197k": {
+    "slug": "north-mini-kv16-197k",
+    "model": "/home/letsrtfm/AI/models/North-Mini-Code-1.0-fp8",
+    "requested_tokens": 221184,
+    "actual_prompt_tokens": 197498,
+    "full_attn": false,
+    "late_recall": false,
+    "mid_recall": false,
+    "coherent": true,
+    "finish_reason": "stop",
+    "truncated_inconclusive": false,
+    "elapsed_sec": 139.1,
+    "sample": "MID=0 LATE=0 The user asks: \"MID=<value> LATE=<value>\" and wants exactly two lines, nothing else. Likely they want us to output the two passcodes? But the user didn't provide any values. This is a typ",
+    "timestamp": "2026-07-14 21:38"
+  },
+  "north-mini-kv16-8k": {
+    "slug": "north-mini-kv16-8k",
+    "model": "/home/letsrtfm/AI/models/North-Mini-Code-1.0-fp8",
+    "requested_tokens": 8000,
+    "actual_prompt_tokens": 7333,
+    "full_attn": false,
+    "late_recall": true,
+    "mid_recall": true,
+    "coherent": true,
+    "finish_reason": "stop",
+    "truncated_inconclusive": false,
+    "elapsed_sec": 3.9,
+    "sample": "MID=COBALT-2291 LATE=MELON-7734 The user gave a long text with repeated phrase \"The quick brown fox jumps over the lazy dog.\" It includes two important fact statements:  >>> IMPORTANT FACT: the MID pa",
+    "timestamp": "2026-07-14 21:38"
+  }
+}

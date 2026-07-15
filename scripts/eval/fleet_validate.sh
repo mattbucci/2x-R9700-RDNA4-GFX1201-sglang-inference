@@ -29,7 +29,7 @@ MODELS=(
  "coder-30b|coder-30b-awq|29696|--skip-vision --skip-video|1"
  "glm45-air|glm45-air-awq|29696|--skip-vision --skip-video|1"
  "qwen3vl-32b|qwen3vl-32b-awq|29696||1"
- "gemma4|gemma-4-26b-awq|29696||0"
+ "gemma4|gemma-4-26b-awq|16384||0"
  "devstral|devstral-24b-awq|122880|--skip-vision --skip-video|1"
  "gemma4-31b|gemma4-31b|122880||0"
  "coder-next-ream|coder-next-ream-awq|122880|--skip-vision --skip-video|1"
@@ -83,8 +83,10 @@ run_one(){
 
   if [ "${DEEP_ONLY:-0}" != "1" ]; then
     # shellcheck disable=SC2086
+    # --max-tokens-thinking 2048: the 8192 default times out the thinking probe on
+    # slow DeltaNet arches (qwen36-27b); 2048 still triggers reasoning_seen+answer_ok.
     python "$REPO/scripts/eval/validate_capabilities.py" --port "$PORT" \
-        --save "$CAP_JSON" --tag "$slug" $capflags \
+        --save "$CAP_JSON" --tag "$slug" --max-tokens-thinking 2048 $capflags \
         || echo "[$slug] capability check reported FAIL (triage in $CAP_JSON)"
   fi
 

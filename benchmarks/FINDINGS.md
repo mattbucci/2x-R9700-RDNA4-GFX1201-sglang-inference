@@ -41,6 +41,11 @@ gfx1201's 64 CUs (half idle). Raising it to 64 fills the CUs at depth: **2.14× 
 unregressed. Patch 086; full evidence chain in
 [attention-decode-256k-kvsplit.md](attention-decode-256k-kvsplit.md).
 
+Fleet-re-validated 2026-07-14: all 17 servable presets decode coherently at true depth with 086; every
+deep-recall shortfall (north-mini window, nemotron Mamba compression) is a pre-086 model characteristic,
+proven independent of the split count by a `num_kv_splits` 16-vs-64 A/B on north-mini. No regressions.
+Receipt: [validation/README.md](validation/README.md).
+
 ### Rejected decode changes
 
 | Experiment | Measurement | Disposition |

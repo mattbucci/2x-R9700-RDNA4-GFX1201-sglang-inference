@@ -63,6 +63,11 @@ def main() -> int:
     p.add_argument("--tokens", type=int, required=True, help="approx target prompt tokens")
     p.add_argument("--slug", required=True)
     p.add_argument("--full-attn", type=int, default=1, help="1 if mid-needle recall is expected")
+    p.add_argument("--max-tokens", type=int, default=1024,
+                   help="answer budget. Thinking models that ignore enable_thinking=False "
+                        "reason before answering; 200 truncated north-mini mid-reasoning "
+                        "(false LATE=FAIL). 1024 leaves room for reasoning + the answer; "
+                        "direct-answer models stop at EOS early regardless.")
     p.add_argument("--timeout", type=int, default=1200)
     p.add_argument("--save", default=None)
     a = p.parse_args()
@@ -80,7 +85,7 @@ def main() -> int:
     payload = {
         "model": model,
         "messages": [{"role": "user", "content": prompt}],
-        "max_tokens": 200, "temperature": 0.7, "top_p": 0.95, "top_k": 20,
+        "max_tokens": a.max_tokens, "temperature": 0.7, "top_p": 0.95, "top_k": 20,
         "chat_template_kwargs": {"enable_thinking": False},
     }
     t0 = time.time()
@@ -92,29 +97,35 @@ def main() -> int:
     dt = time.time() - t0
 
     msg = r["choices"][0]["message"]
-    ans = (msg.get("content") or msg.get("reasoning_content") or "")
+    ans = (msg.get("content") or "") + " " + (msg.get("reasoning_content") or "")
+    finish = r["choices"][0].get("finish_reason")
     usage = r.get("usage", {}) or {}
     actual_tok = usage.get("prompt_tokens")  # server ground truth (immune)
     hay = ans.upper()
     late_ok = LATE_VAL in hay
     mid_ok = MID_VAL in hay
     coh = coherent(ans)
+    # A thinking model that reasons past the token budget without emitting the
+    # answer looks like a recall miss but isn't — flag it as inconclusive.
+    truncated = (finish == "length") and not late_ok
 
     rec = {
         "slug": a.slug, "model": model,
         "requested_tokens": a.tokens, "actual_prompt_tokens": actual_tok,
         "full_attn": bool(a.full_attn),
         "late_recall": late_ok, "mid_recall": mid_ok, "coherent": coh,
+        "finish_reason": finish, "truncated_inconclusive": truncated,
         "elapsed_sec": round(dt, 1),
         "sample": ans[:200].replace("\n", " "),
         "timestamp": time.strftime("%Y-%m-%d %H:%M"),
     }
     # 086 gate: LATE recall + coherent at true depth. MID is informational for windowed.
     gate = late_ok and coh
+    late_disp = "PASS" if late_ok else ("INCONCLUSIVE-truncated" if truncated else "FAIL")
     mid_note = "PASS" if mid_ok else ("miss (expected on windowed/recurrent)" if not a.full_attn else "MISS")
     print(f"[{a.slug}] deep-probe @~{actual_tok or a.tokens} tok: "
-          f"LATE={'PASS' if late_ok else 'FAIL'} coherent={'yes' if coh else 'NO'} "
-          f"MID={mid_note} | {rec['sample']!r}")
+          f"LATE={late_disp} coherent={'yes' if coh else 'NO'} "
+          f"MID={mid_note} finish={finish} | {rec['sample']!r}")
 
     if a.save:
         path = a.save
