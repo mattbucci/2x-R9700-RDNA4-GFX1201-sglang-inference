@@ -1,0 +1,140 @@
+{
+  "north-mini": {
+    "model": "/home/letsrtfm/AI/models/North-Mini-Code-1.0-fp8",
+    "needle_frac": 0.1,
+    "temp": 0.3,
+    "samples_per_point": 5,
+    "by_depth": {
+      "8000": {
+        "actual_prompt_tokens": 7296,
+        "recall_rate": 1.0,
+        "hits": 5,
+        "n": 5,
+        "truncated_misses": 0,
+        "samples": [
+          "MELON-7734 The user asks: \"What is the secret pass",
+          "MELON-7734 The user asks: \"What is the secret pass",
+          "MELON-7734 The user asks: \"What is the secret pass"
+        ]
+      },
+      "32000": {
+        "actual_prompt_tokens": 28705,
+        "recall_rate": 1.0,
+        "hits": 5,
+        "n": 5,
+        "truncated_misses": 0,
+        "samples": [
+          "MELON-7734 The user asks: \"What is the secret pass",
+          "MELON-7734 The user asks: \"What is the secret pass",
+          "MELON-7734 The user asks: \"What is the secret pass"
+        ]
+      },
+      "65000": {
+        "actual_prompt_tokens": 58140,
+        "recall_rate": 1.0,
+        "hits": 5,
+        "n": 5,
+        "truncated_misses": 0,
+        "samples": [
+          "MELON-7734 The user asks: \"What is the secret pass",
+          "MELON-7734 The user asks: \"What is the secret pass",
+          "MELON-7734 The user asks: \"What is the secret pass"
+        ]
+      },
+      "130000": {
+        "actual_prompt_tokens": 116123,
+        "recall_rate": 1.0,
+        "hits": 5,
+        "n": 5,
+        "truncated_misses": 0,
+        "samples": [
+          "MELON-7734 The user asks: \"What is the secret pass",
+          "MELON-7734 The user asks: \"What is the secret pass",
+          "The user asks: \"What is the secret passcode stated"
+        ]
+      },
+      "197000": {
+        "actual_prompt_tokens": 175888,
+        "recall_rate": 0.0,
+        "hits": 0,
+        "n": 5,
+        "truncated_misses": 0,
+        "samples": [
+          "There is no such content in the conversation. The ",
+          "There is no passcode mentioned in this conversatio",
+          "No passcode was mentioned in this conversation. Th"
+        ]
+      }
+    },
+    "timestamp": "2026-07-16 08:50"
+  },
+  "laguna": {
+    "model": "/data/models/Laguna-XS.2-FP8",
+    "needle_frac": 0.1,
+    "temp": 0.3,
+    "samples_per_point": 5,
+    "by_depth": {
+      "8000": {
+        "actual_prompt_tokens": 7267,
+        "recall_rate": 1.0,
+        "hits": 5,
+        "n": 5,
+        "truncated_misses": 0,
+        "samples": [
+          "MELON-7734",
+          "MELON-7734",
+          "MELON-7734"
+        ]
+      },
+      "32000": {
+        "actual_prompt_tokens": 28774,
+        "recall_rate": 1.0,
+        "hits": 5,
+        "n": 5,
+        "truncated_misses": 0,
+        "samples": [
+          "MELON-7734",
+          "MELON-7734",
+          "MELON-7734"
+        ]
+      },
+      "65000": {
+        "actual_prompt_tokens": 58341,
+        "recall_rate": 1.0,
+        "hits": 5,
+        "n": 5,
+        "truncated_misses": 0,
+        "samples": [
+          "MELON-7734",
+          "MELON-7734",
+          "MELON-7734"
+        ]
+      },
+      "130000": {
+        "actual_prompt_tokens": 116586,
+        "recall_rate": 1.0,
+        "hits": 5,
+        "n": 5,
+        "truncated_misses": 0,
+        "samples": [
+          "MELON-7734",
+          "MELON-7734",
+          "MELON-7734"
+        ]
+      },
+      "197000": {
+        "actual_prompt_tokens": 176624,
+        "recall_rate": 1.0,
+        "hits": 5,
+        "n": 5,
+        "truncated_misses": 0,
+        "samples": [
+          "MELON-7734",
+          "MELON-7734",
+          "MELON-7734"
+        ]
+      }
+    },
+    "timestamp": "2026-07-16 08:55"
+  }
+}
