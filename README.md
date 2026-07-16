@@ -124,7 +124,7 @@ Reference fleet measurements are indexed in [benchmarks/README.md](benchmarks/RE
 - Use no speculative decoding at true 256K depth. The validated speculative lane is limited to short and medium context.
 - Treat tool-call and reasoning parsers as model-specific correctness settings, not optional presentation features.
 - Keep the Triton cache warm when collecting comparative numbers.
-- On gfx1201 the Triton flash-decode `num_kv_splits` defaults to 64 (patch 086), not the upstream AMD 16, so the decode grid fills the 64 CUs at long context: ~2.14× 256K single-user decode (14.4→30.7 tok/s on coder-reap-25b), short context unregressed. Tune with `SGLANG_KV_SPLITS_OVERRIDE`. Deep-context rows in the results table predate this and understate full-attention 256K decode.
+- On gfx1201, decode `num_kv_splits` defaults to 64 (patch 086), not the AMD default of 16, so the flash-decode grid fills the 64 CUs at long context; override with `SGLANG_KV_SPLITS_OVERRIDE`.
 
 ## Validation and quantization
 
@@ -153,13 +153,13 @@ Build `mattbucci/*` releases from the upstream BF16 checkpoint with the reposito
 ## Known limitations
 
 - Long-running TP=2 harnesses can expose one-rank stalls that short serving probes do not. Use the watchdog and capture scheduler stacks on recurrence.
-- **Intermittent TP=2 boot coredump on rapid relaunch (~20%).** Hard-killing a TP=2 server skips `destroy_process_group()`, leaking its RCCL communicator as orphaned `/dev/shm/psm_*` IPC segments. A relaunch a few seconds later can fault the new RCCL init on a stale IPC page: `Memory access fault by GPU node-N … Page not present` (dmesg `amdgpu [gfxhub] page fault … GCVM_L2_PROTECTION_FAULT … UTCL2 client ID: TCP`), aborting one rank — `scheduler died during initialization (exit code: -6)`, SIGABRT, **not** the OOM killer's `-9`. The GPU recovers instantly and a fresh boot succeeds; it only bites back-to-back automated model cycling (seen on 3/17 fleet-sweep boots), never single or interactive launches, and is unrelated to patch 086 or decode. Workaround: run `bash scripts/free_gpu.sh` between serving runs — it kills workers by PID, waits for VRAM to drain, prunes only the orphaned IPC segments (`fuser`-gated, so it won't touch a concurrent job), and settles — then retry the boot.
+- Back-to-back TP=2 relaunches intermittently hit an RCCL-init GPU coredump: a rank aborts (exit code -6, not the OOM killer's -9) because a hard kill leaks the communicator's `/dev/shm` IPC segments and a fast relaunch faults on a stale one. The GPU recovers and a fresh boot succeeds; run `bash scripts/free_gpu.sh` between serving runs to prune the leaked segments and settle before relaunch.
 - Coder-Next full-size and GLM-4.5-Air remain diagnostic presets rather than recommended agentic ships.
 - Qwen3-Coder-30B REAM is research-only until it passes a local same-scaffold quality comparison against the unmerged checkpoint.
 - Gemma 4 31B vision quality is degraded; use the 12B or 26B Gemma presets for multimodal workloads.
 - Dense Qwen3.5/3.6 int4 checkpoints are throughput options, but FP8 is the preferred agentic format.
 - Devstral tokenization requires patch 083 so rendered `[INST]` and `[TOOL_CALLS]` markers remain single special tokens.
-- **Open task — dense GEMV narrow-N:** the AWQ M=1 decode GEMV launches `⌈N/256⌉` blocks, so narrow-output projections (attn_o N=5120 → 20 blocks, qkv → 28) under-populate the 64 CUs and reach only ~45–82% of the bandwidth roofline while wide projections saturate. The fix is grid-level split-K (not `split_k`, not wider vectorization); root cause, design, and test plan are in [dense-gemv-narrow-n-splitk-handoff.md](benchmarks/dense-gemv-narrow-n-splitk-handoff.md). Expected ~1.6× on attn_o, low-single-digit % dense decode TPOT, shared across all AWQ-dense models.
+- Open task: the AWQ M=1 decode GEMV launches `⌈N/256⌉` blocks, so narrow-output projections under-fill the 64 CUs (~45–82% of roofline versus saturated wide projections); the fix is grid-level split-K. Root cause, design, and test plan: [dense-gemv-narrow-n-splitk-handoff.md](benchmarks/dense-gemv-narrow-n-splitk-handoff.md).
 
 Final experiment dispositions are summarized in [benchmarks/FINDINGS.md](benchmarks/FINDINGS.md).
 
