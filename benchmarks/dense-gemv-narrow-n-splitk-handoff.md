@@ -1,7 +1,24 @@
 # Dense AWQ GEMV — narrow-N under-population & grid-level split-K (handoff)
 
-2026-07-13. Status: **root-caused + validated; fix designed, not yet implemented.** This is a
-pick-up-and-go spec for the next person.
+2026-07-13 (design) / 2026-07-16 (implemented + benchmarked). Status: **grid-split REFUTED — it
+regresses narrow-N vs the existing within-block auto; reverted. See "Result" below.** The design + root
+cause are retained for context.
+
+## Result (2026-07-16): grid-split refuted, reverted
+
+Implemented exactly as designed (grid `(⌈N/256⌉, KSG)`, `blockIdx.y` selects the group-slice, fp32
+partials + a finalize sum-and-cast; KSG auto = `clamp(round(96/blocks),1,num_groups)` snapped to a divisor
+of num_groups; KSG==1 bypass). **Correct** — bench cosine 1.00000 on every shape — but **slower**: attn_o
+(N=5120) ran ~23–35% of roofline vs the existing within-block auto's ~33–52%. Why it missed: the design
+uses 32-thread (1-wavefront) grid-split blocks, so it adds blocks but only ~1.5 wavefronts/CU — poor
+latency hiding. The within-block high-SK auto (SK=10 for attn_o) already packs ~10 wavefronts into the
+active CUs and sits near the ceiling; the ~52% cap is **per-CU-occupancy + small-K-work bound, not
+block-count bound** as this handoff hypothesized. Reverted; the kernel is unchanged.
+
+Microbench caveat: attn_o is noisy (±10–15% roofline run-to-run) — use many iters / a median. Untested
+future direction: **compose** grid.y WITH within-block SK (bigger blocks × more blocks → all CUs active
+*and* good per-CU occupancy) — but attn_o's small K (5120) may cap it regardless; would need its own
+validation before another attempt. Net: not a win on this hardware; deprioritized.
 
 ## TL;DR
 
