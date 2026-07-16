@@ -52,6 +52,11 @@ bf16 PV with fp32 accumulate (standard flash-attention) measured **+21% at 256K 
 (33.2→40.2 tok/s, median of 5), short context +~1%, deep-needle recall unchanged. The gain scales with
 depth (128 +0.9%, 8K +2.7%, 202K +21%) as attention's share of decode grows. A/B data:
 [validation/pv-precision-ab.json](validation/pv-precision-ab.json); grouped GQA kernel; stacks on 086.
+Fleet coherence check (087 live): coder-reap A/B recall unchanged, Laguna recalls @89K, and North's
+recall_depth_sweep is identical to its fp32 baseline (100% through 116K, `north-087-recall.json`). A North
+`deep_context_probe` hallucination was a probe-format artifact — North fails that 2-needle probe with fp32
+too (it is what started experiment #23) — not an 087 regression. Flagship deep tok/s with 086+087:
+North-Mini ~55 @176K, Laguna ~39 @176K.
 
 ### Rejected decode changes
 

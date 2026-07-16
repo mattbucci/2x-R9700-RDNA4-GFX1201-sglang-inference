@@ -1,0 +1,71 @@
+{
+  "north-mini-087": {
+    "model": "/home/letsrtfm/AI/models/North-Mini-Code-1.0-fp8",
+    "needle_frac": 0.1,
+    "temp": 0.3,
+    "samples_per_point": 5,
+    "by_depth": {
+      "8000": {
+        "actual_prompt_tokens": 7296,
+        "recall_rate": 1.0,
+        "hits": 5,
+        "n": 5,
+        "truncated_misses": 0,
+        "samples": [
+          "MELON-7734 The user asks: \"What is the secret pass",
+          "MELON-7734 The user asks: \"What is the secret pass",
+          "MELON-7734 The user asks: \"What is the secret pass"
+        ]
+      },
+      "32000": {
+        "actual_prompt_tokens": 28705,
+        "recall_rate": 1.0,
+        "hits": 5,
+        "n": 5,
+        "truncated_misses": 0,
+        "samples": [
+          "MELON-7734 The user asks: \"What is the secret pass",
+          "MELON-7734 The user asks: \"What is the secret pass",
+          "MELON-7734 The user asks: \"What is the secret pass"
+        ]
+      },
+      "65000": {
+        "actual_prompt_tokens": 58140,
+        "recall_rate": 1.0,
+        "hits": 5,
+        "n": 5,
+        "truncated_misses": 0,
+        "samples": [
+          "MELON-7734 The user asks: \"What is the secret pass",
+          "MELON-7734 The user asks: \"What is the secret pass",
+          "MELON-7734 The user asks: \"What is the secret pass"
+        ]
+      },
+      "130000": {
+        "actual_prompt_tokens": 116123,
+        "recall_rate": 1.0,
+        "hits": 5,
+        "n": 5,
+        "truncated_misses": 0,
+        "samples": [
+          "MELON-7734 The user asks: \"What is the secret pass",
+          "MELON-7734 The user asks: \"What is the secret pass",
+          "MELON-7734 The user asks: \"What is the secret pass"
+        ]
+      },
+      "197000": {
+        "actual_prompt_tokens": 175888,
+        "recall_rate": 0.2,
+        "hits": 1,
+        "n": 5,
+        "truncated_misses": 1,
+        "samples": [
+          "There is no secret passcode mentioned in this conv",
+          "",
+          "The secret passcode is: MELON-7734"
+        ]
+      }
+    },
+    "timestamp": "2026-07-16 10:24"
+  }
+}
