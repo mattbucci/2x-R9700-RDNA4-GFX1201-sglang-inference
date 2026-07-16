@@ -1,0 +1,32 @@
+{
+  "pv-baseline-fp32": {
+    "slug": "pv-baseline-fp32",
+    "model": "/home/letsrtfm/AI/models/Qwen3-Coder-REAP-25B-A3B-AWQ-native",
+    "requested_tokens": 227000,
+    "actual_prompt_tokens": 202589,
+    "full_attn": true,
+    "late_recall": true,
+    "mid_recall": true,
+    "coherent": true,
+    "finish_reason": "stop",
+    "truncated_inconclusive": false,
+    "elapsed_sec": 348.5,
+    "sample": "MID=COBALT-2291 LATE=MELON-7734 ",
+    "timestamp": "2026-07-16 09:49"
+  },
+  "pv-bf16-pv": {
+    "slug": "pv-bf16-pv",
+    "model": "/home/letsrtfm/AI/models/Qwen3-Coder-REAP-25B-A3B-AWQ-native",
+    "requested_tokens": 227000,
+    "actual_prompt_tokens": 202589,
+    "full_attn": true,
+    "late_recall": true,
+    "mid_recall": true,
+    "coherent": true,
+    "finish_reason": "stop",
+    "truncated_inconclusive": false,
+    "elapsed_sec": 349.1,
+    "sample": "MID=COBALT-2291 LATE=MELON-7734 ",
+    "timestamp": "2026-07-16 10:03"
+  }
+}

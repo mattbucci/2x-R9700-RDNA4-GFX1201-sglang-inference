@@ -1,6 +1,6 @@
 # SGLang v0.5.15 RDNA4 patches
 
-This directory contains the **59 active numeric patches** applied to pristine SGLang v0.5.15 for the
+This directory contains the **60 active numeric patches** applied to pristine SGLang v0.5.15 for the
 2× Radeon AI PRO R9700 serving stack. The default tree is `/data/sgl-v0515`; the default conda environment
 is `sglang-triton36-v0515`.
 
@@ -154,12 +154,13 @@ can be proposed upstream. `Partial` requires a fresh comparison with upstream be
 | 084 | `rdna4-qwen3moe-bf16-attention-allreduce` | Candidate | Opts Qwen3-MoE (coder-30b, coder-reap-25b) out of the HIP FP32 attention all-reduce, using the BF16 collective. Measured +1-3% single-user decode, coherent; FP32 stays the default for recurrent hybrids. |
 | 085 | `rdna4-glm4moe-bf16-attention-allreduce` | Candidate | Opts GLM-4.5 MoE (glm45-air) out of the HIP FP32 attention all-reduce, using the BF16 collective. Reverse-confirmed +1.3-4.1% single-user decode, coherent; FP32 stays the default for recurrent hybrids. |
 | 086 | `rdna4-amd-num-kv-splits-64` | Carry | Raises the AMD Triton flash-decode `num_kv_splits` default 16->64 so the decode grid (head_groups x splits) fills gfx1201's 64 CUs at long context. Measured **2.14x 256K decode** (14.4->30.7 tok/s, coder-reap-25b); short context unregressed (the get_num_kv_splits heuristic still scales down). `SGLANG_KV_SPLITS_OVERRIDE` forces a value. |
+| 087 | `rdna4-flash-decode-bf16-pv` | Carry | Flash-decode PV in bf16 (fp32 accumulate) instead of fp32 in the grouped GQA kernel. fp32 PV inflated VGPR pressure -> low occupancy -> poor KV-load latency hiding, capping decode-attn at ~51% of the KV-read roofline. Measured **+21% 256K decode** (33.2->40.2 tok/s, coder-reap-25b), short ctx +~1%, deep recall unchanged. Standard flash-attn precision; stacks on 086. |
 
 ## Build stack
 
 | Component | Version |
 |---|---|
-| SGLang | v0.5.15 plus this 59-patch series |
+| SGLang | v0.5.15 plus this 60-patch series |
 | transformers | 5.12.1 |
 | Triton | 3.6.0 |
 | PyTorch | 2.11.0+rocm7.2 |

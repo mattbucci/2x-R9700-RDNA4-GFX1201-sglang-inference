@@ -46,6 +46,13 @@ deep-recall shortfall (north-mini window, nemotron Mamba compression) is a pre-0
 proven independent of the split count by a `num_kv_splits` 16-vs-64 A/B on north-mini. No regressions.
 Receipt: [validation/README.md](validation/README.md).
 
+**Patch 087 (bf16 PV) — a further +21%.** Past 086's 51% roofline, the flash-decode PV still ran in fp32
+(`tl.dot(p.to(fp32), v.to(fp32))`), inflating VGPR pressure → low occupancy → poor KV-load latency hiding.
+bf16 PV with fp32 accumulate (standard flash-attention) measured **+21% at 256K decode on coder-reap-25b**
+(33.2→40.2 tok/s, median of 5), short context +~1%, deep-needle recall unchanged. The gain scales with
+depth (128 +0.9%, 8K +2.7%, 202K +21%) as attention's share of decode grows. A/B data:
+[validation/pv-precision-ab.json](validation/pv-precision-ab.json); grouped GQA kernel; stacks on 086.
+
 ### Rejected decode changes
 
 | Experiment | Measurement | Disposition |
