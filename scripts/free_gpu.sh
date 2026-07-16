@@ -13,10 +13,26 @@
 # that NO live process holds open -> cannot disturb a concurrent calibration/serve.
 set -u
 
-echo "[free_gpu] killing sglang servers + TP workers by PID"
-for p in $(pgrep -f 'sglang.launch_server' 2>/dev/null); do kill "$p" 2>/dev/null; done
+echo "[free_gpu] killing sglang servers + TP workers by PID (never an ancestor of this script)"
+# Build this script's ancestor chain (self -> ... -> init). pgrep -f matches by full
+# command line, so a caller whose command happens to contain 'sglang.launch_server' or
+# 'AI/models/' (e.g. an ad-hoc verification grep) would otherwise be killed. Skip the
+# whole chain so free_gpu can never take out its own caller.
+_prot=" $$ "; _a=$$
+while :; do
+  _a=$(ps -o ppid= -p "$_a" 2>/dev/null | tr -d ' ')
+  { [ -z "$_a" ] || [ "$_a" -le 1 ] 2>/dev/null; } && break
+  _prot="$_prot$_a "
+done
+_kill_matches(){
+  for p in $(pgrep -f "$1" 2>/dev/null); do
+    case "$_prot" in *" $p "*) continue;; esac
+    kill "$p" 2>/dev/null
+  done
+}
+_kill_matches 'sglang.launch_server'
 sleep 4
-for p in $(pgrep -f 'AI/models/' 2>/dev/null); do kill "$p" 2>/dev/null; done
+_kill_matches 'AI/models/'
 
 echo "[free_gpu] waiting for VRAM to drain"
 for i in $(seq 1 30); do
