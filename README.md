@@ -4,6 +4,19 @@ SGLang v0.5.15 with 59 local RDNA4 patches, optimized for single-user long-conte
 
 The current optimization focus is FP8 coding MoE inference, especially Cohere North Mini Code and Poolside Laguna XS.2. Current measurements and test details are in the [North/Laguna receipt](benchmarks/north-laguna-v0515-r9700-2026-07-12.md).
 
+## Fleet-audit action queue (2026-07-18)
+
+From a verified cross-repo audit (each finding adversarially checked against receipts). Open items for this rig, highest value first:
+
+- [ ] **Wire the two delivered EAGLE3 drafts into the `--spec` lane and run the promised depth curve (#52).** `launch.sh` still rejects devstral2/qwen3vl-32b with "dense/DeltaNet/VL/Mamba have no working draft", but both drafts shipped (`mattbucci/Devstral-Small-2-24B-AWQ-EAGLE3`, `mattbucci/Qwen3-VL-32B-AWQ-EAGLE3`; attach to the extracted text decoder, not the VLM wrapper). 3090-measured ≤64K band: Devstral 2.26×/1.91×, VL 1.86×/1.60× — the agentic prompt median is 41K. If the VL draft's 6144-token training cap craters acceptance before ~41K, our 32 GB cards can run the 16K retrain (recipe delivered; recover the chunked-vocab refactor from the 3090 training box first). *(days)*
+- [ ] **decode-topk (069) promotion decision** — the gate already passed (1.77× @245K, needle near-exact, agentic A/B applied-diffs 5/6→6/6); it remains `.CANDIDATE`/default-off pending the user's call. *(decision only)*
+- [ ] **Propagate the 3090's calibration-source fixes**: `scripts/quantize/calibration_datasets.py` still builds audio mixes from `google/covost2`, removed from the Hub 2026-06-06 (3090 moved to voxpopuli in their `8076b75`) — the next audio-bearing calibration fails or silently degrades. Then de-fork or add a drift-check for the five copy-paste-forked quant/eval scripts shared with the 3090. *(hours–days)*
+- [ ] **Port the 3090's `probe_256k_tooluse.py`** (post-`ba4ecde` self-calibrating fill, with `--multi-turn`) — our deep instruments are recall-only, leaving a blind spot between "recalls at 176K" and "does agentic work at 176K" for North/Laguna; also directly answers the 3090's nemotron/coder-30b ceiling asks against our FP8 ships, and their `KV_DTYPE=auto` vs `fp8_e4m3` needle A/B ask (see Cross-team notes). *(hours)*
+- [ ] **Add a boot-time tool-call check to `validate_capabilities.py`** — the 3090 fork gates thinking/basic/tool_call/vision/video/audio; ours has no tool-call gate anywhere, yet parser/template mis-wiring is the fleet's most common silently-broken-agent class. *(hours)*
+- [ ] **Host the Qwen3.6-35B-A3B REAP prune** — we are the named better prune host (64 GB vs the 3090's CPU-offload risk); needs the fused-`Qwen3_5Moe` unfuse hook + router saliency handling ported from the 3090 into `ream-patches/` (where `run_reap.py` loads helpers). *(days)*
+- [ ] **Publish a canonical-eval cell for North/Laguna** — the full-300 FP8 bake-off matrix on `/data/bakeoff/runs` is not rolled up in-repo; either publish it or export predictions to the 3090 Docker harness for a cell directly comparable to their bake-off table. Add North/Laguna rows to `benchmarks/specdecode.json` via the 3090's NGRAM-first decision rule (both are attention+SWA MoE — the class where drafts win). *(days)*
+- [ ] **Benchmark-dir hygiene (user call pending)**: the 13 flagged legacy `bench_serving` dirs await "purge or re-measure"; the stale May twins (`gemma4-26b-awq` vs live `gemma-4-26b-awq`) still carry the `README.md` that ranks first in doc-driven grep.
+
 ## Quick start
 
 ```bash
