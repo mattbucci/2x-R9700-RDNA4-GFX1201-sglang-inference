@@ -10,7 +10,7 @@
 | **Depends on** | Local read access to the immutable 3090 donor; the patch-090-through-094 serving identity; North launched with BF16 KV and `--enable-deterministic-inference` whenever request seeds are scored; model directories already on disk per `launch.sh`. The 2026-07-18 post-089 identity remains historical provenance and must not be mixed with the post-fix receipts. |
 | **Provides to** | 3090 team: their two explicitly requested receipts (KV_DTYPE A/B for their prepared upstream issue, nemotron FP8 spot-check) plus a finding-share on the North/Laguna tool-use curves, via README Cross-team reply; R97 queue item 'boot-time tool-call check in validate_capabilities.py': the ported probe's extract_toolcall/TOOLS block is the natural donor; Fleet model-recommendation table: agentic-depth ceilings for North-Mini/Laguna/nemotron-omni ships (stated only from budget-clean, finish_reason=stop rungs) |
 
-## Current assessment — 2026-07-19 post-094
+## Current assessment — 2026-07-19 post-095
 
 - **Disposition:** Continue. The old North 1/7 curve and ~120K recall claim are superseded pre-fix
   incident evidence. They do not describe the current model or establish an agentic ceiling.
@@ -37,6 +37,16 @@
   2/3 correct primaries at both 67,554 and 115,570 actual tokens. Every valid primary terminally used the
   structured `KIWI77` tool result (4/4), with no follow-up clamp. This meets the predeclared 2/3 admission
   bar and rejects a monotonic context-length collapse.
+- **Second parser fault found in the A/B and patched (095):** one of the five `repeated`-profile failures
+  was ours, not the model's. At 64,801 tokens the model emitted a correct
+  `<|START_ACTION|>[{"function": "lookup_record", "parameters": {"id": "BANANA42"}}]<|END_ACTION|>`, but
+  091 recovers a missing name only from `tool_name` or an exposed-name `tool_call_id`, so the action
+  normalized without a name, was dropped, and 092 correctly left the raw markup in `content` with
+  `finish_reason == "stop"`. Patch 095 recovers an exact, exposed name from a string `function` field and
+  pins the verbatim payload as a regression test. The remaining four failures are genuine degeneration
+  (reasoning loops to the 1,024-token cap, one emitting `北 Mini Code`) and remain a property of the
+  low-entropy stressor, which the clean heterogeneous column supports. Scored receipts therefore require
+  the post-095 parser; the post-094 A/B understates North by up to one sample per affected rung.
 - **Instrument gate:** 36 probe tests and 10 chart tests pass (42 tests in the combined focused command),
   along with compilation, whitespace, and pristine patch-series replay through 094.
 - **Next action:** finish the seven-rung, three-effective-seed post-fix agentic-profile ladder. Publish it

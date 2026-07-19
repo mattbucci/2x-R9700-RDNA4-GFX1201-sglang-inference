@@ -4,7 +4,7 @@
   "ordering": "easiest_to_test_then_hardest",
   "baseline": {
     "sglang": "v0.5.15",
-    "patch_state": "post-094",
+    "patch_state": "post-095",
     "laguna_fp8_backend": "triton"
   },
   "items": [
@@ -78,7 +78,7 @@
       "depends_on": [
         "R97-E-gpu"
       ],
-      "next_action": "Finish and publish North-Mini's three-seed post-094 agentic-profile ladder, then start the preflighted Nemotron budget arms.",
+      "next_action": "Finish and publish North-Mini's three-seed post-095 agentic-profile ladder, then start the preflighted Nemotron budget arms.",
       "progress": {
         "completed": [
           "Immutable donor port and provenance receipt",
@@ -91,9 +91,11 @@
           "Separate repeated-stress and heterogeneous agentic-context eval profiles with effective-seed receipts",
           "Deterministic exact profile control: heterogeneous code/log 3/3 at 64801 and 115806 tokens",
           "Repository-native multi-turn focused gate: 2/3 correct primaries at both depths and 4/4 valid follow-ups used the tool result",
-          "Schema-v2 eval registry entry, tested ladder/profile renderer, and README charts"
+          "Schema-v2 eval registry entry, tested ladder/profile renderer, and README charts",
+          "Patch 095: recovers a Cohere tool name carried under a string `function` key. The post-094 A/B scored one such action wrong at 64801 tokens -- the model emitted a correct call and the server dropped it, surfacing raw markup in content with finish_reason stop. 091 covered only tool_name and tool_call_id.",
+          "Patch 091's detector test landed in /data/sgl-v0515; the patch created it but it had never been written to the live tree, so its six cases had never run there"
         ],
-        "in_progress": "North-Mini seven-rung, three-seed post-094 agentic-profile ladder",
+        "in_progress": "North-Mini seven-rung, three-seed post-095 agentic-profile ladder",
         "remaining_order": [
           "Publish the North post-fix ladder receipt and chart",
           "Nemotron FP8 2K-versus-8K budget spot-check",
