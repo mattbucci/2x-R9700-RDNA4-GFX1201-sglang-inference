@@ -6,7 +6,7 @@ This repository serves and optimizes SGLang v0.5.15 on two AMD Radeon AI PRO R97
 
 - SGLang tree: \`/data/sgl-v0515\`
 - Conda environment: \`sglang-triton36-v0515\`
-- Patch series: 56 numeric patches in \`patches/\`
+- Patch series: 67 numeric patches in \`patches/\`
 - Hardware: 2× gfx1201, 32 GiB each
 - ROCm 7.2, PyTorch 2.11.0+rocm7.2, Triton 3.6.0
 - Use the current tree unless a task explicitly requests a version comparison.

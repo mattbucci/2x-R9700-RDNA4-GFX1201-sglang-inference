@@ -1,0 +1,135 @@
+diff --git a/python/sglang/srt/utils/hf_transformers/tokenizer.py b/python/sglang/srt/utils/hf_transformers/tokenizer.py
+--- a/python/sglang/srt/utils/hf_transformers/tokenizer.py
++++ b/python/sglang/srt/utils/hf_transformers/tokenizer.py
+@@ -159,6 +159,33 @@
+     return tokenizer_name
+ 
+ 
++def _set_laguna_regex_preservation_default(
++    tokenizer_name, kwargs, tokenizer_revision=None
++):
++    """Keep Laguna's custom training-time pre-tokenizer unchanged.
++
++    Transformers may mistake a local large-vocabulary checkpoint without a
++    ``transformers_version`` field for an affected Mistral tokenizer. Laguna
++    trains its own tokenizer, so opt out of that rewrite unless the caller
++    explicitly requests otherwise.
++    """
++    if "fix_mistral_regex" in kwargs:
++        return
++
++    revision = kwargs.get("revision") or tokenizer_revision
++    try:
++        config_file = _resolve_local_or_cached_file(
++            tokenizer_name, "config.json", revision
++        )
++        with open(config_file) as f:
++            config = json.load(f)
++    except (OSError, ValueError):
++        return
++
++    if isinstance(config, dict) and config.get("model_type") == "laguna":
++        kwargs["fix_mistral_regex"] = False
++
++
+ def _auto_tokenizer_from_pretrained(tokenizer_name, *args, **common_kwargs):
+     """Call ``AutoTokenizer.from_pretrained`` with error handling."""
+     try:
+@@ -487,6 +514,9 @@
+             kwargs["use_fast"] = True
+ 
+     tokenizer_name = _resolve_tokenizer_name(tokenizer_name, kwargs)
++    _set_laguna_regex_preservation_default(
++        tokenizer_name, kwargs, tokenizer_revision
++    )
+ 
+     common_kwargs = dict(
+         trust_remote_code=trust_remote_code,
+diff --git a/test/registered/unit/utils/test_hf_transformers.py b/test/registered/unit/utils/test_hf_transformers.py
+--- a/test/registered/unit/utils/test_hf_transformers.py
++++ b/test/registered/unit/utils/test_hf_transformers.py
+@@ -4,9 +4,11 @@
+ context length, GGUF detection, etc.) that don't require actual model files.
+ """
+ 
++import json
+ import tempfile
+ import unittest
+ from types import SimpleNamespace
++from unittest import mock
+ 
+ from transformers import PretrainedConfig
+ 
+@@ -20,6 +22,7 @@
+     get_hf_text_config,
+     get_rope_config,
+ )
++from sglang.srt.utils.hf_transformers import tokenizer as tokenizer_utils
+ from sglang.srt.utils.hf_transformers.tokenizer import _fix_special_tokens_pattern
+ from sglang.srt.utils.hf_transformers_patches import normalize_rope_scaling_compat
+ from sglang.test.ci.ci_register import register_cpu_ci
+@@ -28,6 +31,63 @@
+ 
+ 
+ # ---------------------------------------------------------------------------
++# Laguna tokenizer regex preservation
++# ---------------------------------------------------------------------------
++
++
++class TestLagunaTokenizerRegexPreservation(unittest.TestCase):
++    def _load_with_mocked_tokenizers(self, model_type, **kwargs):
++        generic_tokenizer = type("TokenizersBackend", (), {})()
++        resolved_tokenizer = object()
++
++        with tempfile.TemporaryDirectory() as model_dir:
++            with open(f"{model_dir}/config.json", "w") as f:
++                json.dump({"model_type": model_type}, f)
++
++            with (
++                mock.patch.object(
++                    tokenizer_utils,
++                    "_auto_tokenizer_from_pretrained",
++                    return_value=generic_tokenizer,
++                ) as auto_load,
++                mock.patch.object(
++                    tokenizer_utils,
++                    "_resolve_tokenizers_backend",
++                    return_value=resolved_tokenizer,
++                ) as backend_load,
++                mock.patch.object(
++                    tokenizer_utils,
++                    "_apply_post_load_fixes",
++                    side_effect=lambda tokenizer, *_: tokenizer,
++                ),
++            ):
++                result = tokenizer_utils.get_tokenizer(model_dir, **kwargs)
++
++        self.assertIs(result, resolved_tokenizer)
++        return auto_load.call_args.kwargs, backend_load.call_args.kwargs
++
++    def test_laguna_preserves_checkpoint_regex_for_all_load_attempts(self):
++        auto_kwargs, backend_kwargs = self._load_with_mocked_tokenizers("laguna")
++
++        self.assertIs(auto_kwargs["fix_mistral_regex"], False)
++        self.assertIs(backend_kwargs["fix_mistral_regex"], False)
++
++    def test_explicit_laguna_override_wins(self):
++        auto_kwargs, backend_kwargs = self._load_with_mocked_tokenizers(
++            "laguna", fix_mistral_regex=True
++        )
++
++        self.assertIs(auto_kwargs["fix_mistral_regex"], True)
++        self.assertIs(backend_kwargs["fix_mistral_regex"], True)
++
++    def test_non_laguna_tokenizer_is_unchanged(self):
++        auto_kwargs, backend_kwargs = self._load_with_mocked_tokenizers("mistral")
++
++        self.assertNotIn("fix_mistral_regex", auto_kwargs)
++        self.assertNotIn("fix_mistral_regex", backend_kwargs)
++
++
++# ---------------------------------------------------------------------------
+ # normalize_rope_scaling_compat
+ # ---------------------------------------------------------------------------
+ 
+

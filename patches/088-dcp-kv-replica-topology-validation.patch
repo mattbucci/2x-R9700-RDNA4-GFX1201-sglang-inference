@@ -1,0 +1,158 @@
+diff --git a/python/sglang/srt/layers/dcp/__init__.py b/python/sglang/srt/layers/dcp/__init__.py
+index fb87c1de6b..1b684f6bf6 100644
+--- a/python/sglang/srt/layers/dcp/__init__.py
++++ b/python/sglang/srt/layers/dcp/__init__.py
+@@ -42,6 +42,7 @@ from sglang.srt.layers.dcp.layout import (
+     filter_dcp_local_kv_indices,
+     get_dcp_lens,
+     update_local_kv_lens_for_dcp,
++    validate_mha_dcp_kv_head_topology,
+ )
+ from sglang.srt.layers.dcp.metadata import DecodeContextParallelMetadata
+ 
+@@ -69,4 +70,5 @@ __all__ = [
+     "get_attention_dcp_world_size",
+     "get_dcp_lens",
+     "update_local_kv_lens_for_dcp",
++    "validate_mha_dcp_kv_head_topology",
+ ]
+diff --git a/python/sglang/srt/layers/dcp/layout.py b/python/sglang/srt/layers/dcp/layout.py
+index 5dd3e73a6b..76ff92fdcc 100644
+--- a/python/sglang/srt/layers/dcp/layout.py
++++ b/python/sglang/srt/layers/dcp/layout.py
+@@ -21,6 +21,39 @@ from sglang.srt.distributed.parallel_state import get_dcp_rank, get_dcp_world_si
+ from sglang.srt.layers.dcp.comm import dcp_enabled
+ 
+ 
++def validate_mha_dcp_kv_head_topology(
++    *, attention_tp_size: int, total_num_kv_heads: int, dcp_size: int
++) -> None:
++    """Reject MHA DCP groups that cross TP KV-head replica blocks.
++
++    The current MHA DCP path all-gathers query heads across each DCP group but
++    keeps K/V local. Therefore, every rank in a DCP group must load the same
++    replicated KV-head shard. QKVParallelLinear lays out each replica block on
++    consecutive TP ranks, as does the DCP group construction.
++    """
++    if dcp_size <= 1:
++        return
++
++    num_kv_head_replicas = 1
++    if (
++        attention_tp_size >= total_num_kv_heads
++        and attention_tp_size % total_num_kv_heads == 0
++    ):
++        num_kv_head_replicas = attention_tp_size // total_num_kv_heads
++
++    if num_kv_head_replicas % dcp_size != 0:
++        raise ValueError(
++            "Decode context parallel MHA requires every DCP group to stay "
++            "within one replicated KV-head block. The current MHA DCP topology "
++            "requires num_kv_head_replicas % dcp_size == 0, but got "
++            f"attention_tp_size={attention_tp_size}, "
++            f"total_num_kv_heads={total_num_kv_heads}, "
++            f"num_kv_head_replicas={num_kv_head_replicas}, "
++            f"dcp_size={dcp_size}. Choose a smaller DCP size or a TP/model "
++            "topology with enough KV-head replication."
++        )
++
++
+ def get_dcp_lens(
+     lens: torch.Tensor,
+     dcp_size: int,
+diff --git a/python/sglang/srt/model_executor/model_runner.py b/python/sglang/srt/model_executor/model_runner.py
+index 28f6a9b602..7829022bb1 100644
+--- a/python/sglang/srt/model_executor/model_runner.py
++++ b/python/sglang/srt/model_executor/model_runner.py
+@@ -127,6 +127,7 @@ from sglang.srt.layers.attention.tbo_backend import TboAttnBackend
+ from sglang.srt.layers.cp.utils import (
+     get_cp_strategy,
+ )
++from sglang.srt.layers.dcp import validate_mha_dcp_kv_head_topology
+ from sglang.srt.layers.dp_attention import (
+     get_attention_tp_group,
+     initialize_dp_attention,
+@@ -412,6 +413,16 @@ class ModelRunner(ModelRunnerKVCacheMixin):
+             model_config, "is_hybrid_swa_compress", False
+         )
+         self.use_mla_backend = self.model_config.attention_arch == AttentionArch.MLA
++        if (
++            self.dcp_size > 1
++            and self.model_config.attention_arch == AttentionArch.MHA
++        ):
++            attention_tp_size = self.tp_size // self.dp_size // self.attn_cp_size
++            validate_mha_dcp_kv_head_topology(
++                attention_tp_size=attention_tp_size,
++                total_num_kv_heads=self.model_config.get_total_num_kv_heads(),
++                dcp_size=self.dcp_size,
++            )
+         self.attention_chunk_size = model_config.attention_chunk_size
+         rope_scaling = getattr(
+             model_config.hf_text_config, "rope_parameters", None
+diff --git a/test/registered/dcp/test_dcp_layout_unit.py b/test/registered/dcp/test_dcp_layout_unit.py
+index ec053d5697..bde8d5dd78 100644
+--- a/test/registered/dcp/test_dcp_layout_unit.py
++++ b/test/registered/dcp/test_dcp_layout_unit.py
+@@ -16,7 +16,10 @@ import unittest
+ 
+ import torch
+ 
+-from sglang.srt.layers.dcp.layout import get_dcp_lens
++from sglang.srt.layers.dcp.layout import (
++    get_dcp_lens,
++    validate_mha_dcp_kv_head_topology,
++)
+ from sglang.test.ci.ci_register import register_cpu_ci
+ 
+ register_cpu_ci(est_time=10, suite="base-a-test-cpu")
+@@ -87,5 +90,50 @@ class TestGetDcpLens(unittest.TestCase):
+         self.assertTrue(torch.equal(get_dcp_lens(lens, 1, 0), lens))
+ 
+ 
++class TestMhaDcpKvHeadTopology(unittest.TestCase):
++    def test_accepts_aligned_replica_blocks(self):
++        for attention_tp_size, total_num_kv_heads, dcp_size in [
++            (8, 4, 2),
++            (8, 2, 4),
++            (2, 1, 2),
++        ]:
++            validate_mha_dcp_kv_head_topology(
++                attention_tp_size=attention_tp_size,
++                total_num_kv_heads=total_num_kv_heads,
++                dcp_size=dcp_size,
++            )
++
++    def test_dcp_size_one_needs_no_kv_replication(self):
++        validate_mha_dcp_kv_head_topology(
++            attention_tp_size=2,
++            total_num_kv_heads=4,
++            dcp_size=1,
++        )
++
++    def test_rejects_partitioned_kv_heads(self):
++        with self.assertRaisesRegex(
++            ValueError,
++            r"num_kv_head_replicas % dcp_size == 0.*"
++            r"num_kv_head_replicas=1, dcp_size=2",
++        ):
++            validate_mha_dcp_kv_head_topology(
++                attention_tp_size=2,
++                total_num_kv_heads=4,
++                dcp_size=2,
++            )
++
++    def test_rejects_dcp_group_crossing_replica_boundary(self):
++        # Replicas >= DCP is insufficient: with three replicas per KV head,
++        # adjacent DCP2 group [2, 3] crosses from KV head 0 to KV head 1.
++        with self.assertRaisesRegex(
++            ValueError, r"num_kv_head_replicas % dcp_size == 0"
++        ):
++            validate_mha_dcp_kv_head_topology(
++                attention_tp_size=6,
++                total_num_kv_heads=2,
++                dcp_size=2,
++            )
++
++
+ if __name__ == "__main__":
+     unittest.main()

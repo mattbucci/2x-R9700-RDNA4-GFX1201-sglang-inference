@@ -1,0 +1,148 @@
+diff --git a/python/sglang/srt/entrypoints/openai/serving_chat.py b/python/sglang/srt/entrypoints/openai/serving_chat.py
+index 37062a502f..8172757c2f 100644
+--- a/python/sglang/srt/entrypoints/openai/serving_chat.py
++++ b/python/sglang/srt/entrypoints/openai/serving_chat.py
+@@ -1512,6 +1512,10 @@ class OpenAIServingChat(OpenAIServingBase):
+         """Process tool calls in the response"""
+ 
+         is_required = tool_choice == "required" or isinstance(tool_choice, ToolChoice)
++        # A format marker only makes parsing worth attempting. Until at least
++        # one structured call survives parsing, keep the response untouched.
++        original_text = text
++        original_finish_reason = finish_reason.copy()
+ 
+         # Try model-specific parser when output is in native format.
+         # For required/named: only use parser when structural_tag was used
+@@ -1524,12 +1528,17 @@ class OpenAIServingChat(OpenAIServingBase):
+                 not is_required or parser.detector.supports_structural_tag()
+             )
+             if should_try_parser and parser.has_tool_call(text):
+-                original_finish_type = finish_reason["type"]
+                 if finish_reason["type"] == "stop":
+                     finish_reason["type"] = "tool_calls"
+                     finish_reason["matched"] = None
+                 try:
+                     text, call_info_list = parser.parse_non_stream(text)
++                    if not call_info_list:
++                        finish_reason.clear()
++                        finish_reason.update(original_finish_reason)
++                        return ToolCallProcessingResult(
++                            None, original_text, finish_reason
++                        )
+                     tool_calls = []
+                     for call_info in call_info_list:
+                         tool_id = self._process_tool_call_id(
+@@ -1548,12 +1557,14 @@ class OpenAIServingChat(OpenAIServingBase):
+                     return ToolCallProcessingResult(tool_calls, text, finish_reason)
+                 except Exception as e:
+                     logger.error(f"Tool call parsing error: {e}")
+-                    finish_reason["type"] = original_finish_type
+-                    return ToolCallProcessingResult(None, text, finish_reason)
++                    finish_reason.clear()
++                    finish_reason.update(original_finish_reason)
++                    return ToolCallProcessingResult(
++                        None, original_text, finish_reason
++                    )
+ 
+         # json_schema constraint → JSON array output for required/named
+         if is_required:
+-            original_finish_type = finish_reason["type"]
+             if finish_reason["type"] == "stop":
+                 finish_reason["type"] = "tool_calls"
+                 finish_reason["matched"] = None
+@@ -1581,11 +1592,18 @@ class OpenAIServingChat(OpenAIServingBase):
+                             ),
+                         )
+                     )
++                if not tool_calls:
++                    finish_reason.clear()
++                    finish_reason.update(original_finish_reason)
++                    return ToolCallProcessingResult(
++                        None, original_text, finish_reason
++                    )
+                 return ToolCallProcessingResult(tool_calls, "", finish_reason)
+             except Exception as e:
+                 logger.error(f"Tool call parsing error: {e}")
+-                finish_reason["type"] = original_finish_type
+-                return ToolCallProcessingResult(None, text, finish_reason)
++                finish_reason.clear()
++                finish_reason.update(original_finish_reason)
++                return ToolCallProcessingResult(None, original_text, finish_reason)
+ 
+         return ToolCallProcessingResult(None, text, finish_reason)
+ 
+diff --git a/test/registered/unit/entrypoints/openai/test_serving_chat.py b/test/registered/unit/entrypoints/openai/test_serving_chat.py
+index a28b90832a..fd9e81ae43 100644
+--- a/test/registered/unit/entrypoints/openai/test_serving_chat.py
++++ b/test/registered/unit/entrypoints/openai/test_serving_chat.py
+@@ -2268,8 +2268,8 @@ class ServingChatTestCase(unittest.TestCase):
+         self.assertEqual(t, tool_calls)
+ 
+ 
+-class TestProcessToolCallsWithRequiredToolChoice(unittest.TestCase):
+-    """Test _process_tool_calls with tool_choice='required' uses model-specific parser."""
++class TestProcessToolCalls(unittest.TestCase):
++    """Test native and required tool-call response post-processing."""
+ 
+     def setUp(self):
+         tm = _MockTokenizerManager()
+@@ -2305,6 +2305,33 @@ class TestProcessToolCallsWithRequiredToolChoice(unittest.TestCase):
+             self.assertEqual(tool_calls[0].function.name, "get_weather")
+             self.assertEqual(fr["type"], "tool_calls")
+ 
++    def test_native_parser_zero_calls_restores_finish_reason_and_raw_text(self):
++        raw_text = "<|tool_calls_section_begin|>not valid json"
++        finish_reason = {"type": "stop", "matched": 255001}
++        original_finish_reason = finish_reason.copy()
++        tools = [{"type": "function", "function": {"name": "get_weather"}}]
++
++        with patch(
++            "sglang.srt.entrypoints.openai.serving_chat.FunctionCallParser"
++        ) as parser_mock:
++            parser = parser_mock.return_value
++            parser.has_tool_call.return_value = True
++            parser.parse_non_stream.return_value = ("", [])
++
++            tool_calls, text, returned_finish_reason = (
++                self.chat._process_tool_calls(
++                    text=raw_text,
++                    tools=tools,
++                    finish_reason=finish_reason,
++                    tool_choice="auto",
++                )
++            )
++
++        self.assertIsNone(tool_calls)
++        self.assertEqual(text, raw_text)
++        self.assertIs(returned_finish_reason, finish_reason)
++        self.assertEqual(returned_finish_reason, original_finish_reason)
++
+     def test_required_without_parser_falls_back_to_json(self):
+         """tool_choice='required' without parser should parse as JSON array."""
+         self.chat.tool_call_parser = None
+@@ -2339,6 +2366,25 @@ class TestProcessToolCallsWithRequiredToolChoice(unittest.TestCase):
+ 
+         self.assertIsNone(tool_calls)
+ 
++    def test_required_empty_json_array_restores_finish_reason_and_raw_text(self):
++        self.chat.tool_call_parser = None
++        raw_text = "[]"
++        finish_reason = {"type": "stop", "matched": 255001}
++        original_finish_reason = finish_reason.copy()
++        tools = [{"type": "function", "function": {"name": "get_weather"}}]
++
++        tool_calls, text, returned_finish_reason = self.chat._process_tool_calls(
++            text=raw_text,
++            tools=tools,
++            finish_reason=finish_reason,
++            tool_choice="required",
++        )
++
++        self.assertIsNone(tool_calls)
++        self.assertEqual(text, raw_text)
++        self.assertIs(returned_finish_reason, finish_reason)
++        self.assertEqual(returned_finish_reason, original_finish_reason)
++
+ 
+ class TestNormalizeToolContent(unittest.TestCase):
+     """Unit tests for normalize_tool_content()."""

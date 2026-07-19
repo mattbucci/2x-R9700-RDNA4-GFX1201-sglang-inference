@@ -1,0 +1,115 @@
+diff --git a/python/sglang/srt/models/cohere2_moe.py b/python/sglang/srt/models/cohere2_moe.py
+--- a/python/sglang/srt/models/cohere2_moe.py
++++ b/python/sglang/srt/models/cohere2_moe.py
+@@ -20,6 +20,7 @@ from sglang.srt.layers.linear import (
+     ReplicatedLinear,
+     RowParallelLinear,
+ )
++from sglang.srt.layers.layernorm import RMSNorm
+ from sglang.srt.layers.logits_processor import LogitsProcessor
+ from sglang.srt.layers.moe.fused_moe_triton import FusedMoE
+ from sglang.srt.layers.moe.topk import TopK
+@@ -58,6 +59,20 @@ class Cohere2MoeLayerNorm(nn.Module):
+         return _cohere_layer_norm(hidden_states, self.weight, self.variance_epsilon)
+ 
+ 
++def select_norm_impl(config: PretrainedConfig) -> nn.Module:
++    """Select the checkpoint's normalization semantics.
++
++    North-Mini-Code sets ``rms_norm_eps`` and was trained with RMSNorm. Older
++    Cohere2-MoE checkpoints omit it and retain centered LayerNorm.
++    """
++    rms_norm_eps = getattr(config, "rms_norm_eps", None)
++    if rms_norm_eps is not None:
++        return RMSNorm(config.hidden_size, eps=rms_norm_eps)
++    return Cohere2MoeLayerNorm(
++        config.hidden_size, eps=getattr(config, "layer_norm_eps", 1e-5)
++    )
++
++
+ def cohere2_sigmoid_topk(
+     hidden_states: torch.Tensor,
+     gating_output: torch.Tensor,
+@@ -404,8 +419,7 @@ class Cohere2MoeDecoderLayer(nn.Module):
+                 prefix=add_prefix("mlp", prefix),
+             )
+ 
+-        norm_eps = getattr(config, "layer_norm_eps", 1e-5)
+-        self.input_layernorm = Cohere2MoeLayerNorm(config.hidden_size, eps=norm_eps)
++        self.input_layernorm = select_norm_impl(config)
+         self.tp_size = get_parallel().tp_size
+ 
+     def forward(
+@@ -456,8 +470,7 @@ class Cohere2MoeModel(nn.Module):
+             ),
+             prefix=add_prefix("layers", prefix),
+         )
+-        norm_eps = getattr(config, "layer_norm_eps", 1e-5)
+-        self.norm = Cohere2MoeLayerNorm(config.hidden_size, eps=norm_eps)
++        self.norm = select_norm_impl(config)
+ 
+     def get_input_embeddings(self, input_ids: Optional[torch.Tensor] = None):
+         """Return the embedding module, or the embedded tensor if ``input_ids``
+diff --git a/test/registered/unit/models/test_cohere2_moe_norm.py b/test/registered/unit/models/test_cohere2_moe_norm.py
+new file mode 100644
+--- /dev/null
++++ b/test/registered/unit/models/test_cohere2_moe_norm.py
+@@ -0,0 +1,54 @@
++import unittest
++from types import SimpleNamespace
++
++import torch
++
++from sglang.srt.layers.layernorm import RMSNorm
++from sglang.srt.models.cohere2_moe import (
++    Cohere2MoeLayerNorm,
++    select_norm_impl,
++)
++from sglang.test.ci.ci_register import register_cpu_ci
++
++register_cpu_ci(est_time=4, suite="base-a-test-cpu")
++
++
++class TestCohere2MoeNormSelection(unittest.TestCase):
++    def test_rms_norm_config_uses_rms_semantics_and_epsilon(self):
++        config = SimpleNamespace(
++            hidden_size=4,
++            layer_norm_eps=1e-5,
++            rms_norm_eps=1e-6,
++        )
++
++        norm = select_norm_impl(config)
++
++        self.assertIsInstance(norm, RMSNorm)
++        self.assertEqual(norm.variance_epsilon, config.rms_norm_eps)
++
++        hidden_states = torch.tensor([[1.0, 2.0, 4.0, 8.0]])
++        expected = hidden_states * torch.rsqrt(
++            hidden_states.pow(2).mean(dim=-1, keepdim=True) + config.rms_norm_eps
++        )
++        torch.testing.assert_close(
++            norm.forward_native(hidden_states), expected, rtol=1e-6, atol=1e-6
++        )
++
++    def test_legacy_config_keeps_centered_layer_norm(self):
++        config = SimpleNamespace(
++            hidden_size=4,
++            layer_norm_eps=2e-5,
++            rms_norm_eps=None,
++        )
++
++        norm = select_norm_impl(config)
++
++        self.assertIsInstance(norm, Cohere2MoeLayerNorm)
++        self.assertEqual(norm.variance_epsilon, config.layer_norm_eps)
++
++        hidden_states = torch.tensor([[1.0, 2.0, 4.0, 8.0]])
++        centered = hidden_states - hidden_states.mean(dim=-1, keepdim=True)
++        expected = centered * torch.rsqrt(
++            centered.pow(2).mean(dim=-1, keepdim=True) + config.layer_norm_eps
++        )
++        torch.testing.assert_close(norm(hidden_states), expected, rtol=1e-6, atol=1e-6)
++
++
++if __name__ == "__main__":
++    unittest.main()

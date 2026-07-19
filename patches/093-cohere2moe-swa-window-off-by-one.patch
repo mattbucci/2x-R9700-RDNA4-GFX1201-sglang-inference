@@ -1,0 +1,119 @@
+diff --git a/python/sglang/srt/models/cohere2_moe.py b/python/sglang/srt/models/cohere2_moe.py
+index 540c6c7..2a4f86d 100644
+--- a/python/sglang/srt/models/cohere2_moe.py
++++ b/python/sglang/srt/models/cohere2_moe.py
+@@ -73,6 +73,12 @@ def select_norm_impl(config: PretrainedConfig) -> nn.Module:
+     )
+ 
+ 
++def get_attention_sliding_window_size(config: PretrainedConfig) -> Optional[int]:
++    """Translate Hugging Face's inclusive window to SGLang's exclusive one."""
++    sliding_window = getattr(config, "sliding_window", None)
++    return sliding_window - 1 if sliding_window is not None else None
++
++
+ def cohere2_sigmoid_topk(
+     hidden_states: torch.Tensor,
+     gating_output: torch.Tensor,
+@@ -196,7 +202,7 @@ class Cohere2MoeAttention(nn.Module):
+             and prefix_dense_sliding_window_pattern == 1
+             and layer_id < first_k_dense_replace
+         )
+-        sliding_window = getattr(config, "sliding_window", None)
++        sliding_window = get_attention_sliding_window_size(config)
+         self.sliding_window_size = (
+             sliding_window if (self.is_sliding and sliding_window is not None) else -1
+         )
+@@ -524,6 +530,9 @@ class Cohere2MoeForCausalLM(nn.Module):
+             return self.model.embed_tokens
+         return self.model.get_input_embeddings(input_ids)
+ 
++    def get_attention_sliding_window_size(self) -> Optional[int]:
++        return get_attention_sliding_window_size(self.config)
++
+     @torch.no_grad()
+     def forward(
+         self,
+diff --git a/test/registered/unit/models/test_cohere2_moe_sliding_window.py b/test/registered/unit/models/test_cohere2_moe_sliding_window.py
+new file mode 100644
+index 0000000..44fdf27
+--- /dev/null
++++ b/test/registered/unit/models/test_cohere2_moe_sliding_window.py
+@@ -0,0 +1,77 @@
++import unittest
++from types import SimpleNamespace
++from unittest.mock import patch
++
++from torch import nn
++
++from sglang.srt.models.cohere2_moe import (
++    Cohere2MoeAttention,
++    Cohere2MoeForCausalLM,
++    get_attention_sliding_window_size,
++)
++from sglang.test.ci.ci_register import register_cpu_ci
++
++register_cpu_ci(est_time=4, suite="base-a-test-cpu")
++
++
++class _StubLinear(nn.Module):
++    def __init__(self, *args, **kwargs):
++        super().__init__()
++
++
++class _StubAttention(nn.Module):
++    def __init__(self, *args, sliding_window_size, **kwargs):
++        super().__init__()
++        self.sliding_window_size = sliding_window_size
++
++
++class TestCohere2MoeSlidingWindow(unittest.TestCase):
++    @staticmethod
++    def _config():
++        return SimpleNamespace(
++            hidden_size=16,
++            num_attention_heads=2,
++            num_key_value_heads=1,
++            head_dim=8,
++            max_position_embeddings=8192,
++            rope_theta=50000.0,
++            layer_types=["sliding_attention", "full_attention"],
++            first_k_dense_replace=0,
++            prefix_dense_sliding_window_pattern=1,
++            sliding_window=4096,
++        )
++
++    def test_hf_inclusive_window_is_converted_to_exclusive_distance(self):
++        config = self._config()
++
++        self.assertEqual(get_attention_sliding_window_size(config), 4095)
++        self.assertIsNone(get_attention_sliding_window_size(SimpleNamespace()))
++
++    def test_only_sliding_layers_receive_the_converted_window(self):
++        config = self._config()
++        module = "sglang.srt.models.cohere2_moe"
++        with (
++            patch(f"{module}.get_parallel", return_value=SimpleNamespace(tp_size=1)),
++            patch(f"{module}.QKVParallelLinear", _StubLinear),
++            patch(f"{module}.RowParallelLinear", _StubLinear),
++            patch(f"{module}.RadixAttention", _StubAttention),
++            patch(f"{module}.get_rope", return_value=nn.Identity()),
++        ):
++            sliding = Cohere2MoeAttention(config, layer_id=0)
++            full = Cohere2MoeAttention(config, layer_id=1)
++
++        self.assertEqual(sliding.sliding_window_size, 4095)
++        self.assertEqual(sliding.attn.sliding_window_size, 4095)
++        self.assertEqual(full.sliding_window_size, -1)
++        self.assertEqual(full.attn.sliding_window_size, -1)
++
++    def test_model_exposes_the_same_window_to_attention_backends(self):
++        model = Cohere2MoeForCausalLM.__new__(Cohere2MoeForCausalLM)
++        nn.Module.__init__(model)
++        model.config = self._config()
++
++        self.assertEqual(model.get_attention_sliding_window_size(), 4095)
++
++
++if __name__ == "__main__":
++    unittest.main()

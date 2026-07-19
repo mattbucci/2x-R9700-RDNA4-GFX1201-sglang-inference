@@ -1,6 +1,6 @@
 # RDNA4 inference on 2× R9700
 
-SGLang v0.5.15 with 62 local RDNA4 patches, optimized for single-user long-context inference on two AMD Radeon AI PRO R9700 GPUs. The default serving tree is `/data/sgl-v0515`; the default conda environment is `sglang-triton36-v0515`.
+SGLang v0.5.15 with 67 local RDNA4 patches, optimized for single-user long-context inference on two AMD Radeon AI PRO R9700 GPUs. The default serving tree is `/data/sgl-v0515`; the default conda environment is `sglang-triton36-v0515`.
 
 The current optimization focus is FP8 coding MoE inference, especially Cohere North Mini Code and Poolside Laguna XS.2. The current kernel/options investigation is in the [2026-07-18 FP8/256K receipt](benchmarks/fp8-256k-options-r9700-2026-07-18.md); the earlier [North/Laguna receipt](benchmarks/north-laguna-v0515-r9700-2026-07-12.md) remains the 074–082 correctness campaign.
 
@@ -296,7 +296,7 @@ Build `mattbucci/*` releases from the upstream BF16 checkpoint with the reposito
 - Coder-Next full-size and GLM-4.5-Air remain diagnostic presets rather than recommended agentic ships.
 - Qwen3-Coder-30B REAM is research-only until it passes a local same-scaffold quality comparison against the unmerged checkpoint.
 - Gemma 4 31B vision quality is degraded; use the 12B or 26B Gemma presets for multimodal workloads.
-- North-Mini-Code serves 256K coherently but its reliable recall caps ~120K — the inherent capacity of its cohere2 NoPE full-attention layers (correctly served, not a serving fault); for recall past ~120K prefer Laguna. Curves and root cause: [flagship-recall-depth-2026-07-16.md](benchmarks/flagship-recall-depth-2026-07-16.md).
+- North-Mini-Code's previous ~120K recall ceiling is withdrawn. Those measurements used incorrect centered-LayerNorm serving semantics, and some diagnostics used FP8 KV without checkpoint-provided cache scales. No current North ceiling is claimed until the post-094 multi-turn ladder is complete; see the superseded historical receipt in [flagship-recall-depth-2026-07-16.md](benchmarks/flagship-recall-depth-2026-07-16.md).
 - Dense Qwen3.5/3.6 int4 checkpoints are throughput options, but FP8 is the preferred agentic format.
 - Devstral tokenization requires patch 083 so rendered `[INST]` and `[TOOL_CALLS]` markers remain single special tokens.
 - Do not use DCP2 with the current TP2 GQA coding presets. Their adjacent ranks hold distinct K/V heads, while the current DCP MHA reduction requires replicated K/V heads inside each DCP group; North/Laguna also lack hybrid-SWA DCP support.
