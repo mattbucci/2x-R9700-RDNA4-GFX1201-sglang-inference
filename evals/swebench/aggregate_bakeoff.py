@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Aggregate bake-off scores into a per-model × per-scaffold resolved-rate
-table. Reads scores-docker-summary.json from every
-evals/swebench/runs/<preset>-<scaffold>-v2/ directory and writes:
+table. Reads both the original
+`evals/swebench/runs/<preset>-<scaffold>-v2/` layout and the external
+`/data/bakeoff/runs/<preset>-<scaffold>/` layout and writes:
 
   - `benchmarks/quality/bakeoff-<preset>-<scaffold>.json` — one tracked
     JSON per (preset, scaffold) cell. Matches the existing 1-file-per-
@@ -31,7 +32,10 @@ from collections import defaultdict
 from pathlib import Path
 
 
-def parse_args():
+REPO_ROOT = Path(__file__).resolve().parents[2]
+
+
+def parse_args(argv=None):
     p = argparse.ArgumentParser()
     p.add_argument("--runs-dir", default="evals/swebench/runs",
                    help="Where the per-(preset, scaffold) result dirs live.")
@@ -41,7 +45,27 @@ def parse_args():
                    help="Where per-cell JSONs land (default: benchmarks/quality).")
     p.add_argument("--no-json", action="store_true",
                    help="Skip per-cell JSON writes; markdown only.")
-    return p.parse_args()
+    return p.parse_args(argv)
+
+
+def resolve_output_paths(args, repo_root: Path = REPO_ROOT) -> tuple[Path, Path]:
+    """Resolve both outputs against the repository, never the runs directory."""
+    quality_dir = Path(args.quality_dir).expanduser()
+    if not quality_dir.is_absolute():
+        quality_dir = repo_root / quality_dir
+
+    if args.out:
+        out_path = Path(args.out).expanduser()
+        if not out_path.is_absolute():
+            out_path = repo_root / out_path
+    else:
+        out_path = (
+            repo_root
+            / "evals"
+            / "swebench"
+            / f"bake-off-{time.strftime('%Y-%m-%d')}.md"
+        )
+    return quality_dir.resolve(), out_path.resolve()
 
 
 def first_model_path(run_dir: Path) -> str | None:
@@ -60,6 +84,13 @@ def first_model_path(run_dir: Path) -> str | None:
     except Exception:
         return None
     return None
+
+
+def display_path(path: Path, repo_root: Path) -> str:
+    try:
+        return str(path.relative_to(repo_root))
+    except ValueError:
+        return str(path)
 
 
 def write_cell_json(preset: str, scaffold: str, run_dir: Path,
@@ -96,9 +127,7 @@ def write_cell_json(preset: str, scaffold: str, run_dir: Path,
         "resolve_rate_pct": rate,
         **counts,
         "harness_returncode": summary.get("harness_returncode"),
-        "run_dir": str(run_dir.relative_to(repo_root))
-                   if str(run_dir).startswith(str(repo_root))
-                   else str(run_dir),
+        "run_dir": display_path(run_dir, repo_root),
         "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S"),
     }
     out.write_text(json.dumps(payload, indent=2) + "\n")
@@ -106,6 +135,103 @@ def write_cell_json(preset: str, scaffold: str, run_dir: Path,
 
 
 SCAFFOLDS = ("opencode", "little-coder", "claw-code")
+LEGACY_RUN_RE = re.compile(r"^(.*)-(opencode|little-coder|claw-code)-v2$")
+EXTERNAL_RUN_RE = re.compile(r"^(.*)-(opencode|little-coder|claw-code)$")
+
+
+def _read_summary(path: Path) -> dict | None:
+    if not path.exists():
+        return None
+    try:
+        data = json.loads(path.read_text())
+    except (OSError, json.JSONDecodeError):
+        return None
+    return data if isinstance(data, dict) else None
+
+
+def _scores_counts(path: Path) -> tuple[int, int]:
+    """Return (total, resolved) from the persisted per-instance scores."""
+    total = 0
+    resolved = 0
+    with path.open() as fh:
+        for line_no, line in enumerate(fh, 1):
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                row = json.loads(line)
+            except json.JSONDecodeError as exc:
+                raise ValueError(f"invalid JSON at {path}:{line_no}: {exc}") from exc
+            total += 1
+            resolved += row.get("resolved") is True
+    return total, resolved
+
+
+def _external_summary(run_dir: Path) -> dict | None:
+    """Map a schema-v2 Docker report into the local aggregate schema.
+
+    `scores.jsonl` is the independent total/resolved gate. The Docker report is
+    mandatory because scores alone cannot distinguish unresolved instances
+    from empty patches and harness errors.
+    """
+    scores_path = run_dir / "scores.jsonl"
+    score_total, score_resolved = _scores_counts(scores_path)
+
+    report_path = (
+        run_dir / "docker-score" / f"sglang__sweep.{run_dir.name}.json"
+    )
+    report = _read_summary(report_path)
+    if report is None or report.get("schema_version") != 2:
+        return None
+
+    field_map = {
+        "resolved_instances": "resolved",
+        "unresolved_instances": "unresolved",
+        "empty_patch_instances": "empty_patch",
+        "error_instances": "error",
+        "submitted_instances": "submitted",
+        "completed_instances": "completed",
+        "total_instances": "total_predictions",
+    }
+    if any(not isinstance(report.get(source), int) for source in field_map):
+        return None
+    summary = {
+        destination: report[source]
+        for source, destination in field_map.items()
+    }
+    incomplete_ids = report.get("incomplete_ids")
+    if not isinstance(incomplete_ids, list):
+        return None
+    summary["incomplete"] = len(incomplete_ids)
+    total = summary["total_predictions"]
+    summary["resolve_rate_pct"] = (
+        round(100.0 * summary["resolved"] / total, 1) if total else None
+    )
+
+    if summary["resolved"] != score_resolved:
+        raise ValueError(
+            f"resolved mismatch for {run_dir}: Docker report "
+            f"{summary['resolved']} != scores.jsonl {score_resolved}"
+        )
+    if summary["total_predictions"] != score_total:
+        raise ValueError(
+            f"total mismatch for {run_dir}: Docker report "
+            f"{summary['total_predictions']} != scores.jsonl {score_total}"
+        )
+
+    per_instance = {}
+    for ids_key, label in (
+        ("resolved_ids", "resolved"),
+        ("unresolved_ids", "unresolved"),
+        ("empty_patch_ids", "empty_patch"),
+        ("error_ids", "error"),
+        ("incomplete_ids", "incomplete"),
+    ):
+        for instance_id in report.get(ids_key) or []:
+            per_instance[str(instance_id)] = label
+    if per_instance:
+        summary["per_instance"] = per_instance
+    return summary
 
 
 def discover_runs(runs_dir: Path):
@@ -113,37 +239,41 @@ def discover_runs(runs_dir: Path):
     if not runs_dir.exists():
         return
 
-    pat = re.compile(r"^(.*)-(opencode|little-coder|claw-code)-v2$")
     for d in sorted(runs_dir.iterdir()):
         if not d.is_dir():
             continue
-        m = pat.match(d.name)
-        if not m:
+        legacy_match = LEGACY_RUN_RE.match(d.name)
+        if legacy_match:
+            preset, scaffold = legacy_match.group(1), legacy_match.group(2)
+            yield preset, scaffold, d, _read_summary(
+                d / "scores-docker-summary.json"
+            )
             continue
-        preset, scaffold = m.group(1), m.group(2)
-        summary_path = d / "scores-docker-summary.json"
-        if summary_path.exists():
-            try:
-                summary = json.loads(summary_path.read_text())
-            except Exception:
-                summary = None
-        else:
-            summary = None
-        yield preset, scaffold, d, summary
+
+        if ".empty-pre-devrole" in d.name:
+            continue
+        external_match = EXTERNAL_RUN_RE.match(d.name)
+        if not external_match or not (d / "scores.jsonl").exists():
+            continue
+        preset, scaffold = external_match.group(1), external_match.group(2)
+        summary = _external_summary(d)
+        if summary is not None:
+            yield preset, scaffold, d, summary
 
 
-def main():
-    args = parse_args()
+def main(argv=None):
+    args = parse_args(argv)
     runs_dir = Path(args.runs_dir).resolve()
-    # runs_dir = <repo>/evals/swebench/runs → repo root is 3 levels up
-    repo_root = runs_dir.parent.parent.parent
-    quality_dir = (repo_root / args.quality_dir).resolve()
+    repo_root = REPO_ROOT
+    quality_dir, out_path = resolve_output_paths(args, repo_root)
 
     # Group: results[preset][scaffold] = summary
     results = defaultdict(dict)
     paths = defaultdict(dict)
     cell_jsons = []
+    external_layout = False
     for preset, scaffold, run_dir, summary in discover_runs(runs_dir):
+        external_layout = external_layout or not run_dir.name.endswith("-v2")
         results[preset][scaffold] = summary
         paths[preset][scaffold] = run_dir
         if summary and not args.no_json:
@@ -192,17 +322,33 @@ def main():
             cells.append(f"{r}/{t} = {rate}%" if t else "0/0")
         rows.append(cells)
 
-    out_path = Path(args.out) if args.out else (
-        runs_dir.parent / f"bake-off-{time.strftime('%Y-%m-%d')}.md"
-    )
-
     lines = []
     lines.append(f"# SWE-bench Lite bake-off — {time.strftime('%Y-%m-%d')}")
     lines.append("")
     lines.append("Per-model × per-scaffold resolved-rate. Each cell is "
                  "`<resolved>/<total> = <rate>%` from the official SWE-bench "
-                 "Docker harness (`scores-docker-summary.json` per run dir).")
+                 "Docker harness (a Docker report plus `scores.jsonl` per "
+                 "published run).")
     lines.append("")
+    if external_layout:
+        lines.append("## Comparability")
+        lines.append("")
+        lines.append(
+            "The scoring instrument is the official SWE-bench Docker harness, "
+            "matching the sister-rig score class. The `/data/bakeoff/runs` "
+            "rollouts were produced host-side with `--no-venv`, CTX=131072, "
+            "TIMEOUT=1800, SHARDS=1-2, and watchdog-restarted serving. Rankings "
+            "are comparable within this matrix; absolute resolve rates are not "
+            "head-to-head comparable with rollouts that used an in-container "
+            "test loop."
+        )
+        lines.append("")
+        lines.append(
+            "Paused or unscored directories without `scores.jsonl`, and "
+            "`.empty-pre-devrole-*` runs, are intentionally excluded. Their "
+            "predictions remain under `/data/bakeoff/runs` for later resumption."
+        )
+        lines.append("")
     lines.append("| Model preset | opencode | little-coder | claw-code |")
     lines.append("|--------------|:--------:|:------------:|:---------:|")
     for cells in rows:
@@ -248,16 +394,17 @@ def main():
         for sc in SCAFFOLDS:
             p = by_sc.get(sc)
             if p:
-                lines.append(f"- `{preset}-{sc}`: `{p.relative_to(runs_dir.parent.parent)}`")
+                lines.append(f"- `{preset}-{sc}`: `{display_path(p, repo_root)}`")
     lines.append("")
 
-    out_path.write_text("\n".join(lines))
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text("\n".join(lines) + "\n")
     print(f"Wrote {out_path}", flush=True)
     for cells in rows:
         print("  " + " | ".join(cells))
     if cell_jsons:
         print(f"\nWrote {len(cell_jsons)} per-cell JSON(s) to "
-              f"{quality_dir.relative_to(repo_root) if str(quality_dir).startswith(str(repo_root)) else quality_dir}/",
+              f"{display_path(quality_dir, repo_root)}/",
               flush=True)
     return 0
 

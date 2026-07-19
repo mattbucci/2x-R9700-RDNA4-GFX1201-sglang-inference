@@ -1,0 +1,17 @@
+{
+  "preset": "coder-30b-a3b",
+  "scaffold": "opencode",
+  "model_path": "sglang/sweep",
+  "total_predictions": 300,
+  "resolve_rate_pct": 36.0,
+  "resolved": 108,
+  "unresolved": 161,
+  "error": 8,
+  "empty_patch": 23,
+  "incomplete": 0,
+  "submitted": 300,
+  "completed": 269,
+  "harness_returncode": null,
+  "run_dir": "/data/bakeoff/runs/coder-30b-a3b-opencode",
+  "timestamp": "2026-07-18T23:53:48"
+}
