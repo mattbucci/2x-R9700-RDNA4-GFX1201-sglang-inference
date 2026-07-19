@@ -1,0 +1,58 @@
+{
+  "schema_version": 1,
+  "kind": "unscored_infrastructure_diagnostic",
+  "tag": "north-mini-depth01",
+  "date": "2026-07-19",
+  "status": "server_stall_interrupted",
+  "score": null,
+  "command": "/home/letsrtfm/miniforge3/envs/sglang-triton36-v0515/bin/python -u scripts/eval/probe_256k_tooluse.py --port 23334 --tag north-mini-depth01 --multi-turn --max-tokens 8192 --depth 0.1 --lengths 131072,176000 --out benchmarks/quality/tooluse256k-north-mini-v0515-r9700-depth01.json",
+  "server": {
+    "model_path": "/home/letsrtfm/AI/models/North-Mini-Code-1.0-fp8",
+    "context_length": 262144,
+    "tp_size": 2,
+    "kv_cache_dtype": "fp8_e4m3",
+    "attention_backend": "triton",
+    "tool_call_parser": "cohere_command4",
+    "reasoning_parser": "cohere_command4",
+    "fp8_gemm_runner_backend": "auto"
+  },
+  "settings": {
+    "requested_lengths": [131072, 176000],
+    "depth": 0.1,
+    "max_tokens": 8192,
+    "followup_max_tokens": 8192,
+    "multi_turn": true,
+    "structured_followup_content": true
+  },
+  "observations": {
+    "active_rung": 131072,
+    "prefill_completed_at": "2026-07-19T02:24:47-07:00",
+    "prefill_pending_tokens": 0,
+    "decode_progress_after_prefill": false,
+    "last_heartbeat_at": "2026-07-19T02:23:11-07:00",
+    "health_failures": [
+      {
+        "at": "2026-07-19T02:26:25-07:00",
+        "message": "Server couldn't get a response from detokenizer for last 20 seconds"
+      },
+      {
+        "at": "2026-07-19T02:35:56-07:00",
+        "message": "Server couldn't get a response from detokenizer for last 20 seconds"
+      }
+    ],
+    "client_wait_before_interrupt_seconds": ">=740",
+    "client_exit_code": 130,
+    "client_exit_reason": "controlled KeyboardInterrupt after the server stopped heartbeating",
+    "server_shutdown": "workers exited after SIGINT; one R9700 retained 30816251904 bytes of VRAM with no owning userspace server process"
+  },
+  "evidence": {
+    "server_log": "/data/logs/r97d_north_server.log",
+    "server_log_sha256": "f931774363ae53e084b9bcb292e78fe24b70e7f9566bbf185d77ee638081f75c",
+    "server_log_bytes": 6234425,
+    "main_curve_receipt": "benchmarks/quality/tooluse256k-north-mini-v0515-r9700.json",
+    "main_curve_receipt_sha256": "d548a4cf13a64906b96b31e9720765397998ac66738a777b493070a687780816",
+    "run_identity": "benchmarks/quality/r97d-run-identity-2026-07-18.json",
+    "run_identity_sha256": "dd72644363e7f65b2de95c9f7f6dde3ddee4c39b3f56a7bd722ddb985b55d18c"
+  },
+  "verdict": "Unscored infrastructure failure. This run provides no depth-0.1 model-quality result. Reset the affected GPU or reboot the host, then rerun both planned rungs before drawing a recall-knee conclusion."
+}

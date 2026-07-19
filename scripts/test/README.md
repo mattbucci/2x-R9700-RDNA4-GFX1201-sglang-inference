@@ -2,6 +2,13 @@
 
 Development and investigation tools. Not part of the production workflow.
 
+## CPU contract tests
+
+| Script | Purpose |
+|--------|---------|
+| `test_probe_256k_tooluse.py` | Strict tool-call, retry, receipt, and multi-turn scoring contract |
+| `test_generate_charts_tooluse.py` | Fail-closed schema-v2 ladder loading, classification, and rendering |
+
 ## TP=2 Validation
 
 | Script | Purpose |

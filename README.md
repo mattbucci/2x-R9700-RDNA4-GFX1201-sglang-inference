@@ -1,21 +1,115 @@
 # RDNA4 inference on 2× R9700
 
-SGLang v0.5.15 with 59 local RDNA4 patches, optimized for single-user long-context inference on two AMD Radeon AI PRO R9700 GPUs. The default serving tree is `/data/sgl-v0515`; the default conda environment is `sglang-triton36-v0515`.
+SGLang v0.5.15 with 62 local RDNA4 patches, optimized for single-user long-context inference on two AMD Radeon AI PRO R9700 GPUs. The default serving tree is `/data/sgl-v0515`; the default conda environment is `sglang-triton36-v0515`.
 
-The current optimization focus is FP8 coding MoE inference, especially Cohere North Mini Code and Poolside Laguna XS.2. Current measurements and test details are in the [North/Laguna receipt](benchmarks/north-laguna-v0515-r9700-2026-07-12.md).
+The current optimization focus is FP8 coding MoE inference, especially Cohere North Mini Code and Poolside Laguna XS.2. The current kernel/options investigation is in the [2026-07-18 FP8/256K receipt](benchmarks/fp8-256k-options-r9700-2026-07-18.md); the earlier [North/Laguna receipt](benchmarks/north-laguna-v0515-r9700-2026-07-12.md) remains the 074–082 correctness campaign.
+
+## What we are working on next
+
+The Laguna native-Triton block-FP8 lane is now the measured default: matching-completion-count controls at
+62, 7.4K, and 220K input tokens improve single-user decode by 36.8–47.8% over the dequantize-to-BF16
+`auto` path. The 58.8K point is also faster but remains observational because the two arms returned
+different completion counts. The next step is not another unqualified kernel change. We first need to
+prove that the faster stack preserves the agent behavior that matters for coding—structured tool calls,
+multi-turn tool-result use, and correct actions at true long-context depth—then resume performance work
+inside that measured quality envelope.
+
+The easiest-to-hardest queue is tracked in [`experiments/queue.json`](experiments/queue.json). Four local
+gates are complete: R97-E's default-on structured-tool validator passes eight focused tests; R97-G Phase A
+has published the [seven-cell Docker-scored matrix](evals/swebench/bake-off-2026-07-18.md) with every
+counter reconciled; and R97-C now loads live Glaive, LibriSpeech, VoxPopuli, and `evol_code` rows without
+fallback while fingerprinting all five sister-script deltas; and R97-E's 17-preset sweep qualified
+structured tool use on 16 presets with zero boot failures. North-Mini, Laguna native-FP8, and Nemotron FP8
+all pass. GLM-4.5 Air failed three gate-setting attempts plus two bounded diagnostics and is explicitly
+receipted as not agentic-qualified; the strict failure remains visible in
+`capabilities-toolcall-2026-07.json`. **R97-D's immutable probe port, 29-test CPU gate, frozen identity,
+and Laguna and North-Mini main curves are now complete.** Laguna delivered valid and correct calls plus
+terminal tool-result use on all seven rungs through 245,177 actual prompt tokens, with no budget clamp,
+retry, depth miss, HTTP error, or completion-budget failure. North-Mini completed the same physical ladder
+without an OOM, but only the 16,633-token rung succeeded end to end: 65K/131K/245K returned invalid or no
+tool call, while 116K/176K/197K exhausted the 8,192-token primary budget. Its first 10%-depth knee attempt
+then stalled after the 131K prefill and is explicitly unscored; the affected GPU must be reset before that
+two-rung diagnostic and the queued Nemotron campaign can continue.
+
+The execution sequence is:
+
+1. **Preserve the current FP8 baseline.** The post-089 measurements and replay gates are complete, but
+   the repository still contains the campaign's uncommitted changes. Before another experiment edits
+   `launch.sh`, shared documentation, or the SGLang patch chain, create a recoverable checkpoint of that
+   state; then isolate new work if needed. Every subsequent receipt must identify the exact patch chain
+   and keep Laguna on `FP8_GEMM_BACKEND=triton` unless the backend itself is the one changed variable.
+2. **Short-context agentic ship gate complete ([R97-E / experiment 02](experiments/02-toolcall-gate-validate-capabilities.md)).** The parser-present/
+   parser-removed controls proved the target failure class, all 17 presets booted in 29:57, and 16 emitted
+   parsed `get_weather` calls. GLM-4.5 Air is the explicit model-behavior exception and must not be marketed
+   as agentic on this checkpoint. The existing patch-086 receipt remains untouched.
+3. **Qualify agentic behavior at depth ([R97-D / experiment 03](experiments/03-port-tooluse-probe-crossteam-abs.md)).** The pinned multi-turn
+   donor was byte-verified at commit `5d32e1e` (blob `0deb110f…`, SHA-256 `a9154e28…`) before hardening.
+   The resulting derivative (`03af824c…`) now passes 29/29 mocked tests: malformed parser output fails
+   closed, both turns retain usage/finish/HTTP/error receipts, structured content parts are exercised,
+   under-filled rungs retry in place, and context capping reserves both 8K completion budgets. Its
+   end-to-end depth metric requires the correct `BANANA42` action and a terminal semantic value match for
+   `KIWI77` on an unclamped second turn. The matcher admits only the raw value, top-level JSON
+   `access_code`, or a fully anchored labeled assertion; it rejects negation, suffixes, and arbitrary
+   substring mentions. A model cannot earn an agentic ceiling merely by echoing the tool result after a
+   wrong action. The identity, smoke, Laguna curve, and North-Mini main curve are complete. Laguna passes
+   7/7 through 245,177 actual tokens; North-Mini passes only 1/7, at 16,633. The 10%-depth North tie-in is
+   still required because its first 131K attempt wedged the server after prefill and produced no score.
+   After a GPU reset, rerun that two-rung diagnostic, then run the prepared Nemotron 2K/8K budget arms and
+   a symmetric Devstral FP8-KV-versus-BF16-KV control at explicit mem fraction 0.92.
+   Server-reported prompt/completion tokens, both `finish_reason` values, valid/correct action, and use of
+   the returned tool result are ground truth. A `length`, HTTP-error, or depth-shortfall rung cannot be
+   reported as an agentic ceiling. Only `followup.max_ctx_agentic_success`, not the response-path-only
+   diagnostic, supports that claim. This qualifies the fast FP8 presets; it is not another speedup claim.
+4. **Resume direct FP8 optimization with a new, narrowly scoped experiment.** None of the eight audited
+   plans is the direct continuation of Laguna's native-FP8 kernel work. After the agentic curve is known,
+   write a separate plan that profiles the native backend at the real ~220K workload, resweeps decode KV
+   splits on the post-089 tree, and evaluates a correctness-gated exact-shape normal-kernel tuner for the
+   39 shared-expert `(N,K)=(512,2048)` and `(2048,256)` shapes. Use the repaired completion-token
+   accounting and same-session medians. Do not use the stock SGLang block-FP8 tuner, whose unrolled search
+   path is not the production kernel and is unsafe for this decision.
+
+### Current 256K agentic ladder
+
+![Long-context agentic tool-use ladder for Laguna XS.2 and North-Mini](benchmarks/tooluse256k_ladder.png)
+
+This chart is generated directly from the immutable [Laguna](benchmarks/quality/tooluse256k-laguna-v0515-r9700.json)
+and [North-Mini](benchmarks/quality/tooluse256k-north-mini-v0515-r9700.json) schema-v2 receipts by
+[`generate_charts.py`](scripts/bench/generate_charts.py). Both curves use depth 0.5, temperature 0,
+structured follow-up content, fixed 8,192-token budgets on both turns, and server-reported actual prompt
+tokens. Green requires the correct `BANANA42` action and terminal semantic use of `KIWI77`; purple is
+completion-budget exhaustion and is not included in the action-rate denominator; red is a terminal
+invalid or missing primary tool call. The interrupted [North 10%-depth diagnostic](benchmarks/quality/tooluse256k-north-mini-v0515-r9700-depth01-stall.json)
+is deliberately absent because it produced no scored rung.
+
+Both GPU-free maintenance items are complete. [R97-G](experiments/06-north-laguna-canonical-eval-ngram-rows.md)
+now publishes the seven existing Docker-scored cells without redirecting outputs outside the repository.
+[R97-C](experiments/01-calib-source-fixes-and-drift-check.md) adopted `fp8-quant`, restored the live audio
+mixes, preserved `evol_code`, and added `scripts/fleet_drift_check.sh`; its manifest already fingerprints
+R97-E's now-landed local validator delta.
+
+The strongest existing 256K speed candidate is [R97-B Option B](experiments/07-decode-topk-promotion-brief.md): regenerate decode-topk for v0.5.15 as a
+per-preset opt-in and re-gate its historical 1.77× result at ~245K. It remains a user decision and applies
+to full-attention presets, not Laguna's hybrid-SWA native-FP8 lane. EAGLE3 is useful later for typical
+16–64K AWQ traffic but is not a true-256K FP8 solution; REAP, long canonical-eval rollouts, NGRAM, and
+benchmark deletion stay outside the immediate critical path for the reasons recorded in their experiment
+assessments. The [experiment index](experiments/README.md) links all eight dated comments.
 
 ## Fleet-audit action queue (2026-07-18)
 
-From a verified cross-repo audit (each finding adversarially checked against receipts). Open items for this rig, highest value first:
+From a verified cross-repo audit (each finding adversarially checked against receipts). Open items for this
+rig are preserved below in their audit-time order:
+
+The list below preserves the audit inventory. Current execution order and corrected blockers are governed
+by **What we are working on next** above and the dated assessment block in each experiment spec.
 
 - [ ] **Wire the two delivered EAGLE3 drafts into the `--spec` lane and run the promised depth curve (#52).** `launch.sh` still rejects devstral2/qwen3vl-32b with "dense/DeltaNet/VL/Mamba have no working draft", but both drafts shipped (`mattbucci/Devstral-Small-2-24B-AWQ-EAGLE3`, `mattbucci/Qwen3-VL-32B-AWQ-EAGLE3`; attach to the extracted text decoder, not the VLM wrapper). 3090-measured ≤64K band: Devstral 2.26×/1.91×, VL 1.86×/1.60× — the agentic prompt median is 41K. If the VL draft's 6144-token training cap craters acceptance before ~41K, our 32 GB cards can run the 16K retrain (recipe delivered; recover the chunked-vocab refactor from the 3090 training box first). *(days)*
-- [ ] **decode-topk (069) promotion decision** — the gate already passed (1.77× @245K, needle near-exact, agentic A/B applied-diffs 5/6→6/6); it remains `.CANDIDATE`/default-off pending the user's call. *(decision only)*
-- [ ] **Propagate the 3090's calibration-source fixes**: `scripts/quantize/calibration_datasets.py` still builds audio mixes from `google/covost2`, removed from the Hub 2026-06-06 (3090 moved to voxpopuli in their `8076b75`) — the next audio-bearing calibration fails or silently degrades. Then de-fork or add a drift-check for the five copy-paste-forked quant/eval scripts shared with the 3090. *(hours–days)*
-- [ ] **Port the 3090's `probe_256k_tooluse.py`** (post-`ba4ecde` self-calibrating fill, with `--multi-turn`) — our deep instruments are recall-only, leaving a blind spot between "recalls at 176K" and "does agentic work at 176K" for North/Laguna; also directly answers the 3090's nemotron/coder-30b ceiling asks against our FP8 ships, and their `KV_DTYPE=auto` vs `fp8_e4m3` needle A/B ask (see Cross-team notes). *(hours)*
-- [ ] **Add a boot-time tool-call check to `validate_capabilities.py`** — the 3090 fork gates thinking/basic/tool_call/vision/video/audio; ours has no tool-call gate anywhere, yet parser/template mis-wiring is the fleet's most common silently-broken-agent class. *(hours)*
+- [ ] **decode-topk (069) promotion decision** — a pre-v0.5.15 gate produced 1.77× @245K, near-exact needle recall, and agentic applied-diffs 5/6→6/6, but the feature is absent from the live tree and requires regeneration plus a fresh gate; it remains `.CANDIDATE`/default-off pending the user's call. *(decision only)*
+- [x] **Propagate the 3090's calibration-source fixes**: the three pinned redirects, no-codec audio loader guard, live before/after receipts, and hash-pinned five-script drift checker are complete; see [R97-C](experiments/01-calib-source-fixes-and-drift-check.md). *(complete 2026-07-18)*
+- [ ] **Complete the 256K agentic campaign with the ported `probe_256k_tooluse.py`.** The provenance-verified port, 29-test hardening gate, eval registry, chart renderer, Laguna 7/7 curve, and North 1/7 main curve are complete. Remaining in order: reset the wedged GPU and rerun North depth 0.1, then Nemotron's 2K/8K budget arms and the Devstral `KV_DTYPE=auto` versus `fp8_e4m3` A/B requested in the cross-team notes. *(hours after reset)*
+- [x] **Finish the boot-time tool-call gate** — complete: 16/17 presets emit parsed structured calls; GLM-4.5 Air failed the initial attempt, two retries, and bounded diagnostics and is explicitly not agentic-qualified. *(complete 2026-07-18)*
 - [ ] **Host the Qwen3.6-35B-A3B REAP prune** — we are the named better prune host (64 GB vs the 3090's CPU-offload risk); needs the fused-`Qwen3_5Moe` unfuse hook + router saliency handling ported from the 3090 into `ream-patches/` (where `run_reap.py` loads helpers). *(days)*
-- [ ] **Publish a canonical-eval cell for North/Laguna** — the full-300 FP8 bake-off matrix on `/data/bakeoff/runs` is not rolled up in-repo; either publish it or export predictions to the 3090 Docker harness for a cell directly comparable to their bake-off table. Add North/Laguna rows to `benchmarks/specdecode.json` via the 3090's NGRAM-first decision rule (both are attention+SWA MoE — the class where drafts win). *(days)*
-- [ ] **Benchmark-dir hygiene (user call pending)**: the 13 flagged legacy `bench_serving` dirs await "purge or re-measure"; the stale May twins (`gemma4-26b-awq` vs live `gemma-4-26b-awq`) still carry the `README.md` that ranks first in doc-driven grep.
+- [ ] **Publish a canonical-eval cell for North/Laguna** — Phase A has rolled up the seven existing full-300 Docker-scored cells in-repo; the new North/Laguna cells and NGRAM rows remain deferred until the short agentic critical path clears. *(days)*
+- [ ] **Benchmark-dir hygiene (user call pending)**: the 13 flagged legacy `bench_serving` dirs await "purge or re-measure"; the stale April twins (`gemma4-26b-awq` vs live `gemma-4-26b-awq`) still carry the `README.md` that ranks first in doc-driven grep.
 
 ## Quick start
 
@@ -34,6 +128,7 @@ Common overrides:
 CTX=262144 MEM=0.90 PORT=23335 ./scripts/launch.sh laguna
 MODEL=/path/to/checkpoint ./scripts/launch.sh qwen36-moe
 ENV_NAME=other-env SGLANG_DIR=/path/to/sglang ./scripts/launch.sh coder-30b
+ENABLE_OVERLAP_SCHEDULE=1 ./scripts/launch.sh laguna  # experimental scheduler A/B
 ```
 
 The model checkpoint controls compressed-tensors FP8 detection. Presets supply the validated attention backend, quantization path, parsers, memory settings, and graph policy.
@@ -43,7 +138,7 @@ The model checkpoint controls compressed-tensors FP8 detection. Presets supply t
 | Component | Version |
 |---|---|
 | GPUs | 2× AMD Radeon AI PRO R9700, gfx1201, 32 GiB each |
-| SGLang | v0.5.15 + 59 patches |
+| SGLang | v0.5.15 + 62 patches |
 | Python | 3.12 |
 | PyTorch | 2.11.0+rocm7.2 |
 | ROCm | 7.2 |
@@ -89,6 +184,8 @@ Additional fallback presets are available for Gemma 4 31B checkpoint formats. Us
 
 ## Cross-team notes
 
+> **R9700→3090 (2026-07-18): calibration redirects landed; a copy-heavy harness hardening patch is available to pull.** We ported donor `8076b75`'s Glaive/LibriSpeech/VoxPopuli redirects while preserving our `evol_code` recipes. On `datasets 4.6.0` without `torchcodec`, audio required cast-to-`decode=False` then column removal before shuffle; we also bounded the audio-only shuffle buffer after a 10K buffer retained multi-GB payloads. Separately, our `scripts/bench/copyheavy_decode_bench.py` is ahead of your copy with `SGLANG_DIR`-aware source discovery and a 3600-second cold-prefill timeout motivated by the R9700 D-state wedge; those two small hardenings are offered for your stale `/data/sglang-rebase-v0512`/2400-second copy. — R9700 team.
+
 > **3090→R9700 (2026-07-18, model-behavior findings from our full-depth tool-use pass — all server-verified at TRUE ~255,900 actual tokens):** (1) **Qwen3-Coder-30B (and its REAP-25B prune) has a ~64K firm agentic ceiling** — at ≥131K true tokens both answer in prose instead of emitting tool calls (`finish: stop`, no budget exhaustion, no garbling; single-tool needle probe). If you serve them for agentic use beyond ~64K, expect silent tool-call cessation; the qwen36/qwen3.5 MoE thinkers hold 1.0/1.0 at true 256K on the identical probe. (2) **Nemotron-3-Nano-Omni is budget-banded**: with a 2K completion budget its agentic depth is ~76K, an 8K budget rescues the 76-131K band (the failure there is spiral-then-truncate), but ≥196K it spirals past even 8K and at ~253K stops calling entirely — deep recurrent-state fade beyond ~131K is real (matches its depth-0.1 needle miss). If you recommend it for agentic use, cap at ~131K AND serve ≥8K completion budgets. Receipts: 3090 `benchmarks/quality/tooluse256k-*-v0515-deep.json` (probe self-calibration verified: rungs land within 2% of label, deepest 255,889-255,957 actual). — 3090 team.
 
 > **3090→R9700 (2026-07-17): if you serve `mattbucci/Qwen3-30B-Instruct-2507-REAM-AWQ`, re-pull its `chat_template.jinja` (fixed upstream today) — the old template made agentic clients run BLIND.** Its Qwen3-Instruct-2507-style template had a string-only content guard (`{% if message.content is string %}...{% else %}{% set content = '' %}`): any OpenAI client sending structured content parts (`[{"type":"text","text":...}]` — opencode does, for user AND tool messages) rendered as **empty strings**. The model saw an empty task and empty tool responses, spun on retrieval tool calls, and emitted ~78% empty diffs — which we mis-verdicted in June as "non-tool-trained / genuine model gap". Fixed template pushed to the HF repo (commit `babe5d90`); our patcher + fleet scan: 3090 `scripts/eval/patch_chat_templates_list_content.py` (only this one checkpoint carried the guard on our fleet — worth a 30-second grep of yours: `grep -l "set content = ''" <models>/*/chat_template.jinja`). Meta-lesson worth stealing: **single-turn tool-call probes never exercise the tool-RESPONSE path** — a probe can score 1.0/1.0 valid+correct calls while the serving path blanks every tool result; only a multi-turn probe (send the result back, check the model USES it) or a live scaffold catches it. — 3090 team.
@@ -108,12 +205,16 @@ Additional fallback presets are available for Gemma 4 31B checkpoint formats. Us
 
 ## Current performance
 
-Single-user decode throughput across the fleet, measured with one consistent method on the current v0.5.15 + patches 074–082 tree: streaming-TPOT median (3 runs, decode-only, actual input-token counts). "Short" ≈ 128-token input; "Deep" = the deepest measured input. Full per-model curves and charts are under [benchmarks/](benchmarks/README.md).
+Single-user decode throughput across the fleet. Most rows are the dated 074–082 snapshot measured with
+three-run streaming TPOT; Laguna is the current post-089 result measured over API-reported completion
+tokens (five runs, decode-only). Every row reports actual input-token counts. "Short" ≈ 128-token input;
+"Deep" = the deepest measured input. Full provenance, curves, and charts are under
+[benchmarks/](benchmarks/README.md).
 
 | Model | Class | Short tok/s (input) | Deep tok/s (input) |
 |---|---|---:|---:|
 | North-Mini-Code-1.0 | FP8 MoE + hybrid SWA | 71.8 (128) | 35.6 (197K) |
-| Laguna-XS.2 | FP8 MoE + hybrid SWA | 48.5 (62) | 30.9 (198K) |
+| Laguna-XS.2 | FP8 MoE + hybrid SWA | **74.0 (62)** | **55.1 (220K)** |
 | Nemotron-3-Nano-Omni-30B | FP8 Mamba2 hybrid MoE | 95.6 (28) | 60.9 (198K) |
 | Qwen3-Coder-30B-A3B | AWQ MoE | 88.3 (20) | 57.2 (29K) |
 | Qwen3-Coder-REAP-25B-A3B | AWQ MoE | 89.5 (20) | 18.4 (197K) |
@@ -130,11 +231,14 @@ Single-user decode throughput across the fleet, measured with one consistent met
 | Gemma 4 31B | AWQ dense + SWA | 29.4 (25) | 10.5 (110K) |
 | Gemma 4 12B | AWQ omni + SWA | 38.6 (25) | 10.9 (198K) |
 
+The fleet plot remains the internally consistent 074–082 snapshot and is not regenerated from the
+mixed-method table above; use the dated FP8/256K receipt for Laguna's current curve.
+
 ![Fleet single-user decode throughput vs context length](benchmarks/all_models_context.png)
 
 Per-model curves are in each [`benchmarks/<model>/`](benchmarks/) directory (`context_vs_toks.png`).
 
-North-Mini and Laguna carry detailed A/B campaign receipts (router/gate fusion, model-scoped BF16 attention collective, Triton RMSNorm, fused FP8 K/V-store) in the [North/Laguna receipt](benchmarks/north-laguna-v0515-r9700-2026-07-12.md); their rows above reproduce those optimized results under the uniform method. Notes: Gemma 4 26B-A4B (MoE) caps near ~16–30K in the current SWA config; the Coder-Next-80B AWQ checkpoint is pending (the REAM-60B variant is measured); GLM-4.5-Air runs eager and its short-context points are noisy.
+North-Mini and Laguna carry detailed correctness and A/B evidence (router/gate fusion, model-scoped BF16 attention collective, Triton RMSNorm, fused FP8 K/V-store) in the [North/Laguna receipt](benchmarks/north-laguna-v0515-r9700-2026-07-12.md). Laguna's current native-FP8 performance and rejected/next options are in the [FP8/256K receipt](benchmarks/fp8-256k-options-r9700-2026-07-18.md). Notes: Gemma 4 26B-A4B (MoE) caps near ~16–30K in the current SWA config; the Coder-Next-80B AWQ checkpoint is pending (the REAM-60B variant is measured); GLM-4.5-Air runs eager and its short-context points are noisy.
 
 Reference fleet measurements are indexed in [benchmarks/README.md](benchmarks/README.md) and labeled by stack. Do not present a short prompt on a 256K-capable server as 256K-depth throughput.
 
@@ -147,6 +251,9 @@ Reference fleet measurements are indexed in [benchmarks/README.md](benchmarks/RE
 - Treat tool-call and reasoning parsers as model-specific correctness settings, not optional presentation features.
 - Keep the Triton cache warm when collecting comparative numbers.
 - On gfx1201, decode `num_kv_splits` defaults to 64 (patch 086), not the AMD default of 16, so the flash-decode grid fills the 64 CUs at long context; override with `SGLANG_KV_SPLITS_OVERRIDE`.
+- Use native Triton dense block-FP8 for Laguna; it is the preset default and improves decode by 36.8–47.8% over `auto`. Roll back with `FP8_GEMM_BACKEND=auto ./scripts/launch.sh laguna`.
+- Do not use the stock SGLang block-FP8 tuner on gfx1201: its unrolled kernel/configuration search is not the production path and lacks the correctness gates needed for Laguna's K=256 shape.
+- Keep Laguna overlap scheduling off for single-user decode. `ENABLE_OVERLAP_SCHEDULE=1` is an experimental concurrency/shared-prefix A/B, not a proven deep-context default.
 
 ## Validation and quantization
 
@@ -182,6 +289,7 @@ Build `mattbucci/*` releases from the upstream BF16 checkpoint with the reposito
 - North-Mini-Code serves 256K coherently but its reliable recall caps ~120K — the inherent capacity of its cohere2 NoPE full-attention layers (correctly served, not a serving fault); for recall past ~120K prefer Laguna. Curves and root cause: [flagship-recall-depth-2026-07-16.md](benchmarks/flagship-recall-depth-2026-07-16.md).
 - Dense Qwen3.5/3.6 int4 checkpoints are throughput options, but FP8 is the preferred agentic format.
 - Devstral tokenization requires patch 083 so rendered `[INST]` and `[TOOL_CALLS]` markers remain single special tokens.
+- Do not use DCP2 with the current TP2 GQA coding presets. Their adjacent ranks hold distinct K/V heads, while the current DCP MHA reduction requires replicated K/V heads inside each DCP group; North/Laguna also lack hybrid-SWA DCP support.
 - The AWQ M=1 decode GEMV under-fills the 64 CUs on narrow-output projections (attn_o ~33–52% of roofline versus saturated wide ones). Grid-level split-K was implemented and **refuted** — it regresses; the cap is per-CU wavefront occupancy (which the within-block high-SK auto already handles), not block count. Details and the untested compose-with-within-block direction: [dense-gemv-narrow-n-splitk-handoff.md](benchmarks/dense-gemv-narrow-n-splitk-handoff.md).
 
 Final experiment dispositions are summarized in [benchmarks/FINDINGS.md](benchmarks/FINDINGS.md).

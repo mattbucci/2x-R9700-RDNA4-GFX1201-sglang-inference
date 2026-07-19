@@ -1,0 +1,128 @@
+{
+  "schema_version": 1,
+  "created_at_utc": "2026-07-19T08:42:13Z",
+  "local_campaign_date": "2026-07-18",
+  "purpose": "Frozen execution identity for the R97-D Laguna-first 256K multi-turn tool-use campaign",
+  "host": {
+    "hostname": "letsrtfm-duall-amd",
+    "kernel": "7.0.9-zen1-1-zen",
+    "gpus": [
+      {
+        "index": 0,
+        "model": "AMD Radeon AI PRO R9700",
+        "gfx": "gfx1201",
+        "vbios": "113-EXT119250-100"
+      },
+      {
+        "index": 1,
+        "model": "AMD Radeon AI PRO R9700",
+        "gfx": "gfx1201",
+        "vbios": "113-EXT119250-100"
+      }
+    ]
+  },
+  "repository": {
+    "path": "/home/letsrtfm/AI/2x-R9700-RDNA4-GFX1201-sglang-inference",
+    "head": "6d21aa87b93d1c9fa7fe0cf82bc03de207293394",
+    "working_tree": "intentionally dirty post-089 campaign tree; do not clean or mutate execution-critical files between arms",
+    "tracked_binary_diff_sha256_at_capture": "b74f6f52841d1585f994fb5b2b3e55df0d459e493394bfa7e48e67267f2d8c94",
+    "patch_count": 62,
+    "ordered_patch_content_manifest_sha256": "9c6e2d1ef5458cb7dd950e3643b94220cdb4e479d5881ff210c066680fa133c1",
+    "launch_sh_sha256": "a95f804f6f73cc13cec0e653bb44345705f7e4e096f1a260da807b1b5ac34152"
+  },
+  "serving_tree": {
+    "path": "/data/sgl-v0515",
+    "head": "1362e52b69037f471e1dc97959592bf884122b12",
+    "git_status_short_sha256": "5e77a5a83bbaea0d0d5ab73dbb51a0c242649edc85f524df17597f64301c46da",
+    "tracked_binary_diff_sha256": "7336fa11aa5b43e31dffcbdf7389c633b2425509ef40488fa7cd8295c3f97341",
+    "policy": "frozen for every R97-D arm"
+  },
+  "probe": {
+    "path": "scripts/eval/probe_256k_tooluse.py",
+    "sha256": "03af824c37d859822b0fa33877d8627a5d25f6662d8301c3bd16263ed90ecd66",
+    "lines": 735,
+    "mode": "0644",
+    "test_path": "scripts/test/test_probe_256k_tooluse.py",
+    "test_sha256": "890b03a635cffe6cbdac7f9c50e5bc4af0a83a90fedef96c5fdb7f617f27d00d",
+    "test_lines": 916,
+    "tests_passed": 29,
+    "tests_failed": 0,
+    "immutable_donor": {
+      "repository": "/home/letsrtfm/AI/2x-3090-GA102-300-A1-sglang-inference",
+      "commit": "5d32e1efa5a6b1a57c1173b494e5af0fa9b7a639",
+      "blob": "0deb110fe4e806cbe091d8a68c097c1cb1384caa",
+      "sha256": "a9154e28c18bf651a302ad62aa28880d03f29bf3146a6ac619af167ca4e084ba",
+      "lines": 262,
+      "mode": "0644",
+      "pre_hardening_diff": "empty"
+    }
+  },
+  "environment": {
+    "name": "sglang-triton36-v0515",
+    "python": "3.12.13",
+    "python_executable": "/home/letsrtfm/miniforge3/envs/sglang-triton36-v0515/bin/python",
+    "requests": "2.34.2",
+    "sglang": "0.5.16.dev47+g1362e52b6",
+    "torch": "2.11.0+rocm7.2",
+    "torch_hip": "7.2.26015",
+    "triton": "3.6.0"
+  },
+  "laguna_model": {
+    "path": "/data/models/Laguna-XS.2-FP8",
+    "config_sha256": "af9405d8cfba91478e8e12eac2863a012921ff460956a6d18217c28dadcf3f9a",
+    "generation_config_sha256": "47c2fe6c02e595b68ad73f77f5b194b1c98f3eb5826f2b7521c0e7ad5b7183cd",
+    "tokenizer_config_sha256": "7458ce192bcd810dd43cad15c1996711168f2cc12d5400dac247da5033d6c283",
+    "chat_template_sha256": "cefcef90515772c003776b3d7db3c088f4e0ee89f8470679b95cf83210dc9e06"
+  },
+  "north_model": {
+    "path": "/home/letsrtfm/AI/models/North-Mini-Code-1.0-fp8",
+    "config_sha256": "bf8cbf07dee90ba72422e8d33479ae9a7eb229a4b0afd06d0d25dd73ebb5a307",
+    "generation_config_sha256": "1bbfc76080a70d5c23066597a3c7b5bb4504c9eea1f61b9950856f174318117f",
+    "tokenizer_config_sha256": "c6f0932407cea0432063b3fdea9fca3ffddd8423febf16b3492f1c755014b1db",
+    "chat_template_sha256": "d8366efb9f07c571da620ce6a924594fc52c80273a0fbb46a38b643972df95fd"
+  },
+  "pre_freeze_smoke": {
+    "receipt": "benchmarks/quality/tooluse256k-laguna-v0515-r9700-smoke.json",
+    "actual_prompt_tokens": 16680,
+    "primary": "valid lookup_record call with exact id BANANA42",
+    "followup_finish_reason": "stop",
+    "followup_text": "The record's access_code is KIWI77.",
+    "finding": "whole-string equality falsely classified a correct labeled value as not_used",
+    "disposition": "replaced by anchored exact/JSON/labeled value matcher before the admitted smoke or depth curve"
+  },
+  "laguna_launch_contract": {
+    "preset": "laguna",
+    "port": 23334,
+    "tp_size": 2,
+    "context_length": 262144,
+    "quantization": "compressed-tensors",
+    "dtype": "bfloat16",
+    "kv_cache_dtype": "auto (checkpoint FP8 scheme)",
+    "attention_backend": "triton",
+    "fp8_gemm_runner_backend": "triton",
+    "reasoning_parser": "poolside_v1",
+    "tool_call_parser": "poolside_v1",
+    "mem_fraction_static": 0.85,
+    "max_running_requests": 8,
+    "chunked_prefill_size": 4096,
+    "server_actuals_must_match_receipt": true
+  },
+  "north_launch_contract": {
+    "preset": "north-mini",
+    "port": 23334,
+    "tp_size": 2,
+    "context_length": 262144,
+    "quantization": "compressed-tensors",
+    "dtype": "bfloat16",
+    "kv_cache_dtype": "fp8_e4m3",
+    "attention_backend": "triton",
+    "fp8_gemm_runner_backend": "auto",
+    "reasoning_parser": "cohere_command4",
+    "tool_call_parser": "cohere_command4",
+    "mem_fraction_static": 0.85,
+    "max_running_requests": 8,
+    "chunked_prefill_size": 4096,
+    "swa_full_tokens_ratio": 0.0625,
+    "server_actuals_must_match_receipt": true
+  }
+}
