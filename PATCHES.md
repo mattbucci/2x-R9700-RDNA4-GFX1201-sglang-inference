@@ -1,10 +1,10 @@
 # Patch collections
 
-The repository carries **69 active patches across three environments**:
+The repository carries **70 active patches across three environments**:
 
 | Collection | Target | Count | Purpose |
 |---|---|---:|---|
-| [`patches/`](patches/README.md) | SGLang v0.5.15 (`/data/sgl-v0515`, `sglang-triton36-v0515`) | **67** | RDNA4 serving, model compatibility, correctness, and performance |
+| [`patches/`](patches/README.md) | SGLang v0.5.15 (`/data/sgl-v0515`, `sglang-triton36-v0515`) | **68** | RDNA4 serving, model compatibility, correctness, and performance |
 | [`llmcompressor-patches/`](llmcompressor-patches/README.md) | llmcompressor calibration environment | **1** | Unfused Qwen3 MoE experts for GPTQ calibration |
 | [`ream-patches/`](ream-patches/README.md) | Samsung SAIL REAM clone | **1** | Memory-safe, resumable expert merging |
 
@@ -13,7 +13,7 @@ Tooling files that support REAM/REAP are not counted as patches. Upstream contri
 
 ## SGLang series
 
-Apply the 67 numeric patches in filename order to pristine SGLang v0.5.15. Patch 072 was removed because
+Apply the 68 numeric patches in filename order to pristine SGLang v0.5.15. Patch 072 was removed because
 transformers 5.12.1 provides the Gemma 4 unified configuration and processor natively. Patch 083 replaces
 that count with the Mistral tokenizer-backend correction required by Devstral and Devstral 2.
 
@@ -26,7 +26,7 @@ that count with the Mistral tokenizer-backend correction required by Devstral an
 | FP8 | 005 039 042 044 045 074 082 | 7 |
 | Mamba2 hybrids | 043 046 047 049 073 | 5 |
 | Gemma 4 | 023 024 025 026 061 | 5 |
-| Model, parser, and speculative-decode plumbing | 007 015 016 036 040 048 055 056 057 058 062 083 089 090 091 092 093 | 17 |
+| Model, parser, and speculative-decode plumbing | 007 015 016 036 040 048 055 056 057 058 062 083 089 090 091 092 093 095 | 18 |
 
 The detailed active index and replay procedure are in [`patches/README.md`](patches/README.md). Base and
 North/Laguna validation evidence is recorded in
