@@ -3,16 +3,42 @@
 | | |
 |---|---|
 | **Type** | task |
-| **Status** | ready |
+| **Status** | implementation and receipts complete (`fp8-quant` adopted) |
 | **Execution host** | r9700-box |
 | **Wall clock** | 3-6h (dry-runs are minutes each; drift script + receipts + docs the rest) |
 | **GPU time** | none — dataset builds and diffs only; no model load, no serving |
-| **Depends on** | External: HF Hub network access from the R9700 box (HF_HUB_OFFLINE unset) — the only prerequisite; no other queue item blocks this. |
+| **Depends on** | Complete. Execution used `/home/letsrtfm/miniforge3/envs/fp8-quant`; the dry-runs used live HF Hub access with `HF_HUB_OFFLINE` unset and no calibration/pruning process active. |
 | **Provides to** | Every future audio/thinking-bearing R9700 calibration (11 quantize scripts import calibration_datasets, incl. Gemma-4 26B/31B and Nemotron-Omni recipes) — restored audio+thinking coverage; REAP-hosting queue item (run_reap.py delta documented in KNOWN_DRIFT.tsv: 3090's Qwen3_5Moe support is the port source); validate_capabilities tool-call-gate queue item (its 367-line delta documented in the manifest); 3090 team via Cross-team note: copyheavy_decode_bench.py env-var SRC_GLOB + 3600s timeout hardening (their copy hardcodes the stale /data/sglang-rebase-v0512 tree) |
+
+## Current assessment — 2026-07-18 post-089
+
+- **Disposition:** **Implementation and receipts complete.** The three pinned redirects are present, all
+  eight R9700 recipes and `evol_code` remain intact, and future changes to the five shared scripts now fail
+  closed unless their exact hashes and directional diff counts are refreshed in `scripts/KNOWN_DRIFT.tsv`.
+- **Baseline correction:** The pre-edit `n=64` run reproduced two dead audio sources, not three:
+  Common Voice raised `EmptyDatasetError`, CoVoST2 raised `DatasetNotFoundError`, and the builder silently
+  padded 11 rows from Ultrachat. AM-Thinking successfully supplied all 13 rows on `datasets 4.6.0`; its
+  Glaive redirect is therefore donor convergence and schema-risk avoidance, not a locally reproduced
+  outage. Receipt: `/data/logs/r97c_calib_dryrun_before.log`.
+- **Execution correction:** `fp8-quant` has no `torchcodec`. Both replacement audio datasets initially
+  failed while materializing their `Audio` feature, and a 10,000-row shuffle retained gigabytes of encoded
+  clips even though calibration discards audio bytes. The loader now casts audio to `decode=False`, removes
+  the column before shuffle, and bounds only audio buffers to the requested slice scale.
+- **Verification:** The repaired multimodal mix produced 13 Glaive, 6 LibriSpeech, and 6 VoxPopuli rows
+  with no loader failure or fallback padding; live format probes confirmed nonempty assistant transcripts.
+  `code_thinking` retained 25 `evol_code` and 16 Glaive rows. Three network-free tests pass. The seeded
+  drift manifest reports four exact known drifts plus one identical file; an empty manifest reports four
+  untracked drifts and exits 1. Receipts are under `/data/logs/r97c_*`.
+- **Known environment issue:** After printing the complete multimodal receipt, `datasets 4.6.0` aborted at
+  interpreter teardown in a Hub background thread (`PyGILState_Release`, rc 134). The data and live format
+  gates completed before teardown; the focused live probes used an explicit clean exit. This is recorded,
+  not misreported as a loader failure.
+- **Next action:** Run `scripts/fleet_drift_check.sh` whenever either checkout changes and refresh the
+  manifest only after reviewing the new semantic delta. The next queue item is R97-E's GPU controls.
 
 ## Objective
 
-The next audio-bearing R9700 calibration (Gemma-4 class, thinking_vision_video_audio) will silently lose its audio and thinking coverage because three HF sources in scripts/quantize/calibration_datasets.py are dead, and the loader degrades to ultrachat padding instead of crashing. Port the 3090's verified source redirects (their commit 8076b75), then make cross-repo script drift visible-by-default with a checked-in drift-check script + known-drift manifest, so the five copy-paste-forked scripts can only diverge intentionally.
+Prevent future audio-bearing R9700 calibration from silently replacing unavailable source rows with Ultrachat padding. Port the 3090's verified source redirects (commit 8076b75), preserve the R9700-only code mix, and make cross-repo script drift visible-by-default with a checked-in drift checker plus exact known-drift manifest.
 
 
 ## Background & receipts

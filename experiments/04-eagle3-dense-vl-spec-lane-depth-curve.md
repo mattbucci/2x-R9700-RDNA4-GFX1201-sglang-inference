@@ -3,12 +3,27 @@
 | | |
 |---|---|
 | **Type** | experiment |
-| **Status** | ready |
+| **Status** | preparation-ready; GPU work deferred |
 | **Execution host** | r9700-box |
 | **Wall clock** | 2-3 days (wiring+extraction day 1; depth curves day 2; receipts/decision day 3) |
 | **GPU time** | ~6-10 h GPU occupancy on r9700-box (2 presets x 2 arms, single boot per arm, multi-depth requests; 96K prefills dominate). Draft downloads + text-only extraction are CPU/disk only. |
 | **Depends on** | HF network access to pull mattbucci/Devstral-Small-2-24B-AWQ-EAGLE3 and mattbucci/Qwen3-VL-32B-AWQ-EAGLE3 (drafts are NOT on local disk yet — verified; hf CLI present at /usr/bin/hf).; R9700 GPUs idle (no calibration/pruning window) for steps 4-8.; Retrain follow-up ONLY (post-gate, out of scope here): 3090 team exporting the uncommitted chunked-vocab SpecForge refactor from their training box /data/specforge/SpecForge. |
 | **Provides to** | 3090 team: RDNA4 dense/VL EAGLE3 depth-curve receipt + the 16K-retrain gate decision (their README line 107 delivery explicitly offered the retrain path; share via README cross-team notes per fleet convention).; R9700 benchmarks/specdecode.json + README spec-decode coverage: two stale 'blocked' rows become measured rows.; Fleet-audit action queue: closes item #52 (R9700 README line 11). |
+
+## Current assessment — 2026-07-18 post-089
+
+- **Disposition:** **Preparation-ready; GPU work deferred until after the deep FP8 qualification.** Both
+  draft downloads, both extracted targets, and the new curve driver are absent; donor extractors and the
+  existing harnesses are present.
+- **Goal fit:** Medium value for typical 16–64K agentic turns, where a trained draft may provide a useful
+  speedup. This is an AWQ speculative-decoding experiment, not an FP8 optimization or a true-256K answer;
+  the existing 244K result remains strongly net-negative.
+- **Live blocker:** `scripts/launch.sh` already carries the uncommitted FP8 campaign changes. Checkpoint or
+  isolate that work before adding spec-lane wiring, and do not reserve the TP2 pair until the download,
+  extraction, and target/draft hash gates pass.
+- **Next action:** When this lane reaches the front of the queue, download the two named drafts into the
+  `/data` Hugging Face cache, port the two donor extractors, and complete the Devstral shard-hash gate.
+  GPU acceptance curves begin only after those preparation gates succeed.
 
 ## Objective
 

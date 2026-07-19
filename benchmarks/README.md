@@ -12,11 +12,12 @@ each model under its production launch preset (quant, graph policy, and KV dtype
 decode table is in the [top-level README](../README.md#current-performance); each `<model>/` directory
 here holds that model's `results.json` and regenerated `context_vs_toks.png` / `concurrency_vs_toks.png`.
 
-North-Mini and Laguna additionally have a full A/B optimization campaign with correctness scoring:
+North-Mini and Laguna additionally have a historical 074–082 A/B optimization campaign with correctness
+scoring. North's row predates patch 090 and is retained for performance provenance, not current quality:
 
 | Model | Input tokens | Decode tok/s | Correctness |
 |---|---:|---:|---|
-| [North Mini Code FP8](north-mini/) | 128 / 29,357 / 117,048 / 219,352 | 71.053 / 60.714 / 42.298 / 33.905 | 34/36; tool call passed |
+| [North Mini Code FP8, pre-090](north-mini/) | 128 / 29,357 / 117,048 / 219,352 | 71.053 / 60.714 / 42.298 / 33.905 | Historical 34/36; tool call passed |
 | [Laguna XS.2 FP8](laguna-xs2/) | 62 / 7,403 / 58,785 / 220,277 | 48.999 / 47.485 / 39.959 / 29.270 | 34/36; capabilities 2/2; tool call passed |
 
 See the historical [v0.5.15 receipt](north-laguna-v0515-r9700-2026-07-12.md) and its
@@ -40,17 +41,18 @@ same-output baseline pending refresh. The DCP1 label is intentional: DCP2 is not
 these TP2 GQA checkpoints because adjacent DCP ranks do not hold replicated K/V heads. No DCP2
 performance number is reported.
 
-### Agentic quality at depth
+### Historical pre-fix greedy agentic ladder
 
 The schema-v2 multi-turn ladder tests whether a model retrieves the planted ID, emits the correct
 structured action, accepts a structured tool response, and terminally uses its returned value. Both
 published curves use depth 0.5, temperature 0, 8,192-token budgets on both turns, and server-reported
-actual prompt tokens.
+actual prompt tokens. Laguna remains an admitted result. North is a pre-090 incident baseline and must not
+be used as a current ceiling.
 
 | Model | End-to-end successes | Maximum end-to-end depth | Primary failures |
 |---|---:|---:|---|
 | [Laguna XS.2 FP8](quality/tooluse256k-laguna-v0515-r9700.json) | 7 / 7 | 245,177 | none |
-| [North-Mini-Code FP8](quality/tooluse256k-north-mini-v0515-r9700.json) | 1 / 7 | 16,633 | 3 invalid/missing calls; 3 budget-bound |
+| [North-Mini-Code FP8, pre-090 incident](quality/tooluse256k-north-mini-v0515-r9700.json) | 1 / 7 | 16,633 | Superseded; not admissible as a current ceiling |
 
 ![Long-context agentic tool-use ladder](tooluse256k_ladder.png)
 
@@ -58,6 +60,25 @@ Regenerate the chart with
 `/home/letsrtfm/miniforge3/bin/python scripts/bench/generate_charts.py --tooluse-only`. The
 [North depth-0.1 stall receipt](quality/tooluse256k-north-mini-v0515-r9700-depth01-stall.json) is
 unscored infrastructure evidence and is intentionally excluded from this quality chart.
+
+### Post-fix deterministic prompt-profile control
+
+The post-094 control holds rendered token count, sampling, seeds, tools, and serving identity fixed while
+changing only context texture. This is single-turn **correct structured action** scoring, not an
+end-to-end agentic ceiling.
+
+| Actual prompt tokens | Low-entropy repetition stress | Heterogeneous code/log |
+|---:|---:|---:|
+| 64,801 | 1 / 3 | **3 / 3** |
+| 115,806 | 0 / 3 | **3 / 3** |
+
+![North post-fix deterministic correct-action profile control](north_mini_tooluse_profile_ab.png)
+
+The immutable [profile receipt](quality/north-mini-tooluse-profile-ab-post094-2026-07-19.json) records
+exact prompt hashes, patches 090–094, TP2/BF16-KV deterministic serving, temperature 1.0/top-p 0.95, and
+seeds 0–2. The repository-native, byte-distinct `--filler-profile agentic --multi-turn` focused gate also
+passed its admission bar: 2/3 correct primaries at both ~67.5K and ~115.6K, with correct terminal tool-result
+use on all four valid calls.
 
 Final experiment conclusions are consolidated in [FINDINGS.md](FINDINGS.md).
 

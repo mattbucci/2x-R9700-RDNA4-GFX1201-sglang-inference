@@ -10,6 +10,23 @@
 | **Depends on** | Matt's Step-0 pick (Option A / Option B / keep-list) and the two rider confirmations (north-mini/v0513 purge; root-jsonl move) — the only blocker; everything else is verified ready.; Option B: idle R9700 GPUs (no calibration, pruning, or model-copy job) per rules-for-agents.md and CLAUDE.md working-loop rule 1. |
 | **Provides to** | R9700 README/charts consumers (incl. 3090 + M4 teams reading via sister-repo README per reference-sister-teams): a benchmarks/ tree where every committed results.json is depth-immune (modulo the retained dated fp8-256k campaign receipt).; R97 queue item 'Publish a canonical-eval cell' and the 3090's cross-team audit thread (README.md:106-108): closes the R9700 side of the bench_serving depth-bug remediation.; Option B: first immune R9700 decode curves for the Qwen3.6-REAM-A3B and Qwen3.6-VL-REAP-26B published ships (3090 has theirs; R9700 currently has none). |
 
+## Current assessment — 2026-07-18 post-089
+
+- **Disposition:** **Defer; mechanically prepared but blocked on the user's Option A/B and rider choices.**
+  No deletion or root-file move is authorized by this assessment.
+- **Goal fit:** This improves benchmark provenance but provides no FP8 or 256K inference-speed gain.
+  Option B additionally consumes GPU time on two AWQ model overrides unrelated to Laguna's native-FP8
+  path.
+- **Live correction:** The success criterion requiring a clean `benchmarks/` status is unattainable as
+  written because `benchmarks/gemma-4-26b-awq/results.json` has a pre-existing modification that must be
+  preserved and excluded from this task's commit. Scope status checks to files this task actually changes.
+  Also coordinate the root-JSONL rider with experiment 07, whose fallback fixture paths currently name
+  those files.
+- **Next action:** Present Option A/B and both rider decisions, then capture a read-only inventory and
+  scoped `git status` before any approved mutation. Run no `git rm` and move no root JSONL until the choice
+  is recorded. Prefer generating experiment 07's `/tmp/spec256k-context.txt` first so hygiene cannot break
+  its fallback inputs.
+
 ## Objective
 
 Close the last "user call pending" bullet in the R9700 fleet-audit queue (README.md:18): the 13 legacy bench_serving-era benchmark dirs flagged depth-suspect by benchmarks/bench-serving-audit-2026-07-14.md, plus the stale twins (gemma4-26b-awq, qwen35-27b-awq) whose README.md files outrank the live data in doc-driven grep. Deliver Matt an itemized keep/purge/re-measure call per dir, then execute the mechanical cleanup so no depth-suspect number can be mistaken for a current result. RECOMMENDATION: Option B (hybrid) — purge 11 dirs whose models already have immune decode_ab data or are dead twin-layouts, re-measure the 2 published ships with no immune equivalent (Qwen3.6-REAM-A3B, Qwen3.6-VL-REAP-26B), with a boot/coherence gate that degrades to purge-only.

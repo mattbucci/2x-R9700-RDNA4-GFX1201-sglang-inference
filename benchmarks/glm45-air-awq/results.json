@@ -1,35 +1,35 @@
 {
   "model": "GLM-4.5-Air-REAP AWQ (glm4_moe)",
   "engine": "SGLang",
-  "method": "streaming-TPOT median (decode_ab, 5-run)",
+  "method": "streaming-TPOT median (decode_ab, 3-run)",
   "hardware": "2x R9700 TP=2",
-  "timestamp": "2026-07-12 v0.5.15+patches",
+  "timestamp": "v0.5.15+patches",
   "output_tokens": 80,
-  "note": "corrected: Phase-0 was first-sweep cold-cache contaminated; clean 5-run, BF16 collective (patch 085)",
+  "note": "fleet rebench, streaming-TPOT 3-run median, current tree",
   "context_sweep": [
     {
       "context": 128,
       "input_len": 17,
-      "tpot_ms": 38.89,
-      "tok_per_sec": 25.715
+      "tpot_ms": 38.08,
+      "tok_per_sec": 26.258
     },
     {
       "context": 4096,
       "input_len": 3670,
-      "tpot_ms": 39.05,
-      "tok_per_sec": 25.61
+      "tpot_ms": 38.01,
+      "tok_per_sec": 26.311
     },
     {
       "context": 16384,
       "input_len": 14631,
-      "tpot_ms": 38.66,
-      "tok_per_sec": 25.868
+      "tpot_ms": 38.1,
+      "tok_per_sec": 26.25
     },
     {
       "context": 29696,
       "input_len": 26506,
-      "tpot_ms": 39.09,
-      "tok_per_sec": 25.581
+      "tpot_ms": 38.57,
+      "tok_per_sec": 25.927
     }
   ],
   "throughput_sweep": [

@@ -3,32 +3,32 @@
   "engine": "SGLang",
   "method": "streaming-TPOT median (decode_ab, 3-run)",
   "hardware": "2x R9700 TP=2",
-  "timestamp": "2026-07-12 v0.5.15+074-082",
+  "timestamp": "v0.5.15+patches",
   "output_tokens": 80,
   "context_sweep": [
     {
       "context": 128,
       "input_len": 15,
-      "tpot_ms": 20.89,
-      "tok_per_sec": 47.867
+      "tpot_ms": 20.24,
+      "tok_per_sec": 49.406
     },
     {
       "context": 8192,
       "input_len": 7356,
-      "tpot_ms": 22.6,
-      "tok_per_sec": 44.238
+      "tpot_ms": 22.05,
+      "tok_per_sec": 45.341
     },
     {
       "context": 32768,
       "input_len": 29377,
-      "tpot_ms": 27.1,
-      "tok_per_sec": 36.901
+      "tpot_ms": 24.02,
+      "tok_per_sec": 41.627
     },
     {
       "context": 122880,
       "input_len": 110121,
-      "tpot_ms": 43.44,
-      "tok_per_sec": 23.018
+      "tpot_ms": 30.08,
+      "tok_per_sec": 33.248
     }
   ],
   "throughput_sweep": [
@@ -69,5 +69,5 @@
       "ttft_ms": 7852.43
     }
   ],
-  "note": "Phase0 fleet rebench, streaming-TPOT 3-run median, current tree"
+  "note": "fleet rebench, streaming-TPOT 3-run median, current tree"
 }

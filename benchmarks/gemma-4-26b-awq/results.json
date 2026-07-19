@@ -3,26 +3,26 @@
   "engine": "SGLang",
   "method": "streaming-TPOT median (decode_ab, 3-run)",
   "hardware": "2x R9700 TP=2",
-  "timestamp": "2026-07-12 v0.5.15+074-082",
+  "timestamp": "v0.5.15+patches",
   "output_tokens": 80,
   "context_sweep": [
     {
       "context": 128,
       "input_len": 25,
-      "tpot_ms": 13.37,
-      "tok_per_sec": 74.785
+      "tpot_ms": 13.0,
+      "tok_per_sec": 76.94
     },
     {
       "context": 4096,
       "input_len": 3694,
-      "tpot_ms": 14.59,
-      "tok_per_sec": 68.548
+      "tpot_ms": 13.81,
+      "tok_per_sec": 72.395
     },
     {
       "context": 16384,
       "input_len": 14706,
-      "tpot_ms": 17.15,
-      "tok_per_sec": 58.312
+      "tpot_ms": 14.02,
+      "tok_per_sec": 71.335
     },
     {
       "context": 29696,
@@ -58,5 +58,5 @@
     }
   ],
   "_note": "context_sweep truncated to <=32K: bench_serving --dataset-name random gives garbage long-ctx metrics for gemma (multimodal; ttft=0, tpot collapses to ~2ms). gemma-4-26B 256K serving is VALIDATED separately via a real 230K-tok needle prompt on triton (retrieved, no OOM, ~16.5 tok/s e2e) \u2014 see fp8-256k-campaign + README.",
-  "note": "Phase0 fleet rebench, streaming-TPOT 3-run median, current tree"
+  "note": "fleet rebench, streaming-TPOT 3-run median, current tree"
 }

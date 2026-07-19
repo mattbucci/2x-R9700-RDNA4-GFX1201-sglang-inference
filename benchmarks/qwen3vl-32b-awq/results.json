@@ -2,32 +2,32 @@
   "model": "Qwen3-VL-32B AWQ (Dense VL)",
   "engine": "SGLang",
   "hardware": "2x R9700 TP=2",
-  "timestamp": "2026-07-12 v0.5.15+074-082",
-  "note": "Phase0 fleet rebench, streaming-TPOT 3-run median, current tree",
+  "timestamp": "v0.5.15+patches",
+  "note": "fleet rebench, streaming-TPOT 3-run median, current tree",
   "context_sweep": [
     {
       "context": 128,
       "input_len": 20,
-      "tpot_ms": 42.8,
-      "tok_per_sec": 23.366
+      "tpot_ms": 31.45,
+      "tok_per_sec": 31.794
     },
     {
       "context": 4096,
       "input_len": 3673,
-      "tpot_ms": 42.52,
-      "tok_per_sec": 23.521
+      "tpot_ms": 30.97,
+      "tok_per_sec": 32.292
     },
     {
       "context": 16384,
       "input_len": 14634,
-      "tpot_ms": 45.47,
-      "tok_per_sec": 21.992
+      "tpot_ms": 31.32,
+      "tok_per_sec": 31.931
     },
     {
       "context": 29696,
       "input_len": 26509,
-      "tpot_ms": 60.75,
-      "tok_per_sec": 16.462
+      "tpot_ms": 31.5,
+      "tok_per_sec": 31.749
     }
   ],
   "throughput_sweep": [

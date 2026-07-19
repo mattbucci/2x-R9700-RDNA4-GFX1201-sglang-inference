@@ -4,7 +4,7 @@
   "ordering": "easiest_to_test_then_hardest",
   "baseline": {
     "sglang": "v0.5.15",
-    "patch_state": "post-089",
+    "patch_state": "post-094",
     "laguna_fp8_backend": "triton"
   },
   "items": [
@@ -78,21 +78,24 @@
       "depends_on": [
         "R97-E-gpu"
       ],
-      "next_action": "Reset the affected GPU, rerun North-Mini's two-rung depth-0.1 knee check, then start the preflighted Nemotron budget arms.",
+      "next_action": "Finish and publish North-Mini's three-seed post-094 agentic-profile ladder, then start the preflighted Nemotron budget arms.",
       "progress": {
         "completed": [
           "Immutable donor port and provenance receipt",
-          "29/29 adversarial probe tests",
+          "36/36 probe tests (42 combined with chart contracts)",
           "Frozen execution identity",
           "Laguna 16K native-Triton end-to-end smoke",
           "Laguna seven-rung curve: 7/7 end-to-end successes through 245177 actual tokens",
-          "North-Mini 16K smoke and seven-rung main curve: 1/7 end-to-end, maximum 16633 actual tokens",
-          "Schema-v2 eval registry entry, tested ladder renderer, and README chart",
-          "North depth-0.1 first attempt preserved as an unscored post-prefill server stall"
+          "North-Mini pre-090 1/7 greedy curve retained only as a superseded incident baseline",
+          "Patches 090-094: RMSNorm selection, parser recovery, finish-reason correctness, SWA convention, and gfx1201 deterministic MM/BMM",
+          "Separate repeated-stress and heterogeneous agentic-context eval profiles with effective-seed receipts",
+          "Deterministic exact profile control: heterogeneous code/log 3/3 at 64801 and 115806 tokens",
+          "Repository-native multi-turn focused gate: 2/3 correct primaries at both depths and 4/4 valid follow-ups used the tool result",
+          "Schema-v2 eval registry entry, tested ladder/profile renderer, and README charts"
         ],
-        "in_progress": "North-Mini depth-0.1 retry; blocked until the affected GPU is reset",
+        "in_progress": "North-Mini seven-rung, three-seed post-094 agentic-profile ladder",
         "remaining_order": [
-          "Reset/drain GPU and rerun North-Mini depth-0.1 knee check",
+          "Publish the North post-fix ladder receipt and chart",
           "Nemotron FP8 2K-versus-8K budget spot-check",
           "Devstral FP8-KV-versus-BF16-KV recall A/B",
           "Verdict notes and cross-team receipts"
@@ -103,6 +106,7 @@
         "Focused tests cover exact call validity, both-turn usage/status, structured content, context reserve, and same-rung retry",
         "Every accepted rung records server-actual token counts",
         "Budget-truncated rungs are excluded from depth ceilings",
+        "Historical pre-fix and current post-fix measurements are never combined into one ceiling",
         "Laguna, North, Nemotron, and KV-dtype receipts are complete or have explicit kill receipts"
       ]
     },
