@@ -22,12 +22,74 @@ TOOLUSE_RECEIPT_GLOB = os.path.join(
     BENCH_DIR, "quality", "tooluse256k-*-v0515-r9700.json"
 )
 TOOLUSE_CHART = os.path.join(BENCH_DIR, "tooluse256k_ladder.png")
+NORTH_PROFILE_AB_RECEIPT = os.path.join(
+    BENCH_DIR,
+    "quality",
+    "north-mini-tooluse-profile-ab-post094-2026-07-19.json",
+)
+NORTH_PROFILE_AB_CHART = os.path.join(
+    BENCH_DIR, "north_mini_tooluse_profile_ab.png"
+)
 TOOLUSE_REQUESTED_LENGTHS = [
     16384, 65536, 116000, 131072, 176000, 196608, 256000,
 ]
 TOOLUSE_SCORED_LENGTHS = [
     16384, 65536, 116000, 131072, 176000, 196608, 245248,
 ]
+TOOLUSE_CANONICAL_SAMPLING = {
+    "temperature": 0.0,
+    "top_p": None,
+    "top_k": None,
+    "seed": None,
+    "seed_effective": None,
+}
+
+NORTH_PROFILE_AB_PATCH_CHAIN = [
+    {
+        "number": 90,
+        "file": "patches/090-cohere2moe-rmsnorm-selection.patch",
+        "sha256": "90f9185094e949d5d7cc3864f04b80a483bcdcfd1e919ccd6888aabb9451e0a7",
+    },
+    {
+        "number": 91,
+        "file": "patches/091-cohere-command4-tool-call-id-name-recovery.patch",
+        "sha256": "3d572f0a5821a5649a96ada71c36c58c4236c91a3a19ec36e610d0086d919fd4",
+    },
+    {
+        "number": 92,
+        "file": "patches/092-openai-tool-call-finish-reason-correctness.patch",
+        "sha256": "0406d17dbdef86f2fb2896de3517cc9fb8bfd485652b586f1ee19d6fa3291b90",
+    },
+    {
+        "number": 93,
+        "file": "patches/093-cohere2moe-swa-window-off-by-one.patch",
+        "sha256": "0bca966e28df0e54d6a597f0d24345d8721b5ddb38cb676bbbfe61977ff5cc7f",
+    },
+    {
+        "number": 94,
+        "file": "patches/094-rdna4-batch-invariant-matmul-lds.patch",
+        "sha256": "265b45b4f5d8dcdf012d7586511058fbe933b6f4433d1d99edc120565fff00eb",
+    },
+]
+NORTH_PROFILE_AB_SAMPLING = {
+    "max_tokens": 1024,
+    "seed_effective": True,
+    "seeds": [0, 1, 2],
+    "temperature": 1.0,
+    "top_k": -1,
+    "top_p": 0.95,
+}
+NORTH_PROFILE_AB_DEPTHS = [64801, 115806]
+NORTH_PROFILE_AB_PROFILES = {
+    "repeated": {
+        "label": "Repeated filler stress",
+        "color": "#f0883e",
+    },
+    "heterogeneous_code_log_exact": {
+        "label": "Heterogeneous code/log",
+        "color": "#58a6ff",
+    },
+}
 
 TOOLUSE_TAG_META = {
     "laguna": {
@@ -35,8 +97,9 @@ TOOLUSE_TAG_META = {
         "order": 0,
     },
     "north-mini": {
-        "label": "North-Mini-Code FP8",
+        "label": "North-Mini-Code FP8 (pre-fix; provisional)",
         "order": 1,
+        "provisional": True,
     },
 }
 
@@ -223,6 +286,8 @@ def load_tooluse_ladders(receipt_glob=TOOLUSE_RECEIPT_GLOB):
             or settings.get("context_length") != 262144
             or settings.get("requested_lengths") != TOOLUSE_REQUESTED_LENGTHS
             or settings.get("scored_lengths") != TOOLUSE_SCORED_LENGTHS
+            or settings.get("sampling", TOOLUSE_CANONICAL_SAMPLING)
+            != TOOLUSE_CANONICAL_SAMPLING
             or server.get("tp_size") != 2
             or len(results) != len(TOOLUSE_SCORED_LENGTHS)
             or [result.get("approx_tokens") for result in results]
@@ -317,7 +382,16 @@ def make_tooluse_ladder_chart(receipt_glob=TOOLUSE_RECEIPT_GLOB, out_path=TOOLUS
             if classify_tooluse_result(result) == "agentic_success"
         ]
         ceiling = max(successes) if successes else None
-        ceiling_text = f"max end-to-end: {ceiling:,}" if ceiling else "no end-to-end pass"
+        if ladder.get("provisional"):
+            ceiling_text = (
+                f"pre-fix pass: {ceiling:,}" if ceiling else "pre-fix: no pass"
+            )
+        else:
+            ceiling_text = (
+                f"max end-to-end: {ceiling:,}"
+                if ceiling
+                else "no end-to-end pass"
+            )
         ax.text(
             1.01,
             y,
@@ -387,6 +461,314 @@ def make_tooluse_ladder_chart(receipt_glob=TOOLUSE_RECEIPT_GLOB, out_path=TOOLUS
         color="#8b949e",
     )
     fig.tight_layout(rect=(0, 0.16, 0.92, 0.94))
+    fig.savefig(out_path, dpi=150, bbox_inches="tight")
+    plt.close(fig)
+    print(f"  {out_path}")
+    return out_path
+
+
+def load_north_profile_ab_receipt(path=NORTH_PROFILE_AB_RECEIPT):
+    """Load the canonical deterministic North post-fix profile control.
+
+    This loader deliberately fails closed: the chart is meaningful only when
+    both prompt profiles were measured at exactly the same server-reported
+    depths under the frozen deterministic serving and sampling configuration.
+    """
+    try:
+        with open(path) as f:
+            receipt = json.load(f)
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ValueError(f"cannot load North profile-control receipt: {exc}") from exc
+
+    def reject(reason):
+        raise ValueError(f"non-canonical North profile-control receipt: {reason}")
+
+    if not isinstance(receipt, dict):
+        reject("top level must be an object")
+    if receipt.get("schema_version") != 1:
+        reject("schema_version must be 1")
+    if receipt.get("tag") != "north-fixes-090-094-bf16kv-deterministic-profile-ab":
+        reject("unexpected campaign tag")
+    if receipt.get("patch_chain") != NORTH_PROFILE_AB_PATCH_CHAIN:
+        reject("patch chain must be the frozen 090-094 chain")
+
+    server = receipt.get("server")
+    if not isinstance(server, dict):
+        reject("server metadata is missing")
+    if type(server.get("tp_size")) is not int or server.get("tp_size") != 2:
+        reject("tp_size must be 2")
+    if server.get("enable_deterministic_inference") is not True:
+        reject("deterministic inference must be enabled")
+    if server.get("resolved_kv_cache_dtype") != "bfloat16":
+        reject("resolved KV cache dtype must be bfloat16")
+
+    sampling = receipt.get("sampling")
+    if sampling != NORTH_PROFILE_AB_SAMPLING:
+        reject("sampling must be temp=1/top_p=.95/top_k=-1 with seeds 0,1,2")
+    if sampling.get("seed_effective") is not True:
+        reject("request seeds must be effective")
+    if (
+        type(sampling.get("temperature")) is not float
+        or type(sampling.get("top_p")) is not float
+        or type(sampling.get("top_k")) is not int
+        or type(sampling.get("max_tokens")) is not int
+        or any(type(seed) is not int for seed in sampling.get("seeds", []))
+    ):
+        reject("sampling fields have non-canonical types")
+
+    results = receipt.get("results")
+    if not isinstance(results, list) or len(results) != 12:
+        reject("results must contain exactly 12 rows")
+
+    expected_matrix = {
+        (profile, depth, seed)
+        for profile in NORTH_PROFILE_AB_PROFILES
+        for depth in NORTH_PROFILE_AB_DEPTHS
+        for seed in NORTH_PROFILE_AB_SAMPLING["seeds"]
+    }
+    observed_matrix = []
+    for index, result in enumerate(results):
+        if not isinstance(result, dict):
+            reject(f"result row {index} is not an object")
+        profile = result.get("profile")
+        depth = result.get("target_rendered_tokens")
+        seed = result.get("seed")
+        if not isinstance(profile, str):
+            reject(f"result row {index} has a non-string profile")
+        if not isinstance(depth, int) or isinstance(depth, bool):
+            reject(f"result row {index} has a non-integer target depth")
+        if not isinstance(seed, int) or isinstance(seed, bool):
+            reject(f"result row {index} has a non-integer seed")
+
+        usage = result.get("usage")
+        if not isinstance(usage, dict):
+            reject(f"result row {index} has no usage object")
+        prompt_tokens = usage.get("prompt_tokens")
+        if (
+            not isinstance(prompt_tokens, int)
+            or isinstance(prompt_tokens, bool)
+            or prompt_tokens != depth
+        ):
+            reject(
+                f"result row {index} usage.prompt_tokens must exactly equal "
+                "target_rendered_tokens"
+            )
+        if type(result.get("correct_action")) is not bool:
+            reject(f"result row {index} has no boolean correct_action")
+        if type(result.get("valid_toolcall")) is not bool:
+            reject(f"result row {index} has no boolean valid_toolcall")
+        if result.get("correct_action") is True and (
+            result.get("valid_toolcall") is not True
+            or result.get("finish_reason") != "tool_calls"
+            or result.get("tool_name") != "lookup_record"
+            or result.get("got_id") != "BANANA42"
+        ):
+            reject(f"result row {index} marks a non-exact action correct")
+        observed_matrix.append((profile, depth, seed))
+
+    if set(observed_matrix) != expected_matrix or len(set(observed_matrix)) != 12:
+        reject("results must be the exact two-profile/two-depth/three-seed matrix")
+
+    prompts = receipt.get("prompts")
+    if not isinstance(prompts, list) or len(prompts) != 4:
+        reject("prompts must contain exactly four profile/depth controls")
+    prompt_matrix = []
+    for index, prompt in enumerate(prompts):
+        if not isinstance(prompt, dict):
+            reject(f"prompt row {index} is not an object")
+        profile = prompt.get("profile")
+        rendered = prompt.get("rendered_tokens")
+        target = prompt.get("target_rendered_tokens")
+        if not isinstance(profile, str):
+            reject(f"prompt row {index} has a non-string profile")
+        if (
+            not isinstance(rendered, int)
+            or isinstance(rendered, bool)
+            or not isinstance(target, int)
+            or isinstance(target, bool)
+            or rendered != target
+        ):
+            reject(f"prompt row {index} does not exactly hit its target depth")
+        prompt_matrix.append((profile, target))
+    expected_prompts = {
+        (profile, depth)
+        for profile in NORTH_PROFILE_AB_PROFILES
+        for depth in NORTH_PROFILE_AB_DEPTHS
+    }
+    if set(prompt_matrix) != expected_prompts or len(set(prompt_matrix)) != 4:
+        reject("prompts must cover both profiles at both exact depths")
+
+    return receipt
+
+
+def summarize_north_profile_ab(receipt):
+    """Derive exact-action rates and seed rows without trusting JSON summaries."""
+    groups = {}
+    for profile in NORTH_PROFILE_AB_PROFILES:
+        for depth in NORTH_PROFILE_AB_DEPTHS:
+            rows = sorted(
+                (
+                    result
+                    for result in receipt["results"]
+                    if result["profile"] == profile
+                    and result["target_rendered_tokens"] == depth
+                ),
+                key=lambda result: result["seed"],
+            )
+            correct = sum(result["correct_action"] is True for result in rows)
+            groups[(profile, depth)] = {
+                "rows": rows,
+                "correct": correct,
+                "samples": len(rows),
+                "rate": correct / len(rows),
+            }
+    return groups
+
+
+def make_north_profile_ab_chart(
+    receipt_path=NORTH_PROFILE_AB_RECEIPT,
+    out_path=NORTH_PROFILE_AB_CHART,
+):
+    """Render the deterministic low-entropy versus agentic-profile control."""
+    from matplotlib.lines import Line2D
+    from matplotlib.patches import Patch
+
+    receipt = load_north_profile_ab_receipt(receipt_path)
+    groups = summarize_north_profile_ab(receipt)
+    x = np.arange(len(NORTH_PROFILE_AB_DEPTHS))
+    width = 0.36
+
+    fig, ax = plt.subplots(figsize=(10.5, 5.8))
+    for profile_index, (profile, meta) in enumerate(
+        NORTH_PROFILE_AB_PROFILES.items()
+    ):
+        centers = x + (profile_index - 0.5) * width
+        rates = [groups[(profile, depth)]["rate"] for depth in NORTH_PROFILE_AB_DEPTHS]
+        bars = ax.bar(
+            centers,
+            rates,
+            width=width * 0.9,
+            color=meta["color"],
+            alpha=0.82,
+            edgecolor="#0d1117",
+            linewidth=0.8,
+            zorder=3,
+        )
+
+        for bar, center, depth in zip(bars, centers, NORTH_PROFILE_AB_DEPTHS):
+            group = groups[(profile, depth)]
+            rate = group["rate"]
+            label_y = rate * 0.5 if rate >= 0.2 else 0.12
+            ax.text(
+                center,
+                label_y,
+                f'{group["correct"]}/{group["samples"]} ({rate:.0%})',
+                ha="center",
+                va="center",
+                fontsize=10,
+                fontweight="bold",
+                color="#f0f6fc",
+                zorder=5,
+            )
+
+            seed_spacing = width * 0.21
+            for seed_index, result in enumerate(group["rows"]):
+                passed = result["correct_action"] is True
+                marker = "o" if passed else "X"
+                color = "#3fb950" if passed else "#f85149"
+                marker_x = center + (seed_index - 1) * seed_spacing
+                ax.scatter(
+                    marker_x,
+                    1.0 if passed else 0.0,
+                    s=72,
+                    marker=marker,
+                    color=color,
+                    edgecolor="#0d1117",
+                    linewidth=0.8,
+                    zorder=7,
+                    clip_on=False,
+                )
+
+    ax.set_xticks(x)
+    ax.set_xticklabels(
+        [f"{depth:,} prompt tokens" for depth in NORTH_PROFILE_AB_DEPTHS],
+        fontweight="bold",
+    )
+    ax.set_ylabel("Correct structured-action rate")
+    ax.yaxis.set_major_locator(ticker.MultipleLocator(0.2))
+    ax.yaxis.set_major_formatter(ticker.PercentFormatter(xmax=1.0))
+    ax.set_ylim(-0.08, 1.14)
+    ax.grid(True, axis="y", linestyle="--")
+    ax.grid(False, axis="x")
+    ax.set_title(
+        "North post-fix deterministic correct-action profile control",
+        fontsize=14,
+        fontweight="bold",
+        pad=36,
+    )
+    ax.text(
+        0.5,
+        1.035,
+        "North-Mini-Code FP8 · patches 090–094 · TP=2 · deterministic · "
+        "BF16 KV · temp 1 / top_p .95 / top_k -1",
+        transform=ax.transAxes,
+        ha="center",
+        va="bottom",
+        fontsize=9.3,
+        color="#8b949e",
+    )
+
+    handles = [
+        Patch(color=meta["color"], label=meta["label"])
+        for meta in NORTH_PROFILE_AB_PROFILES.values()
+    ]
+    handles.extend(
+        [
+            Line2D(
+                [0],
+                [0],
+                marker="o",
+                color="none",
+                markerfacecolor="#3fb950",
+                markeredgecolor="#0d1117",
+                markersize=8,
+                label="seed: exact action",
+            ),
+            Line2D(
+                [0],
+                [0],
+                marker="X",
+                color="none",
+                markerfacecolor="#f85149",
+                markeredgecolor="#0d1117",
+                markersize=8,
+                label="seed: failed action",
+            ),
+        ]
+    )
+    ax.legend(
+        handles=handles,
+        loc="upper center",
+        bbox_to_anchor=(0.5, -0.14),
+        ncol=4,
+        framealpha=0.6,
+        edgecolor="#30363d",
+        facecolor="#161b22",
+        fontsize=8.5,
+    )
+    ax.text(
+        0.5,
+        -0.245,
+        "Seed outcome markers are ordered left→right: 0, 1, 2. "
+        "Single-turn profile control; not an end-to-end agentic ceiling.",
+        transform=ax.transAxes,
+        ha="center",
+        fontsize=8.5,
+        color="#8b949e",
+        style="italic",
+    )
+
+    fig.tight_layout(rect=(0, 0.08, 1, 1))
     fig.savefig(out_path, dpi=150, bbox_inches="tight")
     plt.close(fig)
     print(f"  {out_path}")
@@ -687,7 +1069,7 @@ def main():
     parser.add_argument(
         "--tooluse-only",
         action="store_true",
-        help="only regenerate benchmarks/tooluse256k_ladder.png",
+        help="only regenerate the tool-use ladder and North profile-control charts",
     )
     args = parser.parse_args()
 
@@ -696,6 +1078,8 @@ def main():
     if args.tooluse_only:
         print("Tool-use ladder:")
         make_tooluse_ladder_chart()
+        print("\nNorth deterministic profile control:")
+        make_north_profile_ab_chart()
         print("\nDone!")
         return
 
@@ -733,6 +1117,9 @@ def main():
 
     print("Tool-use ladder:")
     make_tooluse_ladder_chart()
+
+    print("\nNorth deterministic profile control:")
+    make_north_profile_ab_chart()
 
     print("\nDone!")
 

@@ -2,12 +2,13 @@
 """Measure single-user decode tok/s across a set of context lengths on a running
 SGLang server, and write/update benchmarks/<slug>/results.json (context_sweep).
 
-Streams each generation and computes TPOT from the median inter-token delta
-(dropping the first delta, which carries prefill), so the number is decode-only
-and independent of TTFT. Builds an input of ~the requested token count from
-filler text. Preserves any existing throughput_sweep / metadata in the target
-results.json (the chart generator reads context_sweep; older code KeyError'd
-without throughput_sweep, so we keep it).
+Streams each generation and computes average decode TPOT from the API-reported
+completion-token count over the first-token-to-finish interval. This remains
+correct when a parser buffers text, one SSE event contains multiple tokens, or
+generated text changes across an A/B. Builds an input of ~the requested token
+count from filler text. Preserves any existing throughput_sweep / metadata in
+the target results.json (the chart generator reads context_sweep; older code
+KeyError'd without throughput_sweep, so we keep it).
 
 Usage:
   python scripts/bench/measure_decode_curve.py --port 23334 \
@@ -36,8 +37,20 @@ def stream_tpot(base, model, prompt, maxtok, think_off):
             "stream_options": {"include_usage": True}}
     if think_off:
         body["chat_template_kwargs"] = {"enable_thinking": False}
-    deltas = []; last = None; usage = None; txt = ""
+    # `stream_interval=1` usually emits one SSE event per token, but reasoning
+    # and tool parsers may buffer or coalesce text. Event rate is therefore not
+    # token rate. Use the authoritative completion-token count and retain the
+    # non-empty-piece deltas only as a compatibility fallback for servers that
+    # omit streaming usage.
+    deltas = []
+    last_piece = None
+    first_decode = None
+    last_decode = None
+    finish_time = None
+    usage = None
+    txt = ""
     with requests.post(base + "/v1/chat/completions", json=body, stream=True, timeout=1200) as r:
+        r.raise_for_status()
         for line in r.iter_lines():
             if not line:
                 continue
@@ -55,7 +68,18 @@ def stream_tpot(base, model, prompt, maxtok, think_off):
                 usage = d["usage"]
             ch = d.get("choices") or []
             if ch:
-                delta = ch[0]["delta"]
+                now = time.perf_counter()
+                choice = ch[0]
+                if choice.get("finish_reason") is not None:
+                    finish_time = now
+                else:
+                    if first_decode is None:
+                        # SGLang sends the role event with the first streamed
+                        # decode update, after prefill. Including it avoids a
+                        # parser-dependent first-visible-text timestamp.
+                        first_decode = now
+                    last_decode = now
+                delta = choice.get("delta") or {}
                 # Thinking models stream most benchmark tokens through
                 # reasoning_content. Counting only content silently produced
                 # 0 tok/s for North-Mini and Laguna until their final answer.
@@ -68,16 +92,34 @@ def stream_tpot(base, model, prompt, maxtok, think_off):
                     if part
                 )
                 if piece:
-                    now = time.perf_counter()
-                    if last is not None:
-                        deltas.append(now - last)
-                    last = now
+                    if last_piece is not None:
+                        deltas.append(now - last_piece)
+                    last_piece = now
                     txt += piece
-    if len(deltas) > 3:
-        deltas = sorted(deltas)[1:-1]  # drop fastest+slowest (prefill/jitter)
-    tpot = sum(deltas) / len(deltas) if deltas else 0
+
+    completion_tokens = int((usage or {}).get("completion_tokens") or 0)
+    decode_end = finish_time or last_decode
+    if (
+        completion_tokens > 1
+        and first_decode is not None
+        and decode_end is not None
+        and decode_end > first_decode
+    ):
+        # N token completions span N-1 inter-token intervals. The first token's
+        # prefill/TTFT is outside this interval.
+        tpot = (decode_end - first_decode) / (completion_tokens - 1)
+    else:
+        if len(deltas) > 3:
+            deltas = sorted(deltas)[1:-1]  # compatibility fallback: trim jitter
+        tpot = sum(deltas) / len(deltas) if deltas else 0
     pt = usage.get("prompt_tokens") if usage else None
-    return (tpot * 1000.0, (1.0 / tpot if tpot else 0.0), pt, txt[:60])
+    return (
+        tpot * 1000.0,
+        (1.0 / tpot if tpot else 0.0),
+        pt,
+        completion_tokens or None,
+        txt[:60],
+    )
 
 
 def main():
@@ -104,10 +146,22 @@ def main():
     sweep = []
     for c in ctxs:
         prompt = build_prompt(c)
-        ms, tps, pt, sample = stream_tpot(base, model, prompt, args.maxtok, args.think_off)
-        row = {"context": c, "input_len": pt or c, "tpot_ms": round(ms, 2), "tok_per_sec": round(tps, 2)}
+        ms, tps, pt, ct, sample = stream_tpot(
+            base, model, prompt, args.maxtok, args.think_off
+        )
+        row = {
+            "context": c,
+            "input_len": pt or c,
+            "completion_tokens": ct,
+            "tpot_ms": round(ms, 2),
+            "tok_per_sec": round(tps, 2),
+        }
         sweep.append(row)
-        print(f"  ctx~{c}: prompt_tokens={pt} TPOT={ms:.1f}ms = {tps:.1f} tok/s  sample={sample!r}", flush=True)
+        print(
+            f"  ctx~{c}: prompt_tokens={pt} completion_tokens={ct} "
+            f"TPOT={ms:.1f}ms = {tps:.1f} tok/s  sample={sample!r}",
+            flush=True,
+        )
 
     out = os.path.join(args.repo, "benchmarks", args.slug, "results.json")
     os.makedirs(os.path.dirname(out), exist_ok=True)
@@ -121,6 +175,8 @@ def main():
     existing.setdefault("model", args.label)
     existing["engine"] = existing.get("engine", "SGLang")
     existing["hardware"] = existing.get("hardware", "2x R9700 TP=2")
+    existing["method"] = "completion-token-counted streaming TPOT (single run)"
+    existing["output_tokens"] = args.maxtok
     if args.tag:
         existing["timestamp"] = args.tag
     if args.note:

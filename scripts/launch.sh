@@ -59,6 +59,7 @@ CHAT_TEMPLATE=""
 REASONING=""
 TOOL_CALL_PARSER=""
 ATTN_BACKEND="${ATTN_BACKEND:-triton}"
+FP8_GEMM_BACKEND="${FP8_GEMM_BACKEND:-}"
 OVERLAP="--disable-overlap-schedule"
 WARMUP=""
 WATCHDOG=600
@@ -675,6 +676,11 @@ PYEOF
             DTYPE="bfloat16"
             KV_DTYPE="${_ENV_KV_DTYPE:-auto}"
             ATTN_BACKEND="${ATTN_BACKEND:-triton}"
+            # Native block-FP8 avoids materializing all 80 dense weights to BF16
+            # on every token. Completion-token-counted, reverse-confirmed TP2:
+            # +48% short and +37% at 220K. Use
+            # FP8_GEMM_BACKEND=auto as the rollback to the dequant+BF16 path.
+            FP8_GEMM_BACKEND="${FP8_GEMM_BACKEND:-triton}"
             CTX="${_ENV_CTX:-262144}"; MAX_RUNNING="${_ENV_MAX_RUNNING:-8}"
             CHUNKED="${_ENV_CHUNKED:-4096}"; DECODE_STEPS=8; MEM="${_ENV_MEM:-0.85}"
             WATCHDOG=1800
@@ -873,6 +879,7 @@ CMD=(python -m sglang.launch_server
 # Used by the FP8 bake-off matrix to serve BF16 bases (no prebuilt FP8 checkpoint) as runtime-FP8.
 [[ "${FORCE_FP8:-}" == "1" ]] && QUANT="fp8"
 [[ -n "$QUANT" ]] && CMD+=(--quantization "$QUANT")
+[[ -n "$FP8_GEMM_BACKEND" ]] && CMD+=(--fp8-gemm-backend "$FP8_GEMM_BACKEND")
 [[ -n "$TOKENIZER" ]] && CMD+=($TOKENIZER)
 [[ -n "$MAMBA_CACHE" ]] && CMD+=($MAMBA_CACHE)
 [[ -n "$CHAT_TEMPLATE" ]] && CMD+=($CHAT_TEMPLATE)
@@ -884,6 +891,9 @@ CMD=(python -m sglang.launch_server
 # Needed for spec decode, where the small draft is launch-bound and only fast under cuda-graph.
 [ -n "${ENABLE_WARMUP:-}" ] && WARMUP=""
 [[ -n "$WARMUP" ]] && CMD+=($WARMUP)
+# Most presets conservatively disable overlap scheduling. Keep that default,
+# but allow production A/B tests without editing a model preset.
+[[ "${ENABLE_OVERLAP_SCHEDULE:-}" == "1" ]] && OVERLAP=""
 [[ -n "$OVERLAP" ]] && CMD+=($OVERLAP)
 [[ -n "$EXTRA_ARGS" ]] && CMD+=($EXTRA_ARGS)
 

@@ -7,7 +7,7 @@ Development and investigation tools. Not part of the production workflow.
 | Script | Purpose |
 |--------|---------|
 | `test_probe_256k_tooluse.py` | Strict tool-call, retry, receipt, and multi-turn scoring contract |
-| `test_generate_charts_tooluse.py` | Fail-closed schema-v2 ladder loading, classification, and rendering |
+| `test_generate_charts_tooluse.py` | Fail-closed historical-ladder and deterministic North profile-control loading, classification, and rendering |
 
 ## TP=2 Validation
 

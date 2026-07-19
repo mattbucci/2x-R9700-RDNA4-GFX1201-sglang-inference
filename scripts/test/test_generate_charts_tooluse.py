@@ -9,6 +9,7 @@ import json
 import pathlib
 import tempfile
 import unittest
+from unittest import mock
 
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
@@ -136,7 +137,16 @@ class TooluseChartTest(unittest.TestCase):
     def test_loader_requires_both_registered_matching_campaigns(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = pathlib.Path(tmp)
-            (root / "laguna.json").write_text(json.dumps(_receipt("laguna")))
+            (root / "laguna.json").write_text(
+                json.dumps(
+                    _receipt(
+                        "laguna",
+                        settings_update={
+                            "sampling": dict(charts.TOOLUSE_CANONICAL_SAMPLING)
+                        },
+                    )
+                )
+            )
             (root / "north.json").write_text(json.dumps(_receipt("north-mini")))
 
             ladders = charts.load_tooluse_ladders(str(root / "*.json"))
@@ -144,6 +154,8 @@ class TooluseChartTest(unittest.TestCase):
                 [ladder["receipt"]["tag"] for ladder in ladders],
                 ["laguna", "north-mini"],
             )
+            self.assertIn("pre-fix; provisional", ladders[1]["label"])
+            self.assertTrue(ladders[1]["provisional"])
 
             (root / "north.json").unlink()
             with self.assertRaisesRegex(ValueError, "north-mini"):
@@ -158,6 +170,14 @@ class TooluseChartTest(unittest.TestCase):
             {"followup_max_tokens": 2048},
             {"context_length": 131072},
             {"scored_lengths": [16384, 65536]},
+            {
+                "sampling": {
+                    "temperature": 1.0,
+                    "top_p": 0.95,
+                    "top_k": -1,
+                    "seed": 0,
+                }
+            },
         ]
         for update in bad_settings:
             with self.subTest(update=update), tempfile.TemporaryDirectory() as tmp:
@@ -221,6 +241,143 @@ class TooluseChartTest(unittest.TestCase):
             self.assertEqual(
                 charts.classify_tooluse_result(north_results[0]), "infra_failure"
             )
+
+    def test_current_north_profile_control_is_canonical(self):
+        receipt = charts.load_north_profile_ab_receipt()
+        groups = charts.summarize_north_profile_ab(receipt)
+
+        self.assertEqual(len(receipt["results"]), 12)
+        self.assertEqual(
+            charts.NORTH_PROFILE_AB_PROFILES["heterogeneous_code_log_exact"][
+                "label"
+            ],
+            "Heterogeneous code/log",
+        )
+        self.assertEqual(
+            {
+                key: (group["correct"], group["samples"], group["rate"])
+                for key, group in groups.items()
+            },
+            {
+                ("repeated", 64801): (1, 3, 1 / 3),
+                ("repeated", 115806): (0, 3, 0.0),
+                ("heterogeneous_code_log_exact", 64801): (3, 3, 1.0),
+                ("heterogeneous_code_log_exact", 115806): (3, 3, 1.0),
+            },
+        )
+
+    def test_north_profile_loader_fails_closed(self):
+        source = charts.load_north_profile_ab_receipt()
+        mutations = [
+            (
+                "patch chain",
+                "patch chain",
+                lambda receipt: receipt["patch_chain"].pop(),
+            ),
+            (
+                "tp2",
+                "tp_size",
+                lambda receipt: receipt["server"].__setitem__("tp_size", 1),
+            ),
+            (
+                "deterministic",
+                "deterministic inference",
+                lambda receipt: receipt["server"].__setitem__(
+                    "enable_deterministic_inference", False
+                ),
+            ),
+            (
+                "bf16 kv",
+                "resolved KV cache dtype",
+                lambda receipt: receipt["server"].__setitem__(
+                    "resolved_kv_cache_dtype", "fp8_e4m3"
+                ),
+            ),
+            (
+                "temperature",
+                "sampling",
+                lambda receipt: receipt["sampling"].__setitem__(
+                    "temperature", 0.0
+                ),
+            ),
+            (
+                "top p",
+                "sampling",
+                lambda receipt: receipt["sampling"].__setitem__("top_p", 1.0),
+            ),
+            (
+                "top k",
+                "sampling",
+                lambda receipt: receipt["sampling"].__setitem__("top_k", 20),
+            ),
+            (
+                "seeds",
+                "sampling",
+                lambda receipt: receipt["sampling"].__setitem__(
+                    "seeds", [1, 2, 3]
+                ),
+            ),
+            (
+                "row count",
+                "exactly 12",
+                lambda receipt: receipt["results"].pop(),
+            ),
+            (
+                "usage depth",
+                "usage.prompt_tokens",
+                lambda receipt: receipt["results"][0]["usage"].__setitem__(
+                    "prompt_tokens", 64800
+                ),
+            ),
+            (
+                "profile matrix",
+                "exact two-profile/two-depth/three-seed matrix",
+                lambda receipt: receipt["results"][0].__setitem__(
+                    "profile", "unknown"
+                ),
+            ),
+            (
+                "depth matrix",
+                "exact two-profile/two-depth/three-seed matrix",
+                lambda receipt: (
+                    receipt["results"][0].__setitem__(
+                        "target_rendered_tokens", 64802
+                    ),
+                    receipt["results"][0]["usage"].__setitem__(
+                        "prompt_tokens", 64802
+                    ),
+                ),
+            ),
+        ]
+
+        for name, message, mutate in mutations:
+            with self.subTest(name=name), tempfile.TemporaryDirectory() as tmp:
+                bad = copy.deepcopy(source)
+                mutate(bad)
+                path = pathlib.Path(tmp) / "receipt.json"
+                path.write_text(json.dumps(bad))
+                with self.assertRaisesRegex(ValueError, message):
+                    charts.load_north_profile_ab_receipt(str(path))
+
+    def test_north_profile_renderer(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            out = pathlib.Path(tmp) / "profile-control.png"
+            rendered = charts.make_north_profile_ab_chart(out_path=str(out))
+
+            self.assertEqual(rendered, str(out))
+            self.assertTrue(out.is_file())
+            self.assertGreater(out.stat().st_size, 1000)
+
+    def test_tooluse_only_generates_both_quality_charts(self):
+        with (
+            mock.patch.object(charts, "make_tooluse_ladder_chart") as ladder,
+            mock.patch.object(charts, "make_north_profile_ab_chart") as profile,
+            mock.patch("sys.argv", ["generate_charts.py", "--tooluse-only"]),
+        ):
+            charts.main()
+
+        ladder.assert_called_once_with()
+        profile.assert_called_once_with()
 
 
 if __name__ == "__main__":

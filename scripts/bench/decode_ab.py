@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Campaign A/B + re-bench decode driver: N runs per context, median across runs.
 
-Reuses measure_decode_curve's exact stream_tpot/build_prompt (decode-only median
-TPOT, actual input tokens, counts reasoning_content) but repeats each context
-`--runs` times and reports median/min/max so A/B points are reverse-confirmable.
+Reuses measure_decode_curve's exact stream_tpot/build_prompt (completion-token-
+counted decode TPOT, actual input tokens, counts reasoning_content) but repeats
+each context `--runs` times and reports median/min/max so A/B points are
+reverse-confirmable.
 
 --out           writes the raw per-run JSON (all runs preserved) to a scratch path.
 --results-json  merges the medians into benchmarks/<slug>/results.json in the exact
@@ -43,16 +44,26 @@ def main():
     rows = []
     for c in ctxs:
         prompt = mdc.build_prompt(c)
-        tpss, tpots, pts, sample = [], [], [], ""
+        tpss, tpots, pts, cts, sample = [], [], [], [], ""
         for r in range(a.runs):
-            ms, tps, pt, s = mdc.stream_tpot(base, model, prompt, a.maxtok, a.think_off)
-            tpss.append(tps); tpots.append(ms); pts.append(pt or c); sample = s
-            print(f"  ctx~{c} run{r+1}: pt={pt} {tps:.2f} tok/s ({ms:.1f}ms)", flush=True)
-        med = statistics.median(tpss)
+            ms, tps, pt, ct, s = mdc.stream_tpot(
+                base, model, prompt, a.maxtok, a.think_off
+            )
+            tpss.append(tps); tpots.append(ms); pts.append(pt or c); cts.append(ct); sample = s
+            print(
+                f"  ctx~{c} run{r+1}: pt={pt} ct={ct} "
+                f"{tps:.2f} tok/s ({ms:.1f}ms)",
+                flush=True,
+            )
+        median_tpot = statistics.median(tpots)
+        # Keep the published pair mathematically consistent even for an even
+        # run count, where median(1 / TPOT) != 1 / median(TPOT).
+        med = 1000.0 / median_tpot if median_tpot else 0.0
         row = {"context": c, "input_len": int(statistics.median(pts)),
                "runs_tps": [round(x, 2) for x in tpss], "median_tps": round(med, 3),
                "min_tps": round(min(tpss), 3), "max_tps": round(max(tpss), 3),
-               "median_tpot_ms": round(statistics.median(tpots), 2), "sample": sample}
+               "runs_completion_tokens": cts,
+               "median_tpot_ms": round(median_tpot, 2), "sample": sample}
         rows.append(row)
         print(f"  ctx~{c}: MEDIAN {med:.3f} tok/s  input_len~{row['input_len']}  "
               f"[{row['min_tps']:.2f}..{row['max_tps']:.2f}]  sample={sample!r}", flush=True)
@@ -78,7 +89,10 @@ def main():
         rj.setdefault("model", a.label)
         rj["engine"] = rj.get("engine", "SGLang")
         rj["hardware"] = rj.get("hardware", "2x R9700 TP=2")
-        rj["method"] = f"streaming-TPOT median (decode_ab, {a.runs}-run)"
+        rj["method"] = (
+            f"completion-token-counted streaming TPOT median "
+            f"(decode_ab, {a.runs}-run)"
+        )
         if a.tag:
             rj["timestamp"] = a.tag
         if a.note:

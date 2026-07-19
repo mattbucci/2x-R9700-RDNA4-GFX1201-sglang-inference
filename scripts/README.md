@@ -17,6 +17,12 @@
 ./scripts/launch.sh devstral --context-length 262144 --port 8000
 MODEL=/path/to/weights ./scripts/launch.sh coder-30b
 
+# Experimental scheduler A/B (presets remain overlap-off unless they opt in)
+ENABLE_OVERLAP_SCHEDULE=1 ./scripts/launch.sh laguna
+
+# Laguna native block-FP8 is the default; restore the old BF16-materialization path
+FP8_GEMM_BACKEND=auto ./scripts/launch.sh laguna
+
 # Benchmark (fleet harness)
 python scripts/bench/bench_all_unified.py --name "Model Name" --port 23334
 
@@ -25,6 +31,9 @@ python scripts/bench/measure_decode_curve.py --help
 
 # Evaluate quality
 python scripts/eval/eval_comprehensive.py --port 23334 --parallel 4
+
+# Verify the five shared R9700/3090 scripts against reviewed fingerprints
+bash scripts/fleet_drift_check.sh
 ```
 
 ## Layout
@@ -36,6 +45,7 @@ python scripts/eval/eval_comprehensive.py --port 23334 --parallel 4
 | `setup.sh` | Full setup: clone SGLang, apply patches, build |
 | `setup_sgl_kernel.sh` | Build sgl-kernel from source for ROCm |
 | `build_awq_gemv.sh` | Build HIP AWQ GEMV kernel |
+| `fleet_drift_check.sh` / `KNOWN_DRIFT.tsv` | Fail closed on unreviewed sister-script divergence |
 | [`bench/`](bench/) | Benchmark scripts |
 | [`quantize/`](quantize/) | Quantization and format conversion |
 | [`eval/`](eval/) | Quality evaluation |
