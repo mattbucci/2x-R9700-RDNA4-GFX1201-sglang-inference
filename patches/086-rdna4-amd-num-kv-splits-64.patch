@@ -1,0 +1,24 @@
+diff --git a/python/sglang/srt/server_args.py b/python/sglang/srt/server_args.py
+index ac774b82a3..fe482e531c 100644
+--- a/python/sglang/srt/server_args.py
++++ b/python/sglang/srt/server_args.py
+@@ -4570,7 +4570,18 @@ class ServerArgs:
+ 
+     def _handle_amd_specifics(self):
+         if is_hip():
+-            self.triton_attention_num_kv_splits = 16
++            import os
++
++            # gfx1201 R9700 = 64 CUs. The Triton flash-decode grid is
++            # head_groups x num_kv_splits at batch=1 decode, so the old default of 16
++            # under-fills the CUs (e.g. 2 head-groups -> 32 blocks) and decode attention
++            # stalls at ~21% of the KV-read roofline at long context. 64 lets
++            # get_num_kv_splits scale up to fill the CUs at depth: measured 2.14x 256K
++            # decode on coder-reap-25b (14.4 -> 30.7 tok/s), short context unregressed
++            # (the heuristic still picks few splits there). SGLANG_KV_SPLITS_OVERRIDE
++            # forces a value. A/B: benchmarks/profiling/coder-reap-25b-256k-kvsplit-ab.json
++            _kv = os.environ.get("SGLANG_KV_SPLITS_OVERRIDE")
++            self.triton_attention_num_kv_splits = int(_kv) if _kv else 64
+ 
+     def _handle_nccl_pre_warm(self):
+         # pre_warm_nccl is only used with CUDA or HIP hardware

@@ -1,9 +1,13 @@
 #!/usr/bin/env python3
-"""Generate context-length vs performance charts for each model.
+"""Generate performance and long-context quality charts.
 
 Reads benchmark data from benchmarks/{model}/results.json and produces PNG charts.
-All context charts share a unified 256K x-axis for direct comparison.
+All context charts share a unified 256K x-axis for direct comparison.  The
+tool-use ladder reads schema-v2 receipts from benchmarks/quality/ so the chart
+cannot drift from the recorded agentic-quality results.
 """
+import argparse
+import glob
 import os
 import json
 import matplotlib
@@ -14,6 +18,55 @@ import numpy as np
 
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 BENCH_DIR = os.path.join(REPO, "benchmarks")
+TOOLUSE_RECEIPT_GLOB = os.path.join(
+    BENCH_DIR, "quality", "tooluse256k-*-v0515-r9700.json"
+)
+TOOLUSE_CHART = os.path.join(BENCH_DIR, "tooluse256k_ladder.png")
+TOOLUSE_REQUESTED_LENGTHS = [
+    16384, 65536, 116000, 131072, 176000, 196608, 256000,
+]
+TOOLUSE_SCORED_LENGTHS = [
+    16384, 65536, 116000, 131072, 176000, 196608, 245248,
+]
+
+TOOLUSE_TAG_META = {
+    "laguna": {
+        "label": "Laguna XS.2 FP8",
+        "order": 0,
+    },
+    "north-mini": {
+        "label": "North-Mini-Code FP8",
+        "order": 1,
+    },
+}
+
+TOOLUSE_RESULT_STYLES = {
+    "agentic_success": {
+        "label": "correct action + terminal tool-result use",
+        "color": "#3fb950",
+        "marker": "o",
+    },
+    "action_only": {
+        "label": "correct action; response path failed/unscored",
+        "color": "#d29922",
+        "marker": "^",
+    },
+    "budget_bound": {
+        "label": "completion budget exhausted",
+        "color": "#a371f7",
+        "marker": "s",
+    },
+    "primary_failure": {
+        "label": "invalid or missing tool call",
+        "color": "#f85149",
+        "marker": "X",
+    },
+    "infra_failure": {
+        "label": "infrastructure or unscored rung",
+        "color": "#8b949e",
+        "marker": "D",
+    },
+}
 
 # --- Style ---
 plt.rcParams.update({
@@ -43,7 +96,13 @@ MODELS = {
     "qwen3.6-27b-awq-native":   {"label": "Qwen3.6-27B AWQ (Dense)",           "color": "#8957e5"},
     "qwen3-coder-reap-25b-a3b-awq": {"label": "Coder-REAP-25B AWQ (MoE)",      "color": "#238636"},
     "coder-next-ream-awq":      {"label": "Coder-Next-REAM-60B AWQ (MoE+DeltaNet)", "color": "#2ea043"},
-    "qwen3.6-vl-reap-26b-a3b-awq":  {"label": "Qwen3.6-VL-REAP-26B AWQ",       "color": "#db61a2"},
+    # qwen3.6-vl-reap-26b-a3b-awq intentionally excluded: its only results.json is
+    # from the buggy sglang.bench_serving path (--random-range-ratio default 0.0 ->
+    # uniform [1,N] prompt lengths), so its deep-context points are ~half-depth
+    # coin flips (flat ~21 tok/s from 128 to 131K is the tell). It is not in the
+    # README fleet table and was not re-benched with decode_ab in the 2026-07-12
+    # sweep. Re-add only after an immune decode_ab re-bench. See
+    # benchmarks/bench-serving-audit-2026-07-14.md.
     "devstral2-awq":            {"label": "Devstral-2-24B AWQ (Dense)",        "color": "#1f6feb"},
     "qwen3vl-32b-awq":          {"label": "Qwen3-VL-32B AWQ (Dense VL)",       "color": "#f778ba"},
     "north-mini":               {"label": "North-Mini-Code FP8 (cohere2_moe)", "color": "#ff7b72"},
@@ -68,11 +127,270 @@ def fmt_ctx(x, _):
     return f"{x:.0f}"
 
 
+def fmt_actual_tokens(x, _):
+    """Format server-reported token counts in decimal thousands."""
+    if x >= 1000:
+        return f"{x / 1000:.0f}K"
+    return f"{x:.0f}"
+
+
 def point_toks(p):
     """Total tok/s for a sweep point. bench_all_unified writes 'throughput'
     for the concurrency sweep; older result files used 'tok_per_sec'. Accept
     either so charts render across schema versions."""
     return p.get("tok_per_sec", p.get("throughput", 0)) or 0
+
+
+def classify_tooluse_result(result):
+    """Map one schema-v2 probe rung to a chart outcome."""
+    actual = result.get("actual_prompt_tokens")
+    actual_is_scored = isinstance(actual, (int, float)) and actual > 0
+    has_error = (
+        result.get("primary_status") == "error"
+        or result.get("followup_status") == "error"
+        or bool(result.get("error"))
+        or bool(result.get("followup_error"))
+        or (
+            isinstance(result.get("primary_http_status"), int)
+            and result["primary_http_status"] >= 400
+        )
+        or (
+            isinstance(result.get("followup_http_status"), int)
+            and result["followup_http_status"] >= 400
+        )
+    )
+    if has_error or result.get("depth_shortfall") or not actual_is_scored:
+        return "infra_failure"
+    if (
+        result.get("finish_reason") == "length"
+        or result.get("primary_status") == "budget_bound"
+    ):
+        return "budget_bound"
+
+    agentic_success = (
+        result.get("correct_action") is True
+        and result.get("used_tool_response") is True
+        and result.get("followup_status") == "used"
+        and result.get("followup_finish_reason") == "stop"
+        and result.get("followup_value_matched") is True
+        and result.get("followup_scored") is True
+        and not result.get("followup_budget_clamped")
+    )
+    if agentic_success:
+        return "agentic_success"
+    if result.get("correct_action") is True:
+        return "action_only"
+    return "primary_failure"
+
+
+def tooluse_result_position(result):
+    """Return actual tokens, or the requested rung only for unscored errors."""
+    actual = result.get("actual_prompt_tokens")
+    if isinstance(actual, (int, float)) and actual > 0:
+        return actual
+    approx = result.get("approx_tokens")
+    if isinstance(approx, (int, float)) and approx > 0:
+        return approx
+    return None
+
+
+def load_tooluse_ladders(receipt_glob=TOOLUSE_RECEIPT_GLOB):
+    """Load canonical R9700 multi-turn depth receipts.
+
+    The exact ``*-v0515-r9700.json`` suffix excludes smoke, depth-placement,
+    and completion-budget A/B receipts.  Settings checks fail closed so a
+    future single-turn receipt cannot be mislabeled as end-to-end agentic.
+    """
+    ladders = []
+    for path in sorted(glob.glob(receipt_glob)):
+        try:
+            with open(path) as f:
+                receipt = json.load(f)
+        except (OSError, json.JSONDecodeError) as exc:
+            print(f"  SKIP tool-use receipt {path}: {exc}")
+            continue
+
+        settings = receipt.get("settings", {})
+        server = receipt.get("server", {})
+        results = receipt.get("results", [])
+        if (
+            receipt.get("schema_version") != 2
+            or settings.get("multi_turn") is not True
+            or settings.get("structured_followup_content") is not True
+            or settings.get("depth") != 0.5
+            or settings.get("max_tokens") != 8192
+            or settings.get("followup_max_tokens") != 8192
+            or settings.get("context_length") != 262144
+            or settings.get("requested_lengths") != TOOLUSE_REQUESTED_LENGTHS
+            or settings.get("scored_lengths") != TOOLUSE_SCORED_LENGTHS
+            or server.get("tp_size") != 2
+            or len(results) != len(TOOLUSE_SCORED_LENGTHS)
+            or [result.get("approx_tokens") for result in results]
+            != TOOLUSE_SCORED_LENGTHS
+        ):
+            print(f"  SKIP non-canonical tool-use receipt {path}")
+            continue
+
+        tag = receipt.get("tag")
+        if tag not in TOOLUSE_TAG_META:
+            print(f"  SKIP unregistered tool-use receipt {path}")
+            continue
+        if any(ladder["receipt"].get("tag") == tag for ladder in ladders):
+            raise ValueError(f"duplicate canonical tool-use receipt for tag {tag!r}")
+        meta = TOOLUSE_TAG_META[tag]
+        ladders.append({"path": path, "receipt": receipt, **meta})
+
+    found = {ladder["receipt"]["tag"] for ladder in ladders}
+    missing = set(TOOLUSE_TAG_META) - found
+    if missing:
+        raise ValueError(
+            "missing canonical tool-use receipt(s): " + ", ".join(sorted(missing))
+        )
+    return sorted(ladders, key=lambda item: (item["order"], item["label"]))
+
+
+def make_tooluse_ladder_chart(receipt_glob=TOOLUSE_RECEIPT_GLOB, out_path=TOOLUSE_CHART):
+    """Render long-context end-to-end tool-use outcomes from probe receipts."""
+    from matplotlib.lines import Line2D
+    from matplotlib.transforms import blended_transform_factory
+
+    ladders = load_tooluse_ladders(receipt_glob)
+    if not ladders:
+        print("  SKIP tool-use ladder (no canonical schema-v2 receipts)")
+        return None
+
+    fig_height = max(5.2, 1.05 * len(ladders) + 3.0)
+    fig, ax = plt.subplots(figsize=(12, fig_height))
+    y_positions = list(range(len(ladders)))[::-1]
+
+    all_positions = [
+        tooluse_result_position(result)
+        for ladder in ladders
+        for result in ladder["receipt"]["results"]
+        if tooluse_result_position(result) is not None
+    ]
+    if not all_positions:
+        plt.close(fig)
+        raise ValueError("canonical tool-use receipts contain no plottable rungs")
+    x_min = min(all_positions) * 0.86
+    x_max = max(all_positions) * 1.08
+
+    for y, ladder in zip(y_positions, ladders):
+        results = sorted(
+            ladder["receipt"]["results"],
+            key=lambda result: tooluse_result_position(result) or float("inf"),
+        )
+        results = [
+            result for result in results if tooluse_result_position(result) is not None
+        ]
+        positions = [tooluse_result_position(result) for result in results]
+        ax.plot(
+            positions,
+            [y] * len(positions),
+            color="#484f58",
+            linewidth=1.5,
+            zorder=2,
+        )
+
+        for outcome, style in TOOLUSE_RESULT_STYLES.items():
+            xs = [
+                tooluse_result_position(result)
+                for result in results
+                if classify_tooluse_result(result) == outcome
+            ]
+            if not xs:
+                continue
+            ax.scatter(
+                xs,
+                [y] * len(xs),
+                s=105,
+                color=style["color"],
+                marker=style["marker"],
+                edgecolor="#0d1117",
+                linewidth=0.8,
+                zorder=5,
+            )
+
+        successes = [
+            result["actual_prompt_tokens"]
+            for result in results
+            if classify_tooluse_result(result) == "agentic_success"
+        ]
+        ceiling = max(successes) if successes else None
+        ceiling_text = f"max end-to-end: {ceiling:,}" if ceiling else "no end-to-end pass"
+        ax.text(
+            1.01,
+            y,
+            ceiling_text,
+            transform=blended_transform_factory(ax.transAxes, ax.transData),
+            va="center",
+            fontsize=9,
+            color="#c9d1d9",
+            fontweight="bold",
+        )
+
+    ax.set_xscale("log", base=2)
+    ax.set_xlim(x_min, x_max)
+    ticks = [16384, 65536, 116000, 131072, 176000, 196608, 245248]
+    ax.xaxis.set_major_locator(ticker.FixedLocator(ticks))
+    ax.xaxis.set_major_formatter(ticker.FuncFormatter(fmt_actual_tokens))
+    ax.tick_params(axis="x", rotation=35)
+    ax.set_yticks(y_positions)
+    ax.set_yticklabels([ladder["label"] for ladder in ladders], fontweight="bold")
+    ax.set_xlabel(
+        "Prompt tokens (actual; gray unscored errors use the requested rung)",
+        labelpad=12,
+    )
+    ax.set_title(
+        "256K agentic tool-use ladder — FP8 ships",
+        fontsize=14,
+        fontweight="bold",
+        pad=28,
+    )
+    ax.grid(True, axis="x", linestyle="--")
+    ax.grid(False, axis="y")
+    ax.set_ylim(-0.7, len(ladders) - 0.3)
+
+    present = {
+        classify_tooluse_result(result)
+        for ladder in ladders
+        for result in ladder["receipt"]["results"]
+    }
+    handles = [
+        Line2D(
+            [0],
+            [0],
+            marker=style["marker"],
+            color="none",
+            markerfacecolor=style["color"],
+            markeredgecolor="#0d1117",
+            markersize=9,
+            label=style["label"],
+        )
+        for outcome, style in TOOLUSE_RESULT_STYLES.items()
+        if outcome in present
+    ]
+    fig.legend(
+        handles=handles,
+        loc="lower center",
+        bbox_to_anchor=(0.46, 0.055),
+        ncol=min(3, len(handles)),
+        framealpha=0.6,
+        edgecolor="#30363d",
+        facecolor="#161b22",
+        fontsize=8.5,
+    )
+    fig.suptitle(
+        "TP=2 · production KV policy · temperature 0 · pass requires the correct action and terminal use of the returned tool value",
+        fontsize=9.5,
+        y=0.965,
+        color="#8b949e",
+    )
+    fig.tight_layout(rect=(0, 0.16, 0.92, 0.94))
+    fig.savefig(out_path, dpi=150, bbox_inches="tight")
+    plt.close(fig)
+    print(f"  {out_path}")
+    return out_path
 
 
 def load_results(model_key):
@@ -364,8 +682,22 @@ def make_specdecode_chart():
     print(f"  {path}")
 
 
-if __name__ == "__main__":
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--tooluse-only",
+        action="store_true",
+        help="only regenerate benchmarks/tooluse256k_ladder.png",
+    )
+    args = parser.parse_args()
+
     print("Generating benchmark charts...\n")
+
+    if args.tooluse_only:
+        print("Tool-use ladder:")
+        make_tooluse_ladder_chart()
+        print("\nDone!")
+        return
 
     all_data = {}
     for key, meta in MODELS.items():
@@ -399,4 +731,11 @@ if __name__ == "__main__":
     print("Spec-decode fleet:")
     make_specdecode_chart()
 
+    print("Tool-use ladder:")
+    make_tooluse_ladder_chart()
+
     print("\nDone!")
+
+
+if __name__ == "__main__":
+    main()

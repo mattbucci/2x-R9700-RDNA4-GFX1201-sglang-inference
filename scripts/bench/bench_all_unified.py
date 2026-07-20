@@ -29,6 +29,13 @@ def run_bench_serving(port, model, input_len, output_len, num_prompts, request_r
         "--dataset-name", "random",
         "--random-input", str(input_len),
         "--random-output", str(output_len),
+        # REQUIRED: without this, --random-range-ratio defaults to 0.0, which draws
+        # each prompt's length uniform in [1, input_len] (compute_random_lens ->
+        # randint(1, input_len+1)). That silently measures ~half the labeled depth
+        # (a coin flip per request), so labeled-@256K rows are really ~128K-average.
+        # 1.0 pins every prompt to exactly input_len. See the 2026-07-14 depth-bug
+        # audit: benchmarks/bench-serving-audit-2026-07-14.md.
+        "--random-range-ratio", "1",
         "--num-prompts", str(num_prompts),
         "--request-rate", str(request_rate),
         "--disable-ignore-eos",

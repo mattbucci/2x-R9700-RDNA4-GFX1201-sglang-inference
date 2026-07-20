@@ -1,0 +1,32 @@
+{
+  "val087-north-mini": {
+    "slug": "val087-north-mini",
+    "model": "/home/letsrtfm/AI/models/North-Mini-Code-1.0-fp8",
+    "requested_tokens": 100000,
+    "actual_prompt_tokens": 89396,
+    "full_attn": true,
+    "late_recall": false,
+    "mid_recall": false,
+    "coherent": true,
+    "finish_reason": "stop",
+    "truncated_inconclusive": false,
+    "elapsed_sec": 37.5,
+    "sample": "MID=MELON-1234 LATE=MELON-5678 The user asks: \"One passcode was stated in the document above, one labeled MID and one labeled LATE. Reply with EXACTLY two lines and nothing else: MID=<value> LATE=<val",
+    "timestamp": "2026-07-16 10:14"
+  },
+  "val087-laguna": {
+    "slug": "val087-laguna",
+    "model": "/data/models/Laguna-XS.2-FP8",
+    "requested_tokens": 100000,
+    "actual_prompt_tokens": 89747,
+    "full_attn": true,
+    "late_recall": true,
+    "mid_recall": true,
+    "coherent": true,
+    "finish_reason": "stop",
+    "truncated_inconclusive": false,
+    "elapsed_sec": 34.2,
+    "sample": " MID=COBALT-2291 LATE=MELON-7734  ",
+    "timestamp": "2026-07-16 10:18"
+  }
+}

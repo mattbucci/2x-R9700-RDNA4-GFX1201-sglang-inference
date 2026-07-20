@@ -11,7 +11,7 @@ streaming-TPOT harness; receipts must identify the method and actual token count
 | `bench_all_models.sh` | Run bench_all_unified.py across all models (uses launch.sh presets) |
 | `bench_quick.sh` | Fast 3-point check (1/8/16 concurrent) for A/B testing patches |
 | `bench_regression.sh` | Regression detection vs stored baselines |
-| `generate_charts.py` | Generate PNG charts from results.json files |
+| `generate_charts.py` | Generate performance/spec-decode charts and the schema-v2 tool-use ladder |
 | `measure_decode_curve.py` | Single-user streaming TPOT at controlled context depths |
 
 ## Usage
@@ -33,6 +33,10 @@ python scripts/bench/bench_all_unified.py \
 
 # Regression check:
 ./scripts/bench/bench_regression.sh devstral
+
+# Long-context agentic ladder from canonical quality receipts:
+/home/letsrtfm/miniforge3/bin/python \
+    scripts/bench/generate_charts.py --tooluse-only
 ```
 
 ## Comparison Engines (not SGLang)

@@ -1,0 +1,125 @@
+{
+  "schema_version": 2,
+  "tag": "laguna-smoke-final",
+  "server": {
+    "model_path": "/data/models/Laguna-XS.2-FP8",
+    "context_length": 262144,
+    "tp_size": 2,
+    "kv_cache_dtype": "auto",
+    "attention_backend": "triton",
+    "tool_call_parser": "poolside_v1",
+    "reasoning_parser": "poolside_v1",
+    "fp8_gemm_runner_backend": "triton"
+  },
+  "settings": {
+    "requested_lengths": [
+      16384
+    ],
+    "scored_lengths": [
+      16384
+    ],
+    "depth": 0.5,
+    "max_tokens": 8192,
+    "followup_max_tokens": 8192,
+    "multi_turn": true,
+    "structured_followup_content": true,
+    "context_length": 262144,
+    "completion_reserve": 16896
+  },
+  "results": [
+    {
+      "approx_tokens": 16384,
+      "actual_prompt_tokens": 16680,
+      "completion_tokens": 30,
+      "finish_reason": "tool_calls",
+      "primary_status": "valid",
+      "valid_toolcall": true,
+      "correct_action": true,
+      "tool_name": "lookup_record",
+      "got_id": "BANANA42",
+      "elapsed_s": 0.5,
+      "primary_http_status": 200,
+      "followup_requested_max_tokens": 8192,
+      "followup_effective_max_tokens": 8192,
+      "followup_budget_clamped": false,
+      "followup_attempted": true,
+      "followup_status": "used",
+      "used_tool_response": true,
+      "followup_value_matched": true,
+      "followup_value_match_mode": "labeled",
+      "followup_finish_reason": "stop",
+      "followup_prompt_tokens": 16769,
+      "followup_completion_tokens": 15,
+      "followup_elapsed_s": 0.3,
+      "followup_text": "\nThe record's access_code is KIWI77.\n",
+      "followup_structured_content": true,
+      "followup_http_status": 200,
+      "followup_scored": true,
+      "attempts": [
+        {
+          "chars_per_token": 6.6,
+          "actual_prompt_tokens": 16680,
+          "completion_tokens": 30,
+          "finish_reason": "tool_calls",
+          "primary_status": "valid",
+          "primary_http_status": 200,
+          "valid_toolcall": true,
+          "correct_action": true,
+          "tool_name": "lookup_record",
+          "got_id": "BANANA42",
+          "followup_attempted": true,
+          "followup_status": "used",
+          "followup_requested_max_tokens": 8192,
+          "followup_effective_max_tokens": 8192,
+          "followup_budget_clamped": false,
+          "followup_scored": true,
+          "followup_finish_reason": "stop",
+          "followup_http_status": 200,
+          "followup_prompt_tokens": 16769,
+          "followup_completion_tokens": 15,
+          "followup_elapsed_s": 0.3,
+          "used_tool_response": true,
+          "followup_value_matched": true,
+          "followup_value_match_mode": "labeled",
+          "elapsed_s": 0.5
+        }
+      ]
+    }
+  ],
+  "valid_rate": 1.0,
+  "correct_rate": 1.0,
+  "max_ctx_correct": 16680,
+  "depth_shortfall_count": 0,
+  "primary_error_count": 0,
+  "primary_budget_bound_count": 0,
+  "followup": {
+    "counts": {
+      "used": 1
+    },
+    "final_counts": {
+      "used": 1
+    },
+    "all_attempt_counts": {
+      "used": 1
+    },
+    "attempted": 1,
+    "used": 1,
+    "attempted_final": 1,
+    "used_final": 1,
+    "attempted_all": 1,
+    "used_all": 1,
+    "used_rate_all_attempts": 1.0,
+    "budget_clamped": 0,
+    "scored": 1,
+    "unscored_nonterminal_or_error": 0,
+    "scored_used": 1,
+    "used_rate_scored": 1.0,
+    "max_ctx_response_used": 16680,
+    "agentic_scored": 1,
+    "agentic_unscored": 0,
+    "agentic_successes": 1,
+    "agentic_success_rate": 1.0,
+    "max_ctx_agentic_success": 16680
+  },
+  "tool_response_used_rate": 1.0
+}

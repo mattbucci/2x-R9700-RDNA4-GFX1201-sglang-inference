@@ -40,6 +40,13 @@ def load_trace(path):
 
 def family(name):
     n = name.lower()
+    # Attention FIRST: Triton flash-decode kernels (_fwd_kernel, _fwd_grouped_kernel_stage1/2,
+    # create_flashinfer_kv_indices) must win over the moe "grouped" rule below — grouped-query
+    # attention is not MoE. (Fixed 2026-07-13: these were mislabeled moe/other, hiding that
+    # attention is ~90% of decode GPU time at 256K.)
+    if ("attn" in n or "attention" in n or "flash" in n or "decode_kernel" in n or "paged" in n
+            or "_fwd_kernel" in n or "_fwd_grouped" in n or "fwd_kernel" in n or "kv_indices" in n):
+        return "attention"
     if "moe" in n or "fused_moe" in n or "grouped" in n or "expert" in n:
         return "moe"
     if "awq_gemv" in n:
@@ -48,8 +55,6 @@ def family(name):
         return "rocblas_gemm"
     if "nccl" in n or "rccl" in n or "allreduce" in n:
         return "nccl"
-    if "attn" in n or "attention" in n or "flash" in n or "decode_kernel" in n or "paged" in n:
-        return "attention"
     if "deltanet" in n or "gated_delta" in n or "chunk_" in n or "recurrent" in n:
         return "deltanet"
     if "elementwise" in n or "norm" in n or "rope" in n or "rotary" in n or "silu" in n or "cast" in n or "vectorized" in n:
@@ -63,6 +68,8 @@ def main():
     ap.add_argument("--trace-dir", required=True)
     ap.add_argument("--steps", type=int, default=40, help="decode forward steps to capture")
     ap.add_argument("--prompt", default="Write a long detailed essay about GPU memory hierarchy.")
+    ap.add_argument("--context", type=int, default=0,
+                    help="if >0, build a filler prompt of ~N input tokens (deep-context profiling)")
     ap.add_argument("--active-gb", type=float, default=0.0,
                     help="active int4 weight GB read per token PER GPU (for roofline); 0=skip")
     ap.add_argument("--bw", type=float, default=640.0, help="GDDR7 GB/s per card")
@@ -70,12 +77,22 @@ def main():
     ap.add_argument("--out", default=None)
     args = ap.parse_args()
 
+    if args.context > 0:
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        from measure_decode_curve import build_prompt
+        args.prompt = build_prompt(args.context)
+
     base = f"http://localhost:{args.port}"
     model = requests.get(f"{base}/v1/models", timeout=30).json()["data"][0]["id"]
 
-    # Warmup so weights/caches are hot and cuda-graph (if any) is replayed.
-    requests.post(f"{base}/v1/chat/completions", timeout=120, json={
-        "model": model, "messages": [{"role": "user", "content": "Hi"}],
+    # Warmup so weights/caches are hot and cuda-graph (if any) is replayed. With
+    # --context, warm up with the SAME deep prompt so it prefills into the radix cache;
+    # the profiled request then hits that prefix (decode-only) instead of re-running the
+    # prefill, which would otherwise dominate the trace. Long timeout: a 255K prefill
+    # takes minutes.
+    warm_prompt = args.prompt if args.context > 0 else "Hi"
+    requests.post(f"{base}/v1/chat/completions", timeout=1200, json={
+        "model": model, "messages": [{"role": "user", "content": warm_prompt}],
         "max_tokens": 8, "temperature": 0})
 
     t0 = time.time()

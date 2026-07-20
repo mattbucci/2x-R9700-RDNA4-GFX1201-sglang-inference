@@ -1,0 +1,374 @@
+{
+  "coder-30b-awq": {
+    "tag": "coder-30b-awq",
+    "model": "/home/letsrtfm/AI/models/Qwen3-Coder-30B-A3B-AWQ-native",
+    "timestamp": "2026-07-14 19:33",
+    "elapsed_sec": 4.0,
+    "checks": {
+      "basic": {
+        "passed": true,
+        "message": "finish=stop answer='paris'"
+      },
+      "thinking": {
+        "passed": false,
+        "message": "answer_ok                      (254 tok, finish=stop)"
+      }
+    },
+    "summary": {
+      "passed": 1,
+      "total": 2
+    }
+  },
+  "glm45-air-awq": {
+    "tag": "glm45-air-awq",
+    "model": "/home/letsrtfm/AI/models/GLM-4.5-Air-REAP-AWQ-native",
+    "timestamp": "2026-07-14 19:36",
+    "elapsed_sec": 46.6,
+    "checks": {
+      "basic": {
+        "passed": true,
+        "message": "finish=stop answer='</think>paris'"
+      },
+      "thinking": {
+        "passed": true,
+        "message": "reasoning_seen terminated answer_ok (1174 tok, finish=stop)"
+      }
+    },
+    "summary": {
+      "passed": 2,
+      "total": 2
+    }
+  },
+  "gemma-4-26b-awq": {
+    "tag": "gemma-4-26b-awq",
+    "model": "/home/letsrtfm/AI/models/gemma-4-26B-A4B-it-AWQ-GPTQ-v2-fixed",
+    "timestamp": "2026-07-14 19:41",
+    "elapsed_sec": 33.3,
+    "checks": {
+      "basic": {
+        "passed": true,
+        "message": "finish=stop answer='paris'"
+      },
+      "thinking": {
+        "passed": true,
+        "message": "reasoning_seen terminated answer_ok (2033 tok, finish=stop)"
+      },
+      "vision": {
+        "passed": true,
+        "message": "saw=['red', 'circle', 'round']  response='a red circle with a black outline is centered on a white background.'"
+      },
+      "video": {
+        "passed": true,
+        "message": "saw=['move', 'ball', 'circle', 'red']  response='a red ball moves in a circle.'"
+      }
+    },
+    "summary": {
+      "passed": 4,
+      "total": 4
+    }
+  },
+  "devstral-24b-awq": {
+    "tag": "devstral-24b-awq",
+    "model": "/home/letsrtfm/AI/models/Devstral-24B-AWQ-4bit-calibrated",
+    "timestamp": "2026-07-14 19:42",
+    "elapsed_sec": 6.0,
+    "checks": {
+      "basic": {
+        "passed": true,
+        "message": "finish=stop answer='paris'"
+      },
+      "thinking": {
+        "passed": false,
+        "message": "answer_ok                      (241 tok, finish=stop)"
+      }
+    },
+    "summary": {
+      "passed": 1,
+      "total": 2
+    }
+  },
+  "gemma4-31b": {
+    "tag": "gemma4-31b",
+    "model": "/home/letsrtfm/AI/models/gemma-4-31B-AWQ",
+    "timestamp": "2026-07-14 19:49",
+    "elapsed_sec": 19.3,
+    "checks": {
+      "basic": {
+        "passed": true,
+        "message": "finish=stop answer='paris'"
+      },
+      "thinking": {
+        "passed": true,
+        "message": "reasoning_seen terminated answer_ok (508 tok, finish=stop)"
+      },
+      "vision": {
+        "passed": false,
+        "message": "saw=['round']  response='the image shows a single cuneiform character on a plain background.'"
+      },
+      "video": {
+        "passed": false,
+        "message": "saw=[]  response='please provide the video or a link to it so i can tell you what happens!'"
+      }
+    },
+    "summary": {
+      "passed": 2,
+      "total": 4
+    }
+  },
+  "coder-next-ream-awq": {
+    "tag": "coder-next-ream-awq",
+    "model": "/home/letsrtfm/AI/models/Qwen3-Coder-Next-REAM-AWQ",
+    "timestamp": "2026-07-14 19:58",
+    "elapsed_sec": 3.3,
+    "checks": {
+      "basic": {
+        "passed": true,
+        "message": "finish=stop answer='paris'"
+      },
+      "thinking": {
+        "passed": false,
+        "message": "answer_ok                      (109 tok, finish=stop)"
+      }
+    },
+    "summary": {
+      "passed": 1,
+      "total": 2
+    }
+  },
+  "gemma4-12b": {
+    "tag": "gemma4-12b",
+    "model": "/home/letsrtfm/AI/models/gemma-4-12B-AWQ",
+    "timestamp": "2026-07-14 20:00",
+    "elapsed_sec": 26.6,
+    "checks": {
+      "basic": {
+        "passed": true,
+        "message": "finish=stop answer='paris'"
+      },
+      "thinking": {
+        "passed": true,
+        "message": "reasoning_seen terminated answer_ok (897 tok, finish=stop)"
+      },
+      "vision": {
+        "passed": true,
+        "message": "saw=['red', 'circle', 'round']  response='a red circle with a black outline against a white background.'"
+      },
+      "video": {
+        "passed": true,
+        "message": "saw=['move', 'right', 'circle', 'red']  response='a red circle moves from the left to the right side of the frame.'"
+      }
+    },
+    "summary": {
+      "passed": 4,
+      "total": 4
+    }
+  },
+  "qwen3-coder-reap-25b-a3b-awq": {
+    "tag": "qwen3-coder-reap-25b-a3b-awq",
+    "model": "/home/letsrtfm/AI/models/Qwen3-Coder-REAP-25B-A3B-AWQ-native",
+    "timestamp": "2026-07-14 20:10",
+    "elapsed_sec": 3.1,
+    "checks": {
+      "basic": {
+        "passed": true,
+        "message": "finish=stop answer='paris'"
+      },
+      "thinking": {
+        "passed": false,
+        "message": "answer_ok                      (173 tok, finish=stop)"
+      }
+    },
+    "summary": {
+      "passed": 1,
+      "total": 2
+    }
+  },
+  "devstral2-awq": {
+    "tag": "devstral2-awq",
+    "model": "/home/letsrtfm/AI/models/Devstral-Small-2-24B-AWQ",
+    "timestamp": "2026-07-14 20:17",
+    "elapsed_sec": 5.7,
+    "checks": {
+      "basic": {
+        "passed": true,
+        "message": "finish=stop answer='paris'"
+      },
+      "thinking": {
+        "passed": false,
+        "message": "answer_ok                      (219 tok, finish=stop)"
+      },
+      "vision": {
+        "passed": true,
+        "message": "saw=['red', 'circle', 'round']  response='the image is a simple graphic of a red circle with a black border on a white background.'"
+      }
+    },
+    "summary": {
+      "passed": 2,
+      "total": 3
+    }
+  },
+  "qwen3.5-27b-awq": {
+    "tag": "qwen3.5-27b-awq",
+    "model": "/home/letsrtfm/AI/models/Qwen3.5-27B-AWQ-4bit-calibrated",
+    "timestamp": "2026-07-14 20:32",
+    "elapsed_sec": 419.8,
+    "checks": {
+      "basic": {
+        "passed": true,
+        "message": "finish=stop answer='paris'"
+      },
+      "thinking": {
+        "passed": true,
+        "message": "reasoning_seen answer_ok TRUNCATED (8192 tok, finish=length)"
+      }
+    },
+    "summary": {
+      "passed": 2,
+      "total": 2
+    }
+  },
+  "qwen3.5-35b-moe-gptq": {
+    "tag": "qwen3.5-35b-moe-gptq",
+    "model": "/home/letsrtfm/AI/models/Qwen3.5-28B-A3B-REAP-AWQ",
+    "timestamp": "2026-07-14 20:40",
+    "elapsed_sec": 5.2,
+    "checks": {
+      "basic": {
+        "passed": true,
+        "message": "finish=stop answer='paris'"
+      },
+      "thinking": {
+        "passed": true,
+        "message": "reasoning_seen terminated answer_ok (305 tok, finish=stop)"
+      }
+    },
+    "summary": {
+      "passed": 2,
+      "total": 2
+    }
+  },
+  "qwen3.6-27b-awq-native": {
+    "tag": "qwen3.6-27b-awq-native",
+    "model": "/home/letsrtfm/AI/models/Qwen3.6-27B-AWQ-native-thinking-vision",
+    "timestamp": "2026-07-14 20:55",
+    "elapsed_sec": 614.1,
+    "checks": {
+      "basic": {
+        "passed": true,
+        "message": "finish=stop answer=' paris'"
+      },
+      "thinking": {
+        "passed": false,
+        "message": "request failed: TimeoutError('timed out')"
+      },
+      "vision": {
+        "passed": true,
+        "message": "saw=['red', 'circle', 'round']  response='\\n\\nthis image shows a red circle with a black outline, resembling the flag of japan.'"
+      },
+      "video": {
+        "passed": true,
+        "message": "saw=['move', 'right', 'circle', 'red']  response='\\n\\na red circle moves from left to right.'"
+      }
+    },
+    "summary": {
+      "passed": 3,
+      "total": 4
+    }
+  },
+  "laguna-xs2": {
+    "tag": "laguna-xs2",
+    "model": "/data/models/Laguna-XS.2-FP8",
+    "timestamp": "2026-07-14 21:05",
+    "elapsed_sec": 9.1,
+    "checks": {
+      "basic": {
+        "passed": true,
+        "message": "finish=stop answer='\\nparis\\n'"
+      },
+      "thinking": {
+        "passed": true,
+        "message": "reasoning_seen terminated answer_ok (404 tok, finish=stop)"
+      }
+    },
+    "summary": {
+      "passed": 2,
+      "total": 2
+    }
+  },
+  "north-mini": {
+    "tag": "north-mini",
+    "model": "/home/letsrtfm/AI/models/North-Mini-Code-1.0-fp8",
+    "timestamp": "2026-07-14 21:16",
+    "elapsed_sec": 3.5,
+    "checks": {
+      "basic": {
+        "passed": true,
+        "message": "finish=stop answer='paris'"
+      },
+      "thinking": {
+        "passed": true,
+        "message": "reasoning_seen terminated answer_ok (145 tok, finish=stop)"
+      }
+    },
+    "summary": {
+      "passed": 2,
+      "total": 2
+    }
+  },
+  "qwen3vl-32b-awq": {
+    "tag": "qwen3vl-32b-awq",
+    "model": "/home/letsrtfm/AI/models/Qwen3-VL-32B-AWQ-balanced",
+    "timestamp": "2026-07-14 21:20",
+    "elapsed_sec": 5.9,
+    "checks": {
+      "basic": {
+        "passed": true,
+        "message": "finish=stop answer='paris'"
+      },
+      "thinking": {
+        "passed": false,
+        "message": "answer_ok                      (107 tok, finish=stop)"
+      },
+      "vision": {
+        "passed": true,
+        "message": "saw=['red', 'circle', 'round']  response='a simple red circle with a black outline on a white background.'"
+      },
+      "video": {
+        "passed": true,
+        "message": "saw=['move', 'right', 'circle', 'red']  response='a red circle moves from the left side of the screen to the right side against a white background.'"
+      }
+    },
+    "summary": {
+      "passed": 3,
+      "total": 4
+    }
+  },
+  "qwen3.6-35b-moe-awq": {
+    "tag": "qwen3.6-35b-moe-awq",
+    "model": "/home/letsrtfm/AI/models/Qwen3.6-35B-A3B-AWQ",
+    "timestamp": "2026-07-14 21:26",
+    "elapsed_sec": 15.1,
+    "checks": {
+      "basic": {
+        "passed": true,
+        "message": "finish=stop answer='paris'"
+      },
+      "thinking": {
+        "passed": true,
+        "message": "reasoning_seen terminated answer_ok (697 tok, finish=stop)"
+      },
+      "vision": {
+        "passed": true,
+        "message": "saw=['red', 'circle', 'round']  response='\\n\\na red circle.\\n</think>\\n\\na red circle.\\n</think>\\n\\na red circle.\\n</think>\\n\\n'"
+      },
+      "video": {
+        "passed": true,
+        "message": "saw=['move', 'right', 'circle', 'red']  response='\\na red circle moves from left to right.'"
+      }
+    },
+    "summary": {
+      "passed": 4,
+      "total": 4
+    }
+  }
+}

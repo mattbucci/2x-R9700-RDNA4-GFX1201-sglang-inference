@@ -22,6 +22,42 @@ HIP GEMV path.
 The isolated Devstral down-projection measured 0.157 ms in FP16 and 0.178 ms in BF16, with cosine
 similarity 1.0 against unpack-and-dequantize Torch.
 
+### Dense GEMV narrow-N under-population (open — designed, not implemented)
+
+The same dense HIP GEMV launches `ceil(N/256)` blocks, so narrow-output projections (attn_o
+N=5120 → 20 blocks, qkv → 28) under-populate the 64 CUs and reach only ~45–82% of the bandwidth
+roofline, versus ~95–110% for the wide projections (gate_up/down). `split_k` cannot fix it (it
+adds threads within a block, not blocks). Fix = grid-level split-K (~1.6× on attn_o, low-single-
+digit % on dense TPOT, shared across all AWQ-dense models). Full root cause, design, and test
+plan: [dense-gemv-narrow-n-splitk-handoff.md](dense-gemv-narrow-n-splitk-handoff.md).
+
+### 256K attention split-KV CU occupancy (fixed — patch 086)
+
+At true 256K, single-user decode is ~85–90% attention (KV-read). The Triton flash-decode was
+KV-read-bound at only ~21% of the 1280 GB/s roofline because the decode grid is
+`head_groups × num_kv_splits` and the upstream AMD default hard-set `num_kv_splits=16` — ~32 blocks on
+gfx1201's 64 CUs (half idle). Raising it to 64 fills the CUs at depth: **2.14× 256K decode**
+(14.4→30.7 tok/s, coder-reap-25b; A/B 16/32/48/64 splits → 21/38/46/51% roofline), short context
+unregressed. Patch 086; full evidence chain in
+[attention-decode-256k-kvsplit.md](attention-decode-256k-kvsplit.md).
+
+Fleet-re-validated 2026-07-14: all 17 servable presets decode coherently at true depth with 086; every
+deep-recall shortfall (north-mini window, nemotron Mamba compression) is a pre-086 model characteristic,
+proven independent of the split count by a `num_kv_splits` 16-vs-64 A/B on north-mini. No regressions.
+Receipt: [validation/README.md](validation/README.md).
+
+**Patch 087 (bf16 PV) — a further +21%.** Past 086's 51% roofline, the flash-decode PV still ran in fp32
+(`tl.dot(p.to(fp32), v.to(fp32))`), inflating VGPR pressure → low occupancy → poor KV-load latency hiding.
+bf16 PV with fp32 accumulate (standard flash-attention) measured **+21% at 256K decode on coder-reap-25b**
+(33.2→40.2 tok/s, median of 5), short context +~1%, deep-needle recall unchanged. The gain scales with
+depth (128 +0.9%, 8K +2.7%, 202K +21%) as attention's share of decode grows. A/B data:
+[validation/pv-precision-ab.json](validation/pv-precision-ab.json); grouped GQA kernel; stacks on 086.
+Fleet coherence check (087 live): coder-reap A/B recall unchanged, Laguna recalls @89K, and North's
+recall_depth_sweep is identical to its fp32 baseline (100% through 116K, `north-087-recall.json`). A North
+`deep_context_probe` hallucination was a probe-format artifact — North fails that 2-needle probe with fp32
+too (it is what started experiment #23) — not an 087 regression. Flagship deep tok/s with 086+087:
+North-Mini ~55 @176K, Laguna ~39 @176K.
+
 ### Rejected decode changes
 
 | Experiment | Measurement | Disposition |

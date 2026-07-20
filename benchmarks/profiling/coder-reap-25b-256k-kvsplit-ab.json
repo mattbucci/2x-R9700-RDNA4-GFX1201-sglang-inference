@@ -1,0 +1,12 @@
+{
+  "probe": "coder-reap-25b @255K decode, TP2, 2x R9700 (64 CU/GPU)",
+  "what": "num_kv_splits A/B — flash-decode grid = batch(1) x head-groups(2) x num_kv_splits; AMD path hard-set num_kv_splits=16 (server_args _handle_amd_specifics). Static override sweep, decode attention (_fwd_grouped) isolated, vs 1280 GB/s 2-card KV-read roofline (KV/token @255K = 12.53 GB).",
+  "roofline_gbps": 1280.0,
+  "rows": [
+    {"num_kv_splits": 16, "blocks": 32,  "decode_attn_ms": 46.4, "gbps": 270, "pct_roofline": 21.1, "full_step_ms": 109.9},
+    {"num_kv_splits": 32, "blocks": 64,  "decode_attn_ms": 26.1, "gbps": 481, "pct_roofline": 37.5, "full_step_ms": 83.5},
+    {"num_kv_splits": 48, "blocks": 96,  "decode_attn_ms": 21.2, "gbps": 590, "pct_roofline": 46.1, "full_step_ms": 79.1},
+    {"num_kv_splits": 64, "blocks": 128, "decode_attn_ms": 19.3, "gbps": 649, "pct_roofline": 50.7, "full_step_ms": 77.1}
+  ],
+  "finding": "Raising num_kv_splits 16->64 makes 256K decode attention 2.4x faster (46.4->19.3 ms; 21->51% roofline). The upstream AMD hard-cap of 16 under-fills gfx1201's 64 CUs. Knee ~48-64 (128 blocks = 2x CU). Fix: raise / CU-adapt the AMD num_kv_splits default. Pending: end-to-end tok/s A/B + short-ctx no-regression check."
+}

@@ -1,0 +1,17 @@
+diff --git a/python/sglang/srt/layers/attention/triton_ops/decode_attention.py b/python/sglang/srt/layers/attention/triton_ops/decode_attention.py
+index 98f9000064..ebb6966939 100644
+--- a/python/sglang/srt/layers/attention/triton_ops/decode_attention.py
++++ b/python/sglang/srt/layers/attention/triton_ops/decode_attention.py
+@@ -522,7 +522,11 @@ def _fwd_grouped_kernel_stage1(
+             re_scale = tl.exp(e_max - n_e_max)
+             p = tl.exp(qk - n_e_max[:, None])
+             acc *= re_scale[:, None]
+-            acc += tl.dot(p.to(tl.float32), v.to(tl.float32))
++            # gfx1201: bf16 PV (fp32 accumulate), not fp32. fp32 PV inflated VGPR pressure
++            # -> low occupancy -> poor KV-load latency hiding, capping decode-attn at ~51%
++            # of the KV-read roofline. bf16 measured +21% at 256K decode on coder-reap-25b
++            # (33.2->40.2 tok/s), short ctx +~1%, deep recall unchanged. Standard flash-attn.
++            acc += tl.dot(p.to(tl.bfloat16), v.to(tl.bfloat16))
+ 
+             e_sum = e_sum * re_scale + tl.sum(p, 1)
+             e_max = n_e_max
