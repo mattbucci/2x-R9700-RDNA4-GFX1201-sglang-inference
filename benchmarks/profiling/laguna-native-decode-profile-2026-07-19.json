@@ -1,0 +1,35 @@
+{
+  "fixes_required_before_rerun": [
+    "Window the parser to the decode phase, or attribute per-phase, so extend cannot be counted as decode.",
+    "Issue a throwaway 1-token request after the prime so the extend is already resident, leaving the profiled request pure decode.",
+    "Reconcile traced GPU-busy against wall time per step and report the gap rather than assuming full coverage."
+  ],
+  "intent": "Profile Laguna's native block-FP8 decode at depth to find the limiting kernels, comparable to the 2026-07-18 auto-path categories.",
+  "lead_worth_its_own_experiment": {
+    "NOT_yet_established": [
+      "Why exactly 10 extend calls. Unattributed. Until that is explained, '1 token costs 354 ms' is a hypothesis.",
+      "Whether the 10 calls belong to the profiled request at all, versus residual work from the cold prime.",
+      "Decode GPU-busy was only ~1.07 ms/step/rank against ~40 ms/step wall under profiling, which does not reconcile and suggests the trace does not cover all decode work."
+    ],
+    "corroborating": "Cross-team note already in README: triton extend downcasts live q into the KV-cache dtype, so an fp8_e4m3 fleet default makes every R9700 prefill pay it.",
+    "observation": "The profiled request was the agentic multi-turn shape: 197,193 CACHED tokens plus 1 new token. That single extend appears to cost ~354 ms of GPU time, roughly 8x the entire 40-step decode (42.8 ms).",
+    "why_it_matters": "Appending one token after a long cache hit is exactly the tool-result path both FP8 flagships run in production. If real, per-turn cost at depth is dominated by extend, not generation."
+  },
+  "schema_version": 1,
+  "served_identity": {
+    "actual_prompt_tokens": 197194,
+    "attention_backend": "triton",
+    "fp8_gemm_runner_backend": "triton",
+    "model": "Laguna-XS.2-FP8",
+    "tp_size": 2,
+    "triton_attention_num_kv_splits": 64
+  },
+  "status": "INVALID as a decode breakdown - retained for the lead it surfaced",
+  "tag": "laguna-native-fp8-decode-profile-2026-07-19",
+  "why_invalid": [
+    "The trace captured an extend/prefill phase BEFORE the decode window and attributed it to 'attention'.",
+    "_fwd_kernel (extend) ran 10 times at ~35.4 ms each, spanning +4.9..+348 ms, totalling 357.6 ms = 98.7% of that kernel's time.",
+    "The decode window is +394.9..+437.7 ms -- 42.8 ms for all 40 steps -- entirely after those calls.",
+    "The reported 92.9% 'attention' share is therefore prefill/extend, not decode attention. The real decode kernel, _fwd_grouped_kernel_stage1, was 42 calls at 51.7 us."
+  ]
+}
