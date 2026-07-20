@@ -69,12 +69,22 @@ class SuffixTest(unittest.TestCase):
         self.assertEqual(mec.build_suffix(0, "a"), "")
         self.assertEqual(mec.build_suffix(-5, "a"), "")
 
+    def test_one_token_suffixes_stay_distinct_after_truncation(self):
+        # Regression: the salt used to sit past the truncation point, so a
+        # k=1 suffix was ~4 identical characters for every run. Runs 2+ were
+        # then whole-sequence cache hits timing a lookup, not an extend --
+        # corrupting the smallest and most important data point.
+        suffixes = [mec.build_suffix(1, f"d197000-k1-r{run}", index=run) for run in range(3)]
+        self.assertEqual(len(set(suffixes)), 3, f"collided: {suffixes}")
+        for suffix in suffixes:
+            self.assertLessEqual(len(suffix), 8)
+
     def test_distinct_salts_produce_distinct_suffixes(self):
         # This is the cache-safety contract. If two measured runs shared a
         # suffix, the second would hit the radix cache for the WHOLE sequence
         # and time a no-op instead of an extend.
         salts = [f"d197000-k1-r{run}" for run in range(5)]
-        suffixes = {mec.build_suffix(64, salt) for salt in salts}
+        suffixes = {mec.build_suffix(64, salt, index=i) for i, salt in enumerate(salts)}
         self.assertEqual(len(suffixes), len(salts))
 
     def test_suffix_is_not_a_repeat_of_the_prompt_filler(self):
@@ -93,10 +103,10 @@ class _RestoresModuleGlobals(unittest.TestCase):
     """
 
     def setUp(self):
-        self._saved = (mec.requests, mec.stream_ttft)
+        self._saved = (mec.requests, mec.stream_ttft, mec.build_suffix)
 
     def tearDown(self):
-        mec.requests, mec.stream_ttft = self._saved
+        mec.requests, mec.stream_ttft, mec.build_suffix = self._saved
 
 
 class TtftTest(_RestoresModuleGlobals):
@@ -167,6 +177,17 @@ class TtftTest(_RestoresModuleGlobals):
 
 
 class MeasureDepthTest(_RestoresModuleGlobals):
+    def test_refuses_to_run_on_a_suffix_collision(self):
+        # Fail closed. A collision makes runs 2+ whole-sequence cache hits,
+        # which time a lookup rather than an extend and bias the result fast.
+        mec.stream_ttft = lambda *a, **k: (0.1, 100, 99, 1)
+        mec.build_suffix = lambda k, salt, index=0: "identical"
+
+        with self.assertRaises(RuntimeError) as caught:
+            mec.measure_depth("http://x", "m", 100, [1], runs=3, log=lambda *_: None)
+
+        self.assertIn("suffix collision", str(caught.exception))
+
     def test_missing_cached_tokens_is_reported_as_unverified_not_assumed(self):
         seq = iter([
             (None, 100, None, 1),          # prime

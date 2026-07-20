@@ -59,13 +59,38 @@ SUFFIX_WORDS = (
     "beacon aperture cadre threshold vector runway parity docket "
 )
 
+# Uniqueness has to survive truncation. A suffix of K=1 token is only ~4
+# characters, so anything that identifies the run must sit in the FIRST few
+# characters or it is cut off and every run sends a byte-identical suffix --
+# which the radix cache then serves as a full hit, timing nothing. These words
+# are chosen to differ within their first three letters for exactly that reason.
+UNIQUE_LEADS = (
+    "alpha", "bravo", "cobalt", "delta", "echo", "fjord", "gamma", "helix",
+    "ionic", "jade", "krypton", "lumen", "mesa", "nova", "onyx", "prism",
+    "quartz", "rune", "sigma", "tundra", "umber", "vertex", "walnut", "xenon",
+    "yarrow", "zephyr", "amber", "basalt", "cinder", "dune", "ember", "flint",
+)
 
-def build_suffix(approx_tokens, salt):
-    """Build ~approx_tokens of text that is unique to `salt`."""
+
+def build_suffix(approx_tokens, salt, index=0):
+    """Build ~approx_tokens of text whose FIRST characters are unique to `index`.
+
+    The lead word is selected by `index` (the run number), NOT by hashing the
+    salt. Hashing looked equivalent and is not: 3 salts drawn over 32 leads
+    collide about 9% of the time, and a collision silently turns a run into a
+    whole-sequence cache hit. Indexing is collision-free for index < 32.
+
+    Placing the lead FIRST is load-bearing: the body is truncated to ~4 chars
+    per token, so anything identifying appended later vanishes at small token
+    counts and the run stops being an extend at all.
+    """
     if approx_tokens <= 0:
         return ""
     chars = int(approx_tokens * 4.0)
-    body = (f"\n[tool_result:{salt}] " + SUFFIX_WORDS * (chars // len(SUFFIX_WORDS) + 2))
+    lead = UNIQUE_LEADS[index % len(UNIQUE_LEADS)]
+    body = f" {lead} [tool_result:{salt}] " + SUFFIX_WORDS * (
+        chars // len(SUFFIX_WORDS) + 2
+    )
     return body[:chars]
 
 
@@ -138,12 +163,23 @@ def measure_depth(base, model, depth, suffix_tokens, runs, log=print):
 
     rows = []
     for k in suffix_tokens:
+        # Verify up front that every run sends a DIFFERENT suffix. If two runs
+        # shared one, the second would be a whole-sequence cache hit and would
+        # time a lookup instead of an extend -- silently, and fastest at the
+        # smallest k, which is exactly the measurement that matters most.
+        suffixes = [
+            build_suffix(k, f"d{depth}-k{k}-r{run}", index=run) for run in range(runs)
+        ]
+        if len(set(suffixes)) != runs:
+            raise RuntimeError(
+                f"suffix collision at depth={depth} k={k}: {runs} runs produced "
+                f"{len(set(suffixes))} distinct suffixes. At k={k} the suffix is "
+                f"~{int(k * 4.0)} characters, too short to stay unique. Raise the "
+                "smallest --suffix-tokens or widen UNIQUE_LEADS."
+            )
         ttfts, prompt_tokens, cached = [], [], []
         for run in range(runs):
-            # A distinct salt per run keeps every measured request a genuine
-            # extend. Reusing the suffix would let the SECOND run hit cache for
-            # the whole sequence and measure nothing.
-            prompt = prefix + build_suffix(k, f"d{depth}-k{k}-r{run}")
+            prompt = prefix + suffixes[run]
             ttft, pt, cached_tokens, _ = stream_ttft(base, model, prompt)
             if ttft is None:
                 log(f"    k={k} run{run+1}: no generated token; skipped")
