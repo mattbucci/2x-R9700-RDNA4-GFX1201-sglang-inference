@@ -42,6 +42,7 @@ documented in [`README.md`](../README.md#what-we-are-working-on-next).
 | 07 | R97-B | [Decision brief: promote decode-topk (069) from CANDIDATE — promotion now requires a v0.5.15 regeneration, not a rename](07-decode-topk-promotion-brief.md) | decision-brief | NEEDS-USER-DECISION | r9700-box | Brief: done (this doc). If Option B approved: 0.5-1.5 days (regen + smoke + needle A/B + deep throughput-AND-needle re-gate; agentic re-gate adds ~4h). Estimate widened from 0.5-1 day per vetter: memory notes ~3 merge-remnants per rebase plus two full 256K boots. |
 | 08 | R97-H | [Decision brief + execution: disposition 13 flagged legacy bench_serving dirs, de-twin stale April dirs](08-bench-dir-hygiene-purge-or-remeasure.md) | decision-brief | NEEDS-USER-DECISION | r9700-box | Option A (purge-only): ~1h. Option B (purge 11 + re-measure 2): ~1h cleanup + ~2-4h benching. |
 | 09 | R97-I | [Per-model rung sets for the agentic tool-use ladder, then sweep the remaining qualified presets](09-fleet-ladder-per-model-rungs.md) | experiment | queued (spec only) | r9700-box | ~1 day: ~0.5 day CPU for the rung-set change and tests, then an overnight 14-preset sweep (~6-10h GPU) |
+| 10 | R97-J | [Split KV in extend attention — cut the agentic tool-result turn tax at depth](10-extend-attention-kv-split-agentic-turn.md) | optimization | ready (cause measured, no fix) | r9700-box | ~1-2 days: kernel work + numerical gate, then A/B and a ladder re-run (~4-6h GPU) |
 
 ## Cross-rig edges touching this lane
 

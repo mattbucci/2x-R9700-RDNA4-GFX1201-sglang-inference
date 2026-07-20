@@ -1,0 +1,13 @@
+{
+  "model_path": "/data/models/Laguna-XS.2-FP8",
+  "fp8_gemm_runner_backend": "triton",
+  "attention_backend": "triton",
+  "triton_attention_num_kv_splits": 64,
+  "kv_cache_dtype": "auto",
+  "tp_size": 2,
+  "context_length": 262144,
+  "quantization": "compressed-tensors",
+  "speculative_algorithm": null,
+  "disable_cuda_graph": true,
+  "enable_torch_compile": false
+}

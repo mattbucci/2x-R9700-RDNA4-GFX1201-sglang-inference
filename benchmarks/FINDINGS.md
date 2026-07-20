@@ -161,6 +161,51 @@ Three things this cost, all worth keeping:
 Output identity across arms was not established: `decode_ab` records a 60-character sample prefix, which
 cannot prove two 80-token generations match. A full-output hash is the fix.
 
+### Extend attention has no KV split — the agentic turn tax (open, Laguna)
+
+At depth the dominant single-user cost is no longer decode. A request that appends a short suffix to a
+cached prefix — every agentic tool-result turn — runs one extend forward pass whose full-attention layers
+each walk the entire cached prefix with almost no parallelism.
+
+The launch grids differ in exactly one dimension. Extend uses
+`grid = (batch, head_num, cdiv(max_len_extend, BLOCK_M))` (`extend_attention.py:63`); decode uses
+`grid = (batch, cdiv(head_num, …), num_kv_splits)`. On gfx1201 at head_dim 128, `BLOCK_M` is 64, so for a
+short suffix the extend grid's third dimension collapses to 1 and ~24 workgroups per rank walk the whole
+prefix, while decode splits the same walk 64 ways. The upstream comment at `extend_attention.py:37` states
+outright that "each workgroup reads the whole prefix."
+
+Measured on Laguna, extend attention costs ~361 ms/rank against decode attention's ~4.2 ms/rank over the
+**same** KV cache — an ~85× gap on identical bytes, so the ratio holds independent of any roofline
+assumption. This is separable from decode only because the profiler now attributes kernels per phase;
+merging them is what produced the superseded 92.9%-attention record.
+
+The grid analysis predicts that appending 1 token and 64 tokens must cost the same wall time, since
+`cdiv(1,64) == cdiv(64,64)`. Confirmed at every depth:
+
+| Cached tokens | TTFT k=1 | TTFT k=64 | TTFT k=512 | Decode ms/token |
+|---:|---:|---:|---:|---:|
+| 7,404 | 61.3 ms | 68.3 ms | 85.9 ms | 14.32 |
+| 29,425 | 123.3 ms | 136.3 ms | 168.0 ms | 14.71 |
+| 117,513 | 409.3 ms | 422.3 ms | 486.4 ms | 16.52 |
+| 176,588 | **604.6 ms** | **607.7 ms** | 704.2 ms | 17.61 |
+
+A 64-token tool result costs 0.5% more than a single token. The cost is a fixed tax on prefix length:
+`TTFT_ms ≈ 32.7 + 3.226 per 1000 cached tokens`, fitting all four depths within 8%. Across that range the
+extend tax grew 9.86× while decode TPOT grew only 1.23× — decode scales with depth, extend does not. At
+176,588 tokens a tool-result turn waits 605 ms before its first token, the time of 34 decode tokens;
+extrapolating the fit to the 262,144 limit gives ~878 ms per turn (not measured).
+
+Decode itself, once separated, is dominated by dense rocBLAS/Tensile GEMM (~38–42% of non-collective GPU
+time) rather than attention (~20–28%) — consistent with patch 086 having removed the older
+~85–90%-attention regime. That `rocblas_gemm` still leads while `fp8_gemm_runner_backend=triton` and
+`triton_fp8_gemm` is only ~7–12% is unexplained and is the next lead.
+
+No fix is implemented or measured. Candidate directions are splitting KV in extend, or routing
+small-suffix cache-hit extends through the decode kernel. Receipts:
+[decode/extend profile](profiling/laguna-native-decode-profile-2026-07-19.json),
+[extend cost curve](profiling/laguna-extend-cost-2026-07-19.json). Only Laguna was profiled; whether
+North-Mini's different architecture shows the same collapse is untested.
+
 ### Rejected decode changes
 
 | Experiment | Measurement | Disposition |

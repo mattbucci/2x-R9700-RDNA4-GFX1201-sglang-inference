@@ -1,232 +1,266 @@
 {
-  "schema_version": 1,
-  "updated_at": "2026-07-19",
-  "ordering": "easiest_to_test_then_hardest",
-  "baseline": {
-    "sglang": "v0.5.15",
-    "patch_state": "post-095",
-    "laguna_fp8_backend": "triton"
+ "schema_version": 1,
+ "updated_at": "2026-07-19",
+ "ordering": "easiest_to_test_then_hardest",
+ "baseline": {
+  "sglang": "v0.5.15",
+  "patch_state": "post-095",
+  "laguna_fp8_backend": "triton"
+ },
+ "items": [
+  {
+   "id": "R97-E-local",
+   "spec": "02-toolcall-gate-validate-capabilities.md",
+   "status": "completed",
+   "resource": "cpu",
+   "depends_on": [],
+   "next_action": "Port the pinned tool-call validator and run unit, compile, help, and shell syntax gates.",
+   "test_gate": [
+    "Tool-call response parsing unit tests pass",
+    "Default-on and --skip-tools control-flow tests pass",
+    "validate_capabilities.py compiles and exposes --skip-tools",
+    "Changed shell callers pass bash -n"
+   ]
   },
-  "items": [
-    {
-      "id": "R97-E-local",
-      "spec": "02-toolcall-gate-validate-capabilities.md",
-      "status": "completed",
-      "resource": "cpu",
-      "depends_on": [],
-      "next_action": "Port the pinned tool-call validator and run unit, compile, help, and shell syntax gates.",
-      "test_gate": [
-        "Tool-call response parsing unit tests pass",
-        "Default-on and --skip-tools control-flow tests pass",
-        "validate_capabilities.py compiles and exposes --skip-tools",
-        "Changed shell callers pass bash -n"
-      ]
-    },
-    {
-      "id": "R97-G-phase-a",
-      "spec": "06-north-laguna-canonical-eval-ngram-rows.md",
-      "status": "completed",
-      "resource": "cpu_local_data",
-      "depends_on": [
-        "R97-E-local"
-      ],
-      "next_action": "Repair external-run discovery and both output roots, add fixtures, and publish the seven existing cells.",
-      "test_gate": [
-        "Legacy -v2 and external-layout fixture tests pass",
-        "Exactly seven expected cell JSON files are produced",
-        "Published counters match Docker reports and scores.jsonl",
-        "No output lands under /benchmarks or /data/bakeoff"
-      ]
-    },
-    {
-      "id": "R97-C",
-      "spec": "01-calib-source-fixes-and-drift-check.md",
-      "status": "completed",
-      "resource": "cpu_network",
-      "depends_on": [
-        "R97-G-phase-a"
-      ],
-      "next_action": "Record fp8-quant as the execution environment, capture the failing baseline, and port the three source redirects.",
-      "test_gate": [
-        "Pre-edit dry-run captures the silent fallback",
-        "Post-edit dry-runs contain no failed source or padding lines",
-        "Audio, thinking, and evol_code mixes have nonzero rows",
-        "Drift checker detects untracked drift and accepts the refreshed manifest"
-      ]
-    },
-    {
-      "id": "R97-E-gpu",
-      "spec": "02-toolcall-gate-validate-capabilities.md",
-      "status": "completed",
-      "resource": "tp2_short_then_serial",
-      "depends_on": [
-        "R97-C"
-      ],
-      "next_action": "Use the 16 qualified presets as the short-context gate and keep the receipted GLM-4.5 Air exception out of agentic recommendations.",
-      "test_gate": [
-        "Positive control returns a parsed get_weather call",
-        "Negative control fails with the raw-markup hint",
-        "All 17 presets have a pass, fixed-and-retested parser, or receipted skip",
-        "capabilities-086.json remains unchanged"
-      ]
-    },
-    {
-      "id": "R97-D",
-      "spec": "03-port-tooluse-probe-crossteam-abs.md",
-      "status": "in_progress",
-      "resource": "tp2_long",
-      "depends_on": [
-        "R97-E-gpu"
-      ],
-      "next_action": "Both post-095 three-seed ladders are complete (Laguna and North-Mini, 21/21 seed-rungs each). Remaining: re-measure the profile control with the new committed generator, then the Nemotron budget arms and Devstral KV-dtype A/B.",
-      "progress": {
-        "completed": [
-          "Immutable donor port and provenance receipt",
-          "36/36 probe tests (42 combined with chart contracts)",
-          "Frozen execution identity",
-          "Laguna 16K native-Triton end-to-end smoke",
-          "Laguna seven-rung curve: 7/7 end-to-end successes through 245177 actual tokens",
-          "North-Mini pre-090 1/7 greedy curve retained only as a superseded incident baseline",
-          "Patches 090-094: RMSNorm selection, parser recovery, finish-reason correctness, SWA convention, and gfx1201 deterministic MM/BMM",
-          "Separate repeated-stress and heterogeneous agentic-context eval profiles with effective-seed receipts",
-          "Deterministic exact profile control: heterogeneous code/log 3/3 at 64801 and 115806 tokens",
-          "Repository-native multi-turn focused gate: 2/3 correct primaries at both depths and 4/4 valid follow-ups used the tool result",
-          "Schema-v2 eval registry entry, tested ladder/profile renderer, and README charts",
-          "Patch 095: recovers a Cohere tool name carried under a string `function` key. The post-094 A/B scored one such action wrong at 64801 tokens -- the model emitted a correct call and the server dropped it, surfacing raw markup in content with finish_reason stop. 091 covered only tool_name and tool_call_id.",
-          "Patch 091's detector test landed in /data/sgl-v0515; the patch created it but it had never been written to the live tree, so its six cases had never run there",
-          "Post-095 three-seed ladders for both FP8 ships: Laguna 21/21 seed-rungs through 245,279 actual tokens, North-Mini 21/21 through 245,172; zero clamps, shortfalls, errors, or budget-bound rungs. Prompts byte-identical across seeds. Neither ship shows a measurable agentic ceiling below the 262,144 context limit.",
-          "Chart contract reworked to per-row sampling/seeds with conservative all-seeds-pass aggregation; README, benchmarks/README, and FINDINGS corrected off the pre-fix claims.",
-          "Prompt-profile control re-measured on the post-095 chain with the committed generator: texture effect reproduced in aggregate (6/6 heterogeneous vs 1/6 repeated), zero parser drops remaining, every failure a genuine model failure."
-        ],
-        "in_progress": "Laguna native-FP8 KV-split resweep (FP8-native-follow-on step 1)",
-        "remaining_order": [
-          "Make profile-control calibration replayable: record filler_chars per prompt and accept pinned counts on replay, so a re-run is a controlled A/B rather than a fresh draw. Blocks isolating any serving change in that control; needs a prompts-row schema field and a matching relaxation of the chart loader's strict row-key check.",
-          "Nemotron FP8 2K-versus-8K budget spot-check",
-          "Devstral FP8-KV-versus-BF16-KV recall A/B",
-          "Verdict notes and cross-team receipts"
-        ]
-      },
-      "test_gate": [
-        "Pinned donor provenance is byte-verified before the tested local hardening delta",
-        "Focused tests cover exact call validity, both-turn usage/status, structured content, context reserve, and same-rung retry",
-        "Every accepted rung records server-actual token counts",
-        "Budget-truncated rungs are excluded from depth ceilings",
-        "Historical pre-fix and current post-fix measurements are never combined into one ceiling",
-        "Laguna, North, Nemotron, and KV-dtype receipts are complete or have explicit kill receipts"
-      ]
-    },
-    {
-      "id": "FP8-native-follow-on",
-      "spec": null,
-      "status": "queued",
-      "resource": "tp2_kernel",
-      "depends_on": [
-        "R97-D"
-      ],
-      "next_action": "Author and execute a narrow native-FP8 profile, KV-split resweep, and exact-shape normal-kernel tuner experiment.",
-      "test_gate": [
-        "Same-session 220K profile identifies the limiting kernels",
-        "KV-split arms preserve output and improve the completion-token-counted median",
-        "Normal-kernel tuner covers (N,K)=(512,2048) and (2048,256)",
-        "Every retained configuration passes numerical and graph-replay gates"
-      ]
-    },
-    {
-      "id": "R97-B",
-      "spec": "07-decode-topk-promotion-brief.md",
-      "status": "needs_user",
-      "resource": "tp2_patch_and_deep",
-      "depends_on": [
-        "FP8-native-follow-on"
-      ],
-      "next_action": "Record an A, B, or C decision; Option B is recommended before any v0.5.15 regeneration.",
-      "test_gate": [
-        "Explicit user decision is recorded",
-        "If Option B, regenerated patches pass replay and default-off gates",
-        "Fresh ~245K throughput reaches the promotion bar",
-        "EARLY, MID, and LATE recall pass at true depth"
-      ]
-    },
-    {
-      "id": "R97-A",
-      "spec": "04-eagle3-dense-vl-spec-lane-depth-curve.md",
-      "status": "deferred",
-      "resource": "network_then_tp2",
-      "depends_on": [
-        "R97-B"
-      ],
-      "next_action": "Download and extract both EAGLE3 drafts before running the 16K-96K AWQ depth curves.",
-      "test_gate": [
-        "Target and draft shard hashes match",
-        "Short smoke and capability checks pass",
-        "Measured acceptance and server throughput establish a bounded winning context band"
-      ]
-    },
-    {
-      "id": "R97-F",
-      "spec": "05-qwen36-35b-reap192-two-rig-relay.md",
-      "status": "blocked",
-      "resource": "multi_rig",
-      "depends_on": [
-        "3090-G tooling handoff",
-        "HF write access",
-        "exclusive prune window"
-      ],
-      "next_action": "Wait for the corrected donor tooling and its Gate A receipt; do not copy the current donor.",
-      "test_gate": [
-        "Donor helpers and dual-directory behavior exist",
-        "Shared files are byte-identical",
-        "CPU composite and real-config gates pass before pruning"
-      ]
-    },
-    {
-      "id": "R97-G-phase-b-c",
-      "spec": "06-north-laguna-canonical-eval-ngram-rows.md",
-      "status": "deferred",
-      "resource": "tp2_long_and_docker",
-      "depends_on": [
-        "R97-G-phase-a",
-        "R97-D"
-      ],
-      "next_action": "Run the native-FP8 NGRAM A/B only after the short critical path, then schedule canonical cells if justified.",
-      "test_gate": [
-        "NGRAM uses a fresh native-Triton no-spec denominator",
-        "Any launch change wins at depth without novel-text regression",
-        "Canonical cells pass canary, rollout, Docker scoring, and counter reconciliation"
-      ]
-    },
-    {
-      "id": "R97-H",
-      "spec": "08-bench-dir-hygiene-purge-or-remeasure.md",
-      "status": "needs_user",
-      "resource": "filesystem_or_tp2",
-      "depends_on": [
-        "Explicit Option A or B and rider decisions"
-      ],
-      "next_action": "Record the hygiene decision before any deletion, move, or remeasurement.",
-      "test_gate": [
-        "Task-owned deletion scope is exact",
-        "Pre-existing benchmark modifications are preserved",
-        "Remaining benchmark JSONs are depth-immune or explicitly retained receipts"
-      ]
-    },
-    {
-      "id": "R97-I",
-      "spec": "09-fleet-ladder-per-model-rungs.md",
-      "status": "queued",
-      "resource": "cpu_then_tp2_long",
-      "depends_on": [
-        "R97-D"
-      ],
-      "next_action": "Derive ladder rungs from the served context_length and move lengths into the per-row chart contract, then sweep the 14 unmeasured tool-call-qualified presets.",
-      "test_gate": [
-        "Rung sets are derived from the served context_length; no per-preset length table exists",
-        "Short-context presets produce zero depth-shortfall rungs from rungs exceeding their context",
-        "The loader still rejects lengths disagreeing with a receipt's own row, missing seeds, and cross-seed prompt drift",
-        "Laguna and North receipts stay canonical under the per-row contract without re-measurement",
-        "A preset clearing its deepest rung is reported as no measurable ceiling below its context limit, never as a depth it was not tested beyond",
-        "Chart contract tests cover a ragged two-row case"
-      ]
-    }
-  ]
+  {
+   "id": "R97-G-phase-a",
+   "spec": "06-north-laguna-canonical-eval-ngram-rows.md",
+   "status": "completed",
+   "resource": "cpu_local_data",
+   "depends_on": [
+    "R97-E-local"
+   ],
+   "next_action": "Repair external-run discovery and both output roots, add fixtures, and publish the seven existing cells.",
+   "test_gate": [
+    "Legacy -v2 and external-layout fixture tests pass",
+    "Exactly seven expected cell JSON files are produced",
+    "Published counters match Docker reports and scores.jsonl",
+    "No output lands under /benchmarks or /data/bakeoff"
+   ]
+  },
+  {
+   "id": "R97-C",
+   "spec": "01-calib-source-fixes-and-drift-check.md",
+   "status": "completed",
+   "resource": "cpu_network",
+   "depends_on": [
+    "R97-G-phase-a"
+   ],
+   "next_action": "Record fp8-quant as the execution environment, capture the failing baseline, and port the three source redirects.",
+   "test_gate": [
+    "Pre-edit dry-run captures the silent fallback",
+    "Post-edit dry-runs contain no failed source or padding lines",
+    "Audio, thinking, and evol_code mixes have nonzero rows",
+    "Drift checker detects untracked drift and accepts the refreshed manifest"
+   ]
+  },
+  {
+   "id": "R97-E-gpu",
+   "spec": "02-toolcall-gate-validate-capabilities.md",
+   "status": "completed",
+   "resource": "tp2_short_then_serial",
+   "depends_on": [
+    "R97-C"
+   ],
+   "next_action": "Use the 16 qualified presets as the short-context gate and keep the receipted GLM-4.5 Air exception out of agentic recommendations.",
+   "test_gate": [
+    "Positive control returns a parsed get_weather call",
+    "Negative control fails with the raw-markup hint",
+    "All 17 presets have a pass, fixed-and-retested parser, or receipted skip",
+    "capabilities-086.json remains unchanged"
+   ]
+  },
+  {
+   "id": "R97-D",
+   "spec": "03-port-tooluse-probe-crossteam-abs.md",
+   "status": "in_progress",
+   "resource": "tp2_long",
+   "depends_on": [
+    "R97-E-gpu"
+   ],
+   "next_action": "Both post-095 three-seed ladders are complete (Laguna and North-Mini, 21/21 seed-rungs each). Remaining: re-measure the profile control with the new committed generator, then the Nemotron budget arms and Devstral KV-dtype A/B.",
+   "progress": {
+    "completed": [
+     "Immutable donor port and provenance receipt",
+     "36/36 probe tests (42 combined with chart contracts)",
+     "Frozen execution identity",
+     "Laguna 16K native-Triton end-to-end smoke",
+     "Laguna seven-rung curve: 7/7 end-to-end successes through 245177 actual tokens",
+     "North-Mini pre-090 1/7 greedy curve retained only as a superseded incident baseline",
+     "Patches 090-094: RMSNorm selection, parser recovery, finish-reason correctness, SWA convention, and gfx1201 deterministic MM/BMM",
+     "Separate repeated-stress and heterogeneous agentic-context eval profiles with effective-seed receipts",
+     "Deterministic exact profile control: heterogeneous code/log 3/3 at 64801 and 115806 tokens",
+     "Repository-native multi-turn focused gate: 2/3 correct primaries at both depths and 4/4 valid follow-ups used the tool result",
+     "Schema-v2 eval registry entry, tested ladder/profile renderer, and README charts",
+     "Patch 095: recovers a Cohere tool name carried under a string `function` key. The post-094 A/B scored one such action wrong at 64801 tokens -- the model emitted a correct call and the server dropped it, surfacing raw markup in content with finish_reason stop. 091 covered only tool_name and tool_call_id.",
+     "Patch 091's detector test landed in /data/sgl-v0515; the patch created it but it had never been written to the live tree, so its six cases had never run there",
+     "Post-095 three-seed ladders for both FP8 ships: Laguna 21/21 seed-rungs through 245,279 actual tokens, North-Mini 21/21 through 245,172; zero clamps, shortfalls, errors, or budget-bound rungs. Prompts byte-identical across seeds. Neither ship shows a measurable agentic ceiling below the 262,144 context limit.",
+     "Chart contract reworked to per-row sampling/seeds with conservative all-seeds-pass aggregation; README, benchmarks/README, and FINDINGS corrected off the pre-fix claims.",
+     "Prompt-profile control re-measured on the post-095 chain with the committed generator: texture effect reproduced in aggregate (6/6 heterogeneous vs 1/6 repeated), zero parser drops remaining, every failure a genuine model failure."
+    ],
+    "in_progress": "Laguna native-FP8 KV-split resweep (FP8-native-follow-on step 1)",
+    "remaining_order": [
+     "Make profile-control calibration replayable: record filler_chars per prompt and accept pinned counts on replay, so a re-run is a controlled A/B rather than a fresh draw. Blocks isolating any serving change in that control; needs a prompts-row schema field and a matching relaxation of the chart loader's strict row-key check.",
+     "Nemotron FP8 2K-versus-8K budget spot-check",
+     "Devstral FP8-KV-versus-BF16-KV recall A/B",
+     "Verdict notes and cross-team receipts"
+    ]
+   },
+   "test_gate": [
+    "Pinned donor provenance is byte-verified before the tested local hardening delta",
+    "Focused tests cover exact call validity, both-turn usage/status, structured content, context reserve, and same-rung retry",
+    "Every accepted rung records server-actual token counts",
+    "Budget-truncated rungs are excluded from depth ceilings",
+    "Historical pre-fix and current post-fix measurements are never combined into one ceiling",
+    "Laguna, North, Nemotron, and KV-dtype receipts are complete or have explicit kill receipts"
+   ]
+  },
+  {
+   "id": "FP8-native-follow-on",
+   "spec": null,
+   "status": "queued",
+   "resource": "tp2_kernel",
+   "depends_on": [
+    "R97-D"
+   ],
+   "next_action": "Author and execute a narrow native-FP8 profile, KV-split resweep, and exact-shape normal-kernel tuner experiment.",
+   "test_gate": [
+    "Same-session 220K profile identifies the limiting kernels",
+    "KV-split arms preserve output and improve the completion-token-counted median",
+    "Normal-kernel tuner covers (N,K)=(512,2048) and (2048,256)",
+    "Every retained configuration passes numerical and graph-replay gates"
+   ]
+  },
+  {
+   "id": "R97-B",
+   "spec": "07-decode-topk-promotion-brief.md",
+   "status": "needs_user",
+   "resource": "tp2_patch_and_deep",
+   "depends_on": [
+    "FP8-native-follow-on"
+   ],
+   "next_action": "Record an A, B, or C decision; Option B is recommended before any v0.5.15 regeneration.",
+   "test_gate": [
+    "Explicit user decision is recorded",
+    "If Option B, regenerated patches pass replay and default-off gates",
+    "Fresh ~245K throughput reaches the promotion bar",
+    "EARLY, MID, and LATE recall pass at true depth"
+   ]
+  },
+  {
+   "id": "R97-A",
+   "spec": "04-eagle3-dense-vl-spec-lane-depth-curve.md",
+   "status": "deferred",
+   "resource": "network_then_tp2",
+   "depends_on": [
+    "R97-B"
+   ],
+   "next_action": "Download and extract both EAGLE3 drafts before running the 16K-96K AWQ depth curves.",
+   "test_gate": [
+    "Target and draft shard hashes match",
+    "Short smoke and capability checks pass",
+    "Measured acceptance and server throughput establish a bounded winning context band"
+   ]
+  },
+  {
+   "id": "R97-F",
+   "spec": "05-qwen36-35b-reap192-two-rig-relay.md",
+   "status": "blocked",
+   "resource": "multi_rig",
+   "depends_on": [
+    "3090-G tooling handoff",
+    "HF write access",
+    "exclusive prune window"
+   ],
+   "next_action": "Wait for the corrected donor tooling and its Gate A receipt; do not copy the current donor.",
+   "test_gate": [
+    "Donor helpers and dual-directory behavior exist",
+    "Shared files are byte-identical",
+    "CPU composite and real-config gates pass before pruning"
+   ]
+  },
+  {
+   "id": "R97-G-phase-b-c",
+   "spec": "06-north-laguna-canonical-eval-ngram-rows.md",
+   "status": "deferred",
+   "resource": "tp2_long_and_docker",
+   "depends_on": [
+    "R97-G-phase-a",
+    "R97-D"
+   ],
+   "next_action": "Run the native-FP8 NGRAM A/B only after the short critical path, then schedule canonical cells if justified.",
+   "test_gate": [
+    "NGRAM uses a fresh native-Triton no-spec denominator",
+    "Any launch change wins at depth without novel-text regression",
+    "Canonical cells pass canary, rollout, Docker scoring, and counter reconciliation"
+   ]
+  },
+  {
+   "id": "R97-H",
+   "spec": "08-bench-dir-hygiene-purge-or-remeasure.md",
+   "status": "needs_user",
+   "resource": "filesystem_or_tp2",
+   "depends_on": [
+    "Explicit Option A or B and rider decisions"
+   ],
+   "next_action": "Record the hygiene decision before any deletion, move, or remeasurement.",
+   "test_gate": [
+    "Task-owned deletion scope is exact",
+    "Pre-existing benchmark modifications are preserved",
+    "Remaining benchmark JSONs are depth-immune or explicitly retained receipts"
+   ]
+  },
+  {
+   "id": "R97-I",
+   "spec": "09-fleet-ladder-per-model-rungs.md",
+   "status": "queued",
+   "resource": "cpu_then_tp2_long",
+   "depends_on": [
+    "R97-D"
+   ],
+   "next_action": "Derive ladder rungs from the served context_length and move lengths into the per-row chart contract, then sweep the 14 unmeasured tool-call-qualified presets.",
+   "test_gate": [
+    "Rung sets are derived from the served context_length; no per-preset length table exists",
+    "Short-context presets produce zero depth-shortfall rungs from rungs exceeding their context",
+    "The loader still rejects lengths disagreeing with a receipt's own row, missing seeds, and cross-seed prompt drift",
+    "Laguna and North receipts stay canonical under the per-row contract without re-measurement",
+    "A preset clearing its deepest rung is reported as no measurable ceiling below its context limit, never as a depth it was not tested beyond",
+    "Chart contract tests cover a ragged two-row case"
+   ]
+  },
+  {
+   "id": "R97-J-extend-kv-split",
+   "spec": "10-extend-attention-kv-split-agentic-turn.md",
+   "status": "ready",
+   "resource": "gpu",
+   "depends_on": [],
+   "next_action": "Cut the agentic turn tax at depth. Laguna pays 604.6 ms of TTFT to append ONE token to a 176,588-token cache hit, and 607.7 ms to append 64 -- the cost is the prefix walk, not the suffix. Cause is the extend launch grid (extend_attention.py:63) whose third dimension is cdiv(max_len_extend, BLOCK_M); with BLOCK_M=64 on gfx1201 a short suffix collapses it to 1, so ~24 workgroups per rank walk the whole prefix while decode splits the same walk 64 ways. Evaluate two arms: (a) route small-suffix cache-hit extends through the decode attention path, (b) add a KV-split dimension to extend. Gate on numerical equivalence before any speed claim.",
+   "test_gate": [
+    "Isolated kernel reproducer at Laguna's real shapes matches the current extend output within tolerance",
+    "measure_extend_cost.py shows a TTFT reduction at 117K and 176K with cache_hit_verified true",
+    "Decode TPOT at the same depths is unchanged (no regression on the path that already works)",
+    "256K agentic tool-use ladder still passes 21/21 across three seeds",
+    "profile_decode_kernels.py --phase prefill_extend confirms the extend attention share dropped"
+   ],
+   "receipts": [
+    "benchmarks/profiling/laguna-native-decode-profile-2026-07-19.json",
+    "benchmarks/profiling/laguna-extend-cost-2026-07-19.json"
+   ]
+  },
+  {
+   "id": "R97-K-decode-rocblas-residue",
+   "spec": null,
+   "status": "needs_spec",
+   "resource": "gpu",
+   "depends_on": [],
+   "next_action": "Explain why rocblas_gemm is still the largest non-collective decode category (~38-42%) on Laguna while fp8_gemm_runner_backend=triton and triton_fp8_gemm is only ~7-12%. Identify which dense GEMMs (attention projections, shared expert, lm_head) still route to rocBLAS and whether that is intended.",
+   "test_gate": [
+    "Each large Cijk_* decode kernel is attributed to a named module and shape",
+    "Any promotion to the native FP8 path is gated on numerical equivalence before a speed claim"
+   ],
+   "receipts": [
+    "benchmarks/profiling/laguna-native-decode-profile-2026-07-19.json"
+   ]
+  }
+ ]
 }

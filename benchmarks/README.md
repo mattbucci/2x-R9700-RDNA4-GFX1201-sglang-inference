@@ -96,6 +96,28 @@ Note the two runs are **not** a controlled A/B for patch 095: calibration conver
 counts (186,736 versus 186,620 at the 64,801 rung), so the prompts differ and only the aggregate is
 comparable. Isolating a serving change requires pinning the converged character counts on replay.
 
+### Native-FP8 kernel profile and the agentic turn tax
+
+The [2026-07-19 decode/extend profile](profiling/laguna-native-decode-profile-2026-07-19.json) separates
+kernel time by **phase** as well as category, because extend and decode attention share the `attention`
+category and were previously merged. With them separated, Laguna's native-FP8 decode is led by dense
+rocBLAS GEMM (~38–42% of non-collective GPU time), not attention (~20–28%).
+
+The larger result is in the other phase. Appending a short suffix to a cached prefix — the agentic
+tool-result turn — costs a fixed tax that scales with prefix length, because the extend kernel does not
+split the KV dimension:
+
+| Cached tokens | TTFT, 1-token suffix | TTFT, 64-token suffix | Decode ms/token |
+|---:|---:|---:|---:|
+| 7,404 | 61.3 ms | 68.3 ms | 14.32 |
+| 176,588 | **604.6 ms** | **607.7 ms** | 17.61 |
+
+A 64-token tool result costs 0.5% more than a single token; the cost is the prefix walk, not the suffix.
+Curve and method: [extend cost receipt](profiling/laguna-extend-cost-2026-07-19.json). Regenerate with
+`python scripts/bench/measure_extend_cost.py --port 23334` against a server launched with
+`--enable-cache-report` (without it, cache hits cannot be verified and the harness records
+`cache_hit_verified: false` rather than assuming). Disposition in [FINDINGS.md](FINDINGS.md).
+
 Final experiment conclusions are consolidated in [FINDINGS.md](FINDINGS.md).
 
 ## Measurement method
