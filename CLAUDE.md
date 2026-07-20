@@ -54,6 +54,9 @@ Do not report a short prompt on a large-capacity server as deep-context throughp
 - At true 256K depth, use no speculative decoding unless a new same-depth A/B proves otherwise.
 - Build published quantizations from the upstream BF16 checkpoint with local scripts. Third-party quants are comparison inputs only.
 - Validate behavior, not just process exit status or keyword presence.
+- Prefer re-running a GPU task over reasoning about what it would have shown. GPU hours are cheaper than a
+  conclusion carried on inference. When an arm is stale, was measured under a superseded patch state or a
+  different methodology, or is only *expected* to match, re-measure it instead of arguing it forward.
 
 ## Long-running jobs
 
