@@ -1,6 +1,6 @@
 {
  "schema_version": 1,
- "updated_at": "2026-07-19",
+ "updated_at": "2026-07-20",
  "ordering": "easiest_to_test_then_hardest",
  "baseline": {
   "sglang": "v0.5.15",
@@ -133,7 +133,7 @@
    "progress": {
     "native_fp8_profile": "complete (2026-07-19)",
     "kv_split_resweep": "complete (2026-07-19) -- 64 holds",
-    "exact_shape_tuner": "not started"
+    "exact_shape_tuner": "specced as R97-L (12-fp8-exact-shape-gemm-tuner.md); not started"
    },
    "receipts": [
     "benchmarks/profiling/laguna-native-decode-profile-2026-07-19.json",
@@ -280,6 +280,69 @@
     "/data/profiling-traces/laguna-native-2026-07-19/ (raw traces, both arms and ranks, preserved off volatile /tmp)"
    ],
    "staleness": "Pinned to post-095 with fp8_gemm_runner_backend=triton. FP8-native-follow-on step 3 (exact-shape tuner) and R97-B's regeneration would both invalidate the baseline; re-measure rather than argue forward."
+  },
+  {
+   "id": "R97-L",
+   "spec": "12-fp8-exact-shape-gemm-tuner.md",
+   "status": "ready",
+   "resource": "tp2_kernel",
+   "depends_on": [
+    "FP8-native-follow-on native_fp8_profile (complete 2026-07-19)",
+    "FP8-native-follow-on kv_split_resweep (complete 2026-07-19)"
+   ],
+   "next_action": "Third and final FP8-native-follow-on leg. Locate the normal block-FP8 kernel serving selects (NOT the unrolled-x4 selector), enumerate the 80 dense FP8 linears/token/rank at (N,K)=(512,2048) and (2048,256), build a correctness-gated sweep (cosine>=0.999 + graph-replay, fix the K=256 OOB), emit patch 096, and A/B at true depth against a FRESH native-Triton baseline (never reuse 55.125 across a depth mismatch). Prefer R97-N's --assert-output-identical for the A/B; add it inline if R97-N has not landed. Run BEFORE R97-B regen and R97-K residue re-measure, which both name this tuner as invalidating their baseline.",
+   "test_gate": [
+    "Normal-kernel tuner covers (N,K)=(512,2048) and (2048,256) at M in {1, 2048, 8192}",
+    "Every retained config passes cosine>=0.999 vs torch FP8 dequant AND the serving kernel, and a graph-replay with zero OOB at K=256",
+    "Deep A/B beats a freshly re-measured native-Triton baseline on the completion-token median with matching output hash, or a documented null with the shape census",
+    "Comprehensive 35/36, capabilities 2/2, 3/3 early-needle recall at ~176K unchanged",
+    "Patch 096 replays clean on pristine+001-095 and rejects a second apply"
+   ]
+  },
+  {
+   "id": "R97-M",
+   "spec": "13-gpu-thermal-power-clock-steady-state-soak.md",
+   "status": "ready",
+   "resource": "gpu",
+   "depends_on": [],
+   "next_action": "Write scripts/bench/gpu_telemetry.py (~1Hz per-rank JSONL: edge/junction temp, sclk, mclk, socket power, PPT/throttle, busy%), then run a >=10-min ~245K-server-actual laguna deep-decode soak with it attached under setsid, plus a shallow ~4K control. Compute the transient-vs-steady-state median delta, correlate with sclk/temp/PPT, and either caveat or clear the 086/087/native-FP8 receipts. Passive; can piggyback any scheduled deep-decode laguna run.",
+   "test_gate": [
+    "Per-rank telemetry JSONL captured at >=1Hz for a >=10-min ~245K-server-actual decode soak on laguna",
+    "Report states a specific steady-state-vs-transient % delta and a throttle verdict (sclk-below-rated or PPT flag) from the JSONL, not an eyeballed peak",
+    "If throttling found, 086/087/native-FP8 receipts gain a steady-state caveat; else a dated no-TP2-256K-thermal-throttle clearance is committed",
+    "The shallow ~4K control is captured for the deep-vs-shallow envelope comparison"
+   ]
+  },
+  {
+   "id": "R97-N",
+   "spec": "14-decode-ab-identity-and-depth-tripwire.md",
+   "status": "ready",
+   "resource": "cpu_then_gpu",
+   "depends_on": [
+    "Optional: 3090-D schema-v2 shape (can adopt for fleet comparability but not blocked on it; M4 armed independently)"
+   ],
+   "next_action": "Add full-output-hash (output_sha + output_token_count) + --assert-output-identical/--expect-divergence + a determinism self-check to decode_ab.py; define baselines.json schema v2 (_meta + short/medium/deep rows with server-actual counts and TTFT, laguna + north-mini armed via measure_decode_curve.py); rework bench_regression.sh to per-depth fail-closed >10%; self-test both ways (offline -15% + live auto-vs-native ~36%); backfill the kvsplit resweep and native-FP8 A/B with hashing and replace the FINDINGS output-identity caveat. Sequences before R97-J/K/B re-gates so their parity claims are hash-backed; provides the identity gate R97-L uses.",
+   "test_gate": [
+    "decode_ab.py emits output_sha + output_token_count; --assert-output-identical passes on a neutral change and fails on a differing num_kv_splits A/B",
+    "Determinism self-check is byte-identical across two same-arm runs at a fixed split count under --enable-deterministic-inference",
+    "baselines.json carries _meta plus short/medium/deep rows with server-actual counts for at least laguna and north-mini; the stale peak_throughput:0.0 zeros are gone",
+    "bench_regression.sh fails-closed on any >10% depth regression and rejects a non-deep 'deep' row; the offline -15% and live auto-vs-native controls both fire",
+    "Deep rows reconcile within ~3% of the 086/087/native-FP8 receipts or the gap is explained; FINDINGS output-identity caveat replaced; pytest and bash -n pass"
+   ]
+  },
+  {
+   "id": "R97-O",
+   "spec": "15-concurrency-hol-blocking-postfp8-remeasure.md",
+   "status": "queued",
+   "resource": "tp2_long",
+   "depends_on": [],
+   "next_action": "Refresh the concurrency curve on laguna native-FP8 post-095 via sglang.bench_serving at conc 1/2/4/8/16 (short + deep, --random-range-ratio 1), regenerating the pre-native-FP8 Jul-12 PNG (f787ad8). Run the two-client HoL probe (long ~176K client + short interferer) to quantify extend-tax-induced head-of-line blocking on the long client's per-turn TTFT/TPOT, and A/B the Overlap schedule under concurrency for a promote/neutral/reject verdict. Benefits from R97-J context and gives its fix a before/after baseline; shares the bench_serving harness with R97-N.",
+   "test_gate": [
+    "Refreshed short + deep concurrency curve on the post-095 native-FP8 tree replaces the Jul-12 PNG, every row with server-actual token counts",
+    "A quantified HoL figure: the long client's per-turn TTFT/TPOT delta with vs without a short interferer at ~176K, attributed to the ~605ms extend walk or to decode-step time",
+    "The Overlap-schedule concurrency A/B yields a recorded promote/neutral/reject verdict",
+    "benchmarks/concurrency-postfp8-<date>.{json,md} committed and the chart regenerated"
+   ]
   }
  ]
 }
