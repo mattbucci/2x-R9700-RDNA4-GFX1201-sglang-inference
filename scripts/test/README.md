@@ -9,6 +9,7 @@ Development and investigation tools. Not part of the production workflow.
 | `test_probe_256k_tooluse.py` | Strict tool-call, retry, receipt, and multi-turn scoring contract |
 | `test_profile_control_ab.py` | Exact-token calibration, 12-row matrix, receipt schema, and patch-chain contract for the profile control A/B |
 | `test_generate_charts_tooluse.py` | Fail-closed historical-ladder and deterministic North profile-control loading, classification, and rendering |
+| `test_profile_decode_kernels.py` | Kernel categorization rule table, `other`-bucket visibility and >15% warning, gzip/plain and malformed trace handling, `ph=X`/`cat=kernel` filtering, and the old-vs-new comparison table |
 
 ## TP=2 Validation
 
