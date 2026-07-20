@@ -27,8 +27,8 @@ sys.modules[SPEC.name] = pdk
 SPEC.loader.exec_module(pdk)
 
 
-def _kernel_event(name, dur, *, ph="X", cat="kernel"):
-    return {"ph": ph, "cat": cat, "name": name, "dur": dur, "ts": 0, "pid": 1, "tid": 1}
+def _kernel_event(name, dur, *, ph="X", cat="kernel", ts=0):
+    return {"ph": ph, "cat": cat, "name": name, "dur": dur, "ts": ts, "pid": 1, "tid": 1}
 
 
 def _write_trace(path, events, *, gzipped=False):
@@ -376,7 +376,10 @@ class ComparisonTest(unittest.TestCase):
         self.assertRegex(table, r"triton_fp8_gemm\s+n/a\s+30\.0\s+n/a")
 
     def test_compare_accepts_a_full_prior_report_or_a_bare_pct_map(self):
-        totals = {"_fwd_kernel": 1_000.0}
+        # A DECODE attention kernel: main() now defaults to --phase decode and
+        # fails closed on a trace with no decode phase, so an extend-only
+        # fixture would exercise the refusal path rather than --compare.
+        totals = {"_fwd_grouped_kernel_stage1": 1_000.0}
         with tempfile.TemporaryDirectory() as temp_dir:
             temp = pathlib.Path(temp_dir)
             trace = temp / "1000-TP-0.trace.json"
@@ -499,6 +502,174 @@ class MainTest(unittest.TestCase):
 
             self.assertEqual(code, 2)
             self.assertIn("no ph=X cat=kernel events", err.getvalue())
+
+
+class PhaseSegmentationTest(unittest.TestCase):
+    """Regression cover for the 2026-07-19 invalid run.
+
+    That run reported 92.9% "attention" for what was labelled a decode profile.
+    The share was a 40-layer extend pass for a single new token on a 197,193
+    token cache hit, sitting in the same trace window. Category rules alone
+    could not see it: extend and decode attention both match `attention`.
+    """
+
+    # One extend pass (40 layers, 10 of them full-attention and expensive),
+    # then a decode step. Shaped like the real Laguna trace.
+    def _laguna_shaped_events(self):
+        events = []
+        ts = 0
+        for layer in range(40):
+            heavy = layer % 4 == 0          # 10 full_attention layers
+            dur = 35_000.0 if heavy else 130.0
+            events.append(_kernel_event("_fwd_kernel", dur, ts=ts))
+            ts += int(dur) + 500
+            events.append(_kernel_event("Cijk_Alik_Bljk_MT128x128x32", 60.0, ts=ts))
+            ts += 600
+        decode_start = ts + 10_000
+        ts = decode_start
+        for _ in range(40):
+            events.append(_kernel_event("_fwd_grouped_kernel_stage1", 90.0, ts=ts))
+            ts += 200
+            events.append(_kernel_event("_fwd_kernel_stage2", 8.0, ts=ts))
+            ts += 100
+            events.append(_kernel_event("_w8a8_block_fp8_matmul", 40.0, ts=ts))
+            ts += 200
+        return events, decode_start
+
+    def test_extend_pass_is_kept_out_of_the_decode_phase(self):
+        events, decode_start = self._laguna_shaped_events()
+        parsed = [
+            {"name": e["name"], "ts": float(e["ts"]), "dur": float(e["dur"])}
+            for e in events
+        ]
+        phases, meta = pdk.segment_phases(parsed)
+
+        self.assertEqual(meta["boundary_ts"], float(decode_start))
+        self.assertFalse(meta["interleaved"])
+        self.assertEqual(meta["prefill_attention_calls"], 40)
+        self.assertEqual(meta["decode_attention_calls"], 80)  # stage1 + stage2
+
+        decode_names = {e["name"] for e in phases[pdk.PHASE_DECODE]}
+        self.assertNotIn("_fwd_kernel", decode_names)
+        prefill_names = {e["name"] for e in phases[pdk.PHASE_PREFILL]}
+        self.assertIn("_fwd_kernel", prefill_names)
+
+        # The whole point: the 350 ms of extend must not inflate decode.
+        decode_us = sum(e["dur"] for e in phases[pdk.PHASE_DECODE])
+        prefill_us = sum(e["dur"] for e in phases[pdk.PHASE_PREFILL])
+        self.assertGreater(prefill_us, 300_000)
+        self.assertLess(decode_us, 10_000)
+
+    def test_exact_names_separate_extend_from_decode_despite_shared_substring(self):
+        # `_fwd_kernel` is a substring of `_fwd_kernel_stage2`. A substring test
+        # is exactly how the two phases were merged; membership must be exact.
+        self.assertIn("_fwd_kernel", pdk.PREFILL_ATTENTION_KERNELS)
+        self.assertNotIn("_fwd_kernel_stage2", pdk.PREFILL_ATTENTION_KERNELS)
+        self.assertIn("_fwd_kernel_stage2", pdk.DECODE_ATTENTION_KERNELS)
+        self.assertIn("_fwd_grouped_kernel_stage1", pdk.DECODE_ATTENTION_KERNELS)
+        self.assertFalse(
+            pdk.PREFILL_ATTENTION_KERNELS & pdk.DECODE_ATTENTION_KERNELS,
+            "a kernel cannot be both phases",
+        )
+        # Both still categorize as attention, preserving baseline comparability.
+        self.assertEqual(pdk.categorize("_fwd_kernel"), "attention")
+        self.assertEqual(pdk.categorize("_fwd_kernel_stage2"), "attention")
+
+    def test_interleaved_phases_are_flagged_not_silently_split(self):
+        parsed = [
+            {"name": "_fwd_grouped_kernel_stage1", "ts": 100.0, "dur": 50.0},
+            {"name": "_fwd_kernel", "ts": 200.0, "dur": 9_000.0},  # extend AFTER decode
+        ]
+        _, meta = pdk.segment_phases(parsed)
+
+        self.assertTrue(meta["interleaved"])
+        self.assertEqual(meta["late_prefill_attention_calls"], 1)
+        self.assertIn("NOT reliable", meta["note"])
+
+    def test_trace_without_decode_attention_reports_no_decode_phase(self):
+        parsed = [{"name": "_fwd_kernel", "ts": 0.0, "dur": 35_000.0}]
+        phases, meta = pdk.segment_phases(parsed)
+
+        self.assertEqual(phases[pdk.PHASE_DECODE], [])
+        self.assertEqual(len(phases[pdk.PHASE_PREFILL]), 1)
+        self.assertIn("No decode-attention kernel", meta["note"])
+
+    def test_main_fails_closed_when_decode_phase_is_empty(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp = pathlib.Path(temp_dir)
+            _write_trace(
+                temp / "1000-TP-0.trace.json",
+                [_kernel_event("_fwd_kernel", 35_000.0, ts=0)],
+            )
+            err, out = io.StringIO(), io.StringIO()
+            with contextlib.redirect_stderr(err), contextlib.redirect_stdout(out):
+                code = pdk.main(["--trace-dir", str(temp), "--phase", "decode"])
+
+            self.assertEqual(code, 2)
+            self.assertIn("contains no kernel time", err.getvalue())
+
+    def test_full_window_phase_still_reports_the_contaminated_total(self):
+        # Kept selectable so an old-style whole-trace number stays reproducible,
+        # but it is no longer the default.
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp = pathlib.Path(temp_dir)
+            _write_trace(
+                temp / "1000-TP-0.trace.json",
+                [_kernel_event("_fwd_kernel", 35_000.0, ts=0)],
+            )
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out):
+                code = pdk.main(["--trace-dir", str(temp), "--phase", "full_window"])
+
+            self.assertEqual(code, 0)
+            self.assertIn("PHASE REPORTED BELOW: full_window", out.getvalue())
+
+    def test_per_step_figure_is_withheld_when_the_trace_misses_steps(self):
+        events, _ = self._laguna_shaped_events()
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp = pathlib.Path(temp_dir)
+            _write_trace(temp / "1000-TP-0.trace.json", events)
+            report_path = temp / "report.json"
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out):
+                code = pdk.main([
+                    "--trace-dir", str(temp),
+                    "--out", str(report_path),
+                    "--steps", "40",      # requested
+                    "--layers", "40",
+                ])
+
+            self.assertEqual(code, 0)
+            report = json.loads(report_path.read_text())
+            # 40 stage1 calls / 40 layers / 1 rank == 1 traced step, not 40.
+            self.assertEqual(report["traced_decode_steps_estimate"], 1.0)
+            self.assertIn("step_coverage_warning", report)
+            self.assertNotIn(
+                "per_step_gpu_ms", report,
+                "a per-step number must not be published from 1 traced step",
+            )
+            self.assertIn("CUDA graph", out.getvalue())
+
+    def test_decode_phase_breakdown_is_reported_not_the_extend_share(self):
+        events, _ = self._laguna_shaped_events()
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp = pathlib.Path(temp_dir)
+            _write_trace(temp / "1000-TP-0.trace.json", events)
+            report_path = temp / "report.json"
+            with contextlib.redirect_stdout(io.StringIO()):
+                code = pdk.main([
+                    "--trace-dir", str(temp), "--out", str(report_path),
+                    "--layers", "40",
+                ])
+
+            self.assertEqual(code, 0)
+            report = json.loads(report_path.read_text())
+            self.assertEqual(report["phase"], "decode")
+            # Extend is ~350 ms; decode attention is ~4 ms. If the phases were
+            # merged, attention would be >98%.
+            self.assertLess(report["breakdown_pct"]["attention"], 90.0)
+            self.assertGreater(report["phase_summary"]["prefill_extend"]["gpu_ms"], 300.0)
+            self.assertLess(report["phase_summary"]["decode"]["gpu_ms"], 20.0)
 
 
 if __name__ == "__main__":

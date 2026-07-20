@@ -185,6 +185,52 @@ CATEGORY_RULES = [
 # category sets never differ between runs.
 CATEGORIES = [category for category, _ in CATEGORY_RULES] + [OTHER_CATEGORY]
 
+# --------------------------------------------------------------------------
+# Phase segmentation.
+#
+# `category` says WHAT a kernel is; `phase` says WHICH FORWARD PASS ran it.
+# Both are needed. The 2026-07-19 run reported 92.9% "attention" on what was
+# labelled a decode profile; that share was an extend/prefill pass sitting in
+# the same trace window, and the category table alone could not see it because
+# extend and decode attention both matched the `attention` rule.
+#
+# These are EXACT names, not substrings, because the distinction is exactly the
+# thing that was got wrong. In SGLang v0.5.15:
+#   extend_attention.py:242  def _fwd_kernel          <- prefill/extend
+#   extend_attention.py:799  def _fwd_kernel_unified  <- prefill/extend
+#   prefill_attention.py:35  def _fwd_kernel          <- prefill (same name)
+#   decode_attention.py:98   def _fwd_kernel_stage1   <- decode
+#   decode_attention.py:353  def _fwd_grouped_kernel_stage1
+#   decode_attention.py:673  def _fwd_kernel_stage2
+# A substring test for "_fwd_kernel" matches every one of those, which is how
+# the two phases got merged. Exact membership keeps them apart.
+PREFILL_ATTENTION_KERNELS = frozenset({"_fwd_kernel", "_fwd_kernel_unified"})
+DECODE_ATTENTION_KERNELS = frozenset(
+    {
+        "_fwd_kernel_stage1",
+        "_fwd_kernel_stage2",
+        "_fwd_grouped_kernel_stage1",
+        "_fwd_grouped_kernel_stage1_rope",
+    }
+)
+
+# Counting decode STEPS needs a kernel that fires exactly once per layer per
+# step. The grouped decode path runs stage1 (per-split partial attention) AND
+# stage2 (the softmax/reduce combine) every layer, so counting all decode
+# attention kernels double-counts steps. Stage1 alone is the step marker.
+DECODE_STEP_MARKER_KERNELS = frozenset(
+    {
+        "_fwd_kernel_stage1",
+        "_fwd_grouped_kernel_stage1",
+        "_fwd_grouped_kernel_stage1_rope",
+    }
+)
+
+PHASE_PREFILL = "prefill_extend"
+PHASE_DECODE = "decode"
+PHASE_FULL = "full_window"
+PHASES = [PHASE_FULL, PHASE_PREFILL, PHASE_DECODE]
+
 
 def categorize(kernel_name):
     """Return the single category for a kernel name (first matching rule wins)."""
@@ -201,13 +247,17 @@ def find_trace_files(trace_dir):
     return sorted(glob.glob(os.path.join(trace_dir, "*.trace.json*")))
 
 
-def read_trace_events(path):
-    """Yield GPU kernel events from one trace file.
+def read_trace_kernel_events(path):
+    """Yield {name, ts, dur} dicts for GPU kernel events in one trace file.
 
     Only `ph == "X"` (complete duration events) with `cat == "kernel"` are GPU
     kernel work. Runtime/launch categories (`cuda_runtime`, `gpu_memcpy`,
     `ac2g`, ...) and metadata (`ph == "M"`) describe host-side or non-kernel
     activity and would double-count or dilute the breakdown.
+
+    `ts` is retained (unlike the name/duration-only view) because phase
+    segmentation needs it: without timestamps a prefill pass and a decode pass
+    in the same trace are indistinguishable.
     """
     opener = gzip.open if path.endswith(".gz") else open
     with opener(path, "rt", errors="replace") as handle:
@@ -229,7 +279,107 @@ def read_trace_events(path):
             continue
         if duration <= 0:
             continue
-        yield name, float(duration)
+        start = event.get("ts")
+        if isinstance(start, bool) or not isinstance(start, (int, float)):
+            # An event with no usable timestamp still counts toward totals; it
+            # simply cannot be placed in a phase.
+            start = None
+        yield {
+            "name": name,
+            "ts": None if start is None else float(start),
+            "dur": float(duration),
+        }
+
+
+def read_trace_events(path):
+    """Yield `(kernel_name, duration_us)` for GPU kernel events in one trace."""
+    for event in read_trace_kernel_events(path):
+        yield event["name"], event["dur"]
+
+
+def segment_phases(events):
+    """Split one rank's kernel events into a prefill/extend and a decode phase.
+
+    The boundary is the START of the first decode-attention kernel. Everything
+    before it is prefill/extend, everything at or after it is decode.
+
+    Returns (phase_events, meta). `phase_events` maps PHASE_PREFILL/PHASE_DECODE
+    to event lists. `meta` records what the split was based on so a reader can
+    audit it rather than trust it.
+
+    Known imprecision, deliberately documented rather than hidden: a decode
+    step's pre-attention work (qkv projection of the first layer) starts before
+    its first attention kernel, so up to one layer of decode GEMM time is
+    charged to prefill. That is sub-millisecond against phases measured in tens
+    to hundreds of milliseconds. It is NOT the failure mode this function
+    exists to prevent, which is a whole 40-layer extend pass landing in decode.
+    """
+    timed = [event for event in events if event["ts"] is not None]
+    untimed = [event for event in events if event["ts"] is None]
+
+    decode_starts = [
+        event["ts"] for event in timed if event["name"] in DECODE_ATTENTION_KERNELS
+    ]
+    prefill_marks = [
+        event for event in timed if event["name"] in PREFILL_ATTENTION_KERNELS
+    ]
+
+    meta = {
+        "decode_attention_calls": len(decode_starts),
+        "decode_step_marker_calls": sum(
+            1 for event in timed if event["name"] in DECODE_STEP_MARKER_KERNELS
+        ),
+        "prefill_attention_calls": len(prefill_marks),
+        "prefill_attention_us": round(sum(e["dur"] for e in prefill_marks), 1),
+        "untimed_events": len(untimed),
+        "boundary_ts": None,
+        "interleaved": False,
+        "note": None,
+    }
+
+    if not decode_starts:
+        meta["note"] = (
+            "No decode-attention kernel in this trace. Every kernel is charged "
+            "to prefill_extend; there is no decode phase to report."
+        )
+        return {PHASE_PREFILL: list(timed) + untimed, PHASE_DECODE: []}, meta
+
+    boundary = min(decode_starts)
+    meta["boundary_ts"] = boundary
+
+    # Continuous batching can interleave a new request's extend with another
+    # request's decode. A single boundary is then meaningless and the caller
+    # must be told, because the resulting decode share would be wrong in the
+    # same direction as the bug this tool was built to catch.
+    late_prefill = [event for event in prefill_marks if event["ts"] >= boundary]
+    if late_prefill:
+        meta["interleaved"] = True
+        meta["late_prefill_attention_calls"] = len(late_prefill)
+        meta["note"] = (
+            f"{len(late_prefill)} prefill/extend attention kernel(s) start after "
+            "the first decode-attention kernel: the phases interleave and this "
+            "single-boundary split is NOT reliable. Treat the decode breakdown "
+            "as contaminated."
+        )
+
+    phase_events = {PHASE_PREFILL: [], PHASE_DECODE: []}
+    for event in timed:
+        target = PHASE_DECODE if event["ts"] >= boundary else PHASE_PREFILL
+        phase_events[target].append(event)
+    # Untimed events cannot be placed; charging them to prefill keeps them out
+    # of the headline decode numbers rather than silently inflating them.
+    phase_events[PHASE_PREFILL].extend(untimed)
+    return phase_events, meta
+
+
+def _span_ms(events):
+    """Wall-clock span in ms covered by a set of timed events."""
+    timed = [event for event in events if event["ts"] is not None]
+    if not timed:
+        return None
+    start = min(event["ts"] for event in timed)
+    end = max(event["ts"] + event["dur"] for event in timed)
+    return round((end - start) / 1000.0, 3)
 
 
 def aggregate_traces(trace_files, log=print):
@@ -260,6 +410,53 @@ def aggregate_traces(trace_files, log=print):
             }
         )
     return totals, per_file, skipped
+
+
+def aggregate_traces_by_phase(trace_files, log=print):
+    """Sum GPU us per kernel name per phase, segmenting each rank separately.
+
+    Segmentation is per trace file on purpose. Each rank writes its own trace,
+    and rank clocks are not guaranteed to share an origin; a boundary derived
+    from pooled timestamps could land mid-pass on one rank. Per-rank boundaries
+    are then summed, which is valid because the phases are the same logical
+    forward passes on every rank.
+    """
+    phase_totals = {phase: collections.Counter() for phase in (PHASE_PREFILL, PHASE_DECODE)}
+    phase_spans = {phase: [] for phase in (PHASE_PREFILL, PHASE_DECODE)}
+    per_file = []
+    skipped = []
+    rank_meta = []
+    for path in trace_files:
+        try:
+            events = list(read_trace_kernel_events(path))
+        except Exception as error:  # noqa: BLE001 - any decode failure is a skip
+            skipped.append({"path": path, "error": f"{type(error).__name__}: {error}"})
+            log(f"WARNING: skipping unreadable trace {path}: {error}")
+            continue
+        if not events:
+            per_file.append({"path": path, "gpu_us": 0.0, "kernel_names": 0})
+            continue
+        phase_events, meta = segment_phases(events)
+        meta["path"] = path
+        for phase, phase_event_list in phase_events.items():
+            for event in phase_event_list:
+                phase_totals[phase][event["name"]] += event["dur"]
+            span = _span_ms(phase_event_list)
+            if span is not None:
+                phase_spans[phase].append(span)
+            meta[f"{phase}_gpu_us"] = round(
+                sum(event["dur"] for event in phase_event_list), 1
+            )
+            meta[f"{phase}_span_ms"] = span
+        rank_meta.append(meta)
+        per_file.append(
+            {
+                "path": path,
+                "gpu_us": round(sum(event["dur"] for event in events), 1),
+                "kernel_names": len({event["name"] for event in events}),
+            }
+        )
+    return phase_totals, phase_spans, per_file, skipped, rank_meta
 
 
 def build_report(
@@ -368,6 +565,39 @@ def format_summary(report):
     for entry in report.get("skipped_trace_files", []):
         lines.append(f"  skipped trace: {entry['path']} ({entry['error']})")
 
+    if report.get("phase"):
+        lines.append("")
+        lines.append(f"PHASE REPORTED BELOW: {report['phase']}")
+        summary = report.get("phase_summary") or {}
+        if summary:
+            lines.append(
+                f"  {'phase':<16}{'gpu_ms':>11}{'pct':>8}{'max rank span ms':>19}"
+            )
+            for phase, entry in summary.items():
+                span = entry.get("max_rank_span_ms")
+                span_text = "n/a" if span is None else f"{span:.1f}"
+                lines.append(
+                    f"  {phase:<16}{entry['gpu_ms']:>11.1f}{entry['pct_of_traced']:>7.1f}%"
+                    f"{span_text:>19}"
+                )
+        lines.append(
+            f"  decode-attention calls: {report.get('decode_attention_calls')}  "
+            f"prefill/extend-attention calls: {report.get('prefill_attention_calls')} "
+            f"({report.get('prefill_attention_gpu_ms')} ms)"
+        )
+        if report.get("traced_decode_steps_estimate") is not None:
+            lines.append(
+                f"  traced decode steps (estimate): "
+                f"{report['traced_decode_steps_estimate']}"
+            )
+        if report.get("interleaved_phases"):
+            lines.append(
+                "  WARNING: prefill and decode INTERLEAVE in this trace; the "
+                "phase split is not reliable."
+            )
+        if report.get("step_coverage_warning"):
+            lines.append(f"  WARNING: {report['step_coverage_warning']}")
+
     lines.append("")
     lines.append(f"{'category':<20}{'us':>14}{'pct':>9}")
     for category in CATEGORIES:
@@ -441,6 +671,27 @@ def main(argv=None):
         default=None,
         help="JSON file of prior category percentages for a side-by-side table",
     )
+    parser.add_argument(
+        "--phase",
+        default=PHASE_DECODE,
+        choices=PHASES,
+        help=(
+            "which phase the headline breakdown reports (default: decode). "
+            "full_window reproduces the pre-phase-split behaviour and will "
+            "include any prefill/extend pass caught in the same trace."
+        ),
+    )
+    parser.add_argument(
+        "--layers",
+        type=int,
+        default=None,
+        help=(
+            "model layer count. Decode attention fires once per layer per step, "
+            "so this converts traced decode-attention calls into TRACED steps "
+            "and exposes the gap against --steps when CUDA-graph replays are "
+            "not individually traced."
+        ),
+    )
     args = parser.parse_args(argv)
 
     trace_files = find_trace_files(args.trace_dir)
@@ -448,8 +699,13 @@ def main(argv=None):
         print(f"ERROR: no *.trace.json* files under {args.trace_dir}", file=sys.stderr)
         return 2
 
-    totals, per_file, skipped = aggregate_traces(trace_files)
-    if not totals:
+    phase_totals, phase_spans, per_file, skipped, rank_meta = aggregate_traces_by_phase(
+        trace_files
+    )
+    full_totals = collections.Counter()
+    for phase_counter in phase_totals.values():
+        full_totals.update(phase_counter)
+    if not full_totals:
         print(
             f"ERROR: no ph=X cat=kernel events found in {len(trace_files)} trace "
             f"file(s) under {args.trace_dir}",
@@ -457,8 +713,20 @@ def main(argv=None):
         )
         return 2
 
+    selectable = dict(phase_totals)
+    selectable[PHASE_FULL] = full_totals
+    headline_totals = selectable[args.phase]
+    if not headline_totals:
+        print(
+            f"ERROR: phase '{args.phase}' contains no kernel time. The trace does "
+            "not cover that phase; re-run the capture rather than reporting a "
+            "breakdown of nothing.",
+            file=sys.stderr,
+        )
+        return 2
+
     report = build_report(
-        totals,
+        headline_totals,
         trace_dir=args.trace_dir,
         trace_files=trace_files,
         per_file=per_file,
@@ -468,6 +736,49 @@ def main(argv=None):
         steps=args.steps,
         note=args.note,
     )
+    report["phase"] = args.phase
+    report["phase_ranks"] = rank_meta
+
+    decode_calls = sum(meta.get("decode_attention_calls", 0) for meta in rank_meta)
+    step_markers = sum(meta.get("decode_step_marker_calls", 0) for meta in rank_meta)
+    prefill_calls = sum(meta.get("prefill_attention_calls", 0) for meta in rank_meta)
+    prefill_us = sum(meta.get("prefill_attention_us", 0.0) for meta in rank_meta)
+    report["phase_summary"] = {
+        phase: {
+            "gpu_ms": round(sum(selectable[phase].values()) / 1000.0, 3),
+            "pct_of_traced": (
+                round(100.0 * sum(selectable[phase].values()) / sum(full_totals.values()), 1)
+                if sum(full_totals.values())
+                else 0.0
+            ),
+            "max_rank_span_ms": max(phase_spans[phase]) if phase_spans.get(phase) else None,
+        }
+        for phase in (PHASE_PREFILL, PHASE_DECODE)
+    }
+    report["decode_attention_calls"] = decode_calls
+    report["prefill_attention_calls"] = prefill_calls
+    report["prefill_attention_gpu_ms"] = round(prefill_us / 1000.0, 3)
+    report["interleaved_phases"] = any(meta.get("interleaved") for meta in rank_meta)
+
+    # Step accounting. The 2026-07-19 run divided total traced GPU time by the
+    # REQUESTED step count and printed a per-step number; only the first,
+    # eager decode step had actually been traced, so the figure was meaningless.
+    # Derive traced steps from kernel counts instead and refuse to publish a
+    # per-step value when the two disagree.
+    ranks = len([entry for entry in per_file if entry["kernel_names"]]) or len(trace_files)
+    if args.layers and step_markers and ranks:
+        traced_steps = step_markers / float(args.layers * ranks)
+        report["traced_decode_steps_estimate"] = round(traced_steps, 2)
+        report["decode_step_marker_calls"] = step_markers
+        if args.steps and traced_steps < args.steps * 0.9:
+            report.pop("per_step_gpu_ms", None)
+            report["step_coverage_warning"] = (
+                f"Trace covers ~{traced_steps:.2f} decode step(s) but --steps said "
+                f"{args.steps}. Stage-1 decode attention fired {step_markers} times "
+                f"across {ranks} rank(s) at {args.layers} layers. Steps replayed "
+                "from a CUDA graph are typically not traced kernel-by-kernel, so a "
+                "per-step figure is NOT published for this run."
+            )
 
     print(format_summary(report))
 

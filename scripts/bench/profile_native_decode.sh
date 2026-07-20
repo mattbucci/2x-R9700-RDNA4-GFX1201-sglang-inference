@@ -38,7 +38,18 @@ BOOT_TIMEOUT="${BOOT_TIMEOUT:-2400}"     # large FP8 MoE boots are slow
 FLUSH_SLEEP="${FLUSH_SLEEP:-20}"
 TOP="${TOP:-25}"
 COMPARE="${COMPARE:-}"
+# launch.sh reads EXTRA_ARGS from the ENVIRONMENT and appends its own preset
+# flags to it; it does not take extra positional arguments. LAUNCH_ARGS is
+# retained only so older invocations keep working, and is folded into
+# EXTRA_ARGS here rather than being passed positionally (where it was silently
+# ignored).
 LAUNCH_ARGS="${LAUNCH_ARGS:-}"
+EXTRA_ARGS="${EXTRA_ARGS:-}${LAUNCH_ARGS:+ $LAUNCH_ARGS}"
+export EXTRA_ARGS
+# Model layer count. Decode attention fires once per layer per step, so the
+# parser needs this to convert traced kernel calls into TRACED steps and catch
+# the case where CUDA-graph replays are not traced kernel-by-kernel.
+LAYERS="${LAYERS:-}"
 
 rm -rf "$PROF_DIR"
 mkdir -p "$PROF_DIR" "$OUT"
@@ -49,7 +60,7 @@ stop_server
 log "boot preset=$PRESET port=$PORT profiler_dir=$PROF_DIR"
 # shellcheck disable=SC2086
 SGLANG_TORCH_PROFILER_DIR="$PROF_DIR" nohup setsid bash "$REPO/scripts/launch.sh" "$PRESET" \
-  $LAUNCH_ARGS > "$PROF_DIR/server.log" 2>&1 < /dev/null &
+  > "$PROF_DIR/server.log" 2>&1 < /dev/null &
 disown
 
 end=$(( $(date +%s) + BOOT_TIMEOUT )); ok=0
@@ -128,6 +139,24 @@ if [ "$PRIME_RC" != "0" ]; then
   log "prime FAILED (rc=$PRIME_RC)"; tail -30 "$PROF_DIR/server.log"; stop_server; exit 1
 fi
 
+# Warm throwaway on the SAME prefix. The prime leaves a cold decode path (first
+# eager step, graph capture, allocator growth); running one short cache-hit
+# request here moves that one-off work OUTSIDE the profile window.
+log "warm throwaway request (cache hit, not profiled)"
+python - "$PORT" "$OUT" <<'PY' || echo "WARNING: warm request failed (continuing)"
+import os, sys
+import requests
+port, out = int(sys.argv[1]), sys.argv[2]
+base = f"http://127.0.0.1:{port}"
+model = requests.get(base + "/v1/models", timeout=60).json()["data"][0]["id"]
+prompt = open(os.path.join(out, "prompt.txt")).read()
+r = requests.post(base + "/v1/chat/completions", timeout=3600, json={
+    "model": model, "messages": [{"role": "user", "content": prompt}],
+    "max_tokens": 4, "temperature": 0, "ignore_eos": True})
+r.raise_for_status()
+print("warm: completion=%s" % r.json().get("usage", {}).get("completion_tokens"))
+PY
+
 log "start_profile"
 curl -s -m 60 -X POST "http://127.0.0.1:$PORT/start_profile" \
   -H 'Content-Type: application/json' -d '{}' > /dev/null
@@ -176,15 +205,38 @@ log "parse traces -> $OUT/kernel_breakdown.json  ($LABEL)"
 
 CMP_ARG=()
 [ -n "$COMPARE" ] && CMP_ARG=(--compare "$COMPARE")
+LAYER_ARG=()
+[ -n "$LAYERS" ] && LAYER_ARG=(--layers "$LAYERS")
+
+# DECODE phase — the headline. The parser excludes the extend/prefill pass that
+# shares this trace window; without that split the 2026-07-19 run reported the
+# extend as 92.9% "attention" on a receipt labelled decode.
 python "$REPO/scripts/bench/profile_decode_kernels.py" \
   --trace-dir "$PROF_DIR" \
   --out "$OUT/kernel_breakdown.json" \
   --top "$TOP" \
   --steps "$STEPS" \
-  --label "$LABEL" \
+  --phase decode \
+  "${LAYER_ARG[@]}" \
+  --label "$LABEL [DECODE phase]" \
   --note "primed steady-state decode; requested ctx $CTX -> ACTUAL $ACTUAL prompt tokens" \
   "${CMP_ARG[@]}"
 RC=$?
+
+# PREFILL/EXTEND phase — same trace, reported separately. For a cache-hit
+# request this is the cost of appending the new tokens onto the cached prefix,
+# which is the agentic tool-result path.
+echo
+log "parse traces -> $OUT/extend_breakdown.json  (prefill/extend phase)"
+python "$REPO/scripts/bench/profile_decode_kernels.py" \
+  --trace-dir "$PROF_DIR" \
+  --out "$OUT/extend_breakdown.json" \
+  --top "$TOP" \
+  --phase prefill_extend \
+  "${LAYER_ARG[@]}" \
+  --label "$LABEL [PREFILL/EXTEND phase]" \
+  --note "extend pass for the profiled request's new tokens over the cached prefix" \
+  || RC=$?
 
 cp -f "$PROF_DIR/server.log" "$OUT/server.log" 2>/dev/null || true
 log "done (rc=$RC) -> $OUT"
