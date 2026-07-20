@@ -263,18 +263,23 @@
   },
   {
    "id": "R97-K-decode-rocblas-residue",
-   "spec": null,
-   "status": "needs_spec",
-   "resource": "gpu",
+   "spec": "11-decode-rocblas-residue-attribution.md",
+   "status": "ready",
+   "resource": "cpu_then_optional_gpu",
    "depends_on": [],
-   "next_action": "Explain why rocblas_gemm is still the largest non-collective decode category (~38-42%) on Laguna while fp8_gemm_runner_backend=triton and triton_fp8_gemm is only ~7-12%. Identify which dense GEMMs (attention projections, shared expert, lm_head) still route to rocBLAS and whether that is intended.",
+   "next_action": "Attribute the four large Cijk_* decode kernels (~38-42% of non-collective decode time) to named modules and shapes. LEADING HYPOTHESIS, not confirmed: the residue is intended -- Laguna-XS.2-FP8's quantization_config.ignore excludes lm_head, all five self_attn projections (q/k/v/o/g_proj), and mlp.gate, so those dense GEMMs have no FP8 weights and fall back to BF16 rocBLAS/Tensile; the retained Tensile names carry a BBS_BH (bf16/fp32-compute) datatype code. Confirm or refute from launch dims in the preserved traces -- NOT from the MT128x128x32 tile name, which is the macro-tile and not the GEMM shape. Second, independent lead: at decode batch 1 these are M=1 GEMV-shaped calls running a 128x128 throughput tile. Promotion to the FP8 path is explicitly OUT OF SCOPE and is an accuracy decision, not a profiling one.",
    "test_gate": [
-    "Each large Cijk_* decode kernel is attributed to a named module and shape",
-    "Any promotion to the native FP8 path is gated on numerical equivalence before a speed claim"
+    "Each large Cijk_* decode kernel is attributed to a named module and shape, evidenced by launch or input dims rather than the tile name",
+    "Per-rank kernel times reconcile with per-step firing counts (per-layer projections fire 40x per step; lm_head once)",
+    "The BBS_BH datatype reading is confirmed against this rocBLAS build or dropped from the argument",
+    "The profile receipt's open_question and not_established[0] are replaced with the finding or an explicit remaining-open statement"
    ],
    "receipts": [
-    "benchmarks/profiling/laguna-native-decode-profile-2026-07-19.json"
-   ]
+    "benchmarks/profiling/laguna-native-decode-profile-2026-07-19.json",
+    "benchmarks/profiling/native-decode-laguna-eager/kernel_breakdown.json",
+    "/data/profiling-traces/laguna-native-2026-07-19/ (raw traces, both arms and ranks, preserved off volatile /tmp)"
+   ],
+   "staleness": "Pinned to post-095 with fp8_gemm_runner_backend=triton. FP8-native-follow-on step 3 (exact-shape tuner) and R97-B's regeneration would both invalidate the baseline; re-measure rather than argue forward."
   }
  ]
 }

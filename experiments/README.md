@@ -43,6 +43,7 @@ documented in [`README.md`](../README.md#what-we-are-working-on-next).
 | 08 | R97-H | [Decision brief + execution: disposition 13 flagged legacy bench_serving dirs, de-twin stale April dirs](08-bench-dir-hygiene-purge-or-remeasure.md) | decision-brief | NEEDS-USER-DECISION | r9700-box | Option A (purge-only): ~1h. Option B (purge 11 + re-measure 2): ~1h cleanup + ~2-4h benching. |
 | 09 | R97-I | [Per-model rung sets for the agentic tool-use ladder, then sweep the remaining qualified presets](09-fleet-ladder-per-model-rungs.md) | experiment | queued (spec only) | r9700-box | ~1 day: ~0.5 day CPU for the rung-set change and tests, then an overnight 14-preset sweep (~6-10h GPU) |
 | 10 | R97-J | [Split KV in extend attention — cut the agentic tool-result turn tax at depth](10-extend-attention-kv-split-agentic-turn.md) | optimization | ready (cause measured, no fix) | r9700-box | ~1-2 days: kernel work + numerical gate, then A/B and a ladder re-run (~4-6h GPU) |
+| 11 | R97-K | [Attribute the decode rocBLAS residue — which dense GEMMs never enter the FP8 path](11-decode-rocblas-residue-attribution.md) | investigation | ready (hypothesis from checkpoint config; unconfirmed) | r9700-box | ~0.5 day, mostly checkpoint/trace analysis; ~0-1h GPU only if the traces lack launch dims |
 
 ## Cross-rig edges touching this lane
 
