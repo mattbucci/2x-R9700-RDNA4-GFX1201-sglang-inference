@@ -41,25 +41,29 @@ same-output baseline pending refresh. The DCP1 label is intentional: DCP2 is not
 these TP2 GQA checkpoints because adjacent DCP ranks do not hold replicated K/V heads. No DCP2
 performance number is reported.
 
-### Historical pre-fix greedy agentic ladder
+### Post-095 three-seed agentic ladder
 
 The schema-v2 multi-turn ladder tests whether a model retrieves the planted ID, emits the correct
 structured action, accepts a structured tool response, and terminally uses its returned value. Both
-published curves use depth 0.5, temperature 0, 8,192-token budgets on both turns, and server-reported
-actual prompt tokens. Laguna remains an admitted result. North is a pre-090 incident baseline and must not
-be used as a current ceiling.
+ladders use depth 0.5, temperature 1.0 / top-p 0.95 with effective request seeds, 8,192-token budgets on
+both turns, and server-reported actual prompt tokens. A rung counts only when **every seed** passes it;
+per model the prompts are byte-identical across seeds, so sampling is the only variable.
 
-| Model | End-to-end successes | Maximum end-to-end depth | Primary failures |
+| Model | Seed-rungs passed | Maximum end-to-end depth | Failures |
 |---|---:|---:|---|
-| [Laguna XS.2 FP8](quality/tooluse256k-laguna-v0515-r9700.json) | 7 / 7 | 245,177 | none |
-| [North-Mini-Code FP8, pre-090 incident](quality/tooluse256k-north-mini-v0515-r9700.json) | 1 / 7 | 16,633 | Superseded; not admissible as a current ceiling |
+| Laguna XS.2 FP8 ([s0](quality/tooluse256k-laguna-sampled-seed0.json) · [s1](quality/tooluse256k-laguna-sampled-seed1.json) · [s2](quality/tooluse256k-laguna-sampled-seed2.json)) | 21 / 21 | 245,279 | none |
+| North-Mini-Code FP8 ([s0](quality/tooluse256k-north-mini-post095-seed0.json) · [s1](quality/tooluse256k-north-mini-post095-seed1.json) · [s2](quality/tooluse256k-north-mini-post095-seed2.json)) | 21 / 21 | 245,172 | none |
 
 ![Long-context agentic tool-use ladder](tooluse256k_ladder.png)
 
+Neither ship has a measurable agentic ceiling below the 262,144 context limit. The instrument is therefore
+saturated: it can no longer rank these ships or detect regression headroom, and a successor must add
+difficulty (multi-hop chains, distractor tools, adversarial needle placement) rather than depth.
+
 Regenerate the chart with
-`/home/letsrtfm/miniforge3/bin/python scripts/bench/generate_charts.py --tooluse-only`. The
-[North depth-0.1 stall receipt](quality/tooluse256k-north-mini-v0515-r9700-depth01-stall.json) is
-unscored infrastructure evidence and is intentionally excluded from this quality chart.
+`/home/letsrtfm/miniforge3/bin/python scripts/bench/generate_charts.py --tooluse-only`. The pre-090
+North curve and its [depth-0.1 stall receipt](quality/tooluse256k-north-mini-v0515-r9700-depth01-stall.json)
+are superseded incident records, excluded from this chart and not admissible as ceilings.
 
 ### Post-fix deterministic prompt-profile control
 

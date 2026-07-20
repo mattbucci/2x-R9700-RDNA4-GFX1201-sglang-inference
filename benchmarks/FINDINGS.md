@@ -123,8 +123,18 @@ On the fully patched TP2/BF16-KV deterministic server, an equal-token single-tur
 The byte-distinct in-repo `--filler-profile agentic --multi-turn` focused gate then scored 2/3 correct
 primaries at both 67,554 and 115,570 actual tokens; every valid primary used the structured tool result
 correctly on turn two (4/4). This establishes prompt-profile sensitivity and rejects a monotonic ~120K
-tool-use collapse. It does not establish a new ceiling; the full post-fix ladder is the next admissible
-measurement. Receipt: [profile control](quality/north-mini-tooluse-profile-ab-post094-2026-07-19.json).
+tool-use collapse. Receipt: [profile control](quality/north-mini-tooluse-profile-ab-post094-2026-07-19.json).
+
+That profile control is itself superseded and pending re-measurement: its 1/3 at 64,801 counted one
+correct action that patch 095 recovers (the model emitted a valid call under a `function` key and the
+server dropped it), and the script that produced the receipt was never committed, so it could not be
+regenerated. The four remaining low-entropy failures were genuine degeneration and the finding stands
+directionally.
+
+The admissible ceiling now comes from the post-095 three-seed ladder, not from that control: North-Mini
+passes 21/21 seed-rungs through 245,172 actual tokens and Laguna 21/21 through 245,279, with no clamp,
+shortfall, error, or budget-bound rung on either. Neither ship has a measurable agentic ceiling below the
+262,144 context limit.
 
 ### Rejected decode changes
 
