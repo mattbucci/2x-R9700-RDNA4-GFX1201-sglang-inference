@@ -26,6 +26,12 @@ def main():
     ap.add_argument("--runs", type=int, default=3)
     ap.add_argument("--maxtok", type=int, default=80)
     ap.add_argument("--think-off", action="store_true")
+    ap.add_argument("--ignore-eos", action="store_true",
+                    help="decode exactly --maxtok steps in every arm. Required for "
+                         "kernel A/Bs whose change perturbs decode numerics and moves "
+                         "the EOS point (e.g. num_kv_splits), which otherwise makes "
+                         "arms decode different lengths and compare different work. "
+                         "Kernel isolation only -- not a user-facing rate.")
     ap.add_argument("--label", default="")
     ap.add_argument("--tag", default="")
     ap.add_argument("--note", default="")
@@ -47,7 +53,7 @@ def main():
         tpss, tpots, pts, cts, sample = [], [], [], [], ""
         for r in range(a.runs):
             ms, tps, pt, ct, s = mdc.stream_tpot(
-                base, model, prompt, a.maxtok, a.think_off
+                base, model, prompt, a.maxtok, a.think_off, a.ignore_eos
             )
             tpss.append(tps); tpots.append(ms); pts.append(pt or c); cts.append(ct); sample = s
             print(

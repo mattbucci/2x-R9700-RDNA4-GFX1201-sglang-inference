@@ -31,12 +31,20 @@ def build_prompt(approx_tokens):
     return body + "\n\nIn one short paragraph, summarize the repeated sentence above."
 
 
-def stream_tpot(base, model, prompt, maxtok, think_off):
+def stream_tpot(base, model, prompt, maxtok, think_off, ignore_eos=False):
     body = {"model": model, "messages": [{"role": "user", "content": prompt}],
             "max_tokens": maxtok, "temperature": 0, "stream": True,
             "stream_options": {"include_usage": True}}
     if think_off:
         body["chat_template_kwargs"] = {"enable_thinking": False}
+    if ignore_eos:
+        # Kernel A/Bs must decode the SAME number of steps in every arm. A
+        # change that perturbs decode numerics (num_kv_splits reorders the
+        # flash-decode reduction) moves the EOS point even at temperature 0,
+        # so arms otherwise stop at different lengths and the tok/s comparison
+        # silently measures different work. Pinning the length costs realism
+        # and is for kernel isolation only, never for a user-facing rate.
+        body["ignore_eos"] = True
     # `stream_interval=1` usually emits one SSE event per token, but reasoning
     # and tool parsers may buffer or coalesce text. Event rate is therefore not
     # token rate. Use the authoritative completion-token count and retain the
