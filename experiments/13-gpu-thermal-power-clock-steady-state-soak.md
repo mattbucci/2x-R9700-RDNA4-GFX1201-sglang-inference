@@ -49,8 +49,9 @@ decode numbers are transient-biased and the affected receipts need a steady-stat
 Independent, and the outcome that would most strengthen the record. gfx1201 at 32 GiB may hold rated sclk
 across a 10-min TP2 decode soak without tripping a thermal or power limit — deep decode is GPU-work-bound
 but not necessarily power-bound at batch 1. If transient and steady-state medians agree within noise and
-no PPT flag sets, the finding is a dated "no TP2 256K thermal throttle within N minutes" clearance that
-086/087/native-FP8 and all future numbers can cite instead of assuming.
+no PPT flag sets, the finding is a dated laguna "no TP2 256K thermal throttle within N minutes" clearance
+that native-FP8 and future laguna numbers can cite instead of assuming; 086/087 (coder-reap-25b) earn the
+same clearance only from their own soak.
 
 ## Method
 
@@ -68,7 +69,8 @@ no PPT flag sets, the finding is a dated "no TP2 256K thermal throttle within N 
 4. **Shallow control.** Repeat one ~4K soak as a thermal-headroom control — a short prefill that keeps
    utilization high but generation short, to separate compute heat-soak from prefill heat-soak.
 5. **Write and annotate.** `benchmarks/profiling/thermal-power-steady-state-<date>.{json,md}`; then either
-   add a steady-state caveat to the 086/087/native-FP8 receipts or commit a dated no-throttle clearance.
+   add a steady-state caveat to the laguna-backed native-FP8 receipts (flagging coder-reap-25b's 086/087
+   for their own soak) or commit a dated laguna no-throttle clearance.
 
 ## Test gate
 
@@ -76,10 +78,11 @@ no PPT flag sets, the finding is a dated "no TP2 256K thermal throttle within N 
   both ranks sampled and timestamps aligned to the decode timeline.
 - The report states a specific steady-state-vs-transient % delta and whether either card entered a thermal
   or power-limited throttle (sclk below rated OR PPT flag set), evidenced by the JSONL, not by an eyeballed peak.
-- If throttling is found: the affected FINDINGS receipts (086, 087, native-FP8) gain a steady-state caveat
-  naming the % deflation and the limiting card.
-- If no throttling is found: a dated "no TP2 256K thermal throttle within N minutes" clearance is committed
-  for future numbers to cite, with the observed steady-state sclk/temp/power envelope recorded.
+- If throttling is found: the laguna-backed FINDINGS receipts (native-FP8) gain a steady-state caveat
+  naming the % deflation and the limiting card; 086/087 (coder-reap-25b headlines) gain a follow-up-soak
+  flag on that model — a laguna run cannot caveat or clear another model's receipt.
+- If no throttling is found: a dated laguna "no TP2 256K thermal throttle within N minutes" clearance is
+  committed for future laguna numbers to cite, with the observed steady-state sclk/temp/power envelope recorded.
 - The shallow ~4K control is captured so the deep-vs-shallow envelope difference is documented either way.
 
 ## Deliverables
@@ -98,9 +101,11 @@ instrumentation. Because telemetry is passive it can ride any already-scheduled 
 (R97-D/J/K), so its own dedicated GPU cost is small; it still honors the single-TP2-pair serialization and
 Rule 1 (no soak during calibration/pruning).
 
-Laguna only for the headline soak — it is the shipped FP8 default and the model behind 086/087/native-FP8.
-North-Mini shares the chassis and airflow, so a throttle finding on laguna implicates North's numbers too,
-but confirming that needs its own soak and is not claimed here from the laguna run.
+Laguna only for the headline soak — it is the shipped FP8 default and the model behind the native-FP8
+receipts; the 086/087 headlines (2.14× and +21% @256K decode) were measured on coder-reap-25b. A throttle
+finding here is chassis-level evidence — same two cards, same airflow — so it implicates coder-reap-25b's
+and North-Mini's numbers too, but caveating or clearing another model's receipt needs that model's own
+soak and is not claimed here from the laguna run.
 
 `rocm-smi`'s throttle/PPT reporting on ROCm 7.2 / gfx1201 may be coarse or absent; the `amd-smi metric`
 fallback exists for that. If neither exposes a throttle-reason field, fall back to the sclk-below-rated
@@ -113,8 +118,9 @@ the instrument could not have detected.
 - Baseline decode curves the soak re-measures under telemetry:
   [native-FP8 decode profile](../benchmarks/profiling/laguna-native-decode-profile-2026-07-19.json),
   [extend cost curve](../benchmarks/profiling/laguna-extend-cost-2026-07-19.json)
-- Headline receipts to caveat or clear: benchmarks/FINDINGS.md (086 kv-splits, 087 flash-decode, native-FP8
-  backend table); benchmarks/fp8-256k-options-r9700-2026-07-18.md
+- Headline receipts in scope from this run: benchmarks/FINDINGS.md native-FP8 backend table;
+  benchmarks/fp8-256k-options-r9700-2026-07-18.md. Flag-only (each needs its own soak): 086 kv-splits,
+  087 flash-decode (both coder-reap-25b)
 
 ---
 *Vetted 2026-07-20: drafted against live repo state, adversarially checked (feasibility + design), revised. Part of the fleet-audit experiment queue.*

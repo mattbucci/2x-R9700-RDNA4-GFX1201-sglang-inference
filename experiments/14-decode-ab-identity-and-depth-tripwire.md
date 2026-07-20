@@ -13,8 +13,9 @@
 ## Current assessment — 2026-07-20 post-095
 
 - **Disposition:** **Queued, spec authored 2026-07-20; no execution started.** R9700 is the unprotected
-  rig: M4 and 3090 have armed depth-verified tripwires (3090 with a validated −83% negative control, per
-  the README `baseline-schema-v2-to-sister-rearm` sync point); R9700 has not.
+  rig: M4 and 3090 have armed depth-verified tripwires (3090 with a validated −83% negative control per the
+  experiments/README.md `baseline-schema-v2-to-sister-rearm` sync point; M4 verified schema 2 in their
+  benchmarks/baselines.json `_meta`, saved 2026-07-19); R9700 has not.
 - **Two live gaps this closes:** (a) output identity is unproven — benchmarks/FINDINGS.md states
   "`decode_ab` records a 60-character sample prefix, which cannot prove two 80-token generations match. A
   full-output hash is the fix," confirmed at `scripts/bench/decode_ab.py` where the only identity field
@@ -48,10 +49,11 @@ ANY depth, both self-tested to fire in both directions.
   gemma4, coder-next, qwen35 — no laguna, no north-mini, no depth. `baselines.json` is schema v1: flat
   per-model `single_tpot_ms`/`single_throughput`/`peak_throughput`, no `_meta`, `devstral` and `qwen35`
   carry `peak_throughput: 0.0`. Any depth-only regression (the 087 class) is invisible.
-- **Sisters are already armed:** README `baseline-schema-v2-to-sister-rearm` sync point — 3090-D committed
-  schema v2 (7 presets × 3 depths, tripwire fires both ways, validated −83% negative control); the action
-  item is for R9700 and M4 to re-arm their 2026-04-12 relics on their own depth-verified instruments
-  (R9700 at short/medium/deep). This item is that re-arm.
+- **Sisters are already armed:** experiments/README.md `baseline-schema-v2-to-sister-rearm` sync point —
+  3090-D committed schema v2 (7 presets × 3 depths, tripwire fires both ways, validated −83% negative
+  control); the ask was for R9700 and M4 to re-arm their 2026-04-12 relics on their own depth-verified
+  instruments. M4's leg is done (their baselines.json carries `_meta.schema: 2` at genuine depth, saved
+  2026-07-19); this item is the R9700 leg — the last unarmed rig.
 - **Depths and receipts to reconcile:** short/medium/deep ≈ 4K/64K/245K. Deep rows reconcile against the
   086/087/native-FP8 receipts (benchmarks/FINDINGS.md; benchmarks/fp8-256k-options-r9700-2026-07-18.md;
   benchmarks/profiling/laguna-native-decode-profile-2026-07-19.json).
