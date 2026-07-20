@@ -95,11 +95,12 @@
           "Patch 095: recovers a Cohere tool name carried under a string `function` key. The post-094 A/B scored one such action wrong at 64801 tokens -- the model emitted a correct call and the server dropped it, surfacing raw markup in content with finish_reason stop. 091 covered only tool_name and tool_call_id.",
           "Patch 091's detector test landed in /data/sgl-v0515; the patch created it but it had never been written to the live tree, so its six cases had never run there",
           "Post-095 three-seed ladders for both FP8 ships: Laguna 21/21 seed-rungs through 245,279 actual tokens, North-Mini 21/21 through 245,172; zero clamps, shortfalls, errors, or budget-bound rungs. Prompts byte-identical across seeds. Neither ship shows a measurable agentic ceiling below the 262,144 context limit.",
-          "Chart contract reworked to per-row sampling/seeds with conservative all-seeds-pass aggregation; README, benchmarks/README, and FINDINGS corrected off the pre-fix claims."
+          "Chart contract reworked to per-row sampling/seeds with conservative all-seeds-pass aggregation; README, benchmarks/README, and FINDINGS corrected off the pre-fix claims.",
+          "Prompt-profile control re-measured on the post-095 chain with the committed generator: texture effect reproduced in aggregate (6/6 heterogeneous vs 1/6 repeated), zero parser drops remaining, every failure a genuine model failure."
         ],
-        "in_progress": "Re-measuring the prompt-profile control with a committed generator (the original script was never committed and its 1/3 at 64,801 counted an action patch 095 recovers)",
+        "in_progress": "Laguna native-FP8 KV-split resweep (FP8-native-follow-on step 1)",
         "remaining_order": [
-          "Publish the re-measured post-095 profile control and update its chart constants",
+          "Make profile-control calibration replayable: record filler_chars per prompt and accept pinned counts on replay, so a re-run is a controlled A/B rather than a fresh draw. Blocks isolating any serving change in that control; needs a prompts-row schema field and a matching relaxation of the chart loader's strict row-key check.",
           "Nemotron FP8 2K-versus-8K budget spot-check",
           "Devstral FP8-KV-versus-BF16-KV recall A/B",
           "Verdict notes and cross-team receipts"
