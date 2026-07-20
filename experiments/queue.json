@@ -78,7 +78,7 @@
       "depends_on": [
         "R97-E-gpu"
       ],
-      "next_action": "Finish and publish North-Mini's three-seed post-095 agentic-profile ladder, then start the preflighted Nemotron budget arms.",
+      "next_action": "Both post-095 three-seed ladders are complete (Laguna and North-Mini, 21/21 seed-rungs each). Remaining: re-measure the profile control with the new committed generator, then the Nemotron budget arms and Devstral KV-dtype A/B.",
       "progress": {
         "completed": [
           "Immutable donor port and provenance receipt",
@@ -93,11 +93,13 @@
           "Repository-native multi-turn focused gate: 2/3 correct primaries at both depths and 4/4 valid follow-ups used the tool result",
           "Schema-v2 eval registry entry, tested ladder/profile renderer, and README charts",
           "Patch 095: recovers a Cohere tool name carried under a string `function` key. The post-094 A/B scored one such action wrong at 64801 tokens -- the model emitted a correct call and the server dropped it, surfacing raw markup in content with finish_reason stop. 091 covered only tool_name and tool_call_id.",
-          "Patch 091's detector test landed in /data/sgl-v0515; the patch created it but it had never been written to the live tree, so its six cases had never run there"
+          "Patch 091's detector test landed in /data/sgl-v0515; the patch created it but it had never been written to the live tree, so its six cases had never run there",
+          "Post-095 three-seed ladders for both FP8 ships: Laguna 21/21 seed-rungs through 245,279 actual tokens, North-Mini 21/21 through 245,172; zero clamps, shortfalls, errors, or budget-bound rungs. Prompts byte-identical across seeds. Neither ship shows a measurable agentic ceiling below the 262,144 context limit.",
+          "Chart contract reworked to per-row sampling/seeds with conservative all-seeds-pass aggregation; README, benchmarks/README, and FINDINGS corrected off the pre-fix claims."
         ],
-        "in_progress": "North-Mini seven-rung, three-seed post-095 agentic-profile ladder",
+        "in_progress": "Re-measuring the prompt-profile control with a committed generator (the original script was never committed and its 1/3 at 64,801 counted an action patch 095 recovers)",
         "remaining_order": [
-          "Publish the North post-fix ladder receipt and chart",
+          "Publish the re-measured post-095 profile control and update its chart constants",
           "Nemotron FP8 2K-versus-8K budget spot-check",
           "Devstral FP8-KV-versus-BF16-KV recall A/B",
           "Verdict notes and cross-team receipts"
@@ -205,6 +207,24 @@
         "Task-owned deletion scope is exact",
         "Pre-existing benchmark modifications are preserved",
         "Remaining benchmark JSONs are depth-immune or explicitly retained receipts"
+      ]
+    },
+    {
+      "id": "R97-I",
+      "spec": "09-fleet-ladder-per-model-rungs.md",
+      "status": "queued",
+      "resource": "cpu_then_tp2_long",
+      "depends_on": [
+        "R97-D"
+      ],
+      "next_action": "Derive ladder rungs from the served context_length and move lengths into the per-row chart contract, then sweep the 14 unmeasured tool-call-qualified presets.",
+      "test_gate": [
+        "Rung sets are derived from the served context_length; no per-preset length table exists",
+        "Short-context presets produce zero depth-shortfall rungs from rungs exceeding their context",
+        "The loader still rejects lengths disagreeing with a receipt's own row, missing seeds, and cross-seed prompt drift",
+        "Laguna and North receipts stay canonical under the per-row contract without re-measurement",
+        "A preset clearing its deepest rung is reported as no measurable ceiling below its context limit, never as a depth it was not tested beyond",
+        "Chart contract tests cover a ragged two-row case"
       ]
     }
   ]
