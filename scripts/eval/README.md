@@ -5,6 +5,7 @@
 | `eval_comprehensive.py` | Math, code, reasoning, and multimodal quality suite |
 | `validate_capabilities.py` | Basic/reasoning/tool and applicable modality checks |
 | `probe_256k_tooluse.py` | Self-calibrating long-context correct-action and multi-turn tool-result-use ladder with separate repeated-stress and heterogeneous agentic-context profiles |
+| `profile_control_ab.py` | Single-turn prompt-profile control: two filler textures calibrated to the same exact rendered token count, scored on correct structured action |
 | `check_awq_scales.py` | AWQ scale/qweight integrity, with optional BF16-base comparison |
 | `warmup.py` | Server warmup utility |
 
