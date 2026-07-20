@@ -105,10 +105,18 @@ if [ ! -d "$SGLANG_DIR" ] || [ ! -d "$SGLANG_DIR/.git" ]; then
             echo "=============================================="
             exit 1
         fi
-        # Advisory only. Patch 006 legitimately carries trailing whitespace into
-        # awq_gemv_hip.{cu,hip}, so a hard gate here aborts every install under
-        # `set -e` after the series has applied cleanly.
-        git diff --check || echo "  WARNING: patched source has whitespace defects (see above)"
+        # Whitespace gate over the applied series. `git apply` leaves files it
+        # creates untracked, so patch 006's trailing whitespace in the new
+        # awq_gemv_hip.{cu,hip} is invisible here — only edits to tracked files
+        # are caught. Report before aborting; a bare `set -e` exit right after a
+        # clean 60-patch run reads like a patch failure.
+        if ! git diff --check; then
+            echo "=============================================="
+            echo "FATAL: patched source has whitespace defects (listed above)."
+            echo "Fix the offending patch before serving. ABORTING."
+            echo "=============================================="
+            exit 1
+        fi
     else
         echo "  No numbered patches found; continuing with a pristine install"
     fi
