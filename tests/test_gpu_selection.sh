@@ -23,6 +23,22 @@ env -u GPU_IDS -u TP bash -c "source '$entrypoint'; configure_gpu_selection 0; p
 env -u GPU_IDS -u TP bash -c "source '$repo_dir/scripts/gpu-selection.sh'; configure_gpu_selection 0,1; printf '%s/%s/%s' \"\$GPU_IDS\" \"\$TP\" \"\${SGLANG_RDNA4_DISABLE_STORE_CACHE:-0}\"" | grep -qx '0,1/2/0'
 reject GPU_IDS=0,0
 reject GPU_IDS=0,x
+
+# A pre-set visibility variable with no GPU_IDS is the documented bare-metal
+# form and must be adopted as the default, not rejected as a conflict.
+accept_preset() {
+    local variable=$1 ids=$2 expected=$3
+    env -u GPU_IDS -u TP "$variable=$ids" bash -c \
+        "source '$repo_dir/scripts/gpu-selection.sh'; configure_gpu_selection 0,1; printf '%s/%s' \"\$GPU_IDS\" \"\$TP\"" \
+        | grep -qx "$expected"
+}
+for variable in HIP_VISIBLE_DEVICES ROCR_VISIBLE_DEVICES GPU_DEVICE_ORDINAL CUDA_VISIBLE_DEVICES; do
+    accept_preset "$variable" 0 0/1
+    accept_preset "$variable" 0,1 0,1/2
+done
+env -u GPU_IDS HIP_VISIBLE_DEVICES=0 TP=1 bash -c \
+    "source '$repo_dir/scripts/gpu-selection.sh'; configure_gpu_selection 0,1; printf '%s/%s' \"\$GPU_IDS\" \"\$TP\"" \
+    | grep -qx '0/1'
 for variable in HIP_VISIBLE_DEVICES ROCR_VISIBLE_DEVICES GPU_DEVICE_ORDINAL CUDA_VISIBLE_DEVICES; do
     reject GPU_IDS=0 "$variable=1"
 done
