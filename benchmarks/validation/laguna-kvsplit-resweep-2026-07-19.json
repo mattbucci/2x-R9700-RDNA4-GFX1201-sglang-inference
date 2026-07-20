@@ -1,0 +1,164 @@
+{
+  "findings": [
+    "num_kv_splits changes generated output on this stack: five split counts produced five completion lengths (64/80/54/72/72) at temperature 0, each internally deterministic across five runs. --enable-deterministic-inference therefore guarantees reproducibility only WITHIN a fixed split count.",
+    "The variable-length sweep ranked 80 splits best at +7.6%. Under equal work it is the WORST measured arm. The confound did not merely add noise, it inverted the ranking.",
+    "Arms 80 and 96 rose monotonically across all five runs (45.1% and 57.4% spread) and never reached steady state; their medians are not admissible and those two split counts remain unresolved.",
+    "Among converged arms (48, 64, 128 at 1.2-2.0% spread), 64 is best: 56.334 tok/s versus 52.950 (-6.0%) and 54.869 (-2.6%).",
+    "Output identity across arms was NOT established: decode_ab records only a 60-character sample prefix, which is insufficient to prove two 80-token generations match."
+  ],
+  "fixed_length_arms": {
+    "48": {
+      "completion_tokens": [
+        80,
+        80,
+        80,
+        80,
+        80
+      ],
+      "converged": true,
+      "input_len": 197194,
+      "median_tps": 52.95,
+      "note": null,
+      "runs_tps": [
+        52.16,
+        52.95,
+        52.75,
+        53.01,
+        53.23
+      ],
+      "spread_pct": 2.0
+    },
+    "64": {
+      "completion_tokens": [
+        80,
+        80,
+        80,
+        80,
+        80
+      ],
+      "converged": false,
+      "input_len": 197194,
+      "median_tps": 56.334,
+      "note": "monotonically increasing across all runs; not at steady state, median not admissible",
+      "runs_tps": [
+        55.92,
+        56.23,
+        56.33,
+        56.48,
+        56.58
+      ],
+      "spread_pct": 1.2
+    },
+    "80": {
+      "completion_tokens": [
+        80,
+        80,
+        80,
+        80,
+        80
+      ],
+      "converged": false,
+      "input_len": 197194,
+      "median_tps": 29.708,
+      "note": "monotonically increasing across all runs; not at steady state, median not admissible",
+      "runs_tps": [
+        20.3,
+        22.23,
+        29.71,
+        30.03,
+        33.69
+      ],
+      "spread_pct": 45.1
+    },
+    "96": {
+      "completion_tokens": [
+        80,
+        80,
+        80,
+        80,
+        80
+      ],
+      "converged": false,
+      "input_len": 197194,
+      "median_tps": 21.733,
+      "note": "monotonically increasing across all runs; not at steady state, median not admissible",
+      "runs_tps": [
+        15.08,
+        17.63,
+        21.73,
+        24.4,
+        27.56
+      ],
+      "spread_pct": 57.4
+    },
+    "128": {
+      "completion_tokens": [
+        80,
+        80,
+        80,
+        80,
+        80
+      ],
+      "converged": true,
+      "input_len": 197194,
+      "median_tps": 54.869,
+      "note": null,
+      "runs_tps": [
+        54.39,
+        54.87,
+        54.86,
+        55.09,
+        55.13
+      ],
+      "spread_pct": 1.4
+    }
+  },
+  "method": {
+    "harness": "scripts/bench/decode_ab.py --ignore-eos",
+    "maxtok": 80,
+    "runs": "one cold prime, then five hot runs; median of run-level average TPOT",
+    "temperature": 0,
+    "why_ignore_eos": "num_kv_splits reorders the flash-decode reduction and moves the EOS point at temperature 0, so arms otherwise decode different lengths"
+  },
+  "next": [
+    "Re-measure 80 and 96 with enough warm-up runs to reach steady state before ruling on them.",
+    "Have decode_ab record a full-output hash so output preservation is checkable rather than assumed."
+  ],
+  "question": "Did patch 086's num_kv_splits=64 optimum move once native block-FP8 cut dense work?",
+  "schema_version": 1,
+  "server": {
+    "attention_backend": "triton",
+    "depth_actual_prompt_tokens": 197194,
+    "fp8_gemm_runner_backend": "triton",
+    "model": "Laguna-XS.2-FP8",
+    "override": "SGLANG_KV_SPLITS_OVERRIDE, verified by reading triton_attention_num_kv_splits back from /get_server_info per arm",
+    "tp_size": 2
+  },
+  "superseded_variable_length_arms": {
+    "arms": {
+      "48": {
+        "completion_tokens": 64,
+        "median_tps": 51.179
+      },
+      "64": {
+        "completion_tokens": 80,
+        "median_tps": 52.841
+      },
+      "80": {
+        "completion_tokens": 54,
+        "median_tps": 56.865
+      },
+      "96": {
+        "completion_tokens": 72,
+        "median_tps": 55.519
+      },
+      "128": {
+        "completion_tokens": 72,
+        "median_tps": 54.65
+      }
+    },
+    "note": "INVALID - each arm decoded a different generation length, so the arms did not do equal work. Retained because the divergence is itself the finding."
+  },
+  "tag": "laguna-native-fp8-kvsplit-resweep-2026-07-19",
+  "verdict": "No change. 64 remains the best converged arm; no promotion."
+}

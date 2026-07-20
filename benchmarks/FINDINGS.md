@@ -136,6 +136,31 @@ passes 21/21 seed-rungs through 245,172 actual tokens and Laguna 21/21 through 2
 shortfall, error, or budget-bound rung on either. Neither ship has a measurable agentic ceiling below the
 262,144 context limit.
 
+### Laguna native-FP8 KV-split resweep — 64 holds
+
+Patch 086 chose `num_kv_splits=64` on the old dequant+BF16 dense path. Native block-FP8 cut dense work
+~45%, making long-context attention a larger share of decode, so the optimum plausibly moved. It did not.
+At 197,194 actual prompt tokens with every arm decoding exactly 80 steps: 48 → 52.950 tok/s (−6.0%),
+**64 → 56.334**, 128 → 54.869 (−2.6%). No promotion. Receipt:
+[laguna-kvsplit-resweep-2026-07-19.json](validation/laguna-kvsplit-resweep-2026-07-19.json).
+
+Three things this cost, all worth keeping:
+
+- **`num_kv_splits` changes generated output.** Five split counts produced five completion lengths
+  (64/80/54/72/72) at temperature 0, each internally deterministic across five runs. Reordering the
+  flash-decode reduction perturbs numerics enough to move the EOS point, so
+  `--enable-deterministic-inference` guarantees reproducibility only *within* a fixed split count.
+- **The first sweep was inverted, not merely noisy.** Letting arms stop at their own EOS ranked 80 splits
+  best at +7.6%; under equal work it is the worst measured arm. `decode_ab.py` gained `--ignore-eos`
+  (kernel isolation only, never a user-facing rate) so an A/B whose change perturbs decode numerics
+  compares equal work.
+- **80 and 96 splits remain unresolved.** Both rose monotonically across all five runs (45.1% and 57.4%
+  spread) and never reached steady state, so their medians are not admissible. Only 48/64/128 converged
+  (1.2–2.0% spread) and only those are ranked above.
+
+Output identity across arms was not established: `decode_ab` records a 60-character sample prefix, which
+cannot prove two 80-token generations match. A full-output hash is the fix.
+
 ### Rejected decode changes
 
 | Experiment | Measurement | Disposition |
