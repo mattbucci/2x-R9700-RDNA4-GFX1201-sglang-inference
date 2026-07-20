@@ -6,16 +6,38 @@ set -euo pipefail
 readonly GPU_ASSERTION="assert torch.cuda.is_available(), 'CUDA not available';"
 readonly STORE_CACHE_FUNCTION='^def can_use_store_cache(size: int) -> bool:$'
 
-install_toolchain() {
+# A truncated fetch makes apt report every repository as badly signed, which is
+# indistinguishable from a real signing failure and kills the whole build. Retry
+# network steps so one bad fetch does not fail CI.
+retry() {
+    local attempt
+    for attempt in 1 2 3 4 5; do
+        if "$@"; then
+            return 0
+        fi
+        echo "retry: '$1' failed (attempt ${attempt}/5); retrying in $((attempt * 10))s" >&2
+        sleep $((attempt * 10))
+    done
+    echo "retry: '$1' failed after 5 attempts" >&2
+    return 1
+}
+
+apt_update() {
+    rm -rf /var/lib/apt/lists/*
     apt-get update
-    apt-get install -y --no-install-recommends \
+}
+
+install_toolchain() {
+    retry apt_update
+    retry apt-get install -y --no-install-recommends \
         git curl ca-certificates build-essential python3-pip
     rm -rf /var/lib/apt/lists/*
 
-    curl --proto '=https' --tlsv1.2 -fsSL https://sh.rustup.rs \
-        | sh -s -- -y --no-modify-path --profile minimal --default-toolchain stable
+    retry curl --proto '=https' --tlsv1.2 -fsSL https://sh.rustup.rs -o /tmp/rustup.sh
+    sh /tmp/rustup.sh -y --no-modify-path --profile minimal --default-toolchain stable
+    rm /tmp/rustup.sh
 
-    curl -fsSL \
+    retry curl -fsSL \
         "https://github.com/conda-forge/miniforge/releases/download/${MINIFORGE_VERSION}/Miniforge3-${MINIFORGE_VERSION}-Linux-x86_64.sh" \
         -o /tmp/miniforge.sh
     bash /tmp/miniforge.sh -b -p "${CONDA_BASE}"
