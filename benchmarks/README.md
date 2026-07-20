@@ -56,9 +56,10 @@ per model the prompts are byte-identical across seeds, so sampling is the only v
 
 ![Long-context agentic tool-use ladder](tooluse256k_ladder.png)
 
-Neither ship has a measurable agentic ceiling below the 262,144 context limit. The instrument is therefore
-saturated: it can no longer rank these ships or detect regression headroom, and a successor must add
-difficulty (multi-hop chains, distractor tools, adversarial needle placement) rather than depth.
+Neither ship has a measurable agentic ceiling below the 262,144 context limit. That both clear every rung
+is a property of these two ships, not a blunt instrument — the same ladder records a ~64K agentic ceiling
+for the Qwen3-Coder-30B family (prose-stop at ≥131K) and a budget-banded ~76K for Nemotron-3-Omni. Running
+it across the remaining fleet presets is the open work.
 
 Regenerate the chart with
 `/home/letsrtfm/miniforge3/bin/python scripts/bench/generate_charts.py --tooluse-only`. The pre-090
