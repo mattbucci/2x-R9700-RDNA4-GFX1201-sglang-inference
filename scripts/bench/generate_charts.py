@@ -25,7 +25,7 @@ TOOLUSE_CHART = os.path.join(BENCH_DIR, "tooluse256k_ladder.png")
 NORTH_PROFILE_AB_RECEIPT = os.path.join(
     BENCH_DIR,
     "quality",
-    "north-mini-tooluse-profile-ab-post094-2026-07-19.json",
+    "north-mini-tooluse-profile-ab-post095-2026-07-19.json",
 )
 NORTH_PROFILE_AB_CHART = os.path.join(
     BENCH_DIR, "north_mini_tooluse_profile_ab.png"
@@ -81,6 +81,11 @@ NORTH_PROFILE_AB_PATCH_CHAIN = [
         "number": 94,
         "file": "patches/094-rdna4-batch-invariant-matmul-lds.patch",
         "sha256": "265b45b4f5d8dcdf012d7586511058fbe933b6f4433d1d99edc120565fff00eb",
+    },
+    {
+        "number": 95,
+        "file": "patches/095-cohere-command4-function-key-name-recovery.patch",
+        "sha256": "96acaaa48b42f90299168d507776ea0421fa4ecc77cb3d7c57296f62e7cfb6b4",
     },
 ]
 NORTH_PROFILE_AB_SAMPLING = {
@@ -645,7 +650,7 @@ def load_north_profile_ab_receipt(path=NORTH_PROFILE_AB_RECEIPT):
         reject("top level must be an object")
     if receipt.get("schema_version") != 1:
         reject("schema_version must be 1")
-    if receipt.get("tag") != "north-fixes-090-094-bf16kv-deterministic-profile-ab":
+    if receipt.get("tag") != "north-fixes-090-095-bf16kv-deterministic-profile-ab":
         reject("unexpected campaign tag")
     if receipt.get("patch_chain") != NORTH_PROFILE_AB_PATCH_CHAIN:
         reject("patch chain must be the frozen 090-094 chain")

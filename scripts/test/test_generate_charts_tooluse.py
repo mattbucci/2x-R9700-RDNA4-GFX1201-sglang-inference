@@ -493,18 +493,57 @@ class TooluseChartTest(unittest.TestCase):
             ],
             "Heterogeneous code/log",
         )
+        # Every cell is three seeds at both depths.
         self.assertEqual(
-            {
-                key: (group["correct"], group["samples"], group["rate"])
-                for key, group in groups.items()
-            },
-            {
-                ("repeated", 64801): (1, 3, 1 / 3),
-                ("repeated", 115806): (0, 3, 0.0),
-                ("heterogeneous_code_log_exact", 64801): (3, 3, 1.0),
-                ("heterogeneous_code_log_exact", 115806): (3, 3, 1.0),
-            },
+            sorted(groups),
+            [
+                ("heterogeneous_code_log_exact", 64801),
+                ("heterogeneous_code_log_exact", 115806),
+                ("repeated", 64801),
+                ("repeated", 115806),
+            ],
         )
+        for key, group in groups.items():
+            self.assertEqual(group["samples"], 3, key)
+
+        # The control's validity condition: at each depth both profiles must be
+        # rendered to an identical token count, or texture is confounded by
+        # length and the comparison proves nothing.
+        by_depth = {}
+        for prompt in receipt["prompts"]:
+            by_depth.setdefault(prompt["target_rendered_tokens"], []).append(prompt)
+        for depth, prompts in by_depth.items():
+            self.assertEqual(len(prompts), 2, depth)
+            self.assertEqual(
+                {prompt["rendered_tokens"] for prompt in prompts}, {depth}, depth
+            )
+            # Same tokens, genuinely different text -- otherwise it is one arm.
+            self.assertEqual(
+                len({prompt["user_sha256"] for prompt in prompts}), 2, depth
+            )
+
+        # The finding: heterogeneous agentic context is clean at both depths,
+        # and low-entropy repetition is strictly worse in aggregate. The
+        # per-depth split of the repeated failures is NOT pinned -- at three
+        # seeds it is sampling noise, and the post-094 and post-095 runs
+        # redistributed it (1/3+0/3 versus 0/3+1/3) while landing on the same
+        # 1/6 aggregate. Pinning it would break every honest re-measurement.
+        for depth in (64801, 115806):
+            self.assertEqual(
+                groups[("heterogeneous_code_log_exact", depth)]["correct"], 3, depth
+            )
+        hetero = sum(
+            group["correct"]
+            for key, group in groups.items()
+            if key[0] == "heterogeneous_code_log_exact"
+        )
+        repeated = sum(
+            group["correct"]
+            for key, group in groups.items()
+            if key[0] == "repeated"
+        )
+        self.assertEqual(hetero, 6)
+        self.assertLess(repeated, hetero)
 
     def test_north_profile_loader_fails_closed(self):
         source = charts.load_north_profile_ab_receipt()

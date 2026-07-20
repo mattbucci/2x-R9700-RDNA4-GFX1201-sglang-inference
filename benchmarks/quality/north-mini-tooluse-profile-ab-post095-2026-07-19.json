@@ -1,0 +1,437 @@
+{
+  "prompts": [
+    {
+      "profile": "repeated",
+      "rendered_tokens": 64801,
+      "target_rendered_tokens": 64801,
+      "user_chars": 426346,
+      "user_sha256": "6f11ab3a792391f606bf700385b54ba155fe488ac3072c21c130212539818f85"
+    },
+    {
+      "profile": "heterogeneous_code_log_exact",
+      "rendered_tokens": 64801,
+      "target_rendered_tokens": 64801,
+      "user_chars": 186736,
+      "user_sha256": "6e4b431ce2e3972d49dead1ddfd6538cefa3342406c5fcbc19aebfb68886fabf"
+    },
+    {
+      "profile": "repeated",
+      "rendered_tokens": 115806,
+      "target_rendered_tokens": 115806,
+      "user_chars": 762976,
+      "user_sha256": "e7393a87f0b68062ba78b90c3506364f76c2e234a4861bf015daaa0894632c48"
+    },
+    {
+      "profile": "heterogeneous_code_log_exact",
+      "rendered_tokens": 115806,
+      "target_rendered_tokens": 115806,
+      "user_chars": 334243,
+      "user_sha256": "5d80f36666c6e914e71a1d202d74c7f793d262bb988930e6ebdfc2d0f40116c0"
+    }
+  ],
+  "results": [
+    {
+      "correct_action": false,
+      "elapsed_s": 19.262,
+      "failure_diagnostics": {
+        "content": {
+          "chars": 244,
+          "head": "I'd be happy to help you look up an archive record! However, I need you to provide the specific record ID you want to search for. The lookup function requires an \"id\" parameter, so please let me know which archive record you'd like me to fetch.",
+          "sha256": "c7c254a01b905cee94d648819ca39f1b51ee401de07bc6e33cb65e7e081a63cb"
+        },
+        "reasoning_content": {
+          "chars": 226,
+          "head": "The user is asking me to look up an archive record by its ID, but they haven't provided a specific ID. I need to ask them for the ID since it's a required parameter.\n\nI should ask them for the specific ID they want to look up.",
+          "sha256": "e670e40b14fc2ba043908c7afa8c971251f5c0c0b0eec011db7dcdd22458886f"
+        },
+        "tool_calls": {
+          "chars": 4,
+          "head": "null",
+          "sha256": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b"
+        }
+      },
+      "finish_reason": "stop",
+      "got_id": null,
+      "http_status": 200,
+      "profile": "repeated",
+      "seed": 0,
+      "target_rendered_tokens": 64801,
+      "tool_name": null,
+      "usage": {
+        "completion_tokens": 108,
+        "prompt_tokens": 64801,
+        "prompt_tokens_details": null,
+        "reasoning_tokens": 52,
+        "total_tokens": 64909
+      },
+      "valid_toolcall": false
+    },
+    {
+      "correct_action": false,
+      "elapsed_s": 7.027,
+      "failure_diagnostics": {
+        "reasoning_content": {
+          "chars": 1188,
+          "head": "The user wants me to use the lookup_record tool to fetch a record. Looking at the available tools, description of lookup_record: \"Look up an archive record by its id.\" So they want me to call lookup_record with an id. But they haven't provided a specific i",
+          "sha256": "6d76d49f71c99032515122b4662cde1bdaf5d690e33e4a1cce2a7594df65f482",
+          "tail": "fic id they want to search for. Or I could demonstrate with an example id. Given the instruction \"For example you could call lookup_record with id='example123'\", I think they want me to show an example call. I should do that and explain what the tool does.",
+          "truncated": true
+        },
+        "tool_calls": {
+          "chars": 153,
+          "head": "[{\"function\": {\"arguments\": \"{\\\"id\\\": \\\"example123\\\"}\", \"name\": \"lookup_record\"}, \"id\": \"call_1167e54f2fdf48588d657a08\", \"index\": 0, \"type\": \"function\"}]",
+          "sha256": "7dde2b39a028b1ba266a8b9cedfd0a70332817baa1378ae55ef2b4d3adc05572"
+        }
+      },
+      "finish_reason": "tool_calls",
+      "got_id": "example123",
+      "http_status": 200,
+      "profile": "repeated",
+      "seed": 1,
+      "target_rendered_tokens": 64801,
+      "tool_name": "lookup_record",
+      "usage": {
+        "completion_tokens": 282,
+        "prompt_tokens": 64801,
+        "prompt_tokens_details": null,
+        "reasoning_tokens": 250,
+        "total_tokens": 65083
+      },
+      "valid_toolcall": true
+    },
+    {
+      "correct_action": false,
+      "elapsed_s": 1.19,
+      "failure_diagnostics": {
+        "reasoning_content": {
+          "chars": 173,
+          "head": "I'll look at the lookup_record tool to fetch the record with id=\"BANANA42\". This is the only valid id from the critical instruction. Let me call the tool with this exact id.",
+          "sha256": "403cc30e0c11b0da4f45bc59367f5840b32c4d3d63352ffc0f9811f567524cb4"
+        },
+        "tool_calls": {
+          "chars": 4,
+          "head": "null",
+          "sha256": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b"
+        }
+      },
+      "finish_reason": "stop",
+      "got_id": null,
+      "http_status": 200,
+      "profile": "repeated",
+      "seed": 2,
+      "target_rendered_tokens": 64801,
+      "tool_name": null,
+      "usage": {
+        "completion_tokens": 41,
+        "prompt_tokens": 64801,
+        "prompt_tokens_details": null,
+        "reasoning_tokens": 40,
+        "total_tokens": 64842
+      },
+      "valid_toolcall": false
+    },
+    {
+      "correct_action": true,
+      "elapsed_s": 19.679,
+      "finish_reason": "tool_calls",
+      "got_id": "BANANA42",
+      "http_status": 200,
+      "profile": "heterogeneous_code_log_exact",
+      "seed": 0,
+      "target_rendered_tokens": 64801,
+      "tool_name": "lookup_record",
+      "usage": {
+        "completion_tokens": 125,
+        "prompt_tokens": 64801,
+        "prompt_tokens_details": null,
+        "reasoning_tokens": 92,
+        "total_tokens": 64926
+      },
+      "valid_toolcall": true
+    },
+    {
+      "correct_action": true,
+      "elapsed_s": 2.176,
+      "finish_reason": "tool_calls",
+      "got_id": "BANANA42",
+      "http_status": 200,
+      "profile": "heterogeneous_code_log_exact",
+      "seed": 1,
+      "target_rendered_tokens": 64801,
+      "tool_name": "lookup_record",
+      "usage": {
+        "completion_tokens": 83,
+        "prompt_tokens": 64801,
+        "prompt_tokens_details": null,
+        "reasoning_tokens": 50,
+        "total_tokens": 64884
+      },
+      "valid_toolcall": true
+    },
+    {
+      "correct_action": true,
+      "elapsed_s": 2.608,
+      "finish_reason": "tool_calls",
+      "got_id": "BANANA42",
+      "http_status": 200,
+      "profile": "heterogeneous_code_log_exact",
+      "seed": 2,
+      "target_rendered_tokens": 64801,
+      "tool_name": "lookup_record",
+      "usage": {
+        "completion_tokens": 101,
+        "prompt_tokens": 64801,
+        "prompt_tokens_details": null,
+        "reasoning_tokens": 68,
+        "total_tokens": 64902
+      },
+      "valid_toolcall": true
+    },
+    {
+      "correct_action": false,
+      "elapsed_s": 35.962,
+      "failure_diagnostics": {
+        "reasoning_content": {
+          "chars": 72,
+          "head": "\\[\nname\\_0\\_id = \"BANANA42\"\n\\]\n\nlookup_record(id=name_0\\_id)<|END_TEXT|>",
+          "sha256": "cc0518c3583a6865170be6648670357adeb4d91f1d92e57af813ed233d758873"
+        },
+        "tool_calls": {
+          "chars": 4,
+          "head": "null",
+          "sha256": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b"
+        }
+      },
+      "finish_reason": "stop",
+      "got_id": null,
+      "http_status": 200,
+      "profile": "repeated",
+      "seed": 0,
+      "target_rendered_tokens": 115806,
+      "tool_name": null,
+      "usage": {
+        "completion_tokens": 24,
+        "prompt_tokens": 115806,
+        "prompt_tokens_details": null,
+        "reasoning_tokens": 24,
+        "total_tokens": 115830
+      },
+      "valid_toolcall": false
+    },
+    {
+      "correct_action": false,
+      "elapsed_s": 1.234,
+      "failure_diagnostics": {
+        "reasoning_content": {
+          "chars": 157,
+          "head": "When you specified the id \"BANANA42\" in the CRITICAL INSTRUCTION above, the lookup_record tool should return the archive record with id BANANA42.<|END_TEXT|>",
+          "sha256": "f7aeb54d8f9e2a3a2b83e2b9ffa6d155f6d003e4d7543fb030455d41c518eb65"
+        },
+        "tool_calls": {
+          "chars": 4,
+          "head": "null",
+          "sha256": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b"
+        }
+      },
+      "finish_reason": "stop",
+      "got_id": null,
+      "http_status": 200,
+      "profile": "repeated",
+      "seed": 1,
+      "target_rendered_tokens": 115806,
+      "tool_name": null,
+      "usage": {
+        "completion_tokens": 34,
+        "prompt_tokens": 115806,
+        "prompt_tokens_details": null,
+        "reasoning_tokens": 34,
+        "total_tokens": 115840
+      },
+      "valid_toolcall": false
+    },
+    {
+      "correct_action": true,
+      "elapsed_s": 2.985,
+      "finish_reason": "tool_calls",
+      "got_id": "BANANA42",
+      "http_status": 200,
+      "profile": "repeated",
+      "seed": 2,
+      "target_rendered_tokens": 115806,
+      "tool_name": "lookup_record",
+      "usage": {
+        "completion_tokens": 102,
+        "prompt_tokens": 115806,
+        "prompt_tokens_details": null,
+        "reasoning_tokens": 69,
+        "total_tokens": 115908
+      },
+      "valid_toolcall": true
+    },
+    {
+      "correct_action": true,
+      "elapsed_s": 39.184,
+      "finish_reason": "tool_calls",
+      "got_id": "BANANA42",
+      "http_status": 200,
+      "profile": "heterogeneous_code_log_exact",
+      "seed": 0,
+      "target_rendered_tokens": 115806,
+      "tool_name": "lookup_record",
+      "usage": {
+        "completion_tokens": 141,
+        "prompt_tokens": 115806,
+        "prompt_tokens_details": null,
+        "reasoning_tokens": 108,
+        "total_tokens": 115947
+      },
+      "valid_toolcall": true
+    },
+    {
+      "correct_action": true,
+      "elapsed_s": 3.558,
+      "finish_reason": "tool_calls",
+      "got_id": "BANANA42",
+      "http_status": 200,
+      "profile": "heterogeneous_code_log_exact",
+      "seed": 1,
+      "target_rendered_tokens": 115806,
+      "tool_name": "lookup_record",
+      "usage": {
+        "completion_tokens": 127,
+        "prompt_tokens": 115806,
+        "prompt_tokens_details": null,
+        "reasoning_tokens": 94,
+        "total_tokens": 115933
+      },
+      "valid_toolcall": true
+    },
+    {
+      "correct_action": true,
+      "elapsed_s": 3.375,
+      "finish_reason": "tool_calls",
+      "got_id": "BANANA42",
+      "http_status": 200,
+      "profile": "heterogeneous_code_log_exact",
+      "seed": 2,
+      "target_rendered_tokens": 115806,
+      "tool_name": "lookup_record",
+      "usage": {
+        "completion_tokens": 120,
+        "prompt_tokens": 115806,
+        "prompt_tokens_details": null,
+        "reasoning_tokens": 87,
+        "total_tokens": 115926
+      },
+      "valid_toolcall": true
+    }
+  ],
+  "sampling": {
+    "max_tokens": 1024,
+    "seed_effective": true,
+    "seeds": [
+      0,
+      1,
+      2
+    ],
+    "temperature": 1.0,
+    "top_k": -1,
+    "top_p": 0.95
+  },
+  "schema_version": 1,
+  "server": {
+    "attention_backend": "triton",
+    "chunked_prefill_size": 4096,
+    "context_length": 262144,
+    "disable_overlap_schedule": true,
+    "dtype": "bfloat16",
+    "enable_deterministic_inference": true,
+    "fp8_gemm_runner_backend": "auto",
+    "kv_cache_dtype": "auto",
+    "model_path": "/home/letsrtfm/AI/models/North-Mini-Code-1.0-fp8",
+    "quantization": "compressed-tensors",
+    "reasoning_parser": "cohere_command4",
+    "sampling_backend": "pytorch",
+    "swa_full_tokens_ratio": 0.0625,
+    "tool_call_parser": "cohere_command4",
+    "tp_size": 2,
+    "resolved_kv_cache_dtype": "bfloat16"
+  },
+  "tag": "north-fixes-090-095-bf16kv-deterministic-profile-ab",
+  "measurement": {
+    "kind": "deterministic_single_turn_correct_structured_action_profile_control",
+    "scorer": "one exact lookup_record call with id BANANA42",
+    "caveat": "Single-turn profile control; not an end-to-end agentic ceiling."
+  },
+  "generator": {
+    "repeated": "legacy low-entropy repetition stress",
+    "heterogeneous_code_log_exact": "north-heterolog-v1 two-stream exact-token diagnostic"
+  },
+  "patch_chain": [
+    {
+      "number": 90,
+      "file": "patches/090-cohere2moe-rmsnorm-selection.patch",
+      "sha256": "90f9185094e949d5d7cc3864f04b80a483bcdcfd1e919ccd6888aabb9451e0a7"
+    },
+    {
+      "number": 91,
+      "file": "patches/091-cohere-command4-tool-call-id-name-recovery.patch",
+      "sha256": "3d572f0a5821a5649a96ada71c36c58c4236c91a3a19ec36e610d0086d919fd4"
+    },
+    {
+      "number": 92,
+      "file": "patches/092-openai-tool-call-finish-reason-correctness.patch",
+      "sha256": "0406d17dbdef86f2fb2896de3517cc9fb8bfd485652b586f1ee19d6fa3291b90"
+    },
+    {
+      "number": 93,
+      "file": "patches/093-cohere2moe-swa-window-off-by-one.patch",
+      "sha256": "0bca966e28df0e54d6a597f0d24345d8721b5ddb38cb676bbbfe61977ff5cc7f"
+    },
+    {
+      "number": 94,
+      "file": "patches/094-rdna4-batch-invariant-matmul-lds.patch",
+      "sha256": "265b45b4f5d8dcdf012d7586511058fbe933b6f4433d1d99edc120565fff00eb"
+    },
+    {
+      "number": 95,
+      "file": "patches/095-cohere-command4-function-key-name-recovery.patch",
+      "sha256": "96acaaa48b42f90299168d507776ea0421fa4ecc77cb3d7c57296f62e7cfb6b4"
+    }
+  ],
+  "provenance": {
+    "captured_at": "2026-07-19T18:24:17-07:00",
+    "raw_log_sha256": "42401c340afbe8b2a69f4f37241eeb120c79d10fe01b893350bc00ac4cc5eb44",
+    "extracted_json_sha256": "23b1c24ec72b572ea27301d1e26d01c7ac6e90846be6dffcb765bf1dafa4e4a7"
+  },
+  "summary": [
+    {
+      "profile": "heterogeneous_code_log_exact",
+      "rendered_tokens": 64801,
+      "correct": 3,
+      "samples": 3,
+      "correct_rate": 1
+    },
+    {
+      "profile": "heterogeneous_code_log_exact",
+      "rendered_tokens": 115806,
+      "correct": 3,
+      "samples": 3,
+      "correct_rate": 1
+    },
+    {
+      "profile": "repeated",
+      "rendered_tokens": 64801,
+      "correct": 0,
+      "samples": 3,
+      "correct_rate": 0
+    },
+    {
+      "profile": "repeated",
+      "rendered_tokens": 115806,
+      "correct": 1,
+      "samples": 3,
+      "correct_rate": 0.3333333333333333
+    }
+  ]
+}

@@ -74,16 +74,27 @@ end-to-end agentic ceiling.
 
 | Actual prompt tokens | Low-entropy repetition stress | Heterogeneous code/log |
 |---:|---:|---:|
-| 64,801 | 1 / 3 | **3 / 3** |
-| 115,806 | 0 / 3 | **3 / 3** |
+| 64,801 | 0 / 3 | **3 / 3** |
+| 115,806 | 1 / 3 | **3 / 3** |
+
+The aggregate is the finding — 6/6 heterogeneous against 1/6 repeated, reproduced exactly across the
+post-094 and post-095 runs. The per-depth split of the repeated failures is not: those two runs
+redistributed it (1/3+0/3 versus 0/3+1/3) on the same aggregate, so at three seeds it is sampling noise
+and no per-depth claim should be read from it.
 
 ![North post-fix deterministic correct-action profile control](north_mini_tooluse_profile_ab.png)
 
-The immutable [profile receipt](quality/north-mini-tooluse-profile-ab-post094-2026-07-19.json) records
-exact prompt hashes, patches 090–094, TP2/BF16-KV deterministic serving, temperature 1.0/top-p 0.95, and
-seeds 0–2. The repository-native, byte-distinct `--filler-profile agentic --multi-turn` focused gate also
-passed its admission bar: 2/3 correct primaries at both ~67.5K and ~115.6K, with correct terminal tool-result
-use on all four valid calls.
+The [post-095 profile receipt](quality/north-mini-tooluse-profile-ab-post095-2026-07-19.json) records exact
+prompt hashes, a patch chain hashed from the real 090–095 files, TP2/BF16-KV deterministic serving,
+temperature 1.0/top-p 0.95, and seeds 0–2. Regenerate it with
+`python scripts/eval/profile_control_ab.py --port 23334`; the
+[post-094 receipt](quality/north-mini-tooluse-profile-ab-post094-2026-07-19.json) is retained as the prior
+run. No parser drops remain in the post-095 failures — every one is a genuine model failure, including one
+well-formed `lookup_record` call that hallucinated `example123` instead of retrieving the planted id.
+
+Note the two runs are **not** a controlled A/B for patch 095: calibration converged to different character
+counts (186,736 versus 186,620 at the 64,801 rung), so the prompts differ and only the aggregate is
+comparable. Isolating a serving change requires pinning the converged character counts on replay.
 
 Final experiment conclusions are consolidated in [FINDINGS.md](FINDINGS.md).
 
