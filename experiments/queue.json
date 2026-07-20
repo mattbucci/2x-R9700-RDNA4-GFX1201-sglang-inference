@@ -118,17 +118,31 @@
   {
    "id": "FP8-native-follow-on",
    "spec": null,
-   "status": "queued",
+   "status": "in_progress",
    "resource": "tp2_kernel",
    "depends_on": [
     "R97-D"
    ],
-   "next_action": "Author and execute a narrow native-FP8 profile, KV-split resweep, and exact-shape normal-kernel tuner experiment.",
+   "next_action": "Two of three done. (1) Native-FP8 profile COMPLETE 2026-07-19: decode is led by dense rocBLAS GEMM (~38-42% of non-collective GPU time), not attention (~20-28%); the run also surfaced the extend/agentic-turn tax now tracked as R97-J, and the unexplained rocBLAS residue as R97-K. (2) KV-split resweep COMPLETE 2026-07-19: 64 holds. (3) REMAINING: correctness-gated gfx1201 tuner for the dense block-FP8 kernel at Laguna's 39x shared-expert shapes (N,K)=(512,2048) and (2048,256). The stock SGLang tuner is unsafe here -- it benchmarks a kernel serving does not select, applies no numerical gate, and issues OOB loads at K=256.",
    "test_gate": [
     "Same-session 220K profile identifies the limiting kernels",
     "KV-split arms preserve output and improve the completion-token-counted median",
     "Normal-kernel tuner covers (N,K)=(512,2048) and (2048,256)",
     "Every retained configuration passes numerical and graph-replay gates"
+   ],
+   "progress": {
+    "native_fp8_profile": "complete (2026-07-19)",
+    "kv_split_resweep": "complete (2026-07-19) -- 64 holds",
+    "exact_shape_tuner": "not started"
+   },
+   "receipts": [
+    "benchmarks/profiling/laguna-native-decode-profile-2026-07-19.json",
+    "benchmarks/profiling/laguna-extend-cost-2026-07-19.json",
+    "benchmarks/validation/laguna-kvsplit-resweep-2026-07-19.json"
+   ],
+   "spawned": [
+    "R97-J-extend-kv-split",
+    "R97-K-decode-rocblas-residue"
    ]
   },
   {
