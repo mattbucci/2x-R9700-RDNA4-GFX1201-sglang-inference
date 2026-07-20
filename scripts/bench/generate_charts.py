@@ -19,7 +19,7 @@ import numpy as np
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 BENCH_DIR = os.path.join(REPO, "benchmarks")
 TOOLUSE_RECEIPT_GLOB = os.path.join(
-    BENCH_DIR, "quality", "tooluse256k-*-v0515-r9700.json"
+    BENCH_DIR, "quality", "tooluse256k-*-seed*.json"
 )
 TOOLUSE_CHART = os.path.join(BENCH_DIR, "tooluse256k_ladder.png")
 NORTH_PROFILE_AB_RECEIPT = os.path.join(
@@ -36,13 +36,25 @@ TOOLUSE_REQUESTED_LENGTHS = [
 TOOLUSE_SCORED_LENGTHS = [
     16384, 65536, 116000, 131072, 176000, 196608, 245248,
 ]
-TOOLUSE_CANONICAL_SAMPLING = {
-    "temperature": 0.0,
-    "top_p": None,
-    "top_k": None,
-    "seed": None,
-    "seed_effective": None,
+# Sampled ladders are run at the model-recommended sampling, once per seed.
+# The per-seed ``seed`` value is added by the loader, so a row declares only
+# the sampling that must be identical across its seeds.
+TOOLUSE_SAMPLED_SAMPLING = {
+    "temperature": 1.0,
+    "top_p": 0.95,
+    "top_k": -1,
 }
+TOOLUSE_SEEDS = [0, 1, 2]
+
+# Worst outcome first.  An aggregated rung takes the worst outcome any seed
+# produced, so a rung is only green when every seed was green.
+TOOLUSE_OUTCOME_SEVERITY = [
+    "infra_failure",
+    "budget_bound",
+    "primary_failure",
+    "action_only",
+    "agentic_success",
+]
 
 NORTH_PROFILE_AB_PATCH_CHAIN = [
     {
@@ -91,15 +103,22 @@ NORTH_PROFILE_AB_PROFILES = {
     },
 }
 
-TOOLUSE_TAG_META = {
-    "laguna": {
-        "label": "Laguna XS.2 FP8",
+# One row per model.  Each row is rendered from every one of its declared
+# seeds; a row with a missing seed is not renderable at all.
+TOOLUSE_LADDER_ROWS = {
+    "laguna-sampled": {
+        "tag_prefix": "laguna-sampled",
+        "label": "Laguna XS.2 FP8 (MoE)",
         "order": 0,
+        "seeds": list(TOOLUSE_SEEDS),
+        "sampling": dict(TOOLUSE_SAMPLED_SAMPLING),
     },
-    "north-mini": {
-        "label": "North-Mini-Code FP8 (pre-fix; provisional)",
+    "north-mini-post095": {
+        "tag_prefix": "north-mini-post095",
+        "label": "North-Mini-Code FP8 (cohere2_moe)",
         "order": 1,
-        "provisional": True,
+        "seeds": list(TOOLUSE_SEEDS),
+        "sampling": dict(TOOLUSE_SAMPLED_SAMPLING),
     },
 }
 
@@ -257,14 +276,160 @@ def tooluse_result_position(result):
     return None
 
 
-def load_tooluse_ladders(receipt_glob=TOOLUSE_RECEIPT_GLOB):
-    """Load canonical R9700 multi-turn depth receipts.
+def tooluse_receipt_reason(receipt, row, seed):
+    """Return None when a receipt is the canonical rung set for row/seed.
 
-    The exact ``*-v0515-r9700.json`` suffix excludes smoke, depth-placement,
-    and completion-budget A/B receipts.  Settings checks fail closed so a
-    future single-turn receipt cannot be mislabeled as end-to-end agentic.
+    Otherwise return the reason it is not, so callers can print it.  Every
+    check fails closed: a single-turn, re-budgeted, differently sampled, or
+    short receipt can never be mislabeled as an end-to-end agentic ladder.
     """
-    ladders = []
+    if not isinstance(receipt, dict):
+        return "top level must be an object"
+
+    settings = receipt.get("settings")
+    server = receipt.get("server")
+    results = receipt.get("results")
+    if not isinstance(settings, dict):
+        return "settings must be an object"
+    if not isinstance(server, dict):
+        return "server must be an object"
+    if not isinstance(results, list):
+        return "results must be a list"
+
+    if receipt.get("schema_version") != 2:
+        return "schema_version must be 2"
+    if settings.get("multi_turn") is not True:
+        return "multi_turn must be true"
+    if settings.get("structured_followup_content") is not True:
+        return "structured_followup_content must be true"
+    if settings.get("depth") != 0.5:
+        return "depth must be 0.5"
+    if settings.get("max_tokens") != 8192:
+        return "max_tokens must be 8192"
+    if settings.get("followup_max_tokens") != 8192:
+        return "followup_max_tokens must be 8192"
+    if settings.get("context_length") != 262144:
+        return "context_length must be 262144"
+    if settings.get("requested_lengths") != TOOLUSE_REQUESTED_LENGTHS:
+        return "requested_lengths must be the canonical ladder"
+    if settings.get("scored_lengths") != TOOLUSE_SCORED_LENGTHS:
+        return "scored_lengths must be the canonical ladder"
+
+    expected_sampling = dict(row["sampling"])
+    expected_sampling.update({"seed": seed, "seed_effective": True})
+    if settings.get("sampling") != expected_sampling:
+        return f"sampling must be exactly {expected_sampling}"
+
+    if server.get("tp_size") != 2:
+        return "tp_size must be 2"
+    if len(results) != len(TOOLUSE_SCORED_LENGTHS):
+        return f"results must contain exactly {len(TOOLUSE_SCORED_LENGTHS)} rungs"
+    if [result.get("approx_tokens") for result in results] != TOOLUSE_SCORED_LENGTHS:
+        return "rung approx_tokens must be the canonical scored ladder"
+
+    for index, result in enumerate(results):
+        if not isinstance(result, dict):
+            return f"rung {index} is not an object"
+        filler_sha = result.get("filler_sha256")
+        if not isinstance(filler_sha, str) or not filler_sha:
+            return f"rung {index} has no filler_sha256 prompt identity"
+    return None
+
+
+def tooluse_cross_seed_reason(seed_results):
+    """Return None when every seed of a row probed byte-identical prompts.
+
+    ``seed_results`` is an ordered list of ``(seed, results)`` pairs.  The
+    seeds of one row only aggregate into a single ladder if they measured the
+    same prompt at every rung, so prompt identity is checked, not assumed.
+    """
+    for index in range(len(TOOLUSE_SCORED_LENGTHS)):
+        rungs = [results[index] for _, results in seed_results]
+        fillers = {rung.get("filler_sha256") for rung in rungs}
+        if len(fillers) != 1:
+            return f"rung {index} filler_sha256 differs across seeds"
+        # A seed whose request never reached the server reports no prompt
+        # length; only the seeds that were actually scored must agree.
+        actuals = {
+            rung["actual_prompt_tokens"]
+            for rung in rungs
+            if isinstance(rung.get("actual_prompt_tokens"), (int, float))
+            and rung["actual_prompt_tokens"] > 0
+        }
+        if len(actuals) > 1:
+            return f"rung {index} actual_prompt_tokens differs across seeds"
+    return None
+
+
+def aggregate_tooluse_seeds(seed_results):
+    """Fold a row's seeds into one conservative ladder.
+
+    A rung is ``agentic_success`` only when every seed passed it; otherwise it
+    takes the worst outcome any seed produced.  ``pass_count``/``seed_count``
+    keep the underlying spread visible.
+    """
+    rungs = []
+    for index in range(len(TOOLUSE_SCORED_LENGTHS)):
+        rows = [results[index] for _, results in seed_results]
+        outcomes = [classify_tooluse_result(row) for row in rows]
+        actuals = [
+            row["actual_prompt_tokens"]
+            for row in rows
+            if isinstance(row.get("actual_prompt_tokens"), (int, float))
+            and row["actual_prompt_tokens"] > 0
+        ]
+        rungs.append(
+            {
+                "approx_tokens": rows[0].get("approx_tokens"),
+                "actual_prompt_tokens": actuals[0] if actuals else None,
+                "filler_sha256": rows[0].get("filler_sha256"),
+                "outcome": min(outcomes, key=TOOLUSE_OUTCOME_SEVERITY.index),
+                "pass_count": sum(
+                    outcome == "agentic_success" for outcome in outcomes
+                ),
+                "seed_count": len(rows),
+                "seed_outcomes": outcomes,
+            }
+        )
+    return rungs
+
+
+def tooluse_ceiling_text(rungs):
+    """Deepest rung every seed carried end to end, as a row annotation."""
+    passed = [
+        rung
+        for rung in rungs
+        if rung["seed_count"] > 0 and rung["pass_count"] == rung["seed_count"]
+    ]
+    if not passed:
+        return "no end-to-end pass"
+    deepest = max(passed, key=lambda rung: tooluse_result_position(rung) or 0)
+    position = tooluse_result_position(deepest)
+    return (
+        f"max end-to-end: {position:,} "
+        f"({deepest['pass_count']}/{deepest['seed_count']} seeds)"
+    )
+
+
+def load_tooluse_ladders(receipt_glob=TOOLUSE_RECEIPT_GLOB, rows=None):
+    """Load the canonical R9700 multi-turn depth receipts, one row per model.
+
+    The ``*-seed*.json`` suffix excludes smoke, depth-placement, and
+    completion-budget A/B receipts by construction.  Every declared seed of a
+    row must be present and canonical, and all of a row's seeds must have
+    probed identical prompts, or the row cannot be rendered at all.
+    """
+    rows = TOOLUSE_LADDER_ROWS if rows is None else rows
+
+    expected = {}
+    for key, row in rows.items():
+        for seed in row["seeds"]:
+            tag = f"{row['tag_prefix']}-seed{seed}"
+            if tag in expected:
+                raise ValueError(f"ambiguous tool-use row tag {tag!r}")
+            expected[tag] = (key, seed)
+
+    collected = {key: {} for key in rows}
     for path in sorted(glob.glob(receipt_glob)):
         try:
             with open(path) as f:
@@ -273,43 +438,52 @@ def load_tooluse_ladders(receipt_glob=TOOLUSE_RECEIPT_GLOB):
             print(f"  SKIP tool-use receipt {path}: {exc}")
             continue
 
-        settings = receipt.get("settings", {})
-        server = receipt.get("server", {})
-        results = receipt.get("results", [])
-        if (
-            receipt.get("schema_version") != 2
-            or settings.get("multi_turn") is not True
-            or settings.get("structured_followup_content") is not True
-            or settings.get("depth") != 0.5
-            or settings.get("max_tokens") != 8192
-            or settings.get("followup_max_tokens") != 8192
-            or settings.get("context_length") != 262144
-            or settings.get("requested_lengths") != TOOLUSE_REQUESTED_LENGTHS
-            or settings.get("scored_lengths") != TOOLUSE_SCORED_LENGTHS
-            or settings.get("sampling", TOOLUSE_CANONICAL_SAMPLING)
-            != TOOLUSE_CANONICAL_SAMPLING
-            or server.get("tp_size") != 2
-            or len(results) != len(TOOLUSE_SCORED_LENGTHS)
-            or [result.get("approx_tokens") for result in results]
-            != TOOLUSE_SCORED_LENGTHS
-        ):
-            print(f"  SKIP non-canonical tool-use receipt {path}")
-            continue
-
-        tag = receipt.get("tag")
-        if tag not in TOOLUSE_TAG_META:
+        tag = receipt.get("tag") if isinstance(receipt, dict) else None
+        if tag not in expected:
             print(f"  SKIP unregistered tool-use receipt {path}")
             continue
-        if any(ladder["receipt"].get("tag") == tag for ladder in ladders):
+        key, seed = expected[tag]
+        reason = tooluse_receipt_reason(receipt, rows[key], seed)
+        if reason:
+            print(f"  SKIP non-canonical tool-use receipt {path}: {reason}")
+            continue
+        if seed in collected[key]:
             raise ValueError(f"duplicate canonical tool-use receipt for tag {tag!r}")
-        meta = TOOLUSE_TAG_META[tag]
-        ladders.append({"path": path, "receipt": receipt, **meta})
+        collected[key][seed] = (path, receipt)
 
-    found = {ladder["receipt"]["tag"] for ladder in ladders}
-    missing = set(TOOLUSE_TAG_META) - found
+    ladders = []
+    missing = []
+    for key, row in rows.items():
+        seeds = list(row["seeds"])
+        found = collected[key]
+        gaps = [seed for seed in seeds if seed not in found]
+        if gaps:
+            gap_text = ", ".join(str(seed) for seed in gaps)
+            print(f"  SKIP tool-use row {key}: missing seed receipt(s) {gap_text}")
+            missing.append(key)
+            continue
+
+        seed_results = [(seed, found[seed][1]["results"]) for seed in seeds]
+        reason = tooluse_cross_seed_reason(seed_results)
+        if reason:
+            print(f"  SKIP non-canonical tool-use row {key}: {reason}")
+            missing.append(key)
+            continue
+
+        ladders.append(
+            {
+                "key": key,
+                "label": row["label"],
+                "order": row["order"],
+                "seeds": seeds,
+                "paths": [found[seed][0] for seed in seeds],
+                "rungs": aggregate_tooluse_seeds(seed_results),
+            }
+        )
+
     if missing:
         raise ValueError(
-            "missing canonical tool-use receipt(s): " + ", ".join(sorted(missing))
+            "missing canonical tool-use ladder row(s): " + ", ".join(sorted(missing))
         )
     return sorted(ladders, key=lambda item: (item["order"], item["label"]))
 
@@ -329,10 +503,10 @@ def make_tooluse_ladder_chart(receipt_glob=TOOLUSE_RECEIPT_GLOB, out_path=TOOLUS
     y_positions = list(range(len(ladders)))[::-1]
 
     all_positions = [
-        tooluse_result_position(result)
+        tooluse_result_position(rung)
         for ladder in ladders
-        for result in ladder["receipt"]["results"]
-        if tooluse_result_position(result) is not None
+        for rung in ladder["rungs"]
+        if tooluse_result_position(rung) is not None
     ]
     if not all_positions:
         plt.close(fig)
@@ -342,8 +516,8 @@ def make_tooluse_ladder_chart(receipt_glob=TOOLUSE_RECEIPT_GLOB, out_path=TOOLUS
 
     for y, ladder in zip(y_positions, ladders):
         results = sorted(
-            ladder["receipt"]["results"],
-            key=lambda result: tooluse_result_position(result) or float("inf"),
+            ladder["rungs"],
+            key=lambda rung: tooluse_result_position(rung) or float("inf"),
         )
         results = [
             result for result in results if tooluse_result_position(result) is not None
@@ -361,7 +535,7 @@ def make_tooluse_ladder_chart(receipt_glob=TOOLUSE_RECEIPT_GLOB, out_path=TOOLUS
             xs = [
                 tooluse_result_position(result)
                 for result in results
-                if classify_tooluse_result(result) == outcome
+                if result["outcome"] == outcome
             ]
             if not xs:
                 continue
@@ -376,26 +550,10 @@ def make_tooluse_ladder_chart(receipt_glob=TOOLUSE_RECEIPT_GLOB, out_path=TOOLUS
                 zorder=5,
             )
 
-        successes = [
-            result["actual_prompt_tokens"]
-            for result in results
-            if classify_tooluse_result(result) == "agentic_success"
-        ]
-        ceiling = max(successes) if successes else None
-        if ladder.get("provisional"):
-            ceiling_text = (
-                f"pre-fix pass: {ceiling:,}" if ceiling else "pre-fix: no pass"
-            )
-        else:
-            ceiling_text = (
-                f"max end-to-end: {ceiling:,}"
-                if ceiling
-                else "no end-to-end pass"
-            )
         ax.text(
             1.01,
             y,
-            ceiling_text,
+            tooluse_ceiling_text(ladder["rungs"]),
             transform=blended_transform_factory(ax.transAxes, ax.transData),
             va="center",
             fontsize=9,
@@ -426,9 +584,7 @@ def make_tooluse_ladder_chart(receipt_glob=TOOLUSE_RECEIPT_GLOB, out_path=TOOLUS
     ax.set_ylim(-0.7, len(ladders) - 0.3)
 
     present = {
-        classify_tooluse_result(result)
-        for ladder in ladders
-        for result in ladder["receipt"]["results"]
+        rung["outcome"] for ladder in ladders for rung in ladder["rungs"]
     }
     handles = [
         Line2D(
@@ -455,7 +611,9 @@ def make_tooluse_ladder_chart(receipt_glob=TOOLUSE_RECEIPT_GLOB, out_path=TOOLUS
         fontsize=8.5,
     )
     fig.suptitle(
-        "TP=2 · production KV policy · temperature 0 · pass requires the correct action and terminal use of the returned tool value",
+        "TP=2 · production KV policy · 3 seeds per rung · temperature 1.0 / top_p 0.95 · "
+        "pass requires the correct action and terminal use of the returned tool value "
+        "at every seed",
         fontsize=9.5,
         y=0.965,
         color="#8b949e",

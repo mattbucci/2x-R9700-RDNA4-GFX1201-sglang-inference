@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import copy
+import glob
 import importlib.util
 import json
 import pathlib
@@ -31,6 +32,7 @@ def _success_result(approx_tokens, actual_tokens=None):
     return {
         "approx_tokens": approx_tokens,
         "actual_prompt_tokens": actual_tokens or approx_tokens,
+        "filler_sha256": f"filler-{approx_tokens:08d}",
         "finish_reason": "tool_calls",
         "primary_status": "valid",
         "primary_http_status": 200,
@@ -47,7 +49,22 @@ def _success_result(approx_tokens, actual_tokens=None):
     }
 
 
-def _receipt(tag, *, settings_update=None, results=None):
+LAGUNA = "laguna-sampled"
+NORTH = "north-mini-post095"
+
+
+def _default_results():
+    return [
+        _success_result(length, length + 7)
+        for length in charts.TOOLUSE_SCORED_LENGTHS
+    ]
+
+
+def _receipt(row_key, seed, *, settings_update=None, results=None, tag=None):
+    """Build one canonical per-seed receipt for a registered ladder row."""
+    row = charts.TOOLUSE_LADDER_ROWS[row_key]
+    sampling = dict(row["sampling"])
+    sampling.update({"seed": seed, "seed_effective": True})
     settings = {
         "requested_lengths": list(charts.TOOLUSE_REQUESTED_LENGTHS),
         "scored_lengths": list(charts.TOOLUSE_SCORED_LENGTHS),
@@ -58,20 +75,41 @@ def _receipt(tag, *, settings_update=None, results=None):
         "structured_followup_content": True,
         "context_length": 262144,
         "completion_reserve": 16896,
+        "sampling": sampling,
     }
     if settings_update:
         settings.update(settings_update)
     if results is None:
-        results = [
-            _success_result(length, length + 7)
-            for length in charts.TOOLUSE_SCORED_LENGTHS
-        ]
+        results = _default_results()
     return {
         "schema_version": 2,
-        "tag": tag,
+        "tag": tag if tag is not None else f'{row["tag_prefix"]}-seed{seed}',
         "server": {"tp_size": 2},
         "settings": settings,
-        "results": results,
+        "results": copy.deepcopy(results),
+    }
+
+
+def _write_row(root, row_key, *, per_seed=None, **receipt_kwargs):
+    """Write every declared seed receipt of one row into ``root``.
+
+    ``per_seed`` maps a seed to extra ``_receipt`` kwargs for that seed only,
+    so a test can perturb exactly one seed of an otherwise canonical row.
+    """
+    paths = {}
+    for seed in charts.TOOLUSE_LADDER_ROWS[row_key]["seeds"]:
+        kwargs = dict(receipt_kwargs)
+        kwargs.update((per_seed or {}).get(seed, {}))
+        path = root / f"tooluse256k-{row_key}-seed{seed}.json"
+        path.write_text(json.dumps(_receipt(row_key, seed, **kwargs)))
+        paths[seed] = path
+    return paths
+
+
+def _write_both_rows(root, **north_kwargs):
+    return {
+        LAGUNA: _write_row(root, LAGUNA),
+        NORTH: _write_row(root, NORTH, **north_kwargs),
     }
 
 
@@ -134,31 +172,33 @@ class TooluseChartTest(unittest.TestCase):
                     charts.classify_tooluse_result(result), "agentic_success"
                 )
 
-    def test_loader_requires_both_registered_matching_campaigns(self):
+    def test_loader_requires_both_registered_rows_at_every_seed(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = pathlib.Path(tmp)
-            (root / "laguna.json").write_text(
-                json.dumps(
-                    _receipt(
-                        "laguna",
-                        settings_update={
-                            "sampling": dict(charts.TOOLUSE_CANONICAL_SAMPLING)
-                        },
-                    )
-                )
-            )
-            (root / "north.json").write_text(json.dumps(_receipt("north-mini")))
+            paths = _write_both_rows(root)
 
             ladders = charts.load_tooluse_ladders(str(root / "*.json"))
+            self.assertEqual([ladder["key"] for ladder in ladders], [LAGUNA, NORTH])
             self.assertEqual(
-                [ladder["receipt"]["tag"] for ladder in ladders],
-                ["laguna", "north-mini"],
+                [ladder["label"] for ladder in ladders],
+                ["Laguna XS.2 FP8 (MoE)", "North-Mini-Code FP8 (cohere2_moe)"],
             )
-            self.assertIn("pre-fix; provisional", ladders[1]["label"])
-            self.assertTrue(ladders[1]["provisional"])
+            for ladder in ladders:
+                self.assertEqual(ladder["seeds"], [0, 1, 2])
+                self.assertEqual(len(ladder["paths"]), 3)
+                self.assertEqual(
+                    [rung["outcome"] for rung in ladder["rungs"]],
+                    ["agentic_success"] * 7,
+                )
+                self.assertEqual(
+                    [(rung["pass_count"], rung["seed_count"]) for rung in ladder["rungs"]],
+                    [(3, 3)] * 7,
+                )
+                # The provisional pre-fix concept is gone from the contract.
+                self.assertNotIn("provisional", ladder)
 
-            (root / "north.json").unlink()
-            with self.assertRaisesRegex(ValueError, "north-mini"):
+            paths[NORTH][2].unlink()
+            with self.assertRaisesRegex(ValueError, NORTH):
                 charts.load_tooluse_ladders(str(root / "*.json"))
 
     def test_loader_rejects_single_turn_or_mismatched_ladder(self):
@@ -170,55 +210,248 @@ class TooluseChartTest(unittest.TestCase):
             {"followup_max_tokens": 2048},
             {"context_length": 131072},
             {"scored_lengths": [16384, 65536]},
-            {
-                "sampling": {
-                    "temperature": 1.0,
-                    "top_p": 0.95,
-                    "top_k": -1,
-                    "seed": 0,
-                }
-            },
+            {"requested_lengths": [16384, 65536]},
         ]
         for update in bad_settings:
             with self.subTest(update=update), tempfile.TemporaryDirectory() as tmp:
                 root = pathlib.Path(tmp)
-                (root / "laguna.json").write_text(
-                    json.dumps(_receipt("laguna", settings_update=update))
-                )
-                (root / "north.json").write_text(json.dumps(_receipt("north-mini")))
-                with self.assertRaisesRegex(ValueError, "laguna"):
+                _write_both_rows(root)
+                _write_row(root, LAGUNA, per_seed={0: {"settings_update": update}})
+                with self.assertRaisesRegex(ValueError, LAGUNA):
                     charts.load_tooluse_ladders(str(root / "*.json"))
 
-    def test_current_receipts_have_expected_ladder(self):
-        ladders = charts.load_tooluse_ladders()
-        states = {
-            ladder["receipt"]["tag"]: [
-                charts.classify_tooluse_result(result)
-                for result in ladder["receipt"]["results"]
-            ]
-            for ladder in ladders
-        }
-        self.assertEqual(states["laguna"], ["agentic_success"] * 7)
+    def test_loader_rejects_wrong_sampling_for_a_row(self):
+        canonical = dict(charts.TOOLUSE_LADDER_ROWS[LAGUNA]["sampling"])
+        bad_samplings = [
+            # the old greedy single-run contract must no longer load
+            {
+                "temperature": 0.0,
+                "top_p": None,
+                "top_k": None,
+                "seed": None,
+                "seed_effective": None,
+            },
+            # right shape, wrong seed for this file
+            {**canonical, "seed": 7, "seed_effective": True},
+            # seed present but the server ignored it
+            {**canonical, "seed": 0, "seed_effective": False},
+            # off-profile sampling
+            {**canonical, "temperature": 0.7, "seed": 0, "seed_effective": True},
+            {**canonical, "top_p": 1.0, "seed": 0, "seed_effective": True},
+            {**canonical, "top_k": 20, "seed": 0, "seed_effective": True},
+            # missing the effectiveness attestation entirely
+            {**canonical, "seed": 0},
+        ]
+        for sampling in bad_samplings:
+            with self.subTest(sampling=sampling), tempfile.TemporaryDirectory() as tmp:
+                root = pathlib.Path(tmp)
+                _write_both_rows(root)
+                _write_row(
+                    root,
+                    LAGUNA,
+                    per_seed={0: {"settings_update": {"sampling": sampling}}},
+                )
+                with self.assertRaisesRegex(ValueError, LAGUNA):
+                    charts.load_tooluse_ladders(str(root / "*.json"))
+
+    def test_loader_rejects_rungs_without_prompt_identity(self):
+        stripped = _default_results()
+        stripped[3].pop("filler_sha256")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = pathlib.Path(tmp)
+            _write_both_rows(root)
+            _write_row(root, NORTH, per_seed={1: {"results": stripped}})
+            with self.assertRaisesRegex(ValueError, NORTH):
+                charts.load_tooluse_ladders(str(root / "*.json"))
+
+    def test_loader_rejects_cross_seed_prompt_drift(self):
+        drifted_tokens = _default_results()
+        drifted_tokens[4]["actual_prompt_tokens"] += 3
+        drifted_filler = _default_results()
+        drifted_filler[2]["filler_sha256"] = "a-different-prompt"
+
+        for name, results in (
+            ("actual_prompt_tokens", drifted_tokens),
+            ("filler_sha256", drifted_filler),
+        ):
+            with self.subTest(name=name), tempfile.TemporaryDirectory() as tmp:
+                root = pathlib.Path(tmp)
+                _write_both_rows(root)
+                _write_row(root, NORTH, per_seed={2: {"results": results}})
+                with self.assertRaisesRegex(ValueError, NORTH):
+                    charts.load_tooluse_ladders(str(root / "*.json"))
+
+    def test_aggregate_requires_every_seed_to_pass(self):
+        deepest = charts.TOOLUSE_SCORED_LENGTHS[-1]
+
+        def _mutated(index, mutation):
+            results = _default_results()
+            results[index].update(mutation)
+            return results
+
+        cases = [
+            # (per-seed mutation of the deepest rung, expected outcome)
+            (
+                {"used_tool_response": False, "followup_status": "not_used",
+                 "followup_value_matched": False},
+                "action_only",
+            ),
+            (
+                {"finish_reason": "length", "primary_status": "budget_bound"},
+                "budget_bound",
+            ),
+            (
+                {"correct_action": False, "primary_status": "no_toolcall",
+                 "valid_toolcall": False, "used_tool_response": False},
+                "primary_failure",
+            ),
+            ({"primary_status": "error", "error": "timeout"}, "infra_failure"),
+        ]
+        for mutation, expected in cases:
+            with self.subTest(expected=expected), tempfile.TemporaryDirectory() as tmp:
+                root = pathlib.Path(tmp)
+                _write_both_rows(
+                    root,
+                    per_seed={1: {"results": _mutated(-1, mutation)}},
+                )
+                ladders = charts.load_tooluse_ladders(str(root / "*.json"))
+                north = next(l for l in ladders if l["key"] == NORTH)
+                laguna = next(l for l in ladders if l["key"] == LAGUNA)
+
+                # Only the perturbed rung of the perturbed row degrades.
+                self.assertEqual(
+                    [rung["outcome"] for rung in laguna["rungs"]],
+                    ["agentic_success"] * 7,
+                )
+                self.assertEqual(
+                    [rung["outcome"] for rung in north["rungs"]],
+                    ["agentic_success"] * 6 + [expected],
+                )
+                worst = north["rungs"][-1]
+                self.assertEqual(worst["pass_count"], 2)
+                self.assertEqual(worst["seed_count"], 3)
+                self.assertLess(worst["pass_count"], worst["seed_count"])
+                # The prompt position survives even an unscored seed.
+                self.assertEqual(
+                    charts.tooluse_result_position(worst), deepest + 7
+                )
+
+                self.assertEqual(
+                    charts.tooluse_ceiling_text(laguna["rungs"]),
+                    f"max end-to-end: {deepest + 7:,} (3/3 seeds)",
+                )
+                self.assertEqual(
+                    charts.tooluse_ceiling_text(north["rungs"]),
+                    "max end-to-end: "
+                    f"{charts.TOOLUSE_SCORED_LENGTHS[-2] + 7:,} (3/3 seeds)",
+                )
+
+    def test_aggregate_takes_the_worst_outcome_across_seeds(self):
+        # One seed only fails the follow-up, another loses the whole request:
+        # the rung must report the worse of the two, not the first or the last.
+        action_only = _default_results()
+        action_only[-1].update(
+            used_tool_response=False,
+            followup_status="not_used",
+            followup_value_matched=False,
+        )
+        infra = _default_results()
+        infra[-1].update(primary_status="error", error="timeout")
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = pathlib.Path(tmp)
+            _write_both_rows(
+                root,
+                per_seed={
+                    0: {"results": action_only},
+                    2: {"results": infra},
+                },
+            )
+            ladders = charts.load_tooluse_ladders(str(root / "*.json"))
+            north = next(l for l in ladders if l["key"] == NORTH)
+            worst = north["rungs"][-1]
+
+            self.assertEqual(
+                worst["seed_outcomes"],
+                ["action_only", "agentic_success", "infra_failure"],
+            )
+            self.assertEqual(worst["outcome"], "infra_failure")
+            self.assertEqual(worst["pass_count"], 1)
+            self.assertEqual(worst["seed_count"], 3)
+
+    def test_no_end_to_end_pass_annotation(self):
+        failed = _default_results()
+        for result in failed:
+            result.update(
+                correct_action=False,
+                primary_status="no_toolcall",
+                valid_toolcall=False,
+                used_tool_response=False,
+            )
+        with tempfile.TemporaryDirectory() as tmp:
+            root = pathlib.Path(tmp)
+            _write_both_rows(root, results=failed)
+            ladders = charts.load_tooluse_ladders(str(root / "*.json"))
+            north = next(l for l in ladders if l["key"] == NORTH)
+
+            self.assertEqual(
+                [rung["pass_count"] for rung in north["rungs"]], [0] * 7
+            )
+            self.assertEqual(
+                charts.tooluse_ceiling_text(north["rungs"]), "no end-to-end pass"
+            )
+
+    def test_real_seed_receipts_match_their_row_contract(self):
+        """Every seed receipt on disk must satisfy its row's declared contract.
+
+        The Laguna sampled row is still being measured, so this asserts over
+        whichever seed receipts exist rather than over a fixed ladder; the
+        full two-row path is covered by the fixture tests above.
+        """
+        found = {}
+        for path in sorted(glob.glob(charts.TOOLUSE_RECEIPT_GLOB)):
+            with open(path) as handle:
+                receipt = json.load(handle)
+            tag = receipt.get("tag")
+            row_key, seed = None, None
+            for key, row in charts.TOOLUSE_LADDER_ROWS.items():
+                for candidate in row["seeds"]:
+                    if tag == f'{row["tag_prefix"]}-seed{candidate}':
+                        row_key, seed = key, candidate
+            self.assertIsNotNone(
+                row_key, f"{path} matches the ladder glob but no registered row"
+            )
+            self.assertIsNone(
+                charts.tooluse_receipt_reason(
+                    receipt, charts.TOOLUSE_LADDER_ROWS[row_key], seed
+                ),
+                f"{path} is not canonical for {row_key} seed {seed}",
+            )
+            found.setdefault(row_key, []).append((seed, receipt["results"]))
+
+        # North's post-095 seeds are on disk; whichever are present must have
+        # probed byte-identical prompts at the canonical depths.
+        self.assertIn(NORTH, found)
+        north = sorted(found[NORTH])
+        self.assertIsNone(charts.tooluse_cross_seed_reason(north))
         self.assertEqual(
-            states["north-mini"],
-            [
-                "agentic_success",
-                "primary_failure",
-                "budget_bound",
-                "primary_failure",
-                "budget_bound",
-                "budget_bound",
-                "primary_failure",
-            ],
+            [rung["actual_prompt_tokens"] for rung in north[0][1]],
+            [16408, 64826, 115747, 131013, 175942, 196623, 245172],
+        )
+        aggregated = charts.aggregate_tooluse_seeds(north)
+        self.assertEqual(
+            [rung["outcome"] for rung in aggregated], ["agentic_success"] * 7
+        )
+        self.assertEqual(
+            charts.tooluse_ceiling_text(aggregated),
+            f"max end-to-end: 245,172 ({len(north)}/{len(north)} seeds)",
         )
 
-    def test_renderer_uses_final_rows_and_handles_missing_actual_usage(self):
-        north_results = [
-            _success_result(length, length + 11)
-            for length in charts.TOOLUSE_SCORED_LENGTHS
-        ]
-        north_results[0] = {
+    def test_renderer_uses_aggregated_rows_and_handles_missing_actual_usage(self):
+        unscored = _default_results()
+        unscored[0] = {
             "approx_tokens": charts.TOOLUSE_SCORED_LENGTHS[0],
+            "filler_sha256": unscored[0]["filler_sha256"],
             "primary_status": "error",
             "error": "timeout",
             "attempts": [_success_result(16384, 16633)],
@@ -226,10 +459,7 @@ class TooluseChartTest(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as tmp:
             root = pathlib.Path(tmp)
-            (root / "laguna.json").write_text(json.dumps(_receipt("laguna")))
-            (root / "north.json").write_text(
-                json.dumps(_receipt("north-mini", results=north_results))
-            )
+            _write_both_rows(root, per_seed={1: {"results": unscored}})
             out = root / "ladder.png"
             rendered = charts.make_tooluse_ladder_chart(
                 str(root / "*.json"), str(out)
@@ -239,7 +469,17 @@ class TooluseChartTest(unittest.TestCase):
             self.assertTrue(out.is_file())
             self.assertGreater(out.stat().st_size, 1000)
             self.assertEqual(
-                charts.classify_tooluse_result(north_results[0]), "infra_failure"
+                charts.classify_tooluse_result(unscored[0]), "infra_failure"
+            )
+
+            ladders = charts.load_tooluse_ladders(str(root / "*.json"))
+            north = next(l for l in ladders if l["key"] == NORTH)
+            # The unscored seed still plots at the depth the other seeds
+            # measured, because the prompts are identical by contract.
+            self.assertEqual(north["rungs"][0]["outcome"], "infra_failure")
+            self.assertEqual(
+                charts.tooluse_result_position(north["rungs"][0]),
+                charts.TOOLUSE_SCORED_LENGTHS[0] + 7,
             )
 
     def test_current_north_profile_control_is_canonical(self):
