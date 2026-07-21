@@ -3,12 +3,27 @@
 | | |
 |---|---|
 | **Type** | task |
-| **Status** | ready |
+| **Status** | blocked — incomplete 3090-G handoff |
 | **Execution host** | multi-rig |
 | **Wall clock** | ~3-5 days end-to-end: ~0.5 day tooling port + gates (incl. Gate 2b slicer validation), ~0.5-1 day prune + verification (r9700-box), ~0.5 day HF transfer, ~1 day recal + convert (3090-calib-box), ~1-2 days serve/validate/bench + SWE-bench cell across both rigs. |
 | **GPU time** | r9700-box: ~6-14h exclusive on both GPUs (saliency pass 1024 samples incl. video-routing rows on a 28GiB+28GiB+CPU-offload split, plus the coherence gate); 3090-calib-box: GPTQ recal is CPU-only per the qwen36/REAP precedent (CUDA_VISIBLE_DEVICES=\"\"), ~day-scale wall but ~0 GPU; serve+bench: ~2-4h GPU on each of 3090-box and r9700-box. |
-| **Depends on** | 3090-G tooling handoff — SATISFIED: all three donor files verified present in the local 3090 checkout (patches/qwen3_5moe_unfused_experts.py, scripts/quantize/run_reap.py, scripts/quantize/test_qwen3_5moe_unfuse.py; commits 708a694/9030c8e).; R9700 GPU window: user/team scheduling call to pause the in-flight FP8 campaign for the ~1-day prune occupancy.; 3090-calib-box availability + Rule 1 window for the ~day-scale GPTQ recal (3090 team executes steps 9-13).; HF_TOKEN with write access to mattbucci/* for the two uploads. |
+| **Depends on** | 3090-G tooling handoff — NOT YET SATISFIED: the live donor still lacks the unified model/config helpers and dual-directory resolution required by the current assessment below.; R9700 GPU window: user/team scheduling call for a dedicated ~1-day prune occupancy after the FP8 baseline is checkpointed.; 3090-calib-box availability + Rule 1 window for the ~day-scale GPTQ recal (3090 team executes steps 9-13).; HF_TOKEN with write access to mattbucci/* for the two uploads. |
 | **Provides to** | 3090 repo: closes MoE-coverage-backlog item 1 (Qwen3.6-35B-A3B-REAP-AWQ) — new qwen36-reap preset, bake-off cell, decode receipt.; R9700 repo: a lighter 192-expert AWQ serving option under the qwen36-moe preset (KV/load headroom on 64 GB) + committed, re-validated Qwen3_5Moe REAP tooling reusable for future fused-MoE prunes.; Fleet: mattbucci/Qwen3.6-35B-A3B-REAP-AWQ + REAP192-BF16 on HF as shared artifacts. |
+
+## Current assessment — 2026-07-18 post-089
+
+- **Disposition:** **Blocked.** The earlier satisfied-handoff claim was stale. At donor HEAD `5d46fb3`,
+  `run_reap.py` still lacks `pick_model_class`, `read_expert_counts`, file-presence dual-directory
+  resolution, nested-config writes, and crash-safe pre-save reporting. The matching R9700 helper and
+  acceptance test are also absent.
+- **Goal fit:** Low priority for the current FP8/256K speed objective. This lane creates an AWQ
+  footprint/KV-headroom option and explicitly expects M=1 decode parity, not higher throughput.
+- **Blocking gates:** 3090-G must finish and pass its tooling Gate A; the shared files must then be staged
+  byte-identically for R9700 Gates B/C/D and Gate 2b. An HF write credential and an explicitly approved,
+  exclusive TP2 prune window remain additional prerequisites.
+- **Next action:** Do not copy the current donor. Keep R97-F blocked until the donor defines both
+  `pick_model_class` and `read_expert_counts`, implements the agreed dual-directory/nested-config behavior,
+  and passes its synthetic-composite test. Only then perform the R9700 CPU gates and request a GPU window.
 
 ## Objective
 
@@ -33,7 +48,7 @@ n/a (build/relay task; the embedded quality expectation — REAP-192 retains >=n
 - Serving/bench interfaces verified: R9700 launch.sh qwen36-moe preset (moe_wna16 auto-detect, CTX=262144, DECODE_STEPS=8, cuda-graph ON, comment states REAM-A3B is served via this preset with a MODEL= override — same path works for REAP; confirm launch default PORT=23334 or pass --port to match validate_capabilities canonical 23334); 3090 launch.sh qwen36-ream preset (awq_marlin, 192-expert twin, 144 t/s @255K); R9700 scripts/eval/validate_capabilities.py + scripts/bench/bench_256k_sweep.sh; 3090 scripts/eval/validate_capabilities.py (thinking/tool_call/vision/video gates) + evals/swebench/run_all_cycles.sh; 3090 qwen36 native cell = 177/300 (59.0%) SWE-bench, 121 t/s @255K.
 - Not redundant: mattbucci Qwen3.6-REAM-A3B (192e, Samsung SAIL merge) already ships, but the coverage matrix requires native + REAP + REAM per MoE base — Qwen3.6-35B-A3B-REAP-AWQ is 3090 backlog item 1 and both rigs' READMEs name R9700 the better prune host (64 GB VRAM vs 3090 CPU-offload risk).
 - Cross-team transfer channel (reference-sister-teams.md): HF ships at huggingface.co/mattbucci + '> Cross-team request from R9700 (date)' README banner; scripts/quantize/upload_repo_per_file.py exists in both repos for resumable per-file upload.
-- Scheduling: R9700 working tree carries the uncommitted in-flight FP8 campaign (patches 083-089, new benchmarks/fp8-256k-options-r9700-2026-07-18.json); CLAUDE.md line 50: no serving or GPU benchmarks while calibration or pruning is active; line 60: detach prune jobs in their own session (setsid). The step-1 tooling-port commit MUST stage only ream-patches/ + scripts/quantize/ + run_reap.sh and MUST NOT stage the uncommitted FP8 campaign files.
+- Scheduling: R9700 working tree carries the completed-but-uncommitted FP8 baseline (patches 083-089, new benchmarks/fp8-256k-options-r9700-2026-07-18.json); CLAUDE.md line 50: no serving or GPU benchmarks while calibration or pruning is active; line 60: detach prune jobs in their own session (setsid). The step-1 tooling-port commit MUST stage only ream-patches/ + scripts/quantize/ + run_reap.sh and MUST NOT stage the FP8 baseline files.
 
 
 ## Method
@@ -90,7 +105,7 @@ Pre-registered comparison points, all existing receipts: 3090 qwen36 native = 17
 
 ## Constraints
 
-- R9700: no serving or GPU benchmarks while the prune is active (CLAUDE.md line 50) — flagships North-Mini/Laguna offline for the prune window; schedule against the in-flight FP8 campaign and do NOT clobber the uncommitted working tree (patches 083-089 are the current state). The step-1 port commit stages ONLY ream-patches/ + scripts/quantize/ + run_reap.sh — never patches 083-089 or benchmarks/fp8-256k-options-r9700-2026-07-18.json.
+- R9700: no serving or GPU benchmarks while the prune is active (CLAUDE.md line 50) — flagships North-Mini/Laguna offline for the prune window; schedule only after the FP8 baseline is checkpointed and do NOT clobber the working tree (patches 083-089 are the current state). The step-1 port commit stages ONLY ream-patches/ + scripts/quantize/ + run_reap.sh — never patches 083-089 or benchmarks/fp8-256k-options-r9700-2026-07-18.json.
 - Detach the prune via setsid with a /data/tmp log (CLAUDE.md line 60; feedback-detach-no-concurrent-calib).
 - All prune outputs and swap/scratch go to /data (895G free) — root fs is 99% full (22G free); a save into ~/AI/models (on /) wedges the box.
 - 3090 Rule 1: recal runs on the 3090-calib-box, never concurrent with serving/eval on the eval box; Rule 2: no concurrent rollout+score for the SWE-bench cell.

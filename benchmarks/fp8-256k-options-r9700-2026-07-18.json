@@ -1,0 +1,149 @@
+{
+  "date": "2026-07-18",
+  "stack": {
+    "gpus": "2x AMD Radeon AI PRO R9700 (gfx1201, 32 GiB each)",
+    "rocm": "7.2",
+    "pytorch": "2.11.0+rocm7.2",
+    "triton": "3.6.0",
+    "sglang": "v0.5.15 + patches 001-089",
+    "sglang_base_commit": "f63458b5beaceabbd9d749b9fc956370e1b649e6",
+    "tp_size": 2
+  },
+  "method": {
+    "harness": "scripts/bench/decode_ab.py",
+    "metric": "median across runs of average TPOT from API completion_tokens over the first-decode-event to finish interval; tok/s = 1000 / TPOT_ms",
+    "output_tokens": 80,
+    "temperature": 0,
+    "warning": "A one-point 220K run decodes immediately after a full cold prefill. Compare scheduler arms only after priming the same prefix; incremental context sweeps and cold one-point runs are not interchangeable.",
+    "instrumentation_correction": "The original harness counted nonempty SSE text events. Parser buffering made that invalid when FP8 activation quantization changed generated text/chunking. The harness was fixed and the auto-vs-Triton decision was rerun with API-reported completion-token counts."
+  },
+  "laguna": {
+    "launch": "./scripts/launch.sh laguna",
+    "model": "/data/models/Laguna-XS.2-FP8",
+    "kv_cache_dtype": "checkpoint-selected FP8 E4M3 with static scales",
+    "attention_backend": "triton",
+    "num_kv_splits": 64,
+    "auto_post087": {
+      "dense_fp8_backend": "auto (RDNA4 torch dequantize + BF16 GEMM fallback)",
+      "measurement": "legacy nonempty-SSE-event rate; absolute values happened to agree within about 1% with the corrected auto rerun",
+      "disable_overlap_schedule": true,
+      "cache_state": "increasing-depth sweep",
+      "points": [
+        {"input_tokens": 62, "runs_tps": [49.405, 49.679, 49.898], "median_tps": 49.679},
+        {"input_tokens": 7403, "runs_tps": [48.783, 48.815, 48.864], "median_tps": 48.815},
+        {"input_tokens": 58785, "runs_tps": [45.357, 45.391, 45.283], "median_tps": 45.357},
+        {"input_tokens": 117512, "runs_tps": [43.077, 43.063, 43.217], "median_tps": 43.077},
+        {"input_tokens": 220277, "runs_tps": [38.852, 38.974, 38.977], "median_tps": 38.974}
+      ]
+    },
+    "dense_triton_legacy_sse_event_measurement": {
+      "dense_fp8_backend": "triton",
+      "measurement_valid": false,
+      "invalid_reason": "counted nonempty streamed text events rather than completion tokens; Triton changed output arithmetic and parser chunking",
+      "cache_state": "increasing-depth sweep; final point was aborted based on what was later shown to be an instrumentation artifact",
+      "points": [
+        {"input_tokens": 62, "runs_tps": [58.67, 61.83, 51.68], "median_tps": 58.673, "versus_auto_pct": 18.1, "noisy": true},
+        {"input_tokens": 7403, "runs_tps": [64.68, 48.32, 47.84], "median_tps": 48.321, "versus_auto_pct": -1.0, "noisy": true},
+        {"input_tokens": 58785, "runs_tps": [22.34, 16.29, 23.16], "median_tps": 22.339, "versus_auto_pct": -50.7},
+        {"input_tokens": 117512, "runs_tps": [31.32, 29.11, 27.68], "median_tps": 29.108, "versus_auto_pct": -32.4},
+        {"input_tokens": 220277, "status": "aborted", "reason": "large mid/deep regression already established"}
+      ],
+      "isolated_kernel_probe": {
+        "correct": true,
+        "cuda_graph_replay": "bit-identical for static M=1/16/128 probes",
+        "m1_4096x4096_ms": {"triton": 0.049, "torch_fallback": 4.24},
+        "m1_11008x4096_ms": {"triton": 0.112, "torch_fallback": 2.18},
+        "conclusion": "The kernel is viable; the corrected server A/B below confirms a large win even before exact-shape tuning."
+      }
+    },
+    "dense_triton_token_counted": {
+      "dense_fp8_backend": "triton",
+      "auto_rollback": "FP8_GEMM_BACKEND=auto ./scripts/launch.sh laguna",
+      "points": [
+        {"input_tokens": 62, "auto_runs_tps": [49.73, 49.82, 50.24, 50.07, 50.08], "auto_median_tps": 50.068, "triton_runs_tps": [72.62, 73.14, 73.98, 74.23, 74.08], "triton_median_tps": 73.980, "triton_vs_auto_pct": 47.76, "completion_tokens_per_run": 80},
+        {"input_tokens": 7403, "auto_runs_tps": [48.84, 48.97, 48.96, 49.00, 48.89], "auto_median_tps": 48.964, "triton_runs_tps": [71.18, 71.62, 71.27, 71.34, 72.15], "triton_median_tps": 71.342, "triton_vs_auto_pct": 45.70, "completion_tokens_per_run": 33},
+        {"input_tokens": 58785, "auto_runs_tps": [45.01, 45.05, 45.18, 45.18, 45.16], "auto_median_tps": 45.156, "triton_runs_tps": [64.84, 65.27, 65.30, 64.97, 65.40], "triton_median_tps": 65.270, "triton_vs_auto_pct": 44.55, "auto_completion_tokens_per_run": 20, "triton_completion_tokens_per_run": 29, "comparison_caveat": "Observed completion-token rate on different early-stopping continuations, not a fixed-output isolation"},
+        {"input_tokens": 220277, "auto_runs_tps": [39.82, 40.25, 40.28, 40.39, 40.34], "auto_median_tps": 40.284, "triton_runs_tps": [54.43, 55.02, 55.19, 55.29, 55.12], "triton_median_tps": 55.125, "triton_vs_auto_pct": 36.84, "completion_tokens_per_run": 80}
+      ],
+      "quality": {
+        "comprehensive_text": "35/36; 8/8 code generation; only Python -7 % 3 convention missed",
+        "capabilities": "2/2 basic and thinking",
+        "multi_turn_tool_calls": "2/2 structured (read then todowrite), no marker leakage",
+        "early_needle_recall": {"58341": "3/3", "116586": "3/3", "176624": "3/3"},
+        "generation": "coherent at 220277 input tokens"
+      },
+      "disposition": "Promoted to the Laguna launch preset. Exact shared-expert shape tuning remains additional headroom, not a prerequisite."
+    },
+    "attention_launch_ab": {
+      "input_tokens": 220277,
+      "cache_state": "one-point cold-prefix runs; compare directionally with the matching default run",
+      "arms": [
+        {"block_n": 16, "num_warps": 4, "runs_tps": [33.957, 35.268, 35.014], "median_tps": 35.014, "versus_auto_pct": -10.2},
+        {"block_n": 32, "num_warps": 8, "runs_tps": [37.867, 38.342, 38.478], "median_tps": 38.342, "versus_auto_pct": -1.6}
+      ],
+      "offline_compile": {
+        "n32_w4": {"vgpr": 120, "lds_bytes": 4096, "spill_bytes": 0},
+        "n16_w4": {"vgpr": 85, "lds_bytes": 2048, "spill_bytes": 0},
+        "n32_w8": {"vgpr": 96, "lds_bytes": 4096, "spill_bytes": 0},
+        "n16_w8": {"vgpr": 73, "lds_bytes": 2048, "spill_bytes": 0},
+        "n64_w4": {"vgpr": 177, "lds_bytes": 8192, "spill_bytes": 0},
+        "n64_w8": {"vgpr": 132, "lds_bytes": 8192, "spill_bytes": 0}
+      },
+      "disposition": "Keep BLOCK_N=32 and num_warps=4. BLOCK_H=8 is not a valid gfx1201 WMMA tile."
+    },
+    "overlap_ab": {
+      "increasing_depth_overlap_on": [
+        {"input_tokens": 62, "median_tps": 50.907},
+        {"input_tokens": 7403, "median_tps": 49.803},
+        {"input_tokens": 58785, "median_tps": 45.651},
+        {"input_tokens": 117512, "median_tps": 42.797},
+        {"input_tokens": 220277, "median_tps": 40.498}
+      ],
+      "controlled_hot_220277": {
+        "overlap_off": {"runs_tps": [39.753, 40.080, 39.792, 39.770, 39.790], "median_tps": 39.792},
+        "overlap_on": {"runs_tps": [39.736, 39.267, 39.480, 39.800, 39.810], "median_tps": 39.736},
+        "overlap_on_vs_off_pct": -0.14
+      },
+      "disposition": "No single-user deep-context win after cache-state control. Retain ENABLE_OVERLAP_SCHEDULE=1 as an opt-in for future concurrent/shared-prefix tests; keep preset default off."
+    },
+    "profile_220277": {
+      "steps": 40,
+      "profiler_inflated_per_step_gpu_busy_ms": 35.552,
+      "breakdown_pct": {"attention": 40.9, "rocblas_gemm": 20.5, "elementwise_norm": 16.5, "rccl": 9.9, "routed_moe": 4.8, "other": 7.5},
+      "warning": "Profiler timing inflates short kernels; a separate get_num_kv_splits microbenchmark measured about 7 us/call, so its traced time is not actionable."
+    }
+  },
+  "qwen3_coder_30b_fp8": {
+    "model": "/home/letsrtfm/AI/models/Qwen3-Coder-30B-A3B-FP8",
+    "dcp_size": 1,
+    "kv_cache_dtype": "BF16 (checkpoint auto)",
+    "measurement": "legacy nonempty-SSE-event harness; use as a same-output baseline only until refreshed with completion-token accounting",
+    "points": [
+      {"input_tokens": 20, "runs_tps": [58.189, 59.677, 60.086], "median_tps": 59.677},
+      {"input_tokens": 29249, "runs_tps": [53.129, 53.725, 54.028], "median_tps": 53.725},
+      {"input_tokens": 58479, "runs_tps": [49.283, 49.988, 50.100], "median_tps": 49.988},
+      {"input_tokens": 116940, "runs_tps": [41.969, 42.675, 42.780], "median_tps": 42.675},
+      {"input_tokens": 219244, "runs_tps": [34.564, 34.915, 34.946], "median_tps": 34.915}
+    ]
+  },
+  "dcp2_validity": {
+    "benchmarked": false,
+    "required_condition": "num_kv_head_replicas % dcp_size == 0",
+    "local_tp2_models": "invalid: all have num_kv_head_replicas=1 with dcp_size=2",
+    "reason": "DCP all-gathers TP-sharded Q heads but leaves K/V local; adjacent DCP ranks must therefore hold identical replicated K/V heads.",
+    "hybrid_swa_additional_blockers": ["sliding-window extend is unimplemented", "hybrid allocator is not DCP-scaled", "masked SWA KV writes are unsupported", "window indices are not sequence-sharded"],
+    "disposition": "Do not report DCP2 performance for the local TP2 coding models. Fail fast instead of producing fast but incorrect output."
+  },
+  "verification": {
+    "benchmark_accounting_unit": "1/1 passed",
+    "dcp_layout_topology_unit": "8/8 passed",
+    "tokenizer_config_unit": "62/62 passed",
+    "patch_replay": "62/62 patches applied strictly from f63458b5beaceabbd9d749b9fc956370e1b649e6; 7017 files/symlinks matched the live tree; no unexpected double-apply; patch 026 was the documented exception",
+    "launcher_smoke": "Laguna default selected fp8_gemm_runner_backend=triton, captured the batch-one graph, became healthy, and returned the requested FP8 READY response; GPUs idle after shutdown"
+  },
+  "dispositions": {
+    "ship": ["Laguna native Triton dense block-FP8 default with FP8_GEMM_BACKEND=auto rollback", "completion-token-counted decode benchmark harness", "launcher opt-in ENABLE_OVERLAP_SCHEDULE=1", "DCP topology fail-fast validation", "Laguna custom-tokenizer regex preservation"],
+    "keep_default": ["grouped decode BLOCK_N=32/num_warps=4", "overlap scheduling off for Laguna", "dcp_size=1"],
+    "next": ["tune the 39x-per-token shared-expert dense shapes with a gfx1201-safe correctness-gated normal-kernel tuner", "profile the new native-FP8 default and resweep KV splits 48/64/80/96/128", "benchmark cold and warm multi-turn/shared-prefix agentic traffic with p50/p95 TTFT and TPOT", "expand query-selected sparse-decode quality testing to 30-50 coding/retrieval tasks"]
+  }
+}

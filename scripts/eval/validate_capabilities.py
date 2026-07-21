@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """Capability validator — runs against a live SGLang server on <port>.
 
-Checks the two capabilities we silently break during calibration:
-  1. Thinking — model produces <think>...</think> and terminates before max_tokens
-  2. Vision  — model describes an image correctly (keyword match)
-
-Also runs a basic short-answer sanity check.
+Runs a basic short-answer sanity check plus the capabilities most often broken
+by calibration or serving configuration:
+  1. Structured tool calls — parser returns OpenAI tool_calls, not raw markup
+  2. Thinking — model produces reasoning and the correct answer
+  3. Vision/video — model recognizes synthetic, content-specific inputs
 
 Usage:
     # Launch your server, then:
@@ -234,6 +234,100 @@ def check_basic(base_url: str, model: str) -> tuple[bool, str]:
     return passed, f"finish={finish} answer={sample!r}"
 
 
+def check_tool_call(base_url: str, model: str) -> tuple[bool, str]:
+    """Verify the server emits structured tool calls, not raw markup.
+
+    A matching SGLang tool parser returns finish_reason="tool_calls" with a
+    parsed function name and JSON arguments. A wrong or missing parser often
+    leaves model-specific tool markup in assistant content, which coding
+    harnesses silently discard.
+    """
+    tools = [
+        {
+            "type": "function",
+            "function": {
+                "name": "get_weather",
+                "description": "Get the current weather for a city.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "location": {
+                            "type": "string",
+                            "description": "City name",
+                        }
+                    },
+                    "required": ["location"],
+                },
+            },
+        }
+    ]
+    payload = {
+        "model": model,
+        "messages": [
+            {
+                "role": "user",
+                "content": (
+                    "What's the weather in Paris right now? "
+                    "Use the get_weather tool."
+                ),
+            }
+        ],
+        "tools": tools,
+        "tool_choice": "auto",
+        "max_tokens": 512,
+        "temperature": 0.4,
+        "top_p": 0.95,
+        "top_k": 20,
+        "chat_template_kwargs": {"enable_thinking": False},
+    }
+    try:
+        response = _http_post(
+            f"{base_url}/v1/chat/completions", payload, timeout=150
+        )
+    except Exception as exc:
+        return False, f"request failed: {exc!r}"
+
+    choice = response["choices"][0]
+    message = choice.get("message", {})
+    finish = choice.get("finish_reason")
+    tool_calls = message.get("tool_calls") or []
+    if not tool_calls:
+        content = message.get("content") or ""
+        hint = next(
+            (
+                f" raw-markup-in-content({marker})"
+                for marker in (
+                    "<function",
+                    "<tool_call",
+                    "[TOOL_CALLS]",
+                    "functools",
+                    "<|tool",
+                )
+                if marker in content
+            ),
+            "",
+        )
+        return (
+            False,
+            f"no tool_calls finish={finish}{hint} content={content[:60]!r}",
+        )
+
+    function = tool_calls[0].get("function", {})
+    name = function.get("name", "")
+    raw_args = function.get("arguments", "")
+    try:
+        parsed = json.loads(raw_args) if isinstance(raw_args, str) else raw_args
+    except Exception:
+        parsed = None
+    passed = (
+        finish == "tool_calls"
+        and name == "get_weather"
+        and isinstance(parsed, dict)
+        and "location" in parsed
+    )
+    return passed, f"finish={finish} name={name!r} args={str(raw_args)[:80]!r}"
+
+
 def _make_test_video() -> bytes:
     """A 12-frame synthetic video: red circle moves left→right across white bg.
 
@@ -382,6 +476,11 @@ def main() -> int:
     p.add_argument("--host", default="localhost")
     p.add_argument("--model", default=None, help="Override model name (default: server-reported)")
     p.add_argument("--skip-thinking", action="store_true")
+    p.add_argument(
+        "--skip-tools",
+        action="store_true",
+        help="skip the structured tool-call roundtrip",
+    )
     p.add_argument("--skip-vision", action="store_true")
     p.add_argument("--skip-video", action="store_true",
                    help="skip the video roundtrip (Devstral has no video; Qwen/Gemma do)")
@@ -429,6 +528,11 @@ def main() -> int:
     ok, msg = check_basic(base, model)
     results.append(("basic", ok, msg))
     print(f"  [{'PASS' if ok else 'FAIL'}] basic     {msg}")
+
+    if not args.skip_tools:
+        ok, msg = check_tool_call(base, model)
+        results.append(("tool_call", ok, msg))
+        print(f"  [{'PASS' if ok else 'FAIL'}] tool_call {msg}")
 
     if not args.skip_thinking:
         ok, msg = check_thinking(base, model, thinking_kwargs, max_tokens=args.max_tokens_thinking)

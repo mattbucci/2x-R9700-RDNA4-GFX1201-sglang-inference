@@ -1,34 +1,34 @@
 {
-  "model": "Coder-30B AWQ (MoE)",
+  "model": "Qwen3-Coder-30B-A3B AWQ (MoE)",
   "engine": "SGLang",
   "method": "streaming-TPOT median (decode_ab, 3-run)",
   "hardware": "2x R9700 TP=2",
-  "timestamp": "2026-07-12 v0.5.15+084",
+  "timestamp": "v0.5.15+patches",
   "output_tokens": 80,
   "context_sweep": [
     {
       "context": 128,
       "input_len": 20,
-      "tpot_ms": 11.33,
-      "tok_per_sec": 88.254
+      "tpot_ms": 11.6,
+      "tok_per_sec": 86.24
     },
     {
       "context": 4096,
       "input_len": 3673,
-      "tpot_ms": 12.19,
-      "tok_per_sec": 82.053
+      "tpot_ms": 12.14,
+      "tok_per_sec": 82.384
     },
     {
       "context": 16384,
       "input_len": 14634,
-      "tpot_ms": 14.52,
-      "tok_per_sec": 68.879
+      "tpot_ms": 12.92,
+      "tok_per_sec": 77.388
     },
     {
-      "context": 32768,
-      "input_len": 29249,
-      "tpot_ms": 17.47,
-      "tok_per_sec": 57.229
+      "context": 29696,
+      "input_len": 26509,
+      "tpot_ms": 13.46,
+      "tok_per_sec": 74.301
     }
   ],
   "throughput_sweep": [
@@ -69,5 +69,5 @@
       "ttft_ms": 84.77
     }
   ],
-  "note": "patch 084 BF16 attention collective (3-run median)"
+  "note": "fleet rebench, streaming-TPOT 3-run median, current tree"
 }

@@ -1,0 +1,10 @@
+{
+  "requested_ctx": 220000,
+  "requested_steps": 40,
+  "actual_prompt_tokens": 197194,
+  "cached_tokens": null,
+  "completion_tokens": 40,
+  "finish_reason": "length",
+  "elapsed_s": 4.44,
+  "steps_exact": true
+}

@@ -15,13 +15,14 @@ upstream BF16
   -> serving capability and long-context validation
 \`\`\`
 
-Use the separate \`quant\` environment. Do not calibrate while a server or another memory-intensive model job is running.
+Use `/home/letsrtfm/miniforge3/envs/fp8-quant` on this host (the older documented `quant` environment is absent). Do not calibrate while a server or another memory-intensive model job is running.
 
 ## Primary entry points
 
 | Script | Purpose |
 |---|---|
 | \`run_full_pipeline.sh\` | Calibration through serving validation for supported model keys |
+| \`calibration_datasets.py\` | Capability-aware mixed datasets; live audio sources avoid optional codec decoding |
 | \`quantize_fp8.py\` | Native compressed-tensors FP8 build |
 | \`quantize_coder30b_code_thinking.py\` | Qwen3-Coder MoE calibration |
 | \`quantize_qwen35_moe_ream.py\` | Qwen3.5/3.6 MoE calibration |

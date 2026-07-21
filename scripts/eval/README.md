@@ -4,7 +4,8 @@
 |--------|---------|
 | `eval_comprehensive.py` | Math, code, reasoning, and multimodal quality suite |
 | `validate_capabilities.py` | Basic/reasoning/tool and applicable modality checks |
-| `probe_256k_tooluse.py` | Self-calibrating long-context correct-action and multi-turn tool-result-use ladder |
+| `probe_256k_tooluse.py` | Self-calibrating long-context correct-action and multi-turn tool-result-use ladder with separate repeated-stress and heterogeneous agentic-context profiles |
+| `profile_control_ab.py` | Single-turn prompt-profile control: two filler textures calibrated to the same exact rendered token count, scored on correct structured action |
 | `check_awq_scales.py` | AWQ scale/qweight integrity, with optional BF16-base comparison |
 | `warmup.py` | Server warmup utility |
 
@@ -46,7 +47,26 @@ retained retry, and whether a terminal second turn semantically used the tool
 result. Only `followup.max_ctx_agentic_success` establishes an end-to-end ceiling.
 `finish_reason=length`, an HTTP error, or an under-filled rung cannot pass.
 
-Regenerate the README ladder chart from the canonical receipts with the chart
+The default `--filler-profile repeated` preserves the historical low-entropy
+repetition stress prompt. Use `--filler-profile agentic` for deterministic,
+heterogeneous code/command/log context; treat the two as separate curves rather
+than silently combining them. For sampled model-card-style gates, launch SGLang
+with `--enable-deterministic-inference` and use explicit `--temperature`,
+`--top-p`, `--top-k`, and `--seed`. SGLang records but does not honor a request
+seed when deterministic inference is disabled, and the receipt reports
+`seed_effective=false` in that case.
+
+```bash
+python -u scripts/eval/probe_256k_tooluse.py \
+  --port 23334 --tag north-agentic-seed0 \
+  --filler-profile agentic --multi-turn \
+  --temperature 1 --top-p 0.95 --top-k -1 --seed 0 \
+  --max-tokens 1024 --followup-max-tokens 1024 \
+  --lengths 65536,116000 \
+  --out benchmarks/quality/tooluse256k-north-agentic-seed0.json
+```
+
+Regenerate the historical ladder and post-fix North profile-control charts with the chart
 environment (the base conda environment on this rig):
 
 ```bash

@@ -1,0 +1,10 @@
+{
+  "_source": "benchmarks/fp8-256k-options-r9700-2026-07-18.json :: /laguna/profile_220277",
+  "_note": "auto dense path (dequant-to-BF16 + torch.mm), 220277 prompt tokens, 40 decode steps. Non-numeric keys are ignored by --compare.",
+  "attention": 40.9,
+  "rocblas_gemm": 20.5,
+  "elementwise_norm": 16.5,
+  "rccl": 9.9,
+  "routed_moe": 4.8,
+  "other": 7.5
+}

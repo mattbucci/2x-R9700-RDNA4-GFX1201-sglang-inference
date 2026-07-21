@@ -1,0 +1,192 @@
+diff --git a/python/sglang/srt/function_call/cohere_command4_detector.py b/python/sglang/srt/function_call/cohere_command4_detector.py
+index e19bef8..84dbec2 100644
+--- a/python/sglang/srt/function_call/cohere_command4_detector.py
++++ b/python/sglang/srt/function_call/cohere_command4_detector.py
+@@ -36,9 +36,9 @@ class CohereCommand4Detector(BaseFormatDetector):
+     def _normalize_calls(arr, exposed_tool_names: set[str]) -> List[dict]:
+         """Translate Cohere's per-item shape ``{tool_call_id, tool_name,
+         parameters}`` into the shape ``parse_base_json`` expects (``name`` /
+-        ``parameters``). Recover a missing name only when ``tool_call_id`` is
+-        itself an exposed function name, then drop the id since OpenAI Chat
+-        Completions assigns its own."""
++        ``parameters``). Recover a missing name only when ``tool_call_id`` or
++        a string ``function`` field is itself an exposed function name, then
++        drop the id since OpenAI Chat Completions assigns its own."""
+         if isinstance(arr, dict):
+             arr = [arr]
+         if not isinstance(arr, list):
+@@ -60,6 +60,17 @@ class CohereCommand4Detector(BaseFormatDetector):
+                     and tool_call_id in exposed_tool_names
+                 ):
+                     normalized["name"] = tool_call_id
++            if "name" not in normalized and "tool_name" not in normalized:
++                function = normalized.get("function")
++                # Second malformed North variant, observed at depth: the name
++                # is carried under a ``function`` key with no name/tool_name
++                # field. Recover only an exact, exposed name; membership is the
++                # whole guard, since no canonical shape puts an id here. The
++                # OpenAI nested ``{"function": {"name": ...}}`` object is a
++                # different shape and is deliberately left untouched.
++                if isinstance(function, str) and function in exposed_tool_names:
++                    normalized["name"] = function
++                    normalized.pop("function", None)
+             if "name" not in normalized and "tool_name" in normalized:
+                 normalized["name"] = normalized.pop("tool_name")
+             normalized.pop("tool_call_id", None)
+diff --git a/test/registered/unit/function_call/test_cohere_command4_detector.py b/test/registered/unit/function_call/test_cohere_command4_detector.py
+index 22ea681..3314fd1 100644
+--- a/test/registered/unit/function_call/test_cohere_command4_detector.py
++++ b/test/registered/unit/function_call/test_cohere_command4_detector.py
+@@ -175,5 +175,152 @@ class TestCohereCommand4MalformedActionRecovery(unittest.TestCase):
+                 self.assertEqual(self._parse(action), [])
+ 
+ 
++class TestCohereCommand4FunctionKeyRecovery(unittest.TestCase):
++    """The second malformed North variant: the name arrives under a string
++    ``function`` key with no ``name``/``tool_name``/``tool_call_id`` field.
++    Observed at 64801 rendered tokens in the post-094 profile A/B, where a
++    semantically correct action was dropped and its raw markup leaked into
++    ``content`` with ``finish_reason == "stop"``.
++    """
++
++    def setUp(self):
++        self.tools = [
++            Tool(
++                function=Function(
++                    name=name,
++                    parameters={"type": "object", "properties": {}},
++                )
++            )
++            for name in ("lookup_record", "get_weather", "search")
++        ]
++        self.detector = CohereCommand4Detector()
++
++    def _parse(self, action):
++        text = (
++            self.detector.bot_token
++            + json.dumps([action], separators=(",", ":"))
++            + self.detector.eot_token
++        )
++        with envs.SGLANG_FORWARD_UNKNOWN_TOOLS.override(False):
++            return self.detector.detect_and_parse(text, self.tools).calls
++
++    def test_recovers_exact_exposed_name_from_string_function(self):
++        calls = self._parse(
++            {"function": "lookup_record", "parameters": {"id": "BANANA42"}}
++        )
++
++        self.assertEqual(len(calls), 1)
++        self.assertEqual(calls[0].name, "lookup_record")
++        self.assertEqual(calls[0].tool_index, 0)
++        self.assertEqual(json.loads(calls[0].parameters), {"id": "BANANA42"})
++
++    def test_verbatim_depth_regression_payload(self):
++        # Byte-for-byte the content the server dropped in
++        # north-mini-tooluse-profile-ab-post094-2026-07-19.json (seed 1).
++        text = (
++            '<|START_ACTION|>[\n    {"function": "lookup_record", '
++            '"parameters": {"id": "BANANA42"}}\n]<|END_ACTION|>'
++        )
++        with envs.SGLANG_FORWARD_UNKNOWN_TOOLS.override(False):
++            result = self.detector.detect_and_parse(text, self.tools)
++
++        self.assertEqual(len(result.calls), 1)
++        self.assertEqual(result.calls[0].name, "lookup_record")
++        self.assertEqual(
++            json.loads(result.calls[0].parameters), {"id": "BANANA42"}
++        )
++        self.assertEqual(result.normal_text, "")
++
++    def test_recovered_function_key_does_not_leak_into_parameters(self):
++        calls = self._parse(
++            {"function": "search", "parameters": {"query": "RDNA4"}}
++        )
++
++        self.assertEqual(len(calls), 1)
++        self.assertNotIn("function", json.loads(calls[0].parameters))
++
++    def test_unknown_or_inexact_function_strings_are_rejected(self):
++        for function in (
++            "unknown",
++            " lookup_record ",
++            "LOOKUP_RECORD",
++            "functions.lookup_record",
++            "lookup_record:0",
++            "",
++        ):
++            with self.subTest(function=function):
++                self.assertEqual(
++                    self._parse({"function": function, "parameters": {}}), []
++                )
++
++    def test_non_string_function_values_are_not_names(self):
++        # The OpenAI nested object is a different shape and must not be
++        # coerced; neither may a list or a bare null.
++        for function in (
++            {"name": "lookup_record", "arguments": "{}"},
++            ["lookup_record"],
++            None,
++            0,
++        ):
++            with self.subTest(function=function):
++                self.assertEqual(
++                    self._parse({"function": function, "parameters": {}}), []
++                )
++
++    def test_explicit_name_fields_win_over_function(self):
++        for action, expected in (
++            (
++                {
++                    "name": "search",
++                    "function": "lookup_record",
++                    "parameters": {},
++                },
++                "search",
++            ),
++            (
++                {
++                    "tool_name": "search",
++                    "function": "lookup_record",
++                    "parameters": {},
++                },
++                "search",
++            ),
++        ):
++            with self.subTest(action=action):
++                calls = self._parse(action)
++                self.assertEqual(len(calls), 1)
++                self.assertEqual(calls[0].name, expected)
++
++    def test_tool_call_id_recovery_still_wins_over_function(self):
++        calls = self._parse(
++            {
++                "tool_call_id": "search",
++                "function": "lookup_record",
++                "parameters": {},
++            }
++        )
++
++        self.assertEqual(len(calls), 1)
++        self.assertEqual(calls[0].name, "search")
++
++    def test_streaming_uses_the_same_recovery(self):
++        first = self.detector.parse_streaming_increment(
++            "prefix" + self.detector.bot_token, self.tools
++        )
++        with envs.SGLANG_FORWARD_UNKNOWN_TOOLS.override(False):
++            second = self.detector.parse_streaming_increment(
++                json.dumps(
++                    [{"function": "search", "parameters": {"query": "gfx1201"}}],
++                    separators=(",", ":"),
++                )
++                + self.detector.eot_token,
++                self.tools,
++            )
++
++        self.assertEqual(first.normal_text, "prefix")
++        self.assertEqual(len(second.calls), 1)
++        self.assertEqual(second.calls[0].name, "search")
++
++
+ if __name__ == "__main__":
+     unittest.main()

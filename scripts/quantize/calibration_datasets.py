@@ -7,9 +7,8 @@ Past calibrations used text-only Open-Platypus which silently regressed:
 This module assembles mixed calibration sets that preserve all capabilities
 a model ships with. Use via `build_calibration_dataset(...)` below.
 
-Dataset choices (2026-04):
-  - Thinking:  a-m-team/AM-Thinking-v1-Distilled   (Qwen3-generated, verified <think> tags)
-  - Thinking:  glaiveai/reasoning-v1-20m           (native <think>, 22M rows, fallback)
+Dataset choices (updated 2026-06):
+  - Thinking:  glaiveai/reasoning-v1-20m           (native <think>, 22M rows)
   - Math+CoT:  AI-MO/NuminaMath-CoT                (+9.81% GPTQ accuracy vs WikiText2)
   - Chat:      HuggingFaceH4/ultrachat_200k        (general multi-turn dialogue)
   - Vision:    liuhaotian/LLaVA-Instruct-150K      (image + conversation pairs)
@@ -26,7 +25,7 @@ import random
 from dataclasses import dataclass
 from typing import Any, Callable
 
-from datasets import Dataset, load_dataset
+from datasets import Audio, Dataset, load_dataset
 
 
 @dataclass
@@ -44,6 +43,10 @@ class Mix:
     # DatasetGenerationError mid-stream. Setting data_files to a specific file
     # forces a clean single-file load.
     data_files: str | None = None
+    # Audio bytes are not part of the text calibration rows. Decode must be
+    # disabled before a streaming shuffle (torchcodec is optional, and a
+    # 10K-row buffer otherwise retains gigabytes of encoded audio).
+    drop_audio: bool = False
 
 
 def _am_thinking(row: dict) -> list[dict]:
@@ -114,7 +117,7 @@ def _evol_code(row: dict) -> list[dict]:
 
 
 def _common_voice_audio(row: dict) -> list[dict]:
-    """Mozilla Common Voice: short transcribed speech samples (Gemma 4 audio).
+    """ASR source: short transcribed speech samples (Gemma 4 audio).
 
     Renders as a transcribe turn with `<|audio|>` placeholder.  Audio bytes
     dropped at calibration text-render time (audio encoder isn't quantized).
@@ -166,18 +169,24 @@ def _llava_video_178k(row: dict) -> list[dict]:
 
 
 def _covost2_audio(row: dict) -> list[dict]:
-    """google/covost2: speech translation / transcription instruction.
+    """Audio transcription instruction (renders with `<|audio|>` placeholder).
 
-    Schema: `sentence` (source transcript), `translation` (en target).
-    Renders as a transcribe-or-translate prompt with `<|audio|>` placeholder.
-    Audio-instruction style is closer to what Gemma 4's audio encoder needs
-    than plain Common Voice transcripts.
+    Source: `facebook/voxpopuli` (en) — European-parliament speech with
+    `raw_text` / `normalized_text` transcripts. It replaces `google/covost2`,
+    which was removed from the Hub on 2026-06-06. The encoder-pathway
+    calibration surface (the `<|audio|>` token plus an assistant transcript)
+    is what matters here; audio bytes are dropped at text-render time.
     """
-    src = row.get("sentence") or row.get("text") or ""
-    tgt = row.get("translation") or src
+    text = (
+        row.get("raw_text")
+        or row.get("normalized_text")
+        or row.get("sentence")
+        or row.get("text")
+        or ""
+    )
     return [
-        {"role": "user", "content": "<|audio|> Transcribe and translate this clip to English."},
-        {"role": "assistant", "content": tgt or src},
+        {"role": "user", "content": "<|audio|> Transcribe the speech in this clip."},
+        {"role": "assistant", "content": text},
     ]
 
 
@@ -185,9 +194,12 @@ def _covost2_audio(row: dict) -> list[dict]:
 
 MIXES: dict[str, Mix] = {
     "am_thinking": Mix(
-        "am_thinking", "a-m-team/AM-Thinking-v1-Distilled",
-        split="train", weight=0.0, format_fn=_am_thinking,
-        streaming=True,  # Full download errors on DatasetGenerationError; streaming works.
+        # Source redirected 2026-06-06: AM-Thinking-v1-Distilled suffered
+        # schema drift on the donor stack. Glaive carries the same
+        # `<think>…</think>` traces. Keep the registry key so all recipes
+        # referencing `am_thinking` continue to work.
+        "am_thinking", "glaiveai/reasoning-v1-20m",
+        split="train", weight=0.0, format_fn=_glaive_reasoning, streaming=True,
     ),
     "glaive_reasoning": Mix(
         "glaive_reasoning", "glaiveai/reasoning-v1-20m",
@@ -233,14 +245,19 @@ MIXES: dict[str, Mix] = {
         config="0_30_s_academic_v0_1",
     ),
     "common_voice_audio": Mix(
-        "common_voice_audio", "mozilla-foundation/common_voice_17_0",
-        split="train", weight=0.0, format_fn=_common_voice_audio, streaming=True,
-        config="en",
+        # Source redirected 2026-06-06: common_voice_17_0 is gated and its
+        # pinned revision is empty. LibriSpeech ASR clean/train.100 is open
+        # and its `text` field is handled by the existing formatter.
+        "common_voice_audio", "openslr/librispeech_asr",
+        split="train.100", weight=0.0, format_fn=_common_voice_audio, streaming=True,
+        config="clean", drop_audio=True,
     ),
     "covost2_audio": Mix(
-        "covost2_audio", "google/covost2",
+        # Source redirected 2026-06-06: google/covost2 was removed from the
+        # Hub. VoxPopuli (en) exposes raw/normalized transcript fields.
+        "covost2_audio", "facebook/voxpopuli",
         split="train", weight=0.0, format_fn=_covost2_audio, streaming=True,
-        config="en_de",
+        config="en", drop_audio=True,
     ),
 }
 
@@ -279,10 +296,8 @@ RECIPE_THINKING_VISION_VIDEO = {
 
 RECIPE_THINKING_VISION_VIDEO_AUDIO = {
     # Full Gemma 4 multimodal: thinking + vision + video + audio.
-    # Audio mix combines Common Voice (transcription) + CoVoST2 (instruction-
-    # style speech translation) — covers both straight ASR and the prompt
-    # patterns Gemma 4's audio encoder needs.  No Qwen variant uses this —
-    # Qwen3.5/3.6 have no audio path.
+    # Audio mix combines LibriSpeech and VoxPopuli transcription prompts.
+    # No Qwen variant uses this — Qwen3.5/3.6 have no audio path.
     "am_thinking": 0.20,
     "llava_instruct": 0.18,
     "llava_video_178k": 0.18,
@@ -371,7 +386,20 @@ def _load_slice(mix: Mix, n: int, seed: int) -> list[dict]:
                 streaming=True,
                 **load_kwargs,
             )
-            ds = ds.shuffle(seed=seed, buffer_size=10_000)
+            if mix.drop_audio:
+                # remove_columns alone still materializes the Audio feature.
+                # Cast first so iteration never imports torchcodec, then drop
+                # bytes before the shuffle buffer retains them.
+                ds = ds.cast_column("audio", Audio(decode=False))
+                ds = ds.remove_columns("audio")
+            # Text-only audio calibration does not benefit from buffering
+            # 10,000 encoded clips to select a handful of transcript rows.
+            # Scale that buffer with the requested slice; retain the larger
+            # historical buffer for non-audio mixes.
+            buffer_size = (
+                min(10_000, max(100, n * 4)) if mix.drop_audio else 10_000
+            )
+            ds = ds.shuffle(seed=seed, buffer_size=buffer_size)
             rows = []
             for row in ds:
                 rows.append(row)

@@ -73,6 +73,60 @@ def _chat_response(
     }
 
 
+class FillerProfileTest(unittest.TestCase):
+    def test_default_repeated_profile_preserves_legacy_prompt_bytes(self):
+        approx_tokens = 100
+        chars_per_token = 3.2
+        depth = 0.17
+        target_chars = int(approx_tokens * chars_per_token)
+        repetitions = (target_chars // len(probe.FILLER_UNIT)) + 1
+        body = (probe.FILLER_UNIT * repetitions)[:target_chars]
+        position = int(len(body) * depth)
+        legacy = body[:position] + probe.NEEDLE + body[position:] + probe.TASK
+
+        implicit = probe.build_prompt(approx_tokens, depth, chars_per_token)
+        explicit = probe.build_prompt(
+            approx_tokens, depth, chars_per_token, filler_profile="repeated"
+        )
+
+        self.assertEqual(implicit, legacy)
+        self.assertEqual(explicit, legacy)
+        self.assertEqual(
+            probe._prompt_receipt(implicit, "repeated")["prompt_sha256"],
+            "d4f6bb8cb13ecb90f1eab3474f33f6dcee4562bc3e3ef92f5799e9dd3cf57323",
+        )
+
+    def test_agentic_profile_is_deterministic_versioned_and_depth_exact(self):
+        first = probe.build_prompt(200, 0.25, 2.0, filler_profile="agentic")
+        second = probe.build_prompt(200, 0.25, 2.0, filler_profile="agentic")
+        receipt = probe._prompt_receipt(first, "agentic")
+
+        self.assertEqual(first, second)
+        self.assertEqual(first.index(probe.NEEDLE), 100)
+        self.assertTrue(first.startswith("[000000] ts=2026-07-01T00:00:00Z"))
+        self.assertIn("path=src/", first)
+        self.assertIn("$ pytest -q tests/unit/test_cache.py", first)
+        self.assertEqual(receipt["filler_chars"], 400)
+        self.assertEqual(receipt["filler_profile"], "agentic")
+        self.assertEqual(receipt["filler_version"], "agentic-code-log-v1")
+        self.assertEqual(
+            receipt["filler_spec_sha256"],
+            "3968ff127457614c91b13b5d0701614ec18a3a876eb3a230e0ec5ee63916ba00",
+        )
+        self.assertEqual(
+            receipt["filler_sha256"],
+            "3d67d2d700796263c4d5a3c556ec300307e62d42da959ea4d74543ff89e13a34",
+        )
+        self.assertEqual(
+            receipt["prompt_sha256"],
+            "e365865e8f938f6ef4fd6a3a1ac3c76b3ca15995f41f38aab84f48f12d5c0933",
+        )
+
+    def test_unknown_profile_is_rejected(self):
+        with self.assertRaisesRegex(ValueError, "unknown filler profile"):
+            probe.build_prompt(100, filler_profile="unknown")
+
+
 class ExtractToolCallTest(unittest.TestCase):
     def test_valid_expected_call_returns_object_arguments(self):
         valid, arguments = probe.extract_toolcall(
@@ -160,6 +214,55 @@ class ExtractToolCallTest(unittest.TestCase):
 
 
 class ProbeOneTest(unittest.TestCase):
+    def test_sampling_fields_and_bounded_parser_diagnostics_are_receipted(self):
+        malformed_action = (
+            '<|START_ACTION|>[{"tool_call_id":"lookup_record",'
+            '"parameters":{"id":"BANANA42"}}]<|END_ACTION|>'
+        )
+        reasoning = "loop " * 400
+        response = _chat_response(
+            finish="tool_calls",
+            content=malformed_action,
+            tool_calls=[],
+            message_extra={"reasoning_content": reasoning},
+        )
+        with mock.patch.object(
+            probe, "build_prompt", return_value="UNIT PROMPT"
+        ), mock.patch.object(
+            probe.requests, "post", return_value=_http_result(response)
+        ) as post:
+            result = probe.probe_one(
+                "http://unit", 1_000,
+                temperature=1.0, top_p=0.95, top_k=-1, seed=2,
+            )
+
+        payload = post.call_args.kwargs["json"]
+        self.assertEqual(
+            {key: payload[key] for key in ("temperature", "top_p", "top_k", "seed")},
+            {"temperature": 1.0, "top_p": 0.95, "top_k": -1, "seed": 2},
+        )
+        self.assertEqual(result["primary_status"], "invalid_toolcall")
+        diagnostics = result["failure_diagnostics"]
+        self.assertEqual(diagnostics["content"]["head"], malformed_action)
+        self.assertEqual(diagnostics["tool_calls"]["head"], "[]")
+        self.assertEqual(diagnostics["reasoning_content"]["chars"], len(reasoning))
+        self.assertEqual(diagnostics["reasoning_content"]["head"], reasoning[:256])
+        self.assertEqual(diagnostics["reasoning_content"]["tail"], reasoning[-256:])
+        self.assertTrue(diagnostics["reasoning_content"]["truncated"])
+        self.assertEqual(len(diagnostics["reasoning_content"]["sha256"]), 64)
+
+    def test_valid_correct_call_does_not_add_failure_diagnostics(self):
+        response = _chat_response(tool_calls=[_tool_call()])
+        with mock.patch.object(
+            probe, "build_prompt", return_value="UNIT PROMPT"
+        ), mock.patch.object(
+            probe.requests, "post", return_value=_http_result(response)
+        ):
+            result = probe.probe_one("http://unit", 1_000)
+
+        self.assertTrue(result["correct_action"])
+        self.assertNotIn("failure_diagnostics", result)
+
     def test_whitespace_wrapped_id_is_valid_schema_but_wrong_action(self):
         response = _chat_response(
             tool_calls=[_tool_call(arguments='{"id":" BANANA42 "}')]
@@ -203,9 +306,12 @@ class ProbeOneTest(unittest.TestCase):
                 followup_max_tokens=8_192,
                 structured_content=False,
                 context_length=305_000,
+                filler_profile="agentic",
             )
 
-        build_prompt.assert_called_once_with(300_000, 0.2, 7.25)
+        build_prompt.assert_called_once_with(
+            300_000, 0.2, 7.25, filler_profile="agentic"
+        )
         primary_payload = post.call_args.kwargs["json"]
         self.assertEqual(post.call_args.kwargs["timeout"], 2_000)
         self.assertEqual(primary_payload["max_tokens"], 4_096)
@@ -218,6 +324,12 @@ class ProbeOneTest(unittest.TestCase):
         self.assertTrue(result["correct_action"])
         self.assertEqual(result["got_id"], probe.NEEDLE_ID)
         self.assertEqual(result["followup_status"], "used")
+        self.assertEqual(result["filler_profile"], "agentic")
+        self.assertEqual(result["filler_version"], "agentic-code-log-v1")
+        self.assertEqual(
+            result["prompt_sha256"],
+            probe.hashlib.sha256(b"UNIT PROMPT").hexdigest(),
+        )
         self.assertEqual(result["followup_requested_max_tokens"], 8_192)
         self.assertEqual(result["followup_effective_max_tokens"], 4_707)
         self.assertTrue(result["followup_budget_clamped"])
@@ -233,6 +345,10 @@ class ProbeOneTest(unittest.TestCase):
         self.assertEqual(followup.call_args.kwargs["max_tokens"], 4_707)
         self.assertEqual(followup.call_args.kwargs["timeout"], 2_000)
         self.assertFalse(followup.call_args.kwargs["structured_content"])
+        self.assertEqual(followup.call_args.kwargs["temperature"], 0)
+        self.assertIsNone(followup.call_args.kwargs["top_p"])
+        self.assertIsNone(followup.call_args.kwargs["top_k"])
+        self.assertIsNone(followup.call_args.kwargs["seed"])
 
     def test_exhausted_context_skips_followup_with_explicit_receipt(self):
         response = _chat_response(
@@ -344,6 +460,10 @@ class FollowupOneTest(unittest.TestCase):
         messages = payload["messages"]
         self.assertEqual(post.call_args.kwargs["timeout"], 1_234)
         self.assertEqual(payload["max_tokens"], 512)
+        self.assertEqual(payload["temperature"], 0)
+        self.assertNotIn("top_p", payload)
+        self.assertNotIn("top_k", payload)
+        self.assertNotIn("seed", payload)
         self.assertEqual(
             messages[0]["content"],
             [{"type": "text", "text": "LONG PROMPT"}],
@@ -364,6 +484,10 @@ class FollowupOneTest(unittest.TestCase):
         self.assertEqual(result["followup_prompt_tokens"], 65_800)
         self.assertEqual(result["followup_completion_tokens"], 9)
         self.assertTrue(result["followup_structured_content"])
+        self.assertEqual(
+            result["followup_context_prompt_sha256"],
+            probe.hashlib.sha256(b"LONG PROMPT").hexdigest(),
+        )
 
     def test_empty_tool_call_id_uses_defensive_fallback(self):
         assistant = {
@@ -388,6 +512,7 @@ class FollowupOneTest(unittest.TestCase):
     def test_labeled_and_json_access_code_values_score_used(self):
         cases = (
             (f"The record's access_code is {probe.FOLLOWUP_SENTINEL}.", "labeled"),
+            (f"The record's access_code is: {probe.FOLLOWUP_SENTINEL}", "labeled"),
             (f"The access code: `{probe.FOLLOWUP_SENTINEL}`!", "labeled"),
             (json.dumps({"access_code": probe.FOLLOWUP_SENTINEL}), "json"),
         )
@@ -464,19 +589,32 @@ class FollowupOneTest(unittest.TestCase):
             finish="tool_calls",
             content=probe.FOLLOWUP_SENTINEL,
             tool_calls=[_tool_call(call_id="call_again")],
+            message_extra={"reasoning_content": "trying another call"},
         )
         with mock.patch.object(
             probe.requests, "post", return_value=_http_result(response)
-        ):
+        ) as post:
             result = probe.followup_one(
-                "http://unit", "PROMPT", self.assistant, max_tokens=128
+                "http://unit", "PROMPT", self.assistant, max_tokens=128,
+                temperature=1.0, top_p=0.95, top_k=-1, seed=7,
             )
 
+        payload = post.call_args.kwargs["json"]
+        self.assertEqual(
+            {key: payload[key] for key in ("temperature", "top_p", "top_k", "seed")},
+            {"temperature": 1.0, "top_p": 0.95, "top_k": -1, "seed": 7},
+        )
         self.assertEqual(result["followup_status"], "nonterminal")
         self.assertFalse(result["used_tool_response"])
         self.assertTrue(result["followup_value_matched"])
         self.assertEqual(result["followup_value_match_mode"], "exact")
         self.assertEqual(result["followup_finish_reason"], "tool_calls")
+        diagnostics = result["followup_failure_diagnostics"]
+        self.assertEqual(diagnostics["content"]["head"], probe.FOLLOWUP_SENTINEL)
+        self.assertEqual(
+            diagnostics["reasoning_content"]["head"], "trying another call"
+        )
+        self.assertIn("call_again", diagnostics["tool_calls"]["head"])
 
     def test_api_error_message_is_retained(self):
         with mock.patch.object(
@@ -636,6 +774,7 @@ class ReceiptAndSummaryTest(unittest.TestCase):
                 "kv_cache_dtype": "fp8_e4m3",
                 "tool_call_parser": "qwen3_coder",
                 "fp8_gemm_runner_backend": "triton",
+                "enable_deterministic_inference": False,
                 "unstable_internal_field": "omit-me",
             },
             "unstable_top_level_field": "omit-me-too",
@@ -651,6 +790,7 @@ class ReceiptAndSummaryTest(unittest.TestCase):
                 "attention_backend": "aiter",
                 "tool_call_parser": "qwen3_coder",
                 "fp8_gemm_runner_backend": "triton",
+                "enable_deterministic_inference": False,
             },
         )
         self.assertEqual(probe.server_context_length(0, info), 262_144)
@@ -682,6 +822,47 @@ class ReceiptAndSummaryTest(unittest.TestCase):
         self.assertEqual(receipt["primary_http_status"], 413)
         self.assertEqual(receipt["followup_http_status"], 422)
         self.assertNotIn("large_response_body", receipt)
+
+    def test_bounded_failure_diagnostics_survive_calibration_receipt(self):
+        diagnostics = {
+            "content": {
+                "chars": 12,
+                "sha256": "a" * 64,
+                "head": "broken call",
+            }
+        }
+        receipt = probe._attempt_receipt(
+            {
+                "actual_prompt_tokens": 1_000,
+                "valid_toolcall": False,
+                "failure_diagnostics": diagnostics,
+                "filler_profile": "agentic",
+                "filler_version": "agentic-code-log-v1",
+                "filler_spec_sha256": "b" * 64,
+                "filler_sha256": "c" * 64,
+                "prompt_sha256": "d" * 64,
+            },
+            6.6,
+        )
+
+        self.assertEqual(receipt["failure_diagnostics"], diagnostics)
+        self.assertEqual(receipt["filler_profile"], "agentic")
+        self.assertEqual(receipt["filler_version"], "agentic-code-log-v1")
+        self.assertEqual(receipt["filler_spec_sha256"], "b" * 64)
+        self.assertEqual(receipt["filler_sha256"], "c" * 64)
+        self.assertEqual(receipt["prompt_sha256"], "d" * 64)
+
+    def test_bounded_text_handles_surrogates_without_overlapping_edges(self):
+        medium = "x" * 300
+        medium_receipt = probe._bounded_text(medium)
+        self.assertEqual(medium_receipt["head"], medium)
+        self.assertNotIn("tail", medium_receipt)
+        self.assertNotIn("truncated", medium_receipt)
+
+        surrogate_receipt = probe._bounded_text("before\ud800after")
+        self.assertEqual(surrogate_receipt["chars"], 12)
+        self.assertEqual(surrogate_receipt["head"], "before\ud800after")
+        self.assertEqual(len(surrogate_receipt["sha256"]), 64)
 
     def test_main_summary_separates_final_from_all_attempts_and_agentic_success(self):
         results = [
@@ -832,6 +1013,7 @@ class ReceiptAndSummaryTest(unittest.TestCase):
                 "model_path": "/models/summary-unit",
                 "tp_size": 2,
                 "tool_call_parser": "qwen3_coder",
+                "enable_deterministic_inference": False,
             },
         }
 
@@ -844,6 +1026,11 @@ class ReceiptAndSummaryTest(unittest.TestCase):
                 "--max-tokens", "10",
                 "--followup-max-tokens", "20",
                 "--multi-turn",
+                "--filler-profile", "agentic",
+                "--temperature", "1.0",
+                "--top-p", "0.95",
+                "--top-k", "-1",
+                "--seed", "2",
                 "--out", str(output_path),
             ]
             output = io.StringIO()
@@ -906,9 +1093,39 @@ class ReceiptAndSummaryTest(unittest.TestCase):
         self.assertEqual(summary["tool_response_used_rate"], 1.0)
         self.assertEqual(summary["settings"]["completion_reserve"], 542)
         self.assertEqual(summary["settings"]["context_length"], 10_000)
+        self.assertEqual(summary["settings"]["filler_profile"], "agentic")
+        self.assertEqual(
+            summary["settings"]["filler_version"], "agentic-code-log-v1"
+        )
+        self.assertEqual(
+            summary["settings"]["filler_spec_sha256"],
+            "3968ff127457614c91b13b5d0701614ec18a3a876eb3a230e0ec5ee63916ba00",
+        )
+        self.assertEqual(
+            summary["settings"]["sampling"],
+            {
+                "temperature": 1.0,
+                "top_p": 0.95,
+                "top_k": -1,
+                "seed": 2,
+                "seed_effective": False,
+            },
+        )
         self.assertEqual(summary["server"]["model_path"], "/models/summary-unit")
         self.assertEqual(calibrated.call_args_list[0].kwargs["usable"], 9_458)
         self.assertEqual(calibrated.call_args_list[0].kwargs["context_length"], 10_000)
+        self.assertEqual(calibrated.call_args_list[0].kwargs["temperature"], 1.0)
+        self.assertEqual(calibrated.call_args_list[0].kwargs["top_p"], 0.95)
+        self.assertEqual(calibrated.call_args_list[0].kwargs["top_k"], -1)
+        self.assertEqual(calibrated.call_args_list[0].kwargs["seed"], 2)
+        self.assertEqual(
+            calibrated.call_args_list[0].kwargs["filler_profile"], "agentic"
+        )
+        self.assertEqual(
+            calibrated.call_args_list[0].kwargs["chars_per_token"], 3.0
+        )
+        self.assertIn("seed 2 is recorded but not honored", output.getvalue())
+        self.assertIn("filler=agentic", output.getvalue())
         self.assertIn("valid_toolcall: 0.833", output.getvalue())
 
 

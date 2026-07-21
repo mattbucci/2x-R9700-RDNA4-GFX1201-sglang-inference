@@ -1,0 +1,17 @@
+{
+  "preset": "coder-30b-a3b",
+  "scaffold": "little-coder",
+  "model_path": "sglang/sweep",
+  "total_predictions": 300,
+  "resolve_rate_pct": 25.0,
+  "resolved": 75,
+  "unresolved": 186,
+  "error": 8,
+  "empty_patch": 31,
+  "incomplete": 0,
+  "submitted": 300,
+  "completed": 261,
+  "harness_returncode": null,
+  "run_dir": "/data/bakeoff/runs/coder-30b-a3b-little-coder",
+  "timestamp": "2026-07-18T23:53:48"
+}

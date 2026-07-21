@@ -5,7 +5,9 @@ The single-user 256K-agentic goal is the rig's north star, but SWE-bench Lite
 agentic context tops out ~128K, so the 256K regime is otherwise unmeasured. This
 synthetic probe fills that gap: at a ladder of TRUE token-context lengths it plants
 a needle instruction deep in filler, exposes one tool, and asks the model to call it
-    with the planted argument. Three things are scored per length:
+with the planted argument. The legacy ``repeated`` filler is an intentionally
+low-entropy repetition stress; ``agentic`` is a deterministic heterogeneous
+code/log proxy. Three things are scored per length:
 
   1. valid_toolcall  — did the model emit a STRUCTURALLY valid tool call
                        (finish_reason=tool_calls + parseable JSON args)? This is the
@@ -27,6 +29,7 @@ Usage:
         --out benchmarks/quality/tooluse256k-qwen36-v0515-r9700.json
 """
 import argparse
+import hashlib
 import json
 import re
 import time
@@ -41,6 +44,56 @@ NEEDLE_ID = "BANANA42"
 NEEDLE = (f"\n\n>>> CRITICAL INSTRUCTION: when you call the lookup_record tool, you "
           f"MUST pass id=\"{NEEDLE_ID}\". This is the only valid id. <<<\n\n")
 FILLER_UNIT = "The archive contains routine maintenance logs and status reports. " * 64
+
+FILLER_PROFILES = ("repeated", "agentic")
+FILLER_VERSIONS = {
+    "repeated": "repeated-v1",
+    "agentic": "agentic-code-log-v1",
+}
+AGENTIC_CHARS_PER_TOKEN_INIT = 3.0
+AGENTIC_FILLER_SEED = "sglang-agentic-context-v1"
+AGENTIC_COMPONENTS = (
+    "scheduler", "router", "cache", "parser", "worker", "tokenizer",
+    "executor", "metrics", "frontend", "storage", "tests", "runtime",
+    "compiler",
+)
+AGENTIC_COMMANDS = (
+    "pytest -q tests/unit/test_cache.py",
+    'rg -n "dispatch_batch" python/sglang',
+    "git diff --stat",
+    "python -m compileall -q src",
+    "ruff check src tests",
+    "cmake --build build -j8",
+    "git status --short",
+    "pytest -q tests/integration/test_api.py",
+    "python scripts/check_config.py",
+    "ninja -C build kernels",
+)
+AGENTIC_STATUSES = (
+    "ok", "cached", "passed", "unchanged",
+    "retryable", "skipped", "ready", "verified",
+)
+AGENTIC_SNIPPETS = (
+    "if request.is_ready(): queue.append(request)",
+    "assert response.status_code == 200",
+    "cache_key = make_key(model_id, prefix_hash)",
+    "for shard in shards: dispatch(shard)",
+    "return result if result is not None else fallback",
+    'logger.info("batch complete", extra=fields)',
+    "with lock: state.update(snapshot)",
+    "tokens = tokenizer.encode(source, add_special_tokens=False)",
+    'raise ValueError("invalid configuration")',
+    'metrics.observe("latency_ms", elapsed_ms)',
+)
+AGENTIC_RECORD_FORMAT = (
+    "[{index:06d}] ts=2026-07-{day:02d}T{hour:02d}:{minute:02d}:"
+    "{second:02d}Z level={level} component={component} host=worker-{host:02d} "
+    "trace={trace}\n"
+    "path=src/{path_component}/{filename}.py revision={revision}\n"
+    "$ {command}\n"
+    "result={status} duration_ms={duration_ms} changed={changed}\n"
+    "{snippet}\n\n"
+)
 
 TOOLS = [{
     "type": "function",
@@ -59,23 +112,122 @@ TASK = ("\n\nNow use the lookup_record tool to fetch the record. Use exactly the
         "specified in the CRITICAL INSTRUCTION above. Call the tool — do not answer in prose.")
 
 
-# Measured on the actual FILLER_UNIT: qwen3/gemma4 tokenizers all give 6.59
-# chars/token (simple common words ≈ 1 token each; the old 3.8 guess under-filled
-# every rung to ~58% of its label). Self-calibrated per model from usage after
-# each rung, so tekken/other tokenizers converge by rung 2.
+# Measured on the repeated FILLER_UNIT: qwen3/gemma4 tokenizers all give 6.59
+# chars/token. The heterogeneous profile starts conservatively at 3.0. Both are
+# self-calibrated from server-reported usage, so other tokenizers converge.
 CHARS_PER_TOKEN_INIT = 6.6
 FOLLOWUP_CONTEXT_OVERHEAD = 512
+DIAGNOSTIC_EDGE_CHARS = 256
+
+
+def _agentic_record(index: int) -> str:
+    """One deterministic, heterogeneous coding-agent-style log record."""
+    digest = hashlib.sha256(
+        f"{AGENTIC_FILLER_SEED}:{index}".encode("ascii")
+    ).hexdigest()
+    return AGENTIC_RECORD_FORMAT.format(
+        index=index,
+        day=1 + index % 28,
+        hour=(index * 7) % 24,
+        minute=(index * 13) % 60,
+        second=(index * 17) % 60,
+        level="WARN" if index % 17 == 0 else "INFO",
+        component=AGENTIC_COMPONENTS[(index * 5) % len(AGENTIC_COMPONENTS)],
+        host=index % 31,
+        trace=digest[:16],
+        path_component=AGENTIC_COMPONENTS[(index * 3 + 2) % len(AGENTIC_COMPONENTS)],
+        filename=digest[16:24],
+        revision=digest[24:36],
+        command=AGENTIC_COMMANDS[(index * 7) % len(AGENTIC_COMMANDS)],
+        status=AGENTIC_STATUSES[(index * 11) % len(AGENTIC_STATUSES)],
+        duration_ms=31 + (index * 37) % 8000,
+        changed=index % 9,
+        snippet=AGENTIC_SNIPPETS[(index * 13) % len(AGENTIC_SNIPPETS)],
+    )
+
+
+def _build_filler(target_chars: int, filler_profile: str) -> str:
+    if filler_profile == "repeated":
+        n = (target_chars // len(FILLER_UNIT)) + 1
+        return (FILLER_UNIT * n)[:target_chars]
+    if filler_profile != "agentic":
+        raise ValueError(
+            f"unknown filler profile {filler_profile!r}; choose one of {FILLER_PROFILES}"
+        )
+    chunks = []
+    chars = 0
+    index = 0
+    while chars < target_chars:
+        record = _agentic_record(index)
+        chunks.append(record)
+        chars += len(record)
+        index += 1
+    return "".join(chunks)[:target_chars]
+
+
+def filler_profile_receipt(filler_profile: str) -> dict:
+    """Stable identity for the selected deterministic filler generator."""
+    if filler_profile not in FILLER_PROFILES:
+        raise ValueError(
+            f"unknown filler profile {filler_profile!r}; choose one of {FILLER_PROFILES}"
+        )
+    if filler_profile == "repeated":
+        material = FILLER_UNIT
+    else:
+        material = json.dumps(
+            {
+                "seed": AGENTIC_FILLER_SEED,
+                "format": AGENTIC_RECORD_FORMAT,
+                "components": AGENTIC_COMPONENTS,
+                "commands": AGENTIC_COMMANDS,
+                "statuses": AGENTIC_STATUSES,
+                "snippets": AGENTIC_SNIPPETS,
+            },
+            ensure_ascii=False,
+            separators=(",", ":"),
+            sort_keys=True,
+        )
+    return {
+        "filler_profile": filler_profile,
+        "filler_version": FILLER_VERSIONS[filler_profile],
+        "filler_spec_sha256": hashlib.sha256(
+            material.encode("utf-8")
+        ).hexdigest(),
+    }
 
 
 def build_prompt(approx_tokens: int, depth: float = 0.5,
-                 chars_per_token: float = CHARS_PER_TOKEN_INIT) -> str:
-    """~approx_tokens of filler with the needle instruction planted at `depth` (0..1
-    through the filler) — vary depth to probe lost-in-the-middle tool-calling."""
+                 chars_per_token: float = CHARS_PER_TOKEN_INIT,
+                 filler_profile: str = "repeated") -> str:
+    """Build a calibrated filler prompt with a needle at ``depth`` (0..1).
+
+    ``repeated`` preserves the original low-entropy stress prompt byte-for-byte;
+    ``agentic`` uses deterministic heterogeneous code and operational logs.
+    """
     target_chars = int(approx_tokens * chars_per_token)
-    n = (target_chars // len(FILLER_UNIT)) + 1
-    body = (FILLER_UNIT * n)[:target_chars]
+    body = _build_filler(target_chars, filler_profile)
     pos = int(len(body) * depth)
     return body[:pos] + NEEDLE + body[pos:] + TASK
+
+
+def _prompt_receipt(prompt: str, filler_profile: str) -> dict:
+    """Hash the exact prompt and the filler body independently."""
+    core = prompt[:-len(TASK)] if prompt.endswith(TASK) else prompt
+    parts = core.split(NEEDLE, 1)
+    filler = parts[0] + parts[1] if len(parts) == 2 else core
+    receipt = filler_profile_receipt(filler_profile)
+    receipt.update({
+        "filler_chars": len(filler),
+        "filler_sha256": hashlib.sha256(filler.encode("utf-8")).hexdigest(),
+        "prompt_chars": len(prompt),
+        "prompt_sha256": hashlib.sha256(prompt.encode("utf-8")).hexdigest(),
+    })
+    return receipt
+
+
+def _attach_prompt_receipt(result: dict, prompt_receipt: dict) -> dict:
+    result.update(prompt_receipt)
+    return result
 
 
 def read_server_info(port: int):
@@ -113,7 +265,7 @@ def server_receipt(info: dict) -> dict:
     fields = (
         "model_path", "context_length", "tp_size", "kv_cache_dtype",
         "attention_backend", "tool_call_parser", "reasoning_parser",
-        "fp8_gemm_runner_backend",
+        "fp8_gemm_runner_backend", "enable_deterministic_inference",
     )
     receipt = {}
     for field in fields:
@@ -175,6 +327,58 @@ def _http_status(response):
     return status if isinstance(status, int) else None
 
 
+def _sampling_fields(temperature=0, top_p=None, top_k=None, seed=None):
+    """Build only the explicitly selected OpenAI sampling fields."""
+    fields = {"temperature": temperature}
+    if top_p is not None:
+        fields["top_p"] = top_p
+    if top_k is not None:
+        fields["top_k"] = top_k
+    if seed is not None:
+        fields["seed"] = seed
+    return fields
+
+
+def _bounded_text(value, edge_chars=DIAGNOSTIC_EDGE_CHARS):
+    """Keep enough raw output to diagnose a failure without bloating receipts."""
+    if not isinstance(value, str) or not value:
+        return None
+    encoded = value.encode("utf-8", errors="backslashreplace")
+    receipt = {
+        "chars": len(value),
+        "sha256": hashlib.sha256(encoded).hexdigest(),
+    }
+    if len(value) <= edge_chars * 2:
+        receipt["head"] = value
+    else:
+        receipt["head"] = value[:edge_chars]
+        receipt["tail"] = value[-edge_chars:]
+        receipt["truncated"] = True
+    return receipt
+
+
+def _failure_diagnostics(message):
+    """Bound raw parser-facing fields so malformed calls remain inspectable."""
+    if not isinstance(message, Mapping):
+        return {}
+    diagnostics = {}
+    for field in ("content", "reasoning_content"):
+        bounded = _bounded_text(message.get(field))
+        if bounded:
+            diagnostics[field] = bounded
+    if "tool_calls" in message:
+        try:
+            raw_calls = json.dumps(
+                message.get("tool_calls"), ensure_ascii=False, sort_keys=True
+            )
+        except (TypeError, ValueError):
+            raw_calls = repr(message.get("tool_calls"))
+        bounded = _bounded_text(raw_calls)
+        if bounded:
+            diagnostics["tool_calls"] = bounded
+    return diagnostics
+
+
 def _primary_error(approx_tokens, error, started, http_status=None,
                    finish_reason=None):
     receipt = {
@@ -217,7 +421,7 @@ def _normalized_exact_answer(content):
 
 _LABELED_ACCESS_CODE = re.compile(
     r"^\s*(?:the\s+)?(?:record(?:'s)?\s+)?access(?:[_ -]+)code\s*"
-    r"(?:is|:|=)\s*(?P<quote>[\"'`]?)(?P<value>[A-Za-z0-9_-]+)"
+    r"(?:is\s*:?|:|=)\s*(?P<quote>[\"'`]?)(?P<value>[A-Za-z0-9_-]+)"
     r"(?P=quote)\s*[.!]?\s*$",
     re.IGNORECASE,
 )
@@ -244,7 +448,8 @@ def _match_followup_value(content):
 
 
 def followup_one(url, prompt, assistant_msg, max_tokens, timeout=900,
-                 structured_content=True):
+                 structured_content=True, temperature=0, top_p=None,
+                 top_k=None, seed=None):
     """Multi-turn rung: send the model's own tool call back with a synthetic
     RESULT carrying a sentinel fact, and check the final answer uses it.
 
@@ -286,10 +491,12 @@ def followup_one(url, prompt, assistant_msg, max_tokens, timeout=900,
     response = None
     http_status = None
     try:
-        response = requests.post(url, json={
+        payload = {
             "model": "default", "messages": messages, "tools": TOOLS,
-            "max_tokens": max_tokens, "temperature": 0,
-        }, timeout=timeout)
+            "max_tokens": max_tokens,
+        }
+        payload.update(_sampling_fields(temperature, top_p, top_k, seed))
+        response = requests.post(url, json=payload, timeout=timeout)
         http_status = _http_status(response)
         r = response.json()
     except Exception as e:
@@ -337,7 +544,14 @@ def followup_one(url, prompt, assistant_msg, max_tokens, timeout=900,
         "followup_elapsed_s": round(time.time() - t0, 1),
         "followup_text": content[:120],
         "followup_structured_content": structured_content,
+        "followup_context_prompt_sha256": hashlib.sha256(
+            prompt.encode("utf-8")
+        ).hexdigest(),
     }
+    if status != "used":
+        diagnostics = _failure_diagnostics(msg)
+        if diagnostics:
+            receipt["followup_failure_diagnostics"] = diagnostics
     if http_status is not None:
         receipt["followup_http_status"] = http_status
     return receipt
@@ -346,38 +560,61 @@ def followup_one(url, prompt, assistant_msg, max_tokens, timeout=900,
 def probe_one(url, approx_tokens, max_tokens=2048, timeout=900, depth=0.5,
               chars_per_token=CHARS_PER_TOKEN_INIT, multi_turn=False,
               followup_max_tokens=None, structured_content=True,
-              context_length=None):
-    prompt = build_prompt(approx_tokens, depth, chars_per_token)
+              context_length=None, temperature=0, top_p=None, top_k=None,
+              seed=None, filler_profile="repeated"):
+    prompt = build_prompt(
+        approx_tokens, depth, chars_per_token, filler_profile=filler_profile
+    )
+    prompt_receipt = _prompt_receipt(prompt, filler_profile)
     t0 = time.time()
     request_timeout = max(timeout, approx_tokens // 150)
     response = None
     http_status = None
     try:
-        response = requests.post(url, json={
+        payload = {
             "model": "default",
             "messages": [{"role": "user", "content": prompt}],
             "tools": TOOLS,
             "tool_choice": "auto",
             "max_tokens": max_tokens,
-            "temperature": 0,
-        }, timeout=request_timeout)
+        }
+        payload.update(_sampling_fields(temperature, top_p, top_k, seed))
+        response = requests.post(url, json=payload, timeout=request_timeout)
         http_status = _http_status(response)
         r = response.json()
     except Exception as e:
-        return _primary_error(approx_tokens, e, t0, http_status)
+        return _attach_prompt_receipt(
+            _primary_error(approx_tokens, e, t0, http_status), prompt_receipt
+        )
     if not isinstance(r, Mapping):
-        return _primary_error(
-            approx_tokens, "response JSON was not an object", t0, http_status)
+        return _attach_prompt_receipt(
+            _primary_error(
+                approx_tokens, "response JSON was not an object", t0, http_status
+            ),
+            prompt_receipt,
+        )
     if "error" in r:  # e.g. prompt overflowed the server window — caller may retry smaller
-        return _primary_error(
-            approx_tokens, _error_message(r["error"]), t0, http_status)
+        return _attach_prompt_receipt(
+            _primary_error(
+                approx_tokens, _error_message(r["error"]), t0, http_status
+            ),
+            prompt_receipt,
+        )
     if http_status is not None and http_status >= 400:
-        return _primary_error(
-            approx_tokens, f"HTTP {http_status}", t0, http_status)
+        return _attach_prompt_receipt(
+            _primary_error(
+                approx_tokens, f"HTTP {http_status}", t0, http_status
+            ),
+            prompt_receipt,
+        )
     choices = r.get("choices") or []
     if not isinstance(choices, list) or not choices or not isinstance(choices[0], Mapping):
-        return _primary_error(
-            approx_tokens, "response contained no choices", t0, http_status)
+        return _attach_prompt_receipt(
+            _primary_error(
+                approx_tokens, "response contained no choices", t0, http_status
+            ),
+            prompt_receipt,
+        )
     choice = choices[0]
     msg = choice.get("message") or {}
     if not isinstance(msg, Mapping):
@@ -388,9 +625,13 @@ def probe_one(url, approx_tokens, max_tokens=2048, timeout=900, depth=0.5,
         usage = {}
     prompt_tokens = usage.get("prompt_tokens")
     if prompt_tokens is None or usage.get("completion_tokens") is None:
-        return _primary_error(
-            approx_tokens, "response omitted primary token usage", t0,
-            http_status, finish)
+        return _attach_prompt_receipt(
+            _primary_error(
+                approx_tokens, "response omitted primary token usage", t0,
+                http_status, finish,
+            ),
+            prompt_receipt,
+        )
     valid, args = extract_toolcall(msg, finish)
     correct = valid and args["id"] == NEEDLE_ID
     tcs = msg.get("tool_calls") or []
@@ -419,8 +660,13 @@ def probe_one(url, approx_tokens, max_tokens=2048, timeout=900, depth=0.5,
         "got_id": args.get("id") if isinstance(args, dict) else None,
         "elapsed_s": round(time.time() - t0, 1),
     }
+    res.update(prompt_receipt)
     if http_status is not None:
         res["primary_http_status"] = http_status
+    if not correct:
+        diagnostics = _failure_diagnostics(msg)
+        if diagnostics:
+            res["failure_diagnostics"] = diagnostics
     if multi_turn and valid:
         requested_followup = followup_max_tokens or max_tokens
         effective_followup = requested_followup
@@ -446,6 +692,10 @@ def probe_one(url, approx_tokens, max_tokens=2048, timeout=900, depth=0.5,
             max_tokens=effective_followup,
             timeout=request_timeout,
             structured_content=structured_content,
+            temperature=temperature,
+            top_p=top_p,
+            top_k=top_k,
+            seed=seed,
         ))
         res["followup_scored"] = not res["followup_budget_clamped"]
     elif multi_turn:
@@ -471,7 +721,11 @@ def _attempt_receipt(res, chars_per_token):
         "followup_finish_reason", "followup_http_status", "followup_prompt_tokens",
         "followup_completion_tokens", "followup_elapsed_s", "followup_error",
         "used_tool_response", "followup_value_matched",
-        "followup_value_match_mode", "error", "elapsed_s",
+        "followup_value_match_mode", "followup_context_prompt_sha256",
+        "error", "elapsed_s",
+        "failure_diagnostics", "followup_failure_diagnostics",
+        "filler_profile", "filler_version", "filler_spec_sha256", "filler_chars",
+        "filler_sha256", "prompt_chars", "prompt_sha256",
     )
     receipt = {"chars_per_token": round(chars_per_token, 6)}
     receipt.update({key: res[key] for key in keys if key in res})
@@ -551,6 +805,24 @@ def main():
                     help="minimum timeout per request; deep requests also scale by prompt length")
     ap.add_argument("--depth", type=float, default=0.5,
                     help="needle depth 0..1 through the filler (sweep externally for lost-in-the-middle)")
+    ap.add_argument(
+        "--filler-profile",
+        choices=FILLER_PROFILES,
+        default="repeated",
+        help=(
+            "filler shape: repeated is the legacy low-entropy repetition stress "
+            "(default); agentic is deterministic heterogeneous code/log context"
+        ),
+    )
+    ap.add_argument("--temperature", type=float, default=0.0,
+                    help="sampling temperature (default: 0 for backward compatibility)")
+    ap.add_argument("--top-p", type=float, default=None,
+                    help="optional nucleus-sampling threshold")
+    ap.add_argument("--top-k", type=int, default=None,
+                    help="optional top-k sampling threshold; use -1 to disable")
+    ap.add_argument("--seed", type=int, default=None,
+                    help="optional sampling seed; SGLang requires a server launched with "
+                         "--enable-deterministic-inference to honor it")
     ap.add_argument("--multi-turn", action="store_true",
                     help="after each valid call, feed back a synthetic tool RESULT "
                          "with a sentinel and verify the model uses it (closes the "
@@ -563,6 +835,18 @@ def main():
     url = f"http://localhost:{args.port}/v1/chat/completions"
     lengths = [int(x) for x in args.lengths.split(",")]
     info = read_server_info(args.port)
+    serving_receipt = server_receipt(info)
+    deterministic = serving_receipt.get("enable_deterministic_inference")
+    seed_effective = None
+    if args.seed is not None:
+        if deterministic is True:
+            seed_effective = True
+        elif deterministic is False:
+            seed_effective = False
+            print(
+                "WARN: this SGLang server has deterministic inference disabled; "
+                f"request seed {args.seed} is recorded but not honored by sampling"
+            )
     ctx_len = server_context_length(args.port, info)
     if ctx_len is None:
         raise SystemExit("server context length unavailable; refusing an unbounded depth run")
@@ -580,10 +864,14 @@ def main():
         if capped:
             print(f"server context_length={ctx_len}: capped {capped} -> {usable} "
                   f"(completion reserve={reserve})")
-    print(f"256K tool-use probe: {args.tag}")
+    print(f"256K tool-use probe: {args.tag} (filler={args.filler_profile})")
     print(f"{'approx':>8} {'actual':>8} {'finish':>12} {'valid':>6} {'correct':>8} {'id':>10} {'s':>5}")
     results = []
-    cpt = CHARS_PER_TOKEN_INIT
+    cpt = (
+        AGENTIC_CHARS_PER_TOKEN_INIT
+        if args.filler_profile == "agentic"
+        else CHARS_PER_TOKEN_INIT
+    )
     for L in lengths:
         res, cpt = probe_calibrated(
             url, L,
@@ -596,6 +884,11 @@ def main():
             followup_max_tokens=followup_max_tokens,
             structured_content=not args.string_followup_content,
             context_length=ctx_len,
+            temperature=args.temperature,
+            top_p=args.top_p,
+            top_k=args.top_k,
+            seed=args.seed,
+            filler_profile=args.filler_profile,
         )
         results.append(res)
         if "error" in res:
@@ -621,7 +914,7 @@ def main():
     summary = {
         "schema_version": 2,
         "tag": args.tag,
-        "server": server_receipt(info),
+        "server": serving_receipt,
         "settings": {
             "requested_lengths": [int(x) for x in args.lengths.split(",")],
             "scored_lengths": lengths,
@@ -633,6 +926,14 @@ def main():
                 not args.string_followup_content if args.multi_turn else None),
             "context_length": ctx_len,
             "completion_reserve": reserve,
+            **filler_profile_receipt(args.filler_profile),
+            "sampling": {
+                "temperature": args.temperature,
+                "top_p": args.top_p,
+                "top_k": args.top_k,
+                "seed": args.seed,
+                "seed_effective": seed_effective,
+            },
         },
         "results": results,
         "valid_rate": round(sum(r["valid_toolcall"] for r in ok) / len(ok), 3) if ok else None,

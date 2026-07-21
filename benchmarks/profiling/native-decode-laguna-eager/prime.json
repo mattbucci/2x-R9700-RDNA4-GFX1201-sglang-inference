@@ -1,0 +1,8 @@
+{
+  "model": "/data/models/Laguna-XS.2-FP8",
+  "requested_ctx": 220000,
+  "prompt_chars": 880064,
+  "actual_prompt_tokens": 197194,
+  "completion_tokens": 40,
+  "elapsed_s": 141.62
+}

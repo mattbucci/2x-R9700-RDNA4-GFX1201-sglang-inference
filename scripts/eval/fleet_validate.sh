@@ -2,7 +2,7 @@
 # Fleet capability + deep-context re-validation after patch 086 (num_kv_splits 16->64,
 # a fleet-wide Triton flash-decode change). Serial: ONE server at a time (no concurrent
 # GPU jobs, per rules-for-agents). Per model: kill -> launch.sh preset -> wait /health ->
-# validate_capabilities.py (basic/thinking/vision/video, per-model flags) ->
+# validate_capabilities.py (basic/tool_call/thinking/vision/video, per-model flags) ->
 # deep_context_probe.py (LATE+MID needle + coherence at true depth) -> kill -> cooldown.
 #
 # Why deep probe: 086 only changes decode at depth; the short-context capability suite is
@@ -17,7 +17,7 @@
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 OUTDIR="${FV_OUTDIR:-/tmp/fleet-validate}"
 PORT="${PORT:-23334}"
-CAP_JSON="$REPO/benchmarks/validation/capabilities-086.json"
+CAP_JSON="$REPO/benchmarks/validation/capabilities-toolcall-2026-07.json"
 DEEP_JSON="$REPO/benchmarks/validation/deep-probe-086.json"
 mkdir -p "$OUTDIR" "$REPO/benchmarks/validation"
 cd "$REPO"

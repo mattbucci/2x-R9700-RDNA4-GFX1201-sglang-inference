@@ -1,0 +1,231 @@
+diff --git a/python/sglang/srt/function_call/cohere_command4_detector.py b/python/sglang/srt/function_call/cohere_command4_detector.py
+--- a/python/sglang/srt/function_call/cohere_command4_detector.py
++++ b/python/sglang/srt/function_call/cohere_command4_detector.py
+@@ -33,11 +33,12 @@ class CohereCommand4Detector(BaseFormatDetector):
+         return self.bot_token in text
+ 
+     @staticmethod
+-    def _normalize_calls(arr) -> List[dict]:
++    def _normalize_calls(arr, exposed_tool_names: set[str]) -> List[dict]:
+         """Translate Cohere's per-item shape ``{tool_call_id, tool_name,
+         parameters}`` into the shape ``parse_base_json`` expects (``name`` /
+-        ``parameters``). Drops ``tool_call_id`` since the OpenAI Chat
+-        Completions schema assigns its own id."""
++        ``parameters``). Recover a missing name only when ``tool_call_id`` is
++        itself an exposed function name, then drop the id since OpenAI Chat
++        Completions assigns its own."""
+         if isinstance(arr, dict):
+             arr = [arr]
+         if not isinstance(arr, list):
+@@ -46,6 +47,18 @@ class CohereCommand4Detector(BaseFormatDetector):
+             if not isinstance(act, dict):
+                 continue
+             normalized = dict(act)
++            if "name" not in normalized and "tool_name" not in normalized:
++                tool_call_id = normalized.get("tool_call_id")
++                # Canonical Cohere actions use numeric ids such as "0". Only
++                # recover the malformed North variant that copied an exact,
++                # exposed function name into the id while omitting both name
++                # fields. Do not coerce, trim, case-fold, or override fields.
++                if (
++                    isinstance(tool_call_id, str)
++                    and not tool_call_id.isdecimal()
++                    and tool_call_id in exposed_tool_names
++                ):
++                    normalized["name"] = tool_call_id
+             if "name" not in normalized and "tool_name" in normalized:
+                 normalized["name"] = normalized.pop("tool_name")
+             normalized.pop("tool_call_id", None)
+@@ -80,7 +93,7 @@ class CohereCommand4Detector(BaseFormatDetector):
+                 )
+                 return StreamingParseResult(normal_text=normal_text)
+ 
+-        normalized = self._normalize_calls(arr)
++        normalized = self._normalize_calls(arr, set(self._get_tool_indices(tools)))
+         return StreamingParseResult(
+             normal_text=normal_text,
+             calls=self.parse_base_json(normalized, tools),
+diff --git a/test/registered/unit/function_call/test_cohere_command4_detector.py b/test/registered/unit/function_call/test_cohere_command4_detector.py
+new file mode 100644
+--- /dev/null
++++ b/test/registered/unit/function_call/test_cohere_command4_detector.py
+@@ -0,0 +1,179 @@
++import json
++import unittest
++
++from sglang.srt.entrypoints.openai.protocol import Function, Tool
++from sglang.srt.environ import envs
++from sglang.srt.function_call.cohere_command4_detector import (
++    CohereCommand4Detector,
++)
++from sglang.test.ci.ci_register import register_cpu_ci
++
++register_cpu_ci(est_time=4, suite="base-a-test-cpu")
++
++
++class TestCohereCommand4MalformedActionRecovery(unittest.TestCase):
++    def setUp(self):
++        self.tools = [
++            Tool(
++                function=Function(
++                    name=name,
++                    parameters={"type": "object", "properties": {}},
++                )
++            )
++            for name in ("get_weather", "search", "0")
++        ]
++        self.detector = CohereCommand4Detector()
++
++    @staticmethod
++    def _body(action):
++        return json.dumps([action], separators=(",", ":"))
++
++    def _parse(self, action):
++        text = (
++            self.detector.bot_token
++            + self._body(action)
++            + self.detector.eot_token
++        )
++        with envs.SGLANG_FORWARD_UNKNOWN_TOOLS.override(False):
++            return self.detector.detect_and_parse(text, self.tools).calls
++
++    def test_recovers_exact_exposed_name_from_string_id(self):
++        calls = self._parse(
++            {
++                "tool_call_id": "get_weather",
++                "parameters": {"city": "Paris"},
++            }
++        )
++
++        self.assertEqual(len(calls), 1)
++        self.assertEqual(calls[0].name, "get_weather")
++        self.assertEqual(calls[0].tool_index, 0)
++        self.assertEqual(json.loads(calls[0].parameters), {"city": "Paris"})
++
++    def test_canonical_numeric_id_with_tool_name_is_unchanged(self):
++        calls = self._parse(
++            {
++                "tool_call_id": "0",
++                "tool_name": "get_weather",
++                "parameters": {"city": "Paris"},
++            }
++        )
++
++        self.assertEqual(len(calls), 1)
++        self.assertEqual(calls[0].name, "get_weather")
++        self.assertEqual(calls[0].tool_index, 0)
++
++    def test_buffered_streaming_uses_the_same_recovery(self):
++        first = self.detector.parse_streaming_increment(
++            "prefix" + self.detector.bot_token, self.tools
++        )
++        second = self.detector.parse_streaming_increment(
++            self._body(
++                {
++                    "tool_call_id": "search",
++                    "parameters": {"query": "RDNA4"},
++                }
++            )
++            + self.detector.eot_token,
++            self.tools,
++        )
++
++        self.assertEqual(first.normal_text, "prefix")
++        self.assertEqual(first.calls, [])
++        self.assertEqual(len(second.calls), 1)
++        self.assertEqual(second.calls[0].name, "search")
++        self.assertEqual(
++            json.loads(second.calls[0].parameters), {"query": "RDNA4"}
++        )
++
++    def test_numeric_and_non_string_ids_are_not_names(self):
++        # The exposed function named "0" proves that the numeric-id guard is
++        # independent of the exposed-name membership check.
++        for tool_call_id in ("0", 0):
++            with self.subTest(tool_call_id=tool_call_id):
++                self.assertEqual(
++                    self._parse(
++                        {"tool_call_id": tool_call_id, "parameters": {}}
++                    ),
++                    [],
++                )
++
++    def test_unknown_or_inexact_string_ids_are_rejected(self):
++        for tool_call_id in (
++            "unknown",
++            " get_weather ",
++            "GET_WEATHER",
++            "functions.get_weather:0",
++            "call_get_weather",
++        ):
++            with self.subTest(tool_call_id=tool_call_id):
++                self.assertEqual(
++                    self._parse(
++                        {"tool_call_id": tool_call_id, "parameters": {}}
++                    ),
++                    [],
++                )
++
++    def test_explicit_name_fields_are_never_overridden(self):
++        accepted = [
++            (
++                {
++                    "name": "search",
++                    "tool_call_id": "get_weather",
++                    "parameters": {},
++                },
++                "search",
++            ),
++            (
++                {
++                    "tool_name": "search",
++                    "tool_call_id": "get_weather",
++                    "parameters": {},
++                },
++                "search",
++            ),
++            (
++                {
++                    "name": "search",
++                    "tool_name": "get_weather",
++                    "tool_call_id": "get_weather",
++                    "parameters": {},
++                },
++                "search",
++            ),
++        ]
++        for action, expected_name in accepted:
++            with self.subTest(action=action):
++                calls = self._parse(action)
++                self.assertEqual(len(calls), 1)
++                self.assertEqual(calls[0].name, expected_name)
++
++        rejected = [
++            {
++                "name": "unknown",
++                "tool_call_id": "get_weather",
++                "parameters": {},
++            },
++            {
++                "tool_name": "unknown",
++                "tool_call_id": "get_weather",
++                "parameters": {},
++            },
++            {
++                "name": None,
++                "tool_call_id": "get_weather",
++                "parameters": {},
++            },
++            {
++                "tool_name": "",
++                "tool_call_id": "get_weather",
++                "parameters": {},
++            },
++        ]
++        for action in rejected:
++            with self.subTest(action=action):
++                self.assertEqual(self._parse(action), [])
++
++
++if __name__ == "__main__":
++    unittest.main()

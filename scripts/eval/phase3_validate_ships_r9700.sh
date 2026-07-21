@@ -4,7 +4,7 @@
 # Saves to benchmarks/quality/full_ship_validation_2026-05-11.json.
 #
 # Per-model rows: tag|preset|model_path|skip_flags|notes
-# skip_flags is a comma-separated subset of {thinking,vision,video}.
+# skip_flags is a comma-separated subset of {thinking,tools,vision,video}.
 
 set -uo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -21,7 +21,7 @@ mkdir -p "$(dirname "$RESULTS")"
 > "$LOG_DIR/master.log"
 
 # Each row: HF_TAG|PRESET|MODEL_PATH (empty=preset default)|SKIP|MAX_THINK_TOK
-# SKIP = comma list of {thinking,vision,video}. Empty = run all.
+# SKIP = comma list of {thinking,tools,vision,video}. Empty = run all.
 ROWS=(
   # text-only, non-thinking
   "Qwen3-Coder-30B-A3B-AWQ|coder-30b||thinking,vision,video|256"

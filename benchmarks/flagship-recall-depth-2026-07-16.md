@@ -1,7 +1,11 @@
-# Flagship long-context recall horizon — North-Mini vs Laguna (2026-07-16)
+# Historical pre-090 flagship recall sweep — North-Mini vs Laguna (2026-07-16)
 
-**Finding: North-Mini-Code effectively recalls to ~116K but not ~176K; Laguna recalls past 176K. The gap
-is inherent architecture (correctly served), not a bug or a serving-tunable.**
+> **Superseded 2026-07-19:** the North curve below is retained as incident evidence, not a current model
+> result. SGLang served this checkpoint with centered LayerNorm instead of its declared RMSNorm before
+> patch 090. The prior “inherent ~120K ceiling” conclusion is withdrawn pending a post-094 rerun.
+
+Historical observation: the pre-090 North server recalled at ~116K but not ~176K, while Laguna recalled
+past 176K.
 
 Prompted by the patch-086 validation, where North-Mini missed a deep needle Laguna caught — a single
 temp-0.7 sample, so possibly noise. A proper recall-rate sweep settles it.
@@ -25,16 +29,18 @@ truncation or garble — it answers *"There is no passcode mentioned in this con
 > its reasoning before it stated the answer. Fixed to 512 (commit 5dfc2dd); the curve above is the corrected
 > run. Lesson: reasoning models need answer budget, and a flat-zero line is a truncation tell, not a curve.
 
-## Root cause: NoPE full-attention capacity, not a serving fault
+## Historical hypothesis — invalidated by serving-semantics audit
 
-Both are hybrid-SWA MoE with full attention every 4th layer, but they get long-range recall differently:
+The architectural comparison below remains descriptive, but it did not establish causality because the
+North arm was not served with checkpoint-correct normalization. It must not be used to infer a model
+capacity limit:
 
 - **North-Mini (`cohere2_moe`)** uses Cohere2 **NoPE**: the sliding layers get RoPE + a 4096 window; the
   full-attention layers get **no positional encoding** and full KV. Verified in
   `models/cohere2_moe.py`: RoPE is applied only `if self.is_sliding or self.force_rope`, and `force_rope`
   fires only for the dense prefix (`layer_id < first_k_dense_replace`); full-attention layers get
   `sliding_window_size = -1` (unbounded KV). So the 13 NoPE full-attention layers *do* attend the whole
-  context — the ~120K horizon is the inherent retrieval capacity of that NoPE design, not a windowing bug.
+  context. The old sweep attributed its knee to NoPE capacity; that attribution is no longer admissible.
 - **Laguna** uses `partial_rotary_factor: 0.5` (half the head dims are position-free across layers), a
   different long-range scheme that retrieves further here.
 
@@ -43,9 +49,6 @@ differentiator; the full-attention long-range mechanism is.
 
 ## Disposition
 
-Inherent to North-Mini's checkpoint architecture; there is no serving lever (the full-attention layers are
-already NoPE + full-KV, and there is no RoPE on them to scale). **North-Mini serves 256K coherently but its
-reliable recall caps ~120K; for recall past ~120K, prefer Laguna.** For coding agent use (typically
-<120K working context) North-Mini is unaffected. Not pursued as an optimization.
-
-Open refinement (low value): the exact knee is bracketed 116K–176K; intermediate depths would localize it.
+Superseded as a current ceiling. Rerun the same recall scaffold only on the patch-090-through-094 serving
+identity, with BF16 KV or checkpoint-provided FP8 cache scales and effective deterministic seeds. Until
+that control exists, this file documents the pre-fix incident and makes no North deployment recommendation.

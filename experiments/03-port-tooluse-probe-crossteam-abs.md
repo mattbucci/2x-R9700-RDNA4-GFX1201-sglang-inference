@@ -3,14 +3,57 @@
 | | |
 |---|---|
 | **Type** | experiment |
-| **Status** | in progress — Laguna 7/7; North main 1/7; depth-0.1 retry awaits GPU reset |
+| **Status** | in progress — pre-090 North baseline superseded; patches 090–094 and focused deterministic multi-turn gate complete; full post-fix ladder running |
 | **Execution host** | r9700-box |
 | **Wall clock** | ~1-1.5 days (serial server boots; 5-6 large-model boots at ~5-15 min each add ~1h aggregate — a slow FP8/MoE boot is not a hang; probe runs are prefill-dominated) |
 | **GPU time** | ~5-7h on r9700-box (TP=2, both cards): Laguna ~1h first + North ~1h + nemotron ~1h (b8k 196K rung is slow) + devstral2 KV A/B ~1.5h (two boots) + ~1h aggregate boot overhead across 5-6 server starts (80-layer Laguna FP8, North-Mini MoE, nemotron, devstral x2) + reruns margin |
-| **Depends on** | Local read access to /home/letsrtfm/AI/2x-3090-GA102-300-A1-sglang-inference (immutable donor verified at commit 5d32e1e; current donor HEAD is 5d46fb3); the frozen `/data/sgl-v0515` serving tree and post-089 launch contract captured in `benchmarks/quality/r97d-run-identity-2026-07-18.json` (do not clean); a reset of the GPU left with 30,816,251,904 bytes allocated after the North depth-0.1 stall; model dirs already on disk per `launch.sh` presets (verified): North-Mini-Code-1.0-fp8, Nemotron-3-Nano-Omni-30B-A3B-Reasoning-FP8, and Devstral-Small-2-24B-AWQ under `$MODELS_DIR`, plus Laguna-XS.2-FP8 under `/data/models` |
+| **Depends on** | Local read access to the immutable 3090 donor; the patch-090-through-094 serving identity; North launched with BF16 KV and `--enable-deterministic-inference` whenever request seeds are scored; model directories already on disk per `launch.sh`. The 2026-07-18 post-089 identity remains historical provenance and must not be mixed with the post-fix receipts. |
 | **Provides to** | 3090 team: their two explicitly requested receipts (KV_DTYPE A/B for their prepared upstream issue, nemotron FP8 spot-check) plus a finding-share on the North/Laguna tool-use curves, via README Cross-team reply; R97 queue item 'boot-time tool-call check in validate_capabilities.py': the ported probe's extract_toolcall/TOOLS block is the natural donor; Fleet model-recommendation table: agentic-depth ceilings for North-Mini/Laguna/nemotron-omni ships (stated only from budget-clean, finish_reason=stop rungs) |
 
-## Current assessment — 2026-07-19 post-089
+## Current assessment — 2026-07-19 post-095
+
+- **Disposition:** Continue. The old North 1/7 curve and ~120K recall claim are superseded pre-fix
+  incident evidence. They do not describe the current model or establish an agentic ceiling.
+- **Serving faults confirmed and patched:** 090 selects the checkpoint-declared RMSNorm instead of
+  centered LayerNorm; 091 narrowly recovers an omitted Cohere tool name when `tool_call_id` exactly names
+  an exposed function; 092 restores original content and finish metadata when parsing yields zero calls;
+  093 translates the Hugging Face 4,096-token inclusive SWA window to SGLang's 4,095 exclusive distance;
+  and 094 uses two Triton pipeline stages for HIP batch-invariant MM/BMM so deterministic inference fits
+  gfx1201's 64 KiB LDS limit.
+- **Sampling control:** stock SGLang records an OpenAI request seed but ignores it unless the server is
+  launched with `--enable-deterministic-inference`. The initial “seeded” samples were therefore ordinary
+  stochastic replicates. The probe now records `seed_effective`, warns on a disabled server, captures
+  bounded raw failure diagnostics, and has separate `repeated` and `agentic` filler profiles.
+- **KV/template controls:** North provides no FP8 KV-cache scales, so forced FP8 KV falls back to unit
+  scales and is not the reference quality arm. BF16 KV did not by itself cure the incident. Strict
+  structural tags canonicalized calls only after action commitment and did not improve aggregate quality.
+  The active checkpoint template also lists tools without a canonical action example; that remains a
+  prompt-format follow-up, not a reason to switch wholesale to its stale embedded template.
+- **Exact profile control:** on the fully patched TP2/BF16-KV deterministic server, equal-token prompts at
+  64,801 and 115,806 tokens scored **3/3 exact structured actions** with heterogeneous code/log context.
+  The legacy low-entropy repetition stress scored 1/3 and 0/3. Receipt:
+  `benchmarks/quality/north-mini-tooluse-profile-ab-post094-2026-07-19.json`.
+- **Repository-native focused gate:** the byte-distinct `--filler-profile agentic --multi-turn` run scored
+  2/3 correct primaries at both 67,554 and 115,570 actual tokens. Every valid primary terminally used the
+  structured `KIWI77` tool result (4/4), with no follow-up clamp. This meets the predeclared 2/3 admission
+  bar and rejects a monotonic context-length collapse.
+- **Second parser fault found in the A/B and patched (095):** one of the five `repeated`-profile failures
+  was ours, not the model's. At 64,801 tokens the model emitted a correct
+  `<|START_ACTION|>[{"function": "lookup_record", "parameters": {"id": "BANANA42"}}]<|END_ACTION|>`, but
+  091 recovers a missing name only from `tool_name` or an exposed-name `tool_call_id`, so the action
+  normalized without a name, was dropped, and 092 correctly left the raw markup in `content` with
+  `finish_reason == "stop"`. Patch 095 recovers an exact, exposed name from a string `function` field and
+  pins the verbatim payload as a regression test. The remaining four failures are genuine degeneration
+  (reasoning loops to the 1,024-token cap, one emitting `北 Mini Code`) and remain a property of the
+  low-entropy stressor, which the clean heterogeneous column supports. Scored receipts therefore require
+  the post-095 parser; the post-094 A/B understates North by up to one sample per affected rung.
+- **Instrument gate:** 36 probe tests and 10 chart tests pass (42 tests in the combined focused command),
+  along with compilation, whitespace, and pristine patch-series replay through 094.
+- **Next action:** finish the seven-rung, three-effective-seed post-fix agentic-profile ladder. Publish it
+  separately from the historical greedy chart; only then resume Nemotron's budget arms and the Devstral
+  KV-dtype A/B. No new North ceiling is admissible until those multi-turn receipts are complete.
+
+## Historical pre-090 assessment — superseded incident record
 
 - **Disposition:** **Next TP2 experiment; highest direct 256K-agentic evidence value.** It determines whether
   the newly accelerated stack can perform structured, multi-turn actions at depth. It qualifies the fast
@@ -69,12 +112,20 @@
 
 ## Objective
 
-Close the fleet's blind spot between "recalls at depth" and "acts at depth": our deep instruments (deep_context_probe.py, recall_depth_sweep.py) are recall-only, so North-Mini/Laguna agentic depth is unmeasured despite the known recall knee (North 100%@116K, 0%@176K; Laguna 100%@176K). The same ported probe plus one recall sweep also produces the receipts behind the 3090 team's Cross-team notes: the two explicit asks they owe an issue on (KV_DTYPE=auto vs fp8_e4m3 needle A/B; nemotron FP8 ~113K spiral spot-check) plus a finding-share back (North/Laguna tool-use curves, which the 3090 reported findings on rather than requested).
+Close the fleet's blind spot between "recalls at depth" and "acts at depth." The historical North
+100%@116K/0%@176K recall curve is now a pre-090 hypothesis, not a known knee; the same scaffold must be
+rerun on checkpoint-correct serving before it supports a limit. The ported tool-use probe also produces
+the two explicit cross-team receipts: the Devstral KV-dtype A/B and Nemotron FP8 budget spot-check.
 
 
 ## Hypothesis
 
-Falsifiable, per sub-run: (a) North-Mini's correct_action collapses in the 116K-176K band where its recall dies, while Laguna holds 1.0 to ~256K (agentic action tracks recall) — but this claim is only admissible after finish_reason=length (budget-truncation) rungs are excluded, since both flagships are reasoning models and a budget-starved thinking spiral mimics action-collapse; (b) on our 011-patched stack (extend kernels already upcast k, scale applied post-dot), KV_DTYPE=fp8_e4m3 shows no needle-recall gap vs auto on devstral2 — a measurable gap falsifies this and indicts fp8 K/V storage itself; (c) our nemotron-omni FP8 ship replicates the 3090's budget-banded failure: finish_reason=length spiral at ~113K with a 2K budget, rescued by an 8K budget at <=131K, and (per the 3090's newer 2026-07-18 claim) not rescued by 8K at >=196K.
+The original North collapse hypothesis is falsified as a general model claim: heterogeneous code/log
+prompts pass deterministically at 115,806 tokens, while repetition-heavy prompts fail non-monotonically.
+Remaining falsifiable arms are: (a) the repository-native multi-turn profile must sustain at least 2/3
+correct actions per focused depth with terminal tool-result use; (b) Devstral `KV_DTYPE=fp8_e4m3` versus
+`auto` isolates FP8 K/V storage; and (c) Nemotron's 2K/8K arms replicate or refute its reported
+budget-banded spiral. `finish_reason=length` remains budget-bound rather than a ceiling.
 
 
 ## Background & receipts
@@ -82,23 +133,23 @@ Falsifiable, per sub-run: (a) North-Mini's correct_action collapses in the 116K-
 - Donor verified: /home/letsrtfm/AI/2x-3090-GA102-300-A1-sglang-inference/scripts/eval/probe_256k_tooluse.py is the --multi-turn version at commit `5d32e1efa5a6b1a57c1173b494e5af0fa9b7a639` (`tool-use probe: --multi-turn rung`). Its blob is `0deb110fe4e806cbe091d8a68c097c1cb1384caa`, 262 lines, mode 100644, SHA-256 `a9154e28c18bf651a302ad62aa28880d03f29bf3146a6ac619af167ca4e084ba`. `ba4ecde` is an older ancestor, not the direct parent (`b9d546d` is); it has no multi-turn/KIWI77/FOLLOWUP_SENTINEL code. Current donor HEAD is `5d46fb3`. Materialize with pinned `git show`, record the empty diff/hash gate, and then document the local hardening delta. The file is self-contained apart from `requests`.
 - Instrument audit receipt: no donor test or multi-turn result exercises `5d32e1e`. Pinned lines 87-100 and 170-186 score calls without checking `finish_reason` or function name, treat malformed arguments as valid, crash on list/scalar JSON, and cap follow-ups at 1,024 tokens without recording finish/usage. Lines 231-236 only recalibrate later rungs rather than retrying the under-filled rung. The follow-up uses string content, so it does not test the structured content-parts failure described in its own motivation. These are corrected locally before GPU use; the final executable is therefore a provenance-verified derivative, not byte-identical to the donor.
 - Not already done: grep for tooluse/probe_256k_tooluse across R9700 scripts/ and benchmarks/ returns nothing; our deep instruments are recall-only (scripts/eval/deep_context_probe.py, scripts/eval/recall_depth_sweep.py, scripts/eval/flagship_recall_sweep.sh).
-- Recall baseline receipt: benchmarks/flagship-recall-depth-2026-07-16.md — North-Mini 100% recall @116K, 0% @176K (coherent miss, not truncation); Laguna 100% @176K; data benchmarks/validation/flagship-recall-depth.json. Lesson recorded there (lines ~24-26): reasoning models need answer budget (max_tokens=40 gave a false flat-zero) — this lesson DIRECTLY governs the North/Laguna probe budget below (see method steps a1/a3).
+- Historical pre-090 recall receipt: `benchmarks/flagship-recall-depth-2026-07-16.md` recorded North at 100% @116K and 0% @176K, and Laguna at 100% @176K. The North ceiling/root-cause conclusion is superseded because the server used the wrong normalization; only its answer-budget lesson remains admissible.
 - Cross-team framing corrected: of the items in our README Cross-team notes, only TWO are open asks the 3090 owes an issue on and expects receipts back for — (1) README L97, 2026-07-16 KV_DTYPE=auto vs fp8_e4m3 needle A/B ('send it over' for their upstream-issue draft); (2) README L99, 2026-07-16 nemotron ~113K spiral FP8 spot-check naming the probe + ba4ecde. The North/Laguna tool-use curves correspond to README L93 (2026-07-18), which is the 3090 REPORTING their own findings ('If you serve them...'), NOT a request — we produce those curves as a finding-share, not an owed deliverable. The Fleet-audit queue bullet (L14) frames the scope correctly.
 - KV dtype ground truth in scripts/launch.sh (VERIFIED): global default KV_DTYPE fp8_e4m3 (line 51); laguna preset overrides to auto (line 677, patch 074 checkpoint FP8-KV scheme) — so laguna is NOT a valid vehicle for the auto-vs-fp8 A/B. devstral2 is a dense full-attention 24B AWQ control with CTX=262144 and `--tool-call-parser mistral`, but the launcher initializes `MEM=0.85` before applying `MEM="${MEM:-0.92}"`; the preset therefore stays at 0.85 unless both arms explicitly pass wrapper flag `--mem-fraction 0.92`. The ~507683 FP8-KV and ~253K BF16-KV pool expectations are conditional on that explicit, symmetric override and must be verified from both boot logs.
 - STALE-CLAIM CHECK on the 3090's exposure note (VERIFIED): our live tree /data/sgl-v0515 python/sglang/srt/layers/attention/triton_ops/extend_attention.py lines 425 and 1000 read `qk = tl.dot(q, k.to(q.dtype))` — patch 011 (commit c2b63c071d, patches/011-rdna4-triton-attention-fp32.patch) already flipped the upstream `q.to(k.dtype)` downcast to upcast-k at both prefix-dot sites, and `qk *= sm_scale * k_scale` (line 446) applies the KV scale post-dot. So the 3090's 'you are exposed' claim does not hold as-stated on our stack (their differing path is upstream-main python/sglang/kernels/ops/.../extend_attention.py in the downcast form). The A/B result (gap or null) is still exactly the receipt they asked for, but the reply must carry this caveat — a null validates upcast-k as the ~free gfx1201 fix.
 - Tool-call parsers are preset-wired in launch.sh (VERIFIED): north-mini cohere_command4 (with --reasoning-parser cohere_command4 — a reasoning model), laguna poolside_v1 (reasoning), nemotron-omni qwen3_coder, devstral2 mistral. Default PORT=23334 (scripts/common.sh line 38); serving env sglang-triton36-v0515, SGLANG_DIR=/data/sgl-v0515.
 - Receipt naming donor: 3090 run_v0512_fleet_eval.sh writes benchmarks/quality/tooluse256k-$PRESET-${STACK_TAG:-v0515}.json — we mirror with a -r9700 stack tag to avoid cross-stack receipt clobber (the thing ba4ecde's STACK_TAG fix exists for).
-- R9700 working tree carries uncommitted in-flight patches 083-089 (Laguna FP8 wins) — run on the tree as-is; do not clean/rebase.
+- R9700 serving tree carries the reviewed chain through 094 plus unrelated live work — run on the tree as-is; do not clean or rebase it during an A/B.
 
 
 ## Method
 
-1. Preflight: confirm no calibration/pruning job is live (ps aux | grep -E 'llmcompressor|quantize|run_reap'; rocm-smi) and no server holds the GPUs. Record `git status`, live SGLang HEAD, patch list/hashes, and relevant dirty-tree fingerprints as the frozen run identity; leave uncommitted 083-089 work untouched.
+1. Preflight: confirm no calibration/pruning job is live and no server holds the GPUs. Record `git status`, live SGLang HEAD, patch list/hashes, deterministic flag, resolved KV dtype, and relevant dirty-tree fingerprints as the frozen run identity; leave unrelated live work untouched.
 2. Provenance gate: materialize `scripts/eval/probe_256k_tooluse.py` from `git -C <3090 repo> show 5d32e1e:scripts/eval/probe_256k_tooluse.py` using the repository edit workflow. Before hardening, verify empty `diff`, mode 100644, 262 lines, blob `0deb110f…`, and SHA-256 `a9154e28…`; confirm `--multi-turn`, `KIWI77`, and `FOLLOWUP_SENTINEL` and run `py_compile`/`--help`. Keep this receipt so the subsequent local delta remains attributable.
-3. **COMPLETE — CPU receipt:** pre-GPU hardening requires `finish_reason=tool_calls`, exactly one typed function call, `lookup_record`, a usable call ID, and object JSON arguments containing a string `id`; malformed/non-object/wrong-name calls are invalid and cannot crash. Primary and follow-up prompt/completion usage, finish reasons, elapsed time, HTTP status/errors, semantic value-match mode, and follow-up status are retained. The follow-up budget defaults to `--max-tokens`, timeout scales like the primary, both completion budgets are reserved, and structured OpenAI content parts are sent for user/tool messages. The summary separately counts final rungs and every attempted retry. Same-rung depth misses and second-turn reserve clamps retry once and retain both attempts. `scripts/test/test_probe_256k_tooluse.py` passes 29/29 alongside compile/help/diff checks. The immutable donor and tested-derivative hashes are recorded in Current assessment.
+3. **COMPLETE — CPU receipt:** pre-GPU hardening requires `finish_reason=tool_calls`, exactly one typed function call, `lookup_record`, a usable call ID, and object JSON arguments containing a string `id`; malformed/non-object/wrong-name calls are invalid and cannot crash. Both turns retain usage, finish, timing, HTTP, bounded failure diagnostics, sampling identity, filler/prompt hashes, and semantic match evidence. Same-rung depth misses and reserve clamps retry once. `scripts/test/test_probe_256k_tooluse.py` passes 36/36; the combined probe/chart command passes 42 tests.
 4. (a1) Laguna-first curve: `./scripts/launch.sh laguna`; wait for health on :23334; run `python scripts/eval/probe_256k_tooluse.py --port 23334 --tag laguna --multi-turn --max-tokens 8192 --lengths 16384,65536,116000,131072,176000,196608,256000 --out benchmarks/quality/tooluse256k-laguna-v0515-r9700.json`. Record `FP8_GEMM_BACKEND=triton` and the frozen-tree identity. Laguna is a reasoning model, so 8,192 applies to both primary and follow-up; `length` is budget-bound rather than response blindness.
-5. **COMPLETE — (a2) North-Mini main curve:** kill server; `./scripts/launch.sh north-mini`; run `python scripts/eval/probe_256k_tooluse.py --port 23334 --tag north-mini --multi-turn --max-tokens 8192 --lengths 16384,65536,116000,131072,176000,196608,256000 --out benchmarks/quality/tooluse256k-north-mini-v0515-r9700.json`. The rungs bracket its 116K-176K recall knee, and the fixed 8,192 budget prevents the known under-budgeted-reasoning false zero.
-6. **RETRY REQUIRED — (a3) North-Mini knee tie-in:** on the same server, run `python scripts/eval/probe_256k_tooluse.py --port 23334 --tag north-mini-depth01 --multi-turn --max-tokens 8192 --depth 0.1 --lengths 131072,176000 --out benchmarks/quality/tooluse256k-north-mini-v0515-r9700-depth01.json` so needle placement matches the flagship recall receipt. The first attempt stalled after the 131K prefill and is unscored; reset the affected GPU before retrying. If either template rejects the structured role:`tool` turn, preserve the error as a response-path finding and finish the single-turn scoring; do not patch a template mid-curve.
+5. **HISTORICAL/SUPERSEDED — (a2) North-Mini pre-090 curve:** the temperature-0 1/7 receipt remains an incident baseline only and is excluded from current ceilings.
+6. **REPLACED — (a3) North-Mini knee tie-in:** do not retry the stale depth-0.1 post-089 arm. The admitted post-094 sequence is the two-depth deterministic profile control, the repository-native multi-turn focused gate, and then the full seven-rung three-seed profile ladder.
 7. (c) Nemotron spot-check: kill server; `./scripts/launch.sh nemotron-omni`; run `python scripts/eval/probe_256k_tooluse.py --port 23334 --tag nemotron-omni-b2k --lengths 76000,113000,131072,196608 --max-tokens 2048 --out benchmarks/quality/tooluse256k-nemotron-omni-v0515-r9700-b2k.json`, then `python scripts/eval/probe_256k_tooluse.py --port 23334 --tag nemotron-omni-b8k --lengths 113000,131072,196608 --max-tokens 8192 --out benchmarks/quality/tooluse256k-nemotron-omni-v0515-r9700-b8k.json`. Expected per 3090: b2k spirals to `length` at >=113K; b8k rescues <=131K but still fails at 196K. Match or refutation is the receipt.
 8. (b) KV_DTYPE A/B on devstral2 (one mechanism, identical instrument both arms): arm A `./scripts/launch.sh devstral2 --mem-fraction 0.92` (fleet-default fp8_e4m3), then `python scripts/eval/recall_depth_sweep.py --port 23334 --slug devstral2-fp8e4m3 --depths 8000,65000,130000,197000,240000 --samples 5 --needle-frac 0.10 --save benchmarks/validation/kvdtype-ab-devstral2-fp8e4m3.json`; arm B kill server, `KV_DTYPE=auto ./scripts/launch.sh devstral2 --mem-fraction 0.92`, then the identical sweep with `--slug devstral2-bf16kv --save benchmarks/validation/kvdtype-ab-devstral2-auto.json`. Capture both boot-log pools and confirm the FP8 arm is near 507683 and BF16 arm near ~253K before trusting 240K. If the smaller pool is below ~245K, reduce the deepest rung symmetrically in both arms.
 9. Analysis + reply: write benchmarks/validation/kvdtype-ab-devstral2.md (per-depth recall, both pool sizes, arm actuals within 2%, gap/no-gap verdict with the patch-011 caveat). Separate primary and follow-up `finish_reason=length`/`depth_shortfall` rungs from genuine action or response-use failures. Draft the R9700->3090 reply citing all receipts and close the queue bullet only after the campaign is complete.
@@ -107,7 +158,9 @@ Falsifiable, per sub-run: (a) North-Mini's correct_action collapses in the 116K-
 
 ## Baseline & instrument
 
-Recall-only baseline exists: benchmarks/validation/flagship-recall-depth.json via scripts/eval/flagship_recall_sweep.sh (North 100%@116K / 0%@176K; Laguna 100%@176K). Tool-use is a new axis (no prior R9700 receipt). For the KV A/B, baseline arm = fleet-default KV_DTYPE=fp8_e4m3 measured first with scripts/eval/recall_depth_sweep.py; instrument is server-verified actual_prompt_tokens per rung, never client estimates.
+The recall-only baseline in `benchmarks/validation/flagship-recall-depth.json` is historical for North and
+current only for Laguna. A North rerun must use the post-094 identity. For the Devstral KV A/B, the
+instrument remains server-verified `actual_prompt_tokens`; never substitute client estimates.
 
 
 ## Success criteria
@@ -156,10 +209,12 @@ Recall-only baseline exists: benchmarks/validation/flagship-recall-depth.json vi
 - Cohere/poolside chat templates may not render role:'tool', assistant tool_calls, or structured content parts in the multi-turn follow-up — probable on first contact; treat a 400 as a response-path finding, not a model-depth failure.
 - The pinned donor's 1,024-token follow-up, string-only payload, and missing follow-up finish/usage fields would confound response blindness with truncation and would miss the historical list-content failure. The pre-GPU hardening and focused tests are mandatory, not optional cleanup.
 - A near-window first turn plus tool/result follow-up can exceed the server context even when the first request fits. Reserve the second-turn budget before constructing the rung and record any remaining cap/error rather than silently changing the tested depth.
-- Reasoning-budget confound (primary methodological risk to hypothesis a): a thinking flagship that burns even 8192 tokens on <THINKING> at the 116-176K knee and truncates (finish_reason=length) would spuriously score correct_action=0 from budget starvation, not recall-death, falsely confirming (a). Mitigated by fixing --max-tokens 8192 on both flagship curves AND gating the ceiling claim on finish_reason=stop rungs (length rungs excluded) — the confound is now both suppressed and detectable per-rung.
+- Reasoning-budget confound: a thinking model that truncates before action commitment can spuriously score
+  zero. The probe records `finish_reason=length`, bounded raw diagnostics, and completion budgets; such
+  rows remain budget-bound and cannot establish a ceiling.
 - The 3090's exposure framing is stale for our stack (patch 011 already upcasts k): if we send a bare null without the caveat, their upstream issue could over-claim; the .md verdict must carry the line-number evidence.
 - At explicit mem 0.92, the devstral2 bf16-KV arm is expected near ~253K tokens; a rung above ~250K would 400 only in arm B and break symmetry. The 240K cap is trusted only after both boot logs confirm their pools.
-- North-Mini/Laguna are hybrid-SWA: at depth 0.5 the needle sits outside every sliding window, so failures conflate recall and action; the depth-0.1 tie-in run plus the existing recall receipt disambiguate.
+- North-Mini/Laguna are hybrid-SWA: midpoint placement intentionally tests whether full-attention layers carry long-range facts into action. Interpret it alongside the heterogeneous profile and a future post-094 recall control; the stale depth-0.1 receipt no longer disambiguates current serving.
 - nemotron 8K-budget deep rungs are slow (thinking spiral burns 8K tokens at ~29-45 tok/s decode), and the added 196K b8k rung is the slowest of all — budget the hour, run detached.
 - Boot overhead: 5-6 large-model server starts (North-Mini MoE, 80-layer Laguna FP8, devstral x2, nemotron) each take ~5-15 min; a slow FP8/MoE boot must not be misread as a hang — allow up to a startup timeout before declaring a boot-crash null.
 - Uncommitted 083-089 tree state could shift under this work if the Laguna lane resumes mid-run — coordinate: this item is serial with any patch-lane serving work.

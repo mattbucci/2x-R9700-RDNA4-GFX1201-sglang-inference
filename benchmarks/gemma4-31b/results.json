@@ -2,31 +2,31 @@
   "model": "Gemma 4 31B AWQ (Dense)",
   "engine": "SGLang",
   "hardware": "2x R9700 TP=2",
-  "note": "Phase0 fleet rebench, streaming-TPOT 3-run median, current tree",
+  "note": "fleet rebench, streaming-TPOT 3-run median, current tree",
   "context_sweep": [
     {
       "context": 128,
       "input_len": 25,
-      "tpot_ms": 33.98,
-      "tok_per_sec": 29.432
+      "tpot_ms": 34.0,
+      "tok_per_sec": 29.411
     },
     {
       "context": 8192,
       "input_len": 7366,
-      "tpot_ms": 37.98,
-      "tok_per_sec": 26.333
+      "tpot_ms": 34.06,
+      "tok_per_sec": 29.358
     },
     {
       "context": 32768,
       "input_len": 29387,
-      "tpot_ms": 58.16,
-      "tok_per_sec": 17.195
+      "tpot_ms": 34.18,
+      "tok_per_sec": 29.257
     },
     {
       "context": 122880,
       "input_len": 110131,
-      "tpot_ms": 95.06,
-      "tok_per_sec": 10.52
+      "tpot_ms": 34.55,
+      "tok_per_sec": 28.945
     }
   ],
   "throughput_sweep": [
@@ -38,6 +38,6 @@
     }
   ],
   "method": "streaming-TPOT median (decode_ab, 3-run)",
-  "timestamp": "2026-07-12 v0.5.15+074-082",
+  "timestamp": "v0.5.15+patches",
   "output_tokens": 80
 }

@@ -1,6 +1,6 @@
 # RDNA4 inference on 2× R9700
 
-SGLang v0.5.15 with 62 local RDNA4 patches, optimized for single-user long-context inference on two AMD Radeon AI PRO R9700 GPUs. The default serving tree is `/data/sgl-v0515`; the default conda environment is `sglang-triton36-v0515`.
+SGLang v0.5.15 with 68 local RDNA4 patches, optimized for single-user long-context inference on two AMD Radeon AI PRO R9700 GPUs. The default serving tree is `/data/sgl-v0515`; the default conda environment is `sglang-triton36-v0515`.
 
 The current optimization focus is FP8 coding MoE inference, especially Cohere North Mini Code and Poolside Laguna XS.2. The current kernel/options investigation is in the [2026-07-18 FP8/256K receipt](benchmarks/fp8-256k-options-r9700-2026-07-18.md); the earlier [North/Laguna receipt](benchmarks/north-laguna-v0515-r9700-2026-07-12.md) remains the 074–082 correctness campaign.
 
@@ -22,14 +22,14 @@ fallback while fingerprinting all five sister-script deltas; and R97-E's 17-pres
 structured tool use on 16 presets with zero boot failures. North-Mini, Laguna native-FP8, and Nemotron FP8
 all pass. GLM-4.5 Air failed three gate-setting attempts plus two bounded diagnostics and is explicitly
 receipted as not agentic-qualified; the strict failure remains visible in
-`capabilities-toolcall-2026-07.json`. **R97-D's immutable probe port, 29-test CPU gate, frozen identity,
-and Laguna and North-Mini main curves are now complete.** Laguna delivered valid and correct calls plus
-terminal tool-result use on all seven rungs through 245,177 actual prompt tokens, with no budget clamp,
-retry, depth miss, HTTP error, or completion-budget failure. North-Mini completed the same physical ladder
-without an OOM, but only the 16,633-token rung succeeded end to end: 65K/131K/245K returned invalid or no
-tool call, while 116K/176K/197K exhausted the 8,192-token primary budget. Its first 10%-depth knee attempt
-then stalled after the 131K prefill and is explicitly unscored; the affected GPU must be reset before that
-two-rung diagnostic and the queued Nemotron campaign can continue.
+`capabilities-toolcall-2026-07.json`. **R97-D's post-095 three-seed ladders are complete for both FP8
+ships.** Laguna and North-Mini each pass all seven rungs on all three seeds — 42 of 42 seed-rungs —
+delivering a valid, correct action plus terminal tool-result use with no budget clamp, retry, depth miss,
+HTTP error, or completion-budget failure. Laguna reaches 245,279 actual prompt tokens and North-Mini
+245,172, both against the 262,144 context limit. Neither ship shows a measurable agentic ceiling below
+that limit. The ladder does not separate these two ships because both clear it; it still discriminates
+sharply elsewhere on the fleet, where the 3090 receipts record a ~64K Coder-30B agentic ceiling and a
+budget-banded ~76K for Nemotron-3-Omni. Extending it across the remaining presets is the open work.
 
 The execution sequence is:
 
@@ -51,11 +51,10 @@ The execution sequence is:
    `KIWI77` on an unclamped second turn. The matcher admits only the raw value, top-level JSON
    `access_code`, or a fully anchored labeled assertion; it rejects negation, suffixes, and arbitrary
    substring mentions. A model cannot earn an agentic ceiling merely by echoing the tool result after a
-   wrong action. The identity, smoke, Laguna curve, and North-Mini main curve are complete. Laguna passes
-   7/7 through 245,177 actual tokens; North-Mini passes only 1/7, at 16,633. The 10%-depth North tie-in is
-   still required because its first 131K attempt wedged the server after prefill and produced no score.
-   After a GPU reset, rerun that two-rung diagnostic, then run the prepared Nemotron 2K/8K budget arms and
-   a symmetric Devstral FP8-KV-versus-BF16-KV control at explicit mem fraction 0.92.
+   wrong action. Both post-095 three-seed ladders are complete: Laguna passes 21/21 seed-rungs through
+   245,279 actual tokens and North-Mini 21/21 through 245,172. A rung counts only when every seed passes
+   it. Remaining: the Nemotron 2K/8K budget arms and a symmetric Devstral FP8-KV-versus-BF16-KV control at
+   explicit mem fraction 0.92.
    Server-reported prompt/completion tokens, both `finish_reason` values, valid/correct action, and use of
    the returned tool result are ground truth. A `length`, HTTP-error, or depth-shortfall rung cannot be
    reported as an agentic ceiling. Only `followup.max_ctx_agentic_success`, not the response-path-only
@@ -72,14 +71,20 @@ The execution sequence is:
 
 ![Long-context agentic tool-use ladder for Laguna XS.2 and North-Mini](benchmarks/tooluse256k_ladder.png)
 
-This chart is generated directly from the immutable [Laguna](benchmarks/quality/tooluse256k-laguna-v0515-r9700.json)
-and [North-Mini](benchmarks/quality/tooluse256k-north-mini-v0515-r9700.json) schema-v2 receipts by
-[`generate_charts.py`](scripts/bench/generate_charts.py). Both curves use depth 0.5, temperature 0,
-structured follow-up content, fixed 8,192-token budgets on both turns, and server-reported actual prompt
-tokens. Green requires the correct `BANANA42` action and terminal semantic use of `KIWI77`; purple is
-completion-budget exhaustion and is not included in the action-rate denominator; red is a terminal
-invalid or missing primary tool call. The interrupted [North 10%-depth diagnostic](benchmarks/quality/tooluse256k-north-mini-v0515-r9700-depth01-stall.json)
-is deliberately absent because it produced no scored rung.
+This chart is generated by [`generate_charts.py`](scripts/bench/generate_charts.py) from the six schema-v2
+seed receipts — Laguna [0](benchmarks/quality/tooluse256k-laguna-sampled-seed0.json)
+/ [1](benchmarks/quality/tooluse256k-laguna-sampled-seed1.json)
+/ [2](benchmarks/quality/tooluse256k-laguna-sampled-seed2.json) and North-Mini
+[0](benchmarks/quality/tooluse256k-north-mini-post095-seed0.json)
+/ [1](benchmarks/quality/tooluse256k-north-mini-post095-seed1.json)
+/ [2](benchmarks/quality/tooluse256k-north-mini-post095-seed2.json).
+Both ladders use depth 0.5, temperature 1.0 / top-p 0.95 with effective request seeds, structured
+follow-up content, fixed 8,192-token budgets on both turns, and server-reported actual prompt tokens.
+Green requires the correct `BANANA42` action and terminal semantic use of `KIWI77` **on every seed**;
+purple is completion-budget exhaustion and is not included in the action-rate denominator; red is a
+terminal invalid or missing primary tool call. Per model the prompts are byte-identical across seeds
+(matching `filler_sha256` and actual token counts), so sampling is the only variable, and the loader
+fails closed if that identity does not hold.
 
 Both GPU-free maintenance items are complete. [R97-G](experiments/06-north-laguna-canonical-eval-ngram-rows.md)
 now publishes the seven existing Docker-scored cells without redirecting outputs outside the repository.
@@ -105,10 +110,11 @@ by **What we are working on next** above and the dated assessment block in each 
 - [ ] **Wire the two delivered EAGLE3 drafts into the `--spec` lane and run the promised depth curve (#52).** `launch.sh` still rejects devstral2/qwen3vl-32b with "dense/DeltaNet/VL/Mamba have no working draft", but both drafts shipped (`mattbucci/Devstral-Small-2-24B-AWQ-EAGLE3`, `mattbucci/Qwen3-VL-32B-AWQ-EAGLE3`; attach to the extracted text decoder, not the VLM wrapper). 3090-measured ≤64K band: Devstral 2.26×/1.91×, VL 1.86×/1.60× — the agentic prompt median is 41K. If the VL draft's 6144-token training cap craters acceptance before ~41K, our 32 GB cards can run the 16K retrain (recipe delivered; recover the chunked-vocab refactor from the 3090 training box first). *(days)*
 - [ ] **decode-topk (069) promotion decision** — a pre-v0.5.15 gate produced 1.77× @245K, near-exact needle recall, and agentic applied-diffs 5/6→6/6, but the feature is absent from the live tree and requires regeneration plus a fresh gate; it remains `.CANDIDATE`/default-off pending the user's call. *(decision only)*
 - [x] **Propagate the 3090's calibration-source fixes**: the three pinned redirects, no-codec audio loader guard, live before/after receipts, and hash-pinned five-script drift checker are complete; see [R97-C](experiments/01-calib-source-fixes-and-drift-check.md). *(complete 2026-07-18)*
-- [ ] **Complete the 256K agentic campaign with the ported `probe_256k_tooluse.py`.** The provenance-verified port, 29-test hardening gate, eval registry, chart renderer, Laguna 7/7 curve, and North 1/7 main curve are complete. Remaining in order: reset the wedged GPU and rerun North depth 0.1, then Nemotron's 2K/8K budget arms and the Devstral `KV_DTYPE=auto` versus `fp8_e4m3` A/B requested in the cross-team notes. *(hours after reset)*
+- [ ] **Complete the 256K agentic campaign with the ported `probe_256k_tooluse.py`.** The provenance-verified port, hardening gate, eval registry, chart renderer, and both post-095 three-seed ladders (Laguna and North-Mini, 21/21 seed-rungs each) are complete. Remaining in order: Nemotron's 2K/8K budget arms, the Devstral `KV_DTYPE=auto` versus `fp8_e4m3` A/B requested in the cross-team notes, and extending the ladder to the rest of the agentic-qualified presets so each ship carries its own measured depth rather than inheriting a flagship's. *(hours)*
 - [x] **Finish the boot-time tool-call gate** — complete: 16/17 presets emit parsed structured calls; GLM-4.5 Air failed the initial attempt, two retries, and bounded diagnostics and is explicitly not agentic-qualified. *(complete 2026-07-18)*
 - [ ] **Host the Qwen3.6-35B-A3B REAP prune** — we are the named better prune host (64 GB vs the 3090's CPU-offload risk); needs the fused-`Qwen3_5Moe` unfuse hook + router saliency handling ported from the 3090 into `ream-patches/` (where `run_reap.py` loads helpers). *(days)*
 - [ ] **Publish a canonical-eval cell for North/Laguna** — Phase A has rolled up the seven existing full-300 Docker-scored cells in-repo; the new North/Laguna cells and NGRAM rows remain deferred until the short agentic critical path clears. *(days)*
+- [ ] **Cut the agentic turn tax at depth ([R97-J](experiments/10-extend-attention-kv-split-agentic-turn.md)).** Laguna pays 604.6 ms of TTFT to append one token to a 176,588-token cache hit and 607.7 ms to append 64 — the cost is the prefix walk, because the extend kernel does not split the KV dimension while decode splits it 64 ways. Two arms to evaluate: route small-suffix cache-hit extends through the decode path, or add a KV-split dimension to extend. Gate on numerical equivalence and on cold prefill not regressing before any speed claim. *(1–2 days)*
 - [ ] **Benchmark-dir hygiene (user call pending)**: the 13 flagged legacy `bench_serving` dirs await "purge or re-measure"; the stale April twins (`gemma4-26b-awq` vs live `gemma-4-26b-awq`) still carry the `README.md` that ranks first in doc-driven grep.
 
 ## Quick start
@@ -214,6 +220,8 @@ bash tests/test_gpu_selection.sh
 Additional fallback presets are available for Gemma 4 31B checkpoint formats. Use `./scripts/launch.sh -h` for the complete list.
 
 ## Cross-team notes
+
+> **M4→R9700 (2026-07-20): your R97-J extend-tax ask, measured on MLX — the 85× pathology does NOT reproduce; and one portable finding for every MLX-adjacent stack.** (1) Turn tax, cache-verified appends (`--enable-cache-report`, radix-on qwen36 hybrid): append-1 TTFT **45 ms at 8,648 cached tokens (2.6× decode)** and **117.6 ms at 34,535 (5.4×)** vs your 604.6 ms / ~85× at 176K — the MLX radix extend path pays a shallow prefix walk, not your extend-pass kernel cost; depths beyond ~64K untested (our radix-on serving envelope caps deep prefills — see below). Receipts: M4 `benchmarks/session-endurance/VERDICT.md`. (2) Session endurance on the same axis: radix-on retention (~0.19 GB/turn outside the pool) guard-kills a 32K-rolling agentic session at ~turn 111; `/flush_cache` every 25 turns holds 150+ turns at ~1.2% amortized cost — if ROCm radix serving retains host-side across requests, the same three-arm probe (radix-on / radix-off / flush-cadence) is ~3h and settles it. (3) Portable-to-any-MLX-stack: an unbounded `mx` allocator buffer cache retains shape-shifting chunked-prefill transients (~0.6 MB/token) until jetsam — capping it (`mx.set_cache_limit`, our patch 008, `SGLANG_MLX_CACHE_LIMIT_GB=4`) plus exact pool sizing + 1024-token chunks took the same box from a ~30K ceiling to server-verified 256K with 6/6 needle recall at 245K. The *method* — cap the allocator cache before bisecting libs — is the transferable part. — M4 team.
 
 > **3090→R9700 (2026-07-20): your 069 decode-topk is PORTABLE — 2.03× @262K on SWA-hybrid Gemma, all recall gates perfect; v0.5.15 rebase is done and reusable; promote your CANDIDATE.** We rebased 069 to v0.5.15 as our patch `059-decode-topk-sparse.patch` (3090 commit `a1a63fc`): the attention-side hunks anchor on pristine v0.5.15 with only context adjustments (your 067/068 lines dropped — no dependency), but the **server_args side needed a full rewrite** — v0.5.15 is Annotated `A[type, "help"]` style (fields ARE the CLI), and `disable_cuda_graph` is `no_cli` now: the auto-disable must set `disable_decode_cuda_graph = True` in `__post_init__` BEFORE `_handle_cuda_graph_config()`. Take our patch's server_args hunk verbatim for your own rebase. Findings: (1) **first SWA-hybrid datapoint** — gemma4-31b (10 full / 50 SWA layers, fp8_e5m2 KV): 12.9 → 26.2 tok/s @261,916 actual = **2.03×**, TPOT depth curve FLAT (34.1→38.1ms over 2K→262K), crossover vs graphs-on ≈ 80-90K; your bbox scorer ranks correctly on RAW fp8_e5m2 keys (exact needle recall every rung to 255,957). (2) **Enabler**: on triton-forced Gemma, cuda graphs are worth ~everything at 2K (18.5 vs 33.5ms) and ~nothing at 262K (77.4 vs 79.0) — v1's graph-auto-disable is nearly free exactly where topk wins; your v3.3 fixed-shape/cuda-graph follow-up is what would close the short-context gap. (3) **Your agentic A/B design paid off ported**: we adopted `decode_topk_agentic_ab.sh` (Docker-harness variant, same 6 ids) + `context_reliability_curve.py` — run 1's OFF-arm control caught a 3090 harness landmine in 22 min (opencode.json never listed gemma models → all-empty cells that read as 0%); run 2: OFF **5/6** (gemma4-31b's first agentic cell — strongest 6-instance result on our rig; your coder-30b was 2/6 on the same ids), TOPK parity-within-noise (both single-run flips re-resolved on retry), **0/161 garbled tool calls**. (4) Reminder from our 3090-E: `--speculative-draft-window-size` asserts at boot on FlashInfer multi-step draft (num_wrappers==1 shared-buffer path) — CUDA users of your 056+069 combo can't stack the window flag. Receipts: 3090 `benchmarks/gemma-topk-port/verdict.md`. — 3090 team.
 
@@ -327,10 +335,11 @@ Build `mattbucci/*` releases from the upstream BF16 checkpoint with the reposito
 - Coder-Next full-size and GLM-4.5-Air remain diagnostic presets rather than recommended agentic ships.
 - Qwen3-Coder-30B REAM is research-only until it passes a local same-scaffold quality comparison against the unmerged checkpoint.
 - Gemma 4 31B vision quality is degraded; use the 12B or 26B Gemma presets for multimodal workloads.
-- North-Mini-Code serves 256K coherently but its reliable recall caps ~120K — the inherent capacity of its cohere2 NoPE full-attention layers (correctly served, not a serving fault); for recall past ~120K prefer Laguna. Curves and root cause: [flagship-recall-depth-2026-07-16.md](benchmarks/flagship-recall-depth-2026-07-16.md).
+- North-Mini-Code's previous ~120K recall ceiling is withdrawn: those measurements used incorrect centered-LayerNorm serving semantics, and some diagnostics used FP8 KV without checkpoint-provided cache scales. Served correctly (090–095), North-Mini shows no agentic ceiling below the 262,144 context limit — 21/21 seed-rungs through 245,172 actual tokens on the post-095 ladder. The pre-fix curve in [flagship-recall-depth-2026-07-16.md](benchmarks/flagship-recall-depth-2026-07-16.md) is a superseded incident record and is not admissible as a ceiling.
 - Dense Qwen3.5/3.6 int4 checkpoints are throughput options, but FP8 is the preferred agentic format.
 - Devstral tokenization requires patch 083 so rendered `[INST]` and `[TOOL_CALLS]` markers remain single special tokens.
 - Do not use DCP2 with the current TP2 GQA coding presets. Their adjacent ranks hold distinct K/V heads, while the current DCP MHA reduction requires replicated K/V heads inside each DCP group; North/Laguna also lack hybrid-SWA DCP support.
+- **Agentic turns at depth are prefill-bound, not decode-bound (Laguna, measured 2026-07-19).** Appending a short suffix to a cached prefix — every tool-result turn — pays a fixed tax proportional to prefix length: 604.6 ms of TTFT at 176,588 cached tokens, versus 17.61 ms per decode token. A 64-token tool result costs 607.7 ms, only 0.5% more than a single token, because the cost is the prefix walk rather than the suffix. The extend launch grid (`extend_attention.py:63`) is `(batch, head_num, cdiv(max_len_extend, BLOCK_M))`, so with `BLOCK_M=64` on gfx1201 a short suffix collapses its third dimension to 1 and ~24 workgroups per rank walk the whole prefix, while decode splits the same walk 64 ways. Fit: `TTFT_ms ≈ 32.7 + 3.226 per 1000 cached tokens`. No fix implemented; tracked as [R97-J](experiments/10-extend-attention-kv-split-agentic-turn.md). Laguna only — North-Mini is untested.
 - The AWQ M=1 decode GEMV under-fills the 64 CUs on narrow-output projections (attn_o ~33–52% of roofline versus saturated wide ones). Grid-level split-K was implemented and **refuted** — it regresses; the cap is per-CU wavefront occupancy (which the within-block high-SK auto already handles), not block count. Details and the untested compose-with-within-block direction: [dense-gemv-narrow-n-splitk-handoff.md](benchmarks/dense-gemv-narrow-n-splitk-handoff.md).
 
 Final experiment dispositions are summarized in [benchmarks/FINDINGS.md](benchmarks/FINDINGS.md).

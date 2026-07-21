@@ -1,6 +1,6 @@
 # SGLang v0.5.15 RDNA4 patches
 
-This directory contains the **60 active numeric patches** applied to pristine SGLang v0.5.15 for the
+This directory contains the **68 active numeric patches** applied to pristine SGLang v0.5.15 for the
 2× Radeon AI PRO R9700 serving stack. The default tree is `/data/sgl-v0515`; the default conda environment
 is `sglang-triton36-v0515`.
 
@@ -67,6 +67,7 @@ can be proposed upstream. `Partial` requires a fresh comparison with upstream be
 | 059 | `token-dispatcher-fuseep-drop` | Carry | Removes an import of the deleted FuseEP dispatcher from the HIP scheduler path. |
 | 060 | `aiter-mxfp4-moe-guard` | Candidate | Guards the optional AITER MXFP4 MoE import when AITER is unavailable. |
 | 063 | `rdna4-relu2-hip-fallback` | Candidate | Provides the squared-ReLU implementation used by Nemotron on HIP. |
+| 094 | `rdna4-batch-invariant-matmul-lds` | Carry | Uses two Triton pipeline stages for HIP batch-invariant MM/BMM so deterministic inference fits gfx1201's 64 KiB LDS limit; non-HIP platforms retain three stages. |
 
 ### MoE serving and routing
 
@@ -93,6 +94,11 @@ can be proposed upstream. `Partial` requires a fresh comparison with upstream be
 | 077 | `triton-mixed-head-fp8-kv-correctness` | Candidate | Sizes scratch buffers for unequal query/KV head counts and derives descales from the actual KV dtype. |
 | 080 | `laguna-bf16-attention-allreduce` | Candidate | Lets Laguna use its native BF16 attention collective while retaining the defensive HIP FP32 default elsewhere. |
 | 081 | `rdna4-triton-rmsnorm-laguna-fused-qk` | Candidate | Extends the HIP Triton RMSNorm path to standard weights and fuses Laguna's query/key head norms. |
+| 084 | `rdna4-qwen3moe-bf16-attention-allreduce` | Candidate | Opts Qwen3-MoE (coder-30b, coder-reap-25b) out of the HIP FP32 attention all-reduce, using the BF16 collective. Measured +1-3% single-user decode, coherent; FP32 stays the default for recurrent hybrids. |
+| 085 | `rdna4-glm4moe-bf16-attention-allreduce` | Candidate | Opts GLM-4.5 MoE (glm45-air) out of the HIP FP32 attention all-reduce, using the BF16 collective. Reverse-confirmed +1.3-4.1% single-user decode, coherent; FP32 stays the default for recurrent hybrids. |
+| 086 | `rdna4-amd-num-kv-splits-64` | Carry | Raises the AMD Triton flash-decode `num_kv_splits` default 16->64 so the decode grid (head_groups x splits) fills gfx1201's 64 CUs at long context. Measured **2.14x 256K decode** (14.4->30.7 tok/s, coder-reap-25b); short context unregressed (the get_num_kv_splits heuristic still scales down). `SGLANG_KV_SPLITS_OVERRIDE` forces a value. |
+| 087 | `rdna4-flash-decode-bf16-pv` | Carry | Flash-decode PV in bf16 (fp32 accumulate) instead of fp32 in the grouped GQA kernel. fp32 PV inflated VGPR pressure -> low occupancy -> poor KV-load latency hiding, capping decode-attn at ~51% of the KV-read roofline. Measured **+21% 256K decode** (33.2->40.2 tok/s, coder-reap-25b), short ctx +~1%, deep recall unchanged. Standard flash-attn precision; stacks on 086. |
+| 088 | `dcp-kv-replica-topology-validation` | Candidate | Rejects MHA DCP groups that cross TP K/V-head replica blocks before distributed initialization or weight loading, preventing silent LSE merges across unrelated GQA K/V heads. |
 
 ### AWQ int4
 
@@ -151,16 +157,18 @@ can be proposed upstream. `Partial` requires a fresh comparison with upstream be
 | 058 | `rdna4-ngram-reconstruct-fallback` | Candidate | Provides a GPU-vectorized reconstruction fallback when the optional native NGRAM operation is absent. |
 | 062 | `cohere2moe-v0513-hybrid-swa-classification` | Candidate | Classifies Cohere2 MoE as hybrid SWA so North receives valid layer and window cache metadata. |
 | 083 | `mistral-common-backend-optout` | Candidate | Reroutes MistralCommonBackend tokenizers to TokenizersBackend so rendered special tokens retain their IDs. |
-| 084 | `rdna4-qwen3moe-bf16-attention-allreduce` | Candidate | Opts Qwen3-MoE (coder-30b, coder-reap-25b) out of the HIP FP32 attention all-reduce, using the BF16 collective. Measured +1-3% single-user decode, coherent; FP32 stays the default for recurrent hybrids. |
-| 085 | `rdna4-glm4moe-bf16-attention-allreduce` | Candidate | Opts GLM-4.5 MoE (glm45-air) out of the HIP FP32 attention all-reduce, using the BF16 collective. Reverse-confirmed +1.3-4.1% single-user decode, coherent; FP32 stays the default for recurrent hybrids. |
-| 086 | `rdna4-amd-num-kv-splits-64` | Carry | Raises the AMD Triton flash-decode `num_kv_splits` default 16->64 so the decode grid (head_groups x splits) fills gfx1201's 64 CUs at long context. Measured **2.14x 256K decode** (14.4->30.7 tok/s, coder-reap-25b); short context unregressed (the get_num_kv_splits heuristic still scales down). `SGLANG_KV_SPLITS_OVERRIDE` forces a value. |
-| 087 | `rdna4-flash-decode-bf16-pv` | Carry | Flash-decode PV in bf16 (fp32 accumulate) instead of fp32 in the grouped GQA kernel. fp32 PV inflated VGPR pressure -> low occupancy -> poor KV-load latency hiding, capping decode-attn at ~51% of the KV-read roofline. Measured **+21% 256K decode** (33.2->40.2 tok/s, coder-reap-25b), short ctx +~1%, deep recall unchanged. Standard flash-attn precision; stacks on 086. |
+| 089 | `laguna-preserve-custom-tokenizer-regex` | Candidate | Preserves Laguna's custom training-time BPE regex so Transformers does not apply its false-positive Mistral rewrite to local checkpoints; explicit caller overrides still win. |
+| 090 | `cohere2moe-rmsnorm-selection` | Candidate | Selects checkpoint-declared RMSNorm for North while retaining centered Cohere LayerNorm for older configurations. |
+| 091 | `cohere-command4-tool-call-id-name-recovery` | Candidate | Narrowly recovers a missing Cohere tool name when `tool_call_id` exactly matches an exposed function name. |
+| 092 | `openai-tool-call-finish-reason-correctness` | Candidate | Reports `tool_calls` only when structured calls survive parsing and otherwise restores the original content and finish metadata. |
+| 093 | `cohere2moe-swa-window-off-by-one` | Candidate | Converts Hugging Face's inclusive Cohere2-MoE SWA window to SGLang's exclusive distance for both layers and backend metadata. |
+| 095 | `cohere-command4-function-key-name-recovery` | Candidate | Recovers a missing Cohere tool name from a string `function` field that exactly matches an exposed function name — the second malformed North variant, which 091 did not cover. Dropped calls surfaced as raw `<\|START_ACTION\|>` markup in `content` with `finish_reason == "stop"`. The OpenAI nested `{"function": {...}}` object is left untouched. |
 
 ## Build stack
 
 | Component | Version |
 |---|---|
-| SGLang | v0.5.15 plus this 60-patch series |
+| SGLang | v0.5.15 plus this 68-patch series |
 | transformers | 5.12.1 |
 | Triton | 3.6.0 |
 | PyTorch | 2.11.0+rocm7.2 |

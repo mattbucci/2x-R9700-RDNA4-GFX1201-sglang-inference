@@ -3,12 +3,44 @@
 | | |
 |---|---|
 | **Type** | task |
-| **Status** | ready |
+| **Status** | complete — local gate, controls, 17-preset sweep, and exception triage receipted |
 | **Execution host** | r9700-box |
 | **Wall clock** | ~1 day (1-2h code port + controls, 3-5h serial fleet sweep, remainder triage) |
 | **GPU time** | ~3-5h on r9700-box (17 serial boot+probe cycles via fleet_validate SKIP_DEEP=1, one server at a time) |
 | **Depends on** | None hard. Donor code is local (3090 checkout, read-only). Sweep must wait for any active calibration/pruning job to finish (rules-for-agents: no serving during calibration). |
 | **Provides to** | R9700 post-quant gates (run_full_pipeline.sh / run_all_calibrations.sh) — every future FP8/AWQ ship is now tool-call-gated.; README action-queue sibling item 'Port probe_256k_tooluse.py' — this covers boot-time/short-context tool wiring; that item covers deep-context agentic tool use; together they close the tool-call blind spot at both depths.; 3090 team via README cross-team notes: sweep results on parser choices that differ across rigs (qwen3vl-32b 'qwen' vs their 'qwen25' mapping) plus any template quirks found on R9700-only families (cohere_command4, poolside_v1, nemotron_3). |
+
+## Current assessment — 2026-07-18 post-089
+
+- **Disposition:** **Complete.** The validator now rejects
+  malformed, plain-text, wrong-name, and wrong-`finish_reason` tool responses by default, while preserving
+  an explicit `--skip-tools` escape hatch for receipted exceptions.
+- **Readiness:** Eight focused tests pass, including positive payload parsing, raw-markup diagnostics,
+  default-on control flow, skip behavior, request failure, save behavior, and nonzero-exit propagation.
+  `fleet_validate.sh` now targets `capabilities-toolcall-2026-07.json`, leaving the 086 receipt untouched;
+  the relevant shell callers also pass `bash -n`.
+- **GPU controls:** Normal `coder-30b` returned `finish=tool_calls`, `get_weather`, and
+  `{"location":"Paris"}` with validator exit 0. The captured 38-argument launch with only
+  `--tool-call-parser qwen3_coder` removed reported `tool_call_parser=None`; the same probe returned
+  `finish=stop`, raw `<function…>` content, and validator exit 1. Receipts:
+  `/data/logs/r97e_toolcall_{positive,negative}.log`.
+- **Fleet receipt:** All 17 presets booted without error in 29:57. Structured tool calls passed on 16/17;
+  North-Mini, Laguna native-FP8, Nemotron FP8, both Qwen3.6 variants, both Gemma 4 12B/26B rows, and the
+  remaining qualified presets returned parsed `get_weather`/Paris calls. Nine rows were fully clean and
+  the complete legacy suite scored 56/66. Known non-tool failures match the patch-086 receipt. The old
+  `capabilities-086.json` remains unmodified (SHA-256 `8eb3e98c…`).
+- **Exception triage:** `glm45-air-awq` failed the initial call plus two gate-setting retries. Outcomes were
+  prose-only `finish=stop`, `finish=tool_calls` with raw `<tool_call>` content but no parsed call, and a
+  512-token malformed-thinking loop ending `length`. Thinking-enabled and 1,024-token diagnostics also
+  looped without a call. This is explicitly receipted in the GLM JSON row as a model-behavior exception;
+  the checkpoint is not agentic-qualified, and the shared gate remains strict.
+- **Scope comment:** Port only `check_tool_call`, `--skip-tools`, and the default-on invocation. Do not port
+  the donor's name-keyed `NON_TOOL_MODELS`; this rig does not set `--served-model-name`. Laguna's earlier
+  manual tool success is useful evidence but is not a default-on fleet shipping gate. Preserve the
+  unrelated dirty `launch.sh` FP8 changes if later parser triage touches that file.
+- **Next action:** Use the now-qualified short-context fleet as R97-D's boot gate. Do not include GLM-4.5
+  Air in agentic recommendations until a replacement checkpoint or separately scoped model/template fix
+  passes this same validator.
 
 ## Objective
 

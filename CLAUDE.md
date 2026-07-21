@@ -6,7 +6,7 @@ This repository serves and optimizes SGLang v0.5.15 on two AMD Radeon AI PRO R97
 
 - SGLang tree: \`/data/sgl-v0515\`
 - Conda environment: \`sglang-triton36-v0515\`
-- Patch series: 56 numeric patches in \`patches/\`
+- Patch series: 68 numeric patches in \`patches/\`
 - Hardware: 2× gfx1201, 32 GiB each
 - ROCm 7.2, PyTorch 2.11.0+rocm7.2, Triton 3.6.0
 - Use the current tree unless a task explicitly requests a version comparison.
@@ -54,6 +54,9 @@ Do not report a short prompt on a large-capacity server as deep-context throughp
 - At true 256K depth, use no speculative decoding unless a new same-depth A/B proves otherwise.
 - Build published quantizations from the upstream BF16 checkpoint with local scripts. Third-party quants are comparison inputs only.
 - Validate behavior, not just process exit status or keyword presence.
+- Prefer re-running a GPU task over reasoning about what it would have shown. GPU hours are cheaper than a
+  conclusion carried on inference. When an arm is stale, was measured under a superseded patch state or a
+  different methodology, or is only *expected* to match, re-measure it instead of arguing it forward.
 
 ## Long-running jobs
 

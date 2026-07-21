@@ -1,0 +1,17 @@
+{
+  "preset": "coder-30b-a3b",
+  "scaffold": "claw-code",
+  "model_path": "sglang/sweep",
+  "total_predictions": 300,
+  "resolve_rate_pct": 17.3,
+  "resolved": 52,
+  "unresolved": 119,
+  "error": 4,
+  "empty_patch": 125,
+  "incomplete": 0,
+  "submitted": 300,
+  "completed": 171,
+  "harness_returncode": null,
+  "run_dir": "/data/bakeoff/runs/coder-30b-a3b-claw-code",
+  "timestamp": "2026-07-18T23:53:48"
+}

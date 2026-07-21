@@ -1,0 +1,17 @@
+{
+  "preset": "qwen35-27b",
+  "scaffold": "opencode",
+  "model_path": "sglang/sweep",
+  "total_predictions": 300,
+  "resolve_rate_pct": 45.7,
+  "resolved": 137,
+  "unresolved": 141,
+  "error": 6,
+  "empty_patch": 16,
+  "incomplete": 0,
+  "submitted": 300,
+  "completed": 278,
+  "harness_returncode": null,
+  "run_dir": "/data/bakeoff/runs/qwen35-27b-opencode",
+  "timestamp": "2026-07-18T23:53:48"
+}

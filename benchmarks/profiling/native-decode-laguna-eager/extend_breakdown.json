@@ -1,0 +1,346 @@
+{
+  "schema_version": 1,
+  "label": "laguna fp8_gemm=triton decode @197194 actual prompt tokens [PREFILL/EXTEND phase]",
+  "note": "extend pass for the profiled request's new tokens over the cached prefix",
+  "steps": null,
+  "trace_dir": "/tmp/prof-native-laguna-eager",
+  "trace_files": [
+    {
+      "path": "/tmp/prof-native-laguna-eager/1784519172.0044405-TP-0.trace.json.gz",
+      "gpu_us": 2198349.3,
+      "kernel_names": 60
+    },
+    {
+      "path": "/tmp/prof-native-laguna-eager/1784519172.0044405-TP-1.trace.json.gz",
+      "gpu_us": 1111553.2,
+      "kernel_names": 60
+    }
+  ],
+  "skipped_trace_files": [],
+  "trace_files_found": 2,
+  "kernel_name_count": 58,
+  "total_gpu_us": 740870.8,
+  "total_gpu_ms": 740.871,
+  "category_us": {
+    "attention": 709216.5,
+    "rccl": 8531.1,
+    "routed_moe": 3065.1,
+    "triton_fp8_gemm": 2184.4,
+    "rocblas_gemm": 13676.6,
+    "elementwise_norm": 2762.5,
+    "other": 1434.6
+  },
+  "breakdown_pct": {
+    "attention": 95.7,
+    "rccl": 1.2,
+    "routed_moe": 0.4,
+    "triton_fp8_gemm": 0.3,
+    "rocblas_gemm": 1.8,
+    "elementwise_norm": 0.4,
+    "other": 0.2
+  },
+  "top_kernels": [
+    {
+      "name": "_fwd_kernel",
+      "us": 708968.0,
+      "pct": 95.7,
+      "category": "attention"
+    },
+    {
+      "name": "ncclDevKernel_Generic_4(ncclDevKernelArgsStorage<4096ul>)",
+      "us": 8531.1,
+      "pct": 1.2,
+      "category": "rccl"
+    },
+    {
+      "name": "Cijk_Alik_Bljk_BBS_BH_Bias_HA_S_SAV_UserArgs_MT128x128x32_MI16x16x1_SN_LDSB0_AFC1_AFEM1_AFEM1_ASEM1_CLR0_CADS0_DTLA0_DTLB0_DTVA0_DTVB1_EPS0_FDSI0_GRPM1_GRVWA4_GRVWB8_GSUAMB_GLS0_ISA1201_IU1_K1_LDSTI0_LBSPPA128_LBSPPB0_LBSPPM0_LPA16_LPB0_LPM0_LRVW8_LWPMn1_MIAV1_MIWT4_4_MO40_NTn1_NTA0_NTB0_NTC0_NTD0_NTM0_NEPBS0_NLCA1_NLCB2_ONLL1_PGR2_PLR1_PKA0_SIA3_SS0_SPO0_SRVW0_SSO0_SVW8_SK0_SKFTR0_SKXCCM0_TLDS1_ULSGRO0_USL1_UIOFGRO0_USFGROn1_VSn1_VWA1_VWB1_WSGRA0_WSGRB0_WS32_WG32_4_1",
+      "us": 5828.5,
+      "pct": 0.8,
+      "category": "rocblas_gemm"
+    },
+    {
+      "name": "Cijk_Alik_Bljk_BBS_BH_Bias_HA_S_SAV_UserArgs_MT128x128x32_MI16x16x1_SN_LDSB0_AFC1_AFEM1_AFEM1_ASEM1_CLR0_CADS0_DTLA0_DTLB0_DTVA0_DTVB1_EPS0_FDSI0_GRPM1_GRVWA4_GRVWB8_GSUAMB_GLS0_ISA1201_IU1_K1_LDSTI0_LBSPPA256_LBSPPB0_LBSPPM0_LPA16_LPB0_LPM0_LRVW8_LWPMn1_MIAV1_MIWT4_4_MO40_NTn1_NTA0_NTB0_NTC0_NTD0_NTM0_NEPBS0_NLCA1_NLCB2_ONLL1_PGR2_PLR1_PKA0_SIA3_SS1_SPO0_SRVW0_SSO0_SVW4_SK0_SKFTR0_SKXCCM0_TLDS2_ULSGRO0_USL1_UIOFGRO0_USFGROn1_VSn1_VWA4_VWB1_WSGRA0_WSGRB0_WS32_WG32_4_1",
+      "us": 5474.9,
+      "pct": 0.7,
+      "category": "rocblas_gemm"
+    },
+    {
+      "name": "fused_moe_kernel",
+      "us": 2794.1,
+      "pct": 0.4,
+      "category": "routed_moe"
+    },
+    {
+      "name": "_w8a8_block_fp8_matmul",
+      "us": 1397.0,
+      "pct": 0.2,
+      "category": "triton_fp8_gemm"
+    },
+    {
+      "name": "Cijk_Alik_Bljk_BBS_BH_Bias_HA_S_SAV_UserArgs_MT16x16x32_MI16x16x1_SN_LDSB0_AFC1_AFEM1_AFEM1_ASEM1_CLR1_CADS0_DTLA0_DTLB0_DTVA0_DTVB1_EPS0_FDSI0_GRPM1_GRVWA8_GRVWB8_GSUAMB_GLS0_ISA1201_IU1_K1_LDSTI0_LBSPPA128_LBSPPB0_LBSPPM0_LPA16_LPB0_LPM0_LRVW8_LWPMn1_MIAV1_MIWT1_1_MO40_NTn1_NTA0_NTB0_NTC0_NTD0_NTM0_NEPBS0_NLCA1_NLCB2_ONLL1_PGR2_PLR1_PKA0_SIA3_SS0_SPO0_SRVW0_SSO0_SVW8_SK0_SKFTR0_SKXCCM0_TLDS2_ULSGRO0_USL1_UIOFGRO0_USFGROn1_VSn1_VWA1_VWB1_WSGRA0_WSGRB0_WS32_WG16_2_1",
+      "us": 1225.2,
+      "pct": 0.2,
+      "category": "rocblas_gemm"
+    },
+    {
+      "name": "Cijk_Alik_Bljk_BBS_BH_Bias_HA_S_SAV_UserArgs_MT16x16x32_MI16x16x1_SN_LDSB0_AFC1_AFEM1_AFEM1_ASEM1_CLR0_CADS0_DTLA0_DTLB0_DTVA0_DTVB1_EPS0_FDSI0_GRPM1_GRVWA8_GRVWB8_GSUAMB_GLS0_ISA1201_IU1_K1_LDSTI0_LBSPPA128_LBSPPB0_LBSPPM0_LPA16_LPB0_LPM0_LRVW8_LWPMn1_MIAV1_MIWT1_1_MO40_NTn1_NTA0_NTB0_NTC0_NTD0_NTM0_NEPBS0_NLCA1_NLCB2_ONLL1_PGR2_PLR1_PKA0_SIA3_SS0_SPO0_SRVW0_SSO0_SVW8_SK0_SKFTR0_SKXCCM0_TLDS2_ULSGRO0_USL1_UIOFGRO0_USFGROn1_VSn1_VWA1_VWB1_WSGRA0_WSGRB0_WS32_WG16_2_1",
+      "us": 1148.1,
+      "pct": 0.2,
+      "category": "rocblas_gemm"
+    },
+    {
+      "name": "_per_token_group_quant_8bit",
+      "us": 787.3,
+      "pct": 0.1,
+      "category": "triton_fp8_gemm"
+    },
+    {
+      "name": "create_flashinfer_kv_indices_triton",
+      "us": 447.4,
+      "pct": 0.1,
+      "category": "other"
+    },
+    {
+      "name": "_gemma_fused_add_rmsnorm_kernel",
+      "us": 416.4,
+      "pct": 0.1,
+      "category": "elementwise_norm"
+    },
+    {
+      "name": "_ZN7sgl_hip10activation18act_and_mul_kernelI14__hip_bfloat16TnPFT_RKS3_EXadL_Z4siluIS2_ES3_S5_EEEEvPS3_PS4_i",
+      "us": 279.4,
+      "pct": 0.0,
+      "category": "elementwise_norm"
+    },
+    {
+      "name": "void at::native::vectorized_elementwise_kernel<4, at::native::bfloat16tofloat32_copy_kernel_cuda(at::TensorIteratorBase&)::{lambda(c10::BFloat16)#1}, std::array<char*, 2ul> >(int, at::native::bfloat16tofloat32_copy_kernel_cuda(at::TensorIteratorBase&)::{lambda(c10::BFloat16)#1}, std::array<char*, 2ul>)",
+      "us": 275.2,
+      "pct": 0.0,
+      "category": "elementwise_norm"
+    },
+    {
+      "name": "void at::native::reduce_kernel<128, 4, at::native::ReduceOp<c10::BFloat16, at::native::func_wrapper_t<c10::BFloat16, at::native::sum_functor<c10::BFloat16, float, c10::BFloat16>::operator()(at::TensorIterator&)::{lambda(float, float)#1}>, unsigned int, c10::BFloat16, 4, 8> >(at::native::ReduceOp<c10::BFloat16, at::native::func_wrapper_t<c10::BFloat16, at::native::sum_functor<c10::BFloat16, float, c10::BFloat16>::operator()(at::TensorIterator&)::{lambda(float, float)#1}>, unsigned int, c10::BFloat16, 4, 8>)",
+      "us": 275.0,
+      "pct": 0.0,
+      "category": "elementwise_norm"
+    },
+    {
+      "name": "void moe_align_block_size_kernel<int>(int const*, int*, int*, int*, int, int, unsigned long, int*, bool, int, int)",
+      "us": 271.0,
+      "pct": 0.0,
+      "category": "routed_moe"
+    },
+    {
+      "name": "void at::native::elementwise_kernel_manual_unroll<128, 8, at::native::gpu_kernel_impl_nocast<at::native::BinaryFunctor<c10::BFloat16, c10::BFloat16, c10::BFloat16, at::native::binary_internal::MulFunctor<float> > >(at::TensorIteratorBase&, at::native::BinaryFunctor<c10::BFloat16, c10::BFloat16, c10::BFloat16, at::native::binary_internal::MulFunctor<float> > const&)::{lambda(int, bool)#1}>(int, at::native::gpu_kernel_impl_nocast<at::native::BinaryFunctor<c10::BFloat16, c10::BFloat16, c10::BFloat16, at::native::binary_internal::MulFunctor<float> > >(at::TensorIteratorBase&, at::native::BinaryFunctor<c10::BFloat16, c10::BFloat16, c10::BFloat16, at::native::binary_internal::MulFunctor<float> > const&)::{lambda(int, bool)#1})",
+      "us": 259.8,
+      "pct": 0.0,
+      "category": "elementwise_norm"
+    },
+    {
+      "name": "void rotary_embedding_kernel<c10::BFloat16, true>(long const*, c10::BFloat16*, c10::BFloat16*, c10::BFloat16 const*, int, long, long, long, int, int, int)",
+      "us": 248.6,
+      "pct": 0.0,
+      "category": "attention"
+    },
+    {
+      "name": "void at::native::vectorized_elementwise_kernel<8, at::native::AUnaryFunctor<c10::BFloat16, c10::BFloat16, c10::BFloat16, at::native::binary_internal::MulFunctor<float> >, std::array<char*, 2ul> >(int, at::native::AUnaryFunctor<c10::BFloat16, c10::BFloat16, c10::BFloat16, at::native::binary_internal::MulFunctor<float> >, std::array<char*, 2ul>)",
+      "us": 244.2,
+      "pct": 0.0,
+      "category": "elementwise_norm"
+    },
+    {
+      "name": "_router_triton_kernel",
+      "us": 243.8,
+      "pct": 0.0,
+      "category": "other"
+    },
+    {
+      "name": "_fused_qk_gemma_rmsnorm_kernel",
+      "us": 189.6,
+      "pct": 0.0,
+      "category": "elementwise_norm"
+    },
+    {
+      "name": "_triton_fused_static_fp8_kv_store_kernel",
+      "us": 184.3,
+      "pct": 0.0,
+      "category": "other"
+    },
+    {
+      "name": "void count_and_sort_expert_tokens_kernel<int>(int const*, int*, int*, unsigned long)",
+      "us": 173.2,
+      "pct": 0.0,
+      "category": "other"
+    },
+    {
+      "name": "write_req_to_token_pool_triton",
+      "us": 161.5,
+      "pct": 0.0,
+      "category": "other"
+    },
+    {
+      "name": "void at::native::vectorized_elementwise_kernel<4, at::native::(anonymous namespace)::softplus_kernel(at::TensorIteratorBase&, c10::Scalar const&, c10::Scalar const&)::{lambda()#1}::operator()() const::{lambda()#2}::operator()() const::{lambda(float)#1}, std::array<char*, 2ul> >(int, at::native::(anonymous namespace)::softplus_kernel(at::TensorIteratorBase&, c10::Scalar const&, c10::Scalar const&)::{lambda()#1}::operator()() const::{lambda()#2}::operator()() const::{lambda(float)#1}, std::array<char*, 2ul>)",
+      "us": 147.8,
+      "pct": 0.0,
+      "category": "elementwise_norm"
+    },
+    {
+      "name": "void at::native::vectorized_elementwise_kernel<4, at::native::bfloat16_copy_kernel_cuda(at::TensorIteratorBase&)::{lambda(float)#1}, std::array<char*, 2ul> >(int, at::native::bfloat16_copy_kernel_cuda(at::TensorIteratorBase&)::{lambda(float)#1}, std::array<char*, 2ul>)",
+      "us": 134.0,
+      "pct": 0.0,
+      "category": "elementwise_norm"
+    }
+  ],
+  "other_top_contributors": [
+    {
+      "name": "create_flashinfer_kv_indices_triton",
+      "us": 447.4,
+      "pct_of_total": 0.1,
+      "pct_of_other": 31.2
+    },
+    {
+      "name": "_router_triton_kernel",
+      "us": 243.8,
+      "pct_of_total": 0.0,
+      "pct_of_other": 17.0
+    },
+    {
+      "name": "_triton_fused_static_fp8_kv_store_kernel",
+      "us": 184.3,
+      "pct_of_total": 0.0,
+      "pct_of_other": 12.8
+    },
+    {
+      "name": "void count_and_sort_expert_tokens_kernel<int>(int const*, int*, int*, unsigned long)",
+      "us": 173.2,
+      "pct_of_total": 0.0,
+      "pct_of_other": 12.1
+    },
+    {
+      "name": "write_req_to_token_pool_triton",
+      "us": 161.5,
+      "pct_of_total": 0.0,
+      "pct_of_other": 11.3
+    },
+    {
+      "name": "void at::native::(anonymous namespace)::CatArrayBatchedCopy_contig<at::native::(anonymous namespace)::OpaqueType<8u>, unsigned int, 1, 128, 1>(at::native::(anonymous namespace)::OpaqueType<8u>*, at::native::(anonymous namespace)::CatArrInputTensorMetadata<at::native::(anonymous namespace)::OpaqueType<8u>, unsigned int, 128, 1>, at::native::(anonymous namespace)::TensorSizeStride<unsigned int, 4u>, int, unsigned int)",
+      "us": 69.6,
+      "pct_of_total": 0.0,
+      "pct_of_other": 4.9
+    },
+    {
+      "name": "void rocprim::ROCPRIM_400200_NS::detail::trampoline_kernel<rocprim::ROCPRIM_400200_NS::detail::wrapped_scan_config<rocprim::ROCPRIM_400200_NS::default_config, long>, (rocprim::ROCPRIM_400200_NS::detail::target_arch)1201, rocprim::ROCPRIM_400200_NS::detail::scan_impl<(rocprim::ROCPRIM_400200_NS::detail::lookback_scan_determinism)0, false, false, rocprim::ROCPRIM_400200_NS::default_config, long const*, long*, long, std::plus<long>, long>(void*, unsigned long&, long const*, long*, long, unsigned long, std::plus<long>, ihipStream_t*, bool)::{lambda(auto:1, auto:2)#1}::operator()<std::integral_constant<bool, false>, std::integral_constant<bool, false> >(std::integral_constant<bool, false>, std::integral_constant<bool, false>) const::{lambda(auto:1)#2}, rocprim::ROCPRIM_400200_NS::detail::default_config_selector>(rocprim::ROCPRIM_400200_NS::detail::scan_impl<(rocprim::ROCPRIM_400200_NS::detail::lookback_scan_determinism)0, false, false, rocprim::ROCPRIM_400200_NS::default_config, long const*, long*, long, std::plus<long>, long>(void*, unsigned long&, long const*, long*, long, unsigned long, std::plus<long>, ihipStream_t*, bool)::{lambda(auto:1, auto:2)#1}::operator()<std::integral_constant<bool, false>, std::integral_constant<bool, false> >(std::integral_constant<bool, false>, std::integral_constant<bool, false>) const::{lambda(auto:1)#2})",
+      "us": 50.5,
+      "pct_of_total": 0.0,
+      "pct_of_other": 3.5
+    },
+    {
+      "name": "void at::native::(anonymous namespace)::indexSelectSmallIndex<c10::BFloat16, long, unsigned int, 2, 2, -2>(at::cuda::detail::TensorInfo<c10::BFloat16, unsigned int>, at::cuda::detail::TensorInfo<c10::BFloat16 const, unsigned int>, at::cuda::detail::TensorInfo<long const, unsigned int>, int, int, unsigned int, long)",
+      "us": 33.7,
+      "pct_of_total": 0.0,
+      "pct_of_other": 2.4
+    },
+    {
+      "name": "get_num_kv_splits_triton",
+      "us": 23.3,
+      "pct_of_total": 0.0,
+      "pct_of_other": 1.6
+    },
+    {
+      "name": "void at::native::(anonymous namespace)::multi_tensor_apply_kernel<at::native::(anonymous namespace)::TensorListMetadata<2>, at::native::(anonymous namespace)::UnaryOpFunctor<long, 2, 1, 1>, at::native::Copy<long, long> >(at::native::(anonymous namespace)::TensorListMetadata<2>, at::native::(anonymous namespace)::UnaryOpFunctor<long, 2, 1, 1>, at::native::Copy<long, long>)",
+      "us": 14.3,
+      "pct_of_total": 0.0,
+      "pct_of_other": 1.0
+    },
+    {
+      "name": "compute_position_kernel",
+      "us": 13.0,
+      "pct_of_total": 0.0,
+      "pct_of_other": 0.9
+    },
+    {
+      "name": "void rocprim::ROCPRIM_400200_NS::detail::trampoline_kernel<rocprim::ROCPRIM_400200_NS::detail::wrapped_partition_config<rocprim::ROCPRIM_400200_NS::default_config, (rocprim::ROCPRIM_400200_NS::detail::partition_subalgo)5, long, rocprim::ROCPRIM_400200_NS::empty_type>, (rocprim::ROCPRIM_400200_NS::detail::target_arch)1201, rocprim::ROCPRIM_400200_NS::detail::partition_impl<(rocprim::ROCPRIM_400200_NS::detail::partition_subalgo)5, false, rocprim::ROCPRIM_400200_NS::default_config, unsigned long, hipcub::HIPCUB_400200_NS::CountingInputIterator<long, long>, rocprim::ROCPRIM_400200_NS::empty_type*, hipcub::HIPCUB_400200_NS::TransformInputIterator<bool, at::native::(anonymous namespace)::NonZeroOp<bool>, bool const*, long>, rocprim::ROCPRIM_400200_NS::tuple<long*, rocprim::ROCPRIM_400200_NS::empty_type>, rocprim::ROCPRIM_400200_NS::tuple<rocprim::ROCPRIM_400200_NS::empty_type*, rocprim::ROCPRIM_400200_NS::empty_type*>, rocprim::ROCPRIM_400200_NS::empty_type, int*, rocprim::ROCPRIM_400200_NS::empty_type>(void*, unsigned long&, hipcub::HIPCUB_400200_NS::CountingInputIterator<long, long>, rocprim::ROCPRIM_400200_NS::empty_type*, hipcub::HIPCUB_400200_NS::TransformInputIterator<bool, at::native::(anonymous namespace)::NonZeroOp<bool>, bool const*, long>, rocprim::ROCPRIM_400200_NS::tuple<long*, rocprim::ROCPRIM_400200_NS::empty_type>, rocprim::ROCPRIM_400200_NS::tuple<rocprim::ROCPRIM_400200_NS::empty_type*, rocprim::ROCPRIM_400200_NS::empty_type*>, int*, unsigned long, rocprim::ROCPRIM_400200_NS::empty_type, ihipStream_t*, bool, rocprim::ROCPRIM_400200_NS::empty_type)::{lambda(auto:1, auto:2)#1}::operator()<std::integral_constant<bool, false>, std::integral_constant<bool, false> >(std::integral_constant<bool, false>, std::integral_constant<bool, false>) const::{lambda(auto:1)#1}, rocprim::ROCPRIM_400200_NS::detail::default_config_selector>(rocprim::ROCPRIM_400200_NS::detail::partition_impl<(rocprim::ROCPRIM_400200_NS::detail::partition_subalgo)5, false, rocprim::ROCPRIM_400200_NS::default_config, unsigned long, hipcub::HIPCUB_400200_NS::CountingInputIterator<long, long>, rocprim::ROCPRIM_400200_NS::empty_type*, hipcub::HIPCUB_400200_NS::TransformInputIterator<bool, at::native::(anonymous namespace)::NonZeroOp<bool>, bool const*, long>, rocprim::ROCPRIM_400200_NS::tuple<long*, rocprim::ROCPRIM_400200_NS::empty_type>, rocprim::ROCPRIM_400200_NS::tuple<rocprim::ROCPRIM_400200_NS::empty_type*, rocprim::ROCPRIM_400200_NS::empty_type*>, rocprim::ROCPRIM_400200_NS::empty_type, int*, rocprim::ROCPRIM_400200_NS::empty_type>(void*, unsigned long&, hipcub::HIPCUB_400200_NS::CountingInputIterator<long, long>, rocprim::ROCPRIM_400200_NS::empty_type*, hipcub::HIPCUB_400200_NS::TransformInputIterator<bool, at::native::(anonymous namespace)::NonZeroOp<bool>, bool const*, long>, rocprim::ROCPRIM_400200_NS::tuple<long*, rocprim::ROCPRIM_400200_NS::empty_type>, rocprim::ROCPRIM_400200_NS::tuple<rocprim::ROCPRIM_400200_NS::empty_type*, rocprim::ROCPRIM_400200_NS::empty_type*>, int*, unsigned long, rocprim::ROCPRIM_400200_NS::empty_type, ihipStream_t*, bool, rocprim::ROCPRIM_400200_NS::empty_type)::{lambda(auto:1, auto:2)#1}::operator()<std::integral_constant<bool, false>, std::integral_constant<bool, false> >(std::integral_constant<bool, false>, std::integral_constant<bool, false>) const::{lambda(auto:1)#1})",
+      "us": 5.5,
+      "pct_of_total": 0.0,
+      "pct_of_other": 0.4
+    },
+    {
+      "name": "void rocprim::ROCPRIM_400200_NS::detail::trampoline_kernel<rocprim::ROCPRIM_400200_NS::detail::wrapped_reduce_config<rocprim::ROCPRIM_400200_NS::default_config, int>, (rocprim::ROCPRIM_400200_NS::detail::target_arch)1201, rocprim::ROCPRIM_400200_NS::detail::reduce_impl<true, rocprim::ROCPRIM_400200_NS::default_config, hipcub::HIPCUB_400200_NS::TransformInputIterator<bool, at::native::(anonymous namespace)::NonZeroOp<bool>, bool const*, long>, int*, int, hipcub::HIPCUB_400200_NS::detail::convert_binary_result_type_wrapper<hipcub::HIPCUB_400200_NS::Sum, hipcub::HIPCUB_400200_NS::TransformInputIterator<bool, at::native::(anonymous namespace)::NonZeroOp<bool>, bool const*, long>, int> >(void*, unsigned long&, hipcub::HIPCUB_400200_NS::TransformInputIterator<bool, at::native::(anonymous namespace)::NonZeroOp<bool>, bool const*, long>, int*, int, unsigned long, hipcub::HIPCUB_400200_NS::detail::convert_binary_result_type_wrapper<hipcub::HIPCUB_400200_NS::Sum, hipcub::HIPCUB_400200_NS::TransformInputIterator<bool, at::native::(anonymous namespace)::NonZeroOp<bool>, bool const*, long>, int>, ihipStream_t*, bool)::{lambda(auto:1)#6}, rocprim::ROCPRIM_400200_NS::detail::default_config_selector>(rocprim::ROCPRIM_400200_NS::detail::reduce_impl<true, rocprim::ROCPRIM_400200_NS::default_config, hipcub::HIPCUB_400200_NS::TransformInputIterator<bool, at::native::(anonymous namespace)::NonZeroOp<bool>, bool const*, long>, int*, int, hipcub::HIPCUB_400200_NS::detail::convert_binary_result_type_wrapper<hipcub::HIPCUB_400200_NS::Sum, hipcub::HIPCUB_400200_NS::TransformInputIterator<bool, at::native::(anonymous namespace)::NonZeroOp<bool>, bool const*, long>, int> >(void*, unsigned long&, hipcub::HIPCUB_400200_NS::TransformInputIterator<bool, at::native::(anonymous namespace)::NonZeroOp<bool>, bool const*, long>, int*, int, unsigned long, hipcub::HIPCUB_400200_NS::detail::convert_binary_result_type_wrapper<hipcub::HIPCUB_400200_NS::Sum, hipcub::HIPCUB_400200_NS::TransformInputIterator<bool, at::native::(anonymous namespace)::NonZeroOp<bool>, bool const*, long>, int>, ihipStream_t*, bool)::{lambda(auto:1)#6})",
+      "us": 4.0,
+      "pct_of_total": 0.0,
+      "pct_of_other": 0.3
+    },
+    {
+      "name": "void (anonymous namespace)::clamp_position_kernel<long>(long*, long const*, unsigned long)",
+      "us": 4.0,
+      "pct_of_total": 0.0,
+      "pct_of_other": 0.3
+    },
+    {
+      "name": "void rocprim::ROCPRIM_400200_NS::detail::trampoline_kernel<rocprim::ROCPRIM_400200_NS::detail::wrapped_transform_config<rocprim::ROCPRIM_400200_NS::default_config, unsigned long, true>, (rocprim::ROCPRIM_400200_NS::detail::target_arch)1201, rocprim::ROCPRIM_400200_NS::detail::transform_impl<true, rocprim::ROCPRIM_400200_NS::default_config, unsigned long*, int*, rocprim::ROCPRIM_400200_NS::identity<void> >(unsigned long*, int*, unsigned long, rocprim::ROCPRIM_400200_NS::identity<void>, ihipStream_t*, bool)::{lambda(auto:1)#1}, rocprim::ROCPRIM_400200_NS::detail::default_config_selector>(rocprim::ROCPRIM_400200_NS::detail::transform_impl<true, rocprim::ROCPRIM_400200_NS::default_config, unsigned long*, int*, rocprim::ROCPRIM_400200_NS::identity<void> >(unsigned long*, int*, unsigned long, rocprim::ROCPRIM_400200_NS::identity<void>, ihipStream_t*, bool)::{lambda(auto:1)#1})",
+      "us": 3.4,
+      "pct_of_total": 0.0,
+      "pct_of_other": 0.2
+    },
+    {
+      "name": "void rocprim::ROCPRIM_400200_NS::detail::init_lookback_scan_state_kernel<rocprim::ROCPRIM_400200_NS::detail::lookback_scan_state<unsigned long, false, true>, rocprim::ROCPRIM_400200_NS::detail::block_id_wrapper<unsigned int, false> >(rocprim::ROCPRIM_400200_NS::detail::lookback_scan_state<unsigned long, false, true>, unsigned int, rocprim::ROCPRIM_400200_NS::detail::block_id_wrapper<unsigned int, false>, unsigned int, rocprim::ROCPRIM_400200_NS::detail::lookback_scan_state<unsigned long, false, true>::value_type*)",
+      "us": 3.2,
+      "pct_of_total": 0.0,
+      "pct_of_other": 0.2
+    }
+  ],
+  "profiler_warning": "Profiler timing inflates short kernels. Category shares are of traced GPU time, not of wall time; confirm any small-kernel hotspot with a standalone microbenchmark before acting on it.",
+  "other_pct": 0.2,
+  "other_over_threshold": false,
+  "phase": "prefill_extend",
+  "phase_ranks": [
+    {
+      "decode_attention_calls": 3120,
+      "decode_step_marker_calls": 1560,
+      "prefill_attention_calls": 40,
+      "prefill_attention_us": 354290.7,
+      "untimed_events": 0,
+      "boundary_ts": 1551384726719.784,
+      "interleaved": false,
+      "note": null,
+      "path": "/tmp/prof-native-laguna-eager/1784519172.0044405-TP-0.trace.json.gz",
+      "prefill_extend_gpu_us": 370634.1,
+      "prefill_extend_span_ms": 389.817,
+      "decode_gpu_us": 1827715.2,
+      "decode_span_ms": 3783.399
+    },
+    {
+      "decode_attention_calls": 3120,
+      "decode_step_marker_calls": 1560,
+      "prefill_attention_calls": 40,
+      "prefill_attention_us": 354677.3,
+      "untimed_events": 0,
+      "boundary_ts": 1551384726992.707,
+      "interleaved": false,
+      "note": null,
+      "path": "/tmp/prof-native-laguna-eager/1784519172.0044405-TP-1.trace.json.gz",
+      "prefill_extend_gpu_us": 370236.7,
+      "prefill_extend_span_ms": 388.442,
+      "decode_gpu_us": 741316.5,
+      "decode_span_ms": 3783.164
+    }
+  ],
+  "phase_summary": {
+    "prefill_extend": {
+      "gpu_ms": 740.871,
+      "pct_of_traced": 22.4,
+      "max_rank_span_ms": 389.817
+    },
+    "decode": {
+      "gpu_ms": 2569.032,
+      "pct_of_traced": 77.6,
+      "max_rank_span_ms": 3783.399
+    }
+  },
+  "decode_attention_calls": 6240,
+  "prefill_attention_calls": 80,
+  "prefill_attention_gpu_ms": 708.968,
+  "interleaved_phases": false,
+  "traced_decode_steps_estimate": 39.0,
+  "decode_step_marker_calls": 3120
+}

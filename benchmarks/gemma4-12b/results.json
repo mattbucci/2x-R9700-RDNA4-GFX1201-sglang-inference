@@ -2,32 +2,32 @@
   "model": "Gemma 4 12B AWQ (omni)",
   "engine": "SGLang",
   "hardware": "2x R9700 TP=2",
-  "timestamp": "2026-07-12 v0.5.15+074-082",
-  "note": "Phase0 fleet rebench, streaming-TPOT 3-run median, current tree",
+  "timestamp": "v0.5.15+patches",
+  "note": "fleet rebench, streaming-TPOT 3-run median, current tree",
   "context_sweep": [
     {
       "context": 128,
       "input_len": 25,
-      "tpot_ms": 25.87,
-      "tok_per_sec": 38.65
+      "tpot_ms": 27.53,
+      "tok_per_sec": 36.329
     },
     {
       "context": 8192,
       "input_len": 7366,
-      "tpot_ms": 26.11,
-      "tok_per_sec": 38.301
+      "tpot_ms": 27.64,
+      "tok_per_sec": 36.181
     },
     {
       "context": 65536,
       "input_len": 58748,
-      "tpot_ms": 42.38,
-      "tok_per_sec": 23.593
+      "tpot_ms": 32.39,
+      "tok_per_sec": 30.875
     },
     {
       "context": 221184,
       "input_len": 198219,
-      "tpot_ms": 92.03,
-      "tok_per_sec": 10.866
+      "tpot_ms": 27.75,
+      "tok_per_sec": 36.031
     }
   ],
   "throughput_sweep": [

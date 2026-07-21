@@ -2,7 +2,10 @@
 
 Final conclusions from the repository's completed benchmark investigations. Unless a section says
 otherwise, measurements used two AMD Radeon AI PRO R9700 GPUs (gfx1201), TP=2, and single-user decode.
-The [North/Laguna v0.5.15 receipt](north-laguna-v0515-r9700-2026-07-12.md) is the current focused result.
+The current FP8/256K investigation is the
+[2026-07-18 options receipt](fp8-256k-options-r9700-2026-07-18.md). The earlier
+[North/Laguna v0.5.15 receipt](north-laguna-v0515-r9700-2026-07-12.md) remains the historical 074–082
+campaign and correctness record.
 
 ## Decode kernels and launch configuration
 
@@ -22,14 +25,14 @@ HIP GEMV path.
 The isolated Devstral down-projection measured 0.157 ms in FP16 and 0.178 ms in BF16, with cosine
 similarity 1.0 against unpack-and-dequantize Torch.
 
-### Dense GEMV narrow-N under-population (open — designed, not implemented)
+### Dense GEMV narrow-N under-population (refuted and reverted)
 
-The same dense HIP GEMV launches `ceil(N/256)` blocks, so narrow-output projections (attn_o
-N=5120 → 20 blocks, qkv → 28) under-populate the 64 CUs and reach only ~45–82% of the bandwidth
-roofline, versus ~95–110% for the wide projections (gate_up/down). `split_k` cannot fix it (it
-adds threads within a block, not blocks). Fix = grid-level split-K (~1.6× on attn_o, low-single-
-digit % on dense TPOT, shared across all AWQ-dense models). Full root cause, design, and test
-plan: [dense-gemv-narrow-n-splitk-handoff.md](dense-gemv-narrow-n-splitk-handoff.md).
+The same dense HIP GEMV launches `ceil(N/256)` blocks, so narrow-output projections initially appeared
+to under-populate the 64 CUs. Grid-level split-K was implemented with FP32 partials and passed cosine
+1.00000, but it reached only ~23–35% of roofline on `attn_o` versus ~33–52% for the existing within-block
+auto path. The actual cap is per-CU wavefront occupancy plus small-K work; merely adding one-wavefront
+blocks made it worse. The change was reverted and deprioritized. Full evidence:
+[dense-gemv-narrow-n-splitk-handoff.md](dense-gemv-narrow-n-splitk-handoff.md).
 
 ### 256K attention split-KV CU occupancy (fixed — patch 086)
 
@@ -41,9 +44,9 @@ gfx1201's 64 CUs (half idle). Raising it to 64 fills the CUs at depth: **2.14× 
 unregressed. Patch 086; full evidence chain in
 [attention-decode-256k-kvsplit.md](attention-decode-256k-kvsplit.md).
 
-Fleet-re-validated 2026-07-14: all 17 servable presets decode coherently at true depth with 086; every
-deep-recall shortfall (north-mini window, nemotron Mamba compression) is a pre-086 model characteristic,
-proven independent of the split count by a `num_kv_splits` 16-vs-64 A/B on north-mini. No regressions.
+Fleet-re-validated 2026-07-14: all 17 servable presets decode coherently at true depth with 086. The
+`num_kv_splits` 16-vs-64 A/B showed no split-count regression, but the North recall conclusion from that
+campaign is now historical: it predates the checkpoint-correct normalization fix in patch 090.
 Receipt: [validation/README.md](validation/README.md).
 
 **Patch 087 (bf16 PV) — a further +21%.** Past 086's 51% roofline, the flash-decode PV still ran in fp32
@@ -55,8 +58,153 @@ depth (128 +0.9%, 8K +2.7%, 202K +21%) as attention's share of decode grows. A/B
 Fleet coherence check (087 live): coder-reap A/B recall unchanged, Laguna recalls @89K, and North's
 recall_depth_sweep is identical to its fp32 baseline (100% through 116K, `north-087-recall.json`). A North
 `deep_context_probe` hallucination was a probe-format artifact — North fails that 2-needle probe with fp32
-too (it is what started experiment #23) — not an 087 regression. Flagship deep tok/s with 086+087:
-North-Mini ~55 @176K, Laguna ~39 @176K.
+too (it is what started experiment #23) — not an 087 regression. Laguna's historical post-087 `auto`
+curve was 49.679 / 48.815 / 45.357 / 43.077 / 38.974 tok/s at 62 / 7,403 / 58,785 / 117,512 /
+220,277 actual input tokens. The corrected completion-token control agrees within about 1%; the current
+native-FP8 result is recorded below. Historical North recall data must be interpreted with the post-090
+serving-semantics caveat below.
+
+### FP8 backend and scheduling options
+
+The 2026-07-18 campaign tested the next non-algorithmic options on Laguna:
+
+| Option | Result | Disposition |
+|---|---|---|
+| Native Triton dense block-FP8 | 73.980 / 71.342 / 65.270 / 55.125 tok/s at 62 / 7.4K / 58.8K / 220K; +47.8% / +45.7% / +44.5% / +36.8% over `auto` | Ship as Laguna default; retain `FP8_GEMM_BACKEND=auto` rollback |
+| Grouped attention N16/W4 | −10.2% at 220K | Reject; doubled loop trips dominate lower VGPR |
+| Grouped attention N32/W8 | −1.6% at 220K | Reject; keep N32/W4 |
+| Overlap schedule | 39.736 versus 39.792 tok/s in controlled hot-prefix runs | Neutral for single-user deep decode; retain opt-in for concurrency tests |
+| DCP2 | Not benchmarked: TP2 ranks hold distinct K/V heads | Reject for current GQA models; require a topology fail-fast gate |
+
+The 58.8K backend arms stopped at different lengths (`auto` 20 tokens, Triton 29), so its +44.5% is an
+observed completion-token rate rather than a fixed-output isolation. The matching 80-token short and
+220K controls independently establish +47.8% and +36.8%.
+
+The initial native-Triton run appeared to regress because the harness counted nonempty SSE text events,
+not generated tokens; changed output/parser buffering changed the number of events. Completion-token
+accounting and reverse-order fresh boots established the gain above. Comprehensive text scored 35/36
+(8/8 code), capabilities and multi-turn tools passed, early-needle recall was 3/3 through 176,624 tokens,
+and generation remained coherent at 220,277 tokens.
+
+The detailed profiler, raw runs, synthetic dense-FP8 probes, cache-state controls, and next experiment
+order are in [fp8-256k-options-r9700-2026-07-18.md](fp8-256k-options-r9700-2026-07-18.md).
+
+### North serving correctness — patches 090–094
+
+North's historical 1/7 greedy tool-use ladder was a pre-fix incident baseline, not reliable evidence of
+model incapacity. The serving audit found five independent correctness/reproducibility defects:
+
+- **090:** the checkpoint declares `rms_norm_eps=1e-6`, but Cohere2-MoE used centered LayerNorm at the
+  wrong epsilon. The model now selects RMSNorm when declared and retains centered LayerNorm as the older
+  Cohere fallback.
+- **091:** North sometimes placed an exposed function name in `tool_call_id` while omitting `tool_name`.
+  The parser now performs a narrow exact-name recovery only when both name fields are absent.
+- **092:** the OpenAI layer changed `finish_reason=stop` to `tool_calls` before parsing and kept it even
+  when parsing returned zero calls. It now restores the original content and finish metadata on failure.
+- **093:** Hugging Face's inclusive 4,096-token SWA window is translated to SGLang's exclusive distance
+  4,095 in both the layer and backend metadata.
+- **094:** deterministic inference could not boot on gfx1201 because the three-stage persistent MM/BMM
+  requested up to 98,816 bytes of LDS versus the 65,536-byte limit. HIP now uses two stages (49,664 bytes
+  at FP16) while preserving the fixed reduction order; non-HIP platforms retain three stages.
+
+The controls matter. Request `seed` is ignored by stock SGLang unless the server launches with
+`--enable-deterministic-inference`; `--random-seed` and selecting the PyTorch sampler alone are not
+substitutes. North's checkpoint provides no FP8 KV-cache scales, so forced FP8 KV uses unit scales and is
+a quality-risk/performance option rather than the reference quality arm. BF16 KV and strict structural
+tags did not independently cure the old failure.
+
+On the fully patched TP2/BF16-KV deterministic server, an equal-token single-turn control produced:
+
+| Rendered prompt tokens | Low-entropy repetition stress | Heterogeneous code/log |
+|---:|---:|---:|
+| 64,801 | 1/3 exact structured actions | 3/3 |
+| 115,806 | 0/3 | 3/3 |
+
+The byte-distinct in-repo `--filler-profile agentic --multi-turn` focused gate then scored 2/3 correct
+primaries at both 67,554 and 115,570 actual tokens; every valid primary used the structured tool result
+correctly on turn two (4/4). This establishes prompt-profile sensitivity and rejects a monotonic ~120K
+tool-use collapse. Receipt: [profile control](quality/north-mini-tooluse-profile-ab-post094-2026-07-19.json).
+
+That profile control is itself superseded and pending re-measurement: its 1/3 at 64,801 counted one
+correct action that patch 095 recovers (the model emitted a valid call under a `function` key and the
+server dropped it), and the script that produced the receipt was never committed, so it could not be
+regenerated. The four remaining low-entropy failures were genuine degeneration and the finding stands
+directionally.
+
+The admissible ceiling now comes from the post-095 three-seed ladder, not from that control: North-Mini
+passes 21/21 seed-rungs through 245,172 actual tokens and Laguna 21/21 through 245,279, with no clamp,
+shortfall, error, or budget-bound rung on either. Neither ship has a measurable agentic ceiling below the
+262,144 context limit.
+
+### Laguna native-FP8 KV-split resweep — 64 holds
+
+Patch 086 chose `num_kv_splits=64` on the old dequant+BF16 dense path. Native block-FP8 cut dense work
+~45%, making long-context attention a larger share of decode, so the optimum plausibly moved. It did not.
+At 197,194 actual prompt tokens with every arm decoding exactly 80 steps: 48 → 52.950 tok/s (−6.0%),
+**64 → 56.334**, 128 → 54.869 (−2.6%). No promotion. Receipt:
+[laguna-kvsplit-resweep-2026-07-19.json](validation/laguna-kvsplit-resweep-2026-07-19.json).
+
+Three things this cost, all worth keeping:
+
+- **`num_kv_splits` changes generated output.** Five split counts produced five completion lengths
+  (64/80/54/72/72) at temperature 0, each internally deterministic across five runs. Reordering the
+  flash-decode reduction perturbs numerics enough to move the EOS point, so
+  `--enable-deterministic-inference` guarantees reproducibility only *within* a fixed split count.
+- **The first sweep was inverted, not merely noisy.** Letting arms stop at their own EOS ranked 80 splits
+  best at +7.6%; under equal work it is the worst measured arm. `decode_ab.py` gained `--ignore-eos`
+  (kernel isolation only, never a user-facing rate) so an A/B whose change perturbs decode numerics
+  compares equal work.
+- **80 and 96 splits remain unresolved.** Both rose monotonically across all five runs (45.1% and 57.4%
+  spread) and never reached steady state, so their medians are not admissible. Only 48/64/128 converged
+  (1.2–2.0% spread) and only those are ranked above.
+
+Output identity across arms was not established: `decode_ab` records a 60-character sample prefix, which
+cannot prove two 80-token generations match. A full-output hash is the fix.
+
+### Extend attention has no KV split — the agentic turn tax (open, Laguna)
+
+At depth the dominant single-user cost is no longer decode. A request that appends a short suffix to a
+cached prefix — every agentic tool-result turn — runs one extend forward pass whose full-attention layers
+each walk the entire cached prefix with almost no parallelism.
+
+The launch grids differ in exactly one dimension. Extend uses
+`grid = (batch, head_num, cdiv(max_len_extend, BLOCK_M))` (`extend_attention.py:63`); decode uses
+`grid = (batch, cdiv(head_num, …), num_kv_splits)`. On gfx1201 at head_dim 128, `BLOCK_M` is 64, so for a
+short suffix the extend grid's third dimension collapses to 1 and ~24 workgroups per rank walk the whole
+prefix, while decode splits the same walk 64 ways. The upstream comment at `extend_attention.py:37` states
+outright that "each workgroup reads the whole prefix."
+
+Measured on Laguna, extend attention costs ~361 ms/rank against decode attention's ~4.2 ms/rank over the
+**same** KV cache — an ~85× gap on identical bytes, so the ratio holds independent of any roofline
+assumption. This is separable from decode only because the profiler now attributes kernels per phase;
+merging them is what produced the superseded 92.9%-attention record.
+
+The grid analysis predicts that appending 1 token and 64 tokens must cost the same wall time, since
+`cdiv(1,64) == cdiv(64,64)`. Confirmed at every depth:
+
+| Cached tokens | TTFT k=1 | TTFT k=64 | TTFT k=512 | Decode ms/token |
+|---:|---:|---:|---:|---:|
+| 7,404 | 61.3 ms | 68.3 ms | 85.9 ms | 14.32 |
+| 29,425 | 123.3 ms | 136.3 ms | 168.0 ms | 14.71 |
+| 117,513 | 409.3 ms | 422.3 ms | 486.4 ms | 16.52 |
+| 176,588 | **604.6 ms** | **607.7 ms** | 704.2 ms | 17.61 |
+
+A 64-token tool result costs 0.5% more than a single token. The cost is a fixed tax on prefix length:
+`TTFT_ms ≈ 32.7 + 3.226 per 1000 cached tokens`, fitting all four depths within 8%. Across that range the
+extend tax grew 9.86× while decode TPOT grew only 1.23× — decode scales with depth, extend does not. At
+176,588 tokens a tool-result turn waits 605 ms before its first token, the time of 34 decode tokens;
+extrapolating the fit to the 262,144 limit gives ~878 ms per turn (not measured).
+
+Decode itself, once separated, is dominated by dense rocBLAS/Tensile GEMM (~38–42% of non-collective GPU
+time) rather than attention (~20–28%) — consistent with patch 086 having removed the older
+~85–90%-attention regime. That `rocblas_gemm` still leads while `fp8_gemm_runner_backend=triton` and
+`triton_fp8_gemm` is only ~7–12% is unexplained and is the next lead.
+
+No fix is implemented or measured. Candidate directions are splitting KV in extend, or routing
+small-suffix cache-hit extends through the decode kernel. Receipts:
+[decode/extend profile](profiling/laguna-native-decode-profile-2026-07-19.json),
+[extend cost curve](profiling/laguna-extend-cost-2026-07-19.json). Only Laguna was profiled; whether
+North-Mini's different architecture shows the same collapse is untested.
 
 ### Rejected decode changes
 

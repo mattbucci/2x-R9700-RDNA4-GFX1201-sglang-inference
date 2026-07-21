@@ -12,11 +12,12 @@ each model under its production launch preset (quant, graph policy, and KV dtype
 decode table is in the [top-level README](../README.md#current-performance); each `<model>/` directory
 here holds that model's `results.json` and regenerated `context_vs_toks.png` / `concurrency_vs_toks.png`.
 
-North-Mini and Laguna additionally have a full A/B optimization campaign with correctness scoring:
+North-Mini and Laguna additionally have a historical 074–082 A/B optimization campaign with correctness
+scoring. North's row predates patch 090 and is retained for performance provenance, not current quality:
 
 | Model | Input tokens | Decode tok/s | Correctness |
 |---|---:|---:|---|
-| [North Mini Code FP8](north-mini/) | 128 / 29,357 / 117,048 / 219,352 | 71.053 / 60.714 / 42.298 / 33.905 | 34/36; tool call passed |
+| [North Mini Code FP8, pre-090](north-mini/) | 128 / 29,357 / 117,048 / 219,352 | 71.053 / 60.714 / 42.298 / 33.905 | Historical 34/36; tool call passed |
 | [Laguna XS.2 FP8](laguna-xs2/) | 62 / 7,403 / 58,785 / 220,277 | 48.999 / 47.485 / 39.959 / 29.270 | 34/36; capabilities 2/2; tool call passed |
 
 See the historical [v0.5.15 receipt](north-laguna-v0515-r9700-2026-07-12.md) and its
@@ -40,24 +41,82 @@ same-output baseline pending refresh. The DCP1 label is intentional: DCP2 is not
 these TP2 GQA checkpoints because adjacent DCP ranks do not hold replicated K/V heads. No DCP2
 performance number is reported.
 
-### Agentic quality at depth
+### Post-095 three-seed agentic ladder
 
 The schema-v2 multi-turn ladder tests whether a model retrieves the planted ID, emits the correct
 structured action, accepts a structured tool response, and terminally uses its returned value. Both
-published curves use depth 0.5, temperature 0, 8,192-token budgets on both turns, and server-reported
-actual prompt tokens.
+ladders use depth 0.5, temperature 1.0 / top-p 0.95 with effective request seeds, 8,192-token budgets on
+both turns, and server-reported actual prompt tokens. A rung counts only when **every seed** passes it;
+per model the prompts are byte-identical across seeds, so sampling is the only variable.
 
-| Model | End-to-end successes | Maximum end-to-end depth | Primary failures |
+| Model | Seed-rungs passed | Maximum end-to-end depth | Failures |
 |---|---:|---:|---|
-| [Laguna XS.2 FP8](quality/tooluse256k-laguna-v0515-r9700.json) | 7 / 7 | 245,177 | none |
-| [North-Mini-Code FP8](quality/tooluse256k-north-mini-v0515-r9700.json) | 1 / 7 | 16,633 | 3 invalid/missing calls; 3 budget-bound |
+| Laguna XS.2 FP8 ([s0](quality/tooluse256k-laguna-sampled-seed0.json) · [s1](quality/tooluse256k-laguna-sampled-seed1.json) · [s2](quality/tooluse256k-laguna-sampled-seed2.json)) | 21 / 21 | 245,279 | none |
+| North-Mini-Code FP8 ([s0](quality/tooluse256k-north-mini-post095-seed0.json) · [s1](quality/tooluse256k-north-mini-post095-seed1.json) · [s2](quality/tooluse256k-north-mini-post095-seed2.json)) | 21 / 21 | 245,172 | none |
 
 ![Long-context agentic tool-use ladder](tooluse256k_ladder.png)
 
+Neither ship has a measurable agentic ceiling below the 262,144 context limit. That both clear every rung
+is a property of these two ships, not a blunt instrument — the same ladder records a ~64K agentic ceiling
+for the Qwen3-Coder-30B family (prose-stop at ≥131K) and a budget-banded ~76K for Nemotron-3-Omni. Running
+it across the remaining fleet presets is the open work.
+
 Regenerate the chart with
-`/home/letsrtfm/miniforge3/bin/python scripts/bench/generate_charts.py --tooluse-only`. The
-[North depth-0.1 stall receipt](quality/tooluse256k-north-mini-v0515-r9700-depth01-stall.json) is
-unscored infrastructure evidence and is intentionally excluded from this quality chart.
+`/home/letsrtfm/miniforge3/bin/python scripts/bench/generate_charts.py --tooluse-only`. The pre-090
+North curve and its [depth-0.1 stall receipt](quality/tooluse256k-north-mini-v0515-r9700-depth01-stall.json)
+are superseded incident records, excluded from this chart and not admissible as ceilings.
+
+### Post-fix deterministic prompt-profile control
+
+The post-094 control holds rendered token count, sampling, seeds, tools, and serving identity fixed while
+changing only context texture. This is single-turn **correct structured action** scoring, not an
+end-to-end agentic ceiling.
+
+| Actual prompt tokens | Low-entropy repetition stress | Heterogeneous code/log |
+|---:|---:|---:|
+| 64,801 | 0 / 3 | **3 / 3** |
+| 115,806 | 1 / 3 | **3 / 3** |
+
+The aggregate is the finding — 6/6 heterogeneous against 1/6 repeated, reproduced exactly across the
+post-094 and post-095 runs. The per-depth split of the repeated failures is not: those two runs
+redistributed it (1/3+0/3 versus 0/3+1/3) on the same aggregate, so at three seeds it is sampling noise
+and no per-depth claim should be read from it.
+
+![North post-fix deterministic correct-action profile control](north_mini_tooluse_profile_ab.png)
+
+The [post-095 profile receipt](quality/north-mini-tooluse-profile-ab-post095-2026-07-19.json) records exact
+prompt hashes, a patch chain hashed from the real 090–095 files, TP2/BF16-KV deterministic serving,
+temperature 1.0/top-p 0.95, and seeds 0–2. Regenerate it with
+`python scripts/eval/profile_control_ab.py --port 23334`; the
+[post-094 receipt](quality/north-mini-tooluse-profile-ab-post094-2026-07-19.json) is retained as the prior
+run. No parser drops remain in the post-095 failures — every one is a genuine model failure, including one
+well-formed `lookup_record` call that hallucinated `example123` instead of retrieving the planted id.
+
+Note the two runs are **not** a controlled A/B for patch 095: calibration converged to different character
+counts (186,736 versus 186,620 at the 64,801 rung), so the prompts differ and only the aggregate is
+comparable. Isolating a serving change requires pinning the converged character counts on replay.
+
+### Native-FP8 kernel profile and the agentic turn tax
+
+The [2026-07-19 decode/extend profile](profiling/laguna-native-decode-profile-2026-07-19.json) separates
+kernel time by **phase** as well as category, because extend and decode attention share the `attention`
+category and were previously merged. With them separated, Laguna's native-FP8 decode is led by dense
+rocBLAS GEMM (~38–42% of non-collective GPU time), not attention (~20–28%).
+
+The larger result is in the other phase. Appending a short suffix to a cached prefix — the agentic
+tool-result turn — costs a fixed tax that scales with prefix length, because the extend kernel does not
+split the KV dimension:
+
+| Cached tokens | TTFT, 1-token suffix | TTFT, 64-token suffix | Decode ms/token |
+|---:|---:|---:|---:|
+| 7,404 | 61.3 ms | 68.3 ms | 14.32 |
+| 176,588 | **604.6 ms** | **607.7 ms** | 17.61 |
+
+A 64-token tool result costs 0.5% more than a single token; the cost is the prefix walk, not the suffix.
+Curve and method: [extend cost receipt](profiling/laguna-extend-cost-2026-07-19.json). Regenerate with
+`python scripts/bench/measure_extend_cost.py --port 23334` against a server launched with
+`--enable-cache-report` (without it, cache hits cannot be verified and the harness records
+`cache_hit_verified: false` rather than assuming). Disposition in [FINDINGS.md](FINDINGS.md).
 
 Final experiment conclusions are consolidated in [FINDINGS.md](FINDINGS.md).
 

@@ -1,0 +1,114 @@
+{
+  "schema_version": 2,
+  "tag": "laguna-native-fp8-decode-and-extend-2026-07-19",
+  "status": "VALID. Supersedes the schema-v1 record of the same tag, which reported a prefill/extend pass as 92.9% decode 'attention' and is retained only in git history.",
+  "intent": "Profile Laguna's native block-FP8 path at depth to find the limiting kernels, comparable to the 2026-07-18 auto-path categories.",
+
+  "served_identity": {
+    "model": "Laguna-XS.2-FP8",
+    "model_geometry": "40 layers = 10 full_attention + 30 sliding_attention (window 512); 48 q heads, 8 kv heads, head_dim 128",
+    "attention_backend": "triton",
+    "fp8_gemm_runner_backend": "triton",
+    "triton_attention_num_kv_splits": 64,
+    "kv_cache_dtype": "auto",
+    "tp_size": 2,
+    "context_length": 262144
+  },
+
+  "method": {
+    "phase_separation": "Kernel time is attributed to a phase as well as a category. The phase boundary is the first decode-attention kernel per rank. Phase membership is decided by EXACT kernel name: _fwd_kernel and _fwd_kernel_unified are extend/prefill (extend_attention.py, prefill_attention.py); _fwd_kernel_stage1/2 and _fwd_grouped_kernel_stage1 are decode (decode_attention.py). A substring test for '_fwd_kernel' matches all of them, which is what merged the phases in the superseded run.",
+    "step_counting": "Traced decode steps are derived from stage-1 decode-attention calls (once per layer per step; stage2 would double count), not from the requested step count.",
+    "arms": "Two independent runs: production config (CUDA graphs ON) and graphs OFF. Graphs ON traces only ~1 decode step because graph replays are not recorded kernel-by-kernel; graphs OFF traces 39 of 40 but distorts collectives."
+  },
+
+  "decode_phase": {
+    "note": "Percentages are of traced GPU time within the decode phase only.",
+    "graphs_on_production": {
+      "traced_decode_steps": 1.02,
+      "decode_gpu_ms": 31.2,
+      "breakdown_pct": {
+        "rocblas_gemm": 34.9,
+        "elementwise_norm": 18.2,
+        "attention": 18.1,
+        "triton_fp8_gemm": 11.2,
+        "rccl": 9.0,
+        "routed_moe": 6.7,
+        "other": 2.0
+      }
+    },
+    "graphs_off_eager": {
+      "traced_decode_steps": 39.0,
+      "decode_gpu_ms": 2569.0,
+      "breakdown_pct": {
+        "rccl": 52.2,
+        "rocblas_gemm": 20.0,
+        "attention": 13.4,
+        "routed_moe": 4.9,
+        "elementwise_norm": 4.7,
+        "triton_fp8_gemm": 3.3,
+        "other": 1.5
+      },
+      "caveat": "The 52.2% rccl is an ARTIFACT of disabling CUDA graphs: eager launches desynchronize the two ranks and the collective kernel spends its time spin-waiting for its peer. Not a production decode characteristic."
+    },
+    "agreement_excluding_collectives": {
+      "note": "With rccl removed, the two arms agree on the ordering, which is the robust result.",
+      "rocblas_gemm": [38.4, 41.9],
+      "attention": [19.9, 28.0],
+      "elementwise_norm": [20.0, 9.8],
+      "triton_fp8_gemm": [12.3, 6.9]
+    },
+    "finding": "Decode on the native FP8 path is dominated by dense rocBLAS/Tensile GEMM (~38-42% of non-collective GPU time), NOT by attention. Attention is second at ~20-28%.",
+    "open_question": "rocblas_gemm remains the largest non-collective decode category even with fp8_gemm_runner_backend=triton, while triton_fp8_gemm is only ~7-12%. Which dense GEMMs still route to rocBLAS on this checkpoint is NOT established here and is the next lead."
+  },
+
+  "prefill_extend_phase": {
+    "shape": "The profiled request appended 1 new token to a 197,193-token cache hit, verified in the server log as '#new-token: 1, #cached-token: 197193'. This is the agentic tool-result shape.",
+    "aggregate_gpu_ms_both_ranks": {"graphs_on": 752.5, "graphs_off": 740.9},
+    "extend_attention_gpu_ms_both_ranks": {"graphs_on": 721.8, "graphs_off": 709.0},
+    "breakdown_pct_graphs_off": {
+      "attention": 95.7,
+      "rocblas_gemm": 1.8,
+      "rccl": 1.2,
+      "routed_moe": 0.4,
+      "elementwise_norm": 0.4,
+      "triton_fp8_gemm": 0.3,
+      "other": 0.2
+    },
+    "per_layer_structure": "_fwd_kernel fired 40 times per rank -- once per layer, ONE extend forward pass. Exactly 10 calls cost ~35 ms each and 30 cost ~130-350 us. That maps one-to-one onto the checkpoint's 10 full_attention and 30 sliding_attention (window 512) layers: the cost is entirely the full-attention layers walking the whole cached prefix.",
+    "comparison": "Extend attention ~361 ms/rank versus decode attention ~4.2 ms/rank over the SAME KV cache -- an ~85x gap on identical data. The ratio is independent of any memory-bandwidth assumption because both phases read the same bytes."
+  },
+
+  "mechanism": {
+    "claim": "The extend kernel does not split the KV dimension, so a short query gets almost no parallelism.",
+    "evidence": [
+      "extend_attention.py:63 -- grid = (batch_size, head_num, triton.cdiv(max_len_extend, BLOCK_M))",
+      "decode_attention.py -- grid = (batch_size, cdiv(head_num, min(BLOCK_H, kv_group_num)), num_kv_splits)",
+      "On gfx1201 with head_dim 128, _get_block_sizes_for_extend_attention returns BLOCK_M=64.",
+      "For a cache-hit turn max_len_extend is the SUFFIX length, so cdiv(1,64) = cdiv(64,64) = 1: the extend grid's third dimension collapses to 1 and, with batch 1 and 24 heads per rank, ~24 workgroups walk the entire prefix. Decode splits the same walk 64 ways.",
+      "The upstream source comment at extend_attention.py:37 states 'each workgroup reads the whole prefix'."
+    ],
+    "falsifiable_prediction_and_result": "Because cdiv(1,64) == cdiv(64,64), appending 1 token and appending 64 tokens must cost the SAME wall time. Measured at 176,588 cached tokens: 604.6 ms versus 607.7 ms, a 0.5% difference for 64x the tokens. Prediction held at every depth (8K: 61.3/68.3; 32K: 123.3/136.3; 131K: 409.3/422.3)."
+  },
+
+  "user_visible_cost": {
+    "source": "benchmarks/profiling/laguna-extend-cost-2026-07-19.json",
+    "method": "Streaming TTFT of a cache-hit request appending N new tokens to a primed prefix, median of 3 runs, each run with a unique suffix. Cache hits verified via --enable-cache-report.",
+    "median_ttft_ms_k1": {"7404": 61.3, "29425": 123.3, "117513": 409.3, "176588": 604.6},
+    "linear_fit": "TTFT_ms ~= 32.7 + 3.226 per 1000 cached tokens; predicts all four measured depths within 8%.",
+    "extrapolation": "~878 ms per agentic turn at the 262,144 context limit. NOT measured -- extrapolated from the fit.",
+    "contrast": "Over the same 7.4K -> 176.6K range, extend cost grew 9.86x while decode TPOT grew only 1.23x (14.32 -> 17.61 ms). Decode scales well with depth; extend does not.",
+    "in_user_terms": "At 176,588 tokens an agentic tool-result turn waits 605 ms before its first token -- the time of 34 decode tokens -- and a realistic 64-token tool result costs the same 605 ms."
+  },
+
+  "not_established": [
+    "Which dense GEMMs still route to rocBLAS rather than the native triton FP8 path during decode.",
+    "The achievable win from splitting KV in extend, or from routing short-suffix extends to the decode kernel. The mechanism is identified and the headroom is large, but no fix has been implemented or measured.",
+    "Whether the same extend grid collapse dominates North-Mini, which is a different architecture (Cohere2MoE, hybrid-SWA, 49 layers). Only Laguna was profiled."
+  ],
+
+  "reproduce": [
+    "PRESET=laguna CTX=220000 STEPS=40 LAYERS=40 scripts/bench/profile_native_decode.sh",
+    "EXTRA_ARGS=--disable-cuda-graph ... for the eager arm",
+    "EXTRA_ARGS=--enable-cache-report scripts/launch.sh laguna, then python scripts/bench/measure_extend_cost.py --port 23334 --depths 8192,32768,131072,197000 --suffix-tokens 1,64,512 --runs 3"
+  ]
+}
