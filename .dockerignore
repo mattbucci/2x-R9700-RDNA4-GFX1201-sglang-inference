@@ -1,0 +1,9 @@
+.git
+components/
+build/
+__pycache__/
+*.pyc
+*.jsonl
+evals/swebench/runs/
+gptqmodel_offload/
+benchmarks/**/*.log

@@ -67,13 +67,13 @@ EXTRA_ARGS="${EXTRA_ARGS:-}"
 EXTRA_ENV="${EXTRA_ENV:-}"
 CUSTOM_AR="--disable-custom-all-reduce"
 [[ "${ENABLE_CUSTOM_ALL_REDUCE:-}" == "1" ]] && CUSTOM_AR=""
-# Tensor-parallel size. Default 2 (both R9700s). `TP=1` pins one card.
+# Tensor-parallel size defaults to the selected GPUs (both R9700s by default).
 # EAGLE3/spec-decode on moe_wna16 MoE targets runs best at TP2 — BUT only with
 # `--speculative-attention-mode decode` in EXTRA_ARGS; without it the default
 # `prefill` mode DEADLOCKS at TP2 (boots, then zero forward progress). With
 # decode-mode, TP2+EAGLE3 reaches full 256K @ ~97 tok/s. See README "Spec-decode
 # coverage map" Coder-30B row for the exact recipe.
-TP="${TP:-2}"
+configure_gpu_selection 0,1
 
 # --- Model presets ---
 apply_preset() {
@@ -906,5 +906,12 @@ CMD=(python -m sglang.launch_server
 # --disable-cuda-graph, so keep evals eager; cuda-graph-on stays the throughput default.
 [[ "${DISABLE_CUDA_GRAPH:-}" == "1" ]] && CUDA_GRAPH="--disable-cuda-graph"
 CMD+=($CUDA_GRAPH)
+
+if [[ "${LAUNCH_DRY_RUN:-}" == "1" ]]; then
+    printf '[launch dry-run]'
+    printf ' %q' "${CMD[@]}"
+    printf '\n'
+    exit 0
+fi
 
 exec "${CMD[@]}"
