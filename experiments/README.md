@@ -29,7 +29,7 @@ post-094 decision below is the current execution sequence.
   R97-G Phase B/C until the short critical path is clear; R97-H (08) until its destructive scope is approved.
 
 The repository-level rationale, completion criteria, and the missing direct native-FP8 follow-on are
-documented in [`README.md`](../README.md#what-we-are-working-on-next).
+documented in [`README.md`](../README.md#next-steps).
 
 | # | ID | Title | Type | Current status | Host | Wall clock |
 |---|---|---|---|---|---|---|

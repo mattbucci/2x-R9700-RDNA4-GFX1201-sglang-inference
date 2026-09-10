@@ -9,7 +9,7 @@ method match.
 The whole servable fleet was measured on the 2026-07-12 v0.5.15 + patches 074–082 campaign tree with one
 consistent method: streaming-TPOT median (3 runs, decode-only, actual input-token counts), ROCm 7.2, TP=2,
 each model under its production launch preset (quant, graph policy, and KV dtype per preset). The full
-decode table is in the [top-level README](../README.md#current-performance); each `<model>/` directory
+decode table is in the [top-level README](../README.md#single-user-decode-across-the-fleet); each `<model>/` directory
 here holds that model's `results.json` and regenerated `context_vs_toks.png` / `concurrency_vs_toks.png`.
 
 ### Qwen3.8-27B-FP8 (2026-08-30, v0.5.18 + 70 patches)

@@ -141,5 +141,7 @@ Keep diagnostic switches off by default and scoped to the affected model or kern
 - [benchmarks/README.md](benchmarks/README.md): benchmark data index.
 - [benchmarks/FINDINGS.md](benchmarks/FINDINGS.md): final experiment dispositions.
 - [rules-for-agents.md](rules-for-agents.md): host, calibration, and benchmark invariants.
+- [CROSS-TEAM.md](CROSS-TEAM.md): inbox for sister-rig notes and asks; never write these into README.md.
+- [docker/README.md](docker/README.md): OCI image build, hardening, and run recipes.
 
 Do not use Markdown files as chat channels, task queues, or chronological lab notebooks. Put raw measurements in JSON, final conclusions in concise Markdown, and implementation history in Git.

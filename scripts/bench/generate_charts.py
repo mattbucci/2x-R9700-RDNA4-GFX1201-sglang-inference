@@ -1045,7 +1045,9 @@ def make_concurrency_chart(model_key, meta, results, out_dir):
 
 def make_combined_context_chart(all_data):
     """All models on one context chart, unified 256K x-axis."""
-    fig, ax = plt.subplots(figsize=(8, 4.5))
+    # Wide canvas with the legend below the axes: 18 fleet lines do not fit
+    # an in-plot legend without covering the deep-context end of the curves.
+    fig, ax = plt.subplots(figsize=(11, 6.5))
 
     for key, (meta, results) in all_data.items():
         sweep = [p for p in results["context_sweep"]
@@ -1062,11 +1064,12 @@ def make_combined_context_chart(all_data):
     ax.tick_params(axis="x", rotation=45)
     ax.set_xlabel("Context Length")
     ax.set_ylabel("tok/s (single user)")
-    ax.set_title("All Models — Context Length vs Decode Speed", fontsize=13, fontweight="bold", pad=10)
+    ax.set_title("All Models — Context Length vs Decode Speed (single user, TP=2)",
+                 fontsize=13, fontweight="bold", pad=10)
     ax.grid(True, axis="both", linestyle="--")
     ax.set_ylim(bottom=0)
-    ax.legend(loc="upper right", fontsize=9, framealpha=0.5,
-              edgecolor="#30363d", facecolor="#161b22")
+    ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.22), ncol=3, fontsize=9,
+              framealpha=0.5, edgecolor="#30363d", facecolor="#161b22")
 
     fig.tight_layout()
     path = os.path.join(BENCH_DIR, "all_models_context.png")
@@ -1077,7 +1080,7 @@ def make_combined_context_chart(all_data):
 
 def make_combined_concurrency_chart(all_data):
     """All models on one concurrency chart."""
-    fig, ax = plt.subplots(figsize=(8, 4.5))
+    fig, ax = plt.subplots(figsize=(11, 6.5))
 
     for key, (meta, results) in all_data.items():
         if "throughput_sweep" not in results:
@@ -1093,8 +1096,8 @@ def make_combined_concurrency_chart(all_data):
     ax.set_title("All Models — Throughput Scaling", fontsize=13, fontweight="bold", pad=10)
     ax.grid(True, axis="both", linestyle="--")
     ax.set_ylim(bottom=0)
-    ax.legend(loc="upper left", fontsize=9, framealpha=0.5,
-              edgecolor="#30363d", facecolor="#161b22")
+    ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.12), ncol=3, fontsize=9,
+              framealpha=0.5, edgecolor="#30363d", facecolor="#161b22")
 
     fig.tight_layout()
     path = os.path.join(BENCH_DIR, "all_models_concurrency.png")
