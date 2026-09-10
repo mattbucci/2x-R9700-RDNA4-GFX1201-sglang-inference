@@ -442,9 +442,15 @@ def capture_diff(repo_dir: Path) -> str:
     subprocess.run(["git", "add", "-A"], cwd=repo_dir, check=True,
                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     res = subprocess.run(
-        ["git", "diff", "--cached"], cwd=repo_dir, capture_output=True, text=True, check=True
+        ["git", "diff", "--cached"], cwd=repo_dir, capture_output=True, check=True
     )
-    return res.stdout
+    # Decode tolerantly: git only prints "Binary files differ" for files with a
+    # NUL in the first 8 KB, so a text-headed non-UTF-8 artefact the agent left
+    # behind (Sphinx's objects.inv: ASCII header + zlib stream) comes out as a
+    # raw byte hunk. With text=True that raised UnicodeDecodeError and lost the
+    # whole patch (sphinx-doc__sphinx-10325, little-coder 2026-09-10); replacing
+    # the bytes corrupts only that artefact's hunk, same as a binary hunk.
+    return res.stdout.decode("utf-8", errors="replace")
 
 
 def _commit_harness_prep(repo_dir: Path) -> None:
