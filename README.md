@@ -22,9 +22,20 @@ measurement defect surfaced mid-cycle: 28 instances (scikit-learn 0.20–0.22 an
 builds those on the spec's own Python with scoped pins, and the audit re-rolls any no-venv prediction as
 `infra_no_venv` before scoring (see [`FP8_BAKEOFF_SETUP.md`](evals/swebench/FP8_BAKEOFF_SETUP.md)). Laguna's native-Triton block-FP8 lane remains
 the measured fleet-speed default (36.8–47.8% over dequant-to-BF16), with its agent-quality envelope
-proven by the 42/42 three-seed ladder. Next levers: tune the gfx1201 Triton W8A8 block-GEMM configs for
-the dense FP8 path (the `N=17408,K=5120` analogue of 078's MoE tuning) and re-measure the suppressed
-Qwen3.5/Gemma4 LAB-Bench cells with `--mc-no-think`.
+proven by the 42/42 three-seed ladder. Next levers, in order: (1) **A/B HIP graphs on qwen38 plain
+decode.** Passive profiling of the running bakeoff (2026-09-10; 19.5K requests, 185 h of request time)
+puts decode at 91% of eval wall-clock with a dead-flat 60.2 ms mean ITL from 0 to 109K context, ~13.5 GB
+of FP8 weights per rank per step (224 GB/s effective, ~35% of R9700 bandwidth, floor ≈25 ms), both
+scheduler main threads at 98.5% CPU, and the GPUs at ~207 of 300 W — the launch-bound signature, not a
+compute-bound one. The preset's `--disable-cuda-graph` inherits the 2026-06-14 qwen36-27b verdict, which
+was measured under EAGLE3 verify (a ~5.5× heavier step than plain M=1 decode) and never on plain decode;
+the 3090 team got 4× on qwen36 hybrids from graphs and this box got 2.1× on coder-next-ream. Run
+`scripts/bench/decode_ab.py` graph-on vs off at 24/8K/64K/197K in the next server-stopped window (the
+bakeoff's Docker-scoring phase), then chase the residual with `profile_decode_step.sh` (FP8 M=1 Triton
+block-GEMM) and `p2p_allreduce_bw.py` (custom all-reduce over PCIe Gen4 ×8). Do not flip the flag
+mid-bakeoff: lanes 4–7 must stay comparable with 1–3. (2) Tune the gfx1201 Triton W8A8 block-GEMM
+configs for the dense FP8 path (the `N=17408,K=5120` analogue of 078's MoE tuning). (3) Re-measure the
+suppressed Qwen3.5/Gemma4 LAB-Bench cells with `--mc-no-think`.
 
 The easiest-to-hardest queue is tracked in [`experiments/queue.json`](experiments/queue.json). Four local
 gates are complete: R97-E's default-on structured-tool validator passes eight focused tests; R97-G Phase A
