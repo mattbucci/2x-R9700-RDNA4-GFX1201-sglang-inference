@@ -98,11 +98,14 @@ so its matrix will be published as its own dated page rather than merged into th
 
 Ordered by what runs next. Specs with an ID live in [`experiments/`](experiments/README.md).
 
-1. **Finish the Qwen3.8 seven-scaffold bakeoff** (lane 3 of 7 as of 2026-09-10): audit, re-roll
-   `infra_*` predictions, Docker-score, publish the matrix and the scaffold-disagreement table. Two
-   harness fixes are deliberately held for the next full re-roll because they change succeeding
-   instances too (spec `packages: requirements.txt`, the `oldest-supported-numpy` downgrade; see
-   `FP8_BAKEOFF_SETUP.md`).
+1. **Finish the Qwen3.8 seven-scaffold bakeoff** (lane 4 of 7 as of 2026-09-12): audit, re-roll
+   `infra_*` predictions, Docker-score, publish the matrix and the scaffold-disagreement table. Both
+   little-coder lanes ran at pi's 32K fallback context (unknown model id → clone of the packaged
+   32768/4096 entry; p99 prompt 32.6K with 303 compaction resets vs 83–86K on opencode), so a
+   follow-up cycle re-runs them at 262144 as `*-v2-ctx256k` and the matrix shows both budgets
+   (`evals/swebench/FP8_BAKEOFF_SETUP.md` → Scaffold context budgets). Two harness fixes are
+   deliberately held for the next full re-roll because they change succeeding instances too (spec
+   `packages: requirements.txt`, the `oldest-supported-numpy` downgrade; see `FP8_BAKEOFF_SETUP.md`).
 2. **A/B HIP graphs on qwen38 plain decode.** Passive profiling of the running bakeoff (19.5K requests,
    185 h of request time) puts decode at 91% of eval wall-clock with a flat 60.2 ms mean ITL from 0 to
    109K context, ~13.5 GB of FP8 weights per rank per step (224 GB/s effective, ~35% of R9700

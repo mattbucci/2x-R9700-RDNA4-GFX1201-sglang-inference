@@ -305,19 +305,66 @@ def _ensure_rtk_extension() -> Path:
     return ext
 
 
+LC_PROFILE_DIR = Path.home() / ".config" / "little-coder-swebench"  # harness-owned
+
+
+def _ensure_little_coder_profile(served: str, server_url: str) -> Path:
+    """Write the harness-owned little-coder models.json and return its path.
+
+    little-coder's packaged models.json only knows a few llama.cpp aliases, all
+    declared 32768 ctx / 4096 max-out. An unknown id such as `llamacpp/<served>`
+    goes through pi's buildFallbackModel(), which clones the provider's first
+    entry -- so every lane before 2026-09-12 (qwen38 little-coder and
+    little-coder-rtk, 3090 rig likewise) ran the agent with a 32K context budget
+    and a 4K output cap: pi auto-compacted at ~32K (p99 prompt 32.6K vs 83-86K
+    on the opencode lanes; 303 compaction resets in 300 instances). The
+    llama-cpp-provider extension's startup probe cannot correct it either:
+    SGLang has no /props and its /v1/models carries max_model_len, not n_ctx.
+
+    The override file replaces the whole `llamacpp` provider (mergeProviders is
+    per-provider), so the served id registers with the real window. Verified
+    2026-09-12 with little-coder 0.83.0: `--list-models llamacpp` shows
+    `qwen38 262.1K 16.4K`, and a --print request runs without the
+    "custom model id" warning. Written under a harness-owned path and selected
+    via LITTLE_CODER_MODELS_FILE so ~/.config/little-coder is untouched."""
+    LC_PROFILE_DIR.mkdir(parents=True, exist_ok=True)
+    path = LC_PROFILE_DIR / "models.json"
+    path.write_text(json.dumps({"providers": {"llamacpp": {
+        "api": "openai-completions",
+        "baseUrl": f"{server_url.rstrip('/')}/v1",
+        "apiKey": "LLAMACPP_API_KEY",  # env-var *name*, per the packaged schema
+        "models": [{
+            "id": served,
+            "name": f"{served} (SGLang local)",
+            "reasoning": True,
+            "input": ["text"],
+            "contextWindow": 262144,
+            "maxTokens": 16384,
+            "cost": {"input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0},
+        }],
+    }}}, indent=2))
+    return path
+
+
 def run_little_coder(served: str, repo_dir: Path, prompt: str, timeout: int, log_path: Path,
                      extra_env: dict[str, str] | None = None,
                      server_url: str = "http://127.0.0.1:23334",
                      rtk: bool = False) -> tuple[int, str, str]:
     # little-coder wraps pi-ai; the packaged `llamacpp` provider baseUrl is overridden
     # by LLAMACPP_BASE_URL (config.ts LEGACY_BASE_URL_ENV). model id `llamacpp/<served>`
-    # routes there; pi warns "custom model id" for unknown ids but still sends the request.
+    # is registered by the harness profile (see _ensure_little_coder_profile) so pi
+    # uses the real context window instead of its 32K fallback clone.
     # --print (-p) is REQUIRED: without it pi runs interactively and just *describes* the fix
     # ("I cannot modify files in this environment") instead of using its edit/write tools.
+    profile = _ensure_little_coder_profile(served, server_url)
     cmd = ["little-coder", "--print", "--model", f"llamacpp/{served}", prompt]
     env = _base_env(extra_env, {
         "LLAMACPP_BASE_URL": f"{server_url.rstrip('/')}/v1",
         "LLAMACPP_API_KEY": "noop",
+        "LITTLE_CODER_MODELS_FILE": str(profile),
+        # the /props + /v1/models n_ctx probe can never succeed against SGLang;
+        # skipping it removes two HTTP round-trips per instance and a variable.
+        "LITTLE_CODER_NO_CTX_PROBE": "1",
     })
     if rtk:
         # little-coder-rtk lane: load the rtk Pi extension so bash tool calls are
@@ -402,7 +449,10 @@ def _ensure_prime_profile(served: str, server_url: str) -> None:
             "apiKey": "noop",
             "compat": {"supportsDeveloperRole": False,
                        "supportsReasoningEffort": False},
-            "models": [{"id": served}],
+            # explicit window/output cap (model-registry.js defaults are
+            # 128000/16384 when omitted); matches the omp profile so the two
+            # pi-derived lanes budget context identically.
+            "models": [{"id": served, "contextWindow": 262144, "maxTokens": 16384}],
         }}}, indent=2))
 
 

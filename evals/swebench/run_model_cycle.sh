@@ -13,7 +13,7 @@
 #   9. Print summary
 #
 # Total runtime per preset: ~6-18h depending on instance complexity.
-# Output: evals/swebench/runs/<preset>-<scaffold>-v2/ for each scaffold
+# Output: evals/swebench/runs/<preset>-<scaffold>-<RUN_TAG>/ for each scaffold (RUN_TAG default v2)
 #         + benchmarks/quality/bakeoff-<preset>-<scaffold>.json
 #
 # Usage:
@@ -24,6 +24,9 @@
 # Environment overrides:
 #   SCAFFOLDS       space-separated list (default: "opencode opencode-dcp little-coder little-coder-rtk omp prime dcode")
 #   INSTANCES       per-scaffold instance count (default: 0 = full 300)
+#   RUN_TAG         run-dir suffix (default: v2). Use a distinct tag to re-run a lane
+#                   under a changed harness (e.g. RUN_TAG=v2-ctx256k for the little-coder
+#                   lanes after the pi 32K-fallback fix) without --skip-existing skipping it.
 #   TIMEOUT         per-instance rollout timeout in seconds (default: 1800)
 #   LOG_DIR         where to write per-phase logs (default: /data/logs/run-model-cycle-logs/<preset>;
 #                   NOT /tmp -- the 31 GB tmpfs is too small for a multi-day server.log)
@@ -45,6 +48,7 @@ fi
 
 SCAFFOLDS="${SCAFFOLDS:-opencode opencode-dcp little-coder little-coder-rtk omp prime dcode}"  # claw retired, omp/prime/dcode/opencode-dcp/little-coder-rtk added 2026-08-30
 INSTANCES="${INSTANCES:-0}"
+RUN_TAG="${RUN_TAG:-v2}"
 TIMEOUT="${TIMEOUT:-1800}"
 SERVER_TIMEOUT="${SERVER_TIMEOUT:-720}"
 # Rollouts/audit/reroll need swebench + datasets: never trust ambient `python`
@@ -131,7 +135,7 @@ NEED_RESCORE=()  # cells that have predictions to score
 NEED_RESCORE_AFTER_REROLL=()
 
 for SCAFFOLD in $SCAFFOLDS; do
-  OUT="$REPO_DIR/evals/swebench/runs/${PRESET}-${SCAFFOLD}-v2"
+  OUT="$REPO_DIR/evals/swebench/runs/${PRESET}-${SCAFFOLD}-${RUN_TAG}"
   mkdir -p "$OUT"
   N_FLAG=()
   [ "$INSTANCES" -gt 0 ] && N_FLAG=(--instances "$INSTANCES")
@@ -166,7 +170,7 @@ stop_server
 
 # --- Phase 3: audit ---
 for SCAFFOLD in "${NEED_RESCORE[@]}"; do
-  OUT="$REPO_DIR/evals/swebench/runs/${PRESET}-${SCAFFOLD}-v2"
+  OUT="$REPO_DIR/evals/swebench/runs/${PRESET}-${SCAFFOLD}-${RUN_TAG}"
   log "audit $SCAFFOLD"
   "$ROLLOUT_PY" "$REPO_DIR/evals/swebench/audit_predictions.py" \
     --predictions "$OUT/predictions.jsonl" \
@@ -184,7 +188,7 @@ if [ "${#NEED_RESCORE_AFTER_REROLL[@]}" -gt 0 ]; then
   wait_ready || { stop_server; log "ERROR: server failed on reroll"; }
 
   for SCAFFOLD in "${NEED_RESCORE_AFTER_REROLL[@]}"; do
-    OUT="$REPO_DIR/evals/swebench/runs/${PRESET}-${SCAFFOLD}-v2"
+    OUT="$REPO_DIR/evals/swebench/runs/${PRESET}-${SCAFFOLD}-${RUN_TAG}"
     log "reroll $SCAFFOLD"
     "$ROLLOUT_PY" "$REPO_DIR/evals/swebench/reroll_infra_failures.py" \
       --cell "$OUT" \
@@ -200,7 +204,7 @@ fi
 
 # --- Phase 5: score each scaffold (Rule 2: server already stopped) ---
 for SCAFFOLD in "${NEED_RESCORE[@]}"; do
-  OUT="$REPO_DIR/evals/swebench/runs/${PRESET}-${SCAFFOLD}-v2"
+  OUT="$REPO_DIR/evals/swebench/runs/${PRESET}-${SCAFFOLD}-${RUN_TAG}"
   log "score $SCAFFOLD"
   rm -f "$OUT/scores-docker-summary.json"
   rm -rf "$OUT/scores-docker"

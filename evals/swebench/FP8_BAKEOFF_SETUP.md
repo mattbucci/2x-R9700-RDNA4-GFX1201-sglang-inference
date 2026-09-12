@@ -1,16 +1,52 @@
 # FP8 SWE-bench bake-off
 
-\`fp8_bakeoff_matrix.sh\` runs SWE-bench Lite across opencode, little-coder, and claw-code against a local SGLang endpoint. Rollouts run on the host; official per-instance Docker images score the resulting patches.
+`fp8_bakeoff_matrix.sh` runs SWE-bench Lite across opencode, little-coder, and claw-code against a local SGLang endpoint. Rollouts run on the host; official per-instance Docker images score the resulting patches.
 
 ## Scaffold configuration
 
-- **opencode:** provider \`sglang\`, model \`sweep\`, base URL \`http://127.0.0.1:23334/v1\`.
-- **little-coder:** set \`LLAMACPP_BASE_URL=http://127.0.0.1:23334/v1\` and \`LLAMACPP_API_KEY=noop\`; use \`--print\`.
-- **claw-code:** set \`OPENAI_BASE_URL\` and \`OPENAI_API_KEY\`; use model \`openai/sweep\` and \`--output-format text\`.
+- **opencode:** provider `sglang`, model `sweep`, base URL `http://127.0.0.1:23334/v1`.
+- **little-coder:** set `LLAMACPP_BASE_URL=http://127.0.0.1:23334/v1` and `LLAMACPP_API_KEY=noop`; use `--print`;
+  point `LITTLE_CODER_MODELS_FILE` at the harness profile (`~/.config/little-coder-swebench/models.json`,
+  written by `run_rollouts.py`) so the served id registers at its real context window — see
+  [Scaffold context budgets](#scaffold-context-budgets).
+- **claw-code:** set `OPENAI_BASE_URL` and `OPENAI_API_KEY`; use model `openai/sweep` and `--output-format text`.
 
-The rollout harness uses \`stdin=DEVNULL\`. Do not request opencode JSON output for long multi-turn sessions. Repository diffs are collected from Git, not agent stdout.
+The rollout harness uses `stdin=DEVNULL`. Do not request opencode JSON output for long multi-turn sessions. Repository diffs are collected from Git, not agent stdout.
 
-Use \`--shard K/N\` to distribute instances into separate prediction files.
+Use `--shard K/N` to distribute instances into separate prediction files.
+
+## Scaffold context budgets
+
+Every scaffold decides *for itself* how much context the model has, and that budget drives its
+auto-compaction, read guards, and output cap — it is a second experimental variable hiding inside
+the scaffold name. What each lane declares for `qwen38` (server `max_model_len` 262144):
+
+| scaffold | source of the window | context / max output |
+|---|---|---|
+| opencode, opencode-dcp | `~/.config/opencode/opencode.json` `limit` | 200000 / 8192 |
+| omp | harness profile `~/.omp-swebench/agent/models.yml` | 262144 / 16384 |
+| prime | harness profile `~/.prime/agent/models.json` (explicit since 2026-09-12; prime defaults 128000 / 16384 when omitted) | 262144 / 16384 |
+| little-coder, little-coder-rtk **before 2026-09-12** | pi `buildFallbackModel()` clone of the packaged `llamacpp` entry | **32768 / 4096** |
+| little-coder, little-coder-rtk **since 2026-09-12** | harness profile via `LITTLE_CODER_MODELS_FILE` | 262144 / 16384 |
+| dcode | deepagents CLI over `OPENAI_BASE_URL`; no client-side window | server-bound |
+
+The little-coder trap (found by the 3090 rig, confirmed here 2026-09-11): little-coder's packaged
+`models.json` only knows a few llama.cpp aliases, all 32768 / 4096; an unknown id such as
+`llamacpp/qwen38` is cloned from the first entry (pi 0.68–0.83 alike), and the provider extension's
+startup probe cannot fix it because SGLang has no `/props` and its `/v1/models` reports
+`max_model_len`, not `n_ctx`. On the qwen38 cycle the effect is unambiguous in the server's prefill
+log: little-coder p99 prompt 32.6K (max 62.6K) with 303 compaction resets over 300 instances, versus
+p99 83–86K and max 99–109K on the opencode lanes. The fix registers the served id with the real
+window through a harness-owned profile (`_ensure_little_coder_profile`), verified with
+`little-coder --list-models llamacpp` → `qwen38 262.1K 16.4K`.
+
+Lane disposition for the qwen38 cycle: the two 32K lanes are kept and scored as they are (the
+running little-coder-rtk lane finishes at 32K so the RTK A/B stays matched, and the 3090 rig's RTK
+arm ran at 32K too), and both little-coder lanes are re-run at 262144 as `qwen38-little-coder-v2-ctx256k`
+and `qwen38-little-coder-rtk-v2-ctx256k` by a follow-up cycle (`SCAFFOLDS="little-coder little-coder-rtk"
+RUN_TAG=v2-ctx256k LOG_DIR=/data/logs/run-model-cycle-logs/qwen38-ctx256k`) that a detached waiter
+starts when the main driver exits (`/data/logs/run-model-cycle-logs/qwen38-ctx256k/followup.{log,pid}`).
+The published matrix carries both budgets, labelled.
 
 ## Rollout environments
 
@@ -58,26 +94,26 @@ some repos. The Docker score is unaffected by either — only the model's in-loo
 
 ## Scoring
 
-\`score_docker.py\` invokes the official SWE-bench evaluation image for each instance and writes \`scores.jsonl\`. \`score_local.py\` is a compatibility fallback, not the canonical score.
+`score_docker.py` invokes the official SWE-bench evaluation image for each instance and writes `scores.jsonl`. `score_local.py` is a compatibility fallback, not the canonical score.
 
 Docker images require substantial storage. Put Docker’s data root on the data disk:
 
-\`\`\`json
+```json
 {"data-root": "/data/docker"}
-\`\`\`
+```
 
-After changing \`/etc/docker/daemon.json\`:
+After changing `/etc/docker/daemon.json`:
 
-\`\`\`bash
+```bash
 sudo systemctl restart docker
 docker info | grep 'Docker Root Dir'
-\`\`\`
+```
 
 Prune stopped containers regularly. Remove cached evaluation images only when storage pressure justifies the later re-download:
 
-\`\`\`bash
+```bash
 docker container prune -f
 docker image prune -af --filter until=24h
-\`\`\`
+```
 
 Do not score while the inference server is active if Docker work would contend for RAM, disk, or PCIe bandwidth. Finish rollouts, stop the server, then score.

@@ -25,6 +25,23 @@ This rig owns FP8 calibration (native gfx1201 FP8) and the RDNA4/ROCm serving st
 
 ## Inbox (newest first)
 
+### 2026-09-11 · 3090→R9700 · pi runs unknown model ids at a 32K fallback context (little-coder lanes)
+
+**3090→R9700 (2026-09-11, relayed by the user; 3090 commits `251c8bb`, `5d60e49`):** pi's
+`buildFallbackModel()` clones the first packaged `llamacpp` entry (32768 ctx / 4096 max-out) for any
+model id it does not know, so every little-coder lane — `llamacpp/<served>` is never in the packaged
+list — ran with a 32K context budget and auto-compaction; on their qwen38 RTK lane all 38 timeouts
+were compaction loops. Their `prompt_sawtooth.py` detects it from the server log. Suspected to affect
+prime as well.
+
+**Status (2026-09-12):** confirmed here and fixed. Our server prefill log shows little-coder p99
+prompt 32.6K / 303 compaction resets in 300 instances vs p99 83–86K on the opencode lanes.
+`run_rollouts.py` now writes a harness-owned little-coder profile (`LITTLE_CODER_MODELS_FILE`,
+262144 / 16384; verified with `--list-models`) and makes prime's window explicit (prime defaulted to
+128000, not 32K, on our profile). The 32K little-coder / little-coder-rtk arms are kept and scored;
+both are re-run at 262144 (`*-v2-ctx256k`) by a follow-up cycle queued behind the main driver.
+Details: `evals/swebench/FP8_BAKEOFF_SETUP.md` → Scaffold context budgets.
+
 ### 2026-09-10 · 3090→R9700 · qwen38 decode anatomy with graphs ON — the endpoint your HIP-graph A/B is aiming at
 
 **3090→R9700 (2026-09-10): what plain M=1 qwen38 decode looks like once graphs are on.** Same passive-profiling idea as your `f8d7a0a`, same model, run on the live SWE-bench lanes (14.6K requests, 2.9 days) plus one 40-step torch-profiler capture per TP rank — receipt [`benchmarks/qwen38-agentic-workload-profile-2026-09-10.md`](https://github.com/mattbucci/2x-3090-GA102-300-A1-sglang-inference/blob/main/benchmarks/qwen38-agentic-workload-profile-2026-09-10.md), analyzer [`scripts/bench/trace_step_anatomy.py`](https://github.com/mattbucci/2x-3090-GA102-300-A1-sglang-inference/blob/main/scripts/bench/trace_step_anatomy.py) (sweep-line *exposed* time per kernel category — portable to any `POST /start_profile` chrome trace, ROCm included). With cuda graphs on, bs=1 at 14.6K context: **15.4 ms/step, CPU step wall 1.1 ms (fully hidden), 55% of the bandwidth roofline** — INT4 weight streaming 57% of the step at 727 GB/s (78% of DRAM peak), NCCL allreduce 12% (129 calls × 13.6 µs — the TP latency tax), fp16 `lm_head` 10% (already at 92% of peak), attention 7%, GDN 5%, launch-floor kernels + graph-node gaps ~9%. Server time was 86% decode / 11% prefill / 3% queue. So your launch-bound signature (98.5% scheduler CPU, 35% BW, flat 60 ms ITL) is exactly what graphs remove; the regime you land in afterwards is weight-stream + allreduce-latency bound, and the levers that remain are NGRAM spec-decode on the hybrids (blocked on the conv1d spec-verify cast — our item 1), an INT8/INT4 `lm_head` (−5–7%), and a cheaper allreduce. One negative to save you the run: a +35% power budget (260→350 W) bought +5.5% decode / +6% prefill — memory-bound, not clock-bound. *(no action; calibration point for your `decode_ab.py` graph-on run)*
