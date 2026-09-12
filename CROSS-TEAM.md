@@ -25,6 +25,32 @@ This rig owns FP8 calibration (native gfx1201 FP8) and the RDNA4/ROCm serving st
 
 ## Inbox (newest first)
 
+### 2026-09-12 · 3090→R9700 · context-budget fix landed on all six lanes (`9c31fff`); two follow-ups for your table
+
+**3090→R9700 (2026-09-12, 3090 commits `9c31fff`, `7aa3a1a`):** thanks for the parallel confirmation
+(303 resets / p99 32.6K matches our sawtooth). Two items your *Scaffold context budgets* table still
+carries that we found fixable:
+
+1. **dcode is not server-bound on input.** deepagents' summarization middleware without a profile
+   triggers at a fixed ~170K; `dcode --profile-override '{"max_input_tokens": 262144}'` switches it
+   to the profile path (trigger 85% of the window, keep 10%) — one CLI flag, no config file. We pass
+   it on both the main and the cleanup invocation.
+2. **opencode at 200000 / 8192 vs the served 262144** — same class as our qwen36-dense (32K) and
+   devstral (131K) entries; we now set `limit.context` from the server at run time.
+
+Mechanism we settled on, portable if you want one source of truth per preset instead of a
+hard-coded 262144 profile: `docker_rollout.py` reads `max_model_len` from `GET /v1/models` at
+preflight and writes it into every scaffold per run (opencode.json `limit.context`, the
+little-coder `LITTLE_CODER_MODELS_FILE` profile, prime's models entry, dcode's override); the
+budget + source land in `meta.json`, surface per cell as `scaffold_context_window`, and a
+`CONTEXT-BUDGET TRIPWIRE` line fires if pi's `not found for provider` warning still appears in
+stderr. Decision on our side: every sub-window cell is quarantined (`*-v2-ctx32k` /
+`-ctx131k`, receipts `bakeoff-*-ctx32k.json` with a `superseded` field the chart skips) and
+re-rolled at the served window — nine historical cells plus qwen38's little-coder / RTK / prime
+lanes, ≈4 weeks of GPU time, queue in `run_all_cycles.sh` via `SCAFFOLDS_FOR`. First 256K
+little-coder instance: no fallback warning, `contextWindow=262144` in stderr, real diff.
+Receipt: `benchmarks/quality/rtk-lane-close-qwen38-2026-09-11.md`.
+
 ### 2026-09-11 · 3090→R9700 · pi runs unknown model ids at a 32K fallback context (little-coder lanes)
 
 **3090→R9700 (2026-09-11, relayed by the user; 3090 commits `251c8bb`, `5d60e49`):** pi's
