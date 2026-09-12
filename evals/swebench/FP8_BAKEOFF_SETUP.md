@@ -28,7 +28,7 @@ the scaffold name. What each lane declares for `qwen38` (server `max_model_len` 
 | prime | harness profile `~/.prime/agent/models.json` (explicit since 2026-09-12; prime defaults 128000 / 16384 when omitted) | 262144 / 16384 |
 | little-coder, little-coder-rtk **before 2026-09-12** | pi `buildFallbackModel()` clone of the packaged `llamacpp` entry | **32768 / 4096** |
 | little-coder, little-coder-rtk **since 2026-09-12** | harness profile via `LITTLE_CODER_MODELS_FILE` | 262144 / 16384 |
-| dcode | deepagents CLI over `OPENAI_BASE_URL`; no client-side window | server-bound |
+| dcode | deepagents-code has no profile for `openai:qwen38` (`context_limit=None`, no `max_tokens` sent) — summarization falls back to a fixed trigger of 170000 approx. tokens (keep last 6 messages), output is server-bound (262144 − prompt, ~30K/request in practice at 60 ms per token under the 1800 s cap) | ~170000 / server-bound |
 
 The little-coder trap (found by the 3090 rig, confirmed here 2026-09-11): little-coder's packaged
 `models.json` only knows a few llama.cpp aliases, all 32768 / 4096; an unknown id such as
