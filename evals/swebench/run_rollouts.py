@@ -326,7 +326,16 @@ def _ensure_little_coder_profile(served: str, server_url: str) -> Path:
     2026-09-12 with little-coder 0.83.0: `--list-models llamacpp` shows
     `qwen38 262.1K 16.4K`, and a --print request runs without the
     "custom model id" warning. Written under a harness-owned path and selected
-    via LITTLE_CODER_MODELS_FILE so ~/.config/little-coder is untouched."""
+    via LITTLE_CODER_MODELS_FILE so ~/.config/little-coder is untouched.
+
+    Thinking: pi's `--thinking <level>` is clamped to the model's supported
+    levels (pi-ai models.js clampThinkingLevel) and `xhigh`/`max` only count
+    as supported when `thinkingLevelMap` names them -- without the map every
+    `--thinking xhigh|high|max` reached the wire as `reasoning_effort: "high"`,
+    which the Qwen3.8 template rejects (only xhigh|medium|low; verified on a
+    capture endpoint 2026-09-13). The map below routes high/xhigh/max to the
+    template's `xhigh` so run_little_coder's `--thinking xhigh` is sent verbatim.
+    """
     LC_PROFILE_DIR.mkdir(parents=True, exist_ok=True)
     path = LC_PROFILE_DIR / "models.json"
     path.write_text(json.dumps({"providers": {"llamacpp": {
@@ -340,10 +349,70 @@ def _ensure_little_coder_profile(served: str, server_url: str) -> Path:
             "input": ["text"],
             "contextWindow": 262144,
             "maxTokens": 16384,
+            "thinkingLevelMap": {"high": "xhigh", "xhigh": "xhigh", "max": "xhigh"},
             "cost": {"input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0},
         }],
     }}}, indent=2))
+    _ensure_little_coder_model_profile(served)
     return path
+
+
+# little-coder profile for the served model, keyed `llamacpp/<served>` in the
+# package's own .pi/settings.json (see _ensure_little_coder_model_profile).
+LC_MODEL_PROFILE = {
+    "max_tokens": 16384,          # informational; the wire cap is models.json maxTokens
+    "thinking_budget": 1000000,   # never trips the thinking-budget abort (server-bound instead)
+    "skill_token_budget": 300,    # unchanged package defaults from here down
+    "knowledge_token_budget": 200,
+    "system_prompt_budget": 0,
+    "max_retries": 1,
+    # no `temperature`: the benchmark-profiles extension then injects nothing and
+    # SGLang applies the checkpoint's generation_config (T=1.0/top_p .95/top_k 20,
+    # the thinking-mode sampling Qwen recommends) -- the same as every other lane.
+}
+
+
+def _little_coder_settings_path() -> Path | None:
+    exe = shutil.which("little-coder", path=_base_env(None)["PATH"])  # same PATH the agent runs under
+    if not exe:
+        return None
+    pkg = Path(exe).resolve().parent.parent  # bin/little-coder.mjs -> package root
+    path = pkg / ".pi" / "settings.json"
+    return path if path.exists() else None
+
+
+def _ensure_little_coder_model_profile(served: str) -> None:
+    """Pin the served model's little-coder profile in the *package* settings.
+
+    little-coder's benchmark-profiles extension resolves per-model profiles from
+    the package's own `.pi/settings.json` first and only consults
+    ~/.pi/agent/settings.json when that file has no `little_coder` key (it always
+    does), so there is no harness-owned override path. An unknown model gets
+    `default_model_profile`: `thinking_budget: 4096` -- the thinking-budget
+    extension aborts any turn whose reasoning exceeds ~4096 tokens, forces
+    thinking "off" (which for Qwen3.8 only drops the `reasoning_effort` field;
+    the template still thinks at xhigh) and nudges "commit to an implementation
+    now" -- plus `temperature: 0.3` injected on every request. Neither is
+    compatible with "max thinking" (at xhigh Qwen3.8 routinely reasons past
+    4K tokens; 21/258 and 28/287 sessions breached even at medium). The profile
+    wins over LITTLE_CODER_THINKING_BUDGET (profile || env || 4096), so the only
+    lever is a `model_profiles["llamacpp/<served>"]` entry.
+
+    Idempotent: rewrites the file only when the entry differs. It lives inside
+    the npm package, so an upgrade drops it -- which is why the harness
+    re-asserts it on every profile write rather than treating it as one-off
+    host setup. Lanes before 2026-09-13 ran with the 4096 budget / T=0.3 defaults.
+    """
+    path = _little_coder_settings_path()
+    if path is None:
+        raise RuntimeError("little-coder package .pi/settings.json not found; cannot pin the model profile")
+    data = json.loads(path.read_text())
+    profiles = data.setdefault("little_coder", {}).setdefault("model_profiles", {})
+    key = f"llamacpp/{served}"
+    if profiles.get(key) == LC_MODEL_PROFILE:
+        return
+    profiles[key] = dict(LC_MODEL_PROFILE)
+    path.write_text(json.dumps(data, indent=2) + "\n")
 
 
 def run_little_coder(served: str, repo_dir: Path, prompt: str, timeout: int, log_path: Path,
@@ -357,7 +426,11 @@ def run_little_coder(served: str, repo_dir: Path, prompt: str, timeout: int, log
     # --print (-p) is REQUIRED: without it pi runs interactively and just *describes* the fix
     # ("I cannot modify files in this environment") instead of using its edit/write tools.
     profile = _ensure_little_coder_profile(served, server_url)
-    cmd = ["little-coder", "--print", "--model", f"llamacpp/{served}", prompt]
+    # --thinking xhigh: pi's default level is "medium" (pi-coding-agent
+    # defaults.js), which the Qwen3.8 template honours as a real downgrade
+    # (no "think carefully" preamble). The profile's thinkingLevelMap makes
+    # xhigh a supported level so it reaches the wire unclamped.
+    cmd = ["little-coder", "--print", "--model", f"llamacpp/{served}", "--thinking", "xhigh", prompt]
     env = _base_env(extra_env, {
         "LLAMACPP_BASE_URL": f"{server_url.rstrip('/')}/v1",
         "LLAMACPP_API_KEY": "noop",

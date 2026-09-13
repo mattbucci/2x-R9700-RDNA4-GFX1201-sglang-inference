@@ -68,6 +68,25 @@ prompt 32.6K / 303 compaction resets in 300 instances vs p99 83–86K on the ope
 both are re-run at 262144 (`*-v2-ctx256k`) by a follow-up cycle queued behind the main driver.
 Details: `evals/swebench/FP8_BAKEOFF_SETUP.md` → Scaffold context budgets.
 
+**Status (2026-09-13), for relay — the same two pi scaffolds also never ran at max thinking:** a
+wire audit (logging endpoint in place of the server) shows opencode, omp, prime and dcode send no
+`reasoning_effort`, so Qwen3.8's template default `xhigh` applies with the checkpoint's sampling.
+little-coder does not: pi's default level is `medium`, and `--thinking xhigh|high|max` all reach the
+wire as `"high"` (pi clamps to the model's supported levels; `xhigh`/`max` only count as supported
+when the models.json entry carries a `thinkingLevelMap` naming them), which the template rejects
+with HTTP 400. On top of that the benchmark-profiles extension injects `temperature: 0.3` and a
+`thinking_budget: 4096` from the package `default_model_profile` for any model without a profile, and
+the thinking-budget extension aborts the turn at ~4096 estimated thinking tokens, forces thinking
+"off" and nudges "commit to an implementation now" (21/258 and 28/287 of our sessions breached even
+at medium). The profile wins over `LITTLE_CODER_THINKING_BUDGET` and is read from the package's own
+`.pi/settings.json` before `~/.pi/agent/settings.json`, so the only lever is a
+`model_profiles["llamacpp/<served>"]` entry written into the installed package. `run_rollouts.py`
+now does all three (`--thinking xhigh`, `thinkingLevelMap`, idempotent package profile pin with
+`thinking_budget: 1000000` and no `temperature`); the 256K little-coder re-runs carry it and are
+tagged `*-v2-ctx256k-xhigh`. prime is unaffected (`compat.supportsReasoningEffort: false` keeps pi's
+level off the wire). If a `--thinking` flag is on a little-coder or prime lane, check the wire, not
+the flag. Details: `evals/swebench/FP8_BAKEOFF_SETUP.md` → Scaffold thinking effort.
+
 ### 2026-09-10 · 3090→R9700 · qwen38 decode anatomy with graphs ON — the endpoint your HIP-graph A/B is aiming at
 
 **3090→R9700 (2026-09-10): what plain M=1 qwen38 decode looks like once graphs are on.** Same passive-profiling idea as your `f8d7a0a`, same model, run on the live SWE-bench lanes (14.6K requests, 2.9 days) plus one 40-step torch-profiler capture per TP rank — receipt [`benchmarks/qwen38-agentic-workload-profile-2026-09-10.md`](https://github.com/mattbucci/2x-3090-GA102-300-A1-sglang-inference/blob/main/benchmarks/qwen38-agentic-workload-profile-2026-09-10.md), analyzer [`scripts/bench/trace_step_anatomy.py`](https://github.com/mattbucci/2x-3090-GA102-300-A1-sglang-inference/blob/main/scripts/bench/trace_step_anatomy.py) (sweep-line *exposed* time per kernel category — portable to any `POST /start_profile` chrome trace, ROCm included). With cuda graphs on, bs=1 at 14.6K context: **15.4 ms/step, CPU step wall 1.1 ms (fully hidden), 55% of the bandwidth roofline** — INT4 weight streaming 57% of the step at 727 GB/s (78% of DRAM peak), NCCL allreduce 12% (129 calls × 13.6 µs — the TP latency tax), fp16 `lm_head` 10% (already at 92% of peak), attention 7%, GDN 5%, launch-floor kernels + graph-node gaps ~9%. Server time was 86% decode / 11% prefill / 3% queue. So your launch-bound signature (98.5% scheduler CPU, 35% BW, flat 60 ms ITL) is exactly what graphs remove; the regime you land in afterwards is weight-stream + allreduce-latency bound, and the levers that remain are NGRAM spec-decode on the hybrids (blocked on the conv1d spec-verify cast — our item 1), an INT8/INT4 `lm_head` (−5–7%), and a cheaper allreduce. One negative to save you the run: a +35% power budget (260→350 W) bought +5.5% decode / +6% prefill — memory-bound, not clock-bound. *(no action; calibration point for your `decode_ab.py` graph-on run)*
