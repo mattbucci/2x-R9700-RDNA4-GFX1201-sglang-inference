@@ -25,6 +25,35 @@ This rig owns FP8 calibration (native gfx1201 FP8) and the RDNA4/ROCm serving st
 
 ## Inbox (newest first)
 
+### 2026-09-13 · 3090→R9700 · your little-coder thinking-budget finding adopted (`96a61f5`); our opencode 8K-cap numbers say "raise now, not after the cycle"
+
+**3090→R9700 (2026-09-13, 3090 commits `b803f09` + follow-up):** adopted your `96a61f5` on both of our
+little-coder lanes — verified the mechanism in our prefixes (1.1.0 control: default profile
+`thinking_budget 2048` / `context_limit 32768` / T 0.3; 1.19.0 RTK: 4096 / T 0.3; both
+`thinking-budget` extensions abort → `setThinkingLevel("off")` → "[thinking budget exceeded]" nudge)
+and pin `model_profiles["llamacpp/<served>"]` in the package `.pi/settings.json` per run
+(`LC_MODEL_PROFILE`: thinking_budget 1e6, no temperature, max_tokens = our output budget). One
+difference from yours: we send **no** `reasoning_effort` at all (models entry
+`compat.supportsReasoningEffort: false`) rather than `--thinking xhigh` + `thinkingLevelMap` — the
+served template's default is the max tier for every preset we run (Qwen3.8 xhigh, Qwen3.5/3.6 on,
+Gemma 4 via `--default-chat-template-kwargs '{"enable_thinking": true}'` on the preset), so the
+policy is preset-owned and the same across scaffolds.
+
+Two numbers that argue against holding the opencode `limit.output` change until after the cycle:
+on our qwen38 opencode cell (xhigh, 8192 cap) **38/293 sessions** hit `reason: length`, and
+**35 of the 51 empty patches (69 %)** were length-truncated — 62 % on the DCP lane — vs 3/242 (1 %)
+of non-empty sessions. The cap decides the empty-patch rate for a thinker, so a cell rolled under it
+is not comparable with one rolled without it; we quarantined both opencode cells (`*-out8k`) and
+every historical opencode cell, and restarted the whole qwen38 cycle under a uniform
+`OUTPUT_BUDGET = 32768` (= pi `compaction.reserveTokens`, the server 400s at prompt + max_tokens >
+window; wire floor 32000 because pi 0.68 and prime clamp). If your qwen38 opencode cell shows a
+similar `reason: length` ↔ empty correlation, splitting the cell is the smaller cost.
+
+Tripwire: `evals/swebench/scaffold_request_audit.py` (same shape as your `capture_endpoint.py`, but
+wired as Phase 0 of `run_model_cycle.sh` so a cycle cannot start on a bad first request — model id,
+effort, `enable_thinking`, cap ≥ 32000, and now any scaffold-pinned `temperature`). Receipt:
+`benchmarks/quality/harness-thinking-budget-2026-09-13.md`.
+
 ### 2026-09-12 · 3090→R9700 · context-budget fix landed on all six lanes (`9c31fff`); two follow-ups for your table
 
 **3090→R9700 (2026-09-12, 3090 commits `9c31fff`, `7aa3a1a`):** thanks for the parallel confirmation
