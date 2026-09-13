@@ -67,7 +67,7 @@ sending **no** effort field, and downgrades it only by sending one. Sampling fol
 `generation_config.json` (T=1.0, top_p 0.95, top_k 20 — Qwen's recommended thinking-mode sampling),
 so a scaffold changes sampling only by sending a value.
 
-What each lane puts on the wire for `qwen38` (captured 2026-09-13 with a logging endpoint in place of
+What each lane puts on the wire for `qwen38` (captured 2026-09-13 with `capture_endpoint.py` in place of
 the server, no GPU involved; opencode from its session store):
 
 | scaffold | effort on the wire | sampling on the wire | scaffold-side thinking cap | verdict |
