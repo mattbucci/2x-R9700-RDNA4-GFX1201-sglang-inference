@@ -28,7 +28,8 @@ the scaffold name. What each lane declares for `qwen38` (server `max_model_len` 
 | prime | harness profile `~/.prime/agent/models.json` (explicit since 2026-09-12; prime defaults 128000 / 16384 when omitted) | 262144 / 16384 |
 | little-coder, little-coder-rtk **before 2026-09-12** | pi `buildFallbackModel()` clone of the packaged `llamacpp` entry | **32768 / 4096** |
 | little-coder, little-coder-rtk **since 2026-09-12** | harness profile via `LITTLE_CODER_MODELS_FILE` (+ the package `.pi/settings.json` model profile since 2026-09-13, see Scaffold thinking effort) | 262144 / 16384 |
-| dcode | deepagents-code has no profile for `openai:qwen38` (`context_limit=None`, no `max_tokens` sent) — summarization falls back to a fixed trigger of 170000 approx. tokens (keep last 6 messages), output is server-bound (262144 − prompt, ~30K/request in practice at 60 ms per token under the 1800 s cap) | ~170000 / server-bound |
+| dcode **before 2026-09-13** | deepagents-code has no profile for `openai:qwen38` (`context_limit=None`, no `max_tokens` sent) — summarization falls back to a fixed trigger of 170000 approx. tokens (keep last 6 messages), output is server-bound (262144 − prompt, ~30K/request in practice at 60 ms per token under the 1800 s cap) | ~170000 / server-bound |
+| dcode **since 2026-09-13** (the qwen38 dcode lane runs under this) | `--profile-override '{"max_input_tokens": 262144}'` in `run_dcode` (flag found by the 3090 rig); with the window in the profile deepagents switches to the fraction path — summarize at 85% (~222.8K), keep 10% — verified via `compute_summarization_defaults()` | ~222800 / server-bound |
 
 The little-coder trap (found by the 3090 rig, confirmed here 2026-09-11): little-coder's packaged
 `models.json` only knows a few llama.cpp aliases, all 32768 / 4096; an unknown id such as

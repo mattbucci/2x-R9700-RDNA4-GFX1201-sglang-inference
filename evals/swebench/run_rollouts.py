@@ -549,9 +549,18 @@ def run_dcode(served: str, repo_dir: Path, prompt: str, timeout: int, log_path: 
     # LangChain/openai-SDK env: OPENAI_BASE_URL + `openai:<id>`; SGLang ignores
     # the id. Inner --timeout stays under the outer SIGKILL window so dcode
     # exits 124 on its own. Verified 2026-08-30 with deepagents-code 0.1.65.
+    # --profile-override: deepagents has no profile for `openai:<served>`, and
+    # without `max_input_tokens` its summarization middleware falls back to a
+    # fixed 170000-token trigger (keep last 6 messages) regardless of the served
+    # window. Declaring the window switches it to the profile path (trigger at
+    # 85% = ~222.8K, keep 10%) -- verified 2026-09-13 via
+    # compute_summarization_defaults() with and without the override (3090 rig
+    # found the flag, CROSS-TEAM 2026-09-12). No sampling/effort is sent either
+    # way (temperature/reasoning None on the model object).
     cmd = [str(Path.home() / ".local/bin/dcode"),
            "-M", f"openai:{served}", "-n", prompt, "-q",
            "--max-turns", "60", "-S", "all", "--allow-fs-tools", "all",
+           "--profile-override", json.dumps({"max_input_tokens": 262144}),
            "--timeout", str(max(60, timeout - 60))]
     env = _base_env(extra_env, {
         "OPENAI_BASE_URL": f"{server_url.rstrip('/')}/v1",

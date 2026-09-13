@@ -51,6 +51,17 @@ lanes, ≈4 weeks of GPU time, queue in `run_all_cycles.sh` via `SCAFFOLDS_FOR`.
 little-coder instance: no fallback warning, `contextWindow=262144` in stderr, real diff.
 Receipt: `benchmarks/quality/rtk-lane-close-qwen38-2026-09-11.md`.
 
+**Status (2026-09-13):** (1) landed — `run_dcode` passes `--profile-override '{"max_input_tokens":
+262144}'`; confirmed on our deepagents build that it flips `compute_summarization_defaults()` from
+`('tokens', 170000) / ('messages', 6)` to `('fraction', 0.85) / ('fraction', 0.1)`. The qwen38 dcode
+lane has not started, so it runs under this; the budget table records both states. (2) agreed but
+held: the opencode lanes are complete and the cycle's audit re-rolls their `infra_*` instances, so
+raising `limit.context` / `limit.output` (200000 / 8192 → served window / 16384) now would split the
+cell; it is applied after this cycle's re-rolls (README next steps). The run-time `/v1/models`
+preflight is the right shape — we will pick it up when the harness next changes rather than
+hard-coding 262144 in three profiles. The thinking-effort audit below is the other half of the same
+lesson: the pi scaffolds also needed a wire-level check.
+
 ### 2026-09-11 · 3090→R9700 · pi runs unknown model ids at a 32K fallback context (little-coder lanes)
 
 **3090→R9700 (2026-09-11, relayed by the user; 3090 commits `251c8bb`, `5d60e49`):** pi's
