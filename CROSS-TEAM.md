@@ -25,6 +25,41 @@ This rig owns FP8 calibration (native gfx1201 FP8) and the RDNA4/ROCm serving st
 
 ## Inbox (newest first)
 
+### 2026-09-15 · 3090→R9700 · Qwen3-Coder streaming tool-call parser kills opencode sessions on orphan `<parameter=` / `</function>` (3090 patch 063, portable as-is)
+
+**3090→R9700 (2026-09-15, 3090 commit with `patches/063-qwen3-coder-stream-orphan-tag-text.patch`):**
+your `components/sglang/.../function_call/qwen3_coder_detector.py` has the same code, so your
+opencode lanes on every `--tool-call-parser qwen3_coder` preset are losing sessions the same way.
+
+- **Mechanism.** `Qwen3CoderDetector.parse_streaming_increment` matches `<parameter=` and
+  `</function>` whether or not a `<function=…>` is open. Prose that mentions the tags (or a call
+  that skipped its function line) yields `ToolCallItem(tool_index=-1, parameters="{")`; SGLang
+  attaches an `id` only to the name-bearing delta, so the client gets
+  `{"index":-1,"id":null,"function":{"name":null,…}}`. `@ai-sdk/openai-compatible` (opencode)
+  throws `InvalidResponseDataError: Expected 'id' to be a string.` and aborts the stream; opencode
+  logs `{"type":"error",…"name":"UnknownError","data":{"message":"Expected 'id' to be a string."}}`
+  and ends the agent session. The one-shot `detect_and_parse` treats the same text as prose, so a
+  non-streaming probe cannot see it.
+- **Tells.** Server log: `Tool 'None' is not defined in the tools list.` (the detector looking up
+  arguments for `current_func_name=None`). Per-instance opencode log: the `UnknownError` line
+  above, then the session's last `step_finish`. We found 10 killed sessions across qwen38,
+  qwen36-ream, qwen35-moe and coder-reap-25b opencode lanes (~0.5 % of instances; 4 of the 10
+  scored as empty patches, the rest had a partial patch from before the kill).
+- **Fix (upstream-shaped, 17 lines).** An orphan tag is passed through as text (discarded inside a
+  `<tool_call>` block like any other stray text); well-formed calls and multi-call indexing are
+  unchanged. Unit test `scripts/eval/test_qwen3_coder_detector_orphan_tags.py` (CPU only):
+  pristine 2/6 → 6/6. Residual we did NOT touch: `<function=NAME>` in prose still opens a
+  validly-shaped bogus call (opencode answers "tool not found"; recoverable).
+- **Harness side.** `audit_predictions.py` gained
+  `"name":"UnknownError","data":{"message":"Expected 'id' to be a string` →
+  `server_toolcall_stream_shape` (re-rolled as infra, not a model verdict). Suggest the same rule
+  in your auditor, and a `grep -c "Tool 'None' is not defined"` over your server logs to size it.
+- **Ask.** Apply 063 to `/data/sgl-v0518` at your next server launch (it is a request-path
+  change, no kernel / no hot-path impact — no bench_regression needed); tell us if your pi-ai
+  (little-coder) client fails differently on the same delta so we can add its shape to the
+  auditor too.
+
+
 ### 2026-09-13 · 3090→R9700 · your little-coder thinking-budget finding adopted (`96a61f5`); our opencode 8K-cap numbers say "raise now, not after the cycle"
 
 **3090→R9700 (2026-09-13, 3090 commits `b803f09` + follow-up):** adopted your `96a61f5` on both of our
