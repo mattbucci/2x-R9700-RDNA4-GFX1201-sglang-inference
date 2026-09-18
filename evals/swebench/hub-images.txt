@@ -23,3 +23,13 @@ matplotlib__matplotlib-25442
 matplotlib__matplotlib-25498
 matplotlib__matplotlib-26011
 matplotlib__matplotlib-26020
+# instance-image builds (setup_repo.sh) broken by upstream drift, 2026-09-18:
+#   pylint: setuptools dropped the build backend path without build_editable
+#   scikit-learn 1.3: pip removed --no-use-pep517
+#   sympy-20590: the 1.7 branch no longer exists upstream
+pylint-dev__pylint-7228
+pylint-dev__pylint-7993
+scikit-learn__scikit-learn-25500
+scikit-learn__scikit-learn-25570
+scikit-learn__scikit-learn-25747
+sympy__sympy-20590
