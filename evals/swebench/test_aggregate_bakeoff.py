@@ -31,6 +31,7 @@ def _write_external_run(
     *,
     with_report=True,
     report_resolved=None,
+    model="sglang__sweep",
 ):
     run_dir = runs_dir / name
     _write_scores(run_dir / "scores.jsonl", resolved_values)
@@ -63,7 +64,7 @@ def _write_external_run(
             "incomplete_ids": [],
         }
         report_path = (
-            run_dir / "docker-score" / f"sglang__sweep.{name}.json"
+            run_dir / "docker-score" / f"{model}.{name}.json"
         )
         report_path.parent.mkdir(parents=True, exist_ok=True)
         report_path.write_text(json.dumps(report))
@@ -169,6 +170,62 @@ class DiscoverRunsTest(unittest.TestCase):
             rows = list(aggregate.discover_runs(runs_dir))
 
         self.assertEqual(rows, [])
+
+
+class TaggedRunTest(unittest.TestCase):
+    """run_model_cycle.sh RUN_TAG layout scored in place by score_cells.sh."""
+
+    def test_tagged_run_keeps_tag_in_row_label(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            runs_dir = pathlib.Path(temp_dir)
+            _write_external_run(
+                runs_dir, "qwen38-opencode-v3", model="sglang__qwen38"
+            )
+            _write_external_run(
+                runs_dir, "qwen38-opencode-v2", model="sglang__qwen38",
+                resolved_values=(True, True, True),
+            )
+
+            rows = sorted(aggregate.discover_runs(runs_dir), key=lambda r: r[0])
+
+        self.assertEqual([r[:2] for r in rows],
+                         [("qwen38-v2", "opencode"), ("qwen38-v3", "opencode")])
+        self.assertEqual(rows[0][3]["resolved"], 3)
+        self.assertEqual(rows[1][3]["resolved"], 2)
+
+    def test_unscored_tagged_run_is_queued_and_parked_dirs_skipped(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            runs_dir = pathlib.Path(temp_dir)
+            (runs_dir / "qwen38-prime-v3").mkdir()
+            (runs_dir / "qwen38-prime-v3" / "predictions.jsonl").write_text("{}\n")
+            _write_external_run(runs_dir, "qwen38-prime-v2.partial-29")
+
+            rows = list(aggregate.discover_runs(runs_dir))
+
+        self.assertEqual([(r[0], r[1], r[3]) for r in rows],
+                         [("qwen38-v3", "prime", None)])
+
+    def test_tagged_layout_does_not_emit_external_caveat(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = pathlib.Path(temp_dir)
+            runs_dir = root / "runs"
+            runs_dir.mkdir()
+            _write_external_run(
+                runs_dir, "qwen38-omp-v3", model="sglang__qwen38"
+            )
+            out_path = root / "bake-off.md"
+            result = aggregate.main([
+                "--runs-dir", str(runs_dir),
+                "--quality-dir", str(root / "quality"),
+                "--out", str(out_path),
+            ])
+            markdown = out_path.read_text()
+            cell = json.loads((root / "quality" / "bakeoff-qwen38-v3-omp.json").read_text())
+
+        self.assertEqual(result, 0)
+        self.assertNotIn("## Comparability", markdown)
+        self.assertIn("| `qwen38-v3` |", markdown)
+        self.assertEqual(cell["resolved"], 2)
 
 
 class OutputPathTest(unittest.TestCase):

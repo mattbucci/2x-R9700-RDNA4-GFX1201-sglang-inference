@@ -137,8 +137,14 @@ def write_cell_json(preset: str, scaffold: str, run_dir: Path,
 # claw-code retired 2026-08-30 (unmaintained): dropped from new tables; the run-dir
 # regexes below still recognize historical claw cells on disk.
 SCAFFOLDS = ("opencode", "opencode-dcp", "little-coder", "little-coder-rtk", "omp", "prime", "dcode")
-LEGACY_RUN_RE = re.compile(r"^(.*)-(opencode-dcp|opencode|little-coder-rtk|little-coder|claw-code|omp|prime|dcode)-v2$")
-EXTERNAL_RUN_RE = re.compile(r"^(.*)-(opencode-dcp|opencode|little-coder-rtk|little-coder|claw-code|omp|prime|dcode)$")
+_SCAFFOLD_ALT = "opencode-dcp|opencode|little-coder-rtk|little-coder|claw-code|omp|prime|dcode"
+LEGACY_RUN_RE = re.compile(rf"^(.*)-({_SCAFFOLD_ALT})-v2$")
+EXTERNAL_RUN_RE = re.compile(rf"^(.*)-({_SCAFFOLD_ALT})$")
+# run_model_cycle.sh RUN_TAG layout: <preset>-<scaffold>-<tag> scored in place by
+# score_cells.sh (scores.jsonl + docker-score report). The tag is kept in the row
+# label (`qwen38-v3`) so a re-run under a changed harness never overwrites or
+# blends with the earlier tag's cell.
+TAGGED_RUN_RE = re.compile(rf"^(.*)-({_SCAFFOLD_ALT})-(v\d[\w.]*)$")
 
 
 def _read_summary(path: Path) -> dict | None:
@@ -179,10 +185,11 @@ def _external_summary(run_dir: Path) -> dict | None:
     scores_path = run_dir / "scores.jsonl"
     score_total, score_resolved = _scores_counts(scores_path)
 
-    report_path = (
-        run_dir / "docker-score" / f"sglang__sweep.{run_dir.name}.json"
-    )
-    report = _read_summary(report_path)
+    # swebench names the report <model_name_or_path with / -> __>.<run_id>.json;
+    # score_cells.sh uses the run-dir name as run_id, the July matrix used
+    # sglang/sweep as the model, the cycles use sglang/<preset>.
+    reports = sorted((run_dir / "docker-score").glob(f"*.{run_dir.name}.json"))
+    report = _read_summary(reports[-1]) if reports else None
     if report is None or report.get("schema_version") != 2:
         return None
 
@@ -244,16 +251,30 @@ def discover_runs(runs_dir: Path):
     for d in sorted(runs_dir.iterdir()):
         if not d.is_dir():
             continue
+        if "." in d.name:
+            # .empty-pre-devrole-*, .partial-*, .superseded-* etc.: parked, never published
+            continue
         legacy_match = LEGACY_RUN_RE.match(d.name)
-        if legacy_match:
+        if legacy_match and (d / "scores-docker-summary.json").exists():
+            # sister-rig cycle layout (summary JSON written by its scorer)
             preset, scaffold = legacy_match.group(1), legacy_match.group(2)
             yield preset, scaffold, d, _read_summary(
                 d / "scores-docker-summary.json"
             )
             continue
 
-        if ".empty-pre-devrole" in d.name:
+        tagged_match = TAGGED_RUN_RE.match(d.name)
+        if tagged_match:
+            preset, scaffold, tag = tagged_match.groups()
+            if not (d / "scores.jsonl").exists():
+                # rolled out but not scored yet: show as queued
+                yield f"{preset}-{tag}", scaffold, d, None
+                continue
+            summary = _external_summary(d)
+            if summary is not None:
+                yield f"{preset}-{tag}", scaffold, d, summary
             continue
+
         external_match = EXTERNAL_RUN_RE.match(d.name)
         if not external_match or not (d / "scores.jsonl").exists():
             continue
@@ -275,7 +296,7 @@ def main(argv=None):
     cell_jsons = []
     external_layout = False
     for preset, scaffold, run_dir, summary in discover_runs(runs_dir):
-        external_layout = external_layout or not run_dir.name.endswith("-v2")
+        external_layout = external_layout or bool(EXTERNAL_RUN_RE.match(run_dir.name))
         results[preset][scaffold] = summary
         paths[preset][scaffold] = run_dir
         if summary and not args.no_json:

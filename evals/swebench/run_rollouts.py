@@ -67,6 +67,10 @@ def parse_args():
     p.add_argument("--shard", default=None,
                    help="K/N: process only instances where index%%N==K (for concurrent "
                         "rollouts against one server). Writes predictions.K_N.jsonl.")
+    p.add_argument("--no-sandbox", action="store_true",
+                   help="Run scaffolds on the host network with the whole work root visible "
+                        "(the v2 bakeoff configuration; leaks the upstream fix via web tools, "
+                        "pip/PyPI and sibling work trees). Default: sandbox.sh per instance.")
     p.add_argument("--claw-bin",
                    default=os.path.expanduser("~/.local/bin/claw"),
                    help="Path to the built claw binary (for --scaffold claw-code)")
@@ -124,18 +128,27 @@ def load_dataset(dataset_id: str, split: str):
 
 
 def ensure_repo(repo: str, base_commit: str, work_root: Path, instance_id: str) -> Path:
-    """Clone <repo> at <base_commit> into work_root/<instance_id>. Idempotent.
+    """Materialise <repo> at <base_commit> into work_root/<instance_id>. Idempotent.
 
-    Uses a shared mirror at work_root/.mirrors/<repo> to avoid re-fetching the
-    same repo across instances of the same project.
+    Uses a shared bare mirror at work_root/.mirrors/<repo> to avoid re-fetching
+    the same repo across instances of the same project.
+
+    The work tree is built with `git init` + `git fetch <mirror> <base_commit>`
+    rather than `git clone` + `git checkout`: a clone carries every branch, tag
+    and remote ref of the mirror, i.e. the upstream *fix* for the task (as
+    `origin/main`, `stable/x.y.x`, release tags, and the objects behind them).
+    The v2 bakeoff transcripts show scaffolds reading it (`git log --all`,
+    `git show origin/main:<file>`, `git show <future sha>`); see
+    audit_git_peek.py. Fetching by sha leaves exactly HEAD's ancestry: no refs,
+    no remote, and no unreachable objects for a future hash to resolve against.
     """
     mirror = work_root / ".mirrors" / repo.replace("/", "__")
     inst_dir = work_root / instance_id
 
     # Serialize mirror creation across concurrent shards with a per-repo file lock: two
     # shards racing `git clone --bare` into the same mirror leave it half-built, and the
-    # later `git checkout` fails with exit 128. Clone-from-mirror + checkout (below) are
-    # read-only on the mirror, so they run safely concurrent once the mirror exists.
+    # later fetch fails with exit 128. Fetch-from-mirror (below) is read-only on the
+    # mirror, so it runs safely concurrent once the mirror exists.
     import fcntl
     mirror.parent.mkdir(parents=True, exist_ok=True)
     with open(str(mirror) + ".lock", "w") as _lk:
@@ -145,12 +158,15 @@ def ensure_repo(repo: str, base_commit: str, work_root: Path, instance_id: str) 
                 ["git", "clone", "--bare", f"https://github.com/{repo}.git", str(mirror)],
                 check=True,
             )
+        # Fetching an arbitrary sha (not a ref tip) from the mirror needs this.
+        subprocess.run(["git", "-C", str(mirror), "config", "uploadpack.allowAnySHA1InWant", "true"],
+                       check=True)
 
     if inst_dir.exists():
         # Rename-then-delete: rmtree on a tmpfs entry can SIGSEGV the process
         # (observed at django__django-11797 — kernel corruption left invisible
         # entries that ls/find skip but rmdir/rm refuse). Renaming gets the
-        # path out of the way so clone succeeds even if cleanup fails; the
+        # path out of the way so the fetch succeeds even if cleanup fails; the
         # orphaned trash dir gets reaped on next reboot.
         trash = inst_dir.with_name(inst_dir.name + f".trash.{int(time.time())}")
         try:
@@ -164,12 +180,15 @@ def ensure_repo(repo: str, base_commit: str, work_root: Path, instance_id: str) 
         # Belt and suspenders: if rename failed and the dir still exists, abort.
         if inst_dir.exists():
             raise RuntimeError(f"could not clear {inst_dir}; tmpfs corruption?")
-    subprocess.run(["git", "clone", str(mirror), str(inst_dir)], check=True,
-                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    subprocess.run(["git", "checkout", base_commit], cwd=inst_dir, check=True,
-                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    quiet = dict(stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    subprocess.run(["git", "init", "-q", str(inst_dir)], check=True, **quiet)
+    subprocess.run(["git", "fetch", "-q", "--no-tags", str(mirror), base_commit], cwd=inst_dir, check=True, **quiet)
+    subprocess.run(["git", "checkout", "-q", "FETCH_HEAD"], cwd=inst_dir, check=True, **quiet)
     subprocess.run(["git", "config", "user.email", "eval@local"], cwd=inst_dir, check=True)
     subprocess.run(["git", "config", "user.name", "eval"], cwd=inst_dir, check=True)
+    refs = subprocess.run(["git", "for-each-ref"], cwd=inst_dir, capture_output=True, text=True).stdout.strip()
+    if refs:
+        raise RuntimeError(f"{inst_dir} has refs beyond HEAD after fetch-by-sha: {refs[:200]}")
     return inst_dir
 
 
@@ -232,10 +251,58 @@ def _base_env(extra_env: dict[str, str] | None, scaffold_env: dict[str, str] | N
     return env
 
 
+# Per-instance sandbox context, set by main() before each scaffold launch when
+# --sandbox is on (the default): {"inst_dir", "venv_dir", "bridge_sock", "port"}.
+# _popen_agent wraps the scaffold command in sandbox.sh (bubblewrap: no network
+# except the unix-socket bridge to the server, no view of other work trees or
+# the repo mirrors). See sandbox.sh and audit_git_peek.py for why.
+SANDBOX: dict | None = None
+_BRIDGE: subprocess.Popen | None = None
+
+
+def _start_bridge(server_url: str) -> tuple[Path, int]:
+    """Host-side half of the sandbox network bridge: a unix socket forwarded to the
+    server's TCP port. Returns (socket path, port). Lives for the run."""
+    global _BRIDGE
+    import atexit
+    from urllib.parse import urlparse
+    u = urlparse(server_url)
+    port = u.port or 80
+    # unix socket paths are capped at ~107 bytes: keep it in the runtime dir, not `out`
+    sock = Path(os.environ.get("XDG_RUNTIME_DIR") or tempfile.gettempdir()) / f"swebench-bridge-{os.getpid()}.sock"
+    sock.unlink(missing_ok=True)
+    _BRIDGE = subprocess.Popen(
+        ["socat", f"UNIX-LISTEN:{sock},fork,unlink-early", f"TCP4:{u.hostname}:{port}"],
+        stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+    )
+    for _ in range(50):
+        if sock.exists():
+            break
+        time.sleep(0.1)
+    if not sock.exists():
+        raise RuntimeError("sandbox bridge socket did not appear; is socat installed?")
+
+    def _stop():
+        if _BRIDGE and _BRIDGE.poll() is None:
+            _BRIDGE.kill()
+        sock.unlink(missing_ok=True)
+    atexit.register(_stop)
+    return sock, port
+
+
+def _sandboxed(cmd: list) -> list:
+    if not SANDBOX:
+        return cmd
+    return [str(Path(__file__).resolve().parent / "sandbox.sh"),
+            str(SANDBOX["inst_dir"]), str(SANDBOX.get("venv_dir") or "-"),
+            str(SANDBOX["bridge_sock"]), str(SANDBOX["port"]), "--", *cmd]
+
+
 def _popen_agent(cmd: list, cwd, env: dict, timeout: int, log_path: Path) -> tuple[int, str, str]:
     """Shared agent invocation: fresh process group so SIGKILL on timeout reaps the
     Node/Rust children too (default subprocess kill leaves them dangling — observed at
     instance 23 where the parent died but a child kept the rollout stalled)."""
+    cmd = _sandboxed(cmd)
     t0 = time.time()
     # stdin=DEVNULL is load-bearing: the node CLIs (opencode, little-coder) wait for
     # interactive input when stdout is a pipe and stdin is a TTY/inherited, hanging the
@@ -249,7 +316,7 @@ def _popen_agent(cmd: list, cwd, env: dict, timeout: int, log_path: Path) -> tup
         rc = proc.returncode
         elapsed = time.time() - t0
         log_path.write_text(
-            f"# command\n{' '.join(str(c) for c in cmd[:-1])} <PROMPT>\n# elapsed {elapsed:.1f}s\n"
+            f"# command\n{' '.join(str(c) for c in cmd[:-1])} <PROMPT>\n# sandbox {'on' if SANDBOX else 'off'}\n# elapsed {elapsed:.1f}s\n"
             f"# returncode {rc}\n# stdout\n{stdout}\n# stderr\n{stderr}\n"
         )
         return rc, stdout, stderr
@@ -684,6 +751,14 @@ def main():
     workdir = Path(args.workdir)
     workdir.mkdir(parents=True, exist_ok=True)
 
+    global SANDBOX
+    if args.no_sandbox:
+        print("Sandbox: OFF (host network, whole work root visible)", flush=True)
+    else:
+        bridge_sock, port = _start_bridge(args.server_url)
+        SANDBOX = {"bridge_sock": bridge_sock, "port": port}
+        print(f"Sandbox: bwrap per instance (no network; server via {bridge_sock} -> :{port})", flush=True)
+
     print(f"Loading dataset {args.dataset}/{args.split}...", flush=True)
     ds = load_dataset(args.dataset, args.split)
     print(f"  {len(ds)} instances total", flush=True)
@@ -778,6 +853,8 @@ def main():
                 if not _wait_server_healthy(args.server_url):
                     print(f"  SERVER DOWN >20min — skip {iid} (no prediction; retry on resume)", flush=True)
                     continue
+                if SANDBOX is not None:
+                    SANDBOX.update(inst_dir=inst_dir, venv_dir=venv)
                 if args.scaffold in ("opencode", "opencode-dcp"):
                     rc, _stdout, _stderr = run_opencode(args.model, inst_dir, prompt, args.timeout,
                                                         log_path, extra_env=extra_env,
@@ -806,7 +883,6 @@ def main():
                 # strip agent scratch dirs so they don't pollute the captured diff
                 subprocess.run(["rm", "-rf",
                                 str(inst_dir / ".claw"), str(inst_dir / ".opencode"),
-                                str(inst_dir / ".sandbox-tmp"), str(inst_dir / ".sandbox-home"),
                                 str(inst_dir / ".cache"), str(inst_dir / ".pi"),
                                 str(inst_dir / ".omp"), str(inst_dir / ".prime"),
                                 str(inst_dir / ".deepagents")], check=False)
@@ -822,6 +898,7 @@ def main():
                     "rollout_seconds": round(time.time() - t0, 1),
                     # audit_predictions.py re-rolls venv=False as infra_no_venv
                     "venv": venv_ok,
+                    "sandbox": SANDBOX is not None,
                 }
                 fp.write(json.dumps(entry) + "\n")
                 fp.flush()

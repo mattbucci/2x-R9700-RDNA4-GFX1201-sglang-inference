@@ -356,6 +356,22 @@ Reproducible harnesses: [p2p_allreduce_bw.py](../scripts/bench/p2p_allreduce_bw.
 
 ## Evaluation methodology
 
+### SWE-bench answer leakage through git history and the web (found 2026-09-18)
+
+The v2 qwen38 bakeoff gave every scaffold a work tree cloned from the full upstream mirror and
+unrestricted network. A session-store audit (`evals/swebench/audit_git_peek.py`) of the five complete
+lanes found the agents reading the upstream fix on 45–61% of instances: future git history
+(`git log --all`, `git show origin/main:…`) on 10–17% for opencode/omp, and web fetch/search of the
+project's tracker, PRs and later releases on 40–47% on every lane. Exposed instances reproduce the
+gold patch at ≥80% added-line overlap 71–81% of the time versus 37–46% for isolated ones (isolated
+median overlap 0.50–0.67 — the model's own recall of these repositories, equal across lanes).
+Disposition: v2 is scored and kept only as an exposure study
+(`benchmarks/quality/swebench-leak-audit-qwen38-v2.json`); the matrix restarted as v3 on 2026-09-18
+with fetch-by-sha work trees and a no-network bubblewrap sandbox per scaffold (`sandbox.sh`), which
+the pilot showed all seven scaffolds tolerate. The scoring phase of `run_model_cycle.sh` was found
+never to have run (sister-rig CLI against our `score_docker.py`) and was replaced by `score_cells.sh`.
+Details: `evals/swebench/FP8_BAKEOFF_SETUP.md` → Answer leakage and isolation.
+
 ### LAB-Bench think-budget artifact on thinking models (fixed 2026-08-30)
 
 `eval_and_chart.py` scores the last standalone capital letter in `message.content` under a

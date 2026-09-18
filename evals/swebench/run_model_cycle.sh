@@ -8,7 +8,7 @@
 #   4. Stop server
 #   5. Audit each scaffold's predictions for infrastructure failures
 #   6. If any infra failures: relaunch server, reroll just those instances, stop server
-#   7. Score each scaffold
+#   7. Score each scaffold (score_cells.sh → official swebench Docker harness)
 #   8. Regenerate cell JSONs via aggregate_bakeoff.py
 #   9. Print summary
 #
@@ -31,6 +31,12 @@
 #   LOG_DIR         where to write per-phase logs (default: /data/logs/run-model-cycle-logs/<preset>;
 #                   NOT /tmp -- the 31 GB tmpfs is too small for a multi-day server.log)
 #   SERVER_TIMEOUT  max seconds to wait for server /health=200 (default: 720)
+#   SANDBOX         1 (default) = every scaffold runs inside sandbox.sh (bubblewrap: no
+#                   network except the SGLang bridge, no sibling work trees / mirrors) and
+#                   the work tree is fetched by base-commit sha with no future history.
+#                   0 = --no-sandbox (the v2 configuration; leaks the upstream fix via
+#                   web tools and `git log --all`, see audit_git_peek.py).
+#   SCORE_WORKERS   concurrent Docker eval containers in Phase 5 (default: 8)
 
 set -uo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -49,6 +55,9 @@ fi
 SCAFFOLDS="${SCAFFOLDS:-opencode opencode-dcp little-coder little-coder-rtk omp prime dcode}"  # claw retired, omp/prime/dcode/opencode-dcp/little-coder-rtk added 2026-08-30
 INSTANCES="${INSTANCES:-0}"
 RUN_TAG="${RUN_TAG:-v2}"
+SANDBOX="${SANDBOX:-1}"
+SANDBOX_FLAG=()
+[ "$SANDBOX" = "0" ] && SANDBOX_FLAG=(--no-sandbox)
 TIMEOUT="${TIMEOUT:-1800}"
 SERVER_TIMEOUT="${SERVER_TIMEOUT:-720}"
 # Rollouts/audit/reroll need swebench + datasets: never trust ambient `python`
@@ -140,7 +149,7 @@ for SCAFFOLD in $SCAFFOLDS; do
   N_FLAG=()
   [ "$INSTANCES" -gt 0 ] && N_FLAG=(--instances "$INSTANCES")
 
-  log "rollout $SCAFFOLD (out=$OUT instances=${INSTANCES:-300} timeout=$TIMEOUT)"
+  log "rollout $SCAFFOLD (out=$OUT instances=${INSTANCES:-300} timeout=$TIMEOUT sandbox=$SANDBOX)"
   "$ROLLOUT_PY" "$REPO_DIR/evals/swebench/run_rollouts.py" \
     --model "sglang/$PRESET" \
     --served-name "$SERVED" \
@@ -150,6 +159,7 @@ for SCAFFOLD in $SCAFFOLDS; do
     --timeout "$TIMEOUT" \
     --max-empty-streak 30 \
     "${N_FLAG[@]}" \
+    "${SANDBOX_FLAG[@]}" \
     > "$LOG_DIR/rollout-$SCAFFOLD.log" 2>&1
   rc=$?
   preds=$(wc -l < "$OUT/predictions.jsonl" 2>/dev/null || echo 0)
@@ -196,6 +206,7 @@ if [ "${#NEED_RESCORE_AFTER_REROLL[@]}" -gt 0 ]; then
       --served-name "$SERVED" \
       --scaffold "$SCAFFOLD" \
       --timeout "$TIMEOUT" \
+      "${SANDBOX_FLAG[@]}" \
       > "$LOG_DIR/reroll-$SCAFFOLD.log" 2>&1
     log "reroll $SCAFFOLD rc=$?"
   done
@@ -203,27 +214,20 @@ if [ "${#NEED_RESCORE_AFTER_REROLL[@]}" -gt 0 ]; then
 fi
 
 # --- Phase 5: score each scaffold (Rule 2: server already stopped) ---
+# score_cells.sh wraps score_docker.py (official swebench Docker harness) and
+# writes scores.jsonl + docker-score/<model>.<run-dir>.json per cell — the
+# shape aggregate_bakeoff.py publishes. (Until 2026-09-18 this phase called
+# score_docker.py with the sister rig's CLI and had never produced a score.)
+SCORE_DIRS=()
 for SCAFFOLD in "${NEED_RESCORE[@]}"; do
-  OUT="$REPO_DIR/evals/swebench/runs/${PRESET}-${SCAFFOLD}-${RUN_TAG}"
-  log "score $SCAFFOLD"
-  rm -f "$OUT/scores-docker-summary.json"
-  rm -rf "$OUT/scores-docker"
-  mkdir -p /tmp/loop-bakeoff-logs
-  flock -x /tmp/loop-bakeoff-logs/score.lock \
-    "${SWEBENCH_PY:-/data/swebench-harness-env/bin/python}" "$REPO_DIR/evals/swebench/score_docker.py" \
-      --predictions "$OUT/predictions.jsonl" \
-      --max-workers 1 \
-      --timeout "$TIMEOUT" \
-      > "$LOG_DIR/score-$SCAFFOLD.log" 2>&1
-  rc=$?
-  if [ -f "$OUT/scores-docker-summary.json" ]; then
-    python3 -c "
-import json
-d = json.load(open('$OUT/scores-docker-summary.json'))
-print(f'  {\"$PRESET\":15s} x {\"$SCAFFOLD\":12s}: {d[\"resolved\"]}/{d[\"total_predictions\"]} = {d[\"resolve_rate_pct\"]}%  (unresolved={d[\"unresolved\"]} empty={d.get(\"empty_patch\",0)} err={d.get(\"error\",0)})')
-"
-  fi
+  SCORE_DIRS+=("$REPO_DIR/evals/swebench/runs/${PRESET}-${SCAFFOLD}-${RUN_TAG}")
 done
+if [ "${#SCORE_DIRS[@]}" -gt 0 ]; then
+  log "score ${NEED_RESCORE[*]}"
+  bash "$SCRIPT_DIR/score_cells.sh" "${SCORE_DIRS[@]}" > "$LOG_DIR/score.log" 2>&1
+  log "score rc=$?"
+  cat "$LOG_DIR/score.log"
+fi
 
 # --- Phase 6: refresh cell JSONs ---
 "$ROLLOUT_PY" "$REPO_DIR/evals/swebench/aggregate_bakeoff.py" \

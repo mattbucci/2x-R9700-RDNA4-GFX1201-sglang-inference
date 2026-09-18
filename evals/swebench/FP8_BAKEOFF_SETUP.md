@@ -139,9 +139,70 @@ spec's `packages: requirements.txt` is not installed (pylint's test imports of `
 venv), and the build-deps block's `oldest-supported-numpy` downgrades numpy below the spec pin for
 some repos. The Docker score is unaffected by either — only the model's in-loop test signal is.
 
+## Answer leakage and isolation
+
+The v2 qwen38 lanes (2026-09-02 → 09-18) ran the scaffolds on the host with the full upstream clone and
+unrestricted network. That gave the agents two routes to the upstream fix that SWE-bench assumes are
+closed:
+
+- **Future git history.** `ensure_repo()` cloned the mirror and checked out the base commit, so
+  `git log --all`, `git show origin/main:<file>`, `git diff <base>..<tag>` and `git branch -a` all
+  reached commits that already contain the fix. opencode and omp did this on 10–17% of instances.
+- **The web.** Every scaffold ships a fetch/search tool (`webfetch`, `websearch`, `web_search`), and
+  bash gives `curl`, `gh`, `pip download`. The agents fetched the upstream project's docs, tracker,
+  GitHub PRs and later releases on 40–47% of instances per lane — the dominant channel. little-coder
+  blocks `git` in bash and used the web instead.
+
+`audit_git_peek.py` reads each scaffold's own session store (opencode's SQLite, pi/omp/prime JSONL,
+deepagents' LangGraph checkpoints), classifies every tool call, and measures the effect against the
+dataset's gold patch (`overlap` = share of the model patch's added lines that appear in the gold patch):
+
+```bash
+source /data/swebench-harness-env/bin/activate
+python evals/swebench/audit_git_peek.py --model qwen38 --suffix -v2 \
+    --json benchmarks/quality/swebench-leak-audit-qwen38-v2.json
+```
+
+| Lane (v2) | git READ | web UPSTREAM | web SEARCH | exposed | ≥80% gold overlap, exposed | ≥80% gold overlap, isolated |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| opencode | 52 | 129 | 0 | 160 (54%) | 121/149 (81%), median 1.00 | 45/100 (45%), median 0.61 |
+| opencode-dcp | 29 | 120 | 0 | 137 (46%) | 109/135 (81%), median 1.00 | 46/124 (37%), median 0.50 |
+| little-coder | 0 | 141 | 1 | 142 (47%) | 83/111 (75%), median 1.00 | 55/146 (38%), median 0.50 |
+| little-coder-rtk | 0 | 135 | 0 | 135 (45%) | 85/120 (71%), median 1.00 | 57/149 (38%), median 0.50 |
+| omp | 31 | 134 | 38 | 184 (61%) | 132/172 (77%), median 1.00 | 49/106 (46%), median 0.67 |
+
+`exposed` = READ ∪ UPSTREAM ∪ SEARCH; LIST (enumerating refs without reading content) and OTHER
+(PyPI installs, unrelated docs) are recorded but not counted. Overlap columns are over instances with
+a non-empty patch. Exposed instances reproduce the gold patch verbatim about twice as often as
+isolated ones; the isolated residual is the model's own recall of these well-known repositories and
+is the same in every lane, so the v2 lanes stay comparable with each other but not with a clean run.
+The v2 cells are published as an *exposure study* (`qwen38-v2`), not as SWE-bench results; the prime
+lane was stopped at 29/300 and parked (`runs/qwen38-prime-v2.partial-29`).
+
+From v3 on, `run_rollouts.py` closes both channels by default (`SANDBOX=1` in the cycle scripts,
+`--no-sandbox` restores the v2 configuration):
+
+- **No future history.** The work tree is `git init` + `git fetch --no-tags <mirror> <base_commit>` +
+  `git checkout FETCH_HEAD` (the mirror sets `uploadpack.allowAnySHA1InWant`), so it holds exactly the
+  base commit's ancestry and no refs; `ensure_repo()` refuses a tree with any ref. 4 s per instance.
+- **No network, no siblings.** `sandbox.sh` wraps every scaffold in an unprivileged bubblewrap
+  sandbox (user + net + pid namespaces, same uid): loopback only, so fetch/search/curl/pip fail at
+  once; the work root and venv root are tmpfs with only this instance bound back in, so the mirrors
+  and other instances' trees (later base commits that contain this fix) are invisible. The SGLang
+  server is reached through a unix-socket bridge (`socat` on both sides), so each scaffold's
+  configured `http://127.0.0.1:23334` keeps working unchanged. Predictions record `"sandbox": true`.
+
+Re-run the audit on every new lane; a sandboxed lane must report 0 READ / 0 UPSTREAM / 0 SEARCH.
+
 ## Scoring
 
-`score_docker.py` invokes the official SWE-bench evaluation image for each instance and writes `scores.jsonl`. `score_local.py` is a compatibility fallback, not the canonical score.
+`score_cells.sh <run_dir>...` (Phase 5 of `run_model_cycle.sh`, also standalone) runs `score_docker.py`,
+which invokes the official SWE-bench evaluation image for each instance and writes `scores.jsonl` plus
+`docker-score/<model>.<run-dir>.json`; `aggregate_bakeoff.py` publishes the cell from those two files
+and keeps the run tag in the row label (`qwen38-v2`, `qwen38-v3`). `score_local.py` is a compatibility
+fallback, not the canonical score. The first cell after an image prune rebuilds the ~300 instance
+images locally (`--namespace none`, `--cache_level instance`); later cells reuse them at 20–60 min per
+300-instance cell with 8 workers.
 
 Docker images require substantial storage. Put Docker’s data root on the data disk:
 

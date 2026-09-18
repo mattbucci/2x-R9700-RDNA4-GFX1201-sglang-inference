@@ -18,6 +18,9 @@
 #   QUEUE          space-separated preset names (default: full bake-off queue)
 #   WAIT_FOR_PID   if set, wait for this PID to exit before starting the queue
 #   POLL_SECS      WAIT_FOR_PID poll interval in seconds (default: 60)
+#   RUN_TAG        passed through to run_model_cycle.sh; also suffixes the
+#                  per-cycle log dir (<preset>-<RUN_TAG>) when set
+#   SANDBOX        passed through to run_model_cycle.sh (default 1)
 #
 # Detach pattern (recommended — survives session interrupts):
 #   mkdir -p /data/logs/run-model-cycle-logs
@@ -71,7 +74,11 @@ QUEUE_START=$(date +%s)
 
 for PRESET in $QUEUE; do
   CYCLE_START=$(date +%s)
-  LOG_DIR="$LOG_ROOT/$PRESET"
+  # RUN_TAG (run_model_cycle.sh run-dir suffix) is inherited from the environment;
+  # when it is set the cycle logs get the same suffix so a v3 re-run never
+  # overwrites the v2 logs.
+  LOG_DIR="$LOG_ROOT/$PRESET${RUN_TAG:+-$RUN_TAG}"
+  export LOG_DIR
   mkdir -p "$LOG_DIR"
   WRAPPER_LOG="$LOG_DIR/wrapper.log"
 

@@ -50,6 +50,8 @@ def main():
     ap.add_argument("--scaffold", required=True,
                     choices=["opencode", "opencode-dcp", "little-coder", "little-coder-rtk", "claw-code", "omp", "prime", "dcode"])
     ap.add_argument("--timeout", type=int, default=1800)
+    ap.add_argument("--no-sandbox", action="store_true",
+                    help="pass --no-sandbox to run_rollouts.py (re-roll outside the bwrap sandbox)")
     ap.add_argument("--dry-run", action="store_true",
                     help="Print what would be re-rolled, don't actually do it")
     args = ap.parse_args()
@@ -118,6 +120,8 @@ def main():
         "--timeout", str(args.timeout),
         "--instance-ids", *infra_ids,
     ]
+    if args.no_sandbox:
+        cmd.insert(cmd.index("--instance-ids"), "--no-sandbox")
     print(f"\n+ {' '.join(cmd[:8])} ... ({len(infra_ids)} instance-ids)")
     rc = subprocess.run(cmd).returncode
     print(f"\n  re-roll exited rc={rc}")

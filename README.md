@@ -19,8 +19,10 @@ new quality flagship Qwen3.8-27B-FP8.
 - **Qwen3.8-27B-FP8 is the quality flagship**: fleet-best LAB-Bench 42.3% (no-think multiple choice),
   MMLU 84.2%, HumanEval 93.3%, 7/7 agentic rungs to 245,150 actual tokens, and a dead-flat 16.6 tok/s
   decode from 24 to 197K input on the repaired RDNA4 block-FP8 dispatch (patch 005). Its
-  seven-scaffold SWE-bench Lite bakeoff (300 instances per cell, Docker-scored) is in flight; the
-  setup and its two corrected measurement defects are in
+  seven-scaffold SWE-bench Lite bakeoff (300 instances per cell, Docker-scored) restarted on
+  2026-09-18 as **v3, sandboxed**: the v2 lanes had let the agents read the upstream fix through
+  future git history and the web on 45–61% of instances, so v2 is published only as an exposure
+  study. Setup, the leak audit and the isolation design are in
   [`evals/swebench/FP8_BAKEOFF_SETUP.md`](evals/swebench/FP8_BAKEOFF_SETUP.md).
 - **The patch series replays byte-identically** onto pristine v0.5.18 under the strict gate in
   [`patches/README.md`](patches/README.md).
@@ -90,26 +92,35 @@ the matrix):
 | `qwen35-27b` | 45.7% | — | — |
 | `qwen36-35b-a3b` | 46.7% | 42.3% | 25.0% |
 
-The in-flight Qwen3.8-27B-FP8 cycle (opencode ± DCP, little-coder ± RTK, oh-my-pi, prime-agent,
-deepagents) runs at CTX=262144 with per-instance venvs and an `infra_*` audit/re-roll before scoring,
-so its matrix will be published as its own dated page rather than merged into the table above.
+The Qwen3.8-27B-FP8 cycle (opencode ± DCP, little-coder ± RTK, oh-my-pi, prime-agent, deepagents)
+runs at CTX=262144 with per-instance venvs and an `infra_*` audit/re-roll before scoring, so its
+matrix will be published as its own dated page rather than merged into the table above. Its first
+pass (v2, five lanes complete) is **not a SWE-bench result**: the agents reached the upstream fix
+through the mirror's future history (`git log --all`, `git show origin/main:…`; 10–17% of instances
+on opencode/omp) and through web fetch/search of the project's tracker, PRs and later releases
+(40–47% of instances on every lane), and exposed instances reproduced the gold patch verbatim ~2×
+as often as isolated ones. The July matrix above used the same work-tree layout and web-enabled
+scaffolds, so both channels were open to it too (its sessions were not audited). The v2 cells are scored and kept as an exposure study
+(`qwen38-v2`, stratified by exposure in
+[`benchmarks/quality/swebench-leak-audit-qwen38-v2.json`](benchmarks/quality/swebench-leak-audit-qwen38-v2.json));
+the clean matrix is v3, rolling since 2026-09-18 with every scaffold in a no-network bubblewrap
+sandbox on a work tree fetched by base-commit sha (`FP8_BAKEOFF_SETUP.md` → Answer leakage and
+isolation).
 
 ## Next steps
 
 Ordered by what runs next. Specs with an ID live in [`experiments/`](experiments/README.md).
 
-1. **Finish the Qwen3.8 seven-scaffold bakeoff** (lane 5 of 7 as of 2026-09-13): audit, re-roll
-   `infra_*` predictions, Docker-score, publish the matrix and the scaffold-disagreement table. Both
-   little-coder lanes ran little-coder as shipped — pi's 32K fallback context (unknown model id →
-   clone of the packaged 32768/4096 entry; p99 prompt 32.6K with 303 compaction resets vs 83–86K on
-   opencode), `reasoning_effort: medium`, T=0.3 and a 4096-token thinking abort — while every other
-   lane sends no effort and gets the template's `xhigh` with server sampling. A follow-up cycle
-   re-runs both at 262144 / `xhigh` / no thinking cap as `*-v2-ctx256k-xhigh` and the matrix shows
-   both configurations (`evals/swebench/FP8_BAKEOFF_SETUP.md` → Scaffold context budgets, Scaffold
-   thinking effort). After the cycle's re-rolls: raise opencode's `qwen38` limits from 200000 / 8192
-   to the served window / 16384 (0.4% of its turns ended `length` at xhigh). Two harness fixes are deliberately held
-   for the next full re-roll because they change succeeding instances too (spec
-   `packages: requirements.txt`, the `oldest-supported-numpy` downgrade; see `FP8_BAKEOFF_SETUP.md`).
+1. **Run the Qwen3.8 seven-scaffold bakeoff v3 to completion** (started 2026-09-18 after the five
+   complete v2 lanes were Docker-scored; ~2 days per lane): sandboxed scaffolds, fetch-by-sha work
+   trees, both little-coder lanes at 262144 / `xhigh` / no thinking cap through the harness (v2 ran
+   them as shipped: pi's 32K fallback, `medium`, T=0.3, a 4096-token thinking abort). Then audit,
+   re-roll `infra_*`, score, run `audit_git_peek.py` on every lane (must be 0 exposed), publish the
+   matrix with the scaffold-disagreement table, and set the v2 exposure study beside it. After the
+   cycle: raise opencode's `qwen38` limits from 200000 / 8192 to the served window / 16384 (0.4% of
+   its turns ended `length` at xhigh). Two harness fixes are deliberately held for the next full
+   re-roll because they change succeeding instances too (spec `packages: requirements.txt`, the
+   `oldest-supported-numpy` downgrade; see `FP8_BAKEOFF_SETUP.md`).
 2. **A/B HIP graphs on qwen38 plain decode.** Passive profiling of the running bakeoff (19.5K requests,
    185 h of request time) puts decode at 91% of eval wall-clock with a flat 60.2 ms mean ITL from 0 to
    109K context, ~13.5 GB of FP8 weights per rank per step (224 GB/s effective, ~35% of R9700
@@ -118,9 +129,10 @@ Ordered by what runs next. Specs with an ID live in [`experiments/`](experiments
    verdict, which was measured under EAGLE3 verify (a ~5.5× heavier step) and never on plain M=1
    decode; the 3090 rig got 4× on qwen36 hybrids from graphs and this box 2.1× on coder-next-ream. Run
    `scripts/bench/decode_ab.py` graph-on vs off at 24/8K/64K/197K in the next server-stopped window
-   (the bakeoff's Docker-scoring phase), then chase the residual with `profile_decode_step.sh` (FP8 M=1
-   Triton block-GEMM) and `p2p_allreduce_bw.py` (custom all-reduce over PCIe Gen4 ×8). Do not flip the
-   flag mid-bakeoff; lanes 4–7 must stay comparable with 1–3.
+   with an idle CPU (not during Docker scoring: eight eval containers perturb a scheduler-bound
+   step), then chase the residual with `profile_decode_step.sh` (FP8 M=1 Triton block-GEMM) and
+   `p2p_allreduce_bw.py` (custom all-reduce over PCIe Gen4 ×8). Do not flip the flag mid-bakeoff;
+   every v3 lane must stay comparable with the first.
 3. **Tune the gfx1201 Triton W8A8 block-GEMM configs for the dense FP8 path** — the `N=17408,K=5120`
    analogue of patch 078's MoE tuning
    ([R97-L](experiments/12-fp8-exact-shape-gemm-tuner.md) for Laguna's shared-expert shapes).

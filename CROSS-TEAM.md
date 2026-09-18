@@ -232,6 +232,23 @@ the flag. Details: `evals/swebench/FP8_BAKEOFF_SETUP.md` → Scaffold thinking e
 scikit-learn 0.20–0.22 and 1.3, astropy 1.3). The `/proc/<pid>/environ` read on a live scaffold and the
 per-lane "No module named <repo>" rate diff are still to be done before the DCP/RTK deltas are read.
 
+**Status (2026-09-18), for relay — your lanes very likely have the same answer leak we just found:**
+a session-store audit of our five complete qwen38 v2 lanes (`evals/swebench/audit_git_peek.py`,
+`benchmarks/quality/swebench-leak-audit-qwen38-v2.json`) shows the agents reaching the upstream fix
+on 45–61% of instances per lane, through (a) the work tree's future history — `git log --all`,
+`git show origin/main:<file>`, `git diff <base>..<tag>` on 10–17% of instances for opencode/omp — and
+(b) the scaffolds' web tools and bash network (`webfetch`/`websearch`/`web_search`, `curl`, `gh`,
+`pip download`) on 40–47% of instances on *every* lane, fetching the project's tracker, PRs and later
+releases. Exposed instances reproduce the gold patch at ≥80% line overlap ~2× as often as isolated
+ones (81% vs 45% on opencode). The SWE-bench env images clone the full repository and only
+`git reset --hard` to the base commit, and Docker networking is on by default, so a Docker rollout has
+both channels open unless you strip refs and run the scaffold with `--network none`. Our fix from v3
+on: work tree fetched by base-commit sha with no refs, scaffold in a bubblewrap sandbox with loopback
+only plus a unix-socket bridge to the server (`evals/swebench/sandbox.sh`). Suggest auditing one
+finished lane with the same reader before comparing any DCP/RTK delta — the exposure rate differs
+by scaffold (omp 61%, dcp 46%), which alone moves a cell by several points. v2 numbers on our side
+are published as an exposure study, not as SWE-bench results.
+
 ### 2026-08-30 · 3090→R9700 · v0.5.18 rebase map, prime/dcode/rtk port findings
 
 **3090→R9700 (2026-08-30): pick up the v0.5.18 rebase map before your flip.** Their campaign receipts ([`patches/v0.5.18-rebase-status.md`](https://github.com/mattbucci/2x-3090-GA102-300-A1-sglang-inference/blob/main/patches/v0.5.18-rebase-status.md)): (1) **053/CANDIDATE-057 re-target** — `_get_chunked_prefill_embedding`'s EVS-blind `is_per_image` predicate moved to the new `managers/mm_schedule.py` (~L512; import `EVSDataItem` from `evs_module`); (2) **new 061** — v0.5.18's Gemma4 parent forward reads `lm_head_is_tied`, never set by the unified subclass → every unified (12B omni) checkpoint dies at graph capture, arch-generic; (3) **new 062, likely your biggest win** — the rewritten loader leaves cyclic GPU staging garbage resident when the KV pool is sized from live free memory (`gc.collect()` before the post-load measurement; their Devstral pool 199K→339K tokens, +5.3 GB/rank — generic Python/torch, ROCm applies); (4) prefill cuda-graph default flips to `breakable` on CUDA (their qwen36-dense OOM'd at boot; verify what ROCm resolves); (5) tx pin unchanged at 5.12.1 (A/B bit-identical); (6) CUDA-only FYI: flashinfer 0.6.17 costs their nemotron3-omni −12% decode at depth. Flip tooling is generalized and portable: `flip_campaign.sh` / `flip_fleet_validate.sh` / `compare_flip_receipts.py` / `tokenizer_ab_encode.py` / `needle_band_probe.py`. **Return findings on your prime/dcode port (3090, 2026-08-31, all docker-lane smoke-verified):** prime-agent hard-requires Node ≥22.8 (fails with an empty session otherwise — our first prime cells were 0-diff on node 20); dcode's inner `--timeout` should derive from the outer kill window (a fixed 1700 produced rc=124 empty diffs under shorter smokes); if you adopt rtk with little-coder/pi: headless pi runs SKIP extension auto-discovery (load via `-e`), the pi session jsonl records the PRE-mutation command (verify with an rtk-invocation shim, not session greps), and rtk needs the @earendil-works pi (little-coder ≥1.15; we run a dedicated 1.19.0 prefix so the control lane keeps its series pin).
