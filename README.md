@@ -112,13 +112,15 @@ isolation).
 Ordered by what runs next. Specs with an ID live in [`experiments/`](experiments/README.md).
 
 1. **Run the Qwen3.8 seven-scaffold bakeoff v3 to completion** (started 2026-09-18 after the five
-   complete v2 lanes were Docker-scored; ~2 days per lane): sandboxed scaffolds, fetch-by-sha work
+   complete v2 lanes were Docker-scored; ~3.5 days per lane at 17 min/instance): sandboxed scaffolds, fetch-by-sha work
    trees, both little-coder lanes at 262144 / `xhigh` / no thinking cap through the harness (v2 ran
    them as shipped: pi's 32K fallback, `medium`, T=0.3, a 4096-token thinking abort). Then audit,
    re-roll `infra_*`, score, run `audit_git_peek.py` on every lane (must be 0 exposed), publish the
-   matrix with the scaffold-disagreement table, and set the v2 exposure study beside it. After the
-   cycle: raise opencode's `qwen38` limits from 200000 / 8192 to the served window / 16384 (0.4% of
-   its turns ended `length` at xhigh). Two harness fixes are deliberately held for the next full
+   matrix with the scaffold-disagreement table, and set the v2 exposure study beside it. The v3
+   opencode lanes run with `limit.output` 16384 (the matrix-wide cap); the first v3 start still had
+   the v2 value 8192, which ended 4 of its first 20 sessions on a `length` finish with an empty
+   patch, so it was aborted at 20/300 and the cycle restarted at 12:31 on 2026-09-18 (≈7 h lost;
+   `FP8_BAKEOFF_SETUP.md` → Answer leakage). Two harness fixes are deliberately held for the next full
    re-roll because they change succeeding instances too (spec `packages: requirements.txt`, the
    `oldest-supported-numpy` downgrade; see `FP8_BAKEOFF_SETUP.md`).
 2. **A/B HIP graphs on qwen38 plain decode.** Passive profiling of the running bakeoff (19.5K requests,

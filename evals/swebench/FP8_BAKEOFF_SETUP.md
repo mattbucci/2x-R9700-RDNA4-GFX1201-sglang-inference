@@ -23,7 +23,8 @@ the scaffold name. What each lane declares for `qwen38` (server `max_model_len` 
 
 | scaffold | source of the window | context / max output |
 |---|---|---|
-| opencode, opencode-dcp | `~/.config/opencode/opencode.json` `limit` | 200000 / 8192 |
+| opencode, opencode-dcp **through v2** (and the aborted first v3 start) | `~/.config/opencode/opencode.json` `limit` (the dcp lane's `~/.config/opencode-dcp-lane/opencode/opencode.json` copies it) | 200000 / **8192** — the cap covers thinking + answer; at `xhigh` 26/300 v2 sessions and 4/20 of the first v3 start ended on a `length` finish (empty patch, rc=0) |
+| opencode, opencode-dcp **since 2026-09-18** (v3) | same files, `limit.output` raised to the matrix-wide value | 200000 / 16384 (wire-verified with `capture_endpoint.py`: `max_tokens: 16384`) |
 | omp | harness profile `~/.omp-swebench/agent/models.yml` | 262144 / 16384 |
 | prime | harness profile `~/.prime/agent/models.json` (explicit since 2026-09-12; prime defaults 128000 / 16384 when omitted) | 262144 / 16384 |
 | little-coder, little-coder-rtk **before 2026-09-12** | pi `buildFallbackModel()` clone of the packaged `llamacpp` entry | **32768 / 4096** |
@@ -72,7 +73,7 @@ the server, no GPU involved; opencode from its session store):
 
 | scaffold | effort on the wire | sampling on the wire | scaffold-side thinking cap | verdict |
 |---|---|---|---|---|
-| opencode, opencode-dcp | none → `xhigh` | none → server defaults | `limit.output` 8192 covers thinking + answer: 73 of 18343 assistant turns (0.4%) ended `length`, p99 5600 tokens | max thinking; raise `limit.output` to 16384 for the next cycle (not mid-cycle: the audit re-rolls opencode instances) |
+| opencode, opencode-dcp | none → `xhigh` | none → server defaults | `limit.output` covers thinking + answer. At 8192 (through v2): 73 of 18343 assistant turns (0.4%) ended `length` across all models, but for qwen38 at `xhigh` a `length` turn ends the session — no tool call, no text, opencode exits 0 with an empty patch (26/300 v2 sessions; 4/20 in the first v3 start, each at exactly 8192 output+reasoning tokens in the session store). 16384 since 2026-09-18 (v3), matching omp/prime/little-coder | max thinking; `length` finishes are now bounded by the same cap as the other scaffolds — check `finish` in the session store after each opencode lane |
 | omp | none → `xhigh` (`reasoning: true` profile) | none | `maxTokens` 16384; observed max 9035 output tokens | max thinking |
 | prime | none → `xhigh` (`compat.supportsReasoningEffort: false`, so pi's own level never reaches the wire) | none | `maxTokens` 16384 | max thinking |
 | dcode | `/v1/responses` with no `reasoning` object → `xhigh` | none | server-bound | max thinking |
@@ -193,6 +194,16 @@ From v3 on, `run_rollouts.py` closes both channels by default (`SANDBOX=1` in th
   configured `http://127.0.0.1:23334` keeps working unchanged. Predictions record `"sandbox": true`.
 
 Re-run the audit on every new lane; a sandboxed lane must report 0 READ / 0 UPSTREAM / 0 SEARCH.
+
+The v3 matrix started twice. The first start (2026-09-18 05:19) still carried opencode's v2 `limit.output`
+8192; the wire check that the Scaffold thinking effort table had scheduled for "the next cycle" had not
+been applied. Its first 20 opencode instances showed 4 sessions ending on a `length` finish at exactly
+8192 output+reasoning tokens (the truncated think yields no tool call, opencode exits 0, empty patch),
+so the lane was aborted at 20/300, both opencode configs were raised to 16384, the new cap was
+confirmed on the wire, and the cycle was restarted from scratch at 12:31 the same day. The aborted
+predictions are parked outside `runs/` (`/data/logs/run-model-cycle-logs/qwen38-v3.aborted-2026-09-18-out8192/`)
+and are not part of any cell. Rule restated: a fix scheduled "for the next cycle" is applied and
+wire-checked *before* that cycle's first lane starts, never discovered from its predictions.
 
 ## Scoring
 

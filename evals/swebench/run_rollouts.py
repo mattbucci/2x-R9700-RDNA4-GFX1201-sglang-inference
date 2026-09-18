@@ -333,6 +333,27 @@ def _popen_agent(cmd: list, cwd, env: dict, timeout: int, log_path: Path) -> tup
         return 124, stdout or "", stderr or ""
 
 
+OPENCODE_OUTPUT_LIMIT = 16384  # matrix-wide max_tokens (omp/prime/little-coder send the same); 8192 through v2
+
+
+def _check_opencode_limits(served: str, dcp: bool) -> str:
+    """opencode has no harness-owned profile: its `limit.output` is the `max_tokens` on the wire and
+    covers thinking + answer. At 8192 a `length` finish at xhigh ended the session with no tool call
+    and an empty patch (26/300 v2 sessions; 4/20 in the first v3 start, 2026-09-18). Refuse to start
+    a lane whose config differs from the matrix cap — fix it before the lane, never mid-lane.
+    opencode merges the user config with OPENCODE_CONFIG_DIR, so the dcp lane must match in both."""
+    cfgs = [Path.home() / ".config/opencode/opencode.json"]
+    if dcp:
+        cfgs.append(Path.home() / ".config/opencode-dcp-lane/opencode/opencode.json")
+    for cfg in cfgs:
+        models = json.loads(cfg.read_text())["provider"]["sglang"]["models"]
+        lim = models.get(served, {}).get("limit", {})
+        if lim.get("output") != OPENCODE_OUTPUT_LIMIT:
+            raise SystemExit(f"  PREFLIGHT FAILED: {cfg} {served} limit={lim} "
+                             f"(need output {OPENCODE_OUTPUT_LIMIT}) — refusing to start rollout")
+    return f"opencode {served} limit.output {OPENCODE_OUTPUT_LIMIT} in {len(cfgs)} config(s)"
+
+
 def run_opencode(model: str, repo_dir: Path, prompt: str, timeout: int, log_path: Path,
                  extra_env: dict[str, str] | None = None,
                  dcp: bool = False) -> tuple[int, str, str]:
@@ -744,6 +765,8 @@ def main():
         print(f"  PREFLIGHT FAILED after retries: {info} — refusing to start rollout", flush=True)
         sys.exit(2)
     print(f"  preflight {info}", flush=True)
+    if args.scaffold in ("opencode", "opencode-dcp"):
+        print(f"  preflight {_check_opencode_limits(served, dcp=(args.scaffold == 'opencode-dcp'))}", flush=True)
 
     out = Path(args.out)
     (out / "predictions").mkdir(parents=True, exist_ok=True)
