@@ -33,3 +33,5 @@ scikit-learn__scikit-learn-25500
 scikit-learn__scikit-learn-25570
 scikit-learn__scikit-learn-25747
 sympy__sympy-20590
+pylint-dev__pylint-7114
+scikit-learn__scikit-learn-25638
