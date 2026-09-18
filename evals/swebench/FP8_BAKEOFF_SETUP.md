@@ -204,6 +204,15 @@ fallback, not the canonical score. The first cell after an image prune rebuilds 
 images locally (`--namespace none`, `--cache_level instance`); later cells reuse them at 20–60 min per
 300-instance cell with 8 workers.
 
+Two matplotlib environment images (`sweb.env.py.x86_64.7037e8c4…`, `…efa6065e…`, 14 instances)
+can no longer be built locally: the harness's conda 23.11/libsolv spins for 70–80 min on the
+`environment.yml` solve and then aborts on a libsolv assertion (2026-09-18; the July cells built
+them fine, conda-forge repodata has moved since). `score_cells.sh` therefore runs
+`pull_hub_images.sh` first, which pulls the official `swebench/sweb.eval.x86_64.<id>` instance images
+for the ids in `hub-images.txt`, retags them to the local names and aliases the env tag so the
+harness skips the build. Add an instance to `hub-images.txt` when its env build fails the same way;
+never `docker image prune` those tags without re-running the script.
+
 Docker images require substantial storage (~600 GB for the 300 Lite instance images, 272 GB of
 sglang-rdna4 images and build cache on top). Docker 29 uses the containerd image store, so
 `daemon.json`'s `data-root` (`/data/docker`, containers and volumes) does **not** hold the images:

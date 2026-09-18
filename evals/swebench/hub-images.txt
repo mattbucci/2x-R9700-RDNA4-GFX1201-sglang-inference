@@ -1,0 +1,25 @@
+# SWE-bench Lite instances whose environment image cannot be built locally any more:
+# the harness's conda (23.11 / libsolv) either spins for hours on the matplotlib
+# environment.yml solve or dies on `solver_addrule: Assertion !p2 && d > 0` (seen
+# 2026-09-18, 69-81 min per attempt). July 2026 cells built them fine; conda-forge
+# repodata has since moved. score_cells.sh runs pull_hub_images.sh on this list before
+# each scoring pass, which pulls the official swebench/ instance images from Docker Hub,
+# retags them to the local (namespace none) names and aliases the env-image tag so the
+# harness skips the build. Instance images from the Hub are the maintainers' builds of
+# the same Dockerfiles; the eval itself is unchanged.
+# env sweb.env.py.x86_64.7037e8c448a4b8ebfe9b13
+matplotlib__matplotlib-22711
+matplotlib__matplotlib-22835
+matplotlib__matplotlib-23299
+matplotlib__matplotlib-23314
+matplotlib__matplotlib-23476
+matplotlib__matplotlib-23562
+matplotlib__matplotlib-23563
+# env sweb.env.py.x86_64.efa6065ed5bf204410fd53
+matplotlib__matplotlib-25311
+matplotlib__matplotlib-25332
+matplotlib__matplotlib-25433
+matplotlib__matplotlib-25442
+matplotlib__matplotlib-25498
+matplotlib__matplotlib-26011
+matplotlib__matplotlib-26020

@@ -42,6 +42,10 @@ for fs in "$CONTAINERD_ROOT" /data /; do
   fi
 done
 
+# Env images the harness can no longer build locally: use the official Hub instance images
+# (see hub-images.txt). Idempotent; a pull failure is logged but does not block scoring.
+bash "$SCRIPT_DIR/pull_hub_images.sh" || log "warning: pull_hub_images.sh rc=$? — affected instances will error"
+
 rc_all=0
 for OUT in "$@"; do
   OUT="${OUT%/}"
