@@ -26,6 +26,22 @@ mkdir -p "$LOCK_DIR"
 
 log() { echo "[score $(date +%H:%M:%S)] $*"; }
 
+# Docker 29 keeps images in the containerd image store, whose root is set in
+# /etc/containerd/config.toml (`root = '/data/containerd'` here) — NOT under
+# dockerd's data-root. On 2026-09-18 the default /var/lib/containerd filled the
+# root filesystem to 0 bytes mid-score (272 GB of images + build cache). Refuse
+# to start on a nearly full disk instead of failing 300 instances one by one.
+CONTAINERD_ROOT=$(sed -n "s/^root = ['\"]\(.*\)['\"]/\1/p" /etc/containerd/config.toml 2>/dev/null)
+CONTAINERD_ROOT="${CONTAINERD_ROOT:-/var/lib/containerd}"
+for fs in "$CONTAINERD_ROOT" /data /; do
+  [ -e "$fs" ] || continue
+  avail=$(df -BG --output=avail "$fs" | tail -1 | tr -dc 0-9)
+  if [ "${avail:-0}" -lt 40 ]; then
+    log "refusing to score: $fs has ${avail}G free (< 40G); eval images land under $CONTAINERD_ROOT"
+    exit 4
+  fi
+done
+
 rc_all=0
 for OUT in "$@"; do
   OUT="${OUT%/}"

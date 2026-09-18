@@ -204,18 +204,25 @@ fallback, not the canonical score. The first cell after an image prune rebuilds 
 images locally (`--namespace none`, `--cache_level instance`); later cells reuse them at 20–60 min per
 300-instance cell with 8 workers.
 
-Docker images require substantial storage. Put Docker’s data root on the data disk:
+Docker images require substantial storage (~600 GB for the 300 Lite instance images, 272 GB of
+sglang-rdna4 images and build cache on top). Docker 29 uses the containerd image store, so
+`daemon.json`'s `data-root` (`/data/docker`, containers and volumes) does **not** hold the images:
+they live under containerd's root, which defaults to `/var/lib/containerd` on the root filesystem
+(that filled `/` to 0 bytes mid-score on 2026-09-18). Both roots go on the data disk:
 
 ```json
 {"data-root": "/data/docker"}
 ```
 
-After changing `/etc/docker/daemon.json`:
-
-```bash
-sudo systemctl restart docker
-docker info | grep 'Docker Root Dir'
+```toml
+# /etc/containerd/config.toml (generate with `containerd config default`, then edit)
+root = '/data/containerd'
 ```
+
+After changing either: `sudo systemctl stop docker.socket docker containerd`, move the old root if it
+has content (`rsync -aHAX /var/lib/containerd/ /data/containerd/`), `sudo systemctl start containerd
+docker`, then `docker info | grep 'Docker Root Dir'` and `docker images` must list the same images as
+before. `score_cells.sh` refuses to start when the containerd root, `/data` or `/` has < 40 GB free.
 
 Prune stopped containers regularly. Remove cached evaluation images only when storage pressure justifies the later re-download:
 

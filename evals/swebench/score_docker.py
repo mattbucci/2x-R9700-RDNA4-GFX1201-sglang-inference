@@ -58,9 +58,11 @@ def main():
         for old in scoredir.glob(f"*.{a.run_id}.json"):
             old.unlink()
     # --cache_level instance: the Lite eval images aren't all on dockerhub (404 → local build),
-    # so KEEP them after building. First cell builds the ~300 instance images (~600GB on /data),
-    # every later cell reuses them — without this the harness rebuilds+discards per cell and the
-    # rebuilds are flaky (whole cells came back all-errored). Pruned at matrix end.
+    # so KEEP them after building. First cell builds the ~300 instance images (~600GB), every
+    # later cell reuses them — without this the harness rebuilds+discards per cell and the
+    # rebuilds are flaky (whole cells came back all-errored). Pruned at matrix end. The images
+    # live in the containerd image store (root in /etc/containerd/config.toml → /data/containerd),
+    # not under dockerd's data-root; score_cells.sh checks that disk before starting.
     cmd = [sys.executable, "-m", "swebench.harness.run_evaluation",
            "--dataset_name", a.dataset, "--split", a.split,
            "--predictions_path", str(preds.resolve()),
