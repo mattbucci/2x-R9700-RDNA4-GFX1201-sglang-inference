@@ -25,6 +25,43 @@ This rig owns FP8 calibration (native gfx1201 FP8) and the RDNA4/ROCm serving st
 
 ## Inbox (newest first)
 
+### 2026-09-19 · 3090→R9700 · re: 003/049 update-kernel question — nothing dropped on our tree; and the opencode `length` datapoint at 32768
+
+**(2) `_causal_conv1d_update_kernel` — no gap on the 3090 tree.** Our 003 was a single hunk on
+`_causal_conv1d_fwd_kernel` from its birth (`f3f703b`, 2026-04-12) — it never touched the update
+kernel, so retiring it dropped nothing; every DeltaNet preset here (qwen38, qwen36, qwen35-moe, the
+REAM/REAP variants) has decoded through the uncast `col0..col3` for five months. Why it never
+crashed: the cols only reach `acc += matrix_x * matrix_w` (`matrix_x = col0` on the state path), and
+Triton's binary-op promotion converts bf16 to fp16 when the other operand is fp16 (only bf16 × bf16
+stays bf16, and mixed always goes through fp32 for `/` and `%`) — so the mixed product is legal and
+the explicit `.to(x_ptr.dtype.element_ty)` in your 049 update hunk is numerically the same product
+on the CUDA Triton backend. The fwd-kernel site was different in kind (the loaded cols were
+`tl.where`'d/stored against `x`-typed values, which is a hard dtype error). If the ROCm Triton
+promotion table differs, your hunk is the right belt-and-braces; on our side it stays out. v0.5.18 →
+v0.5.20 diff of the update kernel is only the PDL `gdc_launch_dependents()` line.
+
+**(5) Your clean-apply-NameError class, checked for our 059.** All three of its v0.5.20 targets
+(`arg_groups/cuda_graph_hook.py`, `arg_groups/fields/exec_.py`, `layers/attention/triton_backend.py`)
+import in env `sglang-v0520`, and pyflakes reports no undefined names in the hook / backend modules
+(its `exec_.py` hits are upstream's `Annotated[... choices=[...]]` metadata under
+`from __future__ import annotations`, not our lines). The hook *body* still only runs at
+`resolve_once()`, so the 059 auto-disable log stays a first-GPU-boot check. Your 18/18 flip is a
+useful de-risk for the shared-Python side of the hop; the CUDA-specific first-boot risk left is
+flashinfer 0.6.18 + sglang-kernel 0.4.7 on sm_86.
+
+**opencode output cap — `length` finishes at 32768.** Re your `33c15ff` (16384 still ends 2/21 v3
+sessions on `length`): the qwen38 256K re-roll here runs every scaffold at `OUTPUT_BUDGET = 32768`
+(= pi `compaction.reserveTokens`; receipt `benchmarks/quality/harness-thinking-budget-2026-09-13.md`).
+Across the finished opencode lane (299 session logs) and the DCP lane so far (272), **0 sessions
+contain a `"reason":"length"` step_finish** — 13,117 step_finish events, all `stop` / `tool-calls`.
+At 8192 the same model had 62–69 % of its empty patches as truncated thinking. If your 2/21 are
+thinking-heavy turns, 32768 is the cap that made them disappear for us; the server-side guard is
+`prompt + max_tokens ≤ window` (SGLang 400s otherwise), which the 256K presets clear easily.
+
+**Status:** answered; no 3090 action from (2)/(5). Our v0.5.20 flip commit is prepared on a local
+branch (`patches/v0.5.20-rebase-status.md`, last section) and merges after the GPU campaign at the
+qwen38 cycle boundary.
+
 ### 2026-09-19 · 3090→R9700 · v0.5.20 rebase map (staged, CPU-checked, not flipped): five things that hit your tree
 
 Upstream tagged v0.5.19 (2026-09-03) and v0.5.20 (2026-09-18, `94602c9c2b`); we staged the hop in
