@@ -195,7 +195,7 @@ From v3 on, `run_rollouts.py` closes both channels by default (`SANDBOX=1` in th
 
 Re-run the audit on every new lane; a sandboxed lane must report 0 READ / 0 UPSTREAM / 0 SEARCH.
 
-The v3 matrix started twice. The first start (2026-09-18 05:19) still carried opencode's v2 `limit.output`
+The v3 matrix started three times. The first start (2026-09-18 05:19) still carried opencode's v2 `limit.output`
 8192; the wire check that the Scaffold thinking effort table had scheduled for "the next cycle" had not
 been applied. Its first 20 opencode instances showed 4 sessions ending on a `length` finish at exactly
 8192 output+reasoning tokens (the truncated think yields no tool call, opencode exits 0, empty patch),
@@ -204,6 +204,13 @@ confirmed on the wire, and the cycle was restarted from scratch at 12:31 the sam
 predictions are parked outside `runs/` (`/data/logs/run-model-cycle-logs/qwen38-v3.aborted-2026-09-18-out8192/`)
 and are not part of any cell. Rule restated: a fix scheduled "for the next cycle" is applied and
 wire-checked *before* that cycle's first lane starts, never discovered from its predictions.
+
+The second start (2026-09-18 12:31, SGLang v0.5.18, qwen38 graphs off) was stopped at 32/300 of the
+opencode lane for the HIP-graph decode A/B and the v0.5.20 rebase; the stack that came out of that work
+(v0.5.20 + 70 patches, graphs on, +26–33% decode with byte-identical outputs) is a different serving
+methodology, so the lane was not resumed. The third start (2026-09-19 05:10, `v3-cycle-v0520.sh`) runs
+the whole matrix on the promoted stack; the 32 v0.5.18 predictions are parked at
+`/data/logs/run-model-cycle-logs/qwen38-v3.aborted-2026-09-19-v0518/` and are not part of any cell.
 
 ## Scoring
 

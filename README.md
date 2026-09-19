@@ -20,10 +20,10 @@ new quality flagship Qwen3.8-27B-FP8.
   MMLU 84.2%, HumanEval 93.3%, 7/7 agentic rungs to 245,150 actual tokens, and 22.5 → 20.0 tok/s
   decode from 24 to 197K input on the repaired RDNA4 block-FP8 dispatch (patch 005) with HIP graphs
   (v0.5.20 canonical sweep, 2026-09-19; 16.6 flat before graphs). Its
-  seven-scaffold SWE-bench Lite bakeoff (300 instances per cell, Docker-scored) restarted on
-  2026-09-18 as **v3, sandboxed**: the v2 lanes had let the agents read the upstream fix through
-  future git history and the web on 45–61% of instances, so v2 is published only as an exposure
-  study. Setup, the leak audit and the isolation design are in
+  seven-scaffold SWE-bench Lite bakeoff (300 instances per cell, Docker-scored) restarted as
+  **v3, sandboxed** (running since 2026-09-19 on the v0.5.20 graphs-on stack): the v2 lanes had let
+  the agents read the upstream fix through future git history and the web on 45–61% of instances,
+  so v2 is published only as an exposure study. Setup, the leak audit and the isolation design are in
   [`evals/swebench/FP8_BAKEOFF_SETUP.md`](evals/swebench/FP8_BAKEOFF_SETUP.md).
 - **The patch series replays byte-identically** onto pristine v0.5.20 under the strict gate in
   [`patches/README.md`](patches/README.md).
