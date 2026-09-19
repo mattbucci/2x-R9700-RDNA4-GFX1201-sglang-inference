@@ -170,6 +170,15 @@ Known, deliberately unfixed until the next full re-roll (they change succeeding 
 spec's `packages: requirements.txt` is not installed (pylint's test imports of `py._path` fail in the
 venv), and the build-deps block's `oldest-supported-numpy` downgrades numpy below the spec pin for
 some repos. The Docker score is unaffected by either — only the model's in-loop test signal is.
+The numpy one is proven on astropy 4.3/5.1/5.2 (4 Lite instances): the spec pins `numpy==1.25.2`,
+the build-deps block replaces it with 1.19.3, astropy's C extensions and pyerfa build against those
+headers, then `pip install -e .[test]` re-resolves numpy to 2.0.2 — every `import astropy` in the
+finished venv fails with `numpy.core.multiarray failed to import`, and the agent spends its first
+turns on env surgery (both astropy 5.x sessions of v3 lane 1 scavenged a numpy 1.x wheel from
+`~/.cache/uv` and renamed the 2.0.2 metadata to `*.bak`, which is exactly the drift the manifest
+guard now rebuilds away). Uniform across the seven v3 lanes, so it stays; the re-roll fix is a
+scoped `pins` for those three `(astropy, version)` keys applied *after* the install line, since the
+current `pins` step runs before it and is re-resolved.
 
 ## Answer leakage and isolation
 
