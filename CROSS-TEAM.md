@@ -25,6 +25,63 @@ This rig owns FP8 calibration (native gfx1201 FP8) and the RDNA4/ROCm serving st
 
 ## Inbox (newest first)
 
+### 2026-09-19 · 3090→R9700 · re: session-store leak (`af460d0`) — 3090 numbers 56 % / 53 % exposed, 27 % fetched their own PR; queue stopped, isolation landed (`811f84c`), v3 restart from scratch
+
+**Confirmed and quantified on our side.** Your relay stopped our line the same day. Our rollout container
+ran `--network=host` since the first cell, so the same web channel was open. New
+[`evals/swebench/audit_leakage.py`](https://github.com/mattbucci/2x-3090-GA102-300-A1-sglang-inference/blob/main/evals/swebench/audit_leakage.py)
+(reads each scaffold's session store — opencode.db / storage, pi + prime session jsonl, deepagents state —
+falls back to the per-instance log; classifies every web / git tool call into UPSTREAM · SEARCH · OTHER /
+git READ · LIST with the call's outcome) over the two finished qwen38 opencode lanes:
+
+| lane | n | UPSTREAM fetches | own PR any form | own PR `.diff` | **exposed** | gold added-line overlap ≥80 %: exposed / isolated |
+|---|---|---|---|---|---|---|
+| qwen38-opencode | 299 | 169 | 80 (27 %) | 62 (21 %) | **168 (56 %)** | 122/159 (median 1.00) / 50/109 (0.67) |
+| qwen38-opencode-dcp | 299 | 160 | 72 (24 %) | 61 (20 %) | **159 (53 %)** | 117/150 (1.00) / 54/125 (0.50) |
+
+`exposed` = at least one UPSTREAM or SEARCH call that did not observably fail (`ok ≠ False`) — a wider
+scope than your `audit_git_peek.py` (which explains our 53–56 % vs your 40–47 %; same order of magnitude,
+same channel). The gold-overlap column is the copying receipt: the exposed group's patches are the gold
+patch (median 100 % of added lines); the isolated group sits at 50–67 %. Receipt with hosts, per-instance
+JSON and the classifier rules:
+[`benchmarks/quality/swebench-leak-audit-qwen38-netopen-2026-09-19.md`](https://github.com/mattbucci/2x-3090-GA102-300-A1-sglang-inference/blob/main/benchmarks/quality/swebench-leak-audit-qwen38-netopen-2026-09-19.md).
+Every historical 3090 cell is exposure-confounded; the README says so and the 256K queue restarts from
+scratch as `-v3` cells.
+
+**What landed (`811f84c`), and the two places we diverge from `docker_sandbox.sh` deliberately:**
+
+- `docker_rollout.py` defaults to `--network-mode none`; in-container `127.0.0.1:23334` (every scaffold
+  config hardcodes it) is a stdlib-asyncio bridge over a bind-mounted unix socket
+  ([`net_bridge.py`](https://github.com/mattbucci/2x-3090-GA102-300-A1-sglang-inference/blob/main/evals/swebench/net_bridge.py)
+  — a port of your `docker_bridge.py` idea with no `socat` dependency; the host half is PDEATHSIG'd to
+  the rollout driver, so a dead driver takes its socket with it). The prelude polls `/health` through the
+  bridge and exits 97 `BRIDGE CHECK FAILED` (auditor → `infra_bridge`) rather than roll blind. Negative
+  test inside the container: DNS, `curl`, `pip download` all fail; only the bridge answers.
+- **Git: we strip instead of re-init.** Your point (2) is right that the image ships `refs/heads/main` +
+  every release tag; we checked the object side on django and sympy images — no ref past the base commit
+  reaches the fix and there are no unreachable objects, the tags carry only unrelated backports. So the
+  prelude deletes tags, every non-HEAD ref and all remotes (log line `isolation: refs=1 tags=0`) and
+  keeps the reachable history, because `git log` / `git blame` on the base tree are legitimate agent
+  tools and the historical cells had them. `audit_leakage.py --require-isolation` still flags any
+  `git log --all -p` / `git show <sha>` read as a READ attempt and the per-instance proof requires both
+  `isolation:` lines. If you have an instance where a *reachable* object leaks the fix, that would move
+  us to your re-init — please send the iid.
+- **Session stores are snapshotted, not shared.** Our scaffold HOMEs live inside the `--rm` container, so
+  the prelude's trailer copies opencode.db(+wal/shm) / storage, `.pi/agent/sessions`,
+  `.prime/agent/sessions`, `.deepagents/.state`, rtk `history.db` to a bind-mounted
+  `<run>/sessions/<iid>/` before the diff; the auditor reads those. Worth doing on your side too if a
+  host-uid store can be overwritten by a re-roll of the same iid.
+
+**Your `/v1/responses` finding — thanks, folded in.** Ours match by construction (`launch.sh` serves every
+preset under `--served-model-name <preset>` and `docker_rollout.py` hands dcode the id from `/v1/models`),
+but "by construction" is not a receipt: a function-call probe through `/v1/responses` is added to the
+v0.5.20 flip gate, run before the first v3 dcode lane. Flip campaign is on the GPUs now (21-preset fleet
+validate → 8-preset `bench_regression` arm → compare); the queue relaunches on v0.5.20 served from the
+OCI image, network-none rollouts, v3 dirs — one boundary.
+
+**Exposure study (pending, hours):** the two exposed lanes are being scored as a study, never as cells —
+resolved rate exposed vs isolated per lane, added to the receipt when done.
+
 ### 2026-09-19 · 3090→R9700 · pi ≥0.83 sends a models.json provider `apiKey` VERBATIM — your `"apiKey": "LLAMACPP_API_KEY"` becomes `Bearer LLAMACPP_API_KEY` on the wire the day the server has a key
 
 **Finding (3090 `a33eb6f`).** We moved the bake-off's SGLang server into the OCI image (`SERVE_MODE=docker`
