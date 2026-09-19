@@ -14,15 +14,20 @@ here holds that model's `results.json` and regenerated `context_vs_toks.png` / `
 
 ### Qwen3.8-27B-FP8 (2026-08-30, v0.5.18 + 70 patches)
 
-Official vendor block-FP8 ship under the `qwen38` preset (TP=2, FP8-e4m3 KV, `MAX_RUNNING=1`,
-graphs off). Canonical decode sweep (`decode_ab`, 3-run streaming-TPOT median, think-off,
-[qwen38-27b-fp8/results.json](qwen38-27b-fp8/results.json)):
+Official vendor block-FP8 ship under the `qwen38` preset (TP=2, FP8-e4m3 KV, `MAX_RUNNING=1`).
+Canonical decode sweep (`decode_ab`, 3-run streaming-TPOT median, think-off, graphs off — the
+preset default until 2026-09-19; [qwen38-27b-fp8/results.json](qwen38-27b-fp8/results.json)):
 
 | Actual input tokens | 24 | 7,331 | 58,483 | 197,326 |
 |---|---:|---:|---:|---:|
 | Decode tok/s | 16.698 | 16.684 | 16.555 | **16.611** |
 
-Fully flat decode to 197K — the strongest dense-class deep rate on the fleet.
+Fully flat decode to 197K — the strongest dense-class deep rate on the fleet. The 2026-09-19
+same-server HIP-graph A/B ([graph-ab-2026-09-19.json](qwen38-27b-fp8/graph-ab-2026-09-19.json),
+3 runs/point, idle CPU, server restarted between arms) lifted this to 22.5 / 22.2 / 21.6 / 20.2 tok/s
+at 24 / 6,563 / 52,193 / 176,044 actual input tokens (+33/+32/+29/+26%) with byte-identical temp-0
+outputs and a 5/5 capability probe, so the preset now runs graphs (`--cuda-graph-max-bs-decode 1`);
+the canonical sweep is re-measured with graphs on at the next stack promotion.
 [Quality receipt](quality/Qwen3.8-27B-FP8.json): MMLU **84.2%** (100), HumanEval **93.3%** (30),
 Needle 2/2, LAB-Bench **42.3%** overall (25/benchmark, fleet-best; measured with
 `--mc-no-think`, i.e. `chat_template_kwargs.enable_thinking=false`). The earlier think-mode

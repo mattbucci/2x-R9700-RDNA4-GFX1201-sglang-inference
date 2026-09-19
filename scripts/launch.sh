@@ -551,9 +551,16 @@ PYEOF
             # qwen36-27b / qwen36-moe).
             DTYPE="bfloat16"
             CTX=262144; MEM=0.85; MAX_RUNNING=1; CHUNKED=8192; DECODE_STEPS=8
-            # cuda-graph OFF: dense DeltaNet is GPU-compute-bound at M=1 (see
-            # qwen36-27b measurement 2026-06-14); family graph policy applies.
-            CUDA_GRAPH="--disable-cuda-graph"
+            # cuda-graph ON (bs=1 only, MAX_RUNNING=1). The inherited "dense
+            # DeltaNet is compute-bound at M=1" policy (qwen36-27b AWQ,
+            # 2026-06-14) does not hold for the vendor-FP8 27B: same-server
+            # A/B 2026-09-19 (v0.5.18, 3 runs/point) off->on decode 16.9->22.5
+            # (24 tok), 16.9->22.2 (6.5K), 16.8->21.6 (52K), 16.0->20.2 tok/s
+            # (176K input) = +26..33%; temp-0 outputs byte-identical, 5/5
+            # capability probe, capture 0.29 GB. Receipt:
+            # benchmarks/qwen38-27b-fp8/graph-ab-2026-09-19.json.
+            CUDA_GRAPH=""
+            EXTRA_ARGS="${EXTRA_ARGS:-} --cuda-graph-max-bs-decode 1"
             MAMBA_CACHE="--max-mamba-cache-size 8"
             # Devrole remap template (ship template + developer->system remap
             # preamble, same technique as qwen36-27b): pi/little-coder and the
@@ -1110,6 +1117,9 @@ fi
 # reference of 9/15 — eager A/B on v0.5.14 pending to confirm). Prior bake-offs ran
 # --disable-cuda-graph, so keep evals eager; cuda-graph-on stays the throughput default.
 [[ "${DISABLE_CUDA_GRAPH:-}" == "1" ]] && CUDA_GRAPH="--disable-cuda-graph"
+# FORCE_CUDA_GRAPH=1 turns graphs ON even for a preset that hard-disables them — the graph-on
+# arm of a decode A/B (README next step 2, qwen38 2026-09-19). Never set it for a bake-off lane.
+[[ "${FORCE_CUDA_GRAPH:-}" == "1" ]] && CUDA_GRAPH=""
 CMD+=($CUDA_GRAPH)
 
 if [[ "${LAUNCH_DRY_RUN:-}" == "1" ]]; then

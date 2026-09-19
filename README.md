@@ -123,18 +123,17 @@ Ordered by what runs next. Specs with an ID live in [`experiments/`](experiments
    `FP8_BAKEOFF_SETUP.md` → Answer leakage). Two harness fixes are deliberately held for the next full
    re-roll because they change succeeding instances too (spec `packages: requirements.txt`, the
    `oldest-supported-numpy` downgrade; see `FP8_BAKEOFF_SETUP.md`).
-2. **A/B HIP graphs on qwen38 plain decode.** Passive profiling of the running bakeoff (19.5K requests,
-   185 h of request time) puts decode at 91% of eval wall-clock with a flat 60.2 ms mean ITL from 0 to
-   109K context, ~13.5 GB of FP8 weights per rank per step (224 GB/s effective, ~35% of R9700
-   bandwidth, floor ≈25 ms), both scheduler main threads at 98.5% CPU, and the GPUs at ~207 of 300 W —
-   the launch-bound signature. The preset's `--disable-cuda-graph` inherits the 2026-06-14 qwen36-27b
-   verdict, which was measured under EAGLE3 verify (a ~5.5× heavier step) and never on plain M=1
-   decode; the 3090 rig got 4× on qwen36 hybrids from graphs and this box 2.1× on coder-next-ream. Run
-   `scripts/bench/decode_ab.py` graph-on vs off at 24/8K/64K/197K in the next server-stopped window
-   with an idle CPU (not during Docker scoring: eight eval containers perturb a scheduler-bound
-   step), then chase the residual with `profile_decode_step.sh` (FP8 M=1 Triton block-GEMM) and
-   `p2p_allreduce_bw.py` (custom all-reduce over PCIe Gen4 ×8). Do not flip the flag mid-bakeoff;
-   every v3 lane must stay comparable with the first.
+2. **Chase the residual qwen38 decode gap now that graphs are on.** The 2026-09-19 same-server A/B
+   ([receipt](benchmarks/qwen38-27b-fp8/graph-ab-2026-09-19.json), v0.5.18, 3 runs/point, idle CPU)
+   measured HIP graphs off→on at 16.9→22.5 (24 tok), 16.9→22.2 (6.5K), 16.8→21.6 (52K) and
+   16.0→20.2 tok/s (176K actual input): +26–33%, temp-0 outputs byte-identical in both a think-off
+   code task and a thinking math task, 5/5 capability probe under graphs, capture bs=[1] 0.29 GB.
+   The preset now runs graphs (`--cuda-graph-max-bs-decode 1`); the inherited 2026-06-14 qwen36-27b
+   "compute-bound at M=1" verdict was measured under EAGLE3 verify, never on plain decode. The
+   remaining gap to the ~25 ms bandwidth floor (~13.5 GB of FP8 weights per rank per step) is the
+   next target: `profile_decode_step.sh` (FP8 M=1 Triton block-GEMM) and `p2p_allreduce_bw.py`
+   (custom all-reduce over PCIe Gen4 ×8). Every v3 lane from the v0.5.20 restart onward runs graphs
+   on; the graphs-off v2/v3 sessions before it are not comparable and are not in the v3 matrix.
 3. **Tune the gfx1201 Triton W8A8 block-GEMM configs for the dense FP8 path** — the `N=17408,K=5120`
    analogue of patch 078's MoE tuning
    ([R97-L](experiments/12-fp8-exact-shape-gemm-tuner.md) for Laguna's shared-expert shapes).
@@ -253,7 +252,8 @@ everything.
 ## Runtime policy
 
 - Use CUDA/HIP graphs for dispatch-bound MoE and recurrent hybrid presets; keep compute-bound dense
-  presets eager unless an A/B shows a gain (the qwen38 A/B in next steps is the open case).
+  presets eager unless an A/B shows a gain (qwen38 dense DeltaNet FP8 gained +26–33% on plain
+  M=1 decode with identical outputs, so it runs graphs; see next steps).
 - Use FP8 for native gfx1201 FP8 checkpoints and dense-thinking agentic workloads that lose quality
   under int4; use AWQ int4 for weight-bandwidth-bound single-user decode and for models that need the
   extra KV capacity.

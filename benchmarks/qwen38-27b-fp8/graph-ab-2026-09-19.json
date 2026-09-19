@@ -1,0 +1,200 @@
+{
+ "model": "Qwen3.8-27B official FP8 (qwen38 preset)",
+ "engine": "SGLang v0.5.18 + 70 patches",
+ "hardware": "2x R9700 TP=2",
+ "date": "2026-09-19",
+ "method": "decode_ab, 3 runs/point, streaming-TPOT median, think-off, maxtok 80, same prompt/cache state; graphs-off arm first (the bake-off state), server restarted between arms; idle CPU (no Docker scoring)",
+ "arms": {
+  "graph_off": "preset default at the time: --disable-cuda-graph",
+  "graph_on": "FORCE_CUDA_GRAPH=1 EXTRA_ARGS=\"--cuda-graph-max-bs 1\" (capture bs=[1], 0.29 GB, 2.8 s)"
+ },
+ "points": [
+  {
+   "context": 24,
+   "input_len": 24,
+   "graph_off": {
+    "runs_tps": [
+     16.81,
+     16.99,
+     16.88
+    ],
+    "median_tps": 16.882,
+    "median_tpot_ms": 59.24,
+    "completion_tokens": [
+     80,
+     80,
+     80
+    ]
+   },
+   "graph_on": {
+    "runs_tps": [
+     22.52,
+     22.54,
+     22.53
+    ],
+    "median_tps": 22.525,
+    "median_tpot_ms": 44.39,
+    "completion_tokens": [
+     80,
+     80,
+     80
+    ]
+   },
+   "speedup": 1.334
+  },
+  {
+   "context": 7331,
+   "input_len": 6563,
+   "graph_off": {
+    "runs_tps": [
+     16.87,
+     16.92,
+     16.53
+    ],
+    "median_tps": 16.873,
+    "median_tpot_ms": 59.27,
+    "completion_tokens": [
+     45,
+     45,
+     45
+    ]
+   },
+   "graph_on": {
+    "runs_tps": [
+     22.23,
+     22.23,
+     22.25
+    ],
+    "median_tps": 22.23,
+    "median_tpot_ms": 44.98,
+    "completion_tokens": [
+     45,
+     45,
+     45
+    ]
+   },
+   "speedup": 1.317
+  },
+  {
+   "context": 58483,
+   "input_len": 52193,
+   "graph_off": {
+    "runs_tps": [
+     16.76,
+     16.75,
+     16.89
+    ],
+    "median_tps": 16.759,
+    "median_tpot_ms": 59.67,
+    "completion_tokens": [
+     33,
+     33,
+     33
+    ]
+   },
+   "graph_on": {
+    "runs_tps": [
+     21.57,
+     21.55,
+     21.56
+    ],
+    "median_tps": 21.56,
+    "median_tpot_ms": 46.38,
+    "completion_tokens": [
+     33,
+     33,
+     33
+    ]
+   },
+   "speedup": 1.286
+  },
+  {
+   "context": 197326,
+   "input_len": 176044,
+   "graph_off": {
+    "runs_tps": [
+     16.1,
+     16.0,
+     16.02
+    ],
+    "median_tps": 16.023,
+    "median_tpot_ms": 62.41,
+    "completion_tokens": [
+     37,
+     37,
+     37
+    ]
+   },
+   "graph_on": {
+    "runs_tps": [
+     20.16,
+     20.13,
+     20.19
+    ],
+    "median_tps": 20.164,
+    "median_tpot_ms": 49.59,
+    "completion_tokens": [
+     37,
+     37,
+     37
+    ]
+   },
+   "speedup": 1.258
+  }
+ ],
+ "identity_temp0": {
+  "samples": [
+   "code-thinkoff",
+   "math-think"
+  ],
+  "identical_content_and_reasoning": {
+   "code-thinkoff": true,
+   "math-think": true
+  },
+  "usage_off": {
+   "code-thinkoff": {
+    "prompt_tokens": 35,
+    "total_tokens": 435,
+    "completion_tokens": 400,
+    "prompt_tokens_details": null,
+    "reasoning_tokens": 0
+   },
+   "math-think": {
+    "prompt_tokens": 92,
+    "total_tokens": 242,
+    "completion_tokens": 150,
+    "prompt_tokens_details": null,
+    "reasoning_tokens": 94
+   }
+  },
+  "usage_on": {
+   "code-thinkoff": {
+    "prompt_tokens": 35,
+    "total_tokens": 435,
+    "completion_tokens": 400,
+    "prompt_tokens_details": null,
+    "reasoning_tokens": 0
+   },
+   "math-think": {
+    "prompt_tokens": 92,
+    "total_tokens": 242,
+    "completion_tokens": 150,
+    "prompt_tokens_details": null,
+    "reasoning_tokens": 94
+   }
+  }
+ },
+ "capabilities_graph_on": {
+  "passed": "5/5",
+  "probes": [
+   "basic",
+   "tool_call get_weather",
+   "thinking",
+   "vision red circle",
+   "video motion"
+  ],
+  "log": "=== Capability validator \u2014 http://localhost:23334  model=/data/models/Qwen3.8-27B-FP8 ===\n  [PASS] basic     finish=stop answer='paris'\n  [PASS] tool_call finish=tool_calls name='get_weather' args='{\"location\": \"Paris\"}'\n  [PASS] thinking  reasoning_seen terminated answer_ok (231 tok, finish=stop)\n  [PASS] vision    saw=['red', 'circle', 'round']  response='a red circle is shown on a white background.'\n  [PASS] video     saw=['move', 'right', 'motion', 'across', 'ball', 'circle', 'red']  response='\\n\\na red circle with a dark outline moves from the left side of the screen to the right side.'\n--- 5/5 passed in 19.3s ---\n"
+ },
+ "decision": "graphs ON in the qwen38 preset (CUDA_GRAPH=\"\" + --cuda-graph-max-bs-decode 1). +26..33% is below the 1.5x bar set for restarting the running v3 lane on its own, but the lane restarts anyway for the v0.5.20 promotion, so the new default rides that restart. Prior v3/v2 qwen38 lanes were graphs-off.",
+ "raw": "/data/logs/graph-ab/ (decode-{off,on}.json, identity-{off,on}.json, capabilities-on.log, server-{off,on}.log)"
+}
