@@ -15,9 +15,9 @@ DRAFT=$MODELS_DIR/EAGLE3-Coder-30B-A3B
 CTXFILE=/tmp/spec256k-context.txt
 ROOT=/tmp/dbg/spec256k
 mkdir -p "$ROOT"
-# --cuda-graph-max-bs 1: single-user (conc=1) only needs the bs=1 graph; the preset's multi-bs
+# --cuda-graph-max-bs-decode 1: single-user (conc=1) only needs the bs=1 graph; the preset's multi-bs
 # capture [1..24] OOMs at 262144+EAGLE3 (graph capture found 0 bytes free at mem 0.92).
-SPEC_ARGS="--speculative-algorithm EAGLE3 --speculative-draft-model-path $DRAFT --speculative-draft-model-quantization unquant --speculative-num-steps 6 --speculative-eagle-topk 16 --speculative-num-draft-tokens 32 --speculative-attention-mode decode --cuda-graph-max-bs 1"
+SPEC_ARGS="--speculative-algorithm EAGLE3 --speculative-draft-model-path $DRAFT --speculative-draft-model-quantization unquant --speculative-num-steps 6 --speculative-eagle-topk 16 --speculative-num-draft-tokens 32 --speculative-attention-mode decode --cuda-graph-max-bs-decode 1"
 
 [ -s "$CTXFILE" ] || { echo "MISSING $CTXFILE (build it first)"; exit 1; }
 

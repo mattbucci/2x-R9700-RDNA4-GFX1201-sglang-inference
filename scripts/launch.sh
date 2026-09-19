@@ -1109,7 +1109,8 @@ fi
 [[ -n "$OVERLAP" ]] && CMD+=($OVERLAP)
 (( ${#EXTRA_ARGS_ARRAY[@]} > 0 )) && CMD+=("${EXTRA_ARGS_ARRAY[@]}")
 
-# CUDA graph: either --disable-cuda-graph or --cuda-graph-bs <sizes>.
+# CUDA graph: either --disable-cuda-graph or --cuda-graph-bs-decode <sizes> (v0.5.20 retired the
+# --cuda-graph-bs / --cuda-graph-max-bs aliases, #38375; --cuda-graph-max-bs is now ambiguous at argparse).
 # DISABLE_CUDA_GRAPH=1 forces graphs OFF regardless of preset — use for AGENTIC evals.
 # Hypothesis under test (2026-06-26): v0.5.14's FULL decode-graph (padded fixed-bs capture)
 # diverges slightly from eager and, at temp=0 over a long multi-turn rollout, compounds into

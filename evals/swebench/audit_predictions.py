@@ -27,6 +27,17 @@ Infrastructure failure patterns:
     environment verdict, not a model verdict, and it breaks within-matrix
     comparability (other lanes may get a working venv for the same
     instance), so it is re-rolled even when the patch is non-empty.
+  - `infra_server_toolcall_stream_shape`: an opencode session was ended
+    by the client's stream validator (`InvalidResponseDataError:
+    Expected 'id' to be a string.`) after SGLang's `qwen3_coder`
+    streaming detector emitted a `tool_index=-1` delta for an orphan
+    `<parameter=` / `</function>` tag (3090 finding, 2026-09-15). The
+    tell never reaches our per-instance log (opencode `run` prints only
+    the assistant text), so this is read from `~/.local/share/opencode/
+    opencode.db`: assistant messages whose `error.name` is `UnknownError`
+    with that message, joined to the instance by `session.directory` and
+    the prediction's log-mtime window. Re-rolled even with a partial
+    patch (the session was killed mid-turn; not a model verdict).
 
 Output:
   - `audit-report.json` next to predictions.jsonl
@@ -46,6 +57,7 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import sqlite3
 import sys
 from pathlib import Path
 
@@ -76,6 +88,66 @@ INFRA_PATTERNS = [
 ]
 
 
+# opencode session kills: `error.data.message` of an assistant message whose
+# `error.name` is UnknownError. Regex -> category. Checked before the patch
+# short-circuit (a killed session's partial patch is not a model verdict).
+SESSION_KILL_PATTERNS = [
+    (r"^Expected 'id' to be a string", "server_toolcall_stream_shape"),
+]
+
+OPENCODE_DB = Path.home() / ".local/share/opencode/opencode.db"
+# Work-dir roots the rollout has used, newest first (audit_git_peek.py keeps the same list).
+WORK_ROOTS = ("/data/swebench-work/", "/tmp/swebench-work/")
+
+
+def load_opencode_errors(db: Path) -> tuple[list[tuple[int, str]], list[tuple[int, str, str]]]:
+    """(sessions, errors) from the opencode store, read-only. `sessions` is every
+    (time_created_ms, directory) under a work root -- so the caller can count
+    instances whose window matched no session at all (a join miss must not pass
+    as a clean audit); `errors` is (time_created_ms, session_directory,
+    error_message) for assistant messages that ended in an UnknownError. Both
+    empty when the DB is absent."""
+    if not db.exists():
+        return [], []
+    con = sqlite3.connect(f"file:{db}?mode=ro", uri=True)
+    try:
+        sessions = con.execute(
+            "select time_created, directory from session where directory like '%swebench-work/%'"
+        ).fetchall()
+        rows = con.execute(
+            "select m.time_created, s.directory, json_extract(m.data,'$.error.data.message') "
+            "from message m join session s on s.id = m.session_id "
+            "where json_extract(m.data,'$.error.name') = 'UnknownError'"
+        ).fetchall()
+    finally:
+        con.close()
+    return ([(int(t), d or "") for t, d in sessions],
+            [(int(t), d or "", msg or "") for t, d, msg in rows])
+
+
+def _in_instance(directory: str, iid: str) -> bool:
+    return any(directory == d or directory.startswith(d + "/") for d in (root + iid for root in WORK_ROOTS))
+
+
+def session_kill(errors: list[tuple[int, str, str]], iid: str, window: tuple[float, float]) -> tuple[str, str] | None:
+    """First (category, message) kill for `iid` among opencode sessions created
+    in `window` (unix seconds) under any work root. Sub-agent sessions share the
+    instance directory and are included."""
+    lo_ms, hi_ms = int(window[0] * 1000), int(window[1] * 1000)
+    for t, directory, msg in errors:
+        if not (lo_ms <= t <= hi_ms and _in_instance(directory, iid)):
+            continue
+        for pat, cat in SESSION_KILL_PATTERNS:
+            if re.search(pat, msg):
+                return (cat, msg)
+    return None
+
+
+def has_session(sessions: list[tuple[int, str]], iid: str, window: tuple[float, float]) -> bool:
+    lo_ms, hi_ms = int(window[0] * 1000), int(window[1] * 1000)
+    return any(lo_ms <= t <= hi_ms and _in_instance(d, iid) for t, d in sessions)
+
+
 _INSTALL_RC = re.compile(r"^# install(?: \(retry[^)]*\))?:.*?\nrc=(-?\d+)", re.MULTILINE | re.DOTALL)
 
 
@@ -104,7 +176,8 @@ def venv_state(pred: dict, env_log: Path) -> bool | None:
 
 
 def classify_log(log_text: str, rollout_rc: int, patch: str, elapsed: float,
-                 venv: bool | None = None) -> tuple[str, str | None]:
+                 venv: bool | None = None,
+                 kill: tuple[str, str] | None = None) -> tuple[str, str | None]:
     """Return (category, matched_pattern_or_None).
 
     Categories:
@@ -124,9 +197,14 @@ def classify_log(log_text: str, rollout_rc: int, patch: str, elapsed: float,
         Checked BEFORE the patch short-circuit: a patch written blind is
         not the same measurement as one the model could test.
       - infra_<sub>: matched an infrastructure failure pattern
+      - infra_server_toolcall_stream_shape (via `kill`): the opencode
+        session was aborted by the client's stream validator. Also checked
+        BEFORE the patch short-circuit.
     """
     if venv is False:
         return ("infra_no_venv", "env install failed -- no-venv fallback")
+    if kill is not None:
+        return (f"infra_{kill[0]}", f"opencode session killed: {kill[1]}")
     has_patch = bool((patch or "").strip())
     if has_patch:
         return ("real_diff", None)
@@ -166,6 +244,9 @@ def main():
                     help="If set, write infra-failure instance_ids one per line to this path")
     ap.add_argument("--write-report", default=None,
                     help="Where to write the audit JSON (default: <pred>/../audit-report.json)")
+    ap.add_argument("--opencode-db", default=str(OPENCODE_DB),
+                    help="opencode session store for the stream-kill rule on opencode lanes "
+                         "(default: %(default)s; 'none' disables the rule)")
     args = ap.parse_args()
 
     pred_path = Path(args.predictions).resolve()
@@ -180,6 +261,11 @@ def main():
     by_category: dict[str, list[dict]] = {}
     reroll_ids: list[str] = []
     total = 0
+    oc_errors: list[tuple[int, str, str]] | None = None
+    oc_sessions: list[tuple[int, str]] = []
+    oc_db = None if args.opencode_db == "none" else Path(args.opencode_db).expanduser()
+    opencode_sessions_checked = 0
+    opencode_unjoined: list[str] = []
 
     with pred_path.open() as fh:
         for line in fh:
@@ -205,7 +291,21 @@ def main():
                     pass
 
             venv = venv_state(d, logs_dir / f"{iid}.env.log")
-            category, match = classify_log(log_text, rollout_rc, patch, elapsed, venv)
+            kill = None
+            if oc_db is not None and str(d.get("scaffold", "")).startswith("opencode") and log_path.exists():
+                if oc_errors is None:
+                    oc_sessions, oc_errors = load_opencode_errors(oc_db)
+                    if not oc_db.exists():
+                        print(f"WARNING: opencode DB not found at {oc_db}; stream-kill rule skipped", file=sys.stderr)
+                # The session was created after the rollout started (log mtime - elapsed)
+                # and before the log was written; slack for env setup / clock skew.
+                end = log_path.stat().st_mtime
+                window = (end - float(elapsed or 0) - 600, end + 60)
+                kill = session_kill(oc_errors, iid, window)
+                opencode_sessions_checked += 1
+                if not has_session(oc_sessions, iid, window):
+                    opencode_unjoined.append(iid)
+            category, match = classify_log(log_text, rollout_rc, patch, elapsed, venv, kill)
             entry = {
                 "instance_id": iid,
                 "patch_len": len(patch),
@@ -232,6 +332,13 @@ def main():
     no_venv = len(by_category.get("infra_no_venv", []))
     if no_venv:
         print(f"  (infra_no_venv={no_venv}: env install failed -> agent ran blind; re-rolled for lane consistency)")
+    if opencode_sessions_checked:
+        kills = len(by_category.get("infra_server_toolcall_stream_shape", []))
+        print(f"  opencode stream-kill rule: {opencode_sessions_checked} instances checked against "
+              f"{oc_db}, {kills} killed sessions, {len(opencode_unjoined)} with no session in window")
+        if opencode_unjoined:
+            print(f"    WARNING: no opencode session found for {opencode_unjoined[:5]}{'...' if len(opencode_unjoined) > 5 else ''}"
+                  f" -- the rule could not see these (DB rotated? work root not in WORK_ROOTS?)")
     print(f"\n  → re-roll list size: {len(reroll_ids)} (these are NOT model verdicts; re-roll before scoring)")
 
     if reroll_ids[:5]:
@@ -247,6 +354,11 @@ def main():
         "by_category": {k: len(v) for k, v in sorted(by_category.items())},
         "reroll_instance_ids": reroll_ids,
         "infra_details": {k: v for k, v in sorted(by_category.items()) if k.startswith("infra_")},
+        "opencode_stream_kill_rule": {
+            "db": str(oc_db) if oc_db is not None else None,
+            "instances_checked": opencode_sessions_checked,
+            "instances_without_session": opencode_unjoined,
+        },
     }
     report_path.write_text(json.dumps(report, indent=2))
     print(f"\n  audit JSON: {report_path}")

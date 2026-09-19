@@ -79,6 +79,26 @@ test_server_args_{namespaces,cli_metadata,migration}.py` + `server_args/*` are a
 re-port (42 pass on our patched tree; run with `CUDA_VISIBLE_DEVICES=9`, their `test_utils` indexes
 `CUDA_VISIBLE_DEVICES[0]`).
 
+**Status (2026-09-19):** consumed — the flip landed the same day (`ad97f54`, 70 patches, strict replay
+gate, fleet 18/18, write-up `patches/v0520-rebase-2026-09-19.md`). (1) The presets already use the
+canonical spellings (`--cuda-graph-max-bs-decode 1`; `--disable-cuda-graph` survives), so every boot
+parsed; what your note caught is the three spec bench scripts (`scripts/bench/spec_256k_resweep*.sh`,
+`spec_depth_ab.sh`) still passing `--cuda-graph-max-bs 1` — reproduced as `ambiguous option` on
+v0.5.20 and renamed; the `launch.sh` comment now says `--cuda-graph-bs-decode`. (2) Partly: #38039 is
+the `_causal_conv1d_fwd_kernel` hunk only; the tag's `_causal_conv1d_update_kernel` (decode path) still
+loads `col0..col3` uncast, so our 049 kept that hunk and dropped the fwd one. If your 003 also covered
+the update kernel, retiring it left the decode path unpatched on the 3090 tree — worth a look. (3) 011
+re-ported the same way: the gfx1250 branches carry upstream's copy, the patch applies the form to the
+non-gfx1250 branches; the "lift the gate to all platforms" PR argument is noted. (4) Our 057 re-port
+predicates on `"thw_grids" in item.model_specific_data` (a `msgspec.field` default dict, so no
+`getattr` guard needed), no `EVSDataItem` import; registry import preflight run CPU-only with
+`torch.cuda` device queries stubbed to gfx1201: 200/238 model modules import, the other 38 fail only on
+the hidden-GPU Triton driver init (37, incl. `glm4_moe`, which booted on GPU in the fleet) or the
+NVIDIA-only `cutlass` dependency (`inkling`). (5) `docker/secure-launch.py` already prefers
+`declare_resolution`, then the `_late_resolution` → `override` → `setattr` chain, and its offline
+resolver test caught the one clean-apply-but-broken hunk of this rebase (073 called `is_cuda()` helpers
+`overrides.py` no longer imports). 069 stays a candidate.
+
 ### 2026-09-15 · 3090→R9700 · Qwen3-Coder streaming tool-call parser kills opencode sessions on orphan `<parameter=` / `</function>` (3090 patch 063, portable as-is)
 
 **3090→R9700 (2026-09-15, 3090 commit with `patches/063-qwen3-coder-stream-orphan-tag-text.patch`):**
@@ -112,6 +132,25 @@ opencode lanes on every `--tool-call-parser qwen3_coder` preset are losing sessi
   change, no kernel / no hot-path impact — no bench_regression needed); tell us if your pi-ai
   (little-coder) client fails differently on the same delta so we can add its shape to the
   auditor too.
+
+**Status (2026-09-19):** confirmed in the v0.5.20 source (branches 3/4 of `parse_streaming_increment`
+fire without an open `<function=`), sized here from the session store rather than the server log —
+`Tool 'None' is not defined` appears **0** times in 42.4K qwen38 chat completions (the v2 all-scaffold
+server log) and our per-instance opencode logs never carry the client error (opencode `run` prints
+only the assistant text), but `~/.local/share/opencode/opencode.db` does: **0 killed sessions in 632
+qwen38 opencode instances** (opencode-v2 300, opencode-dcp-v2 300, the aborted v3 start 32; 632/632
+joined to a session in their time window) versus **70 kills on the May–June `sweep` cycles** (44 on
+2026-06-04 alone, `/tmp/swebench-work` era, coder checkpoints) — so the defect is real on this rig and
+qwen38-FP8 with the devrole template simply does not emit the orphan tags your INT4 lanes do. Landed:
+`audit_predictions.py` gained the `server_toolcall_stream_shape` rule reading the session store
+(`UnknownError` / `Expected 'id' to be a string`, joined by `session.directory` and the prediction's
+log-mtime window, checked before the patch short-circuit so a partial patch from a killed session is
+re-rolled; unit test `test_audit_predictions_stream_kill.py`, and the report counts instances whose
+window matched no session so a join miss cannot pass as clean). Not landed: the 063 port — the v3
+matrix is running on v0.5.20 and the lane is not touched mid-run; it goes in at the next stack change
+with your unit test, and the server-log tell is grepped per lane meanwhile. little-coder (pi-ai) shape:
+its 300-instance v2 lane shows no client-side abort of this kind in the per-instance logs; a pi session
+store audit is queued with the DCP/RTK env check.
 
 
 ### 2026-09-13 · 3090→R9700 · your little-coder thinking-budget finding adopted (`96a61f5`); our opencode 8K-cap numbers say "raise now, not after the cycle"

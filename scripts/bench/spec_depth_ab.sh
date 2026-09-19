@@ -16,7 +16,7 @@ DRAFT=$HOME/AI/models/EAGLE3-Coder-30B-A3B
 CTXFILE=/tmp/spec256k-context.txt
 OUT=/tmp/dbg/spec-depth-ab; mkdir -p "$OUT"
 # --decode-log-interval 8 → frequent at-depth batches even when decode is slow (the collapse arm).
-SPEC_ARGS="--speculative-algorithm EAGLE3 --speculative-draft-model-path $DRAFT --speculative-draft-model-quantization unquant --speculative-num-steps 6 --speculative-eagle-topk 16 --speculative-num-draft-tokens 32 --speculative-attention-mode decode --cuda-graph-max-bs 1 --decode-log-interval 8"
+SPEC_ARGS="--speculative-algorithm EAGLE3 --speculative-draft-model-path $DRAFT --speculative-draft-model-quantization unquant --speculative-num-steps 6 --speculative-eagle-topk 16 --speculative-num-draft-tokens 32 --speculative-attention-mode decode --cuda-graph-max-bs-decode 1 --decode-log-interval 8"
 [ -s "$CTXFILE" ] || { echo "MISSING $CTXFILE"; exit 1; }
 
 stop_server(){ pkill -9 -f '[s]glang.launch_server' 2>/dev/null || true

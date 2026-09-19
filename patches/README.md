@@ -46,6 +46,23 @@ Every series change must pass:
 
 Also run `git diff --check`, focused unit/GPU tests, and the affected model capability checks.
 
+Two CPU-only checks catch what the apply/byte gates cannot — a hunk that applies cleanly but names a
+symbol upstream removed (073 on v0.5.20; an `EVSDataItem` import on the 3090's first 057 re-port broke
+90/238 model imports behind a green replay):
+
+```bash
+# undefined names in every file the series touches (from an env that has pyflakes; assert it loaded)
+grep -h '^+++ b/.*\.py$' patches/0*.patch | sed 's#^+++ b/##' | sort -u \
+  | (cd /data/sgl-v0520 && xargs ~/miniforge3/envs/sglang-triton36-v0518/bin/python -m pyflakes) | grep 'undefined name'
+# expected residue on v0.5.20: six hits in arg_groups/fields/serving.py -- pyflakes reading the quoted words
+# of upstream `Annotated[..., Arg(help="...")]` strings as forward references; those lines are pristine
+# every model module imports (GPU hidden; "driver-init-only" modules need a real card and are not a verdict)
+HIP_VISIBLE_DEVICES= python scripts/eval/registry_import_preflight.py
+```
+
+Then an offline `prepare_server_args` + `publish()` smoke for a hybrid preset (the secure-launch
+resolver test) before the first GPU boot.
+
 ## Current tree roles
 
 | Path | Role |

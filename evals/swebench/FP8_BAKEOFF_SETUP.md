@@ -111,6 +111,18 @@ and a lane that did not are not comparable on it. `audit_predictions.py` therefo
 `reroll_infra_failures.py` re-rolls it with the other infra classes. An instance whose environment is
 permanently unbuildable costs one extra rollout per cycle; fix the build instead of tolerating that.
 
+The other pre-short-circuit class is `infra_server_toolcall_stream_shape`: SGLang's `qwen3_coder`
+streaming detector emits a `tool_index=-1` delta when prose contains an orphan `<parameter=` /
+`</function>` tag, opencode's stream validator throws `Expected 'id' to be a string.` and the session
+ends mid-turn (3090 finding, 2026-09-15, [CROSS-TEAM.md](../../CROSS-TEAM.md)). opencode `run` never
+prints that error, so the auditor reads it from `~/.local/share/opencode/opencode.db` (`UnknownError`
+messages joined to the instance by `session.directory` and the prediction's log-mtime window) and
+reports how many instances matched no session at all, so a rotated store cannot pass as clean. A
+killed session's partial patch is re-rolled like a no-venv one. Sizing on this rig: 0 of 632 qwen38
+opencode instances (v2 + v2-dcp + the aborted v3 start), 70 on the May–June `sweep` cycles; the
+parser fix (3090 patch 063) is deferred to the next stack change so the running matrix stays on one
+server build.
+
 The host toolchain drifts from the official images (uv's managed Pythons start at 3.8, the bootstrap
 pulls current pip/setuptools, the spec's conda `packages` are not installed). `eval_env.SPEC_OVERRIDES`
 holds the per-`(repo, version)` corrections and `INSTALL_RETRIES` the install-line repairs; both are

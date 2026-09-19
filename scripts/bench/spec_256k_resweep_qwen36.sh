@@ -17,9 +17,9 @@ DRAFT=$MODELS_DIR/Qwen3.6-35B-A3B-DFlash
 CTXFILE=/tmp/spec256k-context-qwen36.txt
 ROOT=/tmp/dbg/spec256k-qwen36
 mkdir -p "$ROOT"
-# --cuda-graph-max-bs 1: single-user (conc=1) needs only the bs=1 graph; the preset's multi-bs
+# --cuda-graph-max-bs-decode 1: single-user (conc=1) needs only the bs=1 graph; the preset's multi-bs
 # capture OOMs at 262144 + the 2.24GB DFlash draft (same trap as the Coder-30B EAGLE3 arm).
-SPEC_ARGS="--speculative-algorithm DFLASH --speculative-draft-model-path $DRAFT --speculative-draft-model-quantization unquant --speculative-attention-mode decode --disable-overlap-schedule --cuda-graph-max-bs 1"
+SPEC_ARGS="--speculative-algorithm DFLASH --speculative-draft-model-path $DRAFT --speculative-draft-model-quantization unquant --speculative-attention-mode decode --disable-overlap-schedule --cuda-graph-max-bs-decode 1"
 
 [ -s "$CTXFILE" ] || { echo "MISSING $CTXFILE — build via: python scripts/bench/build_spec256k_context.py --tokenizer \$HOME/AI/models/Qwen3.6-35B-A3B-AWQ --out $CTXFILE --target-tokens 240000"; exit 1; }
 
