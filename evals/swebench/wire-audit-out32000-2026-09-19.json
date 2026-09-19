@@ -1,0 +1,299 @@
+{
+ "method": "capture_endpoint.py on 23334 with the server down; per scaffold: /mark/<scaffold> then run_rollouts.py --scaffold <scaffold> --instances 1 --instance-ids django__django-11001 --no-venv --no-sandbox --timeout 90 (harness interpreter, OUTPUT_BUDGET 32000, opencode limit.output 32000). Bodies recorded minus messages; the 30-token T=0 request before each scaffold's own request is the harness's server probe.",
+ "date": "2026-09-19",
+ "records": [
+  {
+   "mark": "opencode",
+   "t": 1789828053.8896132
+  },
+  {
+   "t": 1789828053.933176,
+   "path": "/v1/chat/completions",
+   "headers": {
+    "User-Agent": "Python-urllib/3.12"
+   },
+   "body": {
+    "model": "qwen38",
+    "max_tokens": 30,
+    "temperature": 0.0
+   },
+   "n_messages": 4,
+   "roles": [
+    "user",
+    "assistant",
+    "tool",
+    "user"
+   ],
+   "n_tools": null,
+   "has_input": false
+  },
+  {
+   "t": 1789828060.7017877,
+   "path": "/v1/chat/completions",
+   "headers": {
+    "User-Agent": "opencode/1.18.25 ai-sdk/provider-utils/4.0.23 runtime/bun/1.3.14"
+   },
+   "body": {
+    "model": "qwen38",
+    "max_tokens": 32000,
+    "stream": true,
+    "stream_options": {
+     "include_usage": true
+    }
+   },
+   "n_messages": 3,
+   "roles": [
+    "system",
+    "user",
+    "user"
+   ],
+   "n_tools": null,
+   "has_input": false
+  },
+  {
+   "t": 1789828061.568115,
+   "path": "/v1/chat/completions",
+   "headers": {
+    "User-Agent": "opencode/1.18.25 ai-sdk/provider-utils/4.0.23 runtime/bun/1.3.14"
+   },
+   "body": {
+    "model": "qwen38",
+    "max_tokens": 32000,
+    "tool_choice": "auto",
+    "stream": true,
+    "stream_options": {
+     "include_usage": true
+    }
+   },
+   "n_messages": 2,
+   "roles": [
+    "system",
+    "user"
+   ],
+   "n_tools": 10,
+   "has_input": false
+  },
+  {
+   "mark": "opencode-dcp",
+   "t": 1789828061.891261
+  },
+  {
+   "t": 1789828061.928733,
+   "path": "/v1/chat/completions",
+   "headers": {
+    "User-Agent": "Python-urllib/3.12"
+   },
+   "body": {
+    "model": "qwen38",
+    "max_tokens": 30,
+    "temperature": 0.0
+   },
+   "n_messages": 4,
+   "roles": [
+    "user",
+    "assistant",
+    "tool",
+    "user"
+   ],
+   "n_tools": null,
+   "has_input": false
+  },
+  {
+   "t": 1789828068.5452847,
+   "path": "/v1/chat/completions",
+   "headers": {
+    "User-Agent": "opencode/1.18.25 ai-sdk/provider-utils/4.0.23 runtime/bun/1.3.14"
+   },
+   "body": {
+    "model": "qwen38",
+    "max_tokens": 32000,
+    "stream": true,
+    "stream_options": {
+     "include_usage": true
+    }
+   },
+   "n_messages": 3,
+   "roles": [
+    "system",
+    "user",
+    "user"
+   ],
+   "n_tools": null,
+   "has_input": false
+  },
+  {
+   "t": 1789828069.43088,
+   "path": "/v1/chat/completions",
+   "headers": {
+    "User-Agent": "opencode/1.18.25 ai-sdk/provider-utils/4.0.23 runtime/bun/1.3.14"
+   },
+   "body": {
+    "model": "qwen38",
+    "max_tokens": 32000,
+    "tool_choice": "auto",
+    "stream": true,
+    "stream_options": {
+     "include_usage": true
+    }
+   },
+   "n_messages": 2,
+   "roles": [
+    "system",
+    "user"
+   ],
+   "n_tools": 11,
+   "has_input": false
+  },
+  {
+   "mark": "omp",
+   "t": 1789828069.7693548
+  },
+  {
+   "t": 1789828069.8056445,
+   "path": "/v1/chat/completions",
+   "headers": {
+    "User-Agent": "Python-urllib/3.12"
+   },
+   "body": {
+    "model": "qwen38",
+    "max_tokens": 30,
+    "temperature": 0.0
+   },
+   "n_messages": 4,
+   "roles": [
+    "user",
+    "assistant",
+    "tool",
+    "user"
+   ],
+   "n_tools": null,
+   "has_input": false
+  },
+  {
+   "t": 1789828076.0706117,
+   "path": "/v1/chat/completions",
+   "headers": {
+    "User-Agent": "Bun/1.4.0"
+   },
+   "body": {
+    "model": "qwen38",
+    "stream": true,
+    "stream_options": {
+     "include_usage": true
+    },
+    "max_completion_tokens": 32000,
+    "preserve_thinking": true,
+    "chat_template_kwargs": {
+     "preserve_thinking": true
+    },
+    "enable_thinking": true
+   },
+   "n_messages": 2,
+   "roles": [
+    "system",
+    "user"
+   ],
+   "n_tools": 11,
+   "has_input": false
+  },
+  {
+   "mark": "prime",
+   "t": 1789828076.31125
+  },
+  {
+   "t": 1789828076.3464184,
+   "path": "/v1/chat/completions",
+   "headers": {
+    "User-Agent": "Python-urllib/3.12"
+   },
+   "body": {
+    "model": "qwen38",
+    "max_tokens": 30,
+    "temperature": 0.0
+   },
+   "n_messages": 4,
+   "roles": [
+    "user",
+    "assistant",
+    "tool",
+    "user"
+   ],
+   "n_tools": null,
+   "has_input": false
+  },
+  {
+   "t": 1789828082.3894992,
+   "path": "/v1/chat/completions",
+   "headers": {
+    "User-Agent": "OpenAI/JS 6.47.0"
+   },
+   "body": {
+    "model": "qwen38",
+    "stream": true,
+    "stream_options": {
+     "include_usage": true
+    },
+    "store": false,
+    "max_completion_tokens": 32000
+   },
+   "n_messages": 2,
+   "roles": [
+    "system",
+    "user"
+   ],
+   "n_tools": 1,
+   "has_input": false
+  },
+  {
+   "mark": "little-coder",
+   "t": 1789828082.6617198
+  },
+  {
+   "t": 1789828082.6984034,
+   "path": "/v1/chat/completions",
+   "headers": {
+    "User-Agent": "Python-urllib/3.12"
+   },
+   "body": {
+    "model": "qwen38",
+    "max_tokens": 30,
+    "temperature": 0.0
+   },
+   "n_messages": 4,
+   "roles": [
+    "user",
+    "assistant",
+    "tool",
+    "user"
+   ],
+   "n_tools": null,
+   "has_input": false
+  },
+  {
+   "t": 1789828088.716741,
+   "path": "/v1/chat/completions",
+   "headers": {
+    "User-Agent": "OpenAI/JS 6.26.0"
+   },
+   "body": {
+    "model": "qwen38",
+    "stream": true,
+    "stream_options": {
+     "include_usage": true
+    },
+    "store": false,
+    "max_completion_tokens": 32000,
+    "reasoning_effort": "xhigh"
+   },
+   "n_messages": 4,
+   "roles": [
+    "developer",
+    "user",
+    "user",
+    "user"
+   ],
+   "n_tools": 26,
+   "has_input": false
+  }
+ ]
+}

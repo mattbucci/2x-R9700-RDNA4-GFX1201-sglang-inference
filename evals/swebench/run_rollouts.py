@@ -333,7 +333,16 @@ def _popen_agent(cmd: list, cwd, env: dict, timeout: int, log_path: Path) -> tup
         return 124, stdout or "", stderr or ""
 
 
-OPENCODE_OUTPUT_LIMIT = 16384  # matrix-wide max_tokens (omp/prime/little-coder send the same); 8192 through v2
+# Matrix-wide max_tokens on the wire (opencode limit.output, omp/prime/little-coder maxTokens;
+# dcode is server-bound). 8192 through v2; 16384 for the first 27 v3 instances (2026-09-18/19),
+# where 3 opencode sessions still ended on a `length` finish with an empty patch (the model
+# thinks past 16K at xhigh; the 3090 rig saw 0/571 at 32768). 32000 from the 2026-09-19 v3
+# restart: opencode and pi (prime) clamp anything above 32000 to 32000 on the wire (capture
+# endpoint, 2026-09-19), so 32000 is the largest value every scaffold sends verbatim. The
+# per-instance timeout (1800 s) stays the outer bound, so a turn that would have been a
+# `length` finish now ends as a timeout with whatever edits were made.
+OUTPUT_BUDGET = 32000
+OPENCODE_OUTPUT_LIMIT = OUTPUT_BUDGET
 
 
 def _check_opencode_limits(served: str, dcp: bool) -> str:
@@ -436,7 +445,7 @@ def _ensure_little_coder_profile(served: str, server_url: str) -> Path:
             "reasoning": True,
             "input": ["text"],
             "contextWindow": 262144,
-            "maxTokens": 16384,
+            "maxTokens": OUTPUT_BUDGET,
             "thinkingLevelMap": {"high": "xhigh", "xhigh": "xhigh", "max": "xhigh"},
             "cost": {"input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0},
         }],
@@ -448,7 +457,7 @@ def _ensure_little_coder_profile(served: str, server_url: str) -> Path:
 # little-coder profile for the served model, keyed `llamacpp/<served>` in the
 # package's own .pi/settings.json (see _ensure_little_coder_model_profile).
 LC_MODEL_PROFILE = {
-    "max_tokens": 16384,          # informational; the wire cap is models.json maxTokens
+    "max_tokens": OUTPUT_BUDGET,  # informational; the wire cap is models.json maxTokens
     "thinking_budget": 1000000,   # never trips the thinking-budget abort (server-bound instead)
     "skill_token_budget": 300,    # unchanged package defaults from here down
     "knowledge_token_budget": 200,
@@ -578,7 +587,7 @@ def _ensure_omp_profile(served: str, server_url: str) -> None:
           cacheRead: 0
           cacheWrite: 0
         contextWindow: 262144
-        maxTokens: 16384
+        maxTokens: {OUTPUT_BUDGET}
 """)
 
 
@@ -613,7 +622,7 @@ def _ensure_prime_profile(served: str, server_url: str) -> None:
             # explicit window/output cap (model-registry.js defaults are
             # 128000/16384 when omitted); matches the omp profile so the two
             # pi-derived lanes budget context identically.
-            "models": [{"id": served, "contextWindow": 262144, "maxTokens": 16384}],
+            "models": [{"id": served, "contextWindow": 262144, "maxTokens": OUTPUT_BUDGET}],
         }}}, indent=2))
 
 

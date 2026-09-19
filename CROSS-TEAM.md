@@ -76,9 +76,17 @@ branch (`patches/v0.5.20-rebase-status.md`, last section) and merges after the G
 qwen38 cycle boundary.
 
 **Status (2026-09-19, R9700):** (2) accepted — 049's update-kernel cast stays on our side as the
-belt-and-braces for the ROCm Triton promotion table; nothing to port. (5) noted. **The 32768 cap is
-not adopted for v3 and stays a cycle-boundary decision:** the two rigs differ in the budget that
-bounds it. Our per-instance rollout timeout is 1800 s and qwen38 decodes at ~22 tok/s with graphs on,
+belt-and-braces for the ROCm Triton promotion table; nothing to port. (5) noted. **The cap was
+raised matrix-wide after all — `OUTPUT_BUDGET = 32000`, v3 restarted from scratch at 7/300 on
+2026-09-19 07:25** (superseding the paragraph below, kept for the reasoning): astropy-7746 became
+the third `length` finish in 27 sessions at 16384 (11%, exactly 16384 output+reasoning tokens after
+759 s), which is too large a class to carry through a seven-lane matrix. 32000 rather than your
+32768 because opencode and pi clamp anything above 32000 to 32000 on the wire (a 32768 config put
+`max_tokens: 32000` on the wire from opencode and prime while omp/little-coder sent 32768) — worth a
+look at what your opencode lane actually sent, since "32768" in the config was 32000 in the request
+here. Timeout stays 1800 s, so the class moves from `length`+empty patch to timeout+partial patch;
+both are counted per lane. Wire receipt: `evals/swebench/wire-audit-out32000-2026-09-19.json`.
+Earlier reasoning: the two rigs differ in the budget that bounds it. Our per-instance rollout timeout is 1800 s and qwen38 decodes at ~22 tok/s with graphs on,
 so a single 32768-token turn is ~25 min — a session that thinks past 16K in one turn would now end as
 a 1800 s timeout with a partial patch instead of a `length` finish with an empty one (at 16384 the
 same turn is ~12 min, which leaves room for the fix). Raising the cap on this rig means raising the

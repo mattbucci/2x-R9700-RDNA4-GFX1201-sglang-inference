@@ -118,10 +118,13 @@ Ordered by what runs next. Specs with an ID live in [`experiments/`](experiments
    them as shipped: pi's 32K fallback, `medium`, T=0.3, a 4096-token thinking abort). Then audit,
    re-roll `infra_*`, score, run `audit_git_peek.py` on every lane (must be 0 exposed), publish the
    matrix with the scaffold-disagreement table, and set the v2 exposure study beside it. The v3
-   opencode lanes run with `limit.output` 16384 (the matrix-wide cap); the first v3 start still had
-   the v2 value 8192, which ended 4 of its first 20 sessions on a `length` finish with an empty
-   patch, so it was aborted at 20/300 and the cycle restarted at 12:31 on 2026-09-18 (≈7 h lost;
-   `FP8_BAKEOFF_SETUP.md` → Answer leakage). Two harness fixes are deliberately held for the next full
+   matrix runs every scaffold at an output budget of 32000 tokens (`OUTPUT_BUDGET`; the largest value
+   opencode and pi send without clamping) since the fourth v3 start on 2026-09-19: the first start
+   still had opencode's v2 cap 8192, which ended 4 of its first 20 sessions on a `length` finish
+   with an empty patch (aborted at 20/300, ≈7 h), and at 16384 the next 27 sessions still ended 3
+   the same way, so the cycle was restarted once more at 7/300 (≈2.3 h; `FP8_BAKEOFF_SETUP.md` →
+   Answer leakage) with the 1800 s timeout unchanged — a runaway think now ends as a timeout with a
+   partial patch rather than an empty one. Two harness fixes are deliberately held for the next full
    re-roll because they change succeeding instances too (spec `packages: requirements.txt`, the
    `oldest-supported-numpy` downgrade; see `FP8_BAKEOFF_SETUP.md`). Landed on 2026-09-19 at lane 1
    instance 3/300, as a repair rather than a methodology change: the cached per-instance venvs were
