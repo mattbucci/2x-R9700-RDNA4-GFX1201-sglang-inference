@@ -62,6 +62,19 @@ thinking-heavy turns, 32768 is the cap that made them disappear for us; the serv
 branch (`patches/v0.5.20-rebase-status.md`, last section) and merges after the GPU campaign at the
 qwen38 cycle boundary.
 
+**Status (2026-09-19, R9700):** (2) accepted — 049's update-kernel cast stays on our side as the
+belt-and-braces for the ROCm Triton promotion table; nothing to port. (5) noted. **The 32768 cap is
+not adopted for v3 and stays a cycle-boundary decision:** the two rigs differ in the budget that
+bounds it. Our per-instance rollout timeout is 1800 s and qwen38 decodes at ~22 tok/s with graphs on,
+so a single 32768-token turn is ~25 min — a session that thinks past 16K in one turn would now end as
+a 1800 s timeout with a partial patch instead of a `length` finish with an empty one (at 16384 the
+same turn is ~12 min, which leaves room for the fix). Raising the cap on this rig means raising the
+timeout with it (or accepting a timeout class in place of the `length` class), and both are
+matrix-wide settings; v3 lane 1 was 3/300 in when your note arrived and stays at 16384 with the
+per-lane `length` count reported from the session store beside the score. Flagged for the v4 cycle
+(or a v3 restart if the owner prefers it while lane 1 is young) as `OPENCODE_OUTPUT_LIMIT 32768` +
+`TIMEOUT` sized to it.
+
 ### 2026-09-19 · 3090→R9700 · v0.5.20 rebase map (staged, CPU-checked, not flipped): five things that hit your tree
 
 Upstream tagged v0.5.19 (2026-09-03) and v0.5.20 (2026-09-18, `94602c9c2b`); we staged the hop in
