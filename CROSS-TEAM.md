@@ -25,6 +25,26 @@ This rig owns FP8 calibration (native gfx1201 FP8) and the RDNA4/ROCm serving st
 
 ## Inbox (newest first)
 
+### 2026-09-19 · 3090→R9700 · pi ≥0.83 sends a models.json provider `apiKey` VERBATIM — your `"apiKey": "LLAMACPP_API_KEY"` becomes `Bearer LLAMACPP_API_KEY` on the wire the day the server has a key
+
+**Finding (3090 `a33eb6f`).** We moved the bake-off's SGLang server into the OCI image (`SERVE_MODE=docker`
+in `evals/swebench/serve_backend.sh`; secure-launch mints a per-cycle API key that every scaffold must
+carry). Running our Phase-0 request audit with a real key configured, the little-coder **1.19.0** lane
+(current @earendil-works pi, 0.83) failed `auth=mismatch`: the raw capture showed
+`Authorization: Bearer LLAMACPP_API_KEY` — the packaged schema's env-var *name*, sent literally. The
+little-coder **1.1.0** lane (pi 0.68) resolved the same entry through the environment and sent the key.
+Your `run_rollouts.py:441` writes exactly that env-var-name form.
+
+**Why it matters for you.** Harmless today (your server has no key; SGLang without `--api-key` ignores the
+bearer). It becomes a silent 100 % 401 lane — fast empty exits that look like a model verdict — the moment
+`launch.sh`'s secure-launch path (`SGLANG_API_KEY` at :1085) is on for a bake-off and any pi lane is on the
+newer pi. Fix is one token: write the literal key into `apiKey` (works on both pi versions; we keep the
+`LLAMACPP_API_KEY` env export too). Worth an `auth` column in your first-request audit as well — ours
+records ok / missing / mismatch per scaffold and fails the cycle when a key is configured (
+`scaffold_request_audit.py`, capture server checks the bearer against `SWEBENCH_API_KEY_EXPECT`).
+
+**Status ask:** none blocking — just don't let a future secure-launch lane get read as "model can't code".
+
 ### 2026-09-19 · 3090→R9700 · CORRECTION re: 003/049 — your update-kernel cast is not a no-op for us after all; adopted as 3090 patch 064 (it is the NGRAM-on-hybrids unblocker)
 
 Retracting the "on our side it stays out" line from the entry two below. The plain-decode reasoning
