@@ -1,0 +1,226 @@
+{
+ "opencode": {
+  "n": 1,
+  "counts": {
+   "git_READ": 0,
+   "git_LIST": 0,
+   "web_UPSTREAM": 0,
+   "web_SEARCH": 0,
+   "web_OTHER": 0,
+   "exposed": 0,
+   "isolated": 1,
+   "no_transcript": 0,
+   "exposed_overlap80": [
+    0,
+    0,
+    null
+   ],
+   "isolated_overlap80": [
+    0,
+    1,
+    0.0
+   ]
+  },
+  "instances": {
+   "django__django-11099": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 0.0,
+    "evidence": []
+   }
+  }
+ },
+ "opencode-dcp": {
+  "n": 1,
+  "counts": {
+   "git_READ": 0,
+   "git_LIST": 0,
+   "web_UPSTREAM": 0,
+   "web_SEARCH": 0,
+   "web_OTHER": 0,
+   "exposed": 0,
+   "isolated": 1,
+   "no_transcript": 0,
+   "exposed_overlap80": [
+    0,
+    0,
+    null
+   ],
+   "isolated_overlap80": [
+    1,
+    1,
+    1.0
+   ]
+  },
+  "instances": {
+   "django__django-11099": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 1.0,
+    "evidence": []
+   }
+  }
+ },
+ "little-coder": {
+  "n": 1,
+  "counts": {
+   "git_READ": 0,
+   "git_LIST": 0,
+   "web_UPSTREAM": 0,
+   "web_SEARCH": 0,
+   "web_OTHER": 0,
+   "exposed": 0,
+   "isolated": 1,
+   "no_transcript": 0,
+   "exposed_overlap80": [
+    0,
+    0,
+    null
+   ],
+   "isolated_overlap80": [
+    1,
+    1,
+    1.0
+   ]
+  },
+  "instances": {
+   "django__django-11099": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 1.0,
+    "evidence": []
+   }
+  }
+ },
+ "little-coder-rtk": {
+  "n": 1,
+  "counts": {
+   "git_READ": 0,
+   "git_LIST": 0,
+   "web_UPSTREAM": 0,
+   "web_SEARCH": 0,
+   "web_OTHER": 0,
+   "exposed": 0,
+   "isolated": 1,
+   "no_transcript": 0,
+   "exposed_overlap80": [
+    0,
+    0,
+    null
+   ],
+   "isolated_overlap80": [
+    0,
+    1,
+    0.0
+   ]
+  },
+  "instances": {
+   "django__django-11099": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 0.0,
+    "evidence": []
+   }
+  }
+ },
+ "omp": {
+  "n": 1,
+  "counts": {
+   "git_READ": 0,
+   "git_LIST": 0,
+   "web_UPSTREAM": 0,
+   "web_SEARCH": 0,
+   "web_OTHER": 0,
+   "exposed": 0,
+   "isolated": 1,
+   "no_transcript": 0,
+   "exposed_overlap80": [
+    0,
+    0,
+    null
+   ],
+   "isolated_overlap80": [
+    0,
+    1,
+    0.0
+   ]
+  },
+  "instances": {
+   "django__django-11099": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 0.0,
+    "evidence": []
+   }
+  }
+ },
+ "prime": {
+  "n": 1,
+  "counts": {
+   "git_READ": 0,
+   "git_LIST": 0,
+   "web_UPSTREAM": 0,
+   "web_SEARCH": 0,
+   "web_OTHER": 0,
+   "exposed": 0,
+   "isolated": 1,
+   "no_transcript": 0,
+   "exposed_overlap80": [
+    0,
+    0,
+    null
+   ],
+   "isolated_overlap80": [
+    1,
+    1,
+    1.0
+   ]
+  },
+  "instances": {
+   "django__django-11099": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 1.0,
+    "evidence": []
+   }
+  }
+ },
+ "dcode": {
+  "n": 1,
+  "counts": {
+   "git_READ": 0,
+   "git_LIST": 0,
+   "web_UPSTREAM": 0,
+   "web_SEARCH": 0,
+   "web_OTHER": 0,
+   "exposed": 0,
+   "isolated": 1,
+   "no_transcript": 0,
+   "exposed_overlap80": [
+    0,
+    0,
+    null
+   ],
+   "isolated_overlap80": [
+    1,
+    1,
+    1.0
+   ]
+  },
+  "instances": {
+   "django__django-11099": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 1.0,
+    "evidence": []
+   }
+  }
+ }
+}

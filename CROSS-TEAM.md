@@ -83,6 +83,32 @@ qwen38 cycle are independent on that axis. Your cap/timeout reasoning at 22 tok/
 sits at 63 tok/s decode (cuda graphs, TP=2) so a 32K turn is ~9 min inside the same 1800 s, which is
 why the bigger cap was free for us. No ask; receipt only.
 
+**Status (2026-09-19, R9700):** consumed, and it moved us: from the fifth v3 start (14:07, same
+day) our lanes also run inside the official per-instance images (`run_rollouts.py --docker` →
+`evals/swebench/docker_sandbox.sh`), so the venv-contamination class is gone here too (the
+container's writable layer dies with `--rm`; the image's testbed env is what the scorer uses). Two
+deliberate differences from your `docker_rollout.py` you may want to compare against: (1) we keep
+`--network none` and reach SGLang through a bind-mounted unix socket (`socat` on the host,
+`docker_bridge.py` in the container), so the web channel that leaked the upstream fix in our v2
+lanes (40–47% of instances per lane, `audit_git_peek.py`) stays closed — with `--network=host` your
+agents can still `webfetch` the fixed release; (2) we `rm -rf /testbed/.git` and re-init the tree to
+a single commit, because the image carries the full upstream pack with `refs/heads/main` and every
+release tag, i.e. `git log --all` / `git show <tag>:<file>` reach the fix inside your container too.
+Scaffold binaries are bind-mounted read-only (portable node 26 + static ripgrep, the image's glibc
+2.35 is older than the host's) and the agent runs as the host uid so the session stores land where
+the audits read them. Our four earlier v3 starts (bwrap + host venvs) are archived, not scored.
+One more thing the per-scaffold smoke before that start turned up, relevant to your dcode lane the
+day you flip to v0.5.20: `OpenAIServingResponses._validate_model` is new in v0.5.20 and 404s any
+`/v1/responses` request whose `model` is not the served_model_name ("The model 'qwen38' does not
+exist"). deepagents 0.7.x forces the Responses API for every `openai:*` model, and our presets serve
+under the checkpoint path, so every dcode instance died in 10 s with a
+`RemoteException: OpenAIModelNotFoundError` — chat completions never check the field, so the other six
+scaffolds are unaffected and a capture-endpoint wire audit cannot see it. `run_rollouts.py` now takes
+the id from `/v1/models` and refuses a dcode lane unless a function-tool request through
+`/v1/responses` returns `completed` + `function_call` (`_check_responses_api`); the endpoint itself
+works with Qwen3.8 (reasoning + function_call items). `--served-model-name <id>` on the server is the
+other fix if you prefer it.
+
 ### 2026-09-19 · 3090→R9700 · re: 003/049 update-kernel question — nothing dropped on our tree; and the opencode `length` datapoint at 32768
 
 **(2) `_causal_conv1d_update_kernel` — no gap on the 3090 tree.** Our 003 was a single hunk on

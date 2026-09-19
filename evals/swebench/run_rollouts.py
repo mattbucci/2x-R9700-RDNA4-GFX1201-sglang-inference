@@ -71,6 +71,12 @@ def parse_args():
                    help="Run scaffolds on the host network with the whole work root visible "
                         "(the v2 bakeoff configuration; leaks the upstream fix via web tools, "
                         "pip/PyPI and sibling work trees). Default: sandbox.sh per instance.")
+    p.add_argument("--docker", action="store_true",
+                   help="Run each scaffold inside the official SWE-bench instance image "
+                        "(sweb.eval.x86_64.<iid>) with the scaffold toolchain bind-mounted, no "
+                        "network except the server bridge, and the image's own testbed env "
+                        "(the environment score_docker.py scores in). Replaces ensure_repo + "
+                        "the uv venv + sandbox.sh; see docker_sandbox.sh.")
     p.add_argument("--claw-bin",
                    default=os.path.expanduser("~/.local/bin/claw"),
                    help="Path to the built claw binary (for --scaffold claw-code)")
@@ -214,6 +220,31 @@ exercise it correctly, stop — your final state will be captured as a `git diff
 {hints}
 """
 
+# Docker mode: the image's testbed env is the project's own test environment. It has pytest
+# only where the project uses pytest (django's does not -- its tests run through
+# `tests/runtests.py`), so the prompt must not promise `pytest` on every instance.
+PROMPT_TEMPLATE_IMAGE = """\
+You are working on a GitHub issue in this repository.
+
+The repo is already installed in editable mode in its test environment, which
+is active on your PATH: `python -c "..."` and the project's own test runner
+(`pytest` for projects that use it) work. Use this: write a fix, run the
+relevant tests, observe failures, refine until green.
+
+Read the problem carefully, locate the relevant code, and write the minimal
+patch that fixes the bug. Do not modify tests. Do not add new files unless
+strictly required. When you're confident the fix is correct AND the tests
+exercise it correctly, stop — your final state will be captured as a `git diff`.
+
+# Problem
+
+{problem_statement}
+
+# Hints (optional, may be empty)
+
+{hints}
+"""
+
 PROMPT_NO_VENV = """\
 You are working on a GitHub issue in this repository. The repo's dependencies
 could NOT be installed locally, so `pytest` and `import` will not work — you
@@ -271,9 +302,19 @@ def _start_bridge(server_url: str) -> tuple[Path, int]:
     # unix socket paths are capped at ~107 bytes: keep it in the runtime dir, not `out`
     sock = Path(os.environ.get("XDG_RUNTIME_DIR") or tempfile.gettempdir()) / f"swebench-bridge-{os.getpid()}.sock"
     sock.unlink(missing_ok=True)
+    def _die_with_parent():
+        # atexit does not run when this process is SIGKILLed (an aborted lane left a socat
+        # listening on a dead run's socket for 8 h, 2026-09-19); ask the kernel instead.
+        try:
+            import ctypes
+            ctypes.CDLL("libc.so.6", use_errno=True).prctl(1, 15)  # PR_SET_PDEATHSIG, SIGTERM
+        except Exception:
+            pass
+
     _BRIDGE = subprocess.Popen(
         ["socat", f"UNIX-LISTEN:{sock},fork,unlink-early", f"TCP4:{u.hostname}:{port}"],
         stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+        preexec_fn=_die_with_parent,
     )
     for _ in range(50):
         if sock.exists():
@@ -298,10 +339,112 @@ def _sandboxed(cmd: list) -> list:
             str(SANDBOX["bridge_sock"]), str(SANDBOX["port"]), "--", *cmd]
 
 
+# Docker rollout mode (--docker): {"bridge_sock", "port", "uid", "gid", "user", "out"} for the
+# run, plus per instance {"iid", "image", "name", "out_dir"}. The scaffold runs inside the
+# official SWE-bench instance image under docker_sandbox.sh; see that script for the
+# contract (work tree at the audited path, fresh git, bridge, host uid, /out/model.diff).
+DOCKER: dict | None = None
+DOCKER_IMAGE_PREFIX = "sweb.eval.x86_64."
+DOCKER_NODE_DIR = Path("/data/swebench-toolchain/node-v26.2.0-linux-x64")  # glibc 2.28 build; the host node needs 2.43
+# Static ripgrep for the containers (the images have none; the host build needs glibc 2.39).
+# dcode's grep tool and opencode's grep look for `rg` on PATH; bash tool calls may too.
+DOCKER_RG = Path("/data/swebench-toolchain/ripgrep-15.2.0-x86_64-unknown-linux-musl/rg")
+# Host-side grace on top of the in-container `timeout`: image start + prep (~5 s) + diff capture.
+DOCKER_GRACE = 120
+# In-container work root (docker_sandbox.sh moves the image's /testbed under it). Fixed
+# regardless of --workdir: the audits key sessions on this path, and every scaffold that
+# takes the tree on its command line (opencode --dir) must see the container path.
+DOCKER_WORK_ROOT = Path("/data/swebench-work")
+# Everything the container sees of $HOME, per scaffold. Nothing else on the host is visible --
+# in particular not ~/.cache/huggingface (the dataset with the gold patches), the repo checkout
+# (runs/ holds the other lanes' patches), /data/swebench-work (sibling trees) or ~/.secrets.
+DOCKER_MOUNTS_RO_COMMON = [".npm-global", ".local/bin/omp", ".local/bin/rtk", ".local/bin/dcode",
+                           ".local/share/uv"]
+DOCKER_MOUNTS = {  # scaffold -> (ro, rw), relative to $HOME
+    "opencode": ([".config/opencode"],
+                 [".local/share/opencode", ".cache/opencode", ".local/state/opencode"]),
+    "opencode-dcp": ([".config/opencode", ".config/opencode-dcp-lane"],
+                     [".local/share/opencode", ".cache/opencode", ".local/state/opencode"]),
+    "little-coder": ([".config/little-coder-swebench"],
+                     [".pi", ".little-coder", ".cache/little-coder"]),
+    "little-coder-rtk": ([".config/little-coder-swebench", ".config/little-coder-rtk"],
+                         [".pi", ".little-coder", ".cache/little-coder", ".local/share/rtk"]),
+    "omp": ([], [".omp-swebench", ".omp"]),
+    "prime": ([], [".prime"]),
+    "dcode": ([], [".deepagents"]),
+}
+DOCKER_PATH = ("/opt/miniconda3/envs/testbed/bin:/opt/node/bin:{home}/.npm-global/bin:{home}/.local/bin:"
+               "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin")
+
+
+def _docker_image(iid: str) -> str:
+    return f"{DOCKER_IMAGE_PREFIX}{iid}:latest"
+
+
+def _docker_image_present(image: str) -> bool:
+    return subprocess.run(["docker", "image", "inspect", image], stdout=subprocess.DEVNULL,
+                          stderr=subprocess.DEVNULL).returncode == 0
+
+
+def _docker_rm(name: str) -> None:
+    subprocess.run(["docker", "rm", "-f", name], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+
+def _dockerized(cmd: list, scaffold: str, scaffold_env: dict[str, str] | None, timeout: int) -> list:
+    """Wrap a scaffold command in `docker run` for the current DOCKER instance context."""
+    d = DOCKER
+    home = Path.home()
+    ro, rw = DOCKER_MOUNTS[scaffold]
+    argv = ["docker", "run", "--rm", "--init", "--network", "none", "--name", d["name"],
+            "--label", "swebench-rollout=1"]
+    env = {"HOME": str(home), "USER": d["user"], "LOGNAME": d["user"], "LANG": "C.UTF-8",
+           "TERM": "dumb", "PATH": DOCKER_PATH.format(home=home),
+           "CONDA_PREFIX": "/opt/miniconda3/envs/testbed", "CONDA_DEFAULT_ENV": "testbed",
+           "DO_NOT_TRACK": "1"}
+    for k, v in (scaffold_env or {}).items():
+        if k != "PATH":
+            env[k] = v
+    for k, v in env.items():
+        argv += ["-e", f"{k}={v}"]
+    for rel in DOCKER_MOUNTS_RO_COMMON + ro:
+        hp = home / rel
+        if hp.exists():
+            argv += ["-v", f"{hp}:{hp}:ro"]
+    for rel in rw:
+        hp = home / rel
+        hp.mkdir(parents=True, exist_ok=True)
+        argv += ["-v", f"{hp}:{hp}"]
+    here = Path(__file__).resolve().parent
+    argv += ["-v", f"{DOCKER_NODE_DIR}:/opt/node:ro",
+             "-v", f"{DOCKER_RG}:/usr/local/bin/rg:ro",
+             "-v", f"{here / 'docker_sandbox.sh'}:/sandbox/docker_sandbox.sh:ro",
+             "-v", f"{here / 'docker_bridge.py'}:/sandbox/docker_bridge.py:ro",
+             "-v", f"{d['bridge_sock']}:/run/swebench-bridge.sock",
+             "-v", f"{d['out_dir']}:/out",
+             d["image"], "bash", "/sandbox/docker_sandbox.sh",
+             str(d["uid"]), str(d["gid"]), d["user"], d["iid"], str(d["port"]), str(timeout),
+             "--", *[str(c) for c in cmd]]
+    return argv
+
+
+def _launch(cmd: list, cwd, scaffold: str, scaffold_env: dict[str, str] | None,
+            extra_env: dict[str, str] | None, timeout: int, log_path: Path) -> tuple[int, str, str]:
+    """Run a scaffold command on the host (sandbox.sh when SANDBOX) or, under --docker, inside
+    the instance image. In docker mode the host environment is not inherited: the container
+    gets PATH/HOME/CONDA_* from _dockerized plus the scaffold's own variables."""
+    if DOCKER:
+        return _popen_agent(_dockerized(cmd, scaffold, scaffold_env, timeout), None,
+                            os.environ.copy(), timeout + DOCKER_GRACE, log_path)
+    return _popen_agent(cmd, cwd, _base_env(extra_env, scaffold_env), timeout, log_path)
+
+
 def _popen_agent(cmd: list, cwd, env: dict, timeout: int, log_path: Path) -> tuple[int, str, str]:
     """Shared agent invocation: fresh process group so SIGKILL on timeout reaps the
     Node/Rust children too (default subprocess kill leaves them dangling — observed at
-    instance 23 where the parent died but a child kept the rollout stalled)."""
+    instance 23 where the parent died but a child kept the rollout stalled).
+    Under --docker the in-container `timeout` is the agent's budget and this timeout is
+    the outer bound (+DOCKER_GRACE); on expiry the container is killed by name, since
+    killing the `docker run` client alone leaves it running."""
     cmd = _sandboxed(cmd)
     t0 = time.time()
     # stdin=DEVNULL is load-bearing: the node CLIs (opencode, little-coder) wait for
@@ -316,11 +459,13 @@ def _popen_agent(cmd: list, cwd, env: dict, timeout: int, log_path: Path) -> tup
         rc = proc.returncode
         elapsed = time.time() - t0
         log_path.write_text(
-            f"# command\n{' '.join(str(c) for c in cmd[:-1])} <PROMPT>\n# sandbox {'on' if SANDBOX else 'off'}\n# elapsed {elapsed:.1f}s\n"
+            f"# command\n{' '.join(str(c) for c in cmd[:-1])} <PROMPT>\n# sandbox {'docker' if DOCKER else 'on' if SANDBOX else 'off'}\n# elapsed {elapsed:.1f}s\n"
             f"# returncode {rc}\n# stdout\n{stdout}\n# stderr\n{stderr}\n"
         )
         return rc, stdout, stderr
     except subprocess.TimeoutExpired:
+        if DOCKER:
+            _docker_rm(DOCKER["name"])
         try:
             os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
         except (ProcessLookupError, PermissionError):
@@ -343,6 +488,10 @@ def _popen_agent(cmd: list, cwd, env: dict, timeout: int, log_path: Path) -> tup
 # `length` finish now ends as a timeout with whatever edits were made.
 OUTPUT_BUDGET = 32000
 OPENCODE_OUTPUT_LIMIT = OUTPUT_BUDGET
+# opencode's `limit.context` is its compaction/overflow budget; the other scaffolds declare
+# the served window (262144) in their harness-owned profiles. opencode ran at 200000 through
+# the fourth v3 start (2026-09-19); 262144 from the Docker-mode start.
+OPENCODE_CONTEXT_LIMIT = 262144
 
 
 def _check_opencode_limits(served: str, dcp: bool) -> str:
@@ -357,10 +506,12 @@ def _check_opencode_limits(served: str, dcp: bool) -> str:
     for cfg in cfgs:
         models = json.loads(cfg.read_text())["provider"]["sglang"]["models"]
         lim = models.get(served, {}).get("limit", {})
-        if lim.get("output") != OPENCODE_OUTPUT_LIMIT:
+        if lim.get("output") != OPENCODE_OUTPUT_LIMIT or lim.get("context") != OPENCODE_CONTEXT_LIMIT:
             raise SystemExit(f"  PREFLIGHT FAILED: {cfg} {served} limit={lim} "
-                             f"(need output {OPENCODE_OUTPUT_LIMIT}) — refusing to start rollout")
-    return f"opencode {served} limit.output {OPENCODE_OUTPUT_LIMIT} in {len(cfgs)} config(s)"
+                             f"(need context {OPENCODE_CONTEXT_LIMIT} output {OPENCODE_OUTPUT_LIMIT}) "
+                             f"— refusing to start rollout")
+    return (f"opencode {served} limit.context {OPENCODE_CONTEXT_LIMIT} limit.output "
+            f"{OPENCODE_OUTPUT_LIMIT} in {len(cfgs)} config(s)")
 
 
 def run_opencode(model: str, repo_dir: Path, prompt: str, timeout: int, log_path: Path,
@@ -379,7 +530,8 @@ def run_opencode(model: str, repo_dir: Path, prompt: str, timeout: int, log_path
         # active only in this lane and the plain-opencode cell stays untouched.
         scaffold_env = {"OPENCODE_CONFIG_DIR":
                         str(Path.home() / ".config/opencode-dcp-lane/opencode")}
-    return _popen_agent(cmd, None, _base_env(extra_env, scaffold_env), timeout, log_path)
+    return _launch(cmd, None, "opencode-dcp" if dcp else "opencode", scaffold_env, extra_env,
+                   timeout, log_path)
 
 
 RTK_EXT_DIR = Path.home() / ".config" / "little-coder-rtk"
@@ -403,6 +555,54 @@ def _ensure_rtk_extension() -> Path:
 
 
 LC_PROFILE_DIR = Path.home() / ".config" / "little-coder-swebench"  # harness-owned
+
+
+def _check_responses_api(server_url: str, served: str) -> tuple[str, str]:
+    """Resolve the model id dcode must send and prove /v1/responses works before its lane.
+
+    dcode is the one scaffold on the Responses API (deepagents' built-in `openai` provider
+    profile sets `use_responses_api=True` for every `openai:*` model; deepagents 0.7.10).
+    Since SGLang v0.5.20 that endpoint validates `model` against the server's
+    served_model_name (`OpenAIServingResponses._validate_model`, absent in v0.5.18;
+    chat completions never checked), and the presets serve under the checkpoint path
+    -- so `-M openai:qwen38` was a 404 "The model 'qwen38' does not exist" in 10 s,
+    found in the 2026-09-19 Docker smoke. Take the id from /v1/models (the served name
+    when the server advertises it, else the single advertised id) and run a function-tool
+    request through the endpoint: a lane is refused unless it comes back `completed` with
+    a `function_call` item, so an endpoint regression fails the preflight, not 300 cells.
+    """
+    import urllib.request
+    with urllib.request.urlopen(f"{server_url.rstrip('/')}/v1/models", timeout=30) as r:
+        ids = [m["id"] for m in json.load(r)["data"]]
+    if served in ids:
+        model_id = served
+    elif len(ids) == 1:
+        model_id = ids[0]
+    else:
+        raise SystemExit(f"  PREFLIGHT FAILED: {served} not in /v1/models {ids} — refusing to start rollout")
+    payload = {
+        "model": model_id,
+        "input": "What is the weather in Paris right now? Use the get_weather tool.",
+        "tools": [{"type": "function", "name": "get_weather", "description": "Get current weather",
+                   "parameters": {"type": "object", "properties": {"city": {"type": "string"}},
+                                  "required": ["city"]}}],
+        "max_output_tokens": 4000,
+    }
+    req = urllib.request.Request(f"{server_url.rstrip('/')}/v1/responses",
+                                 data=json.dumps(payload).encode(),
+                                 headers={"Content-Type": "application/json"})
+    try:
+        with urllib.request.urlopen(req, timeout=300) as r:
+            body = json.loads(r.read())
+    except urllib.error.HTTPError as e:
+        raise SystemExit(f"  PREFLIGHT FAILED: /v1/responses model={model_id} -> {e.code}: "
+                         f"{e.read()[:300]!r} — refusing to start rollout")
+    kinds = [o.get("type") for o in body.get("output", [])]
+    if body.get("status") != "completed" or "function_call" not in kinds:
+        raise SystemExit(f"  PREFLIGHT FAILED: /v1/responses model={model_id} status={body.get('status')} "
+                         f"output={kinds} (need completed + function_call) — refusing to start rollout")
+    return model_id, (f"dcode /v1/responses model={model_id} status=completed output={kinds} "
+                      f"usage={body.get('usage', {}).get('output_tokens')} out-tokens")
 
 
 def _ensure_little_coder_profile(served: str, server_url: str) -> Path:
@@ -528,21 +728,23 @@ def run_little_coder(served: str, repo_dir: Path, prompt: str, timeout: int, log
     # (no "think carefully" preamble). The profile's thinkingLevelMap makes
     # xhigh a supported level so it reaches the wire unclamped.
     cmd = ["little-coder", "--print", "--model", f"llamacpp/{served}", "--thinking", "xhigh", prompt]
-    env = _base_env(extra_env, {
+    scaffold_env = {
         "LLAMACPP_BASE_URL": f"{server_url.rstrip('/')}/v1",
         "LLAMACPP_API_KEY": "noop",
         "LITTLE_CODER_MODELS_FILE": str(profile),
         # the /props + /v1/models n_ctx probe can never succeed against SGLang;
         # skipping it removes two HTTP round-trips per instance and a variable.
         "LITTLE_CODER_NO_CTX_PROBE": "1",
-    })
+    }
     if rtk:
         # little-coder-rtk lane: load the rtk Pi extension so bash tool calls are
         # rewritten to `rtk <cmd>` (compressed output; rtk gain tracks savings).
         # Fail-open by design: extension disables itself if rtk is missing/old.
         cmd[1:1] = ["--extension", str(_ensure_rtk_extension())]
-        env["PATH"] = f"{Path.home()}/.local/bin:" + env["PATH"]  # rtk binary lives here
-    return _popen_agent(cmd, str(repo_dir), env, timeout, log_path)
+        if not DOCKER:  # rtk binary lives here (the container PATH already has it)
+            scaffold_env["PATH"] = f"{Path.home()}/.local/bin:" + _base_env(extra_env)["PATH"]
+    return _launch(cmd, str(repo_dir), "little-coder-rtk" if rtk else "little-coder",
+                   scaffold_env, extra_env, timeout, log_path)
 
 
 def run_claw(served: str, claw_bin: str, repo_dir: Path, prompt: str, timeout: int, log_path: Path,
@@ -600,8 +802,8 @@ def run_omp(served: str, repo_dir: Path, prompt: str, timeout: int, log_path: Pa
     _ensure_omp_profile(served, server_url)
     cmd = [str(Path.home() / ".local/bin/omp"), "--model", f"sglang/{served}",
            "--yolo", "-p", prompt]
-    env = _base_env(extra_env, {"PI_CONFIG_DIR": OMP_PROFILE_DIR})
-    return _popen_agent(cmd, str(repo_dir), env, timeout, log_path)
+    return _launch(cmd, str(repo_dir), "omp", {"PI_CONFIG_DIR": OMP_PROFILE_DIR}, extra_env,
+                   timeout, log_path)
 
 
 def _ensure_prime_profile(served: str, server_url: str) -> None:
@@ -634,17 +836,20 @@ def run_prime(served: str, repo_dir: Path, prompt: str, timeout: int, log_path: 
            "--model", f"sglang/{served}", "-p", prompt]
     # DO_NOT_TRACK: prime sends pseudonymous usage metrics by default; eval
     # rollouts should not phone home.
-    env = _base_env(extra_env, {"DO_NOT_TRACK": "1"})
-    return _popen_agent(cmd, str(repo_dir), env, timeout, log_path)
+    return _launch(cmd, str(repo_dir), "prime", {"DO_NOT_TRACK": "1"}, extra_env, timeout, log_path)
 
 
 def run_dcode(served: str, repo_dir: Path, prompt: str, timeout: int, log_path: Path,
               extra_env: dict[str, str] | None = None,
-              server_url: str = "http://127.0.0.1:23334") -> tuple[int, str, str]:
+              server_url: str = "http://127.0.0.1:23334",
+              model_id: str | None = None) -> tuple[int, str, str]:
     # deepagents-code headless: -n runs a single task and exits (-q for clean
     # output); tools auto-run in headless mode. Model routing is plain
-    # LangChain/openai-SDK env: OPENAI_BASE_URL + `openai:<id>`; SGLang ignores
-    # the id. Inner --timeout stays under the outer SIGKILL window so dcode
+    # LangChain/openai-SDK env: OPENAI_BASE_URL + `openai:<id>`. The id goes to
+    # /v1/responses (deepagents' openai profile), which SGLang >= v0.5.20 checks
+    # against its served_model_name -- main() resolves it from /v1/models
+    # (_check_responses_api) and passes it as model_id; `served` is the fallback.
+    # Inner --timeout stays under the outer SIGKILL window so dcode
     # exits 124 on its own. Verified 2026-08-30 with deepagents-code 0.1.65.
     # --profile-override: deepagents has no profile for `openai:<served>`, and
     # without `max_input_tokens` its summarization middleware falls back to a
@@ -655,15 +860,14 @@ def run_dcode(served: str, repo_dir: Path, prompt: str, timeout: int, log_path: 
     # found the flag, CROSS-TEAM 2026-09-12). No sampling/effort is sent either
     # way (temperature/reasoning None on the model object).
     cmd = [str(Path.home() / ".local/bin/dcode"),
-           "-M", f"openai:{served}", "-n", prompt, "-q",
+           "-M", f"openai:{model_id or served}", "-n", prompt, "-q",
            "--max-turns", "60", "-S", "all", "--allow-fs-tools", "all",
            "--profile-override", json.dumps({"max_input_tokens": 262144}),
            "--timeout", str(max(60, timeout - 60))]
-    env = _base_env(extra_env, {
+    return _launch(cmd, str(repo_dir), "dcode", {
         "OPENAI_BASE_URL": f"{server_url.rstrip('/')}/v1",
         "OPENAI_API_KEY": "noop",
-    })
-    return _popen_agent(cmd, str(repo_dir), env, timeout, log_path)
+    }, extra_env, timeout, log_path)
 
 
 def capture_diff(repo_dir: Path) -> str:
@@ -776,6 +980,10 @@ def main():
     print(f"  preflight {info}", flush=True)
     if args.scaffold in ("opencode", "opencode-dcp"):
         print(f"  preflight {_check_opencode_limits(served, dcp=(args.scaffold == 'opencode-dcp'))}", flush=True)
+    dcode_model = served
+    if args.scaffold == "dcode":
+        dcode_model, info = _check_responses_api(args.server_url, served)
+        print(f"  preflight {info}", flush=True)
 
     out = Path(args.out)
     (out / "predictions").mkdir(parents=True, exist_ok=True)
@@ -783,8 +991,18 @@ def main():
     workdir = Path(args.workdir)
     workdir.mkdir(parents=True, exist_ok=True)
 
-    global SANDBOX
-    if args.no_sandbox:
+    global SANDBOX, DOCKER
+    if args.docker:
+        import getpass
+        for need in (DOCKER_NODE_DIR, DOCKER_RG):
+            if not need.exists():
+                raise SystemExit(f"  PREFLIGHT FAILED: {need} missing (portable toolchain for the containers)")
+        bridge_sock, port = _start_bridge(args.server_url)
+        DOCKER = {"bridge_sock": bridge_sock, "port": port, "uid": os.getuid(), "gid": os.getgid(),
+                  "user": getpass.getuser(), "out": out}
+        print(f"Sandbox: docker per instance ({DOCKER_IMAGE_PREFIX}<iid>, no network; "
+              f"server via {bridge_sock} -> :{port}; scaffold mounts {DOCKER_MOUNTS[args.scaffold]})", flush=True)
+    elif args.no_sandbox:
         print("Sandbox: OFF (host network, whole work root visible)", flush=True)
     else:
         bridge_sock, port = _start_bridge(args.server_url)
@@ -827,7 +1045,8 @@ def main():
                 continue
 
             print(f"[{i+1}/{len(ds)}] {iid}  repo={row['repo']}  base={row['base_commit'][:8]}", flush=True)
-            low = _disk_guard(workdir, args.venvdir, out)
+            low = _disk_guard(*((out, "/data/docker", "/data/containerd") if DOCKER
+                                else (workdir, args.venvdir, out)))
             if low:
                 print(f"\nABORT: {low} -- a full filesystem degrades every following rollout; "
                       f"free space and resume with --skip-existing (no prediction written for {iid}).",
@@ -835,18 +1054,44 @@ def main():
                 sys.exit(EX_TEMPFAIL)
             t0 = time.time()
             try:
-                try:
-                    inst_dir = ensure_repo(row["repo"], row["base_commit"], workdir, iid)
-                except subprocess.CalledProcessError as e:
-                    print(f"  CLONE FAIL: {e}", flush=True)
-                    continue
+                venv = None
+                venv_ok = None  # None: no env attempted; True/False: install result
+                image = None
+                if DOCKER:
+                    # The work tree lives inside the container at DOCKER_WORK_ROOT/<iid>
+                    # (docker_sandbox.sh moves the image's /testbed there) -- the path the
+                    # bake-off lanes use on the host, so the session stores record an audited
+                    # path; nothing is created on the host, --workdir is ignored.
+                    inst_dir = DOCKER_WORK_ROOT / iid
+                    image = _docker_image(iid)
+                    if not _docker_image_present(image):
+                        print(f"  DOCKER IMAGE MISSING: {image} -- no rollout (infra; pull it and resume)", flush=True)
+                        fp.write(json.dumps({"instance_id": iid, "model_name_or_path": args.model,
+                                             "scaffold": args.scaffold, "model_patch": "",
+                                             "rollout_returncode": -1,
+                                             "rollout_error": f"infra_docker_image_missing: {image}",
+                                             "rollout_seconds": 0.0, "docker": True}) + "\n")
+                        fp.flush()
+                        continue
+                    out_dir = out / "docker" / iid
+                    shutil.rmtree(out_dir, ignore_errors=True)
+                    out_dir.mkdir(parents=True)
+                    name = f"swebench-{args.scaffold}-{iid}"
+                    _docker_rm(name)  # a stale container from a killed run would block the name
+                    DOCKER.update(iid=iid, image=image, name=name, out_dir=out_dir)
+                    venv, venv_ok = True, True  # the image's testbed env: the scoring environment
+                    print(f"  env: {image} (testbed env; no network)", flush=True)
+                else:
+                    try:
+                        inst_dir = ensure_repo(row["repo"], row["base_commit"], workdir, iid)
+                    except subprocess.CalledProcessError as e:
+                        print(f"  CLONE FAIL: {e}", flush=True)
+                        continue
 
                 # Pre-rollout venv setup so the model can run pytest mid-iteration.
                 # If install fails we still attempt the rollout (read-edit-pray fallback),
                 # but the prompt warns the model that tests aren't available.
-                venv = None
-                venv_ok = None  # None: no env attempted; True/False: install result
-                if not args.no_venv:
+                if not args.no_venv and not DOCKER:
                     from eval_env import make_venv, install_deps, spec_overrides, venv_python
                     from swebench.harness.constants import MAP_REPO_VERSION_TO_SPECS
                     spec = MAP_REPO_VERSION_TO_SPECS.get(row["repo"], {}).get(row["version"])
@@ -866,15 +1111,17 @@ def main():
                         venv_ok = venv is not None
 
                 # Harness edits (pre_install seds, build artefacts) must not reach the patch.
-                _commit_harness_prep(inst_dir)
+                if not DOCKER:
+                    _commit_harness_prep(inst_dir)
 
-                prompt = (PROMPT_TEMPLATE if venv else PROMPT_NO_VENV).format(
+                prompt = (PROMPT_TEMPLATE_IMAGE if DOCKER else PROMPT_TEMPLATE if venv
+                          else PROMPT_NO_VENV).format(
                     problem_statement=row["problem_statement"],
                     hints=row.get("hints_text", "") or "(none)",
                 )
                 log_path = out / "logs" / f"{iid}.log"
                 extra_env = {}
-                if venv:
+                if venv and not DOCKER:
                     extra_env = {
                         "VIRTUAL_ENV": str(venv),
                         "PATH": f"{venv}/bin",
@@ -907,18 +1154,31 @@ def main():
                 elif args.scaffold == "dcode":
                     rc, _stdout, _stderr = run_dcode(served, inst_dir, prompt, args.timeout,
                                                      log_path, extra_env=extra_env,
-                                                     server_url=args.server_url)
+                                                     server_url=args.server_url,
+                                                     model_id=dcode_model)
                 else:  # claw-code
                     rc, _stdout, _stderr = run_claw(served, args.claw_bin, inst_dir, prompt, args.timeout,
                                                     log_path, extra_env=extra_env,
                                                     server_url=args.server_url)
-                # strip agent scratch dirs so they don't pollute the captured diff
-                subprocess.run(["rm", "-rf",
-                                str(inst_dir / ".claw"), str(inst_dir / ".opencode"),
-                                str(inst_dir / ".cache"), str(inst_dir / ".pi"),
-                                str(inst_dir / ".omp"), str(inst_dir / ".prime"),
-                                str(inst_dir / ".deepagents")], check=False)
-                diff = capture_diff(inst_dir)
+                if DOCKER:
+                    # docker_sandbox.sh stripped the scratch dirs and captured the diff in
+                    # the container; a missing file means it never reached that step
+                    # (prep/bridge failure -> rc 96/97, or the outer timeout killed it).
+                    _docker_rm(DOCKER["name"])
+                    diff_path = DOCKER["out_dir"] / "model.diff"
+                    if diff_path.exists():
+                        diff = diff_path.read_bytes().decode("utf-8", errors="replace")
+                    else:
+                        diff = ""
+                        print(f"  docker: no /out/model.diff from the container (rc={rc})", flush=True)
+                else:
+                    # strip agent scratch dirs so they don't pollute the captured diff
+                    subprocess.run(["rm", "-rf",
+                                    str(inst_dir / ".claw"), str(inst_dir / ".opencode"),
+                                    str(inst_dir / ".cache"), str(inst_dir / ".pi"),
+                                    str(inst_dir / ".omp"), str(inst_dir / ".prime"),
+                                    str(inst_dir / ".deepagents")], check=False)
+                    diff = capture_diff(inst_dir)
                 (out / "predictions" / f"{iid}.diff").write_text(diff)
 
                 entry = {
@@ -930,8 +1190,11 @@ def main():
                     "rollout_seconds": round(time.time() - t0, 1),
                     # audit_predictions.py re-rolls venv=False as infra_no_venv
                     "venv": venv_ok,
-                    "sandbox": SANDBOX is not None,
+                    "sandbox": SANDBOX is not None or DOCKER is not None,
+                    "docker": DOCKER is not None,
                 }
+                if DOCKER:
+                    entry["image"] = image
                 fp.write(json.dumps(entry) + "\n")
                 fp.flush()
 

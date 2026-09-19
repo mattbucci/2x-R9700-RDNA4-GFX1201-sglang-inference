@@ -85,6 +85,11 @@ INFRA_PATTERNS = [
     # state, the agent's every tool call errors, and the diff comes back
     # empty (or is the harness's own pre_install edit). Never a model verdict.
     (r"ENOSPC|No space left on device", "disk_full"),
+    # Docker mode (run_rollouts.py --docker): docker_sandbox.sh could not stage the
+    # image's /testbed (rc 96) or reach SGLang through the unix-socket bridge (rc 97),
+    # or the daemon refused the `docker run` itself. The agent never ran.
+    (r"\[docker_sandbox [0-9:]+\] (prep|bridge check) failed", "docker_sandbox"),
+    (r"docker: Error response from daemon|Cannot connect to the Docker daemon", "docker_daemon"),
 ]
 
 
@@ -305,7 +310,13 @@ def main():
                 opencode_sessions_checked += 1
                 if not has_session(oc_sessions, iid, window):
                     opencode_unjoined.append(iid)
-            category, match = classify_log(log_text, rollout_rc, patch, elapsed, venv, kill)
+            if str(d.get("rollout_error", "")).startswith("infra_"):
+                # run_rollouts.py refused the instance before any agent ran (docker mode:
+                # the official instance image is not present locally) -- always a re-roll.
+                err = str(d["rollout_error"])
+                category, match = err.split(":", 1)[0], err
+            else:
+                category, match = classify_log(log_text, rollout_rc, patch, elapsed, venv, kill)
             entry = {
                 "instance_id": iid,
                 "patch_len": len(patch),

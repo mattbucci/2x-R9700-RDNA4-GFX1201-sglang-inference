@@ -21,9 +21,10 @@ new quality flagship Qwen3.8-27B-FP8.
   decode from 24 to 197K input on the repaired RDNA4 block-FP8 dispatch (patch 005) with HIP graphs
   (v0.5.20 canonical sweep, 2026-09-19; 16.6 flat before graphs). Its
   seven-scaffold SWE-bench Lite bakeoff (300 instances per cell, Docker-scored) restarted as
-  **v3, sandboxed** (running since 2026-09-19 on the v0.5.20 graphs-on stack): the v2 lanes had let
-  the agents read the upstream fix through future git history and the web on 45–61% of instances,
-  so v2 is published only as an exposure study. Setup, the leak audit and the isolation design are in
+  **v3, sandboxed** (running since 2026-09-19 on the v0.5.20 graphs-on stack, every scaffold inside
+  the official per-instance SWE-bench image with no network): the v2 lanes had let the agents read
+  the upstream fix through future git history and the web on 45–61% of instances, so v2 is
+  published only as an exposure study. Setup, the leak audit and the isolation design are in
   [`evals/swebench/FP8_BAKEOFF_SETUP.md`](evals/swebench/FP8_BAKEOFF_SETUP.md).
 - **The patch series replays byte-identically** onto pristine v0.5.20 under the strict gate in
   [`patches/README.md`](patches/README.md).
@@ -104,18 +105,23 @@ as often as isolated ones. The July matrix above used the same work-tree layout 
 scaffolds, so both channels were open to it too (its sessions were not audited). The v2 cells are scored and kept as an exposure study
 (`qwen38-v2`, stratified by exposure in
 [`benchmarks/quality/swebench-leak-audit-qwen38-v2.json`](benchmarks/quality/swebench-leak-audit-qwen38-v2.json));
-the clean matrix is v3, rolling since 2026-09-18 with every scaffold in a no-network bubblewrap
-sandbox on a work tree fetched by base-commit sha (`FP8_BAKEOFF_SETUP.md` → Answer leakage and
-isolation).
+the clean matrix is v3, rolling since 2026-09-19 with every scaffold inside the official
+per-instance SWE-bench image — its own testbed env, `--network none` with a unix-socket bridge to
+SGLang, the tree re-initialised to a single commit (`FP8_BAKEOFF_SETUP.md` → Rollout environments,
+Answer leakage and isolation).
 
 ## Next steps
 
 Ordered by what runs next. Specs with an ID live in [`experiments/`](experiments/README.md).
 
-1. **Run the Qwen3.8 seven-scaffold bakeoff v3 to completion** (started 2026-09-18 after the five
-   complete v2 lanes were Docker-scored; ~3.5 days per lane at 17 min/instance): sandboxed scaffolds, fetch-by-sha work
-   trees, both little-coder lanes at 262144 / `xhigh` / no thinking cap through the harness (v2 ran
-   them as shipped: pi's 32K fallback, `medium`, T=0.3, a 4096-token thinking abort). Then audit,
+1. **Run the Qwen3.8 seven-scaffold bakeoff v3 to completion** (fifth start 2026-09-19 14:07 after
+   the five complete v2 lanes were Docker-scored; ~3.5 days per lane at 17 min/instance): every
+   scaffold inside the official per-instance SWE-bench image (`run_rollouts.py --docker`: the
+   image's testbed env, no network except the SGLang bridge, git re-initialised to one commit;
+   the four earlier v3 starts on host venvs + bubblewrap are archived, not scored), both
+   little-coder lanes at 262144 / `xhigh` / no thinking cap through the harness (v2 ran
+   them as shipped: pi's 32K fallback, `medium`, T=0.3, a 4096-token thinking abort), opencode at
+   `limit.context` 262144 (it was the last lane declaring 200000). Then audit,
    re-roll `infra_*`, score, run `audit_git_peek.py` on every lane (must be 0 exposed), publish the
    matrix with the scaffold-disagreement table, and set the v2 exposure study beside it. The v3
    matrix runs every scaffold at an output budget of 32000 tokens (`OUTPUT_BUDGET`; the largest value
@@ -124,14 +130,11 @@ Ordered by what runs next. Specs with an ID live in [`experiments/`](experiments
    with an empty patch (aborted at 20/300, ≈7 h), and at 16384 the next 27 sessions still ended 3
    the same way, so the cycle was restarted once more at 7/300 (≈2.3 h; `FP8_BAKEOFF_SETUP.md` →
    Answer leakage) with the 1800 s timeout unchanged — a runaway think now ends as a timeout with a
-   partial patch rather than an empty one. Two harness fixes are deliberately held for the next full
-   re-roll because they change succeeding instances too (spec `packages: requirements.txt`, the
-   `oldest-supported-numpy` downgrade; see `FP8_BAKEOFF_SETUP.md`). Landed on 2026-09-19 at lane 1
-   instance 3/300, as a repair rather than a methodology change: the cached per-instance venvs were
-   carried from lane to lane with whatever the previous lane's agent had `pip install`ed or renamed
-   in them (24/300, one of them uv-breaking, so astropy-14182 ran no-venv in every lane since
-   2026-09-18); the 24 were deleted, the rest fingerprinted, and `make_venv` now rebuilds any venv
-   whose fingerprint changed (`FP8_BAKEOFF_SETUP.md` → Rollout environments).
+   partial patch rather than an empty one. The host-mode environment problems that shaped the
+   fourth start (harness venv specs, the `oldest-supported-numpy` downgrade, per-instance venvs
+   carried from lane to lane with the previous agent's `pip install`s — 24/300, one uv-breaking)
+   do not exist in Docker mode: the image's testbed env is the scorer's, and the container's
+   writable layer dies with it (`FP8_BAKEOFF_SETUP.md` → Rollout environments).
 2. **Chase the residual qwen38 decode gap now that graphs are on.** The 2026-09-19 same-server A/B
    ([receipt](benchmarks/qwen38-27b-fp8/graph-ab-2026-09-19.json), v0.5.18, 3 runs/point, idle CPU)
    measured HIP graphs off→on at 16.9→22.5 (24 tok), 16.9→22.2 (6.5K), 16.8→21.6 (52K) and

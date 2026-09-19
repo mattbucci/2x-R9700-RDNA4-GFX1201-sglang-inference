@@ -20,7 +20,9 @@
 #   POLL_SECS      WAIT_FOR_PID poll interval in seconds (default: 60)
 #   RUN_TAG        passed through to run_model_cycle.sh; also suffixes the
 #                  per-cycle log dir (<preset>-<RUN_TAG>) when set
-#   SANDBOX        passed through to run_model_cycle.sh (default 1)
+#   DOCKER         passed through to run_model_cycle.sh (default 1: rollouts inside the
+#                  official SWE-bench instance images)
+#   SANDBOX        passed through to run_model_cycle.sh (default 1; host mode only)
 #
 # Detach pattern (recommended — survives session interrupts):
 #   mkdir -p /data/logs/run-model-cycle-logs

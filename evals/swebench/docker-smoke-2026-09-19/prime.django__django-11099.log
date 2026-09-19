@@ -1,0 +1,27 @@
+# command
+docker run --rm --init --network none --name swebench-prime-django__django-11099 --label swebench-rollout=1 -e HOME=/home/letsrtfm -e USER=letsrtfm -e LOGNAME=letsrtfm -e LANG=C.UTF-8 -e TERM=dumb -e PATH=/opt/miniconda3/envs/testbed/bin:/opt/node/bin:/home/letsrtfm/.npm-global/bin:/home/letsrtfm/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin -e CONDA_PREFIX=/opt/miniconda3/envs/testbed -e CONDA_DEFAULT_ENV=testbed -e DO_NOT_TRACK=1 -v /home/letsrtfm/.npm-global:/home/letsrtfm/.npm-global:ro -v /home/letsrtfm/.local/bin/omp:/home/letsrtfm/.local/bin/omp:ro -v /home/letsrtfm/.local/bin/rtk:/home/letsrtfm/.local/bin/rtk:ro -v /home/letsrtfm/.local/bin/dcode:/home/letsrtfm/.local/bin/dcode:ro -v /home/letsrtfm/.local/share/uv:/home/letsrtfm/.local/share/uv:ro -v /home/letsrtfm/.prime:/home/letsrtfm/.prime -v /data/swebench-toolchain/node-v26.2.0-linux-x64:/opt/node:ro -v /data/swebench-toolchain/ripgrep-15.2.0-x86_64-unknown-linux-musl/rg:/usr/local/bin/rg:ro -v /home/letsrtfm/AI/2x-R9700-RDNA4-GFX1201-sglang-inference/evals/swebench/docker_sandbox.sh:/sandbox/docker_sandbox.sh:ro -v /home/letsrtfm/AI/2x-R9700-RDNA4-GFX1201-sglang-inference/evals/swebench/docker_bridge.py:/sandbox/docker_bridge.py:ro -v /run/user/1000/swebench-bridge-1448150.sock:/run/swebench-bridge.sock -v /tmp/claude-1000/-home-letsrtfm-AI-2x-R9700-RDNA4-GFX1201-sglang-inference/4375db00-520f-43b7-8df5-c2b08fa18013/scratchpad/dsmoke/func-prime/docker/django__django-11099:/out sweb.eval.x86_64.django__django-11099:latest bash /sandbox/docker_sandbox.sh 1000 1001 letsrtfm django__django-11099 23334 900 -- /home/letsrtfm/.npm-global/bin/prime-agent --model sglang/qwen38 -p <PROMPT>
+# sandbox docker
+# elapsed 233.3s
+# returncode 0
+# stdout
+
+
+The fix is complete.
+
+**Problem:** `ASCIIUsernameValidator` and `UnicodeUsernameValidator` used `r'^[\w.@+-]+$'`. In Python regexes, `$` matches at the end of the string *or* just before a trailing newline, so usernames ending in `\n` were accepted.
+
+**Fix (minimal patch):** in `django/contrib/auth/validators.py`, changed the regex in both validators from `r'^[\w.@+-]+$'` to `r'^[\w.@+-]+\Z'` — `\Z` matches only at the true end of the string, rejecting any trailing newline (this matches the upstream Django resolution of this issue).
+
+**Verification (in the project's venv at `/opt/miniconda3/envs/testbed`):**
+- `joe\n` is now rejected by both validators with the proper `ValidationError`.
+- Valid usernames (`joe`, `René`, `أحمد`, `glenn`, `jean-marc`) still pass; deconstruction still works.
+- Ran `python tests/runtests.py auth_tests validation` → `Ran 546 tests ... OK`, including all 22 existing `test_validators` tests.
+
+No tests were modified and no new files were added; the final state is a two-line diff as shown above.
+
+# stderr
+[docker_sandbox 20:43:08] prep done in 2831ms: tree=/data/swebench-work/django__django-11099 env=Python 3.6.13 :: Anaconda, Inc. bridge=:23334 ok
+[docker_sandbox 20:43:08] agent start uid=1000 cwd=/data/swebench-work/django__django-11099 python=/opt/miniconda3/envs/testbed/bin/python node=/opt/node/bin/node timeout=900s
+[docker_sandbox 20:46:58] agent exit rc=0 after 230s
+[docker_sandbox 20:46:58] diff 893 bytes
+

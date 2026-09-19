@@ -1,0 +1,120 @@
+{
+ "date": "2026-09-19",
+ "server": "http://127.0.0.1:23334 (qwen38, v0.5.20 + 70 patches, graphs on)",
+ "mode": "run_rollouts.py --docker (docker_sandbox.sh in sweb.eval.x86_64.<iid>, --network none + unix-socket bridge)",
+ "timeout_s": "900 per functional row; 30 for the timeout-path row (expects rc 124 from the in-container timeout)",
+ "notes": [
+  "dcode: first attempt failed in 10 s with a 404 from /v1/responses (model id 'qwen38' vs served '/data/models/Qwen3.8-27B-FP8'; SGLang v0.5.20 _validate_model); fixed by resolving the id from /v1/models (_check_responses_api) - the row below is the rerun.",
+  "opencode: first attempt failed in 6 s (opencode --dir got the host --workdir path); fixed via DOCKER_WORK_ROOT - the row below is the rerun."
+ ],
+ "rows": [
+  {
+   "scaffold": "dcode",
+   "instance_id": "django__django-11099",
+   "image": "sweb.eval.x86_64.django__django-11099:latest",
+   "timeout_s": 900,
+   "rollout_returncode": 0,
+   "rollout_seconds": 314.6,
+   "patch_bytes": 893,
+   "prep_ms": 2764,
+   "agent_python": "/opt/miniconda3/envs/testbed/bin/python",
+   "node": "/opt/node/bin/node",
+   "errors": []
+  },
+  {
+   "scaffold": "little-coder",
+   "instance_id": "django__django-11099",
+   "image": "sweb.eval.x86_64.django__django-11099:latest",
+   "timeout_s": 900,
+   "rollout_returncode": 0,
+   "rollout_seconds": 350.3,
+   "patch_bytes": 893,
+   "prep_ms": 2769,
+   "agent_python": "/opt/miniconda3/envs/testbed/bin/python",
+   "node": "/opt/node/bin/node",
+   "errors": []
+  },
+  {
+   "scaffold": "little-coder-rtk",
+   "instance_id": "django__django-11099",
+   "image": "sweb.eval.x86_64.django__django-11099:latest",
+   "timeout_s": 900,
+   "rollout_returncode": 0,
+   "rollout_seconds": 137.7,
+   "patch_bytes": 895,
+   "prep_ms": 2760,
+   "agent_python": "/opt/miniconda3/envs/testbed/bin/python",
+   "node": "/opt/node/bin/node",
+   "errors": []
+  },
+  {
+   "scaffold": "omp",
+   "instance_id": "django__django-11099",
+   "image": "sweb.eval.x86_64.django__django-11099:latest",
+   "timeout_s": 900,
+   "rollout_returncode": 0,
+   "rollout_seconds": 118.5,
+   "patch_bytes": 895,
+   "prep_ms": 2878,
+   "agent_python": "/opt/miniconda3/envs/testbed/bin/python",
+   "node": "/opt/node/bin/node",
+   "errors": []
+  },
+  {
+   "scaffold": "opencode",
+   "instance_id": "django__django-11099",
+   "image": "sweb.eval.x86_64.django__django-11099:latest",
+   "timeout_s": 900,
+   "rollout_returncode": 0,
+   "rollout_seconds": 150.6,
+   "patch_bytes": 895,
+   "prep_ms": 2774,
+   "agent_python": "/opt/miniconda3/envs/testbed/bin/python",
+   "node": "/opt/node/bin/node",
+   "errors": [
+    "Traceback (most recent call last):",
+    "Traceback (most recent call last):",
+    "Traceback (most recent call last):"
+   ]
+  },
+  {
+   "scaffold": "opencode-dcp",
+   "instance_id": "django__django-11099",
+   "image": "sweb.eval.x86_64.django__django-11099:latest",
+   "timeout_s": 900,
+   "rollout_returncode": 0,
+   "rollout_seconds": 231.8,
+   "patch_bytes": 893,
+   "prep_ms": 2765,
+   "agent_python": "/opt/miniconda3/envs/testbed/bin/python",
+   "node": "/opt/node/bin/node",
+   "errors": []
+  },
+  {
+   "scaffold": "prime",
+   "instance_id": "django__django-11099",
+   "image": "sweb.eval.x86_64.django__django-11099:latest",
+   "timeout_s": 900,
+   "rollout_returncode": 0,
+   "rollout_seconds": 234.3,
+   "patch_bytes": 893,
+   "prep_ms": 2831,
+   "agent_python": "/opt/miniconda3/envs/testbed/bin/python",
+   "node": "/opt/node/bin/node",
+   "errors": []
+  },
+  {
+   "scaffold": "timeout-path-omp",
+   "instance_id": "django__django-11099",
+   "image": "sweb.eval.x86_64.django__django-11099:latest",
+   "timeout_s": 30,
+   "rollout_returncode": 124,
+   "rollout_seconds": 35.2,
+   "patch_bytes": 0,
+   "prep_ms": 2735,
+   "agent_python": "/opt/miniconda3/envs/testbed/bin/python",
+   "node": "/opt/node/bin/node",
+   "errors": []
+  }
+ ]
+}

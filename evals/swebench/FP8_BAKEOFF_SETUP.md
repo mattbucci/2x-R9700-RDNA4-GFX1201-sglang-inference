@@ -25,7 +25,8 @@ the scaffold name. What each lane declares for `qwen38` (server `max_model_len` 
 |---|---|---|
 | opencode, opencode-dcp **through v2** (and the aborted first v3 start) | `~/.config/opencode/opencode.json` `limit` (the dcp lane's `~/.config/opencode-dcp-lane/opencode/opencode.json` copies it) | 200000 / **8192** — the cap covers thinking + answer; at `xhigh` 26/300 v2 sessions and 4/20 of the first v3 start ended on a `length` finish (empty patch, rc=0) |
 | opencode, opencode-dcp **2026-09-18 → 2026-09-19 07:25** (the second and third v3 starts, 27 instances) | same files, `limit.output` raised to the matrix-wide value | 200000 / 16384 (wire-verified with `capture_endpoint.py`: `max_tokens: 16384`); 3 of those 27 sessions still ended `length` |
-| opencode, opencode-dcp **since 2026-09-19** (fourth v3 start) | same files, `limit.output` = `OUTPUT_BUDGET` | 200000 / **32000** — not 32768: opencode and pi clamp anything above 32000 to 32000 on the wire (a 32768 config sent `max_tokens: 32000` from opencode and prime while omp/little-coder sent 32768), so 32000 is the largest value every scaffold sends verbatim; wire receipt [`wire-audit-out32000-2026-09-19.json`](wire-audit-out32000-2026-09-19.json) |
+| opencode, opencode-dcp **2026-09-19 07:25 → 13:36** (fourth v3 start) | same files, `limit.output` = `OUTPUT_BUDGET` | 200000 / **32000** — not 32768: opencode and pi clamp anything above 32000 to 32000 on the wire (a 32768 config sent `max_tokens: 32000` from opencode and prime while omp/little-coder sent 32768), so 32000 is the largest value every scaffold sends verbatim; wire receipt [`wire-audit-out32000-2026-09-19.json`](wire-audit-out32000-2026-09-19.json) |
+| opencode, opencode-dcp **since 2026-09-19 14:07** (fifth v3 start, Docker mode) | same files, `limit.context` raised to the served window | **262144** / 32000 — the only lane that still declared 200000; `run_rollouts.py` now refuses to start an opencode lane unless both values match (`OPENCODE_CONTEXT_LIMIT`, `OUTPUT_BUDGET`) |
 | omp | harness profile `~/.omp-swebench/agent/models.yml` | 262144 / 16384 through 2026-09-19 07:25, 32000 since (`max_completion_tokens: 32000` on the wire) |
 | prime | harness profile `~/.prime/agent/models.json` (explicit since 2026-09-12; prime defaults 128000 / 16384 when omitted) | 262144 / 16384 through 2026-09-19 07:25, 32000 since |
 | little-coder, little-coder-rtk **before 2026-09-12** | pi `buildFallbackModel()` clone of the packaged `llamacpp` entry | **32768 / 4096** |
@@ -77,7 +78,7 @@ the server, no GPU involved; opencode from its session store):
 | opencode, opencode-dcp | none → `xhigh` | none → server defaults | `limit.output` covers thinking + answer. At 8192 (through v2): 73 of 18343 assistant turns (0.4%) ended `length` across all models, but for qwen38 at `xhigh` a `length` turn ends the session — no tool call, no text, opencode exits 0 with an empty patch (26/300 v2 sessions; 4/20 in the first v3 start, each at exactly 8192 output+reasoning tokens in the session store). 16384 from 2026-09-18 (v3), matching omp/prime/little-coder; at 16384, 3 of the first 27 v3 sessions still ended `length` (django-11019 in both starts, django-11620, astropy-7746 at exactly 16384 output+reasoning tokens after 759 s) — the model thinks past 16K at `xhigh` on some instances. **32000 matrix-wide since the 2026-09-19 07:25 restart** (`OUTPUT_BUDGET` in `run_rollouts.py`; the 3090 rig saw 0 `length` finishes in 571 sessions at its 32768). The 1800 s per-instance timeout is unchanged, so at ~22 tok/s a turn that would have been a `length` finish (empty patch) now ends as a timeout with whatever edits were made — a different failure class, counted per lane beside the `length` count | max thinking; the cap is the matrix-wide one, so a `length` ending is a uniform condition rather than an opencode handicap — never raise it for one scaffold alone; report the per-lane `length` count from the session store beside the score |
 | omp | none → `xhigh` (`reasoning: true` profile) | none | `maxTokens` = `OUTPUT_BUDGET` (16384 through 2026-09-19 07:25, 32000 since); observed max 9035 output tokens at 16384 | max thinking |
 | prime | none → `xhigh` (`compat.supportsReasoningEffort: false`, so pi's own level never reaches the wire) | none | `maxTokens` = `OUTPUT_BUDGET` (pi clamps >32000 to 32000 on the wire, which is why the budget is 32000 rather than 32768) | max thinking |
-| dcode | `/v1/responses` with no `reasoning` object → `xhigh` | none | server-bound | max thinking |
+| dcode | `/v1/responses` with no `reasoning` object → `xhigh` (deepagents' `openai` provider profile forces the Responses API; since v0.5.20 that endpoint 404s any `model` other than the served id, so `run_rollouts.py` resolves it from `/v1/models` and proves a function-tool request through the endpoint before the lane — the served-name form `openai:qwen38` failed every dcode instance in 10 s on the 2026-09-19 Docker smoke) | none | server-bound | max thinking |
 | little-coder, little-coder-rtk **before 2026-09-13** | `reasoning_effort: "medium"` (pi `DEFAULT_THINKING_LEVEL`) | `temperature: 0.3` (benchmark-profiles `default_model_profile`) | thinking-budget extension aborts the turn at ~4096 estimated thinking tokens, forces thinking "off" (for Qwen3.8 that only drops the field — the server still thinks at xhigh) and nudges "commit to an implementation now"; breached in 21/258 and 28/287 sessions at medium; the 32K arms additionally hit `max_completion_tokens 4096` on 12.7% of turns | **not** max thinking |
 | little-coder, little-coder-rtk **since 2026-09-13** | `reasoning_effort: "xhigh"` | none → server defaults | thinking_budget 1000000 (never trips) | max thinking |
 
@@ -99,7 +100,39 @@ thinking tokens per turn, the unpinned configuration looped abort → nudge → 
 
 ## Rollout environments
 
-`run_rollouts.py` gives the agent a per-instance uv venv (`$SWEBENCH_VENVDIR/<instance_id>`) built by
+**Docker mode (the v3 matrix since its fifth start, 2026-09-19 14:07; `DOCKER=1` default in
+`run_model_cycle.sh`, `run_rollouts.py --docker`).** Every instance runs its scaffold inside the
+unmodified official SWE-bench image `sweb.eval.x86_64.<instance_id>` — the same image the scorer
+uses, so the agent's Python is the harness-built testbed conda env (`/opt/miniconda3/envs/testbed`,
+e.g. Python 3.6.13 for django-11099) with the repo installed exactly as the tests will see it, and
+nothing the harness adds on top (no `pytest` where the image has none: django's tests run through
+`tests/runtests.py`). `docker_sandbox.sh` runs as root first — moves `/testbed` to
+`/data/swebench-work/<iid>` (a symlink stays at `/testbed` so the image's `easy-install.pth` /
+`.egg-link` keep resolving), replaces the image's git (the full upstream pack with `main` and every
+release tag) with a single commit "SWE-bench <iid> base tree", chowns the tree and the env to the
+host uid, starts the in-container half of the SGLang bridge (`docker_bridge.py`, loopback
+`127.0.0.1:23334` → the bind-mounted unix socket) and checks `/health` through it — then drops to
+the host uid with `setpriv` and runs the scaffold under `timeout -s KILL`. The container has
+`--network none`; the scaffold binaries (`~/.npm-global`, `omp`/`rtk`/`dcode`, the uv tool venvs)
+and configs are bind-mounted read-only, only each scaffold's own state dirs read-write (opencode's
+SQLite, pi/omp/prime sessions, deepagents' checkpoints — the paths the audits read), plus a portable
+node 26 at `/opt/node` and a static ripgrep (the image's glibc 2.35 cannot run the host's). After the
+agent exits the script strips the scratch dirs and writes `git diff --cached` to a per-instance
+`/out` mount; the prediction records `"docker": true` and the image tag. The work tree path inside
+the container is the one the host lanes used (`DOCKER_WORK_ROOT`), because opencode's `--dir`,
+pi's session slugs and `audit_predictions.py`'s opencode join all key on it. Prep is ~3 s per
+instance (overlayfs `redirect_dir`); the container's writable layer — and with it anything the
+agent `pip install`ed or renamed in the testbed env — is discarded by `--rm`, so lanes cannot
+contaminate each other through the environment (the venv-fingerprint guard below is host-mode
+history). A missing image is recorded as `rollout_error: infra_docker_image_missing` (re-rolled after
+`pull_hub_images.sh`), a prep or bridge failure as `infra_docker_sandbox` (rc 96 / 97), and an
+in-container `timeout` still returns 124 at ≥1800 s so `model_timeout` classifies as before.
+Verified before the lane started: one instance (django-11099) per scaffold against the live server,
+tool use through the bridge, `python`/`tests/runtests.py` from the testbed env, patch captured
+(receipts: `evals/swebench/docker-smoke-2026-09-19/`).
+
+**Host mode (`DOCKER=0`; the v2 lanes and the first four v3 starts).** `run_rollouts.py` gives the
+agent a per-instance uv venv (`$SWEBENCH_VENVDIR/<instance_id>`) built by
 `eval_env.install_deps` from the SWE-bench harness spec (`pre_install` → `-U pip wheel setuptools` →
 `pip_packages` → a build-deps block → the spec's `install` line → `pytest`), so the model can run the
 repo's tests while it works. When that build fails the rollout still runs, under the `PROMPT_NO_VENV`
@@ -221,8 +254,10 @@ is the same in every lane, so the v2 lanes stay comparable with each other but n
 The v2 cells are published as an *exposure study* (`qwen38-v2`), not as SWE-bench results; the prime
 lane was stopped at 29/300 and parked (`runs/qwen38-prime-v2.partial-29`).
 
-From v3 on, `run_rollouts.py` closes both channels by default (`SANDBOX=1` in the cycle scripts,
-`--no-sandbox` restores the v2 configuration):
+From v3 on, `run_rollouts.py` closes both channels by default. Since the fifth v3 start that is
+Docker mode (Rollout environments above): the image's git is replaced by a single commit, the
+container has no network, and the sibling trees do not exist inside it. The first four v3 starts
+used the host-mode sandbox (`DOCKER=0 SANDBOX=1`; `--no-sandbox` restores the v2 configuration):
 
 - **No future history.** The work tree is `git init` + `git fetch --no-tags <mirror> <base_commit>` +
   `git checkout FETCH_HEAD` (the mirror sets `uploadpack.allowAnySHA1InWant`), so it holds exactly the
@@ -236,7 +271,7 @@ From v3 on, `run_rollouts.py` closes both channels by default (`SANDBOX=1` in th
 
 Re-run the audit on every new lane; a sandboxed lane must report 0 READ / 0 UPSTREAM / 0 SEARCH.
 
-The v3 matrix started four times. The first start (2026-09-18 05:19) still carried opencode's v2 `limit.output`
+The v3 matrix started five times. The first start (2026-09-18 05:19) still carried opencode's v2 `limit.output`
 8192; the wire check that the Scaffold thinking effort table had scheduled for "the next cycle" had not
 been applied. Its first 20 opencode instances showed 4 sessions ending on a `length` finish at exactly
 8192 output+reasoning tokens (the truncated think yields no tool call, opencode exits 0, empty patch),
@@ -265,6 +300,24 @@ The 7 predictions from the third start are parked at
 the new budget before the first lane started (`wire-audit-out32000-2026-09-19.json`: `max_tokens`
 32000 from opencode/opencode-dcp, `max_completion_tokens` 32000 from omp/prime/little-coder,
 little-coder still with `reasoning_effort: xhigh`).
+
+The fourth start was aborted during instance 19/300 (18 predictions; 2026-09-19 13:36, ≈6 h) when the rollouts moved into the
+official SWE-bench instance images (Docker mode) — a change of environment for every instance, so
+not resumable. The fifth start (`v3-cycle-v0520-docker.sh`, `DOCKER=1`) keeps everything else from
+the fourth (`OUTPUT_BUDGET` 32000, `xhigh`, 1800 s) and raises opencode's `limit.context` from 200000
+to the served 262144 (the last lane not declaring the full window; `run_rollouts.py` now checks both
+opencode limits at preflight). The 18 bwrap predictions are parked at
+`/data/logs/run-model-cycle-logs/qwen38-v3.aborted-2026-09-19-bwrap-out32000/`. The Docker wire is
+the same as the bwrap wire — same binaries and configs, only the process boundary moved — and was
+re-checked per scaffold with `capture_endpoint.py` before the functional smoke (`max_completion_tokens`
+32000, `reasoning_effort: xhigh`, the same tool lists as `wire-audit-out32000-2026-09-19.json`). The
+functional smoke (one instance per scaffold against the live server, `docker-smoke-2026-09-19/`) then
+found two things a capture endpoint cannot: opencode's `--dir` got the host work path (fixed with
+`DOCKER_WORK_ROOT`), and dcode's `/v1/responses` requests were 404s on v0.5.20 because the endpoint
+now validates `model` against the served id (fixed with `_check_responses_api`, see the effort table).
+All seven scaffolds then produced the correct django-11099 fix (rc 0, 118–350 s), the 30 s timeout
+path returned rc 124 with the container removed, and `audit_git_peek.py` over the seven smoke sessions
+reported 0 exposed. The fifth start launched at 14:07 once those receipts were in.
 
 ## Scoring
 

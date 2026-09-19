@@ -1,0 +1,136 @@
+# command
+docker run --rm --init --network none --name swebench-opencode-dcp-django__django-11099 --label swebench-rollout=1 -e HOME=/home/letsrtfm -e USER=letsrtfm -e LOGNAME=letsrtfm -e LANG=C.UTF-8 -e TERM=dumb -e PATH=/opt/miniconda3/envs/testbed/bin:/opt/node/bin:/home/letsrtfm/.npm-global/bin:/home/letsrtfm/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin -e CONDA_PREFIX=/opt/miniconda3/envs/testbed -e CONDA_DEFAULT_ENV=testbed -e DO_NOT_TRACK=1 -e OPENCODE_CONFIG_DIR=/home/letsrtfm/.config/opencode-dcp-lane/opencode -v /home/letsrtfm/.npm-global:/home/letsrtfm/.npm-global:ro -v /home/letsrtfm/.local/bin/omp:/home/letsrtfm/.local/bin/omp:ro -v /home/letsrtfm/.local/bin/rtk:/home/letsrtfm/.local/bin/rtk:ro -v /home/letsrtfm/.local/bin/dcode:/home/letsrtfm/.local/bin/dcode:ro -v /home/letsrtfm/.local/share/uv:/home/letsrtfm/.local/share/uv:ro -v /home/letsrtfm/.config/opencode:/home/letsrtfm/.config/opencode:ro -v /home/letsrtfm/.config/opencode-dcp-lane:/home/letsrtfm/.config/opencode-dcp-lane:ro -v /home/letsrtfm/.local/share/opencode:/home/letsrtfm/.local/share/opencode -v /home/letsrtfm/.cache/opencode:/home/letsrtfm/.cache/opencode -v /home/letsrtfm/.local/state/opencode:/home/letsrtfm/.local/state/opencode -v /data/swebench-toolchain/node-v26.2.0-linux-x64:/opt/node:ro -v /data/swebench-toolchain/ripgrep-15.2.0-x86_64-unknown-linux-musl/rg:/usr/local/bin/rg:ro -v /home/letsrtfm/AI/2x-R9700-RDNA4-GFX1201-sglang-inference/evals/swebench/docker_sandbox.sh:/sandbox/docker_sandbox.sh:ro -v /home/letsrtfm/AI/2x-R9700-RDNA4-GFX1201-sglang-inference/evals/swebench/docker_bridge.py:/sandbox/docker_bridge.py:ro -v /run/user/1000/swebench-bridge-1449709.sock:/run/swebench-bridge.sock -v /tmp/claude-1000/-home-letsrtfm-AI-2x-R9700-RDNA4-GFX1201-sglang-inference/4375db00-520f-43b7-8df5-c2b08fa18013/scratchpad/dsmoke/func-opencode-dcp/docker/django__django-11099:/out sweb.eval.x86_64.django__django-11099:latest bash /sandbox/docker_sandbox.sh 1000 1001 letsrtfm django__django-11099 23334 900 -- opencode run --dir /data/swebench-work/django__django-11099 --model sglang/qwen38 --dangerously-skip-permissions <PROMPT>
+# sandbox docker
+# elapsed 230.8s
+# returncode 0
+# stdout
+All 494 auth tests pass. The fix matches the upstream Django resolution:
+
+```diff
+-    regex = r'^[\w.@+-]+$'
++    regex = r'^[\w.@+-]+\Z'
+```
+
+in both `ASCIIUsernameValidator` and `UnicodeUsernameValidator` (django/contrib/auth/validators.py:10,20). `\Z` anchors to the absolute end of the string (unlike `$`, which matches before a trailing newline), so usernames like `'joe\n'` are now rejected. Verified behaviorally and via the full `auth_tests` suite.
+
+# stderr
+[docker_sandbox 20:47:19] prep done in 2765ms: tree=/data/swebench-work/django__django-11099 env=Python 3.6.13 :: Anaconda, Inc. bridge=:23334 ok
+[docker_sandbox 20:47:19] agent start uid=1000 cwd=/data/swebench-work/django__django-11099 python=/opt/miniconda3/envs/testbed/bin/python node=/opt/node/bin/node timeout=900s
+[0m
+> build · qwen38
+[0m
+[0m✗ [0mGrep "\^\\[\\w\.\@" failed[90m in django/contrib/auth[0m
+[91m[1mError: [0mrg: regex parse error:
+    (?:\^\\[\\w\.\@)
+           ^
+error: unclosed character class
+[0m✱ [0mGlob "django/contrib/auth/validators.py"[90m 1 match[0m
+[0m→ [0mRead django/contrib/auth/validators.py
+[0m✱ [0mGrep "\^.*\[.w\.\@"[90m in . · 2 matches[0m
+[0m→ [0mRead tests/auth_tests/test_validators.py
+[0m
+[0m← [0mEdit django/contrib/auth/validators.py
+Index: /data/swebench-work/django__django-11099/django/contrib/auth/validators.py
+===================================================================
+--- /data/swebench-work/django__django-11099/django/contrib/auth/validators.py
++++ /data/swebench-work/django__django-11099/django/contrib/auth/validators.py
+@@ -6,9 +6,9 @@
+ 
+ 
+ @deconstructible
+ class ASCIIUsernameValidator(validators.RegexValidator):
+-    regex = r'^[\w.@+-]+$'
++    regex = r'^[\w.@+-]+\Z'
+     message = _(
+         'Enter a valid username. This value may contain only English letters, '
+         'numbers, and @/./+/-/_ characters.'
+     )
+
+[0m
+[0m← [0mEdit django/contrib/auth/validators.py
+Index: /data/swebench-work/django__django-11099/django/contrib/auth/validators.py
+===================================================================
+--- /data/swebench-work/django__django-11099/django/contrib/auth/validators.py
++++ /data/swebench-work/django__django-11099/django/contrib/auth/validators.py
+@@ -16,9 +16,9 @@
+ 
+ 
+ @deconstructible
+ class UnicodeUsernameValidator(validators.RegexValidator):
+-    regex = r'^[\w.@+-]+$'
++    regex = r'^[\w.@+-]+\Z'
+     message = _(
+         'Enter a valid username. This value may contain only letters, '
+         'numbers, and @/./+/-/_ characters.'
+     )
+
+[0m
+[0m$ [0mpython -c "
+from django.contrib.auth.validators import ASCIIUsernameValidator, UnicodeUsernameValidator
+for cls in (ASCIIUsernameValidator, UnicodeUsernameValidator):
+    v = cls()
+    v('joe')
+    v('jean-marc')
+    for bad in ('joe\n', 'joe\r\n', '\njoe', ''):
+        try:
+            v(bad)
+            print('FAIL: accepted', repr(bad))
+        except Exception as e:
+            print('ok rejected', repr(bad), type(e).__name__)
+"
+ok rejected 'joe\n' ValidationError
+ok rejected 'joe\r\n' ValidationError
+ok rejected '\njoe' ValidationError
+ok rejected '' ValidationError
+ok rejected 'joe\n' ValidationError
+ok rejected 'joe\r\n' ValidationError
+ok rejected '\njoe' ValidationError
+ok rejected '' ValidationError
+[0m
+[0m$ [0mpython tests/runtests.py auth_tests.test_validators -v 2 2>&1 | tail -30
+test_help_text (auth_tests.test_validators.MinimumLengthValidatorTest) ... ok
+test_validate (auth_tests.test_validators.MinimumLengthValidatorTest) ... ok
+test_help_text (auth_tests.test_validators.UserAttributeSimilarityValidatorTest) ... ok
+test_validate (auth_tests.test_validators.UserAttributeSimilarityValidatorTest) ... ok
+test_validate_property (auth_tests.test_validators.UserAttributeSimilarityValidatorTest) ... ok
+test_empty_password_validator_help_text_html (auth_tests.test_validators.PasswordValidationTest) ... ok
+test_get_default_password_validators (auth_tests.test_validators.PasswordValidationTest) ... ok
+test_get_password_validators_custom (auth_tests.test_validators.PasswordValidationTest) ... ok
+test_password_changed (auth_tests.test_validators.PasswordValidationTest) ... ok
+test_password_changed_with_custom_validator (auth_tests.test_validators.PasswordValidationTest) ... ok
+test_password_validators_help_text_html (auth_tests.test_validators.PasswordValidationTest) ... ok
+test_password_validators_help_text_html_escaping (auth_tests.test_validators.PasswordValidationTest) ... ok
+test_password_validators_help_texts (auth_tests.test_validators.PasswordValidationTest) ... ok
+test_validate_password (auth_tests.test_validators.PasswordValidationTest) ... ok
+test_help_text (auth_tests.test_validators.CommonPasswordValidatorTest) ... ok
+test_validate (auth_tests.test_validators.CommonPasswordValidatorTest) ... ok
+test_validate_custom_list (auth_tests.test_validators.CommonPasswordValidatorTest) ... ok
+test_validate_django_supplied_file (auth_tests.test_validators.CommonPasswordValidatorTest) ... ok
+
+----------------------------------------------------------------------
+Ran 22 tests in 0.130s
+
+OK
+Destroying test database for alias 'default' ('file:memorydb_default?mode=memory&cache=shared')...
+Destroying test database for alias 'default' ('file:memorydb_default?mode=memory&cache=shared')...
+Destroying test database for alias 'default' ('file:memorydb_default?mode=memory&cache=shared')...
+Destroying test database for alias 'default' ('file:memorydb_default?mode=memory&cache=shared')...
+Destroying test database for alias 'default' ('file:memorydb_default?mode=memory&cache=shared')...
+Destroying test database for alias 'default' ('file:memorydb_default?mode=memory&cache=shared')...
+Destroying test database for alias 'default' ('file:memorydb_default?mode=memory&cache=shared')...
+[0m
+[0m$ [0mpython tests/runtests.py auth_tests 2>&1 | tail -6
+Destroying test database for alias 'other'...
+Destroying test database for alias 'other'...
+Destroying test database for alias 'other'...
+Destroying test database for alias 'other'...
+Destroying test database for alias 'other'...
+Destroying test database for alias 'other'...
+[0m
+[0m$ [0mpython tests/runtests.py auth_tests 2>&1 | grep -E "^(Ran|OK|FAILED|ERROR)" 
+Ran 494 tests in 3.043s
+OK
+[0m
+[docker_sandbox 20:51:06] agent exit rc=0 after 227s
+[docker_sandbox 20:51:07] diff 893 bytes
+

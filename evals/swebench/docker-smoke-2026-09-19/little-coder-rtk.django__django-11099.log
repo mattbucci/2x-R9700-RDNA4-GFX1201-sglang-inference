@@ -1,0 +1,34 @@
+# command
+docker run --rm --init --network none --name swebench-little-coder-rtk-django__django-11099 --label swebench-rollout=1 -e HOME=/home/letsrtfm -e USER=letsrtfm -e LOGNAME=letsrtfm -e LANG=C.UTF-8 -e TERM=dumb -e PATH=/opt/miniconda3/envs/testbed/bin:/opt/node/bin:/home/letsrtfm/.npm-global/bin:/home/letsrtfm/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin -e CONDA_PREFIX=/opt/miniconda3/envs/testbed -e CONDA_DEFAULT_ENV=testbed -e DO_NOT_TRACK=1 -e LLAMACPP_BASE_URL=http://127.0.0.1:23334/v1 -e LLAMACPP_API_KEY=noop -e LITTLE_CODER_MODELS_FILE=/home/letsrtfm/.config/little-coder-swebench/models.json -e LITTLE_CODER_NO_CTX_PROBE=1 -v /home/letsrtfm/.npm-global:/home/letsrtfm/.npm-global:ro -v /home/letsrtfm/.local/bin/omp:/home/letsrtfm/.local/bin/omp:ro -v /home/letsrtfm/.local/bin/rtk:/home/letsrtfm/.local/bin/rtk:ro -v /home/letsrtfm/.local/bin/dcode:/home/letsrtfm/.local/bin/dcode:ro -v /home/letsrtfm/.local/share/uv:/home/letsrtfm/.local/share/uv:ro -v /home/letsrtfm/.config/little-coder-swebench:/home/letsrtfm/.config/little-coder-swebench:ro -v /home/letsrtfm/.config/little-coder-rtk:/home/letsrtfm/.config/little-coder-rtk:ro -v /home/letsrtfm/.pi:/home/letsrtfm/.pi -v /home/letsrtfm/.little-coder:/home/letsrtfm/.little-coder -v /home/letsrtfm/.cache/little-coder:/home/letsrtfm/.cache/little-coder -v /home/letsrtfm/.local/share/rtk:/home/letsrtfm/.local/share/rtk -v /data/swebench-toolchain/node-v26.2.0-linux-x64:/opt/node:ro -v /data/swebench-toolchain/ripgrep-15.2.0-x86_64-unknown-linux-musl/rg:/usr/local/bin/rg:ro -v /home/letsrtfm/AI/2x-R9700-RDNA4-GFX1201-sglang-inference/evals/swebench/docker_sandbox.sh:/sandbox/docker_sandbox.sh:ro -v /home/letsrtfm/AI/2x-R9700-RDNA4-GFX1201-sglang-inference/evals/swebench/docker_bridge.py:/sandbox/docker_bridge.py:ro -v /run/user/1000/swebench-bridge-1451814.sock:/run/swebench-bridge.sock -v /tmp/claude-1000/-home-letsrtfm-AI-2x-R9700-RDNA4-GFX1201-sglang-inference/4375db00-520f-43b7-8df5-c2b08fa18013/scratchpad/dsmoke/func-little-coder-rtk/docker/django__django-11099:/out sweb.eval.x86_64.django__django-11099:latest bash /sandbox/docker_sandbox.sh 1000 1001 letsrtfm django__django-11099 23334 900 -- little-coder --extension /home/letsrtfm/.config/little-coder-rtk/rtk.ts --print --model llamacpp/qwen38 --thinking xhigh <PROMPT>
+# sandbox docker
+# elapsed 136.6s
+# returncode 0
+# stdout
+
+
+All 494 auth tests pass. The fix is complete.
+
+**Change** in `django/contrib/auth/validators.py` (both `ASCIIUsernameValidator` and `UnicodeUsernameValidator`):
+
+```diff
+-    regex = r'^[\w.@+-]+$'
++    regex = r'\A[\w.@+-]+\Z'
+```
+
+**Why:** Python's `$` matches at the end of the string *or* before a trailing newline, so `r'^[\w.@+-]+$'` accepted usernames like `"user\n"`. `\Z` anchors strictly to the end of the string, rejecting trailing newlines.
+
+**Verification:**
+- `UsernameValidator('bad\n')` now raises `ValidationError` for both validators; valid usernames (`joe`, `René`, `jean-marc`, etc.) still pass.
+- `auth_tests` (494 tests) and `validators` tests all green.
+- No other code references the old pattern.
+
+# stderr
+[docker_sandbox 20:51:14] prep done in 2760ms: tree=/data/swebench-work/django__django-11099 env=Python 3.6.13 :: Anaconda, Inc. bridge=:23334 ok
+[docker_sandbox 20:51:14] agent start uid=1000 cwd=/data/swebench-work/django__django-11099 python=/opt/miniconda3/envs/testbed/bin/python node=/opt/node/bin/node timeout=900s
+
+📦 little-coder v1.20.0 is available (you have v1.19.0).
+   Update with: npm install -g --ignore-scripts little-coder
+
+[docker_sandbox 20:53:27] agent exit rc=0 after 133s
+[docker_sandbox 20:53:28] diff 895 bytes
+
