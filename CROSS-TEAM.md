@@ -325,6 +325,22 @@ finished lane with the same reader before comparing any DCP/RTK delta — the ex
 by scaffold (omp 61%, dcp 46%), which alone moves a cell by several points. v2 numbers on our side
 are published as an exposure study, not as SWE-bench results.
 
+**Status (2026-09-19), for relay — a second cross-lane leak, in the environment this time:** the
+per-instance venv is bind-mounted read-write into the sandbox and agents `pip install` / `mv` in it, so
+lane N+1's agent starts on whatever lane N's agent left. Sized over our 300 cached venvs by
+distribution-metadata entries dated inside an agent rollout window
+(`scripts/eval/venv_drift_scan.py`, `evals/swebench/venv-drift-2026-09-19.json`; package-dir mtimes are
+noise, first import drops `__pycache__/` everywhere): 24 venvs — numpy 1.26 into seaborn, pandas 2.3
+into scikit-learn 1.3, docutils 0.16 / `roman` / setuptools downgrades into sphinx, tblib into django,
+and one uv-breaking `mv numpy-2.0.2.dist-info numpy-2.0.2.bak.dist-info` (astropy-14182) that put every
+later lane on the no-venv prompt for that instance. Grading is in the official images so verdicts were
+never touched; the agent's test environment was. Fix in `eval_env.py` (this repo, same file you run):
+`install_deps` fingerprints the finished venv (`.swebench-manifest.json`) and `make_venv` rebuilds on
+any change or missing manifest; the 24 were deleted and the rest fingerprinted at v3 lane 1 instance
+3/300. Your Docker rollouts rebuild the env per instance, so you are immune to the cross-*lane* form —
+but the cross-*instance* form applies if any of your lanes reuse a container or a shared site-packages
+between instances of the same repo.
+
 ### 2026-08-30 · 3090→R9700 · v0.5.18 rebase map, prime/dcode/rtk port findings
 
 **3090→R9700 (2026-08-30): pick up the v0.5.18 rebase map before your flip.** Their campaign receipts ([`patches/v0.5.18-rebase-status.md`](https://github.com/mattbucci/2x-3090-GA102-300-A1-sglang-inference/blob/main/patches/v0.5.18-rebase-status.md)): (1) **053/CANDIDATE-057 re-target** — `_get_chunked_prefill_embedding`'s EVS-blind `is_per_image` predicate moved to the new `managers/mm_schedule.py` (~L512; import `EVSDataItem` from `evs_module`); (2) **new 061** — v0.5.18's Gemma4 parent forward reads `lm_head_is_tied`, never set by the unified subclass → every unified (12B omni) checkpoint dies at graph capture, arch-generic; (3) **new 062, likely your biggest win** — the rewritten loader leaves cyclic GPU staging garbage resident when the KV pool is sized from live free memory (`gc.collect()` before the post-load measurement; their Devstral pool 199K→339K tokens, +5.3 GB/rank — generic Python/torch, ROCm applies); (4) prefill cuda-graph default flips to `breakable` on CUDA (their qwen36-dense OOM'd at boot; verify what ROCm resolves); (5) tx pin unchanged at 5.12.1 (A/B bit-identical); (6) CUDA-only FYI: flashinfer 0.6.17 costs their nemotron3-omni −12% decode at depth. Flip tooling is generalized and portable: `flip_campaign.sh` / `flip_fleet_validate.sh` / `compare_flip_receipts.py` / `tokenizer_ab_encode.py` / `needle_band_probe.py`. **Return findings on your prime/dcode port (3090, 2026-08-31, all docker-lane smoke-verified):** prime-agent hard-requires Node ≥22.8 (fails with an empty session otherwise — our first prime cells were 0-diff on node 20); dcode's inner `--timeout` should derive from the outer kill window (a fixed 1700 produced rc=124 empty diffs under shorter smokes); if you adopt rtk with little-coder/pi: headless pi runs SKIP extension auto-discovery (load via `-e`), the pi session jsonl records the PRE-mutation command (verify with an rtk-invocation shim, not session greps), and rtk needs the @earendil-works pi (little-coder ≥1.15; we run a dedicated 1.19.0 prefix so the control lane keeps its series pin).

@@ -13,6 +13,7 @@ uv is the workhorse:
 """
 from __future__ import annotations
 
+import json
 import os
 import shutil
 import subprocess
@@ -156,13 +157,71 @@ def _venv_version(venv: Path) -> str:
     return ""
 
 
+MANIFEST = ".swebench-manifest.json"   # written by install_deps, checked by make_venv
+
+
+def site_packages(venv: Path) -> Path | None:
+    sps = sorted(venv.glob("lib/python*/site-packages"))
+    return sps[0] if sps else None
+
+
+# Entries install_deps' bootstrap step (`uv pip install -U pip wheel setuptools`) rewrites on
+# every lane anyway: a new upstream release, or an agent downgrade, changes their names
+# between lanes without changing what the next lane's agent sees after its own install.
+_BOOTSTRAP_ENTRIES = {"pip", "wheel", "setuptools", "_distutils_hack", "pkg_resources",
+                      "distutils-precedence.pth", "__pycache__"}
+
+
+def _manifest_key(name: str) -> str:
+    """'setuptools-80.10.2.dist-info' -> 'setuptools'; anything else unchanged."""
+    for suffix in (".dist-info", ".egg-info"):
+        if name.endswith(suffix):
+            return name[:-len(suffix)].rsplit("-", 1)[0]
+    return name
+
+
+def venv_manifest(venv: Path) -> list[str]:
+    """Sorted top-level site-packages entry names: every *.dist-info / *.egg-info, package
+    dir, .pth and top-level module, minus the bootstrap-refreshed ones above. Names carry
+    the version, so this is a cheap fingerprint of which distributions are installed --
+    and unlike mtimes it is blind to the __pycache__/ that a first import drops into every
+    package dir."""
+    sp = site_packages(venv)
+    if sp is None:
+        return []
+    return sorted(e.name for e in sp.iterdir()
+                  if e.name not in _BOOTSTRAP_ENTRIES and _manifest_key(e.name) not in _BOOTSTRAP_ENTRIES)
+
+
+def write_manifest(venv: Path) -> None:
+    (venv / MANIFEST).write_text(json.dumps(
+        {"written": time.strftime("%Y-%m-%dT%H:%M:%S%z"), "entries": venv_manifest(venv)}, indent=0))
+
+
+def venv_drift(venv: Path) -> tuple[list[str], list[str]] | None:
+    """(added, removed) site-packages entries since install_deps last wrote the manifest;
+    None when the venv carries no manifest (pre-2026-09-19 cache, or a failed install)."""
+    try:
+        recorded = set(json.loads((venv / MANIFEST).read_text())["entries"])
+    except (OSError, ValueError, KeyError, TypeError):
+        return None
+    now = set(venv_manifest(venv))
+    return sorted(now - recorded), sorted(recorded - now)
+
+
 def make_venv(venv_root: Path, instance_id: str, python_ver: str) -> Path:
     """Create a uv-managed venv on the requested Python (see venv_python()).
 
-    Reused across runs when the cached venv already has that Python; rebuilt when it does
-    not (an earlier attempt on another version). uv's managed builds start at 3.8: a spec
-    "3.6" maps to 3.8 (django 3.x builds there), and "conda:X.Y" from SPEC_OVERRIDES asks
-    conda for the exact interpreter (_conda_python), falling back to 3.8 if it cannot.
+    Reused across runs when the cached venv already has that Python *and* its
+    site-packages still match the manifest install_deps wrote after its last successful
+    install; rebuilt when it does not (an earlier attempt on another version, a failed
+    install, or a distribution added/removed/renamed by the previous lane's agent -- the
+    venv is bind-mounted rw into the sandbox, and agents do `pip install`/`mv` in it: the
+    2026-09-18 astropy-14182 rollout renamed numpy-2.0.2.dist-info to *.bak and installed
+    numpy 1.26.4, which broke uv for every later lane; 24/300 cached venvs carried such
+    drift). uv's managed builds start at 3.8: a spec "3.6" maps to 3.8 (django 3.x builds
+    there), and "conda:X.Y" from SPEC_OVERRIDES asks conda for the exact interpreter
+    (_conda_python), falling back to 3.8 if it cannot.
     """
     want = python = python_ver
     if python_ver == "3.6":
@@ -175,7 +234,15 @@ def make_venv(venv_root: Path, instance_id: str, python_ver: str) -> Path:
             want = python = "3.8"
     venv = venv_root / instance_id
     if venv.exists() and (venv / "bin" / "python").exists() and _venv_version(venv) == want:
-        return venv
+        drift = venv_drift(venv)
+        if drift is None:
+            print("  env: cached venv has no post-install manifest -- rebuilding", flush=True)
+        elif drift[0] or drift[1]:
+            added, removed = drift
+            print(f"  env: cached venv drifted since its last install "
+                  f"(+{len(added)} {added[:4]} -{len(removed)} {removed[:4]}) -- rebuilding", flush=True)
+        else:
+            return venv
     venv.parent.mkdir(parents=True, exist_ok=True)
     if venv.exists():
         shutil.rmtree(venv, ignore_errors=True)
@@ -281,6 +348,9 @@ def install_deps(venv: Path, repo_dir: Path, spec: dict, log_path: Path,
     # pytest is needed by some test_cmds (and by the model when iterating)
     sh(["uv", "pip", "install", "--python", str(venv / "bin" / "python"), "--quiet", "pytest"],
        env=env, timeout=120)
+    # Fingerprint the finished environment; make_venv rebuilds the venv next time if the
+    # agent rollout in between added/removed/renamed a distribution.
+    write_manifest(venv)
     return True
 
 

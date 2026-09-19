@@ -123,7 +123,12 @@ Ordered by what runs next. Specs with an ID live in [`experiments/`](experiments
    patch, so it was aborted at 20/300 and the cycle restarted at 12:31 on 2026-09-18 (≈7 h lost;
    `FP8_BAKEOFF_SETUP.md` → Answer leakage). Two harness fixes are deliberately held for the next full
    re-roll because they change succeeding instances too (spec `packages: requirements.txt`, the
-   `oldest-supported-numpy` downgrade; see `FP8_BAKEOFF_SETUP.md`).
+   `oldest-supported-numpy` downgrade; see `FP8_BAKEOFF_SETUP.md`). Landed on 2026-09-19 at lane 1
+   instance 3/300, as a repair rather than a methodology change: the cached per-instance venvs were
+   carried from lane to lane with whatever the previous lane's agent had `pip install`ed or renamed
+   in them (24/300, one of them uv-breaking, so astropy-14182 ran no-venv in every lane since
+   2026-09-18); the 24 were deleted, the rest fingerprinted, and `make_venv` now rebuilds any venv
+   whose fingerprint changed (`FP8_BAKEOFF_SETUP.md` → Rollout environments).
 2. **Chase the residual qwen38 decode gap now that graphs are on.** The 2026-09-19 same-server A/B
    ([receipt](benchmarks/qwen38-27b-fp8/graph-ab-2026-09-19.json), v0.5.18, 3 runs/point, idle CPU)
    measured HIP graphs off→on at 16.9→22.5 (24 tok), 16.9→22.2 (6.5K), 16.8→21.6 (52K) and

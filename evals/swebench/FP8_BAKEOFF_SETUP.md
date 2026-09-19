@@ -123,6 +123,25 @@ opencode instances (v2 + v2-dcp + the aborted v3 start), 70 on the May–June `s
 parser fix (3090 patch 063) is deferred to the next stack change so the running matrix stays on one
 server build.
 
+The cached venv is bind-mounted read-write into the sandbox and agents do `pip install` / `mv` in
+it, so without a guard lane N+1's agent inherits lane N's agent's environment (cross-lane venv
+contamination). Sized 2026-09-19 over the 300 Lite venvs by distribution-metadata entries dated inside
+an agent rollout window ([`venv-drift-2026-09-19.json`](venv-drift-2026-09-19.json); package-dir
+mtimes are not evidence, the first import drops a `__pycache__/` into every package): 24 venvs carried
+agent-installed or renamed distributions — the worst, `astropy__astropy-14182`, had numpy 2.0.2 renamed
+to `numpy-2.0.2.bak.dist-info` plus numpy 1.26.4 installed by the aborted 2026-09-18 v3 start, which
+broke uv's metadata parse and put every later lane on the no-venv prompt for that instance; the rest
+were unpinned extras (numpy 1.26 in seaborn, pandas 2.3 in scikit-learn 1.3, docutils 0.16 / `roman` /
+setuptools downgrades in sphinx, tblib in django). Since then `install_deps` fingerprints the
+finished venv (`.swebench-manifest.json`: the sorted top-level site-packages names minus the
+bootstrap-refreshed pip/wheel/setuptools) and `make_venv` rebuilds any cached venv whose fingerprint
+changed, or that has none, printing `env: cached venv drifted ... -- rebuilding` in the rollout log.
+The 24 contaminated venvs were deleted and the surviving 276 fingerprinted while v3 lane 1 (opencode)
+was at instance 3/300, so lane 1 rebuilds those 24 from spec on reach and lanes 2–7 rebuild whatever
+lane 1's agents mutate; a rebuild costs the instance's install time before the rollout clock starts,
+never rollout budget. `score_docker.py` grades in the official images, so contamination only ever
+touched the agent's iteration environment, not the verdicts.
+
 The host toolchain drifts from the official images (uv's managed Pythons start at 3.8, the bootstrap
 pulls current pip/setuptools, the spec's conda `packages` are not installed). `eval_env.SPEC_OVERRIDES`
 holds the per-`(repo, version)` corrections and `INSTALL_RETRIES` the install-line repairs; both are

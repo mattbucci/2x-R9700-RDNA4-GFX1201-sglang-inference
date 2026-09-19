@@ -1,0 +1,580 @@
+{
+ "scanned": 301,
+ "instances_with_windows": 300,
+ "contaminated": 24,
+ "by_run": {
+  "qwen38-omp-v2": 33,
+  "qwen38-opencode-dcp-v2": 20,
+  "qwen38-opencode-v2": 20,
+  "run-model-cycle-logs": 2,
+  "qwen38-little-coder-v2": 2,
+  "qwen38-prime-v2.partial-29": 1
+ },
+ "by_kind": {
+  "meta": 63,
+  "file": 15,
+  "renamed": 2
+ },
+ "venvs": {
+  "astropy__astropy-14182": [
+   {
+    "entry": "numpy-1.26.4.dist-info",
+    "kind": "meta",
+    "mtime": "2026-09-18 06:02:16",
+    "run": "run-model-cycle-logs"
+   },
+   {
+    "entry": "numpy-2.0.2.bak",
+    "kind": "renamed",
+    "mtime": "2026-09-18 05:37:50",
+    "run": null
+   },
+   {
+    "entry": "pyerfa-2.0.0.3.dist-info",
+    "kind": "meta",
+    "mtime": "2026-09-17 12:20:32",
+    "run": "qwen38-prime-v2.partial-29"
+   },
+   {
+    "entry": "numpy-2.0.2.bak.dist-info",
+    "kind": "renamed",
+    "mtime": "2026-09-18 05:37:50",
+    "run": null
+   }
+  ],
+  "astropy__astropy-14995": [
+   {
+    "entry": "numpy-1.26.4.dist-info",
+    "kind": "meta",
+    "mtime": "2026-09-18 13:46:51",
+    "run": "run-model-cycle-logs"
+   }
+  ],
+  "django__django-11742": [
+   {
+    "entry": "tblib-3.0.0.dist-info",
+    "kind": "meta",
+    "mtime": "2026-09-05 11:45:01",
+    "run": "qwen38-opencode-dcp-v2"
+   }
+  ],
+  "mwaskom__seaborn-2848": [
+   {
+    "entry": "numpy-1.26.4.dist-info",
+    "kind": "meta",
+    "mtime": "2026-09-15 08:35:44",
+    "run": "qwen38-omp-v2"
+   },
+   {
+    "entry": "pandas-1.3.5.dist-info",
+    "kind": "meta",
+    "mtime": "2026-09-15 08:39:35",
+    "run": "qwen38-omp-v2"
+   }
+  ],
+  "mwaskom__seaborn-3010": [
+   {
+    "entry": "numpy-1.26.4.dist-info",
+    "kind": "meta",
+    "mtime": "2026-09-15 09:06:32",
+    "run": "qwen38-omp-v2"
+   }
+  ],
+  "mwaskom__seaborn-3190": [
+   {
+    "entry": "numpy-1.26.4.dist-info",
+    "kind": "meta",
+    "mtime": "2026-09-15 09:24:24",
+    "run": "qwen38-omp-v2"
+   }
+  ],
+  "mwaskom__seaborn-3407": [
+   {
+    "entry": "numpy-1.26.4.dist-info",
+    "kind": "meta",
+    "mtime": "2026-09-15 09:35:24",
+    "run": "qwen38-omp-v2"
+   },
+   {
+    "entry": "pandas-2.0.0.dist-info",
+    "kind": "meta",
+    "mtime": "2026-09-07 00:18:49",
+    "run": "qwen38-opencode-dcp-v2"
+   }
+  ],
+  "scikit-learn__scikit-learn-25500": [
+   {
+    "entry": "pandas-2.3.3.dist-info",
+    "kind": "meta",
+    "mtime": "2026-09-07 16:25:32",
+    "run": "qwen38-opencode-dcp-v2"
+   },
+   {
+    "entry": "pytz-2026.3.post1.dist-info",
+    "kind": "meta",
+    "mtime": "2026-09-07 16:25:30",
+    "run": "qwen38-opencode-dcp-v2"
+   },
+   {
+    "entry": "six.py",
+    "kind": "file",
+    "mtime": "2026-09-07 16:25:30",
+    "run": "qwen38-opencode-dcp-v2"
+   },
+   {
+    "entry": "tzdata-2026.3.dist-info",
+    "kind": "meta",
+    "mtime": "2026-09-07 16:25:30",
+    "run": "qwen38-opencode-dcp-v2"
+   },
+   {
+    "entry": "six-1.17.0.dist-info",
+    "kind": "meta",
+    "mtime": "2026-09-07 16:25:30",
+    "run": "qwen38-opencode-dcp-v2"
+   },
+   {
+    "entry": "python_dateutil-2.9.0.post0.dist-info",
+    "kind": "meta",
+    "mtime": "2026-09-07 16:25:30",
+    "run": "qwen38-opencode-dcp-v2"
+   }
+  ],
+  "scikit-learn__scikit-learn-25570": [
+   {
+    "entry": "pandas-2.3.3.dist-info",
+    "kind": "meta",
+    "mtime": "2026-09-16 04:30:08",
+    "run": "qwen38-omp-v2"
+   },
+   {
+    "entry": "pytz-2026.3.post1.dist-info",
+    "kind": "meta",
+    "mtime": "2026-09-16 04:30:06",
+    "run": "qwen38-omp-v2"
+   },
+   {
+    "entry": "six.py",
+    "kind": "file",
+    "mtime": "2026-09-16 04:30:06",
+    "run": "qwen38-omp-v2"
+   },
+   {
+    "entry": "tzdata-2026.4.dist-info",
+    "kind": "meta",
+    "mtime": "2026-09-16 04:30:06",
+    "run": "qwen38-omp-v2"
+   },
+   {
+    "entry": "six-1.17.0.dist-info",
+    "kind": "meta",
+    "mtime": "2026-09-16 04:30:06",
+    "run": "qwen38-omp-v2"
+   },
+   {
+    "entry": "python_dateutil-2.9.0.post0.dist-info",
+    "kind": "meta",
+    "mtime": "2026-09-16 04:30:06",
+    "run": "qwen38-omp-v2"
+   }
+  ],
+  "scikit-learn__scikit-learn-25638": [
+   {
+    "entry": "pandas-2.3.3.dist-info",
+    "kind": "meta",
+    "mtime": "2026-09-07 16:45:04",
+    "run": "qwen38-opencode-dcp-v2"
+   },
+   {
+    "entry": "pytz-2026.3.post1.dist-info",
+    "kind": "meta",
+    "mtime": "2026-09-07 16:45:02",
+    "run": "qwen38-opencode-dcp-v2"
+   },
+   {
+    "entry": "six.py",
+    "kind": "file",
+    "mtime": "2026-09-07 16:45:02",
+    "run": "qwen38-opencode-dcp-v2"
+   },
+   {
+    "entry": "tzdata-2026.3.dist-info",
+    "kind": "meta",
+    "mtime": "2026-09-07 16:45:02",
+    "run": "qwen38-opencode-dcp-v2"
+   },
+   {
+    "entry": "six-1.17.0.dist-info",
+    "kind": "meta",
+    "mtime": "2026-09-07 16:45:02",
+    "run": "qwen38-opencode-dcp-v2"
+   },
+   {
+    "entry": "python_dateutil-2.9.0.post0.dist-info",
+    "kind": "meta",
+    "mtime": "2026-09-07 16:45:02",
+    "run": "qwen38-opencode-dcp-v2"
+   }
+  ],
+  "scikit-learn__scikit-learn-25747": [
+   {
+    "entry": "pandas-2.3.3.dist-info",
+    "kind": "meta",
+    "mtime": "2026-09-07 17:02:57",
+    "run": "qwen38-opencode-dcp-v2"
+   },
+   {
+    "entry": "pytz-2026.3.post1.dist-info",
+    "kind": "meta",
+    "mtime": "2026-09-07 17:02:56",
+    "run": "qwen38-opencode-dcp-v2"
+   },
+   {
+    "entry": "six.py",
+    "kind": "file",
+    "mtime": "2026-09-07 17:02:56",
+    "run": "qwen38-opencode-dcp-v2"
+   },
+   {
+    "entry": "tzdata-2026.3.dist-info",
+    "kind": "meta",
+    "mtime": "2026-09-07 17:02:56",
+    "run": "qwen38-opencode-dcp-v2"
+   },
+   {
+    "entry": "six-1.17.0.dist-info",
+    "kind": "meta",
+    "mtime": "2026-09-07 17:02:56",
+    "run": "qwen38-opencode-dcp-v2"
+   },
+   {
+    "entry": "python_dateutil-2.9.0.post0.dist-info",
+    "kind": "meta",
+    "mtime": "2026-09-07 17:02:56",
+    "run": "qwen38-opencode-dcp-v2"
+   }
+  ],
+  "sphinx-doc__sphinx-7686": [
+   {
+    "entry": "roman-5.1.dist-info",
+    "kind": "meta",
+    "mtime": "2026-09-04 04:07:27",
+    "run": "qwen38-opencode-v2"
+   },
+   {
+    "entry": "distutils-precedence.pth",
+    "kind": "meta",
+    "mtime": "2026-09-16 07:03:55",
+    "run": "qwen38-omp-v2"
+   },
+   {
+    "entry": "roman.py",
+    "kind": "file",
+    "mtime": "2026-09-04 04:07:27",
+    "run": "qwen38-opencode-v2"
+   },
+   {
+    "entry": "setuptools-80.10.2.dist-info",
+    "kind": "meta",
+    "mtime": "2026-09-16 07:03:55",
+    "run": "qwen38-omp-v2"
+   }
+  ],
+  "sphinx-doc__sphinx-7738": [
+   {
+    "entry": "roman-5.1.dist-info",
+    "kind": "meta",
+    "mtime": "2026-09-04 04:31:57",
+    "run": "qwen38-opencode-v2"
+   },
+   {
+    "entry": "setuptools-74.1.3.dist-info",
+    "kind": "meta",
+    "mtime": "2026-09-16 07:16:21",
+    "run": "qwen38-omp-v2"
+   },
+   {
+    "entry": "distutils-precedence.pth",
+    "kind": "meta",
+    "mtime": "2026-09-16 07:16:21",
+    "run": "qwen38-omp-v2"
+   },
+   {
+    "entry": "roman.py",
+    "kind": "file",
+    "mtime": "2026-09-04 04:31:57",
+    "run": "qwen38-opencode-v2"
+   }
+  ],
+  "sphinx-doc__sphinx-7975": [
+   {
+    "entry": "roman-5.1.dist-info",
+    "kind": "meta",
+    "mtime": "2026-09-04 04:46:36",
+    "run": "qwen38-opencode-v2"
+   },
+   {
+    "entry": "roman.py",
+    "kind": "file",
+    "mtime": "2026-09-04 04:46:36",
+    "run": "qwen38-opencode-v2"
+   },
+   {
+    "entry": "pkg_resources.py",
+    "kind": "file",
+    "mtime": "2026-09-10 14:04:16",
+    "run": "qwen38-little-coder-v2"
+   }
+  ],
+  "sphinx-doc__sphinx-8273": [
+   {
+    "entry": "roman-5.1.dist-info",
+    "kind": "meta",
+    "mtime": "2026-09-04 05:05:18",
+    "run": "qwen38-opencode-v2"
+   },
+   {
+    "entry": "distutils-precedence.pth",
+    "kind": "meta",
+    "mtime": "2026-09-16 08:01:54",
+    "run": "qwen38-omp-v2"
+   },
+   {
+    "entry": "roman.py",
+    "kind": "file",
+    "mtime": "2026-09-04 05:05:18",
+    "run": "qwen38-opencode-v2"
+   },
+   {
+    "entry": "setuptools-80.10.2.dist-info",
+    "kind": "meta",
+    "mtime": "2026-09-16 08:01:54",
+    "run": "qwen38-omp-v2"
+   }
+  ],
+  "sphinx-doc__sphinx-8282": [
+   {
+    "entry": "docutils-0.16.dist-info",
+    "kind": "meta",
+    "mtime": "2026-09-04 05:43:38",
+    "run": "qwen38-opencode-v2"
+   },
+   {
+    "entry": "pkg_resources.py",
+    "kind": "file",
+    "mtime": "2026-09-10 14:25:03",
+    "run": "qwen38-little-coder-v2"
+   }
+  ],
+  "sphinx-doc__sphinx-8435": [
+   {
+    "entry": "docutils-0.16.dist-info",
+    "kind": "meta",
+    "mtime": "2026-09-04 05:53:30",
+    "run": "qwen38-opencode-v2"
+   }
+  ],
+  "sphinx-doc__sphinx-8474": [
+   {
+    "entry": "setuptools-59.8.0.dist-info",
+    "kind": "meta",
+    "mtime": "2026-09-16 08:55:14",
+    "run": "qwen38-omp-v2"
+   },
+   {
+    "entry": "roman-5.1.dist-info",
+    "kind": "meta",
+    "mtime": "2026-09-04 06:05:35",
+    "run": "qwen38-opencode-v2"
+   },
+   {
+    "entry": "distutils-precedence.pth",
+    "kind": "meta",
+    "mtime": "2026-09-16 08:55:14",
+    "run": "qwen38-omp-v2"
+   },
+   {
+    "entry": "roman.py",
+    "kind": "file",
+    "mtime": "2026-09-04 06:05:35",
+    "run": "qwen38-opencode-v2"
+   }
+  ],
+  "sphinx-doc__sphinx-8506": [
+   {
+    "entry": "docutils-0.16.dist-info",
+    "kind": "meta",
+    "mtime": "2026-09-04 06:41:48",
+    "run": "qwen38-opencode-v2"
+   },
+   {
+    "entry": "distutils-precedence.pth",
+    "kind": "meta",
+    "mtime": "2026-09-16 09:13:20",
+    "run": "qwen38-omp-v2"
+   },
+   {
+    "entry": "setuptools-80.10.2.dist-info",
+    "kind": "meta",
+    "mtime": "2026-09-16 09:13:20",
+    "run": "qwen38-omp-v2"
+   }
+  ],
+  "sphinx-doc__sphinx-8595": [
+   {
+    "entry": "distutils-precedence.pth",
+    "kind": "meta",
+    "mtime": "2026-09-16 09:31:03",
+    "run": "qwen38-omp-v2"
+   },
+   {
+    "entry": "setuptools-70.3.0.dist-info",
+    "kind": "meta",
+    "mtime": "2026-09-16 09:31:04",
+    "run": "qwen38-omp-v2"
+   },
+   {
+    "entry": "docutils-0.17.1.dist-info",
+    "kind": "meta",
+    "mtime": "2026-09-04 06:55:14",
+    "run": "qwen38-opencode-v2"
+   }
+  ],
+  "sphinx-doc__sphinx-8627": [
+   {
+    "entry": "roman-5.1.dist-info",
+    "kind": "meta",
+    "mtime": "2026-09-04 07:12:33",
+    "run": "qwen38-opencode-v2"
+   },
+   {
+    "entry": "distutils-precedence.pth",
+    "kind": "meta",
+    "mtime": "2026-09-16 09:55:20",
+    "run": "qwen38-omp-v2"
+   },
+   {
+    "entry": "roman.py",
+    "kind": "file",
+    "mtime": "2026-09-04 07:12:33",
+    "run": "qwen38-opencode-v2"
+   },
+   {
+    "entry": "setuptools-80.10.2.dist-info",
+    "kind": "meta",
+    "mtime": "2026-09-16 09:55:20",
+    "run": "qwen38-omp-v2"
+   }
+  ],
+  "sphinx-doc__sphinx-8713": [
+   {
+    "entry": "roman-5.1.dist-info",
+    "kind": "meta",
+    "mtime": "2026-09-16 10:07:03",
+    "run": "qwen38-omp-v2"
+   },
+   {
+    "entry": "distutils-precedence.pth",
+    "kind": "meta",
+    "mtime": "2026-09-16 10:06:04",
+    "run": "qwen38-omp-v2"
+   },
+   {
+    "entry": "roman.py",
+    "kind": "file",
+    "mtime": "2026-09-16 10:07:03",
+    "run": "qwen38-omp-v2"
+   },
+   {
+    "entry": "setuptools-80.10.2.dist-info",
+    "kind": "meta",
+    "mtime": "2026-09-16 10:06:05",
+    "run": "qwen38-omp-v2"
+   }
+  ],
+  "sphinx-doc__sphinx-8721": [
+   {
+    "entry": "roman-5.1.dist-info",
+    "kind": "meta",
+    "mtime": "2026-09-04 07:37:41",
+    "run": "qwen38-opencode-v2"
+   },
+   {
+    "entry": "distutils-precedence.pth",
+    "kind": "meta",
+    "mtime": "2026-09-16 10:14:24",
+    "run": "qwen38-omp-v2"
+   },
+   {
+    "entry": "roman.py",
+    "kind": "file",
+    "mtime": "2026-09-04 07:37:41",
+    "run": "qwen38-opencode-v2"
+   },
+   {
+    "entry": "setuptools-80.10.2.dist-info",
+    "kind": "meta",
+    "mtime": "2026-09-16 10:14:24",
+    "run": "qwen38-omp-v2"
+   }
+  ],
+  "sphinx-doc__sphinx-8801": [
+   {
+    "entry": "roman-5.1.dist-info",
+    "kind": "meta",
+    "mtime": "2026-09-04 07:58:27",
+    "run": "qwen38-opencode-v2"
+   },
+   {
+    "entry": "distutils-precedence.pth",
+    "kind": "meta",
+    "mtime": "2026-09-16 10:27:40",
+    "run": "qwen38-omp-v2"
+   },
+   {
+    "entry": "roman.py",
+    "kind": "file",
+    "mtime": "2026-09-04 07:58:27",
+    "run": "qwen38-opencode-v2"
+   },
+   {
+    "entry": "setuptools-80.10.2.dist-info",
+    "kind": "meta",
+    "mtime": "2026-09-16 10:27:40",
+    "run": "qwen38-omp-v2"
+   }
+  ]
+ },
+ "method": "site-packages entries whose mtime falls inside an agent rollout window (env.log mtime + 150 s for install_deps' unlogged trailing pytest install, to the rollout log's mtime + 5 s) across every qwen38 v2 lane and the two aborted v3 starts; only *.dist-info/*.egg-info/*.egg-link/*.pth/__editable__*, top-level files and *.bak/*.orig rename markers count -- package-dir mtimes move on first import (__pycache__)",
+ "reset": {
+  "reset_at": "2026-09-19T05:56:37-0700",
+  "lane": "qwen38-opencode-v3 (lane 1 of 7), at instance 3/300 astropy__astropy-14365",
+  "venvs": [
+   "astropy__astropy-14182",
+   "astropy__astropy-14995",
+   "django__django-11742",
+   "mwaskom__seaborn-2848",
+   "mwaskom__seaborn-3010",
+   "mwaskom__seaborn-3190",
+   "mwaskom__seaborn-3407",
+   "scikit-learn__scikit-learn-25500",
+   "scikit-learn__scikit-learn-25570",
+   "scikit-learn__scikit-learn-25638",
+   "scikit-learn__scikit-learn-25747",
+   "sphinx-doc__sphinx-7686",
+   "sphinx-doc__sphinx-7738",
+   "sphinx-doc__sphinx-7975",
+   "sphinx-doc__sphinx-8273",
+   "sphinx-doc__sphinx-8282",
+   "sphinx-doc__sphinx-8435",
+   "sphinx-doc__sphinx-8474",
+   "sphinx-doc__sphinx-8506",
+   "sphinx-doc__sphinx-8595",
+   "sphinx-doc__sphinx-8627",
+   "sphinx-doc__sphinx-8713",
+   "sphinx-doc__sphinx-8721",
+   "sphinx-doc__sphinx-8801"
+  ]
+ },
+ "note": "run label 'run-model-cycle-logs' = the two aborted v3 starts (2026-09-18 out8192, 2026-09-19 v0518)"
+}
