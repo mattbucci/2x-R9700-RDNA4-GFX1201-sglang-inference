@@ -1,6 +1,6 @@
 diff --git a/python/sglang/kernels/ops/attention/tree_verify_attention.py b/python/sglang/kernels/ops/attention/tree_verify_attention.py
 new file mode 100644
-index 00000000..e92fec5a
+index 000000000..e92fec5ac
 --- /dev/null
 +++ b/python/sglang/kernels/ops/attention/tree_verify_attention.py
 @@ -0,0 +1,360 @@
@@ -365,7 +365,7 @@ index 00000000..e92fec5a
 +    o.copy_(merged.to(o.dtype))
 +    return o
 diff --git a/python/sglang/srt/layers/attention/triton_backend.py b/python/sglang/srt/layers/attention/triton_backend.py
-index 766cb500..34dc8653 100644
+index 5ed85811e..c94dd9c30 100644
 --- a/python/sglang/srt/layers/attention/triton_backend.py
 +++ b/python/sglang/srt/layers/attention/triton_backend.py
 @@ -1,5 +1,6 @@
@@ -375,7 +375,7 @@ index 766cb500..34dc8653 100644
  from dataclasses import dataclass
  from typing import TYPE_CHECKING, List, Optional
  
-@@ -33,6 +34,13 @@ from sglang.srt.model_executor.cuda_graph_config import (
+@@ -39,6 +40,13 @@ from sglang.srt.model_executor.cuda_graph_config import (
      cuda_graph_fully_disabled,
  )
  from sglang.srt.model_executor.forward_batch_info import ForwardBatch, ForwardMode
@@ -386,10 +386,10 @@ index 766cb500..34dc8653 100644
 +# extend verify reads the deep prefix KV unsplit (~2.7s @244K); this splits it across SMs like
 +# decode does. Off by default; SGLANG_TREE_VERIFY_SPLITKV=1 enables it (launch.sh --spec sets it).
 +_TREE_VERIFY_SPLITKV = os.environ.get("SGLANG_TREE_VERIFY_SPLITKV", "") in ("1", "true", "True")
- from sglang.srt.runtime_context import get_parallel, get_spec
+ from sglang.srt.runtime_context import get_exec, get_parallel, get_schedule, get_spec
  from sglang.srt.speculative.spec_utils import (
      draft_kv_indices_buffer_width,
-@@ -1467,6 +1475,44 @@ class TritonAttnBackend(AttentionBackend):
+@@ -1742,6 +1750,44 @@ class TritonAttnBackend(AttentionBackend):
          ):
              return o
  

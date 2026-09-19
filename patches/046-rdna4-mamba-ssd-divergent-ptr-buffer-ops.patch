@@ -1,5 +1,5 @@
 diff --git a/python/sglang/kernels/ops/mamba/triton_ops/ssd_chunk_scan.py b/python/sglang/kernels/ops/mamba/triton_ops/ssd_chunk_scan.py
-index 52b1971..37b705f 100644
+index 5fd4fb138..3577268d4 100644
 --- a/python/sglang/kernels/ops/mamba/triton_ops/ssd_chunk_scan.py
 +++ b/python/sglang/kernels/ops/mamba/triton_ops/ssd_chunk_scan.py
 @@ -133,7 +133,6 @@ def _chunk_scan_fwd_kernel(
@@ -43,11 +43,10 @@ index 52b1971..37b705f 100644
  
              # get current seq idx
              if (pid_m * BLOCK_SIZE_M + c_off) < chunk_size_limit:
-@@ -176,15 +192,10 @@ def _chunk_scan_fwd_kernel(
+@@ -176,14 +192,10 @@ def _chunk_scan_fwd_kernel(
                      )  # if a seq is changed exactly on boundary
                      or (c_off > 0)  # implies a new example (pseudo chunk)
                  ):
--
 -                    # - replace prev_states_ptr with init_states
 -                    prev_states_ptr = (
 -                        initstates_ptr
@@ -63,7 +62,7 @@ index 52b1971..37b705f 100644
  
      offs_n = pid_n * BLOCK_SIZE_N + tl.arange(0, BLOCK_SIZE_N)
      dA_cs_m = tl.load(
-@@ -264,6 +275,19 @@ def _chunk_scan_fwd_kernel(
+@@ -261,6 +273,19 @@ def _chunk_scan_fwd_kernel(
              offs_n[None, :] * prev_states_hdim
              + offs_k_dstate[:, None] * prev_states_dstate
          )
@@ -81,9 +80,9 @@ index 52b1971..37b705f 100644
 +                + offs_k_dstate[:, None] * stride_init_states_dstate
 +            )
          if HAS_SEQ_IDX:
- 
              if not HAS_INITSTATES:
-@@ -288,6 +312,13 @@ def _chunk_scan_fwd_kernel(
+                 # - this is for continuous batching where there is no init states
+@@ -284,6 +309,13 @@ def _chunk_scan_fwd_kernel(
                  mask=(offs_k_dstate[:, None] < dstate) & (offs_n[None, :] < hdim),
                  other=0.0,
              )
@@ -97,7 +96,7 @@ index 52b1971..37b705f 100644
              prev_states = prev_states.to(C_ptr.dtype.element_ty)
              acc = tl.dot(C, prev_states) * scale_m[:, None]
          else:
-@@ -305,10 +336,20 @@ def _chunk_scan_fwd_kernel(
+@@ -301,10 +333,20 @@ def _chunk_scan_fwd_kernel(
                      & (offs_n[None, :] < hdim),
                      other=0.0,
                  )
@@ -119,10 +118,10 @@ index 52b1971..37b705f 100644
  
      offs_k = tl.arange(0, BLOCK_SIZE_K) + c_off
 diff --git a/python/sglang/kernels/ops/mamba/triton_ops/ssd_chunk_state.py b/python/sglang/kernels/ops/mamba/triton_ops/ssd_chunk_state.py
-index 162d859..ad72571 100644
+index d33808a51..073d005c3 100644
 --- a/python/sglang/kernels/ops/mamba/triton_ops/ssd_chunk_state.py
 +++ b/python/sglang/kernels/ops/mamba/triton_ops/ssd_chunk_state.py
-@@ -398,33 +398,42 @@ def _chunk_state_varlen_kernel(
+@@ -397,32 +397,42 @@ def _chunk_state_varlen_kernel(
                  offs_m[:, None] * stride_chunk_states_hdim
                  + offs_n[None, :] * stride_chunk_states_dstate
              )
@@ -132,7 +131,6 @@ index 162d859..ad72571 100644
 +                other=0.0,
 +            ).to(tl.float32)
          else:
--
 -            # - this seems repetitive, buts its to help the compiler
 -            if start_idx < pid_c * chunk_size:
 -                past_states_ptrs = chunk_states_ptr + (

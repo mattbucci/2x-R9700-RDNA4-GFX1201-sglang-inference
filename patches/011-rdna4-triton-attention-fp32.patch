@@ -1,35 +1,38 @@
 diff --git a/python/sglang/kernels/ops/attention/decode_attention.py b/python/sglang/kernels/ops/attention/decode_attention.py
-index 6ab7cd2..14f792a 100644
+index f711172ea..4d121d573 100644
 --- a/python/sglang/kernels/ops/attention/decode_attention.py
 +++ b/python/sglang/kernels/ops/attention/decode_attention.py
-@@ -574,7 +574,7 @@ def _fwd_grouped_kernel_stage1(
-             re_scale = tl.exp(e_max - n_e_max)
-             p = tl.exp(qk - n_e_max[:, None])
-             acc *= re_scale[:, None]
--            acc += tl.dot(p.to(v.dtype), v)
-+            acc += tl.dot(p.to(tl.float32), v.to(tl.float32))
+@@ -731,7 +731,8 @@ def _fwd_grouped_kernel_stage1(
+             if IS_GFX1250:
+                 acc += tl.dot(p, v.to(tl.float32), out_dtype=tl.float32)
+             else:
+-                acc += tl.dot(p.to(v.dtype), v)
++                # RDNA4 (gfx1201): same fp32 P.V as the gfx1250 branch above.
++                acc += tl.dot(p.to(tl.float32), v.to(tl.float32))
  
              e_sum = e_sum * re_scale + tl.sum(p, 1)
              e_max = n_e_max
 diff --git a/python/sglang/kernels/ops/attention/extend_attention.py b/python/sglang/kernels/ops/attention/extend_attention.py
-index 4c456b8..f0c30c2 100644
+index 38606d936..125d69ba7 100644
 --- a/python/sglang/kernels/ops/attention/extend_attention.py
 +++ b/python/sglang/kernels/ops/attention/extend_attention.py
-@@ -427,7 +427,7 @@ def _fwd_kernel(
-                 mask=(mask_n[None, :]) & (mask_d[:, None]),
-                 other=0.0,
-             )
--            qk = tl.dot(q.to(k.dtype), k)
-+            qk = tl.dot(q, k.to(q.dtype))
+@@ -566,7 +566,8 @@ def _fwd_kernel(
+             if IS_GFX1250:
+                 qk = tl.dot(q, k.to(q.dtype))
+             else:
+-                qk = tl.dot(q.to(k.dtype), k)
++                # RDNA4 (gfx1201): upcast K to q's dtype as on gfx1250.
++                qk = tl.dot(q, k.to(q.dtype))
              if BLOCK_DPE > 0:
                  if PAGE_SIZE == 1:
                      offs_kpe = (
-@@ -1052,7 +1052,7 @@ def _fwd_kernel_unified(
-                 other=0.0,
-             )
- 
--            qk = tl.dot(q.to(k.dtype), k)
-+            qk = tl.dot(q, k.to(q.dtype))
+@@ -1359,7 +1360,8 @@ def _fwd_kernel_unified(
+             if IS_GFX1250:
+                 qk = tl.dot(q, k.to(q.dtype))
+             else:
+-                qk = tl.dot(q.to(k.dtype), k)
++                # RDNA4 (gfx1201): upcast K to q's dtype as on gfx1250.
++                qk = tl.dot(q, k.to(q.dtype))
              if BLOCK_DPE > 0:
                  if PAGE_SIZE == 1:
                      offs_kpe = (

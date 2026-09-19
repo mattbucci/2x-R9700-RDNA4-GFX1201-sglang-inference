@@ -1,5 +1,5 @@
 diff --git a/python/sglang/srt/utils/hf_transformers/tokenizer.py b/python/sglang/srt/utils/hf_transformers/tokenizer.py
-index a992bae2..f4b90057 100644
+index a992bae26..f4b900572 100644
 --- a/python/sglang/srt/utils/hf_transformers/tokenizer.py
 +++ b/python/sglang/srt/utils/hf_transformers/tokenizer.py
 @@ -172,6 +172,33 @@ def _resolve_tokenizer_name(tokenizer_name, kwargs):
@@ -47,7 +47,7 @@ index a992bae2..f4b90057 100644
      common_kwargs = dict(
          trust_remote_code=trust_remote_code,
 diff --git a/test/registered/unit/utils/test_hf_transformers.py b/test/registered/unit/utils/test_hf_transformers.py
-index 27c04941..8110e419 100644
+index 92cc43cc3..5d25829e1 100644
 --- a/test/registered/unit/utils/test_hf_transformers.py
 +++ b/test/registered/unit/utils/test_hf_transformers.py
 @@ -5,9 +5,11 @@ context length, GGUF detection, etc.) that don't require actual model files.
@@ -62,15 +62,15 @@ index 27c04941..8110e419 100644
  from unittest.mock import MagicMock, patch
  
  from transformers import PretrainedConfig
-@@ -26,6 +28,7 @@ from sglang.srt.utils.hf_transformers.common import (
-     get_hf_text_config,
+@@ -27,6 +29,7 @@ from sglang.srt.utils.hf_transformers.common import (
      get_rope_config,
+     resolve_hf_gguf_reference,
  )
 +from sglang.srt.utils.hf_transformers import tokenizer as tokenizer_utils
  from sglang.srt.utils.hf_transformers.tokenizer import _fix_special_tokens_pattern
  from sglang.srt.utils.hf_transformers_patches import normalize_rope_scaling_compat
  from sglang.test.ci.ci_register import register_cpu_ci
-@@ -165,6 +168,63 @@ class TestImageProcessorKwargsPatch(unittest.TestCase):
+@@ -166,6 +169,63 @@ class TestImageProcessorKwargsPatch(unittest.TestCase):
          self.assertEqual(signature.call_count, 1)
  
  

@@ -1,9 +1,9 @@
 diff --git a/python/sglang/srt/layers/quantization/quark/schemes/quark_w4a4_mxfp4_moe.py b/python/sglang/srt/layers/quantization/quark/schemes/quark_w4a4_mxfp4_moe.py
-index c6890dfd50..c14ee07b08 100644
+index 12243eb5c..923d0e0c2 100644
 --- a/python/sglang/srt/layers/quantization/quark/schemes/quark_w4a4_mxfp4_moe.py
 +++ b/python/sglang/srt/layers/quantization/quark/schemes/quark_w4a4_mxfp4_moe.py
-@@ -37,7 +37,16 @@ if _use_aiter:
-     from aiter.utility.fp4_utils import e8m0_shuffle
+@@ -70,7 +70,16 @@ _shuffle_moe_gfx1250 = (
+ )
  
  if _is_hip:
 -    from aiter.ops.triton.quant import dynamic_mxfp4_quant

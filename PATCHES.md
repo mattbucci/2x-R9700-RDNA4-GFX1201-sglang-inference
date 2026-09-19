@@ -4,7 +4,7 @@ The repository carries **72 active patches across three environments**:
 
 | Collection | Target | Count | Purpose |
 |---|---|---:|---|
-| [`patches/`](patches/README.md) | SGLang v0.5.18 (`/data/sgl-v0518`, `sglang-triton36-v0518`) | **70** | RDNA4 serving, model compatibility, correctness, and performance |
+| [`patches/`](patches/README.md) | SGLang v0.5.20 (`/data/sgl-v0520`, `sglang-triton36-v0520`) | **70** | RDNA4 serving, model compatibility, correctness, and performance |
 | [`llmcompressor-patches/`](llmcompressor-patches/README.md) | llmcompressor calibration environment | **1** | Unfused Qwen3 MoE experts for GPTQ calibration |
 | [`ream-patches/`](ream-patches/README.md) | Samsung SAIL REAM clone | **1** | Memory-safe, resumable expert merging |
 
@@ -13,13 +13,14 @@ Tooling files that support REAM/REAP are not counted as patches. Upstream contri
 
 ## SGLang series
 
-Apply the 70 numeric patches in filename order to pristine SGLang v0.5.18. Patch 072 was removed because
+Apply the 70 numeric patches in filename order to pristine SGLang v0.5.20. Patch 072 was removed because
 transformers 5.12.1 provides the Gemma 4 unified configuration and processor natively. Patch 083 replaces
 that count with the Mistral tokenizer-backend correction required by Devstral and Devstral 2. On the
 v0.5.16 rebase, patch 059 was dropped because its FuseEP dispatcher target was removed upstream, and patch
 097 (JIT fused-gate None-bias guard) was added. The v0.5.18 rebase went to 70 (26 patches
 regenerated for upstream's kernel-tree relocation; the upstreamed max-head sizing was dropped from 077; 098 added
-for the native Gemma4Unified config).
+for the native Gemma4Unified config). The v0.5.20 rebase stayed at 70 (23 regenerated for the msgspec-record
+`ServerArgs` and upstream's gfx1250 branches; upstreamed hunks dropped from 011/049/074/096).
 
 | Lane | Patches | Count |
 |---|---|---:|
@@ -34,7 +35,8 @@ for the native Gemma4Unified config).
 | API and network hardening | 096 | 1 |
 
 The detailed active index and replay procedure are in [`patches/README.md`](patches/README.md). The
-v0.5.18 rebase is validated in [`patches/v0518-rebase-2026-08-29.md`](patches/v0518-rebase-2026-08-29.md), the
+v0.5.20 rebase is validated in [`patches/v0520-rebase-2026-09-19.md`](patches/v0520-rebase-2026-09-19.md), the
+v0.5.18 rebase in [`patches/v0518-rebase-2026-08-29.md`](patches/v0518-rebase-2026-08-29.md), the
 v0.5.16 rebase in [`patches/v0516-rebase-2026-07-27.md`](patches/v0516-rebase-2026-07-27.md);
 base and North/Laguna validation evidence is recorded in
 [`patches/v0515-rebase-2026-07-11.md`](patches/v0515-rebase-2026-07-11.md) and
@@ -44,7 +46,7 @@ base and North/Laguna validation evidence is recorded in
 
 Every patch-series change must pass all three checks:
 
-1. Apply every numeric patch to a pristine v0.5.18 tree with no skipped or failed patches.
+1. Apply every numeric patch to a pristine v0.5.20 tree with no skipped or failed patches.
 2. Compare the result byte-for-byte with the intended serving-tree delta.
 3. Confirm that patches cannot be applied a second time (no exceptions since the v0.5.18 rebase; 026 was
    the documented non-unique-anchor exception through v0.5.16).

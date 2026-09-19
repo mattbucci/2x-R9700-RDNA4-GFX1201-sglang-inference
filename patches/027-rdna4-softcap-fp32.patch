@@ -1,5 +1,5 @@
 diff --git a/python/sglang/kernels/ops/activation/softcap.py b/python/sglang/kernels/ops/activation/softcap.py
-index 5d39de6f..032819ef 100644
+index 8b719c9b9..613b007e5 100644
 --- a/python/sglang/kernels/ops/activation/softcap.py
 +++ b/python/sglang/kernels/ops/activation/softcap.py
 @@ -86,10 +86,11 @@ def softcap_inplace_logits_kernel(
@@ -19,27 +19,26 @@ index 5d39de6f..032819ef 100644
      # Store result
      tl.store(row_ptr + offsets, x, mask=mask)
 diff --git a/python/sglang/kernels/ops/attention/decode_attention.py b/python/sglang/kernels/ops/attention/decode_attention.py
-index 4eb6d56d..4f0680c4 100644
+index 4d121d573..1099a121a 100644
 --- a/python/sglang/kernels/ops/attention/decode_attention.py
 +++ b/python/sglang/kernels/ops/attention/decode_attention.py
-@@ -28,9 +28,15 @@ import triton.language as tl
- 
+@@ -31,6 +31,7 @@ import triton.language as tl
  from sglang.kernels.ops.attention.score_mod import unpack_aux_tensors
  from sglang.srt.environ import envs
--from sglang.srt.utils import get_device_core_count, is_gfx95_supported, is_hip
-+from sglang.srt.utils import (
+ from sglang.srt.utils import (
 +    get_device_capability,
-+    get_device_core_count,
-+    is_gfx95_supported,
-+    is_hip,
-+)
+     get_device_core_count,
+     is_gfx95_supported,
+     is_gfx1250_supported,
+@@ -38,6 +39,7 @@ from sglang.srt.utils import (
+ )
  
  _is_hip = is_hip()
 +_is_rdna4 = _is_hip and get_device_capability()[0] >= 12
+ _is_gfx1250 = _is_hip and is_gfx1250_supported()
  
  logger = logging.getLogger(__name__)
- 
-@@ -246,7 +252,8 @@ def _extract_kv_strides(buf, page_size: int):
+@@ -219,7 +221,8 @@ def _extract_kv_strides(buf, page_size: int):
  @triton.jit
  def tanh(x):
      # Tanh is just a scaled sigmoid
@@ -49,7 +48,7 @@ index 4eb6d56d..4f0680c4 100644
  
  
  @triton.jit
-@@ -457,7 +464,7 @@ def _decode_att_m_fwd(
+@@ -430,7 +433,7 @@ def _decode_att_m_fwd(
      BLOCK = 64
      # [TODO] work around SGPR limit on MI3xx
      if _is_hip:
@@ -58,7 +57,7 @@ index 4eb6d56d..4f0680c4 100644
      MAX_KV_SPLITS = max_kv_splits
      Lk = k_buffer.shape[-1]
      Lv = v_buffer.shape[-1]
-@@ -476,7 +483,7 @@ def _decode_att_m_fwd(
+@@ -446,7 +449,7 @@ def _decode_att_m_fwd(
          num_warps = 4
      else:
          num_warps = 2
@@ -68,10 +67,10 @@ index 4eb6d56d..4f0680c4 100644
  
      BLOCK_DMODEL = triton.next_power_of_2(Lk)
 diff --git a/python/sglang/kernels/ops/attention/extend_attention.py b/python/sglang/kernels/ops/attention/extend_attention.py
-index 9dac9b53..738bd521 100644
+index 125d69ba7..80e333137 100644
 --- a/python/sglang/kernels/ops/attention/extend_attention.py
 +++ b/python/sglang/kernels/ops/attention/extend_attention.py
-@@ -192,7 +192,8 @@ def _compact_extend_q_tiles_per_head(
+@@ -214,7 +214,8 @@ def _compact_extend_q_tiles_per_head(
  @triton.jit
  def tanh(x):
      # Tanh is just a scaled sigmoid

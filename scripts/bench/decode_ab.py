@@ -108,9 +108,15 @@ def main():
             {"context": r["context"], "input_len": r["input_len"],
              "tpot_ms": r["median_tpot_ms"], "tok_per_sec": r["median_tps"]}
             for r in rows]
-        rj.setdefault("throughput_sweep", [
-            {"concurrency": 1, "throughput": rows[0]["median_tps"],
-             "tpot_ms": rows[0]["median_tpot_ms"], "ttft_ms": 0}])
+        # generate_charts.py needs a throughput_sweep. Keep a real multi-
+        # concurrency sweep (bench_all_unified) untouched, but refresh the
+        # single c=1 point this script synthesizes -- setdefault alone left the
+        # qwen38 c=1 point at the pre-graph 16.7 tok/s after the 22.5 re-sweep.
+        ts = rj.get("throughput_sweep")
+        if not ts or (len(ts) == 1 and ts[0].get("concurrency") == 1):
+            rj["throughput_sweep"] = [
+                {"concurrency": 1, "throughput": rows[0]["median_tps"],
+                 "tpot_ms": rows[0]["median_tpot_ms"], "ttft_ms": 0}]
         os.makedirs(os.path.dirname(a.results_json), exist_ok=True)
         json.dump(rj, open(a.results_json, "w"), indent=2)
         print("wrote results.json " + a.results_json, flush=True)

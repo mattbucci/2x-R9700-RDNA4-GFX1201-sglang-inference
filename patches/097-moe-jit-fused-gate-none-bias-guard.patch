@@ -1,15 +1,16 @@
 diff --git a/python/sglang/srt/layers/moe/topk.py b/python/sglang/srt/layers/moe/topk.py
-index 0fd8ce27..4f532df9 100644
+index 99c8e02ca..9dcb77e76 100644
 --- a/python/sglang/srt/layers/moe/topk.py
 +++ b/python/sglang/srt/layers/moe/topk.py
-@@ -1302,6 +1302,17 @@ def biased_topk_jit_kernel_impl(
-     else:
-         from sglang.kernels.ops.moe.moe_fused_gate import moe_fused_gate
- 
-+        # moe_fused_gate requires a float32 per-expert bias tensor. Sigmoid
-+        # routers with no correction bias (e.g. Cohere2 / North) pass None,
-+        # which faults on `bias.dtype` inside the JIT kernel. Substitute a zero
-+        # bias (identity correction), matching the grouped sigmoid JIT path.
+@@ -1428,6 +1428,18 @@ def biased_topk_jit_kernel_impl(
+         # sqrtsoftplus topk path). moe_fused_gate upcasts the bias to fp32
+         # in-register, so pass it through directly rather than allocating a fresh
+         # fp32 copy of this static routing bias on every MoE invocation.
++        #
++        # moe_fused_gate requires a per-expert bias tensor. Sigmoid routers
++        # with no correction bias (e.g. Cohere2 / North) pass None, which
++        # faults on `bias.dtype` inside the JIT kernel. Substitute a zero bias
++        # (identity correction), matching the grouped sigmoid JIT path.
 +        if correction_bias is None:
 +            correction_bias = torch.zeros(
 +                gating_output.shape[-1],

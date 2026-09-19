@@ -43,6 +43,7 @@ MODELS=(
  "qwen35-moe|qwen3.5-35b-moe-gptq|221184|--skip-vision --skip-video|1"
  "qwen36-moe|qwen3.6-35b-moe-awq|221184||1"
  "qwen36-27b|qwen3.6-27b-awq-native|221184||1"
+ "qwen38|qwen38-27b-fp8|221184||1"
  "nemotron-omni|nemotron-omni-30b-fp8|221184||0"
  "laguna|laguna-xs2|221184|--skip-vision --skip-video|0"
  "north-mini|north-mini|221184|--skip-vision --skip-video|0"

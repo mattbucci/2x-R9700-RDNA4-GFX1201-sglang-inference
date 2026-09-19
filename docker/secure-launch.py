@@ -51,16 +51,42 @@ def _read_secret_file(env_name: str) -> str:
     return value
 
 
+def _resolved_value(server_args, name):
+    """Read a field as resolution sees it (v0.5.20 records keep declarations in
+    a stash and never write the field; older releases write in place)."""
+    resolved_dict = getattr(server_args, "resolved_dict", None)
+    if callable(resolved_dict):
+        try:
+            return resolved_dict()[name]
+        except (KeyError, TypeError):
+            pass
+    return getattr(server_args, name)
+
+
 def _resolve_server_args(server_args, **fields):
     """Set policy/credential fields on the parsed ServerArgs.
 
     SGLang v0.5.17+ makes the resolved ServerArgs read-only (plain attribute
-    assignment raises AttributeError once the declarations are materialized);
-    the sanctioned pre-publish mutation point is ``_late_resolution(source,
-    **fields)`` (v0.5.18) / ``override(source, **fields)`` (v0.5.17), which
-    writes in place so every holder of the instance sees the value. Older
-    releases have neither and accept plain assignment.
+    assignment raises AttributeError once the declarations are materialized).
+    The sanctioned pre-publish mutation point is, per release:
+    ``sglang.srt.arg_groups.overrides.declare_resolution(server_args, source,
+    **fields)`` (v0.5.20: the record is a msgspec Struct; declarations go to a
+    stash that is projected into the config bags at publish and travel with
+    the pickled record to every child process, so ``resolved_dict()`` -- not
+    the field -- shows the value), ``_late_resolution(source, **fields)``
+    (v0.5.18) / ``override(source, **fields)`` (v0.5.17), which write in place.
+    Older releases have neither and accept plain assignment.
     """
+    try:
+        from sglang.srt.arg_groups.overrides import declare_resolution
+    except ImportError:
+        declare_resolution = None
+    if declare_resolution is not None:
+        declare_resolution(server_args, "secure-launch", **fields)
+        for name, value in fields.items():
+            if _resolved_value(server_args, name) != value:
+                _fail(f"secure launcher could not set server_args.{name}")
+        return
     for method in ("_late_resolution", "override"):
         resolver = getattr(server_args, method, None)
         if callable(resolver):

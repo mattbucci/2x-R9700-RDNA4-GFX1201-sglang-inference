@@ -1,7 +1,7 @@
 #!/bin/bash
 # Common configuration for rdna4-inference (triton 3.6 experiment)
 #
-# Reproducible v0.5.18 setup: numbered RDNA4 patches + system RCCL + Triton 3.6.0.
+# Reproducible v0.5.20 setup: numbered RDNA4 patches + system RCCL + Triton 3.6.0.
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="$(dirname "$SCRIPT_DIR")"
@@ -28,13 +28,13 @@ if [ -z "${CONDA_BASE:-}" ]; then
 fi
 export CONDA_BASE
 
-# LIVE = v0.5.18 (promoted 2026-08-29; rebased from v0.5.16 — see patches/v0518-rebase-2026-08-29.md).
-# ROLLBACK to v0.5.16: set ENV_NAME=sglang-triton36-v0516 SGLANG_DIR=/data/sgl-v0516 (retained, untouched).
-# Older rollbacks v0.5.15 / v0.5.14: ENV_NAME=sglang-triton36-v051{5,4} SGLANG_DIR=/data/sgl-v051{5,4} (retained).
+# LIVE = v0.5.20 (promoted 2026-09-19; rebased from v0.5.18 — see patches/v0520-rebase-2026-09-19.md).
+# ROLLBACK to v0.5.18: set ENV_NAME=sglang-triton36-v0518 SGLANG_DIR=/data/sgl-v0518 (retained, untouched).
+# Older rollbacks v0.5.16 / v0.5.15 / v0.5.14: ENV_NAME=sglang-triton36-v051{6,5,4} SGLANG_DIR=/data/sgl-v051{6,5,4} (retained).
 # The v0.5.12/v0.5.13 rollback envs were removed 2026-07-27 to reclaim disk; re-create via scripts/setup.sh if needed.
-ENV_NAME="${ENV_NAME:-sglang-triton36-v0518}"
+ENV_NAME="${ENV_NAME:-sglang-triton36-v0520}"
 ROCM_PATH="${ROCM_PATH:-/opt/rocm}"
-SGLANG_DIR="${SGLANG_DIR:-/data/sgl-v0518}"
+SGLANG_DIR="${SGLANG_DIR:-/data/sgl-v0520}"
 MODELS_DIR="${MODELS_DIR:-$HOME/AI/models}"
 TRITON_CACHE_DIR="${TRITON_CACHE_DIR:-$HOME/.cache/triton_rdna4_t36}"
 PORT="${PORT:-23334}"

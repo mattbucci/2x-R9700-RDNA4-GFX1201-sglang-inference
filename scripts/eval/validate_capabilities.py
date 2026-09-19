@@ -476,7 +476,14 @@ def check_vision(base_url: str, model: str) -> tuple[bool, str]:
     color_hits = [w for w in color_terms if w in haystack]
     shape_hits = [w for w in shape_terms if w in haystack]
     hits = color_hits + shape_hits
-    passed = bool(color_hits) and bool(shape_hits)
+    # "The Japanese flag" names this exact image (red disc on white) without
+    # either word; Devstral-Small-2 answers that way and, at T=0.7, sometimes
+    # ends the sentence before spelling out "red circle" (v0.5.20 fleet run,
+    # 2026-09-19). Count it as a content-specific color+shape recognition.
+    flag_hits = [w for w in ("japanese flag", "flag of japan", "japan flag",
+                             "hinomaru") if w in haystack]
+    hits += flag_hits
+    passed = (bool(color_hits) and bool(shape_hits)) or bool(flag_hits)
     sample = content[:120] if content else f"(reasoning){reasoning[:120]}"
     return passed, f"saw={hits}  response={sample!r}"
 

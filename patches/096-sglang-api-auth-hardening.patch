@@ -1,30 +1,101 @@
+diff --git a/python/sglang/srt/arg_groups/arg_utils.py b/python/sglang/srt/arg_groups/arg_utils.py
+index 0c54e930f..187c713a2 100644
+--- a/python/sglang/srt/arg_groups/arg_utils.py
++++ b/python/sglang/srt/arg_groups/arg_utils.py
+@@ -90,6 +90,11 @@ class Arg(msgspec.Struct, frozen=True):
+     # that depends on the machine, on another field, or on anything impure is a
+     # decision, and decisions stay in a hook where their order is visible.
+     fallback: Any = None
++    # When True, the field carries a credential (API keys, key passwords).
++    # Whole-record readbacks (`/server_info`, `get_internal_state`, request
++    # dumps, startup logs) drop it via `sensitive_fields`, and the record's
++    # repr masks it.
++    sensitive: bool = False
+ 
+ 
+ class Derived(msgspec.Struct, frozen=True):
+@@ -205,6 +210,21 @@ def resolvable_fields(cls) -> frozenset:
+     return frozenset(names)
+ 
+ 
++@functools.cache
++def sensitive_fields(cls) -> frozenset:
++    """Names of ``cls`` record fields whose ``Arg`` metadata declares
++    ``sensitive=True`` -- credentials that must not appear in a readback."""
++    if not is_record(cls):
++        return frozenset()
++    hints = get_type_hints(cls, include_extras=True)
++    names = set()
++    for field in record_fields(cls):
++        _, arg = _unwrap_annotated(hints.get(field.name, field.type))
++        if arg is not None and arg.sensitive:
++            names.add(field.name)
++    return frozenset(names)
++
++
+ @functools.cache
+ def fallbacks_of(cls) -> dict:
+     """``{field_name: value}`` for every field of ``cls`` that declares one.
+diff --git a/python/sglang/srt/arg_groups/fields/serving.py b/python/sglang/srt/arg_groups/fields/serving.py
+index a85a3220f..2a412442e 100644
+--- a/python/sglang/srt/arg_groups/fields/serving.py
++++ b/python/sglang/srt/arg_groups/fields/serving.py
+@@ -142,7 +142,7 @@ class Serving(msgspec.Struct):
+     ssl_ca_certs: A[Optional[str], "The CA certificates file."] = None
+     ssl_keyfile_password: A[
+         Optional[str],
+-        "The password to decrypt the SSL keyfile.",
++        Arg(help="The password to decrypt the SSL keyfile.", sensitive=True),
+     ] = None
+     enable_ssl_refresh: A[
+         bool,
+@@ -154,11 +154,17 @@ class Serving(msgspec.Struct):
+     # -------------------------------------------------------------------------
+     api_key: A[
+         Optional[str],
+-        "Set API key of the server. It is also used in the OpenAI API compatible server.",
++        Arg(
++            help="Set API key of the server. It is also used in the OpenAI API compatible server.",
++            sensitive=True,
++        ),
+     ] = None
+     admin_api_key: A[
+         Optional[str],
+-        "Set admin API key for sensitive management endpoints (e.g. /clear_hicache_storage_backend). When set, admin endpoints require this key and do NOT accept --api-key.",
++        Arg(
++            help="Set admin API key for sensitive management endpoints (e.g. /clear_hicache_storage_backend). When set, admin endpoints require this key and do NOT accept --api-key.",
++            sensitive=True,
++        ),
+     ] = None
+     served_model_name: A[
+         Optional[str],
 diff --git a/python/sglang/srt/distributed/bootstrap.py b/python/sglang/srt/distributed/bootstrap.py
-index c6962839..1b3addc7 100644
+index 0d87af677..6ffd52b7d 100644
 --- a/python/sglang/srt/distributed/bootstrap.py
 +++ b/python/sglang/srt/distributed/bootstrap.py
-@@ -178,9 +178,12 @@ def _resolve_dist_init_method(*, server_args: ServerArgs, dist_port: int) -> str
-         na = NetworkAddress.parse(server_args.dist_init_addr)
+@@ -191,9 +191,12 @@ def _resolve_dist_init_method(*, dist_port: int) -> str:
+         na = NetworkAddress.parse(get_parallel().dist_init_addr)
          dist_init_method = na.to_tcp()
      else:
 -        dist_init_method = NetworkAddress(
--            server_args.host or "127.0.0.1", dist_port
+-            get_serving().host or "127.0.0.1", dist_port
 -        ).to_tcp()
 +        bootstrap_host = (
 +            "127.0.0.1"
-+            if server_args.nnodes == 1
-+            else (server_args.host or "127.0.0.1")
++            if get_parallel().nnodes == 1
++            else (get_serving().host or "127.0.0.1")
 +        )
 +        dist_init_method = NetworkAddress(bootstrap_host, dist_port).to_tcp()
      return dist_init_method
  
  
 diff --git a/python/sglang/srt/entrypoints/engine.py b/python/sglang/srt/entrypoints/engine.py
-index ca2c429f..f61dc1fb 100644
+index 9afd8c480..81ab37d79 100644
 --- a/python/sglang/srt/entrypoints/engine.py
 +++ b/python/sglang/srt/entrypoints/engine.py
-@@ -107,7 +107,11 @@ from sglang.srt.runtime_context import (
-     get_serving,
-     publish,
+@@ -116,7 +116,11 @@ from sglang.srt.runtime_context import (
+     restore_context,
+     snapshot_context,
  )
 -from sglang.srt.server_args import PortArgs, ServerArgs
 +from sglang.srt.server_args import (
@@ -35,69 +106,61 @@ index ca2c429f..f61dc1fb 100644
  from sglang.srt.utils import (
      MultiprocessingSerializer,
      SerializedTensorPayload,
-@@ -250,7 +254,7 @@ class Engine(EngineScoreMixin, EngineBase):
-                 kwargs["log_level"] = "error"
-             server_args = self.server_args_class(**kwargs)
+@@ -273,7 +277,7 @@ class Engine(EngineScoreMixin, EngineBase):
+                 "Engine(" + ", ".join(f"{k}={v!r}" for k, v in kwargs.items()) + ")",
+             )
          self.server_args = server_args
--        logger.info(f"{server_args=}")
+-        logger.info(f"server_args={server_args.resolved_dict()}")
 +        logger.info("server_args=%s", server_args_to_public_dict(server_args))
  
          # Rust Server is not supported with the offline Engine API
          if envs.SGLANG_RUST_SERVER.get():
-@@ -1092,7 +1096,7 @@ class Engine(EngineScoreMixin, EngineBase):
-         # Allocate ports for inter-process communications
-         if port_args is None:
-             port_args = PortArgs.init_new(server_args)
--        logger.info(f"{server_args=}")
-+        logger.info("server_args=%s", server_args_to_public_dict(server_args))
+@@ -1106,7 +1110,7 @@ class Engine(EngineScoreMixin, EngineBase):
+             # Allocate ports for inter-process communications
+             if port_args is None:
+                 port_args = PortArgs.init_new(server_args)
+-            logger.info(f"server_args={server_args.resolved_dict()}")
++            logger.info("server_args=%s", server_args_to_public_dict(server_args))
  
-         # Start the engine info bootstrap server if per-rank info is needed.
-         engine_info_bootstrap_server = None
-@@ -1364,7 +1368,7 @@ class Engine(EngineScoreMixin, EngineBase):
+             # Start the engine info bootstrap server if per-rank info is needed.
+             engine_info_bootstrap_server = None
+@@ -1379,7 +1383,7 @@ class Engine(EngineScoreMixin, EngineBase):
          )
          return msgspec_to_builtins(
              {
--                **dataclasses.asdict(self.tokenizer_manager.server_args),
+-                **self.tokenizer_manager.server_args.resolved_dict(),
 +                **server_args_to_public_dict(self.tokenizer_manager.server_args),
+                 "launch_command": self.tokenizer_manager.server_args.launch_command,
                  **self._scheduler_init_result.scheduler_infos[0],
                  "startup_time": self.tokenizer_manager.startup_time,
-                 "internal_states": internal_states,
 diff --git a/python/sglang/srt/entrypoints/grpc_bridge.py b/python/sglang/srt/entrypoints/grpc_bridge.py
-index dbab4608..74c58b40 100644
+index 234ab8bb7..a8f2fc31d 100644
 --- a/python/sglang/srt/entrypoints/grpc_bridge.py
 +++ b/python/sglang/srt/entrypoints/grpc_bridge.py
-@@ -7,7 +7,6 @@ TokenizerManager's event loop.
- """
+@@ -16,6 +16,7 @@ from pydantic import ValidationError
  
- import asyncio
--import dataclasses
- import json
- import logging
- from types import SimpleNamespace
-@@ -16,6 +15,7 @@ from typing import Any, Awaitable, Callable, Dict, List, Optional
- from pydantic import ValidationError
- 
+ from sglang.srt.arg_groups.overrides import resolving_view
  from sglang.srt.configs.embedding_model_spec import resolved_embedding_plan
 +from sglang.srt.server_args import server_args_to_public_dict
- from sglang.srt.utils.msgspec_utils import msgspec_to_builtins
- 
- logger = logging.getLogger(__name__)
-@@ -417,7 +417,9 @@ class RuntimeHandle:
+ from sglang.srt.runtime_context import (
+     describe_kv_events_publisher,
+     get_lora,
+@@ -427,7 +428,9 @@ class RuntimeHandle:
          return json.dumps(result, default=str)
  
      def get_server_info(self) -> str:
--        result: Dict[str, Any] = dataclasses.asdict(self.tokenizer_manager.server_args)
+-        result: Dict[str, Any] = self.tokenizer_manager.server_args.resolved_dict()
 +        result: Dict[str, Any] = server_args_to_public_dict(
 +            self.tokenizer_manager.server_args
 +        )
-         result.update(self.scheduler_info)
-         result["kv_events"] = (
-             self.tokenizer_manager.server_args.describe_kv_events_publisher()
+         # `resolved_dict` answers with what resolution decided; the launch
+         # command answers with what was asked for, and the two are not
+         # derivable from each other. The HTTP and in-process readbacks both
 diff --git a/python/sglang/srt/entrypoints/http_server.py b/python/sglang/srt/entrypoints/http_server.py
-index fe9697a0..33a2ddd2 100644
+index f51d4399b..962977dd8 100644
 --- a/python/sglang/srt/entrypoints/http_server.py
 +++ b/python/sglang/srt/entrypoints/http_server.py
-@@ -164,7 +164,11 @@ from sglang.srt.observability.trace import (
+@@ -165,7 +165,11 @@ from sglang.srt.observability.trace import (
  )
  from sglang.srt.parser.reasoning_parser import ReasoningParser
  from sglang.srt.parser.template_manager import TemplateManager
@@ -110,7 +173,7 @@ index fe9697a0..33a2ddd2 100644
  from sglang.srt.utils import (
      add_prometheus_middleware,
      add_prometheus_track_response_middleware,
-@@ -784,6 +788,7 @@ async def weight_version():
+@@ -806,6 +810,7 @@ async def weight_version():
  
  
  @app.get("/get_server_info")
@@ -118,7 +181,7 @@ index fe9697a0..33a2ddd2 100644
  async def get_server_info():
      """Get the server information (deprecated - use /server_info instead)."""
      logger.warning(
-@@ -794,6 +799,7 @@ async def get_server_info():
+@@ -816,6 +821,7 @@ async def get_server_info():
  
  
  @app.get("/server_info")
@@ -126,16 +189,16 @@ index fe9697a0..33a2ddd2 100644
  async def server_info():
      """The startup configuration, plus live scheduler state.
  
-@@ -813,7 +819,7 @@ async def server_info():
-     # server_args.model_config is not serializable but should be excluded by asdict.
+@@ -836,7 +842,7 @@ async def server_info():
+ 
      return msgspec_to_builtins(
          {
--            **dataclasses.asdict(server_args),
+-            **server_args.resolved_dict(),
 +            **server_args_to_public_dict(server_args),
+             "launch_command": server_args.launch_command,
              **_global_state.scheduler_info,
              "startup_time": _global_state.tokenizer_manager.startup_time,
-             "internal_states": internal_states,
-@@ -1548,6 +1554,7 @@ async def load_lora_adapter(
+@@ -1573,6 +1579,7 @@ async def load_lora_adapter(
  
  
  @app.api_route("/load_lora_adapter_from_tensors", methods=["POST"])
@@ -144,45 +207,58 @@ index fe9697a0..33a2ddd2 100644
      obj: Annotated[LoadLoRAAdapterFromTensorsReqInput, Body()], request: Request
  ):
 diff --git a/python/sglang/srt/managers/scheduler.py b/python/sglang/srt/managers/scheduler.py
-index 7dc5be83..f02d16d5 100644
+index 743c8afe0..c670e2f23 100644
 --- a/python/sglang/srt/managers/scheduler.py
 +++ b/python/sglang/srt/managers/scheduler.py
-@@ -291,7 +291,11 @@ from sglang.srt.plugins import load_plugins
- from sglang.srt.runtime_context import get_context, publish
+@@ -313,7 +313,12 @@ from sglang.srt.platforms import current_platform
+ from sglang.srt.plugins import load_plugins
+ from sglang.srt.rust_server.server import RustServer
  from sglang.srt.sampling.sampling_batch_info import SamplingBatchInfo
- from sglang.srt.sampling.sampling_params import TOP_K_ALL
--from sglang.srt.server_args import PortArgs, ServerArgs
+-from sglang.srt.server_args import PortArgs, ServerArgs, compute_world_size
 +from sglang.srt.server_args import (
 +    PortArgs,
 +    ServerArgs,
++    compute_world_size,
 +    redact_server_args_dict,
 +)
  from sglang.srt.session.session_controller import SessionController
  from sglang.srt.speculative.base_spec_worker import BaseSpecWorker
  from sglang.srt.speculative.dflash_utils import validate_dflash_request
-@@ -4281,7 +4285,7 @@ class Scheduler(
+@@ -5012,7 +5017,7 @@ class Scheduler(
      def get_internal_state(self, recv_req: GetInternalStateReq):
          # Resolved config (pristine server_args + post-publish overrides) so a
          # readback reflects values changed via /set_internal_state, not startup.
 -        ret = get_context().resolved_server_args_dict()
 +        ret = redact_server_args_dict(get_context().resolved_server_args_dict())
-         ret["last_gen_throughput"] = self.metrics_reporter.last_gen_throughput
-         draft_graph_memory_usage = (
-             None if self.draft_worker is None else self.draft_worker.graph_memory_usage
+         ret["world_size"] = compute_world_size(
+             enable_dp_attention=get_parallel().enable_dp_attention,
+             dp_size=get_parallel().dp_size,
 diff --git a/python/sglang/srt/managers/tokenizer_manager.py b/python/sglang/srt/managers/tokenizer_manager.py
-index 41c9cd21..5a67f8bf 100644
+index 1b63fb642..fa33218a9 100644
 --- a/python/sglang/srt/managers/tokenizer_manager.py
 +++ b/python/sglang/srt/managers/tokenizer_manager.py
-@@ -138,6 +138,8 @@ from sglang.srt.sampling.sampling_params import SamplingParams
+@@ -158,6 +158,9 @@ from sglang.srt.sampling.sampling_params import SamplingParams
  from sglang.srt.server_args import (
      PortArgs,
      ServerArgs,
 +    redact_sensitive_cli_args,
++    redact_server_args_dict,
 +    server_args_to_public_dict,
-     set_global_server_args_for_tokenizer,
  )
  from sglang.srt.utils import (
-@@ -2971,7 +2973,7 @@ class TokenizerManager(TokenizerControlMixin, TokenizerManagerScoreMixin):
+     configure_gc_warning,
+@@ -2195,7 +2198,9 @@ class TokenizerManager(TokenizerControlMixin, TokenizerManagerScoreMixin):
+         part that cannot be reconstructed afterwards.
+         """
+         try:
+-            return self.resolved_config_dict(self.server_args.resolved_dict())
++            return redact_server_args_dict(
++                self.resolved_config_dict(self.server_args.resolved_dict())
++            )
+         except Exception as e:
+             logger.error(f"Failed to snapshot the resolved config for the dump: {e!r}")
+             return None
+@@ -3138,7 +3143,7 @@ class TokenizerManager(TokenizerControlMixin, TokenizerManagerScoreMixin):
      ):
          logger.info(log_message)
          to_dump_with_server_args = {
@@ -191,7 +267,7 @@ index 41c9cd21..5a67f8bf 100644
              "config_updates": get_context().overrides_log(),
              "resolved_config": self._dump_config_snapshot(),
              "requests": data_list.copy(),
-@@ -3056,11 +3058,11 @@ class TokenizerManager(TokenizerControlMixin, TokenizerManagerScoreMixin):
+@@ -3223,11 +3228,11 @@ class TokenizerManager(TokenizerControlMixin, TokenizerManagerScoreMixin):
  
                  # Write the data to the file
                  data_to_dump_with_server_args = {
@@ -206,7 +282,7 @@ index 41c9cd21..5a67f8bf 100644
                  with open(filename, "wb") as f:
                      try:
 diff --git a/python/sglang/srt/multimodal/processors/mimo_audio.py b/python/sglang/srt/multimodal/processors/mimo_audio.py
-index a0f727e4..55264d51 100644
+index 909c9965b..7d123657d 100644
 --- a/python/sglang/srt/multimodal/processors/mimo_audio.py
 +++ b/python/sglang/srt/multimodal/processors/mimo_audio.py
 @@ -178,11 +178,15 @@ class MiMoAudioPipeline:
@@ -247,7 +323,7 @@ index a0f727e4..55264d51 100644
              if AudioDecoder is None:
                  raise RuntimeError(
 diff --git a/python/sglang/srt/multimodal/processors/mimo_v2.py b/python/sglang/srt/multimodal/processors/mimo_v2.py
-index 022bb41c..dc7a5d1c 100644
+index c833d7937..9c431416a 100644
 --- a/python/sglang/srt/multimodal/processors/mimo_v2.py
 +++ b/python/sglang/srt/multimodal/processors/mimo_v2.py
 @@ -490,22 +490,41 @@ class MiMoProcessor:
@@ -338,7 +414,7 @@ index 022bb41c..dc7a5d1c 100644
          else:
              image_obj = Image.open(BytesIO(image))
 diff --git a/python/sglang/srt/multimodal/processors/moss_vl.py b/python/sglang/srt/multimodal/processors/moss_vl.py
-index 8df4655b..d403f4f2 100644
+index 3f862f355..24232a3a6 100644
 --- a/python/sglang/srt/multimodal/processors/moss_vl.py
 +++ b/python/sglang/srt/multimodal/processors/moss_vl.py
 @@ -20,7 +20,12 @@ from sglang.srt.multimodal.processors.base_processor import (
@@ -355,8 +431,8 @@ index 8df4655b..d403f4f2 100644
  
  
  class MossVLImageProcessor(SGLangBaseProcessor):
-@@ -418,13 +423,17 @@ class MossVLImageProcessor(SGLangBaseProcessor):
-             return f.name
+@@ -425,20 +430,24 @@ class MossVLImageProcessor(SGLangBaseProcessor):
+             raise
  
      def _normalize_video_string(self, value: str) -> Tuple[str, Optional[str]]:
 -        if value.startswith("file://"):
@@ -376,16 +452,15 @@ index 8df4655b..d403f4f2 100644
              timeout = int(os.getenv("REQUEST_TIMEOUT", "10"))
              content = download_remote_media(value, timeout=timeout)
              suffix = os.path.splitext(urlparse(value).path)[1] or ".mp4"
-@@ -432,7 +441,7 @@ class MossVLImageProcessor(SGLangBaseProcessor):
-                 f.write(content)
-                 return f.name, f.name
+             temp_path = self._write_video_bytes_to_tempfile(content, suffix=suffix)
+             return temp_path, temp_path
  
 -        if value.startswith("data:"):
 +        if scheme == "data":
              header, encoded = value.split(",", 1)
              mime = header.split(";", 1)[0]
              suffix = ".mp4"
-@@ -446,6 +455,9 @@ class MossVLImageProcessor(SGLangBaseProcessor):
+@@ -452,6 +461,9 @@ class MossVLImageProcessor(SGLangBaseProcessor):
              )
              return temp_path, temp_path
  
@@ -396,7 +471,7 @@ index 8df4655b..d403f4f2 100644
              pybase64.b64decode(value, validate=True)
          )
 diff --git a/python/sglang/srt/multimodal/processors/transformers_auto.py b/python/sglang/srt/multimodal/processors/transformers_auto.py
-index 1c348b3c..87d201bf 100644
+index 17f486ddf..f73adde86 100644
 --- a/python/sglang/srt/multimodal/processors/transformers_auto.py
 +++ b/python/sglang/srt/multimodal/processors/transformers_auto.py
 @@ -12,6 +12,7 @@ from sglang.srt.multimodal.processors.base_processor import (
@@ -407,32 +482,55 @@ index 1c348b3c..87d201bf 100644
  
  
  def _first_attr(obj, names: tuple[str, ...], default=None):
-@@ -152,6 +153,8 @@ class TransformersAutoMultimodalProcessor(BaseMultimodalProcessor):
+@@ -186,6 +187,8 @@ class TransformersAutoMultimodalProcessor(BaseMultimodalProcessor):
          video_data = getattr(request_obj, "video_data", None)
          if video_data is not None and not isinstance(video_data, list):
              video_data = [video_data]
 +        for video in video_data or []:
 +            _enforce_delegated_media_source_policy(video)
  
-         # Load raw media
-         images = self._load_images(image_data)
+         # Audio path: load clips and run the shared token-expansion machinery,
+         # which passes ``audio=`` to the HF processor and packs audio features
 diff --git a/python/sglang/srt/server_args.py b/python/sglang/srt/server_args.py
-index 0c6fd759..544f2376 100644
+index d79bb75d7..f529b3c17 100644
 --- a/python/sglang/srt/server_args.py
 +++ b/python/sglang/srt/server_args.py
-@@ -444,6 +444,51 @@ def add_linear_attn_kernel_backend_choices(choices):
-     LINEAR_ATTN_KERNEL_BACKEND_CHOICES.extend(choices)
+@@ -49,6 +49,7 @@ from sglang.srt.arg_groups.arg_utils import (
+     add_cli_args_from_dataclass,
+     is_record,
+     record_fields,
++    sensitive_fields,
+ )
+ from sglang.srt.arg_groups.argparse_actions import (
+     DeprecatedStoreTrueAction,
+@@ -308,6 +309,18 @@ class ServerArgs:
+         """
+         return getattr(self, "_launch_command", None)
+ 
++    def __repr__(self) -> str:
++        # The assembled Struct's default repr prints every field; credentials
++        # (`Arg(sensitive=True)`) are masked so a stray log of the record
++        # cannot leak them.
++        hidden = sensitive_fields(type(self))
++        parts = ", ".join(
++            f"{field.name}="
++            + ("<redacted>" if field.name in hidden else repr(getattr(self, field.name)))
++            for field in record_fields(type(self))
++        )
++        return f"ServerArgs({parts})"
++
+     def resolved_dict(self) -> dict[str, Any]:
+         """This configuration as a plain dict of resolved field values.
+ 
+@@ -626,6 +639,47 @@ def _underscore_field_names() -> frozenset:
+     )
  
  
 +def _sensitive_server_arg_fields() -> frozenset[str]:
-+    return frozenset(
-+        field.name
-+        for field in dataclasses.fields(ServerArgs)
-+        if field.metadata.get("sensitive")
-+    )
++    return sensitive_fields(ServerArgs)
 +
 +
-+def redact_server_args_dict(values: Dict[str, Any]) -> Dict[str, Any]:
++def redact_server_args_dict(values: dict[str, Any]) -> dict[str, Any]:
 +    """Copy a ServerArgs-shaped mapping without credential-bearing fields."""
 +    values = dict(values)
 +    for field_name in _sensitive_server_arg_fields():
@@ -440,17 +538,17 @@ index 0c6fd759..544f2376 100644
 +    return values
 +
 +
-+def server_args_to_public_dict(server_args: Any) -> Dict[str, Any]:
-+    """Serialize ServerArgs without credential-bearing fields."""
-+    return redact_server_args_dict(dataclasses.asdict(server_args))
++def server_args_to_public_dict(server_args: Any) -> dict[str, Any]:
++    """Serialize ServerArgs (resolved values) without credential-bearing fields."""
++    return redact_server_args_dict(server_args.resolved_dict())
 +
 +
-+def redact_sensitive_cli_args(argv: List[str]) -> List[str]:
++def redact_sensitive_cli_args(argv: list[str]) -> list[str]:
 +    """Return argv with values for credential-bearing ServerArgs removed."""
 +    sensitive_options = {
 +        f"--{name.replace('_', '-')}" for name in _sensitive_server_arg_fields()
 +    }
-+    result: List[str] = []
++    result: list[str] = []
 +    redact_next = False
 +    for arg in argv:
 +        if redact_next:
@@ -469,38 +567,14 @@ index 0c6fd759..544f2376 100644
 +    return result
 +
 +
- @dataclasses.dataclass
- class ServerArgs:
-     """Server-wide configuration for SGLang.
-@@ -1346,7 +1391,7 @@ class ServerArgs:
-     ssl_ca_certs: A[Optional[str], "The CA certificates file.", NS("serving")] = None
-     ssl_keyfile_password: A[
-         Optional[str], "The password to decrypt the SSL keyfile.", NS("serving")
--    ] = None
-+    ] = dataclasses.field(default=None, repr=False, metadata={"sensitive": True})
-     enable_ssl_refresh: A[
-         bool,
-         "Enable automatic SSL certificate hot-reloading when cert/key files change on disk. Requires --ssl-certfile and --ssl-keyfile.",
-@@ -1360,12 +1405,12 @@ class ServerArgs:
-         Optional[str],
-         "Set API key of the server. It is also used in the OpenAI API compatible server.",
-         NS("serving"),
--    ] = None
-+    ] = dataclasses.field(default=None, repr=False, metadata={"sensitive": True})
-     admin_api_key: A[
-         Optional[str],
-         "Set admin API key for sensitive management endpoints (e.g. /clear_hicache_storage_backend). When set, admin endpoints require this key and do NOT accept --api-key.",
-         NS("serving"),
--    ] = None
-+    ] = dataclasses.field(default=None, repr=False, metadata={"sensitive": True})
-     served_model_name: A[
-         Optional[str],
-         "Override the model name returned by the v1/models endpoint in OpenAI API server.",
+ # NOTE: The process-wide ServerArgs is owned by the runtime context
+ # (sglang.srt.runtime_context). The two publish functions below are LEGACY
+ # shims kept for the existing call-sites; they hand over the same live object
 diff --git a/python/sglang/srt/utils/auth.py b/python/sglang/srt/utils/auth.py
-index e7ef0767..e1688c13 100644
+index df6811179..08ce4f0a5 100644
 --- a/python/sglang/srt/utils/auth.py
 +++ b/python/sglang/srt/utils/auth.py
-@@ -167,6 +167,26 @@ def add_api_key_middleware(
+@@ -172,6 +172,26 @@ def add_api_key_middleware(
              self.fastapi_app = fastapi_app
  
          async def __call__(self, scope, receive, send):
@@ -528,10 +602,10 @@ index e7ef0767..e1688c13 100644
                  await self.app(scope, receive, send)
                  return
 diff --git a/python/sglang/srt/utils/common.py b/python/sglang/srt/utils/common.py
-index 053f2cdb..80b9a4d6 100644
+index 62ad5159f..d30ce5580 100644
 --- a/python/sglang/srt/utils/common.py
 +++ b/python/sglang/srt/utils/common.py
-@@ -1690,6 +1690,64 @@ CLIENT_MEDIA_EXCEPTIONS = (
+@@ -1704,6 +1704,64 @@ CLIENT_MEDIA_EXCEPTIONS = (
  )
  
  
@@ -596,7 +670,7 @@ index 053f2cdb..80b9a4d6 100644
  def load_audio(
      audio_file: Union[str, bytes], sr: Optional[int] = None, mono: bool = True
  ) -> np.ndarray:
-@@ -1699,17 +1757,22 @@ def load_audio(
+@@ -1713,17 +1771,22 @@ def load_audio(
      # Normalize input: resolve URL / base64 / file:// to bytes or path
      if isinstance(audio_file, bytes):
          source = audio_file
@@ -629,7 +703,7 @@ index 053f2cdb..80b9a4d6 100644
      else:
          raise ValueError(f"Invalid audio format: {audio_file}")
  
-@@ -1906,18 +1969,27 @@ def get_image_bytes(image_file: Union[str, bytes]) -> bytes:
+@@ -1982,18 +2045,27 @@ def get_image_bytes(image_file: Union[str, bytes]) -> bytes:
      """Normalize various image inputs into raw bytes."""
      if isinstance(image_file, bytes):
          return image_file
@@ -665,7 +739,7 @@ index 053f2cdb..80b9a4d6 100644
  
  
  def _normalize_video_input(
-@@ -1932,15 +2004,21 @@ def _normalize_video_input(
+@@ -2008,15 +2080,21 @@ def _normalize_video_input(
      if isinstance(video_file, bytes):
          return video_file
      elif isinstance(video_file, str):

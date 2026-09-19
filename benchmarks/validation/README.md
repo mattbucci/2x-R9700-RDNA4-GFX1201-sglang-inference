@@ -1,3 +1,27 @@
+# Fleet validation receipts
+
+Every stack promotion re-runs the same two probes on every preset with a local checkpoint
+(`scripts/eval/fleet_validate.sh`): the capability suite (`validate_capabilities.py`) and the deep-context
+needle/coherence probe (`deep_context_probe.py`). Receipts, newest first; each promotion's tables and
+triage live in its rebase note:
+
+| Stack | Capabilities | Deep probe | Write-up |
+|---|---|---|---|
+| v0.5.20 + 70 patches (2026-09-19) | [`capabilities-v0520-2026-09-19.json`](capabilities-v0520-2026-09-19.json) | [`deep-probe-v0520-2026-09-19.json`](deep-probe-v0520-2026-09-19.json) · controls [`deep-probe-controls-v0518-v0520-2026-09-19.json`](deep-probe-controls-v0518-v0520-2026-09-19.json) | [`patches/v0520-rebase-2026-09-19.md`](../../patches/v0520-rebase-2026-09-19.md) |
+| v0.5.18 + 70 patches (2026-08-29/30) | [`capabilities-v0518-2026-08-29.json`](capabilities-v0518-2026-08-29.json) | [`deep-probe-v0518-2026-08-29.json`](deep-probe-v0518-2026-08-29.json) | [`patches/v0518-rebase-2026-08-29.md`](../../patches/v0518-rebase-2026-08-29.md) |
+| v0.5.15/16 + patch 086 (2026-07-14) | [`capabilities-086.json`](capabilities-086.json) | [`deep-probe-086.json`](deep-probe-086.json) | below |
+
+Known non-regressions that recur in every run: the `thinking` probe fails by design on non-reasoning
+checkpoints (coder-30b, coder-next-ream, devstral, devstral2, coder-reap-25b, qwen3vl-32b Instruct);
+gemma4-31b vision/video fail because the local AWQ checkpoint carries no vision-tower weights; qwen36-moe's
+think-off answer echoes `</think>` and trips the coherence heuristic with both needles recalled; the
+windowed/recurrent flagships (north-mini, nemotron-omni) miss MID by design, and at ~198K their single
+T=0.7 LATE sample is a coin: nemotron-omni greedily answers the needle digits without the alpha prefix
+(`MID=2291 LATE=7734`, byte-identical on v0.5.18 and v0.5.20 at every rung of an 8K–198K ladder) and
+north-mini answers `NOT_FOUND`-style on both engines, so a LATE flip on either preset between two fleet runs
+is not evidence of a regression — the 2026-09-19 controls file above has the N-sample fresh/cached/greedy
+receipts.
+
 # Patch 086 fleet re-validation (2026-07-14)
 
 **Verdict: patch 086 (`num_kv_splits` 16→64) causes zero regressions across the fleet.** Every model

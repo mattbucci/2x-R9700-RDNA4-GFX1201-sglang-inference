@@ -63,6 +63,9 @@ def main() -> int:
     p.add_argument("--tokens", type=int, required=True, help="approx target prompt tokens")
     p.add_argument("--slug", required=True)
     p.add_argument("--full-attn", type=int, default=1, help="1 if mid-needle recall is expected")
+    p.add_argument("--temperature", type=float, default=0.7,
+                   help="sampling temperature (default 0.7 = the fleet probe; 0 for a greedy A/B "
+                        "between engine versions)")
     p.add_argument("--max-tokens", type=int, default=1024,
                    help="answer budget. Thinking models that ignore enable_thinking=False "
                         "reason before answering; 200 truncated north-mini mid-reasoning "
@@ -85,7 +88,7 @@ def main() -> int:
     payload = {
         "model": model,
         "messages": [{"role": "user", "content": prompt}],
-        "max_tokens": a.max_tokens, "temperature": 0.7, "top_p": 0.95, "top_k": 20,
+        "max_tokens": a.max_tokens, "temperature": a.temperature, "top_p": 0.95, "top_k": 20,
         "chat_template_kwargs": {"enable_thinking": False},
     }
     t0 = time.time()
@@ -115,6 +118,7 @@ def main() -> int:
         "full_attn": bool(a.full_attn),
         "late_recall": late_ok, "mid_recall": mid_ok, "coherent": coh,
         "finish_reason": finish, "truncated_inconclusive": truncated,
+        "temperature": a.temperature,
         "elapsed_sec": round(dt, 1),
         "sample": ans[:200].replace("\n", " "),
         "timestamp": time.strftime("%Y-%m-%d %H:%M"),

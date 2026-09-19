@@ -1,4 +1,5 @@
 diff --git a/python/sglang/srt/models/cohere2_moe.py b/python/sglang/srt/models/cohere2_moe.py
+index 5f1013ab8..6796b4d3c 100644
 --- a/python/sglang/srt/models/cohere2_moe.py
 +++ b/python/sglang/srt/models/cohere2_moe.py
 @@ -20,6 +20,7 @@ from sglang.srt.layers.linear import (
@@ -30,7 +31,7 @@ diff --git a/python/sglang/srt/models/cohere2_moe.py b/python/sglang/srt/models/
  def cohere2_sigmoid_topk(
      hidden_states: torch.Tensor,
      gating_output: torch.Tensor,
-@@ -404,8 +419,7 @@ class Cohere2MoeDecoderLayer(nn.Module):
+@@ -401,8 +416,7 @@ class Cohere2MoeDecoderLayer(nn.Module):
                  prefix=add_prefix("mlp", prefix),
              )
  
@@ -39,8 +40,8 @@ diff --git a/python/sglang/srt/models/cohere2_moe.py b/python/sglang/srt/models/
 +        self.input_layernorm = select_norm_impl(config)
          self.tp_size = get_parallel().tp_size
  
-     def forward(
-@@ -456,8 +470,7 @@ class Cohere2MoeModel(nn.Module):
+         # The parallel block makes attn(norm(x)) and mlp(norm(x)) independent, so
+@@ -476,8 +490,7 @@ class Cohere2MoeModel(nn.Module):
              ),
              prefix=add_prefix("layers", prefix),
          )
@@ -52,6 +53,7 @@ diff --git a/python/sglang/srt/models/cohere2_moe.py b/python/sglang/srt/models/
          """Return the embedding module, or the embedded tensor if ``input_ids``
 diff --git a/test/registered/unit/models/test_cohere2_moe_norm.py b/test/registered/unit/models/test_cohere2_moe_norm.py
 new file mode 100644
+index 000000000..dbcd6938b
 --- /dev/null
 +++ b/test/registered/unit/models/test_cohere2_moe_norm.py
 @@ -0,0 +1,54 @@
@@ -109,7 +111,3 @@ new file mode 100644
 +            centered.pow(2).mean(dim=-1, keepdim=True) + config.layer_norm_eps
 +        )
 +        torch.testing.assert_close(norm(hidden_states), expected, rtol=1e-6, atol=1e-6)
-+
-+
-+if __name__ == "__main__":
-+    unittest.main()

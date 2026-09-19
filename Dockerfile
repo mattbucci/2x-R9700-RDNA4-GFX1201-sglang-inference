@@ -1,5 +1,5 @@
 # GPU-free build: HIP kernels cross-compile for gfx1201.
-# Override build args with --build-arg; defaults are the supported v0.5.18 stack.
+# Override build args with --build-arg; defaults are the supported v0.5.20 stack.
 ARG ROCM_BUILDER_IMAGE=docker.io/rocm/dev-ubuntu-24.04:7.2.4-complete@sha256:92f309c51b52cef8762867848f1529dee821624f23cd5df38455e819538f762f
 ARG ROCM_RUNTIME_IMAGE=docker.io/rocm/dev-ubuntu-24.04:7.2.4@sha256:bdc8e61026cbb844ede93d44d2c50055f51ebb2041906b60182bf3bee3139054
 
@@ -9,8 +9,8 @@ ARG MINIFORGE_SHA256=848194851a98903134187fbb4ab50efe87b003e0c0f808f97644b7524a6
 ARG RUSTUP_VERSION=1.29.0
 ARG RUSTUP_INIT_SHA256=4acc9acc76d5079515b46346a485974457b5a79893cfb01112423c89aeb5aa10
 ARG RUST_TOOLCHAIN=1.95.0
-ARG SGLANG_TAG=v0.5.18
-ARG SGLANG_COMMIT=71de97b264b04dcd514cf904003028aefe9775c8
+ARG SGLANG_TAG=v0.5.20
+ARG SGLANG_COMMIT=94602c9c2b7cbdb8efd5c52802dac6a1c180089e
 ENV DEBIAN_FRONTEND=noninteractive PIP_DISABLE_PIP_VERSION_CHECK=1 PIP_NO_CACHE_DIR=1 \
     PYTHONDONTWRITEBYTECODE=1 ROCM_PATH=/opt/rocm \
     PYTORCH_ROCM_ARCH=gfx1201 CONDA_BASE=/opt/conda ENV_NAME=sglang-rdna4 \

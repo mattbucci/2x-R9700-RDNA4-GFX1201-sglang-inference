@@ -1,16 +1,17 @@
-# SGLang v0.5.18 RDNA4 patches
+# SGLang v0.5.20 RDNA4 patches
 
-This directory contains the **70 active numeric patches** applied to pristine SGLang v0.5.18 for the
-2× Radeon AI PRO R9700 serving stack. The default tree is `/data/sgl-v0518`; the default conda environment
-is `sglang-triton36-v0518`.
+This directory contains the **70 active numeric patches** applied to pristine SGLang v0.5.20 for the
+2× Radeon AI PRO R9700 serving stack. The default tree is `/data/sgl-v0520`; the default conda environment
+is `sglang-triton36-v0520`.
 
 Patch 072 is not part of the series because transformers 5.12.1 supplies the Gemma 4 unified configuration
 and processor. Patch 083 adds the tokenizer-backend correction required for Mistral checkpoints that ship
 `tekken.json`. Patch 003 includes safe fallbacks for both the base CUDA-only `sgl_kernel` imports and the
-optional `infllm_v2` extension reported in [issue #3](https://github.com/mattbucci/2x-R9700-RDNA4-GFX1201-sglang-inference/issues/3). On the v0.5.16 rebase, patch 059 was dropped because its FuseEP dispatcher target was removed upstream, and patch 097 was added as the JIT fused-gate None-bias guard. The v0.5.18 rebase went 69 → 70: 26 patches were regenerated for upstream's kernel-tree relocation (`sgl-kernel/` → `python/sglang/kernels/aot/`, `sglang.jit_kernel` → `sglang.kernels.ops`), the upstreamed max-head sizing was dropped from 077, and patch 098 was added so `gemma4_unified` resolves to transformers' native `Gemma4UnifiedConfig` (the `Gemma4Config` alias broke the encoder-free 12B at init).
+optional `infllm_v2` extension reported in [issue #3](https://github.com/mattbucci/2x-R9700-RDNA4-GFX1201-sglang-inference/issues/3). On the v0.5.16 rebase, patch 059 was dropped because its FuseEP dispatcher target was removed upstream, and patch 097 was added as the JIT fused-gate None-bias guard. The v0.5.18 rebase went 69 → 70: 26 patches were regenerated for upstream's kernel-tree relocation (`sgl-kernel/` → `python/sglang/kernels/aot/`, `sglang.jit_kernel` → `sglang.kernels.ops`), the upstreamed max-head sizing was dropped from 077, and patch 098 was added so `gemma4_unified` resolves to transformers' native `Gemma4UnifiedConfig` (the `Gemma4Config` alias broke the encoder-free 12B at init). The v0.5.20 rebase kept 70: 23 patches were regenerated, mostly for the msgspec-record `ServerArgs` (`arg_groups/fields`, resolution hooks) and upstream's gfx1250 branches; hunks that landed upstream were dropped from 011, 049, 074 and 096, and 073 was rewritten because its cleanly-applying hunk referenced `is_cuda`/`is_musa`/`is_npu` helpers that `overrides.py` no longer imports.
 
 Validation receipts:
 
+- [v0.5.20 rebase](v0520-rebase-2026-09-19.md)
 - [v0.5.18 rebase](v0518-rebase-2026-08-29.md)
 - [v0.5.16 rebase](v0516-rebase-2026-07-27.md)
 - [v0.5.15 base](v0515-rebase-2026-07-11.md)
@@ -25,11 +26,11 @@ The supported setup path applies the numeric series in filename order:
 scripts/setup.sh
 ```
 
-For an isolated replay, start with a pristine v0.5.18 worktree and fail immediately on any bad patch:
+For an isolated replay, start with a pristine v0.5.20 worktree and fail immediately on any bad patch:
 
 ```bash
-target=/tmp/sglang-v0518-replay
-git clone --branch v0.5.18 --depth 1 https://github.com/sgl-project/sglang.git "$target"
+target=/tmp/sglang-v0520-replay
+git clone --branch v0.5.20 --depth 1 https://github.com/sgl-project/sglang.git "$target"
 for patch in "$PWD"/patches/0*.patch; do
     git -C "$target" apply --check "$patch"
     git -C "$target" apply "$patch"
@@ -39,7 +40,7 @@ done
 Every series change must pass:
 
 1. **Pristine replay:** every numeric patch applies, with no skips or fallback mode.
-2. **Tree equivalence:** the replayed delta matches the intended `/data/sgl-v0518` delta byte-for-byte.
+2. **Tree equivalence:** the replayed delta matches the intended `/data/sgl-v0520` delta byte-for-byte.
 3. **No double apply:** each patch is rejected on the fully patched tree. (Patch 026 was the documented
    non-unique-anchor exception through v0.5.16; since it also covers `get_video_feature` it is rejected too.)
 
@@ -49,7 +50,8 @@ Also run `git diff --check`, focused unit/GPU tests, and the affected model capa
 
 | Path | Role |
 |---|---|
-| `/data/sgl-v0518` | Serving and development tree for v0.5.18 plus this series |
+| `/data/sgl-v0520` | Serving and development tree for v0.5.20 plus this series |
+| `/data/sgl-v0518` | Retained v0.5.18 rollback tree (`sglang-triton36-v0518`), untouched |
 | `patches/` | Reviewable source of truth for the serving-tree delta |
 | temporary pristine worktree | Replay and equivalence validation only |
 
@@ -172,7 +174,7 @@ can be proposed upstream. `Partial` requires a fresh comparison with upstream be
 
 | Component | Version |
 |---|---|
-| SGLang | v0.5.18 plus this 70-patch series |
+| SGLang | v0.5.20 plus this 70-patch series |
 | transformers | 5.12.1 |
 | Triton | 3.6.0 |
 | PyTorch | 2.11.0+rocm7.2 |
@@ -182,9 +184,9 @@ can be proposed upstream. `Partial` requires a fresh comparison with upstream be
 Build the optional native components with:
 
 ```bash
-scripts/setup_sgl_kernel.sh --env sglang-triton36-v0518
-scripts/build_awq_gemv.sh --env sglang-triton36-v0518
-scripts/build_skinny_gemms_int4.sh --env sglang-triton36-v0518
+scripts/setup_sgl_kernel.sh --env sglang-triton36-v0520
+scripts/build_awq_gemv.sh --env sglang-triton36-v0520
+scripts/build_skinny_gemms_int4.sh --env sglang-triton36-v0520
 ```
 
 ## Related documentation

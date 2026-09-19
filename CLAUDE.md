@@ -1,18 +1,18 @@
 # RDNA4 inference repository
 
-This repository serves and optimizes SGLang v0.5.18 on two AMD Radeon AI PRO R9700 GPUs. The primary goal is coherent single-user performance at long context; multi-user throughput is secondary.
+This repository serves and optimizes SGLang v0.5.20 on two AMD Radeon AI PRO R9700 GPUs. The primary goal is coherent single-user performance at long context; multi-user throughput is secondary.
 
 ## Current environment
 
-- SGLang tree: \`/data/sgl-v0518\`
-- Conda environment: \`sglang-triton36-v0518\`
-- Kernel source for the native HIP builds: \`/data/sgl-v0518/python/sglang/kernels/aot\` (upstream moved \`sgl-kernel/\` there in v0.5.17)
+- SGLang tree: \`/data/sgl-v0520\`
+- Conda environment: \`sglang-triton36-v0520\`
+- Kernel source for the native HIP builds: \`/data/sgl-v0520/python/sglang/kernels/aot\` (upstream moved \`sgl-kernel/\` there in v0.5.17)
 - Patch series: 70 numeric patches in \`patches/\`
 - Hardware: 2× gfx1201, 32 GiB each
 - ROCm 7.2, PyTorch 2.11.0+rocm7.2, Triton 3.6.0
 - Use the current tree unless a task explicitly requests a version comparison.
 
-After any live-source edit, capture the change as a numbered patch and replay the complete series on pristine v0.5.18.
+After any live-source edit, capture the change as a numbered patch and replay the complete series on pristine v0.5.20.
 
 ## Key commands
 
@@ -76,10 +76,10 @@ The process should have PPID 1 and its own session. Keep a PID file and persiste
 
 The supported gate is:
 
-1. Start from the peeled v0.5.18 commit.
+1. Start from the peeled v0.5.20 commit.
 2. Apply every numeric patch with strict \`git apply\`.
 3. Require zero fallback applications and zero failures.
-4. Compare every represented path and file mode with \`/data/sgl-v0518\`.
+4. Compare every represented path and file mode with \`/data/sgl-v0520\`.
 5. Run \`git diff --check\` on the patched source.
 6. Confirm a second application is rejected (no documented exceptions remain).
 7. Run focused unit/GPU tests for changed paths.

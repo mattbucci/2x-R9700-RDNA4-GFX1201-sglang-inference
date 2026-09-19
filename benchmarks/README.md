@@ -12,22 +12,25 @@ each model under its production launch preset (quant, graph policy, and KV dtype
 decode table is in the [top-level README](../README.md#single-user-decode-across-the-fleet); each `<model>/` directory
 here holds that model's `results.json` and regenerated `context_vs_toks.png` / `concurrency_vs_toks.png`.
 
-### Qwen3.8-27B-FP8 (2026-08-30, v0.5.18 + 70 patches)
+### Qwen3.8-27B-FP8 (2026-09-19, v0.5.20 + 70 patches, HIP graphs on)
 
-Official vendor block-FP8 ship under the `qwen38` preset (TP=2, FP8-e4m3 KV, `MAX_RUNNING=1`).
-Canonical decode sweep (`decode_ab`, 3-run streaming-TPOT median, think-off, graphs off — the
-preset default until 2026-09-19; [qwen38-27b-fp8/results.json](qwen38-27b-fp8/results.json)):
+Official vendor block-FP8 ship under the `qwen38` preset (TP=2, FP8-e4m3 KV, `MAX_RUNNING=1`,
+`--cuda-graph-max-bs-decode 1`). Canonical decode sweep (`decode_ab`, 3-run streaming-TPOT median,
+think-off; [qwen38-27b-fp8/results.json](qwen38-27b-fp8/results.json)), with the graphs-off
+2026-08-30 v0.5.18 sweep it replaces:
 
 | Actual input tokens | 24 | 7,331 | 58,483 | 197,326 |
 |---|---:|---:|---:|---:|
-| Decode tok/s | 16.698 | 16.684 | 16.555 | **16.611** |
+| Decode tok/s, v0.5.20 graphs on | 22.543 | 22.227 | 21.438 | **19.955** |
+| Decode tok/s, v0.5.18 graphs off (2026-08-30) | 16.698 | 16.684 | 16.555 | 16.611 |
 
-Fully flat decode to 197K — the strongest dense-class deep rate on the fleet. The 2026-09-19
-same-server HIP-graph A/B ([graph-ab-2026-09-19.json](qwen38-27b-fp8/graph-ab-2026-09-19.json),
-3 runs/point, idle CPU, server restarted between arms) lifted this to 22.5 / 22.2 / 21.6 / 20.2 tok/s
-at 24 / 6,563 / 52,193 / 176,044 actual input tokens (+33/+32/+29/+26%) with byte-identical temp-0
-outputs and a 5/5 capability probe, so the preset now runs graphs (`--cuda-graph-max-bs-decode 1`);
-the canonical sweep is re-measured with graphs on at the next stack promotion.
+Still the strongest dense-class deep rate on the fleet, now +35/+33/+29/+20% over the graphs-off
+curve. Graphs were enabled after the 2026-09-19 same-server HIP-graph A/B on v0.5.18
+([graph-ab-2026-09-19.json](qwen38-27b-fp8/graph-ab-2026-09-19.json), 3 runs/point, idle CPU,
+server restarted between arms: 22.5 / 22.2 / 21.6 / 20.2 tok/s at 24 / 6,563 / 52,193 / 176,044
+actual input tokens, byte-identical temp-0 outputs, 5/5 capability probe); the v0.5.20 promotion run
+reproduced that arm to within 0.1 tok/s at the same depths before this canonical sweep
+([validation](../patches/v0520-rebase-2026-09-19.md)).
 [Quality receipt](quality/Qwen3.8-27B-FP8.json): MMLU **84.2%** (100), HumanEval **93.3%** (30),
 Needle 2/2, LAB-Bench **42.3%** overall (25/benchmark, fleet-best; measured with
 `--mc-no-think`, i.e. `chat_template_kwargs.enable_thinking=false`). The earlier think-mode

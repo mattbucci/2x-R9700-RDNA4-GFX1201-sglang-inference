@@ -1,11 +1,11 @@
 # RDNA4 inference on 2× R9700
 
-SGLang v0.5.18 with 70 local RDNA4 patches, tuned for coherent single-user inference at long context
+SGLang v0.5.20 with 70 local RDNA4 patches, tuned for coherent single-user inference at long context
 (256K) on two AMD Radeon AI PRO R9700 GPUs (gfx1201, 32 GiB each, TP=2 over PCIe). The repository holds
 the patch series, the preset launcher, the benchmark and evaluation harnesses, the FP8/AWQ quantization
 pipeline, and the receipts behind every number below. Multi-user throughput is secondary.
 
-Serving tree `/data/sgl-v0518`, conda environment `sglang-triton36-v0518`, ROCm 7.2. The current focus
+Serving tree `/data/sgl-v0520`, conda environment `sglang-triton36-v0520`, ROCm 7.2. The current focus
 is FP8 inference for coding and agentic workloads: Cohere North-Mini Code, Poolside Laguna XS.2, and the
 new quality flagship Qwen3.8-27B-FP8.
 
@@ -17,14 +17,15 @@ new quality flagship Qwen3.8-27B-FP8.
   on the native Triton block-FP8 lane (36.8–47.8% over dequant-to-BF16), with a 21/21 seed-rung 256K
   agentic ladder. North-Mini Code passes the same ladder 21/21 to 245,172 actual tokens.
 - **Qwen3.8-27B-FP8 is the quality flagship**: fleet-best LAB-Bench 42.3% (no-think multiple choice),
-  MMLU 84.2%, HumanEval 93.3%, 7/7 agentic rungs to 245,150 actual tokens, and a dead-flat 16.6 tok/s
-  decode from 24 to 197K input on the repaired RDNA4 block-FP8 dispatch (patch 005). Its
+  MMLU 84.2%, HumanEval 93.3%, 7/7 agentic rungs to 245,150 actual tokens, and 22.5 → 20.0 tok/s
+  decode from 24 to 197K input on the repaired RDNA4 block-FP8 dispatch (patch 005) with HIP graphs
+  (v0.5.20 canonical sweep, 2026-09-19; 16.6 flat before graphs). Its
   seven-scaffold SWE-bench Lite bakeoff (300 instances per cell, Docker-scored) restarted on
   2026-09-18 as **v3, sandboxed**: the v2 lanes had let the agents read the upstream fix through
   future git history and the web on 45–61% of instances, so v2 is published only as an exposure
   study. Setup, the leak audit and the isolation design are in
   [`evals/swebench/FP8_BAKEOFF_SETUP.md`](evals/swebench/FP8_BAKEOFF_SETUP.md).
-- **The patch series replays byte-identically** onto pristine v0.5.18 under the strict gate in
+- **The patch series replays byte-identically** onto pristine v0.5.20 under the strict gate in
   [`patches/README.md`](patches/README.md).
 
 ## Results
@@ -57,7 +58,7 @@ deepest measured input. Provenance, raw JSON, and per-model curves are under
 | Devstral-Small-2-24B | AWQ dense + vision | 52.7 (15) | 17.0 (198K) |
 | Qwen3.5-27B | AWQ dense + DeltaNet | 24.5 (22) | 11.2 (197K) |
 | Qwen3.6-27B | AWQ dense + vision | 24.9 (22) | 11.5 (197K) |
-| Qwen3.8-27B | official FP8 dense + DeltaNet (VL + video) | 16.7 (24) | **16.6 (197K)** |
+| Qwen3.8-27B | official FP8 dense + DeltaNet (VL + video) | 22.5 (24) | **20.0 (197K)** |
 | Qwen3-VL-32B | AWQ dense + vision | 23.4 (20) | 16.5 (27K) |
 | Gemma 4 31B | AWQ dense + SWA | 29.4 (25) | 10.5 (110K) |
 | Gemma 4 12B | AWQ omni + SWA | 38.6 (25) | 10.9 (198K) |
@@ -128,7 +129,9 @@ Ordered by what runs next. Specs with an ID live in [`experiments/`](experiments
    measured HIP graphs off→on at 16.9→22.5 (24 tok), 16.9→22.2 (6.5K), 16.8→21.6 (52K) and
    16.0→20.2 tok/s (176K actual input): +26–33%, temp-0 outputs byte-identical in both a think-off
    code task and a thinking math task, 5/5 capability probe under graphs, capture bs=[1] 0.29 GB.
-   The preset now runs graphs (`--cuda-graph-max-bs-decode 1`); the inherited 2026-06-14 qwen36-27b
+   The preset now runs graphs (`--cuda-graph-max-bs-decode 1`); the v0.5.20 canonical sweep
+   ([results.json](benchmarks/qwen38-27b-fp8/results.json)) reads 22.5 / 22.2 / 21.4 / 20.0 tok/s at
+   24 / 7.3K / 58K / 197K, the same curve on the new engine. The inherited 2026-06-14 qwen36-27b
    "compute-bound at M=1" verdict was measured under EAGLE3 verify, never on plain decode. The
    remaining gap to the ~25 ms bandwidth floor (~13.5 GB of FP8 weights per rank per step) is the
    next target: `profile_decode_step.sh` (FP8 M=1 Triton block-GEMM) and `p2p_allreduce_bw.py`
@@ -192,7 +195,7 @@ backend, quantization path, parsers, memory settings, and graph policy.
 | Component | Version |
 |---|---|
 | GPUs | 2× AMD Radeon AI PRO R9700, gfx1201, 32 GiB each |
-| SGLang | v0.5.18 + 70 patches |
+| SGLang | v0.5.20 + 70 patches |
 | Python | 3.12 |
 | PyTorch | 2.11.0+rocm7.2 |
 | ROCm | 7.2 |
@@ -214,7 +217,7 @@ with trusted workloads; GPU passthrough is not a safe multi-tenant sandbox.
 
 ### OCI image
 
-`Dockerfile` builds the ROCm 7.2/v0.5.18 stack without a GPU; GitHub Actions promotes verified digests
+`Dockerfile` builds the ROCm 7.2/v0.5.20 stack without a GPU; GitHub Actions promotes verified digests
 to `ghcr.io/<owner>/sglang-rdna4`. The image is hardened for untrusted networks (keyed API, fail-closed
 preset launcher, disabled remote code and media by default) and must still sit behind a private network
 and an authenticating TLS proxy. Device selection, secrets, `docker run` recipes, the read-only
@@ -297,7 +300,15 @@ calibration and pruning scripts; community quantizations are reference data, not
 - Coder-Next full-size and GLM-4.5-Air remain diagnostic presets rather than recommended agentic ships;
   Qwen3-Coder-30B REAM is research-only until it passes a same-scaffold quality comparison against the
   unmerged checkpoint.
-- Gemma 4 31B vision quality is degraded; use the 12B or 26B Gemma presets for multimodal workloads.
+- Gemma 4 31B vision and video are non-functional on the local `gemma-4-31B-AWQ` checkpoint: it carries
+  no `vision_tower.*` weights (the tower is randomly initialized at load, on every SGLang version), so the
+  probe answers are hallucinated; use the 12B or 26B Gemma presets for multimodal workloads.
+- Verbatim needle recall at ~198K is at the boundary for the two recurrent/windowed presets, on every
+  engine version: nemotron-omni greedily returns the planted values' digits without their alpha prefix
+  (`MID=2291 LATE=7734`, byte-identical on v0.5.18 and v0.5.20, full-form to 88K) and north-mini answers
+  not-found; a single T=0.7 sample on either lands on either side of that boundary, so fleet-run LATE flips on
+  these two presets are not regressions
+  ([controls](benchmarks/validation/deep-probe-controls-v0518-v0520-2026-09-19.json)).
 - North-Mini-Code's previous ~120K recall ceiling is withdrawn: it was measured under incorrect
   centered-LayerNorm semantics and partly without checkpoint KV scales. Served correctly (patches
   090–095) it shows no agentic ceiling below 262,144. The pre-fix curve in
@@ -327,7 +338,7 @@ Final experiment dispositions are summarized in [benchmarks/FINDINGS.md](benchma
 | Path | Purpose |
 |---|---|
 | [scripts/](scripts/README.md) | setup, launch, benchmark, evaluation, quantization, and test entry points |
-| [patches/](patches/README.md) | ordered SGLang v0.5.18 patch series and the replay gate |
+| [patches/](patches/README.md) | ordered SGLang v0.5.20 patch series and the replay gate |
 | [PATCHES.md](PATCHES.md) | cross-environment patch inventory |
 | [benchmarks/](benchmarks/README.md) | current results, raw JSON, charts, and consolidated findings |
 | [evals/swebench/](evals/swebench/FP8_BAKEOFF_SETUP.md) | SWE-bench Lite bakeoff harness, audit, and Docker scoring |

@@ -63,6 +63,8 @@ SERVER_TIMEOUT="${SERVER_TIMEOUT:-720}"
 # Rollouts/audit/reroll need swebench + datasets: never trust ambient `python`
 # (a detached chain inherited /usr/bin/python once — 300 instant ModuleNotFoundError
 # "predictions" per scaffold, 2026-08-30). Scaffold CLIs + uv + rtk need these PATHs.
+# This is the *harness* interpreter (swebench 4.1.0 + datasets); the serving engine comes from
+# scripts/common.sh (v0.5.20 env since 2026-09-19), which does not carry the harness deps.
 ROLLOUT_PY="${ROLLOUT_PY:-$HOME/miniforge3/envs/sglang-triton36-v0518/bin/python}"
 export PATH="$HOME/.local/bin:$HOME/.npm-global/bin:$PATH"
 # tmpfs /tmp (31G) filled at qwen38 rollout #17 (2026-08-30: git add rc=128, every

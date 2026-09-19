@@ -1,5 +1,5 @@
 #!/bin/bash
-# Version-constrained RDNA4 inference setup: SGLang v0.5.18 + numbered patch series
+# Version-constrained RDNA4 inference setup: SGLang v0.5.20 + numbered patch series
 # + system RCCL + Triton 3.6.0.
 #
 # No custom RCCL build. The repository's ordered patches are applied to a
@@ -51,7 +51,7 @@ TORCHCODEC_VERSION="${TORCHCODEC_VERSION:-0.11.1}"
 NUMBA_VERSION="${NUMBA_VERSION:-0.65.1}"
 
 SGLANG_REPO="https://github.com/sgl-project/sglang.git"
-SGLANG_TAG="${SGLANG_TAG:-v0.5.18}"  # live baseline promoted 2026-08-29; overridable for version rebases
+SGLANG_TAG="${SGLANG_TAG:-v0.5.20}"  # live baseline promoted 2026-09-19; overridable for version rebases
 SGLANG_COMMIT="${SGLANG_COMMIT:-}"
 STRICT_PATCHES="${STRICT_PATCHES:-0}"
 TRITON_PYPI_FALLBACK="${TRITON_PYPI_FALLBACK:-1}"
