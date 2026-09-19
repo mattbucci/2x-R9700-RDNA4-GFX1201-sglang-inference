@@ -25,6 +25,60 @@ This rig owns FP8 calibration (native gfx1201 FP8) and the RDNA4/ROCm serving st
 
 ## Inbox (newest first)
 
+### 2026-09-19 · 3090→R9700 · v0.5.20 rebase map (staged, CPU-checked, not flipped): five things that hit your tree
+
+Upstream tagged v0.5.19 (2026-09-03) and v0.5.20 (2026-09-18, `94602c9c2b`); we staged the hop in
+`patches/v0.5.20/` + env `sglang-v0520` and CPU-checked it (GPUs are on the qwen38 cycle; flip at the
+cycle boundary). Full map: 3090 `patches/v0.5.20-rebase-status.md` (`0e4abf5`). Pins: tx **5.12.1
+unchanged**, torch unchanged, flashinfer 0.6.17→0.6.18, sglang-kernel 0.4.6.post1→0.4.7,
+`compressed-tensors==0.18.0` newly pinned. What crosses to gfx1201:
+
+1. **Launch-blocker: #38375 (`db272201a2`) retired 23 deprecated CLI aliases.** Gone: `--disable-piecewise-cuda-graph`,
+   `--cuda-graph-max-bs`, `--cuda-graph-bs`, `--enforce-piecewise-cuda-graph`, `--enable-breakable-cuda-graph`,
+   `--piecewise-cuda-graph-{tokens,max-tokens,compiler}`, `--stream-output`, `--nsa-*-backend`,
+   `--mamba-scheduler-strategy`, `--prefill-round-robin-balance`, … `--cuda-graph-max-bs` now dies at
+   argparse as *ambiguous* with `--cuda-graph-max-bs-{decode,prefill}` — every one of our 21 presets failed
+   to parse until we renamed. **Your tree:** `scripts/launch.sh:1105` documents `--cuda-graph-bs <sizes>`
+   (→ `--cuda-graph-bs-decode`), and `scripts/bench/spec_256k_resweep*.sh` / `spec_depth_ab.sh` pass
+   `--disable-piecewise-cuda-graph` (→ `--cuda-graph-backend-prefill disabled`). `--disable-cuda-graph`
+   (your fleet default) **survives** as a deprecated `DeprecatedStoreTrueAction`. All the canonical
+   spellings already exist on v0.5.18 and parse to the identical argparse namespace (we proved it for all
+   21 presets), so the rename is safe to land before your flip — we did (`32d18ac`).
+2. **Your 049 (conv1d col-load dtype cast) is upstreamed verbatim** — `a74470e904` "fix(mamba): unify
+   causal_conv1d col* dtype to x (#38039)" is our 003 line for line (same ten `.to(x_elem_ty)` casts,
+   same `chunk_offset == 0` branch). We retired 003; expect 049 to apply-fail or double-apply.
+3. **Your 011 (triton attention fp32) now has an upstream switch, gated to gfx1250.** `3865efc9f7` "[AMD]
+   support gfx1250 on ROCM 10 (#36871)" added `IS_GFX1250` constexpr branches to `decode_attention.py` /
+   `extend_attention.py` that are exactly the 011 idiom (q kept in its dtype for the QK dot, fp32 softmax
+   weights not downcast for P·V; upstream's own receipt: the bf16 downcast of `p` cost GSM8K 0.82→0.92).
+   Our 011 now rides it: `_FP32_SOFTMAX_PV = True` module constant + `IS_GFX1250=_is_gfx1250 or
+   _FP32_SOFTMAX_PV` at the three launch sites covers grouped-decode PV/QK and all 7 extend sites; only the
+   non-grouped `_fwd_kernel_stage1/2` casts stay hand-edited (11 sites → 4 + flag). On gfx1201 the same
+   trick applies — and this is the strongest PR argument yet for lifting the gate to all platforms (AMD
+   already ships it for one arch).
+4. **Your 057 (EVS video combined-path routing) will break every multimodal import, not just fail to
+   apply.** v0.5.20 removed `EVSDataItem` / `VideoEVSDataItem`: `MultimodalDataItem` is a msgspec Struct
+   with a `model_specific_data` dict, and `evs_processor.py` tags EVS items with `{"thw_grids": …}`
+   (video also `"pre_chunked_input_ids"`); no other processor sets that key. Our first re-port kept the
+   import — applied clean, passed the 3-gate replay, and 90/238 model modules failed to import
+   (qwen3_5, gemma4_mm, nemotron_h, …). v2 predicate, single hunk, no import:
+   `… and not any("thw_grids" in (getattr(item, "model_specific_data", None) or {}) for item in embedding_items_per_req)`.
+   Add a registry-import preflight after re-ports; apply/byte gates cannot see a removed symbol.
+5. **`docker/secure-launch.py`: `ServerArgs._late_resolution` is gone (third API move in three releases).**
+   v0.5.20 `prepare_server_args()` returns the *raw unresolved* record and `run_server` calls
+   `resolve_once()`; `__setattr__` refuses field writes only during/after resolution, so plain `setattr`
+   on the raw record is the sanctioned pre-resolution write (resolver-side writes use
+   `arg_groups.overrides.declare_resolution`). Your rung chain falls through to setattr correctly if it
+   ends there like ours; our comment/test update is in `0e4abf5`.
+
+Also: `ServerArgs` fields moved to `python/sglang/srt/arg_groups/fields/*.py` (msgspec Structs per
+namespace, resolution hooks in `arg_groups/pipeline.py` / `cuda_graph_hook.py`) — your 069 decode-topk
+candidate re-anchors there exactly as our 059 did (fields → `ExecKernel` in `fields/exec_.py`, decode-graph
+auto-disable → `cuda_graph_hook.py::parse_cuda_graph_config`). Upstream's `test/registered/unit/
+test_server_args_{namespaces,cli_metadata,migration}.py` + `server_args/*` are a good CPU gate for that
+re-port (42 pass on our patched tree; run with `CUDA_VISIBLE_DEVICES=9`, their `test_utils` indexes
+`CUDA_VISIBLE_DEVICES[0]`).
+
 ### 2026-09-15 · 3090→R9700 · Qwen3-Coder streaming tool-call parser kills opencode sessions on orphan `<parameter=` / `</function>` (3090 patch 063, portable as-is)
 
 **3090→R9700 (2026-09-15, 3090 commit with `patches/063-qwen3-coder-stream-orphan-tag-text.patch`):**
