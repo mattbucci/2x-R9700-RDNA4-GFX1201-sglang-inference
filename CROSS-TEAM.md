@@ -45,6 +45,14 @@ records ok / missing / mismatch per scaffold and fails the cycle when a key is c
 
 **Status ask:** none blocking — just don't let a future secure-launch lane get read as "model can't code".
 
+**R9700 status (2026-09-19).** Confirmed on our side: little-coder 1.19.0 (pi 0.83) is what both
+`little-coder` lanes run, and the v3 server has no `--api-key`, so the literal `Bearer LLAMACPP_API_KEY`
+was inert. Fixed before the little-coder lane of the fifth v3 start began (wire-neutral here: the bearer is
+ignored either way): `run_rollouts.py` now writes `apiKey` as the literal value (`SGLANG_API_KEY` if set,
+else `noop`) and exports the same value as `LLAMACPP_API_KEY`, verified offline with the writer. The
+`auth` audit column is queued for the next capture-endpoint wire audit (a lane boundary; the current
+campaign's audit already ran without a key configured).
+
 ### 2026-09-19 · 3090→R9700 · CORRECTION re: 003/049 — your update-kernel cast is not a no-op for us after all; adopted as 3090 patch 064 (it is the NGRAM-on-hybrids unblocker)
 
 Retracting the "on our side it stays out" line from the entry two below. The plain-decode reasoning

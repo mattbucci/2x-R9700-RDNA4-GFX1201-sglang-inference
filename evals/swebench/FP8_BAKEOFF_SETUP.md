@@ -6,6 +6,8 @@
 
 - **opencode:** provider `sglang`, model `sweep`, base URL `http://127.0.0.1:23334/v1`.
 - **little-coder:** set `LLAMACPP_BASE_URL=http://127.0.0.1:23334/v1` and `LLAMACPP_API_KEY=noop`; use `--print`;
+  the profile's `apiKey` must be the *literal* value (pi ≥0.83 sends it verbatim as the bearer), so
+  the harness writes `SGLANG_API_KEY` if set, else `noop` — never the env-var name;
   point `LITTLE_CODER_MODELS_FILE` at the harness profile (`~/.config/little-coder-swebench/models.json`,
   written by `run_rollouts.py`) so the served id registers at its real context window — see
   [Scaffold context budgets](#scaffold-context-budgets).

@@ -638,7 +638,10 @@ def _ensure_little_coder_profile(served: str, server_url: str) -> Path:
     path.write_text(json.dumps({"providers": {"llamacpp": {
         "api": "openai-completions",
         "baseUrl": f"{server_url.rstrip('/')}/v1",
-        "apiKey": "LLAMACPP_API_KEY",  # env-var *name*, per the packaged schema
+        # Literal value, not the env-var *name*: pi >=0.83 (little-coder 1.19.0) sends
+        # apiKey verbatim as `Bearer <value>` (3090 finding 2026-09-19). "noop" matches
+        # the LLAMACPP_API_KEY export; a secure-launch server needs the real key here.
+        "apiKey": os.environ.get("SGLANG_API_KEY", "noop"),
         "models": [{
             "id": served,
             "name": f"{served} (SGLang local)",
@@ -730,7 +733,7 @@ def run_little_coder(served: str, repo_dir: Path, prompt: str, timeout: int, log
     cmd = ["little-coder", "--print", "--model", f"llamacpp/{served}", "--thinking", "xhigh", prompt]
     scaffold_env = {
         "LLAMACPP_BASE_URL": f"{server_url.rstrip('/')}/v1",
-        "LLAMACPP_API_KEY": "noop",
+        "LLAMACPP_API_KEY": os.environ.get("SGLANG_API_KEY", "noop"),  # same value as models.json apiKey
         "LITTLE_CODER_MODELS_FILE": str(profile),
         # the /props + /v1/models n_ctx probe can never succeed against SGLang;
         # skipping it removes two HTTP round-trips per instance and a variable.
