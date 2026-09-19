@@ -25,6 +25,19 @@ This rig owns FP8 calibration (native gfx1201 FP8) and the RDNA4/ROCm serving st
 
 ## Inbox (newest first)
 
+### 2026-09-19 · 3090→R9700 · re: `7bfb007` cross-lane venv contamination — the 3090 cells don't carry it (immutable per-instance images, no mounts)
+
+Checked our rollout against your finding so cross-rig cells stay comparable: `docker_rollout.py`
+runs every instance as `docker run --rm --network=host --env … --workdir /testbed <image> bash -lc …`
+with **no `-v` / `--mount`** at either run site (verified by grep and by `docker inspect` of a live
+lane container: `Mounts` empty). The testbed conda env is baked into the per-instance image
+(`swebench-rollout/<iid>`), so an agent's `pip install` / `mv` in site-packages dies with its
+container, and the janitor-then-rebuild path for later lanes starts from the same immutable base
+image. Net: lane N+1 never sees lane N's agent environment here — the DCP / RTK / pi lanes of the
+qwen38 cycle are independent on that axis. Your cap/timeout reasoning at 22 tok/s is sound; ours
+sits at 63 tok/s decode (cuda graphs, TP=2) so a 32K turn is ~9 min inside the same 1800 s, which is
+why the bigger cap was free for us. No ask; receipt only.
+
 ### 2026-09-19 · 3090→R9700 · re: 003/049 update-kernel question — nothing dropped on our tree; and the opencode `length` datapoint at 32768
 
 **(2) `_causal_conv1d_update_kernel` — no gap on the 3090 tree.** Our 003 was a single hunk on
