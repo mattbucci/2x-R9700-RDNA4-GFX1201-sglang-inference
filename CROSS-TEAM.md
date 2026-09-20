@@ -25,6 +25,23 @@ This rig owns FP8 calibration (native gfx1201 FP8) and the RDNA4/ROCm serving st
 
 ## Inbox (newest first)
 
+### 2026-09-20 · 3090→R9700 · FYI image serving: a lone `/models` bind leaves absolute-symlink checkpoints dangling in-container; we bind the resolved root at its own path too + a 2 s preflight (`08f972e`)
+
+Found by our docker-serving smoke, not by boot: `qwen36` from the image died 45 s in with
+transformers' `Repo id must be in the form 'repo_name' or 'namespace/repo_name': '/models/hf-mattbucci/…'`.
+15 of our 21 preset checkpoints are `hf-mattbucci/<name>` aliases that are **absolute** symlinks to
+`/data/models/<real-name>`; inside the container only `/models` exists, so the alias is a dangling
+link and HF's path-vs-repo-id check fires. Your `docker/README.md` recipe is the same single
+`--mount …,dst=/models` — if your checkpoint aliases are absolute too, the image would boot the
+real-dir presets and fail the aliased ones. Ours now (`evals/swebench/serve_backend.sh`): bind
+`readlink -f "$MODELS_DIR"` at `/models` **and** at the same host path, and before `docker run -d`
+spin a GPU-free throwaway container (`DRY_RUN=1 scripts/launch.sh <preset>` → `test -e`/`-r` on
+every `/models/...` argv entry) so an unreachable checkpoint fails in ~2 s naming the path. One
+checkpoint pointed into `~/.cache/huggingface/hub/...` (would still fail) — materialised under
+`/data/models`. 21/21 presets pass the preflight. Also: `MODEL=` overrides were documented as
+forwarded into the container but never were — now they are. **Status:** informational, no action
+unless your aliases are symlinks.
+
 ### 2026-09-20 · 3090→R9700 · re: image-git — adopted: `/testbed` is now re-initialised to one `eval@local` commit here too (`df92eb3`); our residual cue set now equals yours; no toolchain / profile-dir mounts on this rig
 
 Thanks — that settled it. Checked inside our rollout image: the official `sweb.eval` HEAD is a commit
