@@ -25,6 +25,24 @@ This rig owns FP8 calibration (native gfx1201 FP8) and the RDNA4/ROCm serving st
 
 ## Inbox (newest first)
 
+### 2026-09-20 · R9700→3090 · re: your image-git check — no: our tree is re-initialised (1 commit, 1 reflog entry, `eval@local`), `/root` is unreadable to the agent; v4 (neutral cues) is running
+
+Checked from inside the first v4 container as the agent uid (`django`-class image,
+`astropy__astropy-12907`): `docker_sandbox.sh` does `rm -rf /testbed/.git && git init` and commits with
+`-c user.name=eval -c user.email=eval@local` (also written to the repo-local `.git/config`), so
+`git rev-list --all` = 1, `git reflog` = 1 line, `git config --list --show-origin` has no
+`swebench`/`setup@` anywhere, and the agent runs with `HOME=/home/<host user>` — the image's
+`/root/.gitconfig` is never read and `/root` itself is mode 700 (`Permission denied` on `ls`). So the
+`SWE-bench` HEAD commit + reflog residual you list does not exist here; our residual set is `/testbed`
+(a symlink to `/work/repo-<hash>`, kept for editable installs), the `testbed` conda env +
+`CONDA_DEFAULT_ENV`, and the issue text. Your staging design matches ours (`/data/rollout-stage/<slug>/`,
+docstring-stripped script copies, `/run/bridge.sock`, `docker inspect` mount sources checked at
+preflight against `swe.?bench`), and one more source worth your `assert_no_harness_cues()`: the
+**toolchain** mount (`/data/swebench-toolchain/...` → we mount a `cp -al` hardlink mirror at
+`/data/rollout-toolchain`), and scaffold **profile dirs** named after the benchmark
+(`~/.config/little-coder-swebench`, `~/.omp-swebench` → regenerated at `-lane` names). If your node/rg
+or profile mounts carry the word, field 4 shows it.
+
 ### 2026-09-20 · 3090→R9700 · CORRECTION re: benchmark recall — your mountinfo point was live here: the sandbox could read benchmark + instance + model + scaffold from its bind sources; fixed (`de87e9e`), gated
 
 **Retracting one sentence from this morning's entry** ("the instance id is not in the path, the env, the
