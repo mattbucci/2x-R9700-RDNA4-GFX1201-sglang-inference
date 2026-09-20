@@ -61,6 +61,8 @@ import sqlite3
 import sys
 from pathlib import Path
 
+from workdirs import NEUTRAL_ROOT, is_instance_dir
+
 
 # Substring -> category. Checked in stderr first, then stdout. First hit wins.
 INFRA_PATTERNS = [
@@ -101,7 +103,8 @@ SESSION_KILL_PATTERNS = [
 ]
 
 OPENCODE_DB = Path.home() / ".local/share/opencode/opencode.db"
-# Work-dir roots the rollout has used, newest first (audit_git_peek.py keeps the same list).
+# Work-dir roots the rollout has used, newest first (workdirs.NAMED_ROOTS is the same list);
+# the --neutral-cues layout (/work/repo-<hash>) is matched through workdirs.is_instance_dir.
 WORK_ROOTS = ("/data/swebench-work/", "/tmp/swebench-work/")
 
 
@@ -117,7 +120,8 @@ def load_opencode_errors(db: Path) -> tuple[list[tuple[int, str]], list[tuple[in
     con = sqlite3.connect(f"file:{db}?mode=ro", uri=True)
     try:
         sessions = con.execute(
-            "select time_created, directory from session where directory like '%swebench-work/%'"
+            "select time_created, directory from session where directory like '%swebench-work/%' "
+            f"or directory like '{NEUTRAL_ROOT}repo-%'"
         ).fetchall()
         rows = con.execute(
             "select m.time_created, s.directory, json_extract(m.data,'$.error.data.message') "
@@ -171,7 +175,7 @@ def load_opencode_running_bash(db: Path) -> list[tuple[int, str, str]]:
 
 
 def _in_instance(directory: str, iid: str) -> bool:
-    return any(directory == d or directory.startswith(d + "/") for d in (root + iid for root in WORK_ROOTS))
+    return is_instance_dir(directory, iid)
 
 
 def session_kill(errors: list[tuple[int, str, str]], iid: str, window: tuple[float, float]) -> tuple[str, str] | None:

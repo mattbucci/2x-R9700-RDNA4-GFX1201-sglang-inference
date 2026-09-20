@@ -24,6 +24,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import shutil
 import signal
 import subprocess
@@ -31,6 +32,9 @@ import sys
 import tempfile
 import time
 from pathlib import Path
+
+from workdirs import (NAMED_BRIDGE_SOCK, NEUTRAL_BRIDGE_SOCK, NEUTRAL_COMMIT_MSG, NEUTRAL_ROOT,
+                      container_dir, neutral_slug)
 
 
 def parse_args():
@@ -77,6 +81,14 @@ def parse_args():
                         "network except the server bridge, and the image's own testbed env "
                         "(the environment score_docker.py scores in). Replaces ensure_repo + "
                         "the uv venv + sandbox.sh; see docker_sandbox.sh.")
+    p.add_argument("--neutral-cues", action="store_true",
+                   help="(--docker only) Hide the harness-owned benchmark cues from the agent: the "
+                        "work tree lives at /work/repo-<hash of the instance id> instead of "
+                        "/data/swebench-work/<iid>, the base commit is 'Import source tree', the "
+                        "bridge socket, the sandbox scripts and every per-instance bind-mount "
+                        "source carry no 'swebench' or instance id (they show in "
+                        "/proc/self/mountinfo). A methodology change: never flip it inside a "
+                        "lane. Rows record work_dir + neutral_cues; the audits resolve both layouts.")
     p.add_argument("--claw-bin",
                    default=os.path.expanduser("~/.local/bin/claw"),
                    help="Path to the built claw binary (for --scaffold claw-code)")
@@ -291,7 +303,8 @@ SANDBOX: dict | None = None
 _BRIDGE: subprocess.Popen | None = None
 
 
-def _start_bridge(server_url: str, target_url: str | None = None) -> tuple[Path, int]:
+def _start_bridge(server_url: str, target_url: str | None = None,
+                  sock_name: str = "swebench-bridge") -> tuple[Path, int]:
     """Host-side half of the sandbox network bridge: a unix socket forwarded to the
     server's TCP port. Returns (socket path, port). Lives for the run."""
     global _BRIDGE
@@ -301,7 +314,7 @@ def _start_bridge(server_url: str, target_url: str | None = None) -> tuple[Path,
     port = u.port or 80
     t = urlparse(target_url or server_url)  # host side of the bridge (see SWEBENCH_HOST_SERVER_URL)
     # unix socket paths are capped at ~107 bytes: keep it in the runtime dir, not `out`
-    sock = Path(os.environ.get("XDG_RUNTIME_DIR") or tempfile.gettempdir()) / f"swebench-bridge-{os.getpid()}.sock"
+    sock = Path(os.environ.get("XDG_RUNTIME_DIR") or tempfile.gettempdir()) / f"{sock_name}-{os.getpid()}.sock"
     sock.unlink(missing_ok=True)
     def _die_with_parent():
         # atexit does not run when this process is SIGKILLed (an aborted lane left a socat
@@ -346,16 +359,38 @@ def _sandboxed(cmd: list) -> list:
 # contract (work tree at the audited path, fresh git, bridge, host uid, /out/model.diff).
 DOCKER: dict | None = None
 DOCKER_IMAGE_PREFIX = "sweb.eval.x86_64."
-DOCKER_NODE_DIR = Path("/data/swebench-toolchain/node-v26.2.0-linux-x64")  # glibc 2.28 build; the host node needs 2.43
+# Portable toolchain root. --neutral-cues mounts the same files from /data/rollout-toolchain
+# (a `cp -al` hardlink mirror, verified in the preflight) because bind-mount sources show in
+# the container's /proc/self/mountinfo; the named layout keeps the original path.
+DOCKER_TOOLCHAIN = Path("/data/swebench-toolchain")
+DOCKER_TOOLCHAIN_NEUTRAL = Path("/data/rollout-toolchain")
+DOCKER_NODE_DIR = DOCKER_TOOLCHAIN / "node-v26.2.0-linux-x64"  # glibc 2.28 build; the host node needs 2.43
 # Static ripgrep for the containers (the images have none; the host build needs glibc 2.39).
 # dcode's grep tool and opencode's grep look for `rg` on PATH; bash tool calls may too.
-DOCKER_RG = Path("/data/swebench-toolchain/ripgrep-15.2.0-x86_64-unknown-linux-musl/rg")
+DOCKER_RG = DOCKER_TOOLCHAIN / "ripgrep-15.2.0-x86_64-unknown-linux-musl/rg"
 # Host-side grace on top of the in-container `timeout`: image start + prep (~5 s) + diff capture.
 DOCKER_GRACE = 120
 # In-container work root (docker_sandbox.sh moves the image's /testbed under it). Fixed
 # regardless of --workdir: the audits key sessions on this path, and every scaffold that
 # takes the tree on its command line (opencode --dir) must see the container path.
+# Under --neutral-cues the tree lives at workdirs.container_dir(iid, neutral=True) instead
+# (/work/repo-<hash>); both layouts resolve through workdirs.Resolver in the audits.
 DOCKER_WORK_ROOT = Path("/data/swebench-work")
+# --neutral-cues: per-instance host-side staging for the bind mounts whose source path the
+# agent can read back from /proc/self/mountinfo (the /out dir, the prompt file, the sandbox
+# scripts). The canonical out/docker/<iid> and logs/<iid>.prompt.md are still written; the
+# container just mounts copies from <DOCKER_STAGE_ROOT>/<slug>/ and the results are copied
+# back. Not under /tmp: a full /tmp already broke one cycle silently (rc 120 "complete").
+DOCKER_STAGE_ROOT = Path("/data/rollout-stage")
+CUE_RE = re.compile(r"swe.?bench", re.I)
+# Harness-owned profile dirs (relative to $HOME; _ensure_lc_profile / _ensure_omp_profile
+# write them). Their names carry the benchmark cue, so --neutral-cues generates the same
+# profiles under the neutral names instead (_apply_neutral_names); omp's session store
+# moves with its profile dir, and audit_git_peek.py reads both.
+LC_PROFILE_REL = ".config/little-coder-swebench"
+OMP_PROFILE_DIR = ".omp-swebench"  # PI_CONFIG_DIR semantics
+NEUTRAL_PROFILE_NAMES = {".config/little-coder-swebench": ".config/little-coder-lane",
+                         ".omp-swebench": ".omp-lane"}
 # Everything the container sees of $HOME, per scaffold. Nothing else on the host is visible --
 # in particular not ~/.cache/huggingface (the dataset with the gold patches), the repo checkout
 # (runs/ holds the other lanes' patches), /data/swebench-work (sibling trees) or ~/.secrets.
@@ -366,11 +401,11 @@ DOCKER_MOUNTS = {  # scaffold -> (ro, rw), relative to $HOME
                  [".local/share/opencode", ".cache/opencode", ".local/state/opencode"]),
     "opencode-dcp": ([".config/opencode", ".config/opencode-dcp-lane"],
                      [".local/share/opencode", ".cache/opencode", ".local/state/opencode"]),
-    "little-coder": ([".config/little-coder-swebench"],
+    "little-coder": ([LC_PROFILE_REL],
                      [".pi", ".little-coder", ".cache/little-coder"]),
-    "little-coder-rtk": ([".config/little-coder-swebench", ".config/little-coder-rtk"],
+    "little-coder-rtk": ([LC_PROFILE_REL, ".config/little-coder-rtk"],
                          [".pi", ".little-coder", ".cache/little-coder", ".local/share/rtk"]),
-    "omp": ([], [".omp-swebench", ".omp"]),
+    "omp": ([], [OMP_PROFILE_DIR, ".omp"]),
     "prime": ([], [".prime"]),
     "dcode": ([], [".deepagents"]),
 }
@@ -391,11 +426,67 @@ def _docker_rm(name: str) -> None:
     subprocess.run(["docker", "rm", "-f", name], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
+def _neutral_copy(src: Path, dst: Path) -> None:
+    """Write `src` (a sandbox script) to `dst` with its comments, module docstring and the
+    named-layout defaults removed, and refuse to produce a copy that still names the
+    benchmark: the agent can `cat /sandbox/*` (one v3 session did), so under --neutral-cues
+    the container gets this copy. Behaviour is unchanged -- the stripped defaults are dead
+    code once WORK_DIR/BASE_COMMIT_MSG/BRIDGE_SOCK are set in the environment."""
+    text = src.read_text()
+    if src.suffix == ".py":
+        import ast
+        mod = ast.parse(text)
+        if mod.body and isinstance(mod.body[0], ast.Expr) and isinstance(mod.body[0].value, ast.Constant) \
+                and isinstance(mod.body[0].value.value, str):
+            lines = text.splitlines(keepends=True)
+            del lines[mod.body[0].lineno - 1:mod.body[0].end_lineno]
+            text = "".join(lines)
+    text = (text.replace("/data/swebench-work/$IID", NEUTRAL_ROOT + "$IID")
+                .replace(NAMED_BRIDGE_SOCK, NEUTRAL_BRIDGE_SOCK)
+                .replace("SWE-bench $IID base tree", NEUTRAL_COMMIT_MSG))
+    lines = text.splitlines(keepends=True)
+    kept = [ln for i, ln in enumerate(lines) if i == 0 or not ln.lstrip().startswith("#")]
+    text = "".join(kept)
+    if CUE_RE.search(text):
+        hit = next(ln for ln in text.splitlines() if CUE_RE.search(ln))
+        raise SystemExit(f"  PREFLIGHT FAILED: --neutral-cues copy of {src.name} still names the "
+                         f"benchmark: {hit.strip()!r}")
+    tmp = dst.with_suffix(dst.suffix + ".tmp")
+    tmp.write_text(text)
+    tmp.chmod(src.stat().st_mode & 0o777)
+    os.replace(tmp, dst)
+
+
+def _apply_neutral_names() -> None:
+    """--neutral-cues: point the harness-owned profile dirs (and the mounts that carry
+    them) and the toolchain at their neutral names before any profile is written or
+    mounted. The toolchain mirror must be the same files as the original (hardlinks):
+    a re-extracted toolchain needs `rm -rf /data/rollout-toolchain && cp -al
+    /data/swebench-toolchain /data/rollout-toolchain`."""
+    global LC_PROFILE_REL, LC_PROFILE_DIR, OMP_PROFILE_DIR, DOCKER_NODE_DIR, DOCKER_RG
+    LC_PROFILE_REL = NEUTRAL_PROFILE_NAMES[LC_PROFILE_REL]
+    LC_PROFILE_DIR = Path.home() / LC_PROFILE_REL
+    OMP_PROFILE_DIR = NEUTRAL_PROFILE_NAMES[OMP_PROFILE_DIR]
+    for scaffold, (ro, rw) in DOCKER_MOUNTS.items():
+        DOCKER_MOUNTS[scaffold] = ([NEUTRAL_PROFILE_NAMES.get(r, r) for r in ro],
+                                   [NEUTRAL_PROFILE_NAMES.get(r, r) for r in rw])
+    for named in (DOCKER_NODE_DIR / "bin/node", DOCKER_RG):
+        mirror = DOCKER_TOOLCHAIN_NEUTRAL / named.relative_to(DOCKER_TOOLCHAIN)
+        if not (mirror.exists() and (not named.exists() or os.path.samefile(named, mirror))):
+            raise SystemExit(f"  PREFLIGHT FAILED: --neutral-cues needs {mirror} as a hardlink mirror of "
+                             f"{named}: rm -rf {DOCKER_TOOLCHAIN_NEUTRAL} && cp -al {DOCKER_TOOLCHAIN} "
+                             f"{DOCKER_TOOLCHAIN_NEUTRAL}")
+    DOCKER_NODE_DIR = DOCKER_TOOLCHAIN_NEUTRAL / DOCKER_NODE_DIR.relative_to(DOCKER_TOOLCHAIN)
+    DOCKER_RG = DOCKER_TOOLCHAIN_NEUTRAL / DOCKER_RG.relative_to(DOCKER_TOOLCHAIN)
+
+
 def _dockerized(cmd: list, scaffold: str, scaffold_env: dict[str, str] | None, timeout: int,
                 prompt_file: Path | None = None) -> list:
     """Wrap a scaffold command in `docker run` for the current DOCKER instance context.
     `prompt_file` is mounted at /sandbox/prompt.md; docker_sandbox.sh feeds it to the
-    scaffold on stdin (see _launch)."""
+    scaffold on stdin (see _launch). Under --neutral-cues the per-instance mounts come
+    from the staging dir (see DOCKER_STAGE_ROOT) and the script gets WORK_DIR,
+    BASE_COMMIT_MSG and BRIDGE_SOCK in its environment plus the slug as its id argument."""
     d = DOCKER
     home = Path.home()
     ro, rw = DOCKER_MOUNTS[scaffold]
@@ -408,6 +499,11 @@ def _dockerized(cmd: list, scaffold: str, scaffold_env: dict[str, str] | None, t
     for k, v in (scaffold_env or {}).items():
         if k != "PATH":
             env[k] = v
+    neutral = d.get("neutral", False)
+    sock_in = NEUTRAL_BRIDGE_SOCK if neutral else NAMED_BRIDGE_SOCK
+    if neutral:
+        env.update({"WORK_DIR": d["work_dir"], "BASE_COMMIT_MSG": NEUTRAL_COMMIT_MSG,
+                    "BRIDGE_SOCK": sock_in})
     for k, v in env.items():
         argv += ["-e", f"{k}={v}"]
     for rel in DOCKER_MOUNTS_RO_COMMON + ro:
@@ -419,16 +515,22 @@ def _dockerized(cmd: list, scaffold: str, scaffold_env: dict[str, str] | None, t
         hp.mkdir(parents=True, exist_ok=True)
         argv += ["-v", f"{hp}:{hp}"]
     here = Path(__file__).resolve().parent
+    scripts = d.get("stage") or here  # neutral: stripped copies in the staging dir
+    out_mount = d["stage"] / "out" if neutral else d["out_dir"]
     argv += ["-v", f"{DOCKER_NODE_DIR}:/opt/node:ro",
              "-v", f"{DOCKER_RG}:/usr/local/bin/rg:ro",
-             "-v", f"{here / 'docker_sandbox.sh'}:/sandbox/docker_sandbox.sh:ro",
-             "-v", f"{here / 'docker_bridge.py'}:/sandbox/docker_bridge.py:ro",
-             "-v", f"{d['bridge_sock']}:/run/swebench-bridge.sock",
-             "-v", f"{d['out_dir']}:/out"]
+             "-v", f"{scripts / 'docker_sandbox.sh'}:/sandbox/docker_sandbox.sh:ro",
+             "-v", f"{scripts / 'docker_bridge.py'}:/sandbox/docker_bridge.py:ro",
+             "-v", f"{d['bridge_sock']}:{sock_in}",
+             "-v", f"{out_mount}:/out"]
     if prompt_file is not None:
+        if neutral:
+            staged = d["stage"] / "prompt.md"
+            shutil.copyfile(prompt_file, staged)
+            prompt_file = staged
         argv += ["-v", f"{prompt_file}:/sandbox/prompt.md:ro"]
     argv += [d["image"], "bash", "/sandbox/docker_sandbox.sh",
-             str(d["uid"]), str(d["gid"]), d["user"], d["iid"], str(d["port"]), str(timeout),
+             str(d["uid"]), str(d["gid"]), d["user"], d["arg_id"], str(d["port"]), str(timeout),
              "--", *[str(c) for c in cmd]]
     return argv
 
@@ -593,7 +695,7 @@ def _ensure_rtk_extension() -> Path:
     return ext
 
 
-LC_PROFILE_DIR = Path.home() / ".config" / "little-coder-swebench"  # harness-owned
+LC_PROFILE_DIR = Path.home() / LC_PROFILE_REL  # harness-owned; see _apply_neutral_names
 
 
 def _check_responses_api(server_url: str, served: str) -> tuple[str, str]:
@@ -800,9 +902,6 @@ def run_claw(served: str, claw_bin: str, repo_dir: Path, prompt: str, timeout: i
         "OPENAI_API_KEY": "noop",
     })
     return _popen_agent(cmd, str(repo_dir), env, timeout, log_path)
-
-
-OMP_PROFILE_DIR = ".omp-swebench"  # relative to $HOME (PI_CONFIG_DIR semantics)
 
 
 def _ensure_omp_profile(served: str, server_url: str) -> None:
@@ -1050,11 +1149,31 @@ def main():
         for need in (DOCKER_NODE_DIR, DOCKER_RG):
             if not need.exists():
                 raise SystemExit(f"  PREFLIGHT FAILED: {need} missing (portable toolchain for the containers)")
-        bridge_sock, port = _start_bridge(args.server_url, host_url)
+        bridge_sock, port = _start_bridge(args.server_url, host_url,
+                                          sock_name="bridge" if args.neutral_cues else "swebench-bridge")
         DOCKER = {"bridge_sock": bridge_sock, "port": port, "uid": os.getuid(), "gid": os.getgid(),
-                  "user": getpass.getuser(), "out": out}
+                  "user": getpass.getuser(), "out": out, "neutral": args.neutral_cues}
+        if args.neutral_cues:
+            _apply_neutral_names()
         print(f"Sandbox: docker per instance ({DOCKER_IMAGE_PREFIX}<iid>, no network; "
               f"server via {bridge_sock} -> :{port}; scaffold mounts {DOCKER_MOUNTS[args.scaffold]})", flush=True)
+        if args.neutral_cues:
+            # Every bind-mount source path is readable from inside the container
+            # (/proc/self/mountinfo), so none may name the benchmark (_apply_neutral_names
+            # regenerates the profiles under neutral names and switches to the toolchain
+            # mirror; this catches anything a later edit adds).
+            ro, rw = DOCKER_MOUNTS[args.scaffold]
+            sources = [DOCKER_NODE_DIR, DOCKER_RG] + [Path.home() / r for r in DOCKER_MOUNTS_RO_COMMON + ro + rw]
+            bad = [str(p) for p in sources if p.exists() and CUE_RE.search(str(p.resolve()))]
+            if bad:
+                raise SystemExit("  PREFLIGHT FAILED: --neutral-cues, but these mount sources name the "
+                                 "benchmark (visible in the container's /proc/self/mountinfo): "
+                                 + ", ".join(bad))
+            DOCKER_STAGE_ROOT.mkdir(parents=True, exist_ok=True)
+            print(f"Cues: neutral (tree at {NEUTRAL_ROOT}repo-<hash>, base commit {NEUTRAL_COMMIT_MSG!r}, "
+                  f"staging under {DOCKER_STAGE_ROOT}, toolchain {DOCKER_NODE_DIR.parent})", flush=True)
+    elif args.neutral_cues:
+        raise SystemExit("  --neutral-cues requires --docker")
     elif args.no_sandbox:
         print("Sandbox: OFF (host network, whole work root visible)", flush=True)
     else:
@@ -1115,7 +1234,7 @@ def main():
                     # (docker_sandbox.sh moves the image's /testbed there) -- the path the
                     # bake-off lanes use on the host, so the session stores record an audited
                     # path; nothing is created on the host, --workdir is ignored.
-                    inst_dir = DOCKER_WORK_ROOT / iid
+                    inst_dir = Path(container_dir(iid, DOCKER["neutral"]))
                     image = _docker_image(iid)
                     if not _docker_image_present(image):
                         print(f"  DOCKER IMAGE MISSING: {image} -- no rollout (infra; pull it and resume)", flush=True)
@@ -1131,7 +1250,17 @@ def main():
                     out_dir.mkdir(parents=True)
                     name = f"swebench-{args.scaffold}-{iid}"
                     _docker_rm(name)  # a stale container from a killed run would block the name
-                    DOCKER.update(iid=iid, image=image, name=name, out_dir=out_dir)
+                    stage = None
+                    if DOCKER["neutral"]:
+                        stage = DOCKER_STAGE_ROOT / neutral_slug(iid)
+                        shutil.rmtree(stage, ignore_errors=True)
+                        (stage / "out").mkdir(parents=True)
+                        here = Path(__file__).resolve().parent
+                        for script in ("docker_sandbox.sh", "docker_bridge.py"):
+                            _neutral_copy(here / script, stage / script)
+                    DOCKER.update(iid=iid, image=image, name=name, out_dir=out_dir, stage=stage,
+                                  work_dir=str(inst_dir),
+                                  arg_id=neutral_slug(iid) if DOCKER["neutral"] else iid)
                     venv, venv_ok = True, True  # the image's testbed env: the scoring environment
                     print(f"  env: {image} (testbed env; no network)", flush=True)
                 else:
@@ -1218,6 +1347,10 @@ def main():
                     # the container; a missing file means it never reached that step
                     # (prep/bridge failure -> rc 96/97, or the outer timeout killed it).
                     _docker_rm(DOCKER["name"])
+                    if DOCKER["stage"] is not None:  # neutral: results back to the canonical out dir
+                        for f in (DOCKER["stage"] / "out").iterdir():
+                            shutil.copyfile(f, DOCKER["out_dir"] / f.name)
+                        shutil.rmtree(DOCKER["stage"], ignore_errors=True)
                     diff_path = DOCKER["out_dir"] / "model.diff"
                     if diff_path.exists():
                         diff = diff_path.read_bytes().decode("utf-8", errors="replace")
@@ -1245,9 +1378,11 @@ def main():
                     "venv": venv_ok,
                     "sandbox": SANDBOX is not None or DOCKER is not None,
                     "docker": DOCKER is not None,
+                    "work_dir": str(inst_dir),
                 }
                 if DOCKER:
                     entry["image"] = image
+                    entry["neutral_cues"] = DOCKER["neutral"]
                 fp.write(json.dumps(entry) + "\n")
                 fp.flush()
 

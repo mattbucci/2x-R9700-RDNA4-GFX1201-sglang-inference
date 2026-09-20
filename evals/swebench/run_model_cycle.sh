@@ -42,6 +42,12 @@
 #                   work trees / mirrors) and the work tree is fetched by base-commit sha
 #                   with no future history. 0 = --no-sandbox (the v2 configuration; leaks
 #                   the upstream fix via web tools and `git log --all`, see audit_git_peek.py).
+#   NEUTRAL_CUES    docker mode only. 1 = run_rollouts.py --neutral-cues: the agent's work
+#                   tree is /work/repo-<hash> (not /data/swebench-work/<instance_id>), the
+#                   base commit says "Import source tree", and no path, argv, socket or
+#                   sandbox script it can read names the benchmark or the instance. Default
+#                   0 (the layout of every lane through the v3 sixth start). Whole matrix,
+#                   never mid-lane (FP8_BAKEOFF_SETUP.md -> Benchmark recall).
 #   SCORE_WORKERS   concurrent Docker eval containers in Phase 5 (default: 8)
 #   REUSE_SERVER    1 = if a server already answers /health=200 on :23334 three times in a
 #                   row, keep it instead of launching one (a cycle restarted for a harness
@@ -73,11 +79,17 @@ INSTANCES="${INSTANCES:-0}"
 RUN_TAG="${RUN_TAG:-v2}"
 DOCKER="${DOCKER:-1}"
 SANDBOX="${SANDBOX:-1}"
+# NEUTRAL_CUES=1 (docker only): work tree at /work/repo-<hash> instead of
+# /data/swebench-work/<iid>, neutral base commit, no benchmark name in anything the agent can
+# read (FP8_BAKEOFF_SETUP.md -> Benchmark recall). A methodology change: whole matrix, never
+# mid-lane; the value is recorded in every predictions row (neutral_cues).
+NEUTRAL_CUES="${NEUTRAL_CUES:-0}"
 # One flag array feeds both run_rollouts.py and reroll_infra_failures.py: --docker wins
 # over the sandbox choice inside run_rollouts (the container is the sandbox).
 SANDBOX_FLAG=()
 if [ "$DOCKER" = "1" ]; then
   SANDBOX_FLAG=(--docker)
+  [ "$NEUTRAL_CUES" = "1" ] && SANDBOX_FLAG+=(--neutral-cues)
 elif [ "$SANDBOX" = "0" ]; then
   SANDBOX_FLAG=(--no-sandbox)
 fi
@@ -186,7 +198,7 @@ for SCAFFOLD in $SCAFFOLDS; do
   N_FLAG=()
   [ "$INSTANCES" -gt 0 ] && N_FLAG=(--instances "$INSTANCES")
 
-  log "rollout $SCAFFOLD (out=$OUT instances=${INSTANCES:-300} timeout=$TIMEOUT docker=$DOCKER sandbox=$SANDBOX)"
+  log "rollout $SCAFFOLD (out=$OUT instances=${INSTANCES:-300} timeout=$TIMEOUT docker=$DOCKER sandbox=$SANDBOX neutral_cues=$NEUTRAL_CUES)"
   "$ROLLOUT_PY" "$REPO_DIR/evals/swebench/run_rollouts.py" \
     --model "sglang/$PRESET" \
     --served-name "$SERVED" \

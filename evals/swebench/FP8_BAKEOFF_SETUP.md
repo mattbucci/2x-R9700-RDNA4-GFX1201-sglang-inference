@@ -138,11 +138,44 @@ loss, which is the expected direction. The on-disk hunts (`find / -name autorelo
 swebench-work`, `/root/.cache/pip`, `/opt`, `api.github.com`) all came back empty or `Transport
 error` — the outcome-aware leak audit files them as blocked, not exposed.
 
-Disposition: no change mid-lane. The cue the harness owns (instance id in the path and the commit
-message) is a methodology change to remove — the audits key on `/data/swebench-work/<iid>`, and it
-would restart the matrix — and it cannot remove recognition from the issue text itself (v2: 14/300
-sessions never named the benchmark). The numbers above are the input to the matrix-wide thinking-cap
-decision at ~50 instances: a cap would mostly cut recall, not work.
+Disposition: no change mid-lane. Removing the cues the harness owns is a methodology change (it
+restarts the matrix) and cannot remove recognition from the issue text itself (v2: 14/300 sessions
+never named the benchmark). The numbers above are the input to the matrix-wide decision at ~50
+instances, taken together with the thinking cap: a cap would mostly cut recall, not work.
+
+### Removing the harness-owned cues (`--neutral-cues`)
+
+`run_rollouts.py --docker --neutral-cues` (driver: `NEUTRAL_CUES=1`, docker mode only) is implemented,
+verified offline and **off by default**; flipping it on is the matrix restart above. What the agent
+sees in that mode, and how each cue was found (everything below was read from inside a container —
+`/proc/self/mountinfo` prints the host source path of every bind mount, so a `-v` from a
+`…/runs/qwen38-opencode-v3/docker/<iid>` or `/data/swebench-toolchain` path is a cue even though
+`mount` and `df` do not show it):
+
+| cue in the default layout | neutral layout |
+|---|---|
+| tree at `/data/swebench-work/<iid>`, opencode `--dir`, pi/omp session slug | `/work/repo-<10 hex of sha1("neutral-cues:"+iid)>` (`workdirs.neutral_slug`) |
+| base commit `SWE-bench <iid> base tree` | `Import source tree` |
+| `/run/swebench-bridge.sock`, host `swebench-bridge-<pid>.sock` | `/run/bridge.sock`, host `bridge-<pid>.sock` |
+| mount sources under `runs/<lane>/docker/<iid>`, the checkout's `docker_sandbox.sh` / `docker_bridge.py` (docstring names the benchmark), `<iid>.prompt.md` | staged per instance under `/data/rollout-stage/<slug>/` (`out/`, `prompt.md`, comment/docstring-stripped script copies; refused if `swe.?bench` still matches), copied back to `runs/…/docker/<iid>/` and removed after the run |
+| `/data/swebench-toolchain/...` (node, ripgrep) | `/data/rollout-toolchain`, a `cp -al` hardlink mirror the preflight checks with `samefile` (create once: `cp -al /data/swebench-toolchain /data/rollout-toolchain`) |
+| `~/.config/little-coder-swebench`, `~/.omp-swebench` | regenerated at `~/.config/little-coder-lane`, `~/.omp-lane` |
+
+Residual cues that stay: the image's `/testbed` (kept as a symlink for editable installs), the
+`testbed` conda env and `CONDA_DEFAULT_ENV=testbed`, `/root` (mode 700, unreadable to the agent; holds
+the image's `setup_repo.sh`), the container name/label (not visible inside), and the issue text
+itself. The prompt text carries no cue (0 matches in a lane prompt). Every predictions row now records
+`work_dir` and, in docker mode, `neutral_cues`, and the audits (`audit_predictions.py`,
+`audit_git_peek.py`, `audit_benchmark_recall.py`) resolve both layouts through `workdirs.py`
+(`Resolver`, `is_instance_dir`, `pi_store_globs`), so a neutral lane is audited the same way.
+Verified against the offline capture endpoint for little-coder (both layouts, byte-identical first
+user message) and omp (neutral): tree at `/work/repo-4766b5f722`, commit `Import source tree`, 0
+cue lines in the probe (`pwd`, `ps`, `env`, `git log/config`, mountinfo, `/sandbox/*`) versus 24–27
+in the default layout; default-layout behaviour is byte-identical to before the change.
+
+To flip: stop the driver at a lane boundary, then restart the matrix with the existing driver and
+`NEUTRAL_CUES=1` in its environment (the rollout log line records `neutral_cues=1`). It is a new
+methodology, so the run gets a new suffix (`-v4`); do not mix layouts inside one matrix.
 
 ## Prompt delivery
 

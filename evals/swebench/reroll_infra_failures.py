@@ -55,6 +55,8 @@ def main():
     ap.add_argument("--docker", action="store_true",
                     help="pass --docker to run_rollouts.py (re-roll inside the official SWE-bench "
                          "instance images, the v3 bake-off configuration)")
+    ap.add_argument("--neutral-cues", action="store_true",
+                    help="pass --neutral-cues to run_rollouts.py (must match the lane being re-rolled)")
     ap.add_argument("--dry-run", action="store_true",
                     help="Print what would be re-rolled, don't actually do it")
     args = ap.parse_args()
@@ -127,6 +129,8 @@ def main():
         cmd.insert(cmd.index("--instance-ids"), "--no-sandbox")
     if args.docker:
         cmd.insert(cmd.index("--instance-ids"), "--docker")
+    if args.neutral_cues:
+        cmd.insert(cmd.index("--instance-ids"), "--neutral-cues")
     print(f"\n+ {' '.join(cmd[:8])} ... ({len(infra_ids)} instance-ids)")
     rc = subprocess.run(cmd).returncode
     print(f"\n  re-roll exited rc={rc}")

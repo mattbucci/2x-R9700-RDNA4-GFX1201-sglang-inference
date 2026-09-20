@@ -46,6 +46,15 @@
 #   6. scratch dirs stripped, `git add -A && git diff --cached` written to
 #      /out/model.diff (bytes; the harness decodes tolerantly), rc to /out/rc,
 #      and the script exits with the agent's rc.
+#
+# Environment overrides (run_rollouts.py --neutral-cues sets all three; unset,
+# the defaults below are the layout every lane through the v3 sixth start used):
+#   WORK_DIR         work tree path (default /data/swebench-work/<instance_id>);
+#                    with --neutral-cues the 4th argument is an opaque slug and
+#                    WORK_DIR is /work/<slug>, so neither the path, argv nor
+#                    the commit names the benchmark or the instance
+#   BASE_COMMIT_MSG  message of the single base commit
+#   BRIDGE_SOCK      in-container path of the bind-mounted bridge socket
 set -u
 log() { echo "[docker_sandbox $(date +%H:%M:%S)] $*" >&2; }
 
@@ -54,7 +63,7 @@ if [ "${1:-}" = "--agent" ]; then
   shift
   IID=$1; TIMEOUT=$2; shift 2
   [ "${1:-}" = "--" ] && shift
-  WORK=/data/swebench-work/$IID
+  WORK=${WORK_DIR:-/data/swebench-work/$IID}
   cd "$WORK" || { log "prep failed: $WORK missing in user phase"; exit 96; }
   STDIN=/dev/null
   [ -r /sandbox/prompt.md ] && STDIN=/sandbox/prompt.md
@@ -80,8 +89,8 @@ fi
 UID_=$1; GID_=$2; USER_=$3; IID=$4; PORT=$5; TIMEOUT=$6; shift 6
 [ "${1:-}" = "--" ] && shift
 HOMEDIR=${HOME:-/home/$USER_}
-WORK=/data/swebench-work/$IID
-SOCK=/run/swebench-bridge.sock
+WORK=${WORK_DIR:-/data/swebench-work/$IID}
+SOCK=${BRIDGE_SOCK:-/run/swebench-bridge.sock}
 t0=$(date +%s%N)
 
 [ -d /testbed ] || { log "prep failed: /testbed missing in image"; exit 96; }
@@ -95,7 +104,7 @@ cd "$WORK" || exit 96
 git init -q \
   && git add -A \
   && git -c user.name=eval -c user.email=eval@local -c commit.gpgsign=false \
-       commit -q --no-verify -m "SWE-bench $IID base tree" \
+       commit -q --no-verify -m "${BASE_COMMIT_MSG:-SWE-bench $IID base tree}" \
   || { log "prep failed: git reinit"; exit 96; }
 git config user.email eval@local; git config user.name eval
 

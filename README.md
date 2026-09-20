@@ -149,7 +149,10 @@ Ordered by what runs next. Specs with an ID live in [`experiments/`](experiments
    sessions that name it 30+ times, 0/9 below 10) — v2 answered the same wondering from future git
    history, v3's sandbox turns it into a budget loss (`FP8_BAKEOFF_SETUP.md` → Benchmark recall).
    The matrix-wide thinking-cap and cue-removal decision waits for ~50 instances; nothing changes
-   mid-lane.
+   mid-lane. Cue removal is implemented and verified offline (`run_rollouts.py --docker --neutral-cues`,
+   driver `NEUTRAL_CUES=1`: opaque `/work/repo-<hash>` tree, neutral commit message, staged mounts
+   because `/proc/self/mountinfo` shows host paths; `FP8_BAKEOFF_SETUP.md` → "Removing the
+   harness-owned cues"); it stays off until that decision.
 2. **Chase the residual qwen38 decode gap now that graphs are on.** The 2026-09-19 same-server A/B
    ([receipt](benchmarks/qwen38-27b-fp8/graph-ab-2026-09-19.json), v0.5.18, 3 runs/point, idle CPU)
    measured HIP graphs off→on at 16.9→22.5 (24 tok), 16.9→22.2 (6.5K), 16.8→21.6 (52K) and

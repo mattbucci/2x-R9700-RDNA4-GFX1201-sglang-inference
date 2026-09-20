@@ -29,15 +29,16 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import re
 import sqlite3
 import statistics
 from datetime import datetime
 from pathlib import Path
 
+from workdirs import container_dir
+
 OPENCODE_DB = Path.home() / ".local/share/opencode/opencode.db"
-WORK_ROOTS = ("/data/swebench-work/", "/tmp/swebench-work/")
+WORK_ROOTS = ("/data/swebench-work/", "/tmp/swebench-work/")  # + the --neutral-cues layout via workdirs
 
 RECALL = re.compile(
     r"swe.?bench|gold.?patch|try to remember|recall the (?:real|actual|upstream|original)"
@@ -75,10 +76,10 @@ def session_turns(db: sqlite3.Connection, sid: str) -> list[dict]:
 
 
 def find_session(db, iid: str, start_ms: int, end_ms: int) -> str | None:
-    for root in WORK_ROOTS:
+    for d in [root + iid for root in WORK_ROOTS] + [container_dir(iid, neutral=True)]:
         row = db.execute(
             "select id from session where directory=? and time_created between ? and ? "
-            "order by time_created desc limit 1", (root + iid, start_ms, end_ms)).fetchone()
+            "order by time_created desc limit 1", (d, start_ms, end_ms)).fetchone()
         if row:
             return row[0]
     return None

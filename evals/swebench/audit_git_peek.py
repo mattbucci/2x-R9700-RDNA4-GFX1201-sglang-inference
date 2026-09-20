@@ -40,7 +40,7 @@ Usage:
 Session stores (lane assignment is by the run directory's log mtime window):
   opencode / opencode-dcp   ~/.local/share/opencode/opencode.db (all sessions per work dir)
   little-coder / -rtk       ~/.pi/agent/sessions/<cwd-slug>/*.jsonl (pi format)
-  omp                       ~/.omp-swebench/agent/sessions/<cwd-slug>/*.jsonl
+  omp                       ~/.omp-swebench/agent/sessions/<cwd-slug>/*.jsonl (~/.omp-lane once moved)
   prime                     ~/.prime/agent/sessions/*.jsonl
   dcode                     ~/.deepagents/.state/sessions.db (langgraph checkpoints; msgpack)
 """
@@ -57,8 +57,14 @@ import sys
 from collections import defaultdict
 from pathlib import Path
 
+from workdirs import NEUTRAL_ROOT, Resolver, pi_store_globs
+
 HOME = Path.home()
 WORK = "/data/swebench-work/"
+# Maps a recorded cwd/directory to its instance in both layouts (named
+# /data/swebench-work/<iid> and --neutral-cues /work/repo-<hash>); fed the dataset ids
+# and every lane's prediction ids in main(). See workdirs.py.
+RESOLVER = Resolver()
 
 # --------------------------------------------------------------------------- git channel
 # Git invocations that enumerate or read refs other than the detached HEAD by
@@ -100,14 +106,17 @@ def ref_is_future(inst: str, ref: str) -> bool | None:
     return res
 
 
-XTREE_RE = re.compile(re.escape(WORK) + r"(\.mirrors(?:/[\w.-]+)?|[\w.-]+__[\w.-]+-\d+)")
+XTREE_RE = re.compile(re.escape(WORK) + r"(\.mirrors(?:/[\w.-]+)?|[\w.-]+__[\w.-]+-\d+)"
+                      + "|" + re.escape(NEUTRAL_ROOT) + r"(repo-[0-9a-f]{10})")
 
 
 def cross_tree(inst: str, text: str) -> str | None:
     """A path into the repo mirrors or another instance's work tree (a later base
     commit of the same project already contains this task's fix)."""
     for m in XTREE_RE.finditer(text):
-        if m.group(1) != inst:
+        leaf = m.group(1) if m.group(1) is not None else \
+            (RESOLVER.instance_of(NEUTRAL_ROOT + m.group(2)) or m.group(2))
+        if leaf != inst:
             return m.group(0)
     return None
 
@@ -202,7 +211,7 @@ def web_events(inst: str, name: str, args: dict | str, text: str) -> list[tuple[
             # work-tree or venv path that happens to carry the project name
             m = NET_BASH_RE.search(text)
             snippet = text[m.start():m.start() + 120].replace("\n", "⏎")
-            words = re.sub(r"\S*/(swebench-work|swebench-venvs)/\S*", "", snippet).lower()
+            words = re.sub(r"\S*/(swebench-work|swebench-venvs)/\S*|\S*/work/repo-[0-9a-f]+\S*", "", snippet).lower()
             kind = "UPSTREAM" if any(re.search(rf"(?<![\w-]){re.escape(t)}(?![\w-])", words) for t in project_tokens(inst)) else "OTHER"
             ev.append((kind, f"{name}: {snippet}"))
     return ev
@@ -217,7 +226,7 @@ def cmd_text(call: dict) -> str:
 
 def scan_call(inst: str, name: str, args, rec: dict, call_id: str | None = None) -> None:
     t = cmd_text({"arguments": args})
-    if "git" in t or WORK in t:
+    if "git" in t or WORK in t or NEUTRAL_ROOT + "repo-" in t:
         why = git_peek(inst, t)
         if why:
             rec.setdefault("git", []).append((why[0], why[1][:200].replace("\n", "⏎")))
@@ -254,9 +263,8 @@ def scan_pi_file(path: Path, rec_for):
             except Exception:
                 continue
             if o.get("type") == "session":
-                cwd = o.get("cwd") or ""
-                if cwd.startswith(WORK):
-                    inst = cwd[len(WORK):].strip("/").split("/")[0]
+                inst = RESOLVER.instance_of(o.get("cwd") or "")
+                if inst:
                     rec = rec_for(inst)
                 continue
             if rec is None:
@@ -293,11 +301,14 @@ def lane_opencode(db: Path, window, out):
     lo, hi = window
     con = sqlite3.connect(f"file:{db}?mode=ro", uri=True)
     rows = con.execute(
-        "select id, directory from session where directory like ? and time_created between ? and ?",
-        (WORK + "%", int(lo * 1000), int((hi + 3600) * 1000)),
+        "select id, directory from session where (directory like ? or directory like ?) "
+        "and time_created between ? and ?",
+        (WORK + "%", NEUTRAL_ROOT + "repo-%", int(lo * 1000), int((hi + 3600) * 1000)),
     ).fetchall()
     for sid, directory in rows:  # all sessions (incl. task sub-agents) for the work dir
-        inst = directory[len(WORK):].strip("/").split("/")[0]
+        inst = RESOLVER.instance_of(directory)
+        if inst is None:  # a neutral slug from an instance set this run does not know
+            continue
         rec = out[inst]
         rec["sessions"] = rec.get("sessions", 0) + 1
         for (data,) in con.execute("select data from part where session_id=?", (sid,)):
@@ -337,9 +348,9 @@ def lane_dcode(db: Path, window, out):
             continue
         inst = None
         for (v,) in con.execute("select value from writes where thread_id=? and channel='_local_context' limit 1", (tid,)):
-            m = re.search(r"Current Directory\*\*: `" + re.escape(WORK) + r"([^/`]+)", str(dec(v)))
+            m = re.search(r"Current Directory\*\*: `([^`]+)`", str(dec(v)))
             if m:
-                inst = m.group(1)
+                inst = RESOLVER.instance_of(m.group(1))
         if not inst:
             continue
         rec = out[inst]
@@ -407,13 +418,15 @@ def main():
     args = ap.parse_args()
     runs = Path(args.runs)
     gold = load_gold()
+    RESOLVER.add(gold)
 
     lanes = {
         "opencode": ("opencode", None),
         "opencode-dcp": ("opencode", None),
         "little-coder": ("pi", HOME / ".pi/agent/sessions"),
         "little-coder-rtk": ("pi", HOME / ".pi/agent/sessions"),
-        "omp": ("pi", HOME / ".omp-swebench/agent/sessions"),
+        "omp": ("pi", next((HOME / d for d in (".omp-lane", ".omp-swebench") if (HOME / d).exists()),
+                           HOME / ".omp-swebench") / "agent/sessions"),
         "prime": ("pi-flat", HOME / ".prime/agent/sessions"),
         "dcode": ("dcode", HOME / ".deepagents/.state/sessions.db"),
     }
@@ -431,12 +444,13 @@ def main():
                 if line.strip():
                     r = json.loads(line)
                     preds[r["instance_id"]] = r.get("model_patch") or ""
+        RESOLVER.add(preds)
         window = lane_window(run_dir)
         out: dict[str, dict] = defaultdict(dict)
         if kind == "opencode":
             lane_opencode(HOME / ".local/share/opencode/opencode.db", window, out)
         elif kind == "pi":
-            files = [f for d in store.glob("--data-swebench-work-*--") for f in d.glob("*.jsonl")]
+            files = [f for pat in pi_store_globs() for d in store.glob(pat) for f in d.glob("*.jsonl")]
             lane_pi(files, window, out)
         elif kind == "dcode":
             lane_dcode(store, window, out)

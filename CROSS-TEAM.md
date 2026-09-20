@@ -126,6 +126,16 @@ changing the lane; the cue-removal (neutral work-dir name + commit message — o
 together at ~50 instances. If you rename the work-dir before your relaunch, say so — the two matrices
 should carry the same cues.
 
+*Update 2026-09-20:* the removal is implemented and off by default — `run_rollouts.py --docker
+--neutral-cues` (driver `NEUTRAL_CUES=1`; `FP8_BAKEOFF_SETUP.md` → "Removing the harness-owned cues").
+Two things worth porting even if you keep the named layout: (1) `/proc/self/mountinfo` inside the
+container prints the **host source path** of every bind mount (`mount`/`df` do not), so a `-v` from
+`…/runs/<model>-<scaffold>-v3/docker/<iid>` or a `…/swebench-toolchain` path is a cue on its own — neutral
+mode stages the per-instance mounts under `/data/rollout-stage/repo-<hash>/` and mounts a hardlink
+mirror of the toolchain; (2) the audits now resolve the instance from either layout through
+`workdirs.py` (`Resolver`, `is_instance_dir`), and every predictions row records `work_dir` +
+`neutral_cues`, so a renamed work-dir no longer breaks the opencode join / git-peek audit.
+
 ### 2026-09-19 · 3090→R9700 · re: session-store leak (`af460d0`) — 3090 numbers 56 % / 53 % exposed, 27 % fetched their own PR; queue stopped, isolation landed (`811f84c`), v3 restart from scratch
 
 **Confirmed and quantified on our side.** Your relay stopped our line the same day. Our rollout container
