@@ -22,9 +22,14 @@ Per instance the script records, from the lane's session transcripts:
                 repository, tracker, raw source, or documentation site
   web=SEARCH    a web search (results carry PR/commit titles and snippets)
   web=OTHER     a fetch of an unrelated site (docs.python.org, stackoverflow, ...)
+  web=BLOCKED   every UPSTREAM/SEARCH attempt observably failed (tool result
+                flagged as an error, or its text is a transport/DNS failure) --
+                the network-none sandbox's receipt: attempts happen, nothing
+                comes back. A blocked OTHER fetch is still OTHER.
 
-`exposed` = git READ or web UPSTREAM or web SEARCH. `isolated` = none of the
-channels fired. The report also prints the added-line overlap between each
+`exposed` = git READ, or a web UPSTREAM / SEARCH call whose outcome was not
+observably a failure (an attempt with no recorded result counts as exposed --
+silence is not isolation). `isolated` = none of the channels fired. The report also prints the added-line overlap between each
 model_patch and the SWE-bench gold patch for the exposed vs isolated groups, so
 copying can be seen rather than inferred (memorisation shows up as high
 overlap in the *isolated* group).
@@ -131,6 +136,17 @@ def git_peek(inst: str, text: str) -> tuple[str, str] | None:
 WEB_FETCH_TOOLS = {"webfetch", "web_fetch", "fetch"}
 WEB_SEARCH_TOOLS = {"websearch", "web_search", "search"}
 URL_RE = re.compile(r"https?://[^\s'\"<>)\]]+", re.I)
+# A tool result that is a transport / DNS / connection failure: the call left
+# nothing behind. Matched against the result text of web tools and of bash
+# network commands (curl/wget/pip/gh), whatever the scaffold's error flag says.
+NET_FAIL_RE = re.compile(
+    r"Transport error|Could not resolve host|Name or service not known|Temporary failure in name resolution|"
+    r"Network is unreachable|No route to host|Connection refused|ECONNREFUSED|ENOTFOUND|EAI_AGAIN|ENETUNREACH|"
+    r"fetch failed|Failed to establish a new connection|Max retries exceeded|NewConnectionError|"
+    r"unable to access '|Could not connect to server|getaddrinfo|Failed to connect to|"
+    r"ReadTimeout|ConnectTimeout|Connection timed out|network is disabled|no network|"
+    # pip with no index reachable retries silently and reports an empty version list
+    r"\(from versions: none\)", re.I)
 NET_BASH_RE = re.compile(r"\b(curl|wget|gh\s+(api|pr|issue)|pip3?\s+(download|install)(?!\s+-e)|python\S*\s+-m\s+pip\s+(download|install)(?!\s+-e)|git\s+clone\s+https?://)\b", re.I)
 
 # instance prefix -> tokens that identify the project's own sites/repos in a URL
@@ -199,14 +215,31 @@ def cmd_text(call: dict) -> str:
     return " ".join(str(a.get(k) or "") for k in ("command", "code", "cmd", "path", "pattern", "file_path", "url", "query"))
 
 
-def scan_call(inst: str, name: str, args, rec: dict) -> None:
+def scan_call(inst: str, name: str, args, rec: dict, call_id: str | None = None) -> None:
     t = cmd_text({"arguments": args})
     if "git" in t or WORK in t:
         why = git_peek(inst, t)
         if why:
             rec.setdefault("git", []).append((why[0], why[1][:200].replace("\n", "⏎")))
     for kind, evidence in web_events(inst, name, args, t):
-        rec.setdefault("web", []).append((kind, evidence[:200].replace("\n", "⏎")))
+        # ok: None = no result seen (counts as exposed), False = observably failed, True = returned
+        rec.setdefault("web", []).append({"kind": kind, "evidence": evidence[:200].replace("\n", "⏎"),
+                                          "id": call_id, "ok": None})
+
+
+def record_result(rec: dict, call_id: str | None, text: str, is_error: bool | None) -> None:
+    """Attach a tool result to the web event it answers (by call id, else the
+    latest event still without a result). Failure = the scaffold's error flag,
+    or a transport/DNS failure in the result text."""
+    events = rec.get("web") or []
+    ev = None
+    if call_id is not None:
+        ev = next((e for e in events if e["id"] == call_id), None)
+    if ev is None:
+        ev = next((e for e in reversed(events) if e["ok"] is None and e["id"] is None), None)
+    if ev is None or ev["ok"] is not None:
+        return
+    ev["ok"] = not (bool(is_error) or bool(NET_FAIL_RE.search(text or "")))
 
 
 # --------------------------------------------------------------------------- pi format
@@ -229,11 +262,15 @@ def scan_pi_file(path: Path, rec_for):
             if rec is None:
                 continue
             m = o.get("message") or {}
+            if m.get("role") == "toolResult":
+                text = " ".join(str(c.get("text") or "") for c in (m.get("content") or []) if isinstance(c, dict))
+                record_result(rec, m.get("toolCallId"), text, m.get("isError"))
+                continue
             if m.get("role") != "assistant":
                 continue
             for c in m.get("content") or []:
                 if isinstance(c, dict) and c.get("type") == "toolCall":
-                    scan_call(inst, c.get("name") or "", c.get("arguments") or {}, rec)
+                    scan_call(inst, c.get("name") or "", c.get("arguments") or {}, rec, c.get("id"))
     return inst
 
 
@@ -269,7 +306,12 @@ def lane_opencode(db: Path, window, out):
             except Exception:
                 continue
             if p.get("type") == "tool":
-                scan_call(inst, p.get("tool") or "", (p.get("state") or {}).get("input") or {}, rec)
+                st = p.get("state") or {}
+                cid = p.get("callID") or p.get("id")
+                scan_call(inst, p.get("tool") or "", st.get("input") or {}, rec, cid)
+                if st.get("status") in ("completed", "error"):
+                    text = f"{st.get('output') or ''} {st.get('error') or ''}"
+                    record_result(rec, cid, text, st.get("status") == "error")
 
 
 # --------------------------------------------------------------------------- dcode (LangGraph sqlite checkpoints)
@@ -308,11 +350,15 @@ def lane_dcode(db: Path, window, out):
             except Exception:
                 continue
             for m in msgs if isinstance(msgs, list) else [msgs]:
+                if isinstance(m, list) and len(m) >= 3 and m[1] == "ToolMessage" and isinstance(m[2], dict):
+                    d = m[2]
+                    record_result(rec, d.get("tool_call_id"), str(d.get("content") or ""), d.get("status") == "error")
+                    continue
                 if not (isinstance(m, list) and len(m) >= 3 and m[1] == "AIMessage" and isinstance(m[2], dict)):
                     continue
                 for tc in m[2].get("tool_calls") or []:
                     if isinstance(tc, dict):
-                        scan_call(inst, tc.get("name") or "", tc.get("args") or {}, rec)
+                        scan_call(inst, tc.get("name") or "", tc.get("args") or {}, rec, tc.get("id"))
 
 
 # --------------------------------------------------------------------------- gold overlap
@@ -372,7 +418,7 @@ def main():
         "dcode": ("dcode", HOME / ".deepagents/.state/sessions.db"),
     }
     report = {}
-    hdr = f"{'lane':18s} {'n':>3s} {'gitREAD':>8s} {'gitLIST':>8s} {'webUP':>8s} {'webSRCH':>8s} {'webOTH':>7s} {'exposed':>9s} {'isolated':>9s} | gold-overlap>=80%: exposed  isolated"
+    hdr = f"{'lane':18s} {'n':>3s} {'gitREAD':>8s} {'gitLIST':>8s} {'webUP':>8s} {'webSRCH':>8s} {'webBLK':>7s} {'webOTH':>7s} {'exposed':>9s} {'isolated':>9s} | gold-overlap>=80%: exposed  isolated"
     print(hdr)
     for lane, (kind, store) in lanes.items():
         run_dir = runs / f"{args.model}-{lane}{args.suffix}"
@@ -407,12 +453,21 @@ def main():
             g = rec.get("git", [])
             w = rec.get("web", [])
             git_cls = "READ" if any(t == "READ" for t, _ in g) else ("LIST" if g else "clean")
-            web_kinds = {k for k, _ in w}
-            web_cls = "UPSTREAM" if "UPSTREAM" in web_kinds else ("SEARCH" if "SEARCH" in web_kinds else ("OTHER" if w else "none"))
+            leaky = [e for e in w if e["kind"] in ("UPSTREAM", "SEARCH")]
+            live = [e for e in leaky if e["ok"] is not False]  # returned, or no result recorded
+            blocked = [e for e in leaky if e["ok"] is False]
+            if live:
+                web_cls = "UPSTREAM" if any(e["kind"] == "UPSTREAM" for e in live) else "SEARCH"
+            elif blocked:
+                web_cls = "BLOCKED"
+            else:
+                web_cls = "OTHER" if w else "none"
             exposed = git_cls == "READ" or web_cls in ("UPSTREAM", "SEARCH")
             ov = gold_overlap(preds.get(inst, ""), gold[inst]) if gold and inst in gold else None
             rows[inst] = {"git": git_cls, "web": web_cls, "exposed": exposed, "overlap": ov,
-                          "evidence": [f"git {t}: {r}" for t, r in g] + [f"web {k}: {e}" for k, e in w]}
+                          "web_attempts": len(leaky), "web_blocked": len(blocked),
+                          "evidence": [f"git {t}: {r}" for t, r in g]
+                          + [f"web {e['kind']}{' (blocked)' if e['ok'] is False else ''}: {e['evidence']}" for e in w]}
         n = len(rows)
         have = [r for r in rows.values() if r["exposed"] is not None]
         c = lambda pred: sum(1 for r in have if pred(r))  # noqa: E731
@@ -425,18 +480,21 @@ def main():
         i80, inn, imed = hi80(False)
         counts = {"git_READ": c(lambda r: r["git"] == "READ"), "git_LIST": c(lambda r: r["git"] == "LIST"),
                   "web_UPSTREAM": c(lambda r: r["web"] == "UPSTREAM"), "web_SEARCH": c(lambda r: r["web"] == "SEARCH"),
-                  "web_OTHER": c(lambda r: r["web"] == "OTHER"), "exposed": exposed, "isolated": isolated,
+                  "web_BLOCKED": c(lambda r: r["web"] == "BLOCKED"), "web_OTHER": c(lambda r: r["web"] == "OTHER"),
+                  "web_attempts_blocked": sum(r.get("web_blocked", 0) for r in have),
+                  "exposed": exposed, "isolated": isolated,
                   "no_transcript": n - len(have),
                   "exposed_overlap80": [e80, en, emed], "isolated_overlap80": [i80, inn, imed]}
         report[lane] = {"n": n, "counts": counts, "instances": rows}
-        print(f"{lane:18s} {n:3d} {counts['git_READ']:8d} {counts['git_LIST']:8d} {counts['web_UPSTREAM']:8d} {counts['web_SEARCH']:8d} {counts['web_OTHER']:7d} "
+        print(f"{lane:18s} {n:3d} {counts['git_READ']:8d} {counts['git_LIST']:8d} {counts['web_UPSTREAM']:8d} {counts['web_SEARCH']:8d} {counts['web_BLOCKED']:7d} {counts['web_OTHER']:7d} "
               f"{exposed:4d} {exposed/max(len(have),1):4.0%} {isolated:4d} {isolated/max(len(have),1):4.0%} | "
               f"{e80:3d}/{en:3d} (med {emed if emed is not None else 0:.2f})  {i80:3d}/{inn:3d} (med {imed if imed is not None else 0:.2f})")
-        for chan, pick in (("git READ", lambda r: r["git"] == "READ"), ("web UPSTREAM", lambda r: r["web"] == "UPSTREAM")):
+        for chan, pick in (("git READ", lambda r: r["git"] == "READ"), ("web UPSTREAM", lambda r: r["web"] == "UPSTREAM"),
+                           ("web UPSTREAM (blocked)", lambda r: r["web"] == "BLOCKED")):
             shown = 0
             for inst, r in rows.items():
                 if pick(r) and shown < args.show:
-                    ex = next(x for x in r["evidence"] if x.startswith(chan))
+                    ex = next((x for x in r["evidence"] if x.startswith(chan)), r["evidence"][0] if r["evidence"] else "")
                     print(f"    {inst}: {ex[:150]}")
                     shown += 1
     if args.json:

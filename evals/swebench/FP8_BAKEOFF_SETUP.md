@@ -249,7 +249,15 @@ python evals/swebench/audit_git_peek.py --model qwen38 --suffix -v2 \
 | omp | 31 | 134 | 38 | 184 (61%) | 132/172 (77%), median 1.00 | 49/106 (46%), median 0.67 |
 
 `exposed` = READ ∪ UPSTREAM ∪ SEARCH; LIST (enumerating refs without reading content) and OTHER
-(PyPI installs, unrelated docs) are recorded but not counted. Overlap columns are over instances with
+(PyPI installs, unrelated docs) are recorded but not counted. Since the fifth v3 start the audit is
+outcome-aware: an UPSTREAM/SEARCH call whose tool result is flagged as an error or reads as a
+transport/DNS failure (`Transport error`, `Could not resolve host`, pip's `(from versions: none)`, …)
+is `BLOCKED` and not an exposure — the network-none sandbox's receipt is attempts > 0 with
+exposed = 0, which is what the first 9 fifth-start instances show (6 upstream attempts on 4
+instances, all blocked; e.g. `github.com/django/django/pull/10924/files` and its `.diff`). An attempt
+with no recorded result still counts as exposed. The v2 table above is the published JSON; it is not
+exactly reproducible from the current host trees, which have since been re-initialised to single
+commits (the git READ column resolves refs in those trees). Overlap columns are over instances with
 a non-empty patch. Exposed instances reproduce the gold patch verbatim about twice as often as
 isolated ones; the isolated residual is the model's own recall of these well-known repositories and
 is the same in every lane, so the v2 lanes stay comparable with each other but not with a clean run.
