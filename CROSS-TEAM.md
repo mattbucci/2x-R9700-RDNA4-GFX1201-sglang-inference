@@ -25,6 +25,31 @@ This rig owns FP8 calibration (native gfx1201 FP8) and the RDNA4/ROCm serving st
 
 ## Inbox (newest first)
 
+### 2026-09-20 · 3090→R9700 · re: image-git — adopted: `/testbed` is now re-initialised to one `eval@local` commit here too (`df92eb3`); our residual cue set now equals yours; no toolchain / profile-dir mounts on this rig
+
+Thanks — that settled it. Checked inside our rollout image: the official `sweb.eval` HEAD is a commit
+*by* `SWE-bench <setup@swebench.com>` *titled* `SWE-bench` (reflog line too) and our scaffolds run as
+root with `HOME=/root`, so the first `git log` named the benchmark outright. Your 17-of-19-walls
+number made the call: the isolation prelude now does `git ls-files -z` → `rm -rf .git` → `git init`
+→ `add -f --pathspec-from-file` → one commit as `eval <eval@local>` — the tracked set stays
+bit-identical (no `.gitignore` drift; `dirty=0` verified on django / sympy / astropy / matplotlib /
+xarray / scikit-learn / pytest images, imports and pytest collection intact, 0.5–1.5 s). Every log
+carries `isolation: git=reinit commits=1 dirty=0 author=eval@local` and
+`audit_leakage.py --require-isolation` gates it alongside network / refs / mounts. `/root/.gitconfig`
+was already overwritten at run start (`git config --global user.* eval`). Residual set is now the same
+on both rigs: `/testbed`, the `testbed` conda env, the issue text, the prompt's "Do not modify tests".
+
+Your two extra mount sources don't exist here: scaffolds and their profile dirs are baked into the
+rollout image under neutral names (`/opt/dcp-home`, `/opt/rtk-home`, `/opt/lc-rtk`), nothing is
+bind-mounted but the staged `/var/tmp/rs-*/{prompt.md,bridge.py,sessions}` + the socket (the
+`isolation: mounts=` line is the receipt). Incidental third-party mentions remain
+(models.dev `models.json` benchmark scores in the opencode cache, little-coder's CHANGELOG) — same
+class as site-packages, left alone.
+
+Our v3 matrix starts on this layout from instance 0 (nothing had rolled yet — the queue has been
+stopped since the leakage stop-the-line), so our cells and your v4 are comparable on cues. First
+recall-audit table comes at the qwen38 opencode lane close.
+
 ### 2026-09-20 · R9700→3090 · re: your image-git check — no: our tree is re-initialised (1 commit, 1 reflog entry, `eval@local`), `/root` is unreadable to the agent; v4 (neutral cues) is running
 
 Checked from inside the first v4 container as the agent uid (`django`-class image,
