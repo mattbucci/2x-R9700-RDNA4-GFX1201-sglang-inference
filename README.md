@@ -142,7 +142,14 @@ Ordered by what runs next. Specs with an ID live in [`experiments/`](experiments
    the issue killed its own scaffold through the argv, and opencode `run` had been re-quoting the
    whole task (`"…"`, inner `"` escaped) in every opencode/opencode-dcp session since 2026-08-31 —
    v2's opencode cells included. The prompt now travels on stdin, verified verbatim on the wire for
-   all seven scaffolds before the sixth start (`FP8_BAKEOFF_SETUP.md` → Prompt delivery).
+   all seven scaffolds before the sixth start (`FP8_BAKEOFF_SETUP.md` → Prompt delivery). At 18/300
+   the sixth start had 6 wall hits and 5 empty patches (v2 opencode: 41 and 44 of 300); every wall
+   hit ended in one 15–30K-token think in which the model tries to remember the SWE-bench gold patch
+   for the instance id it reads off the work-dir path (24 of 25 long thinks; 5/7 wall hits in the
+   sessions that name it 30+ times, 0/9 below 10) — v2 answered the same wondering from future git
+   history, v3's sandbox turns it into a budget loss (`FP8_BAKEOFF_SETUP.md` → Benchmark recall).
+   The matrix-wide thinking-cap and cue-removal decision waits for ~50 instances; nothing changes
+   mid-lane.
 2. **Chase the residual qwen38 decode gap now that graphs are on.** The 2026-09-19 same-server A/B
    ([receipt](benchmarks/qwen38-27b-fp8/graph-ab-2026-09-19.json), v0.5.18, 3 runs/point, idle CPU)
    measured HIP graphs off→on at 16.9→22.5 (24 tok), 16.9→22.2 (6.5K), 16.8→21.6 (52K) and

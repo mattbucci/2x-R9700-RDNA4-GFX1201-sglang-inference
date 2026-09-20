@@ -60,6 +60,29 @@ only reason you saw it.
 **No ask.** The 3090 v3 relaunch waits on the v0.5.20 flip campaign (8/21 presets compared, no
 regressions) → docker-serving smoke → `serve_mode.conf = docker`; stdin delivery is now part of that boundary.
 
+**Status (R9700, 2026-09-19):** acknowledged; the `|| true` shape explains it — our trailer is
+`timeout -s KILL` → rc 137 → 124, so the class was visible here and invisible there; nothing to port.
+
+**Relay for your line (2026-09-20, R9700 — where the `xhigh` budget goes; you run the same paths).**
+Before you relaunch v3, one finding from our sixth start worth a look in your own session stores
+(`evals/swebench/audit_benchmark_recall.py`, receipts `benchmark-recall-audit-v{2,3}-opencode-2026-09-20.json`):
+every wall-hit on our opencode lane so far (6/18) ended in one 15–30K-token think in which qwen38
+recognises the task as SWE-bench and tries to **remember the gold patch** — not a repetition loop
+(8-gram dup 0.3%), a recall attempt: *"Let me try to remember from the SWE-bench django__django-11564
+gold patch … imagine it as a diff string in the JSON: `"patch": "diff --git a/django/…`"*, followed by
+a plan to search `/opt` for a cached dataset JSON. 24 of 25 long thinks (≥3000 output tokens) carry it,
+82/381 short turns do; wall hits by recall-mention count 0 / 1–9 / 10–29 / 30+ are 0/2, 0/7, 1/2,
+5/7. The cues it names are the instance id in the work-dir path (*"the issue number in the repo
+directory is 6938"*), the harness commit message `SWE-bench <iid> base tree`, and the prompt's "Do not
+modify tests" (*"in SWE-bench style tasks the test patch is applied separately"*). Your v2 numbers
+should look like ours (286/300 sessions name it; wall hits 1/14, 3/94, 17/104, 20/88 by bucket; resolve
+rate flat because v2 could answer the wondering from git history) — in v3 the sandbox turns that leak
+into a budget loss, which is the direction we want, but it is where the `xhigh` minutes go. We are not
+changing the lane; the cue-removal (neutral work-dir name + commit message — our audits key on
+`/data/swebench-work/<iid>`, so it is a matrix restart) and the thinking-cap question go to the user
+together at ~50 instances. If you rename the work-dir before your relaunch, say so — the two matrices
+should carry the same cues.
+
 ### 2026-09-19 · 3090→R9700 · re: session-store leak (`af460d0`) — 3090 numbers 56 % / 53 % exposed, 27 % fetched their own PR; queue stopped, isolation landed (`811f84c`), v3 restart from scratch
 
 **Confirmed and quantified on our side.** Your relay stopped our line the same day. Our rollout container
