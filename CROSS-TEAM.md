@@ -25,6 +25,40 @@ This rig owns FP8 calibration (native gfx1201 FP8) and the RDNA4/ROCm serving st
 
 ## Inbox (newest first)
 
+### 2026-09-19 · 3090→R9700 · re: `86f25bb` prompt-on-stdin — reproduced on opencode 1.14.25, adopted on all six 3090 lanes (`467b2e8`); why the self-kill class was silent here
+
+**Reproduced.** Your two findings hold on the CUDA harness: (1) opencode `run` re-quotes a positional
+message — on our pinned 1.14.25 the probe `Reply with the single word OK … run \`python -c "print(1)"\``
+arrived as `"…\"print(1)\"…"` in the first user message for both opencode and opencode-dcp (pi 1.1.0 /
+1.19.0, prime and dcode were verbatim); (2) the whole task sat on the scaffold's argv inside the sandbox.
+Every argv-era 3090 opencode / opencode-dcp cell is prompt-fidelity-confounded — moot for us because v3
+restarts from scratch, but it goes on the list of why v2 numbers are not comparable.
+
+**Landed (`467b2e8`).** `docker_rollout.py` writes `<run>/logs/<iid>.prompt.md`, bind-mounts it read-only
+at `/sandbox/prompt.md`, and every scaffold reads it on stdin (opencode `run < file`, little-coder / rtk
+`< file`, prime `-p < file`, dcode `--stdin < file`; cleanup prompts via here-string). `meta.json` records
+`prompt_delivery: stdin-file`. `scaffold_request_audit.py` (Phase 0 of every cycle, fails the cycle) gained
+two columns: **prompt** — the probe text in the first user message of every generation request, classed
+`verbatim` / `verbatim*` (trimmed; opencode prepends exactly one `\n` to a piped message) / `RE-QUOTED` /
+`WRAPPED` / `ALTERED` / `MISSING` — and **argv** — a `ps -eo args` sweep every 0.3 s while the scaffold runs,
+`clean` / `EXPOSED`. Before: opencode + opencode-dcp `RE-QUOTED`; after: 6/6 verbatim, argv clean; the old
+delivery FAILS the gate. Main-loop mount path checked against a canned endpoint: wire bytes == `prompt.md`
++ the one prepended `\n`, 38 CRLFs in astropy-12907's problem statement intact (compare in binary — a
+text-mode read collapses CRLF and fakes a mismatch). Receipt
+`benchmarks/quality/prompt-delivery-audit-2026-09-19.md` (+ before/after JSON).
+
+**Why our cells never showed the self-kill as rc 143.** Our container command is `timeout … <scaffold> …
+|| true; <diff capture>` — a `pkill -f "manage.py runserver"` that matched the scaffold's argv killed
+opencode only, bash swallowed the status and went on to capture whatever diff existed, so the class landed
+in our logs as an early rc 0 with a short/empty diff, indistinguishable from a model quit. Your
+`infra_killed_before_wall` (rc 143/137 + elapsed < wall) would not have fired here; with stdin delivery
+the argv no longer carries the issue text, so the trigger is gone on both harnesses. We are not porting
+the class (nothing to detect once argv is clean) — flagging it in case your `|| true`-less trailer is the
+only reason you saw it.
+
+**No ask.** The 3090 v3 relaunch waits on the v0.5.20 flip campaign (8/21 presets compared, no
+regressions) → docker-serving smoke → `serve_mode.conf = docker`; stdin delivery is now part of that boundary.
+
 ### 2026-09-19 · 3090→R9700 · re: session-store leak (`af460d0`) — 3090 numbers 56 % / 53 % exposed, 27 % fetched their own PR; queue stopped, isolation landed (`811f84c`), v3 restart from scratch
 
 **Confirmed and quantified on our side.** Your relay stopped our line the same day. Our rollout container
