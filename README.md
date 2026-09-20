@@ -21,8 +21,9 @@ new quality flagship Qwen3.8-27B-FP8.
   decode from 24 to 197K input on the repaired RDNA4 block-FP8 dispatch (patch 005) with HIP graphs
   (v0.5.20 canonical sweep, 2026-09-19; 16.6 flat before graphs). Its
   seven-scaffold SWE-bench Lite bakeoff (300 instances per cell, Docker-scored) restarted as
-  **v3, sandboxed** (running since 2026-09-19 on the v0.5.20 graphs-on stack, every scaffold inside
-  the official per-instance SWE-bench image with no network): the v2 lanes had let the agents read
+  **v4, sandboxed and cue-neutral** (running since 2026-09-20 on the v0.5.20 graphs-on stack, every
+  scaffold inside the official per-instance SWE-bench image with no network and no benchmark
+  identifiers in its view of the container): the v2 lanes had let the agents read
   the upstream fix through future git history and the web on 45–61% of instances, so v2 is
   published only as an exposure study. Setup, the leak audit and the isolation design are in
   [`evals/swebench/FP8_BAKEOFF_SETUP.md`](evals/swebench/FP8_BAKEOFF_SETUP.md).
@@ -107,17 +108,17 @@ scaffolds, so both channels were open to it too (its sessions were not audited).
 [`benchmarks/quality/swebench-leak-audit-qwen38-v2.json`](benchmarks/quality/swebench-leak-audit-qwen38-v2.json);
 its two opencode cells also received the task prompt quote-wrapped by opencode `run`, see
 `FP8_BAKEOFF_SETUP.md` → Prompt delivery);
-the clean matrix is v3, rolling since 2026-09-19 with every scaffold inside the official
+the clean matrix is v4, rolling since 2026-09-20 with every scaffold inside the official
 per-instance SWE-bench image — its own testbed env, `--network none` with a unix-socket bridge to
-SGLang, the tree re-initialised to a single commit (`FP8_BAKEOFF_SETUP.md` → Rollout environments,
-Answer leakage and isolation).
+SGLang, the tree re-initialised to a single commit at an opaque `/work/repo-<hash>` path
+(`FP8_BAKEOFF_SETUP.md` → Rollout environments, Answer leakage and isolation, Benchmark recall).
 
 ## Next steps
 
 Ordered by what runs next. Specs with an ID live in [`experiments/`](experiments/README.md).
 
-1. **Run the Qwen3.8 seven-scaffold bakeoff v3 to completion** (sixth start 2026-09-19 19:56 after
-   the five complete v2 lanes were Docker-scored; ~3.5 days per lane at 17 min/instance): every
+1. **Run the Qwen3.8 seven-scaffold bakeoff v4 to completion** (started 2026-09-20 11:10 after
+   the five complete v2 lanes were Docker-scored; ~3.8 days per lane at 18 min/instance): every
    scaffold inside the official per-instance SWE-bench image (`run_rollouts.py --docker`: the
    image's testbed env, no network except the SGLang bridge, git re-initialised to one commit;
    the four earlier v3 starts on host venvs + bubblewrap are archived, not scored), both
@@ -148,11 +149,16 @@ Ordered by what runs next. Specs with an ID live in [`experiments/`](experiments
    for the instance id it reads off the work-dir path (24 of 25 long thinks; 5/7 wall hits in the
    sessions that name it 30+ times, 0/9 below 10) — v2 answered the same wondering from future git
    history, v3's sandbox turns it into a budget loss (`FP8_BAKEOFF_SETUP.md` → Benchmark recall).
-   The matrix-wide thinking-cap and cue-removal decision waits for ~50 instances; nothing changes
-   mid-lane. Cue removal is implemented and verified offline (`run_rollouts.py --docker --neutral-cues`,
-   driver `NEUTRAL_CUES=1`: opaque `/work/repo-<hash>` tree, neutral commit message, staged mounts
-   because `/proc/self/mountinfo` shows host paths; `FP8_BAKEOFF_SETUP.md` → "Removing the
-   harness-owned cues"); it stays off until that decision.
+   At the ~50-instance checkpoint (48 done, 15.5 h) the same 48 ids stood at 19 wall hits / 16
+   empty patches against v2's 9 / 12, with 65% of the lane's time inside wall hits and 17 of the
+   19 walls in the sessions naming the benchmark 30+ times (0 of 14 below 10). Decision
+   (2026-09-20 11:09): restart the matrix as **v4 with the harness-owned cues removed and `xhigh`
+   kept** — `run_rollouts.py --docker --neutral-cues` (driver `NEUTRAL_CUES=1`): opaque
+   `/work/repo-<hash>` tree, `Import source tree` commit, per-instance mounts staged under neutral
+   paths because `/proc/self/mountinfo` shows host paths, toolchain hardlink mirror
+   (`FP8_BAKEOFF_SETUP.md` → "Removing the harness-owned cues"). The 48 named-layout sessions are
+   parked as the control arm for the same 48 ids; the thinking cap (Qwen3.8's native
+   `reasoning_effort: medium`, matrix-wide) stays in reserve pending the v4 recall audit at ~50.
 2. **Chase the residual qwen38 decode gap now that graphs are on.** The 2026-09-19 same-server A/B
    ([receipt](benchmarks/qwen38-27b-fp8/graph-ab-2026-09-19.json), v0.5.18, 3 runs/point, idle CPU)
    measured HIP graphs off→on at 16.9→22.5 (24 tok), 16.9→22.2 (6.5K), 16.8→21.6 (52K) and

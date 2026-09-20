@@ -122,14 +122,18 @@ id in the work-dir path (*"the issue number in the repo directory is 6938 (astro
 the harness commit message `SWE-bench <iid> base tree` (`docker_sandbox.sh`), and the prompt's "Do not
 modify tests" line (*"in SWE-bench style tasks the test patch is applied separately"*).
 
-| | v3 sixth start (opencode, 18 sessions) | v2 opencode lane (300) |
-|---|---|---|
-| sessions whose reasoning names SWE-bench / the gold patch | 16/18 | 286/300 |
-| long thinks (≥3000 output tokens in one turn) | 25, **24 carry recall** | 261, 243 carry recall |
-| short turns carrying recall | 82/381 | 1311/7687 |
-| share of all reasoning text sitting in long thinks | 49% | 36% |
-| wall hits by recall count 0 / 1–9 / 10–29 / 30+ | 0/2, 0/7, 1/2, **5/7** | 1/14, 3/94, 17/104, 20/88 |
-| empty patches by the same buckets | 0, 0, 1, 4 | 1, 7, 19, 17 |
+| | v3 sixth start (opencode, 18 sessions) | same lane at the stop, 48 sessions ([receipt](benchmark-recall-audit-v3-opencode-48-2026-09-20.json)) | v2 opencode lane (300) |
+|---|---|---|---|
+| sessions whose reasoning names SWE-bench / the gold patch | 16/18 | 46/48 | 286/300 |
+| long thinks (≥3000 output tokens in one turn) | 25, **24 carry recall** | 75, **73 carry recall** | 261, 243 carry recall |
+| short turns carrying recall | 82/381 | 260/1241 | 1311/7687 |
+| share of all reasoning text sitting in long thinks | 49% | 45% | 36% |
+| wall hits by recall count 0 / 1–9 / 10–29 / 30+ | 0/2, 0/7, 1/2, **5/7** | 0/2, 0/12, 2/12, **17/22** | 1/14, 3/94, 17/104, 20/88 |
+| empty patches by the same buckets | 0, 0, 1, 4 | 0, 0, 2, 14 | 1, 7, 19, 17 |
+
+On the same 48 instance ids v2 opencode had 9 wall hits and 12 empty patches (32 resolved, 4 of them
+wall hits that still scored — the git-history leak); v3 had 19 and 16, with 65% of the lane's 14.7 h
+spent inside wall hits, at the same per-instance mean (1105 s vs 1069 s).
 
 The v2 resolve rate is flat across the buckets (11/14, 72/94, 75/104, 62/88) because v2 could read
 the answer off future git history once it wondered what the fix was (→ Answer leakage); v3 closes
@@ -138,16 +142,19 @@ loss, which is the expected direction. The on-disk hunts (`find / -name autorelo
 swebench-work`, `/root/.cache/pip`, `/opt`, `api.github.com`) all came back empty or `Transport
 error` — the outcome-aware leak audit files them as blocked, not exposed.
 
-Disposition: no change mid-lane. Removing the cues the harness owns is a methodology change (it
-restarts the matrix) and cannot remove recognition from the issue text itself (v2: 14/300 sessions
-never named the benchmark). The numbers above are the input to the matrix-wide decision at ~50
-instances, taken together with the thinking cap: a cap would mostly cut recall, not work.
+Disposition: no change mid-lane; the numbers above went to the user at the ~50-instance checkpoint
+(48 done) together with the thinking-cap option (Qwen3.8's chat template takes `reasoning_effort`
+xhigh/medium/low natively, so a cap would be the model's own `medium`, matrix-wide). Decision
+2026-09-20 11:09: **restart as v4 with the cues removed and `xhigh` kept** — the buckets implicate the
+recall count, and cue removal targets it without giving up max reasoning; the cap stays in reserve if
+the v4 wall rate does not move. Removing the cues cannot remove recognition from the issue text
+itself (v2: 14/300 sessions never named the benchmark), so the v4 recall audit at ~50 is the test.
 
 ### Removing the harness-owned cues (`--neutral-cues`)
 
-`run_rollouts.py --docker --neutral-cues` (driver: `NEUTRAL_CUES=1`, docker mode only) is implemented,
-verified offline and **off by default**; flipping it on is the matrix restart above. What the agent
-sees in that mode, and how each cue was found (everything below was read from inside a container —
+`run_rollouts.py --docker --neutral-cues` (driver: `NEUTRAL_CUES=1`, docker mode only) is **off by
+default and on for the v4 matrix** (`v4-cycle-v0520-neutral-cues.sh`, 2026-09-20 11:10). What the
+agent sees in that mode, and how each cue was found (everything below was read from inside a container —
 `/proc/self/mountinfo` prints the host source path of every bind mount, so a `-v` from a
 `…/runs/qwen38-opencode-v3/docker/<iid>` or `/data/swebench-toolchain` path is a cue even though
 `mount` and `df` do not show it):
@@ -173,9 +180,11 @@ user message) and omp (neutral): tree at `/work/repo-4766b5f722`, commit `Import
 cue lines in the probe (`pwd`, `ps`, `env`, `git log/config`, mountinfo, `/sandbox/*`) versus 24–27
 in the default layout; default-layout behaviour is byte-identical to before the change.
 
-To flip: stop the driver at a lane boundary, then restart the matrix with the existing driver and
-`NEUTRAL_CUES=1` in its environment (the rollout log line records `neutral_cues=1`). It is a new
-methodology, so the run gets a new suffix (`-v4`); do not mix layouts inside one matrix.
+The flip is `NEUTRAL_CUES=1` in the driver's environment with a new run tag (the rollout log line
+records `neutral_cues=1`); layouts are never mixed inside one matrix. Verified on the first v4
+container from inside (as the agent uid): tree `/work/repo-6a3b0ed996`, commit `Import source tree`,
+0 `swe.?bench` matches in `/proc/self/mountinfo` and `env`; `docker inspect` shows every mount source
+under `/data/rollout-stage/repo-…`, `/data/rollout-toolchain` or the scaffold's own `~` dirs.
 
 ## Prompt delivery
 
@@ -464,6 +473,17 @@ opencode limits 262144 / 32000, v0.5.20 + graphs). The 17 predictions are parked
 server was not reused: the setsid'd server had inherited `run_all_cycles.sh`'s flock fd 9 and kept
 the queue lock after the driver was stopped, so `run_model_cycle.sh` now closes that fd before it
 launches anything (the `REUSE_SERVER=1` path exists for the next restart).
+
+The sixth start was stopped at 49/300 of the opencode lane (48 predictions; 2026-09-20 11:09, 15.5 h)
+on the user's decision at the ~50-instance checkpoint (→ Benchmark recall): the harness-owned cues
+are removed for the whole matrix, which is a methodology change and therefore a new tag. The v4
+matrix (`v4-cycle-v0520-neutral-cues.sh`, 11:10, `RUN_TAG=v4 NEUTRAL_CUES=1`) changes only the cue
+layout — `/work/repo-<hash>`, `Import source tree`, staged mounts, toolchain mirror, `-lane` profile
+dirs — and keeps everything else from the sixth start (Docker mode, prompt on stdin, `OUTPUT_BUDGET`
+32000, `xhigh`, 262144, 1800 s, v0.5.20 + graphs). The sixth start's server was reused
+(`REUSE_SERVER=1`; it held no lock fd). The 48 named-layout predictions are parked at
+`/data/logs/run-model-cycle-logs/qwen38-v3.aborted-2026-09-20-named-cues/` with their recall audit;
+they are not part of any cell but are the control arm for the cue A/B on the same first 48 ids.
 
 ## Scoring
 

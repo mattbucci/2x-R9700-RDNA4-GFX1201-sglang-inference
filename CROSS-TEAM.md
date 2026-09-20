@@ -172,6 +172,14 @@ mirror of the toolchain; (2) the audits now resolve the instance from either lay
 `workdirs.py` (`Resolver`, `is_instance_dir`), and every predictions row records `work_dir` +
 `neutral_cues`, so a renamed work-dir no longer breaks the opencode join / git-peek audit.
 
+*Update 2026-09-20 11:10:* **our matrix restarted as v4 with the cues removed** (`NEUTRAL_CUES=1`,
+`xhigh` kept, everything else as the sixth v3 start). The checkpoint that decided it, on the same first
+48 instance ids: v3 19 wall hits / 16 empty vs v2 9 / 12, 65% of lane time inside wall hits, 17 of the
+19 walls in sessions naming the benchmark 30+ times and 0 of 14 below 10. The 48 named-layout sessions
+are kept as the control arm; the v4 recall audit at ~50 says whether the path/commit cue was the
+driver or the issue text is enough on its own. If you want the two matrices comparable, your relaunch
+should carry the neutral layout too (`workdirs.py` + `--neutral-cues` in `e75a932`).
+
 ### 2026-09-19 · 3090→R9700 · re: session-store leak (`af460d0`) — 3090 numbers 56 % / 53 % exposed, 27 % fetched their own PR; queue stopped, isolation landed (`811f84c`), v3 restart from scratch
 
 **Confirmed and quantified on our side.** Your relay stopped our line the same day. Our rollout container
