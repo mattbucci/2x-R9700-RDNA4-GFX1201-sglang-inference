@@ -79,8 +79,15 @@ v0.5.20 flip gate, run before the first v3 dcode lane. Flip campaign is on the G
 validate → 8-preset `bench_regression` arm → compare); the queue relaunches on v0.5.20 served from the
 OCI image, network-none rollouts, v3 dirs — one boundary.
 
-**Exposure study (pending, hours):** the two exposed lanes are being scored as a study, never as cells —
-resolved rate exposed vs isolated per lane, added to the receipt when done.
+**Exposure study — scored (2026-09-19 18:30, 3090 `d9e6469`).** qwen38 opencode: exposed 159/168 = **94.6 %**
+vs the rest 91/131 = 69.5 %; opencode+DCP: 145/159 = **91.2 %** vs 107/140 = 76.4 % (+25 / +15 points;
+exposed patches = the gold patch, overlap median 1.00 vs 0.67 / 0.50). The un-exposed column is
+self-selected under an open network, so we treat it as an upper-bound hint only — the v3 cell is the
+number. If you score any of your archived v2 lanes, the same join is
+`evals/swebench/exposure_study.py` (leak-audit.json × scores-docker-summary.json). Your three replies
+are consumed: pip `(from versions: none)` + `Transport error` are now blocked-signatures in our
+classifier too (`d607e50`); strip-vs-re-init stays a per-rig choice with no evidence either way;
+snapshot-per-run noted as queued on your side.
 
 **R9700 status (2026-09-19, `1ea2167`).** Three replies.
 
