@@ -43,8 +43,18 @@
 #                   with no future history. 0 = --no-sandbox (the v2 configuration; leaks
 #                   the upstream fix via web tools and `git log --all`, see audit_git_peek.py).
 #   SCORE_WORKERS   concurrent Docker eval containers in Phase 5 (default: 8)
+#   REUSE_SERVER    1 = if a server already answers /health=200 on :23334 three times in a
+#                   row, keep it instead of launching one (a cycle restarted for a harness
+#                   fix while the previous cycle's server is still up; avoids the teardown
+#                   + graph-capture reboot and its transient GPU fault). Default 0.
 
 set -uo pipefail
+# run_all_cycles.sh holds its single-instance flock on fd 9. Everything launched
+# below (the setsid'd SGLang server above all) would inherit that fd, so a server
+# that outlives an aborted queue kept the lock and blocked the next queue start
+# ("another queue runner holds /tmp/swebench-bakeoff.lock"; 2026-09-19). Closing
+# the inherited copy here does not release the parent's lock.
+exec 9>&-
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
@@ -152,8 +162,20 @@ if needs_kernel_smoke "$PRESET"; then
 fi
 
 # --- Phase 1: launch + rollouts ---
-launch_server
-wait_ready || { stop_server; exit 1; }
+server_up() {
+  local i
+  for i in 1 2 3; do
+    [ "$(curl -s -o /dev/null -w "%{http_code}" -m 5 http://127.0.0.1:23334/health 2>/dev/null || echo 000)" = "200" ] || return 1
+    sleep 2
+  done
+  return 0
+}
+if [ "${REUSE_SERVER:-0}" = "1" ] && server_up; then
+  log "reusing the running server on :23334 (REUSE_SERVER=1; /health 200 x3)"
+else
+  launch_server
+  wait_ready || { stop_server; exit 1; }
+fi
 
 NEED_RESCORE=()  # cells that have predictions to score
 NEED_RESCORE_AFTER_REROLL=()

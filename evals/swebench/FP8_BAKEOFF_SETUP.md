@@ -13,7 +13,11 @@
   [Scaffold context budgets](#scaffold-context-budgets).
 - **claw-code:** set `OPENAI_BASE_URL` and `OPENAI_API_KEY`; use model `openai/sweep` and `--output-format text`.
 
-The rollout harness uses `stdin=DEVNULL`. Do not request opencode JSON output for long multi-turn sessions. Repository diffs are collected from Git, not agent stdout.
+The task prompt reaches every scaffold on **stdin** (`logs/<iid>.prompt.md`, written by
+`run_rollouts.py`; in Docker mode a read-only `/sandbox/prompt.md` mount that `docker_sandbox.sh`
+redirects), never as a command-line argument — see [Prompt delivery](#prompt-delivery). Do not
+request opencode JSON output for long multi-turn sessions. Repository diffs are collected from Git,
+not agent stdout.
 
 Use `--shard K/N` to distribute instances into separate prediction files.
 
@@ -100,6 +104,46 @@ idempotent and re-asserted on every lane start, so a package upgrade cannot sile
 thinking tokens per turn, the unpinned configuration looped abort → nudge → abort (3258 requests in
 90 s); the pinned one issued a single request with `reasoning_effort: "xhigh"` and no `temperature`.
 
+## Prompt delivery
+
+Since the sixth v3 start (2026-09-19 19:56) the task prompt is a file, `runs/<run>/logs/<iid>.prompt.md`,
+fed to the scaffold on stdin: opencode `run`, pi/little-coder/prime (`readPipedStdin`), omp and
+`dcode` (`apply_stdin_pipe`) all take a piped message as the initial user turn. Until then it was the
+scaffold's positional argument, and one incident (django__django-11422, fifth start, rc 143 at
+1713 s, no diff) exposed two things that a flag-level wire audit does not see:
+
+- **Argv self-kill.** The prompt embeds the issue text, so it sat on the argv of the scaffold, the
+  in-container `timeout` and `docker_sandbox.sh`. The agent ran `pkill -f "manage.py runserver"` —
+  a phrase from the issue ("Run a server python manage.py runserver") — and SIGTERMed all three; the
+  sandbox trailer never ran, so no `/out/rc` and no diff. The same instance died the same way in the
+  v2 opencode-dcp lane (rc −15 at 1060 s; the host-mode harness still captured a 1434 B diff, which
+  scored resolved). With the prompt on stdin no process carries the issue text on its command line
+  (checked inside the container: `docker-init`, `bash docker_sandbox.sh --agent <iid> …`, `timeout`,
+  the scaffold). `audit_predictions.py` classifies a SIGTERM/SIGKILL death before the wall
+  (rc 143/137 in Docker mode, −15/−9 on the host, elapsed < 1799 s) as `infra_killed_before_wall`
+  ahead of the patch short-circuit and reports the opencode bash command still `running` when the
+  session ended, flagged when it is a `kill`.
+- **opencode re-quotes a positional message.** opencode 1.18.25 `run` joins its positional
+  arguments with ``arg.includes(" ") ? `"${arg.replace(/"/g, '\\"')}"` : arg``, so a one-argument
+  prompt with spaces is sent wrapped in `"…"` with every inner `"` escaped — the prompt template's
+  `python -c "..."` and the code in 176/300 issue texts included. Every opencode and opencode-dcp
+  session since 2026-08-31 (the v2 cells and the first five v3 starts) received the task that way;
+  `opencode.db` shows each of those sessions' first user text starting with `"`. A piped message is
+  used verbatim (`e(j, H) { if (!j) return H; … }`). The other scaffolds sent the argument as is.
+
+The receipt for the fix is [`wire-audit-prompt-stdin-2026-09-19.json`](wire-audit-prompt-stdin-2026-09-19.json):
+all seven scaffolds through `run_rollouts.py --docker` against `capture_endpoint.py`, which now
+digests the first user message of every request (`user0`: length, sha256, head/tail). opencode:
+verbatim (no leading quote); opencode-dcp: verbatim plus the plugin's 38-char
+`<dcp-message-id>` suffix; little-coder, little-coder-rtk, prime, dcode: verbatim after whitespace
+trimming; omp: verbatim after its own 170-char `<system-reminder>` date/cwd block. The recipe runs
+with the lane's server untouched: `SWEBENCH_HOST_SERVER_URL=http://127.0.0.1:23399` points the
+harness's own preflights and the socat bridge at the capture endpoint while every scaffold keeps
+its configured `:23334` (`capture_endpoint.py --port 23399 --served-name qwen38`, then
+`run_rollouts.py --docker --scaffold <s> --instance-ids psf__requests-2317 --timeout 180 …`; the
+scaffolds exit within seconds on the canned tool-free reply). A wire audit before a lane checks the
+prompt text itself, not only the sampling flags.
+
 ## Rollout environments
 
 **Docker mode (the v3 matrix since its fifth start, 2026-09-19 14:07; `DOCKER=1` default in
@@ -114,7 +158,8 @@ nothing the harness adds on top (no `pytest` where the image has none: django's 
 release tag) with a single commit "SWE-bench <iid> base tree", chowns the tree and the env to the
 host uid, starts the in-container half of the SGLang bridge (`docker_bridge.py`, loopback
 `127.0.0.1:23334` → the bind-mounted unix socket) and checks `/health` through it — then drops to
-the host uid with `setpriv` and runs the scaffold under `timeout -s KILL`. The container has
+the host uid with `setpriv` and runs the scaffold under `timeout -s KILL` with the prompt on stdin
+(the read-only `/sandbox/prompt.md` mount, [Prompt delivery](#prompt-delivery)). The container has
 `--network none`; the scaffold binaries (`~/.npm-global`, `omp`/`rtk`/`dcode`, the uv tool venvs)
 and configs are bind-mounted read-only, only each scaffold's own state dirs read-write (opencode's
 SQLite, pi/omp/prime sessions, deepagents' checkpoints — the paths the audits read), plus a portable
@@ -154,7 +199,8 @@ ends mid-turn (3090 finding, 2026-09-15, [CROSS-TEAM.md](../../CROSS-TEAM.md)). 
 prints that error, so the auditor reads it from `~/.local/share/opencode/opencode.db` (`UnknownError`
 messages joined to the instance by `session.directory` and the prediction's log-mtime window) and
 reports how many instances matched no session at all, so a rotated store cannot pass as clean. A
-killed session's partial patch is re-rolled like a no-venv one. Sizing on this rig: 0 of 632 qwen38
+killed session's partial patch is re-rolled like a no-venv one; so is one from a session that died
+of a signal before the wall (`infra_killed_before_wall`, Prompt delivery above). Sizing on this rig: 0 of 632 qwen38
 opencode instances (v2 + v2-dcp + the aborted v3 start), 70 on the May–June `sweep` cycles; the
 parser fix (3090 patch 063) is deferred to the next stack change so the running matrix stays on one
 server build.
@@ -281,7 +327,7 @@ used the host-mode sandbox (`DOCKER=0 SANDBOX=1`; `--no-sandbox` restores the v2
 
 Re-run the audit on every new lane; a sandboxed lane must report 0 READ / 0 UPSTREAM / 0 SEARCH.
 
-The v3 matrix started five times. The first start (2026-09-18 05:19) still carried opencode's v2 `limit.output`
+The v3 matrix started six times. The first start (2026-09-18 05:19) still carried opencode's v2 `limit.output`
 8192; the wire check that the Scaffold thinking effort table had scheduled for "the next cycle" had not
 been applied. Its first 20 opencode instances showed 4 sessions ending on a `length` finish at exactly
 8192 output+reasoning tokens (the truncated think yields no tool call, opencode exits 0, empty patch),
@@ -333,6 +379,18 @@ now validates `model` against the served id (fixed with `_check_responses_api`, 
 All seven scaffolds then produced the correct django-11099 fix (rc 0, 118–350 s), the 30 s timeout
 path returned rc 124 with the container removed, and `audit_git_peek.py` over the seven smoke sessions
 reported 0 exposed. The fifth start launched at 14:07 once those receipts were in.
+
+The fifth start was aborted at 18/300 of the opencode lane (17 predictions; 2026-09-19 19:5x, ≈6 h)
+on the django-11422 incident described under Prompt delivery: the prompt had been a positional
+argument of every scaffold (argv self-kill; opencode's re-quoting of the whole task), which is a
+methodology fix and therefore a restart, not a resume. The sixth start
+(`v3-cycle-v0520-stdin-prompt.sh`, 19:56) changes only the delivery — the prompt file on stdin —
+and keeps everything else from the fifth (Docker mode, `OUTPUT_BUDGET` 32000, `xhigh`, 1800 s,
+opencode limits 262144 / 32000, v0.5.20 + graphs). The 17 predictions are parked at
+`/data/logs/run-model-cycle-logs/qwen38-v3.aborted-2026-09-19-argv-prompt/`. The fifth start's
+server was not reused: the setsid'd server had inherited `run_all_cycles.sh`'s flock fd 9 and kept
+the queue lock after the driver was stopped, so `run_model_cycle.sh` now closes that fd before it
+launches anything (the `REUSE_SERVER=1` path exists for the next restart).
 
 ## Scoring
 

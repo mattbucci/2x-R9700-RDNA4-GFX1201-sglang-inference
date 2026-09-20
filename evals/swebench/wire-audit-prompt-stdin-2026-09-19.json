@@ -1,0 +1,742 @@
+{
+ "method": "capture_endpoint.py on 23399 with SWEBENCH_HOST_SERVER_URL=http://127.0.0.1:23399 (the live :23334 server untouched); per scaffold: /mark/start-<scaffold>, run_rollouts.py --docker --scaffold <scaffold> --instance-ids psf__requests-2317 --timeout 180 (harness interpreter, OUTPUT_BUDGET 32000, prompt on stdin via logs/<iid>.prompt.md -> /sandbox/prompt.md), /mark/end-<scaffold>. Every record carries user0 = digest of the first user message of that request (len in chars, sha256, head/tail 80 chars). Per scaffold, task_request is the request whose first user message is longest (opencode sends a short title-generation request first; the 2-char 'hi' requests are the harness's server probe); prompt_file is the same digest of the harness-written prompt file, so VERBATIM == equal sha256, STRIPPED-VERBATIM == equal after .strip(). argv_has_issue_text was checked on the docker run command line recorded at the top of the instance log. The scaffolds exit within seconds because the capture endpoint answers with a canned, tool-free completion. dcode's agent_rc=1 is the endpoint's doing: its task request is a streaming /v1/responses call, which capture_endpoint.py answers 400 (only the non-streaming preflight shape is canned), so dcode reports 'An internal error occurred' after the request -- and its first user message -- was recorded.",
+ "date": "2026-09-19",
+ "instance": "psf__requests-2317",
+ "scaffolds": {
+  "opencode": {
+   "requests": 3,
+   "task_request": {
+    "path": "/v1/chat/completions",
+    "user_agent": "opencode/1.18.25 ai-sdk/provider-utils/4.0.23 runtime/bun/1.3.14",
+    "user0": {
+     "len": 1637,
+     "sha256": "85d37d48cbedb286e8c8b73ad5b1f53e8ebd58aef62a04365c33ec85e959ca3b",
+     "head": "You are working on a GitHub issue in this repository.\n\nThe repo is already insta",
+     "tail": "n caught and replaced with `to_native_str`. This is definitely a requests bug.\n\n"
+    }
+   },
+   "prompt_file": {
+    "len": 1637,
+    "sha256": "85d37d48cbedb286e8c8b73ad5b1f53e8ebd58aef62a04365c33ec85e959ca3b",
+    "head": "You are working on a GitHub issue in this repository.\n\nThe repo is already insta",
+    "tail": "n caught and replaced with `to_native_str`. This is definitely a requests bug.\n\n"
+   },
+   "prompt_file_stripped": {
+    "len": 1635,
+    "sha256": "a5f7904e751b2b0edc30a937cfdb0b3d6d01cb530ebb4ce60f6972ca209bd298",
+    "head": "You are working on a GitHub issue in this repository.\n\nThe repo is already insta",
+    "tail": "een caught and replaced with `to_native_str`. This is definitely a requests bug."
+   },
+   "verdict": "VERBATIM",
+   "argv_has_issue_text": false,
+   "prompt_delivery": "stdin 1649B",
+   "agent_rc": 0
+  },
+  "opencode-dcp": {
+   "requests": 3,
+   "task_request": {
+    "path": "/v1/chat/completions",
+    "user_agent": "opencode/1.18.25 ai-sdk/provider-utils/4.0.23 runtime/bun/1.3.14",
+    "user0": {
+     "len": 1675,
+     "sha256": "72455901c734f415e5e5db85bd04b3af4c729a837b001bd9dd00559bda30e9e4",
+     "head": "You are working on a GitHub issue in this repository.\n\nThe repo is already insta",
+     "tail": "str`. This is definitely a requests bug.\n\n<dcp-message-id>m0001</dcp-message-id>"
+    }
+   },
+   "prompt_file": {
+    "len": 1637,
+    "sha256": "85d37d48cbedb286e8c8b73ad5b1f53e8ebd58aef62a04365c33ec85e959ca3b",
+    "head": "You are working on a GitHub issue in this repository.\n\nThe repo is already insta",
+    "tail": "n caught and replaced with `to_native_str`. This is definitely a requests bug.\n\n"
+   },
+   "prompt_file_stripped": {
+    "len": 1635,
+    "sha256": "a5f7904e751b2b0edc30a937cfdb0b3d6d01cb530ebb4ce60f6972ca209bd298",
+    "head": "You are working on a GitHub issue in this repository.\n\nThe repo is already insta",
+    "tail": "een caught and replaced with `to_native_str`. This is definitely a requests bug."
+   },
+   "verdict": "HEAD VERBATIM, scaffold appends 38 chars of its own",
+   "argv_has_issue_text": false,
+   "prompt_delivery": "stdin 1649B",
+   "agent_rc": 0
+  },
+  "little-coder": {
+   "requests": 2,
+   "task_request": {
+    "path": "/v1/chat/completions",
+    "user_agent": "OpenAI/JS 6.26.0",
+    "user0": {
+     "len": 1635,
+     "sha256": "a5f7904e751b2b0edc30a937cfdb0b3d6d01cb530ebb4ce60f6972ca209bd298",
+     "head": "You are working on a GitHub issue in this repository.\n\nThe repo is already insta",
+     "tail": "een caught and replaced with `to_native_str`. This is definitely a requests bug."
+    }
+   },
+   "prompt_file": {
+    "len": 1637,
+    "sha256": "85d37d48cbedb286e8c8b73ad5b1f53e8ebd58aef62a04365c33ec85e959ca3b",
+    "head": "You are working on a GitHub issue in this repository.\n\nThe repo is already insta",
+    "tail": "n caught and replaced with `to_native_str`. This is definitely a requests bug.\n\n"
+   },
+   "prompt_file_stripped": {
+    "len": 1635,
+    "sha256": "a5f7904e751b2b0edc30a937cfdb0b3d6d01cb530ebb4ce60f6972ca209bd298",
+    "head": "You are working on a GitHub issue in this repository.\n\nThe repo is already insta",
+    "tail": "een caught and replaced with `to_native_str`. This is definitely a requests bug."
+   },
+   "verdict": "STRIPPED-VERBATIM (scaffold trims whitespace)",
+   "argv_has_issue_text": false,
+   "prompt_delivery": "stdin 1649B",
+   "agent_rc": 0
+  },
+  "little-coder-rtk": {
+   "requests": 2,
+   "task_request": {
+    "path": "/v1/chat/completions",
+    "user_agent": "OpenAI/JS 6.26.0",
+    "user0": {
+     "len": 1635,
+     "sha256": "a5f7904e751b2b0edc30a937cfdb0b3d6d01cb530ebb4ce60f6972ca209bd298",
+     "head": "You are working on a GitHub issue in this repository.\n\nThe repo is already insta",
+     "tail": "een caught and replaced with `to_native_str`. This is definitely a requests bug."
+    }
+   },
+   "prompt_file": {
+    "len": 1637,
+    "sha256": "85d37d48cbedb286e8c8b73ad5b1f53e8ebd58aef62a04365c33ec85e959ca3b",
+    "head": "You are working on a GitHub issue in this repository.\n\nThe repo is already insta",
+    "tail": "n caught and replaced with `to_native_str`. This is definitely a requests bug.\n\n"
+   },
+   "prompt_file_stripped": {
+    "len": 1635,
+    "sha256": "a5f7904e751b2b0edc30a937cfdb0b3d6d01cb530ebb4ce60f6972ca209bd298",
+    "head": "You are working on a GitHub issue in this repository.\n\nThe repo is already insta",
+    "tail": "een caught and replaced with `to_native_str`. This is definitely a requests bug."
+   },
+   "verdict": "STRIPPED-VERBATIM (scaffold trims whitespace)",
+   "argv_has_issue_text": false,
+   "prompt_delivery": "stdin 1649B",
+   "agent_rc": 0
+  },
+  "omp": {
+   "requests": 2,
+   "task_request": {
+    "path": "/v1/chat/completions",
+    "user_agent": "Bun/1.4.0",
+    "user0": {
+     "len": 1807,
+     "sha256": "0adf3388b0735bfe315d0795a380192431e14949acc042fa2b50d8b3e6eba49d",
+     "head": "<system-reminder>\nToday: 2026-09-20; current working directory: '/data/swebench-",
+     "tail": "n caught and replaced with `to_native_str`. This is definitely a requests bug.\n\n"
+    }
+   },
+   "prompt_file": {
+    "len": 1637,
+    "sha256": "85d37d48cbedb286e8c8b73ad5b1f53e8ebd58aef62a04365c33ec85e959ca3b",
+    "head": "You are working on a GitHub issue in this repository.\n\nThe repo is already insta",
+    "tail": "n caught and replaced with `to_native_str`. This is definitely a requests bug.\n\n"
+   },
+   "prompt_file_stripped": {
+    "len": 1635,
+    "sha256": "a5f7904e751b2b0edc30a937cfdb0b3d6d01cb530ebb4ce60f6972ca209bd298",
+    "head": "You are working on a GitHub issue in this repository.\n\nThe repo is already insta",
+    "tail": "een caught and replaced with `to_native_str`. This is definitely a requests bug."
+   },
+   "verdict": "TAIL VERBATIM, scaffold prepends 170 chars of its own",
+   "argv_has_issue_text": false,
+   "prompt_delivery": "stdin 1649B",
+   "agent_rc": 0
+  },
+  "prime": {
+   "requests": 2,
+   "task_request": {
+    "path": "/v1/chat/completions",
+    "user_agent": "OpenAI/JS 6.47.0",
+    "user0": {
+     "len": 1635,
+     "sha256": "a5f7904e751b2b0edc30a937cfdb0b3d6d01cb530ebb4ce60f6972ca209bd298",
+     "head": "You are working on a GitHub issue in this repository.\n\nThe repo is already insta",
+     "tail": "een caught and replaced with `to_native_str`. This is definitely a requests bug."
+    }
+   },
+   "prompt_file": {
+    "len": 1637,
+    "sha256": "85d37d48cbedb286e8c8b73ad5b1f53e8ebd58aef62a04365c33ec85e959ca3b",
+    "head": "You are working on a GitHub issue in this repository.\n\nThe repo is already insta",
+    "tail": "n caught and replaced with `to_native_str`. This is definitely a requests bug.\n\n"
+   },
+   "prompt_file_stripped": {
+    "len": 1635,
+    "sha256": "a5f7904e751b2b0edc30a937cfdb0b3d6d01cb530ebb4ce60f6972ca209bd298",
+    "head": "You are working on a GitHub issue in this repository.\n\nThe repo is already insta",
+    "tail": "een caught and replaced with `to_native_str`. This is definitely a requests bug."
+   },
+   "verdict": "STRIPPED-VERBATIM (scaffold trims whitespace)",
+   "argv_has_issue_text": false,
+   "prompt_delivery": "stdin 1649B",
+   "agent_rc": 0
+  },
+  "dcode": {
+   "requests": 3,
+   "task_request": {
+    "path": "/v1/responses",
+    "user_agent": null,
+    "user0": {
+     "len": 1635,
+     "sha256": "a5f7904e751b2b0edc30a937cfdb0b3d6d01cb530ebb4ce60f6972ca209bd298",
+     "head": "You are working on a GitHub issue in this repository.\n\nThe repo is already insta",
+     "tail": "een caught and replaced with `to_native_str`. This is definitely a requests bug."
+    }
+   },
+   "prompt_file": {
+    "len": 1637,
+    "sha256": "85d37d48cbedb286e8c8b73ad5b1f53e8ebd58aef62a04365c33ec85e959ca3b",
+    "head": "You are working on a GitHub issue in this repository.\n\nThe repo is already insta",
+    "tail": "n caught and replaced with `to_native_str`. This is definitely a requests bug.\n\n"
+   },
+   "prompt_file_stripped": {
+    "len": 1635,
+    "sha256": "a5f7904e751b2b0edc30a937cfdb0b3d6d01cb530ebb4ce60f6972ca209bd298",
+    "head": "You are working on a GitHub issue in this repository.\n\nThe repo is already insta",
+    "tail": "een caught and replaced with `to_native_str`. This is definitely a requests bug."
+   },
+   "verdict": "STRIPPED-VERBATIM (scaffold trims whitespace)",
+   "argv_has_issue_text": false,
+   "prompt_delivery": "stdin 1649B",
+   "agent_rc": 1
+  }
+ },
+ "records": [
+  {
+   "mark": "start-opencode",
+   "t": 1789872610.7790966
+  },
+  {
+   "t": 1789872610.8183928,
+   "path": "/v1/chat/completions",
+   "headers": {
+    "User-Agent": "Python-urllib/3.12"
+   },
+   "body": {
+    "model": "qwen38",
+    "max_tokens": 30,
+    "temperature": 0.0
+   },
+   "n_messages": 4,
+   "roles": [
+    "user",
+    "assistant",
+    "tool",
+    "user"
+   ],
+   "n_tools": null,
+   "has_input": false,
+   "user0": {
+    "len": 2,
+    "sha256": "8f434346648f6b96df89dda901c5176b10a6d83961dd3c1ac88b59b2dc327aa4",
+    "head": "hi",
+    "tail": "hi"
+   }
+  },
+  {
+   "t": 1789872614.3789728,
+   "path": "/v1/chat/completions",
+   "headers": {
+    "User-Agent": "opencode/1.18.25 ai-sdk/provider-utils/4.0.23 runtime/bun/1.3.14"
+   },
+   "body": {
+    "model": "qwen38",
+    "max_tokens": 32000,
+    "stream": true,
+    "stream_options": {
+     "include_usage": true
+    }
+   },
+   "n_messages": 3,
+   "roles": [
+    "system",
+    "user",
+    "user"
+   ],
+   "n_tools": null,
+   "has_input": false,
+   "user0": {
+    "len": 40,
+    "sha256": "343ad246dc9ed907e2c13991cdf17f7818c651ed05f9ba6679bc7e584298e07a",
+    "head": "Generate a title for this conversation:\n",
+    "tail": "Generate a title for this conversation:\n"
+   }
+  },
+  {
+   "t": 1789872614.7346861,
+   "path": "/v1/chat/completions",
+   "headers": {
+    "User-Agent": "opencode/1.18.25 ai-sdk/provider-utils/4.0.23 runtime/bun/1.3.14"
+   },
+   "body": {
+    "model": "qwen38",
+    "max_tokens": 32000,
+    "tool_choice": "auto",
+    "stream": true,
+    "stream_options": {
+     "include_usage": true
+    }
+   },
+   "n_messages": 2,
+   "roles": [
+    "system",
+    "user"
+   ],
+   "n_tools": 10,
+   "has_input": false,
+   "user0": {
+    "len": 1637,
+    "sha256": "85d37d48cbedb286e8c8b73ad5b1f53e8ebd58aef62a04365c33ec85e959ca3b",
+    "head": "You are working on a GitHub issue in this repository.\n\nThe repo is already insta",
+    "tail": "n caught and replaced with `to_native_str`. This is definitely a requests bug.\n\n"
+   }
+  },
+  {
+   "mark": "end-opencode",
+   "t": 1789872615.1015449
+  },
+  {
+   "mark": "start-opencode-dcp",
+   "t": 1789872615.1058373
+  },
+  {
+   "t": 1789872615.1435978,
+   "path": "/v1/chat/completions",
+   "headers": {
+    "User-Agent": "Python-urllib/3.12"
+   },
+   "body": {
+    "model": "qwen38",
+    "max_tokens": 30,
+    "temperature": 0.0
+   },
+   "n_messages": 4,
+   "roles": [
+    "user",
+    "assistant",
+    "tool",
+    "user"
+   ],
+   "n_tools": null,
+   "has_input": false,
+   "user0": {
+    "len": 2,
+    "sha256": "8f434346648f6b96df89dda901c5176b10a6d83961dd3c1ac88b59b2dc327aa4",
+    "head": "hi",
+    "tail": "hi"
+   }
+  },
+  {
+   "t": 1789872618.4465265,
+   "path": "/v1/chat/completions",
+   "headers": {
+    "User-Agent": "opencode/1.18.25 ai-sdk/provider-utils/4.0.23 runtime/bun/1.3.14"
+   },
+   "body": {
+    "model": "qwen38",
+    "max_tokens": 32000,
+    "stream": true,
+    "stream_options": {
+     "include_usage": true
+    }
+   },
+   "n_messages": 3,
+   "roles": [
+    "system",
+    "user",
+    "user"
+   ],
+   "n_tools": null,
+   "has_input": false,
+   "user0": {
+    "len": 40,
+    "sha256": "343ad246dc9ed907e2c13991cdf17f7818c651ed05f9ba6679bc7e584298e07a",
+    "head": "Generate a title for this conversation:\n",
+    "tail": "Generate a title for this conversation:\n"
+   }
+  },
+  {
+   "t": 1789872618.7951488,
+   "path": "/v1/chat/completions",
+   "headers": {
+    "User-Agent": "opencode/1.18.25 ai-sdk/provider-utils/4.0.23 runtime/bun/1.3.14"
+   },
+   "body": {
+    "model": "qwen38",
+    "max_tokens": 32000,
+    "tool_choice": "auto",
+    "stream": true,
+    "stream_options": {
+     "include_usage": true
+    }
+   },
+   "n_messages": 2,
+   "roles": [
+    "system",
+    "user"
+   ],
+   "n_tools": 11,
+   "has_input": false,
+   "user0": {
+    "len": 1675,
+    "sha256": "72455901c734f415e5e5db85bd04b3af4c729a837b001bd9dd00559bda30e9e4",
+    "head": "You are working on a GitHub issue in this repository.\n\nThe repo is already insta",
+    "tail": "str`. This is definitely a requests bug.\n\n<dcp-message-id>m0001</dcp-message-id>"
+   }
+  },
+  {
+   "mark": "end-opencode-dcp",
+   "t": 1789872619.1597505
+  },
+  {
+   "mark": "start-little-coder",
+   "t": 1789872619.1634312
+  },
+  {
+   "t": 1789872619.2023962,
+   "path": "/v1/chat/completions",
+   "headers": {
+    "User-Agent": "Python-urllib/3.12"
+   },
+   "body": {
+    "model": "qwen38",
+    "max_tokens": 30,
+    "temperature": 0.0
+   },
+   "n_messages": 4,
+   "roles": [
+    "user",
+    "assistant",
+    "tool",
+    "user"
+   ],
+   "n_tools": null,
+   "has_input": false,
+   "user0": {
+    "len": 2,
+    "sha256": "8f434346648f6b96df89dda901c5176b10a6d83961dd3c1ac88b59b2dc327aa4",
+    "head": "hi",
+    "tail": "hi"
+   }
+  },
+  {
+   "t": 1789872622.5823343,
+   "path": "/v1/chat/completions",
+   "headers": {
+    "User-Agent": "OpenAI/JS 6.26.0"
+   },
+   "body": {
+    "model": "qwen38",
+    "stream": true,
+    "stream_options": {
+     "include_usage": true
+    },
+    "store": false,
+    "max_completion_tokens": 32000,
+    "reasoning_effort": "xhigh"
+   },
+   "n_messages": 4,
+   "roles": [
+    "developer",
+    "user",
+    "user",
+    "user"
+   ],
+   "n_tools": 26,
+   "has_input": false,
+   "user0": {
+    "len": 1635,
+    "sha256": "a5f7904e751b2b0edc30a937cfdb0b3d6d01cb530ebb4ce60f6972ca209bd298",
+    "head": "You are working on a GitHub issue in this repository.\n\nThe repo is already insta",
+    "tail": "een caught and replaced with `to_native_str`. This is definitely a requests bug."
+   }
+  },
+  {
+   "mark": "end-little-coder",
+   "t": 1789872622.8871598
+  },
+  {
+   "mark": "start-little-coder-rtk",
+   "t": 1789872622.8908231
+  },
+  {
+   "t": 1789872622.930064,
+   "path": "/v1/chat/completions",
+   "headers": {
+    "User-Agent": "Python-urllib/3.12"
+   },
+   "body": {
+    "model": "qwen38",
+    "max_tokens": 30,
+    "temperature": 0.0
+   },
+   "n_messages": 4,
+   "roles": [
+    "user",
+    "assistant",
+    "tool",
+    "user"
+   ],
+   "n_tools": null,
+   "has_input": false,
+   "user0": {
+    "len": 2,
+    "sha256": "8f434346648f6b96df89dda901c5176b10a6d83961dd3c1ac88b59b2dc327aa4",
+    "head": "hi",
+    "tail": "hi"
+   }
+  },
+  {
+   "t": 1789872626.180982,
+   "path": "/v1/chat/completions",
+   "headers": {
+    "User-Agent": "OpenAI/JS 6.26.0"
+   },
+   "body": {
+    "model": "qwen38",
+    "stream": true,
+    "stream_options": {
+     "include_usage": true
+    },
+    "store": false,
+    "max_completion_tokens": 32000,
+    "reasoning_effort": "xhigh"
+   },
+   "n_messages": 4,
+   "roles": [
+    "developer",
+    "user",
+    "user",
+    "user"
+   ],
+   "n_tools": 26,
+   "has_input": false,
+   "user0": {
+    "len": 1635,
+    "sha256": "a5f7904e751b2b0edc30a937cfdb0b3d6d01cb530ebb4ce60f6972ca209bd298",
+    "head": "You are working on a GitHub issue in this repository.\n\nThe repo is already insta",
+    "tail": "een caught and replaced with `to_native_str`. This is definitely a requests bug."
+   }
+  },
+  {
+   "mark": "end-little-coder-rtk",
+   "t": 1789872626.480201
+  },
+  {
+   "mark": "start-omp",
+   "t": 1789872626.4834948
+  },
+  {
+   "t": 1789872626.522821,
+   "path": "/v1/chat/completions",
+   "headers": {
+    "User-Agent": "Python-urllib/3.12"
+   },
+   "body": {
+    "model": "qwen38",
+    "max_tokens": 30,
+    "temperature": 0.0
+   },
+   "n_messages": 4,
+   "roles": [
+    "user",
+    "assistant",
+    "tool",
+    "user"
+   ],
+   "n_tools": null,
+   "has_input": false,
+   "user0": {
+    "len": 2,
+    "sha256": "8f434346648f6b96df89dda901c5176b10a6d83961dd3c1ac88b59b2dc327aa4",
+    "head": "hi",
+    "tail": "hi"
+   }
+  },
+  {
+   "t": 1789872629.6461892,
+   "path": "/v1/chat/completions",
+   "headers": {
+    "User-Agent": "Bun/1.4.0"
+   },
+   "body": {
+    "model": "qwen38",
+    "stream": true,
+    "stream_options": {
+     "include_usage": true
+    },
+    "max_completion_tokens": 32000,
+    "preserve_thinking": true,
+    "chat_template_kwargs": {
+     "preserve_thinking": true
+    },
+    "enable_thinking": true
+   },
+   "n_messages": 2,
+   "roles": [
+    "system",
+    "user"
+   ],
+   "n_tools": 11,
+   "has_input": false,
+   "user0": {
+    "len": 1807,
+    "sha256": "0adf3388b0735bfe315d0795a380192431e14949acc042fa2b50d8b3e6eba49d",
+    "head": "<system-reminder>\nToday: 2026-09-20; current working directory: '/data/swebench-",
+    "tail": "n caught and replaced with `to_native_str`. This is definitely a requests bug.\n\n"
+   }
+  },
+  {
+   "mark": "end-omp",
+   "t": 1789872629.9619877
+  },
+  {
+   "mark": "start-prime",
+   "t": 1789872629.9653425
+  },
+  {
+   "t": 1789872630.0037074,
+   "path": "/v1/chat/completions",
+   "headers": {
+    "User-Agent": "Python-urllib/3.12"
+   },
+   "body": {
+    "model": "qwen38",
+    "max_tokens": 30,
+    "temperature": 0.0
+   },
+   "n_messages": 4,
+   "roles": [
+    "user",
+    "assistant",
+    "tool",
+    "user"
+   ],
+   "n_tools": null,
+   "has_input": false,
+   "user0": {
+    "len": 2,
+    "sha256": "8f434346648f6b96df89dda901c5176b10a6d83961dd3c1ac88b59b2dc327aa4",
+    "head": "hi",
+    "tail": "hi"
+   }
+  },
+  {
+   "t": 1789872633.413363,
+   "path": "/v1/chat/completions",
+   "headers": {
+    "User-Agent": "OpenAI/JS 6.47.0"
+   },
+   "body": {
+    "model": "qwen38",
+    "stream": true,
+    "stream_options": {
+     "include_usage": true
+    },
+    "store": false,
+    "max_completion_tokens": 32000
+   },
+   "n_messages": 2,
+   "roles": [
+    "system",
+    "user"
+   ],
+   "n_tools": 1,
+   "has_input": false,
+   "user0": {
+    "len": 1635,
+    "sha256": "a5f7904e751b2b0edc30a937cfdb0b3d6d01cb530ebb4ce60f6972ca209bd298",
+    "head": "You are working on a GitHub issue in this repository.\n\nThe repo is already insta",
+    "tail": "een caught and replaced with `to_native_str`. This is definitely a requests bug."
+   }
+  },
+  {
+   "mark": "end-prime",
+   "t": 1789872633.7727273
+  },
+  {
+   "mark": "start-dcode",
+   "t": 1789872633.7770092
+  },
+  {
+   "t": 1789872633.8148723,
+   "path": "/v1/chat/completions",
+   "headers": {
+    "User-Agent": "Python-urllib/3.12"
+   },
+   "body": {
+    "model": "qwen38",
+    "max_tokens": 30,
+    "temperature": 0.0
+   },
+   "n_messages": 4,
+   "roles": [
+    "user",
+    "assistant",
+    "tool",
+    "user"
+   ],
+   "n_tools": null,
+   "has_input": false,
+   "user0": {
+    "len": 2,
+    "sha256": "8f434346648f6b96df89dda901c5176b10a6d83961dd3c1ac88b59b2dc327aa4",
+    "head": "hi",
+    "tail": "hi"
+   }
+  },
+  {
+   "t": 1789872633.8155448,
+   "path": "/v1/responses",
+   "headers": {
+    "User-Agent": "Python-urllib/3.12"
+   },
+   "body": {
+    "model": "qwen38",
+    "max_output_tokens": 4000
+   },
+   "n_messages": null,
+   "roles": null,
+   "n_tools": 1,
+   "has_input": true,
+   "user0": {
+    "len": 65,
+    "sha256": "4a005532c33d6f43351c921a977ca907e48f97c9d3ed037abddd238a96b62f52",
+    "head": "What is the weather in Paris right now? Use the get_weather tool.",
+    "tail": "What is the weather in Paris right now? Use the get_weather tool."
+   }
+  },
+  {
+   "t": 1789872641.4852457,
+   "path": "/v1/responses",
+   "headers": {
+    "user-agent": "AsyncOpenAI/Python 3.6.0"
+   },
+   "body": {
+    "model": "qwen38",
+    "prompt_cache_key": "01a0bcb9-07bd-7bc0-a42d-e209e06eeacb",
+    "stream": true
+   },
+   "n_messages": null,
+   "roles": null,
+   "n_tools": 14,
+   "has_input": true,
+   "user0": {
+    "len": 1635,
+    "sha256": "a5f7904e751b2b0edc30a937cfdb0b3d6d01cb530ebb4ce60f6972ca209bd298",
+    "head": "You are working on a GitHub issue in this repository.\n\nThe repo is already insta",
+    "tail": "een caught and replaced with `to_native_str`. This is definitely a requests bug."
+   }
+  },
+  {
+   "mark": "end-dcode",
+   "t": 1789872642.3132102
+  }
+ ]
+}

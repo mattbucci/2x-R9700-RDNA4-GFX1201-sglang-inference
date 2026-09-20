@@ -104,7 +104,9 @@ on opencode/omp) and through web fetch/search of the project's tracker, PRs and 
 as often as isolated ones. The July matrix above used the same work-tree layout and web-enabled
 scaffolds, so both channels were open to it too (its sessions were not audited). The v2 cells are scored and kept as an exposure study
 (`qwen38-v2`, stratified by exposure in
-[`benchmarks/quality/swebench-leak-audit-qwen38-v2.json`](benchmarks/quality/swebench-leak-audit-qwen38-v2.json));
+[`benchmarks/quality/swebench-leak-audit-qwen38-v2.json`](benchmarks/quality/swebench-leak-audit-qwen38-v2.json);
+its two opencode cells also received the task prompt quote-wrapped by opencode `run`, see
+`FP8_BAKEOFF_SETUP.md` → Prompt delivery);
 the clean matrix is v3, rolling since 2026-09-19 with every scaffold inside the official
 per-instance SWE-bench image — its own testbed env, `--network none` with a unix-socket bridge to
 SGLang, the tree re-initialised to a single commit (`FP8_BAKEOFF_SETUP.md` → Rollout environments,
@@ -114,7 +116,7 @@ Answer leakage and isolation).
 
 Ordered by what runs next. Specs with an ID live in [`experiments/`](experiments/README.md).
 
-1. **Run the Qwen3.8 seven-scaffold bakeoff v3 to completion** (fifth start 2026-09-19 14:07 after
+1. **Run the Qwen3.8 seven-scaffold bakeoff v3 to completion** (sixth start 2026-09-19 19:56 after
    the five complete v2 lanes were Docker-scored; ~3.5 days per lane at 17 min/instance): every
    scaffold inside the official per-instance SWE-bench image (`run_rollouts.py --docker`: the
    image's testbed env, no network except the SGLang bridge, git re-initialised to one commit;
@@ -134,7 +136,13 @@ Ordered by what runs next. Specs with an ID live in [`experiments/`](experiments
    fourth start (harness venv specs, the `oldest-supported-numpy` downgrade, per-instance venvs
    carried from lane to lane with the previous agent's `pip install`s — 24/300, one uv-breaking)
    do not exist in Docker mode: the image's testbed env is the scorer's, and the container's
-   writable layer dies with it (`FP8_BAKEOFF_SETUP.md` → Rollout environments).
+   writable layer dies with it (`FP8_BAKEOFF_SETUP.md` → Rollout environments). The fifth
+   (Docker) start was itself restarted at 18/300 (≈6 h) once one instance showed that the task
+   prompt had been every scaffold's command-line argument: the agent's `pkill -f` of a phrase from
+   the issue killed its own scaffold through the argv, and opencode `run` had been re-quoting the
+   whole task (`"…"`, inner `"` escaped) in every opencode/opencode-dcp session since 2026-08-31 —
+   v2's opencode cells included. The prompt now travels on stdin, verified verbatim on the wire for
+   all seven scaffolds before the sixth start (`FP8_BAKEOFF_SETUP.md` → Prompt delivery).
 2. **Chase the residual qwen38 decode gap now that graphs are on.** The 2026-09-19 same-server A/B
    ([receipt](benchmarks/qwen38-27b-fp8/graph-ab-2026-09-19.json), v0.5.18, 3 runs/point, idle CPU)
    measured HIP graphs off→on at 16.9→22.5 (24 tok), 16.9→22.2 (6.5K), 16.8→21.6 (52K) and

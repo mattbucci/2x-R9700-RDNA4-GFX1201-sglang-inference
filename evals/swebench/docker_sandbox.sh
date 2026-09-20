@@ -34,10 +34,15 @@
 #      "bridge check failed" if the server is not reachable: an infra
 #      failure, never a model verdict).
 # User phase (re-exec'd via setpriv):
-#   5. `timeout -s KILL <timeout> <cmd...>` -- rc 124 on expiry, the same
-#      contract as the host-side SIGKILL in sandbox mode (GNU timeout reports
-#      137 when it had to send KILL itself, so that is mapped to 124 when the
-#      wall clock confirms the expiry; a 137 before the deadline stays 137).
+#   5. `timeout -s KILL <timeout> <cmd...> < /sandbox/prompt.md` -- rc 124 on
+#      expiry, the same contract as the host-side SIGKILL in sandbox mode (GNU
+#      timeout reports 137 when it had to send KILL itself, so that is mapped
+#      to 124 when the wall clock confirms the expiry; a 137 before the
+#      deadline stays 137). The task prompt is the mounted read-only file on
+#      the scaffold's stdin, never an argument: argv is visible to the agent's
+#      own shell, and a `pkill -f <phrase from the issue text>` (django-11422,
+#      2026-09-19) killed the scaffold, `timeout` and this script in one go
+#      (rc 143, no diff). Without the mount, stdin is /dev/null as before.
 #   6. scratch dirs stripped, `git add -A && git diff --cached` written to
 #      /out/model.diff (bytes; the harness decodes tolerantly), rc to /out/rc,
 #      and the script exits with the agent's rc.
@@ -51,9 +56,11 @@ if [ "${1:-}" = "--agent" ]; then
   [ "${1:-}" = "--" ] && shift
   WORK=/data/swebench-work/$IID
   cd "$WORK" || { log "prep failed: $WORK missing in user phase"; exit 96; }
-  log "agent start uid=$(id -u) cwd=$PWD python=$(command -v python) node=$(command -v node || echo none) timeout=${TIMEOUT}s"
+  STDIN=/dev/null
+  [ -r /sandbox/prompt.md ] && STDIN=/sandbox/prompt.md
+  log "agent start uid=$(id -u) cwd=$PWD python=$(command -v python) node=$(command -v node || echo none) timeout=${TIMEOUT}s prompt=$([ "$STDIN" = /dev/null ] && echo argv || echo "stdin $(wc -c < "$STDIN")B")"
   t0=$(date +%s)
-  timeout -s KILL "$TIMEOUT" "$@"
+  timeout -s KILL "$TIMEOUT" "$@" < "$STDIN"
   rc=$?
   elapsed=$(( $(date +%s) - t0 ))
   if [ "$rc" -eq 137 ] && [ "$elapsed" -ge "$TIMEOUT" ]; then

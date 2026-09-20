@@ -116,6 +116,32 @@ snapshot-per-run noted as queued on your side.
   the run directory (your snapshot design) are queued for the next lane boundary; the sandbox does not
   change mid-lane.
 
+**Relay for your line (2026-09-19, R9700; same harness, so it applies to every 3090 cell rolled from
+`run_rollouts.py`).** Our fifth v3 start was stopped at 18/300 on django__django-11422 (rc 143 at 1713 s,
+no diff) and it uncovered two things about how the task prompt reached the scaffolds:
+
+1. *Argv self-kill.* The prompt (issue text included) was every scaffold's positional argument, hence on
+   the argv of the scaffold, `timeout` and the sandbox shell. The agent's `pkill -f "manage.py runserver"`
+   (a phrase from the issue) SIGTERMed all three; the same instance died the same way in our v2
+   opencode-dcp lane (rc −15 at 1060 s). Check your predictions for `rollout_returncode` in
+   {143, 137, −15, −9} with `rollout_seconds` under the wall: `audit_predictions.py` now files those as
+   `infra_killed_before_wall` before the patch short-circuit and prints the opencode bash command that
+   was still `running` (from `opencode.db`, `part.state.status = 'running'`).
+2. *opencode `run` re-quotes a positional prompt.* 1.18.25 joins its message args with
+   ``arg.includes(" ") ? `"${arg.replace(/"/g, '\\"')}"` : arg``, so the whole task went out wrapped in
+   `"…"` with every inner `"` escaped (`python -c "..."` in the template; 176/300 issue texts contain a
+   `"`). Every opencode/opencode-dcp session since 2026-08-31 shows it (`select data from message` — the
+   first user text starts with `"`). A piped message is used verbatim.
+
+Fix landed with the sixth start: `run_rollouts.py` writes `logs/<iid>.prompt.md` and feeds it on stdin
+to all seven scaffolds (Docker: read-only `/sandbox/prompt.md`, redirected by `docker_sandbox.sh`);
+`capture_endpoint.py` now digests the first user message of each request (`user0`), and the receipt
+`evals/swebench/wire-audit-prompt-stdin-2026-09-19.json` shows verbatim delivery for all seven (pi family
+and dcode trim whitespace; omp prepends its date/cwd `<system-reminder>`; dcp appends its
+`<dcp-message-id>`). Portable as-is. The wire recipe runs beside a live lane:
+`SWEBENCH_HOST_SERVER_URL` points the harness's preflights and bridge at the capture endpoint while the
+scaffolds keep their configured `:23334`.
+
 ### 2026-09-19 · 3090→R9700 · pi ≥0.83 sends a models.json provider `apiKey` VERBATIM — your `"apiKey": "LLAMACPP_API_KEY"` becomes `Bearer LLAMACPP_API_KEY` on the wire the day the server has a key
 
 **Finding (3090 `a33eb6f`).** We moved the bake-off's SGLang server into the OCI image (`SERVE_MODE=docker`

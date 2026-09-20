@@ -291,7 +291,7 @@ SANDBOX: dict | None = None
 _BRIDGE: subprocess.Popen | None = None
 
 
-def _start_bridge(server_url: str) -> tuple[Path, int]:
+def _start_bridge(server_url: str, target_url: str | None = None) -> tuple[Path, int]:
     """Host-side half of the sandbox network bridge: a unix socket forwarded to the
     server's TCP port. Returns (socket path, port). Lives for the run."""
     global _BRIDGE
@@ -299,6 +299,7 @@ def _start_bridge(server_url: str) -> tuple[Path, int]:
     from urllib.parse import urlparse
     u = urlparse(server_url)
     port = u.port or 80
+    t = urlparse(target_url or server_url)  # host side of the bridge (see SWEBENCH_HOST_SERVER_URL)
     # unix socket paths are capped at ~107 bytes: keep it in the runtime dir, not `out`
     sock = Path(os.environ.get("XDG_RUNTIME_DIR") or tempfile.gettempdir()) / f"swebench-bridge-{os.getpid()}.sock"
     sock.unlink(missing_ok=True)
@@ -312,7 +313,7 @@ def _start_bridge(server_url: str) -> tuple[Path, int]:
             pass
 
     _BRIDGE = subprocess.Popen(
-        ["socat", f"UNIX-LISTEN:{sock},fork,unlink-early", f"TCP4:{u.hostname}:{port}"],
+        ["socat", f"UNIX-LISTEN:{sock},fork,unlink-early", f"TCP4:{t.hostname}:{t.port or 80}"],
         stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
         preexec_fn=_die_with_parent,
     )
@@ -390,8 +391,11 @@ def _docker_rm(name: str) -> None:
     subprocess.run(["docker", "rm", "-f", name], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
-def _dockerized(cmd: list, scaffold: str, scaffold_env: dict[str, str] | None, timeout: int) -> list:
-    """Wrap a scaffold command in `docker run` for the current DOCKER instance context."""
+def _dockerized(cmd: list, scaffold: str, scaffold_env: dict[str, str] | None, timeout: int,
+                prompt_file: Path | None = None) -> list:
+    """Wrap a scaffold command in `docker run` for the current DOCKER instance context.
+    `prompt_file` is mounted at /sandbox/prompt.md; docker_sandbox.sh feeds it to the
+    scaffold on stdin (see _launch)."""
     d = DOCKER
     home = Path.home()
     ro, rw = DOCKER_MOUNTS[scaffold]
@@ -420,25 +424,49 @@ def _dockerized(cmd: list, scaffold: str, scaffold_env: dict[str, str] | None, t
              "-v", f"{here / 'docker_sandbox.sh'}:/sandbox/docker_sandbox.sh:ro",
              "-v", f"{here / 'docker_bridge.py'}:/sandbox/docker_bridge.py:ro",
              "-v", f"{d['bridge_sock']}:/run/swebench-bridge.sock",
-             "-v", f"{d['out_dir']}:/out",
-             d["image"], "bash", "/sandbox/docker_sandbox.sh",
+             "-v", f"{d['out_dir']}:/out"]
+    if prompt_file is not None:
+        argv += ["-v", f"{prompt_file}:/sandbox/prompt.md:ro"]
+    argv += [d["image"], "bash", "/sandbox/docker_sandbox.sh",
              str(d["uid"]), str(d["gid"]), d["user"], d["iid"], str(d["port"]), str(timeout),
              "--", *[str(c) for c in cmd]]
     return argv
 
 
 def _launch(cmd: list, cwd, scaffold: str, scaffold_env: dict[str, str] | None,
-            extra_env: dict[str, str] | None, timeout: int, log_path: Path) -> tuple[int, str, str]:
+            extra_env: dict[str, str] | None, timeout: int, log_path: Path,
+            prompt: str | None = None) -> tuple[int, str, str]:
     """Run a scaffold command on the host (sandbox.sh when SANDBOX) or, under --docker, inside
     the instance image. In docker mode the host environment is not inherited: the container
-    gets PATH/HOME/CONDA_* from _dockerized plus the scaffold's own variables."""
+    gets PATH/HOME/CONDA_* from _dockerized plus the scaffold's own variables.
+
+    `prompt` goes to the scaffold on stdin (written to logs/<iid>.prompt.md; on the host
+    it is the child's stdin, in docker mode docker_sandbox.sh redirects it), never on argv.
+    Every scaffold in the matrix reads a piped stdin as the message when no positional
+    message is given (opencode `run`, pi/little-coder/omp/prime print mode, dcode headless).
+    Two reasons, both found 2026-09-19: (1) argv is visible to the agent's own shell, and
+    the issue text is part of the prompt -- django-11422's agent ran `pkill -f "manage.py
+    runserver"`, a phrase from the issue, and killed its own scaffold, the in-container
+    `timeout` and the sandbox script (rc 143, no diff; the same instance died the same way
+    in the v2 opencode-dcp lane); (2) opencode 1.18.25 `run` re-quotes a positional message
+    that contains spaces (`"..."` with every inner `"` backslash-escaped) before sending
+    it, so every opencode/opencode-dcp session through the fifth v3 start saw the task
+    wrapped in quotes with `\"` in its code snippets (176/300 issues contain a `"`). The
+    stdin path is verbatim in both scaffolds (the pi family and dcode trim whitespace)."""
+    prompt_file = None
+    if prompt is not None:
+        prompt_file = log_path.with_suffix(".prompt.md")
+        prompt_file.write_text(prompt)
     if DOCKER:
-        return _popen_agent(_dockerized(cmd, scaffold, scaffold_env, timeout), None,
-                            os.environ.copy(), timeout + DOCKER_GRACE, log_path)
-    return _popen_agent(cmd, cwd, _base_env(extra_env, scaffold_env), timeout, log_path)
+        return _popen_agent(_dockerized(cmd, scaffold, scaffold_env, timeout, prompt_file), None,
+                            os.environ.copy(), timeout + DOCKER_GRACE, log_path,
+                            prompt_file=prompt_file, docker_stdin=True)
+    return _popen_agent(cmd, cwd, _base_env(extra_env, scaffold_env), timeout, log_path,
+                        prompt_file=prompt_file)
 
 
-def _popen_agent(cmd: list, cwd, env: dict, timeout: int, log_path: Path) -> tuple[int, str, str]:
+def _popen_agent(cmd: list, cwd, env: dict, timeout: int, log_path: Path,
+                 prompt_file: Path | None = None, docker_stdin: bool = False) -> tuple[int, str, str]:
     """Shared agent invocation: fresh process group so SIGKILL on timeout reaps the
     Node/Rust children too (default subprocess kill leaves them dangling — observed at
     instance 23 where the parent died but a child kept the rollout stalled).
@@ -447,19 +475,29 @@ def _popen_agent(cmd: list, cwd, env: dict, timeout: int, log_path: Path) -> tup
     killing the `docker run` client alone leaves it running."""
     cmd = _sandboxed(cmd)
     t0 = time.time()
-    # stdin=DEVNULL is load-bearing: the node CLIs (opencode, little-coder) wait for
-    # interactive input when stdout is a pipe and stdin is a TTY/inherited, hanging the
-    # whole rollout to timeout with no edits. /dev/null gives immediate EOF → one-shot run.
+    # stdin must never be a TTY/inherited: the node CLIs (opencode, little-coder) wait for
+    # interactive input when stdout is a pipe and stdin is a TTY, hanging the whole rollout
+    # to timeout with no edits. The prompt file (EOF right after the text) or /dev/null both
+    # give a one-shot run. In docker mode the container reads the mounted prompt itself
+    # (docker_sandbox.sh), so the `docker run` client keeps /dev/null.
+    stdin = subprocess.DEVNULL
+    if prompt_file is not None and not docker_stdin:
+        stdin = open(prompt_file, "rb")
     proc = subprocess.Popen(
-        cmd, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        cmd, stdin=stdin, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
         text=True, cwd=cwd, env=env, start_new_session=True,
     )
+    if stdin is not subprocess.DEVNULL:
+        stdin.close()
+    prompt_line = (f"# prompt {prompt_file} (stdin{', via /sandbox/prompt.md' if docker_stdin else ''})\n"
+                   if prompt_file is not None else "# prompt on argv\n")
     try:
         stdout, stderr = proc.communicate(timeout=timeout)
         rc = proc.returncode
         elapsed = time.time() - t0
         log_path.write_text(
-            f"# command\n{' '.join(str(c) for c in cmd[:-1])} <PROMPT>\n# sandbox {'docker' if DOCKER else 'on' if SANDBOX else 'off'}\n# elapsed {elapsed:.1f}s\n"
+            f"# command\n{' '.join(str(c) for c in cmd)}\n{prompt_line}"
+            f"# sandbox {'docker' if DOCKER else 'on' if SANDBOX else 'off'}\n# elapsed {elapsed:.1f}s\n"
             f"# returncode {rc}\n# stdout\n{stdout}\n# stderr\n{stderr}\n"
         )
         return rc, stdout, stderr
@@ -520,8 +558,9 @@ def run_opencode(model: str, repo_dir: Path, prompt: str, timeout: int, log_path
     # NB: no `--format json` — it deadlocks on long multi-turn sessions under the
     # subprocess pipe (simple tasks are fine, real SWE-bench rollouts hang >900s with
     # no edits). The diff is captured from git, not opencode stdout, so plain mode is fine.
+    # The task itself arrives on stdin (see _launch): no positional message.
     cmd = ["opencode", "run", "--dir", str(repo_dir), "--model", model,
-           "--dangerously-skip-permissions", prompt]
+           "--dangerously-skip-permissions"]
     scaffold_env = None
     if dcp:
         # opencode-dcp lane: same opencode binary, but OPENCODE_CONFIG_DIR points
@@ -531,7 +570,7 @@ def run_opencode(model: str, repo_dir: Path, prompt: str, timeout: int, log_path
         scaffold_env = {"OPENCODE_CONFIG_DIR":
                         str(Path.home() / ".config/opencode-dcp-lane/opencode")}
     return _launch(cmd, None, "opencode-dcp" if dcp else "opencode", scaffold_env, extra_env,
-                   timeout, log_path)
+                   timeout, log_path, prompt=prompt)
 
 
 RTK_EXT_DIR = Path.home() / ".config" / "little-coder-rtk"
@@ -730,7 +769,7 @@ def run_little_coder(served: str, repo_dir: Path, prompt: str, timeout: int, log
     # defaults.js), which the Qwen3.8 template honours as a real downgrade
     # (no "think carefully" preamble). The profile's thinkingLevelMap makes
     # xhigh a supported level so it reaches the wire unclamped.
-    cmd = ["little-coder", "--print", "--model", f"llamacpp/{served}", "--thinking", "xhigh", prompt]
+    cmd = ["little-coder", "--print", "--model", f"llamacpp/{served}", "--thinking", "xhigh"]
     scaffold_env = {
         "LLAMACPP_BASE_URL": f"{server_url.rstrip('/')}/v1",
         "LLAMACPP_API_KEY": os.environ.get("SGLANG_API_KEY", "noop"),  # same value as models.json apiKey
@@ -747,7 +786,7 @@ def run_little_coder(served: str, repo_dir: Path, prompt: str, timeout: int, log
         if not DOCKER:  # rtk binary lives here (the container PATH already has it)
             scaffold_env["PATH"] = f"{Path.home()}/.local/bin:" + _base_env(extra_env)["PATH"]
     return _launch(cmd, str(repo_dir), "little-coder-rtk" if rtk else "little-coder",
-                   scaffold_env, extra_env, timeout, log_path)
+                   scaffold_env, extra_env, timeout, log_path, prompt=prompt)
 
 
 def run_claw(served: str, claw_bin: str, repo_dir: Path, prompt: str, timeout: int, log_path: Path,
@@ -804,9 +843,9 @@ def run_omp(served: str, repo_dir: Path, prompt: str, timeout: int, log_path: Pa
     # harness-owned profile written by _ensure_omp_profile.
     _ensure_omp_profile(served, server_url)
     cmd = [str(Path.home() / ".local/bin/omp"), "--model", f"sglang/{served}",
-           "--yolo", "-p", prompt]
+           "--yolo", "-p"]
     return _launch(cmd, str(repo_dir), "omp", {"PI_CONFIG_DIR": OMP_PROFILE_DIR}, extra_env,
-                   timeout, log_path)
+                   timeout, log_path, prompt=prompt)
 
 
 def _ensure_prime_profile(served: str, server_url: str) -> None:
@@ -836,10 +875,11 @@ def run_prime(served: str, repo_dir: Path, prompt: str, timeout: int, log_path: 
               server_url: str = "http://127.0.0.1:23334") -> tuple[int, str, str]:
     _ensure_prime_profile(served, server_url)
     cmd = [str(Path.home() / ".npm-global/bin/prime-agent"),
-           "--model", f"sglang/{served}", "-p", prompt]
+           "--model", f"sglang/{served}", "-p"]
     # DO_NOT_TRACK: prime sends pseudonymous usage metrics by default; eval
     # rollouts should not phone home.
-    return _launch(cmd, str(repo_dir), "prime", {"DO_NOT_TRACK": "1"}, extra_env, timeout, log_path)
+    return _launch(cmd, str(repo_dir), "prime", {"DO_NOT_TRACK": "1"}, extra_env, timeout, log_path,
+                   prompt=prompt)
 
 
 def run_dcode(served: str, repo_dir: Path, prompt: str, timeout: int, log_path: Path,
@@ -862,15 +902,17 @@ def run_dcode(served: str, repo_dir: Path, prompt: str, timeout: int, log_path: 
     # compute_summarization_defaults() with and without the override (3090 rig
     # found the flag, CROSS-TEAM 2026-09-12). No sampling/effort is sent either
     # way (temperature/reasoning None on the model object).
+    # No -n: a piped stdin becomes the headless message (apply_stdin_pipe), which is
+    # what -q/--max-turns/--timeout require.
     cmd = [str(Path.home() / ".local/bin/dcode"),
-           "-M", f"openai:{model_id or served}", "-n", prompt, "-q",
+           "-M", f"openai:{model_id or served}", "-q",
            "--max-turns", "60", "-S", "all", "--allow-fs-tools", "all",
            "--profile-override", json.dumps({"max_input_tokens": 262144}),
            "--timeout", str(max(60, timeout - 60))]
     return _launch(cmd, str(repo_dir), "dcode", {
         "OPENAI_BASE_URL": f"{server_url.rstrip('/')}/v1",
         "OPENAI_API_KEY": "noop",
-    }, extra_env, timeout, log_path)
+    }, extra_env, timeout, log_path, prompt=prompt)
 
 
 def capture_diff(repo_dir: Path) -> str:
@@ -966,13 +1008,21 @@ def main():
     args = parse_args()
 
     served = args.served_name or args.model.split("/", 1)[-1]
-    print(f"Preflight: canary chat completion against {args.server_url} (model={served})...", flush=True)
+    # Wire audits: SWEBENCH_HOST_SERVER_URL points every host-side request (preflight, health,
+    # the bridge's TCP side) at a capture endpoint while the scaffolds keep talking to
+    # args.server_url (their profiles and the in-container bridge port are written from it).
+    # Lets one docker rollout run against capture_endpoint.py without touching the live server.
+    host_url = os.environ.get("SWEBENCH_HOST_SERVER_URL") or args.server_url
+    if host_url != args.server_url:
+        print(f"WIRE AUDIT: host-side requests go to {host_url}; scaffolds still see {args.server_url}",
+              flush=True)
+    print(f"Preflight: canary chat completion against {host_url} (model={served})...", flush=True)
     # RETRY: right after a heavy prior cell (or mid-watchdog-restart) the server can be slow to
     # first-token and a single 30s canary times out — that previously fail-fast-exited the shard
     # and produced a 0/0 cell. Poll ~10min for a healthy canary before giving up.
     ok, info = False, "no attempt"
     for attempt in range(12):
-        ok, info = preflight_canary(args.server_url, served)
+        ok, info = preflight_canary(host_url, served)
         if ok:
             break
         print(f"  preflight {attempt+1}/12 failed ({info}) — server warming/restarting, retry 45s", flush=True)
@@ -985,7 +1035,7 @@ def main():
         print(f"  preflight {_check_opencode_limits(served, dcp=(args.scaffold == 'opencode-dcp'))}", flush=True)
     dcode_model = served
     if args.scaffold == "dcode":
-        dcode_model, info = _check_responses_api(args.server_url, served)
+        dcode_model, info = _check_responses_api(host_url, served)
         print(f"  preflight {info}", flush=True)
 
     out = Path(args.out)
@@ -1000,7 +1050,7 @@ def main():
         for need in (DOCKER_NODE_DIR, DOCKER_RG):
             if not need.exists():
                 raise SystemExit(f"  PREFLIGHT FAILED: {need} missing (portable toolchain for the containers)")
-        bridge_sock, port = _start_bridge(args.server_url)
+        bridge_sock, port = _start_bridge(args.server_url, host_url)
         DOCKER = {"bridge_sock": bridge_sock, "port": port, "uid": os.getuid(), "gid": os.getgid(),
                   "user": getpass.getuser(), "out": out}
         print(f"Sandbox: docker per instance ({DOCKER_IMAGE_PREFIX}<iid>, no network; "
@@ -1008,7 +1058,7 @@ def main():
     elif args.no_sandbox:
         print("Sandbox: OFF (host network, whole work root visible)", flush=True)
     else:
-        bridge_sock, port = _start_bridge(args.server_url)
+        bridge_sock, port = _start_bridge(args.server_url, host_url)
         SANDBOX = {"bridge_sock": bridge_sock, "port": port}
         print(f"Sandbox: bwrap per instance (no network; server via {bridge_sock} -> :{port})", flush=True)
 
@@ -1132,7 +1182,7 @@ def main():
                 # RDNA4 HSAIL crashes happen mid-run; the orchestrator watchdog restarts the
                 # server. Wait for health here instead of burning a 1800s timeout + empty diff.
                 # If it never recovers (>20min), skip — leave no prediction so resume retries it.
-                if not _wait_server_healthy(args.server_url):
+                if not _wait_server_healthy(host_url):
                     print(f"  SERVER DOWN >20min — skip {iid} (no prediction; retry on resume)", flush=True)
                     continue
                 if SANDBOX is not None:

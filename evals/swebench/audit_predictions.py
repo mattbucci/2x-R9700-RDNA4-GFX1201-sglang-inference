@@ -149,6 +149,27 @@ def load_opencode_length_finishes(db: Path) -> list[tuple[int, str]]:
     return [(int(t), d or "") for t, d in rows]
 
 
+def load_opencode_running_bash(db: Path) -> list[tuple[int, str, str]]:
+    """(time_created_ms, session_directory, command) for every opencode bash
+    tool part whose state is still `running`: the command the agent was inside
+    when the session died (a wall-cap kill, or the agent's own `pkill -f` that
+    matched the task prompt on the scaffold's argv -- django__django-11422,
+    2026-09-19). Empty when the DB is absent."""
+    if not db.exists():
+        return []
+    con = sqlite3.connect(f"file:{db}?mode=ro", uri=True)
+    try:
+        rows = con.execute(
+            "select p.time_created, s.directory, json_extract(p.data,'$.state.input.command') "
+            "from part p join session s on s.id = p.session_id "
+            "where json_extract(p.data,'$.type') = 'tool' and json_extract(p.data,'$.tool') = 'bash' "
+            "and json_extract(p.data,'$.state.status') = 'running'"
+        ).fetchall()
+    finally:
+        con.close()
+    return [(int(t), d or "", c or "") for t, d, c in rows]
+
+
 def _in_instance(directory: str, iid: str) -> bool:
     return any(directory == d or directory.startswith(d + "/") for d in (root + iid for root in WORK_ROOTS))
 
@@ -172,6 +193,14 @@ def length_turns(lengths: list[tuple[int, str]], iid: str, window: tuple[float, 
     created in `window` (unix seconds; sub-agent sessions included)."""
     lo_ms, hi_ms = int(window[0] * 1000), int(window[1] * 1000)
     return sum(1 for t, d in lengths if lo_ms <= t <= hi_ms and _in_instance(d, iid))
+
+
+def last_running_bash(parts: list[tuple[int, str, str]], iid: str, window: tuple[float, float]) -> str | None:
+    """Command of the newest still-`running` opencode bash part for `iid` in
+    `window` (unix seconds), or None."""
+    lo_ms, hi_ms = int(window[0] * 1000), int(window[1] * 1000)
+    hits = [(t, c) for t, d, c in parts if lo_ms <= t <= hi_ms and _in_instance(d, iid)]
+    return max(hits)[1] if hits else None
 
 
 def has_session(sessions: list[tuple[int, str]], iid: str, window: tuple[float, float]) -> bool:
@@ -209,7 +238,8 @@ def venv_state(pred: dict, env_log: Path) -> bool | None:
 def classify_log(log_text: str, rollout_rc: int, patch: str, elapsed: float,
                  venv: bool | None = None,
                  kill: tuple[str, str] | None = None,
-                 n_length: int = 0) -> tuple[str, str | None]:
+                 n_length: int = 0,
+                 last_cmd: str | None = None) -> tuple[str, str | None]:
     """Return (category, matched_pattern_or_None).
 
     Categories:
@@ -238,11 +268,27 @@ def classify_log(log_text: str, rollout_rc: int, patch: str, elapsed: float,
         ended the session with no tool call. A model verdict like
         model_timeout: same tuple loops the same way, so no re-roll. Counted
         per lane beside the score (FP8_BAKEOFF_SETUP.md, Model window).
+      - infra_killed_before_wall: the scaffold died of SIGTERM/SIGKILL (rc 143
+        or 137 in docker mode, -15 or -9 on the host) before the wall cap, so
+        no verdict was reached -- the sandbox trailer never ran and whatever
+        edits existed were captured by chance, if at all. Checked BEFORE the
+        patch short-circuit (the v2 opencode-dcp django__django-11422 death at
+        1060 s left a 1434 B partial diff). The known cause is the agent's own
+        `pkill -f <phrase>` matching the task prompt on the scaffold's argv
+        (fixed 2026-09-19: the prompt now travels on stdin); `last_cmd` (the
+        opencode bash command still `running` when the session ended) is
+        reported so a recurrence names its culprit.
     """
     if venv is False:
         return ("infra_no_venv", "env install failed -- no-venv fallback")
     if kill is not None:
         return (f"infra_{kill[0]}", f"opencode session killed: {kill[1]}")
+    if rollout_rc in (143, 137, -15, -9) and (elapsed or 0) < 1799:
+        detail = f"rc={rollout_rc} elapsed={float(elapsed or 0):.0f}s"
+        if last_cmd:
+            tag = "self-kill suspected" if re.search(r"\bp?kill\b", last_cmd) else "last running bash"
+            detail += f" ({tag}: {last_cmd[:200]})"
+        return ("infra_killed_before_wall", detail)
     has_patch = bool((patch or "").strip())
     if has_patch:
         return ("real_diff", None)
@@ -305,6 +351,7 @@ def main():
     oc_errors: list[tuple[int, str, str]] | None = None
     oc_sessions: list[tuple[int, str]] = []
     oc_lengths: list[tuple[int, str]] = []
+    oc_running: list[tuple[int, str, str]] = []
     length_total = 0  # finish=length turns across the lane, patch or not
     timeout_with_patch: list[str] = []  # rc=124 at the wall cap but the sandbox captured edits (scored as real_diff)
     oc_db = None if args.opencode_db == "none" else Path(args.opencode_db).expanduser()
@@ -337,10 +384,12 @@ def main():
             venv = venv_state(d, logs_dir / f"{iid}.env.log")
             kill = None
             n_length = 0
+            last_cmd = None
             if oc_db is not None and str(d.get("scaffold", "")).startswith("opencode") and log_path.exists():
                 if oc_errors is None:
                     oc_sessions, oc_errors = load_opencode_errors(oc_db)
                     oc_lengths = load_opencode_length_finishes(oc_db)
+                    oc_running = load_opencode_running_bash(oc_db)
                     if not oc_db.exists():
                         print(f"WARNING: opencode DB not found at {oc_db}; stream-kill rule skipped", file=sys.stderr)
                 # The session was created after the rollout started (log mtime - elapsed)
@@ -349,6 +398,7 @@ def main():
                 window = (end - float(elapsed or 0) - 600, end + 60)
                 kill = session_kill(oc_errors, iid, window)
                 n_length = length_turns(oc_lengths, iid, window)
+                last_cmd = last_running_bash(oc_running, iid, window)
                 length_total += n_length
                 opencode_sessions_checked += 1
                 if not has_session(oc_sessions, iid, window):
@@ -359,7 +409,7 @@ def main():
                 err = str(d["rollout_error"])
                 category, match = err.split(":", 1)[0], err
             else:
-                category, match = classify_log(log_text, rollout_rc, patch, elapsed, venv, kill, n_length)
+                category, match = classify_log(log_text, rollout_rc, patch, elapsed, venv, kill, n_length, last_cmd)
             entry = {
                 "instance_id": iid,
                 "patch_len": len(patch),
