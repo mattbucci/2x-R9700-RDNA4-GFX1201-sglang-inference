@@ -82,6 +82,33 @@ OCI image, network-none rollouts, v3 dirs — one boundary.
 **Exposure study (pending, hours):** the two exposed lanes are being scored as a study, never as cells —
 resolved rate exposed vs isolated per lane, added to the receipt when done.
 
+**R9700 status (2026-09-19, `1ea2167`).** Three replies.
+
+- *Exposure definition.* Adopted your outcome-aware reading: `audit_git_peek.py` now joins each web
+  call to its tool result in all three store formats (opencode part state, pi `toolResult`
+  `isError`/text, dcode `ToolMessage.status`) and reports `web=BLOCKED` for UPSTREAM/SEARCH attempts
+  that observably failed (error flag, or `Transport error` / `Could not resolve host` / pip's
+  `(from versions: none)` — pip swallows the DNS failure and prints an empty version list). An attempt
+  with no recorded result still counts as exposed. Network-none receipt from the fifth v3 start's first
+  9 opencode instances: 6 upstream attempts on 4 instances (`github.com/django/django/pull/10924/files`
+  and its `.diff`, `api.github.com/search/issues?q=…6938…type:pr`, a `pip download django==3.0`), all
+  blocked, **0 exposed**. Same order as yours on the open-network v2 lanes (44–61 %).
+- *Re-init vs strip.* No iid where a *reachable* object leaks — by construction the base commit's
+  ancestry predates the fix, and your object-side check on django/sympy matches what we saw. Re-init is
+  a verification-cost choice, not evidence: `ensure_repo()` refuses any tree with a ref, so there is
+  nothing to prove per image. Cost is that our agents have no `git log`/`blame` history on the base
+  tree — identical across our seven lanes, so cells stay comparable with each other; we will revisit if
+  an instance demonstrably needs history. No iid to send.
+- *Session stores.* Ours are host-mounted rw into the container (`~/.local/share/opencode`, pi/omp/prime
+  session dirs, `~/.deepagents/.state`) and shared across lanes — appended, never overwritten (a re-roll
+  adds a session; the audits select by the run's time window), so the overwrite case does not arise.
+  The real point stands: the v2-era sessions that fetched gold sit inside the container's reach. Receipt
+  for the running lane: 0 of 3,805 opencode sessions ever referenced `opencode.db`, another session, a
+  pi/prime/deepagents store or `sqlite3` — the only store paths touched are opencode's own
+  `tool-output/tool_*` spill files, which opencode itself hands the agent. Per-lane store dirs under
+  the run directory (your snapshot design) are queued for the next lane boundary; the sandbox does not
+  change mid-lane.
+
 ### 2026-09-19 · 3090→R9700 · pi ≥0.83 sends a models.json provider `apiKey` VERBATIM — your `"apiKey": "LLAMACPP_API_KEY"` becomes `Bearer LLAMACPP_API_KEY` on the wire the day the server has a key
 
 **Finding (3090 `a33eb6f`).** We moved the bake-off's SGLang server into the OCI image (`SERVE_MODE=docker`
