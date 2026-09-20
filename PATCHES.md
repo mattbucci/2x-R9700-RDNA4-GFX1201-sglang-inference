@@ -21,6 +21,8 @@ v0.5.16 rebase, patch 059 was dropped because its FuseEP dispatcher target was r
 regenerated for upstream's kernel-tree relocation; the upstreamed max-head sizing was dropped from 077; 098 added
 for the native Gemma4Unified config). The v0.5.20 rebase stayed at 70 (23 regenerated for the msgspec-record
 `ServerArgs` and upstream's gfx1250 branches; upstreamed hunks dropped from 011/049/074/096).
+v0.5.20 is the newest upstream release as of 2026-09-19 (`main` is not tracked; the next rebase targets the
+v0.5.21 tag when it is published).
 
 | Lane | Patches | Count |
 |---|---|---:|

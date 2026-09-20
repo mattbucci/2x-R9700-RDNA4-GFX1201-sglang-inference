@@ -222,6 +222,12 @@ backend, quantization path, parsers, memory settings, and graph policy.
 | RCCL | 2.27.7 |
 | transformers | 5.12.1 |
 
+v0.5.20 (tag published 2026-09-18) is the newest upstream release as of 2026-09-19; `/data/sgl-v0520` sits on its
+peeled commit `94602c9c2`. Upstream `main` was 241 unreleased commits ahead on that date and is not tracked:
+the patch series and the native HIP kernel builds pin to release tags, and the next rebase waits for the
+v0.5.21 tag (the ~2-week cadence puts it near 2026-10-02) and a bake-off lane boundary. Rebase procedure and
+per-version receipts: [`patches/README.md`](patches/README.md).
+
 TP=2 requires both kernel P2P support and IOMMU passthrough:
 
 ```bash

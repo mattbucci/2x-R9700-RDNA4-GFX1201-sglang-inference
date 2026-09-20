@@ -1,8 +1,11 @@
 # Laguna XS.2 FP8
 
-Current SGLang v0.5.15 results on two R9700 GPUs with TP=2, native Triton dense block-FP8, FP8 KV cache,
-Triton attention/MoE, HIP graph capture at batch size 1, 64 decode KV splits, and
-`--swa-full-tokens-ratio 0.01`. TPOT is completion-token-counted, median of five runs:
+Latest decode measurements of this preset (SGLang v0.5.15 campaign tree, post-087 refresh of 2026-07-18,
+patches 001–089) on two R9700 GPUs with TP=2, native Triton dense block-FP8, FP8 KV cache, Triton
+attention/MoE, HIP graph capture at batch size 1, 64 decode KV splits, and `--swa-full-tokens-ratio 0.01`.
+TPOT is completion-token-counted, median of five runs. Decode has not been re-swept on the current
+v0.5.18/v0.5.20 stacks; on those the preset is validated for capabilities and the ~198K deep-context probe
+only (see [`benchmarks/validation/`](../validation/README.md)):
 
 | Actual input tokens | Decode tok/s |
 |---:|---:|

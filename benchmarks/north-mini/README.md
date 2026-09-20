@@ -1,7 +1,9 @@
 # North Mini Code FP8
 
-Current SGLang v0.5.15 results on two R9700 GPUs with TP=2, FP8 KV cache, Triton attention/MoE, and
-HIP graph capture at batch size 1:
+Latest decode measurements of this preset (SGLang v0.5.15 campaign tree, 2026-07-12, pre-patch-090) on two
+R9700 GPUs with TP=2, FP8 KV cache, Triton attention/MoE, and HIP graph capture at batch size 1. Decode has
+not been re-swept on the current v0.5.18/v0.5.20 stacks; on those the preset is validated for capabilities
+and the ~198K deep-context probe only (see [`benchmarks/validation/`](../validation/README.md)):
 
 | Actual input tokens | Runs | Decode tok/s |
 |---:|---:|---:|

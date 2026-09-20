@@ -108,8 +108,8 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument(
         "--tree",
-        default=os.environ.get("SGLANG_DIR", "/data/sgl-v0515"),
-        help="SGLang tree to audit (default: SGLANG_DIR or the live v0.5.15 tree)",
+        default=os.environ.get("SGLANG_DIR", "/data/sgl-v0520"),
+        help="SGLang tree to audit (default: SGLANG_DIR or the live v0.5.20 tree)",
     )
     ap.add_argument("--runtime", action="store_true", help="also run the gfx1201 activation probe")
     args = ap.parse_args()

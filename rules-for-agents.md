@@ -5,40 +5,41 @@ These rules apply to automation and model work in this repository.
 ## Serving environment
 
 - Engine: SGLang only.
-- Default source: \`/data/sgl-v0515\`.
-- Default conda environment: \`sglang-triton36-v0515\`.
+- Default source: `/data/sgl-v0520` (SGLang v0.5.20, peeled tag commit `94602c9c2`, plus the 70-patch series).
+- Default conda environment: `sglang-triton36-v0520`.
+- Kernel source for the native HIP builds: `/data/sgl-v0520/python/sglang/kernels/aot`.
+- The version-pinned values above live in `scripts/common.sh`; when the stack is promoted, that file and this list move together. Older trees (`/data/sgl-v0518`, `/data/sgl-v0516`, ...) are retained untouched as rollbacks, never edited.
 - GPUs: 2× Radeon AI PRO R9700, gfx1201, 32 GiB each.
-- ROCm: 7.2.
-- Triton: 3.6.0.
+- ROCm: 7.2 (HIP 7.2.26015), PyTorch 2.11.0+rocm7.2, Triton 3.6.0, transformers 5.12.1.
 - AITER is unsupported on gfx1201 and must remain disabled.
 
-Use \`scripts/common.sh\` to activate the environment and install the standard RDNA4 runtime variables.
+Use `scripts/common.sh` to activate the environment and install the standard RDNA4 runtime variables.
 
 ## Host requirements
 
 TP=2 requires:
 
-- \`CONFIG_HSA_AMD_P2P=y\`
-- \`CONFIG_PCI_P2PDMA=y\`
-- \`iommu=pt\` in the kernel command line
+- `CONFIG_HSA_AMD_P2P=y`
+- `CONFIG_PCI_P2PDMA=y`
+- `iommu=pt` in the kernel command line
 
 Verify before diagnosing collective performance:
 
-\`\`\`bash
+```bash
 zcat /proc/config.gz | grep -E 'CONFIG_HSA_AMD_P2P|CONFIG_PCI_P2PDMA'
 grep -o 'iommu=pt' /proc/cmdline
-\`\`\`
+```
 
-On Arch Linux, use current \`pkgctl\` tooling rather than retired \`asp\` workflows. Do not replace distro ROCm or RCCL packages casually; this repository assumes the system ROCm layout under \`/opt/rocm\`.
+On Arch Linux, use current `pkgctl` tooling rather than retired `asp` workflows. Do not replace distro ROCm or RCCL packages casually; this repository assumes the system ROCm layout under `/opt/rocm`.
 
 ## Safe GPU operation
 
 Before launching a server or benchmark:
 
-\`\`\`bash
+```bash
 pgrep -af 'calibrat|llmcompressor|oneshot|GPTQModifier|quantize_|run_reap|merge.py'
 pgrep -af 'sglang.launch_server|launch_server.py'
-\`\`\`
+```
 
 Never overlap model serving with calibration, pruning, large checkpoint conversion, or another server. These jobs compete for RAM, PCIe bandwidth, and page cache, invalidating measurements and risking OOM termination.
 
@@ -48,16 +49,16 @@ Write multi-day server and job logs under `/data/logs`, never under `/tmp` (a 31
 
 ## SGLang changes
 
-- Edit the live v0.5.15 tree only for experiments intended for that stack.
+- Edit the live tree (`/data/sgl-v0520`) only for experiments intended for that stack.
 - Retained changes must become atomic numeric patches.
-- Replay the full series from pristine v0.5.15 after every patch edit.
+- Replay the full series from the pristine base version (the peeled `v0.5.20` commit) after every patch edit.
 - Require strict application, path/mode equivalence, and focused tests.
 - Preserve unrelated user changes in both repositories and live source trees.
 - Keep opt-out environment switches for risky backend-specific optimizations until their fallback has been validated.
 
 ## Quantization pipeline
 
-Use the separate \`quant\` environment for calibration. A typical build is:
+Use the separate `quant` environment for calibration. A typical build is:
 
 1. Start from the upstream BF16 checkpoint.
 2. Apply REAP/REAM only when expert pruning or merging is required.
@@ -88,9 +89,9 @@ Keep DeltaNet, Mamba/SSM recurrent projections, routers, gates, embeddings, outp
 
 Run:
 
-\`\`\`bash
+```bash
 python scripts/eval/check_awq_scales.py /path/to/awq --base /path/to/bf16
-\`\`\`
+```
 
 The checker validates scale tensors and packed weights. The base comparison distinguishes structural dead-channel zero scales from zero scales over live weights. An unmapped or shape-mismatched zero remains flagged.
 
