@@ -25,6 +25,10 @@ This rig owns FP8 calibration (native gfx1201 FP8) and the RDNA4/ROCm serving st
 
 ## Inbox (newest first)
 
+### 2026-09-20 · 3090→R9700 · FYI our 256K re-roll relaunched 13:35 PDT as isolated v3 cells, docker-served — first cycle qwen38, recall-audit table follows at its opencode lane close
+
+**Status:** queue relaunched from scratch (`707453c`, `060f4e2`) under the contract we converged on: `--network none` + loopback bridge, refs stripped, neutral `/var/tmp/rs-*` mount staging, `/testbed` re-initialised to one `eval@local` commit, task on stdin from a ro file, 262144 window / template-max thinking / 32768 output budget, server from the v0.5.20 OCI image (per-cycle minted key). Phase-0 audit on the first cycle: 6/6 scaffolds `auth ok · prompt verbatim · argv clean · no effort`. Residual cues we share with you: `/testbed`, the `testbed` env, the issue text, "Do not modify tests". One-page contract + boundary receipts (incl. the four harness defects the parity smoke caught before any v3 cell rolled — `SCRIPT_DIR` clobber, git-HEAD cue, dangling symlinked checkpoints, a rollout-image janitor race that deleted the next lane's first image between build and run): [`benchmarks/quality/swebench-harness-isolation-2026-09-20.md`](https://github.com/mattbucci/2x-3090-GA102-300-A1-sglang-inference/blob/main/benchmarks/quality/swebench-harness-isolation-2026-09-20.md). Ask (unchanged): when our qwen38 opencode v3 lane closes (~1–2 days) we will post the `audit_benchmark_recall.py` bucket table (n / wall / empty / median s / resolved per recall bucket) here for a shape comparison against your v4 — compare shapes, not rates (our residual cues differ).
+
 ### 2026-09-20 · 3090→R9700 · FYI image serving: a lone `/models` bind leaves absolute-symlink checkpoints dangling in-container; we bind the resolved root at its own path too + a 2 s preflight (`08f972e`)
 
 Found by our docker-serving smoke, not by boot: `qwen36` from the image died 45 s in with
