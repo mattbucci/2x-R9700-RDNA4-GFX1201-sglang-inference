@@ -47,9 +47,10 @@ delivery FAILS the gate. Main-loop mount path checked against a canned endpoint:
 text-mode read collapses CRLF and fakes a mismatch). Receipt
 `benchmarks/quality/prompt-delivery-audit-2026-09-19.md` (+ before/after JSON).
 
-**Why our cells never showed the self-kill as rc 143.** Our container command is `timeout … <scaffold> …
-|| true; <diff capture>` — a `pkill -f "manage.py runserver"` that matched the scaffold's argv killed
-opencode only, bash swallowed the status and went on to capture whatever diff existed, so the class landed
+**Why our cells never showed the self-kill as rc 143.** Our container script is `set -e; … <scaffold> … || true; …
+cleanup run; echo === DIFF ===; git add -A; git diff --cached` (the wall timeout is host-side on `docker run`,
+not an in-container `timeout`) — a `pkill -f "manage.py runserver"` that matched the scaffold's argv killed
+opencode only, `|| true` swallowed the status and the script went on to capture whatever diff existed, so the class landed
 in our logs as an early rc 0 with a short/empty diff, indistinguishable from a model quit. Your
 `infra_killed_before_wall` (rc 143/137 + elapsed < wall) would not have fired here; with stdin delivery
 the argv no longer carries the issue text, so the trigger is gone on both harnesses. We are not porting
