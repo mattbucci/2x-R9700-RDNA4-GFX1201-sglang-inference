@@ -130,6 +130,25 @@ def load_opencode_errors(db: Path) -> tuple[list[tuple[int, str]], list[tuple[in
             [(int(t), d or "", msg or "") for t, d, msg in rows])
 
 
+def load_opencode_length_finishes(db: Path) -> list[tuple[int, str]]:
+    """(time_created_ms, session_directory) for every assistant message that
+    ended with finish=length, i.e. the turn hit `limit.output` (thinking +
+    answer). For qwen38 at xhigh such a turn carries no tool call and opencode
+    ends the session there (exit 0), so an empty patch after one is the model's
+    runaway think, not infra. Empty when the DB is absent."""
+    if not db.exists():
+        return []
+    con = sqlite3.connect(f"file:{db}?mode=ro", uri=True)
+    try:
+        rows = con.execute(
+            "select m.time_created, s.directory from message m join session s on s.id = m.session_id "
+            "where json_extract(m.data,'$.role') = 'assistant' and json_extract(m.data,'$.finish') = 'length'"
+        ).fetchall()
+    finally:
+        con.close()
+    return [(int(t), d or "") for t, d in rows]
+
+
 def _in_instance(directory: str, iid: str) -> bool:
     return any(directory == d or directory.startswith(d + "/") for d in (root + iid for root in WORK_ROOTS))
 
@@ -146,6 +165,13 @@ def session_kill(errors: list[tuple[int, str, str]], iid: str, window: tuple[flo
             if re.search(pat, msg):
                 return (cat, msg)
     return None
+
+
+def length_turns(lengths: list[tuple[int, str]], iid: str, window: tuple[float, float]) -> int:
+    """Number of finish=length assistant turns for `iid` among opencode sessions
+    created in `window` (unix seconds; sub-agent sessions included)."""
+    lo_ms, hi_ms = int(window[0] * 1000), int(window[1] * 1000)
+    return sum(1 for t, d in lengths if lo_ms <= t <= hi_ms and _in_instance(d, iid))
 
 
 def has_session(sessions: list[tuple[int, str]], iid: str, window: tuple[float, float]) -> bool:
@@ -182,7 +208,8 @@ def venv_state(pred: dict, env_log: Path) -> bool | None:
 
 def classify_log(log_text: str, rollout_rc: int, patch: str, elapsed: float,
                  venv: bool | None = None,
-                 kill: tuple[str, str] | None = None) -> tuple[str, str | None]:
+                 kill: tuple[str, str] | None = None,
+                 n_length: int = 0) -> tuple[str, str | None]:
     """Return (category, matched_pattern_or_None).
 
     Categories:
@@ -205,6 +232,12 @@ def classify_log(log_text: str, rollout_rc: int, patch: str, elapsed: float,
       - infra_server_toolcall_stream_shape (via `kill`): the opencode
         session was aborted by the client's stream validator. Also checked
         BEFORE the patch short-circuit.
+      - model_length (via `n_length`): empty patch and an opencode assistant
+        turn ended finish=length -- the xhigh think ran past `limit.output`
+        (32000, the largest value the scaffold sends unclamped) and opencode
+        ended the session with no tool call. A model verdict like
+        model_timeout: same tuple loops the same way, so no re-roll. Counted
+        per lane beside the score (FP8_BAKEOFF_SETUP.md, Model window).
     """
     if venv is False:
         return ("infra_no_venv", "env install failed -- no-venv fallback")
@@ -225,6 +258,9 @@ def classify_log(log_text: str, rollout_rc: int, patch: str, elapsed: float,
     # Treat as model verdict, not infra (see docstring above).
     if rollout_rc == 124 and elapsed >= 1799:
         return ("model_timeout", f"rc=124 elapsed={elapsed:.0f}s")
+
+    if n_length:
+        return ("model_length", f"{n_length} assistant turn(s) ended finish=length (limit.output); session ended with no tool call")
 
     # Rollout subprocess died non-zero with no patch and no pattern
     if rollout_rc not in (0, None):
@@ -268,6 +304,9 @@ def main():
     total = 0
     oc_errors: list[tuple[int, str, str]] | None = None
     oc_sessions: list[tuple[int, str]] = []
+    oc_lengths: list[tuple[int, str]] = []
+    length_total = 0  # finish=length turns across the lane, patch or not
+    timeout_with_patch: list[str] = []  # rc=124 at the wall cap but the sandbox captured edits (scored as real_diff)
     oc_db = None if args.opencode_db == "none" else Path(args.opencode_db).expanduser()
     opencode_sessions_checked = 0
     opencode_unjoined: list[str] = []
@@ -297,9 +336,11 @@ def main():
 
             venv = venv_state(d, logs_dir / f"{iid}.env.log")
             kill = None
+            n_length = 0
             if oc_db is not None and str(d.get("scaffold", "")).startswith("opencode") and log_path.exists():
                 if oc_errors is None:
                     oc_sessions, oc_errors = load_opencode_errors(oc_db)
+                    oc_lengths = load_opencode_length_finishes(oc_db)
                     if not oc_db.exists():
                         print(f"WARNING: opencode DB not found at {oc_db}; stream-kill rule skipped", file=sys.stderr)
                 # The session was created after the rollout started (log mtime - elapsed)
@@ -307,6 +348,8 @@ def main():
                 end = log_path.stat().st_mtime
                 window = (end - float(elapsed or 0) - 600, end + 60)
                 kill = session_kill(oc_errors, iid, window)
+                n_length = length_turns(oc_lengths, iid, window)
+                length_total += n_length
                 opencode_sessions_checked += 1
                 if not has_session(oc_sessions, iid, window):
                     opencode_unjoined.append(iid)
@@ -316,7 +359,7 @@ def main():
                 err = str(d["rollout_error"])
                 category, match = err.split(":", 1)[0], err
             else:
-                category, match = classify_log(log_text, rollout_rc, patch, elapsed, venv, kill)
+                category, match = classify_log(log_text, rollout_rc, patch, elapsed, venv, kill, n_length)
             entry = {
                 "instance_id": iid,
                 "patch_len": len(patch),
@@ -325,6 +368,11 @@ def main():
                 "venv": venv,
                 "matched": match,
             }
+            if n_length:
+                entry["length_turns"] = n_length
+            if rollout_rc == 124 and elapsed >= 1799 and category == "real_diff":
+                entry["timed_out"] = True
+                timeout_with_patch.append(iid)
             by_category.setdefault(category, []).append(entry)
             if category.startswith("infra_"):
                 reroll_ids.append(iid)
@@ -335,6 +383,11 @@ def main():
     print(f"  real_diff:         {len(by_category.get('real_diff', []))}")
     print(f"  model_silent:      {len(by_category.get('model_silent', []))}")
     print(f"  model_silent_fast: {len(by_category.get('model_silent_fast', []))}  (elapsed < 5s, model returned empty fast)")
+    print(f"  model_timeout:     {len(by_category.get('model_timeout', []))}  (rc=124 at the wall cap, no patch; "
+          f"+{len(timeout_with_patch)} timed out with a captured patch, counted in real_diff)")
+    if opencode_sessions_checked:
+        print(f"  model_length:      {len(by_category.get('model_length', []))}  (finish=length, no patch; "
+              f"{length_total} length turn(s) across the lane incl. instances that still produced a patch)")
     infra_total = sum(len(v) for k, v in by_category.items() if k.startswith("infra_"))
     print(f"  INFRA total:       {infra_total}")
     for k, v in sorted(by_category.items()):
@@ -370,6 +423,12 @@ def main():
             "instances_checked": opencode_sessions_checked,
             "instances_without_session": opencode_unjoined,
         },
+        "model_timeout": len(by_category.get("model_timeout", [])),
+        "model_length": len(by_category.get("model_length", [])),
+        "length_turns_total": length_total,
+        "model_length_details": by_category.get("model_length", []),
+        "model_timeout_details": by_category.get("model_timeout", []),
+        "timeout_with_patch": timeout_with_patch,
     }
     report_path.write_text(json.dumps(report, indent=2))
     print(f"\n  audit JSON: {report_path}")

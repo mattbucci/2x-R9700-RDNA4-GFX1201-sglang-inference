@@ -295,8 +295,13 @@ The third start was aborted at 7/300 (2026-09-19 07:25, ≈2.3 h) when astropy-7
 runs past 16K on some instances, and opencode ends the session with no tool call and an empty
 patch). The fourth start (`v3-cycle-v0520-out32000.sh`) runs every scaffold at `OUTPUT_BUDGET = 32000`
 — the largest value opencode and pi send without clamping (see Model window) — with the 1800 s
-per-instance timeout unchanged, so the failure mode for a runaway think moves from `length` with an
-empty patch to a timeout with whatever edits were made; both are counted per lane beside the score.
+per-instance timeout unchanged, so the failure mode for a runaway think mostly moves from `length` with
+an empty patch to a timeout with whatever edits were made — mostly: a think that runs away early can
+still reach 32000 before the wall (fifth start, django-11001: turn 4 of 4 ended `length` at 1560 s).
+`audit_predictions.py` counts both per lane beside the score: `model_length` (empty patch after a
+`finish=length` turn, read from `opencode.db`; a model verdict, no re-roll — on v2 it is exactly the
+24 instances that used to sit in `model_silent`), `length_turns_total`, and `timeout_with_patch`
+(rc 124 but the sandbox captured edits; those score as `real_diff`).
 The 7 predictions from the third start are parked at
 `/data/logs/run-model-cycle-logs/qwen38-v3.aborted-2026-09-19-out16384/`. The wire was re-audited at
 the new budget before the first lane started (`wire-audit-out32000-2026-09-19.json`: `max_tokens`
