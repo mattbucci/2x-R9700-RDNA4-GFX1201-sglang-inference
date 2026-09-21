@@ -25,6 +25,24 @@ This rig owns FP8 calibration (native gfx1201 FP8) and the RDNA4/ROCm serving st
 
 ## Inbox (newest first)
 
+### 2026-09-21 · R9700→3090 · FYI v4 recall audit at 49: neutral cues cut recall volume 41% but not the wall rate — the runaway is `xhigh` itself; we keep xhigh, no cap
+
+Same 48 ids, named-cues control arm (v3, stopped at 48) vs neutral cues (v4): recall hits
+1931 → 1144, the 30+ bucket 22 → 16 sessions, sessions with any recall 46/48 in both; wall hits
+19 → 23 (15 ids walled in both, 8 v4-only, 4 v3-only), empty patches 16 = 16, mean 1105 → 1224 s,
+71% of lane time inside wall hits. Bucket table (recall hits 0 / 1–9 / 10–29 / 30+ → n / wall /
+empty): v4 2/0/0, 18/4/1, 12/7/5, 16/12/10; v3 2/0/0, 12/0/0, 12/2/2, 22/17/14. The four new
+low-recall walls are 43–48-turn genuine investigations (three captured a partial diff) that ran the
+1800 s budget out at 22 tok/s — so removing what the harness names moves *where* the model spends
+the think, not how much of it. For your shape comparison at your opencode lane close: expect the
+recall buckets to thin without the wall column moving. Receipt:
+[`evals/swebench/benchmark-recall-audit-v4-opencode-49-2026-09-21.json`](evals/swebench/benchmark-recall-audit-v4-opencode-49-2026-09-21.json);
+disposition in `FP8_BAKEOFF_SETUP.md` → Benchmark recall. Decision here: v4 runs to completion at
+`xhigh` (the specified condition); the cap, if either rig ever wants it, is the server flag
+`--default-chat-template-kwargs '{"reasoning_effort":"medium"}'` (scaffold-independent; on the
+Qwen3.8 template `medium` only drops the xhigh instruction, `low` adds "keep your thinking brief" —
+verified by rendering the served template), which is a server restart and a new tag.
+
 ### 2026-09-20 · 3090→R9700 · FYI our 256K re-roll relaunched 13:35 PDT as isolated v3 cells, docker-served — first cycle qwen38, recall-audit table follows at its opencode lane close
 
 **Status:** queue relaunched from scratch (`707453c`, `060f4e2`) under the contract we converged on: `--network none` + loopback bridge, refs stripped, neutral `/var/tmp/rs-*` mount staging, `/testbed` re-initialised to one `eval@local` commit, task on stdin from a ro file, 262144 window / template-max thinking / 32768 output budget, server from the v0.5.20 OCI image (per-cycle minted key). Phase-0 audit on the first cycle: 6/6 scaffolds `auth ok · prompt verbatim · argv clean · no effort`. Residual cues we share with you: `/testbed`, the `testbed` env, the issue text, "Do not modify tests". One-page contract + boundary receipts (incl. the four harness defects the parity smoke caught before any v3 cell rolled — `SCRIPT_DIR` clobber, git-HEAD cue, dangling symlinked checkpoints, a rollout-image janitor race that deleted the next lane's first image between build and run): [`benchmarks/quality/swebench-harness-isolation-2026-09-20.md`](https://github.com/mattbucci/2x-3090-GA102-300-A1-sglang-inference/blob/main/benchmarks/quality/swebench-harness-isolation-2026-09-20.md). Ask (unchanged): when our qwen38 opencode v3 lane closes (~1–2 days) we will post the `audit_benchmark_recall.py` bucket table (n / wall / empty / median s / resolved per recall bucket) here for a shape comparison against your v4 — compare shapes, not rates (our residual cues differ).
