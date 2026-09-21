@@ -122,18 +122,28 @@ id in the work-dir path (*"the issue number in the repo directory is 6938 (astro
 the harness commit message `SWE-bench <iid> base tree` (`docker_sandbox.sh`), and the prompt's "Do not
 modify tests" line (*"in SWE-bench style tasks the test patch is applied separately"*).
 
-| | v3 sixth start (opencode, 18 sessions) | same lane at the stop, 48 sessions ([receipt](benchmark-recall-audit-v3-opencode-48-2026-09-20.json)) | v2 opencode lane (300) |
-|---|---|---|---|
-| sessions whose reasoning names SWE-bench / the gold patch | 16/18 | 46/48 | 286/300 |
-| long thinks (≥3000 output tokens in one turn) | 25, **24 carry recall** | 75, **73 carry recall** | 261, 243 carry recall |
-| short turns carrying recall | 82/381 | 260/1241 | 1311/7687 |
-| share of all reasoning text sitting in long thinks | 49% | 45% | 36% |
-| wall hits by recall count 0 / 1–9 / 10–29 / 30+ | 0/2, 0/7, 1/2, **5/7** | 0/2, 0/12, 2/12, **17/22** | 1/14, 3/94, 17/104, 20/88 |
-| empty patches by the same buckets | 0, 0, 1, 4 | 0, 0, 2, 14 | 1, 7, 19, 17 |
+| | v3 sixth start (opencode, 18 sessions) | same lane at the stop, 48 sessions ([receipt](benchmark-recall-audit-v3-opencode-48-2026-09-20.json)) | **v4 neutral cues, same 48 ids** ([receipt](benchmark-recall-audit-v4-opencode-49-2026-09-21.json)) | v2 opencode lane (300) |
+|---|---|---|---|---|
+| sessions whose reasoning names SWE-bench / the gold patch | 16/18 | 46/48 | 46/48 (1144 hits vs 1931) | 286/300 |
+| long thinks (≥3000 output tokens in one turn) | 25, **24 carry recall** | 75, **73 carry recall** | 68, 63 carry recall | 261, 243 carry recall |
+| short turns carrying recall | 82/381 | 260/1241 | 190/1224 | 1311/7687 |
+| share of all reasoning text sitting in long thinks | 49% | 45% | 45% | 36% |
+| wall hits by recall count 0 / 1–9 / 10–29 / 30+ | 0/2, 0/7, 1/2, **5/7** | 0/2, 0/12, 2/12, **17/22** | 0/2, **4/18**, 7/12, 12/16 | 1/14, 3/94, 17/104, 20/88 |
+| empty patches by the same buckets | 0, 0, 1, 4 | 0, 0, 2, 14 | 0, 1, 5, 10 | 1, 7, 19, 17 |
 
 On the same 48 instance ids v2 opencode had 9 wall hits and 12 empty patches (32 resolved, 4 of them
 wall hits that still scored — the git-history leak); v3 had 19 and 16, with 65% of the lane's 14.7 h
 spent inside wall hits, at the same per-instance mean (1105 s vs 1069 s).
+
+v4 (neutral cues, audited 2026-09-21 03:58 at 49 done) on the same 48 ids: recall volume fell 41%
+(1931 → 1144 hits) and the 30+ bucket shrank from 22 to 16 sessions, so the cue removal worked on what
+it targeted — but wall hits went 19 → 23 (15 ids walled in both arms, 8 v4-only, 4 v3-only), empty
+patches stayed at 16, the per-instance mean rose to 1224 s and 71% of lane time sat inside wall hits.
+The four new wall hits in the 1–9 bucket are not recall: 43–48 turns of genuine investigation (three
+captured a partial diff) that ran the 30-min budget out at 22 tok/s. The freed budget went into more
+thoroughness at the same wall, i.e. the runaway is the `xhigh` effort itself, not recall alone; the
+residual trigger for recognition is the task shape plus the model's own memory of Django/astropy
+ticket numbers (46/48 sessions in both layouts).
 
 The v2 resolve rate is flat across the buckets (11/14, 72/94, 75/104, 62/88) because v2 could read
 the answer off future git history once it wondered what the fix was (→ Answer leakage); v3 closes
@@ -149,6 +159,14 @@ xhigh/medium/low natively, so a cap would be the model's own `medium`, matrix-wi
 recall count, and cue removal targets it without giving up max reasoning; the cap stays in reserve if
 the v4 wall rate does not move. Removing the cues cannot remove recognition from the issue text
 itself (v2: 14/300 sessions never named the benchmark), so the v4 recall audit at ~50 is the test.
+
+Decision 2026-09-21 04:00 (v4 audit above, brought with the cap option — `medium` drops the xhigh
+instruction from the template and nothing else, verified by rendering the served template; applied
+matrix-wide via `--default-chat-template-kwargs '{"reasoning_effort":"medium"}'`, which needs a server
+restart and therefore a v5 tag): **keep v4 at `xhigh`** — max reasoning is the specified condition,
+the wall/empty rate is a property of the model at that effort, and the lane is scored at its end.
+Projected cost at v4 rates: ~4.25 days per lane. The cap is not planned; if it is ever used it is a
+new tag with v4's predictions as the `xhigh` control arm.
 
 ### Removing the harness-owned cues (`--neutral-cues`)
 
@@ -484,6 +502,9 @@ dirs — and keeps everything else from the sixth start (Docker mode, prompt on 
 (`REUSE_SERVER=1`; it held no lock fd). The 48 named-layout predictions are parked at
 `/data/logs/run-model-cycle-logs/qwen38-v3.aborted-2026-09-20-named-cues/` with their recall audit;
 they are not part of any cell but are the control arm for the cue A/B on the same first 48 ids.
+The cue A/B was read at v4's 49th instance (2026-09-21, → Benchmark recall): recall volume −41%,
+wall hits 23 vs 19, empties 16 vs 16 on the same 48 ids; the user kept v4 at `xhigh`, so the seventh
+start runs to completion unchanged.
 
 ## Scoring
 

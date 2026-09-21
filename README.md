@@ -118,7 +118,7 @@ SGLang, the tree re-initialised to a single commit at an opaque `/work/repo-<has
 Ordered by what runs next. Specs with an ID live in [`experiments/`](experiments/README.md).
 
 1. **Run the Qwen3.8 seven-scaffold bakeoff v4 to completion** (started 2026-09-20 11:10 after
-   the five complete v2 lanes were Docker-scored; ~3.8 days per lane at 18 min/instance): every
+   the five complete v2 lanes were Docker-scored; ~4.25 days per lane at 21 min/instance): every
    scaffold inside the official per-instance SWE-bench image (`run_rollouts.py --docker`: the
    image's testbed env, no network except the SGLang bridge, git re-initialised to one commit;
    the four earlier v3 starts on host venvs + bubblewrap are archived, not scored), both
@@ -157,8 +157,14 @@ Ordered by what runs next. Specs with an ID live in [`experiments/`](experiments
    `/work/repo-<hash>` tree, `Import source tree` commit, per-instance mounts staged under neutral
    paths because `/proc/self/mountinfo` shows host paths, toolchain hardlink mirror
    (`FP8_BAKEOFF_SETUP.md` → "Removing the harness-owned cues"). The 48 named-layout sessions are
-   parked as the control arm for the same 48 ids; the thinking cap (Qwen3.8's native
-   `reasoning_effort: medium`, matrix-wide) stays in reserve pending the v4 recall audit at ~50.
+   parked as the control arm for the same 48 ids. The v4 recall audit on those 48 ids (2026-09-21,
+   49 done, 16.8 h): recall volume −41% (1931 → 1144 hits), but 23 wall hits / 16 empty patches
+   against the control arm's 19 / 16, mean 1224 s vs 1105 s, 71% of lane time inside wall hits;
+   the new walls are exhaustive investigation, not recall — the runaway is the `xhigh` effort
+   itself. Decision (2026-09-21 04:00): **keep v4 at `xhigh`** as the specified max-reasoning
+   condition (~4.25 days per lane at 21 min/instance); the cap (Qwen3.8's native
+   `reasoning_effort: medium`, applied matrix-wide with `--default-chat-template-kwargs`, verified
+   to drop only the xhigh instruction) is not planned.
 2. **Chase the residual qwen38 decode gap now that graphs are on.** The 2026-09-19 same-server A/B
    ([receipt](benchmarks/qwen38-27b-fp8/graph-ab-2026-09-19.json), v0.5.18, 3 runs/point, idle CPU)
    measured HIP graphs off→on at 16.9→22.5 (24 tok), 16.9→22.2 (6.5K), 16.8→21.6 (52K) and
