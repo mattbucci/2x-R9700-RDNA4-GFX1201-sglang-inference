@@ -507,11 +507,16 @@ wall hits 23 vs 19, empties 16 vs 16 on the same 48 ids; the user kept v4 at `xh
 start runs to completion unchanged.
 
 The seventh start was interrupted at 152/300 of the opencode lane (2026-09-22 15:08, 2 d 4 h into
-v4; the reused server had been up 2 d 19 h): the scheduler issued its last decode batch at 14:55:59
-and the 600 s watchdog fired at 15:07:17 (`Scheduler watchdog timeout`; debug info `[full]
-available=63 evictable=501368`, `[mamba] total=8 available=2 evictable=4 protected=1
-leaked_full_pages={81980, 81981, …}`), SIGQUIT at 15:07:22, `kill_process_tree` at 15:08:28. While
-KFD tore the TP1 worker's queues down, GPU `0000:07:00.0` fell off the PCIe bus (kernel from
+v4; the reused server had been up 2 d 19 h): a graphed decode step stalled mid-request (last
+`Decode batch` at 14:55:59: 1 request at 28,185 tokens, steady 21.5 tok/s, `full token usage 0.05`,
+`mamba usage 0.25`, no queue — the pools were nowhere near full) and the 600 s watchdog fired at
+15:07:17 (`Scheduler watchdog timeout`; its dump also lists `[mamba] … leaked_full_pages={81980,
+81981, …}`, which is not the cause — a GPU-side stall on the TP1 card is: the kernel logged nothing
+in the 11 silent minutes, as expected for a hung KFD user-mode compute queue, and at teardown that
+card's MES was already unresponsive). The watchdog's py-spy dumps failed (Yama `ptrace_scope=1`
+blocks the attach, so the dumps never show where the ranks sat). SIGQUIT at 15:07:22,
+`kill_process_tree` at 15:08:28. While KFD tore the TP1 worker's queues down, GPU `0000:07:00.0` fell
+off the PCIe bus (kernel from
 15:08:30, one round per queue: `MES(0) failed to respond to msg=REMOVE_QUEUE` → `MES might be in
 unrecoverable state, issue a GPU reset` → `GPU reset begin` → `device lost from bus!` → `GPU reset
 end with ret = -19`; afterwards PCI config space reads `0xff`, `rocm-smi` enumerates one GPU, 30.9 GiB

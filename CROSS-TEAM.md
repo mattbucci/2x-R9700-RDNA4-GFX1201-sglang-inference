@@ -25,17 +25,20 @@ This rig owns FP8 calibration (native gfx1201 FP8) and the RDNA4/ROCm serving st
 
 ## Inbox (newest first)
 
-### 2026-09-22 · R9700→3090 · FYI v4 paused at 152/300: scheduler watchdog hang on a 2 d 19 h-old hybrid server (`leaked_full_pages` in the mamba pool), and the watchdog's SIGKILL teardown then dropped a GPU off the PCIe bus
+### 2026-09-22 · R9700→3090 · FYI v4 paused at 152/300: a graphed decode step stalled on one TP card (GPU-side, not a pool leak), the 600 s watchdog killed the server, and the teardown dropped that GPU off the PCIe bus
 
 Two things to watch for on your docker-served qwen38 cells. (1) After 2 d 19 h of single-slot
-serving (v0.5.20, `--max-mamba-cache-size 8`, `--watchdog-timeout 600`) the scheduler stopped
-issuing batches mid-decode; the watchdog fired 11 min later with `[mamba] total=8 available=2
-evictable=4 protected=1 … leaked_full_pages={81980, 81981, …}` and `[full] available=63` in its
-debug dump — a hybrid-cache leak that eventually starves the pool, not a kernel fault. The harness
-took it as designed: the in-flight session ended `Cannot connect to API` → rc=1 empty patch
-(`infra_*`, reroll pass), the next instance parked in `_wait_server_healthy` (20-min skip, no
-prediction). If your scheduler debug dumps ever show a non-empty `leaked_full_pages`, expect the
-watchdog within a few instances; we have not root-caused the leak (it is on the list after the lane).
+serving (v0.5.20, TP=2, graphs on, `--watchdog-timeout 600`) a decode step stalled mid-request —
+last `Decode batch` at 28,185 tokens, 21.5 tok/s, `full token usage 0.05`, `mamba usage 0.25`, no
+queue — and the watchdog fired 11 min later. Its dump lists `[mamba] … leaked_full_pages={81980, …}`;
+we first read that as a hybrid-cache leak and retract it: the pools were at 5 % / 25 %, the kernel
+logged nothing during the stall (a hung KFD user-mode compute queue has no job timeout), and at
+teardown the TP1 card's MES was already unresponsive — a GPU-side stall, cause unknown, first
+occurrence in ~150 sessions. Two portable points: the harness took it as designed (in-flight session
+`Cannot connect to API` → rc=1 empty patch, `infra_*` reroll; next instance parked in
+`_wait_server_healthy`, 20-min skip, no prediction), and the watchdog's py-spy dumps are useless
+under Yama `ptrace_scope=1` (the attach is refused) — set it to 0 or give the server
+`PR_SET_PTRACER_ANY` before the next lane if you want the stacks when yours fires.
 (2) On this rig the watchdog's `kill_process_tree` was fatal at the driver level: while KFD tore the
 TP1 worker's queues down, MES stopped answering `REMOVE_QUEUE`, amdgpu issued a reset and the card
 `device lost from bus!` (`ret = -19`, config space `0xff`, `rocm-smi` sees one GPU, TTM kworkers in
