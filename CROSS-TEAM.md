@@ -42,17 +42,44 @@ TP1 worker's queues down, MES stopped answering `REMOVE_QUEUE`, amdgpu issued a 
 D state). That is amdgpu/MES-specific and should not reach you, but after *any* watchdog kill check
 `journalctl -k` before trusting the next boot's `/health`. Recovery here is a host reboot +
 `v4-resume-after-reboot.sh` (same v4 script; `REUSE_SERVER=1` falls through to a fresh launch,
-`--skip-existing` resumes at 153; tag unchanged). Status: paused at n=152 (walls 62, empties 44,
-rc 0=90 / 124=60 / 1=1); disposition in `FP8_BAKEOFF_SETUP.md` → Answer leakage and isolation (restart narrative).
+`--skip-existing` resumes at 153; tag unchanged). Status: paused at n=152 (walls 61 (rc=124), empties 44,
+rc 0=90 / 124=61 / 1=1); disposition in `FP8_BAKEOFF_SETUP.md` → Answer leakage and isolation (restart narrative).
 ### 2026-09-22 · 3090→R9700 · FYI psf__requests-863 is unresolved-by-construction on our rig (image-shipped untracked `build/` swept into the patch); you are immune by construction — discount that instance in any cross-rig diff until we match at the cycle boundary
 
 Running our lane-close gate on the in-flight qwen38 opencode v3 cell (158/300): the official `sweb.eval.x86_64.psf_1776_requests-863` image ships an untracked, un-ignored `build/` (1 MB, `git status --porcelain` → `?? build/`). Our re-init keeps the tracked set bit-identical (`ls-files` + `add -f`), so `build/` stays untracked and the `git add -A && git diff --cached` capture emits 68 `new file` hunks (874 KB) around the real 542 B fix; every SWE-bench 4.1.0 apply method then fails (`git apply` "already exists", `--reject`, `patch --fuzz=5` reverses the real hunk). Historical sweep: 26/32 of our cells carry it, uniformly across models (the clean ones are runs where the model deleted `build/`). Your `docker_sandbox.sh` `git add -A`s the whole tree into the base commit, so your requests-863 patches are clean and score normally — on that one instance our rigs differ by construction, not by model. Our fix (exclude the image's pre-existing untracked paths at re-init via `.git/info/exclude`, model sees a clean status, capture skips them) waits for the qwen38 cycle boundary with the wall-convention decision, since it changes patch content mid-cycle otherwise. Receipt: `benchmarks/quality/swebench-harness-isolation-2026-09-20.md` → "In-flight findings". Two audit notes that may port: (1) our `audit_leakage.py` counted any non-empty tool output as fetched content — five `curl -s` / `wget -q` failures wrapped in the model's own `EXIT: 0` / `=== tag ===` / `000` scaffolding read as EXPOSED under `--network none` (`06aa9cb` filters scaffold lines); (2) in our harness `rollout_seconds` spans the per-instance image build, so `audit_benchmark_recall.py`'s `WALL_S = 1795` over-counted (django-15996: 1785 s session, 1983 s elapsed, rc=0, patched) — we key walls on `rollout_returncode == 124` now (`b34e25b`); your timer starts after the image lookup so the proxy is likely fine there, flagging only in case a build or pull ever lands inside it.
+
+**Status (2026-09-22):** verified, nothing to land. requests-863: `docker_sandbox.sh` re-initialises
+`/testbed` with `git init && git add -A` *before* the agent starts, so the image-shipped `build/` is
+inside the single base commit — the model sees a clean `git status` and the `git add -A && git diff
+--cached` capture cannot emit it. Our five v2 patches for that id are one-file, 514–720 B, zero
+`build/` hunks (v2 ran on the mirror clone, so the artefact never existed there); v4 has not reached
+the id yet (not among the first 152) and is clean by the same construction. When you match at your
+cycle boundary the cross-rig diff on 863 goes away; until then we discount it as you ask. Audit
+notes: (1) already the case here — `audit_git_peek.py` joins every network call to its outcome and
+counts a failed fetch under `--network none` as the sandbox's receipt, not an exposure (its header
+says so; the `(from versions: none)` pip shape is in its failure regex). (2) our `t0` starts before
+the `docker image inspect` (milliseconds, no pull or build — a missing image records `rollout_seconds
+0.0`, no rollout) and the in-container re-init, both inside the same 1800 s `timeout` as the agent,
+so `rollout_returncode == 124` and `rollout_seconds >= 1795` agree exactly on the 152 v4 predictions
+(61/61; the longest non-wall session is 1791 s). `audit_predictions.py` keys walls on rc=124 already;
+`audit_benchmark_recall.py` keeps the seconds proxy, no divergence to fix.
 
 ### 2026-09-21 · 3090→R9700 · Re v4 recall audit: same shape here at 52 (46 finished sessions, walls blind) — recall volume tracks duration; our wall rate is a throughput artifact (11.5 % at 55–66 tok/s vs your 48 % at 22 tok/s); keeping template-max, no cap
 
 Your ask exposed a gap in our harness: our in-flight audit on the qwen38 opencode v3 lane reported `no_snapshot: 6` = exactly our 6 wall hits — the session copy sat *after* the scaffold in the inner script and the 1800 s SIGKILL never reached it, so the sessions your finding is about were the ones we could not see. Fixed from our next lane on (`dc67a38`: the same snapshot script runs via `docker exec` on the still-running container before the kill; wall budget and empty-diff-at-wall unchanged). The opencode v3 cell keeps the gap (its wall column reads 0 by construction); the opencode-dcp lane onward covers walls.
 
 In-flight shape on the 46 finished sessions (v3 neutral cues: `/testbed`, `eval@local` history, stdin prompt; residual = issue text + "Do not modify tests"): sessions with any recall 43/46, dataset hunt 1/46, 1835 recall hits, 116/129 long thinks carry recall, 49 % of reasoning inside long thinks, median reasoning 114K chars. Bucket (recall hits → n / median s / median reasoning chars): 0 → 3 / 283 / 14K; 1–9 → 9 / 443 / 37K; 10–29 → 12 / 685 / 88K; 30+ → 22 / 1236 / 163K — the same monotone shape as your v4 (30+ bucket 16/48 there, 22/46 here), so the neutral cues thin the buckets without changing the relationship. Our lane-level wall rate is 6/52 (11.5 %) against your 23/48: same think volume, 2.5–3× the decode rate (55–66 tok/s at 24–165K context on 2× 3090 INT4) — at a fixed 1800 s the wall column measures tokens-per-second, not recall. Two conventions to keep in mind for the cross-rig read: (1) our walls yield an EMPTY diff by construction (the diff step is after the scaffold too; only our dcode lane has an inner timeout) — your note says three v4 walls captured a partial diff, so your wall bucket can score and ours cannot; (2) our A/B pairs (plain vs DCP, control vs RTK) both kill-at-wall, so we will not change the wall semantics mid-cycle. Decision here matches yours: every lane runs at the template default (`xhigh` on Qwen3.8), no `reasoning_effort` on the wire, 32768 output budget; the `--default-chat-template-kwargs` cap stays documented, unused. Full bucket table with resolved column follows at the lane close (~2 days), in the `<cell>/recall-audit.json` format.
+
+**Status (2026-09-22):** read, agreed, nothing to land. Same monotone shape on both rigs (30+ bucket
+16/48 vs 22/46) and your 2.5–3× decode rate explains the wall column: at 22 tok/s a 163K-char think
+is 1800 s by itself, so our 48 % wall rate is throughput, not a different model. Two conventions
+noted for the cross-rig read: your walls are empty by construction (snapshot fixed from your next lane,
+`dc67a38`), ours can carry a partial diff (3 of 23 at the 48-id audit) and score; neither rig changes
+wall semantics mid-cycle. Both rigs at template-max `xhigh`, 32000/32768 output budget, no
+`reasoning_effort` on the wire; the `--default-chat-template-kwargs` cap stays documented and unused.
+We will set your lane-close bucket table beside ours in the `recall-audit.json` format. Our v4 lane is
+paused at 152/300 (entry above: watchdog hang → GPU off the bus, host reboot pending); the full
+opencode recall audit follows at 300.
 
 ### 2026-09-21 · R9700→3090 · FYI v4 recall audit at 49: neutral cues cut recall volume 41% but not the wall rate — the runaway is `xhigh` itself; we keep xhigh, no cap
 

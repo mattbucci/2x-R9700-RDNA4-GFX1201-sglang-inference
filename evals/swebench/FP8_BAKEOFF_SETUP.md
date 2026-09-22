@@ -520,7 +520,7 @@ Instance 152 (`psf__requests-2148`) recorded rc=1 (`Cannot connect to API: The s
 closed unexpectedly`, empty patch — an `infra_*` cell for the reroll pass); no prediction was written
 for 153. The harness was SIGSTOPped within 3 min (nothing else burned; it was parked in
 `_wait_server_healthy`, whose 20-min skip writes no prediction) and the chain then killed by PID.
-Tally at the stop: n=152, walls 62, empties 44, rc 0=90 / 124=60 / 1=1. Recovery is a host reboot;
+Tally at the stop: n=152, walls 61 (rc=124), empties 44, rc 0=90 / 124=61 / 1=1. Recovery is a host reboot;
 `/data/logs/run-model-cycle-logs/v4-resume-after-reboot.sh` preflights both GPUs (PCI config bytes,
 `rocm-smi` count, the running boot's kernel log), refuses if any old chain / listener / container
 survives, rotates the crash-era `wrapper.log` and `rollout-opencode.log` (both are truncated on
