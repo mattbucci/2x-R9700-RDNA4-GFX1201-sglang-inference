@@ -506,6 +506,29 @@ The cue A/B was read at v4's 49th instance (2026-09-21, → Benchmark recall): r
 wall hits 23 vs 19, empties 16 vs 16 on the same 48 ids; the user kept v4 at `xhigh`, so the seventh
 start runs to completion unchanged.
 
+The seventh start was interrupted at 152/300 of the opencode lane (2026-09-22 15:08, 2 d 4 h into
+v4; the reused server had been up 2 d 19 h): the scheduler issued its last decode batch at 14:55:59
+and the 600 s watchdog fired at 15:07:17 (`Scheduler watchdog timeout`; debug info `[full]
+available=63 evictable=501368`, `[mamba] total=8 available=2 evictable=4 protected=1
+leaked_full_pages={81980, 81981, …}`), SIGQUIT at 15:07:22, `kill_process_tree` at 15:08:28. While
+KFD tore the TP1 worker's queues down, GPU `0000:07:00.0` fell off the PCIe bus (kernel from
+15:08:30, one round per queue: `MES(0) failed to respond to msg=REMOVE_QUEUE` → `MES might be in
+unrecoverable state, issue a GPU reset` → `GPU reset begin` → `device lost from bus!` → `GPU reset
+end with ret = -19`; afterwards PCI config space reads `0xff`, `rocm-smi` enumerates one GPU, 30.9 GiB
+stays "used" in sysfs, and `kworker/u100:*+ttm` threads sit in D state on `dma_fence_default_wait`).
+Instance 152 (`psf__requests-2148`) recorded rc=1 (`Cannot connect to API: The socket connection was
+closed unexpectedly`, empty patch — an `infra_*` cell for the reroll pass); no prediction was written
+for 153. The harness was SIGSTOPped within 3 min (nothing else burned; it was parked in
+`_wait_server_healthy`, whose 20-min skip writes no prediction) and the chain then killed by PID.
+Tally at the stop: n=152, walls 62, empties 44, rc 0=90 / 124=60 / 1=1. Recovery is a host reboot;
+`/data/logs/run-model-cycle-logs/v4-resume-after-reboot.sh` preflights both GPUs (PCI config bytes,
+`rocm-smi` count, the running boot's kernel log), refuses if any old chain / listener / container
+survives, rotates the crash-era `wrapper.log` and `rollout-opencode.log` (both are truncated on
+start), and relaunches the same `v4-cycle-v0520-neutral-cues.sh`: `REUSE_SERVER=1` falls through to
+`launch_server` when :23334 is dead and `--skip-existing` resumes at 153, so the methodology is
+unchanged and the tag stays v4 (the eighth start is a resume, not a restart). The new server's log
+goes to `qwen38-v4/server.log`; the dead one's is `qwen38-v3/server.log`.
+
 ## Scoring
 
 `score_cells.sh <run_dir>...` (Phase 5 of `run_model_cycle.sh`, also standalone) runs `score_docker.py`,

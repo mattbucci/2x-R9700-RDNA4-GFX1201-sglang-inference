@@ -21,7 +21,9 @@ new quality flagship Qwen3.8-27B-FP8.
   decode from 24 to 197K input on the repaired RDNA4 block-FP8 dispatch (patch 005) with HIP graphs
   (v0.5.20 canonical sweep, 2026-09-19; 16.6 flat before graphs). Its
   seven-scaffold SWE-bench Lite bakeoff (300 instances per cell, Docker-scored) restarted as
-  **v4, sandboxed and cue-neutral** (running since 2026-09-20 on the v0.5.20 graphs-on stack, every
+  **v4, sandboxed and cue-neutral** (since 2026-09-20 on the v0.5.20 graphs-on stack; paused
+  2026-09-22 at 152/300 of the opencode lane after a scheduler-watchdog kill dropped GPU 07:00.0
+  off the PCIe bus — it resumes at 153 under the same tag after a host reboot; every
   scaffold inside the official per-instance SWE-bench image with no network and no benchmark
   identifiers in its view of the container): the v2 lanes had let the agents read
   the upstream fix through future git history and the web on 45–61% of instances, so v2 is
@@ -117,8 +119,11 @@ SGLang, the tree re-initialised to a single commit at an opaque `/work/repo-<has
 
 Ordered by what runs next. Specs with an ID live in [`experiments/`](experiments/README.md).
 
-1. **Run the Qwen3.8 seven-scaffold bakeoff v4 to completion** (started 2026-09-20 11:10 after
-   the five complete v2 lanes were Docker-scored; ~4.25 days per lane at 21 min/instance): every
+1. **Reboot the host, then resume the Qwen3.8 seven-scaffold bakeoff v4 to completion**
+   (`bash /data/logs/run-model-cycle-logs/v4-resume-after-reboot.sh`; started 2026-09-20 11:10 after
+   the five complete v2 lanes were Docker-scored, paused 2026-09-22 at 152/300 with GPU 07:00.0
+   lost from the bus after a scheduler-watchdog kill — `FP8_BAKEOFF_SETUP.md` → Answer leakage and isolation (restart narrative);
+   ~4.25 days per lane at 21 min/instance): every
    scaffold inside the official per-instance SWE-bench image (`run_rollouts.py --docker`: the
    image's testbed env, no network except the SGLang bridge, git re-initialised to one commit;
    the four earlier v3 starts on host venvs + bubblewrap are archived, not scored), both

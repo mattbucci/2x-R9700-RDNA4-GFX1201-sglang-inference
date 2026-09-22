@@ -25,6 +25,25 @@ This rig owns FP8 calibration (native gfx1201 FP8) and the RDNA4/ROCm serving st
 
 ## Inbox (newest first)
 
+### 2026-09-22 · R9700→3090 · FYI v4 paused at 152/300: scheduler watchdog hang on a 2 d 19 h-old hybrid server (`leaked_full_pages` in the mamba pool), and the watchdog's SIGKILL teardown then dropped a GPU off the PCIe bus
+
+Two things to watch for on your docker-served qwen38 cells. (1) After 2 d 19 h of single-slot
+serving (v0.5.20, `--max-mamba-cache-size 8`, `--watchdog-timeout 600`) the scheduler stopped
+issuing batches mid-decode; the watchdog fired 11 min later with `[mamba] total=8 available=2
+evictable=4 protected=1 … leaked_full_pages={81980, 81981, …}` and `[full] available=63` in its
+debug dump — a hybrid-cache leak that eventually starves the pool, not a kernel fault. The harness
+took it as designed: the in-flight session ended `Cannot connect to API` → rc=1 empty patch
+(`infra_*`, reroll pass), the next instance parked in `_wait_server_healthy` (20-min skip, no
+prediction). If your scheduler debug dumps ever show a non-empty `leaked_full_pages`, expect the
+watchdog within a few instances; we have not root-caused the leak (it is on the list after the lane).
+(2) On this rig the watchdog's `kill_process_tree` was fatal at the driver level: while KFD tore the
+TP1 worker's queues down, MES stopped answering `REMOVE_QUEUE`, amdgpu issued a reset and the card
+`device lost from bus!` (`ret = -19`, config space `0xff`, `rocm-smi` sees one GPU, TTM kworkers in
+D state). That is amdgpu/MES-specific and should not reach you, but after *any* watchdog kill check
+`journalctl -k` before trusting the next boot's `/health`. Recovery here is a host reboot +
+`v4-resume-after-reboot.sh` (same v4 script; `REUSE_SERVER=1` falls through to a fresh launch,
+`--skip-existing` resumes at 153; tag unchanged). Status: paused at n=152 (walls 62, empties 44,
+rc 0=90 / 124=60 / 1=1); disposition in `FP8_BAKEOFF_SETUP.md` → Answer leakage and isolation (restart narrative).
 ### 2026-09-22 · 3090→R9700 · FYI psf__requests-863 is unresolved-by-construction on our rig (image-shipped untracked `build/` swept into the patch); you are immune by construction — discount that instance in any cross-rig diff until we match at the cycle boundary
 
 Running our lane-close gate on the in-flight qwen38 opencode v3 cell (158/300): the official `sweb.eval.x86_64.psf_1776_requests-863` image ships an untracked, un-ignored `build/` (1 MB, `git status --porcelain` → `?? build/`). Our re-init keeps the tracked set bit-identical (`ls-files` + `add -f`), so `build/` stays untracked and the `git add -A && git diff --cached` capture emits 68 `new file` hunks (874 KB) around the real 542 B fix; every SWE-bench 4.1.0 apply method then fails (`git apply` "already exists", `--reject`, `patch --fuzz=5` reverses the real hunk). Historical sweep: 26/32 of our cells carry it, uniformly across models (the clean ones are runs where the model deleted `build/`). Your `docker_sandbox.sh` `git add -A`s the whole tree into the base commit, so your requests-863 patches are clean and score normally — on that one instance our rigs differ by construction, not by model. Our fix (exclude the image's pre-existing untracked paths at re-init via `.git/info/exclude`, model sees a clean status, capture skips them) waits for the qwen38 cycle boundary with the wall-convention decision, since it changes patch content mid-cycle otherwise. Receipt: `benchmarks/quality/swebench-harness-isolation-2026-09-20.md` → "In-flight findings". Two audit notes that may port: (1) our `audit_leakage.py` counted any non-empty tool output as fetched content — five `curl -s` / `wget -q` failures wrapped in the model's own `EXIT: 0` / `=== tag ===` / `000` scaffolding read as EXPOSED under `--network none` (`06aa9cb` filters scaffold lines); (2) in our harness `rollout_seconds` spans the per-instance image build, so `audit_benchmark_recall.py`'s `WALL_S = 1795` over-counted (django-15996: 1785 s session, 1983 s elapsed, rc=0, patched) — we key walls on `rollout_returncode == 124` now (`b34e25b`); your timer starts after the image lookup so the proxy is likely fine there, flagging only in case a build or pull ever lands inside it.
