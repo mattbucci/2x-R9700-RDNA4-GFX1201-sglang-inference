@@ -30,6 +30,15 @@ zcat /proc/config.gz | grep -E 'CONFIG_HSA_AMD_P2P|CONFIG_PCI_P2PDMA'
 grep -o 'iommu=pt' /proc/cmdline
 ```
 
+Since 2026-09-22 the host also boots with `amdgpu.runpm=0` (no BACO runtime suspend of the cards;
+one card fell off the bus during a watchdog teardown after 181 suspend cycles — see
+`evals/swebench/gpu-loss-2026-09-22.json`) and `kernel.yama.ptrace_scope=0` (the SGLang watchdog's
+py-spy rank stacks). Check `/sys/module/amdgpu/parameters/runpm` = 0 and
+`/proc/sys/kernel/yama/ptrace_scope` = 0 after any kernel or bootloader change; the kernel command
+line lives in `/etc/kernel/cmdline` (dracut `kernel-install`) and the existing systemd-boot entries
+under `/efi/loader/entries/`. Keep `scripts/gpu_telemetry.sh` running during multi-day serving so a
+GPU loss has a temperature/power/clock history.
+
 On Arch Linux, use current `pkgctl` tooling rather than retired `asp` workflows. Do not replace distro ROCm or RCCL packages casually; this repository assumes the system ROCm layout under `/opt/rocm`.
 
 ## Safe GPU operation

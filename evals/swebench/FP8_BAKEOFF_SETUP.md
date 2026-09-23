@@ -533,21 +533,29 @@ ROCm workaround for BACO-related losses. Disposition: **single hardware-level ev
 determinable from software**; the server, watchdog and harness all behaved as designed. What changes:
 `scripts/gpu_telemetry.sh` (sysfs/hwmon every 30 s: junction/edge/mem °C, W vs cap, fan, sclk/mclk,
 vddgfx, busy, VRAM, link, and a config-space sentinel that timestamps a loss) is started by the resume
-script so the next event has a history; `kernel.yama.ptrace_scope=0` is the optional root step for
-watchdog stacks; `amdgpu.runpm=0` on the kernel command line is the optional root step that removes
-the BACO variable. If it recurs on the same card: reseat card 2 and its power leads, then swap slots
-to see whether the fault follows the card.
+script so the next event has a history; `kernel.yama.ptrace_scope=0` (`/etc/sysctl.d/99-ptrace-scope.conf`)
+gives the watchdog its py-spy rank stacks; `amdgpu.runpm=0` on the kernel command line (every
+systemd-boot entry on `/efi/loader/entries/` and `/etc/kernel/cmdline` for future kernels; backups
+under `/etc/kernel/`) removes the BACO variable; `RebootWatchdogSec=3min` (`sp5100_tco` is loaded)
+bounds a reboot that hangs in a dead GPU's teardown. All three were applied 2026-09-22 before the
+reboot. If it recurs on the same card: reseat card 2 and its power leads, then swap slots to see
+whether the fault follows the card.
 Instance 152 (`psf__requests-2148`) recorded rc=1 (`Cannot connect to API: The socket connection was
 closed unexpectedly`, empty patch — an `infra_*` cell for the reroll pass); no prediction was written
 for 153. The harness was SIGSTOPped within 3 min (nothing else burned; it was parked in
 `_wait_server_healthy`, whose 20-min skip writes no prediction) and the chain then killed by PID.
 Tally at the stop: n=152, walls 61 (rc=124), empties 44, rc 0=90 / 124=61 / 1=1. Recovery is a host reboot;
 `/data/logs/run-model-cycle-logs/v4-resume-after-reboot.sh` preflights both GPUs (PCI config bytes,
-`rocm-smi` count, the running boot's kernel log), refuses if any old chain / listener / container
-survives, rotates the crash-era `wrapper.log` and `rollout-opencode.log` (both are truncated on
-start), and relaunches the same `v4-cycle-v0520-neutral-cues.sh`: `REUSE_SERVER=1` falls through to
+two `gfx1201` KFD nodes — never a `rocm-smi` row count, the iGPU is a third row — two `rocminfo`
+agents, the running boot's kernel log), refuses if any old chain / listener / container survives,
+rotates the crash-era `wrapper.log` and `rollout-opencode.log` (both are truncated on start), and
+relaunches the same `v4-cycle-v0520-neutral-cues.sh`: `REUSE_SERVER=1` falls through to
 `launch_server` when :23334 is dead and `--skip-existing` resumes at 153, so the methodology is
-unchanged and the tag stays v4 (the eighth start is a resume, not a restart). The new server's log
+unchanged and the tag stays v4 (the eighth start is a resume, not a restart). It runs on boot from
+`v4-resume-once.service` (system unit, `User=letsrtfm`, `EnvironmentFile` `v4-resume.env` carrying the
+interactive `HF_HOME`/`TRITON_CACHE_DIR`/`PATH` so the Triton cache stays warm, `--wait` polls up to
+5 min for the cards and docker, one attempt per `v4-resume-armed` marker, output in
+`v4-resume-after-reboot.log`); the unit was live-tested against the dead card before the reboot. The new server's log
 goes to `qwen38-v4/server.log`; the dead one's is `qwen38-v3/server.log`.
 
 ## Scoring
