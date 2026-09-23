@@ -511,16 +511,32 @@ v4; the reused server had been up 2 d 19 h): a graphed decode step stalled mid-r
 `Decode batch` at 14:55:59: 1 request at 28,185 tokens, steady 21.5 tok/s, `full token usage 0.05`,
 `mamba usage 0.25`, no queue — the pools were nowhere near full) and the 600 s watchdog fired at
 15:07:17 (`Scheduler watchdog timeout`; its dump also lists `[mamba] … leaked_full_pages={81980,
-81981, …}`, which is not the cause — a GPU-side stall on the TP1 card is: the kernel logged nothing
-in the 11 silent minutes, as expected for a hung KFD user-mode compute queue, and at teardown that
-card's MES was already unresponsive). The watchdog's py-spy dumps failed (Yama `ptrace_scope=1`
-blocks the attach, so the dumps never show where the ranks sat). SIGQUIT at 15:07:22,
-`kill_process_tree` at 15:08:28. While KFD tore the TP1 worker's queues down, GPU `0000:07:00.0` fell
-off the PCIe bus (kernel from
-15:08:30, one round per queue: `MES(0) failed to respond to msg=REMOVE_QUEUE` → `MES might be in
-unrecoverable state, issue a GPU reset` → `GPU reset begin` → `device lost from bus!` → `GPU reset
-end with ret = -19`; afterwards PCI config space reads `0xff`, `rocm-smi` enumerates one GPU, 30.9 GiB
-stays "used" in sysfs, and `kworker/u100:*+ttm` threads sit in D state on `dma_fence_default_wait`).
+81981, …}`, which is not the cause — the pools were at 5 % / 25 %). The watchdog's py-spy dumps
+failed (Yama `ptrace_scope=1` refuses the attach, so no rank stacks exist). SIGQUIT at 15:07:22,
+`kill_process_tree` at 15:08:28, and the first driver access after the stall (15:08:30, KFD evicting
+the TP1 worker's queues) found GPU `0000:07:00.0` already gone: `MES(0) failed to respond to
+msg=REMOVE_QUEUE` → `GPU reset begin` → `device lost from bus!` → `ret = -19`, once per queue, then
+`SMU: bus error … response:0xFFFFFFFF` for every later message. Investigation (receipt
+[`gpu-loss-2026-09-22.json`](gpu-loss-2026-09-22.json)): the card's on-die PCIe switch **upstream
+port `05:00.0` still answers** and holds the host link at 16 GT/s x8, while the downstream port
+`06:00.0`, the GPU function and the audio function read `0xffffffff` — the ASIC went dark behind its
+own PCIe PHY, which is not a slot/riser link drop. Nothing preceded it: zero AER correctable or fatal
+errors on either GPU chain since boot (65 days, 4 recorded boots, no earlier device loss), no
+thermal / RAS-ECC / SMU / MES line before 15:08:30, no host-journal event at 14:56, and the server's
+own 2 d 19 h log has no warning and no mid-decode gap (every >45 s gap is idle time before a
+`Prefill batch`). The stall itself was steady bs=1 graphed decode — not a power-spike phase. The one
+unusual variable the box carries is runtime PM: `amdgpu.runpm=-1` has put each card through 181
+BACO suspend/resume cycles this boot (every server boot after idle is an SMU/PSP resume).
+Community reports with this exact signature (RX 7900 GRE: fixed by reseating; RX 9070 XT: traced to
+the board, mitigated by undervolting) are all hardware/electrical; `amdgpu.runpm=0` is the standard
+ROCm workaround for BACO-related losses. Disposition: **single hardware-level event, cause not
+determinable from software**; the server, watchdog and harness all behaved as designed. What changes:
+`scripts/gpu_telemetry.sh` (sysfs/hwmon every 30 s: junction/edge/mem °C, W vs cap, fan, sclk/mclk,
+vddgfx, busy, VRAM, link, and a config-space sentinel that timestamps a loss) is started by the resume
+script so the next event has a history; `kernel.yama.ptrace_scope=0` is the optional root step for
+watchdog stacks; `amdgpu.runpm=0` on the kernel command line is the optional root step that removes
+the BACO variable. If it recurs on the same card: reseat card 2 and its power leads, then swap slots
+to see whether the fault follows the card.
 Instance 152 (`psf__requests-2148`) recorded rc=1 (`Cannot connect to API: The socket connection was
 closed unexpectedly`, empty patch — an `infra_*` cell for the reroll pass); no prediction was written
 for 153. The harness was SIGSTOPped within 3 min (nothing else burned; it was parked in

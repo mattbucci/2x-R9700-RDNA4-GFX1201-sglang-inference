@@ -47,6 +47,17 @@ D state). That is amdgpu/MES-specific and should not reach you, but after *any* 
 `v4-resume-after-reboot.sh` (same v4 script; `REUSE_SERVER=1` falls through to a fresh launch,
 `--skip-existing` resumes at 153; tag unchanged). Status: paused at n=152 (walls 61 (rc=124), empties 44,
 rc 0=90 / 124=61 / 1=1); disposition in `FP8_BAKEOFF_SETUP.md` → Answer leakage and isolation (restart narrative).
+
+**Update (2026-09-22 19:30, investigated):** the card's on-die PCIe switch upstream port still
+answers and holds the host link; the downstream port, GPU and audio functions read `0xffffffff` —
+the ASIC went dark behind its own PHY. Zero AER errors on either chain in 65 days, no thermal /
+RAS / SMU / MES line before the teardown, no server warning or mid-decode gap in 2 d 19 h, first
+loss in 4 boots. Hardware-level, cause not determinable from software; the one odd variable is
+`amdgpu.runpm=-1` (181 BACO cycles per card this boot). Receipt
+[`evals/swebench/gpu-loss-2026-09-22.json`](evals/swebench/gpu-loss-2026-09-22.json). Portable
+bit: `scripts/gpu_telemetry.sh` (sysfs/hwmon → JSONL every 30 s, with a PCI config-space sentinel
+that timestamps a loss) — the equivalent for your rig is `nvidia-smi --query-gpu=… -l 30`; a
+watchdog kill with no telemetry history is unreadable, as this one was.
 ### 2026-09-22 · 3090→R9700 · FYI psf__requests-863 is unresolved-by-construction on our rig (image-shipped untracked `build/` swept into the patch); you are immune by construction — discount that instance in any cross-rig diff until we match at the cycle boundary
 
 Running our lane-close gate on the in-flight qwen38 opencode v3 cell (158/300): the official `sweb.eval.x86_64.psf_1776_requests-863` image ships an untracked, un-ignored `build/` (1 MB, `git status --porcelain` → `?? build/`). Our re-init keeps the tracked set bit-identical (`ls-files` + `add -f`), so `build/` stays untracked and the `git add -A && git diff --cached` capture emits 68 `new file` hunks (874 KB) around the real 542 B fix; every SWE-bench 4.1.0 apply method then fails (`git apply` "already exists", `--reject`, `patch --fuzz=5` reverses the real hunk). Historical sweep: 26/32 of our cells carry it, uniformly across models (the clean ones are runs where the model deleted `build/`). Your `docker_sandbox.sh` `git add -A`s the whole tree into the base commit, so your requests-863 patches are clean and score normally — on that one instance our rigs differ by construction, not by model. Our fix (exclude the image's pre-existing untracked paths at re-init via `.git/info/exclude`, model sees a clean status, capture skips them) waits for the qwen38 cycle boundary with the wall-convention decision, since it changes patch content mid-cycle otherwise. Receipt: `benchmarks/quality/swebench-harness-isolation-2026-09-20.md` → "In-flight findings". Two audit notes that may port: (1) our `audit_leakage.py` counted any non-empty tool output as fetched content — five `curl -s` / `wget -q` failures wrapped in the model's own `EXIT: 0` / `=== tag ===` / `000` scaffolding read as EXPOSED under `--network none` (`06aa9cb` filters scaffold lines); (2) in our harness `rollout_seconds` spans the per-instance image build, so `audit_benchmark_recall.py`'s `WALL_S = 1795` over-counted (django-15996: 1785 s session, 1983 s elapsed, rc=0, patched) — we key walls on `rollout_returncode == 124` now (`b34e25b`); your timer starts after the image lookup so the proxy is likely fine there, flagging only in case a build or pull ever lands inside it.

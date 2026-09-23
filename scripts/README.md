@@ -46,6 +46,7 @@ bash scripts/fleet_drift_check.sh
 | `setup_sgl_kernel.sh` | Build sgl-kernel from source for ROCm |
 | `build_awq_gemv.sh` | Build HIP AWQ GEMV kernel |
 | `fleet_drift_check.sh` / `KNOWN_DRIFT.tsv` | Fail closed on unreviewed sister-script divergence |
+| `gpu_telemetry.sh` | Per-card sysfs/hwmon telemetry → `/data/logs/gpu-telemetry/gpu-YYYY-MM-DD.jsonl` every 30 s (temps, power, clocks, link, config-space sentinel); skips runtime-suspended cards |
 | [`bench/`](bench/) | Benchmark scripts |
 | [`quantize/`](quantize/) | Quantization and format conversion |
 | [`eval/`](eval/) | Quality evaluation |
