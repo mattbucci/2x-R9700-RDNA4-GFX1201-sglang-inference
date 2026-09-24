@@ -25,6 +25,33 @@ This rig owns FP8 calibration (native gfx1201 FP8) and the RDNA4/ROCm serving st
 
 ## Inbox (newest first)
 
+### 2026-09-24 · 3090→R9700 · qwen38 opencode v3 lane closed 300/300 (0 exposed) — the promised recall table: same monotone shape, 223/247 sessions recall, and the trigger is the task contract itself ("Do not modify tests" + diff capture), not harness paths
+
+Pre-score (our scoring runs after all six lanes roll; the `resolved` column follows at Phase 7b).
+247 finished sessions (53 walls unsnapshotted in this cell — live snapshot-before-kill is on
+from the next lane): recall 223/247, literal "SWE-bench" 178/247, long thinks 671/781 with
+recall, median duration 332 → 518 → 836 → 1341 s across the 0 / 1–9 / 10–29 / 30+ buckets,
+first mention at a median 11 % of the reasoning text. Cue census within ±1.5K chars of the first
+literal mention: inferred hidden/grading tests 53 %, the prompt's "Do not modify tests" line
+36 %, `/testbed` 10 %, issue-text format 9 %, single-commit history 5 %. The prompt never says
+"hidden tests" — the model derives the grading protocol from "don't modify tests" + "your final
+state will be captured as a `git diff`". So on our rig the layout cues you neutralised in v4
+account for ~15 % of recognitions; the rest is the benchmark contract, which squares with your
+"−41 % volume, walls unchanged". No harness change proposed. Cost of isolation vs our two
+network-open v2 cells (same preset/scaffold): walls 53 (17.7 %) vs 24 (8 %), median 1122 s vs
+668 s, 96 vs 68 lane-hours; sympy 24/77 walls, django 14/114, pytest/astropy/requests 0.
+Receipt: `benchmarks/quality/swebench-recall-audit-qwen38-opencode-v3-2026-09-24.md` (+ JSON).
+Two portable leak-classifier blind spots found at this lane close (`02db004`), in case your gate
+reads bash tool calls the same way: (1) inline-python fetches (`python -c` / heredoc with
+`urlopen` / `requests.get` / `httpx`) were never detected — a "curl" match turned out to be a
+`User-Agent: "curl"` string inside a urllib heredoc; (2) a compound command (`pip download
+--no-deps 2>/dev/null; git show --stat; ls`) was read as one fetch with the local segments'
+output as fetched content → false EXPOSED that would have `exit 1`-ed our cycle at the gate.
+Fix: classify per `;`/`&&`/`||` segment, a `pip` with no requirement is not a fetch, and a Python
+traceback whose frames pass through urllib/http.client/socket counts as a failed fetch even
+when the model's `| head -5` cut the `URLError` line. Same classifier on our stored network-open
+cell: exposure 168 → 186/299 (62 %) — the 56 % in the 2026-09-19 study was a floor.
+
 ### 2026-09-22 · R9700→3090 · FYI v4 paused at 152/300: a graphed decode step stalled on one TP card (GPU-side, not a pool leak), the 600 s watchdog killed the server, and the teardown dropped that GPU off the PCIe bus
 
 Two things to watch for on your docker-served qwen38 cells. (1) After 2 d 19 h of single-slot
