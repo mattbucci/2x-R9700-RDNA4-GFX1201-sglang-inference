@@ -557,6 +557,18 @@ interactive `HF_HOME`/`TRITON_CACHE_DIR`/`PATH` so the Triton cache stays warm, 
 5 min for the cards and docker, one attempt per `v4-resume-armed` marker, output in
 `v4-resume-after-reboot.log`); the unit was live-tested against the dead card before the reboot. The new server's log
 goes to `qwen38-v4/server.log`; the dead one's is `qwen38-v3/server.log`.
+Resume receipt (read 2026-09-26): the unit's first attempt on the pre-reboot boot failed its preflight
+as designed (`GPU 0000:07:00.0 not responding on PCI (config bytes='ffff')`); on the new boot it fired at
+22:06:27 (66 s uptime), passed preflight, started the telemetry logger, and relaunched the chain with
+`preds so far: 152`. The new server (`--watchdog-timeout 600`, graphs on) has served the lane since with
+no watchdog, fault or error line, both cards hold `32.0 GT/s PCIe x16` under load, and no fallback
+marker appears in either rollout log. The opencode lane finished 300/300 at 2026-09-25 01:53 (rc=0);
+its post-resume half matches the pre-reboot half — pre n=152 walls 61 (40 %) empties 44 (29 %), post
+n=148 walls 63 (43 %) empties 43 (29 %); lane total walls 124 (41 %), empties 87 (29 %), mean 1245 s
+per instance — so the resume carried no methodology shift and the v4 tag stands. The opencode-dcp
+lane started the same minute and was at 67/300 (walls 34, empties 24, mean 1358 s) at the read;
+the audits (`audit_predictions.py`, `audit_benchmark_recall.py`, `audit_git_peek.py`) have not yet
+been run on either v4 lane and belong before any number is read.
 
 ## Scoring
 

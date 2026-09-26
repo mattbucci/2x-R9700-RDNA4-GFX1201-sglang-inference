@@ -21,10 +21,12 @@ new quality flagship Qwen3.8-27B-FP8.
   decode from 24 to 197K input on the repaired RDNA4 block-FP8 dispatch (patch 005) with HIP graphs
   (v0.5.20 canonical sweep, 2026-09-19; 16.6 flat before graphs). Its
   seven-scaffold SWE-bench Lite bakeoff (300 instances per cell, Docker-scored) restarted as
-  **v4, sandboxed and cue-neutral** (since 2026-09-20 on the v0.5.20 graphs-on stack; paused
-  2026-09-22 at 152/300 of the opencode lane after a scheduler-watchdog kill dropped GPU 07:00.0
-  off the PCIe bus — the host was rebooted 2026-09-22 ~22:10 with `amdgpu.runpm=0` and
-  `ptrace_scope=0` and the lane auto-resumes at 153 under the same tag; every
+  **v4, sandboxed and cue-neutral** (since 2026-09-20 on the v0.5.20 graphs-on stack; interrupted
+  2026-09-22 at 152/300 of the opencode lane when a scheduler-watchdog kill dropped GPU 07:00.0
+  off the PCIe bus, rebooted the same evening with `amdgpu.runpm=0` and `ptrace_scope=0`, and
+  auto-resumed at 153 under the same tag by `v4-resume-once.service` — the opencode lane
+  completed 300/300 on 2026-09-25 with the post-resume half matching the pre-reboot half
+  (walls 43 % vs 40 %, empties 29 % vs 29 %); the opencode-dcp lane is running; every
   scaffold inside the official per-instance SWE-bench image with no network and no benchmark
   identifiers in its view of the container): the v2 lanes had let the agents read
   the upstream fix through future git history and the web on 45–61% of instances, so v2 is
@@ -120,17 +122,16 @@ SGLang, the tree re-initialised to a single commit at an opaque `/work/repo-<has
 
 Ordered by what runs next. Specs with an ID live in [`experiments/`](experiments/README.md).
 
-1. **Verify the post-reboot auto-resume, then run the Qwen3.8 seven-scaffold bakeoff v4 to completion**
-   (started 2026-09-20 11:10 after the five complete v2 lanes were Docker-scored, paused 2026-09-22
-   at 152/300 with GPU 07:00.0 lost from the bus after a scheduler-watchdog kill — hardware-level,
-   investigated in `FP8_BAKEOFF_SETUP.md` → Answer leakage and isolation (restart narrative). The
-   host was rebooted the same evening with `amdgpu.runpm=0`, `kernel.yama.ptrace_scope=0` and
-   `RebootWatchdogSec=3min` applied, and `v4-resume-once.service` relaunches the same chain at
-   [153/300] on boot; first thing next session: `systemctl status v4-resume-once`,
-   `/data/logs/run-model-cycle-logs/v4-resume-after-reboot.log`, `/proc/cmdline` has
-   `amdgpu.runpm=0`, both GPUs enumerate, `scripts/gpu_telemetry.sh` is logging, and
-   `qwen38-v4/rollout-opencode.log` is past `[153/300]`. If the loss recurs on 07:00.0: reseat
-   card 2 and its power leads, then swap slots. ~4.25 days per lane at 21 min/instance): every
+1. **Run the Qwen3.8 seven-scaffold bakeoff v4 to completion** (started 2026-09-20 11:10 after
+   the five complete v2 lanes were Docker-scored, interrupted 2026-09-22 at 152/300 with GPU 07:00.0
+   lost from the bus after a scheduler-watchdog kill — hardware-level, investigated in
+   `FP8_BAKEOFF_SETUP.md` → Answer leakage and isolation (restart narrative). The host was rebooted
+   the same evening with `amdgpu.runpm=0`, `kernel.yama.ptrace_scope=0` and `RebootWatchdogSec=3min`
+   applied; `v4-resume-once.service` relaunched the same chain at [153/300] on boot and the resume
+   was verified 2026-09-26 (unit active/exited, both cards enumerate at 32 GT/s x16, telemetry
+   logging, opencode lane 300/300 at 2026-09-25 01:53, opencode-dcp lane in progress). If the loss
+   recurs on 07:00.0: reseat card 2 and its power leads, then swap slots. ~4.25 days per lane at
+   21 min/instance): every
    scaffold inside the official per-instance SWE-bench image (`run_rollouts.py --docker`: the
    image's testbed env, no network except the SGLang bridge, git re-initialised to one commit;
    the four earlier v3 starts on host venvs + bubblewrap are archived, not scored), both
