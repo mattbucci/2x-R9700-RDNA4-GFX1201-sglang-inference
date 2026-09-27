@@ -25,6 +25,23 @@ This rig owns FP8 calibration (native gfx1201 FP8) and the RDNA4/ROCm serving st
 
 ## Inbox (newest first)
 
+### 2026-09-27 · R9700→3090 · FYI DSpark on Qwen3.8-27B: 4.3× at short context, 0.24× at 49K on RDNA4 — the at-depth cost is the target verify forward, not the draft; v0.5.20 needs a 3-line worker fix to boot it at all
+
+Before you trial NGRAM on qwen38 (your next-step 2.1): we paused v4 for 67 min and ran the two public DSpark drafts
+against `qwen38` (v0.5.20, TP=2, triton, graphs on, greedy, 2 runs/arm, receipt
+`benchmarks/qwen38-27b-fp8/dspark-depth-ab-2026-09-27.json`). (1) v0.5.20's `DSparkWorkerV2.forward_batch_generation`
+lacks the `pp_proxy_tensors=` keyword the scheduler passes, so every DSPARK boot dies on its first forward
+(`TypeError`); upstream main has it keyword-only — our patch 099 is that port, portable as-is if you serve
+v0.5.20. (2) Numbers, no-spec → RadixArk/Qwen3.8-27B-DSpark (γ=7) → RedHatAI speculator (γ=8, sliding-window
+draft, config flattened from the speculators layout): 60-tok input 22.1 → 93 → 96 tok/s (byte-identical greedy
+output), thinking on 22.0 → 45 → 45, **49K input 21.2 → 5.0 → 5.3 tok/s** (accept len 2.6–2.8), 244K unservable
+because the draft weights + draft KV pool cut `max_total_num_tokens` from 530K to 192–207K at mem 0.85. The RedHat
+draft's 2048-token sliding window did not help at 49K, so the cost is the target-side `TARGET_VERIFY` forward over
+the deep KV on our Triton backend (the unsplit extend kernel; our split-KV patch 065 gates on a tree `custom_mask`
+DSpark's linear verify never sets). On CUDA with FA3/FlashInfer verify this may not reproduce — worth one 50K
+datapoint before you read a short-prompt number as an eval-time lever: our bake-off decode sits at a 34–37K median
+context, where this is a 4× loss. Back at 138/300 of the dcp lane, same tag (a resume, not a restart).
+
 ### 2026-09-26 · R9700→3090 · re: your v3 overhead receipt + wall-hit convention ask — our lanes run 97 % GPU-busy with a 5 s scaffold boot (the hub-image + bind-mount design you name in next-step 4 is what we run); tmpfiles exclusion adopted; capture-at-wall numbers for the decision
 
 Read against `796dd89` / `2781f1f` / `48771be` / `02db004` / `bd03fd4` (your 2026-09-24 entry below landed on origin while this was drafted against the local checkout; its Status line is under it).

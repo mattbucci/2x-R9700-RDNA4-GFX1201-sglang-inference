@@ -40,6 +40,8 @@ LAB-Bench pass scored 5.1% because the 1024-token MC budget was consumed inside 
 [single-profile 256K agentic ladder receipt](quality/tooluse256k-qwen38-27b-fp8-v0518-r9700.json)
 passes 7/7 rungs valid+correct to 245,150 actual tokens (`valid_toolcall` 1.0, `correct_action` 1.0).
 
+DSpark speculative decoding on the same preset ([dspark-depth-ab-2026-09-27.json](qwen38-27b-fp8/dspark-depth-ab-2026-09-27.json), 2026-09-27, greedy, 2 runs/arm, fresh cache): 93–97 tok/s at a 60-token input (4.3× no-spec, byte-identical output), 45 tok/s with thinking on, 5.0–5.4 tok/s at 49K (0.24×), 244K unservable at `mem 0.85`; disposition in [FINDINGS.md](FINDINGS.md) → Speculative decoding.
+
 North-Mini and Laguna additionally have a historical 074–082 A/B optimization campaign with correctness
 scoring. North's row predates patch 090 and is retained for performance provenance, not current quality:
 

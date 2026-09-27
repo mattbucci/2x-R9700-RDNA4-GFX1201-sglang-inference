@@ -13,13 +13,13 @@ Tooling files that support REAM/REAP are not counted as patches. Upstream contri
 
 ## SGLang series
 
-Apply the 70 numeric patches in filename order to pristine SGLang v0.5.20. Patch 072 was removed because
+Apply the 71 numeric patches in filename order to pristine SGLang v0.5.20. Patch 072 was removed because
 transformers 5.12.1 provides the Gemma 4 unified configuration and processor natively. Patch 083 replaces
 that count with the Mistral tokenizer-backend correction required by Devstral and Devstral 2. On the
 v0.5.16 rebase, patch 059 was dropped because its FuseEP dispatcher target was removed upstream, and patch
 097 (JIT fused-gate None-bias guard) was added. The v0.5.18 rebase went to 70 (26 patches
 regenerated for upstream's kernel-tree relocation; the upstreamed max-head sizing was dropped from 077; 098 added
-for the native Gemma4Unified config). The v0.5.20 rebase stayed at 70 (23 regenerated for the msgspec-record
+for the native Gemma4Unified config). Patch 099 (2026-09-27) accepts the scheduler's `pp_proxy_tensors=` keyword in the DSpark worker (upstream main carries the same fix; without it every DSPARK boot dies on the first forward). The v0.5.20 rebase stayed at 70 (23 regenerated for the msgspec-record
 `ServerArgs` and upstream's gfx1250 branches; upstreamed hunks dropped from 011/049/074/096).
 v0.5.20 is the newest upstream release as of 2026-09-19 (`main` is not tracked; the next rebase targets the
 v0.5.21 tag when it is published).
