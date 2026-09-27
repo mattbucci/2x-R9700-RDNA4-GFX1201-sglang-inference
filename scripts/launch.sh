@@ -562,6 +562,33 @@ PYEOF
             CUDA_GRAPH=""
             EXTRA_ARGS="${EXTRA_ARGS:-} --cuda-graph-max-bs-decode 1"
             MAMBA_CACHE="--max-mamba-cache-size 8"
+            # DSpark speculative decoding is the qwen38 default since 2026-09-27:
+            # RedHatAI/Qwen3.8-27B-speculator.dspark (gamma 8, sliding-window
+            # draft) converted to the SGLang flat layout by
+            # scripts/convert_dspark_speculators_config.py, served through the
+            # split-KV verify kernel (patch 100; patch 099 lets DSPARK boot).
+            # Same-server ladder vs no-spec: 60-tok 80 vs 22 tok/s, thinking 60
+            # vs 22, 49K 32 vs 21, 150K 25 vs 20; validate_capabilities 5/5.
+            # Canonical sweep on this preset (decode_ab, 3-run, think-off,
+            # 2026-09-27): 35.5 / 44.5 / 31.6 / 31.9 tok/s at 24 / 7.3K / 58K /
+            # 197K input vs 22.5 / 22.2 / 21.4 / 20.0 no-spec; thinking on
+            # 34.5 @64 tok, 45.6 @58K. Memory: the draft weights + draft KV
+            # pool shrink the target pool (530K -> 239K tokens @mem0.88), and
+            # the aux-hidden-state capture for the 8 draft input layers adds a
+            # ~80 KB/token prefill transient, so mem 0.90 OOMs in decode and
+            # mem 0.88 OOMs a 58K prefill at chunk 8192 — 0.88 + chunk 4096 is
+            # the validated pair (serves the 197K canonical point; the evals'
+            # prefills are 97% cache hits, so the chunk size costs them nothing).
+            # QWEN38_SPEC=0 restores the no-spec server (mem 0.85, chunk 8192,
+            # 530K pool) for true 256K work. Receipts:
+            # benchmarks/qwen38-27b-fp8/dspark-*.json, results.json.
+            if [[ "${QWEN38_SPEC:-1}" != "0" ]]; then
+                QWEN38_DRAFT="${QWEN38_DRAFT:-/data/models/Qwen3.8-27B-speculator.dspark-sgl}"
+                [[ -f "$QWEN38_DRAFT/config.json" ]] || { echo "[launch] qwen38: DSpark draft not found at $QWEN38_DRAFT (QWEN38_SPEC=0 for no-spec)" >&2; exit 1; }
+                EXTRA_ARGS="${EXTRA_ARGS:-} --speculative-algorithm DSPARK --speculative-draft-model-path $QWEN38_DRAFT"
+                MEM="${QWEN38_SPEC_MEM:-0.88}"
+                CHUNKED="${QWEN38_SPEC_CHUNKED:-4096}"
+            fi
             # Devrole remap template (ship template + developer->system remap
             # preamble, same technique as qwen36-27b): pi/little-coder and the
             # swebench scaffolds send a `developer` role the stock template

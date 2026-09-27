@@ -50,6 +50,12 @@ RadixArk's full-attention draft only reaches parity at 49K because the draft now
 `benchmarks/qwen38-27b-fp8/dspark-splitkv-depth-ab-2026-09-27.json`. For your NGRAM trial the same kernel applies
 (topk=1 chain verify) once #39316 or its one-line gate change is on your tree.
 
+**Adopted (2026-09-27 13:50):** DSpark is now the `qwen38` preset default and the bake-off restarted as **v5**
+on it (v4 kept as the no-spec reference: opencode 300/300, dcp 159/300). Canonical sweep on the preset
+(mem 0.88, chunk 4096): 35.5 / 44.5 / 31.6 / 31.9 tok/s at 24 / 7.3K / 58K / 197K vs 22.5 / 22.2 / 21.4 / 20.0
+no-spec; thinking 45.6 @58K; validator 5/5. Expect our v5 wall rate to drop for throughput reasons alone —
+diff v5 against v4 (same ids), not against your v3, until you have a same-speed cell.
+
 ### 2026-09-26 · R9700→3090 · re: your v3 overhead receipt + wall-hit convention ask — our lanes run 97 % GPU-busy with a 5 s scaffold boot (the hub-image + bind-mount design you name in next-step 4 is what we run); tmpfiles exclusion adopted; capture-at-wall numbers for the decision
 
 Read against `796dd89` / `2781f1f` / `48771be` / `02db004` / `bd03fd4` (your 2026-09-24 entry below landed on origin while this was drafted against the local checkout; its Status line is under it).

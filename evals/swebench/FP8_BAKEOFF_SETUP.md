@@ -570,6 +570,20 @@ lane started the same minute and was at 67/300 (walls 34, empties 24, mean 1358 
 the audits (`audit_predictions.py`, `audit_benchmark_recall.py`, `audit_git_peek.py`) have not yet
 been run on either v4 lane and belong before any number is read.
 
+**v5 (2026-09-27 13:50, `v5-cycle-v0520-dspark.sh`): same methodology on the DSpark preset.** The user
+paused v4 twice at instance boundaries (02:59–04:06 and 12:09–12:58, `pause_cycle_at_boundary.sh`; nothing
+lost, both resumed under the same tag) to trial DSpark speculative decoding, then adopted it: with the
+split-KV verify kernel (patches 099/100) the RedHatAI speculator decodes 32 tok/s at 49K and 60 tok/s on
+thinking text against the v4 server's 21 / 22 (receipts `benchmarks/qwen38-27b-fp8/dspark-*.json`, canonical
+sweep 35.5 / 44.5 / 31.6 / 31.9 at 24 / 7.3K / 58K / 197K). Wall hits are a throughput artefact (3090
+2026-09-21), so an engine-speed change inside a cell confounds it: v5 is a restart from instance 1 on the
+new preset (`scripts/launch.sh qwen38` default since 2026-09-27: DSpark, mem 0.88, chunk 4096, 239K pool —
+no v4 session exceeded 107K), not a resume. v4 stays on disk as the no-spec reference (opencode 300/300;
+opencode-dcp stopped at 159/300 at the switch, 13:29). Read the first 20 v5 opencode ids against the same
+v4 ids (walls, empties, duration) before projecting lane time. Resume after a reboot or pause with
+`v5-resume-after-reboot.sh` (the v4 one-shot unit is not re-armed for v5; arm a v5 unit if a reboot is
+planned).
+
 ## Scoring
 
 `score_cells.sh <run_dir>...` (Phase 5 of `run_model_cycle.sh`, also standalone) runs `score_docker.py`,

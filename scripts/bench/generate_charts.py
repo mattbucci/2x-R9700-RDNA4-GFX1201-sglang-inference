@@ -195,7 +195,10 @@ MODELS = {
     "north-mini":               {"label": "North-Mini-Code FP8 (cohere2_moe)", "color": "#ff7b72"},
     "laguna-xs2":               {"label": "Laguna XS.2 FP8 (MoE)",            "color": "#ffa657"},
     "glm45-air-awq":            {"label": "GLM-4.5-Air-REAP AWQ (glm4_moe)",   "color": "#a371f7"},
-    "qwen38-27b-fp8":           {"label": "Qwen3.8-27B FP8 (Dense DeltaNet VL)", "color": "#f85149"},
+    "qwen38-27b-fp8":           {"label": "Qwen3.8-27B FP8 + DSpark (Dense DeltaNet VL)", "color": "#f85149"},
+    # The no-spec qwen38 server (QWEN38_SPEC=0; 530K-token pool, true 256K) kept as the
+    # reference curve since DSpark became the preset default on 2026-09-27.
+    "qwen38-27b-fp8-nospec":    {"label": "Qwen3.8-27B FP8 no-spec (reference)", "color": "#da3633"},
 }
 
 # (no current models have OOM concurrency levels)
@@ -1186,6 +1189,7 @@ def make_specdecode_chart():
     models = sorted(data["models"], key=lambda m: (order.get(m["status"], 3), -(m.get("spec_toks") or 0)))
     COL = {"working": "#3fb950", "untested": "#d29922", "blocked": "#6e7681"}
     DEPTH_COL = "#f85149"   # red — at-256K-depth collapse
+    HOLD_COL = "#e6edf3"    # white — holds at the measured depth (qwen38 DSpark)
     maxtok = max((m.get("spec_toks") or 0) for m in models) or 100.0
     y = list(range(len(models)))[::-1]   # first (best) model at top
 
@@ -1203,9 +1207,11 @@ def make_specdecode_chart():
                     f'{tok:.0f} t/s · {m["speedup"]:g}× · {m["draft"]} · {ctx}',
                     va="center", fontsize=8, color=COL["working"], fontweight="bold", clip_on=True)
             ad = m.get("at_depth")
-            if ad is not None:   # measured at true 256K — show the collapse in red on the bar
-                ax.text(tok - maxtok * 0.02, yi, f'→{ad:g} @256K',
-                        va="center", ha="right", fontsize=7.5, color=DEPTH_COL,
+            if ad is not None:   # measured at true depth: red = collapse, white = holds
+                holds = bool(m.get("holds"))
+                ax.text(tok - maxtok * 0.02, yi, f'→{ad:g} {m.get("depth_label", "@256K")}',
+                        va="center", ha="right", fontsize=7.5,
+                        color=(HOLD_COL if holds else DEPTH_COL),
                         fontweight="bold", zorder=6, clip_on=True)
         else:
             label = m.get("short") or (m.get("reason", "")[:80] + "…")
@@ -1213,7 +1219,7 @@ def make_specdecode_chart():
                     va="center", fontsize=8, color=COL[st], style="italic", clip_on=True)
     ax.set_yticks(y)
     ax.set_yticklabels([f'{m["name"]}\n{m["kind"]}' for m in models], fontsize=8)
-    ax.set_xlabel("SHORT-DEPTH decode tok/s (≤~32–64K)  ·  red →N = measured at TRUE 256K depth (collapse)  ·  TP=2",
+    ax.set_xlabel("SHORT-DEPTH decode tok/s (≤~32–64K)  ·  →N = measured at true depth (red = collapse, white = holds)  ·  TP=2",
                   fontsize=9)
     ax.set_xlim(0, XMAX)
     ax.set_title(data["title"], fontsize=12.5, fontweight="bold", pad=10)
@@ -1221,6 +1227,7 @@ def make_specdecode_chart():
     n = {s: sum(1 for m in models if m["status"] == s) for s in ("working", "untested", "blocked")}
     handles = [Patch(color=COL[s], label=f"{s} ({n[s]})") for s in ("working", "untested", "blocked")]
     handles.append(Patch(color=DEPTH_COL, label="at true 256K (collapse)"))
+    handles.append(Patch(color=HOLD_COL, label="at depth (holds)"))
     ax.legend(handles=handles, loc="lower right", framealpha=0.6,
               edgecolor="#30363d", facecolor="#161b22", fontsize=9)
     fig.suptitle(data["subtitle"], fontsize=9, y=0.965, color="#8b949e")

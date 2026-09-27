@@ -17,16 +17,16 @@ new quality flagship Qwen3.8-27B-FP8.
   on the native Triton block-FP8 lane (36.8–47.8% over dequant-to-BF16), with a 21/21 seed-rung 256K
   agentic ladder. North-Mini Code passes the same ladder 21/21 to 245,172 actual tokens.
 - **Qwen3.8-27B-FP8 is the quality flagship**: fleet-best LAB-Bench 42.3% (no-think multiple choice),
-  MMLU 84.2%, HumanEval 93.3%, 7/7 agentic rungs to 245,150 actual tokens, and 22.5 → 20.0 tok/s
-  decode from 24 to 197K input on the repaired RDNA4 block-FP8 dispatch (patch 005) with HIP graphs
-  (v0.5.20 canonical sweep, 2026-09-19; 16.6 flat before graphs). Its
-  seven-scaffold SWE-bench Lite bakeoff (300 instances per cell, Docker-scored) restarted as
-  **v4, sandboxed and cue-neutral** (since 2026-09-20 on the v0.5.20 graphs-on stack; interrupted
-  2026-09-22 at 152/300 of the opencode lane when a scheduler-watchdog kill dropped GPU 07:00.0
-  off the PCIe bus, rebooted the same evening with `amdgpu.runpm=0` and `ptrace_scope=0`, and
-  auto-resumed at 153 under the same tag by `v4-resume-once.service` — the opencode lane
-  completed 300/300 on 2026-09-25 with the post-resume half matching the pre-reboot half
-  (walls 43 % vs 40 %, empties 29 % vs 29 %); the opencode-dcp lane is running; every
+  MMLU 84.2%, HumanEval 93.3%, 7/7 agentic rungs to 245,150 actual tokens, and — since 2026-09-27
+  on the **DSpark speculative preset** (RedHatAI speculator through the split-KV verify kernel,
+  patches 099/100) — **35.5 / 44.5 / 31.6 / 31.9 tok/s decode at 24 / 7.3K / 58K / 197K input**
+  (canonical 3-run sweep) against 22.5 / 22.2 / 21.4 / 20.0 on the no-spec server (`QWEN38_SPEC=0`,
+  which keeps the 530K-token pool for true 256K work; the DSpark pool is 239K), 45.6 tok/s on
+  thinking text at 58K, capability probe 5/5. Its seven-scaffold SWE-bench Lite bakeoff (300
+  instances per cell, Docker-scored) is restarting as **v5** on that preset (2026-09-27; the v4
+  matrix on the no-spec server — opencode 300/300, opencode-dcp 159/300 — stays on disk as the
+  no-spec reference cell; v4 was itself the sandboxed, cue-neutral restart of 2026-09-20 that
+  survived a GPU-loss reboot and auto-resume on 2026-09-22); every
   scaffold inside the official per-instance SWE-bench image with no network and no benchmark
   identifiers in its view of the container): the v2 lanes had let the agents read
   the upstream fix through future git history and the web on 45–61% of instances, so v2 is
@@ -122,16 +122,15 @@ SGLang, the tree re-initialised to a single commit at an opaque `/work/repo-<has
 
 Ordered by what runs next. Specs with an ID live in [`experiments/`](experiments/README.md).
 
-1. **Run the Qwen3.8 seven-scaffold bakeoff v4 to completion** (started 2026-09-20 11:10 after
-   the five complete v2 lanes were Docker-scored, interrupted 2026-09-22 at 152/300 with GPU 07:00.0
-   lost from the bus after a scheduler-watchdog kill — hardware-level, investigated in
-   `FP8_BAKEOFF_SETUP.md` → Answer leakage and isolation (restart narrative). The host was rebooted
-   the same evening with `amdgpu.runpm=0`, `kernel.yama.ptrace_scope=0` and `RebootWatchdogSec=3min`
-   applied; `v4-resume-once.service` relaunched the same chain at [153/300] on boot and the resume
-   was verified 2026-09-26 (unit active/exited, both cards enumerate at 32 GT/s x16, telemetry
-   logging, opencode lane 300/300 at 2026-09-25 01:53, opencode-dcp lane in progress). If the loss
-   recurs on 07:00.0: reseat card 2 and its power leads, then swap slots. ~4.25 days per lane at
-   21 min/instance): every
+1. **Run the Qwen3.8 seven-scaffold bakeoff v5 to completion** (launched 2026-09-27 on the DSpark
+   preset — `v5-cycle-v0520-dspark.sh`, resume with `v5-resume-after-reboot.sh`, pause at an
+   instance boundary with `evals/swebench/pause_cycle_at_boundary.sh v5`; the v4 matrix on the
+   no-spec server, opencode 300/300 and opencode-dcp 159/300, is the no-spec reference and is
+   not mixed into v5 because wall hits are a throughput artefact. Read the first 20 v5 opencode
+   ids against the same v4 ids (walls, empties, duration) before trusting the projected lane time.
+   v4's own history — the 2026-09-22 GPU loss, reboot with `amdgpu.runpm=0` and the verified
+   auto-resume — is in `FP8_BAKEOFF_SETUP.md` → Answer leakage and isolation. If the loss recurs on
+   07:00.0: reseat card 2 and its power leads, then swap slots): every
    scaffold inside the official per-instance SWE-bench image (`run_rollouts.py --docker`: the
    image's testbed env, no network except the SGLang bridge, git re-initialised to one commit;
    the four earlier v3 starts on host venvs + bubblewrap are archived, not scored), both
@@ -300,7 +299,7 @@ root-filesystem layout, and the full threat model are in [`docker/README.md`](do
 | `qwen35` | Qwen3.5-27B | AWQ/FP8 DeltaNet | 256K |
 | `qwen35-moe` | Qwen3.5-35B-A3B | AWQ MoE + DeltaNet | 256K |
 | `qwen36-27b` | Qwen3.6-27B | AWQ/FP8 DeltaNet + vision | 256K |
-| `qwen38` | Qwen3.8-27B | official FP8 (block) DeltaNet + vision + video | 256K |
+| `qwen38` | Qwen3.8-27B | official FP8 (block) DeltaNet + vision + video + DSpark draft | 239K pool (256K with `QWEN38_SPEC=0`) |
 | `qwen36-moe` | Qwen3.6-35B-A3B | AWQ/FP8 MoE + DeltaNet | 256K |
 | `qwen3vl-32b` | Qwen3-VL-32B | AWQ dense + vision | 256K override |
 | `gemma4` | Gemma 4 26B-A4B | AWQ/FP8 MoE + vision | 256K |
@@ -320,10 +319,11 @@ everything.
 - Use FP8 for native gfx1201 FP8 checkpoints and dense-thinking agentic workloads that lose quality
   under int4; use AWQ int4 for weight-bandwidth-bound single-user decode and for models that need the
   extra KV capacity.
-- Use no speculative decoding at true 256K depth. The validated speculative lane is limited to short
-  and medium context. DSpark on `qwen38` with the split-KV verify (patch 100, 2026-09-27) is 3.5× at a
-  60-token input, 2.7× on thinking text, 1.52× at 49K and 1.22× at 150K with the RedHatAI draft; 244K is
-  still unservable (FINDINGS → Speculative decoding).
+- Use no speculative decoding at true 256K depth unless a same-depth A/B proves it. The first lane that
+  does is `qwen38` + DSpark through the split-KV verify (patch 100, 2026-09-27): 1.6× / 2.0× / 1.5× / 1.6×
+  at 24 / 7.3K / 58K / 197K input on the canonical sweep, so it is the preset default; its pool ends at
+  239K (`QWEN38_SPEC=0` for the 256K no-spec server). Every other trained-draft lane still collapses at
+  244K (FINDINGS → Speculative decoding).
 - Treat tool-call and reasoning parsers as model-specific correctness settings, not optional
   presentation features.
 - Keep the Triton cache warm when collecting comparative numbers.

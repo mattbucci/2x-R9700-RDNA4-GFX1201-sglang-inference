@@ -12,16 +12,30 @@ each model under its production launch preset (quant, graph policy, and KV dtype
 decode table is in the [top-level README](../README.md#single-user-decode-across-the-fleet); each `<model>/` directory
 here holds that model's `results.json` and regenerated `context_vs_toks.png` / `concurrency_vs_toks.png`.
 
-### Qwen3.8-27B-FP8 (2026-09-19, v0.5.20 + 70 patches, HIP graphs on)
+### Qwen3.8-27B-FP8 (2026-09-27, v0.5.20 + 72 patches, HIP graphs on, DSpark speculative preset)
 
 Official vendor block-FP8 ship under the `qwen38` preset (TP=2, FP8-e4m3 KV, `MAX_RUNNING=1`,
-`--cuda-graph-max-bs-decode 1`). Canonical decode sweep (`decode_ab`, 3-run streaming-TPOT median,
-think-off; [qwen38-27b-fp8/results.json](qwen38-27b-fp8/results.json)), with the graphs-off
-2026-08-30 v0.5.18 sweep it replaces:
+`--cuda-graph-max-bs-decode 1`; since 2026-09-27 also `--speculative-algorithm DSPARK` with the
+RedHatAI speculator (γ=8, sliding-window draft, converted by
+`scripts/convert_dspark_speculators_config.py`) through the split-KV verify kernel (patch 100),
+`mem 0.88`, `chunked-prefill 4096`). Canonical decode sweep (`decode_ab`, 3-run streaming-TPOT median,
+think-off; [qwen38-27b-fp8/results.json](qwen38-27b-fp8/results.json)); the no-spec server
+(`QWEN38_SPEC=0`, mem 0.85, 530K-token pool) is kept as the reference curve in
+[qwen38-27b-fp8-nospec/results.json](qwen38-27b-fp8-nospec/results.json):
 
 | Actual input tokens | 24 | 7,331 | 58,483 | 197,326 |
 |---|---:|---:|---:|---:|
-| Decode tok/s, v0.5.20 graphs on | 22.543 | 22.227 | 21.438 | **19.955** |
+| **Decode tok/s, DSpark + split-KV verify (preset default)** | **35.493** | **44.512** | **31.631** | **31.874** |
+| Decode tok/s, no-spec (2026-09-19 canonical, reference) | 22.543 | 22.227 | 21.438 | 19.955 |
+| Speed-up | 1.57× | 2.00× | 1.48× | 1.60× |
+
+Thinking on (same server, 3-run): 34.5 tok/s at 64 input tokens, 45.6 at 58,523. Accept length 2.9–3.5
+on the synthetic sweep text, 2.6–3.4 on code and summaries. The draft weights and draft KV pool cap
+`max_total_num_tokens` at 239,384 (0.88) and the aux-hidden-state capture adds a prefill transient, so
+mem 0.90 OOMs in decode and 0.88 OOMs a 58K prefill at chunk 8192 — 0.88 + chunk 4096 is the validated
+pair. Depth-ladder receipts behind the preset change: [dspark-depth-ab-2026-09-27.json](qwen38-27b-fp8/dspark-depth-ab-2026-09-27.json)
+(stock verify: 5 tok/s at 49K) and [dspark-splitkv-depth-ab-2026-09-27.json](qwen38-27b-fp8/dspark-splitkv-depth-ab-2026-09-27.json).
+The graphs-off 2026-08-30 v0.5.18 sweep the no-spec row replaced:
 | Decode tok/s, v0.5.18 graphs off (2026-08-30) | 16.698 | 16.684 | 16.555 | 16.611 |
 
 Still the strongest dense-class deep rate on the fleet, now +35/+33/+29/+20% over the graphs-off

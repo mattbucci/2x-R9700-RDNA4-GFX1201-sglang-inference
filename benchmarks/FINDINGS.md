@@ -283,7 +283,12 @@ WMMA; Triton's AMD dot-operand pass rejected the 2/4/8-row tiles). Second pass, 
 walks the prefix itself, while RedHat's 2048-token sliding window does not. Costs: the split kernel's fixed overhead trims
 the 60-token win from 4.3× to 3.5× (a min-prefix fallback would recover it), greedy output is no longer byte-identical to
 no-spec (reduction order), and the pool stays 192K — no v4 bake-off request has exceeded 107K, so that is moot for the
-evals. The 256K rule stands (244K still unservable), but 49K–150K is now a net-positive speculative lane on this hardware.
+evals. The 256K rule stands for the other drafts; on this lane the canonical sweep (mem 0.88, chunk 4096, pool 239K,
+[results.json](qwen38-27b-fp8/results.json)) reads **35.5 / 44.5 / 31.6 / 31.9 tok/s at 24 / 7.3K / 58K / 197K**
+vs 22.5 / 22.2 / 21.4 / 20.0 no-spec (1.57× / 2.00× / 1.48× / 1.60×), thinking on 34.5 @64 tok and 45.6 @58K, so
+DSpark is the `qwen38` preset default since 2026-09-27 (`QWEN38_SPEC=0` keeps the 530K-pool no-spec server for
+prompts past 239K). Memory: mem 0.90 OOMs in decode (0 B free), mem 0.88 OOMs a 58K prefill at chunk 8192 in
+`pack_aux_hidden_states` (8 aux layers × 8192 tokens × 5120 × bf16 = 640 MB); chunk 4096 clears it.
 Boot needs patch 099; the RedHat speculators-format checkpoint needs its config flattened
 (`/data/models/Qwen3.8-27B-speculator.dspark-sgl`: RadixArk keys, `aux_hidden_state_layer_ids` →
 `target_layer_ids`, `transformer_layer_config` lifted, `mrope_section` dropped).
