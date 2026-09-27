@@ -125,9 +125,11 @@ Ordered by what runs next. Specs with an ID live in [`experiments/`](experiments
 1. **Run the Qwen3.8 seven-scaffold bakeoff v5 to completion** (launched 2026-09-27 on the DSpark
    preset — `v5-cycle-v0520-dspark.sh`, resume with `v5-resume-after-reboot.sh`, pause at an
    instance boundary with `evals/swebench/pause_cycle_at_boundary.sh v5`; the v4 matrix on the
-   no-spec server, opencode 300/300 and opencode-dcp 159/300, is the no-spec reference and is
-   not mixed into v5 because wall hits are a throughput artefact. Read the first 20 v5 opencode
-   ids against the same v4 ids (walls, empties, duration) before trusting the projected lane time.
+   no-spec server, opencode 300/300 and opencode-dcp 159/300, stays on disk as the no-spec
+   reference and is not mixed into v5. The bake-off's job is to catch hosting errors across the
+   seven scaffolds (server crashes, parser/template faults, infra_* cells), not to rank engines,
+   so v5 is read on its own; the first four v5 instances ran rc=0 with patches at 210–658 s
+   (v4 mean 1,245 s), accept length 3.6, 38.6 tok/s mean decode.
    v4's own history — the 2026-09-22 GPU loss, reboot with `amdgpu.runpm=0` and the verified
    auto-resume — is in `FP8_BAKEOFF_SETUP.md` → Answer leakage and isolation. If the loss recurs on
    07:00.0: reseat card 2 and its power leads, then swap slots): every

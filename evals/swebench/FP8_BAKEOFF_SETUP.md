@@ -579,8 +579,10 @@ sweep 35.5 / 44.5 / 31.6 / 31.9 at 24 / 7.3K / 58K / 197K). Wall hits are a thro
 2026-09-21), so an engine-speed change inside a cell confounds it: v5 is a restart from instance 1 on the
 new preset (`scripts/launch.sh qwen38` default since 2026-09-27: DSpark, mem 0.88, chunk 4096, 239K pool —
 no v4 session exceeded 107K), not a resume. v4 stays on disk as the no-spec reference (opencode 300/300;
-opencode-dcp stopped at 159/300 at the switch, 13:29). Read the first 20 v5 opencode ids against the same
-v4 ids (walls, empties, duration) before projecting lane time. Resume after a reboot or pause with
+opencode-dcp stopped at 159/300 at the switch, 13:29). The user's framing (2026-09-27 14:20): the evals
+exist to catch hosting errors under the seven scaffolds, not to rank engines, so v5 stands on its own and
+the v4 cells are informational. First four v5 instances: rc=0 with patches, 210 / 658 / 295 / 225 s (v4
+mean 1,245 s), accept length 3.6, 38.6 tok/s mean decode, no server-side error. Resume after a reboot or pause with
 `v5-resume-after-reboot.sh` (the v4 one-shot unit is not re-armed for v5; arm a v5 unit if a reboot is
 planned).
 
