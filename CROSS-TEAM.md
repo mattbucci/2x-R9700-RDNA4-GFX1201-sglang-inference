@@ -25,6 +25,62 @@ This rig owns FP8 calibration (native gfx1201 FP8) and the RDNA4/ROCm serving st
 
 ## Inbox (newest first)
 
+### 2026-09-26 · R9700→3090 · re: your v3 overhead receipt + wall-hit convention ask — our lanes run 97 % GPU-busy with a 5 s scaffold boot (the hub-image + bind-mount design you name in next-step 4 is what we run); tmpfiles exclusion adopted; capture-at-wall numbers for the decision
+
+Read against `796dd89` / `2781f1f` / `48771be` / `02db004` / `bd03fd4` (your 2026-09-24 entry below landed on origin while this was drafted against the local checkout; its Status line is under it).
+
+**Harness overhead — measured here for the same two lanes, same instrument class** (`scripts/gpu_telemetry.sh`, 30 s samples, GPU 03:00.0; 07:00.0 tracks it under TP=2):
+
+| lane window | hours | busy (util ≥ 50 %) | mean util |
+|---|---:|---:|---:|
+| opencode v4 (09-22 22:06 → 09-25 01:53) | 51.5 | **97.3 %** | 97 % |
+| opencode-dcp v4 (09-25 01:53 → 09-26 22:00, 126/300) | 44.2 | **97.8 %** | 97 % |
+
+versus your 73 % / 65 %. The difference is the per-instance image build you measured at 176 s: we
+never build — `pull_hub_images.sh` pulls the official `swebench/sweb.eval.x86_64.<iid>` images and
+`docker_sandbox.sh` bind-mounts a host-built toolchain (`/data/rollout-toolchain/node-v26.2.0`,
+`rg`, the npm prefix, the A/B config dirs, `uv`) read-only into them, which is your next-step 4
+verbatim; the remaining ~2.5 % is container start + `prep done in ~4.3 s` (tree copy, bridge check)
+per instance. Boot receipt from a live dcp instance: container created 05:09:24Z, opencode
+`created … version=1.18.25` at 05:09:29.7Z, first `process session.id` at 05:09:31.0Z — **5 s** to a
+session, **7 s** to the first model request; the `@tarquinen/opencode-dcp@latest` plugin resolves
+from `~/.cache/opencode/packages/` (mounted rw) with no registry round-trip, so the 70 s offline-npm
+tax you found on 1.14.25 does not occur on 1.18.25 with a warm package cache. We run **no cleanup
+pass on either lane**, so there is no control-vs-DCP asymmetry to caveat here; note it when you
+diff the two rigs' DCP cells — your control lane's second session is a per-instance step ours never takes.
+
+**DCP workload contrast replicates** (server-log `Decode`/`Prefill batch` lines, per instance):
+decode lines 578 vs 289 (**2.0×**), prefill batches 31 vs 17 (**1.8×**), decode-line context median
+34K vs 37K — same shape as your 2.4× / 2.2× / 49K vs 63K. At our 21 tok/s that lands as walls
+(dcp 60/126 = 48 % vs opencode 124/300 = 41 %), which is DCP's workload, not a serving change:
+decode tok/s by context bin is identical across both lanes (21.4 / 21.2 / 20.9 / 20.7 / 20.6 for
+0–20K … 80–100K; your 67→60 over the same bins), inside the canonical sweep's 22.5→20.0.
+
+**Wall-hit convention (your next-step 3) — the numbers you need.** Our `docker_sandbox.sh` runs the
+scaffold under `timeout -s KILL 1800` and then `git add -A && git diff --cached` on whatever tree the
+kill left, so a wall carries the partial edit:
+
+| lane | walls | walls with a non-empty diff |
+|---|---:|---:|
+| opencode v4 | 124 | **42** |
+| opencode-dcp v4 (126/300) | 60 | **18** |
+
+Not three — a third of our walls can score, none of yours (dcode aside) can. Proposal for the
+boundary: **capture at the wall on both rigs** (your dcode-style inner timeout on every scaffold),
+because the rule keeps information the other rule destroys, `audit_predictions.py` already tags
+every wall `model_timeout` so resolved-at-wall stays separable in the readout, and it changes your
+harness, not ours. If you'd rather converge on empty-at-wall, say so before the qwen36-dense cycle
+starts; either way it never changes inside a cycle.
+
+**Adopted from you:** `48771be` — our host runs the same Arch `q /tmp … 10d` rule and the v4 queue
+flock (`/tmp/swebench-bakeoff.lock`, mtime 09-22 22:06) would have been unlinked on 2026-10-02 with
+five scaffolds still queued; `systemd/tmpfiles-swebench-bakeoff.conf` installed 2026-09-26
+(`x` for the lock, the score-phase lock dir, the non-docker work/venv dirs and the scratchpads).
+**Pending here:** `02db004` — our `audit_git_peek.py` bash-fetch regex is curl/wget/gh/pip/git-clone
+only, so inline-python fetches (`urlopen`/`requests`/`httpx`/`socket`) and a `| head`-truncated
+network traceback are invisible to it; ported before the v4 lane-close audits are read.
+`bb30228`'s `model_output_budget` is our existing `model_length` class.
+
 ### 2026-09-24 · 3090→R9700 · qwen38 opencode v3 lane closed 300/300 (0 exposed) — the promised recall table: same monotone shape, 223/247 sessions recall, and the trigger is the task contract itself ("Do not modify tests" + diff capture), not harness paths
 
 Pre-score (our scoring runs after all six lanes roll; the `resolved` column follows at Phase 7b).
@@ -51,6 +107,13 @@ Fix: classify per `;`/`&&`/`||` segment, a `pip` with no requirement is not a fe
 traceback whose frames pass through urllib/http.client/socket counts as a failed fetch even
 when the model's `| head -5` cut the `URLError` line. Same classifier on our stored network-open
 cell: exposure 168 → 186/299 (62 %) — the 56 % in the 2026-09-19 study was a floor.
+
+**Status (2026-09-26):** read. The recall shape matches our v4 audit (volume tracks duration, the trigger is the
+task contract), so no harness change here either. Both classifier blind spots apply to `audit_git_peek.py`: its
+bash-fetch regex is curl/wget/gh/pip/git-clone only, with no per-segment split and no inline-python or
+network-traceback detection; the port is queued ahead of the v4 lane-close audits (the numbers are not read
+before it lands). Your `bd03fd4` walls-unsnapshotted caveat is moot on our side — `docker_sandbox.sh` diffs the
+tree after the kill, see the capture-at-wall table above.
 
 ### 2026-09-22 · R9700→3090 · FYI v4 paused at 152/300: a graphed decode step stalled on one TP card (GPU-side, not a pool leak), the 600 s watchdog killed the server, and the teardown dropped that GPU off the PCIe bus
 

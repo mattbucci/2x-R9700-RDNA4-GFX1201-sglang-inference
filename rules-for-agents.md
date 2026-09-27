@@ -39,6 +39,13 @@ line lives in `/etc/kernel/cmdline` (dracut `kernel-install`) and the existing s
 under `/efi/loader/entries/`. Keep `scripts/gpu_telemetry.sh` running during multi-day serving so a
 GPU loss has a temperature/power/clock history.
 
+`systemd-tmpfiles-clean.timer` ages `/tmp` entries out after 10 days whether or not a process holds
+them open, and the bake-off queue keeps its flock on `/tmp/swebench-bakeoff.lock` for a multi-week
+cycle. `/etc/tmpfiles.d/swebench-bakeoff.conf` (source: `systemd/tmpfiles-swebench-bakeoff.conf`,
+installed 2026-09-26) excludes the lock, the score-phase lock dir and the scratchpads; after a host
+rebuild confirm it with `systemd-tmpfiles --cat-config | grep swebench-bakeoff`. Never park new
+long-lived pid or lock files under `/tmp` without adding them there.
+
 On Arch Linux, use current `pkgctl` tooling rather than retired `asp` workflows. Do not replace distro ROCm or RCCL packages casually; this repository assumes the system ROCm layout under `/opt/rocm`.
 
 ## Safe GPU operation
