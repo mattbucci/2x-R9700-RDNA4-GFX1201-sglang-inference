@@ -255,6 +255,8 @@ a 256K-capable server only measures shallow decode.
 | Qwen3.6-35B + DFlash | — | ~1.2 tok/s at ~240K, accept ~1.4 | ~20 tok/s |
 | Qwen3.8-27B FP8 + DSpark (RadixArk, γ=7) | 93 tok/s at 60-tok input, accept 3.6; 45 tok/s with thinking | 5.0 tok/s at 49K, accept 2.8; 244K unservable (pool 207K) | 22.1 / 21.2 / 19.1 tok/s at 60 / 49K / 244K |
 | Qwen3.8-27B FP8 + DSpark (RedHatAI speculator, γ=8, SWA draft) | 96 tok/s at 60-tok input, accept 3.8; 45 tok/s with thinking | 5.1–5.4 tok/s at 49K, accept 2.6; 244K unservable (pool 192K) | same |
+| **+ split-KV verify (patch 100)**, RadixArk | 78 tok/s at 60-tok; 46 with thinking | **21.4 at 49K**, 12.2 at 150K | 21.2 / 20.1 |
+| **+ split-KV verify (patch 100)**, RedHatAI | 80 tok/s at 60-tok; **60 with thinking** | **32.1 at 49K (1.52×)**, **24.6 at 150K (1.22×)**, accept 3.4 / 2.95 | 21.2 / 20.1 |
 
 The collapse comes from lower draft acceptance and repeated long-context attention in the draft and
 verify paths. No-spec remains the default at true 256K depth; trained-draft spec is a shallow/mid-context
@@ -270,6 +272,18 @@ DSpark's linear verify does not set, so it never engages. The draft weights plus
 target pool from 529,644 to 192–207K tokens at `mem 0.85`, so a 262,144 server cannot serve a 244K prompt.
 For the SWE-bench bake-off, whose decode sits at a 34–37K median context, DSpark as shipped is net negative;
 the follow-up is a mask-free split-KV path for the γ+1 linear verify (extend 065) measured at 10K–50K.
+
+**Resolved the same day** ([dspark-splitkv-depth-ab-2026-09-27.json](qwen38-27b-fp8/dspark-splitkv-depth-ab-2026-09-27.json)):
+the tree already ships that kernel — `kernels/ops/attention/verify_splitkv.py`, a flash-decode split over the prefix plus
+an LSE merge with the causal draft block, fp8 K/V scales included — gated to gfx95. Upstream PR #39316 lifts the gate on
+CUDA (+238 % at 32K, +471 % at 128K on Qwen3.5-27B). Patch 100 lifts it on gfx1201 and floors the row tile at 16 (RDNA
+WMMA; Triton's AMD dot-operand pass rejected the 2/4/8-row tiles). Second pass, same ladder: the RedHat draft goes
+5.3 → **32.1 tok/s at 49K (1.52× no-spec)** and **24.6 at 150K (1.22×)**, thinking text at short context 45 → **60**
+(2.7× no-spec); RadixArk only reaches parity at 49K (21.4) and loses at 150K (12.2) because its full-attention draft now
+walks the prefix itself, while RedHat's 2048-token sliding window does not. Costs: the split kernel's fixed overhead trims
+the 60-token win from 4.3× to 3.5× (a min-prefix fallback would recover it), greedy output is no longer byte-identical to
+no-spec (reduction order), and the pool stays 192K — no v4 bake-off request has exceeded 107K, so that is moot for the
+evals. The 256K rule stands (244K still unservable), but 49K–150K is now a net-positive speculative lane on this hardware.
 Boot needs patch 099; the RedHat speculators-format checkpoint needs its config flattened
 (`/data/models/Qwen3.8-27B-speculator.dspark-sgl`: RadixArk keys, `aux_hidden_state_layer_ids` →
 `target_layer_ids`, `transformer_layer_config` lifted, `mrope_section` dropped).

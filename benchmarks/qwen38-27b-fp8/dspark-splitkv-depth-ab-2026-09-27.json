@@ -1,0 +1,264 @@
+{
+ "date": "2026-09-27",
+ "preset": "qwen38 (Qwen3.8-27B-FP8, TP=2, triton, graphs on, mem 0.85, ctx 262144, max-running 1)",
+ "engine": "SGLang v0.5.20 + patch series through 100 (099 DSpark pp_proxy_tensors kwarg; 100 split-KV verify enabled on gfx1201 with a 16-row WMMA tile floor)",
+ "method": "same as dspark-depth-ab-2026-09-27.json (greedy, flush_cache per request, 2 runs/arm, client-side decode tok/s); split-KV verify kernel (kernels/ops/attention/verify_splitkv.py) engaged for every TARGET_VERIFY forward",
+ "arms": {
+  "nospec-splitkv": {
+   "deep150": [
+    {
+     "prompt_tokens": 150728,
+     "completion_tokens": 200,
+     "ttft_s": 338.35,
+     "decode_tok_s": 20.1,
+     "wall_s": 348.3,
+     "sha": "8691f3986b",
+     "head": "Based on the provided code snippets, here is a 12-step summary of the scheduler and related infrastructure, followed by a list of the main classes and their fil"
+    },
+    {
+     "prompt_tokens": 150728,
+     "completion_tokens": 200,
+     "ttft_s": 338.06,
+     "decode_tok_s": 20.11,
+     "wall_s": 348.0,
+     "sha": "8691f3986b",
+     "head": "Based on the provided code snippets, here is a 12-step summary of the scheduler and related infrastructure, followed by a list of the main classes and their fil"
+    }
+   ]
+  },
+  "radixark-splitkv": {
+   "short": [
+    {
+     "prompt_tokens": 60,
+     "completion_tokens": 400,
+     "ttft_s": 0.12,
+     "decode_tok_s": 77.89,
+     "wall_s": 5.2,
+     "sha": "f500d1c1ef",
+     "head": "```python \"\"\" A Python module providing fundamental algorithms: - Binary search - Merge sort - Quicksort - Min-heap data structure - Dijkstra's shortest path al"
+    },
+    {
+     "prompt_tokens": 60,
+     "completion_tokens": 400,
+     "ttft_s": 0.1,
+     "decode_tok_s": 77.94,
+     "wall_s": 5.2,
+     "sha": "f500d1c1ef",
+     "head": "```python \"\"\" A Python module providing fundamental algorithms: - Binary search - Merge sort - Quicksort - Min-heap data structure - Dijkstra's shortest path al"
+    }
+   ],
+   "short-think": [
+    {
+     "prompt_tokens": 100,
+     "completion_tokens": 700,
+     "ttft_s": 0.16,
+     "decode_tok_s": 45.66,
+     "wall_s": 15.5,
+     "sha": "fd45538ad5",
+     "head": "We need answer user's request: \"Write a complete Python module: binary search, merge sort, quicksort, a min-heap class, and Dijkstra shortest path. Full docstri"
+    },
+    {
+     "prompt_tokens": 100,
+     "completion_tokens": 700,
+     "ttft_s": 0.16,
+     "decode_tok_s": 45.73,
+     "wall_s": 15.4,
+     "sha": "fd45538ad5",
+     "head": "We need answer user's request: \"Write a complete Python module: binary search, merge sort, quicksort, a min-heap class, and Dijkstra shortest path. Full docstri"
+    }
+   ],
+   "mid": [
+    {
+     "prompt_tokens": 48985,
+     "completion_tokens": 300,
+     "ttft_s": 79.87,
+     "decode_tok_s": 21.37,
+     "wall_s": 93.9,
+     "sha": "37f294159a",
+     "head": "Based on the provided code snippets, here is a 12-step summary of the system's functionality and the main classes identified.  ### Summary of Scheduler and Syst"
+    },
+    {
+     "prompt_tokens": 48985,
+     "completion_tokens": 300,
+     "ttft_s": 79.89,
+     "decode_tok_s": 21.37,
+     "wall_s": 93.9,
+     "sha": "37f294159a",
+     "head": "Based on the provided code snippets, here is a 12-step summary of the system's functionality and the main classes identified.  ### Summary of Scheduler and Syst"
+    }
+   ],
+   "deep150": [
+    {
+     "prompt_tokens": 150728,
+     "completion_tokens": 200,
+     "ttft_s": 336.93,
+     "decode_tok_s": 12.19,
+     "wall_s": 353.3,
+     "sha": "97fcd70e5b",
+     "head": "Based on the provided code snippets, here is a 12-step summary of the scheduler and related infrastructure, followed by a list of the main classes and their fil"
+    },
+    {
+     "prompt_tokens": 150728,
+     "completion_tokens": 200,
+     "ttft_s": 336.85,
+     "decode_tok_s": 12.2,
+     "wall_s": 353.2,
+     "sha": "97fcd70e5b",
+     "head": "Based on the provided code snippets, here is a 12-step summary of the scheduler and related infrastructure, followed by a list of the main classes and their fil"
+    }
+   ],
+   "accept": {
+    "short": {
+     "n": 12,
+     "accept_len_median": 3.3899999999999997,
+     "accept_rate_median": 0.34
+    },
+    "mid": {
+     "n": 4,
+     "accept_len_median": 2.74,
+     "accept_rate_median": 0.25
+    },
+    "deep150": {
+     "n": 2,
+     "accept_len_median": 2.95,
+     "accept_rate_median": 0.28
+    }
+   }
+  },
+  "redhat-splitkv": {
+   "short": [
+    {
+     "prompt_tokens": 60,
+     "completion_tokens": 400,
+     "ttft_s": 0.12,
+     "decode_tok_s": 79.73,
+     "wall_s": 5.1,
+     "sha": "f500d1c1ef",
+     "head": "```python \"\"\" A Python module providing fundamental algorithms: - Binary search - Merge sort - Quicksort - Min-heap data structure - Dijkstra's shortest path al"
+    },
+    {
+     "prompt_tokens": 60,
+     "completion_tokens": 400,
+     "ttft_s": 0.11,
+     "decode_tok_s": 80.09,
+     "wall_s": 5.1,
+     "sha": "f500d1c1ef",
+     "head": "```python \"\"\" A Python module providing fundamental algorithms: - Binary search - Merge sort - Quicksort - Min-heap data structure - Dijkstra's shortest path al"
+    }
+   ],
+   "short-think": [
+    {
+     "prompt_tokens": 100,
+     "completion_tokens": 700,
+     "ttft_s": 0.16,
+     "decode_tok_s": 59.81,
+     "wall_s": 11.8,
+     "sha": "51c543e725",
+     "head": "We need answer user's request: \"Write a complete Python module: binary search, merge sort, quicksort, a min-heap class, and Dijkstra shortest path. Full docstri"
+    },
+    {
+     "prompt_tokens": 100,
+     "completion_tokens": 700,
+     "ttft_s": 0.16,
+     "decode_tok_s": 59.81,
+     "wall_s": 11.8,
+     "sha": "51c543e725",
+     "head": "We need answer user's request: \"Write a complete Python module: binary search, merge sort, quicksort, a min-heap class, and Dijkstra shortest path. Full docstri"
+    }
+   ],
+   "mid": [
+    {
+     "prompt_tokens": 48985,
+     "completion_tokens": 300,
+     "ttft_s": 80.25,
+     "decode_tok_s": 32.13,
+     "wall_s": 89.6,
+     "sha": "a154b9c492",
+     "head": "Based on the provided code snippets, here is a 12-step summary of the system's functionality and the main classes identified.  ### Summary of Scheduler and Syst"
+    },
+    {
+     "prompt_tokens": 48985,
+     "completion_tokens": 300,
+     "ttft_s": 80.25,
+     "decode_tok_s": 32.16,
+     "wall_s": 89.5,
+     "sha": "a154b9c492",
+     "head": "Based on the provided code snippets, here is a 12-step summary of the system's functionality and the main classes identified.  ### Summary of Scheduler and Syst"
+    }
+   ],
+   "deep150": [
+    {
+     "prompt_tokens": 150728,
+     "completion_tokens": 200,
+     "ttft_s": 339.94,
+     "decode_tok_s": 23.31,
+     "wall_s": 348.5,
+     "sha": "3a3db2ad8a",
+     "head": "Based on the provided code snippets, here is a 12-step summary of the scheduler and related infrastructure, followed by a list of the main classes and their fil"
+    },
+    {
+     "prompt_tokens": 150728,
+     "completion_tokens": 200,
+     "ttft_s": 339.62,
+     "decode_tok_s": 25.91,
+     "wall_s": 347.3,
+     "sha": "3a3db2ad8a",
+     "head": "Based on the provided code snippets, here is a 12-step summary of the scheduler and related infrastructure, followed by a list of the main classes and their fil"
+    }
+   ],
+   "accept": {
+    "short": {
+     "n": 8,
+     "accept_len_median": 4.965,
+     "accept_rate_median": 0.495
+    },
+    "mid": {
+     "n": 4,
+     "accept_len_median": 2.965,
+     "accept_rate_median": 0.245
+    },
+    "deep150": {
+     "n": 2,
+     "accept_len_median": 2.95,
+     "accept_rate_median": 0.24
+    }
+   }
+  }
+ },
+ "baseline_without_splitkv": "dspark-depth-ab-2026-09-27.json (same day, same server config, verify through extend_attention_fwd)",
+ "summary_decode_tok_s": {
+  "60-tok input": {
+   "nospec": 22.1,
+   "radixark": 93.4,
+   "radixark+splitkv": 77.9,
+   "redhat": 96.3,
+   "redhat+splitkv": 79.9
+  },
+  "short, thinking on": {
+   "nospec": 22.0,
+   "radixark": 45.2,
+   "radixark+splitkv": 45.7,
+   "redhat": 45.4,
+   "redhat+splitkv": 59.8
+  },
+  "49K input": {
+   "nospec": 21.2,
+   "radixark": 5.0,
+   "radixark+splitkv": 21.4,
+   "redhat": 5.2,
+   "redhat+splitkv": 32.1
+  },
+  "150K input": {
+   "nospec": 20.1,
+   "radixark+splitkv": 12.2,
+   "redhat+splitkv": 24.6
+  },
+  "244K input": {
+   "nospec": 19.1,
+   "spec": "unservable: draft weights + draft KV pool cap max_total_num_tokens at 192-207K"
+  }
+ },
+ "kernel_test": "test/registered/attention/test_verify_splitkv.py on gfx1201: 9 passed, 12 subtests passed (after the 16-row tile floor; before it, l_ext 2/4/8, gqa and head_dim_128/256 subtests failed to compile: PassManager::run failed in amd optimize_dot_operands)",
+ "bakeoff_context_exposure": "195,118 decode lines across the v4 opencode + dcp lanes: max context 106,519 tokens, 0.08% above 100K, none above 150K -> the 192K pool would not reject any bake-off request",
+ "reading": "With the split-KV verify the RedHat speculator (sliding-window 2048 draft, gamma 8) is net positive at every measured depth from 49K up: 1.52x at 49K, 1.22x at 150K, 2.7x on thinking text at short context; RadixArk (full-attention draft) only reaches parity at 49K and loses at 150K because its own draft attention now walks the deep prefix. At a 60-token prefix the split kernel's fixed split/combine cost drops the short-context win from 4.3x to 3.5x (a min-prefix fallback threshold would recover it). Greedy outputs are no longer byte-identical to no-spec at short context (split-KV changes the reduction order); all outputs coherent."
+}

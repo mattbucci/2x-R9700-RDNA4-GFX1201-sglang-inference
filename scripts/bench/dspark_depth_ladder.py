@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Bench client for benchmarks/qwen38-27b-fp8/dspark-depth-ab-2026-09-27.json: python dspark_depth_ladder.py <label> <out.json> <ctxfile> [runs]; ARMS=short,mid selects arms.
+# Bench client for benchmarks/qwen38-27b-fp8/dspark-*-2026-09-27.json: python dspark_depth_ladder.py <label> <out.json> <ctxfile> [runs]; ARMS=short,mid,deep150 selects arms.
 """Same-request depth ladder against a running :23334 server (chat completions, greedy).
 Depths: short (~2K coding prompt), mid (~50K slice of the 244K code context), deep (full 244K).
 Per request: flush cache, stream with usage, record TTFT, decode tok/s = (completion_tokens-1)/(t_last-t_first),
@@ -12,7 +12,7 @@ ctx=open(ctxfile).read()
 shortp=("Write a complete Python module: binary search, merge sort, quicksort, a min-heap class, and Dijkstra "
         "shortest path. Full docstrings, type hints, two example usages per function, and a __main__ demo.")
 tail="\n\n---\nIn 12 numbered steps, summarize what the scheduler code above does and list the main classes you saw, with their file names."
-arms=[("short",shortp,400),("short-think",shortp,700),("mid",ctx[:int(len(ctx)*50000/243934)]+tail,300),("deep",ctx+tail,200)]
+arms=[("short",shortp,400),("short-think",shortp,700),("mid",ctx[:int(len(ctx)*50000/243934)]+tail,300),("deep150",ctx[:int(len(ctx)*150000/243934)]+tail,200),("deep",ctx+tail,200)]
 def flush():
     try: urllib.request.urlopen(urllib.request.Request(f"{BASE}/flush_cache",method="POST"),timeout=60).read()
     except Exception as e: print("flush_cache:",e)

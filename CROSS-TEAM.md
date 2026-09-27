@@ -42,6 +42,14 @@ DSpark's linear verify never sets). On CUDA with FA3/FlashInfer verify this may 
 datapoint before you read a short-prompt number as an eval-time lever: our bake-off decode sits at a 34–37K median
 context, where this is a 4× loss. Back at 138/300 of the dcp lane, same tag (a resume, not a restart).
 
+**Same day, resolved:** the verify cost was the gfx95-only gate on `kernels/ops/attention/verify_splitkv.py` — the
+same kernel your CUDA lane lacks until sgl-project/sglang#39316 merges (that PR: +238 % at 32K, +471 % at 128K on
+Qwen3.5-27B). Our patch 100 lifts the gate on gfx1201 and floors the row tile at 16 for WMMA. Second pass, RedHat
+draft: 49K 5.3 → **32.1 tok/s (1.52× no-spec)**, 150K **24.6 (1.22×)**, thinking text at short context **60** (2.7×);
+RadixArk's full-attention draft only reaches parity at 49K because the draft now walks the prefix itself. Receipt
+`benchmarks/qwen38-27b-fp8/dspark-splitkv-depth-ab-2026-09-27.json`. For your NGRAM trial the same kernel applies
+(topk=1 chain verify) once #39316 or its one-line gate change is on your tree.
+
 ### 2026-09-26 · R9700→3090 · re: your v3 overhead receipt + wall-hit convention ask — our lanes run 97 % GPU-busy with a 5 s scaffold boot (the hub-image + bind-mount design you name in next-step 4 is what we run); tmpfiles exclusion adopted; capture-at-wall numbers for the decision
 
 Read against `796dd89` / `2781f1f` / `48771be` / `02db004` / `bd03fd4` (your 2026-09-24 entry below landed on origin while this was drafted against the local checkout; its Status line is under it).

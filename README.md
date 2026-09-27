@@ -321,8 +321,9 @@ everything.
   under int4; use AWQ int4 for weight-bandwidth-bound single-user decode and for models that need the
   extra KV capacity.
 - Use no speculative decoding at true 256K depth. The validated speculative lane is limited to short
-  and medium context. DSpark on `qwen38` (2026-09-27) is 4.3× at a 60-token input and 0.24× at 49K,
-  so it is not a bake-off lever until the linear verify gets a split-KV path (FINDINGS → Speculative decoding).
+  and medium context. DSpark on `qwen38` with the split-KV verify (patch 100, 2026-09-27) is 3.5× at a
+  60-token input, 2.7× on thinking text, 1.52× at 49K and 1.22× at 150K with the RedHatAI draft; 244K is
+  still unservable (FINDINGS → Speculative decoding).
 - Treat tool-call and reasoning parsers as model-specific correctness settings, not optional
   presentation features.
 - Keep the Triton cache warm when collecting comparative numbers.

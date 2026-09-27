@@ -1,0 +1,60 @@
+diff --git a/python/sglang/kernels/ops/attention/verify_splitkv.py b/python/sglang/kernels/ops/attention/verify_splitkv.py
+index 94bb852..308742d 100644
+--- a/python/sglang/kernels/ops/attention/verify_splitkv.py
++++ b/python/sglang/kernels/ops/attention/verify_splitkv.py
+@@ -61,6 +61,17 @@ _BLOCK_CONFIG = {
+ }
+ 
+ 
++def _min_row_tile(device) -> int:
++    """Minimum L_EXT dot tile: 16 on RDNA (WMMA 16x16x16), 1 elsewhere."""
++    if not _IS_HIP:
++        return 1
++    try:
++        arch = torch.cuda.get_device_properties(device).gcnArchName
++    except Exception:
++        return 1
++    return 16 if arch.startswith(("gfx11", "gfx12")) else 1
++
++
+ def block_config(head_dim):
+     """Return (BLOCK_N, num_warps) for a head_dim; default for untuned dims."""
+     return _BLOCK_CONFIG.get(head_dim, (DEFAULT_BLOCK_N, DEFAULT_NUM_WARPS))
+@@ -448,7 +459,11 @@ class VerifySplitKV:
+         self.head_dim = head_dim
+         self.v_head_dim = v_head_dim
+         self.l_ext = l_ext  # real draft tokens per seq (fixed == 4)
+-        self.l_pad = triton.next_power_of_2(l_ext)
++        # RDNA (gfx11/gfx12) WMMA needs >=16-row dot tiles: Triton's AMD
++        # optimize-dot-operands pass fails ("PassManager::run failed") for
++        # L_EXT in {2,4,8} on gfx1201. Rows >= l_ext are masked on every load
++        # and store, so padding the tile to 16 changes nothing but the shape.
++        self.l_pad = max(_min_row_tile(device), triton.next_power_of_2(l_ext))
+         self.device = device
+         self.n_splits = n_splits
+         self.block_n = block_n
+diff --git a/python/sglang/srt/layers/attention/triton_backend.py b/python/sglang/srt/layers/attention/triton_backend.py
+index 6d1f636..0eeb46e 100644
+--- a/python/sglang/srt/layers/attention/triton_backend.py
++++ b/python/sglang/srt/layers/attention/triton_backend.py
+@@ -248,12 +248,15 @@ class TritonAttnBackend(AttentionBackend):
+         self.num_draft_tokens = get_spec().speculative_num_draft_tokens
+         self.speculative_num_steps = get_spec().speculative_num_steps
+         self.topk = get_spec().speculative_eagle_topk or 0
+-        # Split-KV verify is bit-equivalent only for a pure-causal chain (topk==1)
+-        # and is gfx95-only; else fall back to extend_attention_fwd.
++        # Split-KV verify is bit-equivalent only for a pure-causal chain (topk==1);
++        # else fall back to extend_attention_fwd. Upstream gates it to gfx95, but the
++        # kernel is plain Triton (fp8 K/V scales handled, HIP launch hints behind
++        # is_hip()) and its numerics test passes on gfx1201; without it the verify
++        # walks the whole prefix serially per (seq, head) and DSpark/EAGLE go
++        # net-negative past ~32K (5 tok/s vs 21 no-spec at 49K on qwen38,
++        # 2026-09-27). Same lift as upstream PR #39316 (CUDA).
+         self.use_verify_splitkv = (
+-            is_gfx95_supported()
+-            and envs.SGLANG_ENABLE_SPLITKV_VERIFY.get()
+-            and self.topk == 1
++            envs.SGLANG_ENABLE_SPLITKV_VERIFY.get() and self.topk == 1
+         )
+         self.use_mla = model_runner.model_config.attention_arch == AttentionArch.MLA
+         # The grouped-head verify kernel is tuned for Kimi-K3 MLA and Qwen3.5

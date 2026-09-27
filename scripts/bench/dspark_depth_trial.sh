@@ -1,10 +1,10 @@
 #!/bin/bash
-# Trial driver used for benchmarks/qwen38-27b-fp8/dspark-depth-ab-2026-09-27.json (paths under /data/logs/dspark; run only with the bake-off paused).
+# Trial driver used for benchmarks/qwen38-27b-fp8/dspark-*-2026-09-27.json (paths under /data/logs/dspark; run only with the bake-off paused). SUFFIX= and ARMS_SEL= select the receipt suffix and arms.
 # DSpark trial on the qwen38 preset: arms nospec / radixark / redhat, same depth ladder each.
 set -uo pipefail
 cd /home/letsrtfm/AI/2x-R9700-RDNA4-GFX1201-sglang-inference
 export PATH="$HOME/.local/bin:$PATH"
-L=/data/logs/dspark; CTX=$L/ctx244k.txt; PORT=23334
+L=/data/logs/dspark; CTX=$L/ctx244k.txt; PORT=23334; SUFFIX="${SUFFIX:-}"
 PY=$HOME/miniforge3/envs/sglang-triton36-v0520/bin/python
 log(){ echo "[trial $(date '+%F %T')] $*"; }
 vram_used(){ rocm-smi --showmeminfo vram 2>/dev/null | awk '/Used Memory/{print $NF}' | head -1; }
@@ -14,7 +14,7 @@ stop_server(){
   log "server stopped (vram_used=$(vram_used))"; sleep 30   # settle after teardown (transient-fault lesson)
 }
 boot(){ # $1=arm $2=extra args $3=mem
-  local arm=$1 extra=$2 mem=$3 slog=$L/serve-$1.log
+  local arm=$1 extra=$2 mem=$3 slog=$L/serve-$1$SUFFIX.log
   log "boot $arm mem=$mem extra='$extra'"
   ( EXTRA_ARGS="$extra" setsid ./scripts/launch.sh qwen38 --mem-fraction "$mem" > "$slog" 2>&1 < /dev/null & )
   local ok=0
@@ -32,9 +32,9 @@ run_arm(){ # $1=arm $2=extra
   local arm=$1 extra=$2
   if ! boot "$arm" "$extra" 0.85; then stop_server; if ! boot "$arm" "$extra" 0.80; then stop_server; log "arm $arm SKIPPED (boot failed twice)"; return 1; fi; fi
   log "bench $arm"
-  $PY $L/bench_depth.py "$arm" "$L/result-$arm.json" "$CTX" 2 2>&1 | tee "$L/bench-$arm.log"
+  ARMS="${ARMS_SEL:-}" $PY $L/bench_depth.py "$arm" "$L/result-$arm$SUFFIX.json" "$CTX" 2 2>&1 | tee "$L/bench-$arm$SUFFIX.log"
   log "server-log summary $arm:"
-  grep -E 'avg_spec_accept_length|accept' "$L/serve-$arm.log" | tail -3 | cut -c1-200
+  grep -E 'accept len' "$L/serve-$arm$SUFFIX.log" | tail -3 | cut -c1-200; grep -c -i "splitkv\|split-kv\|verify_splitkv" "$L/serve-$arm$SUFFIX.log"
   stop_server
 }
 log "TRIAL START"
