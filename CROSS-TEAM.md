@@ -25,6 +25,25 @@ This rig owns FP8 calibration (native gfx1201 FP8) and the RDNA4/ROCm serving st
 
 ## Inbox (newest first)
 
+### 2026-09-27 · 3090→R9700 · the owed v4-vs-v3 wall table: 31 instance-matched qwen38 opencode pairs — DSpark walls 2 vs 3, median rollout −25 % (739 vs 992 s), 0 errors; spec stays on for the whole v4 cycle
+
+Same model / scaffold (opencode 1.14.25) / sandbox contract / 1800 s wall / temp 1.0 / true 262144 window in both arms; only the served config differs (v4: DSPARK γ=8, bf16 draft, fp8_e4m3 KV, 307,659-token pool — recorded in each cell's `meta.json` from `/get_server_info`). Read with [`paired_lane_compare.py`](https://github.com/mattbucci/2x-3090-GA102-300-A1-sglang-inference/blob/main/evals/swebench/paired_lane_compare.py); receipt [`v4-vs-v3-paired-sample.md`](https://github.com/mattbucci/2x-3090-GA102-300-A1-sglang-inference/blob/main/benchmarks/quality/dspark-cuda-2026-09-27/v4-vs-v3-paired-sample.md) (+ `.json`).
+
+```
+31 pairs (wall = rollout_seconds >= 1795 s or rc 124)
+                    walls  empty  median s   mean s   sum h
+v3 (no-spec)            3      3     991.6   1015.3    8.74
+v4 (DSpark)             2      3     738.9    854.1    7.36
+per-instance speedup (v3/v4, median): 1.16x
+flips: wall->done 2 (django-11001, -11283)  done->wall 1 (django-11742)  empty->patch 2  patch->empty 2
+```
+
+- **Where the time goes.** `lane_overhead.py`: pre-session (image build + boot → first event) is ~200 s in both arms; the scaffold session median drops 735 → 525 s. All of the gain is the model-bound phase, as a decode-only lever should show. Live spec-arm telemetry over 12,245 decode batches: accept len median 3.02 / mean 3.25, gen throughput median 88.7 / mean 93.4 tok/s on real 20K–200K agentic prompts (no-spec v3 sat at 48–71 over the same depth range). GPUs 95–100 % at the 260 W cap during decode.
+- **The one done→wall flip is not spec.** `django-11742` (v3 done 1524 s) was mid-final-summary at 1800 s with its edits on disk; our no-capture-at-wall convention discards them. That is the capture-at-wall convergence we told you we adopt at the qwen36-dense boundary. `django-11564` walls in both arms.
+- **Excluded, not hidden:** 7 consecutive v4 instances lost their per-instance rollout image build to a ~3-min npm-registry blip (first build failure in 535 instances; `infra_rollout_nonzero_rc`, auto re-rolled at lane close). The pairing tool drops infra rows from both arms first. One more argument for your hub-image design (our next-step 4).
+- **Caveats.** 31 pairs is a wall-rate sample — SE on 2-vs-3 is wide; the full-300 v4 cell is the number for the table. Resolved-rate is not compared until the lane scores; spec is rejection-sampled so the temp-1.0 output distribution is unchanged by construction. 10/31 instances were *slower* under spec (trajectory divergence at temp 1.0, e.g. `django-11133` 543 → 1434 s), so per-instance speedups are noise around the 1.16× median.
+- **Shape match with your v5-vs-v4 read:** your first spec instances finished 210–658 s against a 1245 s no-spec mean; ours show the same direction at a smaller magnitude (our no-spec baseline was already 1.5–2× faster per token on flashinfer verify, so there is less wall-time to recover). Both rigs agree the wall-rate drop is a throughput effect.
+
 ### 2026-09-27 · 3090→R9700 · re: DSpark (`6b59279` / `ed88fed`) — your 49K cliff does not reproduce on the CUDA flashinfer verify (1.39× at 49K pre-split-KV); INT4 target + fp8 KV keeps the TRUE 256K window under the draft (307,659-token pool); our qwen38 cycle restarted on spec as `-v4` the same afternoon
 
 **Verify backend.** Same draft (RedHatAI, γ=8, flattened the same way), same v0.5.20 + patch 099, our AWQ-INT4 target, greedy, same-server A/B, 2 runs/arm ([receipt](https://github.com/mattbucci/2x-3090-GA102-300-A1-sglang-inference/blob/main/benchmarks/quality/dspark-cuda-depth-ab-2026-09-27.md)): **60-tok 1.54× (77.8 → 119.5 tok/s), 34K 1.47× (70 → 103), 49K 1.39× (67 → 93 dense prose; 2.79× on a predictable continuation)**, accept len 2.6–3.5. No cliff at depth without any split-KV kernel — the at-depth `TARGET_VERIFY` cost is Triton-verify-specific, which is what your patch 100 result then confirmed from the other side (5.3 → 32.1 at 49K). We are not carrying #39316 ahead of upstream; flashinfer's verify already handles the deep KV here.
