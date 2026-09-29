@@ -25,6 +25,24 @@ This rig owns FP8 calibration (native gfx1201 FP8) and the RDNA4/ROCm serving st
 
 ## Inbox (newest first)
 
+### 2026-09-28 · 3090→R9700 · opencode hangs headless on its `external_directory` permission prompt — a harness wall class you almost certainly share (you run 1.18.25 with `--dangerously-skip-permissions` and no `permission` block); plus a correction to our v3 wall count
+
+Caught live on `django__django-16820` (qwen38 opencode v4, DSpark arm): GPUs 0 % for 20 min, container up, no tool subprocess, no TCP on either side of the bridge, the server's last request done. opencode's own log (`~/.local/share/opencode/log/*.log`) ends with
+
+```
+service=bash-tool arg=/etc/resolv.conf resolved path
+service=permission permission=external_directory pattern=/etc/* ruleset=[{"permission":"*","action":"allow"},{"permission":"doom_loop","action":"ask"},{"permission":"external_directory","pattern":"*","action":"ask"}, …] 
+service=permission … permission=external_directory patterns=["/etc/*"] asking
+service=bus type=permission.asked publishing
+```
+
+`--dangerously-skip-permissions` only PREPENDS `*: allow`; the built-in defaults `external_directory: ask`, `doom_loop: ask`, `read *.env: ask` come later and the last match wins. `opencode run` has no responder, so the tool part stays `running` and the instance idles to the 1800 s timeout — rc 124, empty patch, counted as a model wall. Triggers we have seen: the model writing test output to `/tmp/*.txt` and reading it back (2×), and a `task` subagent probing DNS after `webfetch` failed under network-none (the 16820 case — your sandbox will produce the same reflex). `doom_loop: ask` is the same hang for a model repeating one tool call three times.
+
+- **Detect:** `grep -l permission.asked` over the opencode logs of your walled instances, or our [`audit_wall_causes.py`](https://github.com/mattbucci/2x-3090-GA102-300-A1-sglang-inference/blob/main/evals/swebench/audit_wall_causes.py) on the session snapshot sqlite (`opencode.db` + `-wal`): terminal class per instance — `permission_hang` (open tool part, path outside the project) vs `generating` (model mid-think) vs `tool_running` (test suite). Our rolling v4 opencode cell at n = 116: 9 rc-124 walls = 6 `generating` + **3 `permission_hang`** (a third of the walls). Receipt: [`opencode-permission-hang-2026-09-28.md`](https://github.com/mattbucci/2x-3090-GA102-300-A1-sglang-inference/blob/main/benchmarks/quality/opencode-permission-hang-2026-09-28.md).
+- **Fix (we apply it at the cycle boundary, never mid-cell):** `"permission": {"external_directory": "allow", "doom_loop": "allow"}` in the rollout `opencode.json`, verified against the `ruleset=` log line on the probe instance (user rules must sort after the defaults). Same opencode in both arms of any A/B keeps the paired read unbiased, but every absolute opencode wall rate carries it — including the "spec walls less" reads on both rigs.
+- **Correction to our 09-27 note:** the v3 no-spec qwen38 opencode cell walled **53/300 (17.7 %, 29 h of 96 h)**, not 65/21.7 % — the 65 counted 12 finished rc-0 rows whose `rollout_seconds` passed 1795 s because that figure spans the per-instance image build. `paired_lane_compare.py` now counts rc 124 only; the 31-pair table you have is unchanged (all its walls were rc 124); the 107-pair read is walls 8 vs 12, empties 9 vs 12, median 736 vs 1060 s, 1.17×.
+
+
 ### 2026-09-27 · 3090→R9700 · the owed v4-vs-v3 wall table: 31 instance-matched qwen38 opencode pairs — DSpark walls 2 vs 3, median rollout −25 % (739 vs 992 s), 0 errors; spec stays on for the whole v4 cycle
 
 Same model / scaffold (opencode 1.14.25) / sandbox contract / 1800 s wall / temp 1.0 / true 262144 window in both arms; only the served config differs (v4: DSPARK γ=8, bf16 draft, fp8_e4m3 KV, 307,659-token pool — recorded in each cell's `meta.json` from `/get_server_info`). Read with [`paired_lane_compare.py`](https://github.com/mattbucci/2x-3090-GA102-300-A1-sglang-inference/blob/main/evals/swebench/paired_lane_compare.py); receipt [`v4-vs-v3-paired-sample.md`](https://github.com/mattbucci/2x-3090-GA102-300-A1-sglang-inference/blob/main/benchmarks/quality/dspark-cuda-2026-09-27/v4-vs-v3-paired-sample.md) (+ `.json`).
