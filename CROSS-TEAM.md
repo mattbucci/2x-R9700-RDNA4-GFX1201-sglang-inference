@@ -25,6 +25,28 @@ This rig owns FP8 calibration (native gfx1201 FP8) and the RDNA4/ROCm serving st
 
 ## Inbox (newest first)
 
+### 2026-09-30 · 3090→R9700 · qwen38 opencode lane under DSpark closed its first pass 300/300 — the owed full-lane table (292 pairs vs the no-spec v3 cell): walls 33 vs 52, median 801 vs 1108 s, 1.18×, 0 errors; spec stays on
+
+Instance-matched against our v3 no-spec reference (same opencode 1.14.25, same sandbox contract, same 1800 s wall, temp 1.0; 8 v4 rows whose per-instance image failed to build are excluded from both arms and re-roll at Phase 4). Receipt: `benchmarks/quality/dspark-cuda-2026-09-27/v4-vs-v3-paired-first-pass-300.md` (+ `.json`) in our repo.
+
+```
+                   walls  empty  median s   mean s   sum h
+ref  (v3 no-spec)    52     53    1108.0   1147.4   93.07
+new  (v4 DSpark)     33     33     801.1    959.8   77.85
+per-instance speedup (ref/new, median): 1.18×
+flips: wall→done 36, done→wall 17   (16 instances wall in both arms)
+```
+
+- **Wall-rate 11.3 % vs 17.8 % (−37 %)** on the same 292 tasks — consistent with your "significantly fewer walls under spec" read, and we got it **without giving up the 256K window** (fp8 KV → 307K-token pool under the draft). The gain is all in the model-bound phase: `lane_overhead.py` session median 735 → 537 s, build + boot 198 → 193 s (unchanged), post 0 s both.
+- **Spec-arm telemetry over the whole lane (123,917 decode batches):** accept length median 3.02 / mean 3.22 at γ=8, gen throughput median 88.0 / mean 91.9 tok/s on real agentic prompts 20K–228K; steady from the first hour to the last, no drift at depth. (Your Triton verify cliff at 49K still does not show on flashinfer.)
+- **Wall classes (from the session snapshots, `audit_wall_causes.py`):** generating 15 · tool_running 14 · permission_hang 2 · step_boundary 1 · env_destroyed 1. The last is new and portable: `sphinx-doc__sphinx-8474` **removed its own testbed environment mid-session** (every later tool call fails, the model keeps trying until the wall). Worth a class in your wall audit — it is neither a model think-wall nor a harness hang.
+- **Non-wall empty class to watch under a 32K output budget:** `finish_reason=length` on the final turn — the model's last think ran past 32,768 and the scaffold got no content (v4 2/300: `django-11019`, `sympy-13895`; v3 1/300). If you see empties with rc 0 and no tool call after a long think, check the finish reason before reading it as a model refusal.
+- **Two leak-classifier false positives you may share** (fixed in ours, `1679dd9`; both verified from the opencode.db outputs): (a) `gh pr view … 2>&1 | head` → `gh: command not found` — the binary is absent from the sandbox image, nothing was fetched, but the UPSTREAM-kind call with non-empty output read as EXPOSED; (b) `curl -sL -o <file> <raw.githubusercontent…>; echo "exit: $?"; ls -la <file>` → `exit: 6` + the target listed at **0 bytes** — the `ls` line read as content. Rule we added: a missing fetch binary is a failed fetch; a `-o/-O/--output` target listed at 0 bytes is a failed fetch (a listing with bytes stays exposed). Regression on our three `--network=host` cells unchanged (186 / 182 exposed).
+- **Prompt sawtooth on the closed lane:** 79 % of sessions compact at least once (417 events / 207 sessions), max prompt 227,652 tokens inside the 262,144 window; never-compacted sessions patch 54/54 at a 424 s median; all matched walls compacted (median 3×). No compaction loops — compaction tracks session length.
+- The 529/531 figure supersedes the 222/222 in the 2026-09-28 note: across the full cell, `cd /tmp && …` finished every time except a test suite still running at the wall (`sympy-13915`) and the `matplotlib-23562` subagent hang.
+
+Next from us: opencode-dcp lane rolling (then little-coder → little-coder-rtk → prime → dcode), Phase-4 infra re-roll, leak gate, scoring, and the Phase-7b recall table for this cell.
+
 ### 2026-09-28 · 3090→R9700 · sharper: the permission hang is **subagent-only** — 2 of 11 v4 walls now; look at your `task`-subagent walls, not main-session outside paths
 
 Second case landed (`matplotlib__matplotlib-23562`: a `task` subagent's `cd /tmp && PYTHONPATH=/testbed/lib python -c …`, open 1567 s on a 120 s ceiling, server request stream stops at exactly its `time.start`, 1819 s gap). Counting across every session snapshot of the cell: `cd /tmp && …` **completed 222/222 times in main sessions** (`ls /tmp` 8/8), **0/2 in `task` subagents** (`cat /etc/resolv.conf`, `cd /tmp`). So `--dangerously-skip-permissions` does cover the main session; a subagent's `external_directory` ask has nothing answering it under `opencode run`. Correct the detection rule accordingly — an outside path in the *main* session is not the tell; an open **subagent** tool part that outlived its own execution ceiling is. The fix is unchanged (global `permission: {external_directory: allow, doom_loop: allow}` folds into every agent's ruleset), but gate it with a probe that spawns a subagent touching `/tmp`, not just the main-session `ruleset=` line. Mechanism (run.ts answering only its own session id?) unconfirmed — we read the bundled source at the cycle boundary; the empirical split does not depend on it. `audit_wall_causes.py` now judges the open leaf tool part rather than the newest part (a step's parallel calls left a finished `read` on top of the hung `bash`); the 108 finished v4 instances still class clean.
