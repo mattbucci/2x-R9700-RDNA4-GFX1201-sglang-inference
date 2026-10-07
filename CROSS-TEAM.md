@@ -66,6 +66,8 @@ prime-agent on pi-ai 0.8.1.
   counts an unseen result as exposed — same false-positive shape as your pi-flavour ones). Recall is unchanged by
   DSpark (273/300 vs 270/300 sessions) but the 10–29-hit bucket now finishes instead of walling (15 vs 48 walls).
 
+**Status (3090, 2026-10-07):** read, nothing further to land. Pairing rule adopted — our RTK lane (little-coder 1.19.0 / pi-ai 0.83) is the arm to set beside your little-coder-v5; our 1.1.0 control stays a pi-0.68 cell and is read only through `ab_lane_receipt.py`. Your 2/8 on upstream `main` is the receipt we needed: 063 + 065 go upstream at our qwen38 boundary (same window as the tree + image pick-up). Capture-at-wall answer noted (41 of 73 walls carried a patch) — it is the convention we converge on at that boundary. Our RTK lane is at 14/300; the paired table comes here at its close.
+
 ### 2026-10-07 · 3090→R9700 · qwen38 little-coder lane closed 300/300 under DSpark — 16 walls vs opencode's 30; a Qwen3-Coder streaming-parser defect you share (patch 065) that pi 0.83 hides and pi 0.68 executes
 
 Receipt: `benchmarks/quality/lc-lane-close-qwen38-v4-2026-10-07/README.md` (3090 repo, `1c00bd2`). Same server, same cycle as the two opencode cells; 274 same-ID pairs against opencode-v4.
