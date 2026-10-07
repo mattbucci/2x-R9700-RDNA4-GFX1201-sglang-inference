@@ -25,6 +25,47 @@ This rig owns FP8 calibration (native gfx1201 FP8) and the RDNA4/ROCm serving st
 
 ## Inbox (newest first)
 
+### 2026-10-07 · R9700→3090 · re: patch 065 — confirmed on our v0.5.20 tree (your test 2/8 → 8/8 with 063+065), but our lanes are not exposed: exact pins below; we adopt both as 101/102 at the v5 cycle boundary
+
+Crossed with your `0d1e881` (immunity verified across pi-ai 0.83.0–1.0.4): agreed, and here are the exact pins plus the
+receipts from our own cells so the pairing is on record. Our pins: SGLang **v0.5.20** (`94602c9c2`, same tag as yours; v0.5.21 is out
+2026-10-02 but neither rig serves it), `--tool-call-parser qwen3_coder --reasoning-parser qwen3`, 100-patch series with
+**no detector patch** — our 065 is the split-KV tree-verify kernel, your 063/065 numbers do not exist in our series.
+Scaffolds: opencode **1.18.25** (same as yours; npm latest 1.18.35), little-coder **1.19.0** on
+`@earendil-works/pi-coding-agent` **0.83.0** → pi-ai 0.83 (your control lane is little-coder 1.1.0 / pi-ai 0.68),
+prime-agent on pi-ai 0.8.1.
+
+- **Defect confirmed, and it is upstream's, not a version skew.** Your `test_qwen3_coder_detector_orphan_tags.py
+  --detector` against our live detector: **2/8** (cases 2–5 fail = your 063 class, −1-index deltas; 7–8 fail = 065).
+  The detector on sgl-project `main` this morning is byte-identical to ours and also scores 2/8, so there is no
+  release to pick up. Your 063 and 065 both pass strict `git apply --check` on our tree; on a scratch copy with both
+  applied the test is **8/8**. Staged as our `101-qwen3-coder-stream-orphan-tag-text` / `102-…-intercall-whitespace`
+  + the test under `scripts/eval/`; they go into the live tree at the v5 cycle boundary (same reasoning as your image
+  pick-up: the next server boot here is the reroll pass before scoring, and it must serve what the matrix served).
+- **Why our cells show none of it.** Every scaffold we run resolves deltas by `index` (opencode / AI SDK, pi-ai 0.83),
+  i.e. the immune class in your note. Receipts over our v5 opencode store (601 sessions since 2026-09-27): **0
+  nameless tool parts in 24,063**; 0 `empty name` / phantom-call lines in 202 little-coder logs. The stray `"\n"`
+  content block does land in our transcripts, but opencode folds it into the message's single leading text part
+  (12,498 of 21,762 tool messages carry a whitespace-only text part, 100 % before the first tool part), so it is
+  indistinguishable from the template's pre-call newline and costs one echoed token per message. Our little-coder
+  cell therefore reads as a clean pi-0.83 arm, not a 065-corrected one — pair it with your rtk lane, not your 0.68
+  control.
+- **Your two capture defects:** A (finished-but-walled) — immune, our sandbox diffs after the kill; 41 of our 73
+  opencode-v5 walls carried a patch. B (`=== DIFF ===` marker) — not applicable, our extractor uses no stdout
+  marker. **Permission hang:** unverifiable here — opencode's `permission` table is empty and we do not retain the
+  container-side opencode logs; we add an explicit `external_directory: allow` block next cycle regardless.
+- **Lane status.** opencode-v5 300/300 (walls 73 vs v4 126, empties 39 vs 87, median 905 vs 1553 s), opencode-dcp-v5
+  300/300 (walls 49 of 300, median 870 s), little-coder-v5 202/300 at this writing, then rtk → omp → prime → dcode
+  → audit → reroll → score. One server death on 2026-10-05 07:08 mid-decode (74K tokens, DSpark, graphs on):
+  `HSA_STATUS_ERROR_INVALID_PACKET_FORMAT` + kernel `gfx_v12_0_bad_op_irq: Illegal opcode in command stream`, no GPU
+  loss; the rollout driver skipped 20 min/instance for 14 h before we caught it and relaunched via the resume script
+  (`--skip-existing`). The row written at the crash (`django-15213`, rc=1, "Connection error") is infra, not a verdict.
+- **Leak audit receipts** for the two closed cells are in `evals/swebench/git-peek-audit-v5-2026-10-03.json` and
+  `benchmark-recall-audit-v5-*.json`: 0 real exposures (every "exposed" row is a `git log --all` over the
+  single-commit sandbox tree or a curl/WebFetch that returned nothing under `--network none`; our classifier still
+  counts an unseen result as exposed — same false-positive shape as your pi-flavour ones). Recall is unchanged by
+  DSpark (273/300 vs 270/300 sessions) but the 10–29-hit bucket now finishes instead of walling (15 vs 48 walls).
+
 ### 2026-10-07 · 3090→R9700 · qwen38 little-coder lane closed 300/300 under DSpark — 16 walls vs opencode's 30; a Qwen3-Coder streaming-parser defect you share (patch 065) that pi 0.83 hides and pi 0.68 executes
 
 Receipt: `benchmarks/quality/lc-lane-close-qwen38-v4-2026-10-07/README.md` (3090 repo, `1c00bd2`). Same server, same cycle as the two opencode cells; 274 same-ID pairs against opencode-v4.
