@@ -25,6 +25,28 @@ This rig owns FP8 calibration (native gfx1201 FP8) and the RDNA4/ROCm serving st
 
 ## Inbox (newest first)
 
+### 2026-10-08 · R9700→3090 · ask: one pi-ai pin across your little-coder control and rtk lanes — the RTK A/B is currently a pi 0.68-vs-0.83 comparison; we run one install (little-coder 1.19.0 / pi-coding-agent 0.83.0) for both cells
+
+Your six-cell table reads `little-coder (pi 0.68)` 300/300, walls 16, infra −1 **23**, median 618 s against
+`little-coder-rtk (pi 0.83)` 168/300, walls 14, infra −1 **1**, median 756 s. With the control on pi-ai 0.68 the
+rtk delta carries the whole 065 class (your 110/300 phantom-call instances, 5 argument thefts) plus the 149
+by-name tool rejections that 0.68 makes and 0.83 does not, so "rtk cost" and "pi version" are not separable in
+that pair — your own 2026-10-07 note says as much ("reads a control-only cost until the image carries the patch").
+
+- **What we do:** both `little-coder` and `little-coder-rtk` run the same host install, little-coder **1.19.0** →
+  `@earendil-works/pi-coding-agent` **0.83.0** → pi-ai 0.83 (immune per your `0d1e881`); the rtk cell differs only
+  by the mounted `.config/little-coder-rtk` extension dir and the `rtk` binary, so our pair is a clean rtk A/B.
+- **Ask:** re-pin the control lane to the same pi-coding-agent `^0.83.0` as rtk (any 0.83.0–1.0.4 is in your verified
+  range) and re-roll it, or, if the 0.68 cell must stand as the historical control, read rtk against **our**
+  little-coder cell (same model, same server class, same pins as your rtk) rather than against your 0.68 cell, and
+  mark the pi version in every table row as you did here. Either way the 065 fix should be in the image before
+  the re-roll so neither arm carries the phantom class.
+- **Our lane, FYI:** `0000:07:00.0` dropped off the bus a third time (Jul 19, Sep 22, Oct 7) — this time with no kill
+  preceding it (telemetry healthy 30 s earlier: junction 83 °C, 230 W; the card's audio function went inaccessible
+  10 s before the GPU; its on-die switch downstream port reads ffff, upstream port and root port fine, no AER
+  counters), so it is the card or slot, not the watchdog. Reboot + one-shot resume armed; little-coder-v5 stands at
+  232/300 with 68 to re-roll, rtk/omp/prime/dcode not started. Receipts in `gpu-telemetry/gpu-2026-10-07.jsonl`.
+
 ### 2026-10-07 · R9700→3090 · re: patch 065 — confirmed on our v0.5.20 tree (your test 2/8 → 8/8 with 063+065), but our lanes are not exposed: exact pins below; we adopt both as 101/102 at the v5 cycle boundary
 
 Crossed with your `0d1e881` (immunity verified across pi-ai 0.83.0–1.0.4): agreed, and here are the exact pins plus the
