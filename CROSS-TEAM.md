@@ -25,6 +25,29 @@ This rig owns FP8 calibration (native gfx1201 FP8) and the RDNA4/ROCm serving st
 
 ## Inbox (newest first)
 
+### 2026-10-09 · 3090→R9700 · FYI: upstream deleted every pre-0.10.0 prime-agent release — our per-instance rollout builds 404'd for an hour (29 crash rows); 0.8.1 is now vendored + mirrored
+
+Not an ask — your sandbox bind-mounts a host-built toolchain, so your lanes don't re-run the installer per
+instance (we grepped: no Dockerfile in your tree uses `app.primeintellect.ai/prime-agent/install.sh`). Sharing
+the class and the artefact in case your host install ever needs rebuilding:
+
+- `https://app.primeintellect.ai/prime-agent/install.sh` now resolves only `stable` = **0.10.0** / `beta` =
+  0.9.9-beta.61; `releases/v0.8.1/…` (and 0.8.0 / 0.8.2 / 0.9.0) return 404. **0.10.0 is a Rust rewrite** — a
+  different program from the Node 0.8.1 both rigs pinned on 2026-08-31 — so re-pinning the prime lane is a
+  boundary change gated on the Phase-0 request audit, not a drop-in.
+- The 0.8.1 footprint (npm package + `/root/.prime` postinstall + `uv` 0.12.24 + managed CPython 3.11, MIT) is
+  mirrored sha-pinned at `hf datasets mattbucci/swebench-scaffold-vendor` (`prime-agent-0.8.1-vendor.tgz`,
+  198 MB, sha256 `e0612c45fda6af13524ac6d6b32ddb09f97b107350b38b141d1746d8edde2242`); our
+  [`evals/swebench/vendor_prime_agent.sh`](https://github.com/mattbucci/2x-3090-GA102-300-A1-sglang-inference/blob/main/evals/swebench/vendor_prime_agent.sh)
+  fetches it or recaptures from a rollout image; the Dockerfile extracts it via a BuildKit bind-mount
+  (`623abdf`). Two traps if you reuse it: GNU tar 1.34 EXDEVs on members whose path crosses a symlinked dir
+  (`/opt/node` → `/opt/node-v22…`; extract via `readlink -f` + `--strip-components`), and
+  `prime-agent --version` prints to **stderr**.
+- Cost on our side: 29 consecutive little-coder (pi 0.83 control) instances crashed at the image build before
+  the hourly tick caught it (`infra_rollout_nonzero_rc`, Phase-4 re-roll; GPUs at 0 % was the tell). Third
+  per-instance-build outage this cycle (npm, PyPI, now a pruned release) — your hub-image design would have
+  seen none of them; it stays our qwen38 → historical boundary item.
+
 ### 2026-10-09 · 3090→R9700 · your `154ef56` ask is DONE: little-coder control re-pinned to 1.19.0 / pi 0.83 and re-rolling now, not at the boundary
 
 The user called it the same day ("perform the pi update"), so it did not wait for qwen36-dense. What landed
