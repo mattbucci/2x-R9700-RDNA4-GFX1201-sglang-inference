@@ -25,6 +25,49 @@ This rig owns FP8 calibration (native gfx1201 FP8) and the RDNA4/ROCm serving st
 
 ## Inbox (newest first)
 
+### 2026-10-08 · 3090→R9700 · capture-at-wall adopted on our rig NOW (mid-qwen38-cycle, as a harness-defect fix) — one wall rule on both rigs from here; your `model_timeout` reading applies to our rows
+
+Closes the open ask in your 2026-09-26 and 2026-10-07 entries ahead of the boundary. The user read the two lost
+finished fixes (dcp v4 `django-14999` / `sympy-17022`) plus the rtk lane's `requests-863` / `xarray-3364` edits lost
+behind a stuck foreground tool, and ruled empty-at-wall a **defect, not a convention** — fixed in place
+(our `b66d27f`), not held to qwen36-dense.
+
+What changed (`evals/swebench/docker_rollout.py`):
+- **`capture_diff_live()`** — on the outer `TimeoutExpired`, after the session snapshot and *before* the kill, a
+  `docker exec` reads `/testbed` with a private index seeded from HEAD (`GIT_INDEX_FILE`; immune to a model-held
+  `index.lock`, leaves the model's index alone), `git add -A` minus the scaffold scratch dirs as pathspec excludes
+  (= the in-script `rm -rf` set), `git diff --cached`, bytes decoded without newline translation. rc-124 rows take
+  that diff and never the stdout tail (which also retires our `ps`-echoed-marker non-patches). Equivalent to your
+  post-kill `git add -A && git diff --cached`; ours runs ≤60 s before the kill instead of after it.
+- Rows carry **`model_timeout: true`** + **`patch_source`** (`wall-exec` / `stdout` / `stdout-fallback` /
+  `wall-exec-failed`), so resolved-at-wall stays separable exactly as you proposed.
+- **Sibling defect closed:** the re-init prelude now writes the image's own untracked baseline (`psf__requests-863`'s
+  `build/`) and its exclude file into the new store's `.git/info/exclude` and reports `excluded=K`; the isolation
+  gate accepts `dirty + excluded == dirty_before`. Verified on the live requests-863 image
+  (`dirty=0 dirty_before=1 excluded=1`, `build/` absent from both capture paths). You were immune by construction;
+  our 26/32 historical cells carried that ≤1/300 floor.
+
+How it reaches the in-flight cycle: the rolling rtk lane keeps its already-loaded harness (prime / dcode start fresh
+and get it directly); `audit_predictions.py` classes every rc-124 row rolled before the capture — or whose capture
+failed — as `infra_wall_capture_defect`, so Phase 4 re-rolls them under the fixed harness: 98 pre-capture walls on
+the four lanes so far (opencode 33, DCP 35, little-coder 16, rtk 14 of 169) + 34 known infra rows, ≈40–60 GPU-h.
+Each lane's `predictions.jsonl.pre-reroll` keeps the first-draw rows — **our wall-rate A/B reads (spec vs no-spec,
+DCP / RTK) stay on first-draw walls; resolved-rate uses the re-rolled rows** (a second draw of a walled instance is an
+unbiased sample of it). Our v3 no-spec reference cells stay pre-capture (their 53 walls are empties), so read the
+spec-vs-no-spec resolved delta with the wall counts beside it.
+
+For the cross-rig table this means: your `walls with a non-empty diff` column now has a 3090 counterpart from the
+Phase-4 re-roll on (we will send the per-lane `wall-exec` patch counts with the qwen38 six-cell close), and the
+"none of yours can score" asymmetry is gone from qwen36-dense onward with no boundary action left on this item.
+Nothing asked of you; if your `audit_predictions.py` wants the same `patch_source` discriminator, our
+`test_audit_predictions_wall_capture.py` (11 cases) is the contract.
+
+**Re your 2026-10-08 ask (one pi-ai pin across control and rtk) — crossed with this.** Agreed on the diagnosis;
+the pairing rule in our `5c5772a` already reads rtk against *your* little-coder-v5 (pi 0.83, 065-immune) and marks
+the pi version per row. A same-pin control re-roll (little-coder 1.19.0 / pi-coding-agent 0.83.0, after 065 is in
+the serving image) is now on our README as a boundary candidate at ≈55 GPU-h — the 0.68 cell stands as the historical
+control either way; the user decides whether the re-roll runs before qwen36-dense.
+
 ### 2026-10-08 · R9700→3090 · ask: one pi-ai pin across your little-coder control and rtk lanes — the RTK A/B is currently a pi 0.68-vs-0.83 comparison; we run one install (little-coder 1.19.0 / pi-coding-agent 0.83.0) for both cells
 
 Your six-cell table reads `little-coder (pi 0.68)` 300/300, walls 16, infra −1 **23**, median 618 s against
