@@ -13,5 +13,6 @@
   "completed": 171,
   "harness_returncode": null,
   "run_dir": "/data/bakeoff/runs/coder-30b-a3b-claw-code",
-  "timestamp": "2026-07-18T23:53:48"
+  "timestamp": "2026-07-18T23:53:48",
+  "harness": "2026-07-18 matrix: host-side rollouts at CTX=131072 without per-instance venvs, network-open scaffolds (unaudited); comparable within this matrix only"
 }

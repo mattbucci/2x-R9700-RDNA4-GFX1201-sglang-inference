@@ -45,6 +45,10 @@ def parse_args(argv=None):
                    help="Where per-cell JSONs land (default: benchmarks/quality).")
     p.add_argument("--no-json", action="store_true",
                    help="Skip per-cell JSON writes; markdown only.")
+    p.add_argument("--harness", default=None,
+                   help="One-line harness description stored as `harness` in every cell "
+                        "JSON written by this run; generate_charts.py prints it under the "
+                        "bake-off chart so cells from different harnesses are never read as one matrix.")
     return p.parse_args(argv)
 
 
@@ -95,7 +99,7 @@ def display_path(path: Path, repo_root: Path) -> str:
 
 def write_cell_json(preset: str, scaffold: str, run_dir: Path,
                     summary: dict, quality_dir: Path,
-                    repo_root: Path) -> Path:
+                    repo_root: Path, harness: str | None = None) -> Path:
     """Write benchmarks/quality/bakeoff-<preset>-<scaffold>.json for one cell."""
     quality_dir.mkdir(parents=True, exist_ok=True)
     out = quality_dir / f"bakeoff-{preset}-{scaffold}.json"
@@ -130,6 +134,8 @@ def write_cell_json(preset: str, scaffold: str, run_dir: Path,
         "run_dir": display_path(run_dir, repo_root),
         "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S"),
     }
+    if harness:
+        payload["harness"] = harness
     out.write_text(json.dumps(payload, indent=2) + "\n")
     return out
 
@@ -302,7 +308,7 @@ def main(argv=None):
         if summary and not args.no_json:
             cell_jsons.append(
                 write_cell_json(preset, scaffold, run_dir, summary,
-                                quality_dir, repo_root)
+                                quality_dir, repo_root, harness=args.harness)
             )
 
     # Special-case: the legacy `coder-30b-docker-v2` dir is the opencode
@@ -323,7 +329,7 @@ def main(argv=None):
         if summary and not args.no_json:
             cell_jsons.append(
                 write_cell_json("coder-30b-eval", "opencode", legacy, summary,
-                                quality_dir, repo_root)
+                                quality_dir, repo_root, harness=args.harness)
             )
 
     rows = []

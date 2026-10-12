@@ -11,6 +11,12 @@ consistent method: streaming-TPOT median (3 runs, decode-only, actual input-toke
 each model under its production launch preset (quant, graph policy, and KV dtype per preset). The full
 decode table is in the [top-level README](../README.md#single-user-decode-across-the-fleet); each `<model>/` directory
 here holds that model's `results.json` and regenerated `context_vs_toks.png` / `concurrency_vs_toks.png`.
+Fleet charts regenerated from the same files by `scripts/bench/generate_charts.py`:
+[all_models_decode.png](all_models_decode.png) (short vs deepest measured input per model),
+[all_models_context.png](all_models_context.png) (decode vs context), [specdecode_fleet.png](specdecode_fleet.png)
+(from [specdecode.json](specdecode.json)), and [bakeoff_swebench_lite.png](bakeoff_swebench_lite.png)
+(SWE-bench Lite resolve rate per preset × scaffold from `quality/bakeoff-*.json`; cells carry a `harness`
+line so matrices run under different harnesses are labelled, never merged).
 
 ### Qwen3.8-27B-FP8 (2026-09-27, v0.5.20 + 72 patches, HIP graphs on, DSpark speculative preset)
 

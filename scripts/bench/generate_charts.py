@@ -10,6 +10,7 @@ import argparse
 import glob
 import os
 import json
+import re
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
@@ -1238,6 +1239,167 @@ def make_specdecode_chart():
     print(f"  {path}")
 
 
+# Deepest honest input depth on a 256K-capable server: 262144 − output − margin
+# lands at ~197K actual input tokens in the canonical sweeps. A model whose
+# deepest point is shallower than this is at its own KV/context cap, not 256K.
+DEEP_INPUT_TOKENS = 190_000
+
+
+def make_decode_bar_chart(all_data):
+    """Per-model single-user decode tok/s — short input vs the deepest measured
+    input, from the same results.json sweeps as the context curves. The deep
+    bar is hatched for models whose deepest point is below ~197K actual input
+    (their KV/context cap), so Gemma 26B / Coder-30B show their honest shallow
+    limit instead of being read as 256K-depth throughput. Labels carry the
+    actual input-token count (not the requested context)."""
+    from matplotlib.patches import Patch
+    rows = []
+    for key, (meta, results) in all_data.items():
+        sweep = [p for p in results.get("context_sweep", [])
+                 if "error" not in p and p.get("tok_per_sec", 0) > 0]
+        if len(sweep) < 2:
+            continue
+        peak = max(sweep, key=lambda p: p["tok_per_sec"])
+        deep = max(sweep, key=lambda p: p.get("input_len", p["context"]))
+        deep_in = deep.get("input_len", deep["context"])
+        rows.append({"meta": meta, "peak": peak["tok_per_sec"],
+                     "peak_in": peak.get("input_len", peak["context"]),
+                     "deep": deep["tok_per_sec"], "deep_in": deep_in,
+                     "reaches": deep_in >= DEEP_INPUT_TOKENS,
+                     "date": str(results.get("timestamp", ""))[:10]})
+    if not rows:
+        print("  SKIP decode bar chart (no fleet data)")
+        return
+    rows.sort(key=lambda r: r["peak"], reverse=True)
+
+    x = np.arange(len(rows)); w = 0.38
+    fig, ax = plt.subplots(figsize=(max(11, 1.05 * len(rows)), 6))
+    for i, r in enumerate(rows):
+        c = r["meta"]["color"]
+        ax.bar(x[i] - w / 2, r["peak"], w, color=c, alpha=0.42, zorder=5)
+        ax.text(x[i] - w / 2, r["peak"] + 1.0, f'{r["peak"]:.0f}', ha="center",
+                fontsize=9, color=c, fontweight="bold")
+        hatch = None if r["reaches"] else "////"
+        ax.bar(x[i] + w / 2, r["deep"], w, color=c, alpha=0.95, zorder=5,
+               hatch=hatch, edgecolor="#0d1117", linewidth=0.6)
+        ax.text(x[i] + w / 2, r["deep"] + 1.0, f'{r["deep"]:.0f}\n@{_fmt_tok(r["deep_in"])}',
+                ha="center", fontsize=8, color=c, fontweight="bold")
+    labels = [r["meta"]["label"].replace(" AWQ ", "\n").replace(" AWQ", "")
+              .replace(" FP8 ", "\n").replace(" FP8", "") for r in rows]
+    ax.set_xticks(x); ax.set_xticklabels(labels, fontsize=7.5, rotation=28, ha="right")
+    ax.set_ylabel("tok/s (single user, M=1)")
+    ax.set_title("Single-user decode — short input vs deepest measured input (TP=2)",
+                 fontsize=13, fontweight="bold", pad=10)
+    ax.legend(handles=[
+        Patch(facecolor="#8b949e", alpha=0.42, label="short input (≤128 ctx)"),
+        Patch(facecolor="#8b949e", alpha=0.95, label="deep: ≥190K actual input on a 256K server"),
+        Patch(facecolor="#8b949e", alpha=0.95, hatch="////", edgecolor="#0d1117",
+              label="at the model's own cap (< 190K input)"),
+    ], loc="upper right", framealpha=0.5, edgecolor="#30363d", facecolor="#161b22", fontsize=9)
+    ax.grid(True, axis="y", linestyle="--")
+    ax.set_ylim(bottom=0, top=max(r["peak"] for r in rows) * 1.18)
+    dates = sorted(d for d in {r["date"] for r in rows} if re.match(r"^\d{4}-\d{2}-\d{2}$", d))
+    ax.text(0.0, -0.40, "per-model results.json sweep (streaming TPOT, decode-only, actual input tokens); "
+            "Qwen3.8 appears twice: DSpark speculative preset vs the no-spec reference server; "
+            + (f"measured {dates[0]}" + (f" .. {dates[-1]}" if len(dates) > 1 else "") if dates else ""),
+            transform=ax.transAxes, fontsize=7.5, color="#8b949e")
+    fig.tight_layout()
+    out = os.path.join(BENCH_DIR, "all_models_decode.png")
+    fig.savefig(out, dpi=150, bbox_inches="tight")
+    plt.close(fig)
+    print(f"  {out}")
+
+
+def _fmt_tok(n):
+    n = int(n)
+    return f"{n // 1000}K" if n >= 1000 else str(n)
+
+
+# Scaffold display order for the bake-off chart: the live roster first
+# (aggregate_bakeoff.SCAFFOLDS), retired claw-code last so its historical
+# cells still render.
+BAKEOFF_SCAFFOLDS = [
+    ("opencode",         "#58a6ff", "opencode"),
+    ("opencode-dcp",     "#1f6feb", "opencode + DCP"),
+    ("little-coder",     "#3fb950", "little-coder"),
+    ("little-coder-rtk", "#2ea043", "little-coder + RTK"),
+    ("omp",              "#56d4dd", "oh-my-pi"),
+    ("prime",            "#d2a8ff", "prime"),
+    ("dcode",            "#f0883e", "dcode"),
+    ("claw-code",        "#8b949e", "claw-code (retired)"),
+]
+
+
+def make_bakeoff_chart():
+    """SWE-bench Lite resolve rate per preset × scaffold, from the per-cell
+    JSONs `benchmarks/quality/bakeoff-<preset>-<scaffold>.json` that
+    `evals/swebench/aggregate_bakeoff.py` writes (tagged cycles land as
+    `bakeoff-<preset>-<tag>-<scaffold>.json`, e.g. `qwen38-v5`). Cells under
+    300 predictions are hatched — partial cells are not comparable. Cells
+    with `"superseded"` set are kept as receipts and skipped. The footnote
+    is built from the cells' `harness` strings when present, so a matrix run
+    under a different harness is labelled rather than silently merged."""
+    from matplotlib.patches import Patch
+    cells = {}
+    for path in glob.glob(os.path.join(BENCH_DIR, "quality", "bakeoff-*.json")):
+        try:
+            d = json.load(open(path))
+        except Exception:
+            continue
+        if not d.get("preset") or not d.get("scaffold") or d.get("resolved") is None:
+            continue
+        if d.get("superseded"):
+            continue
+        cells[(d["preset"], d["scaffold"])] = d
+    if not cells:
+        print("  SKIP bake-off chart (no cell JSONs)")
+        return
+    scaffolds = [s for s in BAKEOFF_SCAFFOLDS if any(k[1] == s[0] for k in cells)]
+    presets = sorted({k[0] for k in cells},
+                     key=lambda p: -max(c["resolve_rate_pct"] for (pp, _), c in cells.items() if pp == p))
+    x = np.arange(len(presets)); n = len(scaffolds); w = min(0.8 / n, 0.26)
+    fig, ax = plt.subplots(figsize=(max(11, 1.6 * len(presets)), 6))
+    partial = False
+    handles = []
+    for j, (sc, color, label) in enumerate(scaffolds):
+        off = (j - (n - 1) / 2) * w
+        handles.append((Patch(facecolor=color, alpha=0.95), label))
+        for i, p in enumerate(presets):
+            c = cells.get((p, sc))
+            if not c:
+                continue
+            full = c.get("total_predictions", 0) >= 300
+            partial |= not full
+            rate = c["resolve_rate_pct"]
+            ax.bar(x[i] + off, rate, w, color=color, alpha=0.95 if full else 0.55,
+                   hatch=None if full else "////", edgecolor="#0d1117", linewidth=0.6, zorder=5)
+            ax.text(x[i] + off, rate + 0.8,
+                    f"{rate:.1f}" if full else f"{rate:.1f}\n({c.get('total_predictions', 0)})",
+                    ha="center", fontsize=7.5, color=color, fontweight="bold")
+    if partial:
+        handles.append((Patch(facecolor="#8b949e", alpha=0.55, hatch="////", edgecolor="#0d1117"),
+                        "partial cell (< 300) — not comparable"))
+    ax.legend([h for h, _ in handles], [l for _, l in handles], loc="upper right", framealpha=0.5,
+              edgecolor="#30363d", facecolor="#161b22", fontsize=8.5)
+    ax.set_xticks(x); ax.set_xticklabels(presets, fontsize=9, rotation=20, ha="right")
+    ax.set_ylabel("SWE-bench Lite resolved (%)")
+    ax.set_ylim(0, max(c["resolve_rate_pct"] for c in cells.values()) * 1.25)
+    ax.set_title("SWE-bench Lite (300 instances) — resolve rate per preset × scaffold, single-user",
+                 fontsize=12.5, fontweight="bold", pad=10)
+    ax.grid(True, axis="y", linestyle="--")
+    dates = sorted(str(c.get("timestamp", ""))[:10] for c in cells.values() if c.get("timestamp"))
+    harness = sorted({c["harness"] for c in cells.values() if c.get("harness")})
+    foot = ("; ".join(harness) if harness else
+            "official SWE-bench Docker scorer, one attempt per instance (resolved / 300)")
+    ax.text(0.0, -0.22, foot + (f"; cell receipts {dates[0]} .. {dates[-1]}" if dates else ""),
+            transform=ax.transAxes, fontsize=7.5, color="#8b949e")
+    fig.tight_layout()
+    out = os.path.join(BENCH_DIR, "bakeoff_swebench_lite.png")
+    fig.savefig(out, dpi=150, bbox_inches="tight")
+    plt.close(fig)
+    print(f"  {out}")
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -1282,6 +1444,10 @@ def main():
     print("Combined:")
     make_combined_context_chart(all_data)
     make_combined_concurrency_chart(all_data)
+    make_decode_bar_chart(all_data)
+
+    print("SWE-bench Lite bake-off:")
+    make_bakeoff_chart()
 
     print("FP8 vs AWQ:")
     make_fp8_comparison_chart()
