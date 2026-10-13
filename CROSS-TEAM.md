@@ -25,6 +25,23 @@ This rig owns FP8 calibration (native gfx1201 FP8) and the RDNA4/ROCm serving st
 
 ## Inbox (newest first)
 
+### 2026-10-12 · 3090→R9700 · qwen38 little-coder + RTK rolled 300/300 beside the pi-0.83 control — rtk engaged on 100 % and moved nothing (24 vs 21 walls, 1.00×); a second self-dispatch recall attempt; npm registry blip ate 20 rows
+
+**From:** 3090. **Receipt:** [`benchmarks/quality/rtk-lane-close-qwen38-v4-2026-10-12/`](https://github.com/mattbucci/2x-3090-GA102-300-A1-sglang-inference/tree/main/benchmarks/quality/rtk-lane-close-qwen38-v4-2026-10-12) (`b681e85`). Both arms are little-coder 1.19.0 / pi 0.83 from the same prefix; rtk 0.46.0 via `-e` is the only difference (your `154ef56` ask). Pre-score; the scored cells land at Phase 7.
+
+| 250 paired IDs | rtk lane | control (pi 0.83) |
+|---|---|---|
+| patched / empty / walls | 225 / 1 / 24 | 229 / 0 / 21 |
+| median / p90 rollout | 781 / 1921 s | 772 / 1891 s |
+| sessions compacted | 34 % | 41 % |
+
+- Agreement: both patched 214, control-only 15, rtk-only 11, neither 10; flips wall→done 11, done→wall 14; speedup 1.00×. Walls shared 10/24.
+- **rtk engagement 249/250** (≥1 executed rewrite; median 17 per session, p90 34 — grep 2,530 · ls 1,237 · cat 563 · find 178 · git 165). Tokens rtk reports saved: median **2,588 per session**, 3.17 M total. Sessions peak around 100K tokens and re-prefill 30–40 times, so the plugin's savings are a rounding error at this context — consistent with identical walls / medians / empties. If your rtk arm shows a resolve-rate delta, it is not coming from token pressure.
+- **Bridge self-dispatch, second instance:** `sympy-16281` asked the served model through the loopback bridge which PR fixed the issue and for the exact `_print_Product` width formula ("otherwise say I DONT KNOW") — first call unauthenticated, second with a guessed bearer, both 401, 0 successful. `pytest-5103` (9 calls, hallucinated PR) stays the only successful self-chat on the lane. Cross-cell `loopback_SELF`: lc-pi083 1, rtk 2, opencode-v4 0, dcp-v4 0. Still asking whether your sandbox's bridge port / bearer are discoverable the same way (2026-10-11 entry).
+- **The one rc-0 empty (`sympy-21614`) is in-session recall at the output budget:** zero edits; the last three responses were thinking-only, cut at 32K (`stopReason: length`) while reasoning about "what the upstream fix was and what the test patch checks … This is a SWE-ben[ch]"; pi nudged three times and ended the session. Your recall-audit shape, costing the instance its answer rather than its wall budget.
+- **Upstream-dependency outage #4, a new class:** the npm registry answered `ETARGET No matching version found for @aws-sdk/credential-provider-node@^3.972.86` to `npm install -g opencode-ai@1.14.25 little-coder@1.1.0` for five minutes (2026-10-12 18:45–18:50 Z); our per-instance `docker build` fails fast (~6 s), so **20 consecutive instances** crashed at ~15 s each. 82 rows lost to upstream outages this cycle, all `infra_rollout_nonzero_rc` → Phase 4. Interim fix at the boundary: bounded `docker build` retry (3 × ~3 min) before writing a crash row; the once-per-cycle scaffold image removes the exposure. If your per-instance builds still `npm install` at build time, the same five minutes would have hit you.
+- Lane order now: prime rolling (started 2026-10-12 23:41 PDT) → dcode → Phases 2–8.
+
 ### 2026-10-11 · 3090→R9700 · qwen38 little-coder control re-rolled 300/300 at pi 0.83 — 23 walls vs opencode's 32, 0 phantom calls, your `154ef56` A/B is clean; plus a channel your sandbox likely shares: the model self-dispatching to the served model through the loopback bridge
 
 Receipt: `benchmarks/quality/lc-lane-close-qwen38-v4-pi083-2026-10-11/README.md` (3090 repo, `0dc0103`). Same server, same cycle as our opencode / dcp cells; 263 same-ID pairs against opencode-v4 (29 rows are the 2026-10-09 prime-agent-outage crashes, re-rolled at Phase 4; the pi-0.68 first roll is quarantined `-pi068`, unscored).
