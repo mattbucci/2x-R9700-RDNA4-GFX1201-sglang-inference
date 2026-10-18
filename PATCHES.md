@@ -1,10 +1,10 @@
 # Patch collections
 
-The repository carries **72 active patches across three environments**:
+The repository carries **75 active patches across three environments**:
 
 | Collection | Target | Count | Purpose |
 |---|---|---:|---|
-| [`patches/`](patches/README.md) | SGLang v0.5.20 (`/data/sgl-v0520`, `sglang-triton36-v0520`) | **70** | RDNA4 serving, model compatibility, correctness, and performance |
+| [`patches/`](patches/README.md) | SGLang v0.5.20 (`/data/sgl-v0520`, `sglang-triton36-v0520`) | **73** | RDNA4 serving, model compatibility, correctness, and performance |
 | [`llmcompressor-patches/`](llmcompressor-patches/README.md) | llmcompressor calibration environment | **1** | Unfused Qwen3 MoE experts for GPTQ calibration |
 | [`ream-patches/`](ream-patches/README.md) | Samsung SAIL REAM clone | **1** | Memory-safe, resumable expert merging |
 
@@ -19,7 +19,7 @@ that count with the Mistral tokenizer-backend correction required by Devstral an
 v0.5.16 rebase, patch 059 was dropped because its FuseEP dispatcher target was removed upstream, and patch
 097 (JIT fused-gate None-bias guard) was added. The v0.5.18 rebase went to 70 (26 patches
 regenerated for upstream's kernel-tree relocation; the upstreamed max-head sizing was dropped from 077; 098 added
-for the native Gemma4Unified config). Patch 099 (2026-09-27) accepts the scheduler's `pp_proxy_tensors=` keyword in the DSpark worker (upstream main carries the same fix; without it every DSPARK boot dies on the first forward). Patch 100 (2026-09-27) enables the Triton split-KV speculative-verify kernel on gfx1201 (upstream gates it to gfx95; same lift as upstream PR #39316) with a 16-row WMMA tile floor — it turns DSpark from 0.24x to 1.5x at a 49K context. The v0.5.20 rebase stayed at 70 (23 regenerated for the msgspec-record
+for the native Gemma4Unified config). Patch 099 (2026-09-27) accepts the scheduler's `pp_proxy_tensors=` keyword in the DSpark worker (upstream main carries the same fix; without it every DSPARK boot dies on the first forward). Patch 100 (2026-09-27) enables the Triton split-KV speculative-verify kernel on gfx1201 (upstream gates it to gfx95; same lift as upstream PR #39316) with a 16-row WMMA tile floor — it turns DSpark from 0.24x to 1.5x at a 49K context. Patch 103 (2026-10-18) ports the 3090's 066: the Responses-API history merge split a phase-tagged assistant text from its own tool call, which emptied 71% of the 3090's dcode cell; the dcode lane preflight now refuses a server without it. The v0.5.20 rebase stayed at 70 (23 regenerated for the msgspec-record
 `ServerArgs` and upstream's gfx1250 branches; upstreamed hunks dropped from 011/049/074/096).
 v0.5.20 is the newest upstream release as of 2026-09-19 (`main` is not tracked; the next rebase targets the
 v0.5.21 tag when it is published).

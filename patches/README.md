@@ -1,13 +1,13 @@
 # SGLang v0.5.20 RDNA4 patches
 
-This directory contains the **70 active numeric patches** applied to pristine SGLang v0.5.20 for the
+This directory contains the **73 active numeric patches** applied to pristine SGLang v0.5.20 for the
 2× Radeon AI PRO R9700 serving stack. The default tree is `/data/sgl-v0520`; the default conda environment
 is `sglang-triton36-v0520`.
 
 Patch 072 is not part of the series because transformers 5.12.1 supplies the Gemma 4 unified configuration
 and processor. Patch 083 adds the tokenizer-backend correction required for Mistral checkpoints that ship
 `tekken.json`. Patch 003 includes safe fallbacks for both the base CUDA-only `sgl_kernel` imports and the
-optional `infllm_v2` extension reported in [issue #3](https://github.com/mattbucci/2x-R9700-RDNA4-GFX1201-sglang-inference/issues/3). On the v0.5.16 rebase, patch 059 was dropped because its FuseEP dispatcher target was removed upstream, and patch 097 was added as the JIT fused-gate None-bias guard. The v0.5.18 rebase went 69 → 70: 26 patches were regenerated for upstream's kernel-tree relocation (`sgl-kernel/` → `python/sglang/kernels/aot/`, `sglang.jit_kernel` → `sglang.kernels.ops`), the upstreamed max-head sizing was dropped from 077, and patch 098 was added so `gemma4_unified` resolves to transformers' native `Gemma4UnifiedConfig` (the `Gemma4Config` alias broke the encoder-free 12B at init). The v0.5.20 rebase kept 70: 23 patches were regenerated, mostly for the msgspec-record `ServerArgs` (`arg_groups/fields`, resolution hooks) and upstream's gfx1250 branches; hunks that landed upstream were dropped from 011, 049, 074 and 096, and 073 was rewritten because its cleanly-applying hunk referenced `is_cuda`/`is_musa`/`is_npu` helpers that `overrides.py` no longer imports.
+optional `infllm_v2` extension reported in [issue #3](https://github.com/mattbucci/2x-R9700-RDNA4-GFX1201-sglang-inference/issues/3). On the v0.5.16 rebase, patch 059 was dropped because its FuseEP dispatcher target was removed upstream, and patch 097 was added as the JIT fused-gate None-bias guard. The v0.5.18 rebase went 69 → 70: 26 patches were regenerated for upstream's kernel-tree relocation (`sgl-kernel/` → `python/sglang/kernels/aot/`, `sglang.jit_kernel` → `sglang.kernels.ops`), the upstreamed max-head sizing was dropped from 077, and patch 098 was added so `gemma4_unified` resolves to transformers' native `Gemma4UnifiedConfig` (the `Gemma4Config` alias broke the encoder-free 12B at init). The v0.5.20 rebase kept 70 (the index then grew to 73 with 103, the 3090's 066 port): 23 patches were regenerated, mostly for the msgspec-record `ServerArgs` (`arg_groups/fields`, resolution hooks) and upstream's gfx1250 branches; hunks that landed upstream were dropped from 011, 049, 074 and 096, and 073 was rewritten because its cleanly-applying hunk referenced `is_cuda`/`is_musa`/`is_npu` helpers that `overrides.py` no longer imports.
 
 Validation receipts:
 
@@ -188,12 +188,13 @@ can be proposed upstream. `Partial` requires a fresh comparison with upstream be
 | 096 | `sglang-api-auth-hardening` | Candidate | Hardens the served API for untrusted networks: forces admin auth on `/server_info` and `/get_server_info`, authenticates WebSocket upgrades, redacts `api_key`/`admin_api_key`/`ssl_keyfile_password` from logs and info payloads, gates remote-URL and local-file multimodal sources behind `SGLANG_ALLOW_REMOTE_MEDIA`/`SGLANG_ALLOW_LOCAL_MEDIA`, and binds single-node distributed init to loopback. |
 | 099 | `dspark-worker-pp-proxy-tensors-kwarg` | Candidate | Accepts the scheduler's keyword-only `pp_proxy_tensors` in `DSparkWorkerV2.forward_batch_generation` and threads it to the target prefill, as upstream main does; v0.5.20's worker rejects the call, so every `--speculative-algorithm DSPARK` boot died on its first forward (`TypeError: unexpected keyword argument 'pp_proxy_tensors'`). Validated 2026-09-27 with RadixArk/Qwen3.8-27B-DSpark and a converted RedHatAI speculator on the `qwen38` preset (byte-identical greedy output vs no-spec at short context). |
 | 100 | `rdna4-splitkv-verify-enable` | Carry | Enables the split-KV (flash-decode) speculative-verify kernel on gfx1201: drops the gfx95-only gate in `TritonAttnBackend` (upstream PR #39316 does the same for CUDA) and floors the kernel's row tile at 16 on RDNA because Triton's AMD dot-operand pass rejects 2/4/8-row WMMA tiles (`PassManager::run failed`); padded rows are masked on every load and store. Kernel test 9/9 + 12 subtests on gfx1201. DSpark on `qwen38` at a 49K input: 5.3 → 32 tok/s (no-spec 21). |
+| 103 | `responses-merge-assistant-turn-across-phase` | Candidate | Port of the 3090's patch 066. `OpenAIServingResponses._merge_consecutive_assistant_messages` only folded consecutive assistant items when their `phase` tags were equal, but `phase` survives only on `message` items, so a Responses-API client that echoes `phase: commentary` (langchain-openai 1.x, i.e. deepagents / dcode) got the announcement text and its own tool call rendered as two assistant turns; the model then learns in-context to stop after the announcement (3090 qwen38 dcode v4: 213/300 empty). A missing phase on either side now merges and adopts the phase that exists; two `message` items with different phases still stay apart. Gate: `scripts/eval/test_responses_merge_assistant_turn_phase.py` (pristine 2/5 → 5/5) and the wire-level history-merge step in the dcode preflight of `evals/swebench/run_rollouts.py` (equal `usage.input_tokens` with and without `phase`; unpatched live server 441 vs 423). Upstream main still carries the bug (2026-10-18). 101/102 are reserved for the 3090's 063/065. |
 
 ## Build stack
 
 | Component | Version |
 |---|---|
-| SGLang | v0.5.20 plus this 70-patch series |
+| SGLang | v0.5.20 plus this 73-patch series |
 | transformers | 5.12.1 |
 | Triton | 3.6.0 |
 | PyTorch | 2.11.0+rocm7.2 |

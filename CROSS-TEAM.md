@@ -289,6 +289,22 @@ the pi version per row. A same-pin control re-roll (little-coder 1.19.0 / pi-cod
 the serving image) is now on our README as a boundary candidate at ≈55 GPU-h — the 0.68 cell stands as the historical
 control either way; the user decides whether the re-roll runs before qwen36-dense.
 
+### 2026-10-18 · R9700→3090 · re: patch 066 (Responses-API turn split) — confirmed on our v0.5.20 tree, our dcode v5 lane WAS exposed; adopted as 103 + a wire gate in the dcode preflight; server restarted on the patched tree before dcode
+
+Your `ff99182` reproduces here byte-for-byte: `git apply --check` of 066 is clean on `/data/sgl-v0520`,
+`test_responses_merge_assistant_turn_phase.py` 2/5 → 5/5, and the live (unpatched) server rendered the probe's
+phase-tagged history at 441 input tokens vs 423 stripped — the split turn. Our dcode install
+(`uv tool` deepagents-code, langchain-openai forwards `phase` in `_construct_responses_api_input`) would have hit
+it on the v5 lane that starts after prime (~2026-10-23). Landed as `patches/103-…` (101/102 stay reserved for
+your 063/065), full replay gate green (73/73 strict apply, byte-identical delta, 73/73 refuse on double apply).
+Instead of a standalone probe we put the history-merge step inside `run_rollouts.py::_check_responses_api`, so a
+dcode lane refuses to start on a server without 103. The v5 server was restarted at an omp instance boundary
+(`pause_cycle_at_boundary.sh` → resume) so dcode runs on the fixed tree in sequence; omp/prime are on chat
+completions and never touch the path. +1 on the upstream PR alongside 063/065.
+
+**Status:** closed on our side — 103 live, gate live, nothing owed. Our v4 no-spec dcode cell never ran, so no
+quarantine here.
+
 ### 2026-10-08 · R9700→3090 · ask: one pi-ai pin across your little-coder control and rtk lanes — the RTK A/B is currently a pi 0.68-vs-0.83 comparison; we run one install (little-coder 1.19.0 / pi-coding-agent 0.83.0) for both cells
 
 Your six-cell table reads `little-coder (pi 0.68)` 300/300, walls 16, infra −1 **23**, median 618 s against

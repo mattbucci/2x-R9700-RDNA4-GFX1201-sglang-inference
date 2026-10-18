@@ -742,8 +742,59 @@ def _check_responses_api(server_url: str, served: str) -> tuple[str, str]:
     if body.get("status") != "completed" or "function_call" not in kinds:
         raise SystemExit(f"  PREFLIGHT FAILED: /v1/responses model={model_id} status={body.get('status')} "
                          f"output={kinds} (need completed + function_call) — refusing to start rollout")
+    tok_with, tok_without = _responses_history_merge_tokens(server_url, model_id, payload, body)
+    if tok_with is None or tok_with != tok_without:
+        raise SystemExit(f"  PREFLIGHT FAILED: /v1/responses phase-tagged history splits the assistant turn "
+                         f"(usage.input_tokens with phase={tok_with}, without={tok_without}; patch 103 missing "
+                         f"from the serving tree — 3090 qwen38 dcode v4 went 71% empty on this) — refusing to start rollout")
     return model_id, (f"dcode /v1/responses model={model_id} status=completed output={kinds} "
-                      f"usage={body.get('usage', {}).get('output_tokens')} out-tokens")
+                      f"usage={body.get('usage', {}).get('output_tokens')} out-tokens; "
+                      f"history-merge input_tokens with/without phase {tok_with}/{tok_without}")
+
+
+def _responses_history_merge_tokens(server_url: str, model_id: str, first_payload: dict,
+                                    first_body: dict) -> tuple:
+    """Wire-level check for patch 103 (3090 066): replay the canary's own output the way
+    langchain-openai echoes it -- the `message` item keeps `phase: commentary`, the
+    `function_call` item has none -- plus a `function_call_output`, once with `phase` and
+    once stripped, and return both `usage.input_tokens`. Upstream v0.5.20 merges
+    consecutive assistant items only when `phase` is equal, so the tagged history renders
+    the announcement text and its own tool call as TWO assistant turns (~10 extra tokens
+    per step) and the model learns in-context to end a turn after the announcement:
+    the 3090's qwen38 dcode v4 cell closed 213/300 empty (191 on an announce-only final
+    turn). Equal token counts prove the server renders both histories as one turn."""
+    import urllib.request
+    echo = [dict(o) for o in first_body.get("output", [])
+            if o.get("type") in ("reasoning", "message", "function_call")]
+    if not any(o.get("type") == "message" for o in echo):
+        idx = next((i for i, o in enumerate(echo) if o.get("type") == "function_call"), len(echo))
+        echo.insert(idx, {"type": "message", "role": "assistant", "id": "msg_preflight",
+                          "phase": "commentary", "status": "completed",
+                          "content": [{"type": "output_text", "text": "\n\n", "annotations": []}]})
+    for o in echo:
+        if o.get("type") == "message":
+            o["phase"] = o.get("phase") or "commentary"
+    call_ids = [o.get("call_id") for o in echo if o.get("type") == "function_call" and o.get("call_id")]
+    hist = [{"role": "user", "content": first_payload["input"]}] + echo
+    hist += [{"type": "function_call_output", "call_id": cid, "output": "Paris: 18C, overcast"}
+             for cid in call_ids]
+    hist += [{"role": "user", "content": "Thanks. Now the weather in Rome, same tool."}]
+
+    def _input_tokens(items):
+        pl = {"model": model_id, "input": items, "tools": first_payload["tools"],
+              "tool_choice": "auto", "max_output_tokens": 16}
+        req = urllib.request.Request(f"{server_url.rstrip('/')}/v1/responses",
+                                     data=json.dumps(pl).encode(),
+                                     headers={"Content-Type": "application/json"})
+        try:
+            with urllib.request.urlopen(req, timeout=300) as r:
+                return (json.loads(r.read()).get("usage") or {}).get("input_tokens")
+        except urllib.error.HTTPError as e:
+            raise SystemExit(f"  PREFLIGHT FAILED: /v1/responses history replay -> {e.code}: "
+                             f"{e.read()[:300]!r} — refusing to start rollout")
+
+    stripped = [{k: v for k, v in o.items() if k != "phase"} for o in hist]
+    return _input_tokens(hist), _input_tokens(stripped)
 
 
 def _ensure_little_coder_profile(served: str, server_url: str) -> Path:

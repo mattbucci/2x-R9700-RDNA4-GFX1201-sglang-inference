@@ -1,0 +1,40 @@
+diff --git a/python/sglang/srt/entrypoints/openai/serving_responses.py b/python/sglang/srt/entrypoints/openai/serving_responses.py
+index 9fdcbe393..83b625bde 100644
+--- a/python/sglang/srt/entrypoints/openai/serving_responses.py
++++ b/python/sglang/srt/entrypoints/openai/serving_responses.py
+@@ -1376,7 +1376,17 @@ class OpenAIServingResponses(OpenAIServingChat):
+     ) -> list:
+         """Collapse runs of consecutive ``assistant`` dicts into one entry,
+         joining ``content`` and concatenating ``tool_calls`` and
+-        ``reasoning_content`` so a logical turn renders as a single block."""
++        ``reasoning_content`` so a logical turn renders as a single block.
++
++        [3090 066] ``phase`` only lives on ``message`` items; the
++        ``function_call`` / ``reasoning`` items of the same turn are
++        normalised without one. Clients that round-trip ``phase`` (langchain-
++        openai forwards ``commentary`` on every assistant text block) therefore
++        used to get the text and its own tool call rendered as two assistant
++        turns — the model then learns in-context to end a turn after the
++        announcement text and never emit the call. A missing phase on either
++        side is compatible with anything; two *message* items with different
++        phases still stay apart."""
+         merged: list = []
+         for msg in messages:
+             if (
+@@ -1385,9 +1395,15 @@ class OpenAIServingResponses(OpenAIServingChat):
+                 and merged
+                 and isinstance(merged[-1], dict)
+                 and merged[-1].get("role") == "assistant"
+-                and merged[-1].get("phase") == msg.get("phase")
++                and (
++                    merged[-1].get("phase") is None
++                    or msg.get("phase") is None
++                    or merged[-1].get("phase") == msg.get("phase")
++                )
+             ):
+                 prev = merged[-1] = dict(merged[-1])
++                if prev.get("phase") is None and msg.get("phase") is not None:
++                    prev["phase"] = msg.get("phase")
+                 # Lift mixed str/list content to list parts so non-text parts
+                 # (e.g. image_url) survive when the two sides differ in shape.
+                 new_content = msg.get("content")
