@@ -5,7 +5,7 @@ These rules apply to automation and model work in this repository.
 ## Serving environment
 
 - Engine: SGLang only.
-- Default source: `/data/sgl-v0522` (SGLang v0.5.22, peeled tag commit `baa9befa3`, plus the 72-patch series).
+- Default source: `/data/sgl-v0522` (SGLang v0.5.22, peeled tag commit `baa9befa3`, plus the 73-patch series).
 - Default conda environment: `sglang-triton36-v0522`.
 - Kernel source for the native HIP builds: `/data/sgl-v0522/python/sglang/kernels/aot`.
 - The version-pinned values above live in `scripts/common.sh`; when the stack is promoted, that file and this list move together. Older trees (`/data/sgl-v0518`, `/data/sgl-v0516`, ...) are retained untouched as rollbacks, never edited.

@@ -1,0 +1,26 @@
+diff --git a/python/sglang/srt/layers/quantization/moe_wna16.py b/python/sglang/srt/layers/quantization/moe_wna16.py
+index 5ea6cf5fc6..d031b36ea5 100644
+--- a/python/sglang/srt/layers/quantization/moe_wna16.py
++++ b/python/sglang/srt/layers/quantization/moe_wna16.py
+@@ -235,11 +235,16 @@ def _local_expert_ids(layer, expert_id: int) -> List[int]:
+     expert-parallel slice this rank stores.
+     """
+     metadata = get_global_expert_location_metadata()
+-    physical = (
+-        [expert_id]
+-        if metadata is None
+-        else metadata.logical_to_all_physical(layer.layer_id, expert_id)
+-    )
++    if metadata is None or expert_id >= metadata.num_logical_experts:
++        # Fused shared experts are appended past the routed experts (the model's
++        # load_weights renames `mlp.shared_experts.*` to expert id n_routed_experts
++        # + k); EPLB's logical map only covers the routed ones and never relocates
++        # a shared expert, and FusedMoE's own loader maps such an id by position
++        # (`_map_global_expert_id_to_local_expert_id`). Looking it up in the map
++        # raised IndexError on GLM-4.5-Air AWQ (96 routed + 1 fused shared) at load.
++        physical = [expert_id]
++    else:
++        physical = metadata.logical_to_all_physical(layer.layer_id, expert_id)
+     local = (layer._map_global_expert_id_to_local_expert_id(p) for p in physical)
+     return [i for i in local if 0 <= i < layer.num_local_experts]
+ 

@@ -30,5 +30,473 @@
       "passed": 5,
       "total": 5
     }
+  },
+  "coder-30b-awq": {
+    "tag": "coder-30b-awq",
+    "model": "/home/letsrtfm/AI/models/Qwen3-Coder-30B-A3B-AWQ-native",
+    "timestamp": "2026-10-19 09:44",
+    "elapsed_sec": 6.3,
+    "checks": {
+      "basic": {
+        "passed": true,
+        "message": "finish=stop answer='paris'"
+      },
+      "tool_call": {
+        "passed": true,
+        "message": "finish=tool_calls name='get_weather' args='{\"location\": \"Paris\"}'"
+      },
+      "thinking": {
+        "passed": false,
+        "message": "answer_ok                      (278 tok, finish=stop)"
+      }
+    },
+    "summary": {
+      "passed": 2,
+      "total": 3
+    }
+  },
+  "qwen3vl-32b-awq": {
+    "tag": "qwen3vl-32b-awq",
+    "model": "/home/letsrtfm/AI/models/Qwen3-VL-32B-AWQ-balanced",
+    "timestamp": "2026-10-19 09:46",
+    "elapsed_sec": 6.9,
+    "checks": {
+      "basic": {
+        "passed": true,
+        "message": "finish=stop answer='paris'"
+      },
+      "tool_call": {
+        "passed": true,
+        "message": "finish=tool_calls name='get_weather' args='{\"location\": \"Paris\"}'"
+      },
+      "thinking": {
+        "passed": false,
+        "message": "answer_ok                      (107 tok, finish=stop)"
+      },
+      "vision": {
+        "passed": true,
+        "message": "saw=['red', 'circle', 'round']  response='a solid red circle with a black outline is centered on a white background.'"
+      },
+      "video": {
+        "passed": true,
+        "message": "saw=['move', 'right', 'circle', 'red']  response='a red circle moves from the left side of the screen to the right side.'"
+      }
+    },
+    "summary": {
+      "passed": 4,
+      "total": 5
+    }
+  },
+  "gemma-4-26b-awq": {
+    "tag": "gemma-4-26b-awq",
+    "model": "/home/letsrtfm/AI/models/gemma-4-26B-A4B-it-AWQ-GPTQ-v2-fixed",
+    "timestamp": "2026-10-19 09:49",
+    "elapsed_sec": 47.3,
+    "checks": {
+      "basic": {
+        "passed": true,
+        "message": "finish=stop answer='paris'"
+      },
+      "tool_call": {
+        "passed": true,
+        "message": "finish=tool_calls name='get_weather' args='{\"location\": \"Paris\"}'"
+      },
+      "thinking": {
+        "passed": true,
+        "message": "reasoning_seen terminated answer_ok (576 tok, finish=stop)"
+      },
+      "vision": {
+        "passed": true,
+        "message": "saw=['red', 'circle', 'round']  response='a red circle with a black outline is centered on a white background.'"
+      },
+      "video": {
+        "passed": true,
+        "message": "saw=['across', 'ball', 'red']  response='a red ball bounces across a white background.'"
+      }
+    },
+    "summary": {
+      "passed": 5,
+      "total": 5
+    }
+  },
+  "devstral-24b-awq": {
+    "tag": "devstral-24b-awq",
+    "model": "/home/letsrtfm/AI/models/Devstral-24B-AWQ-4bit-calibrated",
+    "timestamp": "2026-10-19 09:50",
+    "elapsed_sec": 6.5,
+    "checks": {
+      "basic": {
+        "passed": true,
+        "message": "finish=stop answer='paris'"
+      },
+      "tool_call": {
+        "passed": true,
+        "message": "finish=tool_calls name='get_weather' args='{\"location\": \"Paris\"}'"
+      },
+      "thinking": {
+        "passed": false,
+        "message": "answer_ok                      (249 tok, finish=stop)"
+      }
+    },
+    "summary": {
+      "passed": 2,
+      "total": 3
+    }
+  },
+  "gemma4-31b": {
+    "tag": "gemma4-31b",
+    "model": "/home/letsrtfm/AI/models/gemma-4-31B-AWQ",
+    "timestamp": "2026-10-19 09:52",
+    "elapsed_sec": 27.9,
+    "checks": {
+      "basic": {
+        "passed": true,
+        "message": "finish=stop answer='paris'"
+      },
+      "tool_call": {
+        "passed": true,
+        "message": "finish=tool_calls name='get_weather' args='{\"location\": \"Paris\"}'"
+      },
+      "thinking": {
+        "passed": true,
+        "message": "reasoning_seen terminated answer_ok (574 tok, finish=stop)"
+      },
+      "vision": {
+        "passed": false,
+        "message": "saw=['round']  response='the image consists of a repeated pattern of small, light-gray, curved shapes on a white background.'"
+      },
+      "video": {
+        "passed": false,
+        "message": "saw=[]  response='the provided images are blank and do not contain a video.'"
+      }
+    },
+    "summary": {
+      "passed": 3,
+      "total": 5
+    }
+  },
+  "coder-next-ream-awq": {
+    "tag": "coder-next-ream-awq",
+    "model": "/home/letsrtfm/AI/models/Qwen3-Coder-Next-REAM-AWQ",
+    "timestamp": "2026-10-19 09:55",
+    "elapsed_sec": 4.7,
+    "checks": {
+      "basic": {
+        "passed": true,
+        "message": "finish=stop answer='paris'"
+      },
+      "tool_call": {
+        "passed": true,
+        "message": "finish=tool_calls name='get_weather' args='{\"location\": \"Paris\"}'"
+      },
+      "thinking": {
+        "passed": false,
+        "message": "answer_ok                      (118 tok, finish=stop)"
+      }
+    },
+    "summary": {
+      "passed": 2,
+      "total": 3
+    }
+  },
+  "gemma4-12b": {
+    "tag": "gemma4-12b",
+    "model": "/home/letsrtfm/AI/models/gemma-4-12B-AWQ",
+    "timestamp": "2026-10-19 09:57",
+    "elapsed_sec": 64.5,
+    "checks": {
+      "basic": {
+        "passed": true,
+        "message": "finish=stop answer='paris'"
+      },
+      "tool_call": {
+        "passed": true,
+        "message": "finish=tool_calls name='get_weather' args='{\"location\": \"Paris\"}'"
+      },
+      "thinking": {
+        "passed": true,
+        "message": "reasoning_seen answer_ok TRUNCATED (2048 tok, finish=length)"
+      },
+      "vision": {
+        "passed": true,
+        "message": "saw=['red', 'circle', 'round']  response='a red circle with a black outline is shown on a white background.'"
+      },
+      "video": {
+        "passed": true,
+        "message": "saw=['move', 'motion', 'red']  response='the red dot moves in a circular motion.'"
+      }
+    },
+    "summary": {
+      "passed": 5,
+      "total": 5
+    }
+  },
+  "qwen3-coder-reap-25b-a3b-awq": {
+    "tag": "qwen3-coder-reap-25b-a3b-awq",
+    "model": "/home/letsrtfm/AI/models/Qwen3-Coder-REAP-25B-A3B-AWQ-native",
+    "timestamp": "2026-10-19 09:58",
+    "elapsed_sec": 4.0,
+    "checks": {
+      "basic": {
+        "passed": true,
+        "message": "finish=stop answer='paris'"
+      },
+      "tool_call": {
+        "passed": true,
+        "message": "finish=tool_calls name='get_weather' args='{\"location\": \"Paris\"}'"
+      },
+      "thinking": {
+        "passed": false,
+        "message": "answer_ok                      (164 tok, finish=stop)"
+      }
+    },
+    "summary": {
+      "passed": 2,
+      "total": 3
+    }
+  },
+  "devstral2-awq": {
+    "tag": "devstral2-awq",
+    "model": "/home/letsrtfm/AI/models/Devstral-Small-2-24B-AWQ",
+    "timestamp": "2026-10-19 09:59",
+    "elapsed_sec": 6.7,
+    "checks": {
+      "basic": {
+        "passed": true,
+        "message": "finish=stop answer='paris'"
+      },
+      "tool_call": {
+        "passed": true,
+        "message": "finish=tool_calls name='get_weather' args='{\"location\": \"Paris\"}'"
+      },
+      "thinking": {
+        "passed": false,
+        "message": "answer_ok                      (195 tok, finish=stop)"
+      },
+      "vision": {
+        "passed": true,
+        "message": "saw=['red', 'circle', 'round', 'japanese flag']  response='the image consists of a single red circle centered on a white background, resembling the japanese flag.'"
+      }
+    },
+    "summary": {
+      "passed": 3,
+      "total": 4
+    }
+  },
+  "qwen3.5-27b-awq": {
+    "tag": "qwen3.5-27b-awq",
+    "model": "/home/letsrtfm/AI/models/Qwen3.5-27B-AWQ-4bit-calibrated",
+    "timestamp": "2026-10-19 10:02",
+    "elapsed_sec": 93.1,
+    "checks": {
+      "basic": {
+        "passed": true,
+        "message": "finish=stop answer='paris'"
+      },
+      "tool_call": {
+        "passed": true,
+        "message": "finish=tool_calls name='get_weather' args='{\"location\": \"Paris\"}'"
+      },
+      "thinking": {
+        "passed": true,
+        "message": "reasoning_seen answer_ok TRUNCATED (2048 tok, finish=length)"
+      }
+    },
+    "summary": {
+      "passed": 3,
+      "total": 3
+    }
+  },
+  "qwen3.5-35b-moe-gptq": {
+    "tag": "qwen3.5-35b-moe-gptq",
+    "model": "/home/letsrtfm/AI/models/Qwen3.5-28B-A3B-REAP-AWQ",
+    "timestamp": "2026-10-19 10:05",
+    "elapsed_sec": 37.0,
+    "checks": {
+      "basic": {
+        "passed": true,
+        "message": "finish=stop answer='paris'"
+      },
+      "tool_call": {
+        "passed": true,
+        "message": "finish=tool_calls name='get_weather' args='{\"location\": \"Paris\"}'"
+      },
+      "thinking": {
+        "passed": true,
+        "message": "reasoning_seen answer_ok TRUNCATED (2048 tok, finish=length)"
+      }
+    },
+    "summary": {
+      "passed": 3,
+      "total": 3
+    }
+  },
+  "qwen3.6-35b-moe-awq": {
+    "tag": "qwen3.6-35b-moe-awq",
+    "model": "/home/letsrtfm/AI/models/Qwen3.6-35B-A3B-AWQ",
+    "timestamp": "2026-10-19 10:07",
+    "elapsed_sec": 37.9,
+    "checks": {
+      "basic": {
+        "passed": true,
+        "message": "finish=stop answer='paris'"
+      },
+      "tool_call": {
+        "passed": true,
+        "message": "finish=tool_calls name='get_weather' args='{\"location\": \"Paris\"}'"
+      },
+      "thinking": {
+        "passed": true,
+        "message": "reasoning_seen answer_ok TRUNCATED (2048 tok, finish=length)"
+      },
+      "vision": {
+        "passed": true,
+        "message": "saw=['red', 'circle', 'round']  response=' a simple red circle with a black outline on a white background.'"
+      },
+      "video": {
+        "passed": true,
+        "message": "saw=['move', 'right', 'across', 'ball', 'circle', 'red']  response='\\n\\na red circle moves to the right.'"
+      }
+    },
+    "summary": {
+      "passed": 5,
+      "total": 5
+    }
+  },
+  "qwen3.6-27b-awq-native": {
+    "tag": "qwen3.6-27b-awq-native",
+    "model": "/home/letsrtfm/AI/models/Qwen3.6-27B-AWQ-native-thinking-vision",
+    "timestamp": "2026-10-19 10:10",
+    "elapsed_sec": 73.2,
+    "checks": {
+      "basic": {
+        "passed": true,
+        "message": "finish=stop answer='paris'"
+      },
+      "tool_call": {
+        "passed": true,
+        "message": "finish=tool_calls name='get_weather' args='{\"location\": \"Paris\"}'"
+      },
+      "thinking": {
+        "passed": true,
+        "message": "reasoning_seen terminated answer_ok (1304 tok, finish=stop)"
+      },
+      "vision": {
+        "passed": true,
+        "message": "saw=['red', 'circle', 'round']  response=' a solid red circle with a black outline is centered on a white background.'"
+      },
+      "video": {
+        "passed": true,
+        "message": "saw=['move', 'slide', 'right', 'across', 'circle', 'red']  response='\\n\\na red circle moves to the right across a white background.'"
+      }
+    },
+    "summary": {
+      "passed": 5,
+      "total": 5
+    }
+  },
+  "nemotron-omni-30b-fp8": {
+    "tag": "nemotron-omni-30b-fp8",
+    "model": "/home/letsrtfm/AI/models/Nemotron-3-Nano-Omni-30B-A3B-Reasoning-FP8",
+    "timestamp": "2026-10-19 10:12",
+    "elapsed_sec": 7.4,
+    "checks": {
+      "basic": {
+        "passed": true,
+        "message": "finish=stop answer='\\nparis'"
+      },
+      "tool_call": {
+        "passed": true,
+        "message": "finish=tool_calls name='get_weather' args='{\"location\": \"Paris\"}'"
+      },
+      "thinking": {
+        "passed": true,
+        "message": "reasoning_seen terminated answer_ok (133 tok, finish=stop)"
+      },
+      "vision": {
+        "passed": true,
+        "message": "saw=['red', 'circle', 'round']  response='a solid red circle with a black outline is centered on a white background.'"
+      },
+      "video": {
+        "passed": true,
+        "message": "saw=['move', 'slide', 'right', 'across', 'circle', 'red']  response='\\na red circle moves from the left side to the right side.'"
+      }
+    },
+    "summary": {
+      "passed": 5,
+      "total": 5
+    }
+  },
+  "laguna-xs2": {
+    "tag": "laguna-xs2",
+    "model": "/data/models/Laguna-XS.2-FP8",
+    "timestamp": "2026-10-19 10:14",
+    "elapsed_sec": 5.1,
+    "checks": {
+      "basic": {
+        "passed": true,
+        "message": "finish=stop answer='\\nparis\\n'"
+      },
+      "tool_call": {
+        "passed": true,
+        "message": "finish=tool_calls name='get_weather' args='{\"location\": \"Paris\"}'"
+      },
+      "thinking": {
+        "passed": true,
+        "message": "reasoning_seen terminated answer_ok (220 tok, finish=stop)"
+      }
+    },
+    "summary": {
+      "passed": 3,
+      "total": 3
+    }
+  },
+  "north-mini": {
+    "tag": "north-mini",
+    "model": "/home/letsrtfm/AI/models/North-Mini-Code-1.0-fp8",
+    "timestamp": "2026-10-19 10:16",
+    "elapsed_sec": 5.4,
+    "checks": {
+      "basic": {
+        "passed": true,
+        "message": "finish=stop answer='paris'"
+      },
+      "tool_call": {
+        "passed": true,
+        "message": "finish=tool_calls name='get_weather' args='{\"location\": \"Paris\"}'"
+      },
+      "thinking": {
+        "passed": true,
+        "message": "reasoning_seen terminated answer_ok (145 tok, finish=stop)"
+      }
+    },
+    "summary": {
+      "passed": 3,
+      "total": 3
+    }
+  },
+  "glm45-air-awq": {
+    "tag": "glm45-air-awq",
+    "model": "/home/letsrtfm/AI/models/GLM-4.5-Air-REAP-AWQ-native",
+    "timestamp": "2026-10-19 10:22",
+    "elapsed_sec": 97.7,
+    "checks": {
+      "basic": {
+        "passed": true,
+        "message": "finish=stop answer='</think>paris'"
+      },
+      "tool_call": {
+        "passed": false,
+        "message": "no tool_calls finish=stop content='\\n<think>The user is asking for the current weather in Paris.'"
+      },
+      "thinking": {
+        "passed": true,
+        "message": "reasoning_seen terminated answer_ok (1457 tok, finish=stop)"
+      }
+    },
+    "summary": {
+      "passed": 2,
+      "total": 3
+    }
   }
 }

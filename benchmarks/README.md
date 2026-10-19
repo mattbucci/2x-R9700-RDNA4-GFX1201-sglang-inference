@@ -18,7 +18,7 @@ Fleet charts regenerated from the same files by `scripts/bench/generate_charts.p
 (SWE-bench Lite resolve rate per preset × scaffold from `quality/bakeoff-*.json`; cells carry a `harness`
 line so matrices run under different harnesses are labelled, never merged).
 
-### Qwen3.8-27B-FP8 (2026-10-19, v0.5.22 + 72 patches, HIP graphs on, DSpark speculative preset)
+### Qwen3.8-27B-FP8 (2026-10-19, v0.5.22 + 73 patches, HIP graphs on, DSpark speculative preset)
 
 Official vendor block-FP8 ship under the `qwen38` preset (TP=2, FP8-e4m3 KV, `MAX_RUNNING=1`,
 `--cuda-graph-max-bs-decode 1`; since 2026-09-27 also `--speculative-algorithm DSPARK` with the
