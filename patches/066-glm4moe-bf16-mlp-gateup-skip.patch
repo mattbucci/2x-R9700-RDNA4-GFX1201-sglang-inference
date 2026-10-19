@@ -1,8 +1,8 @@
 diff --git a/python/sglang/srt/models/glm4_moe.py b/python/sglang/srt/models/glm4_moe.py
-index 558a83b380..9ee560114c 100644
+index fc8ebbb43e..5f9a475560 100644
 --- a/python/sglang/srt/models/glm4_moe.py
 +++ b/python/sglang/srt/models/glm4_moe.py
-@@ -119,6 +119,25 @@ if _is_npu:
+@@ -156,6 +156,25 @@ if _is_npu:
      )
  
  
@@ -28,7 +28,7 @@ index 558a83b380..9ee560114c 100644
  class Glm4MoeMLP(nn.Module):
      def __init__(
          self,
-@@ -464,7 +483,9 @@ class Glm4MoeSparseMoeBlock(nn.Module):
+@@ -475,7 +494,9 @@ class Glm4MoeSparseMoeBlock(nn.Module):
                  hidden_size=config.hidden_size,
                  intermediate_size=intermediate_size,
                  hidden_act=config.hidden_act,
@@ -38,13 +38,13 @@ index 558a83b380..9ee560114c 100644
 +                ),
                  reduce_results=False,
                  prefix=add_prefix("shared_experts", prefix),
-                 **(
-@@ -856,7 +877,7 @@ class Glm4MoeDecoderLayer(nn.Module):
+                 parallel_group="replicated"
+@@ -751,7 +772,7 @@ class Glm4MoeDecoderLayer(nn.Module):
                  hidden_size=config.hidden_size,
                  intermediate_size=config.intermediate_size,
                  hidden_act=config.hidden_act,
 -                quant_config=quant_config,
 +                quant_config=_mlp_quant_config(quant_config, add_prefix("mlp", prefix)),
                  prefix=add_prefix("mlp", prefix),
-                 tp_rank=mlp_tp_rank,
-                 tp_size=mlp_tp_size,
+                 parallel_group=mlp_parallel_group,
+                 reduce_results=False,

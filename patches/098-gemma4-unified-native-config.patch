@@ -1,25 +1,8 @@
-diff --git a/python/sglang/srt/models/gemma4_unified.py b/python/sglang/srt/models/gemma4_unified.py
-index 67d0771d..44170e18 100644
---- a/python/sglang/srt/models/gemma4_unified.py
-+++ b/python/sglang/srt/models/gemma4_unified.py
-@@ -190,7 +190,11 @@ class Gemma4UnifiedForConditionalGeneration(Gemma4ForConditionalGeneration):
-         )
- 
-         text_tie = getattr(text_config, "tie_word_embeddings", True)
--        if self.pp_group.world_size == 1 and text_tie:
-+        # The shared Gemma4ForConditionalGeneration.forward selects the head via
-+        # lm_head_is_tied (set only by the parent __init__, which this class
-+        # replaces), so record the same decision here.
-+        self.lm_head_is_tied = self.pp_group.world_size == 1 and text_tie
-+        if self.lm_head_is_tied:
-             self.lm_head = self.language_model.embed_tokens
-         elif self.pp_group.is_last_rank:
-             self.lm_head = ParallelLMHead(
 diff --git a/python/sglang/srt/utils/hf_transformers/common.py b/python/sglang/srt/utils/hf_transformers/common.py
-index de126595..5768ab84 100644
+index 5c90ddfd93..6eb9a912ba 100644
 --- a/python/sglang/srt/utils/hf_transformers/common.py
 +++ b/python/sglang/srt/utils/hf_transformers/common.py
-@@ -194,13 +194,27 @@ except ImportError:
+@@ -260,13 +260,27 @@ except ImportError:
      pass
  
  

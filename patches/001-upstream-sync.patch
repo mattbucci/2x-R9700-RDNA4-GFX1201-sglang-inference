@@ -1,10 +1,10 @@
 diff --git a/python/sglang/srt/configs/model_config.py b/python/sglang/srt/configs/model_config.py
-index e7ce9277a..6af6eac1f 100644
+index 96dc392d19..c834d3e2b4 100644
 --- a/python/sglang/srt/configs/model_config.py
 +++ b/python/sglang/srt/configs/model_config.py
-@@ -605,9 +605,16 @@ class ModelConfig:
-                 or hasattr(self.hf_config, "audio_config")
-             )
+@@ -727,9 +727,16 @@ class ModelConfig:
+             self.hf_config.model_type == "deepseek_v41"
+             and self.hf_config.vision_n_layers > 0
          )
 +        # CausalLM architectures are text-only even if the config class has
 +        # vision/audio attributes (e.g. Gemma4ForCausalLM uses Gemma4Config
@@ -20,10 +20,10 @@ index e7ce9277a..6af6eac1f 100644
                  is_multimodal_model(self.hf_config.architectures)
                  or has_multimodal_subconfig
 diff --git a/python/sglang/srt/layers/attention/triton_backend.py b/python/sglang/srt/layers/attention/triton_backend.py
-index 33f76e2a6..2cced20b4 100644
+index 547b6f87bd..bb91c1c32d 100644
 --- a/python/sglang/srt/layers/attention/triton_backend.py
 +++ b/python/sglang/srt/layers/attention/triton_backend.py
-@@ -2141,6 +2141,19 @@ class TritonAttnBackend(AttentionBackend):
+@@ -2221,6 +2221,19 @@ class TritonAttnBackend(AttentionBackend):
          score_mod=None,
          aux_tensors=None,
      ):
@@ -43,7 +43,7 @@ index 33f76e2a6..2cced20b4 100644
          # During torch.compile, there is a bug in rotary_emb that causes the
          # output value to have a 3D tensor shape. This reshapes the output correctly.
          q = q.reshape(-1, layer.tp_q_head_num * layer.qk_head_dim)
-@@ -2203,12 +2216,11 @@ class TritonAttnBackend(AttentionBackend):
+@@ -2277,12 +2290,11 @@ class TritonAttnBackend(AttentionBackend):
              v_descale = 1.0
  
          # Select the correctly-sized attn_logits buffer for this layer.
@@ -58,53 +58,63 @@ index 33f76e2a6..2cced20b4 100644
          ):
              attn_logits = self.forward_metadata.swa_attn_logits
  
-diff --git a/python/sglang/srt/layers/communicator.py b/python/sglang/srt/layers/communicator.py
-index 323d4c309..755222afa 100644
---- a/python/sglang/srt/layers/communicator.py
-+++ b/python/sglang/srt/layers/communicator.py
-@@ -96,7 +96,8 @@ _is_cuda = is_cuda()
- _is_flashinfer_available = is_flashinfer_available()
- _is_sm90_supported = _is_cuda and get_platform().is_sm90
- _is_sm100_supported = _is_cuda and get_platform().is_sm100
--_use_aiter = get_bool_env_var("SGLANG_USE_AITER") and is_hip()
+diff --git a/python/sglang/srt/layers/layer_boundary/ops.py b/python/sglang/srt/layers/layer_boundary/ops.py
+index e0d7a8a208..5820e7cd4a 100644
+--- a/python/sglang/srt/layers/layer_boundary/ops.py
++++ b/python/sglang/srt/layers/layer_boundary/ops.py
+@@ -59,6 +59,9 @@ from sglang.srt.layers.layer_boundary.residual.add_norm import PLAIN_ADD
+ from sglang.srt.layers.moe.utils import sum_post_experts_output
+ from sglang.srt.model_executor.forward_batch_info import ForwardBatch
+ from sglang.srt.runtime_context import get_exec, get_parallel
++from sglang.srt.utils import is_hip
++
 +_is_hip = is_hip()
-+_use_aiter = get_bool_env_var("SGLANG_USE_AITER") and _is_hip
- _is_gfx95_supported = is_gfx95_supported()
- _is_gfx1250_supported = is_gfx1250_supported()
- _is_npu = is_npu()
-@@ -1296,18 +1297,16 @@ class CommunicateWithAllReduceAndLayerNormFn:
-                 handled = True
  
-             if not handled:
--                quantize_communications = (
--                    not forward_batch.forward_mode.is_decode_or_idle()
--                    and get_exec().comm.enable_quant_communications
-+                # Float32 all-reduce for TP precision on HIP (prevents
-+                # FP16 rounding accumulation through DeltaNet recurrence).
-+                orig_dtype = hidden_states.dtype
-+                if _is_hip and orig_dtype != torch.float32:
-+                    hidden_states = hidden_states.float()
-+                hidden_states = attention_tensor_model_parallel_all_reduce(
-+                    hidden_states
-                 )
--                if quantize_communications:
--                    hidden_states = attention_tensor_model_parallel_quant_all_reduce(
--                        hidden_states
--                    )
--                else:
--                    hidden_states = attention_tensor_model_parallel_all_reduce(
--                        hidden_states
--                    )
-+                if _is_hip and hidden_states.dtype != orig_dtype:
-+                    hidden_states = hidden_states.to(orig_dtype)
-                 if _is_npu and context.cache is not None:
-                     _ = prepare_weight_cache(hidden_states, context.cache)
-                 hidden_states, residual = layernorm(hidden_states, residual)
+ 
+ def tp_reduce_scatter(
+@@ -182,6 +185,16 @@ def moe_cp_gather(
+ def attn_tp_all_reduce(
+     hidden_states: torch.Tensor, forward_batch: ForwardBatch, may_quantize: bool = True
+ ) -> torch.Tensor:
++    if _is_hip:
++        # Float32 all-reduce for TP precision on HIP (prevents FP16 rounding
++        # accumulation through DeltaNet/Mamba recurrence).
++        orig_dtype = hidden_states.dtype
++        if orig_dtype != torch.float32:
++            hidden_states = hidden_states.float()
++        hidden_states = attention_tensor_model_parallel_all_reduce(hidden_states)
++        if hidden_states.dtype != orig_dtype:
++            hidden_states = hidden_states.to(orig_dtype)
++        return hidden_states
+     if (
+         may_quantize
+         and not forward_batch.forward_mode.is_decode_or_idle()
+diff --git a/python/sglang/srt/layers/layer_boundary/prepare.py b/python/sglang/srt/layers/layer_boundary/prepare.py
+index 519b1a3c68..b8b8c2de7b 100644
+--- a/python/sglang/srt/layers/layer_boundary/prepare.py
++++ b/python/sglang/srt/layers/layer_boundary/prepare.py
+@@ -18,7 +18,6 @@ from typing import Callable, Optional, Tuple, Union
+ import torch
+ 
+ from sglang.srt.distributed import (
+-    attention_tensor_model_parallel_all_reduce,
+     tensor_model_parallel_all_reduce,
+ )
+ from sglang.srt.distributed.device_communicators.pynccl_allocator import (
+@@ -177,7 +176,7 @@ def _reduce_update_read_dp_gather(
+     if hidden_states.shape[0] != 0:
+         if reduces_attention_tp:
+             hidden_states = (
+-                attention_tensor_model_parallel_all_reduce(hidden_states)
++                attn_tp_all_reduce(hidden_states, forward_batch, may_quantize=False)
+                 if group is SumGroup.ATTN_TP
+                 else _sum_group(group).all_reduce(hidden_states)
+             )
 diff --git a/python/sglang/srt/layers/layernorm.py b/python/sglang/srt/layers/layernorm.py
-index 5bb45333a..7ed0f6f30 100644
+index 6068e8f209..2b23267465 100644
 --- a/python/sglang/srt/layers/layernorm.py
 +++ b/python/sglang/srt/layers/layernorm.py
-@@ -1359,6 +1359,7 @@ class Gemma4RMSNorm(BaseFusedOp):
+@@ -1387,6 +1387,7 @@ class Gemma4RMSNorm(BaseFusedOp):
      ):
          super().__init__()
          self.with_scale = with_scale
@@ -113,10 +123,10 @@ index 5bb45333a..7ed0f6f30 100644
          if self.with_scale:
              self.weight = nn.Parameter(torch.ones(dim))
 diff --git a/python/sglang/srt/models/gemma4_causal.py b/python/sglang/srt/models/gemma4_causal.py
-index 26917a2de..02fb9860b 100644
+index f0983560b9..c308c4fd52 100644
 --- a/python/sglang/srt/models/gemma4_causal.py
 +++ b/python/sglang/srt/models/gemma4_causal.py
-@@ -322,7 +322,9 @@ class Gemma4Attention(nn.Module):
+@@ -337,7 +337,9 @@ class Gemma4Attention(nn.Module):
              )
          else:
              self.total_num_heads = config.num_attention_heads
@@ -127,9 +137,9 @@ index 26917a2de..02fb9860b 100644
          assert self.total_num_heads % tp_size == 0
          self.num_heads = self.total_num_heads // tp_size
  
-@@ -737,12 +739,7 @@ class Gemma4DecoderLayer(nn.Module):
+@@ -801,12 +803,7 @@ class Gemma4DecoderLayer(nn.Module):
+                 self.mlp(hidden_states), forward_batch, SumGroup.TP
              )
-             hidden_states = self.mlp(hidden_states)
  
 -        if (
 -            not self.has_ple
@@ -141,7 +151,7 @@ index 26917a2de..02fb9860b 100644
              # Fused: (post_ff_norm(h) + residual) * layer_scalar in one kernel
              norm = self.post_feedforward_layernorm
              hidden_states = gemma_rmsnorm_residual_scalar(
-@@ -1085,10 +1082,13 @@ class Gemma4ForCausalLM(PreTrainedModel):
+@@ -1146,10 +1143,13 @@ class Gemma4ForCausalLM(PreTrainedModel):
  
      def __init__(
          self,
@@ -154,13 +164,21 @@ index 26917a2de..02fb9860b 100644
 +        if hasattr(config, "text_config") and getattr(config, "model_type", "") == "gemma4":
 +            config = config.text_config
          super().__init__(config=config)
-         self.pp_group = get_pp_group()
+         self.pp_group = get_parallel().pp_group
          self.config = config
 diff --git a/python/sglang/srt/models/qwen3_5.py b/python/sglang/srt/models/qwen3_5.py
-index d3691ea5e..153528ea7 100644
+index def6a402d5..fb31f92f10 100644
 --- a/python/sglang/srt/models/qwen3_5.py
 +++ b/python/sglang/srt/models/qwen3_5.py
-@@ -319,6 +319,21 @@ if _is_npu:
+@@ -77,6 +77,7 @@ from sglang.srt.layers.layernorm import GemmaRMSNorm
+ 
+ # Layers - Linear
+ from sglang.srt.layers.linear import (
++    ReplicatedParallelGroup,
+     ColumnParallelLinear,
+     LinearParallelGroup,
+     MergedColumnParallelLinear,
+@@ -351,6 +352,21 @@ if _is_npu:
      )
  
  
@@ -182,23 +200,26 @@ index d3691ea5e..153528ea7 100644
  class Qwen3_5GatedDeltaNet(nn.Module):
      def __init__(
          self,
-@@ -330,8 +345,12 @@ class Qwen3_5GatedDeltaNet(nn.Module):
+@@ -362,7 +378,16 @@ class Qwen3_5GatedDeltaNet(nn.Module):
      ) -> None:
          super().__init__()
          self.config = config
--        self.attn_tp_rank = get_parallel().attn_tp_rank
--        self.attn_tp_size = get_parallel().attn_tp_size
-+        # DeltaNet projections are always replicated (tp_size=1) to avoid
-+        # FP16 rounding errors accumulating through recurrent state S(t).
-+        self.attn_tp_rank = 0
-+        self.attn_tp_size = 1
-+        self.real_tp_rank = get_parallel().attn_tp_rank
-+        self.real_tp_size = get_parallel().attn_tp_size
-         self.hidden_size = config.hidden_size
-         self.num_v_heads = (
-             config.linear_num_value_heads
-@@ -379,10 +398,13 @@ class Qwen3_5GatedDeltaNet(nn.Module):
-             tp_size=self.attn_tp_size,
+-        parallel_group = linear_attn_parallel_group()
++        # DeltaNet projections are always replicated (one weight partition shared
++        # by every rank of the linear-attention group) to avoid FP16 rounding
++        # errors accumulating through the recurrent state S(t). The stage
++        # boundary still sums out_proj's output over the real group, so the
++        # forward paths rescale it by that group's width.
++        base_group = linear_attn_parallel_group()
++        self.real_tp_rank, self.real_tp_size = resolve_linear_parallel_group(
++            base_group
++        )
++        parallel_group = ReplicatedParallelGroup(base_group, self.real_tp_size)
+         self.attn_tp_rank, self.attn_tp_size = resolve_linear_parallel_group(
+             parallel_group
+         )
+@@ -411,10 +436,13 @@ class Qwen3_5GatedDeltaNet(nn.Module):
+             parallel_group=parallel_group,
          )
  
 +        # quant_config=None for in_proj_ba: output dim 48 is not divisible
@@ -210,21 +231,30 @@ index d3691ea5e..153528ea7 100644
 -            quant_config=quant_config,
 +            quant_config=None,
              prefix=add_prefix("in_proj_ba", prefix),
-             tp_rank=self.attn_tp_rank,
-             tp_size=self.attn_tp_size,
-@@ -438,8 +460,9 @@ class Qwen3_5GatedDeltaNet(nn.Module):
-             torch.empty(self.num_v_heads // self.attn_tp_size, dtype=torch.float32),
+             parallel_group=parallel_group,
          )
+@@ -970,6 +998,8 @@ class Qwen3_5GatedDeltaNet(nn.Module):
+         core_attn_out = core_attn_out.reshape(*core_attn_out.shape[:-2], -1)
  
--        set_weight_attrs(self.A_log, {"weight_loader": sharded_weight_loader(0)})
--        set_weight_attrs(self.dt_bias, {"weight_loader": sharded_weight_loader(0)})
-+        # tp_rank_getter=lambda: 0 so all TP workers load the full (unsharded) weight
-+        set_weight_attrs(self.A_log, {"weight_loader": sharded_weight_loader(0, tp_rank_getter=lambda: 0)})
-+        set_weight_attrs(self.dt_bias, {"weight_loader": sharded_weight_loader(0, tp_rank_getter=lambda: 0)})
+         output, _ = self.out_proj(core_attn_out)
++        if self.real_tp_size > 1:
++            output = output / self.real_tp_size
+         return output
  
-         conv_weights = self.conv1d.weight.view(
-             self.conv1d.weight.size(0), self.conv1d.weight.size(2)
-@@ -923,6 +946,8 @@ class Qwen3_5GatedDeltaNet(nn.Module):
+     def forward(
+@@ -1099,7 +1129,10 @@ class Qwen3_5GatedDeltaNet(nn.Module):
+                 activation=self.norm.activation,
+                 quant_heads=nv,
+             )
+-            return self.out_proj(fp8)[0]
++            output = self.out_proj(fp8)[0]
++            if self.real_tp_size > 1:
++                output = output / self.real_tp_size
++            return output
+ 
+         core_attn_out = self.norm(core_attn_out, z)
+         core_attn_out = core_attn_out.reshape(z_shape_og)
+@@ -1109,6 +1142,8 @@ class Qwen3_5GatedDeltaNet(nn.Module):
          )
  
          output, _ = self.out_proj(core_attn_out)
@@ -233,75 +263,67 @@ index d3691ea5e..153528ea7 100644
          return output
  
  
-@@ -948,6 +973,8 @@ class Qwen3_5LinearDecoderLayer(nn.Module):
+@@ -1137,6 +1172,8 @@ class Qwen3_5LinearDecoderLayer(nn.Module):
  
          # NOTE: Determine the MLP type based on the model type
          # Qwen3.5 use all layers for MLP / Qwen3.5-MoE use sparse MoE blocks
 +        self.replicate_mlp = _should_replicate_deltanet_for_tp(quant_config)
-+        self.real_tp_size = get_parallel().attn_tp_size
-         if config.model_type in _QWEN3_5_MOE_TEXT_MODEL_TYPES:
++        self.real_tp_size = get_parallel().tp_size
+         if _qwen3_5_is_moe(config):
              self.mlp = Qwen2MoeSparseMoeBlock(
                  layer_id=layer_id,
-@@ -966,12 +993,16 @@ class Qwen3_5LinearDecoderLayer(nn.Module):
-             is_previous_layer_sparse = True
-             is_next_layer_sparse = True
-         elif config.model_type == "qwen3_5_text":
-+            mlp_tp_kwargs = {}
-+            if self.replicate_mlp:
-+                mlp_tp_kwargs = {"tp_rank": 0, "tp_size": 1}
-             self.mlp = Qwen2MoeMLP(
-                 hidden_size=config.hidden_size,
-                 intermediate_size=config.intermediate_size,
-                 hidden_act=config.hidden_act,
-                 quant_config=quant_config,
+@@ -1162,6 +1199,9 @@ class Qwen3_5LinearDecoderLayer(nn.Module):
                  prefix=add_prefix("mlp", prefix.replace(".linear_attn", "")),
-+                **mlp_tp_kwargs,
+                 # The stage boundary completes this stage's sum.
+                 reduce_results=False,
++                # A replicated MLP computes the full output on every rank; the
++                # forward rescales it so the boundary's sum restores it.
++                parallel_group="replicated" if self.replicate_mlp else "tp",
              )
              _maybe_enable_silu_fp4_quant_fusion(self.mlp)
-             is_layer_sparse = False
-@@ -1079,6 +1110,8 @@ class Qwen3_5LinearDecoderLayer(nn.Module):
+         else:
+@@ -1224,6 +1264,8 @@ class Qwen3_5LinearDecoderLayer(nn.Module):
                  )
              else:
                  hidden_states = self.mlp(hidden_states)
-+        if self.replicate_mlp and self.real_tp_size > 1:
-+            hidden_states = hidden_states / self.real_tp_size
-         if fuse_mlp_allreduce:
-             hidden_states = _finish_mlp_output(
-                 hidden_states, expect_deferred=defer_moe_finalize
-@@ -1189,13 +1222,19 @@ class Qwen3_5AttentionDecoderLayer(nn.Module):
++                if self.replicate_mlp and self.real_tp_size > 1:
++                    hidden_states = hidden_states / self.real_tp_size
+         return ffn_exit.finish(hidden_states)
+ 
+ 
+@@ -1333,6 +1375,8 @@ class Qwen3_5AttentionDecoderLayer(nn.Module):
          )
  
          # Dense MLP for non-MoE variant
 +        self.replicate_mlp = _should_replicate_deltanet_for_tp(quant_config)
-+        self.real_tp_size = get_parallel().attn_tp_size
++        self.real_tp_size = get_parallel().tp_size
          if config.model_type == "qwen3_5_text":
-+            mlp_tp_kwargs = {}
-+            if self.replicate_mlp:
-+                mlp_tp_kwargs = {"tp_rank": 0, "tp_size": 1}
              self.mlp = Qwen2MoeMLP(
                  hidden_size=config.hidden_size,
-                 intermediate_size=config.intermediate_size,
-                 hidden_act=config.hidden_act,
-                 quant_config=quant_config,
+@@ -1342,6 +1386,9 @@ class Qwen3_5AttentionDecoderLayer(nn.Module):
                  prefix=add_prefix("mlp", prefix.replace(".self_attn", "")),
-+                **mlp_tp_kwargs,
+                 # The stage boundary completes this stage's sum.
+                 reduce_results=False,
++                # A replicated MLP computes the full output on every rank; the
++                # forward rescales it so the boundary's sum restores it.
++                parallel_group="replicated" if self.replicate_mlp else "tp",
              )
-             is_layer_sparse = False
-             is_previous_layer_sparse = False
-@@ -1515,6 +1554,8 @@ class Qwen3_5AttentionDecoderLayer(nn.Module):
+         elif _qwen3_5_is_moe(config):
+             self.mlp = Qwen2MoeSparseMoeBlock(
+@@ -1622,6 +1669,8 @@ class Qwen3_5AttentionDecoderLayer(nn.Module):
                  )
              else:
                  hidden_states = self.mlp(hidden_states)
-+        if self.replicate_mlp and self.real_tp_size > 1:
-+            hidden_states = hidden_states / self.real_tp_size
-         if fuse_mlp_allreduce:
-             hidden_states = _finish_mlp_output(
-                 hidden_states, expect_deferred=defer_moe_finalize
++                if self.replicate_mlp and self.real_tp_size > 1:
++                    hidden_states = hidden_states / self.real_tp_size
+         return ffn_exit.finish(hidden_states)
+ 
+ 
 diff --git a/python/sglang/srt/models/qwen3_next.py b/python/sglang/srt/models/qwen3_next.py
-index 43da47e00..aeec162d6 100644
+index cf7444960a..127d90ea1b 100644
 --- a/python/sglang/srt/models/qwen3_next.py
 +++ b/python/sglang/srt/models/qwen3_next.py
-@@ -153,12 +153,13 @@ class Qwen3GatedDeltaNet(nn.Module):
+@@ -159,12 +159,13 @@ class Qwen3GatedDeltaNet(nn.Module):
  
          # Override weight_loader for packed checkpoint format.
          # Must capture original_loader BEFORE overwriting.
@@ -321,7 +343,7 @@ index 43da47e00..aeec162d6 100644
  
          # Conv1d weight loader setup
          query_key_settings = (self.key_dim, 0, False)
-@@ -249,21 +250,15 @@ class Qwen3GatedDeltaNet(nn.Module):
+@@ -260,21 +261,15 @@ class Qwen3GatedDeltaNet(nn.Module):
  
          ModelWeightParameter exposes weight_loader as a read-only property
          backed by _weight_loader, while plain parameters store it as a
@@ -352,7 +374,7 @@ index 43da47e00..aeec162d6 100644
  
      @staticmethod
      def _make_packed_weight_loader(module):
-@@ -271,6 +266,8 @@ class Qwen3GatedDeltaNet(nn.Module):
+@@ -282,6 +277,8 @@ class Qwen3GatedDeltaNet(nn.Module):
          (packed-format) checkpoint weights (shard_id=None), and delegates
          to the standard MergedColumnParallelLinear loader for split checkpoint
          weights (shard_id=int/tuple)."""

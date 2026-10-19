@@ -1,6 +1,6 @@
 diff --git a/python/sglang/kernels/ops/attention/tree_verify_attention.py b/python/sglang/kernels/ops/attention/tree_verify_attention.py
 new file mode 100644
-index 000000000..e92fec5ac
+index 0000000000..e92fec5ac2
 --- /dev/null
 +++ b/python/sglang/kernels/ops/attention/tree_verify_attention.py
 @@ -0,0 +1,360 @@
@@ -365,7 +365,7 @@ index 000000000..e92fec5ac
 +    o.copy_(merged.to(o.dtype))
 +    return o
 diff --git a/python/sglang/srt/layers/attention/triton_backend.py b/python/sglang/srt/layers/attention/triton_backend.py
-index 5ed85811e..c94dd9c30 100644
+index dfbde16777..5be8854fa9 100644
 --- a/python/sglang/srt/layers/attention/triton_backend.py
 +++ b/python/sglang/srt/layers/attention/triton_backend.py
 @@ -1,5 +1,6 @@
@@ -375,7 +375,7 @@ index 5ed85811e..c94dd9c30 100644
  from dataclasses import dataclass
  from typing import TYPE_CHECKING, List, Optional
  
-@@ -39,6 +40,13 @@ from sglang.srt.model_executor.cuda_graph_config import (
+@@ -40,6 +41,13 @@ from sglang.srt.model_executor.cuda_graph_config import (
      cuda_graph_fully_disabled,
  )
  from sglang.srt.model_executor.forward_batch_info import ForwardBatch, ForwardMode
@@ -389,7 +389,7 @@ index 5ed85811e..c94dd9c30 100644
  from sglang.srt.runtime_context import get_exec, get_parallel, get_schedule, get_spec
  from sglang.srt.speculative.spec_utils import (
      draft_kv_indices_buffer_width,
-@@ -1742,6 +1750,44 @@ class TritonAttnBackend(AttentionBackend):
+@@ -1817,6 +1825,44 @@ class TritonAttnBackend(AttentionBackend):
          ):
              return o
  
@@ -431,6 +431,6 @@ index 5ed85811e..c94dd9c30 100644
 +            )
 +            return o
 +
-         self.extend_attention_fwd(
+         self._forward_extend_kernel(
+             layer,
              q.view(-1, layer.tp_q_head_num, layer.qk_head_dim),
-             k.contiguous(),

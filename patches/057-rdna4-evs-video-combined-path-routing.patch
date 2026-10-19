@@ -1,12 +1,11 @@
 diff --git a/python/sglang/srt/managers/mm_schedule.py b/python/sglang/srt/managers/mm_schedule.py
-index 13dc18697..b0809a695 100644
+index cfbdd2f95a..d80a14043f 100644
 --- a/python/sglang/srt/managers/mm_schedule.py
 +++ b/python/sglang/srt/managers/mm_schedule.py
-@@ -576,7 +576,19 @@ def _get_chunked_prefill_embedding(
-             extend_seq_len=extend_seq_len,
+@@ -586,9 +586,19 @@ def _get_chunked_prefill_embedding(
          )
  
--        is_per_image = all(len(item.offsets) == 1 for item in embedding_items_per_req)
+         # Audio items may span several runs (interleaved with transcript text).
 +        # EVS items MUST take the full path: their data_embedding_func returns
 +        # an EVSEmbeddingResult (pruned video embeddings + per-frame token
 +        # counts), which only _get_chunked_embedding_full unwraps + redistributes;
@@ -15,11 +14,11 @@ index 13dc18697..b0809a695 100644
 +        # v0.5.20 dropped the EVSDataItem subclass: EVS items are plain
 +        # MultimodalDataItems tagged with "thw_grids" in model_specific_data
 +        # (evs_processor.create_evs_data_items), which is what evs_module asserts on.
-+        is_per_image = all(
-+            len(item.offsets) == 1 for item in embedding_items_per_req
+         is_per_image = all(
+             len(item.offsets) == 1 or item.is_audio()
+             for item in embedding_items_per_req
 +        ) and not any(
 +            "thw_grids" in item.model_specific_data for item in embedding_items_per_req
-+        )
+         )
          if is_per_image:
              if _is_hip or _is_npu or _is_xpu:
-                 # ROCm CI regressed with one large cross-request ViT batch; keep

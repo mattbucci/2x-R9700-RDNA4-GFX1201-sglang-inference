@@ -1,5 +1,5 @@
 diff --git a/python/sglang/srt/models/laguna.py b/python/sglang/srt/models/laguna.py
-index 9aa8d4591..516c635b7 100644
+index 71bfdac86f..4b37c24641 100644
 --- a/python/sglang/srt/models/laguna.py
 +++ b/python/sglang/srt/models/laguna.py
 @@ -52,7 +52,10 @@ from sglang.srt.layers.vocab_parallel_embedding import (
@@ -12,17 +12,17 @@ index 9aa8d4591..516c635b7 100644
 +    maybe_remap_kv_scale_name,
 +)
  from sglang.srt.models.utils import apply_qk_norm
- from sglang.srt.runtime_context import get_exec, get_forward, get_parallel
- from sglang.srt.utils import LazyValue, add_prefix, make_layers
-@@ -658,6 +661,7 @@ class LagunaForCausalLM(nn.Module):
+ from sglang.srt.runtime_context import get_exec, get_parallel
+ from sglang.srt.utils import LazyValue, add_prefix, make_pp_layers
+@@ -627,6 +630,7 @@ class LagunaForCausalLM(nn.Module):
          super().__init__()
-         self.pp_group = get_pp_group()
+         self.pp_group = get_parallel().pp_group
          self.config = config
 +        self.quant_config = quant_config
          self.model = LagunaModel(
              config, quant_config=quant_config, prefix=add_prefix("model", prefix)
          )
-@@ -766,6 +770,10 @@ class LagunaForCausalLM(nn.Module):
+@@ -735,6 +739,10 @@ class LagunaForCausalLM(nn.Module):
              if self.config.tie_word_embeddings and "lm_head.weight" in name:
                  continue
  

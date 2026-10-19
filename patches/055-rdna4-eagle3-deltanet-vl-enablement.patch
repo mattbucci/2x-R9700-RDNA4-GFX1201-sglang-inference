@@ -1,54 +1,16 @@
-diff --git a/python/sglang/srt/models/qwen3_vl.py b/python/sglang/srt/models/qwen3_vl.py
-index afd7659f..a0ac1620 100644
---- a/python/sglang/srt/models/qwen3_vl.py
-+++ b/python/sglang/srt/models/qwen3_vl.py
-@@ -1580,13 +1580,31 @@ class Qwen3VLForConditionalGeneration(nn.Module):
-         self.model.capture_aux_hidden_states = True
-         if layer_ids is None:
-             num_layers = self.config.num_hidden_layers
--            self.model.layers_to_capture = [
-+            capture = [
-                 2,
-                 num_layers // 2,
-                 num_layers - 3,
-             ]  # Specific layers for EAGLE3 support
-         else:
--            self.model.layers_to_capture = [val + 1 for val in layer_ids]
-+            capture = [val + 1 for val in layer_ids]
-+        # This wrapper hosts TWO different text backbones with TWO different
-+        # aux-capture mechanisms, so drive BOTH:
-+        #   * dense ``Qwen3LLMModel`` (Qwen3-VL-32B etc.) reads the
-+        #     ``layers_to_capture`` LIST in its forward (``layer_idx in
-+        #     self.layers_to_capture``) — and ``Qwen3Model`` has NO
-+        #     ``set_dflash_layers_to_capture`` method;
-+        #   * the ``qwen3_5`` DeltaNet backbone (Qwen3.5/3.6) reads a per-layer
-+        #     ``_is_layer_to_capture`` flag instead.
-+        # Setting only the list (old code) left DeltaNet capturing nothing -> the
-+        # bare-tensor return tripped ``hidden, aux = hidden`` ("too many values to
-+        # unpack"); routing through ``set_dflash_layers_to_capture`` (also old)
-+        # AttributeError'd on the dense backbone. Set the list AND mark the flags
-+        # so EAGLE3 works on whichever backbone is loaded (each forward reads one;
-+        # the other write is a harmless no-op).
-+        self.model.layers_to_capture = capture
-+        for layer_id in capture:
-+            if 0 <= layer_id < len(self.model.layers):
-+                setattr(self.model.layers[layer_id], "_is_layer_to_capture", True)
- 
- 
- def _require_vision(model) -> None:
 diff --git a/python/sglang/srt/utils/hf_transformers_patches.py b/python/sglang/srt/utils/hf_transformers_patches.py
-index 614fc95b..514ccedd 100644
+index 79f85cdef6..5b776a3d99 100644
 --- a/python/sglang/srt/utils/hf_transformers_patches.py
 +++ b/python/sglang/srt/utils/hf_transformers_patches.py
-@@ -56,6 +56,7 @@ def apply_all():
+@@ -61,6 +61,7 @@ def apply_all():
      # v5.4 patches
      _patch_flash_attn_availability()
      _patch_rope_parameters_validation()
 +    _patch_llama_head_dim_validation()
+     _patch_layer_types_validation()
      _patch_removed_symbols()
      _patch_image_processor_kwargs()
-     _patch_image_process_cuda_tensor()
-@@ -161,6 +162,44 @@ def _patch_rope_parameters_validation():
+@@ -182,6 +183,44 @@ def _patch_rope_parameters_validation():
          PretrainedConfig.standardize_rope_params = _safe_standardize
  
  

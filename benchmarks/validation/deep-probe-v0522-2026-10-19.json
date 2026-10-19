@@ -1,0 +1,18 @@
+{
+  "qwen38": {
+    "slug": "qwen38",
+    "model": "/data/models/Qwen3.8-27B-FP8",
+    "requested_tokens": 221184,
+    "actual_prompt_tokens": 197410,
+    "full_attn": true,
+    "late_recall": true,
+    "mid_recall": true,
+    "coherent": true,
+    "finish_reason": "stop",
+    "truncated_inconclusive": false,
+    "temperature": 0.7,
+    "elapsed_sec": 492.1,
+    "sample": "MID=COBALT-2291 LATE=MELON-7734 ",
+    "timestamp": "2026-10-19 09:04"
+  }
+}

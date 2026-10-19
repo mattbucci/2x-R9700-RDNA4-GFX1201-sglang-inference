@@ -1,5 +1,5 @@
 diff --git a/python/sglang/kernels/ops/attention/verify_splitkv.py b/python/sglang/kernels/ops/attention/verify_splitkv.py
-index 94bb852..308742d 100644
+index 94bb8526f8..308742de60 100644
 --- a/python/sglang/kernels/ops/attention/verify_splitkv.py
 +++ b/python/sglang/kernels/ops/attention/verify_splitkv.py
 @@ -61,6 +61,17 @@ _BLOCK_CONFIG = {
@@ -34,11 +34,11 @@ index 94bb852..308742d 100644
          self.n_splits = n_splits
          self.block_n = block_n
 diff --git a/python/sglang/srt/layers/attention/triton_backend.py b/python/sglang/srt/layers/attention/triton_backend.py
-index 6d1f636..0eeb46e 100644
+index 0ade9788e6..57713376d2 100644
 --- a/python/sglang/srt/layers/attention/triton_backend.py
 +++ b/python/sglang/srt/layers/attention/triton_backend.py
-@@ -248,12 +248,15 @@ class TritonAttnBackend(AttentionBackend):
-         self.num_draft_tokens = get_spec().speculative_num_draft_tokens
+@@ -261,12 +261,15 @@ class TritonAttnBackend(AttentionBackend):
+         self.target_verify_num_tokens_per_req = model_runner.decode_num_tokens_per_req()
          self.speculative_num_steps = get_spec().speculative_num_steps
          self.topk = get_spec().speculative_eagle_topk or 0
 -        # Split-KV verify is bit-equivalent only for a pure-causal chain (topk==1)

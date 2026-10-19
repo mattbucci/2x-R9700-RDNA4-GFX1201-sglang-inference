@@ -1,22 +1,23 @@
 diff --git a/python/sglang/srt/arg_groups/overrides.py b/python/sglang/srt/arg_groups/overrides.py
-index 6d26836de..fc49ba2e6 100644
+index 20d3fb15c8..b35451be5e 100644
 --- a/python/sglang/srt/arg_groups/overrides.py
 +++ b/python/sglang/srt/arg_groups/overrides.py
-@@ -545,8 +545,20 @@ def _mamba_radix_cache_resolution(view: Any) -> dict:
+@@ -453,8 +453,21 @@ def _mamba_radix_cache_resolution(view: Any) -> dict:
      if view.mamba_radix_cache_strategy == "auto":
          wants_overlap = not view.disable_overlap_schedule
          wants_paging = view.page_size is not None and view.page_size > 1
 -        if (wants_overlap or wants_paging) and supports_mamba_cache_extra_buffer(
--            view, model_arch
+-            view, hf_config
 +        if (
 +            (wants_overlap or wants_paging)
-+            and supports_mamba_cache_extra_buffer(view, model_arch)
-+            # RDNA4: extra_buffer uses an FLA kernel that needs CUDA/MUSA/NPU
-+            # (see _validate_mamba_extra_buffer's assert). On ROCm/HIP that op
-+            # is absent, so the 'auto' strategy must fall back to no_buffer
-+            # (the supported mamba-radix path) instead of asserting at startup.
-+            # v0.5.20: overrides.py no longer imports is_cuda/is_musa/is_npu;
-+            # use the PlatformContext booleans like the rest of this file.
++            and supports_mamba_cache_extra_buffer(view, hf_config)
++            # RDNA4: keep the 'auto' strategy on no_buffer (the mamba-radix path
++            # every gfx1201 hybrid preset and the qwen38 bake-off were validated
++            # on). v0.5.22 lists HIP among the extra_buffer platforms
++            # (mamba_hook._platform_supports_mamba_cache_extra_buffer); the FLA
++            # state-snapshot kernels are untested on gfx1201 and switching would
++            # also re-enable overlap scheduling mid-matrix. Opt in explicitly
++            # with --mamba-radix-cache-strategy extra_buffer after an A/B.
 +            and (
 +                get_platform().is_cuda
 +                or get_platform().is_musa

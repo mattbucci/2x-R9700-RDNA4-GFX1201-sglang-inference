@@ -1,11 +1,11 @@
 # RDNA4 inference on 2× R9700
 
-SGLang v0.5.20 with 70 local RDNA4 patches, tuned for coherent single-user inference at long context
+SGLang v0.5.22 with 72 local RDNA4 patches, tuned for coherent single-user inference at long context
 (256K) on two AMD Radeon AI PRO R9700 GPUs (gfx1201, 32 GiB each, TP=2 over PCIe). The repository holds
 the patch series, the preset launcher, the benchmark and evaluation harnesses, the FP8/AWQ quantization
 pipeline, and the receipts behind every number below. Multi-user throughput is secondary.
 
-Serving tree `/data/sgl-v0520`, conda environment `sglang-triton36-v0520`, ROCm 7.2. The current focus
+Serving tree `/data/sgl-v0522`, conda environment `sglang-triton36-v0522`, ROCm 7.2. The current focus
 is FP8 inference for coding and agentic workloads: Cohere North-Mini Code, Poolside Laguna XS.2, and the
 new quality flagship Qwen3.8-27B-FP8.
 
@@ -19,9 +19,10 @@ new quality flagship Qwen3.8-27B-FP8.
 - **Qwen3.8-27B-FP8 is the quality flagship**: fleet-best LAB-Bench 42.3% (no-think multiple choice),
   MMLU 84.2%, HumanEval 93.3%, 7/7 agentic rungs to 245,150 actual tokens, and — since 2026-09-27
   on the **DSpark speculative preset** (RedHatAI speculator through the split-KV verify kernel,
-  patches 099/100) — **35.5 / 44.5 / 31.6 / 31.9 tok/s decode at 24 / 7.3K / 58K / 197K input**
-  (canonical 3-run sweep) against 22.5 / 22.2 / 21.4 / 20.0 on the no-spec server (`QWEN38_SPEC=0`,
-  which keeps the 530K-token pool for true 256K work; the DSpark pool is 239K), 45.6 tok/s on
+  patch 100) — **34.3 / 44.5 / 41.6 / 30.1 tok/s decode at 24 / 7.3K / 58K / 197K input**
+  (canonical 3-run think-off sweep on v0.5.22, 2026-10-19; the v0.5.20 sweep read 35.5 / 44.5 / 31.6 /
+  31.9) against 22.5 / 22.2 / 21.4 / 20.0 on the no-spec server (`QWEN38_SPEC=0`,
+  which keeps the 530K-token pool for true 256K work; the DSpark pool is 206K on v0.5.22, 239K on v0.5.20), 45.6 tok/s on
   thinking text at 58K, capability probe 5/5. Its seven-scaffold SWE-bench Lite bakeoff (300
   instances per cell, Docker-scored) is restarting as **v5** on that preset (2026-09-27; the v4
   matrix on the no-spec server — opencode 300/300, opencode-dcp 159/300 — stays on disk as the
@@ -32,7 +33,7 @@ new quality flagship Qwen3.8-27B-FP8.
   the upstream fix through future git history and the web on 45–61% of instances, so v2 is
   published only as an exposure study. Setup, the leak audit and the isolation design are in
   [`evals/swebench/FP8_BAKEOFF_SETUP.md`](evals/swebench/FP8_BAKEOFF_SETUP.md).
-- **The patch series replays byte-identically** onto pristine v0.5.20 under the strict gate in
+- **The patch series replays byte-identically** onto pristine v0.5.22 under the strict gate in
   [`patches/README.md`](patches/README.md).
 
 ## Results
@@ -81,7 +82,7 @@ points are noisy. Do not present a short prompt on a 256K-capable server as 256K
 ![Spec-decode coverage: short-depth tok/s per draft lane, with the measured at-depth value (red = collapse at true 256K, white = holds)](benchmarks/specdecode_fleet.png)
 
 Only the Qwen3.8-27B DSpark lane (RedHatAI speculator through the split-KV verify kernel, patches
-099/100) holds its gain at depth: 31.9 tok/s at 197K actual input against 20.0 no-spec. Every
+100; the DSpark boot fix that was 099 is upstream since v0.5.22) holds its gain at depth: 30.1 tok/s at 197K actual input against 20.0 no-spec (31.9 on v0.5.20). Every
 EAGLE3/DFlash draft that wins at short depth collapses at true 256K (0.8–1.2 tok/s at 240–244K), so the
 green bars are short-depth server capability, not 256K throughput. Data and per-lane notes:
 [`benchmarks/specdecode.json`](benchmarks/specdecode.json).
@@ -275,19 +276,19 @@ backend, quantization path, parsers, memory settings, and graph policy.
 | Component | Version |
 |---|---|
 | GPUs | 2× AMD Radeon AI PRO R9700, gfx1201, 32 GiB each |
-| SGLang | v0.5.20 + 70 patches |
+| SGLang | v0.5.22 + 72 patches |
 | Python | 3.12 |
 | PyTorch | 2.11.0+rocm7.2 |
 | ROCm | 7.2 |
 | Triton | 3.6.0 |
 | RCCL | 2.27.7 |
-| transformers | 5.12.1 |
+| transformers | 5.19.0 |
 
-v0.5.20 (tag published 2026-09-18) is the newest upstream release as of 2026-09-19; `/data/sgl-v0520` sits on its
-peeled commit `94602c9c2`. Upstream `main` was 241 unreleased commits ahead on that date and is not tracked:
-the patch series and the native HIP kernel builds pin to release tags, and the next rebase waits for the
-v0.5.21 tag (the ~2-week cadence puts it near 2026-10-02) and a bake-off lane boundary. Rebase procedure and
-per-version receipts: [`patches/README.md`](patches/README.md).
+v0.5.22 (tag published 2026-10-13) is the newest upstream release as of 2026-10-19; `/data/sgl-v0522` sits on its
+peeled commit `baa9befa3`. v0.5.21 (2026-10-02) was skipped. Upstream `main` is not tracked: the patch series
+and the native HIP kernel builds pin to release tags, and the next rebase waits for the next release tag and a
+bake-off lane boundary. v0.5.20 is retained untouched at `/data/sgl-v0520` / `sglang-triton36-v0520` as the
+rollback. Rebase procedure and per-version receipts: [`patches/README.md`](patches/README.md).
 
 TP=2 requires both kernel P2P support and IOMMU passthrough:
 
@@ -303,7 +304,7 @@ with trusted workloads; GPU passthrough is not a safe multi-tenant sandbox.
 
 ### OCI image
 
-`Dockerfile` builds the ROCm 7.2/v0.5.20 stack without a GPU; GitHub Actions promotes verified digests
+`Dockerfile` builds the ROCm 7.2/v0.5.22 stack without a GPU; GitHub Actions promotes verified digests
 to `ghcr.io/<owner>/sglang-rdna4`. The image is hardened for untrusted networks (keyed API, fail-closed
 preset launcher, disabled remote code and media by default) and must still sit behind a private network
 and an authenticating TLS proxy. Device selection, secrets, `docker run` recipes, the read-only
@@ -427,7 +428,7 @@ Final experiment dispositions are summarized in [benchmarks/FINDINGS.md](benchma
 | Path | Purpose |
 |---|---|
 | [scripts/](scripts/README.md) | setup, launch, benchmark, evaluation, quantization, and test entry points |
-| [patches/](patches/README.md) | ordered SGLang v0.5.20 patch series and the replay gate |
+| [patches/](patches/README.md) | ordered SGLang v0.5.22 patch series and the replay gate |
 | [PATCHES.md](PATCHES.md) | cross-environment patch inventory |
 | [benchmarks/](benchmarks/README.md) | current results, raw JSON, charts, and consolidated findings |
 | [evals/swebench/](evals/swebench/FP8_BAKEOFF_SETUP.md) | SWE-bench Lite bakeoff harness, audit, and Docker scoring |

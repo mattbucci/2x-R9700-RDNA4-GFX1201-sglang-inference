@@ -1,0 +1,86 @@
+{
+  "label": "v0.5.22+72p DSpark(split-KV) mem0.88 cp4096",
+  "tag": "qwen38-v0522",
+  "note": "think-ON (xhigh) decode: the model's reasoning text, 80 tokens, 3 runs; NOT the canonical think-off row. Same server/preset as decode-v0522-canonical-2026-10-19.json.",
+  "port": 23334,
+  "maxtok": 80,
+  "runs": 3,
+  "points": [
+    {
+      "context": 128,
+      "input_len": 64,
+      "runs_tps": [
+        44.21,
+        44.3,
+        44.27
+      ],
+      "median_tps": 44.27,
+      "min_tps": 44.214,
+      "max_tps": 44.298,
+      "runs_completion_tokens": [
+        80,
+        80,
+        80
+      ],
+      "median_tpot_ms": 22.59,
+      "sample": "We need answer user's request: \"Write a long detailed essay "
+    },
+    {
+      "context": 8192,
+      "input_len": 7371,
+      "runs_tps": [
+        45.51,
+        45.51,
+        45.52
+      ],
+      "median_tps": 45.507,
+      "min_tps": 45.505,
+      "max_tps": 45.519,
+      "runs_completion_tokens": [
+        80,
+        80,
+        80
+      ],
+      "median_tpot_ms": 21.97,
+      "sample": "We need to answer user's request: \"In one short paragraph, s"
+    },
+    {
+      "context": 65536,
+      "input_len": 58523,
+      "runs_tps": [
+        55.44,
+        55.47,
+        55.43
+      ],
+      "median_tps": 55.444,
+      "min_tps": 55.429,
+      "max_tps": 55.467,
+      "runs_completion_tokens": [
+        80,
+        80,
+        80
+      ],
+      "median_tpot_ms": 18.04,
+      "sample": "We need answer user's request: \"In one short paragraph, summ"
+    },
+    {
+      "context": 221184,
+      "input_len": 197366,
+      "runs_tps": [
+        45.39,
+        45.38,
+        45.4
+      ],
+      "median_tps": 45.39,
+      "min_tps": 45.379,
+      "max_tps": 45.399,
+      "runs_completion_tokens": [
+        80,
+        80,
+        80
+      ],
+      "median_tpot_ms": 22.03,
+      "sample": "We need to answer user's request: \"In one short paragraph, s"
+    }
+  ]
+}

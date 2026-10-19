@@ -1,11 +1,46 @@
 {
   "model": "Qwen3.8-27B official FP8 (dense DeltaNet VL+video) + DSpark",
-  "engine": "SGLang",
+  "engine": "SGLang v0.5.22 + 72 patches",
   "method": "completion-token-counted streaming TPOT median (decode_ab, 3-run)",
   "hardware": "2x R9700 TP=2",
-  "timestamp": "2026-09-27 v0.5.20+72p graphs-on DSpark(RedHatAI speculator, split-KV verify) mem0.88 cp4096",
+  "timestamp": "2026-10-19 v0.5.22+72p graphs-on DSpark(RedHatAI speculator, split-KV verify) mem0.88 cp4096 80",
   "output_tokens": 80,
   "context_sweep": [
+    {
+      "context": 128,
+      "input_len": 24,
+      "tpot_ms": 29.13,
+      "tok_per_sec": 34.326
+    },
+    {
+      "context": 8192,
+      "input_len": 7331,
+      "tpot_ms": 22.46,
+      "tok_per_sec": 44.526
+    },
+    {
+      "context": 65536,
+      "input_len": 58483,
+      "tpot_ms": 24.04,
+      "tok_per_sec": 41.594
+    },
+    {
+      "context": 221184,
+      "input_len": 197326,
+      "tpot_ms": 33.27,
+      "tok_per_sec": 30.058
+    }
+  ],
+  "throughput_sweep": [
+    {
+      "concurrency": 1,
+      "throughput": 34.326,
+      "tpot_ms": 29.13,
+      "ttft_ms": 0
+    }
+  ],
+  "note": "qwen38 preset default since 2026-09-27: --speculative-algorithm DSPARK, RedHatAI/Qwen3.8-27B-speculator.dspark converted (gamma 8), split-KV verify (patch 100); no-spec reference in qwen38-27b-fp8-nospec/ Re-measured 2026-10-19 on the v0.5.22 rebase (decode-v0522-canonical-2026-10-19.json); the 2026-09-27 v0.5.20 rows are kept under previous_context_sweep_v0520_2026_09_27.",
+  "previous_context_sweep_v0520_2026_09_27": [
     {
       "context": 128,
       "input_len": 24,
@@ -30,14 +65,5 @@
       "tpot_ms": 31.37,
       "tok_per_sec": 31.874
     }
-  ],
-  "throughput_sweep": [
-    {
-      "concurrency": 1,
-      "throughput": 35.493,
-      "tpot_ms": 28.17,
-      "ttft_ms": 0
-    }
-  ],
-  "note": "qwen38 preset default since 2026-09-27: --speculative-algorithm DSPARK, RedHatAI/Qwen3.8-27B-speculator.dspark converted (gamma 8), split-KV verify (patch 100); no-spec reference in qwen38-27b-fp8-nospec/"
+  ]
 }

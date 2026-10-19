@@ -18,7 +18,7 @@ Fleet charts regenerated from the same files by `scripts/bench/generate_charts.p
 (SWE-bench Lite resolve rate per preset × scaffold from `quality/bakeoff-*.json`; cells carry a `harness`
 line so matrices run under different harnesses are labelled, never merged).
 
-### Qwen3.8-27B-FP8 (2026-09-27, v0.5.20 + 72 patches, HIP graphs on, DSpark speculative preset)
+### Qwen3.8-27B-FP8 (2026-10-19, v0.5.22 + 72 patches, HIP graphs on, DSpark speculative preset)
 
 Official vendor block-FP8 ship under the `qwen38` preset (TP=2, FP8-e4m3 KV, `MAX_RUNNING=1`,
 `--cuda-graph-max-bs-decode 1`; since 2026-09-27 also `--speculative-algorithm DSPARK` with the
@@ -31,13 +31,15 @@ think-off; [qwen38-27b-fp8/results.json](qwen38-27b-fp8/results.json)); the no-s
 
 | Actual input tokens | 24 | 7,331 | 58,483 | 197,326 |
 |---|---:|---:|---:|---:|
-| **Decode tok/s, DSpark + split-KV verify (preset default)** | **35.493** | **44.512** | **31.631** | **31.874** |
+| **Decode tok/s, DSpark + split-KV verify, v0.5.22 (preset default, 2026-10-19)** | **34.326** | **44.526** | **41.594** | **30.058** |
+| Decode tok/s, DSpark + split-KV verify, v0.5.20 (2026-09-27) | 35.493 | 44.512 | 31.631 | 31.874 |
 | Decode tok/s, no-spec (2026-09-19 canonical, reference) | 22.543 | 22.227 | 21.438 | 19.955 |
-| Speed-up | 1.57× | 2.00× | 1.48× | 1.60× |
+| Speed-up (v0.5.22 vs no-spec) | 1.52× | 2.00× | 1.94× | 1.51× |
 
-Thinking on (same server, 3-run): 34.5 tok/s at 64 input tokens, 45.6 at 58,523. Accept length 2.9–3.5
-on the synthetic sweep text, 2.6–3.4 on code and summaries. The draft weights and draft KV pool cap
-`max_total_num_tokens` at 239,384 (0.88) and the aux-hidden-state capture adds a prefill transient, so
+Thinking on (same v0.5.22 server, 3-run): 44.3 tok/s at 64 input tokens, 55.4 at 58,523 (v0.5.20: 34.5 and
+45.6). Accept length 2.9–3.5 on the synthetic sweep text, 2.6–3.4 on code and summaries. The draft weights
+and draft KV pool cap `max_total_num_tokens` at 206,324 on v0.5.22 (239,384 on v0.5.20; upstream's pool
+sizing keeps ~0.45 GB/rank more headroom) at mem 0.88, and the aux-hidden-state capture adds a prefill transient, so
 mem 0.90 OOMs in decode and 0.88 OOMs a 58K prefill at chunk 8192 — 0.88 + chunk 4096 is the validated
 pair. Depth-ladder receipts behind the preset change: [dspark-depth-ab-2026-09-27.json](qwen38-27b-fp8/dspark-depth-ab-2026-09-27.json)
 (stock verify: 5 tok/s at 49K) and [dspark-splitkv-depth-ab-2026-09-27.json](qwen38-27b-fp8/dspark-splitkv-depth-ab-2026-09-27.json).
@@ -49,8 +51,15 @@ curve. Graphs were enabled after the 2026-09-19 same-server HIP-graph A/B on v0.
 ([graph-ab-2026-09-19.json](qwen38-27b-fp8/graph-ab-2026-09-19.json), 3 runs/point, idle CPU,
 server restarted between arms: 22.5 / 22.2 / 21.6 / 20.2 tok/s at 24 / 6,563 / 52,193 / 176,044
 actual input tokens, byte-identical temp-0 outputs, 5/5 capability probe); the v0.5.20 promotion run
-reproduced that arm to within 0.1 tok/s at the same depths before this canonical sweep
-([validation](../patches/v0520-rebase-2026-09-19.md)).
+reproduced that arm to within 0.1 tok/s at the same depths before the 2026-09-27 canonical sweep
+([validation](../patches/v0520-rebase-2026-09-19.md)). The table above is the 2026-10-19 re-measurement on
+v0.5.22 ([decode-v0522-canonical-2026-10-19.json](qwen38-27b-fp8/decode-v0522-canonical-2026-10-19.json));
+the v0.5.20 rows (35.5 / 44.5 / 31.6 / 31.9 tok/s at the same actual inputs) are kept in `results.json`
+under `previous_context_sweep_v0520_2026_09_27`, and the same-day A/B is in the
+[v0.5.22 receipt](../patches/v0522-rebase-2026-10-19.md). A think-on sweep of the same server
+([decode-v0522-thinking-2026-10-19.json](qwen38-27b-fp8/decode-v0522-thinking-2026-10-19.json),
+44.3 / 45.5 / 55.4 / 45.4 tok/s) measures reasoning-text decode, where the speculator accepts more, and is
+not the canonical row.
 [Quality receipt](quality/Qwen3.8-27B-FP8.json): MMLU **84.2%** (100), HumanEval **93.3%** (30),
 Needle 2/2, LAB-Bench **42.3%** overall (25/benchmark, fleet-best; measured with
 `--mc-no-think`, i.e. `chat_template_kwargs.enable_thinking=false`). The earlier think-mode

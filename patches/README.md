@@ -1,16 +1,17 @@
-# SGLang v0.5.20 RDNA4 patches
+# SGLang v0.5.22 RDNA4 patches
 
-This directory contains the **73 active numeric patches** applied to pristine SGLang v0.5.20 for the
-2× Radeon AI PRO R9700 serving stack. The default tree is `/data/sgl-v0520`; the default conda environment
-is `sglang-triton36-v0520`.
+This directory contains the **72 active numeric patches** applied to pristine SGLang v0.5.22 for the
+2× Radeon AI PRO R9700 serving stack. The default tree is `/data/sgl-v0522`; the default conda environment
+is `sglang-triton36-v0522`.
 
 Patch 072 is not part of the series because transformers 5.12.1 supplies the Gemma 4 unified configuration
 and processor. Patch 083 adds the tokenizer-backend correction required for Mistral checkpoints that ship
 `tekken.json`. Patch 003 includes safe fallbacks for both the base CUDA-only `sgl_kernel` imports and the
-optional `infllm_v2` extension reported in [issue #3](https://github.com/mattbucci/2x-R9700-RDNA4-GFX1201-sglang-inference/issues/3). On the v0.5.16 rebase, patch 059 was dropped because its FuseEP dispatcher target was removed upstream, and patch 097 was added as the JIT fused-gate None-bias guard. The v0.5.18 rebase went 69 → 70: 26 patches were regenerated for upstream's kernel-tree relocation (`sgl-kernel/` → `python/sglang/kernels/aot/`, `sglang.jit_kernel` → `sglang.kernels.ops`), the upstreamed max-head sizing was dropped from 077, and patch 098 was added so `gemma4_unified` resolves to transformers' native `Gemma4UnifiedConfig` (the `Gemma4Config` alias broke the encoder-free 12B at init). The v0.5.20 rebase kept 70 (the index then grew to 73 with 103, the 3090's 066 port): 23 patches were regenerated, mostly for the msgspec-record `ServerArgs` (`arg_groups/fields`, resolution hooks) and upstream's gfx1250 branches; hunks that landed upstream were dropped from 011, 049, 074 and 096, and 073 was rewritten because its cleanly-applying hunk referenced `is_cuda`/`is_musa`/`is_npu` helpers that `overrides.py` no longer imports.
+optional `infllm_v2` extension reported in [issue #3](https://github.com/mattbucci/2x-R9700-RDNA4-GFX1201-sglang-inference/issues/3). On the v0.5.16 rebase, patch 059 was dropped because its FuseEP dispatcher target was removed upstream, and patch 097 was added as the JIT fused-gate None-bias guard. The v0.5.18 rebase went 69 → 70: 26 patches were regenerated for upstream's kernel-tree relocation (`sgl-kernel/` → `python/sglang/kernels/aot/`, `sglang.jit_kernel` → `sglang.kernels.ops`), the upstreamed max-head sizing was dropped from 077, and patch 098 was added so `gemma4_unified` resolves to transformers' native `Gemma4UnifiedConfig` (the `Gemma4Config` alias broke the encoder-free 12B at init). The v0.5.20 rebase kept 70 (the index then grew to 73 with 103, the 3090's 066 port): 23 patches were regenerated, mostly for the msgspec-record `ServerArgs` (`arg_groups/fields`, resolution hooks) and upstream's gfx1250 branches; hunks that landed upstream were dropped from 011, 049, 074 and 096, and 073 was rewritten because its cleanly-applying hunk referenced `is_cuda`/`is_musa`/`is_npu` helpers that `overrides.py` no longer imports. The v0.5.22 rebase went 73 → 72: 099 was dropped (the DSpark worker takes `pp_proxy_tensors` upstream) and 26 patches were regenerated, chiefly because upstream deleted `layers/communicator.py` for the `layer_boundary` stage framework — the HIP FP32 attention-TP all-reduce (001) now lives in `layer_boundary/ops.attn_tp_all_reduce`, its per-model opt-out (080/084/085) is the `PLAIN_ADD_BF16_SUM` residual-update policy, and the Qwen3.5 DeltaNet replication rides upstream's `ReplicatedParallelGroup`; the block-FP8 GEMM moved to `kernels/ops/gemm/fp8_kernel.py` (005); 073 now pins `no_buffer` on gfx1201 because v0.5.22 lists HIP as an `extra_buffer` platform; upstreamed hunks were dropped from 055, 075, 096 and 098.
 
 Validation receipts:
 
+- [v0.5.22 rebase](v0522-rebase-2026-10-19.md)
 - [v0.5.20 rebase](v0520-rebase-2026-09-19.md)
 - [v0.5.18 rebase](v0518-rebase-2026-08-29.md)
 - [v0.5.16 rebase](v0516-rebase-2026-07-27.md)
@@ -26,11 +27,11 @@ The supported setup path applies the numeric series in filename order:
 scripts/setup.sh
 ```
 
-For an isolated replay, start with a pristine v0.5.20 worktree and fail immediately on any bad patch:
+For an isolated replay, start with a pristine v0.5.22 worktree and fail immediately on any bad patch:
 
 ```bash
-target=/tmp/sglang-v0520-replay
-git clone --branch v0.5.20 --depth 1 https://github.com/sgl-project/sglang.git "$target"
+target=/tmp/sglang-v0522-replay
+git clone --branch v0.5.22 --depth 1 https://github.com/sgl-project/sglang.git "$target"
 for patch in "$PWD"/patches/0*.patch; do
     git -C "$target" apply --check "$patch"
     git -C "$target" apply "$patch"
@@ -40,7 +41,7 @@ done
 Every series change must pass:
 
 1. **Pristine replay:** every numeric patch applies, with no skips or fallback mode.
-2. **Tree equivalence:** the replayed delta matches the intended `/data/sgl-v0520` delta byte-for-byte.
+2. **Tree equivalence:** the replayed delta matches the intended `/data/sgl-v0522` delta byte-for-byte.
 3. **No double apply:** each patch is rejected on the fully patched tree. (Patch 026 was the documented
    non-unique-anchor exception through v0.5.16; since it also covers `get_video_feature` it is rejected too.)
 
@@ -53,8 +54,8 @@ symbol upstream removed (073 on v0.5.20; an `EVSDataItem` import on the 3090's f
 ```bash
 # undefined names in every file the series touches (from an env that has pyflakes; assert it loaded)
 grep -h '^+++ b/.*\.py$' patches/0*.patch | sed 's#^+++ b/##' | sort -u \
-  | (cd /data/sgl-v0520 && xargs ~/miniforge3/envs/sglang-triton36-v0518/bin/python -m pyflakes) | grep 'undefined name'
-# expected residue on v0.5.20: six hits in arg_groups/fields/serving.py -- pyflakes reading the quoted words
+  | (cd /data/sgl-v0522 && xargs ~/miniforge3/envs/sglang-triton36-v0518/bin/python -m pyflakes) | grep 'undefined name'
+# expected residue on v0.5.22: six hits in arg_groups/fields/serving.py -- pyflakes reading the quoted words
 # of upstream `Annotated[..., Arg(help="...")]` strings as forward references; those lines are pristine
 # every model module imports (GPU hidden; "driver-init-only" modules need a real card and are not a verdict)
 HIP_VISIBLE_DEVICES= python scripts/eval/registry_import_preflight.py
@@ -67,7 +68,8 @@ resolver test) before the first GPU boot.
 
 | Path | Role |
 |---|---|
-| `/data/sgl-v0520` | Serving and development tree for v0.5.20 plus this series |
+| `/data/sgl-v0522` | Serving and development tree for v0.5.22 plus this series |
+| `/data/sgl-v0520` | Retained v0.5.20 rollback tree (`sglang-triton36-v0520`), untouched |
 | `/data/sgl-v0518` | Retained v0.5.18 rollback tree (`sglang-triton36-v0518`), untouched |
 | `patches/` | Reviewable source of truth for the serving-tree delta |
 | temporary pristine worktree | Replay and equivalence validation only |
@@ -113,7 +115,7 @@ can be proposed upstream. `Partial` requires a fresh comparison with upstream be
 | 027 | `rdna4-softcap-fp32` | Carry | Computes attention and logits softcapping in FP32. |
 | 065 | `rdna4-split-kv-tree-verify` | Carry | Adds an opt-in split-KV speculative-verification kernel for mid-depth workloads; it remains off by default. |
 | 077 | `triton-mixed-head-fp8-kv-correctness` | Candidate | Derives KV descales from the actual cache dtype and saturates before the ROCm FP8 store; the unequal-head scratch sizing was upstreamed in v0.5.18 (`ModelConfig.get_max_num_attention_heads`). |
-| 080 | `laguna-bf16-attention-allreduce` | Candidate | Lets Laguna use its native BF16 attention collective while retaining the defensive HIP FP32 default elsewhere. |
+| 080 | `laguna-bf16-attention-allreduce` | Candidate | Lets Laguna use its native BF16 attention collective while retaining the defensive HIP FP32 default elsewhere. Since v0.5.22 the switch is a residual-update policy (`PLAIN_ADD_BF16_SUM`, `hip_fp32_sum=False`) read by `layer_boundary/ops.attn_tp_all_reduce`; a model opts out with `declare_attn(update=PLAIN_ADD_BF16_SUM)`. |
 | 081 | `rdna4-triton-rmsnorm-laguna-fused-qk` | Candidate | Extends the HIP Triton RMSNorm path to standard weights and fuses Laguna's query/key head norms. |
 | 084 | `rdna4-qwen3moe-bf16-attention-allreduce` | Candidate | Opts Qwen3-MoE (coder-30b, coder-reap-25b) out of the HIP FP32 attention all-reduce, using the BF16 collective. Measured +1-3% single-user decode, coherent; FP32 stays the default for recurrent hybrids. |
 | 085 | `rdna4-glm4moe-bf16-attention-allreduce` | Candidate | Opts GLM-4.5 MoE (glm45-air) out of the HIP FP32 attention all-reduce, using the BF16 collective. Reverse-confirmed +1.3-4.1% single-user decode, coherent; FP32 stays the default for recurrent hybrids. |
@@ -150,7 +152,7 @@ can be proposed upstream. `Partial` requires a fresh comparison with upstream be
 | 046 | `rdna4-mamba-ssd-divergent-ptr-buffer-ops` | Candidate | Rewrites divergent SSD state-pointer selection into value selection accepted by AMD buffer-op lowering. |
 | 047 | `rdna4-triton-attn-hybrid-mamba-vhead-dim` | Candidate | Obtains value-head dimensions from hybrid KV pools without assuming layer zero is attention. |
 | 049 | `rdna4-conv1d-colload-dtype-cast` | Candidate | Casts recurrent convolution state loads to the input dtype before arithmetic. |
-| 073 | `rdna4-mamba-extra-buffer-hip-fallback` | Carry | Resolves automatic Mamba radix-cache selection to the supported `no_buffer` strategy on HIP. |
+| 073 | `rdna4-mamba-extra-buffer-hip-fallback` | Carry | Resolves automatic Mamba radix-cache selection to the validated `no_buffer` strategy on HIP. v0.5.22 lists HIP among the `extra_buffer` platforms, so without this `auto` would flip every gfx1201 hybrid (and the qwen38 bake-off) to `extra_buffer` + overlap scheduling on untested state-snapshot kernels; opt in explicitly with `--mamba-radix-cache-strategy extra_buffer` after an A/B. |
 
 ### Gemma 4
 
@@ -176,7 +178,7 @@ can be proposed upstream. `Partial` requires a fresh comparison with upstream be
 | 055 | `rdna4-eagle3-deltanet-vl-enablement` | Carry | Captures the correct hidden layers for EAGLE3 across dense and DeltaNet Qwen VL wrappers. |
 | 056 | `devstral-multitoken-toolname-omission-recovery` | Candidate | Holds streamed tool-name prefixes until Devstral's argument marker resolves the call. |
 | 057 | `rdna4-evs-video-combined-path-routing` | Candidate | Routes EVS video embeddings through the combined path that unwraps and redistributes pruned frames. |
-| 058 | `rdna4-ngram-reconstruct-fallback` | Candidate | Provides a GPU-vectorized reconstruction fallback when the optional native NGRAM operation is absent. |
+| 058 | `rdna4-ngram-reconstruct-fallback` | Candidate | Provides a GPU-vectorized reconstruction fallback around the NGRAM tree-reconstruct kernel (v0.5.22 routes HIP to the tvm_ffi JIT kernel; the fallback covers a JIT build or load failure on gfx1201). |
 | 062 | `cohere2moe-v0513-hybrid-swa-classification` | Candidate | Classifies Cohere2 MoE as hybrid SWA so North receives valid layer and window cache metadata. |
 | 083 | `mistral-common-backend-optout` | Candidate | Reroutes MistralCommonBackend tokenizers to TokenizersBackend so rendered special tokens retain their IDs. |
 | 089 | `laguna-preserve-custom-tokenizer-regex` | Candidate | Preserves Laguna's custom training-time BPE regex so Transformers does not apply its false-positive Mistral rewrite to local checkpoints; explicit caller overrides still win. |
@@ -186,7 +188,6 @@ can be proposed upstream. `Partial` requires a fresh comparison with upstream be
 | 093 | `cohere2moe-swa-window-off-by-one` | Candidate | Converts Hugging Face's inclusive Cohere2-MoE SWA window to SGLang's exclusive distance for both layers and backend metadata. |
 | 095 | `cohere-command4-function-key-name-recovery` | Candidate | Recovers a missing Cohere tool name from a string `function` field that exactly matches an exposed function name — the second malformed North variant, which 091 did not cover. Dropped calls surfaced as raw `<\|START_ACTION\|>` markup in `content` with `finish_reason == "stop"`. The OpenAI nested `{"function": {...}}` object is left untouched. |
 | 096 | `sglang-api-auth-hardening` | Candidate | Hardens the served API for untrusted networks: forces admin auth on `/server_info` and `/get_server_info`, authenticates WebSocket upgrades, redacts `api_key`/`admin_api_key`/`ssl_keyfile_password` from logs and info payloads, gates remote-URL and local-file multimodal sources behind `SGLANG_ALLOW_REMOTE_MEDIA`/`SGLANG_ALLOW_LOCAL_MEDIA`, and binds single-node distributed init to loopback. |
-| 099 | `dspark-worker-pp-proxy-tensors-kwarg` | Candidate | Accepts the scheduler's keyword-only `pp_proxy_tensors` in `DSparkWorkerV2.forward_batch_generation` and threads it to the target prefill, as upstream main does; v0.5.20's worker rejects the call, so every `--speculative-algorithm DSPARK` boot died on its first forward (`TypeError: unexpected keyword argument 'pp_proxy_tensors'`). Validated 2026-09-27 with RadixArk/Qwen3.8-27B-DSpark and a converted RedHatAI speculator on the `qwen38` preset (byte-identical greedy output vs no-spec at short context). |
 | 100 | `rdna4-splitkv-verify-enable` | Carry | Enables the split-KV (flash-decode) speculative-verify kernel on gfx1201: drops the gfx95-only gate in `TritonAttnBackend` (upstream PR #39316 does the same for CUDA) and floors the kernel's row tile at 16 on RDNA because Triton's AMD dot-operand pass rejects 2/4/8-row WMMA tiles (`PassManager::run failed`); padded rows are masked on every load and store. Kernel test 9/9 + 12 subtests on gfx1201. DSpark on `qwen38` at a 49K input: 5.3 → 32 tok/s (no-spec 21). |
 | 103 | `responses-merge-assistant-turn-across-phase` | Candidate | Port of the 3090's patch 066. `OpenAIServingResponses._merge_consecutive_assistant_messages` only folded consecutive assistant items when their `phase` tags were equal, but `phase` survives only on `message` items, so a Responses-API client that echoes `phase: commentary` (langchain-openai 1.x, i.e. deepagents / dcode) got the announcement text and its own tool call rendered as two assistant turns; the model then learns in-context to stop after the announcement (3090 qwen38 dcode v4: 213/300 empty). A missing phase on either side now merges and adopts the phase that exists; two `message` items with different phases still stay apart. Gate: `scripts/eval/test_responses_merge_assistant_turn_phase.py` (pristine 2/5 → 5/5) and the wire-level history-merge step in the dcode preflight of `evals/swebench/run_rollouts.py` (equal `usage.input_tokens` with and without `phase`; unpatched live server 441 vs 423). Upstream main still carries the bug (2026-10-18). 101/102 are reserved for the 3090's 063/065. |
 
@@ -194,7 +195,7 @@ can be proposed upstream. `Partial` requires a fresh comparison with upstream be
 
 | Component | Version |
 |---|---|
-| SGLang | v0.5.20 plus this 73-patch series |
+| SGLang | v0.5.22 plus this 72-patch series |
 | transformers | 5.12.1 |
 | Triton | 3.6.0 |
 | PyTorch | 2.11.0+rocm7.2 |
@@ -204,9 +205,9 @@ can be proposed upstream. `Partial` requires a fresh comparison with upstream be
 Build the optional native components with:
 
 ```bash
-scripts/setup_sgl_kernel.sh --env sglang-triton36-v0520
-scripts/build_awq_gemv.sh --env sglang-triton36-v0520
-scripts/build_skinny_gemms_int4.sh --env sglang-triton36-v0520
+scripts/setup_sgl_kernel.sh --env sglang-triton36-v0522
+scripts/build_awq_gemv.sh --env sglang-triton36-v0522
+scripts/build_skinny_gemms_int4.sh --env sglang-triton36-v0522
 ```
 
 ## Related documentation

@@ -1,5 +1,5 @@
 diff --git a/python/sglang/kernels/ops/layernorm/minimax_m3_rmsnorm.py b/python/sglang/kernels/ops/layernorm/minimax_m3_rmsnorm.py
-index 790c3141..a67a6164 100644
+index 790c3141a0..a67a616443 100644
 --- a/python/sglang/kernels/ops/layernorm/minimax_m3_rmsnorm.py
 +++ b/python/sglang/kernels/ops/layernorm/minimax_m3_rmsnorm.py
 @@ -25,6 +25,7 @@ def _gemma_rmsnorm_kernel(
@@ -107,10 +107,10 @@ index 790c3141..a67a6164 100644
      )
      return out.reshape(orig_shape), res_out.reshape(orig_shape)
 diff --git a/python/sglang/srt/layers/layernorm.py b/python/sglang/srt/layers/layernorm.py
-index 025875d6..f7bb7835 100644
+index 2b23267465..6fe54e0212 100644
 --- a/python/sglang/srt/layers/layernorm.py
 +++ b/python/sglang/srt/layers/layernorm.py
-@@ -56,6 +56,9 @@ _is_cpu = is_cpu()
+@@ -57,6 +57,9 @@ _is_cpu = is_cpu()
  _is_xpu = is_xpu()
  _flashinfer_layernorm_available = False
  _flashinfer_rmsnorm_quant_available = False
@@ -120,7 +120,7 @@ index 025875d6..f7bb7835 100644
  
  if _is_cuda or _is_xpu or _is_musa:
      if _is_flashinfer_available:
-@@ -121,7 +124,14 @@ elif _is_hip:
+@@ -131,7 +134,14 @@ elif _is_hip:
  
          _has_vllm_rms_norm = True
      except ImportError:
@@ -136,7 +136,7 @@ index 025875d6..f7bb7835 100644
          _has_vllm_rms_norm = False
  
  if _is_hip:
-@@ -669,9 +679,30 @@ class RMSNorm(BaseFusedOp):
+@@ -761,9 +771,30 @@ class RMSNorm(BaseFusedOp):
          post_residual_addition: Optional[torch.Tensor] = None,
          quant_linear: Optional[nn.Module] = None,
      ) -> Union[torch.Tensor, Tuple[torch.Tensor, torch.Tensor]]:
@@ -170,18 +170,18 @@ index 025875d6..f7bb7835 100644
          if is_batch_invariant_mode_enabled():
              if (
 diff --git a/python/sglang/srt/models/laguna.py b/python/sglang/srt/models/laguna.py
-index 66264d23..81393b73 100644
+index ed7a4f6e73..38279c9fe8 100644
 --- a/python/sglang/srt/models/laguna.py
 +++ b/python/sglang/srt/models/laguna.py
-@@ -56,11 +56,15 @@ from sglang.srt.model_loader.weight_utils import (
+@@ -57,11 +57,15 @@ from sglang.srt.model_loader.weight_utils import (
      default_weight_loader,
      maybe_remap_kv_scale_name,
  )
 -from sglang.srt.models.utils import apply_qk_norm
 +from sglang.srt.models.utils import apply_qk_norm, fused_qk_rmsnorm
- from sglang.srt.runtime_context import get_exec, get_forward, get_parallel
--from sglang.srt.utils import LazyValue, add_prefix, make_layers
-+from sglang.srt.utils import LazyValue, add_prefix, get_bool_env_var, make_layers
+ from sglang.srt.runtime_context import get_exec, get_parallel
+-from sglang.srt.utils import LazyValue, add_prefix, make_pp_layers
++from sglang.srt.utils import LazyValue, add_prefix, get_bool_env_var, make_pp_layers
  
  logger = logging.getLogger(__name__)
 +_is_hip = torch.version.hip is not None
@@ -191,7 +191,7 @@ index 66264d23..81393b73 100644
  
  
  class LagunaMLP(nn.Module):
-@@ -359,13 +363,25 @@ class LagunaAttention(nn.Module):
+@@ -353,13 +357,25 @@ class LagunaAttention(nn.Module):
          qkv, _ = self.qkv_proj(hidden_states)
          q, k, v = qkv.split([self.q_size, self.kv_size, self.kv_size], dim=-1)
  
@@ -225,10 +225,10 @@ index 66264d23..81393b73 100644
  
          attn_output = self.attn(q, k, v, forward_batch)
 diff --git a/python/sglang/srt/models/utils.py b/python/sglang/srt/models/utils.py
-index b9b18a6d..676dcab7 100644
+index 80ada0c566..e791aa486b 100644
 --- a/python/sglang/srt/models/utils.py
 +++ b/python/sglang/srt/models/utils.py
-@@ -535,36 +535,51 @@ def _fused_qk_gemma_rmsnorm_kernel(
+@@ -563,36 +563,51 @@ def _fused_qk_gemma_rmsnorm_kernel(
      K_out_ptr,
      QW_ptr,
      KW_ptr,
@@ -288,7 +288,7 @@ index b9b18a6d..676dcab7 100644
          k_out_off = pid * HEAD_DIM + cols
          tl.store(K_out_ptr + k_out_off, k_normed, mask=mask)
  
-@@ -584,11 +599,67 @@ def fused_qk_gemma_rmsnorm(
+@@ -612,11 +627,67 @@ def fused_qk_gemma_rmsnorm(
      Passes input strides to the kernel so non-contiguous tensors (e.g. from
      qkv.split()) are read correctly without an extra .contiguous() copy.
      """
@@ -360,7 +360,7 @@ index b9b18a6d..676dcab7 100644
  
      q_out = torch.empty(q_rows, head_dim, dtype=q.dtype, device=q.device)
      k_out = torch.empty(k_rows, head_dim, dtype=k.dtype, device=k.device)
-@@ -599,19 +670,24 @@ def fused_qk_gemma_rmsnorm(
+@@ -627,19 +698,24 @@ def fused_qk_gemma_rmsnorm(
      BLOCK_HD = triton.next_power_of_2(head_dim)
  
      _fused_qk_gemma_rmsnorm_kernel[(q_rows,)](
@@ -391,7 +391,7 @@ index b9b18a6d..676dcab7 100644
      return q_out, k_out
 diff --git a/test/registered/kernels/test_rdna4_standard_rmsnorm.py b/test/registered/kernels/test_rdna4_standard_rmsnorm.py
 new file mode 100644
-index 00000000..dc0360ae
+index 0000000000..fbb9ef20d8
 --- /dev/null
 +++ b/test/registered/kernels/test_rdna4_standard_rmsnorm.py
 @@ -0,0 +1,98 @@

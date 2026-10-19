@@ -1,5 +1,5 @@
 #!/bin/bash
-# Version-constrained RDNA4 inference setup: SGLang v0.5.20 + numbered patch series
+# Version-constrained RDNA4 inference setup: SGLang v0.5.22 + numbered patch series
 # + system RCCL + Triton 3.6.0.
 #
 # No custom RCCL build. The repository's ordered patches are applied to a
@@ -39,7 +39,7 @@ TORCHAUDIO_VERSION="${TORCHAUDIO_VERSION:-2.11.0+rocm7.2}"
 TORCH_INDEX="${TORCH_INDEX:-https://download.pytorch.org/whl/rocm7.2}"
 PYTHON_VERSION="${PYTHON_VERSION:-3.12.13}"
 LIBPROTOBUF_VERSION="${LIBPROTOBUF_VERSION:-7.35.1}"
-TRANSFORMERS_VERSION="${TRANSFORMERS_VERSION:-5.12.1}"
+TRANSFORMERS_VERSION="${TRANSFORMERS_VERSION:-5.19.0}"  # upstream v0.5.22 pin (pyproject_other runtime_base)
 GGUF_VERSION="${GGUF_VERSION:-0.19.0}"
 IMAGEIO_VERSION="${IMAGEIO_VERSION:-2.37.3}"
 IMAGEIO_FFMPEG_VERSION="${IMAGEIO_FFMPEG_VERSION:-0.6.0}"
@@ -51,7 +51,7 @@ TORCHCODEC_VERSION="${TORCHCODEC_VERSION:-0.11.1}"
 NUMBA_VERSION="${NUMBA_VERSION:-0.65.1}"
 
 SGLANG_REPO="https://github.com/sgl-project/sglang.git"
-SGLANG_TAG="${SGLANG_TAG:-v0.5.20}"  # live baseline promoted 2026-09-19; overridable for version rebases
+SGLANG_TAG="${SGLANG_TAG:-v0.5.22}"  # live baseline promoted 2026-10-19; overridable for version rebases
 SGLANG_COMMIT="${SGLANG_COMMIT:-}"
 STRICT_PATCHES="${STRICT_PATCHES:-0}"
 TRITON_PYPI_FALLBACK="${TRITON_PYPI_FALLBACK:-1}"

@@ -396,6 +396,18 @@ NEUTRAL_PROFILE_NAMES = {".config/little-coder-swebench": ".config/little-coder-
 # (runs/ holds the other lanes' patches), /data/swebench-work (sibling trees) or ~/.secrets.
 DOCKER_MOUNTS_RO_COMMON = [".npm-global", ".local/bin/omp", ".local/bin/rtk", ".local/bin/dcode",
                            ".local/share/uv"]
+# prime-agent 0.10.0 is upstream's Rust build (the TypeScript npm package ended at 0.9.8; the
+# official installer removes it). Installed by hand from the verified release tarball under a
+# cue-free absolute path, mounted read-only at that same path (no $HOME layout, no toolchain
+# mirror needed). Its Python kernel venv lives in ~/.prime/agent/kernel-venv (rw `.prime`
+# mount) on a uv-managed CPython from ~/.local/share/uv (ro common mount); the skills are
+# synced into it on the host once (`prime-agent --prime-agent-bootstrap` + one run), so the
+# network-less container needs neither uv nor PyPI.
+PRIME_AGENT_VERSION = "0.10.0"
+PRIME_AGENT_DIR = Path(f"/data/tools/prime-agent-{PRIME_AGENT_VERSION}")
+PRIME_AGENT_BIN = PRIME_AGENT_DIR / "bin/prime-agent"
+PRIME_KERNEL_VENV = Path.home() / ".prime/agent/kernel-venv"
+DOCKER_MOUNTS_ABS_RO = {"prime": [PRIME_AGENT_DIR]}  # scaffold -> absolute ro mounts
 DOCKER_MOUNTS = {  # scaffold -> (ro, rw), relative to $HOME
     "opencode": ([".config/opencode"],
                  [".local/share/opencode", ".cache/opencode", ".local/state/opencode"]),
@@ -514,6 +526,8 @@ def _dockerized(cmd: list, scaffold: str, scaffold_env: dict[str, str] | None, t
         hp = home / rel
         hp.mkdir(parents=True, exist_ok=True)
         argv += ["-v", f"{hp}:{hp}"]
+    for hp in DOCKER_MOUNTS_ABS_RO.get(scaffold, []):
+        argv += ["-v", f"{hp}:{hp}:ro"]
     here = Path(__file__).resolve().parent
     scripts = d.get("stage") or here  # neutral: stripped copies in the staging dir
     out_mount = d["stage"] / "out" if neutral else d["out_dir"]
@@ -696,6 +710,36 @@ def _ensure_rtk_extension() -> Path:
 
 
 LC_PROFILE_DIR = Path.home() / LC_PROFILE_REL  # harness-owned; see _apply_neutral_names
+
+
+def _check_prime_agent(neutral: bool) -> str:
+    """prime lane preflight: the pinned Rust binary answers --version, its kernel
+    venv exists (the container cannot build it), and under --neutral-cues
+    nothing the agent can read back from its own install names the benchmark
+    (the install path is a bind-mount source; the venv's dist-info records the
+    skills' source paths)."""
+    if not PRIME_AGENT_BIN.exists():
+        raise SystemExit(f"  PREFLIGHT FAILED: {PRIME_AGENT_BIN} missing (prime-agent {PRIME_AGENT_VERSION} "
+                         f"Rust build; stage the release tarball under {PRIME_AGENT_DIR})")
+    try:
+        ver = subprocess.run([str(PRIME_AGENT_BIN), "--version"], capture_output=True, text=True,
+                             timeout=60, env={**os.environ, "DO_NOT_TRACK": "1"}).stdout.strip()
+    except (OSError, subprocess.TimeoutExpired) as e:
+        raise SystemExit(f"  PREFLIGHT FAILED: {PRIME_AGENT_BIN} --version: {e!r}")
+    if ver != PRIME_AGENT_VERSION:
+        raise SystemExit(f"  PREFLIGHT FAILED: prime-agent --version {ver!r} != pinned {PRIME_AGENT_VERSION}")
+    kernel_py = PRIME_KERNEL_VENV / "bin/python"
+    if not kernel_py.exists():
+        raise SystemExit(f"  PREFLIGHT FAILED: {kernel_py} missing — run `{PRIME_AGENT_BIN} --prime-agent-bootstrap` "
+                         f"and one host print run so the skills are synced before a network-less lane")
+    if neutral:
+        bad = [str(p) for p in [PRIME_AGENT_DIR, kernel_py.resolve()] if CUE_RE.search(str(p))]
+        bad += [str(f) for f in PRIME_KERNEL_VENV.glob("lib/python*/site-packages/*.dist-info/direct_url.json")
+                if CUE_RE.search(f.read_text(errors="replace"))]
+        if bad:
+            raise SystemExit("  PREFLIGHT FAILED: --neutral-cues, but the prime-agent install names the benchmark: "
+                             + ", ".join(bad))
+    return f"prime-agent {ver} at {PRIME_AGENT_BIN}, kernel venv {PRIME_KERNEL_VENV} (python -> {kernel_py.resolve()})"
 
 
 def _check_responses_api(server_url: str, served: str) -> tuple[str, str]:
@@ -999,10 +1043,14 @@ def run_omp(served: str, repo_dir: Path, prompt: str, timeout: int, log_path: Pa
 
 
 def _ensure_prime_profile(served: str, server_url: str) -> None:
-    """prime-agent reads custom providers from ~/.prime/agent/models.json (no
-    config-dir override exists as of 0.8.1, so the user-level file is written
-    idempotently). compat flags follow the doc's SGLang guidance. Verified
-    2026-08-30 with prime-agent 0.8.1 (headless -p auto-runs tools)."""
+    """prime-agent reads custom providers from ~/.prime/agent/models.json (the
+    user-level file is written idempotently; the Rust build reads the same
+    schema and exposes PRIME_AGENT_CODING_AGENT_DIR, which the launcher pins to
+    ~/.prime/agent). compat flags follow the doc's SGLang guidance. Verified
+    2026-08-30 with prime-agent 0.8.1 (headless -p auto-runs tools) and
+    2026-10-19 with the Rust 0.10.0 build against a capturing mock: one
+    /v1/chat/completions stream per turn, model=<served>, max_completion_tokens
+    = maxTokens, no reasoning_effort / temperature, a single `ipython` tool."""
     d = Path.home() / ".prime" / "agent"
     d.mkdir(parents=True, exist_ok=True)
     (d / "models.json").write_text(json.dumps({
@@ -1024,8 +1072,9 @@ def run_prime(served: str, repo_dir: Path, prompt: str, timeout: int, log_path: 
               extra_env: dict[str, str] | None = None,
               server_url: str = "http://127.0.0.1:23334") -> tuple[int, str, str]:
     _ensure_prime_profile(served, server_url)
-    cmd = [str(Path.home() / ".npm-global/bin/prime-agent"),
-           "--model", f"sglang/{served}", "-p"]
+    # --offline: skip the startup network operations (catalog/update probes) that
+    # cannot succeed in the network-less container; the model path is unaffected.
+    cmd = [str(PRIME_AGENT_BIN), "--model", f"sglang/{served}", "-p", "--offline"]
     # DO_NOT_TRACK: prime sends pseudonymous usage metrics by default; eval
     # rollouts should not phone home.
     return _launch(cmd, str(repo_dir), "prime", {"DO_NOT_TRACK": "1"}, extra_env, timeout, log_path,
@@ -1187,6 +1236,8 @@ def main():
     if args.scaffold == "dcode":
         dcode_model, info = _check_responses_api(host_url, served)
         print(f"  preflight {info}", flush=True)
+    if args.scaffold == "prime":
+        print(f"  preflight {_check_prime_agent(args.neutral_cues)}", flush=True)
 
     out = Path(args.out)
     (out / "predictions").mkdir(parents=True, exist_ok=True)
@@ -1214,7 +1265,8 @@ def main():
             # regenerates the profiles under neutral names and switches to the toolchain
             # mirror; this catches anything a later edit adds).
             ro, rw = DOCKER_MOUNTS[args.scaffold]
-            sources = [DOCKER_NODE_DIR, DOCKER_RG] + [Path.home() / r for r in DOCKER_MOUNTS_RO_COMMON + ro + rw]
+            sources = ([DOCKER_NODE_DIR, DOCKER_RG] + [Path.home() / r for r in DOCKER_MOUNTS_RO_COMMON + ro + rw]
+                       + DOCKER_MOUNTS_ABS_RO.get(args.scaffold, []))
             bad = [str(p) for p in sources if p.exists() and CUE_RE.search(str(p.resolve()))]
             if bad:
                 raise SystemExit("  PREFLIGHT FAILED: --neutral-cues, but these mount sources name the "

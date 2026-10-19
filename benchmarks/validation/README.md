@@ -7,6 +7,7 @@ triage live in its rebase note:
 
 | Stack | Capabilities | Deep probe | Write-up |
 |---|---|---|---|
+| v0.5.22 + 72 patches (2026-10-19) | [`capabilities-v0522-2026-10-19.json`](capabilities-v0522-2026-10-19.json) (qwen38 first; the fleet boot pass appends) | [`deep-probe-v0522-2026-10-19.json`](deep-probe-v0522-2026-10-19.json) (qwen38; fleet deep probes deferred to the next lane boundary) | [`patches/v0522-rebase-2026-10-19.md`](../../patches/v0522-rebase-2026-10-19.md) |
 | v0.5.20 + 70 patches (2026-09-19) | [`capabilities-v0520-2026-09-19.json`](capabilities-v0520-2026-09-19.json) | [`deep-probe-v0520-2026-09-19.json`](deep-probe-v0520-2026-09-19.json) · controls [`deep-probe-controls-v0518-v0520-2026-09-19.json`](deep-probe-controls-v0518-v0520-2026-09-19.json) | [`patches/v0520-rebase-2026-09-19.md`](../../patches/v0520-rebase-2026-09-19.md) |
 | v0.5.18 + 70 patches (2026-08-29/30) | [`capabilities-v0518-2026-08-29.json`](capabilities-v0518-2026-08-29.json) | [`deep-probe-v0518-2026-08-29.json`](deep-probe-v0518-2026-08-29.json) | [`patches/v0518-rebase-2026-08-29.md`](../../patches/v0518-rebase-2026-08-29.md) |
 | v0.5.15/16 + patch 086 (2026-07-14) | [`capabilities-086.json`](capabilities-086.json) | [`deep-probe-086.json`](deep-probe-086.json) | below |

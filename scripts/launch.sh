@@ -566,7 +566,8 @@ PYEOF
             # RedHatAI/Qwen3.8-27B-speculator.dspark (gamma 8, sliding-window
             # draft) converted to the SGLang flat layout by
             # scripts/convert_dspark_speculators_config.py, served through the
-            # split-KV verify kernel (patch 100; patch 099 lets DSPARK boot).
+            # split-KV verify kernel (patch 100; the DSpark worker's pp_proxy_tensors fix,
+            # our former patch 099, is upstream since v0.5.22).
             # Same-server ladder vs no-spec: 60-tok 80 vs 22 tok/s, thinking 60
             # vs 22, 49K 32 vs 21, 150K 25 vs 20; validate_capabilities 5/5.
             # Canonical sweep on this preset (decode_ab, 3-run, think-off,

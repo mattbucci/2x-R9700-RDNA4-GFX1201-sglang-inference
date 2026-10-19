@@ -1,16 +1,25 @@
 diff --git a/python/sglang/srt/models/glm4_moe.py b/python/sglang/srt/models/glm4_moe.py
-index 9ee560114c..e94838eef6 100644
+index 5f9a475560..1367c02ff4 100644
 --- a/python/sglang/srt/models/glm4_moe.py
 +++ b/python/sglang/srt/models/glm4_moe.py
-@@ -896,6 +896,11 @@ class Glm4MoeDecoderLayer(nn.Module):
-             is_last_layer=(
-                 is_nextn or (self.layer_id == self.config.num_hidden_layers - 1)
-             ),
+@@ -44,6 +44,7 @@ from sglang.srt.layers.dp_attention import (
+     is_dp_attention_enabled,
+ )
+ from sglang.srt.layers.layer_boundary import (
++    PLAIN_ADD_BF16_SUM,
+     append_stages,
+     declare_attn,
+     declare_ffn,
+@@ -840,7 +841,11 @@ class Glm4MoeDecoderLayer(nn.Module):
+         """The stages the layer at ``layer_id`` declares, from the config: the
+         model's shared declaration function (see make_layers)."""
+         return (
+-            declare_attn(),
 +            # GLM-4.5 MoE is a conventional attention model (no recurrent state), so opt
-+            # out of the universal HIP FP32 attention all-reduce and use the BF16
-+            # collective. Same switch as patches 080/084; FP32 stays the default for
-+            # recurrent DeltaNet/Mamba users. A/B on 2x R9700: +1.3-4.1%, coherent.
-+            hip_fp32_allreduce=False,
-         )
- 
-         # Detect if QKV uses aiter FP8 per-token quant so we can fuse
++            # out of the HIP FP32 attention-TP sum and use the BF16 collective. Same
++            # switch as patches 080/084; FP32 stays the default for recurrent
++            # DeltaNet/Mamba users. A/B on 2x R9700: +1.3-4.1%, coherent.
++            declare_attn(update=PLAIN_ADD_BF16_SUM),
+             declare_ffn(
+                 sparse=cls._is_layer_sparse(config, layer_id, is_nextn=is_nextn),
+                 next_layer_sparse=cls._is_layer_sparse(

@@ -1,8 +1,8 @@
 diff --git a/python/sglang/srt/layers/dcp/__init__.py b/python/sglang/srt/layers/dcp/__init__.py
-index 54ae19195..9798d6dba 100644
+index 0cb9848295..5e44f12d6b 100644
 --- a/python/sglang/srt/layers/dcp/__init__.py
 +++ b/python/sglang/srt/layers/dcp/__init__.py
-@@ -50,6 +50,7 @@ from sglang.srt.layers.dcp.layout import (
+@@ -43,6 +43,7 @@ from sglang.srt.layers.dcp.layout import (
      filter_dcp_local_kv_indices,
      get_dcp_lens,
      update_local_kv_lens_for_dcp,
@@ -10,14 +10,14 @@ index 54ae19195..9798d6dba 100644
  )
  from sglang.srt.layers.dcp.metadata import DecodeContextParallelMetadata
  
-@@ -79,4 +80,5 @@ __all__ = [
-     "get_attention_dcp_world_size",
+@@ -69,4 +70,5 @@ __all__ = [
+     "filter_dcp_local_kv_indices",
      "get_dcp_lens",
      "update_local_kv_lens_for_dcp",
 +    "validate_mha_dcp_kv_head_topology",
  ]
 diff --git a/python/sglang/srt/layers/dcp/layout.py b/python/sglang/srt/layers/dcp/layout.py
-index 58697f443..367cb100b 100644
+index 8781ff86b3..68f479af41 100644
 --- a/python/sglang/srt/layers/dcp/layout.py
 +++ b/python/sglang/srt/layers/dcp/layout.py
 @@ -20,6 +20,39 @@ import torch
@@ -61,18 +61,18 @@ index 58697f443..367cb100b 100644
      lens: torch.Tensor,
      dcp_size: int,
 diff --git a/python/sglang/srt/model_executor/model_runner.py b/python/sglang/srt/model_executor/model_runner.py
-index b55ecb0fd..dfb69dba3 100644
+index d779469e17..e69ae2087a 100644
 --- a/python/sglang/srt/model_executor/model_runner.py
 +++ b/python/sglang/srt/model_executor/model_runner.py
-@@ -79,6 +79,7 @@ from sglang.srt.layers.cp.utils import (
+@@ -80,6 +80,7 @@ from sglang.srt.layers.cp.utils import (
      is_cp_active,
      is_mla_cp_enabled,
  )
 +from sglang.srt.layers.dcp import validate_mha_dcp_kv_head_topology
+ from sglang.srt.layers.dp_attention import get_dp_tp_group
  from sglang.srt.layers.logits_processor import LogitsProcessorOutput
  from sglang.srt.layers.sampler import create_sampler
- from sglang.srt.lora.lora_manager import LoRAManager, init_lora_cuda_graph_moe_buffers
-@@ -375,6 +376,15 @@ class ModelRunner:
+@@ -390,6 +391,15 @@ class ModelRunner:
          self.is_hybrid_swa = model_config.is_hybrid_swa
          self.is_hybrid_swa_compress = model_config.is_hybrid_swa_compress
          self.use_mla_backend = self.model_config.attention_arch == AttentionArch.MLA
@@ -89,7 +89,7 @@ index b55ecb0fd..dfb69dba3 100644
          self.enable_elastic_ep = get_exec().moe.elastic_ep_backend is not None
          self.forward_pass_id = 0
 diff --git a/test/registered/dcp/test_dcp_layout_unit.py b/test/registered/dcp/test_dcp_layout_unit.py
-index a98ad8325..0203a3fa4 100644
+index c19b3d656e..66d9a72ed6 100644
 --- a/test/registered/dcp/test_dcp_layout_unit.py
 +++ b/test/registered/dcp/test_dcp_layout_unit.py
 @@ -25,6 +25,7 @@ from sglang.srt.layers.attention.triton_backend import TritonAttnBackend
@@ -98,9 +98,9 @@ index a98ad8325..0203a3fa4 100644
      get_dcp_lens,
 +    validate_mha_dcp_kv_head_topology,
  )
- from sglang.srt.layers.linear import QKVParallelLinear
+ from sglang.srt.layers.linear import QKVParallelLinear, ReplicatedParallelGroup
  from sglang.srt.mem_cache.allocator.paged import PagedTokenToKVPoolAllocator
-@@ -508,5 +509,50 @@ class TestGetDcpLens(CustomTestCase):
+@@ -545,5 +546,50 @@ class TestGetDcpLens(CustomTestCase):
          pool.full_kv_pool.get_kv_buffer_shape.assert_called_once_with()
  
  

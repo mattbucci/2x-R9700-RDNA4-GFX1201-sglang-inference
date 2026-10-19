@@ -1,10 +1,10 @@
 diff --git a/python/sglang/srt/arg_groups/arg_utils.py b/python/sglang/srt/arg_groups/arg_utils.py
-index 0c54e930f..187c713a2 100644
+index 4f9089aba0..7985a0e287 100644
 --- a/python/sglang/srt/arg_groups/arg_utils.py
 +++ b/python/sglang/srt/arg_groups/arg_utils.py
-@@ -90,6 +90,11 @@ class Arg(msgspec.Struct, frozen=True):
-     # that depends on the machine, on another field, or on anything impure is a
-     # decision, and decisions stay in a hook where their order is visible.
+@@ -79,6 +79,11 @@ class Arg(msgspec.Struct, frozen=True):
+     # Scalar fallback when neither resolution nor input supplies a value.
+     # Machine- or config-dependent defaults belong in resolution hooks.
      fallback: Any = None
 +    # When True, the field carries a credential (API keys, key passwords).
 +    # Whole-record readbacks (`/server_info`, `get_internal_state`, request
@@ -13,8 +13,8 @@ index 0c54e930f..187c713a2 100644
 +    sensitive: bool = False
  
  
- class Derived(msgspec.Struct, frozen=True):
-@@ -205,6 +210,21 @@ def resolvable_fields(cls) -> frozenset:
+ _NO_DEFAULT = object()
+@@ -167,6 +172,21 @@ def resolvable_fields(cls) -> frozenset:
      return frozenset(names)
  
  
@@ -35,12 +35,12 @@ index 0c54e930f..187c713a2 100644
 +
  @functools.cache
  def fallbacks_of(cls) -> dict:
-     """``{field_name: value}`` for every field of ``cls`` that declares one.
+     """Return declared scalar fallbacks for fields whose input default is None."""
 diff --git a/python/sglang/srt/arg_groups/fields/serving.py b/python/sglang/srt/arg_groups/fields/serving.py
-index a85a3220f..2a412442e 100644
+index f1b828ee05..d7ddca63a4 100644
 --- a/python/sglang/srt/arg_groups/fields/serving.py
 +++ b/python/sglang/srt/arg_groups/fields/serving.py
-@@ -142,7 +142,7 @@ class Serving(msgspec.Struct):
+@@ -141,7 +141,7 @@ class Serving(msgspec.Struct):
      ssl_ca_certs: A[Optional[str], "The CA certificates file."] = None
      ssl_keyfile_password: A[
          Optional[str],
@@ -49,7 +49,7 @@ index a85a3220f..2a412442e 100644
      ] = None
      enable_ssl_refresh: A[
          bool,
-@@ -154,11 +154,17 @@ class Serving(msgspec.Struct):
+@@ -153,11 +153,17 @@ class Serving(msgspec.Struct):
      # -------------------------------------------------------------------------
      api_key: A[
          Optional[str],
@@ -61,19 +61,19 @@ index a85a3220f..2a412442e 100644
      ] = None
      admin_api_key: A[
          Optional[str],
--        "Set admin API key for sensitive management endpoints (e.g. /clear_hicache_storage_backend). When set, admin endpoints require this key and do NOT accept --api-key.",
+-        "Set admin API key for sensitive management endpoints (e.g. /hicache/storage-backend/clear). When set, admin endpoints require this key and do NOT accept --api-key.",
 +        Arg(
-+            help="Set admin API key for sensitive management endpoints (e.g. /clear_hicache_storage_backend). When set, admin endpoints require this key and do NOT accept --api-key.",
++            help="Set admin API key for sensitive management endpoints (e.g. /hicache/storage-backend/clear). When set, admin endpoints require this key and do NOT accept --api-key.",
 +            sensitive=True,
 +        ),
      ] = None
      served_model_name: A[
          Optional[str],
 diff --git a/python/sglang/srt/distributed/bootstrap.py b/python/sglang/srt/distributed/bootstrap.py
-index 0d87af677..6ffd52b7d 100644
+index 6b3932995d..520c724c09 100644
 --- a/python/sglang/srt/distributed/bootstrap.py
 +++ b/python/sglang/srt/distributed/bootstrap.py
-@@ -191,9 +191,12 @@ def _resolve_dist_init_method(*, dist_port: int) -> str:
+@@ -236,9 +236,12 @@ def _resolve_dist_init_method(*, dist_port: int) -> str:
          na = NetworkAddress.parse(get_parallel().dist_init_addr)
          dist_init_method = na.to_tcp()
      else:
@@ -90,13 +90,13 @@ index 0d87af677..6ffd52b7d 100644
  
  
 diff --git a/python/sglang/srt/entrypoints/engine.py b/python/sglang/srt/entrypoints/engine.py
-index 9afd8c480..81ab37d79 100644
+index 23f918a48d..1566d96716 100644
 --- a/python/sglang/srt/entrypoints/engine.py
 +++ b/python/sglang/srt/entrypoints/engine.py
-@@ -116,7 +116,11 @@ from sglang.srt.runtime_context import (
-     restore_context,
+@@ -126,7 +126,11 @@ from sglang.srt.runtime_context import (
      snapshot_context,
  )
+ from sglang.srt.sampling.watermarking.core import redact_watermark_secrets
 -from sglang.srt.server_args import PortArgs, ServerArgs
 +from sglang.srt.server_args import (
 +    PortArgs,
@@ -106,74 +106,29 @@ index 9afd8c480..81ab37d79 100644
  from sglang.srt.utils import (
      MultiprocessingSerializer,
      SerializedTensorPayload,
-@@ -273,7 +277,7 @@ class Engine(EngineScoreMixin, EngineBase):
-                 "Engine(" + ", ".join(f"{k}={v!r}" for k, v in kwargs.items()) + ")",
-             )
-         self.server_args = server_args
--        logger.info(f"server_args={server_args.resolved_dict()}")
-+        logger.info("server_args=%s", server_args_to_public_dict(server_args))
+@@ -168,7 +172,7 @@ _is_cuda = is_cuda()
  
-         # Rust Server is not supported with the offline Engine API
-         if envs.SGLANG_RUST_SERVER.get():
-@@ -1106,7 +1110,7 @@ class Engine(EngineScoreMixin, EngineBase):
-             # Allocate ports for inter-process communications
-             if port_args is None:
-                 port_args = PortArgs.init_new(server_args)
--            logger.info(f"server_args={server_args.resolved_dict()}")
-+            logger.info("server_args=%s", server_args_to_public_dict(server_args))
  
-             # Start the engine info bootstrap server if per-rank info is needed.
-             engine_info_bootstrap_server = None
-@@ -1379,7 +1383,7 @@ class Engine(EngineScoreMixin, EngineBase):
-         )
+ def _server_args_for_logging(server_args: ServerArgs) -> Dict[str, Any]:
+-    return redact_watermark_secrets(server_args.resolved_dict())
++    return redact_watermark_secrets(server_args_to_public_dict(server_args))
+ 
+ 
+ @dataclasses.dataclass
+@@ -1562,7 +1566,7 @@ class Engine(EngineScoreMixin, EngineBase):
          return msgspec_to_builtins(
-             {
--                **self.tokenizer_manager.server_args.resolved_dict(),
-+                **server_args_to_public_dict(self.tokenizer_manager.server_args),
-                 "launch_command": self.tokenizer_manager.server_args.launch_command,
-                 **self._scheduler_init_result.scheduler_infos[0],
-                 "startup_time": self.tokenizer_manager.startup_time,
-diff --git a/python/sglang/srt/entrypoints/grpc_bridge.py b/python/sglang/srt/entrypoints/grpc_bridge.py
-index 234ab8bb7..a8f2fc31d 100644
---- a/python/sglang/srt/entrypoints/grpc_bridge.py
-+++ b/python/sglang/srt/entrypoints/grpc_bridge.py
-@@ -16,6 +16,7 @@ from pydantic import ValidationError
- 
- from sglang.srt.arg_groups.overrides import resolving_view
- from sglang.srt.configs.embedding_model_spec import resolved_embedding_plan
-+from sglang.srt.server_args import server_args_to_public_dict
- from sglang.srt.runtime_context import (
-     describe_kv_events_publisher,
-     get_lora,
-@@ -427,7 +428,9 @@ class RuntimeHandle:
-         return json.dumps(result, default=str)
- 
-     def get_server_info(self) -> str:
--        result: Dict[str, Any] = self.tokenizer_manager.server_args.resolved_dict()
-+        result: Dict[str, Any] = server_args_to_public_dict(
-+            self.tokenizer_manager.server_args
-+        )
-         # `resolved_dict` answers with what resolution decided; the launch
-         # command answers with what was asked for, and the two are not
-         # derivable from each other. The HTTP and in-process readbacks both
+             redact_watermark_secrets(
+                 {
+-                    **self.tokenizer_manager.server_args.resolved_dict(),
++                    **server_args_to_public_dict(self.tokenizer_manager.server_args),
+                     "launch_command": self.tokenizer_manager.server_args.launch_command,
+                     **self._scheduler_init_result.scheduler_infos[0],
+                     "startup_time": self.tokenizer_manager.startup_time,
 diff --git a/python/sglang/srt/entrypoints/http_server.py b/python/sglang/srt/entrypoints/http_server.py
-index f51d4399b..962977dd8 100644
+index 7165a5ca8c..c99a350293 100644
 --- a/python/sglang/srt/entrypoints/http_server.py
 +++ b/python/sglang/srt/entrypoints/http_server.py
-@@ -165,7 +165,11 @@ from sglang.srt.observability.trace import (
- )
- from sglang.srt.parser.reasoning_parser import ReasoningParser
- from sglang.srt.parser.template_manager import TemplateManager
--from sglang.srt.server_args import PortArgs, ServerArgs
-+from sglang.srt.server_args import (
-+    PortArgs,
-+    ServerArgs,
-+    server_args_to_public_dict,
-+)
- from sglang.srt.utils import (
-     add_prometheus_middleware,
-     add_prometheus_track_response_middleware,
-@@ -806,6 +810,7 @@ async def weight_version():
+@@ -835,6 +835,7 @@ async def model_info():
  
  
  @app.get("/get_server_info")
@@ -181,7 +136,7 @@ index f51d4399b..962977dd8 100644
  async def get_server_info():
      """Get the server information (deprecated - use /server_info instead)."""
      logger.warning(
-@@ -816,6 +821,7 @@ async def get_server_info():
+@@ -845,6 +846,7 @@ async def get_server_info():
  
  
  @app.get("/server_info")
@@ -189,55 +144,33 @@ index f51d4399b..962977dd8 100644
  async def server_info():
      """The startup configuration, plus live scheduler state.
  
-@@ -836,7 +842,7 @@ async def server_info():
+diff --git a/python/sglang/srt/managers/scheduler_components/internal_state.py b/python/sglang/srt/managers/scheduler_components/internal_state.py
+index a59985542e..03d953481d 100644
+--- a/python/sglang/srt/managers/scheduler_components/internal_state.py
++++ b/python/sglang/srt/managers/scheduler_components/internal_state.py
+@@ -19,7 +19,7 @@ from sglang.srt.managers.io_struct import (
+ )
+ from sglang.srt.managers.scheduler_components.memory_usage import build_memory_usage
+ from sglang.srt.runtime_context import get_context, get_exec, get_parallel
+-from sglang.srt.server_args import compute_world_size
++from sglang.srt.server_args import compute_world_size, redact_server_args_dict
+ from sglang.srt.utils.msgspec_utils import msgspec_to_builtins
  
-     return msgspec_to_builtins(
-         {
--            **server_args.resolved_dict(),
-+            **server_args_to_public_dict(server_args),
-             "launch_command": server_args.launch_command,
-             **_global_state.scheduler_info,
-             "startup_time": _global_state.tokenizer_manager.startup_time,
-@@ -1573,6 +1579,7 @@ async def load_lora_adapter(
- 
- 
- @app.api_route("/load_lora_adapter_from_tensors", methods=["POST"])
-+@auth_level(AuthLevel.ADMIN_OPTIONAL)
- async def load_lora_adapter_from_tensors(
-     obj: Annotated[LoadLoRAAdapterFromTensorsReqInput, Body()], request: Request
- ):
-diff --git a/python/sglang/srt/managers/scheduler.py b/python/sglang/srt/managers/scheduler.py
-index 743c8afe0..c670e2f23 100644
---- a/python/sglang/srt/managers/scheduler.py
-+++ b/python/sglang/srt/managers/scheduler.py
-@@ -313,7 +313,12 @@ from sglang.srt.platforms import current_platform
- from sglang.srt.plugins import load_plugins
- from sglang.srt.rust_server.server import RustServer
- from sglang.srt.sampling.sampling_batch_info import SamplingBatchInfo
--from sglang.srt.server_args import PortArgs, ServerArgs, compute_world_size
-+from sglang.srt.server_args import (
-+    PortArgs,
-+    ServerArgs,
-+    compute_world_size,
-+    redact_server_args_dict,
-+)
- from sglang.srt.session.session_controller import SessionController
- from sglang.srt.speculative.base_spec_worker import BaseSpecWorker
- from sglang.srt.speculative.dflash_utils import validate_dflash_request
-@@ -5012,7 +5017,7 @@ class Scheduler(
+ if TYPE_CHECKING:
+@@ -45,7 +45,7 @@ class SchedulerInternalStateController:
      def get_internal_state(self, recv_req: GetInternalStateReq):
          # Resolved config (pristine server_args + post-publish overrides) so a
          # readback reflects values changed via /set_internal_state, not startup.
--        ret = get_context().resolved_server_args_dict()
-+        ret = redact_server_args_dict(get_context().resolved_server_args_dict())
-         ret["world_size"] = compute_world_size(
-             enable_dp_attention=get_parallel().enable_dp_attention,
-             dp_size=get_parallel().dp_size,
+-        state = get_context().resolved_server_args_dict()
++        state = redact_server_args_dict(get_context().resolved_server_args_dict())
+         for contribute in (
+             self._add_topology,
+             self._add_memory_usage,
 diff --git a/python/sglang/srt/managers/tokenizer_manager.py b/python/sglang/srt/managers/tokenizer_manager.py
-index 1b63fb642..fa33218a9 100644
+index 3dd350f411..6cc888e96b 100644
 --- a/python/sglang/srt/managers/tokenizer_manager.py
 +++ b/python/sglang/srt/managers/tokenizer_manager.py
-@@ -158,6 +158,9 @@ from sglang.srt.sampling.sampling_params import SamplingParams
+@@ -169,6 +169,9 @@ from sglang.srt.sampling.watermarking.core import (
  from sglang.srt.server_args import (
      PortArgs,
      ServerArgs,
@@ -247,45 +180,49 @@ index 1b63fb642..fa33218a9 100644
  )
  from sglang.srt.utils import (
      configure_gc_warning,
-@@ -2195,7 +2198,9 @@ class TokenizerManager(TokenizerControlMixin, TokenizerManagerScoreMixin):
+@@ -2342,17 +2345,22 @@ class TokenizerManager(TokenizerControlMixin, TokenizerManagerScoreMixin):
          part that cannot be reconstructed afterwards.
          """
          try:
--            return self.resolved_config_dict(self.server_args.resolved_dict())
+-            return redact_watermark_secrets(
+-                self.resolved_config_dict(self.server_args.resolved_dict())
 +            return redact_server_args_dict(
-+                self.resolved_config_dict(self.server_args.resolved_dict())
-+            )
++                redact_watermark_secrets(
++                    self.resolved_config_dict(self.server_args.resolved_dict())
++                )
+             )
          except Exception as e:
              logger.error(f"Failed to snapshot the resolved config for the dump: {e!r}")
              return None
-@@ -3138,7 +3143,7 @@ class TokenizerManager(TokenizerControlMixin, TokenizerManagerScoreMixin):
-     ):
-         logger.info(log_message)
-         to_dump_with_server_args = {
--            "server_args": self.server_args,
-+            "server_args": server_args_to_public_dict(self.server_args),
-             "config_updates": get_context().overrides_log(),
-             "resolved_config": self._dump_config_snapshot(),
-             "requests": data_list.copy(),
-@@ -3223,11 +3228,11 @@ class TokenizerManager(TokenizerControlMixin, TokenizerManagerScoreMixin):
  
-                 # Write the data to the file
-                 data_to_dump_with_server_args = {
--                    "server_args": self.server_args,
-+                    "server_args": server_args_to_public_dict(self.server_args),
-                     "config_updates": get_context().overrides_log(),
+-    def _server_args_for_dump(self) -> Union[ServerArgs, Dict[str, Any]]:
++    def _server_args_for_dump(self) -> Dict[str, Any]:
++        # Credentials never reach a dump file (api_key, admin_api_key, ...);
++        # watermark secrets join them when watermarking is on.
++        values = server_args_to_public_dict(self.server_args)
+         if not get_exec().features.enable_watermark:
+-            return self.server_args
+-        return redact_watermark_secrets(self.server_args.resolved_dict())
++            return values
++        return redact_watermark_secrets(values)
+ 
+     def resolved_config_dict(self, base: Dict[str, Any]) -> Dict[str, Any]:
+         """``base`` (a serialized ``ServerArgs``) with the control-plane changes on top."""
+@@ -3450,7 +3458,8 @@ class TokenizerManager(TokenizerControlMixin, TokenizerManagerScoreMixin):
                      "resolved_config": self._dump_config_snapshot(),
-                     "requests": data_to_dump,
--                    "launch_command": " ".join(sys.argv),
-+                    "launch_command": " ".join(redact_sensitive_cli_args(sys.argv)),
+                     "requests": redact_watermark_secrets(data_to_dump),
+                     "launch_command": redact_watermark_command_line(
+-                        sys.argv, self.server_args.watermark_config
++                        redact_sensitive_cli_args(sys.argv),
++                        self.server_args.watermark_config,
+                     ),
                  }
                  with open(filename, "wb") as f:
-                     try:
 diff --git a/python/sglang/srt/multimodal/processors/mimo_audio.py b/python/sglang/srt/multimodal/processors/mimo_audio.py
-index 909c9965b..7d123657d 100644
+index bb53d98641..af7b028b50 100644
 --- a/python/sglang/srt/multimodal/processors/mimo_audio.py
 +++ b/python/sglang/srt/multimodal/processors/mimo_audio.py
-@@ -178,11 +178,15 @@ class MiMoAudioPipeline:
+@@ -181,11 +181,15 @@ class MiMoAudioPipeline:
              if isinstance(audio, bytes):
                  file = io.BytesIO(audio)
              elif isinstance(audio, str):
@@ -304,7 +241,7 @@ index 909c9965b..7d123657d 100644
                      dl_start = time.perf_counter()
                      timeout = int(os.getenv("REQUEST_TIMEOUT", "5"))
                      try:
-@@ -201,7 +205,17 @@ class MiMoAudioPipeline:
+@@ -204,7 +208,17 @@ class MiMoAudioPipeline:
                              f"error={type(e).__name__}: {e}, url={audio}"
                          )
                          raise
@@ -323,10 +260,10 @@ index 909c9965b..7d123657d 100644
              if AudioDecoder is None:
                  raise RuntimeError(
 diff --git a/python/sglang/srt/multimodal/processors/mimo_v2.py b/python/sglang/srt/multimodal/processors/mimo_v2.py
-index c833d7937..9c431416a 100644
+index aca68a8886..4b1fdaeab6 100644
 --- a/python/sglang/srt/multimodal/processors/mimo_v2.py
 +++ b/python/sglang/srt/multimodal/processors/mimo_v2.py
-@@ -490,22 +490,41 @@ class MiMoProcessor:
+@@ -468,22 +468,41 @@ class MiMoProcessor:
          # Never hand a client-supplied URL to ffprobe: its internal HTTP client
          # would bypass the shared domain and redirect policy. Resolve it through
          # the guarded downloader first, then probe the resulting bytes in-process.
@@ -373,7 +310,7 @@ index c833d7937..9c431416a 100644
          try:
              AudioDecoder(source)
              return True
-@@ -1449,18 +1468,36 @@ class MiMoProcessor:
+@@ -1426,18 +1445,36 @@ class MiMoProcessor:
          if isinstance(image, Image.Image):
              image_obj = image
          elif isinstance(image, str):
@@ -414,7 +351,7 @@ index c833d7937..9c431416a 100644
          else:
              image_obj = Image.open(BytesIO(image))
 diff --git a/python/sglang/srt/multimodal/processors/moss_vl.py b/python/sglang/srt/multimodal/processors/moss_vl.py
-index 3f862f355..24232a3a6 100644
+index 3f862f355b..24232a3a69 100644
 --- a/python/sglang/srt/multimodal/processors/moss_vl.py
 +++ b/python/sglang/srt/multimodal/processors/moss_vl.py
 @@ -20,7 +20,12 @@ from sglang.srt.multimodal.processors.base_processor import (
@@ -471,7 +408,7 @@ index 3f862f355..24232a3a6 100644
              pybase64.b64decode(value, validate=True)
          )
 diff --git a/python/sglang/srt/multimodal/processors/transformers_auto.py b/python/sglang/srt/multimodal/processors/transformers_auto.py
-index 17f486ddf..f73adde86 100644
+index 17f486ddf0..f73adde86d 100644
 --- a/python/sglang/srt/multimodal/processors/transformers_auto.py
 +++ b/python/sglang/srt/multimodal/processors/transformers_auto.py
 @@ -12,6 +12,7 @@ from sglang.srt.multimodal.processors.base_processor import (
@@ -492,10 +429,10 @@ index 17f486ddf..f73adde86 100644
          # Audio path: load clips and run the shared token-expansion machinery,
          # which passes ``audio=`` to the HF processor and packs audio features
 diff --git a/python/sglang/srt/server_args.py b/python/sglang/srt/server_args.py
-index d79bb75d7..f529b3c17 100644
+index 72fb9d54ce..4717d801d7 100644
 --- a/python/sglang/srt/server_args.py
 +++ b/python/sglang/srt/server_args.py
-@@ -49,6 +49,7 @@ from sglang.srt.arg_groups.arg_utils import (
+@@ -32,6 +32,7 @@ from sglang.srt.arg_groups.arg_utils import (
      add_cli_args_from_dataclass,
      is_record,
      record_fields,
@@ -503,26 +440,18 @@ index d79bb75d7..f529b3c17 100644
  )
  from sglang.srt.arg_groups.argparse_actions import (
      DeprecatedStoreTrueAction,
-@@ -308,6 +309,18 @@ class ServerArgs:
-         """
+@@ -304,7 +305,10 @@ class ServerArgs:
          return getattr(self, "_launch_command", None)
  
-+    def __repr__(self) -> str:
-+        # The assembled Struct's default repr prints every field; credentials
-+        # (`Arg(sensitive=True)`) are masked so a stray log of the record
-+        # cannot leak them.
-+        hidden = sensitive_fields(type(self))
-+        parts = ", ".join(
-+            f"{field.name}="
-+            + ("<redacted>" if field.name in hidden else repr(getattr(self, field.name)))
-+            for field in record_fields(type(self))
-+        )
-+        return f"ServerArgs({parts})"
-+
-     def resolved_dict(self) -> dict[str, Any]:
-         """This configuration as a plain dict of resolved field values.
- 
-@@ -626,6 +639,47 @@ def _underscore_field_names() -> frozenset:
+     def __repr__(self) -> str:
++        # Credentials (`Arg(sensitive=True)`) join the watermark secrets so a
++        # stray log of the record cannot leak them.
+         hidden = {"watermark_key", "watermark_key_b", "watermark_config"}
++        hidden |= sensitive_fields(type(self))
+         values = ", ".join(
+             f"{field.name}={getattr(self, field.name)!r}"
+             for field in record_fields(type(self))
+@@ -604,6 +608,47 @@ def _underscore_field_names() -> frozenset:
      )
  
  
@@ -571,7 +500,7 @@ index d79bb75d7..f529b3c17 100644
  # (sglang.srt.runtime_context). The two publish functions below are LEGACY
  # shims kept for the existing call-sites; they hand over the same live object
 diff --git a/python/sglang/srt/utils/auth.py b/python/sglang/srt/utils/auth.py
-index df6811179..08ce4f0a5 100644
+index df6811179e..08ce4f0a5e 100644
 --- a/python/sglang/srt/utils/auth.py
 +++ b/python/sglang/srt/utils/auth.py
 @@ -172,6 +172,26 @@ def add_api_key_middleware(
@@ -602,10 +531,10 @@ index df6811179..08ce4f0a5 100644
                  await self.app(scope, receive, send)
                  return
 diff --git a/python/sglang/srt/utils/common.py b/python/sglang/srt/utils/common.py
-index 62ad5159f..d30ce5580 100644
+index c97fd10787..6e8dcae9c3 100644
 --- a/python/sglang/srt/utils/common.py
 +++ b/python/sglang/srt/utils/common.py
-@@ -1704,6 +1704,64 @@ CLIENT_MEDIA_EXCEPTIONS = (
+@@ -1860,6 +1860,64 @@ CLIENT_MEDIA_EXCEPTIONS = (
  )
  
  
@@ -670,7 +599,7 @@ index 62ad5159f..d30ce5580 100644
  def load_audio(
      audio_file: Union[str, bytes], sr: Optional[int] = None, mono: bool = True
  ) -> np.ndarray:
-@@ -1713,17 +1771,22 @@ def load_audio(
+@@ -1869,17 +1927,22 @@ def load_audio(
      # Normalize input: resolve URL / base64 / file:// to bytes or path
      if isinstance(audio_file, bytes):
          source = audio_file
@@ -703,7 +632,7 @@ index 62ad5159f..d30ce5580 100644
      else:
          raise ValueError(f"Invalid audio format: {audio_file}")
  
-@@ -1982,18 +2045,27 @@ def get_image_bytes(image_file: Union[str, bytes]) -> bytes:
+@@ -2140,18 +2203,27 @@ def get_image_bytes(image_file: Union[str, bytes]) -> bytes:
      """Normalize various image inputs into raw bytes."""
      if isinstance(image_file, bytes):
          return image_file
@@ -739,7 +668,7 @@ index 62ad5159f..d30ce5580 100644
  
  
  def _normalize_video_input(
-@@ -2008,15 +2080,21 @@ def _normalize_video_input(
+@@ -2166,15 +2238,21 @@ def _normalize_video_input(
      if isinstance(video_file, bytes):
          return video_file
      elif isinstance(video_file, str):
@@ -765,3 +694,16 @@ index 62ad5159f..d30ce5580 100644
              return video_file
          else:
              return pybase64.b64decode(video_file, validate=True)
+@@ -3642,7 +3720,11 @@ def build_server_info(server_args, scheduler_info: Dict[str, Any]) -> Dict[str,
+ 
+     Callers add transport-specific fields and serialize the result.
+     """
+-    result = server_args.resolved_dict()
++    # Local import: server_args imports this module. Credentials declared
++    # `Arg(sensitive=True)` never leave the process through a readback.
++    from sglang.srt.server_args import server_args_to_public_dict
++
++    result = server_args_to_public_dict(server_args)
+     result["launch_command"] = server_args.launch_command
+     result.update(scheduler_info)
+     result["kv_events"] = describe_kv_events_publisher(server_args)

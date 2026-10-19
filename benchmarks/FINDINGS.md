@@ -289,7 +289,7 @@ vs 22.5 / 22.2 / 21.4 / 20.0 no-spec (1.57× / 2.00× / 1.48× / 1.60×), thinki
 DSpark is the `qwen38` preset default since 2026-09-27 (`QWEN38_SPEC=0` keeps the 530K-pool no-spec server for
 prompts past 239K). Memory: mem 0.90 OOMs in decode (0 B free), mem 0.88 OOMs a 58K prefill at chunk 8192 in
 `pack_aux_hidden_states` (8 aux layers × 8192 tokens × 5120 × bf16 = 640 MB); chunk 4096 clears it.
-Boot needs patch 099; the RedHat speculators-format checkpoint needs its config flattened
+Boot needed patch 099 on v0.5.20 (upstream since v0.5.22); the RedHat speculators-format checkpoint needs its config flattened
 (`/data/models/Qwen3.8-27B-speculator.dspark-sgl`: RadixArk keys, `aux_hidden_state_layer_ids` →
 `target_layer_ids`, `transformer_layer_config` lifted, `mrope_section` dropped).
 

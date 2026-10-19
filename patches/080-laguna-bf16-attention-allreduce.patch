@@ -1,94 +1,182 @@
-diff --git a/python/sglang/srt/layers/communicator.py b/python/sglang/srt/layers/communicator.py
-index 755222afa..88c5f9907 100644
---- a/python/sglang/srt/layers/communicator.py
-+++ b/python/sglang/srt/layers/communicator.py
-@@ -530,6 +530,7 @@ class LayerCommunicator:
-         enable_fused_ar_quant: bool = False,
-         fused_ar_quant_keep_bf16: bool = False,
-         _is_sp_variant: bool = False,
-+        hip_fp32_allreduce: bool = True,
-     ):
-         self.layer_scatter_modes = layer_scatter_modes
-         self.input_layernorm = input_layernorm
-@@ -545,6 +546,7 @@ class LayerCommunicator:
-         self._context.force_layernorm_before_dp_gather = (
-             force_layernorm_before_dp_gather
-         )
-+        self._context.hip_fp32_allreduce = hip_fp32_allreduce
-         self._post_init_communicate()
-         self._speculative_algo = SpeculativeAlgorithm.from_string(
-             get_spec().speculative_algorithm
-@@ -572,6 +574,7 @@ class LayerCommunicator:
-                 enable_fused_ar_quant=enable_fused_ar_quant,
-                 fused_ar_quant_keep_bf16=fused_ar_quant_keep_bf16,
-                 _is_sp_variant=True,
-+                hip_fp32_allreduce=hip_fp32_allreduce,
+diff --git a/python/sglang/srt/layers/layer_boundary/__init__.py b/python/sglang/srt/layers/layer_boundary/__init__.py
+index 06792217c4..9b95bf821b 100644
+--- a/python/sglang/srt/layers/layer_boundary/__init__.py
++++ b/python/sglang/srt/layers/layer_boundary/__init__.py
+@@ -64,6 +64,7 @@ from sglang.srt.layers.layer_boundary.residual.add_norm import (
+     FUSE_ALLREDUCE_MAX_BATCH_SIZE,
+     NORM_QUANT_READOUT,
+     PLAIN_ADD,
++    PLAIN_ADD_BF16_SUM,
+     PLAIN_RESIDUAL_OPS,
+ )
+ from sglang.srt.layers.layer_boundary.residual.gated import (
+@@ -82,6 +83,7 @@ __all__ = [
+     "append_stages",
+     "layer_stack",
+     "PLAIN_ADD",
++    "PLAIN_ADD_BF16_SUM",
+     "AttentionInputs",
+     "StagePath",
+     "EdgeContract",
+diff --git a/python/sglang/srt/layers/layer_boundary/exit.py b/python/sglang/srt/layers/layer_boundary/exit.py
+index 0e933f6242..07c069f83d 100644
+--- a/python/sglang/srt/layers/layer_boundary/exit.py
++++ b/python/sglang/srt/layers/layer_boundary/exit.py
+@@ -351,6 +351,7 @@ class ExitPolicy:
+                 steps.output.group,
+                 forward_batch,
+                 may_quantize=steps.output.update.quantized_sum,
++                fp32_on_hip=getattr(steps.output.update, "hip_fp32_sum", True),
              )
+         if steps.output.transform is not None:
+             hidden_states = steps.output.transform.apply(hidden_states)
+@@ -513,6 +514,7 @@ class MixerExit:
+                 self._group,
+                 self._forward_batch,
+                 may_quantize=self._update.quantized_sum,
++                fp32_on_hip=getattr(self._update, "hip_fp32_sum", True),
+             )
+         return self._stream.record(
+             hidden_states, self._update, declared_sum=self._declared_sum
+diff --git a/python/sglang/srt/layers/layer_boundary/ops.py b/python/sglang/srt/layers/layer_boundary/ops.py
+index 5820e7cd4a..4fd23ccd26 100644
+--- a/python/sglang/srt/layers/layer_boundary/ops.py
++++ b/python/sglang/srt/layers/layer_boundary/ops.py
+@@ -183,11 +183,16 @@ def moe_cp_gather(
  
-     def _post_init_communicate(self):
-@@ -998,6 +1001,7 @@ class CommunicateContext:
-     cache = None
-     tp_rank: int
-     force_layernorm_before_dp_gather: bool = False
-+    hip_fp32_allreduce: bool = True
  
-     def is_same_group_size(self, a: ScatterMode, b: ScatterMode):
-         return self.process_group_sizes[a] == self.process_group_sizes[b]
-@@ -1297,16 +1301,32 @@ class CommunicateWithAllReduceAndLayerNormFn:
-                 handled = True
+ def attn_tp_all_reduce(
+-    hidden_states: torch.Tensor, forward_batch: ForwardBatch, may_quantize: bool = True
++    hidden_states: torch.Tensor,
++    forward_batch: ForwardBatch,
++    may_quantize: bool = True,
++    fp32_on_hip: bool = True,
+ ) -> torch.Tensor:
+-    if _is_hip:
++    if _is_hip and fp32_on_hip:
+         # Float32 all-reduce for TP precision on HIP (prevents FP16 rounding
+-        # accumulation through DeltaNet/Mamba recurrence).
++        # accumulation through DeltaNet/Mamba recurrence). Conventional
++        # attention models opt out through their update's hip_fp32_sum
++        # (PLAIN_ADD_BF16_SUM): two casts and a 2x RCCL payload for nothing.
+         orig_dtype = hidden_states.dtype
+         if orig_dtype != torch.float32:
+             hidden_states = hidden_states.float()
+@@ -210,13 +215,16 @@ def sum_output(
+     forward_batch: ForwardBatch,
+     *,
+     may_quantize: bool,
++    fp32_on_hip: bool = True,
+ ) -> torch.Tensor:
+     """Complete the sum an output owes over ``group`` on the rows it is on."""
+     parallel = get_parallel()
+     if group is SumGroup.ATTN_TP:
+         if parallel.attn_tp_size == 1:
+             return hidden_states
+-        return attn_tp_all_reduce(hidden_states, forward_batch, may_quantize)
++        return attn_tp_all_reduce(
++            hidden_states, forward_batch, may_quantize, fp32_on_hip=fp32_on_hip
++        )
+     if group is SumGroup.TP:
+         if parallel.tp_size == 1:
+             return hidden_states
+diff --git a/python/sglang/srt/layers/layer_boundary/prepare.py b/python/sglang/srt/layers/layer_boundary/prepare.py
+index b8b8c2de7b..450e094d17 100644
+--- a/python/sglang/srt/layers/layer_boundary/prepare.py
++++ b/python/sglang/srt/layers/layer_boundary/prepare.py
+@@ -135,7 +135,10 @@ def _reduce_update_read(
+             return result
+     if group is SumGroup.ATTN_TP:
+         hidden_states = attn_tp_all_reduce(
+-            hidden_states, forward_batch, may_quantize=update.quantized_sum
++            hidden_states,
++            forward_batch,
++            may_quantize=update.quantized_sum,
++            fp32_on_hip=getattr(update, "hip_fp32_sum", True),
+         )
+     elif group is SumGroup.TP:
+         hidden_states = tensor_model_parallel_all_reduce(hidden_states)
+@@ -176,7 +179,12 @@ def _reduce_update_read_dp_gather(
+     if hidden_states.shape[0] != 0:
+         if reduces_attention_tp:
+             hidden_states = (
+-                attn_tp_all_reduce(hidden_states, forward_batch, may_quantize=False)
++                attn_tp_all_reduce(
++                    hidden_states,
++                    forward_batch,
++                    may_quantize=False,
++                    fp32_on_hip=getattr(update, "hip_fp32_sum", True),
++                )
+                 if group is SumGroup.ATTN_TP
+                 else _sum_group(group).all_reduce(hidden_states)
+             )
+diff --git a/python/sglang/srt/layers/layer_boundary/residual/__init__.py b/python/sglang/srt/layers/layer_boundary/residual/__init__.py
+index adbffd9588..5bc3665d80 100644
+--- a/python/sglang/srt/layers/layer_boundary/residual/__init__.py
++++ b/python/sglang/srt/layers/layer_boundary/residual/__init__.py
+@@ -38,6 +38,11 @@ class ResidualUpdate(Protocol):
+             by a quantized all-reduce when quantized communication is enabled.
+             This is a numerical policy, separate from being a plain add; full
+             precision is always correct.
++        hip_fp32_sum (optional, default True): Whether the attention-TP sum the
++            contribution owes runs in float32 on HIP. Recurrent hybrids
++            (DeltaNet/Mamba) compound bf16 reduction error through their state;
++            conventional attention models may declare False to keep the
++            activation-dtype collective (no casts, half the payload).
  
-             if not handled:
--                # Float32 all-reduce for TP precision on HIP (prevents
--                # FP16 rounding accumulation through DeltaNet recurrence).
--                orig_dtype = hidden_states.dtype
--                if _is_hip and orig_dtype != torch.float32:
--                    hidden_states = hidden_states.float()
--                hidden_states = attention_tensor_model_parallel_all_reduce(
--                    hidden_states
--                )
--                if _is_hip and hidden_states.dtype != orig_dtype:
--                    hidden_states = hidden_states.to(orig_dtype)
-+                if _is_hip and context.hip_fp32_allreduce:
-+                    # FP32 TP reduction is required by recurrent hybrids whose
-+                    # state compounds small reduction errors across layers.
-+                    orig_dtype = hidden_states.dtype
-+                    if orig_dtype != torch.float32:
-+                        hidden_states = hidden_states.float()
-+                    hidden_states = attention_tensor_model_parallel_all_reduce(
-+                        hidden_states
-+                    )
-+                    if hidden_states.dtype != orig_dtype:
-+                        hidden_states = hidden_states.to(orig_dtype)
-+                else:
-+                    # Conventional attention models use the upstream activation-
-+                    # dtype collective. Avoid two casts and a 2x RCCL payload.
-+                    quantize_communications = (
-+                        not forward_batch.forward_mode.is_decode_or_idle()
-+                        and get_exec().comm.enable_quant_communications
-+                    )
-+                    if quantize_communications:
-+                        hidden_states = attention_tensor_model_parallel_quant_all_reduce(
-+                            hidden_states
-+                        )
-+                    else:
-+                        hidden_states = attention_tensor_model_parallel_all_reduce(
-+                            hidden_states
-+                        )
-                 if _is_npu and context.cache is not None:
-                     _ = prepare_weight_cache(hidden_states, context.cache)
-                 hidden_states, residual = layernorm(hidden_states, residual)
+     The shard conversion methods must move any update-associated state together
+     with the residual. Nonlinear updates must not claim is_plain_add.
+diff --git a/python/sglang/srt/layers/layer_boundary/residual/add_norm.py b/python/sglang/srt/layers/layer_boundary/residual/add_norm.py
+index 6bfdd74f77..8882f76a94 100644
+--- a/python/sglang/srt/layers/layer_boundary/residual/add_norm.py
++++ b/python/sglang/srt/layers/layer_boundary/residual/add_norm.py
+@@ -278,6 +278,8 @@ class PlainAdd:
+     outlives_layer = True
+     writes_stream = False
+     quantized_sum = True
++    # HIP completes the attention-TP sum in float32 (layer_boundary.ops).
++    hip_fp32_sum = True
+ 
+     def update(self, hidden_states, residual):
+         hidden_states += residual
+@@ -435,7 +437,16 @@ class UnfusedNormReadout(NormReadout):
+         return self.read(hidden_states, norm, quant_format, post_residual_addition)
+ 
+ 
++class PlainAddBf16Sum(PlainAdd):
++    """A plain residual whose attention-TP sum stays in the activation dtype on
++    HIP: for conventional attention models with no recurrent state, where the
++    FP32 reduction workaround only adds two casts and a 2x RCCL payload."""
++
++    hip_fp32_sum = False
++
++
+ PLAIN_ADD = PlainAdd()
++PLAIN_ADD_BF16_SUM = PlainAddBf16Sum()
+ REPLACE_AT_EXIT = ReplaceAtExit()
+ NORM_QUANT_READOUT = NormQuantReadout()
+ NORM_READOUT = NormReadout()
 diff --git a/python/sglang/srt/models/laguna.py b/python/sglang/srt/models/laguna.py
-index c07aac843..1d5564c49 100644
+index ea8ec60ba7..ed7a4f6e73 100644
 --- a/python/sglang/srt/models/laguna.py
 +++ b/python/sglang/srt/models/laguna.py
-@@ -480,6 +480,10 @@ class LagunaDecoderLayer(nn.Module):
-             post_attention_layernorm=self.post_attention_layernorm,
-             allow_reduce_scatter=True,
-             is_last_layer=(layer_id == config.num_hidden_layers - 1),
-+            # Laguna is a conventional attention model. The global HIP FP32
-+            # reduction workaround exists for recurrent DeltaNet/Mamba state
-+            # and only adds casts plus a 2x payload here.
-+            hip_fp32_allreduce=False,
+@@ -24,6 +24,7 @@ from sglang.srt.layers.dp_attention import (
+     is_dp_attention_enabled,
+ )
+ from sglang.srt.layers.layer_boundary import (
++    PLAIN_ADD_BF16_SUM,
+     append_stages,
+     declare_attn,
+     declare_ffn,
+@@ -466,7 +467,10 @@ class LagunaDecoderLayer(nn.Module):
+             and mlp_types[layer_id + 1] == "sparse"
          )
- 
-     def forward(
+         return (
+-            declare_attn(),
++            # Laguna is a conventional attention model. The HIP FP32 attention
++            # sum (RDNA4 patch 001) exists for recurrent DeltaNet/Mamba state
++            # and only adds casts plus a 2x payload here.
++            declare_attn(update=PLAIN_ADD_BF16_SUM),
+             declare_ffn(
+                 sparse=is_layer_sparse,
+                 next_layer_sparse=is_next_layer_sparse,

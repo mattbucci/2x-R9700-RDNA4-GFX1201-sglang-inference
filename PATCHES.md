@@ -1,10 +1,10 @@
 # Patch collections
 
-The repository carries **75 active patches across three environments**:
+The repository carries **74 active patches across three environments**:
 
 | Collection | Target | Count | Purpose |
 |---|---|---:|---|
-| [`patches/`](patches/README.md) | SGLang v0.5.20 (`/data/sgl-v0520`, `sglang-triton36-v0520`) | **73** | RDNA4 serving, model compatibility, correctness, and performance |
+| [`patches/`](patches/README.md) | SGLang v0.5.22 (`/data/sgl-v0522`, `sglang-triton36-v0522`) | **72** | RDNA4 serving, model compatibility, correctness, and performance |
 | [`llmcompressor-patches/`](llmcompressor-patches/README.md) | llmcompressor calibration environment | **1** | Unfused Qwen3 MoE experts for GPTQ calibration |
 | [`ream-patches/`](ream-patches/README.md) | Samsung SAIL REAM clone | **1** | Memory-safe, resumable expert merging |
 
@@ -13,16 +13,16 @@ Tooling files that support REAM/REAP are not counted as patches. Upstream contri
 
 ## SGLang series
 
-Apply the 72 numeric patches in filename order to pristine SGLang v0.5.20. Patch 072 was removed because
+Apply the 72 numeric patches in filename order to pristine SGLang v0.5.22. Patch 072 was removed because
 transformers 5.12.1 provides the Gemma 4 unified configuration and processor natively. Patch 083 replaces
 that count with the Mistral tokenizer-backend correction required by Devstral and Devstral 2. On the
 v0.5.16 rebase, patch 059 was dropped because its FuseEP dispatcher target was removed upstream, and patch
 097 (JIT fused-gate None-bias guard) was added. The v0.5.18 rebase went to 70 (26 patches
 regenerated for upstream's kernel-tree relocation; the upstreamed max-head sizing was dropped from 077; 098 added
 for the native Gemma4Unified config). Patch 099 (2026-09-27) accepts the scheduler's `pp_proxy_tensors=` keyword in the DSpark worker (upstream main carries the same fix; without it every DSPARK boot dies on the first forward). Patch 100 (2026-09-27) enables the Triton split-KV speculative-verify kernel on gfx1201 (upstream gates it to gfx95; same lift as upstream PR #39316) with a 16-row WMMA tile floor — it turns DSpark from 0.24x to 1.5x at a 49K context. Patch 103 (2026-10-18) ports the 3090's 066: the Responses-API history merge split a phase-tagged assistant text from its own tool call, which emptied 71% of the 3090's dcode cell; the dcode lane preflight now refuses a server without it. The v0.5.20 rebase stayed at 70 (23 regenerated for the msgspec-record
-`ServerArgs` and upstream's gfx1250 branches; upstreamed hunks dropped from 011/049/074/096).
-v0.5.20 is the newest upstream release as of 2026-09-19 (`main` is not tracked; the next rebase targets the
-v0.5.21 tag when it is published).
+`ServerArgs` and upstream's gfx1250 branches; upstreamed hunks dropped from 011/049/074/096). The v0.5.22 rebase (2026-10-19) went 73 → 72: 099 was dropped as upstreamed, and 26 patches were regenerated for upstream's `layer_boundary` rewrite (the communicator module is gone), the relocated block-FP8 GEMM, and v0.5.22's new HIP `extra_buffer` claim, which 073 now pins back to `no_buffer` on gfx1201.
+v0.5.22 (tagged 2026-10-13) is the newest upstream release as of 2026-10-19 (`main` is not tracked; the next rebase targets the
+next release tag at a bake-off lane boundary).
 
 | Lane | Patches | Count |
 |---|---|---:|
@@ -37,7 +37,8 @@ v0.5.21 tag when it is published).
 | API and network hardening | 096 | 1 |
 
 The detailed active index and replay procedure are in [`patches/README.md`](patches/README.md). The
-v0.5.20 rebase is validated in [`patches/v0520-rebase-2026-09-19.md`](patches/v0520-rebase-2026-09-19.md), the
+v0.5.22 rebase is validated in [`patches/v0522-rebase-2026-10-19.md`](patches/v0522-rebase-2026-10-19.md), the
+v0.5.20 rebase in [`patches/v0520-rebase-2026-09-19.md`](patches/v0520-rebase-2026-09-19.md), the
 v0.5.18 rebase in [`patches/v0518-rebase-2026-08-29.md`](patches/v0518-rebase-2026-08-29.md), the
 v0.5.16 rebase in [`patches/v0516-rebase-2026-07-27.md`](patches/v0516-rebase-2026-07-27.md);
 base and North/Laguna validation evidence is recorded in
@@ -48,7 +49,7 @@ base and North/Laguna validation evidence is recorded in
 
 Every patch-series change must pass all three checks:
 
-1. Apply every numeric patch to a pristine v0.5.20 tree with no skipped or failed patches.
+1. Apply every numeric patch to a pristine v0.5.22 tree with no skipped or failed patches.
 2. Compare the result byte-for-byte with the intended serving-tree delta.
 3. Confirm that patches cannot be applied a second time (no exceptions since the v0.5.18 rebase; 026 was
    the documented non-unique-anchor exception through v0.5.16).

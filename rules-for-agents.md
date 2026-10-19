@@ -5,9 +5,9 @@ These rules apply to automation and model work in this repository.
 ## Serving environment
 
 - Engine: SGLang only.
-- Default source: `/data/sgl-v0520` (SGLang v0.5.20, peeled tag commit `94602c9c2`, plus the 70-patch series).
-- Default conda environment: `sglang-triton36-v0520`.
-- Kernel source for the native HIP builds: `/data/sgl-v0520/python/sglang/kernels/aot`.
+- Default source: `/data/sgl-v0522` (SGLang v0.5.22, peeled tag commit `baa9befa3`, plus the 72-patch series).
+- Default conda environment: `sglang-triton36-v0522`.
+- Kernel source for the native HIP builds: `/data/sgl-v0522/python/sglang/kernels/aot`.
 - The version-pinned values above live in `scripts/common.sh`; when the stack is promoted, that file and this list move together. Older trees (`/data/sgl-v0518`, `/data/sgl-v0516`, ...) are retained untouched as rollbacks, never edited.
 - GPUs: 2× Radeon AI PRO R9700, gfx1201, 32 GiB each.
 - ROCm: 7.2 (HIP 7.2.26015), PyTorch 2.11.0+rocm7.2, Triton 3.6.0, transformers 5.12.1.
@@ -65,9 +65,9 @@ Write multi-day server and job logs under `/data/logs`, never under `/tmp` (a 31
 
 ## SGLang changes
 
-- Edit the live tree (`/data/sgl-v0520`) only for experiments intended for that stack.
+- Edit the live tree (`/data/sgl-v0522`) only for experiments intended for that stack.
 - Retained changes must become atomic numeric patches.
-- Replay the full series from the pristine base version (the peeled `v0.5.20` commit) after every patch edit.
+- Replay the full series from the pristine base version (the peeled `v0.5.22` commit) after every patch edit.
 - Require strict application, path/mode equivalence, and focused tests.
 - Preserve unrelated user changes in both repositories and live source trees.
 - Keep opt-out environment switches for risky backend-specific optimizations until their fallback has been validated.

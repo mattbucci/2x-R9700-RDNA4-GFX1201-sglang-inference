@@ -1,25 +1,33 @@
 diff --git a/python/sglang/kernels/ops/activation/softcap.py b/python/sglang/kernels/ops/activation/softcap.py
-index 8b719c9b9..613b007e5 100644
+index 317dfed36c..833fb75007 100644
 --- a/python/sglang/kernels/ops/activation/softcap.py
 +++ b/python/sglang/kernels/ops/activation/softcap.py
-@@ -86,10 +86,11 @@ def softcap_inplace_logits_kernel(
+@@ -87,9 +87,11 @@ def softcap_inplace_logits_kernel(
+ 
+     # Load values
      row_ptr = full_logits_ptr + row * row_stride
-     x = tl.load(row_ptr + offsets, mask=mask)
- 
--    # Perform operations in-place
--    x = x / softcapping_value
--    x = libdevice.tanh(x)
--    x = x * softcapping_value
+-    x = tl.load(row_ptr + offsets, mask=mask)
+-    if CAST_TO_FP32:
+-        x = x.to(tl.float32)
++    x_in = tl.load(row_ptr + offsets, mask=mask)
 +    # Perform softcapping in FP32 for precision (BF16 tanh is lossy) — RDNA4 patch 027,
-+    # relocated here in v0.5.13 (kernel moved out of logits_processor.py).
-+    x_fp32 = x.to(tl.float32) / softcapping_value
-+    x_fp32 = libdevice.tanh(x_fp32)
-+    x = (x_fp32 * softcapping_value).to(x.dtype)
++    # relocated here in v0.5.13 (kernel moved out of logits_processor.py). The in-place
++    # path casts back to the logits dtype; CAST_TO_FP32 stores the FP32 result as is.
++    x = x_in.to(tl.float32)
  
-     # Store result
-     tl.store(row_ptr + offsets, x, mask=mask)
+     x = x / softcapping_value
+     x = libdevice.tanh(x)
+@@ -99,7 +101,7 @@ def softcap_inplace_logits_kernel(
+     if CAST_TO_FP32:
+         tl.store(output_ptr + row * output_row_stride + offsets, x, mask=mask)
+     else:
+-        tl.store(row_ptr + offsets, x, mask=mask)
++        tl.store(row_ptr + offsets, x.to(x_in.dtype), mask=mask)
+ 
+ 
+ def _softcap_logits(full_logits, final_logit_softcapping, output=None):
 diff --git a/python/sglang/kernels/ops/attention/decode_attention.py b/python/sglang/kernels/ops/attention/decode_attention.py
-index 4d121d573..1099a121a 100644
+index 6297cdd021..7c6de186f4 100644
 --- a/python/sglang/kernels/ops/attention/decode_attention.py
 +++ b/python/sglang/kernels/ops/attention/decode_attention.py
 @@ -31,6 +31,7 @@ import triton.language as tl
@@ -48,7 +56,7 @@ index 4d121d573..1099a121a 100644
  
  
  @triton.jit
-@@ -430,7 +433,7 @@ def _decode_att_m_fwd(
+@@ -432,7 +435,7 @@ def _decode_att_m_fwd(
      BLOCK = 64
      # [TODO] work around SGPR limit on MI3xx
      if _is_hip:
@@ -57,7 +65,7 @@ index 4d121d573..1099a121a 100644
      MAX_KV_SPLITS = max_kv_splits
      Lk = k_buffer.shape[-1]
      Lv = v_buffer.shape[-1]
-@@ -446,7 +449,7 @@ def _decode_att_m_fwd(
+@@ -448,7 +451,7 @@ def _decode_att_m_fwd(
          num_warps = 4
      else:
          num_warps = 2
@@ -67,10 +75,10 @@ index 4d121d573..1099a121a 100644
  
      BLOCK_DMODEL = triton.next_power_of_2(Lk)
 diff --git a/python/sglang/kernels/ops/attention/extend_attention.py b/python/sglang/kernels/ops/attention/extend_attention.py
-index 125d69ba7..80e333137 100644
+index c394fab750..821b2fdd49 100644
 --- a/python/sglang/kernels/ops/attention/extend_attention.py
 +++ b/python/sglang/kernels/ops/attention/extend_attention.py
-@@ -214,7 +214,8 @@ def _compact_extend_q_tiles_per_head(
+@@ -209,7 +209,8 @@ def _compact_extend_q_tiles_per_head(
  @triton.jit
  def tanh(x):
      # Tanh is just a scaled sigmoid

@@ -1,13 +1,13 @@
 diff --git a/python/sglang/kernels/ops/quantization/fp8_kernel.py b/python/sglang/kernels/ops/quantization/fp8_kernel.py
-index b339cd7..7a0a2d5 100644
+index 4e48b97e53..a68ce60f89 100644
 --- a/python/sglang/kernels/ops/quantization/fp8_kernel.py
 +++ b/python/sglang/kernels/ops/quantization/fp8_kernel.py
-@@ -1983,10 +1983,12 @@ if _is_hip:
+@@ -1196,10 +1196,12 @@ if _is_hip:
          absmax = input.abs().max(dim=1, keepdim=True).values
          absmax = torch.clamp(absmax, min=eps)
          scale_val = absmax / fp8_max
 -        scale.copy_(scale_val)
-+        # output/scale may be padded to num_token_padding rows (>= M); the vLLM
++        # output/scale may be padded to num_token_padding rows (>= M); the AITER
 +        # kernel writes only the first M, so the native fallback must too.
 +        scale[:M].copy_(scale_val)
          # Quantize
@@ -16,4 +16,4 @@ index b339cd7..7a0a2d5 100644
 +        output[:M].copy_(output_data)
  
      def _native_dynamic_per_tensor_quant_fp8(output, input, scale):
-         """Native PyTorch fallback for dynamic per-tensor FP8 quantization when vLLM is unavailable."""
+         """Native PyTorch fallback for dynamic per-tensor FP8 quantization when AITER is disabled."""

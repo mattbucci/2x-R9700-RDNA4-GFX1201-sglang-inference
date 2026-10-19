@@ -1,8 +1,8 @@
 diff --git a/python/sglang/srt/layers/attention/triton_backend.py b/python/sglang/srt/layers/attention/triton_backend.py
-index 34dc8653..115a8c59 100644
+index 5be8854fa9..0ade9788e6 100644
 --- a/python/sglang/srt/layers/attention/triton_backend.py
 +++ b/python/sglang/srt/layers/attention/triton_backend.py
-@@ -72,6 +72,11 @@ if TYPE_CHECKING:
+@@ -83,6 +83,11 @@ if TYPE_CHECKING:
  
  
  _MLA_DECODE_MIN_BLOCK_KV = 32
@@ -14,7 +14,7 @@ index 34dc8653..115a8c59 100644
  
  
  def _mla_decode_kv_splits_cap(
-@@ -99,6 +104,26 @@ def _should_use_verify_shared_kv(model_config, topk, use_mla, use_verify_splitkv
+@@ -112,6 +117,26 @@ def _should_use_verify_shared_kv(model_config, topk, use_mla, use_verify_splitkv
      )
  
  
@@ -41,7 +41,7 @@ index 34dc8653..115a8c59 100644
  def logit_capping_mod(logit_capping_method, logit_cap):
      # positive logit_cap -> tanh cap
      if logit_capping_method == "tanh":
-@@ -1354,7 +1379,9 @@ class TritonAttnBackend(AttentionBackend):
+@@ -1671,7 +1696,9 @@ class TritonAttnBackend(AttentionBackend):
                      # For MLA, scale K manually before storing since MLATokenToKVPool
                      # doesn't accept scale parameters. Clone to protect k from mutation
                      # since it's used later in the attention kernel.
@@ -52,7 +52,7 @@ index 34dc8653..115a8c59 100644
                      self.token_to_kv_pool.set_kv_buffer(
                          layer,
                          loc_info,
-@@ -1422,12 +1449,9 @@ class TritonAttnBackend(AttentionBackend):
+@@ -1772,12 +1799,9 @@ class TritonAttnBackend(AttentionBackend):
              kv_indices = self.forward_metadata.kv_indices
              window_kv_offsets = None
  
@@ -68,7 +68,7 @@ index 34dc8653..115a8c59 100644
  
          # Split-KV EAGLE-verify fast path (ROCm/Triton). On target-verify
          # (topk=1 causal chain), run the bandwidth-efficient split-KV kernel
-@@ -1570,12 +1594,9 @@ class TritonAttnBackend(AttentionBackend):
+@@ -2001,12 +2025,9 @@ class TritonAttnBackend(AttentionBackend):
          kv_indices = self.forward_metadata.kv_indices
          max_extend_len = self.forward_metadata.max_extend_len
  
@@ -84,7 +84,7 @@ index 34dc8653..115a8c59 100644
  
          k_buffer = self.token_to_kv_pool.get_key_buffer(layer.layer_id)
          v_buffer = self.token_to_kv_pool.get_value_buffer(layer.layer_id)
-@@ -1800,12 +1821,9 @@ class TritonAttnBackend(AttentionBackend):
+@@ -2227,12 +2248,9 @@ class TritonAttnBackend(AttentionBackend):
          # Convert prefix_lens to int32 for the kernel
          prefix_lens = prefix_lens.to(torch.int32)
  
@@ -100,7 +100,7 @@ index 34dc8653..115a8c59 100644
  
          # Call unified kernel
          self.extend_attention_fwd_unified(
-@@ -1875,7 +1893,9 @@ class TritonAttnBackend(AttentionBackend):
+@@ -2302,7 +2320,9 @@ class TritonAttnBackend(AttentionBackend):
  
          if save_kv_cache:
              if self.use_mla:
@@ -111,7 +111,7 @@ index 34dc8653..115a8c59 100644
                      # MLATokenToKVPool doesn't accept scale parameters; k is unused
                      # after this point in decode, so scale in place.
                      k.div_(layer.k_scale)
-@@ -1915,12 +1935,9 @@ class TritonAttnBackend(AttentionBackend):
+@@ -2336,12 +2356,9 @@ class TritonAttnBackend(AttentionBackend):
              kv_indptr = self.forward_metadata.kv_indptr
              kv_indices = self.forward_metadata.kv_indices
  
@@ -128,12 +128,12 @@ index 34dc8653..115a8c59 100644
          # Select the correctly-sized attn_logits buffer for this layer.
          attn_logits = self.forward_metadata.attn_logits
 diff --git a/python/sglang/srt/mem_cache/memory_pool.py b/python/sglang/srt/mem_cache/memory_pool.py
-index 420fa25b..d4606cff 100644
+index 5cc72238dc..0b49632aa7 100644
 --- a/python/sglang/srt/mem_cache/memory_pool.py
 +++ b/python/sglang/srt/mem_cache/memory_pool.py
-@@ -107,6 +107,11 @@ _is_cpu = is_cpu()
- _cpu_has_amx_support = cpu_has_amx_support()
+@@ -120,6 +120,11 @@ _cpu_has_amx_support = cpu_has_amx_support()
  _is_hip = is_hip()
+ _is_gfx95_supported = is_gfx95_supported()
  _is_fp8_fnuz = is_fp8_fnuz()
 +_FP8_KV_CACHE_DTYPES = (
 +    torch.float8_e4m3fn,
@@ -143,7 +143,7 @@ index 420fa25b..d4606cff 100644
  # `SGLANG_AITER_KV_CACHE_LAYOUT` is only meaningful on the ROCm AITER backend
  # (HIP + --enable-aiter / SGLANG_USE_AITER=1). On any other platform / backend
  # the SHUFFLE 5D pool layout has no consumer kernels, so the env var is
-@@ -2359,10 +2364,18 @@ class MHATokenToKVPool(KVCache):
+@@ -2858,10 +2863,18 @@ class MHATokenToKVPool(KVCache):
              return
  
          if cache_k.dtype != self.dtype:
@@ -168,7 +168,7 @@ index 420fa25b..d4606cff 100644
  
 diff --git a/test/registered/unit/layers/attention/test_triton_backend_head_count.py b/test/registered/unit/layers/attention/test_triton_backend_head_count.py
 new file mode 100644
-index 00000000..33321f42
+index 0000000000..33321f420e
 --- /dev/null
 +++ b/test/registered/unit/layers/attention/test_triton_backend_head_count.py
 @@ -0,0 +1,35 @@
@@ -209,7 +209,7 @@ index 00000000..33321f42
 +    unittest.main()
 diff --git a/test/registered/unit/test_kv_cache_dtype_handling.py b/test/registered/unit/test_kv_cache_dtype_handling.py
 new file mode 100644
-index 00000000..a9cca8f3
+index 0000000000..a9cca8f36d
 --- /dev/null
 +++ b/test/registered/unit/test_kv_cache_dtype_handling.py
 @@ -0,0 +1,83 @@

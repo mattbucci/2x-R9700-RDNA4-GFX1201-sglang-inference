@@ -12,6 +12,20 @@
   written by `run_rollouts.py`) so the served id registers at its real context window — see
   [Scaffold context budgets](#scaffold-context-budgets).
 - **claw-code:** set `OPENAI_BASE_URL` and `OPENAI_API_KEY`; use model `openai/sweep` and `--output-format text`.
+- **prime:** harness profile `~/.prime/agent/models.json` (provider `sglang`, `--model sglang/<served>`,
+  `-p` with the prompt on stdin, `--offline`, `DO_NOT_TRACK=1`). The qwen38 v5 prime cell runs
+  **prime-agent 0.10.0, upstream's Rust build** (stable channel 2026-10-09; the TypeScript npm package
+  our 0.8.1 came from ended at 0.9.8 and the registry entry is gone). It is staged by hand from the
+  checksum-verified release tarball at `/data/tools/prime-agent-0.10.0` (a cue-free path, bind-mounted
+  read-only), its Python kernel venv (`~/.prime/agent/kernel-venv`, uv-managed CPython 3.11) and skills are
+  synced on the host once so the network-less container needs neither uv nor PyPI, and `run_rollouts.py`
+  refuses the lane unless the pinned version, the venv and (under `--neutral-cues`) a cue-free install
+  are present. On the wire it is one streaming `/v1/chat/completions` per turn with
+  `max_completion_tokens` = the profile's `maxTokens`, no `reasoning_effort` or `temperature`, and a
+  single `ipython` tool (every other action is code inside that REPL); its session store
+  (`~/.prime/agent/sessions/*.jsonl`, format v3) keeps the `session`/`toolCall`/`toolResult` shape the
+  audits parse. Captured 2026-10-19 against a request-logging mock before the lane. The 3090's prime
+  cells are 0.8.1 (TypeScript) — a scaffold-version difference to carry beside any cross-rig comparison.
 
 The task prompt reaches every scaffold on **stdin** (`logs/<iid>.prompt.md`, written by
 `run_rollouts.py`; in Docker mode a read-only `/sandbox/prompt.md` mount that `docker_sandbox.sh`
@@ -573,7 +587,7 @@ been run on either v4 lane and belong before any number is read.
 **v5 (2026-09-27 13:50, `v5-cycle-v0520-dspark.sh`): same methodology on the DSpark preset.** The user
 paused v4 twice at instance boundaries (02:59–04:06 and 12:09–12:58, `pause_cycle_at_boundary.sh`; nothing
 lost, both resumed under the same tag) to trial DSpark speculative decoding, then adopted it: with the
-split-KV verify kernel (patches 099/100) the RedHatAI speculator decodes 32 tok/s at 49K and 60 tok/s on
+split-KV verify kernel (patch 100; 099 was the DSpark boot fix, upstream since v0.5.22) the RedHatAI speculator decodes 32 tok/s at 49K and 60 tok/s on
 thinking text against the v4 server's 21 / 22 (receipts `benchmarks/qwen38-27b-fp8/dspark-*.json`, canonical
 sweep 35.5 / 44.5 / 31.6 / 31.9 at 24 / 7.3K / 58K / 197K). Wall hits are a throughput artefact (3090
 2026-09-21), so an engine-speed change inside a cell confounds it: v5 is a restart from instance 1 on the

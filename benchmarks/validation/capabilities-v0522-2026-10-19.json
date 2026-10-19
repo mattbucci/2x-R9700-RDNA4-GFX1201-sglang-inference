@@ -1,0 +1,34 @@
+{
+  "qwen38": {
+    "tag": "qwen38",
+    "model": "/data/models/Qwen3.8-27B-FP8",
+    "timestamp": "2026-10-19 08:56",
+    "elapsed_sec": 8.2,
+    "checks": {
+      "basic": {
+        "passed": true,
+        "message": "finish=stop answer='paris'"
+      },
+      "tool_call": {
+        "passed": true,
+        "message": "finish=tool_calls name='get_weather' args='{\"location\": \"Paris\"}'"
+      },
+      "thinking": {
+        "passed": true,
+        "message": "reasoning_seen terminated answer_ok (179 tok, finish=stop)"
+      },
+      "vision": {
+        "passed": true,
+        "message": "saw=['red', 'circle', 'round']  response='a red circle on a white background.'"
+      },
+      "video": {
+        "passed": true,
+        "message": "saw=['move', 'right', 'circle', 'red']  response='\\n\\na red circle with a black outline moves horizontally from the left side of the screen to the right side.'"
+      }
+    },
+    "summary": {
+      "passed": 5,
+      "total": 5
+    }
+  }
+}
