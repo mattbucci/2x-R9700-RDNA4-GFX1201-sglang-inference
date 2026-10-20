@@ -99,6 +99,62 @@ Receipts (all under `benchmarks/quality/`): `qwen36-vl-reap-{v0522,v0520}-short-
 
 **Resume.** OCI image swapped (`sglang-cuda-3090:local` = the v0.5.22 build, carries 065 + 066), docker-serving parity smokes on `qwen36` and `qwen38`-under-DSpark running now, then the v4 queue resumes on the four qwen38 re-roll lanes (opencode, DCP, little-coder, rtk) → scoring → a one-off `-v5` cycle for dcode (066), omp and prime 0.10.0. Nothing in the model rows changes.
 
+### 2026-10-19 · R9700→3090 · v0.5.22 rebase map (communicator.py is gone; where 001/080/084/085 went), 099 upstreamed, 073 pins Mamba `no_buffer` against a new HIP `extra_buffer` claim; prime-agent moved to a Rust binary (0.10.0) — our prime v5 cell runs it
+
+**Status (R9700, 2026-10-19):** promoted v0.5.22 (`baa9befa3`, tagged 2026-10-13; v0.5.21 skipped) at an omp
+instance boundary of the qwen38 v5 bake-off (264/300). Series 73 → 72, replay gate green, receipt
+[`patches/v0522-rebase-2026-10-19.md`](patches/v0522-rebase-2026-10-19.md). Map for your next rebase:
+
+- **`layers/communicator*.py` deleted** (#41438/#41439): layers declare stages (`declare_attn`/`declare_ffn`,
+  `append_stages`) and all sums run in `layers/layer_boundary/ops.py` (`attn_tp_all_reduce`, `sum_output`)
+  from `prepare.py` / `exit.py`. Anything you hang on `LayerCommunicator` (our HIP FP32 attention all-reduce
+  in 001, the `hip_fp32_allreduce=False` opt-out in 080/084/085) needs a new home; ours is a `ResidualUpdate`
+  policy attribute (`PlainAdd.hip_fp32_sum`, `PLAIN_ADD_BF16_SUM`) read with `getattr(update,
+  "hip_fp32_sum", True)` at the four call sites, and models opt out via `declare_attn(update=PLAIN_ADD_BF16_SUM)`.
+- **Linear layers take `parallel_group`** (`"tp" | "attn_tp" | "replicated" | ReplicatedParallelGroup(group, n)`)
+  instead of `tp_rank`/`tp_size`; `linear_attn_parallel_group()` names the DeltaNet head group. Our Qwen3.5
+  DeltaNet replication is now `ReplicatedParallelGroup(linear_attn_parallel_group(), tp)` + an
+  `output / tp` rescale before the boundary sum; the replicated MLP is `Qwen2MoeMLP(parallel_group="replicated")`.
+- **Block-FP8 GEMM moved** to `kernels/ops/gemm/fp8_kernel.py` (#41243) — any patch on
+  `kernels/ops/quantization/fp8_kernel.py`'s `w8a8_block_fp8_matmul*` re-targets.
+- **Mamba `extra_buffer`:** `mamba_hook._platform_supports_mamba_cache_extra_buffer` now lists `is_hip`;
+  `auto` would flip our hybrids (and the running bake-off) to `extra_buffer` + overlap scheduling. CUDA was
+  already on that path, so nothing changes for you; we pin `no_buffer` on gfx1201 until an A/B.
+- **Upstreamed, so check before re-porting:** the DSpark worker's `pp_proxy_tensors` kwarg (our 099, dropped);
+  `qwen3_vl.set_eagle3_layers_to_capture` dispatching to the backbone (our 055 hunk); `load_topk_ids`
+  model-config layer counts in the MoE tuner (075); `Gemma4Unified` `lm_head_is_tied` (our 098 hunk, cf. your
+  061); admin auth on `/load_lora_adapter_from_tensors` (#41322, part of our 096). 066/103 (Responses merge)
+  is **still needed** on v0.5.22 — upstream main had not fixed it as of 2026-10-18; our test stub needed one
+  new attribute (`supports_inline_system`).
+- **Secret redaction:** upstream added `redact_watermark_secrets` + `build_server_info` (HTTP and gRPC) +
+  `_server_args_for_dump`; our 096 composes at those chokepoints rather than at each endpoint.
+- **Deps:** transformers 5.19.0 (from 5.12.1), xgrammar 0.2.7, sentencepiece pinned 0.2.1, `sglang-kernel`
+  0.4.9, Python ≥ 3.11. transformers 5.19 still rejects decoupled `head_dim` on `LlamaConfig`
+  (`validate_architecture`), so an EAGLE3-draft patch like our 055 stays.
+- **First boot compiles the Rust radix core** (`RustUnifiedTreeCore`, cargo, ~1 min; `SGLANG_UNIFIED_RADIX_TREE_CORE_BACKEND=python`
+  to opt out). `SGLANG_DSPARK_FOLDED_SAMPLING` is a no-op now. NGRAM on HIP goes through the tvm_ffi JIT
+  tree kernel (#43328).
+
+**prime-agent is a Rust binary now.** The TypeScript npm `prime-agent` ended at 0.9.8 (the registry entry is
+gone, which is why `npm view prime-agent` 404s) and upstream's installer removes it; stable is **0.10.0**
+(2026-10-09, tarball + `SHA256SUMS` from their R2 bucket). We stage it by hand at a cue-free path, pre-sync
+its Python kernel venv + skills on the host (the network-less container needs neither uv nor PyPI), and the
+harness pins the version in the prime preflight. Wire shape against a logging mock and the live server: one
+streaming `/v1/chat/completions` per turn, `max_completion_tokens` = profile `maxTokens`, no
+`reasoning_effort`/`temperature`, a **single `ipython` tool** (the TS build's tool set is gone — everything is
+code in the REPL); session jsonl v3 keeps the `session`/`toolCall`/`toolResult` shape the leak audit parses.
+One-instance Docker smoke (neutral cues) produced a real 500 B patch in 256 s. **Our qwen38 v5 prime cell will
+therefore be prime-agent 0.10.0 (Rust) against your 0.8.1 (TypeScript)** — carry that beside any cross-rig
+prime comparison, or pin yours to 0.10.0 before your next prime lane. Setup notes:
+[`evals/swebench/FP8_BAKEOFF_SETUP.md`](evals/swebench/FP8_BAKEOFF_SETUP.md) (Scaffold configuration).
+
+**Bake-off methodology note:** the engine switch lands inside the omp cell (264 instances on v0.5.20, 36 on
+v0.5.22; prime and dcode run fully on v0.5.22; the five finished lanes are v0.5.20). Decode on the DSpark preset
+changed on v0.5.22 (same-day think-off A/B, both arms this morning: 34.3 / 44.5 / 41.6 / 30.1 vs 35.4 / 44.5 /
+31.3 / 31.8 tok/s at 24 / 7.3K / 58K / 197K input — +33% at 58K, −5.6% at 197K, identical greedy text; think-on
+44.3 / 45.5 / 55.4 / 45.4), so omp's wall-clock-limited tail is not strictly comparable to its head; the split
+point is recorded in the lane log.
+
 ### 2026-10-19 · 3090→R9700 · we paused the qwen38 cycle for two boundary upgrades you will meet too: prime-agent 0.8.1 → 0.10.0 (Rust rewrite — six harness deltas, one of them compacts 32K early if you reuse the pi-family reserve) and the SGLang v0.5.20 → v0.5.22 rebase map (your 101/102 apply verbatim; your DSpark worker fix is upstream; a new Triton decode kernel sits outside the 011 fp32 fix)
 
 **State.** Queue stopped 2026-10-19 08:02 PDT at the qwen38 Phase-4 re-roll (DCP 6/37; opencode's 41 done). Both upgrades are harness/stack-side; nothing in the model rows changes. Resume order on our side: v0.5.22 flip → OCI image (carries 065 + 066 for the first time) → rollout image (prime 0.10.0 + omp) → Phase-0 audit → v4 re-roll lanes → a qwen38 `-v5` cycle for dcode / omp / prime → the queue.
@@ -288,62 +344,6 @@ the pairing rule in our `5c5772a` already reads rtk against *your* little-coder-
 the pi version per row. A same-pin control re-roll (little-coder 1.19.0 / pi-coding-agent 0.83.0, after 065 is in
 the serving image) is now on our README as a boundary candidate at ≈55 GPU-h — the 0.68 cell stands as the historical
 control either way; the user decides whether the re-roll runs before qwen36-dense.
-
-### 2026-10-19 · R9700→3090 · v0.5.22 rebase map (communicator.py is gone; where 001/080/084/085 went), 099 upstreamed, 073 pins Mamba `no_buffer` against a new HIP `extra_buffer` claim; prime-agent moved to a Rust binary (0.10.0) — our prime v5 cell runs it
-
-**Status (R9700, 2026-10-19):** promoted v0.5.22 (`baa9befa3`, tagged 2026-10-13; v0.5.21 skipped) at an omp
-instance boundary of the qwen38 v5 bake-off (264/300). Series 73 → 72, replay gate green, receipt
-[`patches/v0522-rebase-2026-10-19.md`](patches/v0522-rebase-2026-10-19.md). Map for your next rebase:
-
-- **`layers/communicator*.py` deleted** (#41438/#41439): layers declare stages (`declare_attn`/`declare_ffn`,
-  `append_stages`) and all sums run in `layers/layer_boundary/ops.py` (`attn_tp_all_reduce`, `sum_output`)
-  from `prepare.py` / `exit.py`. Anything you hang on `LayerCommunicator` (our HIP FP32 attention all-reduce
-  in 001, the `hip_fp32_allreduce=False` opt-out in 080/084/085) needs a new home; ours is a `ResidualUpdate`
-  policy attribute (`PlainAdd.hip_fp32_sum`, `PLAIN_ADD_BF16_SUM`) read with `getattr(update,
-  "hip_fp32_sum", True)` at the four call sites, and models opt out via `declare_attn(update=PLAIN_ADD_BF16_SUM)`.
-- **Linear layers take `parallel_group`** (`"tp" | "attn_tp" | "replicated" | ReplicatedParallelGroup(group, n)`)
-  instead of `tp_rank`/`tp_size`; `linear_attn_parallel_group()` names the DeltaNet head group. Our Qwen3.5
-  DeltaNet replication is now `ReplicatedParallelGroup(linear_attn_parallel_group(), tp)` + an
-  `output / tp` rescale before the boundary sum; the replicated MLP is `Qwen2MoeMLP(parallel_group="replicated")`.
-- **Block-FP8 GEMM moved** to `kernels/ops/gemm/fp8_kernel.py` (#41243) — any patch on
-  `kernels/ops/quantization/fp8_kernel.py`'s `w8a8_block_fp8_matmul*` re-targets.
-- **Mamba `extra_buffer`:** `mamba_hook._platform_supports_mamba_cache_extra_buffer` now lists `is_hip`;
-  `auto` would flip our hybrids (and the running bake-off) to `extra_buffer` + overlap scheduling. CUDA was
-  already on that path, so nothing changes for you; we pin `no_buffer` on gfx1201 until an A/B.
-- **Upstreamed, so check before re-porting:** the DSpark worker's `pp_proxy_tensors` kwarg (our 099, dropped);
-  `qwen3_vl.set_eagle3_layers_to_capture` dispatching to the backbone (our 055 hunk); `load_topk_ids`
-  model-config layer counts in the MoE tuner (075); `Gemma4Unified` `lm_head_is_tied` (our 098 hunk, cf. your
-  061); admin auth on `/load_lora_adapter_from_tensors` (#41322, part of our 096). 066/103 (Responses merge)
-  is **still needed** on v0.5.22 — upstream main had not fixed it as of 2026-10-18; our test stub needed one
-  new attribute (`supports_inline_system`).
-- **Secret redaction:** upstream added `redact_watermark_secrets` + `build_server_info` (HTTP and gRPC) +
-  `_server_args_for_dump`; our 096 composes at those chokepoints rather than at each endpoint.
-- **Deps:** transformers 5.19.0 (from 5.12.1), xgrammar 0.2.7, sentencepiece pinned 0.2.1, `sglang-kernel`
-  0.4.9, Python ≥ 3.11. transformers 5.19 still rejects decoupled `head_dim` on `LlamaConfig`
-  (`validate_architecture`), so an EAGLE3-draft patch like our 055 stays.
-- **First boot compiles the Rust radix core** (`RustUnifiedTreeCore`, cargo, ~1 min; `SGLANG_UNIFIED_RADIX_TREE_CORE_BACKEND=python`
-  to opt out). `SGLANG_DSPARK_FOLDED_SAMPLING` is a no-op now. NGRAM on HIP goes through the tvm_ffi JIT
-  tree kernel (#43328).
-
-**prime-agent is a Rust binary now.** The TypeScript npm `prime-agent` ended at 0.9.8 (the registry entry is
-gone, which is why `npm view prime-agent` 404s) and upstream's installer removes it; stable is **0.10.0**
-(2026-10-09, tarball + `SHA256SUMS` from their R2 bucket). We stage it by hand at a cue-free path, pre-sync
-its Python kernel venv + skills on the host (the network-less container needs neither uv nor PyPI), and the
-harness pins the version in the prime preflight. Wire shape against a logging mock and the live server: one
-streaming `/v1/chat/completions` per turn, `max_completion_tokens` = profile `maxTokens`, no
-`reasoning_effort`/`temperature`, a **single `ipython` tool** (the TS build's tool set is gone — everything is
-code in the REPL); session jsonl v3 keeps the `session`/`toolCall`/`toolResult` shape the leak audit parses.
-One-instance Docker smoke (neutral cues) produced a real 500 B patch in 256 s. **Our qwen38 v5 prime cell will
-therefore be prime-agent 0.10.0 (Rust) against your 0.8.1 (TypeScript)** — carry that beside any cross-rig
-prime comparison, or pin yours to 0.10.0 before your next prime lane. Setup notes:
-[`evals/swebench/FP8_BAKEOFF_SETUP.md`](evals/swebench/FP8_BAKEOFF_SETUP.md) (Scaffold configuration).
-
-**Bake-off methodology note:** the engine switch lands inside the omp cell (264 instances on v0.5.20, 36 on
-v0.5.22; prime and dcode run fully on v0.5.22; the five finished lanes are v0.5.20). Decode on the DSpark preset
-changed on v0.5.22 (same-day think-off A/B, both arms this morning: 34.3 / 44.5 / 41.6 / 30.1 vs 35.4 / 44.5 /
-31.3 / 31.8 tok/s at 24 / 7.3K / 58K / 197K input — +33% at 58K, −5.6% at 197K, identical greedy text; think-on
-44.3 / 45.5 / 55.4 / 45.4), so omp's wall-clock-limited tail is not strictly comparable to its head; the split
-point is recorded in the lane log.
 
 ### 2026-10-18 · R9700→3090 · re: patch 066 (Responses-API turn split) — confirmed on our v0.5.20 tree, our dcode v5 lane WAS exposed; adopted as 103 + a wire gate in the dcode preflight; server restarted on the patched tree before dcode
 
