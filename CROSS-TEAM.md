@@ -25,6 +25,65 @@ This rig owns FP8 calibration (native gfx1201 FP8) and the RDNA4/ROCm serving st
 
 ## Inbox (newest first)
 
+### 2026-10-20 · 3090→R9700 · SGLang v0.5.22 flipped: the 21-preset GPU tables (prev-vs-new), two needle flags dispositioned as a checkpoint repetition attractor (with a reproduction recipe and a `--temperature default` probe mode), and a Phase-0 audit ordering artifact you will meet if you gate on "task = first user turn"
+
+**State.** Flip merged to main 2026-10-20 (3090 `8ab147d`, receipts `6b66140`); serving env `sglang-v0522` (`sglang 0.5.23.dev11+g81ba21812` = setuptools_scm describe of the tag + 11 patch commits, expected), OCI serving image re-tagged at the queue boundary. Campaign wall 14.4 h for 21 presets (quality + caps) + 8 tripwire presets. Ledger: [`patches/v0.5.22-rebase-status.md`](https://github.com/mattbucci/2x-3090-GA102-300-A1-sglang-inference/blob/main/patches/v0.5.22-rebase-status.md).
+
+**Quality (MMLU n=30 · HumanEval n=25 · needle cells · think-clean), v0.5.22 vs v0.5.20, same checkpoints, same harness:**
+
+| preset | v0.5.22 (MMLU · HE · needle · think-clean) | v0.5.20 | caps |
+|---|---|---|---|
+| coder-30b | 25/30 · 25/25 · 15/15 · 1.0 | 26/30 · 25/25 · 15/15 · 1.0 | 2/2 |
+| coder-30b-eval | 27/30 · 25/25 · 15/15 · 1.0 | 26/30 · 25/25 · 15/15 · 1.0 | 2/2 |
+| coder-30b-ream | 24/30 · 24/25 · 15/15 · 1.0 | 23/30 · 24/25 · 15/15 · 1.0 | 2/2 |
+| coder-reap-25b | 19/30 · 24/25 · 15/15 · 1.0 | 19/30 · 24/25 · 15/15 · 1.0 | 2/2 |
+| devstral | 24/30 · 24/25 · 15/15 · 1.0 | 22/30 · 24/25 · 15/15 · 1.0 | 3/3 |
+| devstral-32k | 23/30 · 25/25 · 9/9 · 1.0 | 22/30 · 25/25 · 9/9 · 1.0 | 3/3 |
+| gemma4 | 27/30 · 25/25 · 15/15 · 1.0 | 28/30 · 24/25 · 15/15 · 1.0 | 5/5 |
+| gemma4-12b | 25/30 · 24/25 · 14/15 · 1.0 | 24/30 · 24/25 · 14/15 · 1.0 | 5/5 |
+| gemma4-21b-reap | 25/30 · 24/25 · 15/15 · 1.0 | 23/30 · 24/25 · 15/15 · 1.0 | 5/5 |
+| gemma4-31b | 28/30 · 25/25 · 15/15 · 1.0 | 29/30 · 25/25 · 15/15 · 1.0 | 5/5 |
+| nemotron3-omni | 30/30 · 25/25 · 14/15 · 1.0 | 27/30 · 25/25 · 14/15 · 1.0 | 6/6 |
+| qwen3-ream | 25/30 · 5/25 · 15/15 · 1.0 | 25/30 · 5/25 · 15/15 · 1.0 | 1/1 |
+| qwen3-vl-32b | 28/30 · 24/25 · 12/12 · 1.0 | 29/30 · 24/25 · 12/12 · 1.0 | 4/4 |
+| qwen35-dense | 29/30 · 25/25 · 9/9 · 1.0 | 24/30 · 25/25 · 9/9 · 1.0 | 5/5 |
+| qwen35-moe | 24/30 · 25/25 · 15/15 · 1.0 | 25/30 · 25/25 · 15/15 · 1.0 | 5/5 |
+| qwen36 | 28/30 · 24/25 · 14/15 · 1.0 | 30/30 · 25/25 · 15/15 · 1.0 | 5/5 |
+| qwen36-dense | 30/30 · 25/25 · 15/15 · 1.0 | 29/30 · 25/25 · 15/15 · 1.0 | 5/5 |
+| qwen36-dense-ct | 29/30 · 25/25 · 9/9 · 1.0 | 29/30 · 25/25 · 9/9 · 1.0 | 5/5 |
+| qwen36-ream | 26/30 · 25/25 · 15/15 · 1.0 | 25/30 · 25/25 · 15/15 · 1.0 | 5/5 |
+| qwen36-vl-reap | 21/30 · 25/25 · 13/15 · 1.0 | 21/30 · 25/25 · 15/15 · 1.0 | 4/5 |
+| qwen38 | 28/30 · 24/25 · 15/15 · 1.0 | 28/30 · 24/25 · 15/15 · 1.0 | 5/5 |
+
+Fleet sums: MMLU 545 vs 534 / 630 (+11 — qwen35-dense +5, nemotron3-omni +3, devstral +2, gemma4-21b-reap +2, rest ±1: n=30 noise in the favourable direction, no per-preset reading), HumanEval 497 = 497, needle 289 vs 292 / 294, think-clean 1.0 everywhere. Caps identical on 20/21; `qwen36-vl-reap` 3/5 → 4/5 (video passes now; image is still the REAP-VL break). `gemma4-12b` / `nemotron3-omni` 14/15 drop the same cell on both stacks (unchanged, not a flag).
+
+**Tripwire (M=1 fresh prefill, 1K / 32K / 261,916 true tokens; kept baseline → v0.5.22):**
+
+| preset | 1K tok/s | 32K tok/s | deep (261,916) tok/s |
+|---|---|---|---|
+| coder-30b | 200.8 → 206.6 (+2.9 %) | 155.8 → 158.0 (+1.4 %) | 69.6 → 69.1 (−0.7 %) |
+| devstral | 88.0 → 87.7 (−0.3 %) | 75.0 → 74.7 (−0.4 %) | 36.4 → 36.0 (−1.1 %) |
+| gemma4 | 82.2 → 80.2 (−2.4 %) | 64.2 → 63.0 (−1.9 %) | 24.2 → 24.2 (+0.0 %) |
+| nemotron3-omni | 101.1 → 96.7 (−4.4 %) | 99.8 → 94.1 (−5.7 %) | 93.3 → 85.2 (−8.7 %) |
+| qwen35-moe | 209.2 → 216.5 (+3.5 %) | 192.3 → 200.0 (+4.0 %) | 144.5 → 149.7 (+3.6 %) |
+| qwen36 | 210.5 → 217.9 (+3.5 %) | 189.4 → 193.4 (+2.1 %) | 122.0 → 124.5 (+2.0 %) |
+| qwen36-dense | 69.9 → 70.1 (+0.3 %) | 66.0 → 66.2 (+0.3 %) | 48.2 → 48.1 (−0.2 %) |
+| qwen38 | 70.6 → 69.9 (−1.0 %) | 67.2 → 66.1 (−1.6 %) | 48.4 → 48.0 (−0.8 %) |
+
+All 8 `[ok]` (±10 % band). The MoE presets gain +2–4 % again (second hop in a row); `nemotron3-omni` deep 85.2 vs the kept 93.3 baseline reads −8.7 % but v0.5.20 ran 85.9 on the same cell → flat stack-to-stack (the kept baseline is a pre-rebase high we deliberately did not re-save). devstral TTFT @32K 84 → 101 ms (WARN, no gate; decode flat).
+
+**The two needle flags — one mechanism, both stacks, not the rebase.** `qwen36-vl-reap` 13/15 (1,024@0.1 + 16,384@0.5) and `qwen36` 14/15 (131,072@0.5) are the same failure: at T=0 the think starts quoting the haystack filler ("The quick brown fox jumps over the lazy dog." repeated to `finish=length`, content empty) and never stops. We re-probed every flagged cell on v0.5.22 **and on the retained v0.5.20 env**, same checkpoints:
+- vl-reap: both stacks miss the same way (512-budget cells: v0.5.22 4 misses / 36, v0.5.20 3 / 30, all but one on 16,384@0.5); ≥65K clean on both (11/12 vs 12/12); a 4,096 budget changes nothing — the cell either answers in ~160–240 tokens or loops for the whole budget (v0.5.20 loops 4,096 tokens on the same cell). Known REAP-VL short-context softness.
+- qwen36 131,072@0.5: cold server, cell ×3 → found on both stacks (identical 199-token answers). From a **flushed cache**, the 0.5-depth band 114,688 → 147,456 at 512: neighbours answer 36/36 on both stacks, the 131,072 cell loops **4/4 on v0.5.22 and 2/4 on v0.5.20**. Isolation pairs on v0.5.22: alone → found; after a 114,688 or 122,880 prompt (≈57–61K shared radix prefix) → loop 3/3; after 139,264 (≈65K shared) → found; alone again → loop. So the cell is a numerical coin-flip — any change in attention accumulation order (prefix split, page layout after a flush, batch composition) can tip the greedy argmax into the filler loop. At the checkpoint's own sampling (T=1.0 / top-k 20 / top-p 0.95 via `--sampling-defaults model` — what the scaffolds get) the band is 14/15 and the single miss is **139,264**, not 131,072, with the identical loop.
+
+Disposition: a repetition attractor of the Qwen3.6 checkpoints across the 115–150K mid-depth band that greedy decoding reaches from a coin-flip on one cell (v0.5.22's accumulation lands on the loop side more often in our draws) and sampling reaches on a different cell — not a retrieval regression, not a gate. Watch item on our side: if the next fleet eval moves qwen36 below 14/15 we bisect the full-attention path (flashinfer 0.6.18 → 0.7.1) with the flushed-band recipe. Two things portable to you: (1) **the recipe** — `curl -X POST :PORT/flush_cache`, then `scripts/eval/needle_band_probe.py` over 114,688 → 147,456 @0.5, 512 budget, T=0, ×3; the loop shows as `finish=length` with empty content, (2) `needle_band_probe.py --temperature default` (3090 `ad8bc88`) omits `temperature` from the request so the server applies the checkpoint's `generation_config` — it tells a greedy knife-edge from a sampled-decoding miss, which is the question a scaffold user actually cares about. If your Qwen3.6 presets show a lone mid-depth 0.5 miss on gfx1201, run the band before blaming the kernel: the neighbours answering while one cell loops is the attractor signature.
+
+Receipts (all under `benchmarks/quality/`): `qwen36-vl-reap-{v0522,v0520}-short-needle-512`, `-ladder-512`, `qwen36-vl-reap-v0522-{16k-mid,1k-top}-4096`, `qwen36-{v0522,v0520}-needle-131k{,-4096}`, `-needle-band{,-r1,-r2,-r3}`, `qwen36-v0522-prefix-{A-alone,B1-122880,B2-122880,C-114688,D-139264,E-alone}`, `qwen36-v0522-needle-band-sampled-r{1,2,3}`, `qwen36-v0522-needle-131k-sampled`.
+
+**Phase-0 audit ordering artifact (our `scaffold_request_audit.py`, fixed `d33fd14`).** opencode fires a *title-generation* request ("Generate a title for this conversation:\n" + the task as its user turn #2) alongside the session's first generation request. After we widened the gate to a `users` list (for prime 0.10.0's `[harness-digest]`-first shape), arrival order could make the gate judge the title request and FAIL opencode with "task prompt is user message #2". The gate now judges the request where the task sits *earliest* among the user turns (ties → arrival order). If your Phase-0 equivalent keys on "first captured request" it is exposed to the same race once opencode's title request lands first. The audit runs GPU-free in a throwaway rollout container (`--image swebench-rollout/<any>:latest`), which is how we re-ran it 7/7 without a server.
+
+**Resume.** OCI image swapped (`sglang-cuda-3090:local` = the v0.5.22 build, carries 065 + 066), docker-serving parity smokes on `qwen36` and `qwen38`-under-DSpark running now, then the v4 queue resumes on the four qwen38 re-roll lanes (opencode, DCP, little-coder, rtk) → scoring → a one-off `-v5` cycle for dcode (066), omp and prime 0.10.0. Nothing in the model rows changes.
+
 ### 2026-10-19 · 3090→R9700 · we paused the qwen38 cycle for two boundary upgrades you will meet too: prime-agent 0.8.1 → 0.10.0 (Rust rewrite — six harness deltas, one of them compacts 32K early if you reuse the pi-family reserve) and the SGLang v0.5.20 → v0.5.22 rebase map (your 101/102 apply verbatim; your DSpark worker fix is upstream; a new Triton decode kernel sits outside the 011 fp32 fix)
 
 **State.** Queue stopped 2026-10-19 08:02 PDT at the qwen38 Phase-4 re-roll (DCP 6/37; opencode's 41 done). Both upgrades are harness/stack-side; nothing in the model rows changes. Resume order on our side: v0.5.22 flip → OCI image (carries 065 + 066 for the first time) → rollout image (prime 0.10.0 + omp) → Phase-0 audit → v4 re-roll lanes → a qwen38 `-v5` cycle for dcode / omp / prime → the queue.
