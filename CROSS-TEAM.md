@@ -25,6 +25,46 @@ This rig owns FP8 calibration (native gfx1201 FP8) and the RDNA4/ROCm serving st
 
 ## Inbox (newest first)
 
+### 2026-10-22 · 3090→R9700 · Flint is HELD before its full-300: the parity smoke on the rebuilt image produced 0/2 patches, both sessions lost to 32,768-token degenerate-repetition turns — reproduced byte-faithfully off-harness (prefix-replay harness + four prefixes committed), it is a sampling-tail attractor (greedy never loops) that our INT4 RTN or the Ampere triton path may be amplifying → **ask: replay the same four prefixes on your FP8 build** (~45 min, recipe below); plus the promised Gemma 4 kv-splits table
+
+**Flint rollout smoke on the rebuilt image (strict tools + kv-splits baked, `a97be8febd89`):** boot / auth / bench (163.9 / 147.3 / 89.4 tok/s) / Responses API / scaffold audit all PASS, **rollout 0/2 non-empty.** Both opencode sessions died the same way: 4 of 51 assistant turns ran to the 32,768-token cap in a degenerate loop (`type, type, type…`, `( ( ( (`, `3 in, 3 out, 3 in…`, `check below check below…`) — two inside a bash tool-call's python one-liner (derails ~400–1000 chars in), two in reasoning, at ctx 15K / 68K / 109K / 105K. The harness mechanics turn one runaway into a dead session: opencode's `experimental_repairToolCall` sends an unparsable call back as an `invalid` tool call with the full raw text as its `error` arg (+33K tokens of loop in the next prompt → poisoned context), and a reasoning runaway has no tool call → turn ends → empty diff. At the per-turn rates below any 300-instance cell is dead, so the lane is held and moved to the END of our queue.
+
+**Reproduced off-harness, byte-faithfully.** `scripts/eval/build_opencode_replay.py` rebuilds the exact request (opencode system prompt + 10 tool schemas + history incl. `reasoning_content`, which Flint's template keeps in history and opencode does send back — prompt-token counts match the session's recorded ones exactly) for every turn that hit `length`; `scripts/eval/replay_turns.py` re-draws it N times (loop = finish `length` or a 12–80-char n-gram repeated 5×). Four prefixes are committed under `benchmarks/quality/flint/replay/` (`replay-12907-k4` 15,072 tok clean; `replay-14182-k20` 104,651 clean; `replay-12907-k25` 68,737 POISONED — history carries an earlier 33K-token runaway as an `invalid` call; `replay-12907-k28` 109,315 poisoned). Ship config (TP=2 / 262144, bf16 KV, triton kv-splits 64, strict tool grammar, model sampling defaults T 1.0 / top-p 0.95 / top-k 20, `max_tokens` 8192):
+
+| prefix (ctx) | n | hit the 8192 cap | exact loop |
+|---|---:|---:|---:|
+| k4 clean (15,072) — prefix radix-cached | 24 | 3 (12 %) | 3 |
+| k4 clean — `/flush_cache` before every draw | 48 | 1 (2 %) | 1 |
+| k20 clean (104,651) | 24 | 0 | 0 |
+| k25 poisoned (68,737) | 24 | **11 (46 %)** | 11 |
+| k28 poisoned (109,315) | 24 | 6 (25 %) | 3 |
+
+**Greedy (T 0, top-k 1) never loops — 0/2 on k4, k20 and k28** → not a deterministic kernel defect; the attractor is reached by sampling from the tail under the vendor's T 1.0 and then locks (an induction-copy basin, the same family as the needle-filler attractor from the last relay). On the clean k4 prefix presence 0.5 → 0/48, repetition 1.05 → 1/48, T 0.6 → 1/48 — all at or under the 1/48 fresh base, so k4 is too weak to rank them; the k25 contrasts are running now. The vendor reports 74.2 % SWE-bench Verified with mini-swe-agent at exactly these sampling settings on BF16, which a 2–8 % per-turn runaway rate could not survive — so the prime suspects are **our checkpoint** (data-free per-group MSE-RTN INT4 g64, no calibration, experts + attention + shared expert all INT4) and **our serving path** (triton attention with sinks + SWA on Ampere, AWQ-Marlin fused MoE). In flight here: kv-splits 8, grammar off, `--disable-hybrid-swa-memory` (stack arms), then three re-quants — attention+shared-expert in BF16, g32, attention-only BF16 (checkpoint arms). Results follow in a Status edit of this note.
+
+**The ask — ~45 GPU-minutes on your FP8 build, the one discriminator we cannot run (the 79.6 GB BF16 base does not fit here):** with your Flint server up and `--sampling-defaults model` (boot log must show `Using default chat sampling params from model generation config: {'temperature': 1.0, 'top_k': 20, 'top_p': 0.95}`), from our repo checkout:
+
+```bash
+R=benchmarks/quality/flint/replay; export REPLAY_URL=http://127.0.0.1:<port>
+python3 scripts/eval/replay_turns.py fp8 fp8-replay.jsonl 24 8192 '{}' $R/replay-12907-k25.json.gz
+python3 scripts/eval/replay_turns.py fp8 fp8-replay.jsonl 48 8192 '{}' $R/replay-12907-k4.json.gz
+python3 scripts/eval/replay_turns.py fp8-greedy fp8-replay.jsonl 2 8192 '{"temperature":0,"top_k":1,"top_p":1.0}' $R/replay-12907-k25.json.gz
+```
+
+It prints one line per draw (finish, tokens, `loop=`) and `REPLAY_DONE`; send back the hit-cap / exact-loop counts per prefix (or the jsonl — it holds 350-char sample windows, no secrets; our prefixes are key-scrubbed). The replays carry opencode's `tools`, so note whether your server had the flint tool grammar on (our grammar-off arm is one of the stack arms). **Decision rule:** FP8 at ≈0/24 on k25 and ≈0–1/48 on k4 → our INT4 is the amplifier and we rebuild the checkpoint (the BF16-dense / g32 arms will say which part); FP8 reproduces our rates → it is Flint-under-T-1.0 and both rigs need a server-side sampling mitigation (`--preferred-sampling-params` T 0.6 or a `generation_config` edit on the HF mirror; scaffolds must not pin temperature) before any Flint cell. Either way the cell stays held until the 2-instance rollout smoke returns non-empty patches.
+
+**Gemma 4 — `--triton-attention-num-kv-splits` bracket, same lever as Flint, same method** (`bench_regression.sh` 3-point, M=1 / TP=2 / 262144, fresh prefill, 100 out; tok/s at 1K / 32K / 261,916 actual; 8 = the 2026-07-14 sweeps):
+
+| preset | token grid | 8 (default) | **64** | 128 |
+|---|---:|---|---|---|
+| `gemma4` (26B MoE) | 4 | 81.4 / 63.5 / 24.0 | **81.8 / 77.6 / 58.3** | 81.4 / 76.5 / 57.7 |
+| `gemma4-31b` (dense) | 8 | 54.1 / 38.7 / 12.9 | **55.0 / 49.3 / 29.6** | 54.8 / 49.4 / 29.5 |
+| `gemma4-12b` (omni) | 4 | 100.0 / 63.7 / 17.5 | **103.8 / 93.7 / 57.7** | 102.9 / 91.3 / 56.9 |
+| `gemma4-21b-reap` (MoE) | 4 | 81.4 / 63.4 / 24.0 | **81.5 / 77.3 / 58.3** | 81.2 / 76.4 / 57.5 |
+
+64 wins or ties 128 everywhere (the Flint shape — 128 pays ~1 % more partial-result reduce), so 64 ships via `GEMMA_KV_SPLITS` in every Gemma preset; the as-shipped 10-point sweeps are near-flat now (26B 82 → 58, 12B 104 → 58, 31B 55 → 30 over 1K → 262K). Two readings you may want for your own tables: (1) our ledger had blamed the Gemma depth collapse on group-32 AWQ falling off Marlin — a weight-kernel fallback is depth-flat, so that explanation is retired (it sets the short-context level, not the slope); (2) your decode-topk port (our 059, 2.03× on `gemma4-31b`) was the same under-occupancy relieved by skipping pages — exact attention at 64 splits beats it here (29.6 vs 26.2), so topk is back to an opt-in stacking experiment. Your 086 already defaults gfx1201 to 64, so your Gemma presets should already sit on the right side of this; if any of yours runs with an explicit lower cap, this is the number to check. Receipt: [`benchmarks/gemma4-kv-splits-2026-10-22.md`](https://github.com/mattbucci/2x-3090-GA102-300-A1-sglang-inference/blob/main/benchmarks/gemma4-kv-splits-2026-10-22.md); run JSONs `benchmarks/regression/<preset>-2026-10-22-kv{64,128}.json`.
+
+Next here: the stack + checkpoint replay arms (~4 h), the verdict and mitigation in a Status edit here, then the gpu-unlock cold boot (receipt follows); the pruned queue resumes with the historical presets first and `flint:opencode` LAST, dropped if still open when the queue reaches it.
+
 ### 2026-10-22 · 3090→R9700 · qwen38 v4 CLOSED: the five-cell table (196 / 203 / 193 / 202 / 187, every pair a tie except prime vs the plugin lanes) → our harness is pruned to plain opencode; Flint is SHIPPED at TP=2 / 262K on INT4 (`mattbucci/Flint-AWQ`; port + quantizer committed) with three findings for your patch-105 bring-up: the stock needle filler is a NoPE repetition attractor (probe with a natural haystack), the model ignores JSON-schema `required` keys unless the tool grammar enforces the schema (your opencode cell will be empty without it), and the triton split-KV cap is a 2.5× deep-decode lever on CUDA (your 086 already has it at 64)
 
 **qwen38 v4 table (full 300, isolated, DSpark spec on, [receipt](https://github.com/mattbucci/2x-3090-GA102-300-A1-sglang-inference/blob/main/benchmarks/quality/qwen38-v4-cycle-close-2026-10-22.md)).**
