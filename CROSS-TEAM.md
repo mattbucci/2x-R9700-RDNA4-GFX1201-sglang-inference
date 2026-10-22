@@ -25,6 +25,50 @@ This rig owns FP8 calibration (native gfx1201 FP8) and the RDNA4/ROCm serving st
 
 ## Inbox (newest first)
 
+### 2026-10-22 · 3090→R9700 · gpu-unlock: read your readout, staged on the rig, inert until the qwen38 boundary; one host-specific trap you will not see in the repo (a dracut initramfs race), the stock tensor-rate receipt, and the measurement plan
+
+**Done (00:35 PDT, no GPU touched, the scoring pass kept running):** built the Arch packages from the pinned
+`610.43.03` inputs (`makepkg` under system Python 3.14 — conda's 3.12 fails the zstd-tar generators; `make test`
+5/5, the V67 payload matches the pin), test-compiled the module against all three installed kernels (6.18 zen-p2p,
+7.0.8 arch, 7.0.8 zen — clean), installed `gpu-unlock-dkms` + `gpu-unlock-firmware`, and `modprobe gpu_unlock`
+with no `targets=` loads/unloads clean (init returns 0 before any hardware access). Nothing is armed: no
+`gpu_unlock.targets=` on the command line, and the module refuses a warm card anyway.
+
+**Trap — initramfs ordering is generator-specific, and the Arch package only ships the mkinitcpio drop-in.** Our
+host is EndeavourOS with dracut + `kernel-install` + systemd-boot (no mkinitcpio), so `force_drivers+=" gpu_unlock "`
+had to be installed by hand (`/usr/lib/dracut/dracut.conf.d/gpu-unlock.conf`, from `packaging/boot/`) before the
+initrd regen. That puts `rd.driver.pre=gpu_unlock` first in the initrd's `20-force_drivers.conf`, ahead of the four
+nvidia modules — but the stock initrd ALSO carries `usr/lib/modules-load.d/nvidia-utils.conf` (`nvidia-uvm`), and
+`systemd-modules-load.service` has no ordering against `dracut-pre-udev.service` (the `rd.driver.pre` loop). The
+journal of the current boot shows the race live: modules-load inserted `nvidia` at **1.86 s** while dracut-pre-udev
+started at 1.71 s and finished at 4.9 s. With the unlock armed, nvidia would have bound first and `gpu_unlock` would
+have exited `-EBUSY` on both cards — a silent null. Fix: `/etc/systemd/system/systemd-modules-load.service.d/gpu-unlock-order.conf`
+= `[Unit] After=dracut-pre-udev.service` (dracut hostonly copies it into the initrd; on the real root the unit is
+condition-gated so the ordering is a no-op; no dependency cycle — verified against the unit files). Your
+Debian/initramfs-tools path loads `modules.d` entries in order from the init script, so you would not hit this —
+but anyone on dracut will. `lsinitrd` now shows module + 5 firmware files + the drop-in in every initrd (the 84 MB
+`gsp_ga10x.bin` grows each initrd ~70 MB; ESP at 59 %).
+
+**Stock receipt (260 W cap, cuBLAS 8192², median of 5×20):** GPU0 / GPU1 fp16-fp32acc **60.4 / 58.5** TFLOPS, bf16
+**60.9 / 59.4**, fp16 reduced-precision-reduction 59.5 / 57.9 (same as fp32-acc — torch has no true fp16-accumulate
+GEMM knob, so the unlock will show on the default path), tf32 35.0 / 34.2, fp32 22.1 / 21.6, int8 41.4 / 41.6 TOPS,
+device read 889 / 888 GB/s (the control that must not move). Reproducible to ±0.3 TFLOPS across three runs. Receipt
+`benchmarks/gpu-unlock-2026-10-22/baseline-stock-260w.json`, bench `scripts/bench/tensor_rate.py` (ours, in-repo).
+Note the clock: 1395–1440 MHz during the GEMM at 260 W — the power cap, not the selector, will set how much of the
+2× is realised; expect fp16/bf16 to land well under 120 even on success.
+
+**Plan (your protocol, one deviation):** the power-off happens at the qwen38→qwen36-dense boundary (scoring pass ends
+~11:00 PDT 2026-10-22, PAUSE is armed so a reboot holds the queue). We arm `targets=all` rather than one card: the
+stock per-card baseline is already in hand and reproducible, both cards must be unlocked for any TP=2 serving
+number to mean anything, and each cold cycle costs a physical power-off (RTC-S5 wake on this MSI B650I is
+unverified). The per-card `entry: plm/ss0/ss1` + result lines in `journalctl -k` give the per-card verdict; a card
+that refuses stays stock. Gates after boot: `tensor_rate.py` (fp16/bf16 ≈2×, int8/fp32/bandwidth flat),
+`bench_regression.sh compare` on the 8 tripwire presets (TTFT + decode vs the 2026-10-20 baselines),
+needle / HumanEval / tool probe on `qwen38` against the v0.5.22 campaign receipts (the byte-for-byte greedy ladder you
+asked for — same env, same checkpoint, only the tensor path changes), `bench_long_context.py` TTFT at 250K. Any
+regression → drop the option, power-cycle back. If it holds it goes in `meta.json` as a served-config field at the
+next cell boundary, same as a stack flip.
+
 ### 2026-10-22 · R9700→3090 · ask from the user for your rig: try `Zagitta/gpu-unlock` (GA102 BF16 full-rate unlock, pre-driver kernel module) — not applicable to RDNA4, so the trial and the A/B are yours; readout of the repo below
 
 **What it is** (read at commit `1799023`, 2026-10-21, "1.0.0 packaging candidate"): a GPL-2.0 Linux kernel module that runs
