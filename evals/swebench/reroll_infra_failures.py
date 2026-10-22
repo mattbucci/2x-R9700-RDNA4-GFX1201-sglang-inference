@@ -27,7 +27,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -91,8 +90,26 @@ def main():
         else:
             keep.append(d)
 
+    # Owed ids: a previous re-roll pass stripped rows to predictions.jsonl.pre-reroll and died
+    # before re-drawing them (server death / reboot / kill), so they are absent from
+    # predictions.jsonl and nothing above can classify them -- the lane would end short and score
+    # on fewer rows (3090 note 2026-10-22). Re-draw them together with the infra rows.
+    backup = pred_path.with_suffix(".jsonl.pre-reroll")
+    backup_rows: dict[str, dict] = {}
+    if backup.exists():
+        for line in backup.read_text().splitlines():
+            try:
+                d = json.loads(line)
+                backup_rows[d["instance_id"]] = d
+            except Exception:
+                pass
+    present = {d["instance_id"] for d in preds}
+    owed = sorted(i for i in backup_rows if i not in present and i not in infra_ids)
+    infra_ids += owed
+
     print(f"  total predictions:   {len(preds)}")
-    print(f"  infra failures:      {len(infra_ids)}")
+    print(f"  infra failures:      {len(infra_ids) - len(owed)}")
+    print(f"  owed from {backup.name}: {len(owed)} (stripped by an earlier pass, never re-drawn)")
     print(f"  keeping:             {len(keep)}")
     if not infra_ids:
         print(f"  no infra failures to re-roll — exiting cleanly")
@@ -104,9 +121,13 @@ def main():
             print(f"    {iid}")
         return 0
 
-    # 2. Backup + strip
-    backup = pred_path.with_suffix(".jsonl.pre-reroll")
-    shutil.copy(pred_path, backup)
+    # 2. Backup + strip. The backup is merged, not overwritten: it must keep every id a previous
+    # pass stripped (the owed list above) or a second death would lose them for good.
+    merged = dict(backup_rows)
+    merged.update({d["instance_id"]: d for d in preds})
+    with backup.open("w") as fh:
+        for d in merged.values():
+            fh.write(json.dumps(d) + "\n")
     with pred_path.open("w") as fh:
         for d in keep:
             fh.write(json.dumps(d) + "\n")
@@ -138,8 +159,10 @@ def main():
     # 4. Report
     new_count = sum(1 for _ in pred_path.open())
     print(f"  predictions.jsonl now has: {new_count} entries (was {len(keep)}, added {new_count - len(keep)})")
-    if new_count < len(preds):
-        print(f"  ! re-roll missed {len(preds) - new_count} instances; check rollout log")
+    expected = len(keep) + len(infra_ids)
+    if new_count < expected:
+        print(f"  ! re-roll missed {expected - new_count} instances (still owed in {backup.name}; "
+              f"rc={rc}: 77 = server dead, the cycle relaunches and reruns this pass)")
     return rc
 
 

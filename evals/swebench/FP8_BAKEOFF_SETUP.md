@@ -657,6 +657,14 @@ rotating `server.log` / `rollout-<scaffold>.log` to `*.died-<stamp>` (at most 3 
 with rc 77 for a manual resume). Before this, the harness skipped each remaining instance after a 20-min wait: the v5 prime
 lane lost 97 instances (32 h) that way on 2026-10-20/22 before the chain was restarted by hand.
 
+**Re-roll pass hole (closed 2026-10-22, from the 3090's note of the same day).** `reroll_infra_failures.py` strips the
+infra rows to `predictions.jsonl.pre-reroll` and re-draws them; if that pass dies (server death, reboot, kill) the stripped
+ids are absent from `predictions.jsonl`, invisible to the audit, and the cell scores short. Now the pass re-draws every id
+the backup holds that `predictions.jsonl` lacks ("owed"), merges rather than overwrites the backup, Phase 3 of
+`run_model_cycle.sh` counts owed ids when deciding whether a re-roll is due, and Phase 4 runs under the same exit-77
+relaunch loop as the lanes. The chain running on 2026-10-22 holds the old cycle script (Phase 4 without the loop) but reads
+the re-roll script fresh, so the owed-id re-draw applies to it already.
+
 **omp cell re-roll (2026-10-22).** The qwen38 v5 omp cell that rolled 2026-10-17..20 is superseded (archived as
 `runs/qwen38-omp-v5-superseded-20261022`, outside the aggregate's `-v<tag>` pattern): it had an engine split (instances
 1-264 on SGLang v0.5.20, 265-300 on v0.5.22) and ran omp 18.0.11 with its default title fork — `title.generator: fork` +

@@ -257,8 +257,28 @@ for SCAFFOLD in "${NEED_RESCORE[@]}"; do
     --write-reroll-list "$LOG_DIR/reroll-list-$SCAFFOLD.txt" \
     > "$LOG_DIR/audit-$SCAFFOLD.log" 2>&1 || true
   n=$(wc -l < "$LOG_DIR/reroll-list-$SCAFFOLD.txt" 2>/dev/null || echo 0)
-  log "audit $SCAFFOLD: $n infra-failure instances to reroll"
-  [ "$n" -gt 0 ] && NEED_RESCORE_AFTER_REROLL+=("$SCAFFOLD")
+  # ids a previous re-roll pass stripped to predictions.jsonl.pre-reroll and never re-drew (it
+  # died): absent from predictions.jsonl, invisible to the audit. reroll_infra_failures.py
+  # re-draws them from the backup, so they must count here or the lane scores short.
+  owed=0
+  if [ -f "$OUT/predictions.jsonl.pre-reroll" ]; then
+    owed=$("$ROLLOUT_PY" - "$OUT" <<'PY'
+import json, pathlib, sys
+out = pathlib.Path(sys.argv[1])
+def ids(p):
+    got = set()
+    for line in p.read_text().splitlines():
+        try:
+            got.add(json.loads(line)["instance_id"])
+        except Exception:
+            pass
+    return got
+print(len(ids(out / "predictions.jsonl.pre-reroll") - ids(out / "predictions.jsonl")))
+PY
+)
+  fi
+  log "audit $SCAFFOLD: $n infra-failure instances to reroll, $owed owed from an earlier re-roll pass"
+  [ "$((n + owed))" -gt 0 ] && NEED_RESCORE_AFTER_REROLL+=("$SCAFFOLD")
 done
 
 # --- Phase 4: reroll if needed (single server-restart pass) ---
@@ -269,16 +289,36 @@ if [ "${#NEED_RESCORE_AFTER_REROLL[@]}" -gt 0 ]; then
 
   for SCAFFOLD in "${NEED_RESCORE_AFTER_REROLL[@]}"; do
     OUT="$REPO_DIR/evals/swebench/runs/${PRESET}-${SCAFFOLD}-${RUN_TAG}"
-    log "reroll $SCAFFOLD"
-    "$ROLLOUT_PY" "$REPO_DIR/evals/swebench/reroll_infra_failures.py" \
-      --cell "$OUT" \
-      --model "sglang/$PRESET" \
-      --served-name "$SERVED" \
-      --scaffold "$SCAFFOLD" \
-      --timeout "$TIMEOUT" \
-      "${SANDBOX_FLAG[@]}" \
-      > "$LOG_DIR/reroll-$SCAFFOLD.log" 2>&1
-    log "reroll $SCAFFOLD rc=$?"
+    # Same exit-77 contract as the Phase-1 lane: a dead server ends the pass with no row written;
+    # relaunch and rerun it (reroll_infra_failures.py re-draws the ids still owed from the backup).
+    relaunches=0
+    while :; do
+      log "reroll $SCAFFOLD"
+      "$ROLLOUT_PY" "$REPO_DIR/evals/swebench/reroll_infra_failures.py" \
+        --cell "$OUT" \
+        --model "sglang/$PRESET" \
+        --served-name "$SERVED" \
+        --scaffold "$SCAFFOLD" \
+        --timeout "$TIMEOUT" \
+        "${SANDBOX_FLAG[@]}" \
+        > "$LOG_DIR/reroll-$SCAFFOLD.log" 2>&1
+      rc=$?
+      log "reroll $SCAFFOLD rc=$rc"
+      [ "$rc" -eq 77 ] || break
+      relaunches=$((relaunches + 1))
+      if [ "$relaunches" -gt 3 ]; then
+        log "ABORT cycle: server died 4 times during the $SCAFFOLD re-roll (rc=77); the stripped ids stay owed in predictions.jsonl.pre-reroll for the next pass"
+        stop_server
+        exit 77
+      fi
+      log "server dead during $SCAFFOLD re-roll (rc=77): relaunch #$relaunches, then rerun the pass"
+      stamp=$(date +%Y%m%d-%H%M%S)
+      mv "$LOG_DIR/server.log" "$LOG_DIR/server.log.died-$stamp" 2>/dev/null || true
+      mv "$LOG_DIR/reroll-$SCAFFOLD.log" "$LOG_DIR/reroll-$SCAFFOLD.log.died-$stamp" 2>/dev/null || true
+      stop_server
+      launch_server
+      wait_ready || { stop_server; exit 1; }
+    done
   done
   stop_server
 fi
