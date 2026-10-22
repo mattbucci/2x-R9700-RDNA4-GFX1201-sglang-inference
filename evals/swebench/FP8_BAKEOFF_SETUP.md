@@ -47,7 +47,7 @@ the scaffold name. What each lane declares for `qwen38` (server `max_model_len` 
 | opencode, opencode-dcp **2026-09-18 → 2026-09-19 07:25** (the second and third v3 starts, 27 instances) | same files, `limit.output` raised to the matrix-wide value | 200000 / 16384 (wire-verified with `capture_endpoint.py`: `max_tokens: 16384`); 3 of those 27 sessions still ended `length` |
 | opencode, opencode-dcp **2026-09-19 07:25 → 13:36** (fourth v3 start) | same files, `limit.output` = `OUTPUT_BUDGET` | 200000 / **32000** — not 32768: opencode and pi clamp anything above 32000 to 32000 on the wire (a 32768 config sent `max_tokens: 32000` from opencode and prime while omp/little-coder sent 32768), so 32000 is the largest value every scaffold sends verbatim; wire receipt [`wire-audit-out32000-2026-09-19.json`](wire-audit-out32000-2026-09-19.json) |
 | opencode, opencode-dcp **since 2026-09-19 14:07** (fifth v3 start, Docker mode) | same files, `limit.context` raised to the served window | **262144** / 32000 — the only lane that still declared 200000; `run_rollouts.py` now refuses to start an opencode lane unless both values match (`OPENCODE_CONTEXT_LIMIT`, `OUTPUT_BUDGET`) |
-| omp | harness profile `~/.omp-swebench/agent/models.yml` | 262144 / 16384 through 2026-09-19 07:25, 32000 since (`max_completion_tokens: 32000` on the wire) |
+| omp | harness profile `~/.omp-swebench/agent/models.yml` (+ `config.yml` with `title.refreshOnReplan: false` since 2026-10-22; binary pinned at `/data/tools/omp-18.12.2`, `--no-title`, rows carry `scaffold_pin: omp@18.12.2`) | 262144 / 16384 through 2026-09-19 07:25, 32000 since (`max_completion_tokens: 32000` on the wire) |
 | prime | harness profile `~/.prime/agent/models.json` (explicit since 2026-09-12; prime defaults 128000 / 16384 when omitted) | 262144 / 16384 through 2026-09-19 07:25, 32000 since |
 | little-coder, little-coder-rtk **before 2026-09-12** | pi `buildFallbackModel()` clone of the packaged `llamacpp` entry | **32768 / 4096** |
 | little-coder, little-coder-rtk **since 2026-09-12** | harness profile via `LITTLE_CODER_MODELS_FILE` (+ the package `.pi/settings.json` model profile since 2026-09-13, see Scaffold thinking effort) | 262144 / 16384 through 2026-09-19 07:25, 32000 since |
@@ -656,3 +656,20 @@ process gone, e.g. the RDNA4 HSA invalid-packet abort) or stays unhealthy for 20
 rotating `server.log` / `rollout-<scaffold>.log` to `*.died-<stamp>` (at most 3 relaunches per lane, then the cycle aborts
 with rc 77 for a manual resume). Before this, the harness skipped each remaining instance after a 20-min wait: the v5 prime
 lane lost 97 instances (32 h) that way on 2026-10-20/22 before the chain was restarted by hand.
+
+**omp cell re-roll (2026-10-22).** The qwen38 v5 omp cell that rolled 2026-10-17..20 is superseded (archived as
+`runs/qwen38-omp-v5-superseded-20261022`, outside the aggregate's `-v<tag>` pattern): it had an engine split (instances
+1-264 on SGLang v0.5.20, 265-300 on v0.5.22) and ran omp 18.0.11 with its default title fork — `title.generator: fork` +
+`title.refreshOnReplan: true` fire a tool-free "write a title" request that replays the whole session to the served model
+at every `todo` plan init, headless `-p` included (measured with a mock that answers the first turn with a `todo init`:
+18.0.11 and 18.12.2 both send the extra request; `--no-title` alone or `config.yml title.refreshOnReplan: false` alone
+remove it; the harness now sets both). 18 of the 300 sessions used `todo`. The re-roll runs omp **18.12.2** (the 3090's
+`vendor_omp.sh` pin, sha256 `9513ef9f…`, staged under `/data/tools/omp-18.12.2` and mounted read-only there instead of the
+host's `~/.local/bin/omp`), `_check_omp` preflights the version and writes `scaffold_pin: omp@18.12.2` into every row
+(prime rows carry `prime-agent@0.10.0` the same way). omp puts no thinking level on the wire for the `openai-completions`
+provider (`--thinking xhigh` is a no-op: `enable_thinking: true`, no `reasoning_effort`), so the cell is model-default
+thinking like before. The re-roll is queued behind the running prime → dcode → audit/score cycle by
+`/data/logs/run-model-cycle-logs/v5-omp-reroll-after-cycle.sh` (waits on the cycle pid, archives the old cell, runs
+`SCAFFOLDS=omp RUN_TAG=v5` through `run_all_cycles.sh`; reboot-safe once the lane has started because the v5 resume unit's
+default scaffold list reaches omp with `--skip-existing`). 18.0.11 vs 18.12.2 is a scaffold-behaviour change (18.0.11 also
+sent a `todo` "Reminder 1/3" nudge turn), recorded per cell by the pin.

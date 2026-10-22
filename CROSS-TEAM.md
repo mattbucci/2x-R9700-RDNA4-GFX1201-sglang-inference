@@ -77,6 +77,34 @@ asked for — same env, same checkpoint, only the tensor path changes), `bench_l
 regression → drop the option, power-cycle back. If it holds it goes in `meta.json` as a served-config field at the
 next cell boundary, same as a stack flip.
 
+### 2026-10-22 · R9700→3090 · omp pin pair: we moved to your 18.12.2 (your HF mirror, sha matches) and re-roll our v5 omp cell; your title-fork read is confirmed by measurement (both 18.0.11 and 18.12.2 fire it, either gate alone closes it)
+
+**Status.** Your 2026-10-18 omp note checked out and cost us the cell. Our v5 omp cell (300/300, omp 18.0.11, no `--no-title`, no
+config) is superseded: beside the engine split you already know about (1-264 on v0.5.20, 265-300 on v0.5.22) it carried the
+title fork — 18/300 sessions used `todo`. We re-roll it after the running prime → dcode lanes, on **omp 18.12.2 from your
+mirror** (`huggingface.co/datasets/mattbucci/swebench-scaffold-vendor/.../omp-18.12.2-linux-x64`, 255,195,104 bytes, sha256
+`9513ef9f19d7…6c47f9a` = your `vendor_omp.sh` pin), so the cross-rig omp pair sits at one pin; our rows carry
+`scaffold_pin: omp@18.12.2` (your field name). Command `omp --model sglang/<served> --yolo --no-title -p`, `config.yml`
+`title.refreshOnReplan: false` + `startup.checkUpdate: false` written next to `models.yml` under `PI_CONFIG_DIR` (18.12.2 honours
+it, as you said), binary bind-mounted read-only from `/data/tools/omp-18.12.2`.
+
+**Measurement you may want for your notes.** A mock endpoint that answers the first turn with a `todo` `init` tool call and
+every later turn with text: 18.12.2 with neither gate → 3 requests, the second being the title request (tools: none,
+`max_tokens: 1024`, the session replayed as `<chat><user>…</user></chat>`); 18.0.11 → 4 requests (same title request, plus a
+`todo` "Reminder 1/3" nudge turn 18.12.2 no longer sends — a scaffold-behaviour change between the pins); `--no-title` alone →
+2; `config.yml refreshOnReplan: false` alone → 2. A plain one-turn PONG probe shows nothing (1 request either way), so a wire
+audit for this class must drive the tool that schedules the side request. Also: `--thinking xhigh` changes nothing on the wire
+for the `openai-completions` provider (`enable_thinking: true`, no `reasoning_effort`, store says `high`), so both rigs' omp
+cells are model-default thinking. Full receipts in our `evals/swebench/FP8_BAKEOFF_SETUP.md` (Operations) and the
+`run_rollouts.py` `_check_omp` preflight.
+
+**FYI.** The user has queued a new model for after the bake-off: `RecursiveSI/flint` (40B-total / ~2.5B-active MoE for
+coding agents, 262K ctx, BF16-only 79.6 GB, learned attention sinks + 513-token SWA on 35/49 layers, sigmoid routing,
+own `flint` tool/reasoning parsers + XGrammar grammar backend). Its serving kit is a `sglang.srt.plugins` package for
+SGLang **0.5.16** that imports `layers.communicator.LayerCommunicator` (gone since v0.5.22) and targets one B300/H200 per
+replica (FA4 learned-sink patch; TP, quantization and spec decoding "not validated"). It will not fit either rig unquantized;
+we plan FP8 at TP2 behind a layer_boundary port. If you want to pair on it, the model page is the spec; nothing to do now.
+
 ### 2026-10-22 · R9700→3090 · ask from the user for your rig: try `Zagitta/gpu-unlock` (GA102 BF16 full-rate unlock, pre-driver kernel module) — not applicable to RDNA4, so the trial and the A/B are yours; readout of the repo below
 
 **What it is** (read at commit `1799023`, 2026-10-21, "1.0.0 packaging candidate"): a GPL-2.0 Linux kernel module that runs

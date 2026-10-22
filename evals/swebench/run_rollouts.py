@@ -394,8 +394,7 @@ NEUTRAL_PROFILE_NAMES = {".config/little-coder-swebench": ".config/little-coder-
 # Everything the container sees of $HOME, per scaffold. Nothing else on the host is visible --
 # in particular not ~/.cache/huggingface (the dataset with the gold patches), the repo checkout
 # (runs/ holds the other lanes' patches), /data/swebench-work (sibling trees) or ~/.secrets.
-DOCKER_MOUNTS_RO_COMMON = [".npm-global", ".local/bin/omp", ".local/bin/rtk", ".local/bin/dcode",
-                           ".local/share/uv"]
+DOCKER_MOUNTS_RO_COMMON = [".npm-global", ".local/bin/rtk", ".local/bin/dcode", ".local/share/uv"]
 # prime-agent 0.10.0 is upstream's Rust build (the TypeScript npm package ended at 0.9.8; the
 # official installer removes it). Installed by hand from the verified release tarball under a
 # cue-free absolute path, mounted read-only at that same path (no $HOME layout, no toolchain
@@ -407,7 +406,16 @@ PRIME_AGENT_VERSION = "0.10.0"
 PRIME_AGENT_DIR = Path(f"/data/tools/prime-agent-{PRIME_AGENT_VERSION}")
 PRIME_AGENT_BIN = PRIME_AGENT_DIR / "bin/prime-agent"
 PRIME_KERNEL_VENV = Path.home() / ".prime/agent/kernel-venv"
-DOCKER_MOUNTS_ABS_RO = {"prime": [PRIME_AGENT_DIR]}  # scaffold -> absolute ro mounts
+# oh-my-pi (omp) is the standalone linux-x64 release binary, sha256-pinned to the 3090 rig's
+# vendored copy (evals/swebench/vendor_omp.sh there; HF mirror mattbucci/swebench-scaffold-vendor)
+# so both rigs run the omp cell at one pin. Staged by hand under a cue-free absolute path and
+# mounted read-only there; the host's own ~/.local/bin/omp (18.0.11, the superseded v5 omp cell)
+# is no longer mounted. Version goes into every prediction row as `scaffold_pin`.
+OMP_VERSION = "18.12.2"
+OMP_DIR = Path(f"/data/tools/omp-{OMP_VERSION}")
+OMP_BIN = OMP_DIR / "omp"
+SCAFFOLD_PIN: str | None = None  # "<scaffold>@<version>" set by the scaffold preflight, written per row
+DOCKER_MOUNTS_ABS_RO = {"prime": [PRIME_AGENT_DIR], "omp": [OMP_DIR]}  # scaffold -> absolute ro mounts
 DOCKER_MOUNTS = {  # scaffold -> (ro, rw), relative to $HOME
     "opencode": ([".config/opencode"],
                  [".local/share/opencode", ".cache/opencode", ".local/state/opencode"]),
@@ -712,6 +720,27 @@ def _ensure_rtk_extension() -> Path:
 LC_PROFILE_DIR = Path.home() / LC_PROFILE_REL  # harness-owned; see _apply_neutral_names
 
 
+def _check_omp(neutral: bool) -> str:
+    """omp lane preflight: the pinned standalone binary answers --version with OMP_VERSION
+    (a host-installed omp can be moved by its own updater — the pin is what the rows record),
+    and under --neutral-cues its path names nothing benchmark-shaped (it is a bind-mount source)."""
+    global SCAFFOLD_PIN
+    if not OMP_BIN.exists():
+        raise SystemExit(f"  PREFLIGHT FAILED: {OMP_BIN} missing (omp {OMP_VERSION} standalone linux-x64 "
+                         f"release binary; stage it under {OMP_DIR}, sha256 per the 3090's vendor_omp.sh)")
+    try:
+        ver = subprocess.run([str(OMP_BIN), "--version"], capture_output=True, text=True, timeout=60,
+                             env={**os.environ, "DO_NOT_TRACK": "1", "PI_CONFIG_DIR": OMP_PROFILE_DIR}).stdout.strip()
+    except (OSError, subprocess.TimeoutExpired) as e:
+        raise SystemExit(f"  PREFLIGHT FAILED: {OMP_BIN} --version: {e!r}")
+    if ver != f"omp/{OMP_VERSION}":
+        raise SystemExit(f"  PREFLIGHT FAILED: omp --version {ver!r} != pinned omp/{OMP_VERSION}")
+    if neutral and CUE_RE.search(str(OMP_DIR)):
+        raise SystemExit(f"  PREFLIGHT FAILED: --neutral-cues, but the omp install path names the benchmark: {OMP_DIR}")
+    SCAFFOLD_PIN = f"omp@{OMP_VERSION}"
+    return f"{ver} at {OMP_BIN} (--no-title, config.yml title.refreshOnReplan=false); rows carry scaffold_pin={SCAFFOLD_PIN}"
+
+
 def _check_prime_agent(neutral: bool) -> str:
     """prime lane preflight: the pinned Rust binary answers --version, its kernel
     venv exists (the container cannot build it), and under --neutral-cues
@@ -739,6 +768,8 @@ def _check_prime_agent(neutral: bool) -> str:
         if bad:
             raise SystemExit("  PREFLIGHT FAILED: --neutral-cues, but the prime-agent install names the benchmark: "
                              + ", ".join(bad))
+    global SCAFFOLD_PIN
+    SCAFFOLD_PIN = f"prime-agent@{ver}"
     return f"prime-agent {ver} at {PRIME_AGENT_BIN}, kernel venv {PRIME_KERNEL_VENV} (python -> {kernel_py.resolve()})"
 
 
@@ -1004,9 +1035,17 @@ def _ensure_omp_profile(served: str, server_url: str) -> None:
     against its registry before sending, so the local SGLang endpoint is
     declared as a custom `sglang` provider with one model id = the served
     name. Kept out of ~/.omp so the user's own omp config is untouched.
-    Verified 2026-08-30 with omp/18.0.11 (headless -p + --yolo)."""
+    Verified 2026-08-30 with omp/18.0.11 (headless -p + --yolo); re-verified 2026-10-22 with
+    omp/18.12.2 (wire capture: one streaming chat completion per turn, no title request).
+
+    config.yml: `title.refreshOnReplan: false` closes the title fork (3090 note 2026-10-18 —
+    omp's default `title.generator: fork` + `refreshOnReplan: true` re-prefills the WHOLE
+    session on the served model whenever the `todo` tool initialises a plan, headless included;
+    `--no-title` on the command line is the primary gate, this is belt and braces), and
+    `startup.checkUpdate: false` keeps the binary from probing for updates."""
     agent_dir = Path.home() / OMP_PROFILE_DIR / "agent"
     agent_dir.mkdir(parents=True, exist_ok=True)
+    (agent_dir / "config.yml").write_text("startup:\n  checkUpdate: false\ntitle:\n  refreshOnReplan: false\n")
     (agent_dir / "models.yml").write_text(f"""providers:
   sglang:
     name: SGLang local
@@ -1033,11 +1072,13 @@ def run_omp(served: str, repo_dir: Path, prompt: str, timeout: int, log_path: Pa
             extra_env: dict[str, str] | None = None,
             server_url: str = "http://127.0.0.1:23334") -> tuple[int, str, str]:
     # oh-my-pi headless: -p processes the prompt and exits; --yolo auto-approves
-    # tool calls (edits/bash) which headless runs need. Model routing via the
-    # harness-owned profile written by _ensure_omp_profile.
+    # tool calls (edits/bash) which headless runs need; --no-title disables title
+    # generation, whose default `fork` generator replays the whole session to the served
+    # model on every `todo` plan init (a hidden second prefill per step — the v5 omp cell
+    # before 2026-10-22 ran without it). Model routing via the harness-owned profile
+    # written by _ensure_omp_profile; the binary is the pinned OMP_BIN (preflight _check_omp).
     _ensure_omp_profile(served, server_url)
-    cmd = [str(Path.home() / ".local/bin/omp"), "--model", f"sglang/{served}",
-           "--yolo", "-p"]
+    cmd = [str(OMP_BIN), "--model", f"sglang/{served}", "--yolo", "--no-title", "-p"]
     return _launch(cmd, str(repo_dir), "omp", {"PI_CONFIG_DIR": OMP_PROFILE_DIR}, extra_env,
                    timeout, log_path, prompt=prompt)
 
@@ -1254,6 +1295,8 @@ def main():
         print(f"  preflight {info}", flush=True)
     if args.scaffold == "prime":
         print(f"  preflight {_check_prime_agent(args.neutral_cues)}", flush=True)
+    if args.scaffold == "omp":
+        print(f"  preflight {_check_omp(args.neutral_cues)}", flush=True)
 
     out = Path(args.out)
     (out / "predictions").mkdir(parents=True, exist_ok=True)
@@ -1507,6 +1550,8 @@ def main():
                 if DOCKER:
                     entry["image"] = image
                     entry["neutral_cues"] = DOCKER["neutral"]
+                if SCAFFOLD_PIN:
+                    entry["scaffold_pin"] = SCAFFOLD_PIN  # e.g. omp@18.12.2 (3090 row field of the same name)
                 fp.write(json.dumps(entry) + "\n")
                 fp.flush()
 
