@@ -647,3 +647,12 @@ docker image prune -af --filter until=24h
 ```
 
 Do not score while the inference server is active if Docker work would contend for RAM, disk, or PCIe bandwidth. Finish rollouts, stop the server, then score.
+
+## Operations
+
+**Dead server mid-lane (since 2026-10-22).** The chain has no server watchdog. If `/health` is refused for a minute (server
+process gone, e.g. the RDNA4 HSA invalid-packet abort) or stays unhealthy for 20 min, `run_rollouts.py` exits 77
+(`EX_SERVER_DEAD`) and `run_model_cycle.sh` relaunches the server and reruns the same lane with `--skip-existing`,
+rotating `server.log` / `rollout-<scaffold>.log` to `*.died-<stamp>` (at most 3 relaunches per lane, then the cycle aborts
+with rc 77 for a manual resume). Before this, the harness skipped each remaining instance after a 20-min wait: the v5 prime
+lane lost 97 instances (32 h) that way on 2026-10-20/22 before the chain was restarted by hand.

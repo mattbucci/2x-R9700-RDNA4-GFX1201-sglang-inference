@@ -1156,6 +1156,7 @@ def _commit_harness_prep(repo_dir: Path) -> None:
 
 MIN_FREE_BYTES = 2 * 1024 ** 3
 EX_TEMPFAIL = 75
+EX_SERVER_DEAD = 77  # /health unreachable: run_model_cycle.sh relaunches the server and reruns the lane
 
 
 def _disk_guard(*paths) -> str | None:
@@ -1185,20 +1186,35 @@ def _disk_guard(*paths) -> str | None:
     return None
 
 
-def _wait_server_healthy(server_url: str, max_wait: int = 1200, poll: int = 10) -> bool:
+def _wait_server_healthy(server_url: str, max_wait: int = 1200, poll: int = 10,
+                         dead_after_refused: int = 6) -> bool:
     """Poll <server_url>/health until it responds 200 or max_wait elapses. RDNA4 servers
-    HSAIL-crash periodically under load; the orchestrator watchdog restarts them, so a shard
-    PAUSES here rather than burning a full rollout timeout writing an empty diff against a
-    dead server. Returns True if healthy, False if it never recovered."""
-    import urllib.request, time as _t
+    HSAIL-crash periodically under load (HSA invalid-packet abort, 2026-10-20 the second
+    time); a shard PAUSES here rather than burning a full rollout timeout writing an empty
+    diff against a dead server. Returns True if healthy, False if it never recovered — and
+    False early once `dead_after_refused` consecutive polls could not even connect (nothing
+    listens on the port: the server process is gone, no amount of waiting brings it back;
+    a busy server answers 000 by timing out, which does not count as refused)."""
+    import urllib.request, urllib.error, time as _t
     deadline = _t.time() + max_wait
+    refused = 0
     while _t.time() < deadline:
         try:
             with urllib.request.urlopen(f"{server_url}/health", timeout=5) as r:
                 if getattr(r, "status", 200) == 200:
                     return True
+            refused = 0
+        except urllib.error.URLError as e:
+            reason = getattr(e, "reason", None)
+            if isinstance(reason, ConnectionRefusedError) or (
+                    isinstance(reason, OSError) and getattr(reason, "errno", None) == 111):
+                refused += 1
+                if refused >= dead_after_refused:
+                    return False
+            else:
+                refused = 0
         except Exception:
-            pass
+            refused = 0
         _t.sleep(poll)
     return False
 
@@ -1411,12 +1427,17 @@ def main():
                         "VIRTUAL_ENV": str(venv),
                         "PATH": f"{venv}/bin",
                     }
-                # RDNA4 HSAIL crashes happen mid-run; the orchestrator watchdog restarts the
-                # server. Wait for health here instead of burning a 1800s timeout + empty diff.
-                # If it never recovers (>20min), skip — leave no prediction so resume retries it.
+                # RDNA4 HSAIL crashes happen mid-run. Wait for health here instead of burning a
+                # 1800s timeout + empty diff. If the server is gone (port refused for a minute)
+                # or never recovers (>20min), stop the lane with EX_SERVER_DEAD: the cycle
+                # script relaunches the server and reruns this lane with --skip-existing, so
+                # the instance is retried. Skipping and moving on (the pre-2026-10-22
+                # behaviour) cost 97 instances x 20 min on the v5 prime lane with nobody
+                # restarting anything -- the chain has no server watchdog.
                 if not _wait_server_healthy(host_url):
-                    print(f"  SERVER DOWN >20min — skip {iid} (no prediction; retry on resume)", flush=True)
-                    continue
+                    print(f"  SERVER DEAD — stop lane at {iid} (no prediction; exit {EX_SERVER_DEAD} "
+                          f"so the cycle relaunches the server and resumes here)", flush=True)
+                    sys.exit(EX_SERVER_DEAD)
                 if SANDBOX is not None:
                     SANDBOX.update(inst_dir=inst_dir, venv_dir=venv)
                 if args.scaffold in ("opencode", "opencode-dcp"):

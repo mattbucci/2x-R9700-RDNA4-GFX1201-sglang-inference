@@ -198,21 +198,42 @@ for SCAFFOLD in $SCAFFOLDS; do
   N_FLAG=()
   [ "$INSTANCES" -gt 0 ] && N_FLAG=(--instances "$INSTANCES")
 
-  log "rollout $SCAFFOLD (out=$OUT instances=${INSTANCES:-300} timeout=$TIMEOUT docker=$DOCKER sandbox=$SANDBOX neutral_cues=$NEUTRAL_CUES)"
-  "$ROLLOUT_PY" "$REPO_DIR/evals/swebench/run_rollouts.py" \
-    --model "sglang/$PRESET" \
-    --served-name "$SERVED" \
-    --scaffold "$SCAFFOLD" \
-    --out "$OUT" \
-    --skip-existing \
-    --timeout "$TIMEOUT" \
-    --max-empty-streak 30 \
-    "${N_FLAG[@]}" \
-    "${SANDBOX_FLAG[@]}" \
-    > "$LOG_DIR/rollout-$SCAFFOLD.log" 2>&1
-  rc=$?
-  preds=$(wc -l < "$OUT/predictions.jsonl" 2>/dev/null || echo 0)
-  log "rollout $SCAFFOLD rc=$rc preds=$preds"
+  # rc 77 (EX_SERVER_DEAD) = run_rollouts found /health unreachable for a minute (port
+  # refused) or >20 min: the server process died (HSA invalid-packet abort class, twice so
+  # far). Relaunch it and rerun the same lane with --skip-existing, at most 3 relaunches per
+  # lane; server.log and the rollout log are rotated (*.died-<stamp>) so each attempt keeps its receipt.
+  relaunches=0
+  while :; do
+    log "rollout $SCAFFOLD (out=$OUT instances=${INSTANCES:-300} timeout=$TIMEOUT docker=$DOCKER sandbox=$SANDBOX neutral_cues=$NEUTRAL_CUES)"
+    "$ROLLOUT_PY" "$REPO_DIR/evals/swebench/run_rollouts.py" \
+      --model "sglang/$PRESET" \
+      --served-name "$SERVED" \
+      --scaffold "$SCAFFOLD" \
+      --out "$OUT" \
+      --skip-existing \
+      --timeout "$TIMEOUT" \
+      --max-empty-streak 30 \
+      "${N_FLAG[@]}" \
+      "${SANDBOX_FLAG[@]}" \
+      > "$LOG_DIR/rollout-$SCAFFOLD.log" 2>&1
+    rc=$?
+    preds=$(wc -l < "$OUT/predictions.jsonl" 2>/dev/null || echo 0)
+    log "rollout $SCAFFOLD rc=$rc preds=$preds"
+    [ "$rc" -eq 77 ] || break
+    relaunches=$((relaunches + 1))
+    if [ "$relaunches" -gt 3 ]; then
+      log "ABORT cycle: server died 4 times during the $SCAFFOLD lane (rc=77); leaving predictions for a --skip-existing resume"
+      stop_server
+      exit 77
+    fi
+    log "server dead during $SCAFFOLD lane (rc=77): relaunch #$relaunches, then resume the lane"
+    stamp=$(date +%Y%m%d-%H%M%S)
+    mv "$LOG_DIR/server.log" "$LOG_DIR/server.log.died-$stamp" 2>/dev/null || true
+    mv "$LOG_DIR/rollout-$SCAFFOLD.log" "$LOG_DIR/rollout-$SCAFFOLD.log.died-$stamp" 2>/dev/null || true
+    stop_server
+    launch_server
+    wait_ready || { stop_server; exit 1; }
+  done
   if [ "$rc" -eq 75 ]; then
     # EX_TEMPFAIL from run_rollouts: a host filesystem is (nearly) full. Every
     # further lane would run degraded, so stop the whole cycle here and leave
