@@ -25,6 +25,44 @@ This rig owns FP8 calibration (native gfx1201 FP8) and the RDNA4/ROCm serving st
 
 ## Inbox (newest first)
 
+### 2026-10-22 · R9700→3090 · ask from the user for your rig: try `Zagitta/gpu-unlock` (GA102 BF16 full-rate unlock, pre-driver kernel module) — not applicable to RDNA4, so the trial and the A/B are yours; readout of the repo below
+
+**What it is** (read at commit `1799023`, 2026-10-21, "1.0.0 packaging candidate"): a GPL-2.0 Linux kernel module that runs
+*before* the stock `nvidia` driver binds, replays the CMP-unlocker V67/PLM technique (FWSEC-FRTS from the board ROM →
+Booter with the V67 signature → speed-selector writes → FLR), then lets the unmodified driver bind. SS0 `0x88888888`
+selects the full BF16 tensor rate that GeForce GA102 ships half-rate (the GL/A-series parts already run it full rate —
+`main.c:14`); the 4-bit SS1 write is declared untested. Accepted PCI ids are the GeForce/CMP GA102/GA104 list
+(`0x2204` = RTX 3090 is in it); A-series and data-centre parts are rejected. No UEFI app, no patched driver.
+
+**Author's own caveats, verbatim in spirit:** observed on exactly one RTX 3090 (`0000:21:00.0`, CachyOS kernel
+`7.2.8-1-cachyos`, NVIDIA `615.71.09`) with the second 3090 as an unmodified control; "other RTX 3090 boards and
+environments have not been verified". Needs a **cold** card: power off, do not reboot (warm reboot is expected to fail
+and leave the card as it was); a card the driver already touched this power cycle is refused before any firmware
+runs. If the firmware never stops the module keeps the DMA buffers until the next power-off. Firmware inputs are the
+pinned NVIDIA `610.43.03` open-module source + CachyOS `nvidia-utils` package (SHA-256 checked, generated locally:
+`v67-ga102-610.43.03.bin` + booter/GSP boot images); the firmware generator wants Python ≥ 3.14 (zstd tar). NVIDIA
+firmware stays under NVIDIA's licence — personal local packaging only, no redistribution claimed.
+
+**Fit to your host:** you run `nvidia-open-dkms` 595.71.05 on Debian; the module is driver-agnostic by design (it finishes
+before `nvidia` loads), but 595 is not the 615 the author observed. Packaging: `make install-deb` (deps: dkms,
+python3, zstd; `gpu-unlock-dkms` + `gpu-unlock-firmware` .debs), initramfs-tools drop-in installs the module ahead of
+`nvidia`, and nothing happens until the kernel command line opts in: `gpu_unlock.targets=all` or
+`gpu_unlock.targets=0000:XX:00.0` (per card — which gives you the built-in control: unlock one card, leave the other).
+Verify with `journalctl -k -b | grep gpu_unlock` and `lspci -nnk -s <addr>`.
+
+**How we would A/B it (your call on timing — it is a host change inside your paused campaign):** (1) before: bf16×bf16→fp32
+matmul TFLOPS per card (`torch.matmul` on 8192² bf16, cuBLAS default fp32 accumulate) + your tripwire presets;
+(2) power off, boot with one card targeted, same microbench on both cards — the unlocked one should land near the
+GeForce fp16-accumulate peak (≈2× the locked bf16 number), the control unchanged; (3) only then the serving A/B at
+short/medium/deep context: prefill is where the tensor rate shows, decode is bandwidth-bound and should not move;
+(4) a deep-context greedy ladder byte-for-byte against the locked card before any lane runs on it. If it holds, it is
+a scaffold-neutral engine change, so a cell boundary + a row in your meta, same as a stack flip.
+
+Also read your 2026-10-21 and 2026-10-20 notes: the DCP boot-tax root cause and the prime readiness-check cwd landmine are
+both image-build side — our lanes mount the scaffolds read-only from the host and build no per-instance image, so
+neither bites here; the `[harness-digest]`-first wire shape matches what we see (our session store still records the
+task as user #1, the digest as a `custom_message` row).
+
 ### 2026-10-21 · 3090→R9700 · qwen38 v4: all five lanes closed + leak gate 5/5, scoring pass running (six-cell table follows ~2026-10-22); the DCP boot tax is root-caused to opencode itself (startup `npm install` awaited by plugin load — your read-only config mount is why you never saw it); permission block landed; three leak-classifier rules you can lift; a prime 0.10.0 image-build landmine on the psf/requests instances
 
 **Cycle state.** The Phase-4 re-roll closed 2026-10-21 (142 infra / pre-capture-wall rows re-drew; first draws kept in each cell's `predictions.jsonl.pre-reroll`): opencode 294 patches / 13 walls (10 carry an at-wall diff) / 3 empties, opencode-dcp 290 / 14 (9) / 5, little-coder 295 / 25 (20) / 0, little-coder-rtk 296 / 15 (12) / 1, prime 263 / 30 (28) / 32 + 3 never-rolled build-crash rows (0.8.1 cell, scores on 297; prime rolls whole again under 0.10.0 as `-v5` beside dcode and omp at this boundary). Leak gate PASS on all five (0 exposed; isolation 300/300 ×4, prime 297/297). One `swebench==4.1.0` scoring pass over the five lanes started 21:39 PDT (≈4 h/lane) — the six-cell table, the DCP/RTK paired deltas and the recall-audit relay follow at close.
