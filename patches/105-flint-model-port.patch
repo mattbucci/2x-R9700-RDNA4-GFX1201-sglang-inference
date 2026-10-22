@@ -1,0 +1,1221 @@
+diff --git a/python/sglang/srt/arg_groups/choices.py b/python/sglang/srt/arg_groups/choices.py
+index 20a6253..4f74245 100644
+--- a/python/sglang/srt/arg_groups/choices.py
++++ b/python/sglang/srt/arg_groups/choices.py
+@@ -128,7 +128,7 @@ DISAGG_TRANSFER_BACKEND_CHOICES = [
+     "mooncake_tcp",
+ ]
+ 
+-GRAMMAR_BACKEND_CHOICES = ["xgrammar", "outlines", "llguidance", "none"]
++GRAMMAR_BACKEND_CHOICES = ["xgrammar", "outlines", "llguidance", "flint", "none"]
+ 
+ BUILT_IN_SAMPLING_BACKENDS = frozenset({"flashinfer", "pytorch", "ascend", "intel_xpu"})
+ SAMPLING_BACKEND_CHOICES = set(BUILT_IN_SAMPLING_BACKENDS)
+diff --git a/python/sglang/srt/configs/__init__.py b/python/sglang/srt/configs/__init__.py
+index 06239f1..605142b 100644
+--- a/python/sglang/srt/configs/__init__.py
++++ b/python/sglang/srt/configs/__init__.py
+@@ -46,6 +46,7 @@ from sglang.srt.configs.kimi_k25 import KimiK25Config
+ from sglang.srt.configs.kimi_linear import KimiLinearConfig
+ from sglang.srt.configs.kimi_vl import KimiVLConfig
+ from sglang.srt.configs.kimi_vl_moonvit import MoonViTConfig
++from sglang.srt.configs.flint import FlintConfig
+ from sglang.srt.configs.laguna import LagunaConfig
+ from sglang.srt.configs.lfm2 import Lfm2Config
+ from sglang.srt.configs.lfm2_moe import Lfm2MoeConfig
+@@ -120,6 +121,7 @@ __all__ = [
+     "KimiLinearConfig",
+     "KimiK3Config",
+     "KimiK25Config",
++    "FlintConfig",
+     "LagunaConfig",
+     "Qwen3NextConfig",
+     "Qwen4ExpConfig",
+diff --git b/python/sglang/srt/configs/flint.py b/python/sglang/srt/configs/flint.py
+new file mode 100644
+index 0000000..d85fc1e
+--- /dev/null
++++ b/python/sglang/srt/configs/flint.py
+@@ -0,0 +1,159 @@
++# coding=utf-8
++# Copyright 2023-2026 SGLang Team
++#
++# Licensed under the Apache License, Version 2.0 (the "License");
++# you may not use this file except in compliance with the License.
++# You may obtain a copy of the License at
++#
++#     http://www.apache.org/licenses/LICENSE-2.0
++"""Flint (RecursiveSI/flint) model configuration.
++
++Transformers does not ship this architecture, so SGLang registers the class
++itself (``model_type: flint``) and the checkpoint loads without
++``--trust-remote-code``. Fields follow the published config.json and the
++vendor's ``flint_sglang`` 0.1.4 kit.
++
++Attention layers alternate between sliding-window layers (RoPE) and the
++full-attention layers listed in ``no_rope_layer_indices`` (no positional
++encoding). Every head carries a learned sink logit
++(``softmax_type="learnable"``, checkpoint tensor ``self_attn.softmax_offset``).
++Layers in ``mlp_only_layers`` use a dense SwiGLU MLP; all others are sparse
++MoE blocks with sigmoid router scores, top-k selection on score + expert bias,
++weights renormalised to one, plus an always-on, ungated shared expert.
++
++``sliding_window`` counts the current token (HF convention); SGLang's exclusive
++window is ``sliding_window - 1`` and the model reports it through
++``get_attention_sliding_window_size``.
++"""
++
++from __future__ import annotations
++
++from typing import Any, Dict, List, Optional, Union
++
++from transformers.configuration_utils import PretrainedConfig
++
++SLIDING_ATTENTION = "sliding_attention"
++FULL_ATTENTION = "full_attention"
++
++
++class FlintConfig(PretrainedConfig):
++    model_type = "flint"
++    keys_to_ignore_at_inference = ["past_key_values"]
++
++    def __init__(
++        self,
++        vocab_size: int = 150144,
++        hidden_size: int = 2048,
++        intermediate_size: int = 6144,
++        num_hidden_layers: int = 49,
++        num_attention_heads: int = 32,
++        num_key_value_heads: int = 4,
++        head_dim: int = 128,
++        hidden_act: str = "silu",
++        max_position_embeddings: int = 262144,
++        initializer_range: float = 0.02,
++        rms_norm_eps: float = 1e-6,
++        use_cache: bool = True,
++        tie_word_embeddings: bool = False,
++        rope_theta: float = 10000.0,
++        rope_scaling: Optional[Dict[str, Any]] = None,
++        attention_bias: bool = False,
++        attention_dropout: float = 0.0,
++        use_sliding_window: bool = True,
++        sliding_window: Optional[int] = 513,
++        layer_types: Optional[List[str]] = None,
++        no_rope_layer_indices: Optional[List[int]] = None,
++        softmax_type: str = "learnable",
++        decoder_sparse_step: int = 1,
++        moe_intermediate_size: int = 512,
++        shared_expert_intermediate_size: int = 1024,
++        num_experts_per_tok: int = 6,
++        num_experts: int = 256,
++        norm_topk_prob: bool = True,
++        router_score_function: str = "sigmoid",
++        output_router_logits: bool = False,
++        router_aux_loss_coef: float = 0.0,
++        mlp_only_layers: Optional[List[int]] = None,
++        pad_token_id: Optional[int] = None,
++        bos_token_id: Optional[int] = None,
++        eos_token_id: Optional[Union[int, List[int]]] = None,
++        **kwargs,
++    ) -> None:
++        self.vocab_size = vocab_size
++        self.hidden_size = hidden_size
++        self.intermediate_size = intermediate_size
++        self.num_hidden_layers = num_hidden_layers
++        self.num_attention_heads = num_attention_heads
++        self.num_key_value_heads = num_key_value_heads
++        self.head_dim = head_dim
++        self.hidden_act = hidden_act
++        self.max_position_embeddings = max_position_embeddings
++        self.initializer_range = initializer_range
++        self.rms_norm_eps = rms_norm_eps
++        self.use_cache = use_cache
++        self.rope_theta = rope_theta
++        self.rope_scaling = rope_scaling
++        self.attention_bias = attention_bias
++        self.attention_dropout = attention_dropout
++        self.use_sliding_window = use_sliding_window
++        self.sliding_window = sliding_window if use_sliding_window else None
++        self.softmax_type = softmax_type
++        self.decoder_sparse_step = decoder_sparse_step
++        self.moe_intermediate_size = moe_intermediate_size
++        self.shared_expert_intermediate_size = shared_expert_intermediate_size
++        self.num_experts_per_tok = num_experts_per_tok
++        self.num_experts = num_experts
++        self.norm_topk_prob = norm_topk_prob
++        self.router_score_function = router_score_function
++        self.output_router_logits = output_router_logits
++        self.router_aux_loss_coef = router_aux_loss_coef
++        self.mlp_only_layers = list(mlp_only_layers) if mlp_only_layers else []
++        self.no_rope_layer_indices = (
++            list(no_rope_layer_indices) if no_rope_layer_indices else []
++        )
++        self.layer_types = (
++            list(layer_types)
++            if layer_types
++            else [FULL_ATTENTION] * num_hidden_layers
++        )
++        if len(self.layer_types) != num_hidden_layers:
++            raise ValueError(
++                f"layer_types has {len(self.layer_types)} entries but "
++                f"num_hidden_layers is {num_hidden_layers}"
++            )
++        unknown = sorted(
++            set(self.layer_types) - {SLIDING_ATTENTION, FULL_ATTENTION}
++        )
++        if unknown:
++            raise ValueError(f"unknown Flint layer_types {unknown}")
++        if router_score_function != "sigmoid":
++            raise ValueError(
++                "Flint's SGLang port implements sigmoid routing only; "
++                f"got router_score_function={router_score_function!r}"
++            )
++
++        # Read by SGLang's hybrid sliding-window KV plumbing (1 = SWA layer).
++        self.hybrid_layer_pattern = [
++            int(t == SLIDING_ATTENTION) for t in self.layer_types
++        ]
++        self.is_hybrid_swa = self.sliding_window is not None and any(
++            self.hybrid_layer_pattern
++        )
++        # Learned per-head sink logits: ``self_attn.softmax_offset`` in the
++        # checkpoint. ``learnable_sink`` is the attribute SGLang's generic
++        # sink detection reads; the SWA_SINK_ARCHS entry covers the rest.
++        self.learnable_sink = softmax_type == "learnable"
++        # The vendor validated Flint with an FP32 LM head (``--enable-fp32-lm-head``);
++        # LogitsProcessor reads this attribute so the preset need not pass the flag.
++        self.enable_lm_head_fp32 = True
++
++        super().__init__(
++            pad_token_id=pad_token_id,
++            bos_token_id=bos_token_id,
++            eos_token_id=eos_token_id,
++            tie_word_embeddings=tie_word_embeddings,
++            **kwargs,
++        )
++
++
++__all__ = ["FlintConfig"]
+diff --git a/python/sglang/srt/configs/model_config.py b/python/sglang/srt/configs/model_config.py
+index c6f991e..cc7b94e 100644
+--- a/python/sglang/srt/configs/model_config.py
++++ b/python/sglang/srt/configs/model_config.py
+@@ -87,6 +87,9 @@ BAILING_MULTI_GATE_MM_ARCHS = frozenset(
+ SWA_SINK_ARCHS = frozenset(
+     {
+         "GptOssForCausalLM",
++        # Flint (RecursiveSI): 35 sliding (513) + 14 full layers from
++        # config.layer_types, learned per-head sinks (softmax_offset).
++        "FlintForCausalLM",
+         "GraniteSWAForCausalLM",
+         "GraniteMoeSWAForCausalLM",
+         "IQuestQ1ForCausalLM",
+diff --git a/python/sglang/srt/constrained/base_grammar_backend.py b/python/sglang/srt/constrained/base_grammar_backend.py
+index 32a9ec2..f47f663 100644
+--- a/python/sglang/srt/constrained/base_grammar_backend.py
++++ b/python/sglang/srt/constrained/base_grammar_backend.py
+@@ -402,6 +402,21 @@ def create_grammar_backend(
+             )
+             get_context().override("grammar.import_fallback", grammar_backend="none")
+             return None
++    elif name == "flint":
++        # XGrammar with Flint's optional <think> block before every constraint
++        # (constrained/flint_grammar_backend.py). Pairs with --reasoning-parser
++        # flint; the model checks the combination at load.
++        from sglang.srt.constrained.flint_grammar_backend import (
++            FlintGrammarBackend,
++        )
++
++        grammar_backend = FlintGrammarBackend(
++            tokenizer,
++            vocab_size=vocab_size,
++            model_eos_token_ids=list(eos_token_ids) if eos_token_ids else None,
++            any_whitespace=not get_serving().constrained_json_disable_any_whitespace,
++            max_whitespace_cnt=get_serving().constrained_json_max_whitespace_cnt,
++        )
+     elif name == "llguidance":
+         from sglang.srt.constrained.llguidance_backend import GuidanceBackend
+ 
+diff --git b/python/sglang/srt/constrained/flint_grammar_backend.py b/python/sglang/srt/constrained/flint_grammar_backend.py
+new file mode 100644
+index 0000000..a6a99b3
+--- /dev/null
++++ b/python/sglang/srt/constrained/flint_grammar_backend.py
+@@ -0,0 +1,91 @@
++# Copyright 2023-2026 SGLang Team
++# Licensed under the Apache License, Version 2.0 (the "License");
++# you may not use this file except in compliance with the License.
++# You may obtain a copy of the License at
++#
++#     http://www.apache.org/licenses/LICENSE-2.0
++"""``--grammar-backend flint``: XGrammar with Flint's optional reasoning before
++every constraint.
++
++Flint decides on each turn whether to reason, and its chat template has no
++thinking switch. With the stock backends a constraint (response format, regex,
++EBNF, structural tag, the ``flint`` tool-call grammar included) either applies
++from the first token, so Flint cannot reason, or, when a request declares
++thinking, only after a ``</think>``, so nothing is constrained when Flint
++answers directly. This backend compiles each constraint after an optional
++``<think>...</think>`` block instead. Legacy structural tags (``structures`` /
++``triggers``) are passed through unchanged. The ``flint`` reasoning parser
++moves the block out of ``content`` and never declares a request as thinking,
++so SGLang's reasoner wrapper starts every request in generation mode and this
++backend's grammar is live from the first token.
++
++Ported from the vendor's ``flint_sglang`` 0.1.4 kit (Apache-2.0).
++"""
++
++from __future__ import annotations
++
++import json
++import logging
++
++from pydantic import ValidationError
++from xgrammar.structural_tag import (
++    Format,
++    GrammarFormat,
++    JSONSchemaFormat,
++    RegexFormat,
++    StructuralTag,
++)
++
++from sglang.srt.constrained.base_grammar_backend import (
++    BaseGrammarObject,
++    InvalidGrammarObject,
++)
++from sglang.srt.constrained.flint_structural_tags import reasoning_then
++from sglang.srt.constrained.utils import is_legacy_structural_tag
++from sglang.srt.constrained.xgrammar_backend import XGrammarGrammarBackend
++
++logger = logging.getLogger(__name__)
++
++GRAMMAR_BACKEND_NAME = "flint"
++
++
++class FlintGrammarBackend(XGrammarGrammarBackend):
++    """XGrammar backend that lets Flint reason before a json_schema, regex,
++    ebnf or structural-tag constraint."""
++
++    def __init__(self, tokenizer, **kwargs):
++        super().__init__(tokenizer, **kwargs)
++        self.tokenizer = tokenizer
++
++    def dispatch_json(self, key_string: str) -> BaseGrammarObject:
++        try:
++            schema = True if key_string == "$$ANY$$" else json.loads(key_string)
++        except json.JSONDecodeError as e:
++            logger.error(f"Hit invalid json_schema: {key_string=}, {e=}")
++            return InvalidGrammarObject(str(e))
++        return self._after_reasoning(JSONSchemaFormat(json_schema=schema))
++
++    def dispatch_regex(self, key_string: str) -> BaseGrammarObject:
++        return self._after_reasoning(RegexFormat(pattern=key_string))
++
++    def dispatch_ebnf(self, key_string: str) -> BaseGrammarObject:
++        return self._after_reasoning(GrammarFormat(grammar=key_string))
++
++    def dispatch_structural_tag(self, key_string: str) -> BaseGrammarObject:
++        try:
++            tag = json.loads(key_string)
++            if is_legacy_structural_tag(tag):
++                return super().dispatch_structural_tag(key_string)
++            self._sanitize_structural_format(tag["format"])
++            constraint = StructuralTag.model_validate(tag).format
++        except (json.JSONDecodeError, KeyError, AssertionError, ValidationError) as e:
++            logger.error(f"Hit invalid structural_tag: {key_string=}, {e=}")
++            return InvalidGrammarObject(str(e))
++        return self._after_reasoning(constraint)
++
++    def _after_reasoning(self, constraint: Format) -> BaseGrammarObject:
++        tag = reasoning_then(self.tokenizer, constraint)
++        return super().dispatch_structural_tag(tag.model_dump_json())
++
++
++__all__ = ["GRAMMAR_BACKEND_NAME", "FlintGrammarBackend"]
+diff --git b/python/sglang/srt/constrained/flint_structural_tags.py b/python/sglang/srt/constrained/flint_structural_tags.py
+new file mode 100644
+index 0000000..c81ace6
+--- /dev/null
++++ b/python/sglang/srt/constrained/flint_structural_tags.py
+@@ -0,0 +1,149 @@
++# Copyright 2023-2026 SGLang Team
++# Licensed under the Apache License, Version 2.0 (the "License");
++# you may not use this file except in compliance with the License.
++# You may obtain a copy of the License at
++#
++#     http://www.apache.org/licenses/LICENSE-2.0
++"""XGrammar structural tags for Flint's chat protocol.
++
++``build_flint_tool_grammar`` describes what Flint writes after its reasoning in
++a turn with tools: text free of protocol markers, then tool calls in Flint's
++format (``<tool_call>name<arg_key>k</arg_key><arg_value>v</arg_value></tool_call>``)
++to the request's tools: any number with ``tool_choice="auto"``, at least one with
++``"required"``, exactly one call of the named tool for a named choice, and at
++most one when the request sets ``parallel_tool_calls`` to false. The call tag is
++XGrammar's built-in ``glm_4_7`` structural tag, which is byte-identical to
++Flint's wire format: argument values follow a tool's JSON schema when the tool
++sets ``strict: true`` and are otherwise syntactically constrained but schema-free.
++
++``reasoning_then`` puts Flint's optional ``<think>...</think>`` block before a
++constraint; the ``flint`` grammar backend does that for every constraint, the
++tool grammar included, because Flint decides on each turn whether to reason.
++
++The grammar never names the token that ends the turn: SGLang hands XGrammar the
++model's EOS ids as stop tokens, which XGrammar allows wherever the grammar can
++end and never as grammar tokens, so ``<|observation|>`` (after tool calls),
++``<|user|>`` and end-of-text close the turn.
++
++Ported from the vendor's ``flint_sglang`` 0.1.4 kit (Apache-2.0).
++"""
++
++from __future__ import annotations
++
++from typing import Any, Dict, List, Literal, Union
++
++from transformers.tokenization_utils_base import PreTrainedTokenizerBase
++from xgrammar.builtin_structural_tag import get_model_structural_tag
++from xgrammar.structural_tag import (
++    AnyTextFormat,
++    Format,
++    OptionalFormat,
++    SequenceFormat,
++    StructuralTag,
++    TagFormat,
++    TokenFormat,
++)
++
++THINK_START = "<think>"
++THINK_END = "</think>"
++
++PROTOCOL_MARKERS = (
++    THINK_START,
++    THINK_END,
++    "<tool_call>",
++    "</tool_call>",
++    "<arg_key>",
++    "</arg_key>",
++    "<arg_value>",
++    "</arg_value>",
++    "<|begin_of_text|>",
++    "<|end_of_text|>",
++    "<|system|>",
++    "<|developer|>",
++    "<|user|>",
++    "<|assistant|>",
++    "<|observation|>",
++)
++STOP_MARKERS = ("<|end_of_text|>", "<|user|>", "<|observation|>")
++
++ToolChoiceLike = Union[Literal["auto", "required"], Dict[str, Any]]
++
++
++def build_flint_tool_grammar(
++    tools: List[Dict[str, Any]] | None = None,
++    tool_choice: ToolChoiceLike = "auto",
++    parallel_tool_calls: bool = True,
++) -> StructuralTag:
++    """The structural tag for what Flint writes after its reasoning in a turn
++    with tools.
++
++    Args:
++        tools: OpenAI-style function tool definitions (``Tool.model_dump()``).
++            Without tools the turn is plain text.
++        tool_choice: ``"auto"``, ``"required"`` or a named choice
++            (``{"type": "function", "function": {"name": ...}}``).
++        parallel_tool_calls: False allows at most one call.
++    """
++    elements: List[Format] = [AnyTextFormat(excludes=list(PROTOCOL_MARKERS))]
++    if tools:
++        # XGrammar's "required" is one or more calls; "auto" wraps them as
++        # optional after the text so a text-only answer stays legal.
++        calls_choice = "required" if tool_choice == "auto" else tool_choice
++        calls = get_model_structural_tag(
++            model="glm_4_7",
++            tools=tools,
++            tool_choice=calls_choice,
++            reasoning=False,
++            parallel_tool_calls=parallel_tool_calls,
++        ).format
++        elements.append(
++            OptionalFormat(content=calls) if tool_choice == "auto" else calls
++        )
++    return StructuralTag(format=SequenceFormat(elements=elements))
++
++
++def reasoning_then(
++    tokenizer: PreTrainedTokenizerBase, constraint: Format
++) -> StructuralTag:
++    """Flint's optional reasoning block followed by ``constraint``.
++
++    Raises:
++        ValueError: if ``<think>`` or ``</think>`` is not a dedicated token.
++    """
++    return StructuralTag(
++        format=SequenceFormat(
++            elements=[OptionalFormat(content=_reasoning(tokenizer)), constraint]
++        )
++    )
++
++
++def _reasoning(tokenizer: PreTrainedTokenizerBase) -> TagFormat:
++    return TagFormat(
++        begin=TokenFormat(token=dedicated_token_id(tokenizer, THINK_START)),
++        content=AnyTextFormat(excludes=[THINK_END, *STOP_MARKERS]),
++        end=TokenFormat(token=dedicated_token_id(tokenizer, THINK_END)),
++    )
++
++
++def dedicated_token_id(tokenizer: PreTrainedTokenizerBase, marker: str) -> int:
++    token_id = tokenizer.convert_tokens_to_ids(marker)
++    if (
++        not isinstance(token_id, int)
++        or tokenizer.convert_ids_to_tokens(token_id) != marker
++        or tokenizer.encode(marker, add_special_tokens=False) != [token_id]
++    ):
++        raise ValueError(
++            f"Flint grammar requires {marker!r} to be a dedicated vocabulary token"
++        )
++    return token_id
++
++
++__all__ = [
++    "PROTOCOL_MARKERS",
++    "STOP_MARKERS",
++    "THINK_END",
++    "THINK_START",
++    "build_flint_tool_grammar",
++    "dedicated_token_id",
++    "reasoning_then",
++]
+diff --git b/python/sglang/srt/function_call/flint_detector.py b/python/sglang/srt/function_call/flint_detector.py
+new file mode 100644
+index 0000000..345da2e
+--- /dev/null
++++ b/python/sglang/srt/function_call/flint_detector.py
+@@ -0,0 +1,92 @@
++# Copyright 2023-2026 SGLang Team
++# Licensed under the Apache License, Version 2.0 (the "License");
++# you may not use this file except in compliance with the License.
++# You may obtain a copy of the License at
++#
++#     http://www.apache.org/licenses/LICENSE-2.0
++"""Tool-call parser for Flint (``--tool-call-parser flint``).
++
++Flint writes GLM-4.7's tool-call wire format
++(``<tool_call>name<arg_key>k</arg_key><arg_value>v</arg_value></tool_call>``),
++so parsing is the GLM-4.7 detector's. What differs is the grammar: every
++request with tools (``tool_choice`` auto, required or a named function) is
++constrained by ``build_flint_tool_grammar`` (text without protocol markers,
++then the calls), and the ``flint`` grammar backend lets Flint reason before it.
++As in OpenAI's API a tool's argument schema is enforced only when the tool is
++sent with ``strict: true``; other tools keep the call format but not the schema.
++
++Ported from the vendor's ``flint_sglang`` 0.1.4 kit (Apache-2.0).
++"""
++
++from __future__ import annotations
++
++import re
++from typing import List, Literal, Optional, Union
++
++from xgrammar import StructuralTag
++
++from sglang.srt.constrained.flint_structural_tags import build_flint_tool_grammar
++from sglang.srt.entrypoints.openai.protocol import Tool, ToolChoice
++from sglang.srt.function_call.glm47_moe_detector import Glm47MoeDetector
++
++TOOL_CALL_PARSER_NAME = "flint"
++
++
++class FlintDetector(Glm47MoeDetector):
++    """GLM-4.7 wire format with Flint's turn grammar for every tool choice."""
++
++    def __init__(self) -> None:
++        super().__init__()
++        # XGrammar's tool-call tag allows whitespace after the tool name; SGLang
++        # strips it when streaming, so strip it here too before the name is
++        # used to type the arguments.
++        self.func_detail_regex = re.compile(
++            r"<tool_call>(.*?)\s*(<arg_key>.*?)?</tool_call>", re.DOTALL
++        )
++
++    def parses_required_natively(self) -> bool:
++        # Never take the GLM full-assistant EBNF path: its special tokens are
++        # GLM's, not Flint's.
++        return False
++
++    def supports_structural_tag(self) -> bool:
++        return True
++
++    def get_structural_tag_name(self) -> Optional[str]:
++        return None
++
++    def get_structural_tag(
++        self,
++        tools: Union[List[Tool], None] = None,
++        tool_choice: Union[ToolChoice, Literal["auto", "required"]] = "auto",
++        thinking_mode: bool = False,
++        parallel_tool_calls: bool = True,
++    ) -> StructuralTag:
++        # thinking_mode is deliberately ignored: the flint grammar backend puts
++        # the optional <think> block in front of this tag itself.
++        choice = (
++            tool_choice.model_dump()
++            if isinstance(tool_choice, ToolChoice)
++            else tool_choice
++        )
++        return build_flint_tool_grammar(
++            [tool.model_dump() for tool in tools or []],
++            choice,
++            parallel_tool_calls,
++        )
++
++    def get_auto_tool_call_structural_tag(
++        self,
++        tools: Union[List[Tool], None] = None,
++        thinking_mode: bool = False,
++        parallel_tool_calls: bool = True,
++    ) -> StructuralTag:
++        return self.get_structural_tag(
++            tools=tools,
++            tool_choice="auto",
++            thinking_mode=thinking_mode,
++            parallel_tool_calls=parallel_tool_calls,
++        )
++
++
++__all__ = ["TOOL_CALL_PARSER_NAME", "FlintDetector"]
+diff --git a/python/sglang/srt/function_call/function_call_parser.py b/python/sglang/srt/function_call/function_call_parser.py
+index 3184ac7..5165c7c 100644
+--- a/python/sglang/srt/function_call/function_call_parser.py
++++ b/python/sglang/srt/function_call/function_call_parser.py
+@@ -29,6 +29,7 @@ from sglang.srt.function_call.glm4_moe_detector import (
+     GlmSpecialTokenConfig,
+     generate_glm_grammar,
+ )
++from sglang.srt.function_call.flint_detector import FlintDetector
+ from sglang.srt.function_call.glm47_moe_detector import Glm47MoeDetector
+ from sglang.srt.function_call.gpt_oss_detector import GptOssDetector
+ from sglang.srt.function_call.hermes_detector import HermesDetector
+@@ -83,6 +84,7 @@ class FunctionCallParser:
+         "dots": DotsToolDetector,
+         "glm": Glm4MoeDetector,
+         "glm45": Glm4MoeDetector,
++        "flint": FlintDetector,
+         "glm47": Glm47MoeDetector,
+         "gpt-oss": GptOssDetector,
+         "k2_horizon": K2V3Detector,
+diff --git a/python/sglang/srt/function_call/parser_names.py b/python/sglang/srt/function_call/parser_names.py
+index 3da09d6..31fc60e 100644
+--- a/python/sglang/srt/function_call/parser_names.py
++++ b/python/sglang/srt/function_call/parser_names.py
+@@ -16,6 +16,7 @@ TOOL_CALL_PARSER_NAMES = [
+     "deepseekv4",
+     "deepseekv41",
+     "dots",
++    "flint",
+     "glm",
+     "glm45",
+     "glm47",
+diff --git b/python/sglang/srt/models/flint.py b/python/sglang/srt/models/flint.py
+new file mode 100644
+index 0000000..cdd4a0b
+--- /dev/null
++++ b/python/sglang/srt/models/flint.py
+@@ -0,0 +1,510 @@
++# Copyright 2023-2026 SGLang Team
++# Licensed under the Apache License, Version 2.0 (the "License");
++# you may not use this file except in compliance with the License.
++# You may obtain a copy of the License at
++#
++#     http://www.apache.org/licenses/LICENSE-2.0
++"""Flint (RecursiveSI/flint): a 40B-total / 2.5B-active MoE coder built from
++SGLang's Qwen3-MoE blocks plus
++
++1. learned attention sinks: a per-head logit (``softmax_offset``) added to
++   the softmax denominator with no value contribution;
++2. hybrid attention: per-layer sliding-window or full attention from
++   ``config.layer_types``;
++3. no positional encoding on the layers in ``config.no_rope_layer_indices``;
++4. dense SwiGLU MLPs on ``config.mlp_only_layers``, sparse MoE elsewhere;
++5. sigmoid routing: top-k on sigmoid scores + expert bias (bias affects the
++   choice only), weights renormalised to one;
++6. an ungated shared expert added to every MoE block.
++
++Ported onto v0.5.22's ``layer_boundary`` stage framework from the vendor's
++``flint_sglang`` 0.1.4 kit (written for 0.5.16's ``LayerCommunicator``,
++Apache-2.0). The attention sinks ride the stock ``sinks`` argument of
++``RadixAttention``; the Triton extend and flash-decode kernels implement them
++(``HAS_SINK``), and the Lean decode path declines sink layers on its own.
++"""
++
++from __future__ import annotations
++
++import logging
++from typing import Iterable, List, Optional, Set, Tuple
++
++import torch
++from torch import nn
++
++from sglang.srt.configs.flint import SLIDING_ATTENTION, FlintConfig
++from sglang.srt.layers.layer_boundary import append_stages, declare_attn, declare_ffn
++from sglang.srt.layers.layernorm import RMSNorm
++from sglang.srt.layers.logits_processor import LogitsProcessor
++from sglang.srt.layers.moe.fused_moe_triton.layer import FusedMoE
++from sglang.srt.layers.moe.topk import TopK
++from sglang.srt.layers.quantization.base_config import QuantizationConfig
++from sglang.srt.layers.radix_attention import RadixAttention
++from sglang.srt.layers.utils import PPMissingLayer, get_layer_id
++from sglang.srt.layers.vocab_parallel_embedding import ParallelLMHead
++from sglang.srt.models.qwen3_moe import (
++    Qwen3MoeAttention,
++    Qwen3MoeDecoderLayer,
++    Qwen3MoeForCausalLM,
++    Qwen3MoeMLP,
++    Qwen3MoeModel,
++    Qwen3MoeSparseMoeBlock,
++)
++from sglang.srt.models.utils import apply_qk_norm
++from sglang.srt.runtime_context import get_exec, get_parallel, get_serving
++from sglang.srt.utils import LazyValue, add_prefix
++from sglang.srt.utils.hf_transformers_utils import get_rope_config
++
++logger = logging.getLogger(__name__)
++
++EXPERT_BIAS_SUFFIX = ".mlp.gate.expert_bias"
++SINK_SUFFIX = ".self_attn.softmax_offset"
++
++
++class FlintMLP(Qwen3MoeMLP):
++    """Dense or shared-expert SwiGLU MLP that accepts the decoder's optional
++    forward batch (the Qwen3-MoE layer passes one to every FFN)."""
++
++    def forward(self, hidden_states: torch.Tensor, forward_batch=None) -> torch.Tensor:
++        return super().forward(hidden_states)
++
++
++class FlintAttention(Qwen3MoeAttention):
++    """GQA with QK RMSNorm, learned sinks, an optional sliding window and
++    optional RoPE."""
++
++    def __init__(
++        self,
++        *,
++        layer_type: str,
++        skip_rope: bool,
++        sliding_window: int,
++        layer_id: int,
++        prefix: str = "",
++        **kwargs,
++    ) -> None:
++        super().__init__(layer_id=layer_id, prefix=prefix, **kwargs)
++        self.skip_rope = skip_rope
++        # The fused qk-norm/RoPE and fused KV-buffer paths assume RoPE on every
++        # layer and no sinks.
++        self.use_fused_qk_norm_rope = False
++        self.use_fused_qk_norm_rope_cpu = False
++        self.compatible_with_fused_kv_buffer = False
++
++        # Per-head sink logits for this rank's heads (sharded in load_weights).
++        self.softmax_offset = nn.Parameter(
++            torch.empty(self.num_heads, dtype=torch.bfloat16), requires_grad=False
++        )
++
++        # HF's sliding_window counts the current token; SGLang's excludes it.
++        self.attn = RadixAttention(
++            self.num_heads,
++            self.head_dim,
++            self.scaling,
++            num_kv_heads=self.num_kv_heads,
++            layer_id=layer_id,
++            sliding_window_size=(
++                (sliding_window - 1) if layer_type == SLIDING_ATTENTION else -1
++            ),
++            prefix=add_prefix("attn", prefix),
++        )
++
++    def apply_qk_norm_rope(self, qkv, positions, forward_batch):
++        q, k, v = qkv.split([self.q_size, self.kv_size, self.kv_size], dim=-1)
++        q, k = apply_qk_norm(
++            q=q,
++            k=k,
++            q_norm=self.q_norm,
++            k_norm=self.k_norm,
++            head_dim=self.head_dim,
++            alt_stream=self.alt_stream,
++        )
++        if not self.skip_rope:
++            q, k = self.rotary_emb(positions, q, k)
++        self._used_fused_qk_norm_rope_last_call = False
++        return q, k, v
++
++    def forward_core(self, intermediate_state):
++        hidden_states, forward_batch, inner_state = intermediate_state
++        if inner_state is None:
++            return hidden_states
++        q, k, v, fb = inner_state
++        attn_output = self.attn(q, k, v, fb, sinks=self.softmax_offset)
++        output, _ = self.o_proj(attn_output)
++        return output
++
++
++class FlintSparseMoeBlock(Qwen3MoeSparseMoeBlock):
++    """Sparse MoE block with sigmoid + expert-bias top-k routing and an
++    ungated shared expert."""
++
++    def __init__(
++        self,
++        layer_id: int,
++        config: FlintConfig,
++        quant_config: Optional[QuantizationConfig] = None,
++        prefix: str = "",
++    ) -> None:
++        super().__init__(layer_id, config, quant_config=quant_config, prefix=prefix)
++
++        # Checkpoints without a router bias leave this at zero. The bias
++        # steers the expert choice only; the routing weights are the raw
++        # sigmoid scores, renormalised (SGLang's sigmoid + correction_bias
++        # semantics, the same path Laguna validated on gfx1201).
++        self.gate.expert_bias = nn.Parameter(
++            torch.zeros(config.num_experts, dtype=torch.float32),
++            requires_grad=False,
++        )
++        self.topk = TopK(
++            top_k=config.num_experts_per_tok,
++            layer_id=layer_id,
++            renormalize=bool(getattr(config, "norm_topk_prob", True)),
++            use_grouped_topk=False,
++            scoring_func="sigmoid",
++            correction_bias=self.gate.expert_bias,
++        )
++
++        shared_size = getattr(config, "shared_expert_intermediate_size", 0) or 0
++        self.shared_expert = (
++            FlintMLP(
++                hidden_size=config.hidden_size,
++                intermediate_size=shared_size,
++                hidden_act=config.hidden_act,
++                quant_config=quant_config,
++                reduce_results=False,
++                prefix=add_prefix("shared_expert", prefix),
++            )
++            if shared_size > 0
++            else None
++        )
++
++    def forward(self, hidden_states: torch.Tensor, forward_batch=None) -> torch.Tensor:
++        if hidden_states.shape[0] == 0:
++            return hidden_states
++        shared_output = (
++            self.shared_expert(hidden_states)
++            if self.shared_expert is not None
++            else None
++        )
++        # Routed experts return this rank's partial sum (FusedMoE
++        # reduce_results=False); the FFN stage boundary completes it, so the
++        # TP-sharded shared expert's partial is added before that reduction.
++        output = super().forward(hidden_states, forward_batch)
++        if shared_output is not None:
++            output = output + shared_output
++        return output
++
++
++class FlintDecoderLayer(Qwen3MoeDecoderLayer):
++    """Pre-norm decoder layer: Flint attention, then a dense MLP or a sparse
++    MoE block, on the layer_boundary stages (forward and the TBO ops are
++    inherited from Qwen3MoeDecoderLayer)."""
++
++    def __init__(
++        self,
++        config: FlintConfig,
++        layer_id: int,
++        start_layer: int = 0,
++        quant_config: Optional[QuantizationConfig] = None,
++        prefix: str = "",
++        alt_stream: Optional[torch.cuda.Stream] = None,
++    ) -> None:
++        nn.Module.__init__(self)
++        self.config = config
++        self.hidden_size = config.hidden_size
++        self.layer_id = layer_id
++        rope_theta, _ = get_rope_config(config)
++        self.rope_theta = rope_theta
++
++        self.self_attn = FlintAttention(
++            hidden_size=self.hidden_size,
++            num_heads=config.num_attention_heads,
++            num_kv_heads=config.num_key_value_heads,
++            layer_id=layer_id,
++            start_layer=start_layer,
++            rope_theta=rope_theta,
++            rope_scaling=None,
++            max_position_embeddings=config.max_position_embeddings,
++            head_dim=config.head_dim,
++            rms_norm_eps=config.rms_norm_eps,
++            attention_bias=config.attention_bias,
++            config=config,
++            quant_config=quant_config,
++            prefix=add_prefix("self_attn", prefix),
++            alt_stream=alt_stream,
++            layer_type=config.layer_types[layer_id],
++            skip_rope=layer_id in set(config.no_rope_layer_indices),
++            sliding_window=config.sliding_window,
++        )
++
++        attn, ffn = self.stage_facts(config, layer_id)
++        self.is_layer_sparse = ffn.sparse
++        if self.is_layer_sparse:
++            self.mlp = FlintSparseMoeBlock(
++                layer_id=layer_id,
++                config=config,
++                quant_config=quant_config,
++                prefix=add_prefix("mlp", prefix),
++            )
++        else:
++            self.mlp = FlintMLP(
++                hidden_size=config.hidden_size,
++                intermediate_size=config.intermediate_size,
++                hidden_act=config.hidden_act,
++                quant_config=quant_config,
++                reduce_results=False,
++                prefix=add_prefix("mlp", prefix),
++            )
++
++        self.input_layernorm = RMSNorm(config.hidden_size, eps=config.rms_norm_eps)
++        self.post_attention_layernorm = RMSNorm(
++            config.hidden_size, eps=config.rms_norm_eps
++        )
++        self.attn_boundary, self.ffn_boundary = append_stages(
++            (attn, self.input_layernorm),
++            (ffn, self.post_attention_layernorm),
++        )
++
++    @staticmethod
++    def stage_facts(config: FlintConfig, layer_id: int):
++        """The stages the layer at ``layer_id`` declares, from the config
++        alone (the model's shared declaration function, see make_layers)."""
++        dense_layers = frozenset(config.mlp_only_layers)
++        is_layer_sparse = layer_id not in dense_layers
++        is_next_layer_sparse = (
++            layer_id + 1 < config.num_hidden_layers
++            and (layer_id + 1) not in dense_layers
++        )
++        return (
++            # Conventional attention (no recurrent state), so the HIP FP32
++            # attention-TP sum could opt out like Laguna/Qwen3-MoE
++            # (PLAIN_ADD_BF16_SUM, patches 080/084); that switch is retained
++            # only after an A/B on the rig, so the defensive default stays.
++            declare_attn(),
++            declare_ffn(
++                sparse=is_layer_sparse,
++                next_layer_sparse=is_next_layer_sparse,
++            ),
++        )
++
++
++class FlintModel(Qwen3MoeModel):
++    def __init__(
++        self,
++        config: FlintConfig,
++        quant_config: Optional[QuantizationConfig] = None,
++        prefix: str = "",
++    ) -> None:
++        super().__init__(
++            config,
++            quant_config=quant_config,
++            prefix=prefix,
++            decoder_layer_type=FlintDecoderLayer,
++        )
++
++
++class FlintForCausalLM(Qwen3MoeForCausalLM):
++    """Flint causal LM. Inherits forward / split prefill / EAGLE3 capture
++    from Qwen3MoeForCausalLM; builds the Flint stack directly instead of
++    letting the parent allocate a stock model first."""
++
++    def __init__(
++        self,
++        config: FlintConfig,
++        quant_config: Optional[QuantizationConfig] = None,
++        prefix: str = "",
++    ) -> None:
++        nn.Module.__init__(self)
++        _check_runtime(config)
++        self.pp_group = get_parallel().pp_group
++        self.config = config
++        self.quant_config = quant_config
++        self.model = FlintModel(config, quant_config, prefix=add_prefix("model", prefix))
++        self.lm_head = ParallelLMHead(
++            config.vocab_size,
++            config.hidden_size,
++            quant_config=quant_config,
++            prefix=add_prefix("lm_head", prefix),
++            use_attn_tp_group=get_parallel().enable_dp_lm_head,
++        )
++        self.logits_processor = LogitsProcessor(config)
++        self.capture_aux_hidden_states = False
++        self.routed_experts_weights_of_layer = LazyValue(
++            lambda: {
++                layer_id: self.model.layers[layer_id].mlp.get_moe_weights()
++                for layer_id in range(self.start_layer, self.end_layer)
++                if isinstance(self.model.layers[layer_id].mlp, Qwen3MoeSparseMoeBlock)
++            }
++        )
++        self.attn_cp_size = get_parallel().attn_cp_size
++        self.moe_dp_size = get_parallel().moe_dp_size
++        self.stacked_params_mapping = [
++            ("qkv_proj", "q_proj", "q"),
++            ("qkv_proj", "k_proj", "k"),
++            ("qkv_proj", "v_proj", "v"),
++            ("gate_up_proj", "gate_proj", 0),
++            ("gate_up_proj", "up_proj", 1),
++        ]
++        self.expert_params_mapping = FusedMoE.make_expert_params_mapping(
++            ckpt_gate_proj_name="gate_proj",
++            ckpt_down_proj_name="down_proj",
++            ckpt_up_proj_name="up_proj",
++            num_experts=config.num_experts,
++        )
++
++    def get_attention_sliding_window_size(self) -> int:
++        # SGLang's window excludes the current token; the config's includes it.
++        return self.config.sliding_window - 1
++
++    def load_weights(
++        self, weights: Iterable[Tuple[str, torch.Tensor]], is_mtp: bool = False
++    ) -> None:
++        """Load checkpoint tensors through the Qwen3-MoE loader, sharding the
++        per-head sinks over attention TP, and fail if any checkpoint tensor
++        matched no parameter (or, on an unquantized load, any parameter went
++        unfilled)."""
++        params = dict(self.named_parameters())
++        loaded_targets: Set[str] = set()
++        unmatched: List[str] = []
++        attn_tp_size = get_parallel().attn_tp_size
++        attn_tp_rank = get_parallel().attn_tp_rank
++        off_stage_prefixes = tuple(
++            f"{n}." for n, m in self.named_modules() if isinstance(m, PPMissingLayer)
++        )
++
++        def canonical_weights() -> Iterable[Tuple[str, torch.Tensor]]:
++            for name, tensor in weights:
++                if name.endswith(SINK_SUFFIX):
++                    tensor = _shard_heads(tensor, attn_tp_size, attn_tp_rank)
++                target = _target_param_name(
++                    name, self.stacked_params_mapping, self.expert_params_mapping
++                )
++                if target in params:
++                    loaded_targets.add(target)
++                elif not self._skipped_by_parent_loader(
++                    name, target=target, is_mtp=is_mtp, off_stage_prefixes=off_stage_prefixes
++                ):
++                    unmatched.append(name)
++                yield name, tensor
++
++        Qwen3MoeForCausalLM.load_weights(self, canonical_weights(), is_mtp=is_mtp)
++        _check_load_coverage(
++            params=params,
++            loaded_targets=loaded_targets,
++            unmatched=unmatched,
++            check_missing=not is_mtp and self.quant_config is None,
++        )
++
++    def _skipped_by_parent_loader(
++        self, name: str, *, target: str, is_mtp: bool, off_stage_prefixes
++    ) -> bool:
++        """Checkpoint tensors the stock loader drops on purpose: other
++        stages/ranks, MTP, RoPE buffers, extra biases."""
++        layer_id = get_layer_id(name)
++        return (
++            (
++                layer_id is not None
++                and not self.model.start_layer <= layer_id < self.model.end_layer
++            )
++            or (bool(off_stage_prefixes) and name.startswith(off_stage_prefixes))
++            or _is_off_rank_expert(name, self.expert_params_mapping)
++            or ("mtp" in name) != is_mtp
++            or "rotary_emb.inv_freq" in name
++            or target.endswith(".bias")
++        )
++
++
++def _check_runtime(config: FlintConfig) -> None:
++    """Fail fast on flag combinations that silently change Flint's output."""
++    try:
++        grammar_backend = get_exec().kernel.grammar_backend
++        serving = get_serving()
++        reasoning_parser = serving.reasoning_parser
++        tool_call_parser = serving.tool_call_parser
++        strict_thinking = serving.enable_strict_thinking
++    except Exception as e:  # runtime context not published in this process
++        logger.warning("Flint: could not read server args for flag checks: %s", e)
++        return
++    flint_backend = grammar_backend == "flint"
++    if tool_call_parser == "flint" and not flint_backend:
++        raise RuntimeError(
++            f"--tool-call-parser flint requires --grammar-backend flint (got "
++            f"{grammar_backend}): without it Flint cannot reason before a tool call."
++        )
++    if flint_backend and reasoning_parser != "flint":
++        raise RuntimeError(
++            f"--grammar-backend flint requires --reasoning-parser flint (got "
++            f"{reasoning_parser}): it lets Flint reason before a constraint, and "
++            "that reasoning must be parsed as Flint writes it."
++        )
++    if flint_backend and strict_thinking:
++        raise RuntimeError(
++            "--enable-strict-thinking is not supported with --grammar-backend flint: "
++            "Flint's grammar already keeps stop and tool-call tokens out of its "
++            "reasoning, and there is no thinking budget."
++        )
++    if not flint_backend:
++        logger.warning(
++            "Flint is served without --grammar-backend flint: constrained requests "
++            "(tools, response_format) cannot reason before the constraint."
++        )
++    if not getattr(config, "enable_lm_head_fp32", False) and not (
++        get_exec().features.enable_fp32_lm_head
++    ):
++        logger.warning(
++            "Flint was validated with an FP32 LM head; outputs without it differ slightly."
++        )
++
++
++def _shard_heads(tensor: torch.Tensor, attn_tp_size: int, attn_tp_rank: int) -> torch.Tensor:
++    if tensor.shape[0] % attn_tp_size != 0:
++        raise ValueError(
++            f"{tensor.shape[0]} attention heads are not divisible by attention TP "
++            f"size {attn_tp_size}"
++        )
++    return tensor.chunk(attn_tp_size, dim=0)[attn_tp_rank]
++
++
++def _target_param_name(name: str, stacked_params_mapping, expert_params_mapping) -> str:
++    """Mirror the parent loader's name mapping to find the parameter a
++    checkpoint tensor fills."""
++    if "mlp.experts" not in name:
++        for param_name, weight_name, _ in stacked_params_mapping:
++            if weight_name in name:
++                return name.replace(weight_name, param_name)
++    for param_name, weight_name, _, _ in expert_params_mapping:
++        if weight_name in name:
++            return name.replace(weight_name, param_name)
++    return name
++
++
++def _is_off_rank_expert(name: str, expert_params_mapping) -> bool:
++    return "mlp.experts" in name and any(
++        weight_name in name for _, weight_name, _, _ in expert_params_mapping
++    )
++
++
++def _check_load_coverage(
++    *, params, loaded_targets: Set[str], unmatched: List[str], check_missing: bool
++) -> None:
++    if unmatched:
++        raise RuntimeError(
++            f"{len(unmatched)} checkpoint tensors match no Flint parameter, "
++            f"e.g. {unmatched[:5]}"
++        )
++    if not check_missing:
++        return
++    missing = sorted(
++        name
++        for name in params
++        if name not in loaded_targets and not name.endswith(EXPERT_BIAS_SUFFIX)
++    )
++    if missing:
++        raise RuntimeError(
++            f"{len(missing)} Flint parameters were not loaded from the checkpoint, "
++            f"e.g. {missing[:5]}"
++        )
++    logger.info("Flint weights loaded: %d parameters matched.", len(loaded_targets))
++
++
++EntryClass = FlintForCausalLM
+diff --git a/python/sglang/srt/parser/reasoning_parser.py b/python/sglang/srt/parser/reasoning_parser.py
+index 4dec025..2099165 100644
+--- a/python/sglang/srt/parser/reasoning_parser.py
++++ b/python/sglang/srt/parser/reasoning_parser.py
+@@ -2239,6 +2239,40 @@ class MuseGlimmerDetector(BaseReasoningFormatDetector):
+         return StreamingParseResult(normal_text=normal, reasoning_text=reasoning)
+ 
+ 
++class FlintReasoningDetector(BaseReasoningFormatDetector):
++    """Flint (RecursiveSI): ``<think>...</think>`` parsing that never assumes a
++    turn starts in reasoning.
++
++    Flint decides on each turn whether to reason and its chat template has no
++    thinking switch. Declaring a request as thinking would put a turn without
++    ``<think>`` into ``reasoning_content`` and hold the tool-call grammar back
++    for a ``</think>`` that never comes, so ``reasoning_default`` is None: the
++    request is never "thinking", ``thinking`` / ``enable_thinking`` template
++    kwargs are ignored, and ``<think>`` blocks are read only where Flint writes
++    them. A ``<tool_call>`` inside the block stays reasoning (Flint always
++    closes ``<think>`` before it calls a tool).
++    """
++
++    def __init__(
++        self,
++        stream_reasoning: bool = True,
++        force_reasoning: bool = False,
++        continue_final_message: bool = False,
++        previous_content: str = "",
++        force_nonempty_content: bool = False,
++    ):
++        super().__init__(
++            "<think>",
++            "</think>",
++            force_reasoning=force_reasoning,
++            stream_reasoning=stream_reasoning,
++            continue_final_message=continue_final_message,
++            previous_content=previous_content,
++            reasoning_default=None,
++            force_nonempty_content=force_nonempty_content,
++        )
++
++
+ class ReasoningParser:
+     """
+     Parser that handles both streaming and non-streaming scenarios for extracting
+@@ -2261,6 +2295,7 @@ class ReasoningParser:
+         "deepseek-v4": DeepSeekV4Detector,
+         "deepseek-v41": DeepSeekV41ReasoningDetector,
+         "dots": Qwen3Detector,
++        "flint": FlintReasoningDetector,
+         "glm45": Glm45Detector,
+         "ling3": Ling3Detector,
+         "hunyuan": HunyuanDetector,
+diff --git a/python/sglang/srt/parser/reasoning_parser_names.py b/python/sglang/srt/parser/reasoning_parser_names.py
+index c061572..c64bb12 100644
+--- a/python/sglang/srt/parser/reasoning_parser_names.py
++++ b/python/sglang/srt/parser/reasoning_parser_names.py
+@@ -10,6 +10,7 @@ REASONING_PARSER_NAMES = [
+     "deepseek-v4",
+     "deepseek-v41",
+     "dots",
++    "flint",
+     "glm45",
+     "ling3",
+     "hunyuan",
+diff --git a/python/sglang/srt/utils/hf_transformers/common.py b/python/sglang/srt/utils/hf_transformers/common.py
+index 6eb9a91..6c2e390 100644
+--- a/python/sglang/srt/utils/hf_transformers/common.py
++++ b/python/sglang/srt/utils/hf_transformers/common.py
+@@ -61,6 +61,7 @@ from sglang.srt.configs import (
+     KimiK25Config,
+     KimiLinearConfig,
+     KimiVLConfig,
++    FlintConfig,
+     LagunaConfig,
+     LocateAnythingConfig,
+     LongcatFlashConfig,
+@@ -128,6 +129,7 @@ _CONFIG_REGISTRY: Dict[str, Type[PretrainedConfig]] = {
+         K2HorizonConfig,
+         LocateAnythingConfig,
+         InternVLChatConfig,
++        FlintConfig,
+         LagunaConfig,
+         Spark2_5Config,
+         Step3VLConfig,

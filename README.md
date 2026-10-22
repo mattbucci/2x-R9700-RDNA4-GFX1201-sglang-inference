@@ -276,7 +276,7 @@ backend, quantization path, parsers, memory settings, and graph policy.
 | Component | Version |
 |---|---|
 | GPUs | 2× AMD Radeon AI PRO R9700, gfx1201, 32 GiB each |
-| SGLang | v0.5.22 + 73 patches |
+| SGLang | v0.5.22 + 74 patches |
 | Python | 3.12 |
 | PyTorch | 2.11.0+rocm7.2 |
 | ROCm | 7.2 |
@@ -318,6 +318,7 @@ root-filesystem layout, and the full threat model are in [`docker/README.md`](do
 |---|---|---|---:|
 | `north-mini` | North-Mini-Code-1.0 | FP8 MoE + hybrid SWA | 256K |
 | `laguna` | Laguna-XS.2 | FP8 MoE + hybrid SWA | 256K |
+| `flint` | RecursiveSI Flint (patch 105; GPU validation pending) | FP8 MoE + hybrid SWA + learned sinks | 262K |
 | `coder-30b` | Qwen3-Coder-30B-A3B | AWQ MoE | 32K default; 256K capable |
 | `coder-reap-25b` | Qwen3-Coder REAP 25B-A3B | AWQ MoE | 256K |
 | `coder-next` | Qwen3-Coder-Next-80B | AWQ MoE + DeltaNet | 128K |

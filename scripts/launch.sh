@@ -32,6 +32,7 @@
 #   nemotron-omni  Nemotron-3-Nano-Omni-30B-A3B FP8 (Mamba2 hybrid AVLM+thinking, 256K; triton, patches 046/047)
 #   north-mini     Cohere North-Mini-Code-1.0 FP8 (hybrid-SWA MoE, 256K)
 #   laguna         Poolside Laguna-XS.2-FP8 (hybrid-SWA MoE coding model, 256K)
+#   flint          RecursiveSI Flint FP8 (40B/2.5B-active MoE coder, SWA + learned sinks, 262K; patch 105)
 
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -772,6 +773,35 @@ PYEOF
             CUDA_GRAPH=""
             REASONING="--reasoning-parser poolside_v1"
             TOOL_CALL_PARSER="poolside_v1"
+            ;;
+        flint)
+            # RecursiveSI/flint — 40B-total / 2.5B-active MoE coder: 49 layers (2 dense +
+            # 47 MoE, 256 routed experts top-6 sigmoid routing + expert bias + an ungated
+            # shared expert), 35 sliding-window (513) + 14 full-attention layers with
+            # learned per-head sinks, no RoPE on the full layers, 262K ctx. Served from
+            # the local FP8 build (quantize_fp8_manual.py from the BF16 upstream, gate
+            # scripts/eval/check_fp8_build.py). Patch 105 ports the vendor kit onto
+            # v0.5.22: FlintConfig, the model on layer_boundary, and the `flint`
+            # tool-call parser / reasoning parser / grammar backend (optional <think>
+            # before every constraint; the model refuses mismatched combinations).
+            # FP32 LM head comes from the config (vendor-validated). The card's
+            # sampling (T=1.0, top_p 0.95, top_k 20) is in generation_config.json and
+            # applies through SGLang's default --sampling-defaults model.
+            MODEL="${MODEL:-${FLINT_MODEL:-/data/models/Flint-FP8}}"
+            QUANT="compressed-tensors"
+            DTYPE="bfloat16"
+            # bf16 KV: the sink + FP8-KV combination has no receipt on this rig yet.
+            KV_DTYPE="${_ENV_KV_DTYPE:-auto}"
+            ATTN_BACKEND="${ATTN_BACKEND:-triton}"
+            CTX="${_ENV_CTX:-262144}"; MAX_RUNNING="${_ENV_MAX_RUNNING:-8}"
+            CHUNKED="${_ENV_CHUNKED:-4096}"; DECODE_STEPS=8; MEM="${_ENV_MEM:-0.85}"
+            WATCHDOG=1800
+            # 14/49 layers are full attention; the SWA pool only needs the 512-token
+            # window plus a prefill chunk. Laguna's BF16-KV ratio as the starting point.
+            EXTRA_ARGS="${EXTRA_ARGS:-} --swa-full-tokens-ratio ${SWA_FULL_TOKENS_RATIO:-0.02} --cuda-graph-max-bs-decode 1 --grammar-backend flint"
+            CUDA_GRAPH=""   # dispatch-bound MoE decode: graphs on
+            REASONING="--reasoning-parser flint"
+            TOOL_CALL_PARSER="flint"
             ;;
         *)
             echo "Unknown model: $1"

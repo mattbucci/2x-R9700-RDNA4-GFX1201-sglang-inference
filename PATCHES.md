@@ -1,10 +1,10 @@
 # Patch collections
 
-The repository carries **75 active patches across three environments**:
+The repository carries **76 active patches across three environments**:
 
 | Collection | Target | Count | Purpose |
 |---|---|---:|---|
-| [`patches/`](patches/README.md) | SGLang v0.5.22 (`/data/sgl-v0522`, `sglang-triton36-v0522`) | **73** | RDNA4 serving, model compatibility, correctness, and performance |
+| [`patches/`](patches/README.md) | SGLang v0.5.22 (`/data/sgl-v0522`, `sglang-triton36-v0522`) | **74** | RDNA4 serving, model compatibility, correctness, and performance |
 | [`llmcompressor-patches/`](llmcompressor-patches/README.md) | llmcompressor calibration environment | **1** | Unfused Qwen3 MoE experts for GPTQ calibration |
 | [`ream-patches/`](ream-patches/README.md) | Samsung SAIL REAM clone | **1** | Memory-safe, resumable expert merging |
 
@@ -13,14 +13,14 @@ Tooling files that support REAM/REAP are not counted as patches. Upstream contri
 
 ## SGLang series
 
-Apply the 73 numeric patches in filename order to pristine SGLang v0.5.22. Patch 072 was removed because
+Apply the 74 numeric patches in filename order to pristine SGLang v0.5.22. Patch 072 was removed because
 transformers 5.12.1 provides the Gemma 4 unified configuration and processor natively. Patch 083 replaces
 that count with the Mistral tokenizer-backend correction required by Devstral and Devstral 2. On the
 v0.5.16 rebase, patch 059 was dropped because its FuseEP dispatcher target was removed upstream, and patch
 097 (JIT fused-gate None-bias guard) was added. The v0.5.18 rebase went to 70 (26 patches
 regenerated for upstream's kernel-tree relocation; the upstreamed max-head sizing was dropped from 077; 098 added
 for the native Gemma4Unified config). Patch 099 (2026-09-27) accepts the scheduler's `pp_proxy_tensors=` keyword in the DSpark worker (upstream main carries the same fix; without it every DSPARK boot dies on the first forward). Patch 100 (2026-09-27) enables the Triton split-KV speculative-verify kernel on gfx1201 (upstream gates it to gfx95; same lift as upstream PR #39316) with a 16-row WMMA tile floor — it turns DSpark from 0.24x to 1.5x at a 49K context. Patch 103 (2026-10-18) ports the 3090's 066: the Responses-API history merge split a phase-tagged assistant text from its own tool call, which emptied 71% of the 3090's dcode cell; the dcode lane preflight now refuses a server without it. The v0.5.20 rebase stayed at 70 (23 regenerated for the msgspec-record
-`ServerArgs` and upstream's gfx1250 branches; upstreamed hunks dropped from 011/049/074/096). The v0.5.22 rebase (2026-10-19) stayed at 73: 099 was dropped as upstreamed, 104 added (WNA16 fused-shared-expert slot, GLM-4.5-Air AWQ load), and 26 patches were regenerated for upstream's `layer_boundary` rewrite (the communicator module is gone), the relocated block-FP8 GEMM, and v0.5.22's new HIP `extra_buffer` claim, which 073 now pins back to `no_buffer` on gfx1201.
+`ServerArgs` and upstream's gfx1250 branches; upstreamed hunks dropped from 011/049/074/096). The v0.5.22 rebase (2026-10-19) stayed at 73: 099 was dropped as upstreamed, 104 added (WNA16 fused-shared-expert slot, GLM-4.5-Air AWQ load), and 26 patches were regenerated for upstream's `layer_boundary` rewrite (the communicator module is gone), the relocated block-FP8 GEMM, and v0.5.22's new HIP `extra_buffer` claim, which 073 now pins back to `no_buffer` on gfx1201. Patch 105 (2026-10-22) adds Flint (RecursiveSI, 40B/2.5B-active MoE coder with sliding-window attention and learned sinks): the vendor's `flint_sglang` kit, written for 0.5.16's `LayerCommunicator`, ported onto the `layer_boundary` stages as an in-tree model, config, tool-call/reasoning parsers and the `flint` grammar backend.
 v0.5.22 (tagged 2026-10-13) is the newest upstream release as of 2026-10-19 (`main` is not tracked; the next rebase targets the
 next release tag at a bake-off lane boundary).
 
@@ -33,7 +33,7 @@ next release tag at a bake-off lane boundary).
 | FP8 | 005 039 042 044 045 074 082 | 7 |
 | Mamba2 hybrids | 043 046 047 049 073 | 5 |
 | Gemma 4 | 023 024 025 026 061 098 | 6 |
-| Model, parser, and speculative-decode plumbing | 007 015 016 036 040 048 055 056 057 058 062 083 089 090 091 092 093 095 100 | 19 |
+| Model, parser, and speculative-decode plumbing | 007 015 016 036 040 048 055 056 057 058 062 083 089 090 091 092 093 095 100 105 | 20 |
 | API and network hardening | 096 103 | 2 |
 
 The detailed active index and replay procedure are in [`patches/README.md`](patches/README.md). The

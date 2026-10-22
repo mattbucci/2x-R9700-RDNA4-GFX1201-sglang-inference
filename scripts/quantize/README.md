@@ -23,7 +23,8 @@ Use `/home/letsrtfm/miniforge3/envs/fp8-quant` on this host (the older documente
 |---|---|
 | \`run_full_pipeline.sh\` | Calibration through serving validation for supported model keys |
 | \`calibration_datasets.py\` | Capability-aware mixed datasets; live audio sources avoid optional codec decoding |
-| \`quantize_fp8.py\` | Native compressed-tensors FP8 build |
+| \`quantize_fp8.py\` | Native compressed-tensors FP8 build (llmcompressor oneshot) |
+| \`quantize_fp8_manual.py\` | Direct per-channel FP8 cast, shard-streamed on the CPU; the path for large-expert-count MoE (Flint: 36,439 Linears) where llmcompressor segfaults |
 | \`quantize_coder30b_code_thinking.py\` | Qwen3-Coder MoE calibration |
 | \`quantize_qwen35_moe_ream.py\` | Qwen3.5/3.6 MoE calibration |
 | \`quantize_qwen36_thinking_vision.py\` | Qwen3.6 MoE reasoning/vision calibration |
@@ -60,6 +61,14 @@ python scripts/eval/check_awq_scales.py /path/to/awq --base /path/to/bf16
 \`\`\`
 
 The checker validates scale tensors and packed weights. Its base comparator supports fused and unfused MoE expert layouts and only downgrades zero scales when the matching BF16 block is below the conservative dead-channel threshold.
+
+For a compressed-tensors FP8 build, run the FP8 gate instead (CPU only; hide the GPUs if a server is up):
+
+\`\`\`bash
+HIP_VISIBLE_DEVICES= python scripts/eval/check_fp8_build.py /path/to/fp8 --base /path/to/bf16
+\`\`\`
+
+It requires every copied tensor to be byte-identical to the base, every quantized Linear to carry a finite, positive \`[out, 1]\` bf16 scale equal to \`bf16(clamp(amax) / 448)\`, a bounded per-row reconstruction error, no extra or missing tensors, and an \`ignore\` list that names every Linear left in BF16. Flint-FP8 (2026-10-22): 36,439 quantized, 295 copied, 75 near-dead rows (row amax below the caster's 1e-12 clamp), worst relative error 0.0585, 0 defects.
 
 Then launch and validate:
 

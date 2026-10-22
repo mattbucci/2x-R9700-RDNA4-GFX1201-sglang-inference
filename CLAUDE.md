@@ -7,7 +7,7 @@ This repository serves and optimizes SGLang v0.5.22 on two AMD Radeon AI PRO R97
 - SGLang tree: \`/data/sgl-v0522\`
 - Conda environment: \`sglang-triton36-v0522\`
 - Kernel source for the native HIP builds: \`/data/sgl-v0522/python/sglang/kernels/aot\` (upstream moved \`sgl-kernel/\` there in v0.5.17)
-- Patch series: 73 numeric patches in \`patches/\`
+- Patch series: 74 numeric patches in \`patches/\`
 - Hardware: 2× gfx1201, 32 GiB each
 - ROCm 7.2, PyTorch 2.11.0+rocm7.2, Triton 3.6.0
 - Use the current tree unless a task explicitly requests a version comparison.
