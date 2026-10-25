@@ -277,7 +277,7 @@ try:
     proc.save_pretrained(OUTPUT_DIR)
     print("  Saved processor (image + audio config)")
 except Exception as e:
-    print(f"  WARN: could not save AutoProcessor ({e!r}); copying remote-code files directly")
+    print(f"  ERROR: could not save AutoProcessor ({e!r}); copying remote-code files directly")
 import shutil
 for fname in os.listdir(BASE_MODEL):
     if fname.endswith((".py", ".jinja")) or fname in (
@@ -288,6 +288,8 @@ for fname in os.listdir(BASE_MODEL):
         if os.path.isfile(src) and not os.path.exists(dst):
             shutil.copy2(src, dst)
             print(f"  Copied {fname}")
+from processor_gate import gate_processor_files  # noqa: E402  (scripts/quantize is on sys.path above)
+gate_processor_files(OUTPUT_DIR, BASE_MODEL)
 
 print("\nDone.")
 print("Next:")

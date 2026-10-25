@@ -166,7 +166,9 @@ try:
     AutoProcessor.from_pretrained(BASE_MODEL, trust_remote_code=True).save_pretrained(OUTPUT_DIR)
     print("  Saved preprocessor config")
 except Exception as e:
-    print(f"  WARN: preprocessor not saved ({e!r})")
+    print(f"  ERROR: preprocessor not saved ({e!r})")
+from processor_gate import gate_processor_files  # noqa: E402  (scripts/quantize is on sys.path above)
+gate_processor_files(OUTPUT_DIR, BASE_MODEL)
 print("Done. Next:")
 print(f"  1. python scripts/quantize/convert_qwen35_ct_to_awq.py --input {OUTPUT_DIR}")
 print(f"  2. re-run the 6-instance SWE-bench smoke on the new AWQ (A/B vs 0/6)")

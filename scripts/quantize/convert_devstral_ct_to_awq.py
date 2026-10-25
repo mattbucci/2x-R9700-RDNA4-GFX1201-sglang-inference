@@ -14,6 +14,7 @@ Usage:
 """
 import gc
 import os
+import sys
 import json
 import glob
 import torch
@@ -257,6 +258,9 @@ if orig_snapshot:
         print(f"  Saved {len(vision_tensors)} vision/projector tensors to {vision_shard} ({mb:.0f} MB)")
         del vision_tensors
         gc.collect()
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    from processor_gate import gate_processor_files  # noqa: E402
+    gate_processor_files(OUTPUT_DIR, orig_snapshot)
 else:
     print("\n  WARN: Original model not found in HF cache, vision weights not included")
 

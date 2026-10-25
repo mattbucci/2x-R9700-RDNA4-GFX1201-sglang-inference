@@ -134,6 +134,9 @@ try:
     proc.save_pretrained(OUTPUT_DIR)
     print("  Saved preprocessor (image) config")
 except Exception as e:
-    print(f"  WARN: could not save preprocessor ({e!r})")
+    print(f"  ERROR: could not save preprocessor ({e!r})")
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from processor_gate import gate_processor_files  # noqa: E402
+gate_processor_files(OUTPUT_DIR, BASE_MODEL)
 
 print("Done.")

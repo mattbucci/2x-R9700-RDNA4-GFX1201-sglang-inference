@@ -24,7 +24,9 @@ new quality flagship Qwen3.8-27B-FP8.
   31.9) against 22.5 / 22.2 / 21.4 / 20.0 on the no-spec server (`QWEN38_SPEC=0`,
   which keeps the 530K-token pool for true 256K work; the DSpark pool is 206K on v0.5.22, 239K on v0.5.20), 45.6 tok/s on
   thinking text at 58K, capability probe 5/5. Its seven-scaffold SWE-bench Lite bakeoff (300
-  instances per cell, Docker-scored) is restarting as **v5** on that preset (2026-09-27; the v4
+  instances per cell, Docker-scored) runs as **v5** on that preset (restarted 2026-09-27; six of the
+  seven lanes stand at 300/300 on 2026-10-25 and dcode is rolling, then audit, `infra_*` re-roll and
+  scoring; the v4
   matrix on the no-spec server — opencode 300/300, opencode-dcp 159/300 — stays on disk as the
   no-spec reference cell; v4 was itself the sandboxed, cue-neutral restart of 2026-09-20 that
   survived a GPU-loss reboot and auto-resume on 2026-09-22); every
@@ -149,7 +151,9 @@ SGLang, the tree re-initialised to a single commit at an opaque `/work/repo-<has
 Ordered by what runs next. Specs with an ID live in [`experiments/`](experiments/README.md).
 
 1. **Run the Qwen3.8 seven-scaffold bakeoff v5 to completion** (launched 2026-09-27 on the DSpark
-   preset — `v5-cycle-v0520-dspark.sh`, resume with `v5-resume-after-reboot.sh`, pause at an
+   preset; on 2026-10-25 opencode, opencode-dcp, little-coder, little-coder-rtk, omp and prime are at
+   300/300 and dcode is the running lane, with the omp cell re-roll queued behind it —
+   `v5-cycle-v0520-dspark.sh`, resume with `v5-resume-after-reboot.sh`, pause at an
    instance boundary with `evals/swebench/pause_cycle_at_boundary.sh v5`; the v4 matrix on the
    no-spec server, opencode 300/300 and opencode-dcp 159/300, stays on disk as the no-spec
    reference and is not mixed into v5. The bake-off's job is to catch hosting errors across the
@@ -232,10 +236,10 @@ Ordered by what runs next. Specs with an ID live in [`experiments/`](experiments
 7. **Wire the delivered EAGLE3 drafts into the `--spec` lane and measure the depth curve**
    ([R97-A](experiments/04-eagle3-dense-vl-spec-lane-depth-curve.md)); 3090-measured ≤64K bands are
    Devstral 2.26×/1.91× and Qwen3-VL 1.86×/1.60×.
-8. **Ship-gate hygiene**: make the post-save `preprocessor_config.json` / `video_preprocessor_config.json`
-   check a hard gate in `scripts/quantize/` (today a `WARN`), and record the actual
-   `max_total_num_tokens` pool for every DeltaNet preset under `--max-running > 1` (recurrent state
-   replicates per slot; `qwen38` pins `MAX_RUNNING=1` for this reason).
+8. **Ship-gate hygiene**: record the actual `max_total_num_tokens` pool for every DeltaNet preset under
+   `--max-running > 1` (recurrent state replicates per slot; `qwen38` pins `MAX_RUNNING=1` for this
+   reason). The post-save processor-file check is a hard gate since 2026-10-25
+   (`scripts/quantize/processor_gate.py`, exit 65; base-relative expected set).
 9. **Blocked or deferred**: the Qwen3.6-35B-A3B REAP prune on this host
    ([R97-F](experiments/05-qwen36-35b-reap192-two-rig-relay.md), waiting on the 3090 handoff);
    canonical-eval cells for North/Laguna ([R97-G](experiments/06-north-laguna-canonical-eval-ngram-rows.md)
@@ -328,7 +332,7 @@ root-filesystem layout, and the full threat model are in [`docker/README.md`](do
 | `qwen35` | Qwen3.5-27B | AWQ/FP8 DeltaNet | 256K |
 | `qwen35-moe` | Qwen3.5-35B-A3B | AWQ MoE + DeltaNet | 256K |
 | `qwen36-27b` | Qwen3.6-27B | AWQ/FP8 DeltaNet + vision | 256K |
-| `qwen38` | Qwen3.8-27B | official FP8 (block) DeltaNet + vision + video + DSpark draft | 239K pool (256K with `QWEN38_SPEC=0`) |
+| `qwen38` | Qwen3.8-27B | official FP8 (block) DeltaNet + vision + video + DSpark draft | 206K pool on v0.5.22 (256K with `QWEN38_SPEC=0`) |
 | `qwen36-moe` | Qwen3.6-35B-A3B | AWQ/FP8 MoE + DeltaNet | 256K |
 | `qwen3vl-32b` | Qwen3-VL-32B | AWQ dense + vision | 256K override |
 | `gemma4` | Gemma 4 26B-A4B | AWQ/FP8 MoE + vision | 256K |

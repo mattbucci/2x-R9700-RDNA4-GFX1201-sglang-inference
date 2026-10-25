@@ -70,6 +70,12 @@ HIP_VISIBLE_DEVICES= python scripts/eval/check_fp8_build.py /path/to/fp8 --base 
 
 It requires every copied tensor to be byte-identical to the base, every quantized Linear to carry a finite, positive \`[out, 1]\` bf16 scale equal to \`bf16(clamp(amax) / 448)\`, a bounded per-row reconstruction error, no extra or missing tensors, and an \`ignore\` list that names every Linear left in BF16. Flint-FP8 (2026-10-22): 36,439 quantized, 295 copied, 75 near-dead rows (row amax below the caster's 1e-12 clamp), worst relative error 0.0585, 0 defects.
 
+Every multimodal quantize script ends with the processor gate (`processor_gate.py`): whichever of `preprocessor_config.json`, `video_preprocessor_config.json` and `processor_config.json` the BF16 base carries must exist in the output and parse as a JSON object, or the script exits 65 (the former `WARN: could not save preprocessor` is gone). Run it by hand on any checkpoint built before 2026-10-25:
+
+```bash
+python scripts/quantize/processor_gate.py /path/to/quant --base /path/to/bf16
+```
+
 Then launch and validate:
 
 \`\`\`bash

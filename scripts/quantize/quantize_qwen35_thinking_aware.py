@@ -165,7 +165,10 @@ try:
     proc.save_pretrained(OUTPUT_DIR)
     print("  Saved preprocessor (image/video) config")
 except Exception as e:
-    print(f"  WARN: could not save preprocessor ({e!r}); launch may need manual copy")
+    print(f"  ERROR: could not save preprocessor ({e!r})")
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from processor_gate import gate_processor_files  # noqa: E402
+gate_processor_files(OUTPUT_DIR, BASE_MODEL)
 print(f"Done.  Next steps:")
 print(f"  1. python scripts/quantize/convert_qwen35_ct_to_awq.py --input {OUTPUT_DIR}")
 print(f"  2. MODEL=<awq-path> scripts/launch.sh qwen35")
