@@ -421,3 +421,28 @@ Qwen3.5 (0.029 / 0.000) and Gemma4 (0.034 / 0.086) LAB-Bench cells predate the f
 suspect until re-measured; MMLU was not visibly affected (Qwen3.8: 0.842 think-mode). Results
 JSONs record the condition in `mc_mode`. The MC budget "matches the 3090 sister repo", so the
 same artifact likely applies there.
+
+### Legacy `sglang.bench_serving` benchmark directories purged (2026-10-25)
+
+`sglang.bench_serving --dataset-name random` drew each prompt's length uniform in `[1, N]` (the
+`--random-range-ratio 0.0` default), so every pre-July "depth" row measured about half its label
+([bench-serving-audit-2026-07-14.md](bench-serving-audit-2026-07-14.md)). Disposition under
+[`experiments/08`](../experiments/08-bench-dir-hygiene-purge-or-remeasure.md), Option B: eleven
+depth-suspect directories whose models already have `decode_ab` curves or were dead twin layouts were
+removed from the tree, plus the North-Mini `v0513-resweep-results.json` rider (2026-06-16, 65.1 →
+41.3 tok/s to a nominal 262K). Legacy values recorded here before deletion (`sglang.bench_serving`,
+decode tok/s at nominal 128 / 16K / 64K / 128K / 256K input): `devstral-24b-awq-131k` 27.7 / 26.2 /
+15.8 / 9.7 / — (2026-04-18); `gemma4-26b-awq` 30.2 flat to 4K (2026-04-11, forced-routing GPTQ);
+`qwen35-27b-awq` and `-256k` 26.1 / 23.7, 26.0 / 22.6 to 16K (2026-04-12/18); `qwen35-35b-moe-256k`
+14.4 / 14.4 / 14.7 / 15.3 / 12.4; `qwen36-35b-moe-256k` 15.5 / 15.4 / 12.5 / 14.6 / 13.3 (2026-04-18);
+`qwen3.6-35b-a3b-awq-v2-fixed` and `-256k` 21.7 / 21.9 / 21.3 / 20.8 / — and 21.0 / 21.8 / 20.6 /
+20.9 / 16.1 (2026-04-28); `qwen3.6-35b-moe-awq-native` 21.6 / 20.7 / 21.2 / 20.6 / — (2026-04-24);
+`qwen3.6-ream-a3b-awq-256k` 21.4 / 21.9 / 21.6 / 20.9 / 16.1 and `qwen3.6-vl-reap-26b-a3b-awq-256k`
+21.3 / 21.5 / 21.4 / 20.7 / 16.1 (2026-04-28). The flat-to-256K curves are the half-depth artifact,
+not a property of the models. `benchmarks/gemma-4-26b-awq/` and `benchmarks/qwen3.5-27b-awq/` gained
+performance cards so the live `decode_ab` data outranks the deleted twins in a doc grep, and the
+untracked root `sglang*_0*.jsonl` driver output moved to `benchmarks/raw/`. Still open (Option B's
+GPU half, ~4 h at a bake-off boundary): `qwen3.6-ream-a3b-awq/` and `qwen3.6-vl-reap-26b-a3b-awq/`
+keep their `sglang.bench_serving` files until re-measured with `decode_ab` through the `qwen36-moe`
+preset with a `MODEL=` override (boot gate first; both were DOWN at 262144 on the pre-fix stack), or
+are purged if the gate fails.

@@ -1,5 +1,7 @@
 # R9700 audit — bench_serving half-depth bug (2026-07-14)
 
+> Disposition 2026-10-25: the superseded directories below were purged (Option B of `experiments/08`); legacy values are in [FINDINGS.md](FINDINGS.md) → Evaluation methodology.
+
 Response to the 3090 team's cross-team note: `sglang.bench_serving --dataset-name random`
 defaults `--random-range-ratio` to `0.0`, and `compute_random_lens(full_len, 0.0, n)` returns
 `randint(1, full_len+1)` — every prompt's length is drawn **uniform in [1, N]**, averaging ~N/2. Any

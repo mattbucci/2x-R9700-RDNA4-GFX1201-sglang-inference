@@ -245,9 +245,11 @@ Ordered by what runs next. Specs with an ID live in [`experiments/`](experiments
    canonical-eval cells for North/Laguna ([R97-G](experiments/06-north-laguna-canonical-eval-ngram-rows.md)
    Phase B/C); the post-FP8 concurrency re-measure ([R97-O](experiments/15-concurrency-hol-blocking-postfp8-remeasure.md)).
 10. **User decisions pending**: decode-topk promotion ([R97-B](experiments/07-decode-topk-promotion-brief.md),
-    1.77× at 245K on a pre-v0.5.15 gate; needs regeneration); legacy `bench_serving` directory purge or
-    re-measure ([R97-H](experiments/08-bench-dir-hygiene-purge-or-remeasure.md)); pushing the parked
-    `ci-build-canary` branch (weekly image build) with a workflow-scoped token.
+    1.77× at 245K on a pre-v0.5.15 gate; needs regeneration); pushing the parked `ci-build-canary`
+    branch (weekly image build) with a workflow-scoped token (the stored token was refused again on
+    2026-10-25). The legacy `bench_serving` purge ([R97-H](experiments/08-bench-dir-hygiene-purge-or-remeasure.md))
+    ran as Option B on 2026-10-25; only its GPU half remains — re-measure `qwen3.6-ream-a3b-awq` and
+    `qwen3.6-vl-reap-26b-a3b-awq` with `decode_ab` (~4 h) or purge them if the boot gate fails.
 
 Notes and asks from the sister rigs are kept in [`CROSS-TEAM.md`](CROSS-TEAM.md), not here.
 

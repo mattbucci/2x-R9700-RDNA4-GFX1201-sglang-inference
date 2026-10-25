@@ -213,7 +213,10 @@ whose `--random-range-ratio` defaults to `0.0` — that draws each prompt's leng
 "depth" rows silently measure ~half the label. The harness now pins `--random-range-ratio 1`. The fleet
 table and charts instead come from `decode_ab.py` (one deterministic full-length prompt, actual
 input-token counts). Older `results.json` files whose `method` is `sglang.bench_serving` are
-depth-suspect — see [bench-serving-audit-2026-07-14.md](bench-serving-audit-2026-07-14.md).
+depth-suspect — see [bench-serving-audit-2026-07-14.md](bench-serving-audit-2026-07-14.md). The eleven
+superseded directories it flagged were purged on 2026-10-25 (legacy values in
+[FINDINGS.md](FINDINGS.md) → Evaluation methodology); `qwen3.6-ream-a3b-awq/` and
+`qwen3.6-vl-reap-26b-a3b-awq/` still carry that method until re-measured.
 
 ## Data layout
 

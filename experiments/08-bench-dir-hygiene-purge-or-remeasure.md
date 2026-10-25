@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | **Type** | decision-brief |
-| **Status** | needs-user-decision |
+| **Status** | Option B approved 2026-10-25 — purge pass, de-twin cards, root-JSONL rider and FINDINGS entry done; re-measure of the 2 ships pending a GPU window |
 | **Execution host** | r9700-box |
 | **Wall clock** | Option A (purge-only): ~1h. Option B (purge 11 + re-measure 2): ~1h cleanup + ~2-4h benching. |
 | **GPU time** | Option A: none. Option B: ~2-4h R9700 occupancy (2 model boots + 4-context 3-run decode_ab sweeps; deep point tracks the booted CTX — ~221K at 262144, ~122880 at 131072, ~57K at 65536). |
@@ -12,8 +12,13 @@
 
 ## Current assessment — 2026-07-18 post-089
 
-- **Disposition:** **Defer; mechanically prepared but blocked on the user's Option A/B and rider choices.**
-  No deletion or root-file move is authorized by this assessment.
+- **Disposition (updated 2026-10-25):** **Option B executed through step 4.** The user approved the
+  offline work on 2026-10-25; steps 2–4 ran (11 dirs + the v0513 rider removed, two performance cards
+  written, root JSONL moved to `benchmarks/raw/`), the legacy values are recorded in
+  `benchmarks/FINDINGS.md` → Evaluation methodology. Steps 5–7 (boot gate, `decode_ab` re-measure,
+  charts-only reintegration) wait for an idle GPU window.
+- **Original disposition (2026-07-18):** Defer; mechanically prepared but blocked on the user's Option
+  A/B and rider choices. No deletion or root-file move is authorized by this assessment.
 - **Goal fit:** This improves benchmark provenance but provides no FP8 or 256K inference-speed gain.
   Option B additionally consumes GPU time on two AWQ model overrides unrelated to Laguna's native-FP8
   path.
