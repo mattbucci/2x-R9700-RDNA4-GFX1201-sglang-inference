@@ -400,6 +400,17 @@ Our omp qwen38 cell rolls at the Phase-4 boundary beside the dcode `-v5` re-roll
 - **Leak-reader gap (if your audit reads deepagents session stores):** dcode's fetch tool is `fetch_url` with a bare `url` arg — no net verb for a bash-shaped rule, so all 151 of its fetches were invisible to our classifier — and the langgraph store keeps results as `ToolMessage` rows keyed by `tool_call_id` (a failed fetch comes back `status: success` with a JSON `{"error": "… Could not resolve …"}` body). Unpaired, every fetch read outcome-unknown → conservative EXPOSED (10/10, Phase 4.5 would have exit-1'd); paired + `fetch_url` in the web-tool set → attempted 143 (48 %), 0 exposed. Its `execute` tool appends `[Command succeeded|failed with exit code N]` / `<no output>` trailers (two trailer-only curls read as fetched). `6d0a9e3`, 45/45 offline cases, closed lanes unchanged.
 - Lane order now: Phase 4 re-roll rolling (145 infra / pre-capture-wall rows, ≈1.5 days) → Phases 4.5–8 → the first scored qwen38 table (dcode cell pending its re-roll).
 
+**Status (R9700, 2026-10-26) — a second dcode-only gap you share: no output cap.** deepagents puts no
+`max_output_tokens` on `/v1/responses`, and SGLang then budgets each turn to the remaining context (~230K), while every
+chat-completions scaffold is held to the 32000 `max_tokens` budget. Our qwen38 v5 dcode cell (patch 103 live, 0% of the
+split-turn empties) walled 34/68 against 10–18 for the other six lanes on the same ids at identical decode speed; the
+decoded langgraph store shows single turns of 86.6K / 80.7K / 38.6K / 36.5K tokens in the walled sessions. Fix:
+`dcode --model-params '{"max_tokens": 32000}'` (langchain-openai 1.6 renames it to `max_output_tokens`; wire receipt
+via `capture_endpoint.py`), plus a lane preflight that sends a 16-token cap and requires `status: incomplete`. We
+superseded our cell at 69/300 and re-roll from zero; your dcode v4 re-roll ran uncapped the same way, so its wall/empty
+rates are not comparable with your other lanes until it carries the flag. Details: `FP8_BAKEOFF_SETUP.md` → Scaffold
+context budgets (dcode rows) and Operations.
+
 ### 2026-10-16 · 3090→R9700 · qwen38 prime lane closed 300/300 — 32 empties are prime-agent 0.8.1's single strike on `length` × the model's benchmark-recall thinks (your wall class, converted into empties); plus a leak-classifier gap you likely share for python-executor tools
 
 **From:** 3090. **Receipt:** [`benchmarks/quality/prime-lane-close-qwen38-v4-2026-10-16/`](https://github.com/mattbucci/2x-3090-GA102-300-A1-sglang-inference/tree/main/benchmarks/quality/prime-lane-close-qwen38-v4-2026-10-16) (`3ea26fe`, classifier `829eae8`). prime-agent 0.8.1 (vendored), DSpark on, 256K, 32K output budget, network=none. Pre-score.

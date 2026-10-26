@@ -822,9 +822,35 @@ def _check_responses_api(server_url: str, served: str) -> tuple[str, str]:
         raise SystemExit(f"  PREFLIGHT FAILED: /v1/responses phase-tagged history splits the assistant turn "
                          f"(usage.input_tokens with phase={tok_with}, without={tok_without}; patch 103 missing "
                          f"from the serving tree — 3090 qwen38 dcode v4 went 71% empty on this) — refusing to start rollout")
+    cap_status, cap_tokens = _responses_output_cap(server_url, model_id)
+    if cap_status != "incomplete" or cap_tokens is None or cap_tokens > 40:
+        raise SystemExit(f"  PREFLIGHT FAILED: /v1/responses ignores max_output_tokens (16-token cap -> "
+                         f"status={cap_status}, output_tokens={cap_tokens}; need incomplete, <=40) — dcode's "
+                         f"--model-params max_tokens={OUTPUT_BUDGET} would not bind — refusing to start rollout")
     return model_id, (f"dcode /v1/responses model={model_id} status=completed output={kinds} "
                       f"usage={body.get('usage', {}).get('output_tokens')} out-tokens; "
-                      f"history-merge input_tokens with/without phase {tok_with}/{tok_without}")
+                      f"history-merge input_tokens with/without phase {tok_with}/{tok_without}; "
+                      f"max_output_tokens=16 probe -> {cap_status}/{cap_tokens} tokens (lane cap {OUTPUT_BUDGET})")
+
+
+def _responses_output_cap(server_url: str, model_id: str) -> tuple:
+    """Prove the server binds `max_output_tokens` on /v1/responses: a 16-token cap on a
+    prompt that wants hundreds of tokens must come back `incomplete` (SGLang maps the
+    `length` finish to that status) with usage.output_tokens at the cap. dcode relies on
+    this field for its OUTPUT_BUDGET (run_dcode --model-params); the qwen38 v5 dcode cell
+    of 2026-10-25 ran without it and walled 50% on single uncapped thinks."""
+    import urllib.request
+    payload = {"model": model_id, "max_output_tokens": 16,
+               "input": "Write the integers from 1 to 500 separated by spaces, nothing else."}
+    req = urllib.request.Request(f"{server_url.rstrip('/')}/v1/responses",
+                                 data=json.dumps(payload).encode(),
+                                 headers={"Content-Type": "application/json"})
+    try:
+        with urllib.request.urlopen(req, timeout=300) as r:
+            body = json.loads(r.read())
+    except Exception as e:  # noqa: BLE001 - any failure is a preflight failure
+        return f"error:{e!r}"[:200], None
+    return body.get("status"), (body.get("usage") or {}).get("output_tokens")
 
 
 def _responses_history_merge_tokens(server_url: str, model_id: str, first_payload: dict,
@@ -1144,10 +1170,19 @@ def run_dcode(served: str, repo_dir: Path, prompt: str, timeout: int, log_path: 
     # way (temperature/reasoning None on the model object).
     # No -n: a piped stdin becomes the headless message (apply_stdin_pipe), which is
     # what -q/--max-turns/--timeout require.
+    # --model-params max_tokens: langchain-openai renames it to `max_output_tokens` on
+    # the Responses path, so every dcode turn carries the same OUTPUT_BUDGET as the six
+    # chat-completions scaffolds. Without it deepagents sends no cap at all and SGLang
+    # budgets each turn to the remaining context (~230K): the qwen38 v5 dcode cell of
+    # 2026-10-25/26 walled 34/68 (the other six lanes 10-18 on the same ids) with single
+    # 86.6K / 80.7K / 38.6K / 36.5K-token thinks that no other lane could have produced
+    # (FP8_BAKEOFF_SETUP.md -> Scaffold context budgets). The lane preflight proves the
+    # server enforces the field (_check_responses_api).
     cmd = [str(Path.home() / ".local/bin/dcode"),
            "-M", f"openai:{model_id or served}", "-q",
            "--max-turns", "60", "-S", "all", "--allow-fs-tools", "all",
            "--profile-override", json.dumps({"max_input_tokens": 262144}),
+           "--model-params", json.dumps({"max_tokens": OUTPUT_BUDGET}),
            "--timeout", str(max(60, timeout - 60))]
     return _launch(cmd, str(repo_dir), "dcode", {
         "OPENAI_BASE_URL": f"{server_url.rstrip('/')}/v1",
