@@ -681,3 +681,14 @@ thinking like before. The re-roll is queued behind the running prime → dcode �
 `SCAFFOLDS=omp RUN_TAG=v5` through `run_all_cycles.sh`; reboot-safe once the lane has started because the v5 resume unit's
 default scaffold list reaches omp with `--skip-existing`). 18.0.11 vs 18.12.2 is a scaffold-behaviour change (18.0.11 also
 sent a `todo` "Reminder 1/3" nudge turn), recorded per cell by the pin.
+
+**Daily progress snapshot (since 2026-10-26).** `evals/swebench/chain_status.sh` prints one screen — chain / cycle /
+rollout / omp-waiter pids, server pid and three `/health` probes, GPU use plus the R9700 count on the PCI bus and the
+KFD gfx1201 node count, kernel GPU-fault lines scoped to the current server's start time (`journalctl -k --since`),
+`server.log.died-*` rotations, the current wrapper.log phase, every lane's `predictions.jsonl` count with the delta since
+the previous snapshot, the running lane's rc histogram / empty-patch count / mean minutes per instance / ETA, the age of
+its rollout log and its `SERVER DOWN` count, and disk use — then `VERDICT: OK` or `VERDICT: ATTENTION — <reasons>`
+(exit 2). The user timer `swebench-chain-status.timer` runs it at 08:17 daily and appends to
+`/data/logs/run-model-cycle-logs/status/chain-status.log` (linger is on, so it survives logout; `systemctl --user
+list-timers`). The script only reads; recovery follows the stall playbook (kill the chain by PID, then
+`v5-resume-after-reboot.sh`).
