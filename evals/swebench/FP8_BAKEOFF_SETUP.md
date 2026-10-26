@@ -13,13 +13,20 @@
   [Scaffold context budgets](#scaffold-context-budgets).
 - **claw-code:** set `OPENAI_BASE_URL` and `OPENAI_API_KEY`; use model `openai/sweep` and `--output-format text`.
 - **prime:** harness profile `~/.prime/agent/models.json` (provider `sglang`, `--model sglang/<served>`,
-  `-p` with the prompt on stdin, `--offline`, `DO_NOT_TRACK=1`). The qwen38 v5 prime cell runs
+  `-p` with the prompt on stdin, `--offline`, `DO_NOT_TRACK=1`). The qwen38 v5 prime cell rolled on
   **prime-agent 0.10.0, upstream's Rust build** (stable channel 2026-10-09; the TypeScript npm package
-  our 0.8.1 came from ended at 0.9.8 and the registry entry is gone). It is staged by hand from the
-  checksum-verified release tarball at `/data/tools/prime-agent-0.10.0` (a cue-free path, bind-mounted
-  read-only), its Python kernel venv (`~/.prime/agent/kernel-venv`, uv-managed CPython 3.11) and skills are
-  synced on the host once so the network-less container needs neither uv nor PyPI, and `run_rollouts.py`
-  refuses the lane unless the pinned version, the venv and (under `--neutral-cues`) a cue-free install
+  our 0.8.1 came from ended at 0.9.8 and the registry entry is gone); **0.10.1** (stable 2026-10-26, sha256
+  `21ec2191…`, same file list, README adds Slack MCP / custom CA / `compaction.thresholdPercent`) is staged
+  beside it and is the harness default since 2026-10-26 (`PRIME_AGENT_VERSION` env selects a version; the
+  lane's preflight line and every row's `scaffold_pin` record which one ran). Each version is staged by hand
+  from the checksum-verified release tarball at `/data/tools/prime-agent-<ver>` (a cue-free path, bind-mounted
+  read-only). The Python kernel venv (`~/.prime/agent/kernel-venv`, uv-managed CPython 3.11) is **shared**
+  and rebuilt by whichever version runs `--prime-agent-bootstrap`; the skills are synced by a host print run
+  afterwards — the first run after a bootstrap exits before the background sync finishes (every skill
+  "failed to install … task cancelled"), the second run installs them — so the network-less container needs
+  neither uv nor PyPI. `run_rollouts.py` refuses the lane unless the pinned version answers `--version`,
+  the venv's `prime_agent_runtime` wheel was built from that version's install, the five Python skills
+  (`edit goal compact refine agent_message`) are present, and (under `--neutral-cues`) a cue-free install
   are present. On the wire it is one streaming `/v1/chat/completions` per turn with
   `max_completion_tokens` = the profile's `maxTokens`, no `reasoning_effort` or `temperature`, and a
   single `ipython` tool (every other action is code inside that REPL); its session store

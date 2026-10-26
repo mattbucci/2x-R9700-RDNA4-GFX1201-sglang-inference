@@ -402,7 +402,13 @@ DOCKER_MOUNTS_RO_COMMON = [".npm-global", ".local/bin/rtk", ".local/bin/dcode", 
 # mount) on a uv-managed CPython from ~/.local/share/uv (ro common mount); the skills are
 # synced into it on the host once (`prime-agent --prime-agent-bootstrap` + one run), so the
 # network-less container needs neither uv nor PyPI.
-PRIME_AGENT_VERSION = "0.10.0"
+# 0.10.1 (upstream stable 2026-10-26; sha256 21ec2191…) is staged beside 0.10.0 under /data/tools
+# and is the default since 2026-10-26. The kernel venv is shared and was rebuilt by 0.10.1, so
+# 0.10.0 no longer passes _check_prime_agent until re-bootstrapped (PRIME_AGENT_VERSION=0.10.0
+# selects it; the preflight re-checks --version and the venv's origin against this value). The
+# qwen38 v5 prime cell rolled 300/300 on 0.10.0; any Phase-4 re-roll row it still owes carries
+# scaffold_pin prime-agent@0.10.1 and is recognisable by it.
+PRIME_AGENT_VERSION = os.environ.get("PRIME_AGENT_VERSION", "0.10.1")
 PRIME_AGENT_DIR = Path(f"/data/tools/prime-agent-{PRIME_AGENT_VERSION}")
 PRIME_AGENT_BIN = PRIME_AGENT_DIR / "bin/prime-agent"
 PRIME_KERNEL_VENV = Path.home() / ".prime/agent/kernel-venv"
@@ -761,6 +767,24 @@ def _check_prime_agent(neutral: bool) -> str:
     if not kernel_py.exists():
         raise SystemExit(f"  PREFLIGHT FAILED: {kernel_py} missing — run `{PRIME_AGENT_BIN} --prime-agent-bootstrap` "
                          f"and one host print run so the skills are synced before a network-less lane")
+    # The kernel venv is shared by every staged prime-agent version and is rebuilt by whichever
+    # version bootstraps it; its runtime wheel records the install it came from. A lane must run
+    # the version that synced the venv, with the skills present: the agent syncs skills at startup
+    # over the network, which a --network none container cannot do (0.10.1 host bring-up
+    # 2026-10-26: the first print run after a bootstrap cancelled every skill install at exit,
+    # the second run installed them — run twice).
+    site = list(PRIME_KERNEL_VENV.glob("lib/python*/site-packages"))
+    runtime_url = [f for d in site for f in d.glob("prime_agent_runtime-*.dist-info/direct_url.json")]
+    if not runtime_url or str(PRIME_AGENT_DIR) not in runtime_url[0].read_text(errors="replace"):
+        raise SystemExit(f"  PREFLIGHT FAILED: kernel venv {PRIME_KERNEL_VENV} was not synced from {PRIME_AGENT_DIR} "
+                         f"(prime_agent_runtime direct_url: {[str(f) for f in runtime_url]}) — bootstrap this version "
+                         f"and run it twice on the host before the lane")
+    installed = {p.name.split("-")[0].lower() for d in site for p in d.glob("*.dist-info")}
+    skills = {"edit", "goal", "compact", "refine", "agent_message"}
+    missing = sorted(s for s in skills if s not in installed)
+    if missing:
+        raise SystemExit(f"  PREFLIGHT FAILED: prime-agent skills not installed in the kernel venv: {missing} "
+                         f"— a host print run after bootstrap must finish the skill sync (run it twice)")
     if neutral:
         bad = [str(p) for p in [PRIME_AGENT_DIR, kernel_py.resolve()] if CUE_RE.search(str(p))]
         bad += [str(f) for f in PRIME_KERNEL_VENV.glob("lib/python*/site-packages/*.dist-info/direct_url.json")

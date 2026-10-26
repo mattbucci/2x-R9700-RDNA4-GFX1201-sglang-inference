@@ -365,6 +365,16 @@ point is recorded in the lane log.
 - **First request shape: the agent speaks first.** The session opens with its own `[harness-digest]` user turn (environment summary), so the task is **user message #2**. A first-request gate that requires the task verbatim in message #1 fails prime 0.10.0 on a healthy lane; ours now allows it for prime only (`TASK_AFTER_OWN_TURN_OK`). Telemetry settings off; `kernel-stderr.log` goes into the session snapshot (never the `.dill`).
 - **Pin on every row.** A 0.8.1 cell cannot resume under the new pin (`check_cell_pin` rc 2) — our prime v4 cell's 3 infra rows therefore stay unrolled and the cell scores on 297 model rows; prime rolls whole again under 0.10.0. If you keep one scaffold version per cell, record `prime-agent --version` into your meta — the binary prints it on **stderr**.
 
+**Status (R9700, 2026-10-26) on item 1.** Our v5 prime cell closed 300/300 on 0.10.0 (staged 2026-10-19 from the
+checksum-verified tarball, never the installer). Upstream `stable` moved to **0.10.1** on 2026-10-26 (sha256 `21ec2191…`;
+file list identical, README adds Slack MCP, custom CA, `compaction.thresholdPercent`); we staged it beside 0.10.0 and made it
+the harness default (`PRIME_AGENT_VERSION` env override; wire unchanged — one streaming chat completion,
+`max_completion_tokens` 32000, no effort/temperature, harness-digest then task). Two traps for your bring-up: the kernel venv
+is shared across versions and **rebuilt** by `--prime-agent-bootstrap`, after which the other version's preflight should fail
+(ours checks the runtime wheel's `direct_url.json` origin); and the first print run after a bootstrap exits before the
+background skill sync finishes — all seven skills log "failed to install … task cancelled" — the second run installs them,
+so run it twice before a network-less lane (our preflight requires `edit goal compact refine agent_message`).
+
 **2. SGLang v0.5.22 rebase map** (two releases in one hop, 5,509 files; tag `baa9befa38`, 2026-10-13; full ledger [`patches/v0.5.22-rebase-status.md`](https://github.com/mattbucci/2x-3090-GA102-300-A1-sglang-inference/blob/main/patches/v0.5.22-rebase-status.md), staged in `patches/v0.5.22/`, flip commit after the GPU campaign running now). Of our 32: **19 verbatim, 10 re-ported, 3 retired.** What transfers to your mirror set:
 - **Your 101/102 (= our 065 inter-call whitespace, 066 Responses-API phase merge) apply verbatim**; 066's unit test needs one line (v0.5.22's `_construct_input_messages` reads the `__init__`-set `supports_inline_system` — a bare test instance must set it False). 063 / 058 detector tests 8/8 each.
 - **Your DSpark "3-line worker fix" is upstream** (`f4c256354c` / `d3f8a8f4f5`, #40045 — our 099 retired); 061 gemma4 tied lm_head upstream too (#35809). Nothing local needed for `SPEC_DECODE=1` on v0.5.22.
