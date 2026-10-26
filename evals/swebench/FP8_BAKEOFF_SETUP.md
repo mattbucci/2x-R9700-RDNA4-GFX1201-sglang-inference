@@ -700,3 +700,16 @@ its rollout log and its `SERVER DOWN` count, and disk use — then `VERDICT: OK`
 `/data/logs/run-model-cycle-logs/status/chain-status.log` (linger is on, so it survives logout; `systemctl --user
 list-timers`). The script only reads; recovery follows the stall playbook (kill the chain by PID, then
 `v5-resume-after-reboot.sh`).
+
+**dcode cell superseded for lack of an output cap (2026-10-26).** The qwen38 v5 dcode lane (rolling since 2026-10-25
+01:12) was stopped at an instance boundary with 70 rows and archived as `runs/qwen38-dcode-v5-superseded-20261026` (outside the aggregate's
+`-v<tag>` pattern), its logs as `rollout-dcode.log.superseded-20261026`. It walled 34/68 against 10–18 for the other six
+lanes on the same ids, at the same decode speed (36.6 vs 35.5 tok/s median) and the same prefix-cache hit rate (87%);
+its walled sessions spent 57K output tokens (94% reasoning) in 24.5 turns against 23K in 27 turns for the finished ones,
+and four of them held a single turn of 86.6K / 80.7K / 38.6K / 36.5K tokens — thinks the 32000 `OUTPUT_BUDGET` cuts in
+every other lane. deepagents sends no `max_output_tokens`, so SGLang gave each turn the remaining context. The decoded
+session store (`~/.deepagents/.state/sessions.db`, langgraph `writes` channel `messages`, `usage_metadata` per
+AIMessage) is the receipt; reasoning text is not stored there (empty summaries), so the recall audit cannot read this
+scaffold. The harness now passes `--model-params '{"max_tokens": 32000}'` (wire-verified) and the dcode preflight
+proves the server binds the field; the cell re-rolls from zero under the same v5 chain (`v5-resume-after-reboot.sh`,
+`--skip-existing` finds the empty cell). The superseded cell is not scored.

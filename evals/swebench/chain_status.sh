@@ -40,15 +40,16 @@ if alive "$chain_pid"; then
 else
   echo "chain      : pid ${chain_pid:-?} NOT running"
 fi
-cycle_pid=$(timeout 5 pgrep -f -o 'evals/swebench/run_model_cycle.sh' 2>/dev/null | head -1)
-roll_pid=$(timeout 5 pgrep -f -o 'run_rollouts.py' 2>/dev/null | head -1)
+# bracketed last char: the pattern must not match the `timeout ... pgrep -f <pattern>` wrapper's own cmdline
+cycle_pid=$(timeout 5 pgrep -f -o 'evals/swebench/run_model_cycle\.s[h]' 2>/dev/null | head -1)
+roll_pid=$(timeout 5 pgrep -f -o 'run_rollouts\.p[y]' 2>/dev/null | head -1)
 echo "cycle/roll : run_model_cycle.sh ${cycle_pid:-none}, run_rollouts.py ${roll_pid:-none}"
 waiter_pid=$(pid_of_file "$WAITER_PID_FILE")
 if alive "$waiter_pid"; then echo "omp waiter : pid $waiter_pid alive"; else echo "omp waiter : pid ${waiter_pid:-?} NOT running"; fi
 
 # --- server ----------------------------------------------------------------------------------------
 srv_pid=$(pid_of_file "$LANE_DIR/server.pid")
-launch_pid=$(timeout 5 pgrep -f -o 'sglang.launch_server' 2>/dev/null | head -1)
+launch_pid=$(timeout 5 pgrep -f -o 'sglang\.launch_serve[r]' 2>/dev/null | head -1)
 codes=""
 for _ in 1 2 3; do codes+="$(curl -s -m 25 -o /dev/null -w '%{http_code}' "http://127.0.0.1:$PORT/health") "; done
 echo "server     : server.pid ${srv_pid:-?} $(alive "$srv_pid" && echo alive || echo dead), launch_server ${launch_pid:-none}, /health $codes"

@@ -417,7 +417,7 @@ split-turn empties) walled 34/68 against 10–18 for the other six lanes on the 
 decoded langgraph store shows single turns of 86.6K / 80.7K / 38.6K / 36.5K tokens in the walled sessions. Fix:
 `dcode --model-params '{"max_tokens": 32000}'` (langchain-openai 1.6 renames it to `max_output_tokens`; wire receipt
 via `capture_endpoint.py`), plus a lane preflight that sends a 16-token cap and requires `status: incomplete`. We
-superseded our cell at 69/300 and re-roll from zero; your dcode v4 re-roll ran uncapped the same way, so its wall/empty
+superseded our cell at 70/300 and re-roll from zero; your dcode v4 re-roll ran uncapped the same way, so its wall/empty
 rates are not comparable with your other lanes until it carries the flag. Details: `FP8_BAKEOFF_SETUP.md` → Scaffold
 context budgets (dcode rows) and Operations.
 

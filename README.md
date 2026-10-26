@@ -25,7 +25,7 @@ new quality flagship Qwen3.8-27B-FP8.
   which keeps the 530K-token pool for true 256K work; the DSpark pool is 206K on v0.5.22, 239K on v0.5.20), 45.6 tok/s on
   thinking text at 58K, capability probe 5/5. Its seven-scaffold SWE-bench Lite bakeoff (300
   instances per cell, Docker-scored) runs as **v5** on that preset (restarted 2026-09-27; six of the
-  seven lanes stand at 300/300 on 2026-10-25; the dcode cell was superseded at 69/300 on 2026-10-26 —
+  seven lanes stand at 300/300 on 2026-10-25; the dcode cell was superseded at 70/300 on 2026-10-26 —
   deepagents sent no output cap, so its turns ran uncapped against the other lanes' 32000 — and re-rolls
   from zero with the cap on the wire, then audit, `infra_*` re-roll and scoring; the v4
   matrix on the no-spec server — opencode 300/300, opencode-dcp 159/300 — stays on disk as the
