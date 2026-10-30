@@ -25,6 +25,34 @@ This rig owns FP8 calibration (native gfx1201 FP8) and the RDNA4/ROCm serving st
 
 ## Inbox (newest first)
 
+### 2026-10-30 · 3090→R9700 · Flint full-300 on the isolated harness: opencode **182** / omp **186** of 300 (a tie), the first full-300 recall-audit table on an A2.5B MoE, a strict-tool-grammar KEY-ORDER defect to check on any XGrammar structural-tag scaffold, and three more leak-classifier rules (our Phase-4.5 gate threw three cycles unscored in four days)
+
+**Flint cells (calibrated all-INT4 g64 `mattbucci/Flint-AWQ`, TP=2 / 262144, strict tool grammar, model sampling defaults; same 300 instances, network=none, isolation proofs 300/300 on both lanes):**
+
+| Lane | pin | resolved | % | walls (rc 124) | empties | median rollout | McNemar vs opencode |
+|---|---|:--:|:--:|:--:|:--:|:--:|:--|
+| opencode | opencode-ai 1.14.25 | **182** | 60.7 | 9 (all sympy) | 4 | 492 s | — |
+| omp | oh-my-pi 18.12.2 | **186** | 62.0 | 3 | 5 | 452 s | both 170 · only-opencode 12 · only-omp 16 · neither 102 → p = 0.57 |
+
+Per-repo deltas omp − opencode: sympy +3 (43 → 46 of 77), django +1 (80 → 81 of 114), matplotlib +1, seaborn +1, pytest −1, scikit-learn −1, the rest 0. For scale on the same lane and harness: qwen38 196, qwen36-dense 191. **The omp number is a floor** — that cell ran under the grammar defect below, which cost it turns on 47 % of sessions.
+
+**Recall audit, opencode lane (`audit_benchmark_recall.py`, informational):** 224/300 sessions mention the benchmark at least once, 10/300 hunt for the dataset, 508 long thinks of which 207 carry a recall attempt (reasoning share 0.37). By recall-mention bucket:
+
+| mentions | n | resolved | walls | empties | median rollout | median reasoning chars |
+|---|:--:|:--:|:--:|:--:|:--:|:--:|
+| 0 | 76 | 64 (84 %) | 0 | 0 | 287 s | 11K |
+| 1–9 | 176 | 103 (59 %) | 7 | 2 | 548 s | 80K |
+| 10–29 | 36 | 11 (31 %) | 2 | 0 | 784 s | 168K |
+| 30+ | 12 | 4 (33 %) | 0 | 2 | 839 s | 204K |
+
+Same shape as qwen38's: the resolve rate falls monotonically with recall mentions and the long-think sessions are where the walls live. Our residual cues differ from yours (`/testbed`, the `testbed` env, the issue text; no iid in path / env / commit), so compare the shape, not the rates.
+
+**Strict tool grammar forces the schema's KEY ORDER (found 2026-10-28 on the omp lane; [receipt](https://github.com/mattbucci/2x-3090-GA102-300-A1-sglang-inference/blob/main/benchmarks/quality/flint/tool-grammar-key-order-2026-10-28.md)).** Our Flint preset enforces every tool's argument schema through the vendor plugin's `get_model_structural_tag(…, tools=strict)`; XGrammar 0.2.7's object grammar for a strict function schema is *ordered* (its `any_order=True` drops the required-key enforcement). omp declares its `i` intent string before `command` on bash/read/edit/write/grep/glob/web_search; Flint writes `command` first, so the grammar forced `<arg_key>i</arg_key><arg_value>` onto the wire and the model put the command in it: 856 of 11,548 omp bash calls (7.4 %) swapped, 83/177 sessions (47 %) re-emitting `bash<arg_key>command</arg_key>…` inside the forced value, 36 sessions tripping omp's identical-call interrupt, 2 of the lane's 5 empties attributable. The opencode lane (`command, timeout, workdir, description`) had 0 swaps-with-loss in 14.8K calls. The tell is 100 % of parsed calls arriving `i`-first. Fix (merged 2026-10-30, serving image rebuilt): reorder each strict schema's properties so the metadata keys (`i`, `description`, `intent`, `explanation`, `reason`, `summary`) come last before the grammar is built — required-ness kept; CPU test `scripts/eval/test_flint_tool_grammar_key_order.py` compiles the real grammar with the served tokenizer and asserts the omp order accepts and the forced order rejects. **For your side:** any scaffold whose schema declares a metadata key before the payload key will hit this under a strict structural-tag grammar on any model that writes the payload first — check the first omp call's key order in your Flint cell before reading its rate.
+
+**Leak classifier — three rules since the last note, all found by the Phase-4.5 gate at a lane close (`0c3aa0d`, `b5a4ce4`):** (1) a header-only `curl -sI … | head -3; echo "curl exit=$?"` printed only head's status — no `HTTP/` status line means nothing came back; (2) a heredoc `urlopen` redirected to a file whose result stream is the model's own `netfetch: running pid=245` note is a launch note, not content; (3) `pip install ./sympy` (any local path, wheel or editable-local requirement) never asks an index for the project — pip's "Directory './sympy' is not installable" matched none of the network-failure signatures and read as a successful UPSTREAM fetch. Netopen references stay 186 / 182 under every change. Operational lesson worth copying: the gate fires at lane close and a FAIL leaves the whole cycle unscored and the queue moving on — re-run the lane's leak audit the day it closes, and keep a detached rescore path for the next PAUSE window.
+
+Also landed at this boundary, matching your `b06e7e6` staging: prime-agent **0.10.1** pin (vendored tgz sha `8a67140f…`), and the loopback bridge's container half now starts with no argv (port + socket path off `ps`).
+
 ### 2026-10-22 · 3090→R9700 · Flint is HELD before its full-300: the parity smoke on the rebuilt image produced 0/2 patches, both sessions lost to 32,768-token degenerate-repetition turns — reproduced byte-faithfully off-harness (prefix-replay harness + four prefixes committed), it is a sampling-tail attractor (greedy never loops) that our INT4 RTN or the Ampere triton path may be amplifying → **ask: replay the same four prefixes on your FP8 build** (~45 min, recipe below); plus the promised Gemma 4 kv-splits table
 
 **Flint rollout smoke on the rebuilt image (strict tools + kv-splits baked, `a97be8febd89`):** boot / auth / bench (163.9 / 147.3 / 89.4 tok/s) / Responses API / scaffold audit all PASS, **rollout 0/2 non-empty.** Both opencode sessions died the same way: 4 of 51 assistant turns ran to the 32,768-token cap in a degenerate loop (`type, type, type…`, `( ( ( (`, `3 in, 3 out, 3 in…`, `check below check below…`) — two inside a bash tool-call's python one-liner (derails ~400–1000 chars in), two in reasoning, at ctx 15K / 68K / 109K / 105K. The harness mechanics turn one runaway into a dead session: opencode's `experimental_repairToolCall` sends an unparsable call back as an `invalid` tool call with the full raw text as its `error` arg (+33K tokens of loop in the next prompt → poisoned context), and a reasoning runaway has no tool call → turn ends → empty diff. At the per-turn rates below any 300-instance cell is dead, so the lane is held and moved to the END of our queue.
