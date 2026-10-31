@@ -335,10 +335,10 @@ index 0000000..a6a99b3
 +__all__ = ["GRAMMAR_BACKEND_NAME", "FlintGrammarBackend"]
 diff --git b/python/sglang/srt/constrained/flint_structural_tags.py b/python/sglang/srt/constrained/flint_structural_tags.py
 new file mode 100644
-index 0000000..0335ab7
+index 0000000..4fbb400
 --- /dev/null
 +++ b/python/sglang/srt/constrained/flint_structural_tags.py
-@@ -0,0 +1,171 @@
+@@ -0,0 +1,190 @@
 +# Copyright 2023-2026 SGLang Team
 +# Licensed under the Apache License, Version 2.0 (the "License");
 +# you may not use this file except in compliance with the License.
@@ -412,12 +412,31 @@ index 0000000..0335ab7
 +ToolChoiceLike = Union[Literal["auto", "required"], Dict[str, Any]]
 +
 +
++# Scaffold metadata keys that some schemas declare BEFORE the payload key (oh-my-pi puts its
++# ``i`` intent string first on bash/read/edit/write/grep/glob). XGrammar 0.2.7 compiles a strict
++# object schema in declaration order (``any_order=True`` would drop ``required``), so a model
++# that writes the payload first gets the metadata key forced onto the wire and puts the payload
++# in it (3090 rig 2026-10-28: 7.4 % of omp bash calls swapped, 47 % of sessions re-emitting the
++# call inside the forced value). Moving these keys last keeps required-ness and lets the model
++# write ``command`` first.
++METADATA_KEYS_LAST = ("i", "description", "intent", "explanation", "reason", "summary")
++
++
 +def _as_strict(tool: Dict[str, Any]) -> Dict[str, Any]:
-+    """Copy of an OpenAI-style tool dict with ``function.strict`` forced True (schema-constrained arguments)."""
++    """Copy of an OpenAI-style tool dict with ``function.strict`` forced True (schema-constrained
++    arguments) and the schema's metadata keys ordered after its payload keys."""
 +    if tool.get("type") != "function" or not isinstance(tool.get("function"), dict):
 +        return tool
 +    fn = dict(tool["function"])
 +    fn["strict"] = True
++    params = fn.get("parameters")
++    if isinstance(params, dict) and isinstance(params.get("properties"), dict):
++        props = params["properties"]
++        ordered = {k: v for k, v in props.items() if k not in METADATA_KEYS_LAST}
++        ordered.update({k: v for k, v in props.items() if k in METADATA_KEYS_LAST})
++        params = dict(params)
++        params["properties"] = ordered
++        fn["parameters"] = params
 +    out = dict(tool)
 +    out["function"] = fn
 +    return out
