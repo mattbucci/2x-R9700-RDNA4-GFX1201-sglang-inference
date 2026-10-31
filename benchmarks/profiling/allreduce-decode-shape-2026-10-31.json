@@ -1,0 +1,66 @@
+{
+ "hidden": 5120,
+ "layers": 64,
+ "world": 2,
+ "rows": [
+  {
+   "numel": 1024,
+   "bytes": 2048,
+   "eager_us_per_call": 32.46,
+   "graphed_us_per_call": null
+  },
+  {
+   "numel": 2048,
+   "bytes": 4096,
+   "eager_us_per_call": 34.09,
+   "graphed_us_per_call": null
+  },
+  {
+   "numel": 5120,
+   "bytes": 10240,
+   "eager_us_per_call": 32.65,
+   "graphed_us_per_call": null
+  },
+  {
+   "numel": 10240,
+   "bytes": 20480,
+   "eager_us_per_call": 33.8,
+   "graphed_us_per_call": null
+  },
+  {
+   "numel": 20480,
+   "bytes": 40960,
+   "eager_us_per_call": 33.86,
+   "graphed_us_per_call": null
+  },
+  {
+   "numel": 40960,
+   "bytes": 81920,
+   "eager_us_per_call": 38.57,
+   "graphed_us_per_call": null
+  },
+  {
+   "numel": 65536,
+   "bytes": 131072,
+   "eager_us_per_call": 53.2,
+   "graphed_us_per_call": null
+  },
+  {
+   "numel": 1048576,
+   "bytes": 2097152,
+   "eager_us_per_call": 230.94,
+   "graphed_us_per_call": null
+  }
+ ],
+ "decode_step_ms": {
+  "eager": 4.179,
+  "graphed": null
+ },
+ "env": {
+  "HSA_FORCE_FINE_GRAIN_PCIE": "1",
+  "NCCL_P2P_DISABLE": null,
+  "RCCL_P2P_DISABLE": null,
+  "NCCL_DEBUG": null
+ },
+ "timestamp": "2026-10-31 01:20"
+}

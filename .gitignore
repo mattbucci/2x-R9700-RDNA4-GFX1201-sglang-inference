@@ -22,3 +22,4 @@ benchmarks/hsail/repro_qwen36_2way.log
 
 # natural-text needle haystack (built by scripts/eval/build_natural_haystack.py, ~28 MB)
 benchmarks/quality/haystack-platypus.txt
+benchmarks/profiling/*/server.log

@@ -218,6 +218,17 @@ sweeps on v0.5.20 and v0.5.22 reproduce the curve. The graph policy rule stands 
 first — with this as the dense-path counter-example. Still open: the gap to the ~25 ms bandwidth floor
 (README → Next steps).
 
+### qwen38 no-spec decode gap — the block-FP8 GEMMs own it (attributed 2026-10-31)
+
+Measured per step at M=1 on a TP=2 rank (`bench_fp8_block_gemm_m1.py`): 29.9 ms of block-FP8 GEMM over 11.33 GiB of
+weights, 64 % of a 640 GB/s roofline, inside a 44.4 ms step; the all-reduce floor is 4.2 ms (128 calls × 33 µs, eager
+RCCL over PCIe); lm_head, DeltaNet, norms and the sampler share the remaining ~10 ms with no single item above 2 ms. The
+two MLP shapes (`N=17408,K=5120` at 399 GB/s, `N=5120,K=8704` at 515 GB/s) run on the kernel's default config — no
+gfx1201 config file exists for them — and the narrow-K out-projections (`K=3072`, 15 MB) are latency-bound at 220 GB/s.
+Profiler notes that shaped the method: HIP-graph replays are invisible to the torch profiler on ROCm (a short-context
+capture traces one eager step), the first capture after boot inflated RCCL to 41 % through rank skew, and short kernels
+inflate (a 40 µs argmax read as 5 ms). Receipt: [`profiling/qwen38-decode-gap-2026-10-31.md`](profiling/qwen38-decode-gap-2026-10-31.md).
+
 ### Rejected decode changes
 
 | Experiment | Measurement | Disposition |

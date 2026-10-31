@@ -158,12 +158,17 @@ operational history behind each item lives in the document it links, not here.
    [receipt](benchmarks/quality/flint/needle-natural-fp8-2026-10-31.md)): the SWE-bench lane on the scaffold the v5
    scoring names, then the A/Bs — `PLAIN_ADD_BF16_SUM` opt-out, SWA ratio, FP8 KV, n-gram speculation — and a
    depth-0.1 retrieval study at 243–248K against the 3090's INT4 build on identical cells.
-2. **Residual qwen38 decode gap**: graphs are on (+26–33%, FINDINGS → HIP graphs); the gap to the ~25 ms
-   bandwidth floor (~13.5 GB of FP8 weights per rank per step) is next — `profile_decode_step.sh` (FP8 M=1
-   Triton block-GEMM) and `p2p_allreduce_bw.py` (custom all-reduce over PCIe Gen4 ×8);
-   [R97-K](experiments/11-decode-rocblas-residue-attribution.md) attributes the rocBLAS residue.
-3. **gfx1201 Triton W8A8 block-GEMM tuning for the dense FP8 path** ([R97-L](experiments/12-fp8-exact-shape-gemm-tuner.md)), the
-   `N=17408,K=5120` analogue of patch 078's MoE tuning.
+2. **Residual qwen38 decode gap — attributed 2026-10-31**
+   ([receipt](benchmarks/profiling/qwen38-decode-gap-2026-10-31.md)): the six block-FP8 GEMM shapes a rank runs
+   per step take 29.9 of the 44.4 ms step at 64 % of the 640 GB/s roofline; the two MLP shapes
+   (`N=17408,K=5120`, `N=5120,K=8704`, 59 % of the bytes) run on the kernel's default config at 399 and 515 GB/s,
+   the two narrow-K out-projections are latency-bound at 220 GB/s. All-reduce is ≥ 4.2 ms (128 × 33 µs), the rest
+   (lm_head, DeltaNet, norms, sampler) ≈ 10 ms with no lever above 2 ms. Closing the GEMM gap is worth ~11 ms per
+   step (22.5 → ~30 tok/s); that is item 3.
+3. **gfx1201 Triton W8A8 block-GEMM tuning for the dense FP8 path** ([R97-L](experiments/12-fp8-exact-shape-gemm-tuner.md)):
+   M=1 configs for qwen38's `N=17408,K=5120` and `N=5120,K=8704` (no config file exists for either) and Laguna's
+   shared-expert shapes, under a correctness gate; then the narrow-K `o_proj`/`out_proj` (K=3072) small-tile or split-K
+   direction. Re-run `bench_fp8_block_gemm_m1.py` and the canonical 4-point sweep after each config lands.
 4. **LAB-Bench re-measure** of the suppressed Qwen3.5/Gemma4 cells with `--mc-no-think`
    (FINDINGS → LAB-Bench think-budget artifact).
 5. **Agentic turn tax at depth** ([R97-J](experiments/10-extend-attention-kv-split-agentic-turn.md)): split the KV walk in extend attention; gate on

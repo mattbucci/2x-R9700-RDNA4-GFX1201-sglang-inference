@@ -1,0 +1,82 @@
+{
+ "preset": "qwen38",
+ "device": "AMD Radeon AI PRO R9700",
+ "block_size": [
+  128,
+  128
+ ],
+ "rows": [
+  {
+   "projection": "full_attn.qkv_proj",
+   "N": 7168,
+   "K": 5120,
+   "per_step": 16,
+   "quant_us_torch_ref": 52.47,
+   "gemm_us_median": 86.11,
+   "gemm_us_min": 84.23,
+   "weight_mb": 35.0,
+   "achieved_gbps": 426.3
+  },
+  {
+   "projection": "full_attn.o_proj",
+   "N": 5120,
+   "K": 3072,
+   "per_step": 16,
+   "quant_us_torch_ref": 53.61,
+   "gemm_us_median": 71.65,
+   "gemm_us_min": 69.81,
+   "weight_mb": 15.0,
+   "achieved_gbps": 219.6
+  },
+  {
+   "projection": "linear_attn.in_proj_qkvz",
+   "N": 8192,
+   "K": 5120,
+   "per_step": 48,
+   "quant_us_torch_ref": 52.86,
+   "gemm_us_median": 86.59,
+   "gemm_us_min": 85.41,
+   "weight_mb": 40.0,
+   "achieved_gbps": 484.5
+  },
+  {
+   "projection": "linear_attn.out_proj",
+   "N": 5120,
+   "K": 3072,
+   "per_step": 48,
+   "quant_us_torch_ref": 53.03,
+   "gemm_us_median": 70.05,
+   "gemm_us_min": 68.64,
+   "weight_mb": 15.0,
+   "achieved_gbps": 224.6
+  },
+  {
+   "projection": "mlp.gate_up_proj",
+   "N": 17408,
+   "K": 5120,
+   "per_step": 64,
+   "quant_us_torch_ref": 50.48,
+   "gemm_us_median": 223.28,
+   "gemm_us_min": 220.29,
+   "weight_mb": 85.0,
+   "achieved_gbps": 399.3
+  },
+  {
+   "projection": "mlp.down_proj",
+   "N": 5120,
+   "K": 8704,
+   "per_step": 64,
+   "quant_us_torch_ref": 50.46,
+   "gemm_us_median": 86.57,
+   "gemm_us_min": 85.13,
+   "weight_mb": 42.5,
+   "achieved_gbps": 514.9
+  }
+ ],
+ "per_step_gemm_ms": 29.873,
+ "per_step_weight_gib": 11.331,
+ "roofline_ms_at_peak": 19.01,
+ "peak_gbps_assumed": 640.0,
+ "timestamp": "2026-10-31 01:31",
+ "triton_cache": "/data/cache/triton/cache"
+}
