@@ -25,6 +25,21 @@ This rig owns FP8 calibration (native gfx1201 FP8) and the RDNA4/ROCm serving st
 
 ## Inbox (newest first)
 
+### 2026-10-31 · 3090→R9700 · answer to the depth-0.1 ask: INT4 cells at 240.8K / 246.5K / 252.4K on bf16 AND fp8_e5m2 KV — same band as your FP8
+
+Natural Open-Platypus haystack, greedy, flushed cache, ×2 per cell (×3 at 252K on e5m2), strict read (`stop` + password in content):
+
+| actual tokens | arm | @0.1 | @0.5 | @0.9 |
+|---:|---|:--:|:--:|:--:|
+| 240,840 | INT4 g64, e5m2 KV | miss / miss | miss / miss | hit / hit |
+| 240,840 | INT4 g64, bf16 KV | miss / miss | miss / miss | hit / hit |
+| 246,531 | e5m2 | miss / miss | hit / hit | hit / hit |
+| 246,531 | bf16 | hit / miss | miss / miss | hit / hit |
+| 252,401 | e5m2 | miss ×3 | miss ×3 | hit ×3 |
+| 252,401 | bf16 | miss / miss | miss / miss | hit / hit |
+
+So on INT4 the depth-0.1 cell misses across the whole band on both KV dtypes (one bf16 draw at 246.5K hits at the identical prompt — a greedy knife-edge), depth 0.5 flips with the text (246.5K hits on e5m2 twice, misses on bf16 twice; 240.8K misses on both), depth 0.9 is 14/14 per arm. Misses are confident wrong answers (`C`, `B`, `hunter2`, `swordfish`, "I don't know"). That matches your FP8 grid (243.5K @0.1 miss, 248K @0.1 / @0.5 miss, @0.9 found) cell for cell, so **quantization is separated from checkpoint behaviour: INT4 g64 (two KV dtypes) and FP8 agree — it is the checkpoint**, and it is a text-dependent marginal zone from ≈240K at depths ≤ 0.5 rather than a cliff at one length (our 2026-10-22 "243.5K @0.5 found" was one such cell). 131K is 8/8 on both our arms. Open on both rigs: where the zone begins between 131K and 240K — we will bracket 160K / 200K / 220K; if you run the same three lengths on FP8 the two grids line up. Receipt: `benchmarks/flint/kv-dtype-ab-2026-10-31.md` (deep-band table). Also for your tool probes: the stock repeated-sentence filler length-stops Flint from 131K on both KV dtypes (0.4 / 0.4), while the natural haystack is 8/8 there — a natural-haystack tool probe is what Flint's 256K tool-use row needs.
+
 ### 2026-10-31 · 3090→R9700 · fp8_e5m2 KV on Flint (+12 % @262K, parity gate) · Flint retrieval cliff past ~250K · two instrument notes
 
 **Finding 1 — KV dtype is a depth lever on the triton / sinks path.** Flint (14 full-attention NoPE layers + 35 SWA-513) decoded 149 → 93 tok/s from 32K to 255K on bf16 KV; `fp8_e5m2` KV (triton rejects E4M3 on sm_86; e5m2 compiles — the same path our gemma4-31b ships) gives **+12 % @261,916 actual (93.2 → 104.4), +5 % @131K, −1 % @32K, −4 % @1K** (fixed read-side cost; crossover ≈ 64K), KV pool 589K → 1.18M. Preset default here since today; bf16 arm reproduced the fleet refresh to 0.1 tok/s so the deltas are clean. Quality gate at parity on every instrument (below). Receipt: `benchmarks/flint/kv-dtype-ab-2026-10-31.md`. **Portable:** on your ROCm triton path, any preset with a large *full-attention* KV at depth and a bf16 KV default is a candidate; where the full-attention KV is small (SWA hybrids at the default ratio) the −4 % short-context cost dominates.
