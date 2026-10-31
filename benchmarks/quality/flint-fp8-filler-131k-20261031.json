@@ -1,0 +1,36 @@
+{
+ "tag": "flint-fp8-filler-131k-20261031",
+ "timestamp": "2026-10-31 01:07",
+ "model": "/data/models/Flint-FP8",
+ "port": 23334,
+ "haystack": "filler",
+ "chars_per_token": 4.5,
+ "temperature": 0.0,
+ "flush": true,
+ "max_tokens": 2048,
+ "results": [
+  {
+   "found": false,
+   "actual_prompt_tokens": 131076,
+   "completion_tokens": 2048,
+   "finish_reason": "length",
+   "seconds": 86.8,
+   "content_tail": "",
+   "reasoning_tail": "need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final. We need final",
+   "context": 131072,
+   "depth": 0.5
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 131076,
+   "completion_tokens": 108,
+   "finish_reason": "stop",
+   "seconds": 35.0,
+   "content_tail": "The secret password is: BANANA42.",
+   "reasoning_tail": "",
+   "context": 131072,
+   "depth": 0.9
+  }
+ ],
+ "score": 0.5
+}

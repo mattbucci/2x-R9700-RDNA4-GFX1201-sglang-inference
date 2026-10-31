@@ -1,0 +1,47 @@
+{
+ "tag": "flint-fp8-natural-greedy-243k-20261031",
+ "timestamp": "2026-10-31 00:47",
+ "model": "/data/models/Flint-FP8",
+ "port": 23334,
+ "haystack": "benchmarks/quality/haystack-platypus.txt",
+ "chars_per_token": 3.22,
+ "temperature": 0.0,
+ "flush": true,
+ "max_tokens": 2048,
+ "results": [
+  {
+   "found": false,
+   "actual_prompt_tokens": 243481,
+   "completion_tokens": 2048,
+   "finish_reason": "length",
+   "seconds": 147.4,
+   "content_tail": "",
+   "reasoning_tail": " ... ... ... ... ... ... ... ... ... ... ... ... ... ... ... ... ... ... ... ... ... ... ... ... ... ... ... ... ... ... ... ... ... ... ... ... ... ... ... ...",
+   "context": 250000,
+   "depth": 0.1
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 243481,
+   "completion_tokens": 206,
+   "finish_reason": "stop",
+   "seconds": 93.7,
+   "content_tail": "BANANA42",
+   "reasoning_tail": "",
+   "context": 250000,
+   "depth": 0.5
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 243481,
+   "completion_tokens": 49,
+   "finish_reason": "stop",
+   "seconds": 89.3,
+   "content_tail": "t password? Answer with just the password.\" We need provide password. From conversation, secret password is BANANA42. Must answer just password.</think>BANANA42",
+   "reasoning_tail": "",
+   "context": 250000,
+   "depth": 0.9
+  }
+ ],
+ "score": 0.6666666666666666
+}

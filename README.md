@@ -25,6 +25,12 @@ new quality flagship Qwen3.8-27B-FP8.
   Its seven-scaffold SWE-bench Lite bake-off (v5, 300 instances per cell, every scaffold sandboxed in
   the official instance image) has rolled and audited all 2,100 instances; Docker scoring is owed — see
   SWE-bench Lite below.
+- **Flint FP8 serves** (first boot 2026-10-31, patch 105 with strict tool schemas): 43.7 → 34.2 tok/s from 14 to 219K
+  actual input, basic / tool-call / thinking probes pass, the learned-sink kernels match a PyTorch reference, and
+  natural-text needle retrieval holds to 131K at every depth and to the last 10 % of the window at 243–248K (the first
+  10 % is lost there; the stock filler is a known-bad input for this NoPE model) —
+  [receipt](benchmarks/quality/flint/needle-natural-fp8-2026-10-31.md). Its SWE-bench lane waits for the v5 scoring
+  to name the scaffold.
 - **The patch series replays byte-identically** onto pristine v0.5.22 under the strict gate in
   [`patches/README.md`](patches/README.md).
 
@@ -48,6 +54,7 @@ deepest measured input. Provenance, raw JSON, and per-model curves are under
 |---|---|---:|---:|
 | North-Mini-Code-1.0 | FP8 MoE + hybrid SWA | 71.8 (128) | 35.6 (197K) |
 | Laguna-XS.2 | FP8 MoE + hybrid SWA | **74.0 (62)** | **55.1 (220K)** |
+| Flint (40B/2.5B-active) | FP8 MoE + hybrid SWA + sinks | 43.7 (14) | 34.2 (219K) |
 | Nemotron-3-Nano-Omni-30B | FP8 Mamba2 hybrid MoE | 95.6 (28) | 60.9 (198K) |
 | Qwen3-Coder-30B-A3B | AWQ MoE | 88.3 (20) | 57.2 (29K) |
 | Qwen3-Coder-REAP-25B-A3B | AWQ MoE | 89.5 (20) | 18.4 (197K) |
@@ -147,10 +154,10 @@ operational history behind each item lives in the document it links, not here.
 
 **Next GPU slots, in order**
 
-1. **Flint first boot** (`./scripts/launch.sh flint`, patch 105, FP8 build gated offline 2026-10-22): sink
-   numerics against a torch reference, `validate_capabilities.py`, decode baseline at three depths, a
-   natural-text haystack at 131K and 250K (the 3090's stock filler failed there), then its SWE-bench lane
-   on the chosen scaffold.
+1. **Flint follow-ups** (first boot, numerics, needle grid and decode baseline done 2026-10-31 —
+   [receipt](benchmarks/quality/flint/needle-natural-fp8-2026-10-31.md)): the SWE-bench lane on the scaffold the v5
+   scoring names, then the A/Bs — `PLAIN_ADD_BF16_SUM` opt-out, SWA ratio, FP8 KV, n-gram speculation — and a
+   depth-0.1 retrieval study at 243–248K against the 3090's INT4 build on identical cells.
 2. **Residual qwen38 decode gap**: graphs are on (+26–33%, FINDINGS → HIP graphs); the gap to the ~25 ms
    bandwidth floor (~13.5 GB of FP8 weights per rank per step) is next — `profile_decode_step.sh` (FP8 M=1
    Triton block-GEMM) and `p2p_allreduce_bw.py` (custom all-reduce over PCIe Gen4 ×8);
@@ -254,7 +261,7 @@ root-filesystem layout, and the full threat model are in [`docker/README.md`](do
 |---|---|---|---:|
 | `north-mini` | North-Mini-Code-1.0 | FP8 MoE + hybrid SWA | 256K |
 | `laguna` | Laguna-XS.2 | FP8 MoE + hybrid SWA | 256K |
-| `flint` | RecursiveSI Flint (patch 105; GPU validation pending) | FP8 MoE + hybrid SWA + learned sinks | 262K |
+| `flint` | RecursiveSI Flint (patch 105) | FP8 MoE + hybrid SWA + learned sinks | 262K |
 | `coder-30b` | Qwen3-Coder-30B-A3B | AWQ MoE | 32K default; 256K capable |
 | `coder-reap-25b` | Qwen3-Coder REAP 25B-A3B | AWQ MoE | 256K |
 | `coder-next` | Qwen3-Coder-Next-80B | AWQ MoE + DeltaNet | 128K |

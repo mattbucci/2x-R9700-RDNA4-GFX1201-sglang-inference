@@ -14,6 +14,7 @@ REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)
 FLEET = [
     ("north-mini",                    "North-Mini-Code-1.0",  "FP8 MoE + hybrid SWA"),
     ("laguna-xs2",                    "Laguna-XS.2",          "FP8 MoE + hybrid SWA"),
+    ("flint-fp8",                     "Flint (40B/2.5B-active)", "FP8 MoE + hybrid SWA + sinks"),
     ("nemotron-omni-30b-fp8",         "Nemotron-3-Nano-Omni-30B", "FP8 Mamba2 hybrid MoE"),
     ("coder-30b-awq",                 "Qwen3-Coder-30B-A3B",  "AWQ MoE"),
     ("qwen3-coder-reap-25b-a3b-awq",  "Qwen3-Coder-REAP-25B-A3B", "AWQ MoE"),

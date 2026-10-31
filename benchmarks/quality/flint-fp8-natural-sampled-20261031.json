@@ -1,0 +1,146 @@
+{
+ "tag": "flint-fp8-natural-sampled-20261031",
+ "timestamp": "2026-10-31 01:03",
+ "model": "/data/models/Flint-FP8",
+ "port": 23334,
+ "haystack": "benchmarks/quality/haystack-platypus.txt",
+ "chars_per_token": 3.27,
+ "temperature": "default",
+ "flush": true,
+ "max_tokens": 2048,
+ "results": [
+  {
+   "found": true,
+   "actual_prompt_tokens": 30930,
+   "completion_tokens": 110,
+   "finish_reason": "stop",
+   "seconds": 7.3,
+   "content_tail": "BANANA42",
+   "reasoning_tail": "",
+   "context": 32768,
+   "depth": 0.5
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 30931,
+   "completion_tokens": 65,
+   "finish_reason": "stop",
+   "seconds": 6.2,
+   "content_tail": "BANANA42",
+   "reasoning_tail": "",
+   "context": 32768,
+   "depth": 0.9
+  },
+  {
+   "found": false,
+   "actual_prompt_tokens": 248383,
+   "completion_tokens": 690,
+   "finish_reason": "stop",
+   "seconds": 111.7,
+   "content_tail": "e meta-instruction, final answer just the password. I'll output:\nS3cr3t-P@ssw0rd\n\nBut maybe should not include quotes. Just the password.</think>S3cr3t-P@ssw0rd",
+   "reasoning_tail": "",
+   "context": 250000,
+   "depth": 0.5
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 248383,
+   "completion_tokens": 110,
+   "finish_reason": "stop",
+   "seconds": 94.2,
+   "content_tail": " = 192.\" So likely answer should be just password: BANANA42. Need comply with \"Answer with just the password.\" So final should be just BANANA42.</think>BANANA42",
+   "reasoning_tail": "",
+   "context": 250000,
+   "depth": 0.9
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 30930,
+   "completion_tokens": 108,
+   "finish_reason": "stop",
+   "seconds": 7.2,
+   "content_tail": "BANANA42",
+   "reasoning_tail": "",
+   "context": 32768,
+   "depth": 0.5
+  },
+  {
+   "found": false,
+   "actual_prompt_tokens": 30931,
+   "completion_tokens": 2048,
+   "finish_reason": "length",
+   "seconds": 53.6,
+   "content_tail": "",
+   "reasoning_tail": ".5,.5)), EndArrow);\n[/asy]\n\nIn eight of the twelve outcomes the product is even: $1\\times 2$, $2\\times\n1$, $2\\times 2$, $2\\times 3$, $3\\times 2$, $4\\times 1$, $",
+   "context": 32768,
+   "depth": 0.9
+  },
+  {
+   "found": false,
+   "actual_prompt_tokens": 248383,
+   "completion_tokens": 726,
+   "finish_reason": "stop",
+   "seconds": 112.2,
+   "content_tail": "password\" or \"secret\". To be safe, final response: `password`? If I include no explanation, it's just the password. Let's final with `password`.</think>password",
+   "reasoning_tail": "",
+   "context": 250000,
+   "depth": 0.5
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 248383,
+   "completion_tokens": 51,
+   "finish_reason": "stop",
+   "seconds": 92.3,
+   "content_tail": "ord? Answer with just the password.\" We need provide just password. We saw earlier secret password is BANANA42. Need final answer just password.</think>BANANA42",
+   "reasoning_tail": "",
+   "context": 250000,
+   "depth": 0.9
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 30930,
+   "completion_tokens": 67,
+   "finish_reason": "stop",
+   "seconds": 6.3,
+   "content_tail": "BANANA42",
+   "reasoning_tail": "",
+   "context": 32768,
+   "depth": 0.5
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 30931,
+   "completion_tokens": 53,
+   "finish_reason": "stop",
+   "seconds": 5.9,
+   "content_tail": "BANANA42",
+   "reasoning_tail": "",
+   "context": 32768,
+   "depth": 0.9
+  },
+  {
+   "found": false,
+   "actual_prompt_tokens": 248383,
+   "completion_tokens": 839,
+   "finish_reason": "stop",
+   "seconds": 115.9,
+   "content_tail": "planation.\n\nI'll choose a neutral secret password: \"s3cr3t\". But maybe better to use the actual hidden? There is no actual.\n\nFinal: \"s3cr3t\" only.</think>s3cr3t",
+   "reasoning_tail": "",
+   "context": 250000,
+   "depth": 0.5
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 248383,
+   "completion_tokens": 62,
+   "finish_reason": "stop",
+   "seconds": 92.7,
+   "content_tail": "ction. We need provide just password. From conversation last known secret password is BANANA42. Need answer with just password. Ensure no extra.</think>BANANA42",
+   "reasoning_tail": "",
+   "context": 250000,
+   "depth": 0.9
+  }
+ ],
+ "score": 0.6666666666666666
+}

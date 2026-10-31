@@ -1,0 +1,58 @@
+{
+ "tag": "flint-fp8-filler-control-20261031",
+ "timestamp": "2026-10-31 01:05",
+ "model": "/data/models/Flint-FP8",
+ "port": 23334,
+ "haystack": "filler",
+ "chars_per_token": 4.5,
+ "temperature": 0.0,
+ "flush": true,
+ "max_tokens": 2048,
+ "results": [
+  {
+   "found": true,
+   "actual_prompt_tokens": 32771,
+   "completion_tokens": 90,
+   "finish_reason": "stop",
+   "seconds": 7.3,
+   "content_tail": "BANANA42",
+   "reasoning_tail": "",
+   "context": 32768,
+   "depth": 0.85
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 32771,
+   "completion_tokens": 98,
+   "finish_reason": "stop",
+   "seconds": 7.3,
+   "content_tail": "BANANA42",
+   "reasoning_tail": "",
+   "context": 32768,
+   "depth": 0.9
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 32771,
+   "completion_tokens": 90,
+   "finish_reason": "stop",
+   "seconds": 7.0,
+   "content_tail": "BANANA42",
+   "reasoning_tail": "",
+   "context": 32768,
+   "depth": 0.92
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 32770,
+   "completion_tokens": 88,
+   "finish_reason": "stop",
+   "seconds": 7.0,
+   "content_tail": "BANANA42",
+   "reasoning_tail": "",
+   "context": 32768,
+   "depth": 0.95
+  }
+ ],
+ "score": 1.0
+}

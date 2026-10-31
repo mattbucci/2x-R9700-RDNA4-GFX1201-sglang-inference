@@ -1,0 +1,69 @@
+{
+ "tag": "flint-fp8-natural-32k-band-cpt327-20261031",
+ "timestamp": "2026-10-31 00:49",
+ "model": "/data/models/Flint-FP8",
+ "port": 23334,
+ "haystack": "benchmarks/quality/haystack-platypus.txt",
+ "chars_per_token": 3.27,
+ "temperature": 0.0,
+ "flush": true,
+ "max_tokens": 2048,
+ "results": [
+  {
+   "found": true,
+   "actual_prompt_tokens": 30931,
+   "completion_tokens": 50,
+   "finish_reason": "stop",
+   "seconds": 5.8,
+   "content_tail": "BANANA42",
+   "reasoning_tail": "",
+   "context": 32768,
+   "depth": 0.85
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 30931,
+   "completion_tokens": 64,
+   "finish_reason": "stop",
+   "seconds": 6.2,
+   "content_tail": "BANANA42",
+   "reasoning_tail": "",
+   "context": 32768,
+   "depth": 0.88
+  },
+  {
+   "found": false,
+   "actual_prompt_tokens": 30931,
+   "completion_tokens": 2048,
+   "finish_reason": "length",
+   "seconds": 53.1,
+   "content_tail": "",
+   "reasoning_tail": "2\", (1,1));\nlabel(scale(0.6)*\"3\", (1,-1));\nlabel(scale(0.6)*\"4\", (-1,-1));\nlabel(scale(0.6)*\"1\", (5,.75));\nlabel(scale(0.6)*\"2\", (7,.75));\nlabel(scale(0.6)*\"3\",",
+   "context": 32768,
+   "depth": 0.9
+  },
+  {
+   "found": false,
+   "actual_prompt_tokens": 30931,
+   "completion_tokens": 2048,
+   "finish_reason": "length",
+   "seconds": 53.0,
+   "content_tail": "",
+   "reasoning_tail": "lleyball team has 14 players, including a set of 3 triplets: Alicia, Amanda, and Anna.  In how many ways can we choose 6 starters if exactly one of the triplets",
+   "context": 32768,
+   "depth": 0.92
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 30931,
+   "completion_tokens": 52,
+   "finish_reason": "stop",
+   "seconds": 6.0,
+   "content_tail": "BANANA42",
+   "reasoning_tail": "",
+   "context": 32768,
+   "depth": 0.95
+  }
+ ],
+ "score": 0.6
+}

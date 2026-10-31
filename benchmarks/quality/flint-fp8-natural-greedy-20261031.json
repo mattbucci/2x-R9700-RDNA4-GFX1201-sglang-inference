@@ -1,0 +1,146 @@
+{
+ "tag": "flint-fp8-natural-greedy-20261031",
+ "timestamp": "2026-10-31 00:34",
+ "model": "/data/models/Flint-FP8",
+ "port": 23334,
+ "haystack": "benchmarks/quality/haystack-platypus.txt",
+ "chars_per_token": 3.27,
+ "temperature": 0.0,
+ "flush": true,
+ "max_tokens": 2048,
+ "results": [
+  {
+   "found": true,
+   "actual_prompt_tokens": 952,
+   "completion_tokens": 76,
+   "finish_reason": "stop",
+   "seconds": 1.9,
+   "content_tail": "BANANA42",
+   "reasoning_tail": "",
+   "context": 1024,
+   "depth": 0.1
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 952,
+   "completion_tokens": 81,
+   "finish_reason": "stop",
+   "seconds": 2.0,
+   "content_tail": "BANANA42",
+   "reasoning_tail": "",
+   "context": 1024,
+   "depth": 0.5
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 952,
+   "completion_tokens": 66,
+   "finish_reason": "stop",
+   "seconds": 1.7,
+   "content_tail": "BANANA42",
+   "reasoning_tail": "",
+   "context": 1024,
+   "depth": 0.9
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 30931,
+   "completion_tokens": 71,
+   "finish_reason": "stop",
+   "seconds": 6.3,
+   "content_tail": "BANANA42",
+   "reasoning_tail": "",
+   "context": 32768,
+   "depth": 0.1
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 30930,
+   "completion_tokens": 76,
+   "finish_reason": "stop",
+   "seconds": 6.5,
+   "content_tail": "BANANA42",
+   "reasoning_tail": "",
+   "context": 32768,
+   "depth": 0.5
+  },
+  {
+   "found": false,
+   "actual_prompt_tokens": 30931,
+   "completion_tokens": 2048,
+   "finish_reason": "length",
+   "seconds": 53.1,
+   "content_tail": "",
+   "reasoning_tail": "2\", (1,1));\nlabel(scale(0.6)*\"3\", (1,-1));\nlabel(scale(0.6)*\"4\", (-1,-1));\nlabel(scale(0.6)*\"1\", (5,.75));\nlabel(scale(0.6)*\"2\", (7,.75));\nlabel(scale(0.6)*\"3\",",
+   "context": 32768,
+   "depth": 0.9
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 124868,
+   "completion_tokens": 131,
+   "finish_reason": "stop",
+   "seconds": 33.7,
+   "content_tail": "just the password.\" Likely answer is BANANA42. Need comply with just password. Could be \"BANANA42\". We should output just that. Ensure no extra.</think>BANANA42",
+   "reasoning_tail": "",
+   "context": 131072,
+   "depth": 0.1
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 124869,
+   "completion_tokens": 64,
+   "finish_reason": "stop",
+   "seconds": 32.6,
+   "content_tail": " instruction: \"Answer with just the password.\" We need comply? The secret password is BANANA42. Must answer with just password. Ensure no extra.</think>BANANA42",
+   "reasoning_tail": "",
+   "context": 131072,
+   "depth": 0.5
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 124869,
+   "completion_tokens": 91,
+   "finish_reason": "stop",
+   "seconds": 32.7,
+   "content_tail": "BANANA42",
+   "reasoning_tail": "",
+   "context": 131072,
+   "depth": 0.9
+  },
+  {
+   "found": false,
+   "actual_prompt_tokens": 248383,
+   "completion_tokens": 110,
+   "finish_reason": "stop",
+   "seconds": 94.1,
+   "content_tail": " I cannot provide one. The instruction might be a test or a mistake. I should respond honestly that I don't know the password.</think>I don't know the password.",
+   "reasoning_tail": "",
+   "context": 250000,
+   "depth": 0.1
+  },
+  {
+   "found": false,
+   "actual_prompt_tokens": 248383,
+   "completion_tokens": 2048,
+   "finish_reason": "length",
+   "seconds": 150.6,
+   "content_tail": "2B2B2B2B2B2B2B2B2B2B2B2B2B2B2B2B2B2B2B2B2B2B2B2B2B2B2B2B2B2B2B2B2B2B2B2B2B2B2B2B2B2B2B2B2B2B2B2B2B2B2B2B2B2B2B2B2B2B2B2B2B2B2B2B2B2B2B2B2B2B2B2B2B2B2B2B2B2B2B2B",
+   "reasoning_tail": "",
+   "context": 250000,
+   "depth": 0.5
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 248383,
+   "completion_tokens": 84,
+   "finish_reason": "stop",
+   "seconds": 93.2,
+   "content_tail": "rovide just password. Earlier context includes \"The secret password is: BANANA42.\" So answer should be BANANA42. Must comply with just password.</think>BANANA42",
+   "reasoning_tail": "",
+   "context": 250000,
+   "depth": 0.9
+  }
+ ],
+ "score": 0.75
+}

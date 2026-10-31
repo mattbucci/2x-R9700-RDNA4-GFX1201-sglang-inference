@@ -1,0 +1,69 @@
+{
+ "tag": "flint-fp8-natural-32k-band-cpt320-20261031",
+ "timestamp": "2026-10-31 00:51",
+ "model": "/data/models/Flint-FP8",
+ "port": 23334,
+ "haystack": "benchmarks/quality/haystack-platypus.txt",
+ "chars_per_token": 3.2,
+ "temperature": 0.0,
+ "flush": true,
+ "max_tokens": 2048,
+ "results": [
+  {
+   "found": true,
+   "actual_prompt_tokens": 30326,
+   "completion_tokens": 75,
+   "finish_reason": "stop",
+   "seconds": 6.8,
+   "content_tail": "BANANA42",
+   "reasoning_tail": "",
+   "context": 32768,
+   "depth": 0.85
+  },
+  {
+   "found": false,
+   "actual_prompt_tokens": 30326,
+   "completion_tokens": 2048,
+   "finish_reason": "length",
+   "seconds": 55.2,
+   "content_tail": "",
+   "reasoning_tail": "E)}} \\qquad \\textbf {(E)}} \\qquad \\textbf {(E)}} \\qquad \\textbf {(E)}} \\qquad \\textbf {(E)}} \\qquad \\textbf {(E)}} \\qquad \\textbf {(E)}} \\qquad \\textbf {(E)}} \\",
+   "context": 32768,
+   "depth": 0.88
+  },
+  {
+   "found": false,
+   "actual_prompt_tokens": 30326,
+   "completion_tokens": 2048,
+   "finish_reason": "length",
+   "seconds": 54.4,
+   "content_tail": "",
+   "reasoning_tail": " If $p > 50$, then the factor of $p$ appears twice in the denominator. Thus, we need $p$ to appear as a factor at least three times in the numerator, so $3p<200",
+   "context": 32768,
+   "depth": 0.9
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 30326,
+   "completion_tokens": 156,
+   "finish_reason": "stop",
+   "seconds": 8.3,
+   "content_tail": "BANANA42",
+   "reasoning_tail": "",
+   "context": 32768,
+   "depth": 0.92
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 30326,
+   "completion_tokens": 73,
+   "finish_reason": "stop",
+   "seconds": 6.3,
+   "content_tail": "BANANA42",
+   "reasoning_tail": "",
+   "context": 32768,
+   "depth": 0.95
+  }
+ ],
+ "score": 0.6
+}

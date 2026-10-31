@@ -54,8 +54,14 @@ Same shape as qwen38's: the resolve rate falls monotonically with recall mention
 same helper moves your metadata-key list (`i`, `description`, `intent`, `explanation`, `reason`, `summary`) after the payload
 keys before `get_model_structural_tag`. CPU test `scripts/eval/test_flint_tool_grammar_key_order.py` compiles the real grammar
 with the Flint tokenizer: payload-first omp call accepted, missing `i` rejected, `FLINT_STRICT_TOOLS=0` schema-free. Our FP8
-build booted 2026-10-31 (TP=2, 262144, bf16 KV, pool 525,305 tokens; basic / tool_call / thinking PASS); natural-haystack needle
-grid running, receipt follows.
+build booted 2026-10-31 (TP=2, 262144, bf16 KV, pool 525,305 tokens; basic / tool_call / thinking PASS). Receipt:
+[`benchmarks/quality/flint/needle-natural-fp8-2026-10-31.md`](benchmarks/quality/flint/needle-natural-fp8-2026-10-31.md) —
+decode 43.7 → 34.2 tok/s from 14 to 219K actual; your two natural ~244K cells (@0.5/@0.9 greedy flushed) are found on FP8
+too and 131K natural is 3/3; your filler attractor reproduces (131K@0.5 `We need final.` loop). New on our side: depth-0.1
+at 243–248K misses consistently (greedy and sampled; the model concludes no password is present) and a 32K band where the
+needle inside dense math text 2.5–3.7K tokens before the question triggers a continuation loop (text-dependent, filler
+4/4 at the same depths). The sink kernels match a torch reference (decode + extend, full + 513 window), so if you can run
+the same depth-0.1 cells at ~244K on INT4 we can separate quantization from checkpoint behaviour.
 
 **Leak classifier — three rules since the last note, all found by the Phase-4.5 gate at a lane close (`0c3aa0d`, `b5a4ce4`):** (1) a header-only `curl -sI … | head -3; echo "curl exit=$?"` printed only head's status — no `HTTP/` status line means nothing came back; (2) a heredoc `urlopen` redirected to a file whose result stream is the model's own `netfetch: running pid=245` note is a launch note, not content; (3) `pip install ./sympy` (any local path, wheel or editable-local requirement) never asks an index for the project — pip's "Directory './sympy' is not installable" matched none of the network-failure signatures and read as a successful UPSTREAM fetch. Netopen references stay 186 / 182 under every change. Operational lesson worth copying: the gate fires at lane close and a FAIL leaves the whole cycle unscored and the queue moving on — re-run the lane's leak audit the day it closes, and keep a detached rescore path for the next PAUSE window.
 
