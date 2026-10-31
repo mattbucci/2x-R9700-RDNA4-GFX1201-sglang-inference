@@ -47,7 +47,6 @@ unaffected by construction (the heuristic still picks few splits there), so the 
 | Model | depth | LATE | MID | coherent | note |
 |---|---:|:---:|:---:|:---:|---|
 | coder-30b | 27K | ✅ | ✅ | ✅ | |
-| glm45-air | 27K | ✅ | ✅ | ✅ | |
 | qwen3vl-32b | 27K | ✅ | ✅ | ✅ | |
 | gemma-4-26b | 15K | ✅ | ✅ | ✅ | probed at its ~16K SWA cap |
 | devstral-24b | 110K | ✅ | ✅ | ✅ | |

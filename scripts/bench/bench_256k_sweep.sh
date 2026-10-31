@@ -7,7 +7,7 @@
 # Order chosen to minimize time-to-first-data for the primary 256K target:
 #   qwen35 first (native 256K, primary target), then smaller models, then MoE.
 #
-# Skipped: gemma4 (4K SWA limit), gemma4-31b (8K SWA limit), glm45-air (blocked).
+# Skipped: gemma4 (4K SWA limit), gemma4-31b (8K SWA limit).
 #
 # Usage:
 #   bash scripts/bench/bench_256k_sweep.sh               # full suite

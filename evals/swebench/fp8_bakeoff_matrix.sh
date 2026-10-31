@@ -52,7 +52,6 @@ MODELS=(
   "gemma4-12b|gemma4-12b|gemma-4-12B-it-BF16"
   "coder-reap-25b|coder-30b|Qwen3-Coder-REAP-25B-A3B-BF16"
   "vl-reap-26b|qwen36-moe|Qwen3.6-VL-REAP-26B-A3B-BF16"
-  "glm-air-82b|glm45-air|GLM-4.5-Air-REAP-82B-A12B-BF16"
 )
 
 stop_server(){   # kill sglang, wait for BOTH R9700s' VRAM to drain. rc=0 drained / rc=1 stuck (orphan or off-bus → reboot)

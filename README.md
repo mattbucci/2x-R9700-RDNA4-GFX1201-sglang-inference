@@ -11,8 +11,8 @@ new quality flagship Qwen3.8-27B-FP8.
 
 ## Where things stand
 
-- **Nineteen presets boot and serve** on one launcher (`scripts/launch.sh`); 16 of 17 swept presets emit
-  parsed structured tool calls at boot (GLM-4.5 Air is receipted as not agentic-qualified).
+- **Eighteen presets boot and serve** on one launcher (`scripts/launch.sh`); every swept preset (16) emits
+  parsed structured tool calls at boot.
 - **Laguna XS.2 FP8 is the fleet-speed default**: 74.0 tok/s at 62 input tokens and 55.1 tok/s at 220K
   on the native Triton block-FP8 lane (36.8–47.8% over dequant-to-BF16), with a 21/21 seed-rung 256K
   agentic ladder. North-Mini Code passes the same ladder 21/21 to 245,172 actual tokens.
@@ -52,7 +52,6 @@ deepest measured input. Provenance, raw JSON, and per-model curves are under
 | Qwen3-Coder-30B-A3B | AWQ MoE | 88.3 (20) | 57.2 (29K) |
 | Qwen3-Coder-REAP-25B-A3B | AWQ MoE | 89.5 (20) | 18.4 (197K) |
 | Qwen3-Coder-Next-REAM-60B | AWQ MoE + DeltaNet | 48.6 (20) | 22.7 (110K) |
-| GLM-4.5-Air-REAP | AWQ MoE | 25.7 (17) | 25.6 (27K) |
 | Qwen3.5-28B-A3B-REAP | AWQ MoE + DeltaNet | 66.7 (22) | 21.1 (197K) |
 | Qwen3.6-35B-A3B | AWQ MoE + DeltaNet | 67.0 (22) | 22.0 (197K) |
 | Gemma 4 26B-A4B | AWQ MoE + SWA | 74.8 (25) | 58.3 (15K) |
@@ -66,8 +65,7 @@ deepest measured input. Provenance, raw JSON, and per-model curves are under
 | Gemma 4 12B | AWQ omni + SWA | 38.6 (25) | 10.9 (198K) |
 
 Gemma 4 26B-A4B caps near 16–30K in its current SWA configuration; the full Coder-Next-80B AWQ
-checkpoint is pending (the REAM-60B variant is measured); GLM-4.5-Air runs eager and its short-context
-points are noisy. Do not present a short prompt on a 256K-capable server as 256K-depth throughput.
+checkpoint is pending (the REAM-60B variant is measured). Do not present a short prompt on a 256K-capable server as 256K-depth throughput.
 
 #### Speculative decoding across the fleet
 
@@ -273,7 +271,6 @@ root-filesystem layout, and the full threat model are in [`docker/README.md`](do
 | `gemma4-12b` | Gemma 4 12B Unified | AWQ multimodal | 256K |
 | `gemma4-31b` | Gemma 4 31B | AWQ dense + vision | 256K override |
 | `nemotron-omni` | Nemotron-3-Nano-Omni | FP8 Mamba2 hybrid MoE | 256K |
-| `glm45-air` | GLM-4.5-Air REAP | AWQ MoE | 32K |
 
 Additional fallback presets exist for Gemma 4 31B checkpoint formats; `./scripts/launch.sh -h` lists
 everything.
@@ -326,7 +323,7 @@ calibration and pruning scripts; community quantizations are reference data, not
 - Back-to-back TP=2 relaunches intermittently hit an RCCL-init GPU coredump (rank exit -6): a hard kill
   leaks the communicator's `/dev/shm` IPC segments and a fast relaunch faults on a stale one. Run
   `bash scripts/free_gpu.sh` between serving runs.
-- Coder-Next full-size and GLM-4.5-Air remain diagnostic presets rather than recommended agentic ships;
+- Coder-Next full-size remains a diagnostic preset rather than a recommended agentic ship;
   Qwen3-Coder-30B REAM is research-only until it passes a same-scaffold quality comparison against the
   unmerged checkpoint.
 - Gemma 4 31B vision and video are non-functional on the local `gemma-4-31B-AWQ` checkpoint: it carries

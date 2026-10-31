@@ -19,7 +19,6 @@
 #   coder-30b      Qwen3-Coder-30B MoE AWQ (32K, best throughput)
 #   coder-next     Qwen3-Coder-Next-80B MoE+DeltaNet AWQ (128K)
 #   coder-next-ream Qwen3-Coder-Next REAM 60B AWQ (128K, pruned 80→60B)
-#   glm45-air      GLM-4.5-Air REAP 82B MoE AWQ (32K)
 #   gemma4         Gemma 4 26B MoE AWQ (4K, GPTQ forced-routing)
 #   gemma4-31b     Gemma 4 31B Dense AWQ (8K, BF16 required)
 #   gemma4-31b-ct  Gemma 4 31B Dense compressed-tensors (fallback if AWQ breaks quality)
@@ -44,7 +43,7 @@ TOKENIZER=""
 # ⚠ This pins QUANT=awq NOW, before the preset case runs — so a preset CANNOT set a
 # non-awq default via QUANT="${QUANT:-moe_wna16}" (the :- no-ops, QUANT is already "awq").
 # Presets that need a non-awq default MUST hard-set (QUANT="moe_wna16"). Env override still
-# works either way. (This trap silently shipped awq → OOM for glm45-air + coder-next; 2026-06-17.)
+# works either way. (This trap silently shipped awq → OOM for coder-next and the since-removed glm45-air; 2026-06-17.)
 QUANT="${QUANT:-awq}"
 DTYPE="float16"
 CTX=32768
@@ -233,7 +232,7 @@ PYEOF
             # documented "default awq+fp16 → experts BF16 → OOM" failure above is exactly
             # what shipped. moe_wna16 is required, same as coder-30b/gemma4 (which hard-set
             # it). Env override still works (QUANT=auto-round propagates through line 36).
-            # (Latent since written; caught 2026-06-17 alongside the same glm45-air trap.)
+            # (Latent since written; caught 2026-06-17 alongside the same trap on the since-removed glm45-air preset.)
             QUANT="moe_wna16"
             DTYPE="bfloat16"
             CTX=131072; MAX_RUNNING=8; CHUNKED=8192; DECODE_STEPS=32; MEM=0.85
@@ -262,35 +261,6 @@ PYEOF
             # at 131K the win flattens to ~1.07x as this 60B's real per-token
             # compute (~45 ms) meets the launch-overhead ceiling — no regression.
             CUDA_GRAPH=""
-            ;;
-        glm45-air)
-            # Serves on RDNA4 as of 2026-06-17 (patch 066 fixes the BF16 dense-MLP/shared_experts
-            # gate_up_proj skip-miss that NaN'd). Use the native-AWQ conversion (CT→AWQ via
-            # convert_moe_ct_to_awq) + moe_wna16; the on-disk *-AWQ is compressed-tensors (Marlin-only,
-            # won't load on gfx1201). ⚠ checkpoint = converted 3rd-party REAP, not yet our own
-            # upstream-BF16 prune+calibration (provenance task, future) — works but not a canonical ship.
-            MODEL="${MODEL:-$MODELS_DIR/GLM-4.5-Air-REAP-AWQ-native}"
-            # Hard-set (NOT ${QUANT:-...}): the global default at line 36 already pins
-            # QUANT=awq, so an override-default no-ops here and boots AWQ → AWQConfig
-            # leaves FusedMoE experts unquantized (BF16) → OOM at weight load. moe_wna16
-            # is required, same as gemma4. (Caught 2026-06-17 by the post-patch-066 preset
-            # validation; manual boots had passed only because they set QUANT=moe_wna16 explicitly.)
-            QUANT="moe_wna16"
-            CTX=32768; MAX_RUNNING=32; CHUNKED=4096; DECODE_STEPS=8
-            TOOL_CALL_PARSER="glm"
-            REASONING="--reasoning-parser glm45"   # split <think>…</think> into reasoning_content
-            # Recommended sampling (temp 0.6 / top_p 0.95 / repetition_penalty 1.05) is baked into
-            # the checkpoint's generation_config.json — REQUIRED: without rep-penalty this REAP+AWQ
-            # checkpoint repetition-collapses. ⚠ rep-penalty is TREACHEROUS here: 1.1 helps a few
-            # prompts at temp 0.6 but CRATERS at greedy (temp=0 + 1.1 → runaway-to-max_tokens, eval
-            # 3/36 vs 29/36 at 1.05) — so keep 1.05, and don't tune rep-penalty on the greedy
-            # eval_comprehensive harness (it's not representative of served temp-0.6 behavior).
-            # ⚠ Quality is middling on this 3rd-party REAP conversion: eval_comprehensive 29/36 (greedy,
-            # 1.05); occasional casing slips, token glitches, one runaway (to_binary); TOOL-CALLING is
-            # degraded (MALFORMED delimiters the glm parser can't extract → tool_calls=null). Serve
-            # THINKING-ON only — the non-thinking path (enable_thinking:false) is broken (wrong answer
-            # + leaks </think>). Chat/reasoning-usable, NOT agentic; canonical own-build (#17) is the fix.
-            WATCHDOG=1800
             ;;
         gemma4)
             # torch_native attention required — triton attention crashes with SWA on RDNA4.

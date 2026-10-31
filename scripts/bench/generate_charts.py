@@ -195,7 +195,6 @@ MODELS = {
     "qwen3vl-32b-awq":          {"label": "Qwen3-VL-32B AWQ (Dense VL)",       "color": "#f778ba"},
     "north-mini":               {"label": "North-Mini-Code FP8 (cohere2_moe)", "color": "#ff7b72"},
     "laguna-xs2":               {"label": "Laguna XS.2 FP8 (MoE)",            "color": "#ffa657"},
-    "glm45-air-awq":            {"label": "GLM-4.5-Air-REAP AWQ (glm4_moe)",   "color": "#a371f7"},
     "qwen38-27b-fp8":           {"label": "Qwen3.8-27B FP8 + DSpark (Dense DeltaNet VL)", "color": "#f85149"},
     # The no-spec qwen38 server (QWEN38_SPEC=0; 530K-token pool, true 256K) kept as the
     # reference curve since DSpark became the preset default on 2026-09-27.
@@ -1088,7 +1087,7 @@ def make_combined_concurrency_chart(all_data):
 
     for key, (meta, results) in all_data.items():
         if "throughput_sweep" not in results:
-            continue  # context-only models (e.g. glm45-air-awq) have no concurrency data
+            continue  # context-only models have no concurrency data
         sweep = [p for p in results["throughput_sweep"] if "error" not in p]
         conc = [p["concurrency"] for p in sweep]
         toks = [point_toks(p) for p in sweep]

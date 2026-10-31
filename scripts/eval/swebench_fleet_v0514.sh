@@ -42,7 +42,7 @@ for preset in $CELLS; do
   #    costs ~2 resolves/15 at temp=0 (coder-30b eager 7/15 vs graph 5/15).
   #  - THINKING models: cuda-graph ON — eager (~half the tok/s) makes long reasoning traces blow
   #    past the per-instance timeout (qwen36-moe eager all-timeout at 600s).
-  case " qwen36-moe qwen36-27b qwen35 glm45-air " in *" $preset "*) CGENV="" ;; *) CGENV="DISABLE_CUDA_GRAPH=1" ;; esac
+  case " qwen36-moe qwen36-27b qwen35 " in *" $preset "*) CGENV="" ;; *) CGENV="DISABLE_CUDA_GRAPH=1" ;; esac
   echo "=== [$preset] serve ${CGENV:-cuda-graph-ON} ($SCAFFOLD) $(date +%H:%M) ==="
   stop_server
   setsid bash -c "$CGENV HF_HUB_OFFLINE=1 bash scripts/launch.sh $preset --port 23334 --context-length $CTX > $OUT/serve.log 2>&1 & echo \$! > $OUT/pid; disown" </dev/null >/dev/null 2>&1 &

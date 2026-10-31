@@ -14,7 +14,7 @@ post-094 decision below is the current execution sequence.
 
 - **Completed locally:** R97-E's default-on tool-call gate and 17-preset sweep, R97-G Phase A's seven-cell
   rollup, and R97-C's calibration-source repair plus fingerprinted drift gate. R97-E qualified 16/17
-  presets for structured calls and explicitly receipts GLM-4.5 Air as not agentic-qualified.
+  presets for structured calls (the one exception, GLM-4.5 Air, was removed from the fleet on 2026-10-31).
 - **Completed North repair/gates:** R97-D's probe has 36 focused tests (42 with chart contracts), separate
   repeated-stress and heterogeneous agentic profiles, effective-seed receipts, and bounded raw failure
   diagnostics. Patches 090–094 repair North normalization, parser/finish semantics, SWA convention, and
@@ -34,7 +34,7 @@ documented in [`README.md`](../README.md#next-steps).
 | # | ID | Title | Type | Current status | Host | Wall clock |
 |---|---|---|---|---|---|---|
 | 01 | R97-C | [Propagate 3090 calibration-source fixes (8076b75) + add fleet drift-check for the five forked quant/eval scripts](01-calib-source-fixes-and-drift-check.md) | task | complete; redirects, live receipts, and fingerprinted drift gate pass | r9700-box | 3-6h (dry-runs are minutes each; drift script + receipts + docs the rest) |
-| 02 | R97-E | [Port 3090's check_tool_call into the R9700 capability validator and gate all presets](02-toolcall-gate-validate-capabilities.md) | task | complete: 16/17 tool PASS; GLM exception receipted | r9700-box | completed in this campaign (fleet sweep 29:57 plus controls/triage) |
+| 02 | R97-E | [Port 3090's check_tool_call into the R9700 capability validator and gate all presets](02-toolcall-gate-validate-capabilities.md) | task | complete: 16/17 tool PASS (the one exception, glm45-air, was removed from the fleet 2026-10-31) | r9700-box | completed in this campaign (fleet sweep 29:57 plus controls/triage) |
 | 03 | R97-D | [Port and harden the 256K multi-turn tool-use probe; run the North/Laguna and cross-team controls](03-port-tooluse-probe-crossteam-abs.md) | experiment | **IN PROGRESS**: post-094 North focused gate passed; full three-seed ladder running | r9700-box | ~1-1.5 days (CPU port/tests complete; probe runs are prefill-dominated) |
 | 04 | R97-A | [Wire delivered EAGLE3 drafts (Devstral-2, Qwen3-VL-32B) into the --spec lane + measure the true-depth curve (#52)](04-eagle3-dense-vl-spec-lane-depth-curve.md) | experiment | prep-ready; GPU deferred | r9700-box | 2-3 days (wiring+extraction day 1; depth curves day 2; receipts/decision day 3) |
 | 05 | R97-F | [Qwen3.6-35B-A3B REAP 256->192e: prune on R9700, AWQ recal on 3090, serve+bench both rigs](05-qwen36-35b-reap192-two-rig-relay.md) | task | **BLOCKED: 3090-G handoff** | multi-rig | ~3-5 days end-to-end: ~0.5 day tooling port + gates (incl. Gate 2b slicer validation), ~0.5-1 day prune + verification (r9700-box), ~0.5 day HF transfer, ~1 day recal + convert (3090-calib-box), ~1-2 days serve/validate/bench + SWE-bench cell across both rigs. |

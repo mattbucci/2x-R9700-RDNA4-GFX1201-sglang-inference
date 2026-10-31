@@ -73,7 +73,7 @@ run_eval_for() {
 }
 
 # Models to evaluate (preset → tag)
-# Skip: glm45-air (blocked), gemma4-31b-ct (duplicate)
+# Skip: gemma4-31b-ct (duplicate)
 run_eval_for "devstral"        "Devstral-24B"
 run_eval_for "coder-30b"       "Coder-30B"
 run_eval_for "gemma4"          "Gemma4-26B"

@@ -18,7 +18,6 @@ FLEET = [
     ("coder-30b-awq",                 "Qwen3-Coder-30B-A3B",  "AWQ MoE"),
     ("qwen3-coder-reap-25b-a3b-awq",  "Qwen3-Coder-REAP-25B-A3B", "AWQ MoE"),
     ("coder-next-ream-awq",           "Qwen3-Coder-Next-REAM-60B", "AWQ MoE + DeltaNet"),
-    ("glm45-air-awq",                 "GLM-4.5-Air-REAP",     "AWQ MoE"),
     ("qwen3.5-35b-moe-gptq",          "Qwen3.5-28B-A3B-REAP", "AWQ MoE + DeltaNet"),
     ("qwen3.6-35b-moe-awq",           "Qwen3.6-35B-A3B",      "AWQ MoE + DeltaNet"),
     ("gemma-4-26b-awq",               "Gemma 4 26B-A4B",      "AWQ MoE + SWA"),

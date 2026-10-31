@@ -62,7 +62,7 @@
    "depends_on": [
     "R97-C"
    ],
-   "next_action": "Use the 16 qualified presets as the short-context gate and keep the receipted GLM-4.5 Air exception out of agentic recommendations.",
+   "next_action": "Use the 16 qualified presets as the short-context gate (GLM-4.5 Air was removed from the fleet on 2026-10-31).",
    "test_gate": [
     "Positive control returns a parsed get_weather call",
     "Negative control fails with the raw-markup hint",

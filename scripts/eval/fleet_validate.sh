@@ -30,7 +30,6 @@ source scripts/common.sh
 # fast (sub-128K) first so early results land quickly; deep 256K last.
 MODELS=(
  "coder-30b|coder-30b-awq|29696|--skip-vision --skip-video|1"
- "glm45-air|glm45-air-awq|29696|--skip-vision --skip-video|1"
  "qwen3vl-32b|qwen3vl-32b-awq|29696||1"
  "gemma4|gemma-4-26b-awq|16384||0"
  "devstral|devstral-24b-awq|122880|--skip-vision --skip-video|1"

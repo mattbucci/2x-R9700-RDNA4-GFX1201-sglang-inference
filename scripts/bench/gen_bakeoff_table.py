@@ -27,7 +27,6 @@ MODELS = [
     ("gemma4-12b",     "Gemma-4-12B",                "runtime"),
     ("coder-reap-25b", "Qwen3-Coder-REAP-25B-A3B",   "runtime"),
     ("vl-reap-26b",    "Qwen3.6-VL-REAP-26B-A3B",    "runtime"),
-    ("glm-air-82b",    "GLM-4.5-Air-REAP-82B",       "runtime"),
 ]
 
 

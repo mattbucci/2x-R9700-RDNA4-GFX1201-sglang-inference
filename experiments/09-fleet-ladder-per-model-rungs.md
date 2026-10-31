@@ -25,7 +25,7 @@ match the global constant. The rung set must become a per-model property before 
 
 Two of the 16 tool-call-qualified presets carry a measured agentic depth. Both sweep their ladder at every
 seed (21/21 seed-rungs each): Laguna XS.2 FP8 through 245,279 actual prompt tokens, North-Mini-Code FP8
-through 245,172. GLM-4.5 Air is receipted as not agentic-qualified and is out of scope.
+through 245,172.
 
 Unmeasured (14): `coder-30b-awq`, `qwen3vl-32b-awq`, `gemma-4-26b-awq`, `devstral-24b-awq`, `gemma4-31b`,
 `coder-next-ream-awq`, `gemma4-12b`, `qwen3-coder-reap-25b-a3b-awq`, `devstral2-awq`, `qwen3.5-27b-awq`,

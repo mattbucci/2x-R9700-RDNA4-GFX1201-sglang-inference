@@ -33,14 +33,14 @@
   prose-only `finish=stop`, `finish=tool_calls` with raw `<tool_call>` content but no parsed call, and a
   512-token malformed-thinking loop ending `length`. Thinking-enabled and 1,024-token diagnostics also
   looped without a call. This is explicitly receipted in the GLM JSON row as a model-behavior exception;
-  the checkpoint is not agentic-qualified, and the shared gate remains strict.
+  the checkpoint is not agentic-qualified, and the shared gate remains strict. (The `glm45-air` preset was
+  removed from the fleet on 2026-10-31 — not runnable on this host; its receipts stay under
+  `benchmarks/validation/`.)
 - **Scope comment:** Port only `check_tool_call`, `--skip-tools`, and the default-on invocation. Do not port
   the donor's name-keyed `NON_TOOL_MODELS`; this rig does not set `--served-model-name`. Laguna's earlier
   manual tool success is useful evidence but is not a default-on fleet shipping gate. Preserve the
   unrelated dirty `launch.sh` FP8 changes if later parser triage touches that file.
-- **Next action:** Use the now-qualified short-context fleet as R97-D's boot gate. Do not include GLM-4.5
-  Air in agentic recommendations until a replacement checkpoint or separately scoped model/template fix
-  passes this same validator.
+- **Next action:** Use the now-qualified short-context fleet as R97-D's boot gate.
 
 ## Objective
 

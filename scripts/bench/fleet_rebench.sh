@@ -20,7 +20,6 @@ source scripts/common.sh
 # preset | slug (generate_charts key) | label | contexts (approx input tokens)
 # fast (sub-128K) first so early charts land quickly, deep 256K last.
 MODELS=(
- "glm45-air|glm45-air-awq|GLM-4.5-Air-REAP AWQ (glm4_moe)|128,4096,16384,29696"
  "coder-30b|coder-30b-awq|Qwen3-Coder-30B-A3B AWQ (MoE)|128,4096,16384,29696"
  "qwen3vl-32b|qwen3vl-32b-awq|Qwen3-VL-32B AWQ (Dense VL)|128,4096,16384,29696"
  "gemma4|gemma-4-26b-awq|Gemma 4 26B AWQ (MoE)|128,4096,16384,29696"
