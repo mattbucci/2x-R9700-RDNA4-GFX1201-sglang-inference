@@ -206,6 +206,18 @@ small-suffix cache-hit extends through the decode kernel. Receipts:
 [extend cost curve](profiling/laguna-extend-cost-2026-07-19.json). Only Laguna was profiled; whether
 North-Mini's different architecture shows the same collapse is untested.
 
+### HIP graphs on the dense qwen38 FP8 decode path (adopted 2026-09-19)
+
+The inherited "compute-bound at M=1, graphs do not help" verdict for dense DeltaNet presets was measured under
+EAGLE3 verify, never on plain decode. The same-server A/B on Qwen3.8-27B-FP8
+([receipt](qwen38-27b-fp8/graph-ab-2026-09-19.json), v0.5.18, 3 runs per point, idle CPU) read graphs off→on at
+16.9→22.5 (24 tokens), 16.9→22.2 (6.5K), 16.8→21.6 (52K) and 16.0→20.2 tok/s (176K actual input): +26–33%,
+temperature-0 outputs byte-identical in a think-off code task and a thinking math task, 5/5 on the capability
+probe, capture `bs=[1]` 0.29 GB. The preset runs `--cuda-graph-max-bs-decode 1` since then and the canonical
+sweeps on v0.5.20 and v0.5.22 reproduce the curve. The graph policy rule stands — model-specific, evidence
+first — with this as the dense-path counter-example. Still open: the gap to the ~25 ms bandwidth floor
+(README → Next steps).
+
 ### Rejected decode changes
 
 | Experiment | Measurement | Disposition |
@@ -421,6 +433,15 @@ Qwen3.5 (0.029 / 0.000) and Gemma4 (0.034 / 0.086) LAB-Bench cells predate the f
 suspect until re-measured; MMLU was not visibly affected (Qwen3.8: 0.842 think-mode). Results
 JSONs record the condition in `mc_mode`. The MC budget "matches the 3090 sister repo", so the
 same artifact likely applies there.
+
+### Post-save processor files are a quantization ship gate (2026-10-25)
+
+Two multimodal AWQ ships reached serving without `preprocessor_config.json` / `video_preprocessor_config.json`
+(the quantizer saved weights and tokenizer, not the processor), so image and video probes failed on an otherwise
+healthy checkpoint. `scripts/quantize/processor_gate.py` now runs after every save in the nine quantize/convert
+scripts: the expected set is derived from the BF16 base (`processor_config.json` for Gemma-style bases), each
+file must parse as a JSON object, and a miss exits 65 before the ship is reported. Eleven contract tests in
+`scripts/test/test_processor_gate.py`.
 
 ### Legacy `sglang.bench_serving` benchmark directories purged (2026-10-25)
 

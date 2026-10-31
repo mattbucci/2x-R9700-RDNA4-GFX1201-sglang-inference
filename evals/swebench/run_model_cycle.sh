@@ -334,7 +334,9 @@ for SCAFFOLD in "${NEED_RESCORE[@]}"; do
 done
 if [ "${#SCORE_DIRS[@]}" -gt 0 ]; then
   log "score ${NEED_RESCORE[*]}"
-  bash "$SCRIPT_DIR/score_cells.sh" "${SCORE_DIRS[@]}" > "$LOG_DIR/score.log" 2>&1
+  # score_cells.sh lives beside this script (evals/swebench/), not under scripts/: the v5 cycle of 2026-10-31
+  # reached this line for the first time and exited 127 on the old $SCRIPT_DIR path.
+  bash "$REPO_DIR/evals/swebench/score_cells.sh" "${SCORE_DIRS[@]}" > "$LOG_DIR/score.log" 2>&1
   log "score rc=$?"
   cat "$LOG_DIR/score.log"
 fi

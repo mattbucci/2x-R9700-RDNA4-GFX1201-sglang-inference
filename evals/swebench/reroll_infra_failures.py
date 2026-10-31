@@ -84,7 +84,7 @@ def main():
         log_path = logs_dir / f"{iid}.log"
         log_text = log_path.read_text(errors="replace") if log_path.exists() else ""
         cat, _match = classify_log(log_text, d.get("rollout_returncode"), patch,
-                                     d.get("rollout_seconds", 0))
+                                     float(d.get("rollout_seconds") or 0), wall_s=float(args.timeout))
         if cat.startswith("infra_"):
             infra_ids.append(iid)
         else:

@@ -335,10 +335,10 @@ index 0000000..a6a99b3
 +__all__ = ["GRAMMAR_BACKEND_NAME", "FlintGrammarBackend"]
 diff --git b/python/sglang/srt/constrained/flint_structural_tags.py b/python/sglang/srt/constrained/flint_structural_tags.py
 new file mode 100644
-index 0000000..c81ace6
+index 0000000..0335ab7
 --- /dev/null
 +++ b/python/sglang/srt/constrained/flint_structural_tags.py
-@@ -0,0 +1,149 @@
+@@ -0,0 +1,171 @@
 +# Copyright 2023-2026 SGLang Team
 +# Licensed under the Apache License, Version 2.0 (the "License");
 +# you may not use this file except in compliance with the License.
@@ -355,7 +355,8 @@ index 0000000..c81ace6
 +most one when the request sets ``parallel_tool_calls`` to false. The call tag is
 +XGrammar's built-in ``glm_4_7`` structural tag, which is byte-identical to
 +Flint's wire format: argument values follow a tool's JSON schema when the tool
-+sets ``strict: true`` and are otherwise syntactically constrained but schema-free.
++sets ``strict: true``; FLINT_STRICT_TOOLS (default 1) forces it on every tool so the
++parameter schema (``required`` keys included) is compiled instead of free-form JSON.
 +
 +``reasoning_then`` puts Flint's optional ``<think>...</think>`` block before a
 +constraint; the ``flint`` grammar backend does that for every constraint, the
@@ -371,6 +372,7 @@ index 0000000..c81ace6
 +
 +from __future__ import annotations
 +
++import os
 +from typing import Any, Dict, List, Literal, Union
 +
 +from transformers.tokenization_utils_base import PreTrainedTokenizerBase
@@ -410,6 +412,17 @@ index 0000000..c81ace6
 +ToolChoiceLike = Union[Literal["auto", "required"], Dict[str, Any]]
 +
 +
++def _as_strict(tool: Dict[str, Any]) -> Dict[str, Any]:
++    """Copy of an OpenAI-style tool dict with ``function.strict`` forced True (schema-constrained arguments)."""
++    if tool.get("type") != "function" or not isinstance(tool.get("function"), dict):
++        return tool
++    fn = dict(tool["function"])
++    fn["strict"] = True
++    out = dict(tool)
++    out["function"] = fn
++    return out
++
++
 +def build_flint_tool_grammar(
 +    tools: List[Dict[str, Any]] | None = None,
 +    tool_choice: ToolChoiceLike = "auto",
@@ -430,6 +443,15 @@ index 0000000..c81ace6
 +        # XGrammar's "required" is one or more calls; "auto" wraps them as
 +        # optional after the text so a text-only answer stays legal.
 +        calls_choice = "required" if tool_choice == "auto" else tool_choice
++        # SGLang's Function model defaults ``strict`` to False and XGrammar maps a
++        # non-strict tool to schema-free arguments (``_get_function_parameters``
++        # -> True): the call is well-formed JSON but ``required`` keys are not
++        # enforced. Flint drops them (3090 rig 2026-10-22: 23/24 opencode calls
++        # without the required ``description`` / with ``path`` for ``filePath``,
++        # 0/2 patches), so compile every tool's real parameter schema unless
++        # FLINT_STRICT_TOOLS=0 asks for the vendor behaviour.
++        if os.environ.get("FLINT_STRICT_TOOLS", "1") != "0":
++            tools = [_as_strict(t) for t in tools]
 +        calls = get_model_structural_tag(
 +            model="glm_4_7",
 +            tools=tools,

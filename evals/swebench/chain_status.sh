@@ -87,6 +87,7 @@ died=$(ls "$LANE_DIR"/server.log.died-* 2>/dev/null | wc -l)
 last_wrapper=$(tail -1 "$LANE_DIR/wrapper.log" 2>/dev/null)
 echo "phase      : ${last_wrapper:-<no wrapper.log>}"
 cur_lane=$(printf '%s\n' "$last_wrapper" | sed -nE 's/.*\] (rollout|reroll|audit) ([a-z-]+)( |$).*/\2/p')
+cur_phase=$(printf '%s\n' "$last_wrapper" | sed -nE 's/.*\] (rollout|reroll|audit) ([a-z-]+)( |$).*/\1/p')
 
 echo "lanes      :"
 prev_file="$STATE_DIR/last-counts.txt"
@@ -120,9 +121,9 @@ left = 300 - len(rows)
 print(f"  running lane: rc {dict(sorted(rc.items()))}, empty patches {empty}, mean {mean/60:.1f} min/instance, "
       f"{left} left ≈ {left*mean/3600:.1f} h")
 EOF
-  rl="$LANE_DIR/rollout-$cur_lane.log"
+  rl="$LANE_DIR/rollout-$cur_lane.log"; [ "$cur_phase" = reroll ] && rl="$LANE_DIR/reroll-$cur_lane.log"   # Phase 4 writes its own log
   if [ -f "$rl" ]; then
-    last_inst=$(grep -E '^\[[0-9]+/300\]' "$rl" | tail -1 | cut -c1-80)
+    last_inst=$(grep -E '^\[[0-9]+/[0-9]+\]' "$rl" | tail -1 | cut -c1-80)   # re-roll counts /N, not /300
     last_done_line=$(grep -n 'done rc=' "$rl" | tail -1 | cut -d: -f1)
     # age of the last "done" = mtime of the log if the done line is the last write, else use the file mtime as a floor
     age_min=$(( ( $(date +%s) - $(stat -c %Y "$rl") ) / 60 ))

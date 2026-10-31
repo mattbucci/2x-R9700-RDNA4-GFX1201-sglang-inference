@@ -65,6 +65,10 @@ from workdirs import NEUTRAL_ROOT, is_instance_dir
 
 
 # Substring -> category. Checked in stderr first, then stdout. First hit wins.
+# A 124 exit this many seconds (or fewer) under the wall cap is still the wall: dcode's inner
+# `--timeout` is wall-60 and its rows land at wall-55..-40; every other scaffold exits 124 at wall+3..+12.
+WALL_SLACK_S = 100.0
+
 INFRA_PATTERNS = [
     (r"Connection error", "connection_error"),
     (r"connect ECONN(REFUSED|RESET|ABORTED)", "connection_error"),
@@ -243,15 +247,21 @@ def classify_log(log_text: str, rollout_rc: int, patch: str, elapsed: float,
                  venv: bool | None = None,
                  kill: tuple[str, str] | None = None,
                  n_length: int = 0,
-                 last_cmd: str | None = None) -> tuple[str, str | None]:
+                 last_cmd: str | None = None,
+                 wall_s: float = 1800.0) -> tuple[str, str | None]:
     """Return (category, matched_pattern_or_None).
 
     Categories:
       - real_diff: prediction has a non-empty patch
       - model_silent: model returned no patch but ran normally (no infra error)
       - model_timeout: scaffold agent hit the per-instance wall-clock cap
-        (rc=124 from GNU `timeout`, elapsed at/above the timeout boundary,
-        empty diff). This IS a model verdict on the (model, scaffold,
+        (rc=124 from GNU `timeout` or from the scaffold's own inner timeout,
+        elapsed within WALL_SLACK_S of the `wall_s` cap, empty diff). dcode
+        runs with `--timeout wall-60` so that it exits 124 by itself before the
+        outer SIGKILL (run_rollouts.py), which puts its rows at ~1745 s; the
+        2026-10-30 v5 Phase-4 pass classified 91 such rows as
+        `infra_rollout_nonzero_rc` under the old fixed `>= 1799` rule and
+        re-drew them (all re-draws walled again). This IS a model verdict on the (model, scaffold,
         instance) tuple — same combo will loop the same way on retry — so
         we keep it OUT of the reroll list to avoid burning hours of doomed
         re-rolls. Cross-cycle data 2026-05-25 (4 cycles × 3 scaffolds):
@@ -306,8 +316,8 @@ def classify_log(log_text: str, rollout_rc: int, patch: str, elapsed: float,
     # GNU `timeout` exit code 124 + elapsed at/over the configured wall
     # cap + empty patch = scaffold agent couldn't converge in budget.
     # Treat as model verdict, not infra (see docstring above).
-    if rollout_rc == 124 and elapsed >= 1799:
-        return ("model_timeout", f"rc=124 elapsed={elapsed:.0f}s")
+    if rollout_rc == 124 and (elapsed or 0) >= wall_s - WALL_SLACK_S:
+        return ("model_timeout", f"rc=124 elapsed={float(elapsed or 0):.0f}s (wall {wall_s:.0f}s)")
 
     if n_length:
         return ("model_length", f"{n_length} assistant turn(s) ended finish=length (limit.output); session ended with no tool call")

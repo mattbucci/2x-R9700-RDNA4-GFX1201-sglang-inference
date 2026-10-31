@@ -19,3 +19,6 @@ gptq_log_*.log
 benchmarks/smoke-256k/*.log
 benchmarks/hsail/*.log
 benchmarks/hsail/repro_qwen36_2way.log
+
+# natural-text needle haystack (built by scripts/eval/build_natural_haystack.py, ~28 MB)
+benchmarks/quality/haystack-platypus.txt

@@ -295,7 +295,9 @@ agent `pip install`ed or renamed in the testbed env — is discarded by `--rm`, 
 contaminate each other through the environment (the venv-fingerprint guard below is host-mode
 history). A missing image is recorded as `rollout_error: infra_docker_image_missing` (re-rolled after
 `pull_hub_images.sh`), a prep or bridge failure as `infra_docker_sandbox` (rc 96 / 97), and an
-in-container `timeout` still returns 124 at ≥1800 s so `model_timeout` classifies as before.
+in-container `timeout` still returns 124 at ≥1800 s so `model_timeout` classifies as before — except dcode, whose
+inner `--timeout wall−60` exits 124 at ~1745 s; the audit's wall rule is therefore `elapsed ≥ wall − 100` (2026-10-31),
+after the v5 Phase-4 pass re-drew 91 dcode wall rows as `infra_rollout_nonzero_rc` (see Operations).
 Verified before the lane started: one instance (django-11099) per scaffold against the live server,
 tool use through the bridge, `python`/`tests/runtests.py` from the testbed env, patch captured
 (receipts: `evals/swebench/docker-smoke-2026-09-19/`).
@@ -713,3 +715,17 @@ AIMessage) is the receipt; reasoning text is not stored there (empty summaries),
 scaffold. The harness now passes `--model-params '{"max_tokens": 32000}'` (wire-verified) and the dcode preflight
 proves the server binds the field; the cell re-rolls from zero under the same v5 chain (`v5-resume-after-reboot.sh`,
 `--skip-existing` finds the empty cell). The superseded cell is not scored.
+
+**dcode Phase-4 mis-classification and the 2026-10-31 pause.** The v5 rollout finished on 2026-10-30 17:48 with all seven
+lanes at 300/300. The audit kept every other lane's `rc=124` empty-patch rows as `model_timeout` but sent dcode's 91 to the
+re-roll list: dcode exits 124 from its own `--timeout wall−60` at ~1745 s, under the audit's fixed 1799 s floor. The re-roll
+re-drew 7 of them (every one walled again) before the chain was stopped at the boundary on 2026-10-31 (user call: pause the
+evals, start the experiments queue). The pause killed the harness and re-roll driver but missed `run_model_cycle.sh`, which
+logged `reroll dcode rc=137`, went on to Phase 5 and exited 127 — `score_cells.sh` was referenced under `scripts/`
+instead of `evals/swebench/` (the first cycle ever to reach that line; fixed) — then wrote the cell JSONs and ended the
+cycle. The pause script now logs every pid it stops and warns when the cycle script is not among them. Reconciliation: the 91 original rows were restored from `predictions.jsonl.pre-reroll`
+(one draw per instance, same as every other lane) and the re-draws kept beside the cell as
+`predictions.jsonl.reroll-draws-20261031` for reference only. Still owed when the chain resumes: Phase 5 scoring of all
+seven cells (`score_cells.sh`, Docker, no GPU), then the omp cell re-roll (`v5-omp-reroll-after-cycle.sh`, SIGSTOPped —
+`kill -CONT` it only after `run_model_cycle.sh` is alive again or it starts its lane at once).
+

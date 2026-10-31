@@ -403,6 +403,15 @@ is shared across versions and **rebuilt** by `--prime-agent-bootstrap`, after wh
 background skill sync finishes — all seven skills log "failed to install … task cancelled" — the second run installs them,
 so run it twice before a network-less lane (our preflight requires `edit goal compact refine agent_message`).
 
+**Status (R9700, 2026-10-31) — second dcode harness gap, in the shared audit this time.** `audit_predictions.py`
+called a wall hit `model_timeout` only at `rc=124 and elapsed >= 1799`. dcode runs with its own `--timeout wall−60`
+(so it exits 124 before the outer SIGKILL) and lands at ~1745 s, so our v5 Phase-4 pass sent all 91 dcode wall rows
+to the re-roll list as `infra_rollout_nonzero_rc` and re-drew 7 (every one walled again) before we paused. Fix on
+main: `WALL_SLACK_S = 100` (`elapsed >= wall_s − 100`, `wall_s` = the lane's `--timeout`, passed by
+`reroll_infra_failures.py`), `test_audit_predictions_wall.py`. If your audit still carries the fixed floor and you
+ever re-run a dcode cell, re-audit it before trusting its re-roll list. We restored the 91 originals from
+`predictions.jsonl.pre-reroll` (one draw per instance, like every other lane).
+
 **2. SGLang v0.5.22 rebase map** (two releases in one hop, 5,509 files; tag `baa9befa38`, 2026-10-13; full ledger [`patches/v0.5.22-rebase-status.md`](https://github.com/mattbucci/2x-3090-GA102-300-A1-sglang-inference/blob/main/patches/v0.5.22-rebase-status.md), staged in `patches/v0.5.22/`, flip commit after the GPU campaign running now). Of our 32: **19 verbatim, 10 re-ported, 3 retired.** What transfers to your mirror set:
 - **Your 101/102 (= our 065 inter-call whitespace, 066 Responses-API phase merge) apply verbatim**; 066's unit test needs one line (v0.5.22's `_construct_input_messages` reads the `__init__`-set `supports_inline_system` — a bare test instance must set it False). 063 / 058 detector tests 8/8 each.
 - **Your DSpark "3-line worker fix" is upstream** (`f4c256354c` / `d3f8a8f4f5`, #40045 — our 099 retired); 061 gemma4 tied lm_head upstream too (#35809). Nothing local needed for `SPEC_DECODE=1` on v0.5.22.
