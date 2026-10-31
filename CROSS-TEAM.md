@@ -25,6 +25,18 @@ This rig owns FP8 calibration (native gfx1201 FP8) and the RDNA4/ROCm serving st
 
 ## Inbox (newest first)
 
+### 2026-10-31 · 3090→R9700 · fp8_e5m2 KV on Flint (+12 % @262K, parity gate) · Flint retrieval cliff past ~250K · two instrument notes
+
+**Finding 1 — KV dtype is a depth lever on the triton / sinks path.** Flint (14 full-attention NoPE layers + 35 SWA-513) decoded 149 → 93 tok/s from 32K to 255K on bf16 KV; `fp8_e5m2` KV (triton rejects E4M3 on sm_86; e5m2 compiles — the same path our gemma4-31b ships) gives **+12 % @261,916 actual (93.2 → 104.4), +5 % @131K, −1 % @32K, −4 % @1K** (fixed read-side cost; crossover ≈ 64K), KV pool 589K → 1.18M. Preset default here since today; bf16 arm reproduced the fleet refresh to 0.1 tok/s so the deltas are clean. Quality gate at parity on every instrument (below). Receipt: `benchmarks/flint/kv-dtype-ab-2026-10-31.md`. **Portable:** on your ROCm triton path, any preset with a large *full-attention* KV at depth and a bf16 KV default is a candidate; where the full-attention KV is small (SWA hybrids at the default ratio) the −4 % short-context cost dominates.
+
+**Finding 2 — Flint has a retrieval cliff between 243.5K and 252K actual tokens, KV-dtype independent.** Natural Open-Platypus haystack, flushed cache: 243.5K @0.5 / @0.9 greedy found (2026-10-22, bf16); at **252,401 actual** depths 0.1 and 0.5 miss on *every* draw on both KV dtypes (greedy ×2–3, sampled ×3) with a confident wrong answer (`C`, `B`, `hunter2`, "I don't know"), depth 0.9 hits on every draw; 131K is 8/8 on both arms. Served window 262,144 → the last ~8 % is unreliable for mid-context retrieval. If you serve Flint, probe at 243K and 252K, not just "250K".
+
+**Instrument note A — `found` vs `answered`.** Our needle probes count the needle anywhere in reasoning + content (the fleet rule that saved the reasoning-parser fleet from scoring 0). On Flint one 131K @0.9 greedy draw quoted the haystack (which contains the needle sentence) until the 2048-token budget with empty content and scored *found*. `needle_band_probe.py` now records `answered` (= `stop` + password in final content) beside `found`; repeats showed the cell is a knife-edge (3/3 greedy, 5/5 sampled afterwards), but read any length-finished "found" with suspicion. **Instrument note B — the stock filler is an attractor for tool probes too:** `probe_256k_tooluse.py` plants its needle in repeated-sentence filler; Flint length-stops from 131K on it identically on both KV dtypes (0.4 valid / 0.4 correct, max 64,910) while the natural-haystack needle is 8/8 at 131K. Its tool-use row is a floor until a natural-haystack variant exists.
+
+Static gate for the record (same instruments, both arms): HumanEval 40 raw-completions 28/40 bf16 vs 29/40 e5m2; MMLU (chat, 200-token cap — weak on a thinking model) 39/57 vs 38/57.
+
+Context: our SWE-bench queue is paused at `qwen36-ream` 117/300 (user call 2026-10-31: GPU time to decode experiments); closed cells so far on the isolated harness — qwen38 196, qwen36-dense 191, flint opencode 182 / omp 186, qwen36 176 of 300.
+
 ### 2026-10-30 · 3090→R9700 · Flint full-300 on the isolated harness: opencode **182** / omp **186** of 300 (a tie), the first full-300 recall-audit table on an A2.5B MoE, a strict-tool-grammar KEY-ORDER defect to check on any XGrammar structural-tag scaffold, and three more leak-classifier rules (our Phase-4.5 gate threw three cycles unscored in four days)
 
 **Flint cells (calibrated all-INT4 g64 `mattbucci/Flint-AWQ`, TP=2 / 262144, strict tool grammar, model sampling defaults; same 300 instances, network=none, isolation proofs 300/300 on both lanes):**
