@@ -1,6 +1,6 @@
 {
  "schema_version": 1,
- "updated_at": "2026-07-20",
+ "updated_at": "2026-10-31",
  "ordering": "easiest_to_test_then_hardest",
  "baseline": {
   "sglang": "v0.5.15",
@@ -133,7 +133,7 @@
    "progress": {
     "native_fp8_profile": "complete (2026-07-19)",
     "kv_split_resweep": "complete (2026-07-19) -- 64 holds",
-    "exact_shape_tuner": "specced as R97-L (12-fp8-exact-shape-gemm-tuner.md); not started"
+    "exact_shape_tuner": "executed for qwen38 2026-10-31 as R97-L (patch 106, scripts/bench/tune_fp8_block_gemm.py, benchmarks/profiling/fp8-block-gemm-tune-qwen38-2026-10-31.md); Laguna shapes still to sweep with --preset laguna"
    },
    "receipts": [
     "benchmarks/profiling/laguna-native-decode-profile-2026-07-19.json",
@@ -284,13 +284,13 @@
   {
    "id": "R97-L",
    "spec": "12-fp8-exact-shape-gemm-tuner.md",
-   "status": "ready",
+   "status": "executed-qwen38",
    "resource": "tp2_kernel",
    "depends_on": [
     "FP8-native-follow-on native_fp8_profile (complete 2026-07-19)",
     "FP8-native-follow-on kv_split_resweep (complete 2026-07-19)"
    ],
-   "next_action": "Third and final FP8-native-follow-on leg. Locate the normal block-FP8 kernel serving selects (NOT the unrolled-x4 selector), enumerate the 80 dense FP8 linears/token/rank at (N,K)=(512,2048) and (2048,256), build a correctness-gated sweep (cosine>=0.999 + graph-replay, fix the K=256 OOB), emit patch 096, and A/B at true depth against a FRESH native-Triton baseline (never reuse 55.125 across a depth mismatch). Prefer R97-N's --assert-output-identical for the A/B; add it inline if R97-N has not landed. Run BEFORE R97-B regen and R97-K residue re-measure, which both name this tuner as invalidating their baseline.",
+   "next_action": "Executed 2026-10-31 for Qwen3.8-27B-FP8: correctness-gated tuner scripts/bench/tune_fp8_block_gemm.py, patch 106 (six per-rank shapes incl. the replicated DeltaNet projections), serving A/B cold prefill +14-30 % / decode +1-2 % on nospec and DSpark, capabilities 5/5; receipt benchmarks/profiling/fp8-block-gemm-tune-qwen38-2026-10-31.md. Remaining for this spec: sweep Laguna's (512,2048)/(2048,256) with --preset laguna and run the Laguna deep A/B against a fresh native-Triton baseline; BLOCK_SIZE_M=64 prefill tiles need a guarded hang re-test (user decision).",
    "test_gate": [
     "Normal-kernel tuner covers (N,K)=(512,2048) and (2048,256) at M in {1, 2048, 8192}",
     "Every retained config passes cosine>=0.999 vs torch FP8 dequant AND the serving kernel, and a graph-replay with zero OOB at K=256",

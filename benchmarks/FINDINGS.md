@@ -218,16 +218,36 @@ sweeps on v0.5.20 and v0.5.22 reproduce the curve. The graph policy rule stands 
 first — with this as the dense-path counter-example. Still open: the gap to the ~25 ms bandwidth floor
 (README → Next steps).
 
-### qwen38 no-spec decode gap — the block-FP8 GEMMs own it (attributed 2026-10-31)
+### qwen38 no-spec decode gap — the block-FP8 GEMMs own it (attributed 2026-10-31, corrected the same day)
 
-Measured per step at M=1 on a TP=2 rank (`bench_fp8_block_gemm_m1.py`): 29.9 ms of block-FP8 GEMM over 11.33 GiB of
-weights, 64 % of a 640 GB/s roofline, inside a 44.4 ms step; the all-reduce floor is 4.2 ms (128 calls × 33 µs, eager
-RCCL over PCIe); lm_head, DeltaNet, norms and the sampler share the remaining ~10 ms with no single item above 2 ms. The
-two MLP shapes (`N=17408,K=5120` at 399 GB/s, `N=5120,K=8704` at 515 GB/s) run on the kernel's default config — no
-gfx1201 config file exists for them — and the narrow-K out-projections (`K=3072`, 15 MB) are latency-bound at 220 GB/s.
-Profiler notes that shaped the method: HIP-graph replays are invisible to the torch profiler on ROCm (a short-context
-capture traces one eager step), the first capture after boot inflated RCCL to 41 % through rank skew, and short kernels
-inflate (a 40 µs argmax read as 5 ms). Receipt: [`profiling/qwen38-decode-gap-2026-10-31.md`](profiling/qwen38-decode-gap-2026-10-31.md).
+Measured per step at M=1 on a TP=2 rank (`bench_fp8_block_gemm_m1.py`, cold cache): 30.2 ms of block-FP8 GEMM over
+13.9 GiB of weights, 77 % of a 640 GB/s roofline, inside a 44.4 ms step; the all-reduce floor is 4.2 ms (128 calls ×
+33 µs, eager RCCL over PCIe); lm_head, DeltaNet, norms, attention and the sampler share the remaining ~6 ms. No gfx1201
+config file existed for any of the six shapes, and the DeltaNet `in_proj_qkvz` / `out_proj` are replicated per rank by
+patch 045 (16384×5120, 5120×6144 — 5.1 of the 13.9 GiB), not TP-split. Two method corrections are part of the finding:
+the first version timed one weight copy per shape with per-call sync, so the sub-64 MB shapes were partly served from
+the R9700's 64 MB infinity cache (a back-to-back launch on one copy reads at ~1000 GB/s), which made the GEMMs look 64 %
+efficient with 11 ms of headroom — the cold number (HIP-graph replay over > 256 MB of rotated copies) is 77 % with ~4 ms;
+and it halved the DeltaNet shapes by TP. Profiler notes that shaped the method: HIP-graph replays are invisible to the
+torch profiler on ROCm (a short-context capture traces one eager step), the first capture after boot inflated RCCL to
+41 % through rank skew, and short kernels inflate (a 40 µs argmax read as 5 ms).
+Receipt: [`profiling/qwen38-decode-gap-2026-10-31.md`](profiling/qwen38-decode-gap-2026-10-31.md).
+
+## gfx1201 block-FP8 GEMM configs — adopted as patch 106 (2026-10-31)
+
+The correctness-gated tuner ([R97-L](../experiments/12-fp8-exact-shape-gemm-tuner.md),
+`scripts/bench/tune_fp8_block_gemm.py`) swept `BLOCK_SIZE_M ∈ {16, 32}`, `BLOCK_SIZE_N`, `num_warps` and `waves_per_eu`
+through the serving entry point for the six per-rank shapes Qwen3.8-27B-FP8 runs (2,172 candidates; 0 numerical
+failures against an fp32 reference and the default kernel's output; every winner bit-identical under HIP-graph replay)
+and emitted one config file per shape keyed at M = 1 / 8 / 64 / 256 / 1024 / 4096. At M=1 the RDNA4 default
+(`BM16_BN128_w4`) was within 0–20 % of the best and the files take the per-step GEMM from 30.2 to 27.7 ms (77 → 84 %
+of roofline); at M ≥ 64 the default tile was 1.6–2.6× slower than `BM32_BN256_w4`. Serving A/B on the same tree
+(default files absent vs installed, `ab_fp8_gemm_configs.sh`, 3-run medians): decode +3.5–4.7 % no-spec and
++2.3–3.6 % DSpark at 64 tokens to 197K; cold prefill +59 % at 7.3K, +46 % at 58K, +26 % at 197K on both presets
+(197K: 496 → 394 s); `validate_capabilities` 5/5. `BLOCK_SIZE_M = 64` was not tried (recorded RDNA4 hang under an
+older Triton) and is the next prefill lever pending a guarded re-test; Laguna's shared-expert shapes are not yet swept.
+Not the stock SGLang tuner, which times the unrolled-x4 kernel the HIP selector never returns and has no gate.
+Receipt: [`profiling/fp8-block-gemm-tune-qwen38-2026-10-31.md`](profiling/fp8-block-gemm-tune-qwen38-2026-10-31.md).
 
 ### Rejected decode changes
 

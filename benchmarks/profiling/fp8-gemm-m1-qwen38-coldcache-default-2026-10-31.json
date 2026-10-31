@@ -1,0 +1,96 @@
+{
+ "preset": "qwen38",
+ "device": "AMD Radeon AI PRO R9700",
+ "block_size": [
+  128,
+  128
+ ],
+ "rows": [
+  {
+   "projection": "full_attn.qkv_proj",
+   "N": 7168,
+   "K": 5120,
+   "per_step": 16,
+   "quant_us_torch_ref": 53.13,
+   "gemm_us_median": 73.8,
+   "gemm_us_min": 73.6,
+   "weight_mb": 35.0,
+   "achieved_gbps": 497.4,
+   "weight_copies": 8,
+   "timing": "graph"
+  },
+  {
+   "projection": "full_attn.o_proj",
+   "N": 5120,
+   "K": 3072,
+   "per_step": 16,
+   "quant_us_torch_ref": 53.0,
+   "gemm_us_median": 38.53,
+   "gemm_us_min": 38.5,
+   "weight_mb": 15.0,
+   "achieved_gbps": 408.3,
+   "weight_copies": 18,
+   "timing": "graph"
+  },
+  {
+   "projection": "linear_attn.in_proj_qkvz",
+   "N": 16384,
+   "K": 5120,
+   "per_step": 48,
+   "quant_us_torch_ref": 50.53,
+   "gemm_us_median": 169.86,
+   "gemm_us_min": 169.68,
+   "weight_mb": 80.0,
+   "achieved_gbps": 494.0,
+   "weight_copies": 4,
+   "timing": "graph"
+  },
+  {
+   "projection": "linear_attn.out_proj",
+   "N": 5120,
+   "K": 6144,
+   "per_step": 48,
+   "quant_us_torch_ref": 50.0,
+   "gemm_us_median": 80.23,
+   "gemm_us_min": 79.51,
+   "weight_mb": 30.0,
+   "achieved_gbps": 392.2,
+   "weight_copies": 9,
+   "timing": "graph"
+  },
+  {
+   "projection": "mlp.gate_up_proj",
+   "N": 17408,
+   "K": 5120,
+   "per_step": 64,
+   "quant_us_torch_ref": 50.52,
+   "gemm_us_median": 178.67,
+   "gemm_us_min": 178.06,
+   "weight_mb": 85.0,
+   "achieved_gbps": 499.0,
+   "weight_copies": 4,
+   "timing": "graph"
+  },
+  {
+   "projection": "mlp.down_proj",
+   "N": 5120,
+   "K": 8704,
+   "per_step": 64,
+   "quant_us_torch_ref": 50.52,
+   "gemm_us_median": 78.1,
+   "gemm_us_min": 77.96,
+   "weight_mb": 42.5,
+   "achieved_gbps": 570.7,
+   "weight_copies": 7,
+   "timing": "graph"
+  }
+ ],
+ "configs_ignored": true,
+ "per_step_gemm_ms": 30.235,
+ "per_step_weight_gib": 13.91,
+ "roofline_ms_at_peak": 23.337,
+ "peak_gbps_assumed": 640.0,
+ "timestamp": "2026-10-31 15:07",
+ "triton_cache": "/data/cache/triton/cache",
+ "timing": "HIP-graph replay over >256 MB of rotated weight copies (cold MALL); the 2026-10-31 01:31 receipt used per-call sync on one copy, which let the <64 MB shapes read from the infinity cache"
+}

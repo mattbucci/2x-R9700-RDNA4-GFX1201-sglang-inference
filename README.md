@@ -1,6 +1,6 @@
 # RDNA4 inference on 2× R9700
 
-SGLang v0.5.22 with 74 local RDNA4 patches, tuned for coherent single-user inference at long context
+SGLang v0.5.22 with 75 local RDNA4 patches, tuned for coherent single-user inference at long context
 (256K) on two AMD Radeon AI PRO R9700 GPUs (gfx1201, 32 GiB each, TP=2 over PCIe). The repository holds
 the patch series, the preset launcher, the benchmark and evaluation harnesses, the FP8/AWQ quantization
 pipeline, and the receipts behind every number below. Multi-user throughput is secondary.
@@ -18,10 +18,12 @@ new quality flagship Qwen3.8-27B-FP8.
   agentic ladder. North-Mini Code passes the same ladder 21/21 to 245,172 actual tokens.
 - **Qwen3.8-27B-FP8 is the quality flagship**: fleet-best LAB-Bench 42.3% (no-think multiple choice),
   MMLU 84.2%, HumanEval 93.3%, 7/7 agentic rungs to 245,150 actual tokens. Its preset is **DSpark
-  speculative decoding** through the split-KV verify kernel (patch 100): **34.3 / 44.5 / 41.6 / 30.1 tok/s
-  at 24 / 7.3K / 58K / 197K input** (canonical 3-run think-off sweep, v0.5.22, 2026-10-19) against
-  22.5 / 22.2 / 21.4 / 20.0 on the no-spec server (`QWEN38_SPEC=0`, which keeps the 530K-token pool for
-  true 256K work; the DSpark pool is 206K), 45.6 tok/s on thinking text at 58K, capability probe 5/5.
+  speculative decoding** through the split-KV verify kernel (patch 100): **35.6 / 45.8 / 43.2 / 30.6 tok/s
+  at 24 / 7.3K / 58K / 197K input** (canonical 3-run think-off sweep, v0.5.22 + patch 106, 2026-10-31) against
+  23.1 / 22.7 / 22.0 / 20.3 on the no-spec server (`QWEN38_SPEC=0`, which keeps the 530K-token pool for
+  true 256K work; the DSpark pool is 206K), 45.6 tok/s on thinking text at 58K, capability probe 5/5. Patch
+  106's gfx1201 block-FP8 GEMM configs (2026-10-31) added +2–4 % decode and +26–59 % cold prefill
+  (197K prompt: 496 → 394 s) on both servers.
   Its seven-scaffold SWE-bench Lite bake-off (v5, 300 instances per cell, every scaffold sandboxed in
   the official instance image) has rolled and audited all 2,100 instances; Docker scoring is owed — see
   SWE-bench Lite below.
@@ -66,7 +68,7 @@ deepest measured input. Provenance, raw JSON, and per-model curves are under
 | Devstral-Small-2-24B | AWQ dense + vision | 52.7 (15) | 17.0 (198K) |
 | Qwen3.5-27B | AWQ dense + DeltaNet | 24.5 (22) | 11.2 (197K) |
 | Qwen3.6-27B | AWQ dense + vision | 24.9 (22) | 11.5 (197K) |
-| Qwen3.8-27B | official FP8 dense + DeltaNet (VL + video) | 22.5 (24) | **20.0 (197K)** |
+| Qwen3.8-27B | official FP8 dense + DeltaNet (VL + video) | 23.1 (24) | **20.3 (197K)** |
 | Qwen3-VL-32B | AWQ dense + vision | 23.4 (20) | 16.5 (27K) |
 | Gemma 4 31B | AWQ dense + SWA | 29.4 (25) | 10.5 (110K) |
 | Gemma 4 12B | AWQ omni + SWA | 38.6 (25) | 10.9 (198K) |
@@ -158,17 +160,17 @@ operational history behind each item lives in the document it links, not here.
    [receipt](benchmarks/quality/flint/needle-natural-fp8-2026-10-31.md)): the SWE-bench lane on the scaffold the v5
    scoring names, then the A/Bs — `PLAIN_ADD_BF16_SUM` opt-out, SWA ratio, FP8 KV, n-gram speculation — and a
    depth-0.1 retrieval study at 243–248K against the 3090's INT4 build on identical cells.
-2. **Residual qwen38 decode gap — attributed 2026-10-31**
-   ([receipt](benchmarks/profiling/qwen38-decode-gap-2026-10-31.md)): the six block-FP8 GEMM shapes a rank runs
-   per step take 29.9 of the 44.4 ms step at 64 % of the 640 GB/s roofline; the two MLP shapes
-   (`N=17408,K=5120`, `N=5120,K=8704`, 59 % of the bytes) run on the kernel's default config at 399 and 515 GB/s,
-   the two narrow-K out-projections are latency-bound at 220 GB/s. All-reduce is ≥ 4.2 ms (128 × 33 µs), the rest
-   (lm_head, DeltaNet, norms, sampler) ≈ 10 ms with no lever above 2 ms. Closing the GEMM gap is worth ~11 ms per
-   step (22.5 → ~30 tok/s); that is item 3.
-3. **gfx1201 Triton W8A8 block-GEMM tuning for the dense FP8 path** ([R97-L](experiments/12-fp8-exact-shape-gemm-tuner.md)):
-   M=1 configs for qwen38's `N=17408,K=5120` and `N=5120,K=8704` (no config file exists for either) and Laguna's
-   shared-expert shapes, under a correctness gate; then the narrow-K `o_proj`/`out_proj` (K=3072) small-tile or split-K
-   direction. Re-run `bench_fp8_block_gemm_m1.py` and the canonical 4-point sweep after each config lands.
+2. **qwen38 decode gap — attributed and the GEMM half tuned (2026-10-31)**
+   ([attribution](benchmarks/profiling/qwen38-decode-gap-2026-10-31.md),
+   [tuner receipt](benchmarks/profiling/fp8-block-gemm-tune-qwen38-2026-10-31.md)): the six block-FP8 GEMM shapes a rank
+   runs per step took 30.2 of the 44.4 ms step at 77 % of the 640 GB/s roofline (the DeltaNet projections are replicated
+   per rank, 5.1 of 13.9 GiB); all-reduce is ≥ 4.2 ms, the rest ≈ 6 ms. Patch 106's correctness-gated per-shape configs
+   take the GEMMs to 84 % (decode +3.5–4.7 % no-spec, +2.3–3.6 % DSpark) and, because the RDNA4 default tile was
+   1.6–2.6× off at M ≥ 64, cold prefill +59 / +46 / +26 % at 7.3K / 58K / 197K. Left on the table: ~4 ms of narrow-K
+   latency per step, and the replicated DeltaNet projections (a TP split there is model code with a numerics gate).
+3. **Block-GEMM follow-ups** ([R97-L](experiments/12-fp8-exact-shape-gemm-tuner.md)): sweep Laguna's shared-expert
+   shapes with `tune_fp8_block_gemm.py --preset laguna` and run its deep A/B; re-test `BLOCK_SIZE_M = 64` prefill tiles
+   under a guard (needs your go-ahead — see "Your decisions"; the M=4096 winner reaches only ~41 of ~190 FP8 TFLOPS).
 4. **LAB-Bench re-measure** of the suppressed Qwen3.5/Gemma4 cells with `--mc-no-think`
    (FINDINGS → LAB-Bench think-budget artifact).
 5. **Agentic turn tax at depth** ([R97-J](experiments/10-extend-attention-kv-split-agentic-turn.md)): split the KV walk in extend attention; gate on
@@ -183,6 +185,9 @@ operational history behind each item lives in the document it links, not here.
 
 - dcode in the v5 matrix: keep its 29-minute wall (47% walls, same methodology as the other six) or add the
   3090's 60-minute wall as a separate cell.
+- `BLOCK_SIZE_M = 64` (and 128) prefill tiles for the block-FP8 GEMM: `fp8_kernel.py` records a GPU hang on RDNA4 under
+  an older Triton, so the sweep skipped them; a guarded re-test on Triton 3.6 / ROCm 7.2 could double the M=4096 GEMM
+  rate again, but a hang can drop a card off the bus (Oct 7 / Oct 12 pattern). Your call whether to spend that risk.
 - decode-topk promotion ([R97-B](experiments/07-decode-topk-promotion-brief.md)): 1.77× at 245K on a pre-v0.5.15 gate; needs regeneration.
 - `ci-build-canary` (weekly image build) needs a push with a workflow-scoped token (refused 2026-10-25).
 - [R97-H](experiments/08-bench-dir-hygiene-purge-or-remeasure.md) GPU half: `decode_ab` re-measure of `qwen3.6-ream-a3b-awq` and
@@ -224,7 +229,7 @@ backend, quantization path, parsers, memory settings, and graph policy.
 | Component | Version |
 |---|---|
 | GPUs | 2× AMD Radeon AI PRO R9700, gfx1201, 32 GiB each |
-| SGLang | v0.5.22 + 74 patches |
+| SGLang | v0.5.22 + 75 patches |
 | Python | 3.12 |
 | PyTorch | 2.11.0+rocm7.2 |
 | ROCm | 7.2 |

@@ -3,12 +3,32 @@
 | | |
 |---|---|
 | **Type** | optimization |
-| **Status** | ready — spec authored; FP8-native-follow-on steps 1–2 complete, the exact-shape tuner is not started |
+| **Status** | executed 2026-10-31 for Qwen3.8-27B-FP8's six shapes (patch 106); Laguna's two shapes still unswept |
 | **Execution host** | r9700-box |
 | **Wall clock** | ~1–2 days: kernel enumeration + tuner build on CPU/GPU, a gated sweep, then a fresh same-depth A/B and re-eval |
 | **GPU time** | ~4–8h: sweep at three M points, patch replay smoke, deep A/B (128/8192/~197K) at 3-run median, capabilities + needle re-gate |
 | **Depends on** | FP8-native-follow-on steps 1–2 (native-FP8 decode profile + KV-split resweep, both complete 2026-07-19); the numerical-identity harness from R97-N if landed |
 | **Provides to** | The third and final FP8-native leg; a fresh same-depth native-Triton baseline that R97-B (07) and R97-K (11) both name as invalidating their own; a documented win or a shape-census null for the shipped default backend |
+
+## Current assessment — 2026-10-31, executed on qwen38 first
+
+- **Disposition:** the correctness-gated tuner exists (`scripts/bench/tune_fp8_block_gemm.py`) and shipped configs
+  for Qwen3.8-27B-FP8 as **patch 106**; receipt
+  [`benchmarks/profiling/fp8-block-gemm-tune-qwen38-2026-10-31.md`](../benchmarks/profiling/fp8-block-gemm-tune-qwen38-2026-10-31.md).
+  qwen38 went first because the decode-gap attribution of the same day showed its dense GEMMs own two thirds of the step
+  and ran untuned at every shape. Laguna's `(512,2048)` / `(2048,256)` are in the tuner's `SHAPES["laguna"]` table and
+  not yet swept.
+- **What the gate found:** 2,172 candidates, 0 numerical failures; the serving kernel on HIP is always the normal
+  `_w8a8_block_fp8_matmul` (the unrolled-x4 selector has no `return` and is never taken). `BLOCK_SIZE_K` is pinned to
+  128 by the scale stepping, `BLOCK_SIZE_M=64` was left out (recorded RDNA4 hang), so the levers are `BLOCK_SIZE_N`,
+  `num_warps`, `waves_per_eu` and `BLOCK_SIZE_M ∈ {16, 32}`.
+- **Result shape:** at M=1 the default is within 0–20 % of the best (the GEMMs already stream at 77 % of the roofline;
+  the files take them to 84 %, ~+2 % decode); at M ≥ 64 the default tile is 1.6–2.6× slower than `BM32_BN256_w4`, which
+  is where the serving win is: cold prefill +14–30 % on both qwen38 presets. Method lesson recorded in the receipt: time
+  weight-streaming kernels over > 64 MB of rotated copies (MALL) and take shapes from the server's config log, not from
+  checkpoint dims ÷ TP (DeltaNet projections are replicated by patch 045).
+- **Next action for this spec:** sweep the Laguna shapes with the same tool (`--preset laguna`), then the Laguna
+  deep A/B against a fresh native-Triton baseline as written below.
 
 ## Current assessment — 2026-07-20 post-095
 
