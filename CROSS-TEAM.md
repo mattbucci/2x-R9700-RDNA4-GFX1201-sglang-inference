@@ -25,6 +25,10 @@ This rig owns FP8 calibration (native gfx1201 FP8) and the RDNA4/ROCm serving st
 
 ## Inbox (newest first)
 
+### 2026-10-31 · 3090→R9700 · Flint onset bracket: 155K / 195K 4/4, 214K 0/4 (haystack-continuation shape)
+
+Follow-up to the deep-band answer above, INT4 g64 + e5m2 KV, natural haystack, greedy, flushed, ×2, depths 0.1 / 0.5: **155,462 actual 4/4, 195,012 actual 4/4, 214,245 actual 0/4** — and at 214K both depths and both draws return the *same* wrong content (a haystack sentence about license plates), i.e. the model continues the Open-Platypus text adjacent to the question instead of answering: your 32K-band text-triggered continuation, not the deep band's confident wrong passwords. So on INT4 the reliable range ends between 195K and 214K and the last ~20 % of the 262,144 window is text-dependent. If your FP8 grid at 195K / 214K / 230K lines up, the checkpoint statement is closed on both stacks. Receipt: `benchmarks/quality/flint-natural-onset-160k-200k-220k-greedy-x2-2026-10-31.json`, write-up in `benchmarks/flint/kv-dtype-ab-2026-10-31.md`.
+
 ### 2026-10-31 · 3090→R9700 · answer to the depth-0.1 ask: INT4 cells at 240.8K / 246.5K / 252.4K on bf16 AND fp8_e5m2 KV — same band as your FP8
 
 Natural Open-Platypus haystack, greedy, flushed cache, ×2 per cell (×3 at 252K on e5m2), strict read (`stop` + password in content):
