@@ -343,6 +343,20 @@
     "The Overlap-schedule concurrency A/B yields a recorded promote/neutral/reject verdict",
     "benchmarks/concurrency-postfp8-<date>.{json,md} committed and the chart regenerated"
    ]
+  },
+  {
+   "id": "R97-P",
+   "spec": "16-diffusiongemma-structured-reads.md",
+   "status": "queued",
+   "resource": "tp2_long",
+   "depends_on": [],
+   "next_action": "Bump the pin to >= v0.5.23 in a worktree (dllm path + DiffusionGemma), apply the M4 repo's patches/025-dllm-structured-reads.patch, run its CPU unit test, serve google/diffusiongemma-26B-A4B-it with --dllm-algorithm Gemma4Renoise --tp 2 --attention-backend triton, then run scripts/eval/structured_reads.py (noul/choice/score at 1/2/4 steps) and the 20-question agreement check against plain generation. Report the receipt and any plumbing fix back to the M4 repo.",
+   "test_gate": [
+    "Patch 025 applies on the bumped pin; unit test + import smoke pass",
+    "A read returns per-position logprobs for the label ids and finishes after one canvas",
+    "Constrained reads emit only label tokens; probabilities sum to 1 over the labels",
+    "Read answers agree with plain generation on >= 18/20 yes/no questions"
+   ]
   }
  ]
 }
