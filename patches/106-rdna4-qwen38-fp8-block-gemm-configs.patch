@@ -1,9 +1,9 @@
 diff --git a/python/sglang/kernels/ops/gemm/configs/N=16384,K=5120,device_name=AMD_Radeon_AI_PRO_R9700,dtype=fp8_w8a8,block_shape=[128, 128].json b/python/sglang/kernels/ops/gemm/configs/N=16384,K=5120,device_name=AMD_Radeon_AI_PRO_R9700,dtype=fp8_w8a8,block_shape=[128, 128].json
 new file mode 100644
-index 0000000..461f340
+index 0000000..c96c346
 --- /dev/null
 +++ b/python/sglang/kernels/ops/gemm/configs/N=16384,K=5120,device_name=AMD_Radeon_AI_PRO_R9700,dtype=fp8_w8a8,block_shape=[128, 128].json	
-@@ -0,0 +1,53 @@
+@@ -0,0 +1,56 @@
 +{
 +    "1": {
 +        "BLOCK_SIZE_M": 32,
@@ -12,7 +12,7 @@ index 0000000..461f340
 +        "GROUP_SIZE_M": 1,
 +        "num_warps": 8,
 +        "num_stages": 0,
-+        "waves_per_eu": 4
++        "waves_per_eu": 2
 +    },
 +    "8": {
 +        "BLOCK_SIZE_M": 32,
@@ -24,8 +24,70 @@ index 0000000..461f340
 +        "waves_per_eu": 2
 +    },
 +    "64": {
++        "BLOCK_SIZE_M": 64,
++        "BLOCK_SIZE_N": 128,
++        "BLOCK_SIZE_K": 128,
++        "GROUP_SIZE_M": 1,
++        "num_warps": 8,
++        "num_stages": 0,
++        "waves_per_eu": 2
++    },
++    "256": {
++        "BLOCK_SIZE_M": 128,
++        "BLOCK_SIZE_N": 64,
++        "BLOCK_SIZE_K": 128,
++        "GROUP_SIZE_M": 1,
++        "num_warps": 4,
++        "num_stages": 0,
++        "waves_per_eu": 2
++    },
++    "1024": {
++        "BLOCK_SIZE_M": 128,
++        "BLOCK_SIZE_N": 64,
++        "BLOCK_SIZE_K": 128,
++        "GROUP_SIZE_M": 1,
++        "num_warps": 4,
++        "num_stages": 0,
++        "waves_per_eu": 2
++    },
++    "4096": {
++        "BLOCK_SIZE_M": 128,
++        "BLOCK_SIZE_N": 64,
++        "BLOCK_SIZE_K": 128,
++        "GROUP_SIZE_M": 1,
++        "num_warps": 4,
++        "num_stages": 0,
++        "waves_per_eu": 2
++    }
++}
+diff --git a/python/sglang/kernels/ops/gemm/configs/N=17408,K=5120,device_name=AMD_Radeon_AI_PRO_R9700,dtype=fp8_w8a8,block_shape=[128, 128].json b/python/sglang/kernels/ops/gemm/configs/N=17408,K=5120,device_name=AMD_Radeon_AI_PRO_R9700,dtype=fp8_w8a8,block_shape=[128, 128].json
+new file mode 100644
+index 0000000..a826047
+--- /dev/null
++++ b/python/sglang/kernels/ops/gemm/configs/N=17408,K=5120,device_name=AMD_Radeon_AI_PRO_R9700,dtype=fp8_w8a8,block_shape=[128, 128].json	
+@@ -0,0 +1,55 @@
++{
++    "1": {
 +        "BLOCK_SIZE_M": 32,
-+        "BLOCK_SIZE_N": 256,
++        "BLOCK_SIZE_N": 16,
++        "BLOCK_SIZE_K": 128,
++        "GROUP_SIZE_M": 1,
++        "num_warps": 4,
++        "num_stages": 0,
++        "waves_per_eu": 2
++    },
++    "8": {
++        "BLOCK_SIZE_M": 16,
++        "BLOCK_SIZE_N": 64,
++        "BLOCK_SIZE_K": 128,
++        "GROUP_SIZE_M": 1,
++        "num_warps": 4,
++        "num_stages": 0,
++        "waves_per_eu": 2
++    },
++    "64": {
++        "BLOCK_SIZE_M": 64,
++        "BLOCK_SIZE_N": 64,
 +        "BLOCK_SIZE_K": 128,
 +        "GROUP_SIZE_M": 1,
 +        "num_warps": 4,
@@ -33,36 +95,38 @@ index 0000000..461f340
 +        "waves_per_eu": 2
 +    },
 +    "256": {
-+        "BLOCK_SIZE_M": 32,
-+        "BLOCK_SIZE_N": 256,
++        "BLOCK_SIZE_M": 128,
++        "BLOCK_SIZE_N": 64,
 +        "BLOCK_SIZE_K": 128,
 +        "GROUP_SIZE_M": 1,
 +        "num_warps": 4,
 +        "num_stages": 0
 +    },
 +    "1024": {
-+        "BLOCK_SIZE_M": 32,
-+        "BLOCK_SIZE_N": 256,
++        "BLOCK_SIZE_M": 128,
++        "BLOCK_SIZE_N": 64,
 +        "BLOCK_SIZE_K": 128,
 +        "GROUP_SIZE_M": 1,
 +        "num_warps": 4,
-+        "num_stages": 0
++        "num_stages": 0,
++        "waves_per_eu": 2
 +    },
 +    "4096": {
-+        "BLOCK_SIZE_M": 32,
-+        "BLOCK_SIZE_N": 128,
++        "BLOCK_SIZE_M": 128,
++        "BLOCK_SIZE_N": 64,
 +        "BLOCK_SIZE_K": 128,
 +        "GROUP_SIZE_M": 1,
-+        "num_warps": 8,
-+        "num_stages": 0
++        "num_warps": 4,
++        "num_stages": 0,
++        "waves_per_eu": 2
 +    }
 +}
-diff --git a/python/sglang/kernels/ops/gemm/configs/N=17408,K=5120,device_name=AMD_Radeon_AI_PRO_R9700,dtype=fp8_w8a8,block_shape=[128, 128].json b/python/sglang/kernels/ops/gemm/configs/N=17408,K=5120,device_name=AMD_Radeon_AI_PRO_R9700,dtype=fp8_w8a8,block_shape=[128, 128].json
+diff --git a/python/sglang/kernels/ops/gemm/configs/N=5120,K=3072,device_name=AMD_Radeon_AI_PRO_R9700,dtype=fp8_w8a8,block_shape=[128, 128].json b/python/sglang/kernels/ops/gemm/configs/N=5120,K=3072,device_name=AMD_Radeon_AI_PRO_R9700,dtype=fp8_w8a8,block_shape=[128, 128].json
 new file mode 100644
-index 0000000..2d3e4b1
+index 0000000..f6a4181
 --- /dev/null
-+++ b/python/sglang/kernels/ops/gemm/configs/N=17408,K=5120,device_name=AMD_Radeon_AI_PRO_R9700,dtype=fp8_w8a8,block_shape=[128, 128].json	
-@@ -0,0 +1,53 @@
++++ b/python/sglang/kernels/ops/gemm/configs/N=5120,K=3072,device_name=AMD_Radeon_AI_PRO_R9700,dtype=fp8_w8a8,block_shape=[128, 128].json	
+@@ -0,0 +1,55 @@
 +{
 +    "1": {
 +        "BLOCK_SIZE_M": 16,
@@ -84,53 +148,55 @@ index 0000000..2d3e4b1
 +    },
 +    "64": {
 +        "BLOCK_SIZE_M": 32,
-+        "BLOCK_SIZE_N": 256,
++        "BLOCK_SIZE_N": 128,
++        "BLOCK_SIZE_K": 128,
++        "GROUP_SIZE_M": 1,
++        "num_warps": 8,
++        "num_stages": 0
++    },
++    "256": {
++        "BLOCK_SIZE_M": 64,
++        "BLOCK_SIZE_N": 128,
 +        "BLOCK_SIZE_K": 128,
 +        "GROUP_SIZE_M": 1,
 +        "num_warps": 4,
 +        "num_stages": 0,
 +        "waves_per_eu": 2
 +    },
-+    "256": {
-+        "BLOCK_SIZE_M": 32,
-+        "BLOCK_SIZE_N": 256,
-+        "BLOCK_SIZE_K": 128,
-+        "GROUP_SIZE_M": 1,
-+        "num_warps": 4,
-+        "num_stages": 0
-+    },
 +    "1024": {
-+        "BLOCK_SIZE_M": 32,
-+        "BLOCK_SIZE_N": 256,
-+        "BLOCK_SIZE_K": 128,
-+        "GROUP_SIZE_M": 1,
-+        "num_warps": 4,
-+        "num_stages": 0
-+    },
-+    "4096": {
-+        "BLOCK_SIZE_M": 32,
++        "BLOCK_SIZE_M": 64,
 +        "BLOCK_SIZE_N": 128,
 +        "BLOCK_SIZE_K": 128,
 +        "GROUP_SIZE_M": 1,
-+        "num_warps": 8,
-+        "num_stages": 0
++        "num_warps": 4,
++        "num_stages": 0,
++        "waves_per_eu": 2
++    },
++    "4096": {
++        "BLOCK_SIZE_M": 64,
++        "BLOCK_SIZE_N": 128,
++        "BLOCK_SIZE_K": 128,
++        "GROUP_SIZE_M": 1,
++        "num_warps": 4,
++        "num_stages": 0,
++        "waves_per_eu": 2
 +    }
 +}
-diff --git a/python/sglang/kernels/ops/gemm/configs/N=5120,K=3072,device_name=AMD_Radeon_AI_PRO_R9700,dtype=fp8_w8a8,block_shape=[128, 128].json b/python/sglang/kernels/ops/gemm/configs/N=5120,K=3072,device_name=AMD_Radeon_AI_PRO_R9700,dtype=fp8_w8a8,block_shape=[128, 128].json
+diff --git a/python/sglang/kernels/ops/gemm/configs/N=5120,K=6144,device_name=AMD_Radeon_AI_PRO_R9700,dtype=fp8_w8a8,block_shape=[128, 128].json b/python/sglang/kernels/ops/gemm/configs/N=5120,K=6144,device_name=AMD_Radeon_AI_PRO_R9700,dtype=fp8_w8a8,block_shape=[128, 128].json
 new file mode 100644
-index 0000000..dd4f135
+index 0000000..8fc0931
 --- /dev/null
-+++ b/python/sglang/kernels/ops/gemm/configs/N=5120,K=3072,device_name=AMD_Radeon_AI_PRO_R9700,dtype=fp8_w8a8,block_shape=[128, 128].json	
-@@ -0,0 +1,54 @@
++++ b/python/sglang/kernels/ops/gemm/configs/N=5120,K=6144,device_name=AMD_Radeon_AI_PRO_R9700,dtype=fp8_w8a8,block_shape=[128, 128].json	
+@@ -0,0 +1,55 @@
 +{
 +    "1": {
-+        "BLOCK_SIZE_M": 32,
++        "BLOCK_SIZE_M": 16,
 +        "BLOCK_SIZE_N": 16,
 +        "BLOCK_SIZE_K": 128,
 +        "GROUP_SIZE_M": 1,
 +        "num_warps": 2,
 +        "num_stages": 0,
-+        "waves_per_eu": 4
++        "waves_per_eu": 2
 +    },
 +    "8": {
 +        "BLOCK_SIZE_M": 32,
@@ -141,59 +207,7 @@ index 0000000..dd4f135
 +        "num_stages": 0
 +    },
 +    "64": {
-+        "BLOCK_SIZE_M": 32,
-+        "BLOCK_SIZE_N": 128,
-+        "BLOCK_SIZE_K": 128,
-+        "GROUP_SIZE_M": 1,
-+        "num_warps": 4,
-+        "num_stages": 0,
-+        "waves_per_eu": 2
-+    },
-+    "256": {
-+        "BLOCK_SIZE_M": 32,
-+        "BLOCK_SIZE_N": 128,
-+        "BLOCK_SIZE_K": 128,
-+        "GROUP_SIZE_M": 1,
-+        "num_warps": 4,
-+        "num_stages": 0,
-+        "waves_per_eu": 2
-+    },
-+    "1024": {
-+        "BLOCK_SIZE_M": 32,
-+        "BLOCK_SIZE_N": 256,
-+        "BLOCK_SIZE_K": 128,
-+        "GROUP_SIZE_M": 1,
-+        "num_warps": 4,
-+        "num_stages": 0,
-+        "waves_per_eu": 2
-+    },
-+    "4096": {
-+        "BLOCK_SIZE_M": 32,
-+        "BLOCK_SIZE_N": 256,
-+        "BLOCK_SIZE_K": 128,
-+        "GROUP_SIZE_M": 1,
-+        "num_warps": 4,
-+        "num_stages": 0
-+    }
-+}
-diff --git a/python/sglang/kernels/ops/gemm/configs/N=5120,K=6144,device_name=AMD_Radeon_AI_PRO_R9700,dtype=fp8_w8a8,block_shape=[128, 128].json b/python/sglang/kernels/ops/gemm/configs/N=5120,K=6144,device_name=AMD_Radeon_AI_PRO_R9700,dtype=fp8_w8a8,block_shape=[128, 128].json
-new file mode 100644
-index 0000000..0b1947f
---- /dev/null
-+++ b/python/sglang/kernels/ops/gemm/configs/N=5120,K=6144,device_name=AMD_Radeon_AI_PRO_R9700,dtype=fp8_w8a8,block_shape=[128, 128].json	
-@@ -0,0 +1,54 @@
-+{
-+    "1": {
-+        "BLOCK_SIZE_M": 16,
-+        "BLOCK_SIZE_N": 16,
-+        "BLOCK_SIZE_K": 128,
-+        "GROUP_SIZE_M": 1,
-+        "num_warps": 4,
-+        "num_stages": 0,
-+        "waves_per_eu": 4
-+    },
-+    "8": {
-+        "BLOCK_SIZE_M": 16,
++        "BLOCK_SIZE_M": 64,
 +        "BLOCK_SIZE_N": 64,
 +        "BLOCK_SIZE_K": 128,
 +        "GROUP_SIZE_M": 1,
@@ -201,17 +215,8 @@ index 0000000..0b1947f
 +        "num_stages": 0,
 +        "waves_per_eu": 2
 +    },
-+    "64": {
-+        "BLOCK_SIZE_M": 32,
-+        "BLOCK_SIZE_N": 128,
-+        "BLOCK_SIZE_K": 128,
-+        "GROUP_SIZE_M": 1,
-+        "num_warps": 4,
-+        "num_stages": 0,
-+        "waves_per_eu": 2
-+    },
 +    "256": {
-+        "BLOCK_SIZE_M": 32,
++        "BLOCK_SIZE_M": 64,
 +        "BLOCK_SIZE_N": 128,
 +        "BLOCK_SIZE_K": 128,
 +        "GROUP_SIZE_M": 1,
@@ -220,28 +225,30 @@ index 0000000..0b1947f
 +        "waves_per_eu": 2
 +    },
 +    "1024": {
-+        "BLOCK_SIZE_M": 32,
-+        "BLOCK_SIZE_N": 256,
++        "BLOCK_SIZE_M": 64,
++        "BLOCK_SIZE_N": 128,
 +        "BLOCK_SIZE_K": 128,
 +        "GROUP_SIZE_M": 1,
 +        "num_warps": 4,
-+        "num_stages": 0
++        "num_stages": 0,
++        "waves_per_eu": 2
 +    },
 +    "4096": {
-+        "BLOCK_SIZE_M": 32,
-+        "BLOCK_SIZE_N": 256,
++        "BLOCK_SIZE_M": 64,
++        "BLOCK_SIZE_N": 128,
 +        "BLOCK_SIZE_K": 128,
 +        "GROUP_SIZE_M": 1,
 +        "num_warps": 4,
-+        "num_stages": 0
++        "num_stages": 0,
++        "waves_per_eu": 2
 +    }
 +}
 diff --git a/python/sglang/kernels/ops/gemm/configs/N=5120,K=8704,device_name=AMD_Radeon_AI_PRO_R9700,dtype=fp8_w8a8,block_shape=[128, 128].json b/python/sglang/kernels/ops/gemm/configs/N=5120,K=8704,device_name=AMD_Radeon_AI_PRO_R9700,dtype=fp8_w8a8,block_shape=[128, 128].json
 new file mode 100644
-index 0000000..143e45a
+index 0000000..5b26bb0
 --- /dev/null
 +++ b/python/sglang/kernels/ops/gemm/configs/N=5120,K=8704,device_name=AMD_Radeon_AI_PRO_R9700,dtype=fp8_w8a8,block_shape=[128, 128].json	
-@@ -0,0 +1,55 @@
+@@ -0,0 +1,56 @@
 +{
 +    "1": {
 +        "BLOCK_SIZE_M": 16,
@@ -249,72 +256,73 @@ index 0000000..143e45a
 +        "BLOCK_SIZE_K": 128,
 +        "GROUP_SIZE_M": 1,
 +        "num_warps": 8,
++        "num_stages": 0,
++        "waves_per_eu": 2
++    },
++    "8": {
++        "BLOCK_SIZE_M": 16,
++        "BLOCK_SIZE_N": 128,
++        "BLOCK_SIZE_K": 128,
++        "GROUP_SIZE_M": 1,
++        "num_warps": 8,
++        "num_stages": 0,
++        "waves_per_eu": 2
++    },
++    "64": {
++        "BLOCK_SIZE_M": 32,
++        "BLOCK_SIZE_N": 64,
++        "BLOCK_SIZE_K": 128,
++        "GROUP_SIZE_M": 1,
++        "num_warps": 4,
++        "num_stages": 0,
++        "waves_per_eu": 2
++    },
++    "256": {
++        "BLOCK_SIZE_M": 64,
++        "BLOCK_SIZE_N": 128,
++        "BLOCK_SIZE_K": 128,
++        "GROUP_SIZE_M": 1,
++        "num_warps": 4,
++        "num_stages": 0,
++        "waves_per_eu": 2
++    },
++    "1024": {
++        "BLOCK_SIZE_M": 64,
++        "BLOCK_SIZE_N": 128,
++        "BLOCK_SIZE_K": 128,
++        "GROUP_SIZE_M": 1,
++        "num_warps": 4,
++        "num_stages": 0,
++        "waves_per_eu": 2
++    },
++    "4096": {
++        "BLOCK_SIZE_M": 64,
++        "BLOCK_SIZE_N": 128,
++        "BLOCK_SIZE_K": 128,
++        "GROUP_SIZE_M": 1,
++        "num_warps": 4,
++        "num_stages": 0,
++        "waves_per_eu": 2
++    }
++}
+diff --git a/python/sglang/kernels/ops/gemm/configs/N=7168,K=5120,device_name=AMD_Radeon_AI_PRO_R9700,dtype=fp8_w8a8,block_shape=[128, 128].json b/python/sglang/kernels/ops/gemm/configs/N=7168,K=5120,device_name=AMD_Radeon_AI_PRO_R9700,dtype=fp8_w8a8,block_shape=[128, 128].json
+new file mode 100644
+index 0000000..1cad6e1
+--- /dev/null
++++ b/python/sglang/kernels/ops/gemm/configs/N=7168,K=5120,device_name=AMD_Radeon_AI_PRO_R9700,dtype=fp8_w8a8,block_shape=[128, 128].json	
+@@ -0,0 +1,56 @@
++{
++    "1": {
++        "BLOCK_SIZE_M": 16,
++        "BLOCK_SIZE_N": 64,
++        "BLOCK_SIZE_K": 128,
++        "GROUP_SIZE_M": 1,
++        "num_warps": 4,
 +        "num_stages": 0,
 +        "waves_per_eu": 4
 +    },
 +    "8": {
 +        "BLOCK_SIZE_M": 16,
-+        "BLOCK_SIZE_N": 128,
-+        "BLOCK_SIZE_K": 128,
-+        "GROUP_SIZE_M": 1,
-+        "num_warps": 8,
-+        "num_stages": 0,
-+        "waves_per_eu": 2
-+    },
-+    "64": {
-+        "BLOCK_SIZE_M": 32,
-+        "BLOCK_SIZE_N": 128,
-+        "BLOCK_SIZE_K": 128,
-+        "GROUP_SIZE_M": 1,
-+        "num_warps": 4,
-+        "num_stages": 0,
-+        "waves_per_eu": 2
-+    },
-+    "256": {
-+        "BLOCK_SIZE_M": 32,
-+        "BLOCK_SIZE_N": 128,
-+        "BLOCK_SIZE_K": 128,
-+        "GROUP_SIZE_M": 1,
-+        "num_warps": 4,
-+        "num_stages": 0,
-+        "waves_per_eu": 2
-+    },
-+    "1024": {
-+        "BLOCK_SIZE_M": 32,
-+        "BLOCK_SIZE_N": 256,
-+        "BLOCK_SIZE_K": 128,
-+        "GROUP_SIZE_M": 1,
-+        "num_warps": 4,
-+        "num_stages": 0,
-+        "waves_per_eu": 2
-+    },
-+    "4096": {
-+        "BLOCK_SIZE_M": 32,
-+        "BLOCK_SIZE_N": 256,
-+        "BLOCK_SIZE_K": 128,
-+        "GROUP_SIZE_M": 1,
-+        "num_warps": 8,
-+        "num_stages": 0
-+    }
-+}
-diff --git a/python/sglang/kernels/ops/gemm/configs/N=7168,K=5120,device_name=AMD_Radeon_AI_PRO_R9700,dtype=fp8_w8a8,block_shape=[128, 128].json b/python/sglang/kernels/ops/gemm/configs/N=7168,K=5120,device_name=AMD_Radeon_AI_PRO_R9700,dtype=fp8_w8a8,block_shape=[128, 128].json
-new file mode 100644
-index 0000000..892fb7a
---- /dev/null
-+++ b/python/sglang/kernels/ops/gemm/configs/N=7168,K=5120,device_name=AMD_Radeon_AI_PRO_R9700,dtype=fp8_w8a8,block_shape=[128, 128].json	
-@@ -0,0 +1,55 @@
-+{
-+    "1": {
-+        "BLOCK_SIZE_M": 32,
-+        "BLOCK_SIZE_N": 64,
-+        "BLOCK_SIZE_K": 128,
-+        "GROUP_SIZE_M": 1,
-+        "num_warps": 8,
-+        "num_stages": 0,
-+        "waves_per_eu": 2
-+    },
-+    "8": {
-+        "BLOCK_SIZE_M": 16,
 +        "BLOCK_SIZE_N": 64,
 +        "BLOCK_SIZE_K": 128,
 +        "GROUP_SIZE_M": 1,
@@ -324,7 +332,7 @@ index 0000000..892fb7a
 +    },
 +    "64": {
 +        "BLOCK_SIZE_M": 32,
-+        "BLOCK_SIZE_N": 128,
++        "BLOCK_SIZE_N": 256,
 +        "BLOCK_SIZE_K": 128,
 +        "GROUP_SIZE_M": 1,
 +        "num_warps": 4,
@@ -332,8 +340,8 @@ index 0000000..892fb7a
 +        "waves_per_eu": 2
 +    },
 +    "256": {
-+        "BLOCK_SIZE_M": 32,
-+        "BLOCK_SIZE_N": 256,
++        "BLOCK_SIZE_M": 128,
++        "BLOCK_SIZE_N": 64,
 +        "BLOCK_SIZE_K": 128,
 +        "GROUP_SIZE_M": 1,
 +        "num_warps": 4,
@@ -341,16 +349,17 @@ index 0000000..892fb7a
 +        "waves_per_eu": 2
 +    },
 +    "1024": {
-+        "BLOCK_SIZE_M": 32,
-+        "BLOCK_SIZE_N": 256,
++        "BLOCK_SIZE_M": 64,
++        "BLOCK_SIZE_N": 128,
 +        "BLOCK_SIZE_K": 128,
 +        "GROUP_SIZE_M": 1,
 +        "num_warps": 4,
-+        "num_stages": 0
++        "num_stages": 0,
++        "waves_per_eu": 2
 +    },
 +    "4096": {
-+        "BLOCK_SIZE_M": 32,
-+        "BLOCK_SIZE_N": 256,
++        "BLOCK_SIZE_M": 64,
++        "BLOCK_SIZE_N": 128,
 +        "BLOCK_SIZE_K": 128,
 +        "GROUP_SIZE_M": 1,
 +        "num_warps": 4,

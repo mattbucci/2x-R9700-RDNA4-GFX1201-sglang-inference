@@ -14,7 +14,7 @@ index ff32551d33..ec6a647a02 100644
      else:
          # Default config
          # Block-wise quant: BLOCK_SIZE_K must be divisible by block_size[1]
-+        # RDNA4: BLOCK_SIZE_M=64 causes GPU hangs. Use 16 for RDNA4.
++        # RDNA4 default: BLOCK_SIZE_M=16 (an older Triton hung at 64; Triton 3.6 does not — patch 106 configs use 64/128 for M>=64).
 +        _rdna4_dense = _is_hip and get_device_capability()[0] >= 12
          config = {
 -            "BLOCK_SIZE_M": 64,

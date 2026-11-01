@@ -20,11 +20,12 @@
   not yet swept.
 - **What the gate found:** 2,172 candidates, 0 numerical failures; the serving kernel on HIP is always the normal
   `_w8a8_block_fp8_matmul` (the unrolled-x4 selector has no `return` and is never taken). `BLOCK_SIZE_K` is pinned to
-  128 by the scale stepping, `BLOCK_SIZE_M=64` was left out (recorded RDNA4 hang), so the levers are `BLOCK_SIZE_N`,
-  `num_warps`, `waves_per_eu` and `BLOCK_SIZE_M ∈ {16, 32}`.
+  128 by the scale stepping, so the levers are `BLOCK_SIZE_M ∈ {16, 32, 64, 128}`, `BLOCK_SIZE_N`, `num_warps` and
+  `waves_per_eu`.
 - **Result shape:** at M=1 the default is within 0–20 % of the best (the GEMMs already stream at 77 % of the roofline;
-  the files take them to 84 %, ~+2 % decode); at M ≥ 64 the default tile is 1.6–2.6× slower than `BM32_BN256_w4`, which
-  is where the serving win is: cold prefill +14–30 % on both qwen38 presets. Method lesson recorded in the receipt: time
+  the files take them to 83 %, +2–4 % decode); from M=256 up the default tile is 3–6× slower than `BM128_BN64_w4` /
+  `BM64_BN128_w4` (the user authorised the `BLOCK_SIZE_M ≥ 64` tiles the kernel source recorded as hanging; none hung on
+  Triton 3.6), which is where the serving win is: cold prefill 2.5× / 2.1× / 1.5× at 7.3K / 58K / 197K on both presets. Method lesson recorded in the receipt: time
   weight-streaming kernels over > 64 MB of rotated copies (MALL) and take shapes from the server's config log, not from
   checkpoint dims ÷ TP (DeltaNet projections are replicated by patch 045).
 - **Next action for this spec:** sweep the Laguna shapes with the same tool (`--preset laguna`), then the Laguna

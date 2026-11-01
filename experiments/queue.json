@@ -290,7 +290,7 @@
     "FP8-native-follow-on native_fp8_profile (complete 2026-07-19)",
     "FP8-native-follow-on kv_split_resweep (complete 2026-07-19)"
    ],
-   "next_action": "Executed 2026-10-31 for Qwen3.8-27B-FP8: correctness-gated tuner scripts/bench/tune_fp8_block_gemm.py, patch 106 (six per-rank shapes incl. the replicated DeltaNet projections), serving A/B cold prefill +14-30 % / decode +1-2 % on nospec and DSpark, capabilities 5/5; receipt benchmarks/profiling/fp8-block-gemm-tune-qwen38-2026-10-31.md. Remaining for this spec: sweep Laguna's (512,2048)/(2048,256) with --preset laguna and run the Laguna deep A/B against a fresh native-Triton baseline; BLOCK_SIZE_M=64 prefill tiles need a guarded hang re-test (user decision).",
+   "next_action": "Executed 2026-10-31 for Qwen3.8-27B-FP8: correctness-gated tuner scripts/bench/tune_fp8_block_gemm.py, patch 106 (six per-rank shapes incl. the replicated DeltaNet projections), serving A/B cold prefill 2.5x/2.1x/1.5x at 7.3K/58K/197K and decode +2-4 % on nospec and DSpark, capabilities 5/5; receipt benchmarks/profiling/fp8-block-gemm-tune-qwen38-2026-10-31.md. Remaining for this spec: sweep Laguna's (512,2048)/(2048,256) with --preset laguna and run the Laguna deep A/B against a fresh native-Triton baseline. BLOCK_SIZE_M 64/128 tiles ran clean on Triton 3.6 (the recorded hang was an older Triton) and are in the shipped files.",
    "test_gate": [
     "Normal-kernel tuner covers (N,K)=(512,2048) and (2048,256) at M in {1, 2048, 8192}",
     "Every retained config passes cosine>=0.999 vs torch FP8 dequant AND the serving kernel, and a graph-replay with zero OOB at K=256",

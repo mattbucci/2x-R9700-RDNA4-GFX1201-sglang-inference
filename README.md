@@ -18,12 +18,12 @@ new quality flagship Qwen3.8-27B-FP8.
   agentic ladder. North-Mini Code passes the same ladder 21/21 to 245,172 actual tokens.
 - **Qwen3.8-27B-FP8 is the quality flagship**: fleet-best LAB-Bench 42.3% (no-think multiple choice),
   MMLU 84.2%, HumanEval 93.3%, 7/7 agentic rungs to 245,150 actual tokens. Its preset is **DSpark
-  speculative decoding** through the split-KV verify kernel (patch 100): **35.6 / 45.8 / 43.2 / 30.6 tok/s
+  speculative decoding** through the split-KV verify kernel (patch 100): **35.5 / 45.6 / 43.1 / 30.6 tok/s
   at 24 / 7.3K / 58K / 197K input** (canonical 3-run think-off sweep, v0.5.22 + patch 106, 2026-10-31) against
-  23.1 / 22.7 / 22.0 / 20.3 on the no-spec server (`QWEN38_SPEC=0`, which keeps the 530K-token pool for
+  23.0 / 22.5 / 21.8 / 20.2 on the no-spec server (`QWEN38_SPEC=0`, which keeps the 530K-token pool for
   true 256K work; the DSpark pool is 206K), 45.6 tok/s on thinking text at 58K, capability probe 5/5. Patch
-  106's gfx1201 block-FP8 GEMM configs (2026-10-31) added +2–4 % decode and +26–59 % cold prefill
-  (197K prompt: 496 → 394 s) on both servers.
+  106's gfx1201 block-FP8 GEMM configs (2026-10-31) added +2–4 % decode and 1.5–2.5× cold prefill
+  (197K prompt: 496 → 330 s) on both servers.
   Its seven-scaffold SWE-bench Lite bake-off (v5, 300 instances per cell, every scaffold sandboxed in
   the official instance image) has rolled and audited all 2,100 instances; Docker scoring is owed — see
   SWE-bench Lite below.
@@ -68,7 +68,7 @@ deepest measured input. Provenance, raw JSON, and per-model curves are under
 | Devstral-Small-2-24B | AWQ dense + vision | 52.7 (15) | 17.0 (198K) |
 | Qwen3.5-27B | AWQ dense + DeltaNet | 24.5 (22) | 11.2 (197K) |
 | Qwen3.6-27B | AWQ dense + vision | 24.9 (22) | 11.5 (197K) |
-| Qwen3.8-27B | official FP8 dense + DeltaNet (VL + video) | 23.1 (24) | **20.3 (197K)** |
+| Qwen3.8-27B | official FP8 dense + DeltaNet (VL + video) | 23.0 (24) | **20.2 (197K)** |
 | Qwen3-VL-32B | AWQ dense + vision | 23.4 (20) | 16.5 (27K) |
 | Gemma 4 31B | AWQ dense + SWA | 29.4 (25) | 10.5 (110K) |
 | Gemma 4 12B | AWQ omni + SWA | 38.6 (25) | 10.9 (198K) |
@@ -165,12 +165,12 @@ operational history behind each item lives in the document it links, not here.
    [tuner receipt](benchmarks/profiling/fp8-block-gemm-tune-qwen38-2026-10-31.md)): the six block-FP8 GEMM shapes a rank
    runs per step took 30.2 of the 44.4 ms step at 77 % of the 640 GB/s roofline (the DeltaNet projections are replicated
    per rank, 5.1 of 13.9 GiB); all-reduce is ≥ 4.2 ms, the rest ≈ 6 ms. Patch 106's correctness-gated per-shape configs
-   take the GEMMs to 84 % (decode +3.5–4.7 % no-spec, +2.3–3.6 % DSpark) and, because the RDNA4 default tile was
-   1.6–2.6× off at M ≥ 64, cold prefill +59 / +46 / +26 % at 7.3K / 58K / 197K. Left on the table: ~4 ms of narrow-K
-   latency per step, and the replicated DeltaNet projections (a TP split there is model code with a numerics gate).
-3. **Block-GEMM follow-ups** ([R97-L](experiments/12-fp8-exact-shape-gemm-tuner.md)): sweep Laguna's shared-expert
-   shapes with `tune_fp8_block_gemm.py --preset laguna` and run its deep A/B; re-test `BLOCK_SIZE_M = 64` prefill tiles
-   under a guard (needs your go-ahead — see "Your decisions"; the M=4096 winner reaches only ~41 of ~190 FP8 TFLOPS).
+   take the GEMMs to 83 % (decode +2–4 % on both presets) and, because the RDNA4 default tile was 3–6× off at M ≥ 256
+   (the recorded `BLOCK_SIZE_M = 64` hang was an older Triton's), **cold prefill 2.5× at 7.3K, 2.1× at 58K, 1.5× at 197K**
+   (496 → 330 s). Left on the table: ~4 ms of narrow-K latency per step, and the replicated DeltaNet projections (a TP
+   split there is model code with a numerics gate).
+3. **Block-GEMM follow-up** ([R97-L](experiments/12-fp8-exact-shape-gemm-tuner.md)): sweep Laguna's shared-expert
+   shapes with `tune_fp8_block_gemm.py --preset laguna` (same default prefill tile) and run its deep A/B.
 4. **LAB-Bench re-measure** of the suppressed Qwen3.5/Gemma4 cells with `--mc-no-think`
    (FINDINGS → LAB-Bench think-budget artifact).
 5. **Agentic turn tax at depth** ([R97-J](experiments/10-extend-attention-kv-split-agentic-turn.md)): split the KV walk in extend attention; gate on
@@ -185,9 +185,6 @@ operational history behind each item lives in the document it links, not here.
 
 - dcode in the v5 matrix: keep its 29-minute wall (47% walls, same methodology as the other six) or add the
   3090's 60-minute wall as a separate cell.
-- `BLOCK_SIZE_M = 64` (and 128) prefill tiles for the block-FP8 GEMM: `fp8_kernel.py` records a GPU hang on RDNA4 under
-  an older Triton, so the sweep skipped them; a guarded re-test on Triton 3.6 / ROCm 7.2 could double the M=4096 GEMM
-  rate again, but a hang can drop a card off the bus (Oct 7 / Oct 12 pattern). Your call whether to spend that risk.
 - decode-topk promotion ([R97-B](experiments/07-decode-topk-promotion-brief.md)): 1.77× at 245K on a pre-v0.5.15 gate; needs regeneration.
 - `ci-build-canary` (weekly image build) needs a push with a workflow-scoped token (refused 2026-10-25).
 - [R97-H](experiments/08-bench-dir-hygiene-purge-or-remeasure.md) GPU half: `decode_ab` re-measure of `qwen3.6-ream-a3b-awq` and

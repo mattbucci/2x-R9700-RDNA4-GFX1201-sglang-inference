@@ -71,11 +71,14 @@ def default_config() -> dict:
             "num_stages": 0}
 
 
+PREFILL_BM = (16, 32)  # overridden by --prefill-bm; 64/128 were recorded as hanging RDNA4 under an older Triton
+
+
 def candidate_space(decode: bool) -> list[dict]:
     if decode:
         bm, bn, nw, wpe = (16, 32), (16, 32, 64, 128, 256), (1, 2, 4, 8), (0, 2, 4)
     else:  # prefill guard points: tiles that make sense for M >= 16
-        bm, bn, nw, wpe = (16, 32), (64, 128, 256), (4, 8), (0, 2)
+        bm, bn, nw, wpe = PREFILL_BM, (64, 128, 256), (4, 8), (0, 2)
     out = []
     for m, n, w, e in itertools.product(bm, bn, nw, wpe):
         if n == 16 and w == 8:
@@ -208,7 +211,10 @@ def main() -> int:
     ap.add_argument("--out", default=None)
     ap.add_argument("--emit-dir", default=None)
     ap.add_argument("--emit-from", default=None, help="re-emit config files from a saved receipt JSON (no GPU work)")
+    ap.add_argument("--prefill-bm", default="16,32", help="BLOCK_SIZE_M values for the M>1 keys (64/128 only under a kill timeout: recorded RDNA4 hang)")
     a = ap.parse_args()
+    global PREFILL_BM
+    PREFILL_BM = tuple(int(x) for x in a.prefill_bm.split(","))
 
     if a.emit_from:
         return emit_from_receipt(a.emit_from, a.emit_dir, a.min_gain)

@@ -85,24 +85,63 @@ The server log confirms six `Using configuration from … R9700` lines and zero 
 Run-to-run spread inside each arm was ≤ 0.4 tok/s decode and ≤ 0.3 s prefill at every point, well inside the deltas.
 The prefill gain shrinks with depth because attention and the DeltaNet chunk scan, not the GEMMs, grow with context.
 
+### Round 3 — `BLOCK_SIZE_M` 64 and 128 admitted (user go-ahead, same day)
+
+`fp8_kernel.py` recorded a GPU hang at `BLOCK_SIZE_M = 64` on RDNA4 under an older Triton, so the sweeps above stopped
+at 32. With the user's go-ahead the prefill space was re-swept with `BLOCK_SIZE_M ∈ {16, 32, 64, 128}` under a kill
+timeout (`timeout -s KILL`): 2,088 candidates, 0 hangs, 0 gate failures, every winner graph-identical. Default → BM≤32
+best → BM≤128 best, µs per launch:
+
+| projection | M=64 | M=256 | M=1024 | M=4096 |
+|---|---:|---:|---:|---:|
+| mlp.gate_up_proj | 390 → 238 → **179** | 2042 → 811 → **377** | 8685 → 4263 → **1447** | 35283 → 17899 → **5503** |
+| mlp.down_proj | 86 → 84 → 83 | 250 → 195 → **158** | 1472 → 652 → **586** | 5125 → 2929 → **2283** |
+| linear_attn.in_proj_qkvz | 345 → 210 → **169** | 1721 → 669 → **364** | 7453 → 3596 → **1390** | 30430 → 15418 → **5215** |
+| linear_attn.out_proj | 78 → 76 → **69** | 211 → 148 → **121** | 989 → 512 → **423** | 3609 → 2220 → **1637** |
+| full_attn.qkv_proj | 104 → 86 → 86 | 300 → 186 → **155** | 1311 → 656 → **505** | 4384 → 2539 → **1917** |
+| full_attn.o_proj | 50 → 41 → 47 | 105 → 83 → **68** | 485 → 253 → **218** | 2124 → 1092 → **825** |
+
+Winners from M=256 up are `BM128_BN64_w4` for the two wide shapes and `BM64_BN128_w4` elsewhere, both with
+`waves_per_eu = 2`. At M=4096 `gate_up_proj` now runs at ~133 FP8 TFLOPS (6.4× the default, 3.3× the BM32 file), close
+to the card's dense FP8 peak; the M=1 and M=8 keys are unchanged within run noise. The shipped patch 106 is this set.
+
+Serving A/B of this set against the same default receipts (`/data/logs/fp8-gemm-ab-20261031-r3/`):
+
+| preset | input tokens | decode default → tuned tok/s | cold prefill default → tuned tok/s |
+|---|---:|---:|---:|
+| no-spec | 64 | 22.07 → 22.89 (+3.7 %) | — |
+| no-spec | 7.3K | 21.78 → 22.37 (+2.7 %) | 701 → 1,791 (2.55×, 10.5 → 4.1 s) |
+| no-spec | 58.5K | 20.99 → 21.68 (+3.3 %) | 597 → 1,228 (2.06×, 97.9 → 47.6 s) |
+| no-spec | 197K | 19.62 → 20.23 (+3.1 %) | 398 → 598 (1.50×, 496 → 330 s) |
+| DSpark | 64 | 44.27 → 45.79 (+3.4 %) | — |
+| DSpark | 7.3K | 45.50 → 46.69 (+2.6 %) | 690 → 1,717 (2.49×, 10.6 → 4.3 s) |
+| DSpark | 58.5K | 55.45 → 56.81 (+2.5 %) | 590 → 1,203 (2.04×, 99.2 → 48.6 s) |
+| DSpark | 197K | 45.35 → 46.25 (+2.0 %) | 400 → 606 (1.51×, 493 → 326 s) |
+
+`validate_capabilities.py` on the tuned no-spec server: 5/5. Decode is unchanged from round 2 within noise (the M=1 and
+M=8 keys are the same tiles); the prefill gain at 197K is bounded by attention and the DeltaNet chunk scan, which the
+GEMM configs do not touch.
+
 ## Disposition
 
-**Adopted as patch 106.** Decode gains are the kernel-level ~2.5 ms per step the cold-cache microbench predicted
-(+3.5–4.7 % no-spec, +2.3–3.6 % DSpark where the verify batch sees the M=8 key), prefill gains are the M ≥ 64 tiles
-(+26–59 %), capabilities 5/5, output tokens unchanged in every arm (the `sample` prefixes match pairwise; the configs
-are within 2 bf16 ulps of the default kernel by construction). The canonical 4-point sweeps (think-off, 3-run, 80 tokens, EOS honoured) were re-run on the
-patched tree the same day and merged into `benchmarks/qwen38-27b-fp8{,-nospec}/results.json`: DSpark 35.6 / 45.8 /
-43.2 / 30.6 tok/s at 24 / 7.3K / 58K / 197K (2026-10-19 on the same v0.5.22 tree: 34.3 / 44.5 / 41.6 / 30.1), no-spec
-23.1 / 22.7 / 22.0 / 20.3 (2026-09-19, v0.5.20: 22.5 / 22.2 / 21.4 / 20.0). A thinking-on run of the same sweep
-(not the canonical method; kept at `/data/logs/qwen38-canonical-20261031/`) read 45.8 / 46.8 / 53.8 / 46.3 DSpark.
+**Adopted as patch 106 (the round-3 set, `BLOCK_SIZE_M` up to 128).** Decode +2–4 % on both presets (the M=1 GEMMs go
+from 30.2 to 28.0 ms per step, 83 % of the roofline), cold prefill 2.5× at 7.3K, 2.1× at 58K and 1.5× at
+197K, capabilities 5/5, output tokens unchanged in every arm (the `sample` prefixes match pairwise; every config is
+within 2 bf16 ulps of the default kernel by construction). The `BLOCK_SIZE_M = 64` hang note in `fp8_kernel.py` dates
+from an older Triton; 2,088 wide-tile candidates ran on Triton 3.6 / ROCm 7.2 without one, and the comment was
+refreshed in patch 005. The canonical think-off sweeps (3-run, 80 tokens, EOS honoured) were re-run on the final set
+and merged into `benchmarks/qwen38-27b-fp8{,-nospec}/results.json`: DSpark 35.5 / 45.6 / 43.1 / 30.6 tok/s at 24 / 7.3K / 58K / 197K (2026-10-19 on the
+same v0.5.22 tree: 34.3 / 44.5 / 41.6 / 30.1), no-spec 23.0 / 22.5 / 21.8 / 20.2 (2026-09-19, v0.5.20: 22.5 / 22.2 /
+21.4 / 20.0). The round-2 set measured 35.6 / 45.8 / 43.2 / 30.6 and 23.1 / 22.7 / 22.0 / 20.3 on the same method — the
+two sets share their M=1 tiles within noise. A thinking-on run of the sweep (not the canonical method; kept at
+`/data/logs/qwen38-canonical-20261031/`) read 45.8 / 46.8 / 53.8 / 46.3 DSpark.
 
 ## Not done / next
 
-- `BLOCK_SIZE_M = 64` (and 128) for the prefill keys: excluded because `fp8_kernel.py` records a GPU hang on RDNA4 under
-  an older Triton. At M=4096 the best tile reaches only ~41 TFLOPS of a ~190 TFLOPS FP8 peak, so a guarded re-test on
-  Triton 3.6 / ROCm 7.2 is the next prefill lever. It needs the user's go-ahead: a hang can drop a card off the bus.
 - The replicated DeltaNet projections are 5.1 of the 13.9 GiB a rank streams per decode step; sharding them (patch 045
   keeps them replicated for the recurrent-state layout) is the only decode lever above 2 ms left — model code, not config.
+- Prefill at 197K is now 330 s, of which the GEMMs are a minority; the next prefill lever is the attention / DeltaNet
+  chunk-scan side ([R97-J](../../experiments/10-extend-attention-kv-split-agentic-turn.md)).
 - Laguna's shared-expert shapes (`512×2048`, `2048×256`, the shapes R97-L was first written for) are in the tuner's
   `SHAPES["laguna"]` table and not yet swept; Laguna's FP8 GEMM slice is ~12 % of its decode, so the expected win is
-  smaller than qwen38's.
+  smaller than qwen38's, but its prefill tiles are the same default.

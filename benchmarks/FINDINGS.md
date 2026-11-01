@@ -236,27 +236,19 @@ Receipt: [`profiling/qwen38-decode-gap-2026-10-31.md`](profiling/qwen38-decode-g
 ## gfx1201 block-FP8 GEMM configs — adopted as patch 106 (2026-10-31)
 
 The correctness-gated tuner ([R97-L](../experiments/12-fp8-exact-shape-gemm-tuner.md),
-`scripts/bench/tune_fp8_block_gemm.py`) swept `BLOCK_SIZE_M ∈ {16, 32}`, `BLOCK_SIZE_N`, `num_warps` and `waves_per_eu`
-through the serving entry point for the six per-rank shapes Qwen3.8-27B-FP8 runs (2,172 candidates; 0 numerical
-failures against an fp32 reference and the default kernel's output; every winner bit-identical under HIP-graph replay)
-and emitted one config file per shape keyed at M = 1 / 8 / 64 / 256 / 1024 / 4096. At M=1 the RDNA4 default
-(`BM16_BN128_w4`) was within 0–20 % of the best and the files take the per-step GEMM from 30.2 to 27.7 ms (77 → 84 %
-of roofline); at M ≥ 64 the default tile was 1.6–2.6× slower than `BM32_BN256_w4`. Serving A/B on the same tree
-(default files absent vs installed, `ab_fp8_gemm_configs.sh`, 3-run medians): decode +3.5–4.7 % no-spec and
-+2.3–3.6 % DSpark at 64 tokens to 197K; cold prefill +59 % at 7.3K, +46 % at 58K, +26 % at 197K on both presets
-(197K: 496 → 394 s); `validate_capabilities` 5/5. `BLOCK_SIZE_M = 64` was not tried (recorded RDNA4 hang under an
-older Triton) and is the next prefill lever pending a guarded re-test; Laguna's shared-expert shapes are not yet swept.
-Not the stock SGLang tuner, which times the unrolled-x4 kernel the HIP selector never returns and has no gate.
+`scripts/bench/tune_fp8_block_gemm.py`) swept `BLOCK_SIZE_M ∈ {16, 32, 64, 128}`, `BLOCK_SIZE_N`, `num_warps` and
+`waves_per_eu` through the serving entry point for the six per-rank shapes Qwen3.8-27B-FP8 runs (4,260 candidates over
+three rounds; 0 numerical failures against an fp32 reference and the default kernel's output; every winner bit-identical
+under HIP-graph replay; 0 hangs — the `BLOCK_SIZE_M = 64` hang `fp8_kernel.py` recorded belongs to an older Triton and
+the comment is refreshed in patch 005) and emitted one config file per shape keyed at M = 1 / 8 / 64 / 256 / 1024 /
+4096. At M=1 the RDNA4 default (`BM16_BN128_w4`) was within 0–20 % of the best and the files take the per-step GEMM from
+30.2 to 28.0 ms (83 % of the 640 GB/s roofline); from M=256 up the winners are `BM128_BN64_w4` (wide shapes) and
+`BM64_BN128_w4`, 3–6× the default (`gate_up_proj` at M=4096: 35.3 → 5.5 ms, ~133 FP8 TFLOPS). Serving A/B on the same
+tree (default files absent vs installed, `ab_fp8_gemm_configs.sh`, 3-run medians): decode +2.7–3.7 % no-spec and
++2.0–3.4 % DSpark at 64 tokens to 197K; cold prefill 2.5× at 7.3K, 2.1× at 58K, 1.5× at 197K on both presets
+(197K prompt: 496 → 330 s); `validate_capabilities` 5/5. Not the stock SGLang tuner, which times the unrolled-x4 kernel
+the HIP selector never returns and has no gate. Laguna's shared-expert shapes are not yet swept.
 Receipt: [`profiling/fp8-block-gemm-tune-qwen38-2026-10-31.md`](profiling/fp8-block-gemm-tune-qwen38-2026-10-31.md).
-
-### Rejected decode changes
-
-| Experiment | Measurement | Disposition |
-|---|---|---|
-| Decode QK in FP32 at ~77K | Needle passed in both arms; 24.98 → 11.85 tok/s | Reverted; no quality gain and ~2× slower |
-| HIP MoE GEMV production wiring | Harness faulted on the production layout; estimated wall-time ceiling was small | Keep Triton MoE plus graphs |
-| Graph capture at batch size 1 only | Graph memory 0.33 → 0.25 GB; capture 10.7 → 3.2 s; KV capacity unchanged | Useful boot-time option, not a capacity or decode win |
-| KV4/FP4 port | Existing implementation is CUDA-specific | Capacity work only; no demonstrated gfx1201 speed gain |
 
 ## Long-context attention
 
