@@ -143,6 +143,12 @@ jobs:
           fi
           candidate_ref="${CANDIDATE_TAG}@${CANDIDATE_DIGEST}"
           docker buildx imagetools inspect "$candidate_ref"
+          # The candidate is in GHCR now. The builder's cache (the full multi-stage
+          # build, on /mnt) and the pulled image do not both fit on the runner's
+          # /mnt volume ("no space left on device" in GetImageBlob), so drop the
+          # cache before pulling the image back for inspection.
+          docker buildx prune --all --force
+          df -h /mnt
           docker pull "$candidate_ref"
           test "$(docker image inspect "$candidate_ref" --format '{{.Config.User}}')" = "10001:10001"
           docker run --rm --entrypoint /bin/sh "$candidate_ref" -ec '
