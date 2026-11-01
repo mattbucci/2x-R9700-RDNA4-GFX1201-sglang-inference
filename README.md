@@ -23,7 +23,8 @@ new quality flagship Qwen3.8-27B-FP8.
   23.0 / 22.5 / 21.8 / 20.2 on the no-spec server (`QWEN38_SPEC=0`, which keeps the 530K-token pool for
   true 256K work; the DSpark pool is 206K), 45.6 tok/s on thinking text at 58K, capability probe 5/5. Patch
   106's gfx1201 block-FP8 GEMM configs (2026-10-31) added +2–4 % decode and 1.5–2.5× cold prefill
-  (197K prompt: 496 → 330 s) on both servers.
+  (197K prompt: 496 → 330 s) on both servers; patch 108's fp8 QK dot in extend attention (2026-11-01) took the 197K cold
+  prefill on to **211 s** and a 1-token cache-hit turn at 176K from 10.1 to 5.7 s, needle grid 9/9 on both arms.
   Its seven-scaffold SWE-bench Lite bake-off (v5, 300 instances per cell, every scaffold sandboxed in
   the official instance image) has rolled and audited all 2,100 instances; Docker scoring is owed — see
   SWE-bench Lite below.
@@ -174,16 +175,21 @@ operational history behind each item lives in the document it links, not here.
    R97-L closes. Patch 106 stays qwen38-only.
 4. **LAB-Bench re-measure** of the suppressed Qwen3.5/Gemma4 cells with `--mc-no-think`
    (FINDINGS → LAB-Bench think-budget artifact).
-5. **Agentic turn tax at depth** ([R97-J](experiments/10-extend-attention-kv-split-agentic-turn.md),
-   [receipt](benchmarks/profiling/extend-splitkv-route-2026-10-31.md)): arm A shipped as patch 107 — turns with ≤ 16
-   new tokens run the prefix walk through the split-KV verify kernel (Laguna: 1-token turn 523 → 241 ms at 158K;
-   enabled for `laguna` only). On qwen38 a 1-token turn at 176K still costs **10.1 s**: the hybrid cache hits only at
-   8,192-token boundaries (3.8K-token tail recompute) and extend attention re-reads the prefix KV once per query block
-   and per query head (~1.4 TFLOPS). Two follow-ups, in order:
-   - **GQA-packed extend attention** for gfx1201 (one program per KV head × query block serves all 12 q heads; 12× fewer
-     prefix bytes). Also the main lever on the 197K cold prefill (330 s). Gate: fp32-reference numerics no worse than the
-     current kernel, cold prefill and decode A/B, needle recall.
-   - **Hybrid-cache checkpoint granularity**: why `mamba_track_interval=256` still yields chunk-aligned hits.
+5. **Agentic turn tax and cold prefill at depth** ([R97-J](experiments/10-extend-attention-kv-split-agentic-turn.md),
+   [R97-Q](experiments/17-extend-attention-fp8-qk-gfx1201.md); receipts
+   [split-KV route](benchmarks/profiling/extend-splitkv-route-2026-10-31.md),
+   [fp8 QK](benchmarks/profiling/extend-attention-fp8qk-qwen38-2026-10-31.md)): patch 107 routes turns with ≤ 16 new
+   tokens through the split-KV verify kernel (Laguna: 1-token turn 523 → 241 ms at 158K; `laguna` only). The gfx1201
+   extend kernel measured compute-bound (~18 % MFU; a GQA-packed rewrite was dropped — halving the prefix passes saved
+   3 %), so patch 108 switches its prefix QK to the fp8 WMMA dot: **qwen38 cold prefill 332 → 211 s at 197K (−36 %)**,
+   47.2 → 40.8 s at 58K, **1-token cache-hit turn 10.1 → 5.7 s at 176K**, needle grid 9/9 on both arms, capabilities
+   5/5 — default for `qwen38`. Left, in order:
+   - **Hybrid-cache checkpoint granularity**: the qwen38 radix cache hits only at 8,192-token boundaries (a 3.8K-token
+     tail recompute per turn) although `mamba_track_interval=256`; finer checkpoints would also let patch 107's route
+     fire on qwen38.
+   - **fp8 QK on the other FP8-cache presets** (north-mini, gemma4, qwen35/36, coder): opt-in `SGLANG_EXTEND_FP8_QK=1`
+     until each runs its own needle-grid A/B.
+   - Extend-kernel follow-ups: exp2 softmax, `num_stages` pipelining, the split-KV route for 16 < K ≤ 128.
 6. **256K ladder across the agentic-qualified fleet** ([R97-I](experiments/09-fleet-ladder-per-model-rungs.md)), including Nemotron's 2K/8K
    budget arms and the Devstral `KV_DTYPE` control.
 7. **EAGLE3 drafts in the `--spec` lane, depth curve** ([R97-A](experiments/04-eagle3-dense-vl-spec-lane-depth-curve.md)).
@@ -235,7 +241,7 @@ backend, quantization path, parsers, memory settings, and graph policy.
 | Component | Version |
 |---|---|
 | GPUs | 2× AMD Radeon AI PRO R9700, gfx1201, 32 GiB each |
-| SGLang | v0.5.22 + 76 patches |
+| SGLang | v0.5.22 + 77 patches |
 | Python | 3.12 |
 | PyTorch | 2.11.0+rocm7.2 |
 | ROCm | 7.2 |

@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | **Type** | optimization |
-| **Status** | arm A shipped 2026-10-31 as patch 107 (K ≤ 16 new tokens, Laguna 2.2× on the 1-token turn at 158K); arm B superseded by the GQA-packed extend kernel item |
+| **Status** | arm A shipped 2026-10-31 as patch 107 (K ≤ 16 new tokens, Laguna 2.2× on the 1-token turn at 158K); arm B superseded by R97-Q (experiments/17: the kernel is compute-bound, the fp8 QK dot shipped as patch 108) |
 | **Execution host** | r9700-box |
 | **Wall clock** | ~1–2 days: kernel work and an isolated numerical gate on CPU/GPU, then A/B plus a ladder re-run |
 | **GPU time** | ~4–6h: isolated reproducer, extend-cost curve at two depths per arm, decode no-regression check, three-seed ladder |
@@ -22,9 +22,10 @@
   turn is a 2.3–3.8K-token tail recompute (1-token turn at 176K: 10.1 s). The attribution of that time is the larger
   finding: extend attention re-reads the prefix KV once per query block and per query head (no GQA sharing), ~1.4
   TFLOPS effective — the same cost sits in every chunked-prefill step (197K cold prefill 330 s).
-- **Arm B is superseded:** a GQA-packed extend kernel (one program per KV head × query block, all q heads inside)
-  attacks the bytes rather than the parallelism and serves turns, tail recomputes and cold prefill alike. It is the next
-  item in the loop, with the hybrid-cache checkpoint granularity as the companion item.
+- **Arm B is superseded by [R97-Q](17-extend-attention-fp8-qk-gfx1201.md):** the GQA-packing reading did not survive
+  measurement (BLOCK_M=128 halves the prefix passes and saves 3 %: the kernel is compute-bound at ~18 % MFU). The fp8
+  WMMA QK dot shipped as patch 108 (qwen38 197K cold prefill 332 → 211 s, 1-token turn at 176K 10.1 → 5.7 s). The
+  hybrid-cache checkpoint granularity remains the companion item.
 
 ## Problem
 

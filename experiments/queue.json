@@ -1,6 +1,6 @@
 {
  "schema_version": 1,
- "updated_at": "2026-10-31",
+ "updated_at": "2026-11-01",
  "ordering": "easiest_to_test_then_hardest",
  "baseline": {
   "sglang": "v0.5.15",
@@ -356,6 +356,22 @@
     "A read returns per-position logprobs for the label ids and finishes after one canvas",
     "Constrained reads emit only label tokens; probabilities sum to 1 over the labels",
     "Read answers agree with plain generation on >= 18/20 yes/no questions"
+   ]
+  },
+  {
+   "id": "R97-Q",
+   "spec": "17-extend-attention-fp8-qk-gfx1201.md",
+   "status": "completed",
+   "resource": "gpu",
+   "depends_on": [
+    "R97-J-extend-kv-split"
+   ],
+   "next_action": "Shipped 2026-11-01 as patch 108 (fp8 WMMA prefix QK in extend_attention on gfx1201; default-on for the qwen38 preset via launch.sh, EXTEND_FP8_QK=0 restores the bf16 upcast). Follow-ups in order: hybrid-cache checkpoint granularity (why qwen38 radix hits land on 8192-token boundaries with mamba_track_interval=256), needle-grid A/B before enabling SGLANG_EXTEND_FP8_QK=1 on the other FP8-cache presets, then exp2 softmax / num_stages on the extend kernel.",
+   "test_gate": [
+    "Isolated kernel: fp8 QK no worse than cos 0.9995 against an fp32 reference at K=512..4096 over 49K..172K prefix (measured 0.99959 vs 0.99965 for the bf16-upcast QK)",
+    "Same-session serving A/B on qwen38: cold prefill >= 15 % faster at 197K (measured -36 %), 1-token cache-hit turn at 176K faster (10.1 -> 5.7 s)",
+    "Needle grid 32K/131K/197K x 0.1/0.5/0.9 equal between arms (9/9 both); validate_capabilities 5/5 both arms",
+    "Patch 108 captured; pristine replay of 77 patches strict-applies, byte/mode-identical to /data/sgl-v0522, second apply rejected"
    ]
   }
  ]

@@ -88,10 +88,15 @@ def main() -> int:
     ap.add_argument("--prefixes", default="8192,58000,197000")
     ap.add_argument("--suffixes", default="1,8,32,64,128,512")
     ap.add_argument("--kv-dtype", default="fp8", choices=["fp8", "bf16"])
+    ap.add_argument("--time-extend-only", action="store_true", help="only time extend_attention_fwd (no split-KV call, no fp32 reference): chunk-sized K")
+    ap.add_argument("--tile-ab", default=None, help="BM,BN,WARPS: compare extend_attention_fwd under this tile against the default tile (and fp32) instead of the split-KV kernel")
+    ap.add_argument("--qk-ab", action="store_true", help="compare extend_attention_fwd with the fp8 QK dot (SGLANG_EXTEND_FP8_QK) against the default upcast path (and fp32)")
     ap.add_argument("--out", default=None)
     a = ap.parse_args()
+    from sglang.kernels.ops.attention import extend_attention as ea
     from sglang.kernels.ops.attention.extend_attention import extend_attention_fwd
     from sglang.kernels.ops.attention.verify_splitkv import verify_splitkv_fwd
+    tile_ab = tuple(int(x) for x in a.tile_ab.split(",")) if a.tile_ab else None
 
     p = PRESETS[a.preset]
     dev = torch.device("cuda")
@@ -118,14 +123,45 @@ def main() -> int:
             o_new = torch.empty_like(o_ref)
 
             def ref():
+                if tile_ab is not None:
+                    ea._EXTEND_TILE_OVERRIDE = None
+                if a.qk_ab:
+                    ea._EXTEND_FP8_QK = False
                 extend_attention_fwd(q, k_ext, v_ext, o_ref, k_buf, v_buf, qo_indptr, kv_indptr, kv_indices, None, True, None, K,
                                      k_scale, v_scale, sm_scale=sm_scale, logit_cap=0.0)
 
             def cand():
+                if a.qk_ab:   # same kernel, fp8 QK dot
+                    ea._EXTEND_FP8_QK = True
+                    try:
+                        extend_attention_fwd(q, k_ext, v_ext, o_new, k_buf, v_buf, qo_indptr, kv_indptr, kv_indices, None, True, None, K,
+                                             k_scale, v_scale, sm_scale=sm_scale, logit_cap=0.0)
+                    finally:
+                        ea._EXTEND_FP8_QK = False
+                    return True
+                if tile_ab is not None:   # same kernel, alternate tile
+                    ea._EXTEND_TILE_OVERRIDE = tile_ab
+                    try:
+                        extend_attention_fwd(q, k_ext, v_ext, o_new, k_buf, v_buf, qo_indptr, kv_indptr, kv_indices, None, True, None, K,
+                                             k_scale, v_scale, sm_scale=sm_scale, logit_cap=0.0)
+                    finally:
+                        ea._EXTEND_TILE_OVERRIDE = None
+                    return True
                 return verify_splitkv_fwd(q, k_ext, v_ext, o_new, k_buf, v_buf, qo_indptr, kv_indptr, kv_indices, None, True, None, K,
                                           k_scale, v_scale, sm_scale=sm_scale, logit_cap=0.0, max_bs=1)
 
             ref()
+            if a.time_extend_only:
+                t_ref = time_us(ref, iters=3, repeats=3)
+                nbytes = P * p["h_kv"] * (p["head_dim"] + p["v_head_dim"]) * (1 if kv_dtype == torch.float8_e4m3fn else 2)
+                reread = -(-K // 64) * p["h_q"]   # q blocks (BLOCK_M=64 at head_dim 256) x q heads: prefix passes per layer
+                row = {"prefix": P, "K": K, "status": "timed", "extend_us": round(t_ref, 1), "per_step_ms_extend": round(t_ref * p["layers"] / 1000, 2),
+                       "prefix_kv_mb": round(nbytes / 2**20, 1), "prefix_passes_per_layer": reread,
+                       "implied_gbps_if_reread": round(nbytes * reread / (t_ref * 1e-6) / 1e9, 1)}
+                results.append(row)
+                print(f"P={P:>7} K={K:>5}  extend {t_ref:10.1f} us/layer  ({p['layers']} layers: {row['per_step_ms_extend']:.1f} ms)  "
+                      f"prefix KV {row['prefix_kv_mb']:.0f} MB x {reread} passes -> {row['implied_gbps_if_reread']:.0f} GB/s if fully re-read", flush=True)
+                continue
             try:
                 ran = cand()
                 torch.cuda.synchronize()
@@ -158,7 +194,7 @@ def main() -> int:
                   f"rms {e_ext['rms_err']:.6f} / {e_new['rms_err']:.6f}  cos {e_ext['cosine']:.6f} / {e_new['cosine']:.6f}  "
                   f"extend {t_ref:9.1f} us  splitkv {t_new:9.1f} us  x{row['speedup']:.2f}", flush=True)
     rec = {"preset": a.preset, "shape": p, "kv_dtype": a.kv_dtype, "k_scale": k_scale, "v_scale": v_scale, "device": torch.cuda.get_device_name(0),
-           "upcast_k": os.environ.get("SGLANG_SPLITKV_UPCAST_K", "default"),
+           "upcast_k": os.environ.get("SGLANG_SPLITKV_UPCAST_K", "default"), "tile_ab": a.tile_ab, "qk_ab": a.qk_ab,
            "gate": "vs fp32 reference: finite, cosine >= min(0.9999, extend cosine - 2e-5), max and rms error <= 1.25x the extend kernel's own", "worst": worst, "rows": results,
            "timestamp": time.strftime("%Y-%m-%d %H:%M")}
     n_bad = sum(1 for r in results if r.get("status") not in ("ok",))

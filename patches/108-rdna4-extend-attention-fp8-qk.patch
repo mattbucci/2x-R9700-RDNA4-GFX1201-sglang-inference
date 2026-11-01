@@ -1,0 +1,96 @@
+diff --git a/python/sglang/kernels/ops/attention/extend_attention.py b/python/sglang/kernels/ops/attention/extend_attention.py
+index 821b2fd..b5f5b50 100644
+--- a/python/sglang/kernels/ops/attention/extend_attention.py
++++ b/python/sglang/kernels/ops/attention/extend_attention.py
+@@ -17,6 +17,7 @@ It supports page size = 1 and prefill with KV cache (i.e. extend).
+ """
+ 
+ import math
++import os
+ from typing import Optional
+ 
+ import torch
+@@ -35,6 +36,21 @@ if _is_cuda:
+ 
+ _is_hip = is_hip()
+ _is_gfx95 = _is_hip and is_gfx95_supported()
++
++def _parse_extend_tile():
++    v = os.environ.get("SGLANG_EXTEND_TILE", "")
++    if not v:
++        return None
++    try:
++        bm, bn, nw = (int(x) for x in v.split(","))
++        return (bm, bn, nw)
++    except ValueError:
++        return None
++
++
++_EXTEND_TILE_OVERRIDE = _parse_extend_tile()
++# RDNA4 opt-in: fp8 WMMA for the prefix QK (q downcast) instead of upcasting the fp8 cache K to bf16.
++_EXTEND_FP8_QK = os.environ.get("SGLANG_EXTEND_FP8_QK", "0") == "1"
+ _is_gfx1250 = _is_hip and is_gfx1250_supported()
+ 
+ try:
+@@ -93,6 +109,9 @@ def _get_block_sizes_for_extend_attention(Lq: int, Lv: int):
+         else:
+             BLOCK_M, BLOCK_N = (64, 64)
+             num_warps = 4
++        # RDNA4 tile sweep hook (R97-M): SGLANG_EXTEND_TILE="BM,BN,WARPS" overrides the HIP tile for A/Bs.
++        if _EXTEND_TILE_OVERRIDE is not None:
++            BLOCK_M, BLOCK_N, num_warps = _EXTEND_TILE_OVERRIDE
+     else:
+         if _is_cuda and CUDA_CAPABILITY[0] == 12:
+             # sm120 workstation Blackwell architecture (RTX Pro 6000) has a much smaller shared memory size (100K)
+@@ -439,6 +458,7 @@ def _fwd_kernel(
+     USE_FP8_EXTEND: tl.constexpr,
+     FP8_MAX: tl.constexpr,
+     IS_GFX1250: tl.constexpr = False,
++    FP8_QK: tl.constexpr = False,
+     PAGE_SIZE: tl.constexpr = 1,
+     IDENTITY_KV_INDICES: tl.constexpr = False,
+     SCORE_MOD: tl.constexpr = None,
+@@ -616,6 +636,9 @@ def _fwd_kernel(
+             # TODO: remove this branch once the gfx1250 fp8 tl.dot issue is resolved.
+             if IS_GFX1250:
+                 qk = tl.dot(q, k.to(q.dtype))
++            elif FP8_QK:
++                # RDNA4 opt-in (R97-M): fp8 WMMA for the prefix QK — q downcast to the cache dtype.
++                qk = tl.dot(q.to(k.dtype), k)
+             else:
+                 # RDNA4 (gfx1201): upcast K to q's dtype as on gfx1250.
+                 qk = tl.dot(q, k.to(q.dtype))
+@@ -1150,6 +1173,7 @@ def extend_attention_fwd(
+         SKIP_EXTEND=skip_extend,
+         HAS_SINK=HAS_SINK,
+         IS_GFX1250=_is_gfx1250,
++        FP8_QK=_EXTEND_FP8_QK,
+         STORE_TRANSPOSE=_is_hip,
+         USE_COMPACT_TILE_GRID=use_compact_tile_grid,
+         USE_EXP2=USE_EXP2,
+@@ -1250,6 +1274,7 @@ def _fwd_kernel_unified(
+     USE_CUSTOM_MASK: tl.constexpr,
+     HAS_SINK: tl.constexpr,
+     IS_GFX1250: tl.constexpr = False,
++    FP8_QK: tl.constexpr = False,
+     PAGE_SIZE: tl.constexpr = 1,
+     SCORE_MOD: tl.constexpr = None,
+     Aux0=None,
+@@ -1435,6 +1460,9 @@ def _fwd_kernel_unified(
+             # TODO: remove this branch once the gfx1250 fp8 tl.dot issue is resolved.
+             if IS_GFX1250:
+                 qk = tl.dot(q, k.to(q.dtype))
++            elif FP8_QK:
++                # RDNA4 opt-in (R97-M): fp8 WMMA for the prefix QK — q downcast to the cache dtype.
++                qk = tl.dot(q.to(k.dtype), k)
+             else:
+                 # RDNA4 (gfx1201): upcast K to q's dtype as on gfx1250.
+                 qk = tl.dot(q, k.to(q.dtype))
+@@ -1674,6 +1702,7 @@ def extend_attention_fwd_unified(
+         USE_CUSTOM_MASK=USE_CUSTOM_MASK,
+         HAS_SINK=HAS_SINK,
+         IS_GFX1250=_is_gfx1250,
++        FP8_QK=_EXTEND_FP8_QK,
+         PAGE_SIZE=page_size,
+         SCORE_MOD=score_mod,
+         Aux0=aux0,

@@ -94,17 +94,20 @@ def build_suffix(approx_tokens, salt, index=0):
     return body[:chars]
 
 
-def stream_ttft(base, model, prompt, timeout=3600):
-    """Return (ttft_s, prompt_tokens, cached_tokens, completion_tokens).
+def stream_ttft(base, model, prompt, timeout=3600, max_tokens=1):
+    """Return (ttft_s, prompt_tokens, cached_tokens, completion_tokens, text).
 
-    TTFT is measured to the first event carrying generated text. The role-only
-    opening event is not counted: it is emitted before the model has produced a
-    token and would understate the prefill cost being measured.
+    `prompt` is a string (one user message) or a full `messages` list. TTFT is
+    measured to the first event carrying generated text. The role-only opening
+    event is not counted: it is emitted before the model has produced a token
+    and would understate the prefill cost being measured. `text` is the
+    assistant's visible content (reasoning excluded), for replay as history.
     """
+    messages = prompt if isinstance(prompt, list) else [{"role": "user", "content": prompt}]
     body = {
         "model": model,
-        "messages": [{"role": "user", "content": prompt}],
-        "max_tokens": 1,
+        "messages": messages,
+        "max_tokens": max_tokens,
         "temperature": 0,
         "stream": True,
         "stream_options": {"include_usage": True},
@@ -112,6 +115,7 @@ def stream_ttft(base, model, prompt, timeout=3600):
     }
     usage = None
     ttft = None
+    content = []
     start = time.perf_counter()
     with requests.post(
         base + "/v1/chat/completions", json=body, stream=True, timeout=timeout
@@ -141,6 +145,8 @@ def stream_ttft(base, model, prompt, timeout=3600):
                 )
                 if piece and ttft is None:
                     ttft = time.perf_counter() - start
+                if delta.get("content"):
+                    content.append(delta["content"])
     usage = usage or {}
     details = usage.get("prompt_tokens_details") or {}
     return (
@@ -148,18 +154,29 @@ def stream_ttft(base, model, prompt, timeout=3600):
         usage.get("prompt_tokens"),
         details.get("cached_tokens"),
         usage.get("completion_tokens"),
+        "".join(content),
     )
 
 
-def measure_depth(base, model, depth, suffix_tokens, runs, log=print):
-    """Prime one prefix at `depth`, then time an extend for each suffix length."""
+def measure_depth(base, model, depth, suffix_tokens, runs, log=print, multi_turn=False, prime_maxtok=1):
+    """Prime one prefix at `depth`, then time an extend for each suffix length.
+
+    Single-message mode (default) appends the suffix to the primed user message,
+    which models "edit the last message": the follow-up diverges from the primed
+    prompt before its chat-template tail. Multi-turn mode replays the primed
+    turn as history (user prefix, assistant reply, new user message), the shape
+    of an agentic tool-result turn: the follow-up extends the primed prompt,
+    which matters for hybrid (Mamba) caches that only hold states at prompt
+    ends and chunk boundaries.
+    """
     prefix = mdc.build_prompt(depth)
 
     log(f"  depth~{depth}: priming prefix (cold, not measured)")
     prime_start = time.perf_counter()
-    _, prime_pt, _, _ = stream_ttft(base, model, prefix)
+    _, prime_pt, _, prime_ct, prime_text = stream_ttft(base, model, prefix, max_tokens=prime_maxtok)
     prime_s = time.perf_counter() - prime_start
-    log(f"  depth~{depth}: primed ACTUAL prompt_tokens={prime_pt} in {prime_s:.1f}s")
+    log(f"  depth~{depth}: primed ACTUAL prompt_tokens={prime_pt} in {prime_s:.1f}s"
+        + (f" (reply {prime_ct} tok, {len(prime_text)} visible chars)" if multi_turn else ""))
 
     rows = []
     for k in suffix_tokens:
@@ -179,8 +196,15 @@ def measure_depth(base, model, depth, suffix_tokens, runs, log=print):
             )
         ttfts, prompt_tokens, cached = [], [], []
         for run in range(runs):
-            prompt = prefix + suffixes[run]
-            ttft, pt, cached_tokens, _ = stream_ttft(base, model, prompt)
+            if multi_turn:
+                prompt = [
+                    {"role": "user", "content": prefix},
+                    {"role": "assistant", "content": prime_text},
+                    {"role": "user", "content": suffixes[run]},
+                ]
+            else:
+                prompt = prefix + suffixes[run]
+            ttft, pt, cached_tokens, _, _ = stream_ttft(base, model, prompt)
             if ttft is None:
                 log(f"    k={k} run{run+1}: no generated token; skipped")
                 continue
@@ -207,7 +231,8 @@ def measure_depth(base, model, depth, suffix_tokens, runs, log=print):
                 "max_ttft_ms": round(max(ttfts), 2),
             }
         )
-    return rows, {"prime_prompt_tokens": prime_pt, "prime_seconds": round(prime_s, 2)}
+    return rows, {"prime_prompt_tokens": prime_pt, "prime_seconds": round(prime_s, 2),
+                  "prime_completion_tokens": prime_ct, "multi_turn": multi_turn}
 
 
 def measure_decode_reference(base, model, depth, maxtok, log=print):
@@ -235,6 +260,9 @@ def main(argv=None):
     parser.add_argument("--suffix-tokens", default="1,64,512")
     parser.add_argument("--runs", type=int, default=3)
     parser.add_argument("--decode-maxtok", type=int, default=32)
+    parser.add_argument("--multi-turn", action="store_true",
+                        help="replay the primed turn as history and send the suffix as a NEW user message (agentic-turn shape) instead of appending it to the primed message")
+    parser.add_argument("--prime-maxtok", type=int, default=1, help="reply length generated while priming (its visible content becomes the assistant history turn in --multi-turn)")
     parser.add_argument("--label", default="")
     parser.add_argument("--note", default="")
     parser.add_argument("--out", default="")
@@ -276,7 +304,8 @@ def main(argv=None):
 
     results = []
     for depth in depths:
-        rows, prime = measure_depth(base, model, depth, suffixes, args.runs)
+        rows, prime = measure_depth(base, model, depth, suffixes, args.runs,
+                                    multi_turn=args.multi_turn, prime_maxtok=args.prime_maxtok)
         decode_ref = measure_decode_reference(base, model, depth, args.decode_maxtok)
         for row in rows:
             # The headline: how many decode tokens' worth of time the user waits
@@ -317,9 +346,13 @@ def main(argv=None):
         "served_identity": identity,
         "runs": args.runs,
         "method": (
+            "streaming TTFT of a cache-hit request sending N new tokens as a new user turn after the "
+            "primed turn (user, assistant reply, user); median of --runs, each run with a unique suffix"
+            if args.multi_turn else
             "streaming TTFT of a cache-hit request appending N new tokens to a "
             "primed prefix; median of --runs, each run with a unique suffix"
         ),
+        "multi_turn": args.multi_turn,
         "results": results,
     }
     if args.out:

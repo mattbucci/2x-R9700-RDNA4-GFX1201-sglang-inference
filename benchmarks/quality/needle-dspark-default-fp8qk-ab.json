@@ -1,0 +1,80 @@
+{
+ "tag": "needle-dspark-default-fp8qk-ab",
+ "timestamp": "2026-11-01 11:54",
+ "model": "/data/models/Qwen3.8-27B-FP8",
+ "port": 23334,
+ "haystack": "benchmarks/quality/haystack-platypus.txt",
+ "chars_per_token": 3.3,
+ "temperature": 0.0,
+ "flush": true,
+ "max_tokens": 2048,
+ "results": [
+  {
+   "found": true,
+   "actual_prompt_tokens": 34243,
+   "completion_tokens": 94,
+   "finish_reason": "stop",
+   "seconds": 25.9,
+   "content_tail": "\n\nBANANA42",
+   "reasoning_tail": "",
+   "context": 32768,
+   "depth": 0.1
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 34243,
+   "completion_tokens": 76,
+   "finish_reason": "stop",
+   "seconds": 25.4,
+   "content_tail": "\n\nBANANA42",
+   "reasoning_tail": "",
+   "context": 32768,
+   "depth": 0.5
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 34243,
+   "completion_tokens": 128,
+   "finish_reason": "stop",
+   "seconds": 26.3,
+   "content_tail": "\n\nBANANA42",
+   "reasoning_tail": "",
+   "context": 32768,
+   "depth": 0.9
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 138184,
+   "completion_tokens": 83,
+   "finish_reason": "stop",
+   "seconds": 177.2,
+   "content_tail": "\n\nBANANA42",
+   "reasoning_tail": "",
+   "context": 131072,
+   "depth": 0.1
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 138185,
+   "completion_tokens": 157,
+   "finish_reason": "stop",
+   "seconds": 178.7,
+   "content_tail": "\n\nBANANA42",
+   "reasoning_tail": "",
+   "context": 131072,
+   "depth": 0.5
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 138185,
+   "completion_tokens": 85,
+   "finish_reason": "stop",
+   "seconds": 178.4,
+   "content_tail": "\n\nBANANA42",
+   "reasoning_tail": "",
+   "context": 131072,
+   "depth": 0.9
+  }
+ ],
+ "score": 1.0
+}

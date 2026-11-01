@@ -177,6 +177,12 @@ Curve and method: [extend cost receipt](profiling/laguna-extend-cost-2026-07-19.
 `--enable-cache-report` (without it, cache hits cannot be verified and the harness records
 `cache_hit_verified: false` rather than assuming). Disposition in [FINDINGS.md](FINDINGS.md).
 
+The 2026-10-31 → 11-01 round on the same tax: [`profiling/extend-splitkv-route-2026-10-31.md`](profiling/extend-splitkv-route-2026-10-31.md)
+(patch 107, Laguna ≤ 16-token turns through the split-KV verify kernel, 2.2× at 158K) and
+[`profiling/extend-attention-fp8qk-qwen38-2026-10-31.md`](profiling/extend-attention-fp8qk-qwen38-2026-10-31.md)
+(patch 108: the gfx1201 extend kernel is compute-bound, the fp8 QK dot takes qwen38's 197K cold prefill 332 → 211 s and
+the 1-token turn at 176K 10.1 → 5.7 s; kernel JSON `extend-attention-tile-fp8qk-qwen38-2026-10-31.json`).
+
 Final experiment conclusions are consolidated in [FINDINGS.md](FINDINGS.md).
 
 ## Measurement method

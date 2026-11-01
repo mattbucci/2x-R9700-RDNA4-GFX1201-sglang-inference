@@ -267,8 +267,25 @@ serving path already has). Narrow by construction: the verify kernel's 32-row ti
 radix cache hit 0 / 49,152 / 114,688 / 172,032 tokens for 7.4K / 52K / 117K / 176K prompts; a 1-token turn at 176K
 costs 10.1 s), so the route cannot fire there. The attribution behind that number is the finding: extend attention
 re-reads the prefix KV once per 64-query block **and** once per query head (12 per KV head on qwen38), ~1.4 TFLOPS
-effective, in every chunked-prefill step — a GQA-packed extend kernel is the main prefill lever left (197K cold prefill
-330 s). Receipt: [`profiling/extend-splitkv-route-2026-10-31.md`](profiling/extend-splitkv-route-2026-10-31.md).
+effective, in every chunked-prefill step — which read as a bytes problem (197K cold prefill 330 s); the next section
+overturns that reading. Receipt: [`profiling/extend-splitkv-route-2026-10-31.md`](profiling/extend-splitkv-route-2026-10-31.md).
+
+## fp8 QK dot in gfx1201 extend attention — patch 108, qwen38 default (2026-11-01)
+
+[R97-Q](../experiments/17-extend-attention-fp8-qk-gfx1201.md). The "12× redundant prefix re-read" attribution above was
+wrong in kind: a 128-row tile (half the prefix passes) saved 3 % and 128-wide KV tiles were 1.5× slower, so concurrent
+programs already share KV tiles through L2/MALL and `extend_attention_fwd` is compute/latency-bound at ~17 TFLOPS
+(~18 % of bf16 WMMA peak) inside the prefix loop. GQA packing was dropped before writing it. The lever is the prefix QK
+dot: the gfx1201 branch upcast the FP8 cache K to bf16 (`dot(q, k.to(bf16))`); the fp8 WMMA form every non-RDNA platform
+runs (`dot(q.to(fp8), k)`) is 1.6–1.9× faster per layer at K = 512–4096 over 49K–172K prefixes at cos 0.99959 vs 0.99965
+against fp32 (max error 3.0 % vs 2.8 % of the output max — both inside the FP8-cache regime, where the softmax weights are
+already cast to fp8 for PV). Same-session serving A/B on the no-spec `qwen38` server: cold prefill 47.2 → 40.8 s at 58K
+(−13.5 %) and **332 → 211 s at 197K (−36 %)**, 1-token cache-hit turn 3.08 → 2.20 s at 52K and **10.1 → 5.7 s at 176K**,
+decode untouched, natural-haystack needle grid 32K / 131K / 197K × 0.1 / 0.5 / 0.9 **9/9 on both arms**, capabilities
+5/5; confirmed on the DSpark (default) preset with the arms in the reverse order: 48.2 → 41.2 s at 58K, 320 → 213 s at 197K,
+needle 6/6 on both arms, capabilities 5/5. Shipped as patch 108 (`SGLANG_EXTEND_FP8_QK`, plus a `SGLANG_EXTEND_TILE` sweep hook), default-on for `qwen38` in
+`launch.sh` (`EXTEND_FP8_QK=0` restores the upcast); the other FP8-cache presets stay opt-in until each runs its own
+needle A/B. Receipt: [`profiling/extend-attention-fp8qk-qwen38-2026-10-31.md`](profiling/extend-attention-fp8qk-qwen38-2026-10-31.md).
 
 ## Long-context attention
 

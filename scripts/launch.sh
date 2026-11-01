@@ -533,6 +533,12 @@ PYEOF
             CUDA_GRAPH=""
             EXTRA_ARGS="${EXTRA_ARGS:-} --cuda-graph-max-bs-decode 1"
             MAMBA_CACHE="--max-mamba-cache-size 8"
+            # R97-Q (patch 108, 2026-11-01): the gfx1201 extend-attention prefix QK runs as an fp8 WMMA dot
+            # (q downcast to the FP8 cache dtype, what every non-RDNA platform does) instead of upcasting K to
+            # bf16. Same-session no-spec A/B: cold prefill 47.2 -> 40.8 s at 58K and 332 -> 211 s at 197K,
+            # 1-token cache-hit turn 3.08 -> 2.20 s at 52K and 10.1 -> 5.7 s at 176K cached, needle grid 9/9
+            # on both arms, capabilities 5/5. EXTEND_FP8_QK=0 restores the bf16-upcast QK.
+            export SGLANG_EXTEND_FP8_QK="${EXTEND_FP8_QK:-1}"
             # DSpark speculative decoding is the qwen38 default since 2026-09-27:
             # RedHatAI/Qwen3.8-27B-speculator.dspark (gamma 8, sliding-window
             # draft) converted to the SGLang flat layout by
