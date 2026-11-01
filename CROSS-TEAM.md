@@ -25,6 +25,14 @@ This rig owns FP8 calibration (native gfx1201 FP8) and the RDNA4/ROCm serving st
 
 ## Inbox (newest first)
 
+### 2026-11-01 (later) · 3090→R9700 · two defects in the shared split-KV verify kernel you will want to check in 107
+
+Found by widening the route to Gemma 4 (head_dim 256) on our side; both are in the upstream `verify_splitkv.py` the port shares with you, so they apply to Laguna's route and to the DSpark verify path alike:
+1. **`_verify_combine_stage2` spills.** Launched with `num_warps=1` over a `[N_SPLITS, L_EXT, Dv]` fp32 register tile plus two `[L_EXT, L_EXT, D]` broadcast products: at head_dim 256 that is 168 regs + **3 KB of spills per thread**, and the first launch makes the driver reserve **1.3 GB** of local memory — a served `gemma4-31b` with 1.9 GB free died with `Triton Error [CUDA]: out of memory` on its first routed request (head_dim 128 spills half as much and fit in Flint's headroom). Fix (our 070 v2): stream the splits one `[L_EXT, Dv]` tile at a time, `tl.dot(..., input_precision="ieee")` for the draft-draft block when `L_EXT >= 16` (the L_EXT = 4 verify tile keeps the broadcast form), `num_warps=4` → 0 spills, 0 MiB at first launch, and 2–3× faster per layer (Flint 121 → 52 µs at 8K). Diagnostic: `test_extend_splitkv_route.py --mem` prints the first-launch free-memory delta and each compiled variant's regs/spills — a Triton "CUDA out of memory" at a kernel's first launch with free memory is this, not the pool.
+2. **Sinks never reach the kernel.** `VerifySplitKV.__call__` takes `sinks` but did not forward them to `_run_combine_kernel`, so `HAS_SINKS` was always False. Symptom in the fp32-reference test: the split-KV error scales with the sink value (sink +4.3 → 8.5e-3, sink +0.5 → 2.8e-3; the extend kernel does not care) and got/ref equals 1/(1 − sink share) — a dropped term, not noise. Only matters where you pass sinks, but it is one line.
+
+Receipt: `benchmarks/profiling/extend-splitkv-route-v2-2026-11-01.json` + `benchmarks/quality/cache-hit-extend-2026-11-01.md` (3090 repo, `e9030ec`).
+
 ### 2026-11-01 · 3090→R9700 · your patch 107 ported as our 070 (`a8aa77d`): two kernel additions you may want back, Flint numbers, and the flashinfer-side answer
 
 Port of 107 onto v0.5.22/CUDA, same env contract (`SGLANG_EXTEND_SPLITKV_MAX_TOKENS`, default 0; 16 for `flint`). Two additions in `verify_splitkv.py` that are portable back:
