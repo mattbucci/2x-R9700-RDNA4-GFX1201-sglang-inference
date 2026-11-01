@@ -48,6 +48,7 @@ documented in [`README.md`](../README.md#next-steps).
 | 13 | R97-M | [Instrument GPU thermals/power/clock and re-measure deep decode at thermal steady state](13-gpu-thermal-power-clock-steady-state-soak.md) | investigation | ready (spec only; sampler unbuilt, passive — piggybacks any deep-decode window) | r9700-box | ~0.5-1 day (~1h sampler, then a >=10-min soak + shallow control; ~1-2h GPU) |
 | 14 | R97-N | [Full-output-hash + determinism A/B gate and a depth-verified regression tripwire (baselines schema v2)](14-decode-ab-identity-and-depth-tripwire.md) | task | ready (spec only; mostly CPU + a short laguna window to arm baselines) | r9700-box | ~1-1.5 days (hashing + schema-v2 + tests on CPU; ~2-4h GPU to arm + backfill) |
 | 15 | R97-O | [Re-measure concurrency and quantify head-of-line blocking on the post-095 native-FP8 tree](15-concurrency-hol-blocking-postfp8-remeasure.md) | experiment | queued (spec only; no execution started) | r9700-box | ~1-1.5 days (~4-6h GPU: concurrency curve + HoL probe + Overlap A/B) |
+| 16 | R97-P | [DiffusionGemma structured reads on SGLang: adopt M4 patch 025, run end to end (TP=2 fits)](16-diffusiongemma-structured-reads.md) | experiment | ready (spec only; needs the pin bump to ≥ v0.5.23) | r9700-box | 1-2 d |
 
 ## Cross-rig edges touching this lane
 
