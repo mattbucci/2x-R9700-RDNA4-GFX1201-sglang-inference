@@ -3,43 +3,43 @@
   "engine": "SGLang v0.5.22 + 72 patches",
   "method": "completion-token-counted streaming TPOT median (decode_ab, 3-run)",
   "hardware": "2x R9700 TP=2",
-  "timestamp": "2026-10-31 v0.5.22+75p patch-106 (BM<=128 tiles) think-off",
+  "timestamp": "2026-11-01 v0.5.22+77p (dspark-ported) think-off",
   "output_tokens": 80,
   "context_sweep": [
     {
       "context": 128,
       "input_len": 24,
-      "tpot_ms": 28.15,
-      "tok_per_sec": 35.519
+      "tpot_ms": 22.58,
+      "tok_per_sec": 44.277
     },
     {
       "context": 8192,
       "input_len": 7331,
-      "tpot_ms": 21.95,
-      "tok_per_sec": 45.562
+      "tpot_ms": 19.6,
+      "tok_per_sec": 51.01
     },
     {
       "context": 65536,
       "input_len": 58483,
-      "tpot_ms": 23.2,
-      "tok_per_sec": 43.101
+      "tpot_ms": 22.11,
+      "tok_per_sec": 45.228
     },
     {
       "context": 221184,
       "input_len": 197326,
-      "tpot_ms": 32.71,
-      "tok_per_sec": 30.57
+      "tpot_ms": 30.21,
+      "tok_per_sec": 33.097
     }
   ],
   "throughput_sweep": [
     {
       "concurrency": 1,
-      "throughput": 35.519,
-      "tpot_ms": 28.15,
+      "throughput": 44.277,
+      "tpot_ms": 22.58,
       "ttft_ms": 0
     }
   ],
-  "note": "canonical 4-point re-sweep after patch 106 (gfx1201 block-FP8 GEMM configs), streaming-TPOT 3-run median",
+  "note": "verify split-KV combine-stage A/B (3090 070 v2 port): dspark-ported; streaming-TPOT 3-run median",
   "previous_context_sweep_v0520_2026_09_27": [
     {
       "context": 128,

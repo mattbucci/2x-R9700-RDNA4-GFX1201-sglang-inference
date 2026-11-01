@@ -18,13 +18,16 @@ new quality flagship Qwen3.8-27B-FP8.
   agentic ladder. North-Mini Code passes the same ladder 21/21 to 245,172 actual tokens.
 - **Qwen3.8-27B-FP8 is the quality flagship**: fleet-best LAB-Bench 42.3% (no-think multiple choice),
   MMLU 84.2%, HumanEval 93.3%, 7/7 agentic rungs to 245,150 actual tokens. Its preset is **DSpark
-  speculative decoding** through the split-KV verify kernel (patch 100): **35.5 / 45.6 / 43.1 / 30.6 tok/s
-  at 24 / 7.3K / 58K / 197K input** (canonical 3-run think-off sweep, v0.5.22 + patch 106, 2026-10-31) against
+  speculative decoding** through the split-KV verify kernel (patch 100): **44.3 / 51.0 / 45.2 / 33.1 tok/s
+  at 24 / 7.3K / 58K / 197K input** (canonical 3-run think-off sweep, v0.5.22 + patch 109, 2026-11-01; the same-session
+  arm on the previous verify kernel read 36.7 / 51.3 / 41.0 / 29.9) against
   23.0 / 22.5 / 21.8 / 20.2 on the no-spec server (`QWEN38_SPEC=0`, which keeps the 530K-token pool for
   true 256K work; the DSpark pool is 206K), 45.6 tok/s on thinking text at 58K, capability probe 5/5. Patch
   106's gfx1201 block-FP8 GEMM configs (2026-10-31) added +2–4 % decode and 1.5–2.5× cold prefill
   (197K prompt: 496 → 330 s) on both servers; patch 108's fp8 QK dot in extend attention (2026-11-01) took the 197K cold
-  prefill on to **211 s** and a 1-token cache-hit turn at 176K from 10.1 to 5.7 s, needle grid 9/9 on both arms.
+  prefill on to **211 s** and a 1-token cache-hit turn at 176K from 10.1 to 5.7 s, needle grid 9/9 on both arms; patch 109
+  (the 3090's combine-stage rewrite of the shared split-KV verify kernel, 2026-11-01) added +10–21 % DSpark decode at 24 /
+  58K / 197K with bit-identical numerics.
   Its seven-scaffold SWE-bench Lite bake-off (v5, 300 instances per cell, every scaffold sandboxed in
   the official instance image) has rolled and audited all 2,100 instances; Docker scoring is owed — see
   SWE-bench Lite below.
@@ -189,7 +192,9 @@ operational history behind each item lives in the document it links, not here.
      fire on qwen38.
    - **fp8 QK on the other FP8-cache presets** (north-mini, gemma4, qwen35/36, coder): opt-in `SGLANG_EXTEND_FP8_QK=1`
      until each runs its own needle-grid A/B.
-   - Extend-kernel follow-ups: exp2 softmax, `num_stages` pipelining, the split-KV route for 16 < K ≤ 128.
+   - Extend-kernel follow-ups: exp2 softmax, `num_stages` pipelining, the split-KV route for 16 < K ≤ 128; the verify
+     combine kernel still spills 346 registers at head_dim 256 after patch 109 (a warp/tile sweep), and patch 107's
+     dispatch gate can admit sink models (Flint) now that the kernel carries the sink term (4/4 cells at the route gate).
 6. **256K ladder across the agentic-qualified fleet** ([R97-I](experiments/09-fleet-ladder-per-model-rungs.md)), including Nemotron's 2K/8K
    budget arms and the Devstral `KV_DTYPE` control.
 7. **EAGLE3 drafts in the `--spec` lane, depth curve** ([R97-A](experiments/04-eagle3-dense-vl-spec-lane-depth-curve.md)).
@@ -241,7 +246,7 @@ backend, quantization path, parsers, memory settings, and graph policy.
 | Component | Version |
 |---|---|
 | GPUs | 2× AMD Radeon AI PRO R9700, gfx1201, 32 GiB each |
-| SGLang | v0.5.22 + 77 patches |
+| SGLang | v0.5.22 + 78 patches |
 | Python | 3.12 |
 | PyTorch | 2.11.0+rocm7.2 |
 | ROCm | 7.2 |

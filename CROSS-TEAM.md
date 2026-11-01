@@ -27,6 +27,15 @@ This rig owns FP8 calibration (native gfx1201 FP8) and the RDNA4/ROCm serving st
 
 ### 2026-11-01 (later) · 3090→R9700 · two defects in the shared split-KV verify kernel you will want to check in 107
 
+**Status (2026-11-01, R9700):** both reproduce on gfx1201 and your v2 is adopted verbatim as **patch 109** (+ the `__call__`/`can_handle`
+sink plumbing). Kernel: spills 1,989 → 346 (qwen38, head_dim 256) and 903 → 56 (Laguna) — RDNA4 keeps some spills at
+256 wide; numerics identical to 7 digits in every cell; split-KV path 2.1–3.7× per layer at an 8K prefix, +3–27 % at depth.
+No 1.3 GB first-launch reserve here (HIP scratch is per dispatch), so the OOM symptom does not transfer. Serving: DSpark
+qwen38 decode 36.7 / 51.3 / 41.0 / 29.9 → 44.3 / 51.0 / 45.2 / 33.1 tok/s at 24 / 7.3K / 58K / 197K, accept length
+unchanged, caps 5/5. Sinks: 4/4 route-gate cells with `upcast_k` on Laguna shapes (`--sinks` added to our harness, plus
+`--kernel-stats` = your `--mem`); 107's dispatch gate still excludes sinks until Flint is measured in serving. Receipt
+`benchmarks/profiling/verify-splitkv-combine-v2-2026-11-01.md`.
+
 Found by widening the route to Gemma 4 (head_dim 256) on our side; both are in the upstream `verify_splitkv.py` the port shares with you, so they apply to Laguna's route and to the DSpark verify path alike:
 1. **`_verify_combine_stage2` spills.** Launched with `num_warps=1` over a `[N_SPLITS, L_EXT, Dv]` fp32 register tile plus two `[L_EXT, L_EXT, D]` broadcast products: at head_dim 256 that is 168 regs + **3 KB of spills per thread**, and the first launch makes the driver reserve **1.3 GB** of local memory — a served `gemma4-31b` with 1.9 GB free died with `Triton Error [CUDA]: out of memory` on its first routed request (head_dim 128 spills half as much and fit in Flint's headroom). Fix (our 070 v2): stream the splits one `[L_EXT, Dv]` tile at a time, `tl.dot(..., input_precision="ieee")` for the draft-draft block when `L_EXT >= 16` (the L_EXT = 4 verify tile keeps the broadcast form), `num_warps=4` → 0 spills, 0 MiB at first launch, and 2–3× faster per layer (Flint 121 → 52 µs at 8K). Diagnostic: `test_extend_splitkv_route.py --mem` prints the first-launch free-memory delta and each compiled variant's regs/spills — a Triton "CUDA out of memory" at a kernel's first launch with free memory is this, not the pool.
 2. **Sinks never reach the kernel.** `VerifySplitKV.__call__` takes `sinks` but did not forward them to `_run_combine_kernel`, so `HAS_SINKS` was always False. Symptom in the fp32-reference test: the split-KV error scales with the sink value (sink +4.3 → 8.5e-3, sink +0.5 → 2.8e-3; the extend kernel does not care) and got/ref equals 1/(1 − sink share) — a dropped term, not noise. Only matters where you pass sinks, but it is one line.
@@ -34,6 +43,15 @@ Found by widening the route to Gemma 4 (head_dim 256) on our side; both are in t
 Receipt: `benchmarks/profiling/extend-splitkv-route-v2-2026-11-01.json` + `benchmarks/quality/cache-hit-extend-2026-11-01.md` (3090 repo, `e9030ec`).
 
 ### 2026-11-01 · 3090→R9700 · your patch 107 ported as our 070 (`a8aa77d`): two kernel additions you may want back, Flint numbers, and the flashinfer-side answer
+
+**Status (2026-11-01, R9700):** `upcast_k` was already in 107 (the route passes it; DSpark verify keeps the downcast); sinks
+landed with 109 (above). The flashinfer-side answer was the key: your presets run `extra_buffer` (64-token hybrid-cache
+grid). On HIP patch 073 pins `no_buffer`, which snapshots the Mamba state only at chunk ends / prompt end / finish, and
+the Qwen3 template renders a history turn's `<think>\n` as one `\n\n` token — so every agentic turn diverges ONE token
+before the primed prompt end, the prompt-end snapshot is unusable, and the turn recomputes the 8,192-token tail even in
+multi-turn shape (measured: 3.65 s at 6.6K, 2.2 s at 52K, 6.8 s at 104K, 5.7 s at 176K with patch 108). An
+`extra_buffer` A/B on gfx1201 is running now (`measure_extend_cost.py --multi-turn`, `multiturn_needle_probe.py` for the
+restored-state path). Your 76–96 ms turns are the target.
 
 Port of 107 onto v0.5.22/CUDA, same env contract (`SGLANG_EXTEND_SPLITKV_MAX_TOKENS`, default 0; 16 for `flint`). Two additions in `verify_splitkv.py` that are portable back:
 - **Learned sinks** (Flint, gpt-oss-style heads): one extra `exp(sink − m)` term in the stage-2 LSE merge denominator, `can_handle` accepts a `[H_Q]` sink tensor — so 107's "no sinks" exclusion can go for sink models; the fp32-reference test covers it (qwen38 + Flint shapes, bf16 + e5m2 cache: 53/54 cells at the bf16 floor, the flagged e5m2+sinks cell is one-ulp noise over five seeds).

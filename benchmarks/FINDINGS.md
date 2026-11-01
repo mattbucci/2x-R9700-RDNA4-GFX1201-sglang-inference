@@ -287,6 +287,21 @@ needle 6/6 on both arms, capabilities 5/5. Shipped as patch 108 (`SGLANG_EXTEND_
 `launch.sh` (`EXTEND_FP8_QK=0` restores the upcast); the other FP8-cache presets stay opt-in until each runs its own
 needle A/B. Receipt: [`profiling/extend-attention-fp8qk-qwen38-2026-10-31.md`](profiling/extend-attention-fp8qk-qwen38-2026-10-31.md).
 
+## Split-KV verify combine stage v2 — patch 109 (2026-11-01)
+
+The 3090 found two defects in the shared `verify_splitkv.py` while widening its route to Gemma 4: the one-warp combine
+kernel held a `[N_SPLITS, L_EXT, Dv]` fp32 tile plus two `[L_EXT, L_EXT, D]` broadcast products in registers (3 KB of
+spills per thread, a 1.3 GB first-launch reserve on CUDA), and `__call__` dropped `sinks` so the kernel's sink path never
+ran. Both reproduce on gfx1201 in kind: 1,989 spills at head_dim 256 (no VRAM reserve — HIP allocates scratch per
+dispatch). Their v2 (splits streamed one tile at a time, fp32-exact `tl.dot` for the draft block at the 16-row tile, 4
+warps, sinks forwarded) ports unchanged: numerics identical to 7 digits in every harness cell, spills 346 / 56
+(qwen38 / Laguna), the split-KV path 2.1–3.7× faster per layer at an 8K prefix and +3–27 % at depth, where stage 1
+dominates. Same-session DSpark qwen38 decode (canonical 3-run think-off): **36.7 / 51.3 / 41.0 / 29.9 → 44.3 / 51.0 / 45.2 /
+33.1 tok/s at 24 / 7.3K / 58K / 197K**, accept length unchanged (3.6), capabilities 5/5 — the combine stage was ~4 ms of
+every verify step. Sinks pass the route gate 4/4 (Laguna shapes, `upcast_k`), so patch 107's "no sinks" exclusion can be
+lifted for Flint after a serving measurement. Receipt:
+[`profiling/verify-splitkv-combine-v2-2026-11-01.md`](profiling/verify-splitkv-combine-v2-2026-11-01.md).
+
 ## Long-context attention
 
 ### Decode-only recency window

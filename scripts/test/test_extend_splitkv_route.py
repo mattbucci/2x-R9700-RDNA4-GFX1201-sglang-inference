@@ -37,8 +37,9 @@ PRESETS = {
 }
 
 
-def fp32_reference(q, k_ext, v_ext, k_buf, v_buf, kv_indices, k_scale, v_scale, sm_scale):
-    """Exact attention in fp32: prefix (dequantised cache) + causal suffix, per q head (GQA group mapping)."""
+def fp32_reference(q, k_ext, v_ext, k_buf, v_buf, kv_indices, k_scale, v_scale, sm_scale, sinks=None):
+    """Exact attention in fp32: prefix (dequantised cache) + causal suffix, per q head (GQA group mapping).
+    A learned sink is one extra logit per head with no value row (it only joins the softmax denominator)."""
     K, h_q, d = q.shape
     h_kv = k_ext.shape[1]
     grp = h_q // h_kv
@@ -53,8 +54,10 @@ def fp32_reference(q, k_ext, v_ext, k_buf, v_buf, kv_indices, k_scale, v_scale, 
         ls = qh @ k_ext[:, kh, :].float().T * sm_scale            # [K, K]
         ls = ls.masked_fill(~causal, float("-inf"))
         logits = torch.cat([lp, ls], dim=1)
+        if sinks is not None:
+            logits = torch.cat([logits, sinks[h].float().expand(K, 1)], dim=1)
         pr = torch.softmax(logits, dim=1)
-        out[:, h, :] = pr[:, :lp.shape[1]] @ Vp[:, kh, :] + pr[:, lp.shape[1]:] @ v_ext[:, kh, :].float()
+        out[:, h, :] = pr[:, :lp.shape[1]] @ Vp[:, kh, :] + pr[:, lp.shape[1]:lp.shape[1] + K] @ v_ext[:, kh, :].float()
     return out
 
 
@@ -91,10 +94,14 @@ def main() -> int:
     ap.add_argument("--time-extend-only", action="store_true", help="only time extend_attention_fwd (no split-KV call, no fp32 reference): chunk-sized K")
     ap.add_argument("--tile-ab", default=None, help="BM,BN,WARPS: compare extend_attention_fwd under this tile against the default tile (and fp32) instead of the split-KV kernel")
     ap.add_argument("--qk-ab", action="store_true", help="compare extend_attention_fwd with the fp8 QK dot (SGLANG_EXTEND_FP8_QK) against the default upcast path (and fp32)")
+    ap.add_argument("--sinks", action="store_true", help="learned per-head sinks (random [H_Q] fp32 logits) in the fp32 reference and both kernels")
+    ap.add_argument("--kernel-stats", action="store_true", help="report the free-memory delta across the split-KV kernels' first launch and each compiled variant's regs/spills")
+    ap.add_argument("--label", default="", help="free-text tag recorded in the JSON (e.g. the kernel variant under test)")
     ap.add_argument("--out", default=None)
     a = ap.parse_args()
     from sglang.kernels.ops.attention import extend_attention as ea
     from sglang.kernels.ops.attention.extend_attention import extend_attention_fwd
+    from sglang.kernels.ops.attention import verify_splitkv as vs
     from sglang.kernels.ops.attention.verify_splitkv import verify_splitkv_fwd
     tile_ab = tuple(int(x) for x in a.tile_ab.split(",")) if a.tile_ab else None
 
@@ -107,6 +114,8 @@ def main() -> int:
     v_scale = 0.05 if kv_dtype == torch.float8_e4m3fn else 1.0
     results = []
     worst = {"max_ulp": 0.0, "min_cos": 1.0}
+    sinks = (torch.randn(p["h_q"], device=dev) * 2).float() if a.sinks else None
+    first_launch = {"pending": a.kernel_stats, "free_delta_mb": None}
     for P in [int(x) for x in a.prefixes.split(",")]:
         pool_n = P + 1024
         k_buf = (torch.randn(pool_n, p["h_kv"], p["head_dim"], device=dev) * (6.0 if kv_dtype == torch.float8_e4m3fn else 0.5)).to(kv_dtype)
@@ -128,7 +137,7 @@ def main() -> int:
                 if a.qk_ab:
                     ea._EXTEND_FP8_QK = False
                 extend_attention_fwd(q, k_ext, v_ext, o_ref, k_buf, v_buf, qo_indptr, kv_indptr, kv_indices, None, True, None, K,
-                                     k_scale, v_scale, sm_scale=sm_scale, logit_cap=0.0)
+                                     k_scale, v_scale, sm_scale=sm_scale, logit_cap=0.0, sinks=sinks)
 
             def cand():
                 if a.qk_ab:   # same kernel, fp8 QK dot
@@ -148,9 +157,19 @@ def main() -> int:
                         ea._EXTEND_TILE_OVERRIDE = None
                     return True
                 return verify_splitkv_fwd(q, k_ext, v_ext, o_new, k_buf, v_buf, qo_indptr, kv_indptr, kv_indices, None, True, None, K,
-                                          k_scale, v_scale, sm_scale=sm_scale, logit_cap=0.0, max_bs=1)
+                                          k_scale, v_scale, sm_scale=sm_scale, logit_cap=0.0, sinks=sinks, max_bs=1)
 
             ref()
+            if first_launch["pending"]:
+                # a Triton "out of memory" at a kernel's FIRST launch with free VRAM is the driver reserving scratch
+                # (register spills) for every lane, not the KV pool: measure that reserve once (3090 070 v2 finding)
+                torch.cuda.synchronize(); free0 = torch.cuda.mem_get_info()[0]
+                try:
+                    cand(); torch.cuda.synchronize()
+                except Exception:
+                    pass
+                first_launch = {"pending": False, "free_delta_mb": round((free0 - torch.cuda.mem_get_info()[0]) / 2**20, 1)}
+                print(f"first split-KV launch: free VRAM delta {first_launch['free_delta_mb']} MB", flush=True)
             if a.time_extend_only:
                 t_ref = time_us(ref, iters=3, repeats=3)
                 nbytes = P * p["h_kv"] * (p["head_dim"] + p["v_head_dim"]) * (1 if kv_dtype == torch.float8_e4m3fn else 2)
@@ -173,7 +192,7 @@ def main() -> int:
                 results.append({"prefix": P, "K": K, "status": "can_handle=False"})
                 print(f"P={P:>7} K={K:>4}  can_handle=False", flush=True)
                 continue
-            ref32 = fp32_reference(q, k_ext, v_ext, k_buf, v_buf, kv_indices, k_scale, v_scale, sm_scale)
+            ref32 = fp32_reference(q, k_ext, v_ext, k_buf, v_buf, kv_indices, k_scale, v_scale, sm_scale, sinks)
             e_ext = err_vs(ref32, o_ref); e_new = err_vs(ref32, o_new)
             r = o_ref.float(); n = o_new.float()
             refmax = r.abs().max().item()
@@ -193,7 +212,20 @@ def main() -> int:
             print(f"P={P:>7} K={K:>4}  {row['status']:17s} err/refmax extend {e_ext['max_err_over_refmax']:.5f} splitkv {e_new['max_err_over_refmax']:.5f}  "
                   f"rms {e_ext['rms_err']:.6f} / {e_new['rms_err']:.6f}  cos {e_ext['cosine']:.6f} / {e_new['cosine']:.6f}  "
                   f"extend {t_ref:9.1f} us  splitkv {t_new:9.1f} us  x{row['speedup']:.2f}", flush=True)
+    kernel_stats = []
+    if a.kernel_stats:
+        for name in ("_verify_prefix_stage1", "_verify_combine_stage2"):
+            fn = getattr(vs, name, None)
+            if fn is None:
+                continue
+            for kernel_cache in (c[0] for c in fn.device_caches.values()):
+                for kern in kernel_cache.values():
+                    kernel_stats.append({"kernel": name, "n_regs": getattr(kern, "n_regs", None), "n_spills": getattr(kern, "n_spills", None),
+                                         "constants": {k: v for k, v in (getattr(kern.metadata, "_asdict", lambda: {})() or {}).items() if k in ("num_warps", "num_stages")}})
+        for ks in kernel_stats:
+            print(f"kernel {ks['kernel']:24s} regs {ks['n_regs']}  spills {ks['n_spills']}  {ks['constants']}", flush=True)
     rec = {"preset": a.preset, "shape": p, "kv_dtype": a.kv_dtype, "k_scale": k_scale, "v_scale": v_scale, "device": torch.cuda.get_device_name(0),
+           "label": a.label, "sinks": a.sinks, "first_launch_free_delta_mb": first_launch["free_delta_mb"], "kernel_stats": kernel_stats,
            "upcast_k": os.environ.get("SGLANG_SPLITKV_UPCAST_K", "default"), "tile_ab": a.tile_ab, "qk_ab": a.qk_ab,
            "gate": "vs fp32 reference: finite, cosine >= min(0.9999, extend cosine - 2e-5), max and rms error <= 1.25x the extend kernel's own", "worst": worst, "rows": results,
            "timestamp": time.strftime("%Y-%m-%d %H:%M")}
