@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | **Type** | optimization |
-| **Status** | arm A shipped 2026-10-31 as patch 107 (K ≤ 16 new tokens, Laguna 2.2× on the 1-token turn at 158K); arm B superseded by R97-Q (experiments/17: the kernel is compute-bound, the fp8 QK dot shipped as patch 108) |
+| **Status** | arm A shipped 2026-10-31 as patch 107 (K ≤ 16, Laguna 2.2× on the 1-token turn at 158K) and widened 2026-11-01 as patch 110 (64-row chunks, K ≤ 256, qwen38 + Laguna: qwen38 1-token turn at 176K 600 → 168 ms warmed, Laguna 16–128-token turns 2.1×); arm B superseded by R97-Q (patch 108) |
 | **Execution host** | r9700-box |
 | **Wall clock** | ~1–2 days: kernel work and an isolated numerical gate on CPU/GPU, then A/B plus a ladder re-run |
 | **GPU time** | ~4–6h: isolated reproducer, extend-cost curve at two depths per arm, decode no-regression check, three-seed ladder |

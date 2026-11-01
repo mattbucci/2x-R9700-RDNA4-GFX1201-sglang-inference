@@ -1,0 +1,118 @@
+diff --git a/python/sglang/srt/layers/attention/triton_backend.py b/python/sglang/srt/layers/attention/triton_backend.py
+index 409f30f..18042df 100644
+--- a/python/sglang/srt/layers/attention/triton_backend.py
++++ b/python/sglang/srt/layers/attention/triton_backend.py
+@@ -54,6 +54,10 @@ _TREE_VERIFY_SPLITKV = os.environ.get("SGLANG_TREE_VERIFY_SPLITKV", "") in ("1",
+ # RDNA4 R97-J: route short cache-hit extends (K <= MAX new tokens on a prefix >= MIN_PREFIX) through the
+ # split-KV verify kernel. 0 (default) = off; the A/B receipt sets the shipped value.
+ _EXTEND_SPLITKV_MAX = int(os.environ.get("SGLANG_EXTEND_SPLITKV_MAX_TOKENS", "0") or 0)
++# Rows per split-KV call. New tokens beyond one tile are served in consecutive chunks, each attending to the prefix plus
++# the new tokens before it (already in the KV pool) and causally within itself. 64 is the widest tile that compiles on
++# Triton 3.6 at head_dim 256 (128 stalls); 16 is the WMMA floor.
++_EXTEND_SPLITKV_TILE = int(os.environ.get("SGLANG_EXTEND_SPLITKV_TILE", "64") or 64)
+ _EXTEND_SPLITKV_MIN_PREFIX = int(os.environ.get("SGLANG_EXTEND_SPLITKV_MIN_PREFIX", "4096") or 0)
+ from sglang.srt.runtime_context import get_exec, get_parallel, get_schedule, get_spec
+ from sglang.srt.speculative.spec_utils import (
+@@ -1897,46 +1901,69 @@ class TritonAttnBackend(AttentionBackend):
+             and forward_batch.extend_prefix_lens_cpu[0] >= _EXTEND_SPLITKV_MIN_PREFIX
+         ):
+             n_new = int(forward_batch.extend_seq_lens_cpu[0])
+-            n_pad = max(16, triton.next_power_of_2(n_new))
++            n_prefix = int(forward_batch.extend_prefix_lens_cpu[0])
++            tile = max(16, _EXTEND_SPLITKV_TILE)
+             q3 = q.view(-1, layer.tp_q_head_num, layer.qk_head_dim)
+             k3 = k.contiguous().view(-1, layer.tp_k_head_num, layer.qk_head_dim)
+             v3 = v.contiguous().view(-1, layer.tp_k_head_num, layer.v_head_dim)
+-            if n_pad != n_new:
+-                pad = n_pad - n_new
+-                q3 = torch.cat([q3, q3.new_zeros((pad,) + q3.shape[1:])])
+-                k3 = torch.cat([k3, k3.new_zeros((pad,) + k3.shape[1:])])
+-                v3 = torch.cat([v3, v3.new_zeros((pad,) + v3.shape[1:])])
+-            o3 = q3.new_empty((n_pad, layer.tp_q_head_num, layer.v_head_dim))
+-            qo_pad = self._extend_splitkv_qo_indptr(n_pad, q.device)
+-            # the split-KV entry itself, not verify_fwd: that handle only exists on a topk==1 speculative server
+-            if self.verify_splitkv_fwd(
+-                q3,
+-                k3,
+-                v3,
+-                o3,
+-                self.token_to_kv_pool.get_key_buffer(layer.layer_id),
+-                self.token_to_kv_pool.get_value_buffer(layer.layer_id),
+-                qo_pad,
+-                kv_indptr,
+-                kv_indices,
+-                None,
+-                True,
+-                None,
+-                n_pad,
+-                k_descale,
+-                v_descale,
+-                layer.scaling,
+-                logit_cap=0.0,
+-                max_bs=1,
+-                upcast_k=True,  # match extend_attention_fwd's gfx1201 prefix numerics
+-            ):
++            o_full = o.view(-1, layer.tp_q_head_num, layer.v_head_dim)
++            k_buf = self.token_to_kv_pool.get_key_buffer(layer.layer_id)
++            v_buf = self.token_to_kv_pool.get_value_buffer(layer.layer_id)
++            # the extend kernel's gfx1201 prefix QK upcasts the fp8 cache K to bf16 unless patch 108's fp8 QK is on;
++            # the route follows it so the two paths stay in the same numerics class
++            from sglang.kernels.ops.attention import extend_attention as _ea
++            upcast_k = not getattr(_ea, "_EXTEND_FP8_QK", False)
++            # new tokens' K/V are already in the pool (set_kv_buffer ran above); chunk c attends to the prefix plus the
++            # new tokens before it through kv_indices, and causally to its own rows through k3/v3
++            new_slots = forward_batch.out_cache_loc.to(kv_indices.dtype)
++            ran = True
++            for start in range(0, n_new, tile):
++                n_c = min(tile, n_new - start)
++                n_pad = max(16, triton.next_power_of_2(n_c))
++                qc, kc, vc = q3[start:start + n_c], k3[start:start + n_c], v3[start:start + n_c]
++                if n_pad != n_c:
++                    pad = n_pad - n_c
++                    qc = torch.cat([qc, qc.new_zeros((pad,) + qc.shape[1:])])
++                    kc = torch.cat([kc, kc.new_zeros((pad,) + kc.shape[1:])])
++                    vc = torch.cat([vc, vc.new_zeros((pad,) + vc.shape[1:])])
++                oc = qc.new_empty((n_pad, layer.tp_q_head_num, layer.v_head_dim))
++                if start == 0:
++                    kv_indptr_c, kv_indices_c = kv_indptr, kv_indices
++                else:
++                    kv_indices_c = torch.cat([kv_indices[:n_prefix], new_slots[:start]])
++                    kv_indptr_c = torch.tensor([0, n_prefix + start], dtype=kv_indptr.dtype, device=q.device)
++                # the split-KV entry itself, not verify_fwd: that handle only exists on a topk==1 speculative server
++                if not self.verify_splitkv_fwd(
++                    qc,
++                    kc,
++                    vc,
++                    oc,
++                    k_buf,
++                    v_buf,
++                    self._extend_splitkv_qo_indptr(n_pad, q.device),
++                    kv_indptr_c,
++                    kv_indices_c,
++                    None,
++                    True,
++                    None,
++                    n_pad,
++                    k_descale,
++                    v_descale,
++                    layer.scaling,
++                    logit_cap=0.0,
++                    max_bs=1,
++                    upcast_k=upcast_k,
++                ):
++                    ran = False
++                    break
++                o_full[start:start + n_c].copy_(oc[:n_c])
++            if ran:
+                 if not getattr(self, "_extend_splitkv_logged", False):
+                     self._extend_splitkv_logged = True
+                     logger.info(
+-                        "extend split-KV route active: %d new tokens (padded %d) on a %d-token prefix, layer %d",
+-                        n_new, n_pad, int(forward_batch.extend_prefix_lens_cpu[0]), layer.layer_id,
++                        "extend split-KV route active: %d new tokens in %d-row chunks (upcast_k=%s) on a %d-token prefix, layer %d",
++                        n_new, tile, upcast_k, n_prefix, layer.layer_id,
+                     )
+-                o.view(-1, layer.tp_q_head_num, layer.v_head_dim).copy_(o3[:n_new])
+                 return o
+ 
+         # RDNA4 task #10 (opt-in): split-KV tree-verify reads the deep prefix KV split across

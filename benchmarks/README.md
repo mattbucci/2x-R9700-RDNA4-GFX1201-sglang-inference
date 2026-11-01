@@ -181,7 +181,11 @@ The 2026-10-31 → 11-01 round on the same tax: [`profiling/extend-splitkv-route
 (patch 107, Laguna ≤ 16-token turns through the split-KV verify kernel, 2.2× at 158K) and
 [`profiling/extend-attention-fp8qk-qwen38-2026-10-31.md`](profiling/extend-attention-fp8qk-qwen38-2026-10-31.md)
 (patch 108: the gfx1201 extend kernel is compute-bound, the fp8 QK dot takes qwen38's 197K cold prefill 332 → 211 s and
-the 1-token turn at 176K 10.1 → 5.7 s; kernel JSON `extend-attention-tile-fp8qk-qwen38-2026-10-31.json`).
+the 1-token turn at 176K 10.1 → 5.7 s; kernel JSON `extend-attention-tile-fp8qk-qwen38-2026-10-31.json`), then
+[`profiling/hybrid-cache-extra-buffer-qwen38-2026-11-01.md`](profiling/hybrid-cache-extra-buffer-qwen38-2026-11-01.md)
+(R97-R: 64-token Mamba checkpoints, 5.7 → 0.82 s) and
+[`profiling/extend-splitkv-route-wide-2026-11-01.md`](profiling/extend-splitkv-route-wide-2026-11-01.md) (patch 110:
+64-row chunked route, 0.82 → 0.17–0.35 s).
 
 Final experiment conclusions are consolidated in [FINDINGS.md](FINDINGS.md).
 

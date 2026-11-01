@@ -27,6 +27,7 @@ import sys
 import time
 
 import torch
+import triton
 
 sys.path.insert(0, "/data/sgl-v0522/python")
 
@@ -94,6 +95,8 @@ def main() -> int:
     ap.add_argument("--time-extend-only", action="store_true", help="only time extend_attention_fwd (no split-KV call, no fp32 reference): chunk-sized K")
     ap.add_argument("--tile-ab", default=None, help="BM,BN,WARPS: compare extend_attention_fwd under this tile against the default tile (and fp32) instead of the split-KV kernel")
     ap.add_argument("--qk-ab", action="store_true", help="compare extend_attention_fwd with the fp8 QK dot (SGLANG_EXTEND_FP8_QK) against the default upcast path (and fp32)")
+    ap.add_argument("--route-chunk", type=int, default=0, help="emulate patch 107's chunked dispatch: new tokens in consecutive tiles of this many rows, each attending to the prefix plus the earlier new tokens through the (fp8) pool, causally within itself")
+    ap.add_argument("--extend-fp8-qk", action="store_true", help="run the extend reference with the fp8 QK dot (patch 108, the qwen38 default) instead of the bf16 upcast")
     ap.add_argument("--sinks", action="store_true", help="learned per-head sinks (random [H_Q] fp32 logits) in the fp32 reference and both kernels")
     ap.add_argument("--kernel-stats", action="store_true", help="report the free-memory delta across the split-KV kernels' first launch and each compiled variant's regs/spills")
     ap.add_argument("--label", default="", help="free-text tag recorded in the JSON (e.g. the kernel variant under test)")
@@ -115,6 +118,8 @@ def main() -> int:
     results = []
     worst = {"max_ulp": 0.0, "min_cos": 1.0}
     sinks = (torch.randn(p["h_q"], device=dev) * 2).float() if a.sinks else None
+    if a.extend_fp8_qk:
+        ea._EXTEND_FP8_QK = True
     first_launch = {"pending": a.kernel_stats, "free_delta_mb": None}
     for P in [int(x) for x in a.prefixes.split(",")]:
         pool_n = P + 1024
@@ -130,6 +135,11 @@ def main() -> int:
             qo_indptr = torch.tensor([0, K], device=dev, dtype=torch.int32)
             o_ref = torch.empty(K, p["h_q"], p["v_head_dim"], device=dev, dtype=torch.bfloat16)
             o_new = torch.empty_like(o_ref)
+            if a.route_chunk:
+                # the server writes the new tokens' K/V into the pool before attention; mirror that in spare slots
+                new_slots = perm[P:P + K].contiguous()
+                k_buf[new_slots] = (k_ext / k_scale).to(kv_dtype)
+                v_buf[new_slots] = (v_ext / v_scale).to(kv_dtype)
 
             def ref():
                 if tile_ab is not None:
@@ -140,6 +150,23 @@ def main() -> int:
                                      k_scale, v_scale, sm_scale=sm_scale, logit_cap=0.0, sinks=sinks)
 
             def cand():
+                if a.route_chunk:   # chunked split-KV route (triton_backend.py dispatch, emulated)
+                    tile = max(16, a.route_chunk)
+                    for start in range(0, K, tile):
+                        n_c = min(tile, K - start); n_pad = max(16, triton.next_power_of_2(n_c))
+                        qc, kc, vc = q[start:start + n_c], k_ext[start:start + n_c], v_ext[start:start + n_c]
+                        if n_pad != n_c:
+                            pad = n_pad - n_c
+                            qc = torch.cat([qc, qc.new_zeros((pad,) + qc.shape[1:])]); kc = torch.cat([kc, kc.new_zeros((pad,) + kc.shape[1:])]); vc = torch.cat([vc, vc.new_zeros((pad,) + vc.shape[1:])])
+                        oc = qc.new_empty((n_pad, p["h_q"], p["v_head_dim"]))
+                        kv_idx_c = kv_indices if start == 0 else torch.cat([kv_indices, new_slots[:start]])
+                        kv_ptr_c = kv_indptr if start == 0 else torch.tensor([0, P + start], device=dev, dtype=torch.int32)
+                        ok_c = verify_splitkv_fwd(qc, kc, vc, oc, k_buf, v_buf, torch.tensor([0, n_pad], device=dev, dtype=torch.int32), kv_ptr_c, kv_idx_c, None, True, None, n_pad,
+                                                  k_scale, v_scale, sm_scale=sm_scale, logit_cap=0.0, sinks=sinks, max_bs=1)
+                        if not ok_c:
+                            return False
+                        o_new[start:start + n_c] = oc[:n_c]
+                    return True
                 if a.qk_ab:   # same kernel, fp8 QK dot
                     ea._EXTEND_FP8_QK = True
                     try:
@@ -225,7 +252,7 @@ def main() -> int:
         for ks in kernel_stats:
             print(f"kernel {ks['kernel']:24s} regs {ks['n_regs']}  spills {ks['n_spills']}  {ks['constants']}", flush=True)
     rec = {"preset": a.preset, "shape": p, "kv_dtype": a.kv_dtype, "k_scale": k_scale, "v_scale": v_scale, "device": torch.cuda.get_device_name(0),
-           "label": a.label, "sinks": a.sinks, "first_launch_free_delta_mb": first_launch["free_delta_mb"], "kernel_stats": kernel_stats,
+           "label": a.label, "sinks": a.sinks, "route_chunk": a.route_chunk, "extend_fp8_qk": a.extend_fp8_qk, "first_launch_free_delta_mb": first_launch["free_delta_mb"], "kernel_stats": kernel_stats,
            "upcast_k": os.environ.get("SGLANG_SPLITKV_UPCAST_K", "default"), "tile_ab": a.tile_ab, "qk_ab": a.qk_ab,
            "gate": "vs fp32 reference: finite, cosine >= min(0.9999, extend cosine - 2e-5), max and rms error <= 1.25x the extend kernel's own", "worst": worst, "rows": results,
            "timestamp": time.strftime("%Y-%m-%d %H:%M")}

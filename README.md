@@ -30,8 +30,9 @@ new quality flagship Qwen3.8-27B-FP8.
   prefill on to **211 s** and a 1-token cache-hit turn at 176K from 10.1 to 5.7 s, needle grid 9/9 on both arms; patch 109
   (the 3090's combine-stage rewrite of the shared split-KV verify kernel, 2026-11-01) added +10–21 % DSpark decode at 24 /
   58K / 197K with bit-identical numerics. The preset's hybrid cache moved to `extra_buffer` the same day
-  ([R97-R](experiments/18-hybrid-cache-checkpoint-granularity.md)): a 1-token agentic turn at 176K went **5.7 → 0.82 s**
-  (2.2 → 0.28 s at 52K) with needle grids and capabilities unchanged.
+  ([R97-R](experiments/18-hybrid-cache-checkpoint-granularity.md)) and patch 110 widened the split-KV turn route to 64-row
+  chunks: a 1-token agentic turn at 176K went **5.7 → 0.82 → 0.17–0.35 s** over the day (2.2 → 0.28 → 0.11 s at 52K) with
+  needle grids and capabilities unchanged.
   Its seven-scaffold SWE-bench Lite bake-off (v5, 300 instances per cell, every scaffold sandboxed in
   the official instance image) has rolled and audited all 2,100 instances; Docker scoring is owed — see
   SWE-bench Lite below.
@@ -197,13 +198,19 @@ operational history behind each item lives in the document it links, not here.
      one token before the primed prompt end, so each turn recomputed up to 8K tokens. `qwen38` now runs
      `--mamba-radix-cache-strategy extra_buffer`: **1-token agentic turn 3.65 / 2.2 / 6.8 / 5.7 s → 0.11 / 0.28 / 0.52 /
      0.82 s at 6.6K / 52K / 104K / 176K**, needle grids 12/12 (single-message and across a turn boundary), capabilities
-     5/5. Left: the ~0.8 s at 176K is the stock extend kernel over ~113 recomputed tokens — widen patch 107's route past
-     16 tokens; run the same gates on qwen36-27b / qwen35 before flipping them.
+     5/5. **Patch 110** then widened patch 107's route to 64-row chunks (the tile compiles since patch 109): qwen38 turns
+     with 1 / 64 / 256 new tokens 231 / 265 / 307 → 109 / 165 / 255 ms at 52K and 600 / 625 / 643 → **168 / 275 / 363 ms
+     at 176K** cached; Laguna 16–128-token turns 2.1× at 94K–142K
+     ([receipt](benchmarks/profiling/extend-splitkv-route-wide-2026-11-01.md)). Left: a warp/tile sweep for the 64-row
+     combine (2,156 spills), the 128-row tile (compile stall), Flint sinks on the route.
+   - **`extra_buffer` on the other six hybrid presets** (qwen36-27b, qwen35, qwen35-moe, qwen36-moe, coder-next,
+     coder-next-ream): same mechanism, same gates (agentic turn tax, needle grid single and across a turn boundary,
+     capabilities, pool sizes), ~1 h GPU each; flip each preset's `launch.sh` block on a pass.
    - **fp8 QK on the other FP8-cache presets** (north-mini, gemma4, qwen35/36, coder): opt-in `SGLANG_EXTEND_FP8_QK=1`
      until each runs its own needle-grid A/B.
-   - Extend-kernel follow-ups: exp2 softmax, `num_stages` pipelining, the split-KV route for 16 < K ≤ 128; the verify
-     combine kernel still spills 346 registers at head_dim 256 after patch 109 (a warp/tile sweep), and patch 107's
-     dispatch gate can admit sink models (Flint) now that the kernel carries the sink term (4/4 cells at the route gate).
+   - Extend-kernel follow-ups: exp2 softmax, `num_stages` pipelining; the verify combine kernel still spills 346 / 2,156
+     registers at 16 / 64 rows (a warp/tile sweep), and patch 107's dispatch gate can admit sink models (Flint) now that
+     the kernel carries the sink term (4/4 cells at the route gate).
 6. **256K ladder across the agentic-qualified fleet** ([R97-I](experiments/09-fleet-ladder-per-model-rungs.md)), including Nemotron's 2K/8K
    budget arms and the Devstral `KV_DTYPE` control.
 7. **EAGLE3 drafts in the `--spec` lane, depth curve** ([R97-A](experiments/04-eagle3-dense-vl-spec-lane-depth-curve.md)).
@@ -255,7 +262,7 @@ backend, quantization path, parsers, memory settings, and graph policy.
 | Component | Version |
 |---|---|
 | GPUs | 2× AMD Radeon AI PRO R9700, gfx1201, 32 GiB each |
-| SGLang | v0.5.22 + 78 patches |
+| SGLang | v0.5.22 + 79 patches |
 | Python | 3.12 |
 | PyTorch | 2.11.0+rocm7.2 |
 | ROCm | 7.2 |

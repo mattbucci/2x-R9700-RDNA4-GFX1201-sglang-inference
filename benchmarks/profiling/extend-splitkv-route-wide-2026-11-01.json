@@ -1,0 +1,3039 @@
+{
+ "question": "widen patch 107's split-KV route past 16 new tokens with 64-row chunks (patch 110)",
+ "kernel": {
+  "laguna-route-chunk64-upcast.json": {
+   "preset": "laguna",
+   "shape": {
+    "h_q": 24,
+    "h_kv": 4,
+    "head_dim": 128,
+    "v_head_dim": 128,
+    "layers": 10
+   },
+   "kv_dtype": "fp8",
+   "k_scale": 0.07,
+   "v_scale": 0.05,
+   "device": "AMD Radeon AI PRO R9700",
+   "label": "route-chunk64-upcast",
+   "sinks": false,
+   "route_chunk": 64,
+   "extend_fp8_qk": false,
+   "first_launch_free_delta_mb": null,
+   "kernel_stats": [],
+   "upcast_k": "1",
+   "tile_ab": null,
+   "qk_ab": false,
+   "gate": "vs fp32 reference: finite, cosine >= min(0.9999, extend cosine - 2e-5), max and rms error <= 1.25x the extend kernel's own",
+   "worst": {
+    "max_ulp": 10.42962962962963,
+    "min_cos": 0.9996476
+   },
+   "rows": [
+    {
+     "prefix": 29000,
+     "K": 16,
+     "status": "ok",
+     "extend_vs_fp32": {
+      "finite": true,
+      "cosine": 0.9996524,
+      "max_err_over_refmax": 0.029714,
+      "rms_err": 5.12e-05
+     },
+     "splitkv_vs_fp32": {
+      "finite": true,
+      "cosine": 0.9996645,
+      "max_err_over_refmax": 0.029313,
+      "rms_err": 5.03e-05
+     },
+     "extend_vs_splitkv_ulps_at_refmax": 9.328,
+     "extend_us": 5841.0,
+     "splitkv_us": 629.1,
+     "speedup": 9.28,
+     "per_step_ms_extend": 58.41,
+     "per_step_ms_splitkv": 6.29
+    },
+    {
+     "prefix": 29000,
+     "K": 32,
+     "status": "ok",
+     "extend_vs_fp32": {
+      "finite": true,
+      "cosine": 0.9996585,
+      "max_err_over_refmax": 0.034127,
+      "rms_err": 5.08e-05
+     },
+     "splitkv_vs_fp32": {
+      "finite": true,
+      "cosine": 0.9996629,
+      "max_err_over_refmax": 0.031939,
+      "rms_err": 5.05e-05
+     },
+     "extend_vs_splitkv_ulps_at_refmax": 9.404,
+     "extend_us": 5802.3,
+     "splitkv_us": 749.0,
+     "speedup": 7.75,
+     "per_step_ms_extend": 58.02,
+     "per_step_ms_splitkv": 7.49
+    },
+    {
+     "prefix": 29000,
+     "K": 64,
+     "status": "ok",
+     "extend_vs_fp32": {
+      "finite": true,
+      "cosine": 0.9996613,
+      "max_err_over_refmax": 0.030229,
+      "rms_err": 5.08e-05
+     },
+     "splitkv_vs_fp32": {
+      "finite": true,
+      "cosine": 0.9996666,
+      "max_err_over_refmax": 0.027561,
+      "rms_err": 5.04e-05
+     },
+     "extend_vs_splitkv_ulps_at_refmax": 10.43,
+     "extend_us": 5792.5,
+     "splitkv_us": 1037.8,
+     "speedup": 5.58,
+     "per_step_ms_extend": 57.92,
+     "per_step_ms_splitkv": 10.38
+    },
+    {
+     "prefix": 29000,
+     "K": 128,
+     "status": "ok",
+     "extend_vs_fp32": {
+      "finite": true,
+      "cosine": 0.9996637,
+      "max_err_over_refmax": 0.030232,
+      "rms_err": 5.07e-05
+     },
+     "splitkv_vs_fp32": {
+      "finite": true,
+      "cosine": 0.9996663,
+      "max_err_over_refmax": 0.030963,
+      "rms_err": 5.05e-05
+     },
+     "extend_vs_splitkv_ulps_at_refmax": 10.105,
+     "extend_us": 5845.2,
+     "splitkv_us": 2048.2,
+     "speedup": 2.85,
+     "per_step_ms_extend": 58.45,
+     "per_step_ms_splitkv": 20.48
+    },
+    {
+     "prefix": 105000,
+     "K": 16,
+     "status": "ok",
+     "extend_vs_fp32": {
+      "finite": true,
+      "cosine": 0.9996447,
+      "max_err_over_refmax": 0.029288,
+      "rms_err": 2.68e-05
+     },
+     "splitkv_vs_fp32": {
+      "finite": true,
+      "cosine": 0.9996513,
+      "max_err_over_refmax": 0.027578,
+      "rms_err": 2.66e-05
+     },
+     "extend_vs_splitkv_ulps_at_refmax": 9.846,
+     "extend_us": 19823.6,
+     "splitkv_us": 2239.8,
+     "speedup": 8.85,
+     "per_step_ms_extend": 198.24,
+     "per_step_ms_splitkv": 22.4
+    },
+    {
+     "prefix": 105000,
+     "K": 32,
+     "status": "ok",
+     "extend_vs_fp32": {
+      "finite": true,
+      "cosine": 0.9996426,
+      "max_err_over_refmax": 0.030884,
+      "rms_err": 2.69e-05
+     },
+     "splitkv_vs_fp32": {
+      "finite": true,
+      "cosine": 0.9996499,
+      "max_err_over_refmax": 0.029055,
+      "rms_err": 2.66e-05
+     },
+     "extend_vs_splitkv_ulps_at_refmax": 10.182,
+     "extend_us": 19672.5,
+     "splitkv_us": 2604.8,
+     "speedup": 7.55,
+     "per_step_ms_extend": 196.73,
+     "per_step_ms_splitkv": 26.05
+    },
+    {
+     "prefix": 105000,
+     "K": 64,
+     "status": "ok",
+     "extend_vs_fp32": {
+      "finite": true,
+      "cosine": 0.9996451,
+      "max_err_over_refmax": 0.031354,
+      "rms_err": 2.68e-05
+     },
+     "splitkv_vs_fp32": {
+      "finite": true,
+      "cosine": 0.9996476,
+      "max_err_over_refmax": 0.031494,
+      "rms_err": 2.67e-05
+     },
+     "extend_vs_splitkv_ulps_at_refmax": 9.697,
+     "extend_us": 19717.3,
+     "splitkv_us": 3112.0,
+     "speedup": 6.34,
+     "per_step_ms_extend": 197.17,
+     "per_step_ms_splitkv": 31.12
+    },
+    {
+     "prefix": 105000,
+     "K": 128,
+     "status": "ok",
+     "extend_vs_fp32": {
+      "finite": true,
+      "cosine": 0.9996441,
+      "max_err_over_refmax": 0.027621,
+      "rms_err": 2.68e-05
+     },
+     "splitkv_vs_fp32": {
+      "finite": true,
+      "cosine": 0.9996487,
+      "max_err_over_refmax": 0.032239,
+      "rms_err": 2.66e-05
+     },
+     "extend_vs_splitkv_ulps_at_refmax": 9.855,
+     "extend_us": 20018.0,
+     "splitkv_us": 6158.8,
+     "speedup": 3.25,
+     "per_step_ms_extend": 200.18,
+     "per_step_ms_splitkv": 61.59
+    },
+    {
+     "prefix": 158000,
+     "K": 16,
+     "status": "ok",
+     "extend_vs_fp32": {
+      "finite": true,
+      "cosine": 0.9996673,
+      "max_err_over_refmax": 0.031623,
+      "rms_err": 2.18e-05
+     },
+     "splitkv_vs_fp32": {
+      "finite": true,
+      "cosine": 0.9996676,
+      "max_err_over_refmax": 0.027382,
+      "rms_err": 2.18e-05
+     },
+     "extend_vs_splitkv_ulps_at_refmax": 9.0,
+     "extend_us": 29598.7,
+     "splitkv_us": 3193.3,
+     "speedup": 9.27,
+     "per_step_ms_extend": 295.99,
+     "per_step_ms_splitkv": 31.93
+    },
+    {
+     "prefix": 158000,
+     "K": 32,
+     "status": "ok",
+     "extend_vs_fp32": {
+      "finite": true,
+      "cosine": 0.9996649,
+      "max_err_over_refmax": 0.025223,
+      "rms_err": 2.19e-05
+     },
+     "splitkv_vs_fp32": {
+      "finite": true,
+      "cosine": 0.9996669,
+      "max_err_over_refmax": 0.024595,
+      "rms_err": 2.18e-05
+     },
+     "extend_vs_splitkv_ulps_at_refmax": 9.366,
+     "extend_us": 29596.1,
+     "splitkv_us": 3713.5,
+     "speedup": 7.97,
+     "per_step_ms_extend": 295.96,
+     "per_step_ms_splitkv": 37.13
+    },
+    {
+     "prefix": 158000,
+     "K": 64,
+     "status": "ok",
+     "extend_vs_fp32": {
+      "finite": true,
+      "cosine": 0.9996642,
+      "max_err_over_refmax": 0.032162,
+      "rms_err": 2.19e-05
+     },
+     "splitkv_vs_fp32": {
+      "finite": true,
+      "cosine": 0.9996664,
+      "max_err_over_refmax": 0.026653,
+      "rms_err": 2.18e-05
+     },
+     "extend_vs_splitkv_ulps_at_refmax": 8.896,
+     "extend_us": 29533.4,
+     "splitkv_us": 4350.0,
+     "speedup": 6.79,
+     "per_step_ms_extend": 295.33,
+     "per_step_ms_splitkv": 43.5
+    },
+    {
+     "prefix": 158000,
+     "K": 128,
+     "status": "ok",
+     "extend_vs_fp32": {
+      "finite": true,
+      "cosine": 0.9996653,
+      "max_err_over_refmax": 0.027551,
+      "rms_err": 2.19e-05
+     },
+     "splitkv_vs_fp32": {
+      "finite": true,
+      "cosine": 0.9996677,
+      "max_err_over_refmax": 0.026613,
+      "rms_err": 2.18e-05
+     },
+     "extend_vs_splitkv_ulps_at_refmax": 8.898,
+     "extend_us": 30010.0,
+     "splitkv_us": 8714.8,
+     "speedup": 3.44,
+     "per_step_ms_extend": 300.1,
+     "per_step_ms_splitkv": 87.15
+    }
+   ],
+   "timestamp": "2026-11-01 14:09"
+  },
+  "qwen38-K32.json": {
+   "preset": "qwen38",
+   "shape": {
+    "h_q": 48,
+    "h_kv": 4,
+    "head_dim": 256,
+    "v_head_dim": 256,
+    "layers": 16
+   },
+   "kv_dtype": "fp8",
+   "k_scale": 0.07,
+   "v_scale": 0.05,
+   "device": "AMD Radeon AI PRO R9700",
+   "label": "v2-tile-32",
+   "sinks": false,
+   "first_launch_free_delta_mb": -36.0,
+   "kernel_stats": [
+    {
+     "kernel": "_verify_prefix_stage1",
+     "n_regs": 254,
+     "n_spills": 0,
+     "constants": {
+      "num_stages": 1,
+      "num_warps": 4
+     }
+    },
+    {
+     "kernel": "_verify_combine_stage2",
+     "n_regs": 256,
+     "n_spills": 923,
+     "constants": {
+      "num_stages": 1,
+      "num_warps": 4
+     }
+    }
+   ],
+   "upcast_k": "default",
+   "tile_ab": null,
+   "qk_ab": false,
+   "gate": "vs fp32 reference: finite, cosine >= min(0.9999, extend cosine - 2e-5), max and rms error <= 1.25x the extend kernel's own",
+   "worst": {
+    "max_ulp": 11.441340782122905,
+    "min_cos": 0.9995735
+   },
+   "rows": [
+    {
+     "prefix": 58000,
+     "K": 32,
+     "status": "WORSE_THAN_EXTEND",
+     "extend_vs_fp32": {
+      "finite": true,
+      "cosine": 0.9996322,
+      "max_err_over_refmax": 0.031323,
+      "rms_err": 3.6e-05
+     },
+     "splitkv_vs_fp32": {
+      "finite": true,
+      "cosine": 0.9995735,
+      "max_err_over_refmax": 0.033954,
+      "rms_err": 3.88e-05
+     },
+     "extend_vs_splitkv_ulps_at_refmax": 11.441,
+     "extend_us": 22002.4,
+     "splitkv_us": 2558.8,
+     "speedup": 8.6,
+     "per_step_ms_extend": 352.04,
+     "per_step_ms_splitkv": 40.94
+    },
+    {
+     "prefix": 197000,
+     "K": 32,
+     "status": "WORSE_THAN_EXTEND",
+     "extend_vs_fp32": {
+      "finite": true,
+      "cosine": 0.9996388,
+      "max_err_over_refmax": 0.031408,
+      "rms_err": 1.96e-05
+     },
+     "splitkv_vs_fp32": {
+      "finite": true,
+      "cosine": 0.9995762,
+      "max_err_over_refmax": 0.032403,
+      "rms_err": 2.12e-05
+     },
+     "extend_vs_splitkv_ulps_at_refmax": 10.772,
+     "extend_us": 68968.0,
+     "splitkv_us": 7611.2,
+     "speedup": 9.06,
+     "per_step_ms_extend": 1103.49,
+     "per_step_ms_splitkv": 121.78
+    }
+   ],
+   "timestamp": "2026-11-01 13:51"
+  },
+  "qwen38-K64.json": {
+   "preset": "qwen38",
+   "shape": {
+    "h_q": 48,
+    "h_kv": 4,
+    "head_dim": 256,
+    "v_head_dim": 256,
+    "layers": 16
+   },
+   "kv_dtype": "fp8",
+   "k_scale": 0.07,
+   "v_scale": 0.05,
+   "device": "AMD Radeon AI PRO R9700",
+   "label": "v2-tile-64",
+   "sinks": false,
+   "first_launch_free_delta_mb": -34.5,
+   "kernel_stats": [
+    {
+     "kernel": "_verify_prefix_stage1",
+     "n_regs": 241,
+     "n_spills": 0,
+     "constants": {
+      "num_stages": 1,
+      "num_warps": 4
+     }
+    },
+    {
+     "kernel": "_verify_combine_stage2",
+     "n_regs": 256,
+     "n_spills": 2156,
+     "constants": {
+      "num_stages": 1,
+      "num_warps": 4
+     }
+    }
+   ],
+   "upcast_k": "default",
+   "tile_ab": null,
+   "qk_ab": false,
+   "gate": "vs fp32 reference: finite, cosine >= min(0.9999, extend cosine - 2e-5), max and rms error <= 1.25x the extend kernel's own",
+   "worst": {
+    "max_ulp": 12.326530612244898,
+    "min_cos": 0.9995736
+   },
+   "rows": [
+    {
+     "prefix": 58000,
+     "K": 64,
+     "status": "WORSE_THAN_EXTEND",
+     "extend_vs_fp32": {
+      "finite": true,
+      "cosine": 0.9996334,
+      "max_err_over_refmax": 0.029661,
+      "rms_err": 3.6e-05
+     },
+     "splitkv_vs_fp32": {
+      "finite": true,
+      "cosine": 0.9995736,
+      "max_err_over_refmax": 0.032735,
+      "rms_err": 3.88e-05
+     },
+     "extend_vs_splitkv_ulps_at_refmax": 10.894,
+     "extend_us": 20377.6,
+     "splitkv_us": 4010.8,
+     "speedup": 5.08,
+     "per_step_ms_extend": 326.04,
+     "per_step_ms_splitkv": 64.17
+    },
+    {
+     "prefix": 197000,
+     "K": 64,
+     "status": "WORSE_THAN_EXTEND",
+     "extend_vs_fp32": {
+      "finite": true,
+      "cosine": 0.9996417,
+      "max_err_over_refmax": 0.030354,
+      "rms_err": 1.96e-05
+     },
+     "splitkv_vs_fp32": {
+      "finite": true,
+      "cosine": 0.9995804,
+      "max_err_over_refmax": 0.038823,
+      "rms_err": 2.12e-05
+     },
+     "extend_vs_splitkv_ulps_at_refmax": 12.327,
+     "extend_us": 66760.7,
+     "splitkv_us": 11790.2,
+     "speedup": 5.66,
+     "per_step_ms_extend": 1068.17,
+     "per_step_ms_splitkv": 188.64
+    }
+   ],
+   "timestamp": "2026-11-01 13:52"
+  },
+  "qwen38-extend-fp8qk-K64-256.json": {
+   "preset": "qwen38",
+   "shape": {
+    "h_q": 48,
+    "h_kv": 4,
+    "head_dim": 256,
+    "v_head_dim": 256,
+    "layers": 16
+   },
+   "kv_dtype": "fp8",
+   "k_scale": 0.07,
+   "v_scale": 0.05,
+   "device": "AMD Radeon AI PRO R9700",
+   "label": "extend-fp8qk",
+   "sinks": false,
+   "first_launch_free_delta_mb": null,
+   "kernel_stats": [],
+   "upcast_k": "default",
+   "tile_ab": null,
+   "qk_ab": true,
+   "gate": "vs fp32 reference: finite, cosine >= min(0.9999, extend cosine - 2e-5), max and rms error <= 1.25x the extend kernel's own",
+   "worst": {
+    "max_ulp": 11.753554502369669,
+    "min_cos": 0.9995661
+   },
+   "rows": [
+    {
+     "prefix": 58000,
+     "K": 64,
+     "status": "WORSE_THAN_EXTEND",
+     "extend_vs_fp32": {
+      "finite": true,
+      "cosine": 0.9996334,
+      "max_err_over_refmax": 0.029661,
+      "rms_err": 3.6e-05
+     },
+     "splitkv_vs_fp32": {
+      "finite": true,
+      "cosine": 0.9995661,
+      "max_err_over_refmax": 0.032783,
+      "rms_err": 3.92e-05
+     },
+     "extend_vs_splitkv_ulps_at_refmax": 10.894,
+     "extend_us": 20341.4,
+     "splitkv_us": 11696.4,
+     "speedup": 1.74,
+     "per_step_ms_extend": 325.46,
+     "per_step_ms_splitkv": 187.14
+    },
+    {
+     "prefix": 58000,
+     "K": 128,
+     "status": "WORSE_THAN_EXTEND",
+     "extend_vs_fp32": {
+      "finite": true,
+      "cosine": 0.9996334,
+      "max_err_over_refmax": 0.029964,
+      "rms_err": 3.6e-05
+     },
+     "splitkv_vs_fp32": {
+      "finite": true,
+      "cosine": 0.9995676,
+      "max_err_over_refmax": 0.031716,
+      "rms_err": 3.91e-05
+     },
+     "extend_vs_splitkv_ulps_at_refmax": 9.458,
+     "extend_us": 21742.7,
+     "splitkv_us": 13063.1,
+     "speedup": 1.66,
+     "per_step_ms_extend": 347.88,
+     "per_step_ms_splitkv": 209.01
+    },
+    {
+     "prefix": 58000,
+     "K": 256,
+     "status": "WORSE_THAN_EXTEND",
+     "extend_vs_fp32": {
+      "finite": true,
+      "cosine": 0.9996361,
+      "max_err_over_refmax": 0.028643,
+      "rms_err": 3.6e-05
+     },
+     "splitkv_vs_fp32": {
+      "finite": true,
+      "cosine": 0.9995711,
+      "max_err_over_refmax": 0.032951,
+      "rms_err": 3.9e-05
+     },
+     "extend_vs_splitkv_ulps_at_refmax": 10.291,
+     "extend_us": 44661.2,
+     "splitkv_us": 25617.8,
+     "speedup": 1.74,
+     "per_step_ms_extend": 714.58,
+     "per_step_ms_splitkv": 409.88
+    },
+    {
+     "prefix": 197000,
+     "K": 64,
+     "status": "WORSE_THAN_EXTEND",
+     "extend_vs_fp32": {
+      "finite": true,
+      "cosine": 0.9996358,
+      "max_err_over_refmax": 0.030371,
+      "rms_err": 1.96e-05
+     },
+     "splitkv_vs_fp32": {
+      "finite": true,
+      "cosine": 0.9995717,
+      "max_err_over_refmax": 0.032023,
+      "rms_err": 2.12e-05
+     },
+     "extend_vs_splitkv_ulps_at_refmax": 11.483,
+     "extend_us": 66588.0,
+     "splitkv_us": 38689.5,
+     "speedup": 1.72,
+     "per_step_ms_extend": 1065.41,
+     "per_step_ms_splitkv": 619.03
+    },
+    {
+     "prefix": 197000,
+     "K": 128,
+     "status": "WORSE_THAN_EXTEND",
+     "extend_vs_fp32": {
+      "finite": true,
+      "cosine": 0.9996371,
+      "max_err_over_refmax": 0.033374,
+      "rms_err": 1.96e-05
+     },
+     "splitkv_vs_fp32": {
+      "finite": true,
+      "cosine": 0.9995712,
+      "max_err_over_refmax": 0.033906,
+      "rms_err": 2.13e-05
+     },
+     "extend_vs_splitkv_ulps_at_refmax": 10.826,
+     "extend_us": 74846.8,
+     "splitkv_us": 43399.4,
+     "speedup": 1.72,
+     "per_step_ms_extend": 1197.55,
+     "per_step_ms_splitkv": 694.39
+    },
+    {
+     "prefix": 197000,
+     "K": 256,
+     "status": "WORSE_THAN_EXTEND",
+     "extend_vs_fp32": {
+      "finite": true,
+      "cosine": 0.9996374,
+      "max_err_over_refmax": 0.031266,
+      "rms_err": 1.96e-05
+     },
+     "splitkv_vs_fp32": {
+      "finite": true,
+      "cosine": 0.999572,
+      "max_err_over_refmax": 0.033947,
+      "rms_err": 2.12e-05
+     },
+     "extend_vs_splitkv_ulps_at_refmax": 11.754,
+     "extend_us": 149508.5,
+     "splitkv_us": 85278.0,
+     "speedup": 1.75,
+     "per_step_ms_extend": 2392.14,
+     "per_step_ms_splitkv": 1364.45
+    }
+   ],
+   "timestamp": "2026-11-01 14:04"
+  },
+  "qwen38-noupcast-K16.json": {
+   "preset": "qwen38",
+   "shape": {
+    "h_q": 48,
+    "h_kv": 4,
+    "head_dim": 256,
+    "v_head_dim": 256,
+    "layers": 16
+   },
+   "kv_dtype": "fp8",
+   "k_scale": 0.07,
+   "v_scale": 0.05,
+   "device": "AMD Radeon AI PRO R9700",
+   "label": "v2-noupcast",
+   "sinks": false,
+   "first_launch_free_delta_mb": null,
+   "kernel_stats": [],
+   "upcast_k": "default",
+   "tile_ab": null,
+   "qk_ab": false,
+   "gate": "vs fp32 reference: finite, cosine >= min(0.9999, extend cosine - 2e-5), max and rms error <= 1.25x the extend kernel's own",
+   "worst": {
+    "max_ulp": 11.235955056179776,
+    "min_cos": 0.9995732
+   },
+   "rows": [
+    {
+     "prefix": 58000,
+     "K": 16,
+     "status": "WORSE_THAN_EXTEND",
+     "extend_vs_fp32": {
+      "finite": true,
+      "cosine": 0.9996318,
+      "max_err_over_refmax": 0.029748,
+      "rms_err": 3.61e-05
+     },
+     "splitkv_vs_fp32": {
+      "finite": true,
+      "cosine": 0.9995732,
+      "max_err_over_refmax": 0.032467,
+      "rms_err": 3.88e-05
+     },
+     "extend_vs_splitkv_ulps_at_refmax": 11.236,
+     "extend_us": 20222.5,
+     "splitkv_us": 1720.9,
+     "speedup": 11.75,
+     "per_step_ms_extend": 323.56,
+     "per_step_ms_splitkv": 27.53
+    },
+    {
+     "prefix": 197000,
+     "K": 16,
+     "status": "WORSE_THAN_EXTEND",
+     "extend_vs_fp32": {
+      "finite": true,
+      "cosine": 0.9996411,
+      "max_err_over_refmax": 0.026245,
+      "rms_err": 1.96e-05
+     },
+     "splitkv_vs_fp32": {
+      "finite": true,
+      "cosine": 0.9995774,
+      "max_err_over_refmax": 0.029593,
+      "rms_err": 2.12e-05
+     },
+     "extend_vs_splitkv_ulps_at_refmax": 10.203,
+     "extend_us": 66799.1,
+     "splitkv_us": 5301.7,
+     "speedup": 12.6,
+     "per_step_ms_extend": 1068.79,
+     "per_step_ms_splitkv": 84.83
+    }
+   ],
+   "timestamp": "2026-11-01 14:03"
+  },
+  "qwen38-route-chunk64-fp8qk.json": {
+   "preset": "qwen38",
+   "shape": {
+    "h_q": 48,
+    "h_kv": 4,
+    "head_dim": 256,
+    "v_head_dim": 256,
+    "layers": 16
+   },
+   "kv_dtype": "fp8",
+   "k_scale": 0.07,
+   "v_scale": 0.05,
+   "device": "AMD Radeon AI PRO R9700",
+   "label": "route-chunk64-fp8qk",
+   "sinks": false,
+   "route_chunk": 64,
+   "extend_fp8_qk": true,
+   "first_launch_free_delta_mb": 37.0,
+   "kernel_stats": [
+    {
+     "kernel": "_verify_prefix_stage1",
+     "n_regs": 203,
+     "n_spills": 0,
+     "constants": {
+      "num_stages": 1,
+      "num_warps": 4
+     }
+    },
+    {
+     "kernel": "_verify_prefix_stage1",
+     "n_regs": 241,
+     "n_spills": 0,
+     "constants": {
+      "num_stages": 1,
+      "num_warps": 4
+     }
+    },
+    {
+     "kernel": "_verify_combine_stage2",
+     "n_regs": 256,
+     "n_spills": 346,
+     "constants": {
+      "num_stages": 1,
+      "num_warps": 4
+     }
+    },
+    {
+     "kernel": "_verify_combine_stage2",
+     "n_regs": 256,
+     "n_spills": 2156,
+     "constants": {
+      "num_stages": 1,
+      "num_warps": 4
+     }
+    }
+   ],
+   "upcast_k": "default",
+   "tile_ab": null,
+   "qk_ab": false,
+   "gate": "vs fp32 reference: finite, cosine >= min(0.9999, extend cosine - 2e-5), max and rms error <= 1.25x the extend kernel's own",
+   "worst": {
+    "max_ulp": 11.323076923076924,
+    "min_cos": 0.9995645
+   },
+   "rows": [
+    {
+     "prefix": 58000,
+     "K": 16,
+     "status": "ok",
+     "extend_vs_fp32": {
+      "finite": true,
+      "cosine": 0.9995635,
+      "max_err_over_refmax": 0.033207,
+      "rms_err": 3.93e-05
+     },
+     "splitkv_vs_fp32": {
+      "finite": true,
+      "cosine": 0.9995732,
+      "max_err_over_refmax": 0.032467,
+      "rms_err": 3.88e-05
+     },
+     "extend_vs_splitkv_ulps_at_refmax": 10.157,
+     "extend_us": 11928.7,
+     "splitkv_us": 1746.6,
+     "speedup": 6.83,
+     "per_step_ms_extend": 190.86,
+     "per_step_ms_splitkv": 27.95
+    },
+    {
+     "prefix": 58000,
+     "K": 64,
+     "status": "ok",
+     "extend_vs_fp32": {
+      "finite": true,
+      "cosine": 0.9995667,
+      "max_err_over_refmax": 0.031914,
+      "rms_err": 3.91e-05
+     },
+     "splitkv_vs_fp32": {
+      "finite": true,
+      "cosine": 0.9995724,
+      "max_err_over_refmax": 0.033961,
+      "rms_err": 3.89e-05
+     },
+     "extend_vs_splitkv_ulps_at_refmax": 9.725,
+     "extend_us": 11870.2,
+     "splitkv_us": 4120.2,
+     "speedup": 2.88,
+     "per_step_ms_extend": 189.92,
+     "per_step_ms_splitkv": 65.92
+    },
+    {
+     "prefix": 58000,
+     "K": 113,
+     "status": "ok",
+     "extend_vs_fp32": {
+      "finite": true,
+      "cosine": 0.9995698,
+      "max_err_over_refmax": 0.03327,
+      "rms_err": 3.91e-05
+     },
+     "splitkv_vs_fp32": {
+      "finite": true,
+      "cosine": 0.9995753,
+      "max_err_over_refmax": 0.031977,
+      "rms_err": 3.89e-05
+     },
+     "extend_vs_splitkv_ulps_at_refmax": 9.505,
+     "extend_us": 13532.9,
+     "splitkv_us": 8367.5,
+     "speedup": 1.62,
+     "per_step_ms_extend": 216.53,
+     "per_step_ms_splitkv": 133.88
+    },
+    {
+     "prefix": 58000,
+     "K": 128,
+     "status": "ok",
+     "extend_vs_fp32": {
+      "finite": true,
+      "cosine": 0.9995701,
+      "max_err_over_refmax": 0.033873,
+      "rms_err": 3.91e-05
+     },
+     "splitkv_vs_fp32": {
+      "finite": true,
+      "cosine": 0.9995722,
+      "max_err_over_refmax": 0.034235,
+      "rms_err": 3.9e-05
+     },
+     "extend_vs_splitkv_ulps_at_refmax": 9.846,
+     "extend_us": 13636.5,
+     "splitkv_us": 8348.2,
+     "speedup": 1.63,
+     "per_step_ms_extend": 218.18,
+     "per_step_ms_splitkv": 133.57
+    },
+    {
+     "prefix": 58000,
+     "K": 256,
+     "status": "ok",
+     "extend_vs_fp32": {
+      "finite": true,
+      "cosine": 0.9995704,
+      "max_err_over_refmax": 0.034244,
+      "rms_err": 3.9e-05
+     },
+     "splitkv_vs_fp32": {
+      "finite": true,
+      "cosine": 0.9995707,
+      "max_err_over_refmax": 0.032581,
+      "rms_err": 3.9e-05
+     },
+     "extend_vs_splitkv_ulps_at_refmax": 10.894,
+     "extend_us": 25430.6,
+     "splitkv_us": 16682.9,
+     "speedup": 1.52,
+     "per_step_ms_extend": 406.89,
+     "per_step_ms_splitkv": 266.93
+    },
+    {
+     "prefix": 197000,
+     "K": 16,
+     "status": "ok",
+     "extend_vs_fp32": {
+      "finite": true,
+      "cosine": 0.9995672,
+      "max_err_over_refmax": 0.033172,
+      "rms_err": 2.12e-05
+     },
+     "splitkv_vs_fp32": {
+      "finite": true,
+      "cosine": 0.9995707,
+      "max_err_over_refmax": 0.03247,
+      "rms_err": 2.11e-05
+     },
+     "extend_vs_splitkv_ulps_at_refmax": 9.691,
+     "extend_us": 38173.0,
+     "splitkv_us": 5330.9,
+     "speedup": 7.16,
+     "per_step_ms_extend": 610.77,
+     "per_step_ms_splitkv": 85.3
+    },
+    {
+     "prefix": 197000,
+     "K": 64,
+     "status": "ok",
+     "extend_vs_fp32": {
+      "finite": true,
+      "cosine": 0.9995636,
+      "max_err_over_refmax": 0.035663,
+      "rms_err": 2.12e-05
+     },
+     "splitkv_vs_fp32": {
+      "finite": true,
+      "cosine": 0.999566,
+      "max_err_over_refmax": 0.034512,
+      "rms_err": 2.12e-05
+     },
+     "extend_vs_splitkv_ulps_at_refmax": 10.08,
+     "extend_us": 38976.9,
+     "splitkv_us": 11911.8,
+     "speedup": 3.27,
+     "per_step_ms_extend": 623.63,
+     "per_step_ms_splitkv": 190.59
+    },
+    {
+     "prefix": 197000,
+     "K": 113,
+     "status": "ok",
+     "extend_vs_fp32": {
+      "finite": true,
+      "cosine": 0.9995639,
+      "max_err_over_refmax": 0.032414,
+      "rms_err": 2.12e-05
+     },
+     "splitkv_vs_fp32": {
+      "finite": true,
+      "cosine": 0.999566,
+      "max_err_over_refmax": 0.035803,
+      "rms_err": 2.12e-05
+     },
+     "extend_vs_splitkv_ulps_at_refmax": 10.38,
+     "extend_us": 44999.3,
+     "splitkv_us": 23875.1,
+     "speedup": 1.88,
+     "per_step_ms_extend": 719.99,
+     "per_step_ms_splitkv": 382.0
+    },
+    {
+     "prefix": 197000,
+     "K": 128,
+     "status": "ok",
+     "extend_vs_fp32": {
+      "finite": true,
+      "cosine": 0.999563,
+      "max_err_over_refmax": 0.037076,
+      "rms_err": 2.13e-05
+     },
+     "splitkv_vs_fp32": {
+      "finite": true,
+      "cosine": 0.9995645,
+      "max_err_over_refmax": 0.03562,
+      "rms_err": 2.12e-05
+     },
+     "extend_vs_splitkv_ulps_at_refmax": 11.323,
+     "extend_us": 45054.0,
+     "splitkv_us": 23986.7,
+     "speedup": 1.88,
+     "per_step_ms_extend": 720.86,
+     "per_step_ms_splitkv": 383.79
+    },
+    {
+     "prefix": 197000,
+     "K": 256,
+     "status": "ok",
+     "extend_vs_fp32": {
+      "finite": true,
+      "cosine": 0.9995651,
+      "max_err_over_refmax": 0.032986,
+      "rms_err": 2.13e-05
+     },
+     "splitkv_vs_fp32": {
+      "finite": true,
+      "cosine": 0.9995664,
+      "max_err_over_refmax": 0.032116,
+      "rms_err": 2.12e-05
+     },
+     "extend_vs_splitkv_ulps_at_refmax": 10.566,
+     "extend_us": 86089.4,
+     "splitkv_us": 48260.5,
+     "speedup": 1.78,
+     "per_step_ms_extend": 1377.43,
+     "per_step_ms_splitkv": 772.17
+    }
+   ],
+   "timestamp": "2026-11-01 14:08"
+  },
+  "qwen38-upcast-K16-64.json": {
+   "preset": "qwen38",
+   "shape": {
+    "h_q": 48,
+    "h_kv": 4,
+    "head_dim": 256,
+    "v_head_dim": 256,
+    "layers": 16
+   },
+   "kv_dtype": "fp8",
+   "k_scale": 0.07,
+   "v_scale": 0.05,
+   "device": "AMD Radeon AI PRO R9700",
+   "label": "v2-upcast",
+   "sinks": false,
+   "first_launch_free_delta_mb": null,
+   "kernel_stats": [],
+   "upcast_k": "1",
+   "tile_ab": null,
+   "qk_ab": false,
+   "gate": "vs fp32 reference: finite, cosine >= min(0.9999, extend cosine - 2e-5), max and rms error <= 1.25x the extend kernel's own",
+   "worst": {
+    "max_ulp": 10.93467336683417,
+    "min_cos": 0.999638
+   },
+   "rows": [
+    {
+     "prefix": 58000,
+     "K": 16,
+     "status": "ok",
+     "extend_vs_fp32": {
+      "finite": true,
+      "cosine": 0.9996318,
+      "max_err_over_refmax": 0.029748,
+      "rms_err": 3.61e-05
+     },
+     "splitkv_vs_fp32": {
+      "finite": true,
+      "cosine": 0.999638,
+      "max_err_over_refmax": 0.031164,
+      "rms_err": 3.58e-05
+     },
+     "extend_vs_splitkv_ulps_at_refmax": 10.449,
+     "extend_us": 20175.7,
+     "splitkv_us": 3518.2,
+     "speedup": 5.73,
+     "per_step_ms_extend": 322.81,
+     "per_step_ms_splitkv": 56.29
+    },
+    {
+     "prefix": 58000,
+     "K": 32,
+     "status": "ok",
+     "extend_vs_fp32": {
+      "finite": true,
+      "cosine": 0.9996314,
+      "max_err_over_refmax": 0.03058,
+      "rms_err": 3.61e-05
+     },
+     "splitkv_vs_fp32": {
+      "finite": true,
+      "cosine": 0.9996389,
+      "max_err_over_refmax": 0.029662,
+      "rms_err": 3.58e-05
+     },
+     "extend_vs_splitkv_ulps_at_refmax": 10.348,
+     "extend_us": 20348.4,
+     "splitkv_us": 4176.7,
+     "speedup": 4.87,
+     "per_step_ms_extend": 325.57,
+     "per_step_ms_splitkv": 66.83
+    },
+    {
+     "prefix": 58000,
+     "K": 64,
+     "status": "ok",
+     "extend_vs_fp32": {
+      "finite": true,
+      "cosine": 0.9996336,
+      "max_err_over_refmax": 0.028033,
+      "rms_err": 3.6e-05
+     },
+     "splitkv_vs_fp32": {
+      "finite": true,
+      "cosine": 0.9996389,
+      "max_err_over_refmax": 0.028156,
+      "rms_err": 3.58e-05
+     },
+     "extend_vs_splitkv_ulps_at_refmax": 10.935,
+     "extend_us": 20929.9,
+     "splitkv_us": 5901.3,
+     "speedup": 3.55,
+     "per_step_ms_extend": 334.88,
+     "per_step_ms_splitkv": 94.42
+    },
+    {
+     "prefix": 197000,
+     "K": 16,
+     "status": "ok",
+     "extend_vs_fp32": {
+      "finite": true,
+      "cosine": 0.9996387,
+      "max_err_over_refmax": 0.028361,
+      "rms_err": 1.96e-05
+     },
+     "splitkv_vs_fp32": {
+      "finite": true,
+      "cosine": 0.9996407,
+      "max_err_over_refmax": 0.029192,
+      "rms_err": 1.95e-05
+     },
+     "extend_vs_splitkv_ulps_at_refmax": 10.442,
+     "extend_us": 66452.2,
+     "splitkv_us": 11494.1,
+     "speedup": 5.78,
+     "per_step_ms_extend": 1063.23,
+     "per_step_ms_splitkv": 183.91
+    },
+    {
+     "prefix": 197000,
+     "K": 32,
+     "status": "ok",
+     "extend_vs_fp32": {
+      "finite": true,
+      "cosine": 0.9996393,
+      "max_err_over_refmax": 0.031206,
+      "rms_err": 1.96e-05
+     },
+     "splitkv_vs_fp32": {
+      "finite": true,
+      "cosine": 0.9996427,
+      "max_err_over_refmax": 0.028817,
+      "rms_err": 1.95e-05
+     },
+     "extend_vs_splitkv_ulps_at_refmax": 10.28,
+     "extend_us": 74974.1,
+     "splitkv_us": 13169.9,
+     "speedup": 5.69,
+     "per_step_ms_extend": 1199.59,
+     "per_step_ms_splitkv": 210.72
+    },
+    {
+     "prefix": 197000,
+     "K": 64,
+     "status": "ok",
+     "extend_vs_fp32": {
+      "finite": true,
+      "cosine": 0.9996389,
+      "max_err_over_refmax": 0.033879,
+      "rms_err": 1.96e-05
+     },
+     "splitkv_vs_fp32": {
+      "finite": true,
+      "cosine": 0.9996414,
+      "max_err_over_refmax": 0.034036,
+      "rms_err": 1.95e-05
+     },
+     "extend_vs_splitkv_ulps_at_refmax": 10.927,
+     "extend_us": 66709.9,
+     "splitkv_us": 18092.3,
+     "speedup": 3.69,
+     "per_step_ms_extend": 1067.36,
+     "per_step_ms_splitkv": 289.48
+    }
+   ],
+   "timestamp": "2026-11-01 14:02"
+  }
+ },
+ "serving": {
+  "extend-cost-laguna-route-16.json": {
+   "schema_version": 1,
+   "label": "laguna laguna-route-16",
+   "note": "chunked split-KV route A/B (EXTEND_SPLITKV_MAX=16 SGLANG_EXTEND_SPLITKV_TILE=16)",
+   "served_identity": {
+    "model_path": null,
+    "attention_backend": null,
+    "fp8_gemm_runner_backend": null,
+    "triton_attention_num_kv_splits": null,
+    "kv_cache_dtype": null,
+    "tp_size": null,
+    "context_length": null,
+    "disable_cuda_graph": null,
+    "enable_cache_report": null
+   },
+   "runs": 2,
+   "method": "streaming TTFT of a cache-hit request appending N new tokens to a primed prefix; median of --runs, each run with a unique suffix",
+   "multi_turn": false,
+   "results": [
+    {
+     "requested_depth": 29000,
+     "prime": {
+      "prime_prompt_tokens": 26049,
+      "prime_seconds": 4.29,
+      "prime_completion_tokens": 1,
+      "multi_turn": false
+     },
+     "decode_reference": {
+      "actual_prompt_tokens": 26049,
+      "completion_tokens": 32,
+      "tpot_ms": 15.088,
+      "tok_per_sec": 66.278
+     },
+     "extend_rows": [
+      {
+       "requested_depth": 29000,
+       "suffix_tokens_requested": 1,
+       "actual_prompt_tokens": 26050,
+       "cached_tokens": null,
+       "cache_hit_verified": false,
+       "runs_ttft_ms": [
+        91.9,
+        76.28
+       ],
+       "median_ttft_ms": 84.09,
+       "min_ttft_ms": 76.28,
+       "max_ttft_ms": 91.9,
+       "decode_tpot_ms": 15.088,
+       "extend_over_decode_ratio": 5.6
+      },
+      {
+       "requested_depth": 29000,
+       "suffix_tokens_requested": 16,
+       "actual_prompt_tokens": 26069,
+       "cached_tokens": null,
+       "cache_hit_verified": false,
+       "runs_ttft_ms": [
+        120.15,
+        111.1
+       ],
+       "median_ttft_ms": 115.62,
+       "min_ttft_ms": 111.1,
+       "max_ttft_ms": 120.15,
+       "decode_tpot_ms": 15.088,
+       "extend_over_decode_ratio": 7.7
+      },
+      {
+       "requested_depth": 29000,
+       "suffix_tokens_requested": 64,
+       "actual_prompt_tokens": 26095,
+       "cached_tokens": null,
+       "cache_hit_verified": false,
+       "runs_ttft_ms": [
+        121.77,
+        112.82
+       ],
+       "median_ttft_ms": 117.3,
+       "min_ttft_ms": 112.82,
+       "max_ttft_ms": 121.77,
+       "decode_tpot_ms": 15.088,
+       "extend_over_decode_ratio": 7.8
+      },
+      {
+       "requested_depth": 29000,
+       "suffix_tokens_requested": 128,
+       "actual_prompt_tokens": 26130,
+       "cached_tokens": null,
+       "cache_hit_verified": false,
+       "runs_ttft_ms": [
+        119.12,
+        117.91
+       ],
+       "median_ttft_ms": 118.52,
+       "min_ttft_ms": 117.91,
+       "max_ttft_ms": 119.12,
+       "decode_tpot_ms": 15.088,
+       "extend_over_decode_ratio": 7.9
+      }
+     ]
+    },
+    {
+     "requested_depth": 105000,
+     "prime": {
+      "prime_prompt_tokens": 94147,
+      "prime_seconds": 31.21,
+      "prime_completion_tokens": 1,
+      "multi_turn": false
+     },
+     "decode_reference": {
+      "actual_prompt_tokens": 94147,
+      "completion_tokens": 32,
+      "tpot_ms": 21.777,
+      "tok_per_sec": 45.92
+     },
+     "extend_rows": [
+      {
+       "requested_depth": 105000,
+       "suffix_tokens_requested": 1,
+       "actual_prompt_tokens": 94148,
+       "cached_tokens": null,
+       "cache_hit_verified": false,
+       "runs_ttft_ms": [
+        138.12,
+        144.09
+       ],
+       "median_ttft_ms": 141.1,
+       "min_ttft_ms": 138.12,
+       "max_ttft_ms": 144.09,
+       "decode_tpot_ms": 21.777,
+       "extend_over_decode_ratio": 6.5
+      },
+      {
+       "requested_depth": 105000,
+       "suffix_tokens_requested": 16,
+       "actual_prompt_tokens": 94168,
+       "cached_tokens": null,
+       "cache_hit_verified": false,
+       "runs_ttft_ms": [
+        296.27,
+        316.74
+       ],
+       "median_ttft_ms": 306.5,
+       "min_ttft_ms": 296.27,
+       "max_ttft_ms": 316.74,
+       "decode_tpot_ms": 21.777,
+       "extend_over_decode_ratio": 14.1
+      },
+      {
+       "requested_depth": 105000,
+       "suffix_tokens_requested": 64,
+       "actual_prompt_tokens": 94193,
+       "cached_tokens": null,
+       "cache_hit_verified": false,
+       "runs_ttft_ms": [
+        306.97,
+        307.66
+       ],
+       "median_ttft_ms": 307.32,
+       "min_ttft_ms": 306.97,
+       "max_ttft_ms": 307.66,
+       "decode_tpot_ms": 21.777,
+       "extend_over_decode_ratio": 14.1
+      },
+      {
+       "requested_depth": 105000,
+       "suffix_tokens_requested": 128,
+       "actual_prompt_tokens": 94228,
+       "cached_tokens": null,
+       "cache_hit_verified": false,
+       "runs_ttft_ms": [
+        337.49,
+        332.3
+       ],
+       "median_ttft_ms": 334.89,
+       "min_ttft_ms": 332.3,
+       "max_ttft_ms": 337.49,
+       "decode_tpot_ms": 21.777,
+       "extend_over_decode_ratio": 15.4
+      }
+     ]
+    },
+    {
+     "requested_depth": 158000,
+     "prime": {
+      "prime_prompt_tokens": 141639,
+      "prime_seconds": 40.6,
+      "prime_completion_tokens": 1,
+      "multi_turn": false
+     },
+     "decode_reference": {
+      "actual_prompt_tokens": 141639,
+      "completion_tokens": 32,
+      "tpot_ms": 46.12,
+      "tok_per_sec": 21.682
+     },
+     "extend_rows": [
+      {
+       "requested_depth": 158000,
+       "suffix_tokens_requested": 1,
+       "actual_prompt_tokens": 141640,
+       "cached_tokens": null,
+       "cache_hit_verified": false,
+       "runs_ttft_ms": [
+        227.0,
+        225.87
+       ],
+       "median_ttft_ms": 226.43,
+       "min_ttft_ms": 225.87,
+       "max_ttft_ms": 227.0,
+       "decode_tpot_ms": 46.12,
+       "extend_over_decode_ratio": 4.9
+      },
+      {
+       "requested_depth": 158000,
+       "suffix_tokens_requested": 16,
+       "actual_prompt_tokens": 141660,
+       "cached_tokens": null,
+       "cache_hit_verified": false,
+       "runs_ttft_ms": [
+        463.97,
+        478.89
+       ],
+       "median_ttft_ms": 471.43,
+       "min_ttft_ms": 463.97,
+       "max_ttft_ms": 478.89,
+       "decode_tpot_ms": 46.12,
+       "extend_over_decode_ratio": 10.2
+      },
+      {
+       "requested_depth": 158000,
+       "suffix_tokens_requested": 64,
+       "actual_prompt_tokens": 141685,
+       "cached_tokens": null,
+       "cache_hit_verified": false,
+       "runs_ttft_ms": [
+        467.82,
+        478.09
+       ],
+       "median_ttft_ms": 472.95,
+       "min_ttft_ms": 467.82,
+       "max_ttft_ms": 478.09,
+       "decode_tpot_ms": 46.12,
+       "extend_over_decode_ratio": 10.3
+      },
+      {
+       "requested_depth": 158000,
+       "suffix_tokens_requested": 128,
+       "actual_prompt_tokens": 141720,
+       "cached_tokens": null,
+       "cache_hit_verified": false,
+       "runs_ttft_ms": [
+        502.83,
+        489.01
+       ],
+       "median_ttft_ms": 495.92,
+       "min_ttft_ms": 489.01,
+       "max_ttft_ms": 502.83,
+       "decode_tpot_ms": 46.12,
+       "extend_over_decode_ratio": 10.8
+      }
+     ]
+    }
+   ]
+  },
+  "extend-cost-laguna-route-256.json": {
+   "schema_version": 1,
+   "label": "laguna laguna-route-256",
+   "note": "chunked split-KV route A/B (EXTEND_SPLITKV_MAX=256 SGLANG_EXTEND_SPLITKV_TILE=64)",
+   "served_identity": {
+    "model_path": null,
+    "attention_backend": null,
+    "fp8_gemm_runner_backend": null,
+    "triton_attention_num_kv_splits": null,
+    "kv_cache_dtype": null,
+    "tp_size": null,
+    "context_length": null,
+    "disable_cuda_graph": null,
+    "enable_cache_report": null
+   },
+   "runs": 2,
+   "method": "streaming TTFT of a cache-hit request appending N new tokens to a primed prefix; median of --runs, each run with a unique suffix",
+   "multi_turn": false,
+   "results": [
+    {
+     "requested_depth": 29000,
+     "prime": {
+      "prime_prompt_tokens": 26049,
+      "prime_seconds": 4.29,
+      "prime_completion_tokens": 1,
+      "multi_turn": false
+     },
+     "decode_reference": {
+      "actual_prompt_tokens": 26049,
+      "completion_tokens": 32,
+      "tpot_ms": 15.049,
+      "tok_per_sec": 66.45
+     },
+     "extend_rows": [
+      {
+       "requested_depth": 29000,
+       "suffix_tokens_requested": 1,
+       "actual_prompt_tokens": 26050,
+       "cached_tokens": null,
+       "cache_hit_verified": false,
+       "runs_ttft_ms": [
+        90.47,
+        77.93
+       ],
+       "median_ttft_ms": 84.2,
+       "min_ttft_ms": 77.93,
+       "max_ttft_ms": 90.47,
+       "decode_tpot_ms": 15.049,
+       "extend_over_decode_ratio": 5.6
+      },
+      {
+       "requested_depth": 29000,
+       "suffix_tokens_requested": 16,
+       "actual_prompt_tokens": 26069,
+       "cached_tokens": null,
+       "cache_hit_verified": false,
+       "runs_ttft_ms": [
+        428.57,
+        77.18
+       ],
+       "median_ttft_ms": 252.88,
+       "min_ttft_ms": 77.18,
+       "max_ttft_ms": 428.57,
+       "decode_tpot_ms": 15.049,
+       "extend_over_decode_ratio": 16.8
+      },
+      {
+       "requested_depth": 29000,
+       "suffix_tokens_requested": 64,
+       "actual_prompt_tokens": 26095,
+       "cached_tokens": null,
+       "cache_hit_verified": false,
+       "runs_ttft_ms": [
+        488.9,
+        81.22
+       ],
+       "median_ttft_ms": 285.06,
+       "min_ttft_ms": 81.22,
+       "max_ttft_ms": 488.9,
+       "decode_tpot_ms": 15.049,
+       "extend_over_decode_ratio": 18.9
+      },
+      {
+       "requested_depth": 29000,
+       "suffix_tokens_requested": 128,
+       "actual_prompt_tokens": 26130,
+       "cached_tokens": null,
+       "cache_hit_verified": false,
+       "runs_ttft_ms": [
+        92.31,
+        89.49
+       ],
+       "median_ttft_ms": 90.9,
+       "min_ttft_ms": 89.49,
+       "max_ttft_ms": 92.31,
+       "decode_tpot_ms": 15.049,
+       "extend_over_decode_ratio": 6.0
+      }
+     ]
+    },
+    {
+     "requested_depth": 105000,
+     "prime": {
+      "prime_prompt_tokens": 94147,
+      "prime_seconds": 31.22,
+      "prime_completion_tokens": 1,
+      "multi_turn": false
+     },
+     "decode_reference": {
+      "actual_prompt_tokens": 94147,
+      "completion_tokens": 32,
+      "tpot_ms": 16.46,
+      "tok_per_sec": 60.753
+     },
+     "extend_rows": [
+      {
+       "requested_depth": 105000,
+       "suffix_tokens_requested": 1,
+       "actual_prompt_tokens": 94148,
+       "cached_tokens": null,
+       "cache_hit_verified": false,
+       "runs_ttft_ms": [
+        148.77,
+        140.0
+       ],
+       "median_ttft_ms": 144.38,
+       "min_ttft_ms": 140.0,
+       "max_ttft_ms": 148.77,
+       "decode_tpot_ms": 16.46,
+       "extend_over_decode_ratio": 8.8
+      },
+      {
+       "requested_depth": 105000,
+       "suffix_tokens_requested": 16,
+       "actual_prompt_tokens": 94168,
+       "cached_tokens": null,
+       "cache_hit_verified": false,
+       "runs_ttft_ms": [
+        144.76,
+        147.23
+       ],
+       "median_ttft_ms": 145.99,
+       "min_ttft_ms": 144.76,
+       "max_ttft_ms": 147.23,
+       "decode_tpot_ms": 16.46,
+       "extend_over_decode_ratio": 8.9
+      },
+      {
+       "requested_depth": 105000,
+       "suffix_tokens_requested": 64,
+       "actual_prompt_tokens": 94193,
+       "cached_tokens": null,
+       "cache_hit_verified": false,
+       "runs_ttft_ms": [
+        157.93,
+        158.76
+       ],
+       "median_ttft_ms": 158.34,
+       "min_ttft_ms": 157.93,
+       "max_ttft_ms": 158.76,
+       "decode_tpot_ms": 16.46,
+       "extend_over_decode_ratio": 9.6
+      },
+      {
+       "requested_depth": 105000,
+       "suffix_tokens_requested": 128,
+       "actual_prompt_tokens": 94228,
+       "cached_tokens": null,
+       "cache_hit_verified": false,
+       "runs_ttft_ms": [
+        181.35,
+        192.63
+       ],
+       "median_ttft_ms": 186.99,
+       "min_ttft_ms": 181.35,
+       "max_ttft_ms": 192.63,
+       "decode_tpot_ms": 16.46,
+       "extend_over_decode_ratio": 11.4
+      }
+     ]
+    },
+    {
+     "requested_depth": 158000,
+     "prime": {
+      "prime_prompt_tokens": 141639,
+      "prime_seconds": 39.79,
+      "prime_completion_tokens": 1,
+      "multi_turn": false
+     },
+     "decode_reference": {
+      "actual_prompt_tokens": 141639,
+      "completion_tokens": 32,
+      "tpot_ms": 17.372,
+      "tok_per_sec": 57.562
+     },
+     "extend_rows": [
+      {
+       "requested_depth": 158000,
+       "suffix_tokens_requested": 1,
+       "actual_prompt_tokens": 141640,
+       "cached_tokens": null,
+       "cache_hit_verified": false,
+       "runs_ttft_ms": [
+        214.32,
+        208.39
+       ],
+       "median_ttft_ms": 211.36,
+       "min_ttft_ms": 208.39,
+       "max_ttft_ms": 214.32,
+       "decode_tpot_ms": 17.372,
+       "extend_over_decode_ratio": 12.2
+      },
+      {
+       "requested_depth": 158000,
+       "suffix_tokens_requested": 16,
+       "actual_prompt_tokens": 141660,
+       "cached_tokens": null,
+       "cache_hit_verified": false,
+       "runs_ttft_ms": [
+        215.72,
+        214.77
+       ],
+       "median_ttft_ms": 215.25,
+       "min_ttft_ms": 214.77,
+       "max_ttft_ms": 215.72,
+       "decode_tpot_ms": 17.372,
+       "extend_over_decode_ratio": 12.4
+      },
+      {
+       "requested_depth": 158000,
+       "suffix_tokens_requested": 64,
+       "actual_prompt_tokens": 141685,
+       "cached_tokens": null,
+       "cache_hit_verified": false,
+       "runs_ttft_ms": [
+        229.65,
+        228.68
+       ],
+       "median_ttft_ms": 229.17,
+       "min_ttft_ms": 228.68,
+       "max_ttft_ms": 229.65,
+       "decode_tpot_ms": 17.372,
+       "extend_over_decode_ratio": 13.2
+      },
+      {
+       "requested_depth": 158000,
+       "suffix_tokens_requested": 128,
+       "actual_prompt_tokens": 141720,
+       "cached_tokens": null,
+       "cache_hit_verified": false,
+       "runs_ttft_ms": [
+        272.1,
+        270.85
+       ],
+       "median_ttft_ms": 271.48,
+       "min_ttft_ms": 270.85,
+       "max_ttft_ms": 272.1,
+       "decode_tpot_ms": 17.372,
+       "extend_over_decode_ratio": 15.6
+      }
+     ]
+    }
+   ]
+  },
+  "extend-cost-qwen38-route-256-warm-measure.json": {
+   "schema_version": 1,
+   "label": "qwen38 nospec qwen38-route-256-warm measure",
+   "note": "chunked split-KV route, warmed (SGLANG_EXTEND_SPLITKV_MAX_TOKENS=256 SGLANG_EXTEND_SPLITKV_TILE=64)",
+   "served_identity": {
+    "model_path": null,
+    "attention_backend": null,
+    "fp8_gemm_runner_backend": null,
+    "triton_attention_num_kv_splits": null,
+    "kv_cache_dtype": null,
+    "tp_size": null,
+    "context_length": null,
+    "disable_cuda_graph": null,
+    "enable_cache_report": null
+   },
+   "runs": 2,
+   "method": "streaming TTFT of a cache-hit request sending N new tokens as a new user turn after the primed turn (user, assistant reply, user); median of --runs, each run with a unique suffix",
+   "multi_turn": true,
+   "results": [
+    {
+     "requested_depth": 7300,
+     "prime": {
+      "prime_prompt_tokens": 6576,
+      "prime_seconds": 4.33,
+      "prime_completion_tokens": 16,
+      "multi_turn": true
+     },
+     "decode_reference": {
+      "actual_prompt_tokens": 6576,
+      "completion_tokens": 32,
+      "tpot_ms": 43.633,
+      "tok_per_sec": 22.919
+     },
+     "extend_rows": [
+      {
+       "requested_depth": 7300,
+       "suffix_tokens_requested": 1,
+       "actual_prompt_tokens": 6591,
+       "cached_tokens": null,
+       "cache_hit_verified": false,
+       "runs_ttft_ms": [
+        95.8,
+        95.24
+       ],
+       "median_ttft_ms": 95.52,
+       "min_ttft_ms": 95.24,
+       "max_ttft_ms": 95.8,
+       "decode_tpot_ms": 43.633,
+       "extend_over_decode_ratio": 2.2
+      },
+      {
+       "requested_depth": 7300,
+       "suffix_tokens_requested": 64,
+       "actual_prompt_tokens": 6639,
+       "cached_tokens": null,
+       "cache_hit_verified": false,
+       "runs_ttft_ms": [
+        144.13,
+        143.25
+       ],
+       "median_ttft_ms": 143.69,
+       "min_ttft_ms": 143.25,
+       "max_ttft_ms": 144.13,
+       "decode_tpot_ms": 43.633,
+       "extend_over_decode_ratio": 3.3
+      },
+      {
+       "requested_depth": 7300,
+       "suffix_tokens_requested": 256,
+       "actual_prompt_tokens": 6755,
+       "cached_tokens": null,
+       "cache_hit_verified": false,
+       "runs_ttft_ms": [
+        173.29,
+        170.29
+       ],
+       "median_ttft_ms": 171.79,
+       "min_ttft_ms": 170.29,
+       "max_ttft_ms": 173.29,
+       "decode_tpot_ms": 43.633,
+       "extend_over_decode_ratio": 3.9
+      }
+     ]
+    },
+    {
+     "requested_depth": 58000,
+     "prime": {
+      "prime_prompt_tokens": 51801,
+      "prime_seconds": 31.72,
+      "prime_completion_tokens": 16,
+      "multi_turn": true
+     },
+     "decode_reference": {
+      "actual_prompt_tokens": 51801,
+      "completion_tokens": 32,
+      "tpot_ms": 45.136,
+      "tok_per_sec": 22.155
+     },
+     "extend_rows": [
+      {
+       "requested_depth": 58000,
+       "suffix_tokens_requested": 1,
+       "actual_prompt_tokens": 51816,
+       "cached_tokens": null,
+       "cache_hit_verified": false,
+       "runs_ttft_ms": [
+        109.65,
+        108.24
+       ],
+       "median_ttft_ms": 108.95,
+       "min_ttft_ms": 108.24,
+       "max_ttft_ms": 109.65,
+       "decode_tpot_ms": 45.136,
+       "extend_over_decode_ratio": 2.4
+      },
+      {
+       "requested_depth": 58000,
+       "suffix_tokens_requested": 64,
+       "actual_prompt_tokens": 51865,
+       "cached_tokens": null,
+       "cache_hit_verified": false,
+       "runs_ttft_ms": [
+        164.5,
+        165.05
+       ],
+       "median_ttft_ms": 164.77,
+       "min_ttft_ms": 164.5,
+       "max_ttft_ms": 165.05,
+       "decode_tpot_ms": 45.136,
+       "extend_over_decode_ratio": 3.7
+      },
+      {
+       "requested_depth": 58000,
+       "suffix_tokens_requested": 256,
+       "actual_prompt_tokens": 51981,
+       "cached_tokens": null,
+       "cache_hit_verified": false,
+       "runs_ttft_ms": [
+        254.77,
+        255.86
+       ],
+       "median_ttft_ms": 255.32,
+       "min_ttft_ms": 254.77,
+       "max_ttft_ms": 255.86,
+       "decode_tpot_ms": 45.136,
+       "extend_over_decode_ratio": 5.7
+      }
+     ]
+    },
+    {
+     "requested_depth": 197000,
+     "prime": {
+      "prime_prompt_tokens": 175793,
+      "prime_seconds": 141.41,
+      "prime_completion_tokens": 16,
+      "multi_turn": true
+     },
+     "decode_reference": {
+      "actual_prompt_tokens": 175793,
+      "completion_tokens": 32,
+      "tpot_ms": 48.553,
+      "tok_per_sec": 20.596
+     },
+     "extend_rows": [
+      {
+       "requested_depth": 197000,
+       "suffix_tokens_requested": 1,
+       "actual_prompt_tokens": 175808,
+       "cached_tokens": null,
+       "cache_hit_verified": false,
+       "runs_ttft_ms": [
+        168.23,
+        168.47
+       ],
+       "median_ttft_ms": 168.35,
+       "min_ttft_ms": 168.23,
+       "max_ttft_ms": 168.47,
+       "decode_tpot_ms": 48.553,
+       "extend_over_decode_ratio": 3.5
+      },
+      {
+       "requested_depth": 197000,
+       "suffix_tokens_requested": 64,
+       "actual_prompt_tokens": 175857,
+       "cached_tokens": null,
+       "cache_hit_verified": false,
+       "runs_ttft_ms": [
+        274.61,
+        275.44
+       ],
+       "median_ttft_ms": 275.03,
+       "min_ttft_ms": 274.61,
+       "max_ttft_ms": 275.44,
+       "decode_tpot_ms": 48.553,
+       "extend_over_decode_ratio": 5.7
+      },
+      {
+       "requested_depth": 197000,
+       "suffix_tokens_requested": 256,
+       "actual_prompt_tokens": 175973,
+       "cached_tokens": null,
+       "cache_hit_verified": false,
+       "runs_ttft_ms": [
+        361.87,
+        363.51
+       ],
+       "median_ttft_ms": 362.69,
+       "min_ttft_ms": 361.87,
+       "max_ttft_ms": 363.51,
+       "decode_tpot_ms": 48.553,
+       "extend_over_decode_ratio": 7.5
+      }
+     ]
+    }
+   ]
+  },
+  "extend-cost-qwen38-route-256-warm-warmup.json": {
+   "schema_version": 1,
+   "label": "qwen38 nospec qwen38-route-256-warm warmup",
+   "note": "chunked split-KV route, warmed (SGLANG_EXTEND_SPLITKV_MAX_TOKENS=256 SGLANG_EXTEND_SPLITKV_TILE=64)",
+   "served_identity": {
+    "model_path": null,
+    "attention_backend": null,
+    "fp8_gemm_runner_backend": null,
+    "triton_attention_num_kv_splits": null,
+    "kv_cache_dtype": null,
+    "tp_size": null,
+    "context_length": null,
+    "disable_cuda_graph": null,
+    "enable_cache_report": null
+   },
+   "runs": 2,
+   "method": "streaming TTFT of a cache-hit request sending N new tokens as a new user turn after the primed turn (user, assistant reply, user); median of --runs, each run with a unique suffix",
+   "multi_turn": true,
+   "results": [
+    {
+     "requested_depth": 7300,
+     "prime": {
+      "prime_prompt_tokens": 6576,
+      "prime_seconds": 4.35,
+      "prime_completion_tokens": 16,
+      "multi_turn": true
+     },
+     "decode_reference": {
+      "actual_prompt_tokens": 6576,
+      "completion_tokens": 32,
+      "tpot_ms": 43.769,
+      "tok_per_sec": 22.847
+     },
+     "extend_rows": [
+      {
+       "requested_depth": 7300,
+       "suffix_tokens_requested": 1,
+       "actual_prompt_tokens": 6591,
+       "cached_tokens": null,
+       "cache_hit_verified": false,
+       "runs_ttft_ms": [
+        122.76,
+        104.62
+       ],
+       "median_ttft_ms": 113.69,
+       "min_ttft_ms": 104.62,
+       "max_ttft_ms": 122.76,
+       "decode_tpot_ms": 43.769,
+       "extend_over_decode_ratio": 2.6
+      },
+      {
+       "requested_depth": 7300,
+       "suffix_tokens_requested": 64,
+       "actual_prompt_tokens": 6639,
+       "cached_tokens": null,
+       "cache_hit_verified": false,
+       "runs_ttft_ms": [
+        150.08,
+        168.56
+       ],
+       "median_ttft_ms": 159.32,
+       "min_ttft_ms": 150.08,
+       "max_ttft_ms": 168.56,
+       "decode_tpot_ms": 43.769,
+       "extend_over_decode_ratio": 3.6
+      },
+      {
+       "requested_depth": 7300,
+       "suffix_tokens_requested": 256,
+       "actual_prompt_tokens": 6755,
+       "cached_tokens": null,
+       "cache_hit_verified": false,
+       "runs_ttft_ms": [
+        192.96,
+        177.29
+       ],
+       "median_ttft_ms": 185.12,
+       "min_ttft_ms": 177.29,
+       "max_ttft_ms": 192.96,
+       "decode_tpot_ms": 43.769,
+       "extend_over_decode_ratio": 4.2
+      }
+     ]
+    },
+    {
+     "requested_depth": 58000,
+     "prime": {
+      "prime_prompt_tokens": 51801,
+      "prime_seconds": 31.8,
+      "prime_completion_tokens": 16,
+      "multi_turn": true
+     },
+     "decode_reference": {
+      "actual_prompt_tokens": 51801,
+      "completion_tokens": 32,
+      "tpot_ms": 46.697,
+      "tok_per_sec": 21.415
+     },
+     "extend_rows": [
+      {
+       "requested_depth": 58000,
+       "suffix_tokens_requested": 1,
+       "actual_prompt_tokens": 51816,
+       "cached_tokens": null,
+       "cache_hit_verified": false,
+       "runs_ttft_ms": [
+        178.0,
+        159.52
+       ],
+       "median_ttft_ms": 168.76,
+       "min_ttft_ms": 159.52,
+       "max_ttft_ms": 178.0,
+       "decode_tpot_ms": 46.697,
+       "extend_over_decode_ratio": 3.6
+      },
+      {
+       "requested_depth": 58000,
+       "suffix_tokens_requested": 64,
+       "actual_prompt_tokens": 51865,
+       "cached_tokens": null,
+       "cache_hit_verified": false,
+       "runs_ttft_ms": [
+        225.08,
+        216.46
+       ],
+       "median_ttft_ms": 220.77,
+       "min_ttft_ms": 216.46,
+       "max_ttft_ms": 225.08,
+       "decode_tpot_ms": 46.697,
+       "extend_over_decode_ratio": 4.7
+      },
+      {
+       "requested_depth": 58000,
+       "suffix_tokens_requested": 256,
+       "actual_prompt_tokens": 51981,
+       "cached_tokens": null,
+       "cache_hit_verified": false,
+       "runs_ttft_ms": [
+        335.24,
+        314.69
+       ],
+       "median_ttft_ms": 324.97,
+       "min_ttft_ms": 314.69,
+       "max_ttft_ms": 335.24,
+       "decode_tpot_ms": 46.697,
+       "extend_over_decode_ratio": 7.0
+      }
+     ]
+    },
+    {
+     "requested_depth": 197000,
+     "prime": {
+      "prime_prompt_tokens": 175793,
+      "prime_seconds": 141.76,
+      "prime_completion_tokens": 16,
+      "multi_turn": true
+     },
+     "decode_reference": {
+      "actual_prompt_tokens": 175793,
+      "completion_tokens": 32,
+      "tpot_ms": 48.534,
+      "tok_per_sec": 20.604
+     },
+     "extend_rows": [
+      {
+       "requested_depth": 197000,
+       "suffix_tokens_requested": 1,
+       "actual_prompt_tokens": 175808,
+       "cached_tokens": null,
+       "cache_hit_verified": false,
+       "runs_ttft_ms": [
+        356.49,
+        342.59
+       ],
+       "median_ttft_ms": 349.54,
+       "min_ttft_ms": 342.59,
+       "max_ttft_ms": 356.49,
+       "decode_tpot_ms": 48.534,
+       "extend_over_decode_ratio": 7.2
+      },
+      {
+       "requested_depth": 197000,
+       "suffix_tokens_requested": 64,
+       "actual_prompt_tokens": 175857,
+       "cached_tokens": null,
+       "cache_hit_verified": false,
+       "runs_ttft_ms": [
+        458.45,
+        477.03
+       ],
+       "median_ttft_ms": 467.74,
+       "min_ttft_ms": 458.45,
+       "max_ttft_ms": 477.03,
+       "decode_tpot_ms": 48.534,
+       "extend_over_decode_ratio": 9.6
+      },
+      {
+       "requested_depth": 197000,
+       "suffix_tokens_requested": 256,
+       "actual_prompt_tokens": 175973,
+       "cached_tokens": null,
+       "cache_hit_verified": false,
+       "runs_ttft_ms": [
+        542.48,
+        543.13
+       ],
+       "median_ttft_ms": 542.81,
+       "min_ttft_ms": 542.48,
+       "max_ttft_ms": 543.13,
+       "decode_tpot_ms": 48.534,
+       "extend_over_decode_ratio": 11.2
+      }
+     ]
+    }
+   ]
+  },
+  "extend-cost-qwen38-route-256.json": {
+   "schema_version": 1,
+   "label": "qwen38 nospec qwen38-route-256",
+   "note": "chunked split-KV route A/B (QWEN38_SPEC=0 SGLANG_EXTEND_SPLITKV_MAX_TOKENS=256 SGLANG_EXTEND_SPLITKV_TILE=64)",
+   "served_identity": {
+    "model_path": null,
+    "attention_backend": null,
+    "fp8_gemm_runner_backend": null,
+    "triton_attention_num_kv_splits": null,
+    "kv_cache_dtype": null,
+    "tp_size": null,
+    "context_length": null,
+    "disable_cuda_graph": null,
+    "enable_cache_report": null
+   },
+   "runs": 2,
+   "method": "streaming TTFT of a cache-hit request sending N new tokens as a new user turn after the primed turn (user, assistant reply, user); median of --runs, each run with a unique suffix",
+   "multi_turn": true,
+   "results": [
+    {
+     "requested_depth": 7300,
+     "prime": {
+      "prime_prompt_tokens": 6576,
+      "prime_seconds": 9.7,
+      "prime_completion_tokens": 16,
+      "multi_turn": true
+     },
+     "decode_reference": {
+      "actual_prompt_tokens": 6576,
+      "completion_tokens": 32,
+      "tpot_ms": 115.697,
+      "tok_per_sec": 8.643
+     },
+     "extend_rows": [
+      {
+       "requested_depth": 7300,
+       "suffix_tokens_requested": 1,
+       "actual_prompt_tokens": 6591,
+       "cached_tokens": null,
+       "cache_hit_verified": false,
+       "runs_ttft_ms": [
+        30046.61,
+        370.97
+       ],
+       "median_ttft_ms": 15208.79,
+       "min_ttft_ms": 370.97,
+       "max_ttft_ms": 30046.61,
+       "decode_tpot_ms": 115.697,
+       "extend_over_decode_ratio": 131.5
+      },
+      {
+       "requested_depth": 7300,
+       "suffix_tokens_requested": 64,
+       "actual_prompt_tokens": 6639,
+       "cached_tokens": null,
+       "cache_hit_verified": false,
+       "runs_ttft_ms": [
+        515.94,
+        433.4
+       ],
+       "median_ttft_ms": 474.67,
+       "min_ttft_ms": 433.4,
+       "max_ttft_ms": 515.94,
+       "decode_tpot_ms": 115.697,
+       "extend_over_decode_ratio": 4.1
+      },
+      {
+       "requested_depth": 7300,
+       "suffix_tokens_requested": 256,
+       "actual_prompt_tokens": 6755,
+       "cached_tokens": null,
+       "cache_hit_verified": false,
+       "runs_ttft_ms": [
+        468.98,
+        461.9
+       ],
+       "median_ttft_ms": 465.44,
+       "min_ttft_ms": 461.9,
+       "max_ttft_ms": 468.98,
+       "decode_tpot_ms": 115.697,
+       "extend_over_decode_ratio": 4.0
+      }
+     ]
+    },
+    {
+     "requested_depth": 58000,
+     "prime": {
+      "prime_prompt_tokens": 51801,
+      "prime_seconds": 34.7,
+      "prime_completion_tokens": 16,
+      "multi_turn": true
+     },
+     "decode_reference": {
+      "actual_prompt_tokens": 51801,
+      "completion_tokens": 32,
+      "tpot_ms": 65.573,
+      "tok_per_sec": 15.25
+     },
+     "extend_rows": [
+      {
+       "requested_depth": 58000,
+       "suffix_tokens_requested": 1,
+       "actual_prompt_tokens": 51816,
+       "cached_tokens": null,
+       "cache_hit_verified": false,
+       "runs_ttft_ms": [
+        29811.34,
+        191.81
+       ],
+       "median_ttft_ms": 15001.57,
+       "min_ttft_ms": 191.81,
+       "max_ttft_ms": 29811.34,
+       "decode_tpot_ms": 65.573,
+       "extend_over_decode_ratio": 228.8
+      },
+      {
+       "requested_depth": 58000,
+       "suffix_tokens_requested": 64,
+       "actual_prompt_tokens": 51865,
+       "cached_tokens": null,
+       "cache_hit_verified": false,
+       "runs_ttft_ms": [
+        7619.01,
+        301.73
+       ],
+       "median_ttft_ms": 3960.37,
+       "min_ttft_ms": 301.73,
+       "max_ttft_ms": 7619.01,
+       "decode_tpot_ms": 65.573,
+       "extend_over_decode_ratio": 60.4
+      },
+      {
+       "requested_depth": 58000,
+       "suffix_tokens_requested": 256,
+       "actual_prompt_tokens": 51981,
+       "cached_tokens": null,
+       "cache_hit_verified": false,
+       "runs_ttft_ms": [
+        3195.13,
+        425.42
+       ],
+       "median_ttft_ms": 1810.28,
+       "min_ttft_ms": 425.42,
+       "max_ttft_ms": 3195.13,
+       "decode_tpot_ms": 65.573,
+       "extend_over_decode_ratio": 27.6
+      }
+     ]
+    },
+    {
+     "requested_depth": 197000,
+     "prime": {
+      "prime_prompt_tokens": 175793,
+      "prime_seconds": 144.66,
+      "prime_completion_tokens": 16,
+      "multi_turn": true
+     },
+     "decode_reference": {
+      "actual_prompt_tokens": 175793,
+      "completion_tokens": 32,
+      "tpot_ms": 54.815,
+      "tok_per_sec": 18.243
+     },
+     "extend_rows": [
+      {
+       "requested_depth": 197000,
+       "suffix_tokens_requested": 1,
+       "actual_prompt_tokens": 175808,
+       "cached_tokens": null,
+       "cache_hit_verified": false,
+       "runs_ttft_ms": [
+        369.06,
+        389.25
+       ],
+       "median_ttft_ms": 379.16,
+       "min_ttft_ms": 369.06,
+       "max_ttft_ms": 389.25,
+       "decode_tpot_ms": 54.815,
+       "extend_over_decode_ratio": 6.9
+      },
+      {
+       "requested_depth": 197000,
+       "suffix_tokens_requested": 64,
+       "actual_prompt_tokens": 175857,
+       "cached_tokens": null,
+       "cache_hit_verified": false,
+       "runs_ttft_ms": [
+        502.3,
+        491.06
+       ],
+       "median_ttft_ms": 496.68,
+       "min_ttft_ms": 491.06,
+       "max_ttft_ms": 502.3,
+       "decode_tpot_ms": 54.815,
+       "extend_over_decode_ratio": 9.1
+      },
+      {
+       "requested_depth": 197000,
+       "suffix_tokens_requested": 256,
+       "actual_prompt_tokens": 175973,
+       "cached_tokens": null,
+       "cache_hit_verified": false,
+       "runs_ttft_ms": [
+        573.32,
+        562.44
+       ],
+       "median_ttft_ms": 567.88,
+       "min_ttft_ms": 562.44,
+       "max_ttft_ms": 573.32,
+       "decode_tpot_ms": 54.815,
+       "extend_over_decode_ratio": 10.4
+      }
+     ]
+    }
+   ]
+  },
+  "extend-cost-qwen38-route-off-warm-measure.json": {
+   "schema_version": 1,
+   "label": "qwen38 nospec qwen38-route-off-warm measure",
+   "note": "chunked split-KV route, warmed (SGLANG_EXTEND_SPLITKV_MAX_TOKENS=0)",
+   "served_identity": {
+    "model_path": null,
+    "attention_backend": null,
+    "fp8_gemm_runner_backend": null,
+    "triton_attention_num_kv_splits": null,
+    "kv_cache_dtype": null,
+    "tp_size": null,
+    "context_length": null,
+    "disable_cuda_graph": null,
+    "enable_cache_report": null
+   },
+   "runs": 2,
+   "method": "streaming TTFT of a cache-hit request sending N new tokens as a new user turn after the primed turn (user, assistant reply, user); median of --runs, each run with a unique suffix",
+   "multi_turn": true,
+   "results": [
+    {
+     "requested_depth": 7300,
+     "prime": {
+      "prime_prompt_tokens": 6576,
+      "prime_seconds": 4.33,
+      "prime_completion_tokens": 16,
+      "multi_turn": true
+     },
+     "decode_reference": {
+      "actual_prompt_tokens": 6576,
+      "completion_tokens": 32,
+      "tpot_ms": 43.608,
+      "tok_per_sec": 22.931
+     },
+     "extend_rows": [
+      {
+       "requested_depth": 7300,
+       "suffix_tokens_requested": 1,
+       "actual_prompt_tokens": 6591,
+       "cached_tokens": null,
+       "cache_hit_verified": false,
+       "runs_ttft_ms": [
+        103.59,
+        103.46
+       ],
+       "median_ttft_ms": 103.53,
+       "min_ttft_ms": 103.46,
+       "max_ttft_ms": 103.59,
+       "decode_tpot_ms": 43.608,
+       "extend_over_decode_ratio": 2.4
+      },
+      {
+       "requested_depth": 7300,
+       "suffix_tokens_requested": 64,
+       "actual_prompt_tokens": 6639,
+       "cached_tokens": null,
+       "cache_hit_verified": false,
+       "runs_ttft_ms": [
+        141.18,
+        143.29
+       ],
+       "median_ttft_ms": 142.23,
+       "min_ttft_ms": 141.18,
+       "max_ttft_ms": 143.29,
+       "decode_tpot_ms": 43.608,
+       "extend_over_decode_ratio": 3.3
+      },
+      {
+       "requested_depth": 7300,
+       "suffix_tokens_requested": 256,
+       "actual_prompt_tokens": 6755,
+       "cached_tokens": null,
+       "cache_hit_verified": false,
+       "runs_ttft_ms": [
+        159.03,
+        158.59
+       ],
+       "median_ttft_ms": 158.81,
+       "min_ttft_ms": 158.59,
+       "max_ttft_ms": 159.03,
+       "decode_tpot_ms": 43.608,
+       "extend_over_decode_ratio": 3.6
+      }
+     ]
+    },
+    {
+     "requested_depth": 58000,
+     "prime": {
+      "prime_prompt_tokens": 51801,
+      "prime_seconds": 31.77,
+      "prime_completion_tokens": 16,
+      "multi_turn": true
+     },
+     "decode_reference": {
+      "actual_prompt_tokens": 51801,
+      "completion_tokens": 32,
+      "tpot_ms": 45.012,
+      "tok_per_sec": 22.216
+     },
+     "extend_rows": [
+      {
+       "requested_depth": 58000,
+       "suffix_tokens_requested": 1,
+       "actual_prompt_tokens": 51816,
+       "cached_tokens": null,
+       "cache_hit_verified": false,
+       "runs_ttft_ms": [
+        231.94,
+        230.56
+       ],
+       "median_ttft_ms": 231.25,
+       "min_ttft_ms": 230.56,
+       "max_ttft_ms": 231.94,
+       "decode_tpot_ms": 45.012,
+       "extend_over_decode_ratio": 5.1
+      },
+      {
+       "requested_depth": 58000,
+       "suffix_tokens_requested": 64,
+       "actual_prompt_tokens": 51865,
+       "cached_tokens": null,
+       "cache_hit_verified": false,
+       "runs_ttft_ms": [
+        264.4,
+        264.62
+       ],
+       "median_ttft_ms": 264.51,
+       "min_ttft_ms": 264.4,
+       "max_ttft_ms": 264.62,
+       "decode_tpot_ms": 45.012,
+       "extend_over_decode_ratio": 5.9
+      },
+      {
+       "requested_depth": 58000,
+       "suffix_tokens_requested": 256,
+       "actual_prompt_tokens": 51981,
+       "cached_tokens": null,
+       "cache_hit_verified": false,
+       "runs_ttft_ms": [
+        307.34,
+        306.08
+       ],
+       "median_ttft_ms": 306.71,
+       "min_ttft_ms": 306.08,
+       "max_ttft_ms": 307.34,
+       "decode_tpot_ms": 45.012,
+       "extend_over_decode_ratio": 6.8
+      }
+     ]
+    },
+    {
+     "requested_depth": 197000,
+     "prime": {
+      "prime_prompt_tokens": 175793,
+      "prime_seconds": 141.81,
+      "prime_completion_tokens": 16,
+      "multi_turn": true
+     },
+     "decode_reference": {
+      "actual_prompt_tokens": 175793,
+      "completion_tokens": 32,
+      "tpot_ms": 48.374,
+      "tok_per_sec": 20.672
+     },
+     "extend_rows": [
+      {
+       "requested_depth": 197000,
+       "suffix_tokens_requested": 1,
+       "actual_prompt_tokens": 175808,
+       "cached_tokens": null,
+       "cache_hit_verified": false,
+       "runs_ttft_ms": [
+        602.18,
+        598.4
+       ],
+       "median_ttft_ms": 600.29,
+       "min_ttft_ms": 598.4,
+       "max_ttft_ms": 602.18,
+       "decode_tpot_ms": 48.374,
+       "extend_over_decode_ratio": 12.4
+      },
+      {
+       "requested_depth": 197000,
+       "suffix_tokens_requested": 64,
+       "actual_prompt_tokens": 175857,
+       "cached_tokens": null,
+       "cache_hit_verified": false,
+       "runs_ttft_ms": [
+        626.94,
+        623.4
+       ],
+       "median_ttft_ms": 625.17,
+       "min_ttft_ms": 623.4,
+       "max_ttft_ms": 626.94,
+       "decode_tpot_ms": 48.374,
+       "extend_over_decode_ratio": 12.9
+      },
+      {
+       "requested_depth": 197000,
+       "suffix_tokens_requested": 256,
+       "actual_prompt_tokens": 175973,
+       "cached_tokens": null,
+       "cache_hit_verified": false,
+       "runs_ttft_ms": [
+        644.57,
+        641.8
+       ],
+       "median_ttft_ms": 643.18,
+       "min_ttft_ms": 641.8,
+       "max_ttft_ms": 644.57,
+       "decode_tpot_ms": 48.374,
+       "extend_over_decode_ratio": 13.3
+      }
+     ]
+    }
+   ]
+  },
+  "extend-cost-qwen38-route-off-warm-warmup.json": {
+   "schema_version": 1,
+   "label": "qwen38 nospec qwen38-route-off-warm warmup",
+   "note": "chunked split-KV route, warmed (SGLANG_EXTEND_SPLITKV_MAX_TOKENS=0)",
+   "served_identity": {
+    "model_path": null,
+    "attention_backend": null,
+    "fp8_gemm_runner_backend": null,
+    "triton_attention_num_kv_splits": null,
+    "kv_cache_dtype": null,
+    "tp_size": null,
+    "context_length": null,
+    "disable_cuda_graph": null,
+    "enable_cache_report": null
+   },
+   "runs": 2,
+   "method": "streaming TTFT of a cache-hit request sending N new tokens as a new user turn after the primed turn (user, assistant reply, user); median of --runs, each run with a unique suffix",
+   "multi_turn": true,
+   "results": [
+    {
+     "requested_depth": 7300,
+     "prime": {
+      "prime_prompt_tokens": 6576,
+      "prime_seconds": 4.34,
+      "prime_completion_tokens": 16,
+      "multi_turn": true
+     },
+     "decode_reference": {
+      "actual_prompt_tokens": 6576,
+      "completion_tokens": 32,
+      "tpot_ms": 43.774,
+      "tok_per_sec": 22.844
+     },
+     "extend_rows": [
+      {
+       "requested_depth": 7300,
+       "suffix_tokens_requested": 1,
+       "actual_prompt_tokens": 6591,
+       "cached_tokens": null,
+       "cache_hit_verified": false,
+       "runs_ttft_ms": [
+        110.37,
+        110.29
+       ],
+       "median_ttft_ms": 110.33,
+       "min_ttft_ms": 110.29,
+       "max_ttft_ms": 110.37,
+       "decode_tpot_ms": 43.774,
+       "extend_over_decode_ratio": 2.5
+      },
+      {
+       "requested_depth": 7300,
+       "suffix_tokens_requested": 64,
+       "actual_prompt_tokens": 6639,
+       "cached_tokens": null,
+       "cache_hit_verified": false,
+       "runs_ttft_ms": [
+        147.39,
+        154.5
+       ],
+       "median_ttft_ms": 150.95,
+       "min_ttft_ms": 147.39,
+       "max_ttft_ms": 154.5,
+       "decode_tpot_ms": 43.774,
+       "extend_over_decode_ratio": 3.4
+      },
+      {
+       "requested_depth": 7300,
+       "suffix_tokens_requested": 256,
+       "actual_prompt_tokens": 6755,
+       "cached_tokens": null,
+       "cache_hit_verified": false,
+       "runs_ttft_ms": [
+        171.62,
+        167.28
+       ],
+       "median_ttft_ms": 169.45,
+       "min_ttft_ms": 167.28,
+       "max_ttft_ms": 171.62,
+       "decode_tpot_ms": 43.774,
+       "extend_over_decode_ratio": 3.9
+      }
+     ]
+    },
+    {
+     "requested_depth": 58000,
+     "prime": {
+      "prime_prompt_tokens": 51801,
+      "prime_seconds": 31.78,
+      "prime_completion_tokens": 16,
+      "multi_turn": true
+     },
+     "decode_reference": {
+      "actual_prompt_tokens": 51801,
+      "completion_tokens": 32,
+      "tpot_ms": 45.185,
+      "tok_per_sec": 22.131
+     },
+     "extend_rows": [
+      {
+       "requested_depth": 58000,
+       "suffix_tokens_requested": 1,
+       "actual_prompt_tokens": 51816,
+       "cached_tokens": null,
+       "cache_hit_verified": false,
+       "runs_ttft_ms": [
+        288.82,
+        285.09
+       ],
+       "median_ttft_ms": 286.96,
+       "min_ttft_ms": 285.09,
+       "max_ttft_ms": 288.82,
+       "decode_tpot_ms": 45.185,
+       "extend_over_decode_ratio": 6.4
+      },
+      {
+       "requested_depth": 58000,
+       "suffix_tokens_requested": 64,
+       "actual_prompt_tokens": 51865,
+       "cached_tokens": null,
+       "cache_hit_verified": false,
+       "runs_ttft_ms": [
+        324.32,
+        324.19
+       ],
+       "median_ttft_ms": 324.25,
+       "min_ttft_ms": 324.19,
+       "max_ttft_ms": 324.32,
+       "decode_tpot_ms": 45.185,
+       "extend_over_decode_ratio": 7.2
+      },
+      {
+       "requested_depth": 58000,
+       "suffix_tokens_requested": 256,
+       "actual_prompt_tokens": 51981,
+       "cached_tokens": null,
+       "cache_hit_verified": false,
+       "runs_ttft_ms": [
+        364.04,
+        364.04
+       ],
+       "median_ttft_ms": 364.04,
+       "min_ttft_ms": 364.04,
+       "max_ttft_ms": 364.04,
+       "decode_tpot_ms": 45.185,
+       "extend_over_decode_ratio": 8.1
+      }
+     ]
+    },
+    {
+     "requested_depth": 197000,
+     "prime": {
+      "prime_prompt_tokens": 175793,
+      "prime_seconds": 141.78,
+      "prime_completion_tokens": 16,
+      "multi_turn": true
+     },
+     "decode_reference": {
+      "actual_prompt_tokens": 175793,
+      "completion_tokens": 32,
+      "tpot_ms": 48.446,
+      "tok_per_sec": 20.641
+     },
+     "extend_rows": [
+      {
+       "requested_depth": 197000,
+       "suffix_tokens_requested": 1,
+       "actual_prompt_tokens": 175808,
+       "cached_tokens": null,
+       "cache_hit_verified": false,
+       "runs_ttft_ms": [
+        809.45,
+        817.67
+       ],
+       "median_ttft_ms": 813.56,
+       "min_ttft_ms": 809.45,
+       "max_ttft_ms": 817.67,
+       "decode_tpot_ms": 48.446,
+       "extend_over_decode_ratio": 16.8
+      },
+      {
+       "requested_depth": 197000,
+       "suffix_tokens_requested": 64,
+       "actual_prompt_tokens": 175857,
+       "cached_tokens": null,
+       "cache_hit_verified": false,
+       "runs_ttft_ms": [
+        848.6,
+        850.52
+       ],
+       "median_ttft_ms": 849.56,
+       "min_ttft_ms": 848.6,
+       "max_ttft_ms": 850.52,
+       "decode_tpot_ms": 48.446,
+       "extend_over_decode_ratio": 17.5
+      },
+      {
+       "requested_depth": 197000,
+       "suffix_tokens_requested": 256,
+       "actual_prompt_tokens": 175973,
+       "cached_tokens": null,
+       "cache_hit_verified": false,
+       "runs_ttft_ms": [
+        841.88,
+        843.95
+       ],
+       "median_ttft_ms": 842.91,
+       "min_ttft_ms": 841.88,
+       "max_ttft_ms": 843.95,
+       "decode_tpot_ms": 48.446,
+       "extend_over_decode_ratio": 17.4
+      }
+     ]
+    }
+   ]
+  },
+  "extend-cost-qwen38-route-off.json": {
+   "schema_version": 1,
+   "label": "qwen38 nospec qwen38-route-off",
+   "note": "chunked split-KV route A/B (QWEN38_SPEC=0 SGLANG_EXTEND_SPLITKV_MAX_TOKENS=0)",
+   "served_identity": {
+    "model_path": null,
+    "attention_backend": null,
+    "fp8_gemm_runner_backend": null,
+    "triton_attention_num_kv_splits": null,
+    "kv_cache_dtype": null,
+    "tp_size": null,
+    "context_length": null,
+    "disable_cuda_graph": null,
+    "enable_cache_report": null
+   },
+   "runs": 2,
+   "method": "streaming TTFT of a cache-hit request sending N new tokens as a new user turn after the primed turn (user, assistant reply, user); median of --runs, each run with a unique suffix",
+   "multi_turn": true,
+   "results": [
+    {
+     "requested_depth": 7300,
+     "prime": {
+      "prime_prompt_tokens": 6576,
+      "prime_seconds": 4.31,
+      "prime_completion_tokens": 16,
+      "multi_turn": true
+     },
+     "decode_reference": {
+      "actual_prompt_tokens": 6576,
+      "completion_tokens": 32,
+      "tpot_ms": 43.885,
+      "tok_per_sec": 22.787
+     },
+     "extend_rows": [
+      {
+       "requested_depth": 7300,
+       "suffix_tokens_requested": 1,
+       "actual_prompt_tokens": 6591,
+       "cached_tokens": null,
+       "cache_hit_verified": false,
+       "runs_ttft_ms": [
+        112.71,
+        110.94
+       ],
+       "median_ttft_ms": 111.83,
+       "min_ttft_ms": 110.94,
+       "max_ttft_ms": 112.71,
+       "decode_tpot_ms": 43.885,
+       "extend_over_decode_ratio": 2.5
+      },
+      {
+       "requested_depth": 7300,
+       "suffix_tokens_requested": 64,
+       "actual_prompt_tokens": 6639,
+       "cached_tokens": null,
+       "cache_hit_verified": false,
+       "runs_ttft_ms": [
+        148.6,
+        153.4
+       ],
+       "median_ttft_ms": 151.0,
+       "min_ttft_ms": 148.6,
+       "max_ttft_ms": 153.4,
+       "decode_tpot_ms": 43.885,
+       "extend_over_decode_ratio": 3.4
+      },
+      {
+       "requested_depth": 7300,
+       "suffix_tokens_requested": 256,
+       "actual_prompt_tokens": 6755,
+       "cached_tokens": null,
+       "cache_hit_verified": false,
+       "runs_ttft_ms": [
+        172.33,
+        166.33
+       ],
+       "median_ttft_ms": 169.33,
+       "min_ttft_ms": 166.33,
+       "max_ttft_ms": 172.33,
+       "decode_tpot_ms": 43.885,
+       "extend_over_decode_ratio": 3.9
+      }
+     ]
+    },
+    {
+     "requested_depth": 58000,
+     "prime": {
+      "prime_prompt_tokens": 51801,
+      "prime_seconds": 31.92,
+      "prime_completion_tokens": 16,
+      "multi_turn": true
+     },
+     "decode_reference": {
+      "actual_prompt_tokens": 51801,
+      "completion_tokens": 32,
+      "tpot_ms": 45.436,
+      "tok_per_sec": 22.009
+     },
+     "extend_rows": [
+      {
+       "requested_depth": 58000,
+       "suffix_tokens_requested": 1,
+       "actual_prompt_tokens": 51816,
+       "cached_tokens": null,
+       "cache_hit_verified": false,
+       "runs_ttft_ms": [
+        289.42,
+        288.94
+       ],
+       "median_ttft_ms": 289.18,
+       "min_ttft_ms": 288.94,
+       "max_ttft_ms": 289.42,
+       "decode_tpot_ms": 45.436,
+       "extend_over_decode_ratio": 6.4
+      },
+      {
+       "requested_depth": 58000,
+       "suffix_tokens_requested": 64,
+       "actual_prompt_tokens": 51865,
+       "cached_tokens": null,
+       "cache_hit_verified": false,
+       "runs_ttft_ms": [
+        326.98,
+        328.1
+       ],
+       "median_ttft_ms": 327.54,
+       "min_ttft_ms": 326.98,
+       "max_ttft_ms": 328.1,
+       "decode_tpot_ms": 45.436,
+       "extend_over_decode_ratio": 7.2
+      },
+      {
+       "requested_depth": 58000,
+       "suffix_tokens_requested": 256,
+       "actual_prompt_tokens": 51981,
+       "cached_tokens": null,
+       "cache_hit_verified": false,
+       "runs_ttft_ms": [
+        366.99,
+        366.47
+       ],
+       "median_ttft_ms": 366.73,
+       "min_ttft_ms": 366.47,
+       "max_ttft_ms": 366.99,
+       "decode_tpot_ms": 45.436,
+       "extend_over_decode_ratio": 8.1
+      }
+     ]
+    },
+    {
+     "requested_depth": 197000,
+     "prime": {
+      "prime_prompt_tokens": 175793,
+      "prime_seconds": 142.14,
+      "prime_completion_tokens": 16,
+      "multi_turn": true
+     },
+     "decode_reference": {
+      "actual_prompt_tokens": 175793,
+      "completion_tokens": 32,
+      "tpot_ms": 48.472,
+      "tok_per_sec": 20.631
+     },
+     "extend_rows": [
+      {
+       "requested_depth": 197000,
+       "suffix_tokens_requested": 1,
+       "actual_prompt_tokens": 175808,
+       "cached_tokens": null,
+       "cache_hit_verified": false,
+       "runs_ttft_ms": [
+        819.77,
+        802.56
+       ],
+       "median_ttft_ms": 811.17,
+       "min_ttft_ms": 802.56,
+       "max_ttft_ms": 819.77,
+       "decode_tpot_ms": 48.472,
+       "extend_over_decode_ratio": 16.7
+      },
+      {
+       "requested_depth": 197000,
+       "suffix_tokens_requested": 64,
+       "actual_prompt_tokens": 175857,
+       "cached_tokens": null,
+       "cache_hit_verified": false,
+       "runs_ttft_ms": [
+        857.35,
+        854.74
+       ],
+       "median_ttft_ms": 856.05,
+       "min_ttft_ms": 854.74,
+       "max_ttft_ms": 857.35,
+       "decode_tpot_ms": 48.472,
+       "extend_over_decode_ratio": 17.7
+      },
+      {
+       "requested_depth": 197000,
+       "suffix_tokens_requested": 256,
+       "actual_prompt_tokens": 175973,
+       "cached_tokens": null,
+       "cache_hit_verified": false,
+       "runs_ttft_ms": [
+        885.29,
+        893.84
+       ],
+       "median_ttft_ms": 889.56,
+       "min_ttft_ms": 885.29,
+       "max_ttft_ms": 893.84,
+       "decode_tpot_ms": 48.472,
+       "extend_over_decode_ratio": 18.4
+      }
+     ]
+    }
+   ]
+  }
+ },
+ "needle_multiturn": {
+  "qwen38-route-off": "benchmarks/quality/needle-multiturn-qwen38-route-off-route-ab.json",
+  "qwen38-route-256": "benchmarks/quality/needle-multiturn-qwen38-route-256-route-ab.json",
+  "laguna-route-16": "benchmarks/quality/needle-multiturn-laguna-route-16-route-ab.json",
+  "laguna-route-256": "benchmarks/quality/needle-multiturn-laguna-route-256-route-ab.json"
+ }
+}

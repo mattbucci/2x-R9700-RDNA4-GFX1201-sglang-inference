@@ -1,0 +1,38 @@
+{
+ "tag": "laguna-route-256-route-ab",
+ "model": "/data/models/Laguna-XS.2-FP8",
+ "timestamp": "2026-11-01T14:45:49",
+ "haystack": "benchmarks/quality/haystack-platypus.txt",
+ "method": "turn 1: haystack+needle+ack request; turn 2: history replay + needle question (greedy). Exercises the hybrid-cache restore path.",
+ "score": 1.0,
+ "rows": [
+  {
+   "length": 32768,
+   "depth": 0.5,
+   "found": true,
+   "turn1_prompt_tokens": 33277,
+   "turn1_reply": "\nREADY\n",
+   "turn2_prompt_tokens": 33306,
+   "turn2_new_tokens": 29,
+   "turn2_ttft_s": 0.081,
+   "turn2_completion_tokens": 8,
+   "finish_reason": "stop",
+   "content_tail": "\nBANANA42\n",
+   "reasoning_tail": ""
+  },
+  {
+   "length": 131072,
+   "depth": 0.5,
+   "found": true,
+   "turn1_prompt_tokens": 134079,
+   "turn1_reply": "\nREADY\n",
+   "turn2_prompt_tokens": 134108,
+   "turn2_new_tokens": 29,
+   "turn2_ttft_s": 0.186,
+   "turn2_completion_tokens": 8,
+   "finish_reason": "stop",
+   "content_tail": "\nBANANA42\n",
+   "reasoning_tail": ""
+  }
+ ]
+}

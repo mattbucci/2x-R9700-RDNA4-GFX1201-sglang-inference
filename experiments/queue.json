@@ -245,10 +245,10 @@
   {
    "id": "R97-J-extend-kv-split",
    "spec": "10-extend-attention-kv-split-agentic-turn.md",
-   "status": "ready",
+   "status": "completed",
    "resource": "gpu",
    "depends_on": [],
-   "next_action": "Cut the agentic turn tax at depth. Laguna pays 604.6 ms of TTFT to append ONE token to a 176,588-token cache hit, and 607.7 ms to append 64 -- the cost is the prefix walk, not the suffix. Cause is the extend launch grid (extend_attention.py:63) whose third dimension is cdiv(max_len_extend, BLOCK_M); with BLOCK_M=64 on gfx1201 a short suffix collapses it to 1, so ~24 workgroups per rank walk the whole prefix while decode splits the same walk 64 ways. Evaluate two arms: (a) route small-suffix cache-hit extends through the decode attention path, (b) add a KV-split dimension to extend. Gate on numerical equivalence before any speed claim.",
+   "next_action": "Arm A shipped as patch 107 (2026-10-31) and widened as patch 110 (2026-11-01: 64-row chunks, K <= 256, enabled for laguna and qwen38). Arm B superseded by R97-Q. Left: 64-row combine spills (warp/tile sweep), 128-row tile compile stall, Flint sinks on the route.",
    "test_gate": [
     "Isolated kernel reproducer at Laguna's real shapes matches the current extend output within tolerance",
     "measure_extend_cost.py shows a TTFT reduction at 117K and 176K with cache_hit_verified true",

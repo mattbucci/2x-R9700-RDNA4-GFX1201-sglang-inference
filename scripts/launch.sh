@@ -549,6 +549,12 @@ PYEOF
             # explicit no_buffer must also disable overlap scheduling or SGLang asserts at resolve time).
             EXTRA_ARGS="${EXTRA_ARGS:-} --mamba-radix-cache-strategy ${MAMBA_CACHE_STRATEGY:-extra_buffer}"
             [[ "${MAMBA_CACHE_STRATEGY:-extra_buffer}" == "no_buffer" ]] && EXTRA_ARGS="$EXTRA_ARGS --disable-overlap-schedule"
+            # Patch 110 (2026-11-01): cache-hit extends of <= 256 new tokens (the extra_buffer tail recompute
+            # plus the new turn) run through the split-KV verify kernel in 64-row chunks, in the extend kernel's
+            # own QK numerics class (fp8 QK here). Warmed, same-session agentic turns: 1 / 64 / 256 new tokens
+            # 231 / 265 / 307 -> 109 / 165 / 255 ms at 52K cached and 600 / 625 / 643 -> 168 / 275 / 363 ms at
+            # 176K; neutral at 6.6K; needle across a turn boundary 6/6, caps 5/5. EXTEND_SPLITKV_MAX=0 disables.
+            export SGLANG_EXTEND_SPLITKV_MAX_TOKENS="${EXTEND_SPLITKV_MAX:-256}"
             # DSpark speculative decoding is the qwen38 default since 2026-09-27:
             # RedHatAI/Qwen3.8-27B-speculator.dspark (gamma 8, sliding-window
             # draft) converted to the SGLang flat layout by
@@ -756,11 +762,12 @@ PYEOF
                 bf16|bfloat16|fp16|float16) laguna_swa_ratio=0.02 ;;
             esac
             EXTRA_ARGS="${EXTRA_ARGS:-} --swa-full-tokens-ratio ${SWA_FULL_TOKENS_RATIO:-$laguna_swa_ratio} --cuda-graph-max-bs-decode 1"
-            # R97-J arm A (patch 107, 2026-10-31): a cache-hit turn whose new suffix is <= 16 tokens (template
-            # included) runs its full-attention prefix walk through the split-KV verify kernel instead of
-            # the serial extend kernel: 1-token turn 371 -> 163 ms at 105K cached, 523 -> 241 ms at 158K;
-            # longer suffixes take the stock path. EXTEND_SPLITKV_MAX=0 disables.
-            export SGLANG_EXTEND_SPLITKV_MAX_TOKENS="${EXTEND_SPLITKV_MAX:-16}"
+            # R97-J arm A (patch 107, 2026-10-31; widened by patch 110, 2026-11-01): a cache-hit turn whose new
+            # suffix is <= 256 tokens (template included) runs its full-attention prefix walk through the
+            # split-KV verify kernel in 64-row chunks instead of the serial extend kernel: 1-token turn
+            # 371 -> 163 ms at 105K cached, 523 -> 241 ms at 158K (107); 16/64/128-token turns 307/307/335 ->
+            # 146/158/187 ms at 94K and 471/473/496 -> 215/229/272 ms at 142K (110). EXTEND_SPLITKV_MAX=0 disables.
+            export SGLANG_EXTEND_SPLITKV_MAX_TOKENS="${EXTEND_SPLITKV_MAX:-256}"
             CUDA_GRAPH=""
             REASONING="--reasoning-parser poolside_v1"
             TOOL_CALL_PARSER="poolside_v1"

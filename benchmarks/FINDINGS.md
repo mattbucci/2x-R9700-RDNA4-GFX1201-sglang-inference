@@ -321,6 +321,20 @@ reverts); other hybrid presets stay on `no_buffer` until they run the same gates
 [`profiling/hybrid-cache-extra-buffer-qwen38-2026-11-01.md`](profiling/hybrid-cache-extra-buffer-qwen38-2026-11-01.md),
 [`profiling/hybrid-cache-turn-granularity-qwen38-2026-11-01.json`](profiling/hybrid-cache-turn-granularity-qwen38-2026-11-01.json).
 
+## Split-KV route widened to 64-row chunks — patch 110 (2026-11-01)
+
+Patch 109's combine rewrite unblocked the 32- and 64-row verify tiles (seconds to compile; 128 still stalls), so patch 107's
+≤ 16-token route became a chunked route: new tokens run in consecutive 64-row chunks, each attending to the prefix plus the
+new tokens before it (already in the KV pool) and causally within itself, in the extend kernel's own QK numerics class (fp8
+QK where patch 108 is on). Kernel level, 22/22 cells within the extend kernel's error: qwen38's 113-token tail 45.0 → 23.9
+ms/layer at 197K, Laguna 128 new tokens 30.0 → 8.7 ms/layer at 158K. Serving, warmed and same-session: qwen38 agentic
+turns with 1 / 64 / 256 new tokens **231 / 265 / 307 → 109 / 165 / 255 ms at 52K** and **600 / 625 / 643 → 168 / 275 /
+363 ms at 176K** cached (neutral at 6.5K), needle across a turn boundary 6/6, capabilities 5/5, decode unchanged; Laguna
+16 / 64 / 128-token turns 307 / 307 / 335 → 146 / 158 / 187 ms at 94K and 471 / 473 / 496 → 215 / 229 / 272 ms at 142K.
+With R97-R the qwen38 1-token turn at 176K went 10.1 s → 0.17–0.35 s over the day. Enabled for `qwen38` and `laguna`
+(`EXTEND_SPLITKV_MAX=0` disables). Receipt:
+[`profiling/extend-splitkv-route-wide-2026-11-01.md`](profiling/extend-splitkv-route-wide-2026-11-01.md).
+
 ## Long-context attention
 
 ### Decode-only recency window
