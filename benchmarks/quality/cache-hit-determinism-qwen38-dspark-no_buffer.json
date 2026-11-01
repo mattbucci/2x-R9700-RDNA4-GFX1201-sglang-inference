@@ -1,0 +1,75 @@
+{
+ "tag": "qwen38-dspark-no_buffer",
+ "model": "/data/models/Qwen3.8-27B-FP8",
+ "timestamp": "2026-11-01T13:27:01",
+ "max_tokens": 160,
+ "method": "greedy think-off; cold (after flush) vs cache-hit repeat of the same prompt, and an agentic follow-up from cached vs cold history",
+ "rows": [
+  {
+   "depth": 8192,
+   "prompt_tokens": 7331,
+   "cold_tokens": 38,
+   "hit_tokens": 38,
+   "hit2_tokens": 38,
+   "cold_vs_hit_first_diff_char": null,
+   "hit_vs_hit2_first_diff_char": null,
+   "turn_cold_tokens": 29,
+   "turn_cached_tokens": 29,
+   "turn_cold_vs_cached_first_diff_char": null,
+   "seconds": {
+    "cold": 5.11,
+    "hit": 2.64,
+    "turn_cached": 0.69,
+    "turn_cold": 4.77
+   },
+   "cold_text": "The provided text consists of the pangram \"The quick brown fox jumps over the lazy dog\" repeated hundreds of times across multiple lines, with the final instance cut off mid-sentence.",
+   "hit_text": "The provided text consists of the pangram \"The quick brown fox jumps over the lazy dog\" repeated hundreds of times across multiple lines, with the final instance cut off mid-sentence.",
+   "turn_cold_text": "The text is a massive repetition of the pangram \"The quick brown fox jumps over the lazy dog,\" ending with an incomplete final sentence.",
+   "turn_cached_text": "The text is a massive repetition of the pangram \"The quick brown fox jumps over the lazy dog,\" ending with an incomplete final sentence."
+  },
+  {
+   "depth": 58000,
+   "prompt_tokens": 51761,
+   "cold_tokens": 46,
+   "hit_tokens": 46,
+   "hit2_tokens": 46,
+   "cold_vs_hit_first_diff_char": null,
+   "hit_vs_hit2_first_diff_char": null,
+   "turn_cold_tokens": 27,
+   "turn_cached_tokens": 33,
+   "turn_cold_vs_cached_first_diff_char": 57,
+   "seconds": {
+    "cold": 36.96,
+    "hit": 3.36,
+    "turn_cached": 0.83,
+    "turn_cold": 36.02
+   },
+   "cold_text": "The provided text consists of the pangram \"The quick brown fox jumps over the lazy dog\" repeated hundreds of times across multiple lines, serving as a repetitive filler or test string rather than conveying a complex narrative or distinct information.",
+   "hit_text": "The provided text consists of the pangram \"The quick brown fox jumps over the lazy dog\" repeated hundreds of times across multiple lines, serving as a repetitive filler or test string rather than conveying a complex narrative or distinct information.",
+   "turn_cold_text": "The previous answer stated that the text is a repetitive sequence of the pangram \"The quick brown fox jumps over the lazy dog.\"",
+   "turn_cached_text": "The previous answer stated that the text is a repetitive filler consisting of the pangram \"The quick brown fox jumps over the lazy dog\" repeated hundreds of times."
+  },
+  {
+   "depth": 117000,
+   "prompt_tokens": 104391,
+   "cold_tokens": 45,
+   "hit_tokens": 45,
+   "hit2_tokens": 45,
+   "cold_vs_hit_first_diff_char": null,
+   "hit_vs_hit2_first_diff_char": null,
+   "turn_cold_tokens": 22,
+   "turn_cached_tokens": 22,
+   "turn_cold_vs_cached_first_diff_char": null,
+   "seconds": {
+    "cold": 87.66,
+    "hit": 3.16,
+    "turn_cached": 1.01,
+    "turn_cold": 87.78
+   },
+   "cold_text": "The provided text consists of the pangram \"The quick brown fox jumps over the lazy dog\" repeated hundreds of times across multiple lines, serving as a standard example of a sentence that contains every letter of the English alphabet.",
+   "hit_text": "The provided text consists of the pangram \"The quick brown fox jumps over the lazy dog\" repeated hundreds of times across multiple lines, serving as a standard example of a sentence that contains every letter of the English alphabet.",
+   "turn_cold_text": "The text is a massive repetition of the pangram \"The quick brown fox jumps over the lazy dog.\"",
+   "turn_cached_text": "The text is a massive repetition of the pangram \"The quick brown fox jumps over the lazy dog.\""
+  }
+ ]
+}

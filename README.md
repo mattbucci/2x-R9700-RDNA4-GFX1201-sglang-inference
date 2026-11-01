@@ -18,16 +18,20 @@ new quality flagship Qwen3.8-27B-FP8.
   agentic ladder. North-Mini Code passes the same ladder 21/21 to 245,172 actual tokens.
 - **Qwen3.8-27B-FP8 is the quality flagship**: fleet-best LAB-Bench 42.3% (no-think multiple choice),
   MMLU 84.2%, HumanEval 93.3%, 7/7 agentic rungs to 245,150 actual tokens. Its preset is **DSpark
-  speculative decoding** through the split-KV verify kernel (patch 100): **44.3 / 51.0 / 45.2 / 33.1 tok/s
-  at 24 / 7.3K / 58K / 197K input** (canonical 3-run think-off sweep, v0.5.22 + patch 109, 2026-11-01; the same-session
-  arm on the previous verify kernel read 36.7 / 51.3 / 41.0 / 29.9) against
+  speculative decoding** through the split-KV verify kernel (patch 100): **44.9 / 52.2 / 47.5 / 41.0 tok/s
+  at 24 / 7.3K / 58K / 197K input** (canonical think-off sweep on the shipped preset, v0.5.22 + patch 109 +
+  `extra_buffer`, 2026-11-01, 5-run medians; the cold first run reads 41.2 / 30.4 at the two deep points because the
+  restored hybrid-cache state yields a different greedy continuation and DSpark throughput is acceptance-bound; the
+  same-day `no_buffer` arm read 44.3 / 51.0 / 45.2 / 33.1 and the previous verify kernel 36.7 / 51.3 / 41.0 / 29.9) against
   23.0 / 22.5 / 21.8 / 20.2 on the no-spec server (`QWEN38_SPEC=0`, which keeps the 530K-token pool for
   true 256K work; the DSpark pool is 206K), 45.6 tok/s on thinking text at 58K, capability probe 5/5. Patch
   106's gfx1201 block-FP8 GEMM configs (2026-10-31) added +2–4 % decode and 1.5–2.5× cold prefill
   (197K prompt: 496 → 330 s) on both servers; patch 108's fp8 QK dot in extend attention (2026-11-01) took the 197K cold
   prefill on to **211 s** and a 1-token cache-hit turn at 176K from 10.1 to 5.7 s, needle grid 9/9 on both arms; patch 109
   (the 3090's combine-stage rewrite of the shared split-KV verify kernel, 2026-11-01) added +10–21 % DSpark decode at 24 /
-  58K / 197K with bit-identical numerics.
+  58K / 197K with bit-identical numerics. The preset's hybrid cache moved to `extra_buffer` the same day
+  ([R97-R](experiments/18-hybrid-cache-checkpoint-granularity.md)): a 1-token agentic turn at 176K went **5.7 → 0.82 s**
+  (2.2 → 0.28 s at 52K) with needle grids and capabilities unchanged.
   Its seven-scaffold SWE-bench Lite bake-off (v5, 300 instances per cell, every scaffold sandboxed in
   the official instance image) has rolled and audited all 2,100 instances; Docker scoring is owed — see
   SWE-bench Lite below.
@@ -187,9 +191,14 @@ operational history behind each item lives in the document it links, not here.
    3 %), so patch 108 switches its prefix QK to the fp8 WMMA dot: **qwen38 cold prefill 332 → 211 s at 197K (−36 %)**,
    47.2 → 40.8 s at 58K, **1-token cache-hit turn 10.1 → 5.7 s at 176K**, needle grid 9/9 on both arms, capabilities
    5/5 — default for `qwen38`. Left, in order:
-   - **Hybrid-cache checkpoint granularity**: the qwen38 radix cache hits only at 8,192-token boundaries (a 3.8K-token
-     tail recompute per turn) although `mamba_track_interval=256`; finer checkpoints would also let patch 107's route
-     fire on qwen38.
+   - **Hybrid-cache checkpoint granularity — done ([R97-R](experiments/18-hybrid-cache-checkpoint-granularity.md),
+     [receipt](benchmarks/profiling/hybrid-cache-extra-buffer-qwen38-2026-11-01.md))**: under the HIP default `no_buffer` a
+     Mamba state exists only at chunk ends and the template's `<think>\n` → `\n\n` merge makes every follow-up diverge
+     one token before the primed prompt end, so each turn recomputed up to 8K tokens. `qwen38` now runs
+     `--mamba-radix-cache-strategy extra_buffer`: **1-token agentic turn 3.65 / 2.2 / 6.8 / 5.7 s → 0.11 / 0.28 / 0.52 /
+     0.82 s at 6.6K / 52K / 104K / 176K**, needle grids 12/12 (single-message and across a turn boundary), capabilities
+     5/5. Left: the ~0.8 s at 176K is the stock extend kernel over ~113 recomputed tokens — widen patch 107's route past
+     16 tokens; run the same gates on qwen36-27b / qwen35 before flipping them.
    - **fp8 QK on the other FP8-cache presets** (north-mini, gemma4, qwen35/36, coder): opt-in `SGLANG_EXTEND_FP8_QK=1`
      until each runs its own needle-grid A/B.
    - Extend-kernel follow-ups: exp2 softmax, `num_stages` pipelining, the split-KV route for 16 < K ≤ 128; the verify

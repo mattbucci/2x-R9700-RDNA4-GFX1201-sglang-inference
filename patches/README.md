@@ -152,7 +152,7 @@ can be proposed upstream. `Partial` requires a fresh comparison with upstream be
 | 046 | `rdna4-mamba-ssd-divergent-ptr-buffer-ops` | Candidate | Rewrites divergent SSD state-pointer selection into value selection accepted by AMD buffer-op lowering. |
 | 047 | `rdna4-triton-attn-hybrid-mamba-vhead-dim` | Candidate | Obtains value-head dimensions from hybrid KV pools without assuming layer zero is attention. |
 | 049 | `rdna4-conv1d-colload-dtype-cast` | Candidate | Casts recurrent convolution state loads to the input dtype before arithmetic. |
-| 073 | `rdna4-mamba-extra-buffer-hip-fallback` | Carry | Resolves automatic Mamba radix-cache selection to the validated `no_buffer` strategy on HIP. v0.5.22 lists HIP among the `extra_buffer` platforms, so without this `auto` would flip every gfx1201 hybrid (and the qwen38 bake-off) to `extra_buffer` + overlap scheduling on untested state-snapshot kernels; opt in explicitly with `--mamba-radix-cache-strategy extra_buffer` after an A/B. |
+| 073 | `rdna4-mamba-extra-buffer-hip-fallback` | Carry | Resolves automatic Mamba radix-cache selection to the validated `no_buffer` strategy on HIP. v0.5.22 lists HIP among the `extra_buffer` platforms, so without this `auto` would flip every gfx1201 hybrid (and the qwen38 bake-off) to `extra_buffer` + overlap scheduling on untested state-snapshot kernels; opt in explicitly with `--mamba-radix-cache-strategy extra_buffer` after an A/B. `qwen38` opted in 2026-11-01 ([R97-R](../experiments/18-hybrid-cache-checkpoint-granularity.md): agentic turns 7–33× faster, needle 12/12); the gate stays for the other hybrid presets. |
 
 ### Gemma 4
 

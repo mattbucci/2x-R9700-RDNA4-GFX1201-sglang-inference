@@ -539,6 +539,16 @@ PYEOF
             # 1-token cache-hit turn 3.08 -> 2.20 s at 52K and 10.1 -> 5.7 s at 176K cached, needle grid 9/9
             # on both arms, capabilities 5/5. EXTEND_FP8_QK=0 restores the bf16-upcast QK.
             export SGLANG_EXTEND_FP8_QK="${EXTEND_FP8_QK:-1}"
+            # R97-R (2026-11-01): hybrid radix cache on the extra_buffer strategy (64-token Mamba state grid,
+            # overlap scheduling on). Under the HIP default no_buffer (patch 073) a state exists only at chunk
+            # ends / prompt end, and the chat template's history `<think>\n` -> `\n\n` merge makes every
+            # follow-up turn diverge one token before the primed prompt end, so each turn recomputed up to 8K
+            # tokens: 1-token turn 3.65 s -> 0.11 s at 6.6K, 2.2 -> 0.28 s at 52K, 6.8 -> 0.52 s at 104K,
+            # 5.7 -> 0.82 s at 176K; needle grids 6/6 single and across a turn boundary, caps 5/5, pool unchanged.
+            # MAMBA_CACHE_STRATEGY=no_buffer restores the old behaviour (auto also resolves to it on HIP; an
+            # explicit no_buffer must also disable overlap scheduling or SGLang asserts at resolve time).
+            EXTRA_ARGS="${EXTRA_ARGS:-} --mamba-radix-cache-strategy ${MAMBA_CACHE_STRATEGY:-extra_buffer}"
+            [[ "${MAMBA_CACHE_STRATEGY:-extra_buffer}" == "no_buffer" ]] && EXTRA_ARGS="$EXTRA_ARGS --disable-overlap-schedule"
             # DSpark speculative decoding is the qwen38 default since 2026-09-27:
             # RedHatAI/Qwen3.8-27B-speculator.dspark (gamma 8, sliding-window
             # draft) converted to the SGLang flat layout by

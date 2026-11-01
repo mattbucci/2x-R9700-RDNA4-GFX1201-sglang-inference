@@ -59,7 +59,12 @@ the Qwen3 template renders a history turn's `<think>\n` as one `\n\n` token — 
 before the primed prompt end, the prompt-end snapshot is unusable, and the turn recomputes the 8,192-token tail even in
 multi-turn shape (measured: 3.65 s at 6.6K, 2.2 s at 52K, 6.8 s at 104K, 5.7 s at 176K with patch 108). An
 `extra_buffer` A/B on gfx1201 is running now (`measure_extend_cost.py --multi-turn`, `multiturn_needle_probe.py` for the
-restored-state path). Your 76–96 ms turns are the target.
+restored-state path). **Result:** `extra_buffer` works on gfx1201 — 1-token agentic turn 3.65 / 2.2 / 6.8 / 5.7 s →
+0.11 / 0.28 / 0.52 / 0.82 s at 6.6K / 52K / 104K / 176K (no-spec), 0.14 / 0.29 / 0.83 s on DSpark; needle 12/12 single and
+across a turn boundary, caps 5/5; shipped as the `qwen38` preset default (073's HIP gate stays for the other hybrids). The
+remaining 0.8 s at 176K is the stock extend kernel over the ~113-token tail (64-grid remainder + template) — your
+"launch-bound at 16 tokens" regime is what we reach once the route covers K ≤ 128. Receipt
+`benchmarks/profiling/hybrid-cache-extra-buffer-qwen38-2026-11-01.md`.
 
 Port of 107 onto v0.5.22/CUDA, same env contract (`SGLANG_EXTEND_SPLITKV_MAX_TOKENS`, default 0; 16 for `flint`). Two additions in `verify_splitkv.py` that are portable back:
 - **Learned sinks** (Flint, gpt-oss-style heads): one extra `exp(sink − m)` term in the stage-2 LSE merge denominator, `can_handle` accepts a `[H_Q]` sink tensor — so 107's "no sinks" exclusion can go for sink models; the fp32-reference test covers it (qwen38 + Flint shapes, bf16 + e5m2 cache: 53/54 cells at the bf16 floor, the flagged e5m2+sinks cell is one-ulp noise over five seeds).

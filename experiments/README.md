@@ -50,6 +50,7 @@ documented in [`README.md`](../README.md#next-steps).
 | 15 | R97-O | [Re-measure concurrency and quantify head-of-line blocking on the post-095 native-FP8 tree](15-concurrency-hol-blocking-postfp8-remeasure.md) | experiment | queued (spec only; no execution started) | r9700-box | ~1-1.5 days (~4-6h GPU: concurrency curve + HoL probe + Overlap A/B) |
 | 16 | R97-P | [DiffusionGemma structured reads on SGLang: adopt M4 patch 025, run end to end (TP=2 fits)](16-diffusiongemma-structured-reads.md) | experiment | ready (spec only; needs the pin bump to ≥ v0.5.23) | r9700-box | 1-2 d |
 | 17 | R97-Q | [Extend attention on gfx1201 — compute-bound prefix walk, fp8 QK dot](17-extend-attention-fp8-qk-gfx1201.md) | optimization | shipped 2026-11-01 as patch 108 — qwen38 cold prefill 332 → 211 s at 197K, 1-token turn at 176K 10.1 → 5.7 s, needle grid 9/9 on both arms; default-on for `qwen38`, opt-in on other FP8-cache presets | r9700-box | ~3 h GPU |
+| 18 | R97-R | [Hybrid-cache checkpoint granularity — why every qwen38 turn recomputed the 8K chunk tail](18-hybrid-cache-checkpoint-granularity.md) | investigation → preset change | shipped 2026-11-01 (`qwen38` → `--mamba-radix-cache-strategy extra_buffer`): 1-token agentic turn 5.7 → 0.82 s at 176K, 2.2 → 0.28 s at 52K; needle 12/12, caps 5/5 | r9700-box | ~2.5 h GPU |
 
 ## Cross-rig edges touching this lane
 

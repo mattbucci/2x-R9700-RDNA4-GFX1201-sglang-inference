@@ -302,6 +302,25 @@ every verify step. Sinks pass the route gate 4/4 (Laguna shapes, `upcast_k`), so
 lifted for Flint after a serving measurement. Receipt:
 [`profiling/verify-splitkv-combine-v2-2026-11-01.md`](profiling/verify-splitkv-combine-v2-2026-11-01.md).
 
+## Hybrid-cache checkpoint granularity: qwen38 turns recomputed the 8K chunk tail — `extra_buffer` (2026-11-01)
+
+[R97-R](../experiments/18-hybrid-cache-checkpoint-granularity.md). The chunk-aligned cache hits behind the qwen38 turn tax
+were not the harness's doing: an agentic-shaped turn (history replay + new user message) paid exactly the same
+(3.65 s at 6.6K — the whole prompt — 2.2 / 6.8 / 5.7 s at 52K / 104K / 176K). Under the HIP default `no_buffer` (patch
+073) a Mamba state exists only at chunk ends, at prompt end and at finish, `mamba_track_interval` is an `extra_buffer`-only
+decode knob, and the Qwen3 chat template renders a history turn's `<think>\n` as one `\n\n` token, so every follow-up
+diverges one token before the primed prompt end and the prompt-end state is never reusable. `--mamba-radix-cache-strategy
+extra_buffer` (64-token FLA grid; overlap scheduling comes on with it) takes the 1-token turn to **0.11 / 0.28 / 0.52 /
+0.82 s** no-spec and 0.14 / 0.29 / 0.83 s on DSpark, cached 6,528 / 51,776 / 104,384 / 175,744 tokens; needle grids 6/6
+single-message and 6/6 across a turn boundary on both presets (`scripts/eval/multiturn_needle_probe.py`, new),
+capabilities 5/5, pools unchanged. Restored states are not bit-identical to a cold forward on either strategy (late
+greedy paraphrase flips at 52K; `no_buffer`'s own agentic turn shows the same), hit-vs-hit is always identical — noise
+class, not a quality trade. Decode, order-controlled and equal-length: cold runs equal or better (45.0 / 33.0 / 31.0 vs 44.2 / 32.3 / 26.6 tok/s at
+24 / 58K / 197K on DSpark), cache-hit runs ±18 % with the generated content, so no decode delta is claimed. Shipped as a `qwen38` preset change (`MAMBA_CACHE_STRATEGY=no_buffer`
+reverts); other hybrid presets stay on `no_buffer` until they run the same gates. Receipts:
+[`profiling/hybrid-cache-extra-buffer-qwen38-2026-11-01.md`](profiling/hybrid-cache-extra-buffer-qwen38-2026-11-01.md),
+[`profiling/hybrid-cache-turn-granularity-qwen38-2026-11-01.json`](profiling/hybrid-cache-turn-granularity-qwen38-2026-11-01.json).
+
 ## Long-context attention
 
 ### Decode-only recency window
