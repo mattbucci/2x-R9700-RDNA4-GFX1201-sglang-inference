@@ -4,9 +4,9 @@
 set -euo pipefail
 
 readonly GPU_ASSERTION="assert torch.cuda.is_available(), 'CUDA not available';"
-# v0.5.18: can_use_store_cache(k_row_bytes: int, v_row_bytes: int = 0) in
-# python/sglang/kernels/ops/kvcache/kvcache.py (was jit_kernel/kvcache.py, (size: int)).
-readonly STORE_CACHE_FUNCTION='^def can_use_store_cache(.*) -> bool:$'
+# can_use_store_cache lives in python/sglang/kernels/ops/kvcache/kvcache.py. Its
+# signature spans several lines from v0.5.22 on (num_threads was added), so the
+# fallback is inserted after the line that closes the signature, not after `def`.
 readonly RUSTUP_TARGET="x86_64-unknown-linux-gnu"
 
 # A truncated fetch makes apt report every repository as badly signed, which is
@@ -77,13 +77,27 @@ enable_gpu_free_setup() {
 
 apply_tp1_store_cache_fallback() {
     local kvcache="${SGLANG_DIR}/python/sglang/kernels/ops/kvcache/kvcache.py"
-    grep -q "$STORE_CACHE_FUNCTION" "$kvcache"
     # The entrypoint sets this only for TP=1. TP=2 keeps its existing JIT path.
-    sed -i '/^def can_use_store_cache(.*) -> bool:$/a\    if __import__("os").environ.get("SGLANG_RDNA4_DISABLE_STORE_CACHE") == "1":\n        return False  # RDNA4 TP=1: JIT store_cache crashes' "$kvcache"
-    grep -A2 "$STORE_CACHE_FUNCTION" "$kvcache" \
-        | grep -q 'SGLANG_RDNA4_DISABLE_STORE_CACHE'
-    grep -A3 "$STORE_CACHE_FUNCTION" "$kvcache" \
-        | grep -q 'return False  # RDNA4 TP=1'
+    python3 - "$kvcache" <<'PY'
+import re
+import sys
+
+path = sys.argv[1]
+src = open(path).read()
+match = re.search(r"^def can_use_store_cache\((?:.|\n)*?\) -> bool:\n", src, re.M)
+if match is None:
+    sys.exit(f"{path}: can_use_store_cache signature not found")
+guard = (
+    '    if __import__("os").environ.get("SGLANG_RDNA4_DISABLE_STORE_CACHE") == "1":\n'
+    "        return False  # RDNA4 TP=1: JIT store_cache crashes\n"
+)
+src = src[: match.end()] + guard + src[match.end() :]
+open(path, "w").write(src)
+PY
+    python3 -m py_compile "$kvcache"
+    grep -A6 '^def can_use_store_cache(' "$kvcache" \
+        | grep -q 'return False  # RDNA4 TP=1' \
+        || { echo "build-sglang: TP=1 store_cache fallback not applied" >&2; return 1; }
 }
 
 apply_tp_sampler_guard() {
