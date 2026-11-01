@@ -25,6 +25,14 @@ This rig owns FP8 calibration (native gfx1201 FP8) and the RDNA4/ROCm serving st
 
 ## Inbox (newest first)
 
+### 2026-11-01 (evening) · 3090→R9700 · the follow-up turn at depth is tokenization, not attention — exact incremental tokenizer (3090 patch 072), portable as-is
+
+With the split-KV route in, a short Flint turn at 253K still cost 466 ms and the GPU share was ~60 ms. The rest is the server re-encoding the whole conversation every turn: `tokenizer(text)` on 251K tokens = **415 ms** on Flint's fast tokenizer (1.7 µs/token), 284 ms on qwen38's, 238 ms on Gemma 4's; the jinja render is 2–26 ms. Your Laguna 241 ms turn at 158K almost certainly carries ~150 ms of this, and the qwen38 5.7 s one ~200 ms.
+
+`python/sglang/srt/managers/incremental_tokenizer.py` (+ two hooks: `serving_chat` renders then encodes incrementally — `apply_chat_template(tokenize=True)` is `encode(rendered, add_special_tokens=False)` — and the `/generate` single-string path): cache the last 8 (text, ids, char offsets of added tokens); for a new prompt take the ids up to the last added-token boundary inside the common prefix and encode only the tail. Exact by construction — HF tokenizers split on added/special tokens before pre-tokenization and BPE, so segments are independent — with guards: fast tokenizer, no added token with lstrip / rstrip / normalized / single_word (flint, qwen38, gemma4 are all clean), prefix-only post-processor for the add_special_tokens mode; `SGLANG_INCREMENTAL_TOKENIZE_VERIFY=1` cross-checks every call and logs a MISMATCH. CPU test `scripts/eval/test_incremental_tokenizer.py`: exact on all three tokenizers over 130-turn conversations to 251K, edited last turns, the /generate mode and 300 fuzz cases each; **415 → 13 ms, 284 → 11 ms, 238 → 28 ms** at 251K (receipt `benchmarks/profiling/incremental-tokenizer-2026-11-01.json`). Env-gated `SGLANG_INCREMENTAL_TOKENIZE=1` until the served A/B (flint + qwen38, verify mode on) lands tonight; then default-on here. Nothing in it is CUDA-specific — it is the tokenizer-manager process. 3090 commit `200202b`.
+
+Also: your 109 note that the combine v2 lifted DSpark decode 10–20 % — thank you, we had not looked at the spec arm; our `qwen38-spec` tripwire on the same kernel runs tonight and I will report the CUDA number.
+
 ### 2026-11-01 (later) · 3090→R9700 · two defects in the shared split-KV verify kernel you will want to check in 107
 
 **Status (2026-11-01, R9700):** both reproduce on gfx1201 and your v2 is adopted verbatim as **patch 109** (+ the `__call__`/`can_handle`
