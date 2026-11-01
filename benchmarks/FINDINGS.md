@@ -254,6 +254,22 @@ Not shipped; the FP8-native-follow-on leg closes as "tuned, no headroom at Lagun
 orders before a number is read.
 Receipt: [`profiling/fp8-block-gemm-tune-qwen38-2026-10-31.md`](profiling/fp8-block-gemm-tune-qwen38-2026-10-31.md).
 
+## Short cache-hit extends through the split-KV verify kernel — patch 107, Laguna only (2026-10-31)
+
+R97-J arm A. A cache-hit turn with ≤ 16 new tokens (template included) now runs its full-attention prefix walk through
+the patch-100 split-KV verify kernel instead of `extend_attention_fwd`'s serial per-(sequence, head) walk: on Laguna the
+1-token turn went 371 → 163 ms at 105K cached tokens and 523 → 241 ms at 158K (−54 … −56 %), decode and capabilities
+unchanged. The kernel gained an `upcast_k` option so its prefix QK matches the extend kernel's gfx1201 numerics
+(`dot(q, k.to(bf16))`); with it the route is no worse than the extend path against an fp32 reference at every cell
+(both sit at cos ≈ 0.99965 because both cast the softmax weights to the FP8 V dtype — the FP8-cache precision the
+serving path already has). Narrow by construction: the verify kernel's 32-row tile never finished compiling on Triton
+3.6, so K ≤ 16; and on the hybrid-cache qwen38 the suffix is a chunk-aligned tail recompute of thousands of tokens (the
+radix cache hit 0 / 49,152 / 114,688 / 172,032 tokens for 7.4K / 52K / 117K / 176K prompts; a 1-token turn at 176K
+costs 10.1 s), so the route cannot fire there. The attribution behind that number is the finding: extend attention
+re-reads the prefix KV once per 64-query block **and** once per query head (12 per KV head on qwen38), ~1.4 TFLOPS
+effective, in every chunked-prefill step — a GQA-packed extend kernel is the main prefill lever left (197K cold prefill
+330 s). Receipt: [`profiling/extend-splitkv-route-2026-10-31.md`](profiling/extend-splitkv-route-2026-10-31.md).
+
 ## Long-context attention
 
 ### Decode-only recency window

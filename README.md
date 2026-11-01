@@ -1,6 +1,6 @@
 # RDNA4 inference on 2× R9700
 
-SGLang v0.5.22 with 75 local RDNA4 patches, tuned for coherent single-user inference at long context
+SGLang v0.5.22 with 76 local RDNA4 patches, tuned for coherent single-user inference at long context
 (256K) on two AMD Radeon AI PRO R9700 GPUs (gfx1201, 32 GiB each, TP=2 over PCIe). The repository holds
 the patch series, the preset launcher, the benchmark and evaluation harnesses, the FP8/AWQ quantization
 pipeline, and the receipts behind every number below. Multi-user throughput is secondary.
@@ -174,8 +174,16 @@ operational history behind each item lives in the document it links, not here.
    R97-L closes. Patch 106 stays qwen38-only.
 4. **LAB-Bench re-measure** of the suppressed Qwen3.5/Gemma4 cells with `--mc-no-think`
    (FINDINGS → LAB-Bench think-budget artifact).
-5. **Agentic turn tax at depth** ([R97-J](experiments/10-extend-attention-kv-split-agentic-turn.md)): split the KV walk in extend attention; gate on
-   numerical equivalence and no cold-prefill regression.
+5. **Agentic turn tax at depth** ([R97-J](experiments/10-extend-attention-kv-split-agentic-turn.md),
+   [receipt](benchmarks/profiling/extend-splitkv-route-2026-10-31.md)): arm A shipped as patch 107 — turns with ≤ 16
+   new tokens run the prefix walk through the split-KV verify kernel (Laguna: 1-token turn 523 → 241 ms at 158K;
+   enabled for `laguna` only). On qwen38 a 1-token turn at 176K still costs **10.1 s**: the hybrid cache hits only at
+   8,192-token boundaries (3.8K-token tail recompute) and extend attention re-reads the prefix KV once per query block
+   and per query head (~1.4 TFLOPS). Two follow-ups, in order:
+   - **GQA-packed extend attention** for gfx1201 (one program per KV head × query block serves all 12 q heads; 12× fewer
+     prefix bytes). Also the main lever on the 197K cold prefill (330 s). Gate: fp32-reference numerics no worse than the
+     current kernel, cold prefill and decode A/B, needle recall.
+   - **Hybrid-cache checkpoint granularity**: why `mamba_track_interval=256` still yields chunk-aligned hits.
 6. **256K ladder across the agentic-qualified fleet** ([R97-I](experiments/09-fleet-ladder-per-model-rungs.md)), including Nemotron's 2K/8K
    budget arms and the Devstral `KV_DTYPE` control.
 7. **EAGLE3 drafts in the `--spec` lane, depth curve** ([R97-A](experiments/04-eagle3-dense-vl-spec-lane-depth-curve.md)).
@@ -227,7 +235,7 @@ backend, quantization path, parsers, memory settings, and graph policy.
 | Component | Version |
 |---|---|
 | GPUs | 2× AMD Radeon AI PRO R9700, gfx1201, 32 GiB each |
-| SGLang | v0.5.22 + 75 patches |
+| SGLang | v0.5.22 + 76 patches |
 | Python | 3.12 |
 | PyTorch | 2.11.0+rocm7.2 |
 | ROCm | 7.2 |

@@ -740,6 +740,11 @@ PYEOF
                 bf16|bfloat16|fp16|float16) laguna_swa_ratio=0.02 ;;
             esac
             EXTRA_ARGS="${EXTRA_ARGS:-} --swa-full-tokens-ratio ${SWA_FULL_TOKENS_RATIO:-$laguna_swa_ratio} --cuda-graph-max-bs-decode 1"
+            # R97-J arm A (patch 107, 2026-10-31): a cache-hit turn whose new suffix is <= 16 tokens (template
+            # included) runs its full-attention prefix walk through the split-KV verify kernel instead of
+            # the serial extend kernel: 1-token turn 371 -> 163 ms at 105K cached, 523 -> 241 ms at 158K;
+            # longer suffixes take the stock path. EXTEND_SPLITKV_MAX=0 disables.
+            export SGLANG_EXTEND_SPLITKV_MAX_TOKENS="${EXTEND_SPLITKV_MAX:-16}"
             CUDA_GRAPH=""
             REASONING="--reasoning-parser poolside_v1"
             TOOL_CALL_PARSER="poolside_v1"

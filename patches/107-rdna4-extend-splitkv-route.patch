@@ -1,0 +1,254 @@
+diff --git a/python/sglang/kernels/ops/attention/verify_splitkv.py b/python/sglang/kernels/ops/attention/verify_splitkv.py
+index 308742d..dcd27e5 100644
+--- a/python/sglang/kernels/ops/attention/verify_splitkv.py
++++ b/python/sglang/kernels/ops/attention/verify_splitkv.py
+@@ -31,6 +31,8 @@ the caller falls back to ``extend_attention_fwd``. Supported case: causal
+ sliding-window / logit-cap / xai-temperature. Correctness is never violated.
+ """
+ 
++import os
++
+ import torch
+ import triton
+ import triton.language as tl
+@@ -46,6 +48,24 @@ _MIN_BLOCK_KV = 32
+ _IS_HIP = is_hip()
+ _AMD_LAUNCH_KWARGS = {"waves_per_eu": 4, "matrix_instr_nonkdim": 16} if _IS_HIP else {}
+ 
++
++def _detect_rdna() -> bool:
++    if not _IS_HIP:
++        return False
++    try:
++        return torch.cuda.get_device_properties(0).gcnArchName.startswith(("gfx11", "gfx12"))
++    except Exception:
++        return False
++
++
++# RDNA (gfx11/gfx12): keep the prefix QK dot in q's dtype (bf16) with K upcast, matching extend_attention_fwd's
++# gfx1201 branch; CDNA keeps the original q->fp8 downcast.
++_IS_RDNA = _detect_rdna()
++# Default for the verify path: the original q->fp8 downcast (2x faster per layer at head_dim 256; 2026-10-31
++# harness: cos 0.99959 vs 0.99965 for the upcast against fp32 with an fp8 cache). SGLANG_SPLITKV_UPCAST_K=1
++# switches the verify path too; the short-extend route always passes upcast_k=True.
++_UPCAST_K = os.environ.get("SGLANG_SPLITKV_UPCAST_K", "0") == "1"
++
+ # Block-size config keyed on head_dim. The (BLOCK_N, num_warps) tile that best
+ # hides latency depends on head_dim: at head_dim=256 (Qwen3 family) a narrower
+ # BLOCK_N with more warps wins, since the 256-wide QK/PV tiles are register
+@@ -166,6 +186,7 @@ def _verify_prefix_stage1(
+     BLOCK_DV: tl.constexpr,
+     BLOCK_N: tl.constexpr,
+     MIN_BLOCK_KV: tl.constexpr,
++    UPCAST_K: tl.constexpr = False,  # RDNA4: dot(q, k.to(q.dtype)) like extend_attention's gfx1201 branch
+ ):
+     cur_batch = tl.program_id(0)
+     cur_head = tl.program_id(1)
+@@ -208,7 +229,13 @@ def _verify_prefix_stage1(
+             mask=mask_l[:, None] & (offs_d[None, :] < HEAD_DIM),
+             other=0.0,
+         )
+-        q_k = q.to(K_Buffer.dtype.element_ty)
++        # extend_attention_fwd's gfx1201/gfx1250 branch upcasts the fp8 prefix K to q's dtype and dots in
++        # bf16; downcasting q to fp8 instead costs ~8 bf16 ulps against that path (cos 0.9993 at head_dim 256).
++        # UPCAST_K mirrors the extend numerics so this kernel can serve ordinary cache-hit extends too.
++        if UPCAST_K:
++            q_k = q
++        else:
++            q_k = q.to(K_Buffer.dtype.element_ty)
+ 
+         base_offs_k = cur_kv_head * stride_buf_kh + offs_d[:, None]
+         base_offs_v = cur_kv_head * stride_buf_vh + offs_dv[None, :]
+@@ -228,7 +255,10 @@ def _verify_prefix_stage1(
+                 mask=(offs_d[:, None] < HEAD_DIM) & n_mask[None, :],
+                 other=0.0,
+             )
+-            qk = tl.dot(q_k, k)  # [L_EXT, BLOCK_N]
++            if UPCAST_K:
++                qk = tl.dot(q_k, k.to(q_k.dtype))  # [L_EXT, BLOCK_N]
++            else:
++                qk = tl.dot(q_k, k)  # [L_EXT, BLOCK_N]
+             qk *= sm_scale * k_scale  # fp8 dequant of prefix K (k_scale==1 if bf16)
+             # NO causal mask: full prefix is visible to all draft tokens.
+             qk = tl.where(n_mask[None, :], qk, float("-inf"))
+@@ -452,7 +482,10 @@ class VerifySplitKV:
+         n_splits=DEFAULT_N_SPLITS,
+         block_n=DEFAULT_BLOCK_N,
+         num_warps=DEFAULT_NUM_WARPS,
++        upcast_k=None,
+     ):
++        # prefix QK numerics: dot(q, k.to(q.dtype)) (extend_attention's gfx1201 path) vs dot(q.to(k.dtype), k)
++        self.upcast_k = _UPCAST_K if upcast_k is None else bool(upcast_k)
+         self.h_q = h_q
+         self.h_kv = h_kv
+         self.group = h_q // h_kv
+@@ -536,6 +569,7 @@ class VerifySplitKV:
+             BLOCK_DV=triton.next_power_of_2(self.v_head_dim),
+             BLOCK_N=self.block_n,
+             MIN_BLOCK_KV=_MIN_BLOCK_KV,
++            UPCAST_K=self.upcast_k,
+             num_warps=self.num_warps,
+             num_stages=1,
+             **_AMD_LAUNCH_KWARGS,
+@@ -642,9 +676,10 @@ _VK_CACHE = {}
+ 
+ 
+ def _get_vk(
+-    max_bs, h_q, h_kv, head_dim, v_head_dim, l_ext, device, n_splits=DEFAULT_N_SPLITS
++    max_bs, h_q, h_kv, head_dim, v_head_dim, l_ext, device, n_splits=DEFAULT_N_SPLITS, upcast_k=None
+ ):
+-    key = (h_q, h_kv, head_dim, v_head_dim, l_ext, str(device), n_splits)
++    upcast_k = _UPCAST_K if upcast_k is None else bool(upcast_k)
++    key = (h_q, h_kv, head_dim, v_head_dim, l_ext, str(device), n_splits, upcast_k)
+     vk = _VK_CACHE.get(key)
+     if vk is None:
+         block_n, num_warps = block_config(head_dim)
+@@ -659,6 +694,7 @@ def _get_vk(
+             n_splits=n_splits,
+             block_n=block_n,
+             num_warps=num_warps,
++            upcast_k=upcast_k,
+         )
+         _VK_CACHE[key] = vk
+     else:
+@@ -779,9 +815,12 @@ def verify_splitkv_fwd(
+     window_kv_offsets=None,
+     xai_temperature_len=-1,
+     max_bs=None,
++    upcast_k=None,
+ ):
+     """Drop-in for extend_attention_fwd on the EAGLE target-verify (topk=1)
+-    shape. Returns True if it ran (o_extend written), False if the case is
++    shape. ``upcast_k`` (None = SGLANG_SPLITKV_UPCAST_K / architecture default)
++    selects dot(q, k.to(q.dtype)) for the prefix QK, matching extend_attention_fwd's
++    gfx1201 numerics; the short-extend route passes True. Returns True if it ran (o_extend written), False if the case is
+     unsupported and the caller must fall back to extend_attention_fwd.
+ 
+     ``max_bs`` (optional) is the stable maximum batch size used to size the
+@@ -853,6 +892,7 @@ def verify_splitkv_fwd(
+         l_ext,
+         q_extend.device,
+         n_splits=n_splits,
++        upcast_k=upcast_k,
+     )
+     vk(
+         q_extend,
+diff --git a/python/sglang/srt/layers/attention/triton_backend.py b/python/sglang/srt/layers/attention/triton_backend.py
+index 5771337..409f30f 100644
+--- a/python/sglang/srt/layers/attention/triton_backend.py
++++ b/python/sglang/srt/layers/attention/triton_backend.py
+@@ -1,5 +1,6 @@
+ from __future__ import annotations
+ 
++import logging
+ import os
+ from dataclasses import dataclass
+ from typing import TYPE_CHECKING, List, Optional
+@@ -47,7 +48,13 @@ from sglang.srt.model_executor.forward_batch_info import ForwardBatch, ForwardMo
+ # (is_gfx95_supported()), so it never fires on RDNA4 — this is the gfx1201 path. The default
+ # extend verify reads the deep prefix KV unsplit (~2.7s @244K); this splits it across SMs like
+ # decode does. Off by default; SGLANG_TREE_VERIFY_SPLITKV=1 enables it (launch.sh --spec sets it).
++logger = logging.getLogger(__name__)
++
+ _TREE_VERIFY_SPLITKV = os.environ.get("SGLANG_TREE_VERIFY_SPLITKV", "") in ("1", "true", "True")
++# RDNA4 R97-J: route short cache-hit extends (K <= MAX new tokens on a prefix >= MIN_PREFIX) through the
++# split-KV verify kernel. 0 (default) = off; the A/B receipt sets the shipped value.
++_EXTEND_SPLITKV_MAX = int(os.environ.get("SGLANG_EXTEND_SPLITKV_MAX_TOKENS", "0") or 0)
++_EXTEND_SPLITKV_MIN_PREFIX = int(os.environ.get("SGLANG_EXTEND_SPLITKV_MIN_PREFIX", "4096") or 0)
+ from sglang.srt.runtime_context import get_exec, get_parallel, get_schedule, get_spec
+ from sglang.srt.speculative.spec_utils import (
+     draft_kv_indices_buffer_width,
+@@ -1641,6 +1648,16 @@ class TritonAttnBackend(AttentionBackend):
+                 layer, loc, k, v, k_scale, v_scale, **kwargs
+             )
+ 
++    def _extend_splitkv_qo_indptr(self, n_pad: int, device) -> torch.Tensor:
++        """[0, n_pad] int32 on device, cached per padded row count (one small tensor per power of two)."""
++        cache = getattr(self, "_extend_splitkv_qo_cache", None)
++        if cache is None:
++            cache = self._extend_splitkv_qo_cache = {}
++        t = cache.get(n_pad)
++        if t is None:
++            t = cache[n_pad] = torch.tensor([0, n_pad], dtype=torch.int32, device=device)
++        return t
++
+     def forward_extend(
+         self,
+         q: torch.Tensor,
+@@ -1852,6 +1869,76 @@ class TritonAttnBackend(AttentionBackend):
+         ):
+             return o
+ 
++        # RDNA4 R97-J (opt-in): a short cache-hit extend — the agentic tool-result turn, K new tokens on a
++        # long cached prefix — walks the whole prefix serially per (seq, head) in extend_attention_fwd
++        # (one q block, ~24 programs per rank). The patch-100 split-KV verify kernel is the same problem
++        # shape (prefix split across programs + a small causal block + LSE merge), so route to it when
++        # 0 < K <= SGLANG_EXTEND_SPLITKV_MAX_TOKENS and the prefix is long. q/k/v are zero-padded to a
++        # power-of-two row count so the kernel's L_EXT instances stay bounded (padded keys sit after
++        # every real query, so the causal block never sees them; padded outputs are discarded). Lengths
++        # come from the CPU copies, so no device sync; bs == 1 only (ragged K would need per-seq padding).
++        if (
++            _EXTEND_SPLITKV_MAX > 0
++            and not self.use_mla
++            and forward_batch.forward_mode == ForwardMode.EXTEND
++            and forward_batch.batch_size == 1
++            and score_mod is None
++            and aux_tensors is None
++            and sinks is None
++            and causal
++            and sliding_window_size == -1
++            and logits_soft_cap <= 0
++            and layer.xai_temperature_len <= 0
++            and layer.qk_head_dim == layer.v_head_dim
++            and self.forward_metadata.custom_mask is None
++            and forward_batch.extend_seq_lens_cpu is not None
++            and forward_batch.extend_prefix_lens_cpu is not None
++            and 0 < forward_batch.extend_seq_lens_cpu[0] <= _EXTEND_SPLITKV_MAX
++            and forward_batch.extend_prefix_lens_cpu[0] >= _EXTEND_SPLITKV_MIN_PREFIX
++        ):
++            n_new = int(forward_batch.extend_seq_lens_cpu[0])
++            n_pad = max(16, triton.next_power_of_2(n_new))
++            q3 = q.view(-1, layer.tp_q_head_num, layer.qk_head_dim)
++            k3 = k.contiguous().view(-1, layer.tp_k_head_num, layer.qk_head_dim)
++            v3 = v.contiguous().view(-1, layer.tp_k_head_num, layer.v_head_dim)
++            if n_pad != n_new:
++                pad = n_pad - n_new
++                q3 = torch.cat([q3, q3.new_zeros((pad,) + q3.shape[1:])])
++                k3 = torch.cat([k3, k3.new_zeros((pad,) + k3.shape[1:])])
++                v3 = torch.cat([v3, v3.new_zeros((pad,) + v3.shape[1:])])
++            o3 = q3.new_empty((n_pad, layer.tp_q_head_num, layer.v_head_dim))
++            qo_pad = self._extend_splitkv_qo_indptr(n_pad, q.device)
++            # the split-KV entry itself, not verify_fwd: that handle only exists on a topk==1 speculative server
++            if self.verify_splitkv_fwd(
++                q3,
++                k3,
++                v3,
++                o3,
++                self.token_to_kv_pool.get_key_buffer(layer.layer_id),
++                self.token_to_kv_pool.get_value_buffer(layer.layer_id),
++                qo_pad,
++                kv_indptr,
++                kv_indices,
++                None,
++                True,
++                None,
++                n_pad,
++                k_descale,
++                v_descale,
++                layer.scaling,
++                logit_cap=0.0,
++                max_bs=1,
++                upcast_k=True,  # match extend_attention_fwd's gfx1201 prefix numerics
++            ):
++                if not getattr(self, "_extend_splitkv_logged", False):
++                    self._extend_splitkv_logged = True
++                    logger.info(
++                        "extend split-KV route active: %d new tokens (padded %d) on a %d-token prefix, layer %d",
++                        n_new, n_pad, int(forward_batch.extend_prefix_lens_cpu[0]), layer.layer_id,
++                    )
++                o.view(-1, layer.tp_q_head_num, layer.v_head_dim).copy_(o3[:n_new])
++                return o
++
+         # RDNA4 task #10 (opt-in): split-KV tree-verify reads the deep prefix KV split across
+         # SMs (decode-style flash-decoding) instead of the unsplit extend prefill kernel that
+         # leaves ~15/16 of SMs idle (~2.7s @244K). Standard GQA verify only; falls through to

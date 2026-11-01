@@ -3,12 +3,28 @@
 | | |
 |---|---|
 | **Type** | optimization |
-| **Status** | ready — cause identified and measured; no fix implemented |
+| **Status** | arm A shipped 2026-10-31 as patch 107 (K ≤ 16 new tokens, Laguna 2.2× on the 1-token turn at 158K); arm B superseded by the GQA-packed extend kernel item |
 | **Execution host** | r9700-box |
 | **Wall clock** | ~1–2 days: kernel work and an isolated numerical gate on CPU/GPU, then A/B plus a ladder re-run |
 | **GPU time** | ~4–6h: isolated reproducer, extend-cost curve at two depths per arm, decode no-regression check, three-seed ladder |
 | **Depends on** | The post-095 serving identity; phase-aware `profile_decode_kernels.py`; `measure_extend_cost.py` |
 | **Provides to** | Per-turn latency at 256K agentic depth, which is currently set by prefill rather than generation |
+
+## Current assessment — 2026-10-31, arm A executed
+
+- **Arm A shipped (patch 107):** short cache-hit extends (≤ 16 new tokens, batch 1) route through the patch-100 split-KV
+  verify kernel, whose prefix QK now matches the extend kernel's gfx1201 numerics (`upcast_k`). Laguna: 1-token turn
+  371 → 163 ms at 105K cached, 523 → 241 ms at 158K; decode and capabilities unchanged. Receipt
+  [`benchmarks/profiling/extend-splitkv-route-2026-10-31.md`](../benchmarks/profiling/extend-splitkv-route-2026-10-31.md).
+- **Why only ≤ 16:** the verify kernel's 32-row tile never finished compiling on Triton 3.6; the measured suffix includes
+  ~9 template tokens, so only genuinely short turns qualify.
+- **qwen38 (the flagship) is not helped yet:** its hybrid radix cache hits at 8,192-token boundaries only, so a "cache-hit"
+  turn is a 2.3–3.8K-token tail recompute (1-token turn at 176K: 10.1 s). The attribution of that time is the larger
+  finding: extend attention re-reads the prefix KV once per query block and per query head (no GQA sharing), ~1.4
+  TFLOPS effective — the same cost sits in every chunked-prefill step (197K cold prefill 330 s).
+- **Arm B is superseded:** a GQA-packed extend kernel (one program per KV head × query block, all q heads inside)
+  attacks the bytes rather than the parallelism and serves turns, tail recomputes and cold prefill alike. It is the next
+  item in the loop, with the hybrid-cache checkpoint granularity as the companion item.
 
 ## Problem
 

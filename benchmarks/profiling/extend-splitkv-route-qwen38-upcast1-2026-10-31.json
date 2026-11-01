@@ -1,0 +1,230 @@
+{
+ "preset": "qwen38",
+ "shape": {
+  "h_q": 48,
+  "h_kv": 4,
+  "head_dim": 256,
+  "v_head_dim": 256,
+  "layers": 16
+ },
+ "kv_dtype": "fp8",
+ "k_scale": 0.07,
+ "v_scale": 0.05,
+ "device": "AMD Radeon AI PRO R9700",
+ "upcast_k": "1",
+ "gate": "vs fp32 reference: finite, cosine >= min(0.9999, extend cosine - 2e-5), max and rms error <= 1.25x the extend kernel's own",
+ "worst": {
+  "max_ulp": 9.504950495049505,
+  "min_cos": 0.9996459
+ },
+ "rows": [
+  {
+   "prefix": 8192,
+   "K": 1,
+   "status": "ok",
+   "extend_vs_fp32": {
+    "finite": true,
+    "cosine": 0.9996492,
+    "max_err_over_refmax": 0.025002,
+    "rms_err": 9.57e-05
+   },
+   "splitkv_vs_fp32": {
+    "finite": true,
+    "cosine": 0.9996612,
+    "max_err_over_refmax": 0.025624,
+    "rms_err": 9.4e-05
+   },
+   "extend_vs_splitkv_ulps_at_refmax": 8.18,
+   "extend_us": 3157.0,
+   "splitkv_us": 745.6,
+   "speedup": 4.23,
+   "per_step_ms_extend": 50.51,
+   "per_step_ms_splitkv": 11.93
+  },
+  {
+   "prefix": 8192,
+   "K": 8,
+   "status": "ok",
+   "extend_vs_fp32": {
+    "finite": true,
+    "cosine": 0.9996479,
+    "max_err_over_refmax": 0.024608,
+    "rms_err": 9.55e-05
+   },
+   "splitkv_vs_fp32": {
+    "finite": true,
+    "cosine": 0.9996662,
+    "max_err_over_refmax": 0.025087,
+    "rms_err": 9.3e-05
+   },
+   "extend_vs_splitkv_ulps_at_refmax": 8.727,
+   "extend_us": 3131.3,
+   "splitkv_us": 777.0,
+   "speedup": 4.03,
+   "per_step_ms_extend": 50.1,
+   "per_step_ms_splitkv": 12.43
+  },
+  {
+   "prefix": 8192,
+   "K": 16,
+   "status": "ok",
+   "extend_vs_fp32": {
+    "finite": true,
+    "cosine": 0.9996477,
+    "max_err_over_refmax": 0.024059,
+    "rms_err": 9.54e-05
+   },
+   "splitkv_vs_fp32": {
+    "finite": true,
+    "cosine": 0.9996621,
+    "max_err_over_refmax": 0.023756,
+    "rms_err": 9.34e-05
+   },
+   "extend_vs_splitkv_ulps_at_refmax": 9.178,
+   "extend_us": 3107.8,
+   "splitkv_us": 814.0,
+   "speedup": 3.82,
+   "per_step_ms_extend": 49.73,
+   "per_step_ms_splitkv": 13.02
+  },
+  {
+   "prefix": 58000,
+   "K": 1,
+   "status": "ok",
+   "extend_vs_fp32": {
+    "finite": true,
+    "cosine": 0.999653,
+    "max_err_over_refmax": 0.023767,
+    "rms_err": 3.62e-05
+   },
+   "splitkv_vs_fp32": {
+    "finite": true,
+    "cosine": 0.9996595,
+    "max_err_over_refmax": 0.025089,
+    "rms_err": 3.58e-05
+   },
+   "extend_vs_splitkv_ulps_at_refmax": 8.712,
+   "extend_us": 20186.6,
+   "splitkv_us": 3532.8,
+   "speedup": 5.71,
+   "per_step_ms_extend": 322.99,
+   "per_step_ms_splitkv": 56.52
+  },
+  {
+   "prefix": 58000,
+   "K": 8,
+   "status": "ok",
+   "extend_vs_fp32": {
+    "finite": true,
+    "cosine": 0.9996582,
+    "max_err_over_refmax": 0.02327,
+    "rms_err": 3.6e-05
+   },
+   "splitkv_vs_fp32": {
+    "finite": true,
+    "cosine": 0.9996659,
+    "max_err_over_refmax": 0.025928,
+    "rms_err": 3.56e-05
+   },
+   "extend_vs_splitkv_ulps_at_refmax": 8.335,
+   "extend_us": 19760.7,
+   "splitkv_us": 3653.1,
+   "speedup": 5.41,
+   "per_step_ms_extend": 316.17,
+   "per_step_ms_splitkv": 58.45
+  },
+  {
+   "prefix": 58000,
+   "K": 16,
+   "status": "ok",
+   "extend_vs_fp32": {
+    "finite": true,
+    "cosine": 0.9996578,
+    "max_err_over_refmax": 0.024705,
+    "rms_err": 3.6e-05
+   },
+   "splitkv_vs_fp32": {
+    "finite": true,
+    "cosine": 0.9996592,
+    "max_err_over_refmax": 0.022857,
+    "rms_err": 3.59e-05
+   },
+   "extend_vs_splitkv_ulps_at_refmax": 8.145,
+   "extend_us": 20077.7,
+   "splitkv_us": 3706.2,
+   "speedup": 5.42,
+   "per_step_ms_extend": 321.24,
+   "per_step_ms_splitkv": 59.3
+  },
+  {
+   "prefix": 197000,
+   "K": 1,
+   "status": "ok",
+   "extend_vs_fp32": {
+    "finite": true,
+    "cosine": 0.9996442,
+    "max_err_over_refmax": 0.027271,
+    "rms_err": 1.95e-05
+   },
+   "splitkv_vs_fp32": {
+    "finite": true,
+    "cosine": 0.9996459,
+    "max_err_over_refmax": 0.024518,
+    "rms_err": 1.95e-05
+   },
+   "extend_vs_splitkv_ulps_at_refmax": 8.889,
+   "extend_us": 66121.4,
+   "splitkv_us": 11176.2,
+   "speedup": 5.92,
+   "per_step_ms_extend": 1057.94,
+   "per_step_ms_splitkv": 178.82
+  },
+  {
+   "prefix": 197000,
+   "K": 8,
+   "status": "ok",
+   "extend_vs_fp32": {
+    "finite": true,
+    "cosine": 0.9996461,
+    "max_err_over_refmax": 0.030021,
+    "rms_err": 1.96e-05
+   },
+   "splitkv_vs_fp32": {
+    "finite": true,
+    "cosine": 0.9996464,
+    "max_err_over_refmax": 0.029127,
+    "rms_err": 1.96e-05
+   },
+   "extend_vs_splitkv_ulps_at_refmax": 9.366,
+   "extend_us": 66230.5,
+   "splitkv_us": 11480.0,
+   "speedup": 5.77,
+   "per_step_ms_extend": 1059.69,
+   "per_step_ms_splitkv": 183.68
+  },
+  {
+   "prefix": 197000,
+   "K": 16,
+   "status": "ok",
+   "extend_vs_fp32": {
+    "finite": true,
+    "cosine": 0.9996474,
+    "max_err_over_refmax": 0.030038,
+    "rms_err": 1.96e-05
+   },
+   "splitkv_vs_fp32": {
+    "finite": true,
+    "cosine": 0.9996492,
+    "max_err_over_refmax": 0.028637,
+    "rms_err": 1.95e-05
+   },
+   "extend_vs_splitkv_ulps_at_refmax": 9.505,
+   "extend_us": 66341.7,
+   "splitkv_us": 11773.7,
+   "speedup": 5.63,
+   "per_step_ms_extend": 1061.47,
+   "per_step_ms_splitkv": 188.38
+  }
+ ],
+ "timestamp": "2026-10-31 23:23"
+}

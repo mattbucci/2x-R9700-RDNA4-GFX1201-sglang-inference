@@ -4,7 +4,7 @@ The repository carries **76 active patches across three environments**:
 
 | Collection | Target | Count | Purpose |
 |---|---|---:|---|
-| [`patches/`](patches/README.md) | SGLang v0.5.22 (`/data/sgl-v0522`, `sglang-triton36-v0522`) | **75** | RDNA4 serving, model compatibility, correctness, and performance |
+| [`patches/`](patches/README.md) | SGLang v0.5.22 (`/data/sgl-v0522`, `sglang-triton36-v0522`) | **76** | RDNA4 serving, model compatibility, correctness, and performance |
 | [`llmcompressor-patches/`](llmcompressor-patches/README.md) | llmcompressor calibration environment | **1** | Unfused Qwen3 MoE experts for GPTQ calibration |
 | [`ream-patches/`](ream-patches/README.md) | Samsung SAIL REAM clone | **1** | Memory-safe, resumable expert merging |
 
@@ -13,7 +13,7 @@ Tooling files that support REAM/REAP are not counted as patches. Upstream contri
 
 ## SGLang series
 
-Apply the 75 numeric patches in filename order to pristine SGLang v0.5.22. Patch 072 was removed because
+Apply the 76 numeric patches in filename order to pristine SGLang v0.5.22. Patch 072 was removed because
 transformers 5.12.1 provides the Gemma 4 unified configuration and processor natively. Patch 083 replaces
 that count with the Mistral tokenizer-backend correction required by Devstral and Devstral 2. On the
 v0.5.16 rebase, patch 059 was dropped because its FuseEP dispatcher target was removed upstream, and patch
@@ -28,7 +28,7 @@ next release tag at a bake-off lane boundary).
 |---|---|---:|
 | Core RDNA4 enablement | 001 002 003 008 060 063 094 | 7 |
 | MoE serving and routing | 004 028 031 033 037 066 075 076 078 079 097 104 | 12 |
-| Attention and numerics | 011 027 065 077 080 081 084 085 086 087 088 | 11 |
+| Attention and numerics | 011 027 065 077 080 081 084 085 086 087 088 107 | 12 |
 | AWQ int4 | 006 030 032 041 | 4 |
 | FP8 | 005 039 042 044 045 074 082 106 | 8 |
 | Mamba2 hybrids | 043 046 047 049 073 | 5 |
