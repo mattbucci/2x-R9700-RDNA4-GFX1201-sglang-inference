@@ -43,6 +43,15 @@ SHAPES = {
             ("mlp.down_proj         K=17408/2",           5120, 8704, 64),
         ],
     },
+    "laguna": {  # Laguna-XS.2-FP8 per rank (server config log): shared experts x39 sparse layers + dense layer-0 MLP x1
+        "peak_gbps": 640.0,
+        "rows": [
+            ("shared_expert.gate_up_proj", 512, 2048, 39),
+            ("shared_expert.down_proj  K=512/2", 2048, 256, 39),
+            ("dense0.mlp.gate_up_proj", 8192, 2048, 1),
+            ("dense0.mlp.down_proj  K=8192/2", 2048, 4096, 1),
+        ],
+    },
 }
 
 

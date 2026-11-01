@@ -136,12 +136,31 @@ same v0.5.22 tree: 34.3 / 44.5 / 41.6 / 30.1), no-spec 23.0 / 22.5 / 21.8 / 20.2
 two sets share their M=1 tiles within noise. A thinking-on run of the sweep (not the canonical method; kept at
 `/data/logs/qwen38-canonical-20261031/`) read 45.8 / 46.8 / 53.8 / 46.3 DSpark.
 
+## Laguna's shapes — swept the same evening, null in serving, not shipped
+
+The tuner's `--preset laguna` table carries the four dense block-FP8 shapes a Laguna-XS.2-FP8 rank runs (from its
+server log): shared-expert `512×2048` and `2048×256` × 39 sparse layers, dense layer-0 MLP `8192×2048` and `2048×4096`
+× 1. Sweep (`fp8-block-gemm-tune-laguna-2026-10-31.json`, `BLOCK_SIZE_M` up to 128, 0 gate failures) found kernel-level
+wins of 14–39 % at M=1 and 34–165 % at M=4096, but these GEMMs are 1–16 MB each and the whole dense slice is 0.75 ms
+of a ~14.5 ms step (0.08 GiB per rank; the MoE experts run the fused-MoE kernel with patch 078's configs, not this one).
+Serving A/B on the `laguna` preset, `ab_fp8_gemm_configs.sh`, two runs in opposite arm order:
+
+| run | arm order | decode 62 / 7.4K / 59K / 198K | cold prefill 7.4K / 59K / 198K |
+|---|---|---|---|
+| 1 | default → tuned | +4.9 / +6.7 / **+22.0** / +2.8 % | +2.1 / −6.1 / −2.2 % |
+| 2 | tuned → default | −0.1 / −0.4 / +0.0 / +0.5 % | +0.9 / +0.5 / +0.3 % |
+
+Run 1's default arm was the day's first Laguna boot (decode 53.4 tok/s at 59K with one 49.4 run; run 2's default arm
+read 64.3 on the same point), so the apparent gains were boot order, not the configs. Run 2 is the verdict: neutral
+within ±0.5 % everywhere. Per the working loop the Laguna files were removed from the live tree and patch 106 stays
+qwen38-only; the FP8-native-follow-on leg for Laguna closes as "tuned, no headroom at Laguna's shapes" (the spec's
+own kill criterion). Capability probe on the tuned arm: text checks 3/3 (the validator's vision/video probes are
+inapplicable to a text-only model). Receipts: `/data/logs/fp8-gemm-ab-laguna-20261031{,-r2}/`,
+`fp8-gemm-m1-laguna-coldcache-{default,tuned}-2026-10-31.json`.
+
 ## Not done / next
 
 - The replicated DeltaNet projections are 5.1 of the 13.9 GiB a rank streams per decode step; sharding them (patch 045
   keeps them replicated for the recurrent-state layout) is the only decode lever above 2 ms left — model code, not config.
 - Prefill at 197K is now 330 s, of which the GEMMs are a minority; the next prefill lever is the attention / DeltaNet
   chunk-scan side ([R97-J](../../experiments/10-extend-attention-kv-split-agentic-turn.md)).
-- Laguna's shared-expert shapes (`512×2048`, `2048×256`, the shapes R97-L was first written for) are in the tuner's
-  `SHAPES["laguna"]` table and not yet swept; Laguna's FP8 GEMM slice is ~12 % of its decode, so the expected win is
-  smaller than qwen38's, but its prefill tiles are the same default.

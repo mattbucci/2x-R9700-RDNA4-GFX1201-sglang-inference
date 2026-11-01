@@ -1,0 +1,70 @@
+{
+ "preset": "laguna",
+ "device": "AMD Radeon AI PRO R9700",
+ "block_size": [
+  128,
+  128
+ ],
+ "rows": [
+  {
+   "projection": "shared_expert.gate_up_proj",
+   "N": 512,
+   "K": 2048,
+   "per_step": 39,
+   "quant_us_torch_ref": 52.39,
+   "gemm_us_median": 12.82,
+   "gemm_us_min": 12.81,
+   "weight_mb": 1.0,
+   "achieved_gbps": 81.8,
+   "weight_copies": 256,
+   "timing": "graph"
+  },
+  {
+   "projection": "shared_expert.down_proj",
+   "N": 2048,
+   "K": 256,
+   "per_step": 39,
+   "quant_us_torch_ref": 50.61,
+   "gemm_us_median": 4.96,
+   "gemm_us_min": 4.7,
+   "weight_mb": 0.5,
+   "achieved_gbps": 105.6,
+   "weight_copies": 512,
+   "timing": "graph"
+  },
+  {
+   "projection": "dense0.mlp.gate_up_proj",
+   "N": 8192,
+   "K": 2048,
+   "per_step": 1,
+   "quant_us_torch_ref": 50.27,
+   "gemm_us_median": 47.49,
+   "gemm_us_min": 47.42,
+   "weight_mb": 16.0,
+   "achieved_gbps": 353.3,
+   "weight_copies": 16,
+   "timing": "graph"
+  },
+  {
+   "projection": "dense0.mlp.down_proj",
+   "N": 2048,
+   "K": 4096,
+   "per_step": 1,
+   "quant_us_torch_ref": 49.46,
+   "gemm_us_median": 30.72,
+   "gemm_us_min": 30.64,
+   "weight_mb": 8.0,
+   "achieved_gbps": 273.1,
+   "weight_copies": 32,
+   "timing": "graph"
+  }
+ ],
+ "configs_ignored": true,
+ "per_step_gemm_ms": 0.772,
+ "per_step_weight_gib": 0.081,
+ "roofline_ms_at_peak": 0.135,
+ "peak_gbps_assumed": 640.0,
+ "timestamp": "2026-10-31 21:33",
+ "triton_cache": "/data/cache/triton/cache",
+ "timing": "HIP-graph replay over >256 MB of rotated weight copies (cold MALL); the 2026-10-31 01:31 receipt used per-call sync on one copy, which let the <64 MB shapes read from the infinity cache"
+}

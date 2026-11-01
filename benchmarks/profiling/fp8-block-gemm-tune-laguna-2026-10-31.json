@@ -1,0 +1,6604 @@
+{
+ "preset": "laguna",
+ "device": "AMD Radeon AI PRO R9700",
+ "block_size": [
+  128,
+  128
+ ],
+ "m_points": [
+  1,
+  8,
+  64,
+  256,
+  1024,
+  4096
+ ],
+ "gates": {
+  "fp32_ref": "finite, cosine>=0.9999, max_err<=1% of ref max",
+  "vs_default": "max 2 bf16 ulps at element magnitude",
+  "graph": "capture+replay bit-identical to eager"
+ },
+ "timestamp": "2026-10-31 21:27",
+ "shapes": [
+  {
+   "projection": "shared_expert.gate_up_proj",
+   "N": 512,
+   "K": 2048,
+   "per_step": 39,
+   "weight_mb": 1.0,
+   "per_m": {
+    "1": {
+     "default_us": 12.4,
+     "best": "BM16_BN16_BK128_w1_wpe4",
+     "best_us": 8.91,
+     "gain_pct": 39.12,
+     "graph_bit_identical": true,
+     "weight_copies": 256,
+     "n_candidates": 113,
+     "n_gate_fail": 0,
+     "n_error": 0,
+     "rows": [
+      {
+       "config": "BM16_BN128_BK128_w4_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 16,
+        "BLOCK_SIZE_N": 128,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0
+       },
+       "us": 12.4,
+       "us_min": 12.39,
+       "gbps": 84.6,
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999988,
+        "max_err_over_refmax": 0.00218,
+        "pass": true
+       },
+       "is_default": true,
+       "timing": "graph"
+      },
+      {
+       "config": "BM16_BN16_BK128_w1_wpe4",
+       "cfg": {
+        "BLOCK_SIZE_M": 16,
+        "BLOCK_SIZE_N": 16,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 1,
+        "num_stages": 0,
+        "waves_per_eu": 4
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999988,
+        "max_err_over_refmax": 0.00218,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 8.91,
+       "us_min": 8.9,
+       "gbps": 117.7,
+       "timing": "graph"
+      },
+      {
+       "config": "BM16_BN16_BK128_w2_wpe2",
+       "cfg": {
+        "BLOCK_SIZE_M": 16,
+        "BLOCK_SIZE_N": 16,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 2,
+        "num_stages": 0,
+        "waves_per_eu": 2
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999988,
+        "max_err_over_refmax": 0.00218,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 9.07,
+       "us_min": 9.06,
+       "gbps": 115.6,
+       "timing": "graph"
+      },
+      {
+       "config": "BM32_BN16_BK128_w2_wpe2",
+       "cfg": {
+        "BLOCK_SIZE_M": 32,
+        "BLOCK_SIZE_N": 16,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 2,
+        "num_stages": 0,
+        "waves_per_eu": 2
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999988,
+        "max_err_over_refmax": 0.00218,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 9.07,
+       "us_min": 9.06,
+       "gbps": 115.6,
+       "timing": "graph"
+      },
+      {
+       "config": "BM32_BN16_BK128_w2_wpe4",
+       "cfg": {
+        "BLOCK_SIZE_M": 32,
+        "BLOCK_SIZE_N": 16,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 2,
+        "num_stages": 0,
+        "waves_per_eu": 4
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999988,
+        "max_err_over_refmax": 0.00218,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 9.09,
+       "us_min": 9.09,
+       "gbps": 115.4,
+       "timing": "graph"
+      },
+      {
+       "config": "BM16_BN16_BK128_w2_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 16,
+        "BLOCK_SIZE_N": 16,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 2,
+        "num_stages": 0
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999988,
+        "max_err_over_refmax": 0.00218,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 9.11,
+       "us_min": 9.1,
+       "gbps": 115.1,
+       "timing": "graph"
+      },
+      {
+       "config": "BM32_BN16_BK128_w2_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 32,
+        "BLOCK_SIZE_N": 16,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 2,
+        "num_stages": 0
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999988,
+        "max_err_over_refmax": 0.00218,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 9.11,
+       "us_min": 9.09,
+       "gbps": 115.2,
+       "timing": "graph"
+      },
+      {
+       "config": "BM16_BN16_BK128_w4_wpe2",
+       "cfg": {
+        "BLOCK_SIZE_M": 16,
+        "BLOCK_SIZE_N": 16,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0,
+        "waves_per_eu": 2
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999988,
+        "max_err_over_refmax": 0.00218,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 9.29,
+       "us_min": 9.29,
+       "gbps": 112.8,
+       "timing": "graph"
+      },
+      {
+       "config": "BM16_BN16_BK128_w4_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 16,
+        "BLOCK_SIZE_N": 16,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999988,
+        "max_err_over_refmax": 0.00218,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 9.31,
+       "us_min": 9.29,
+       "gbps": 112.7,
+       "timing": "graph"
+      },
+      {
+       "config": "BM16_BN16_BK128_w4_wpe4",
+       "cfg": {
+        "BLOCK_SIZE_M": 16,
+        "BLOCK_SIZE_N": 16,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0,
+        "waves_per_eu": 4
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999988,
+        "max_err_over_refmax": 0.00218,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 9.34,
+       "us_min": 9.33,
+       "gbps": 112.3,
+       "timing": "graph"
+      },
+      {
+       "config": "BM32_BN16_BK128_w1_wpe4",
+       "cfg": {
+        "BLOCK_SIZE_M": 32,
+        "BLOCK_SIZE_N": 16,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 1,
+        "num_stages": 0,
+        "waves_per_eu": 4
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999988,
+        "max_err_over_refmax": 0.00218,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 9.35,
+       "us_min": 9.35,
+       "gbps": 112.2,
+       "timing": "graph"
+      }
+     ],
+     "rows_kept": "default + 10 fastest of 114 gated candidates (no gate failures / compile errors)"
+    },
+    "8": {
+     "default_us": 12.77,
+     "best": "BM16_BN64_BK128_w4_wpe2",
+     "best_us": 10.08,
+     "gain_pct": 26.64,
+     "graph_bit_identical": true,
+     "weight_copies": 256,
+     "n_candidates": 47,
+     "n_gate_fail": 0,
+     "n_error": 0,
+     "rows": [
+      {
+       "config": "BM16_BN128_BK128_w4_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 16,
+        "BLOCK_SIZE_N": 128,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0
+       },
+       "us": 12.77,
+       "us_min": 12.76,
+       "gbps": 82.2,
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.002195,
+        "pass": true
+       },
+       "is_default": true,
+       "timing": "graph"
+      },
+      {
+       "config": "BM16_BN64_BK128_w4_wpe2",
+       "cfg": {
+        "BLOCK_SIZE_M": 16,
+        "BLOCK_SIZE_N": 64,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0,
+        "waves_per_eu": 2
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.002195,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 10.08,
+       "us_min": 10.07,
+       "gbps": 104.1,
+       "timing": "graph"
+      },
+      {
+       "config": "BM16_BN64_BK128_w4_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 16,
+        "BLOCK_SIZE_N": 64,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.002195,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 10.63,
+       "us_min": 10.6,
+       "gbps": 98.7,
+       "timing": "graph"
+      },
+      {
+       "config": "BM32_BN64_BK128_w8_wpe2",
+       "cfg": {
+        "BLOCK_SIZE_M": 32,
+        "BLOCK_SIZE_N": 64,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 8,
+        "num_stages": 0,
+        "waves_per_eu": 2
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.002195,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 11.04,
+       "us_min": 11.03,
+       "gbps": 95.0,
+       "timing": "graph"
+      },
+      {
+       "config": "BM32_BN64_BK128_w4_wpe2",
+       "cfg": {
+        "BLOCK_SIZE_M": 32,
+        "BLOCK_SIZE_N": 64,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0,
+        "waves_per_eu": 2
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.002195,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 11.11,
+       "us_min": 11.1,
+       "gbps": 94.4,
+       "timing": "graph"
+      },
+      {
+       "config": "BM32_BN64_BK128_w8_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 32,
+        "BLOCK_SIZE_N": 64,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 8,
+        "num_stages": 0
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.002195,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 11.11,
+       "us_min": 11.09,
+       "gbps": 94.4,
+       "timing": "graph"
+      },
+      {
+       "config": "BM32_BN64_BK128_w4_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 32,
+        "BLOCK_SIZE_N": 64,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.002195,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 11.44,
+       "us_min": 11.43,
+       "gbps": 91.7,
+       "timing": "graph"
+      },
+      {
+       "config": "BM16_BN128_BK128_w8_wpe2",
+       "cfg": {
+        "BLOCK_SIZE_M": 16,
+        "BLOCK_SIZE_N": 128,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 8,
+        "num_stages": 0,
+        "waves_per_eu": 2
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.002195,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 12.09,
+       "us_min": 12.07,
+       "gbps": 86.7,
+       "timing": "graph"
+      },
+      {
+       "config": "BM16_BN128_BK128_w4_wpe2",
+       "cfg": {
+        "BLOCK_SIZE_M": 16,
+        "BLOCK_SIZE_N": 128,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0,
+        "waves_per_eu": 2
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.002195,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 12.84,
+       "us_min": 12.83,
+       "gbps": 81.7,
+       "timing": "graph"
+      },
+      {
+       "config": "BM64_BN64_BK128_w4_wpe2",
+       "cfg": {
+        "BLOCK_SIZE_M": 64,
+        "BLOCK_SIZE_N": 64,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0,
+        "waves_per_eu": 2
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.002195,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 12.96,
+       "us_min": 12.95,
+       "gbps": 80.9,
+       "timing": "graph"
+      },
+      {
+       "config": "BM64_BN64_BK128_w8_wpe2",
+       "cfg": {
+        "BLOCK_SIZE_M": 64,
+        "BLOCK_SIZE_N": 64,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 8,
+        "num_stages": 0,
+        "waves_per_eu": 2
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.002195,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 13.03,
+       "us_min": 13.01,
+       "gbps": 80.5,
+       "timing": "graph"
+      }
+     ],
+     "rows_kept": "default + 10 fastest of 48 gated candidates (no gate failures / compile errors)"
+    },
+    "64": {
+     "default_us": 12.87,
+     "best": "BM16_BN64_BK128_w4_wpe2",
+     "best_us": 10.01,
+     "gain_pct": 28.57,
+     "graph_bit_identical": true,
+     "weight_copies": 256,
+     "n_candidates": 47,
+     "n_gate_fail": 0,
+     "n_error": 0,
+     "rows": [
+      {
+       "config": "BM16_BN128_BK128_w4_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 16,
+        "BLOCK_SIZE_N": 128,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0
+       },
+       "us": 12.87,
+       "us_min": 12.87,
+       "gbps": 81.5,
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.002008,
+        "pass": true
+       },
+       "is_default": true,
+       "timing": "graph"
+      },
+      {
+       "config": "BM16_BN64_BK128_w4_wpe2",
+       "cfg": {
+        "BLOCK_SIZE_M": 16,
+        "BLOCK_SIZE_N": 64,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0,
+        "waves_per_eu": 2
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.002008,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 10.01,
+       "us_min": 10.0,
+       "gbps": 104.8,
+       "timing": "graph"
+      },
+      {
+       "config": "BM16_BN64_BK128_w4_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 16,
+        "BLOCK_SIZE_N": 64,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.002008,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 10.56,
+       "us_min": 10.55,
+       "gbps": 99.3,
+       "timing": "graph"
+      },
+      {
+       "config": "BM32_BN64_BK128_w8_wpe2",
+       "cfg": {
+        "BLOCK_SIZE_M": 32,
+        "BLOCK_SIZE_N": 64,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 8,
+        "num_stages": 0,
+        "waves_per_eu": 2
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.002008,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 11.02,
+       "us_min": 11.01,
+       "gbps": 95.2,
+       "timing": "graph"
+      },
+      {
+       "config": "BM32_BN64_BK128_w8_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 32,
+        "BLOCK_SIZE_N": 64,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 8,
+        "num_stages": 0
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.002008,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 11.1,
+       "us_min": 11.09,
+       "gbps": 94.5,
+       "timing": "graph"
+      },
+      {
+       "config": "BM32_BN64_BK128_w4_wpe2",
+       "cfg": {
+        "BLOCK_SIZE_M": 32,
+        "BLOCK_SIZE_N": 64,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0,
+        "waves_per_eu": 2
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.002008,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 11.17,
+       "us_min": 11.16,
+       "gbps": 93.9,
+       "timing": "graph"
+      },
+      {
+       "config": "BM32_BN64_BK128_w4_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 32,
+        "BLOCK_SIZE_N": 64,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.002008,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 11.72,
+       "us_min": 11.44,
+       "gbps": 89.5,
+       "timing": "graph"
+      },
+      {
+       "config": "BM16_BN128_BK128_w8_wpe2",
+       "cfg": {
+        "BLOCK_SIZE_M": 16,
+        "BLOCK_SIZE_N": 128,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 8,
+        "num_stages": 0,
+        "waves_per_eu": 2
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.002008,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 12.14,
+       "us_min": 12.13,
+       "gbps": 86.4,
+       "timing": "graph"
+      },
+      {
+       "config": "BM16_BN128_BK128_w4_wpe2",
+       "cfg": {
+        "BLOCK_SIZE_M": 16,
+        "BLOCK_SIZE_N": 128,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0,
+        "waves_per_eu": 2
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.002008,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 12.93,
+       "us_min": 12.92,
+       "gbps": 81.1,
+       "timing": "graph"
+      },
+      {
+       "config": "BM64_BN64_BK128_w4_wpe2",
+       "cfg": {
+        "BLOCK_SIZE_M": 64,
+        "BLOCK_SIZE_N": 64,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0,
+        "waves_per_eu": 2
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.002008,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 13.1,
+       "us_min": 13.08,
+       "gbps": 80.1,
+       "timing": "graph"
+      },
+      {
+       "config": "BM64_BN64_BK128_w8_wpe2",
+       "cfg": {
+        "BLOCK_SIZE_M": 64,
+        "BLOCK_SIZE_N": 64,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 8,
+        "num_stages": 0,
+        "waves_per_eu": 2
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.002008,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 13.14,
+       "us_min": 13.12,
+       "gbps": 79.8,
+       "timing": "graph"
+      }
+     ],
+     "rows_kept": "default + 10 fastest of 48 gated candidates (no gate failures / compile errors)"
+    },
+    "256": {
+     "default_us": 14.11,
+     "best": "BM32_BN64_BK128_w8_wpe2",
+     "best_us": 12.26,
+     "gain_pct": 15.07,
+     "graph_bit_identical": true,
+     "weight_copies": 256,
+     "n_candidates": 47,
+     "n_gate_fail": 0,
+     "n_error": 0,
+     "rows": [
+      {
+       "config": "BM16_BN128_BK128_w4_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 16,
+        "BLOCK_SIZE_N": 128,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0
+       },
+       "us": 14.11,
+       "us_min": 13.84,
+       "gbps": 74.3,
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.003528,
+        "pass": true
+       },
+       "is_default": true,
+       "timing": "graph"
+      },
+      {
+       "config": "BM32_BN64_BK128_w8_wpe2",
+       "cfg": {
+        "BLOCK_SIZE_M": 32,
+        "BLOCK_SIZE_N": 64,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 8,
+        "num_stages": 0,
+        "waves_per_eu": 2
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.003528,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 12.26,
+       "us_min": 12.21,
+       "gbps": 85.5,
+       "timing": "graph"
+      },
+      {
+       "config": "BM32_BN64_BK128_w4_wpe2",
+       "cfg": {
+        "BLOCK_SIZE_M": 32,
+        "BLOCK_SIZE_N": 64,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0,
+        "waves_per_eu": 2
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.003528,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 12.31,
+       "us_min": 12.29,
+       "gbps": 85.2,
+       "timing": "graph"
+      },
+      {
+       "config": "BM16_BN64_BK128_w4_wpe2",
+       "cfg": {
+        "BLOCK_SIZE_M": 16,
+        "BLOCK_SIZE_N": 64,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0,
+        "waves_per_eu": 2
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.003528,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 12.33,
+       "us_min": 11.7,
+       "gbps": 85.1,
+       "timing": "graph"
+      },
+      {
+       "config": "BM32_BN64_BK128_w8_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 32,
+        "BLOCK_SIZE_N": 64,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 8,
+        "num_stages": 0
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.003528,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 12.67,
+       "us_min": 12.58,
+       "gbps": 82.8,
+       "timing": "graph"
+      },
+      {
+       "config": "BM32_BN64_BK128_w4_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 32,
+        "BLOCK_SIZE_N": 64,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.003528,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 12.75,
+       "us_min": 12.75,
+       "gbps": 82.2,
+       "timing": "graph"
+      },
+      {
+       "config": "BM16_BN128_BK128_w8_wpe2",
+       "cfg": {
+        "BLOCK_SIZE_M": 16,
+        "BLOCK_SIZE_N": 128,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 8,
+        "num_stages": 0,
+        "waves_per_eu": 2
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.003528,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 12.84,
+       "us_min": 12.69,
+       "gbps": 81.7,
+       "timing": "graph"
+      },
+      {
+       "config": "BM64_BN64_BK128_w8_wpe2",
+       "cfg": {
+        "BLOCK_SIZE_M": 64,
+        "BLOCK_SIZE_N": 64,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 8,
+        "num_stages": 0,
+        "waves_per_eu": 2
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.003528,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 13.27,
+       "us_min": 13.26,
+       "gbps": 79.0,
+       "timing": "graph"
+      },
+      {
+       "config": "BM64_BN64_BK128_w4_wpe2",
+       "cfg": {
+        "BLOCK_SIZE_M": 64,
+        "BLOCK_SIZE_N": 64,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0,
+        "waves_per_eu": 2
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.003528,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 13.36,
+       "us_min": 13.34,
+       "gbps": 78.5,
+       "timing": "graph"
+      },
+      {
+       "config": "BM64_BN64_BK128_w8_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 64,
+        "BLOCK_SIZE_N": 64,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 8,
+        "num_stages": 0
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.003528,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 13.49,
+       "us_min": 13.48,
+       "gbps": 77.7,
+       "timing": "graph"
+      },
+      {
+       "config": "BM16_BN64_BK128_w4_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 16,
+        "BLOCK_SIZE_N": 64,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.003528,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 13.53,
+       "us_min": 13.35,
+       "gbps": 77.5,
+       "timing": "graph"
+      }
+     ],
+     "rows_kept": "default + 10 fastest of 48 gated candidates (no gate failures / compile errors)"
+    },
+    "1024": {
+     "default_us": 26.51,
+     "best": "BM32_BN128_BK128_w4_wpe2",
+     "best_us": 20.61,
+     "gain_pct": 28.61,
+     "graph_bit_identical": true,
+     "weight_copies": 256,
+     "n_candidates": 47,
+     "n_gate_fail": 0,
+     "n_error": 0,
+     "rows": [
+      {
+       "config": "BM16_BN128_BK128_w4_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 16,
+        "BLOCK_SIZE_N": 128,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0
+       },
+       "us": 26.51,
+       "us_min": 25.94,
+       "gbps": 39.6,
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.002908,
+        "pass": true
+       },
+       "is_default": true,
+       "timing": "graph"
+      },
+      {
+       "config": "BM32_BN128_BK128_w4_wpe2",
+       "cfg": {
+        "BLOCK_SIZE_M": 32,
+        "BLOCK_SIZE_N": 128,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0,
+        "waves_per_eu": 2
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.002908,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 20.61,
+       "us_min": 20.08,
+       "gbps": 50.9,
+       "timing": "graph"
+      },
+      {
+       "config": "BM64_BN128_BK128_w4_wpe2",
+       "cfg": {
+        "BLOCK_SIZE_M": 64,
+        "BLOCK_SIZE_N": 128,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0,
+        "waves_per_eu": 2
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.002908,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 21.1,
+       "us_min": 21.04,
+       "gbps": 49.7,
+       "timing": "graph"
+      },
+      {
+       "config": "BM64_BN64_BK128_w4_wpe2",
+       "cfg": {
+        "BLOCK_SIZE_M": 64,
+        "BLOCK_SIZE_N": 64,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0,
+        "waves_per_eu": 2
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.002908,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 21.49,
+       "us_min": 20.89,
+       "gbps": 48.8,
+       "timing": "graph"
+      },
+      {
+       "config": "BM64_BN128_BK128_w8_wpe2",
+       "cfg": {
+        "BLOCK_SIZE_M": 64,
+        "BLOCK_SIZE_N": 128,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 8,
+        "num_stages": 0,
+        "waves_per_eu": 2
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.002908,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 21.63,
+       "us_min": 20.76,
+       "gbps": 48.5,
+       "timing": "graph"
+      },
+      {
+       "config": "BM32_BN256_BK128_w8_wpe2",
+       "cfg": {
+        "BLOCK_SIZE_M": 32,
+        "BLOCK_SIZE_N": 256,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 8,
+        "num_stages": 0,
+        "waves_per_eu": 2
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.002908,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 21.81,
+       "us_min": 21.79,
+       "gbps": 48.1,
+       "timing": "graph"
+      },
+      {
+       "config": "BM32_BN256_BK128_w4_wpe2",
+       "cfg": {
+        "BLOCK_SIZE_M": 32,
+        "BLOCK_SIZE_N": 256,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0,
+        "waves_per_eu": 2
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.002908,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 21.94,
+       "us_min": 21.82,
+       "gbps": 47.8,
+       "timing": "graph"
+      },
+      {
+       "config": "BM32_BN256_BK128_w8_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 32,
+        "BLOCK_SIZE_N": 256,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 8,
+        "num_stages": 0
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.002908,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 21.97,
+       "us_min": 21.84,
+       "gbps": 47.7,
+       "timing": "graph"
+      },
+      {
+       "config": "BM64_BN64_BK128_w4_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 64,
+        "BLOCK_SIZE_N": 64,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.002908,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 22.09,
+       "us_min": 21.0,
+       "gbps": 47.5,
+       "timing": "graph"
+      },
+      {
+       "config": "BM128_BN64_BK128_w8_wpe2",
+       "cfg": {
+        "BLOCK_SIZE_M": 128,
+        "BLOCK_SIZE_N": 64,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 8,
+        "num_stages": 0,
+        "waves_per_eu": 2
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.002908,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 22.18,
+       "us_min": 21.84,
+       "gbps": 47.3,
+       "timing": "graph"
+      },
+      {
+       "config": "BM64_BN128_BK128_w4_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 64,
+        "BLOCK_SIZE_N": 128,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.002908,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 22.76,
+       "us_min": 22.64,
+       "gbps": 46.1,
+       "timing": "graph"
+      }
+     ],
+     "rows_kept": "default + 10 fastest of 48 gated candidates (no gate failures / compile errors)"
+    },
+    "4096": {
+     "default_us": 92.39,
+     "best": "BM64_BN128_BK128_w4_wpe2",
+     "best_us": 59.81,
+     "gain_pct": 54.47,
+     "graph_bit_identical": true,
+     "weight_copies": 256,
+     "n_candidates": 47,
+     "n_gate_fail": 0,
+     "n_error": 0,
+     "rows": [
+      {
+       "config": "BM16_BN128_BK128_w4_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 16,
+        "BLOCK_SIZE_N": 128,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0
+       },
+       "us": 92.39,
+       "us_min": 89.4,
+       "gbps": 11.4,
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999987,
+        "max_err_over_refmax": 0.003257,
+        "pass": true
+       },
+       "is_default": true,
+       "timing": "graph"
+      },
+      {
+       "config": "BM64_BN128_BK128_w4_wpe2",
+       "cfg": {
+        "BLOCK_SIZE_M": 64,
+        "BLOCK_SIZE_N": 128,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0,
+        "waves_per_eu": 2
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999987,
+        "max_err_over_refmax": 0.003257,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 59.81,
+       "us_min": 58.5,
+       "gbps": 17.5,
+       "timing": "graph"
+      },
+      {
+       "config": "BM64_BN128_BK128_w4_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 64,
+        "BLOCK_SIZE_N": 128,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999987,
+        "max_err_over_refmax": 0.003257,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 61.11,
+       "us_min": 60.05,
+       "gbps": 17.2,
+       "timing": "graph"
+      },
+      {
+       "config": "BM64_BN256_BK128_w8_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 64,
+        "BLOCK_SIZE_N": 256,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 8,
+        "num_stages": 0
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999987,
+        "max_err_over_refmax": 0.003257,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 64.04,
+       "us_min": 62.01,
+       "gbps": 16.4,
+       "timing": "graph"
+      },
+      {
+       "config": "BM32_BN256_BK128_w4_wpe2",
+       "cfg": {
+        "BLOCK_SIZE_M": 32,
+        "BLOCK_SIZE_N": 256,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0,
+        "waves_per_eu": 2
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999987,
+        "max_err_over_refmax": 0.003257,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 64.05,
+       "us_min": 62.46,
+       "gbps": 16.4,
+       "timing": "graph"
+      },
+      {
+       "config": "BM64_BN256_BK128_w8_wpe2",
+       "cfg": {
+        "BLOCK_SIZE_M": 64,
+        "BLOCK_SIZE_N": 256,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 8,
+        "num_stages": 0,
+        "waves_per_eu": 2
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999987,
+        "max_err_over_refmax": 0.003257,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 64.66,
+       "us_min": 62.62,
+       "gbps": 16.2,
+       "timing": "graph"
+      },
+      {
+       "config": "BM32_BN256_BK128_w4_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 32,
+        "BLOCK_SIZE_N": 256,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999987,
+        "max_err_over_refmax": 0.003257,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 65.3,
+       "us_min": 63.83,
+       "gbps": 16.1,
+       "timing": "graph"
+      },
+      {
+       "config": "BM128_BN64_BK128_w4_wpe2",
+       "cfg": {
+        "BLOCK_SIZE_M": 128,
+        "BLOCK_SIZE_N": 64,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0,
+        "waves_per_eu": 2
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999987,
+        "max_err_over_refmax": 0.003257,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 66.02,
+       "us_min": 65.03,
+       "gbps": 15.9,
+       "timing": "graph"
+      },
+      {
+       "config": "BM128_BN128_BK128_w8_wpe2",
+       "cfg": {
+        "BLOCK_SIZE_M": 128,
+        "BLOCK_SIZE_N": 128,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 8,
+        "num_stages": 0,
+        "waves_per_eu": 2
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999987,
+        "max_err_over_refmax": 0.003257,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 66.85,
+       "us_min": 65.3,
+       "gbps": 15.7,
+       "timing": "graph"
+      },
+      {
+       "config": "BM128_BN64_BK128_w4_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 128,
+        "BLOCK_SIZE_N": 64,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999987,
+        "max_err_over_refmax": 0.003257,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 68.83,
+       "us_min": 68.18,
+       "gbps": 15.2,
+       "timing": "graph"
+      },
+      {
+       "config": "BM32_BN256_BK128_w8_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 32,
+        "BLOCK_SIZE_N": 256,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 8,
+        "num_stages": 0
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999987,
+        "max_err_over_refmax": 0.003257,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 69.12,
+       "us_min": 67.99,
+       "gbps": 15.2,
+       "timing": "graph"
+      }
+     ],
+     "rows_kept": "default + 10 fastest of 48 gated candidates (no gate failures / compile errors)"
+    }
+   },
+   "m1_default_step_ms": 0.484,
+   "m1_best_step_ms": 0.347,
+   "best_gain_pct_any_m": 54.47
+  },
+  {
+   "projection": "shared_expert.down_proj",
+   "N": 2048,
+   "K": 256,
+   "per_step": 39,
+   "weight_mb": 0.5,
+   "per_m": {
+    "1": {
+     "default_us": 4.95,
+     "best": "BM16_BN16_BK128_w1_wpe0",
+     "best_us": 4.33,
+     "gain_pct": 14.25,
+     "graph_bit_identical": true,
+     "weight_copies": 512,
+     "n_candidates": 113,
+     "n_gate_fail": 0,
+     "n_error": 0,
+     "rows": [
+      {
+       "config": "BM16_BN128_BK128_w4_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 16,
+        "BLOCK_SIZE_N": 128,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0
+       },
+       "us": 4.95,
+       "us_min": 4.74,
+       "gbps": 106.0,
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.002193,
+        "pass": true
+       },
+       "is_default": true,
+       "timing": "graph"
+      },
+      {
+       "config": "BM16_BN16_BK128_w1_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 16,
+        "BLOCK_SIZE_N": 16,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 1,
+        "num_stages": 0
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.002193,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 4.33,
+       "us_min": 4.09,
+       "gbps": 121.0,
+       "timing": "graph"
+      },
+      {
+       "config": "BM32_BN16_BK128_w4_wpe2",
+       "cfg": {
+        "BLOCK_SIZE_M": 32,
+        "BLOCK_SIZE_N": 16,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0,
+        "waves_per_eu": 2
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.002193,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 4.35,
+       "us_min": 4.08,
+       "gbps": 120.5,
+       "timing": "graph"
+      },
+      {
+       "config": "BM32_BN16_BK128_w4_wpe4",
+       "cfg": {
+        "BLOCK_SIZE_M": 32,
+        "BLOCK_SIZE_N": 16,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0,
+        "waves_per_eu": 4
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.002193,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 4.35,
+       "us_min": 4.07,
+       "gbps": 120.6,
+       "timing": "graph"
+      },
+      {
+       "config": "BM16_BN16_BK128_w4_wpe4",
+       "cfg": {
+        "BLOCK_SIZE_M": 16,
+        "BLOCK_SIZE_N": 16,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0,
+        "waves_per_eu": 4
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.002193,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 4.37,
+       "us_min": 4.09,
+       "gbps": 120.0,
+       "timing": "graph"
+      },
+      {
+       "config": "BM16_BN16_BK128_w4_wpe2",
+       "cfg": {
+        "BLOCK_SIZE_M": 16,
+        "BLOCK_SIZE_N": 16,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0,
+        "waves_per_eu": 2
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.002193,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 4.38,
+       "us_min": 4.09,
+       "gbps": 119.8,
+       "timing": "graph"
+      },
+      {
+       "config": "BM16_BN16_BK128_w1_wpe4",
+       "cfg": {
+        "BLOCK_SIZE_M": 16,
+        "BLOCK_SIZE_N": 16,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 1,
+        "num_stages": 0,
+        "waves_per_eu": 4
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.002193,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 4.39,
+       "us_min": 4.14,
+       "gbps": 119.5,
+       "timing": "graph"
+      },
+      {
+       "config": "BM32_BN16_BK128_w4_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 32,
+        "BLOCK_SIZE_N": 16,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.002193,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 4.39,
+       "us_min": 4.12,
+       "gbps": 119.5,
+       "timing": "graph"
+      },
+      {
+       "config": "BM16_BN16_BK128_w2_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 16,
+        "BLOCK_SIZE_N": 16,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 2,
+        "num_stages": 0
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.002193,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 4.4,
+       "us_min": 4.14,
+       "gbps": 119.1,
+       "timing": "graph"
+      },
+      {
+       "config": "BM16_BN16_BK128_w2_wpe2",
+       "cfg": {
+        "BLOCK_SIZE_M": 16,
+        "BLOCK_SIZE_N": 16,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 2,
+        "num_stages": 0,
+        "waves_per_eu": 2
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.002193,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 4.4,
+       "us_min": 4.14,
+       "gbps": 119.2,
+       "timing": "graph"
+      },
+      {
+       "config": "BM32_BN16_BK128_w2_wpe2",
+       "cfg": {
+        "BLOCK_SIZE_M": 32,
+        "BLOCK_SIZE_N": 16,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 2,
+        "num_stages": 0,
+        "waves_per_eu": 2
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.002193,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 4.4,
+       "us_min": 4.13,
+       "gbps": 119.2,
+       "timing": "graph"
+      }
+     ],
+     "rows_kept": "default + 10 fastest of 114 gated candidates (no gate failures / compile errors)"
+    },
+    "8": {
+     "default_us": 4.94,
+     "best": "BM16_BN64_BK128_w4_wpe0",
+     "best_us": 4.87,
+     "gain_pct": 1.39,
+     "graph_bit_identical": true,
+     "weight_copies": 512,
+     "n_candidates": 47,
+     "n_gate_fail": 0,
+     "n_error": 0,
+     "rows": [
+      {
+       "config": "BM16_BN128_BK128_w4_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 16,
+        "BLOCK_SIZE_N": 128,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0
+       },
+       "us": 4.94,
+       "us_min": 4.69,
+       "gbps": 106.2,
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.001974,
+        "pass": true
+       },
+       "is_default": true,
+       "timing": "graph"
+      },
+      {
+       "config": "BM16_BN64_BK128_w4_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 16,
+        "BLOCK_SIZE_N": 64,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.001974,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 4.87,
+       "us_min": 4.57,
+       "gbps": 107.6,
+       "timing": "graph"
+      },
+      {
+       "config": "BM32_BN64_BK128_w8_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 32,
+        "BLOCK_SIZE_N": 64,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 8,
+        "num_stages": 0
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.001974,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 4.9,
+       "us_min": 4.64,
+       "gbps": 107.0,
+       "timing": "graph"
+      },
+      {
+       "config": "BM32_BN64_BK128_w8_wpe2",
+       "cfg": {
+        "BLOCK_SIZE_M": 32,
+        "BLOCK_SIZE_N": 64,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 8,
+        "num_stages": 0,
+        "waves_per_eu": 2
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.001974,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 4.9,
+       "us_min": 4.64,
+       "gbps": 107.0,
+       "timing": "graph"
+      },
+      {
+       "config": "BM16_BN64_BK128_w4_wpe2",
+       "cfg": {
+        "BLOCK_SIZE_M": 16,
+        "BLOCK_SIZE_N": 64,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0,
+        "waves_per_eu": 2
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.001974,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 4.91,
+       "us_min": 4.58,
+       "gbps": 106.7,
+       "timing": "graph"
+      },
+      {
+       "config": "BM16_BN128_BK128_w4_wpe2",
+       "cfg": {
+        "BLOCK_SIZE_M": 16,
+        "BLOCK_SIZE_N": 128,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0,
+        "waves_per_eu": 2
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.001974,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 4.98,
+       "us_min": 4.74,
+       "gbps": 105.3,
+       "timing": "graph"
+      },
+      {
+       "config": "BM16_BN128_BK128_w8_wpe2",
+       "cfg": {
+        "BLOCK_SIZE_M": 16,
+        "BLOCK_SIZE_N": 128,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 8,
+        "num_stages": 0,
+        "waves_per_eu": 2
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.001974,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 4.99,
+       "us_min": 4.75,
+       "gbps": 105.1,
+       "timing": "graph"
+      },
+      {
+       "config": "BM32_BN64_BK128_w4_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 32,
+        "BLOCK_SIZE_N": 64,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.001974,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 5.01,
+       "us_min": 4.79,
+       "gbps": 104.7,
+       "timing": "graph"
+      },
+      {
+       "config": "BM32_BN64_BK128_w4_wpe2",
+       "cfg": {
+        "BLOCK_SIZE_M": 32,
+        "BLOCK_SIZE_N": 64,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0,
+        "waves_per_eu": 2
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.001974,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 5.02,
+       "us_min": 4.82,
+       "gbps": 104.4,
+       "timing": "graph"
+      },
+      {
+       "config": "BM16_BN128_BK128_w8_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 16,
+        "BLOCK_SIZE_N": 128,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 8,
+        "num_stages": 0
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.001974,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 5.09,
+       "us_min": 4.89,
+       "gbps": 103.0,
+       "timing": "graph"
+      },
+      {
+       "config": "BM64_BN64_BK128_w8_wpe2",
+       "cfg": {
+        "BLOCK_SIZE_M": 64,
+        "BLOCK_SIZE_N": 64,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 8,
+        "num_stages": 0,
+        "waves_per_eu": 2
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.001974,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 5.09,
+       "us_min": 4.91,
+       "gbps": 103.0,
+       "timing": "graph"
+      }
+     ],
+     "rows_kept": "default + 10 fastest of 48 gated candidates (no gate failures / compile errors)"
+    },
+    "64": {
+     "default_us": 5.18,
+     "best": "BM32_BN64_BK128_w8_wpe0",
+     "best_us": 5.13,
+     "gain_pct": 0.91,
+     "graph_bit_identical": true,
+     "weight_copies": 512,
+     "n_candidates": 47,
+     "n_gate_fail": 0,
+     "n_error": 0,
+     "rows": [
+      {
+       "config": "BM16_BN128_BK128_w4_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 16,
+        "BLOCK_SIZE_N": 128,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0
+       },
+       "us": 5.18,
+       "us_min": 5.04,
+       "gbps": 101.3,
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.003036,
+        "pass": true
+       },
+       "is_default": true,
+       "timing": "graph"
+      },
+      {
+       "config": "BM32_BN64_BK128_w8_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 32,
+        "BLOCK_SIZE_N": 64,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 8,
+        "num_stages": 0
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.003036,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 5.13,
+       "us_min": 4.97,
+       "gbps": 102.1,
+       "timing": "graph"
+      },
+      {
+       "config": "BM16_BN64_BK128_w4_wpe2",
+       "cfg": {
+        "BLOCK_SIZE_M": 16,
+        "BLOCK_SIZE_N": 64,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0,
+        "waves_per_eu": 2
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.003036,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 5.16,
+       "us_min": 4.98,
+       "gbps": 101.6,
+       "timing": "graph"
+      },
+      {
+       "config": "BM16_BN128_BK128_w8_wpe2",
+       "cfg": {
+        "BLOCK_SIZE_M": 16,
+        "BLOCK_SIZE_N": 128,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 8,
+        "num_stages": 0,
+        "waves_per_eu": 2
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.003036,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 5.16,
+       "us_min": 5.0,
+       "gbps": 101.7,
+       "timing": "graph"
+      },
+      {
+       "config": "BM32_BN64_BK128_w8_wpe2",
+       "cfg": {
+        "BLOCK_SIZE_M": 32,
+        "BLOCK_SIZE_N": 64,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 8,
+        "num_stages": 0,
+        "waves_per_eu": 2
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.003036,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 5.16,
+       "us_min": 4.98,
+       "gbps": 101.6,
+       "timing": "graph"
+      },
+      {
+       "config": "BM32_BN64_BK128_w4_wpe2",
+       "cfg": {
+        "BLOCK_SIZE_M": 32,
+        "BLOCK_SIZE_N": 64,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0,
+        "waves_per_eu": 2
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.003036,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 5.17,
+       "us_min": 4.98,
+       "gbps": 101.4,
+       "timing": "graph"
+      },
+      {
+       "config": "BM64_BN64_BK128_w8_wpe2",
+       "cfg": {
+        "BLOCK_SIZE_M": 64,
+        "BLOCK_SIZE_N": 64,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 8,
+        "num_stages": 0,
+        "waves_per_eu": 2
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.003036,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 5.18,
+       "us_min": 5.01,
+       "gbps": 101.2,
+       "timing": "graph"
+      },
+      {
+       "config": "BM32_BN64_BK128_w4_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 32,
+        "BLOCK_SIZE_N": 64,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.003036,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 5.23,
+       "us_min": 5.1,
+       "gbps": 100.3,
+       "timing": "graph"
+      },
+      {
+       "config": "BM16_BN64_BK128_w4_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 16,
+        "BLOCK_SIZE_N": 64,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.003036,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 5.25,
+       "us_min": 5.09,
+       "gbps": 99.9,
+       "timing": "graph"
+      },
+      {
+       "config": "BM16_BN128_BK128_w4_wpe2",
+       "cfg": {
+        "BLOCK_SIZE_M": 16,
+        "BLOCK_SIZE_N": 128,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0,
+        "waves_per_eu": 2
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.003036,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 5.28,
+       "us_min": 5.07,
+       "gbps": 99.4,
+       "timing": "graph"
+      },
+      {
+       "config": "BM64_BN64_BK128_w8_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 64,
+        "BLOCK_SIZE_N": 64,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 8,
+        "num_stages": 0
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.003036,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 5.28,
+       "us_min": 5.14,
+       "gbps": 99.4,
+       "timing": "graph"
+      }
+     ],
+     "rows_kept": "default + 10 fastest of 48 gated candidates (no gate failures / compile errors)"
+    },
+    "256": {
+     "default_us": 7.05,
+     "best": "BM16_BN256_BK128_w8_wpe0",
+     "best_us": 6.76,
+     "gain_pct": 4.35,
+     "graph_bit_identical": true,
+     "weight_copies": 512,
+     "n_candidates": 47,
+     "n_gate_fail": 0,
+     "n_error": 0,
+     "rows": [
+      {
+       "config": "BM16_BN128_BK128_w4_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 16,
+        "BLOCK_SIZE_N": 128,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0
+       },
+       "us": 7.05,
+       "us_min": 6.99,
+       "gbps": 74.3,
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999987,
+        "max_err_over_refmax": 0.002857,
+        "pass": true
+       },
+       "is_default": true,
+       "timing": "graph"
+      },
+      {
+       "config": "BM16_BN256_BK128_w8_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 16,
+        "BLOCK_SIZE_N": 256,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 8,
+        "num_stages": 0
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999987,
+        "max_err_over_refmax": 0.002857,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 6.76,
+       "us_min": 6.69,
+       "gbps": 77.6,
+       "timing": "graph"
+      },
+      {
+       "config": "BM32_BN128_BK128_w4_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 32,
+        "BLOCK_SIZE_N": 128,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999987,
+        "max_err_over_refmax": 0.002857,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 7.01,
+       "us_min": 7.0,
+       "gbps": 74.8,
+       "timing": "graph"
+      },
+      {
+       "config": "BM32_BN256_BK128_w8_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 32,
+        "BLOCK_SIZE_N": 256,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 8,
+        "num_stages": 0
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999987,
+        "max_err_over_refmax": 0.002857,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 7.05,
+       "us_min": 7.02,
+       "gbps": 74.4,
+       "timing": "graph"
+      },
+      {
+       "config": "BM64_BN64_BK128_w8_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 64,
+        "BLOCK_SIZE_N": 64,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 8,
+        "num_stages": 0
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999987,
+        "max_err_over_refmax": 0.002857,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 7.06,
+       "us_min": 6.97,
+       "gbps": 74.3,
+       "timing": "graph"
+      },
+      {
+       "config": "BM64_BN128_BK128_w8_wpe2",
+       "cfg": {
+        "BLOCK_SIZE_M": 64,
+        "BLOCK_SIZE_N": 128,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 8,
+        "num_stages": 0,
+        "waves_per_eu": 2
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999987,
+        "max_err_over_refmax": 0.002857,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 7.1,
+       "us_min": 7.1,
+       "gbps": 73.8,
+       "timing": "graph"
+      },
+      {
+       "config": "BM64_BN128_BK128_w8_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 64,
+        "BLOCK_SIZE_N": 128,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 8,
+        "num_stages": 0
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999987,
+        "max_err_over_refmax": 0.002857,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 7.15,
+       "us_min": 7.08,
+       "gbps": 73.4,
+       "timing": "graph"
+      },
+      {
+       "config": "BM64_BN256_BK128_w8_wpe2",
+       "cfg": {
+        "BLOCK_SIZE_M": 64,
+        "BLOCK_SIZE_N": 256,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 8,
+        "num_stages": 0,
+        "waves_per_eu": 2
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999987,
+        "max_err_over_refmax": 0.002857,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 7.16,
+       "us_min": 7.15,
+       "gbps": 73.3,
+       "timing": "graph"
+      },
+      {
+       "config": "BM32_BN128_BK128_w8_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 32,
+        "BLOCK_SIZE_N": 128,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 8,
+        "num_stages": 0
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999987,
+        "max_err_over_refmax": 0.002857,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 7.17,
+       "us_min": 7.13,
+       "gbps": 73.2,
+       "timing": "graph"
+      },
+      {
+       "config": "BM64_BN128_BK128_w4_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 64,
+        "BLOCK_SIZE_N": 128,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999987,
+        "max_err_over_refmax": 0.002857,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 7.19,
+       "us_min": 7.07,
+       "gbps": 72.9,
+       "timing": "graph"
+      },
+      {
+       "config": "BM64_BN128_BK128_w4_wpe2",
+       "cfg": {
+        "BLOCK_SIZE_M": 64,
+        "BLOCK_SIZE_N": 128,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0,
+        "waves_per_eu": 2
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999987,
+        "max_err_over_refmax": 0.002857,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 7.2,
+       "us_min": 6.98,
+       "gbps": 72.8,
+       "timing": "graph"
+      }
+     ],
+     "rows_kept": "default + 10 fastest of 48 gated candidates (no gate failures / compile errors)"
+    },
+    "1024": {
+     "default_us": 16.82,
+     "best": "BM64_BN128_BK128_w4_wpe0",
+     "best_us": 13.61,
+     "gain_pct": 23.6,
+     "graph_bit_identical": true,
+     "weight_copies": 512,
+     "n_candidates": 47,
+     "n_gate_fail": 0,
+     "n_error": 0,
+     "rows": [
+      {
+       "config": "BM16_BN128_BK128_w4_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 16,
+        "BLOCK_SIZE_N": 128,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0
+       },
+       "us": 16.82,
+       "us_min": 16.67,
+       "gbps": 31.2,
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999987,
+        "max_err_over_refmax": 0.002868,
+        "pass": true
+       },
+       "is_default": true,
+       "timing": "graph"
+      },
+      {
+       "config": "BM64_BN128_BK128_w4_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 64,
+        "BLOCK_SIZE_N": 128,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999987,
+        "max_err_over_refmax": 0.002868,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 13.61,
+       "us_min": 13.46,
+       "gbps": 38.5,
+       "timing": "graph"
+      },
+      {
+       "config": "BM64_BN128_BK128_w4_wpe2",
+       "cfg": {
+        "BLOCK_SIZE_M": 64,
+        "BLOCK_SIZE_N": 128,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0,
+        "waves_per_eu": 2
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999987,
+        "max_err_over_refmax": 0.002868,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 14.05,
+       "us_min": 13.87,
+       "gbps": 37.3,
+       "timing": "graph"
+      },
+      {
+       "config": "BM64_BN256_BK128_w8_wpe2",
+       "cfg": {
+        "BLOCK_SIZE_M": 64,
+        "BLOCK_SIZE_N": 256,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 8,
+        "num_stages": 0,
+        "waves_per_eu": 2
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999987,
+        "max_err_over_refmax": 0.002868,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 14.13,
+       "us_min": 13.86,
+       "gbps": 37.1,
+       "timing": "graph"
+      },
+      {
+       "config": "BM64_BN256_BK128_w8_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 64,
+        "BLOCK_SIZE_N": 256,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 8,
+        "num_stages": 0
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999987,
+        "max_err_over_refmax": 0.002868,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 14.26,
+       "us_min": 14.19,
+       "gbps": 36.8,
+       "timing": "graph"
+      },
+      {
+       "config": "BM32_BN256_BK128_w8_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 32,
+        "BLOCK_SIZE_N": 256,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 8,
+        "num_stages": 0
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999987,
+        "max_err_over_refmax": 0.002868,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 14.48,
+       "us_min": 14.18,
+       "gbps": 36.2,
+       "timing": "graph"
+      },
+      {
+       "config": "BM32_BN128_BK128_w4_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 32,
+        "BLOCK_SIZE_N": 128,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999987,
+        "max_err_over_refmax": 0.002868,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 14.65,
+       "us_min": 14.46,
+       "gbps": 35.8,
+       "timing": "graph"
+      },
+      {
+       "config": "BM32_BN256_BK128_w4_wpe2",
+       "cfg": {
+        "BLOCK_SIZE_M": 32,
+        "BLOCK_SIZE_N": 256,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0,
+        "waves_per_eu": 2
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999987,
+        "max_err_over_refmax": 0.002868,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 14.82,
+       "us_min": 14.5,
+       "gbps": 35.4,
+       "timing": "graph"
+      },
+      {
+       "config": "BM128_BN64_BK128_w4_wpe2",
+       "cfg": {
+        "BLOCK_SIZE_M": 128,
+        "BLOCK_SIZE_N": 64,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0,
+        "waves_per_eu": 2
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999987,
+        "max_err_over_refmax": 0.002868,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 15.14,
+       "us_min": 14.81,
+       "gbps": 34.6,
+       "timing": "graph"
+      },
+      {
+       "config": "BM32_BN256_BK128_w4_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 32,
+        "BLOCK_SIZE_N": 256,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999987,
+        "max_err_over_refmax": 0.002868,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 15.19,
+       "us_min": 14.95,
+       "gbps": 34.5,
+       "timing": "graph"
+      },
+      {
+       "config": "BM128_BN128_BK128_w8_wpe2",
+       "cfg": {
+        "BLOCK_SIZE_M": 128,
+        "BLOCK_SIZE_N": 128,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 8,
+        "num_stages": 0,
+        "waves_per_eu": 2
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999987,
+        "max_err_over_refmax": 0.002868,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 15.64,
+       "us_min": 15.32,
+       "gbps": 33.5,
+       "timing": "graph"
+      }
+     ],
+     "rows_kept": "default + 10 fastest of 48 gated candidates (no gate failures / compile errors)"
+    },
+    "4096": {
+     "default_us": 58.94,
+     "best": "BM64_BN128_BK128_w4_wpe0",
+     "best_us": 43.95,
+     "gain_pct": 34.1,
+     "graph_bit_identical": true,
+     "weight_copies": 512,
+     "n_candidates": 47,
+     "n_gate_fail": 0,
+     "n_error": 0,
+     "rows": [
+      {
+       "config": "BM16_BN128_BK128_w4_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 16,
+        "BLOCK_SIZE_N": 128,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0
+       },
+       "us": 58.94,
+       "us_min": 58.65,
+       "gbps": 8.9,
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999987,
+        "max_err_over_refmax": 0.003125,
+        "pass": true
+       },
+       "is_default": true,
+       "timing": "graph"
+      },
+      {
+       "config": "BM64_BN128_BK128_w4_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 64,
+        "BLOCK_SIZE_N": 128,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999987,
+        "max_err_over_refmax": 0.003125,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 43.95,
+       "us_min": 42.37,
+       "gbps": 11.9,
+       "timing": "graph"
+      },
+      {
+       "config": "BM64_BN128_BK128_w4_wpe2",
+       "cfg": {
+        "BLOCK_SIZE_M": 64,
+        "BLOCK_SIZE_N": 128,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0,
+        "waves_per_eu": 2
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999987,
+        "max_err_over_refmax": 0.003125,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 43.96,
+       "us_min": 41.91,
+       "gbps": 11.9,
+       "timing": "graph"
+      },
+      {
+       "config": "BM64_BN256_BK128_w8_wpe2",
+       "cfg": {
+        "BLOCK_SIZE_M": 64,
+        "BLOCK_SIZE_N": 256,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 8,
+        "num_stages": 0,
+        "waves_per_eu": 2
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999987,
+        "max_err_over_refmax": 0.003125,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 45.52,
+       "us_min": 43.47,
+       "gbps": 11.5,
+       "timing": "graph"
+      },
+      {
+       "config": "BM64_BN256_BK128_w8_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 64,
+        "BLOCK_SIZE_N": 256,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 8,
+        "num_stages": 0
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999987,
+        "max_err_over_refmax": 0.003125,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 45.55,
+       "us_min": 43.75,
+       "gbps": 11.5,
+       "timing": "graph"
+      },
+      {
+       "config": "BM32_BN256_BK128_w4_wpe2",
+       "cfg": {
+        "BLOCK_SIZE_M": 32,
+        "BLOCK_SIZE_N": 256,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0,
+        "waves_per_eu": 2
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999987,
+        "max_err_over_refmax": 0.003125,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 48.06,
+       "us_min": 46.4,
+       "gbps": 10.9,
+       "timing": "graph"
+      },
+      {
+       "config": "BM32_BN256_BK128_w4_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 32,
+        "BLOCK_SIZE_N": 256,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999987,
+        "max_err_over_refmax": 0.003125,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 48.39,
+       "us_min": 46.83,
+       "gbps": 10.8,
+       "timing": "graph"
+      },
+      {
+       "config": "BM32_BN256_BK128_w8_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 32,
+        "BLOCK_SIZE_N": 256,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 8,
+        "num_stages": 0
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999987,
+        "max_err_over_refmax": 0.003125,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 48.91,
+       "us_min": 47.33,
+       "gbps": 10.7,
+       "timing": "graph"
+      },
+      {
+       "config": "BM32_BN128_BK128_w4_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 32,
+        "BLOCK_SIZE_N": 128,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999987,
+        "max_err_over_refmax": 0.003125,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 49.95,
+       "us_min": 49.14,
+       "gbps": 10.5,
+       "timing": "graph"
+      },
+      {
+       "config": "BM32_BN128_BK128_w4_wpe2",
+       "cfg": {
+        "BLOCK_SIZE_M": 32,
+        "BLOCK_SIZE_N": 128,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0,
+        "waves_per_eu": 2
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999987,
+        "max_err_over_refmax": 0.003125,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 50.6,
+       "us_min": 48.83,
+       "gbps": 10.4,
+       "timing": "graph"
+      },
+      {
+       "config": "BM128_BN64_BK128_w4_wpe2",
+       "cfg": {
+        "BLOCK_SIZE_M": 128,
+        "BLOCK_SIZE_N": 64,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0,
+        "waves_per_eu": 2
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999987,
+        "max_err_over_refmax": 0.003125,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 50.65,
+       "us_min": 49.34,
+       "gbps": 10.4,
+       "timing": "graph"
+      }
+     ],
+     "rows_kept": "default + 10 fastest of 48 gated candidates (no gate failures / compile errors)"
+    }
+   },
+   "m1_default_step_ms": 0.193,
+   "m1_best_step_ms": 0.169,
+   "best_gain_pct_any_m": 34.1
+  },
+  {
+   "projection": "dense0.mlp.gate_up_proj",
+   "N": 8192,
+   "K": 2048,
+   "per_step": 1,
+   "weight_mb": 16.0,
+   "per_m": {
+    "1": {
+     "default_us": 42.54,
+     "best": "BM32_BN16_BK128_w2_wpe4",
+     "best_us": 37.69,
+     "gain_pct": 12.87,
+     "graph_bit_identical": true,
+     "weight_copies": 16,
+     "n_candidates": 113,
+     "n_gate_fail": 0,
+     "n_error": 0,
+     "rows": [
+      {
+       "config": "BM16_BN128_BK128_w4_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 16,
+        "BLOCK_SIZE_N": 128,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0
+       },
+       "us": 42.54,
+       "us_min": 42.47,
+       "gbps": 394.5,
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.001911,
+        "pass": true
+       },
+       "is_default": true,
+       "timing": "graph"
+      },
+      {
+       "config": "BM32_BN16_BK128_w2_wpe4",
+       "cfg": {
+        "BLOCK_SIZE_M": 32,
+        "BLOCK_SIZE_N": 16,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 2,
+        "num_stages": 0,
+        "waves_per_eu": 4
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.001911,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 37.69,
+       "us_min": 37.62,
+       "gbps": 445.3,
+       "timing": "graph"
+      },
+      {
+       "config": "BM32_BN16_BK128_w2_wpe2",
+       "cfg": {
+        "BLOCK_SIZE_M": 32,
+        "BLOCK_SIZE_N": 16,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 2,
+        "num_stages": 0,
+        "waves_per_eu": 2
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.001911,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 37.7,
+       "us_min": 37.59,
+       "gbps": 445.2,
+       "timing": "graph"
+      },
+      {
+       "config": "BM16_BN16_BK128_w2_wpe2",
+       "cfg": {
+        "BLOCK_SIZE_M": 16,
+        "BLOCK_SIZE_N": 16,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 2,
+        "num_stages": 0,
+        "waves_per_eu": 2
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.001911,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 37.73,
+       "us_min": 37.66,
+       "gbps": 444.8,
+       "timing": "graph"
+      },
+      {
+       "config": "BM16_BN16_BK128_w2_wpe4",
+       "cfg": {
+        "BLOCK_SIZE_M": 16,
+        "BLOCK_SIZE_N": 16,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 2,
+        "num_stages": 0,
+        "waves_per_eu": 4
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.001911,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 37.76,
+       "us_min": 37.65,
+       "gbps": 444.4,
+       "timing": "graph"
+      },
+      {
+       "config": "BM32_BN32_BK128_w4_wpe2",
+       "cfg": {
+        "BLOCK_SIZE_M": 32,
+        "BLOCK_SIZE_N": 32,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0,
+        "waves_per_eu": 2
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.001911,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 38.08,
+       "us_min": 37.98,
+       "gbps": 440.7,
+       "timing": "graph"
+      },
+      {
+       "config": "BM32_BN32_BK128_w4_wpe4",
+       "cfg": {
+        "BLOCK_SIZE_M": 32,
+        "BLOCK_SIZE_N": 32,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0,
+        "waves_per_eu": 4
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.001911,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 38.09,
+       "us_min": 38.02,
+       "gbps": 440.6,
+       "timing": "graph"
+      },
+      {
+       "config": "BM32_BN64_BK128_w8_wpe2",
+       "cfg": {
+        "BLOCK_SIZE_M": 32,
+        "BLOCK_SIZE_N": 64,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 8,
+        "num_stages": 0,
+        "waves_per_eu": 2
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.001911,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 38.26,
+       "us_min": 38.22,
+       "gbps": 438.6,
+       "timing": "graph"
+      },
+      {
+       "config": "BM32_BN64_BK128_w8_wpe4",
+       "cfg": {
+        "BLOCK_SIZE_M": 32,
+        "BLOCK_SIZE_N": 64,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 8,
+        "num_stages": 0,
+        "waves_per_eu": 4
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.001911,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 38.26,
+       "us_min": 38.17,
+       "gbps": 438.6,
+       "timing": "graph"
+      },
+      {
+       "config": "BM16_BN32_BK128_w4_wpe2",
+       "cfg": {
+        "BLOCK_SIZE_M": 16,
+        "BLOCK_SIZE_N": 32,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0,
+        "waves_per_eu": 2
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.001911,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 38.62,
+       "us_min": 38.4,
+       "gbps": 434.5,
+       "timing": "graph"
+      },
+      {
+       "config": "BM16_BN32_BK128_w4_wpe4",
+       "cfg": {
+        "BLOCK_SIZE_M": 16,
+        "BLOCK_SIZE_N": 32,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0,
+        "waves_per_eu": 4
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.001911,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 38.63,
+       "us_min": 38.49,
+       "gbps": 434.4,
+       "timing": "graph"
+      }
+     ],
+     "rows_kept": "default + 10 fastest of 114 gated candidates (no gate failures / compile errors)"
+    },
+    "8": {
+     "default_us": 45.31,
+     "best": "BM32_BN64_BK128_w8_wpe2",
+     "best_us": 39.51,
+     "gain_pct": 14.69,
+     "graph_bit_identical": true,
+     "weight_copies": 16,
+     "n_candidates": 47,
+     "n_gate_fail": 0,
+     "n_error": 0,
+     "rows": [
+      {
+       "config": "BM16_BN128_BK128_w4_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 16,
+        "BLOCK_SIZE_N": 128,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0
+       },
+       "us": 45.31,
+       "us_min": 45.14,
+       "gbps": 370.3,
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.002037,
+        "pass": true
+       },
+       "is_default": true,
+       "timing": "graph"
+      },
+      {
+       "config": "BM32_BN64_BK128_w8_wpe2",
+       "cfg": {
+        "BLOCK_SIZE_M": 32,
+        "BLOCK_SIZE_N": 64,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 8,
+        "num_stages": 0,
+        "waves_per_eu": 2
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.002037,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 39.51,
+       "us_min": 39.35,
+       "gbps": 424.7,
+       "timing": "graph"
+      },
+      {
+       "config": "BM16_BN64_BK128_w4_wpe2",
+       "cfg": {
+        "BLOCK_SIZE_M": 16,
+        "BLOCK_SIZE_N": 64,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0,
+        "waves_per_eu": 2
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.002037,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 42.21,
+       "us_min": 42.18,
+       "gbps": 397.5,
+       "timing": "graph"
+      },
+      {
+       "config": "BM16_BN64_BK128_w4_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 16,
+        "BLOCK_SIZE_N": 64,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.002037,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 42.26,
+       "us_min": 42.23,
+       "gbps": 397.1,
+       "timing": "graph"
+      },
+      {
+       "config": "BM32_BN64_BK128_w4_wpe2",
+       "cfg": {
+        "BLOCK_SIZE_M": 32,
+        "BLOCK_SIZE_N": 64,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0,
+        "waves_per_eu": 2
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.002037,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 42.3,
+       "us_min": 42.24,
+       "gbps": 396.8,
+       "timing": "graph"
+      },
+      {
+       "config": "BM32_BN64_BK128_w4_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 32,
+        "BLOCK_SIZE_N": 64,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.002037,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 42.35,
+       "us_min": 42.33,
+       "gbps": 396.3,
+       "timing": "graph"
+      },
+      {
+       "config": "BM32_BN64_BK128_w8_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 32,
+        "BLOCK_SIZE_N": 64,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 8,
+        "num_stages": 0
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.002037,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 42.48,
+       "us_min": 42.43,
+       "gbps": 395.0,
+       "timing": "graph"
+      },
+      {
+       "config": "BM64_BN64_BK128_w8_wpe2",
+       "cfg": {
+        "BLOCK_SIZE_M": 64,
+        "BLOCK_SIZE_N": 64,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 8,
+        "num_stages": 0,
+        "waves_per_eu": 2
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.002037,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 42.65,
+       "us_min": 42.34,
+       "gbps": 393.4,
+       "timing": "graph"
+      },
+      {
+       "config": "BM16_BN128_BK128_w8_wpe2",
+       "cfg": {
+        "BLOCK_SIZE_M": 16,
+        "BLOCK_SIZE_N": 128,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 8,
+        "num_stages": 0,
+        "waves_per_eu": 2
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.002037,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 42.83,
+       "us_min": 42.75,
+       "gbps": 391.8,
+       "timing": "graph"
+      },
+      {
+       "config": "BM128_BN64_BK128_w8_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 128,
+        "BLOCK_SIZE_N": 64,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 8,
+        "num_stages": 0
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.002037,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 43.01,
+       "us_min": 42.8,
+       "gbps": 390.2,
+       "timing": "graph"
+      },
+      {
+       "config": "BM64_BN64_BK128_w8_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 64,
+        "BLOCK_SIZE_N": 64,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 8,
+        "num_stages": 0
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.002037,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 43.06,
+       "us_min": 42.93,
+       "gbps": 389.7,
+       "timing": "graph"
+      }
+     ],
+     "rows_kept": "default + 10 fastest of 48 gated candidates (no gate failures / compile errors)"
+    },
+    "64": {
+     "default_us": 55.67,
+     "best": "BM64_BN64_BK128_w8_wpe2",
+     "best_us": 47.29,
+     "gain_pct": 17.73,
+     "graph_bit_identical": true,
+     "weight_copies": 16,
+     "n_candidates": 47,
+     "n_gate_fail": 0,
+     "n_error": 0,
+     "rows": [
+      {
+       "config": "BM16_BN128_BK128_w4_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 16,
+        "BLOCK_SIZE_N": 128,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0
+       },
+       "us": 55.67,
+       "us_min": 55.43,
+       "gbps": 301.4,
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999987,
+        "max_err_over_refmax": 0.002894,
+        "pass": true
+       },
+       "is_default": true,
+       "timing": "graph"
+      },
+      {
+       "config": "BM64_BN64_BK128_w8_wpe2",
+       "cfg": {
+        "BLOCK_SIZE_M": 64,
+        "BLOCK_SIZE_N": 64,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 8,
+        "num_stages": 0,
+        "waves_per_eu": 2
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999987,
+        "max_err_over_refmax": 0.002894,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 47.29,
+       "us_min": 47.05,
+       "gbps": 354.8,
+       "timing": "graph"
+      },
+      {
+       "config": "BM128_BN64_BK128_w8_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 128,
+        "BLOCK_SIZE_N": 64,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 8,
+        "num_stages": 0
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999987,
+        "max_err_over_refmax": 0.002894,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 49.95,
+       "us_min": 49.85,
+       "gbps": 336.0,
+       "timing": "graph"
+      },
+      {
+       "config": "BM128_BN64_BK128_w8_wpe2",
+       "cfg": {
+        "BLOCK_SIZE_M": 128,
+        "BLOCK_SIZE_N": 64,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 8,
+        "num_stages": 0,
+        "waves_per_eu": 2
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999987,
+        "max_err_over_refmax": 0.002894,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 50.8,
+       "us_min": 50.31,
+       "gbps": 330.4,
+       "timing": "graph"
+      },
+      {
+       "config": "BM64_BN64_BK128_w8_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 64,
+        "BLOCK_SIZE_N": 64,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 8,
+        "num_stages": 0
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999987,
+        "max_err_over_refmax": 0.002894,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 52.6,
+       "us_min": 52.5,
+       "gbps": 319.1,
+       "timing": "graph"
+      },
+      {
+       "config": "BM32_BN128_BK128_w8_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 32,
+        "BLOCK_SIZE_N": 128,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 8,
+        "num_stages": 0
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999987,
+        "max_err_over_refmax": 0.002894,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 52.61,
+       "us_min": 52.49,
+       "gbps": 319.0,
+       "timing": "graph"
+      },
+      {
+       "config": "BM32_BN128_BK128_w4_wpe2",
+       "cfg": {
+        "BLOCK_SIZE_M": 32,
+        "BLOCK_SIZE_N": 128,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0,
+        "waves_per_eu": 2
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999987,
+        "max_err_over_refmax": 0.002894,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 52.71,
+       "us_min": 52.54,
+       "gbps": 318.4,
+       "timing": "graph"
+      },
+      {
+       "config": "BM32_BN256_BK128_w8_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 32,
+        "BLOCK_SIZE_N": 256,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 8,
+        "num_stages": 0
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999987,
+        "max_err_over_refmax": 0.002894,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 52.8,
+       "us_min": 52.67,
+       "gbps": 317.9,
+       "timing": "graph"
+      },
+      {
+       "config": "BM32_BN256_BK128_w8_wpe2",
+       "cfg": {
+        "BLOCK_SIZE_M": 32,
+        "BLOCK_SIZE_N": 256,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 8,
+        "num_stages": 0,
+        "waves_per_eu": 2
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999987,
+        "max_err_over_refmax": 0.002894,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 52.89,
+       "us_min": 52.81,
+       "gbps": 317.3,
+       "timing": "graph"
+      },
+      {
+       "config": "BM64_BN128_BK128_w8_wpe2",
+       "cfg": {
+        "BLOCK_SIZE_M": 64,
+        "BLOCK_SIZE_N": 128,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 8,
+        "num_stages": 0,
+        "waves_per_eu": 2
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999987,
+        "max_err_over_refmax": 0.002894,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 52.95,
+       "us_min": 52.82,
+       "gbps": 317.0,
+       "timing": "graph"
+      },
+      {
+       "config": "BM64_BN128_BK128_w8_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 64,
+        "BLOCK_SIZE_N": 128,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 8,
+        "num_stages": 0
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999987,
+        "max_err_over_refmax": 0.002894,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 53.34,
+       "us_min": 53.23,
+       "gbps": 314.6,
+       "timing": "graph"
+      }
+     ],
+     "rows_kept": "default + 10 fastest of 48 gated candidates (no gate failures / compile errors)"
+    },
+    "256": {
+     "default_us": 143.44,
+     "best": "BM128_BN64_BK128_w4_wpe2",
+     "best_us": 83.49,
+     "gain_pct": 71.8,
+     "graph_bit_identical": true,
+     "weight_copies": 16,
+     "n_candidates": 47,
+     "n_gate_fail": 0,
+     "n_error": 0,
+     "rows": [
+      {
+       "config": "BM16_BN128_BK128_w4_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 16,
+        "BLOCK_SIZE_N": 128,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0
+       },
+       "us": 143.44,
+       "us_min": 142.5,
+       "gbps": 117.0,
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.003047,
+        "pass": true
+       },
+       "is_default": true,
+       "timing": "graph"
+      },
+      {
+       "config": "BM128_BN64_BK128_w4_wpe2",
+       "cfg": {
+        "BLOCK_SIZE_M": 128,
+        "BLOCK_SIZE_N": 64,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0,
+        "waves_per_eu": 2
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.003047,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 83.49,
+       "us_min": 82.43,
+       "gbps": 201.0,
+       "timing": "graph"
+      },
+      {
+       "config": "BM128_BN64_BK128_w8_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 128,
+        "BLOCK_SIZE_N": 64,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 8,
+        "num_stages": 0
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.003047,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 84.51,
+       "us_min": 82.43,
+       "gbps": 198.6,
+       "timing": "graph"
+      },
+      {
+       "config": "BM64_BN256_BK128_w8_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 64,
+        "BLOCK_SIZE_N": 256,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 8,
+        "num_stages": 0
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.003047,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 84.72,
+       "us_min": 83.85,
+       "gbps": 198.1,
+       "timing": "graph"
+      },
+      {
+       "config": "BM64_BN256_BK128_w8_wpe2",
+       "cfg": {
+        "BLOCK_SIZE_M": 64,
+        "BLOCK_SIZE_N": 256,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 8,
+        "num_stages": 0,
+        "waves_per_eu": 2
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.003047,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 85.79,
+       "us_min": 84.66,
+       "gbps": 195.6,
+       "timing": "graph"
+      },
+      {
+       "config": "BM64_BN128_BK128_w4_wpe2",
+       "cfg": {
+        "BLOCK_SIZE_M": 64,
+        "BLOCK_SIZE_N": 128,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0,
+        "waves_per_eu": 2
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.003047,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 85.88,
+       "us_min": 84.74,
+       "gbps": 195.4,
+       "timing": "graph"
+      },
+      {
+       "config": "BM128_BN128_BK128_w8_wpe2",
+       "cfg": {
+        "BLOCK_SIZE_M": 128,
+        "BLOCK_SIZE_N": 128,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 8,
+        "num_stages": 0,
+        "waves_per_eu": 2
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.003047,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 87.26,
+       "us_min": 85.55,
+       "gbps": 192.3,
+       "timing": "graph"
+      },
+      {
+       "config": "BM64_BN128_BK128_w4_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 64,
+        "BLOCK_SIZE_N": 128,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.003047,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 87.47,
+       "us_min": 86.96,
+       "gbps": 191.9,
+       "timing": "graph"
+      },
+      {
+       "config": "BM32_BN256_BK128_w4_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 32,
+        "BLOCK_SIZE_N": 256,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.003047,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 90.37,
+       "us_min": 89.2,
+       "gbps": 185.7,
+       "timing": "graph"
+      },
+      {
+       "config": "BM32_BN256_BK128_w4_wpe2",
+       "cfg": {
+        "BLOCK_SIZE_M": 32,
+        "BLOCK_SIZE_N": 256,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0,
+        "waves_per_eu": 2
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.003047,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 90.37,
+       "us_min": 89.51,
+       "gbps": 185.7,
+       "timing": "graph"
+      },
+      {
+       "config": "BM64_BN128_BK128_w8_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 64,
+        "BLOCK_SIZE_N": 128,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 8,
+        "num_stages": 0
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.003047,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 91.71,
+       "us_min": 90.22,
+       "gbps": 183.0,
+       "timing": "graph"
+      }
+     ],
+     "rows_kept": "default + 10 fastest of 48 gated candidates (no gate failures / compile errors)"
+    },
+    "1024": {
+     "default_us": 586.72,
+     "best": "BM64_BN128_BK128_w4_wpe2",
+     "best_us": 243.07,
+     "gain_pct": 141.38,
+     "graph_bit_identical": true,
+     "weight_copies": 16,
+     "n_candidates": 47,
+     "n_gate_fail": 0,
+     "n_error": 0,
+     "rows": [
+      {
+       "config": "BM16_BN128_BK128_w4_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 16,
+        "BLOCK_SIZE_N": 128,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0
+       },
+       "us": 586.72,
+       "us_min": 562.95,
+       "gbps": 28.6,
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.002342,
+        "pass": true
+       },
+       "is_default": true,
+       "timing": "graph"
+      },
+      {
+       "config": "BM64_BN128_BK128_w4_wpe2",
+       "cfg": {
+        "BLOCK_SIZE_M": 64,
+        "BLOCK_SIZE_N": 128,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0,
+        "waves_per_eu": 2
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.002342,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 243.07,
+       "us_min": 233.78,
+       "gbps": 69.0,
+       "timing": "graph"
+      },
+      {
+       "config": "BM64_BN128_BK128_w4_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 64,
+        "BLOCK_SIZE_N": 128,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.002342,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 247.04,
+       "us_min": 239.09,
+       "gbps": 67.9,
+       "timing": "graph"
+      },
+      {
+       "config": "BM128_BN64_BK128_w4_wpe2",
+       "cfg": {
+        "BLOCK_SIZE_M": 128,
+        "BLOCK_SIZE_N": 64,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0,
+        "waves_per_eu": 2
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.002342,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 260.19,
+       "us_min": 253.62,
+       "gbps": 64.5,
+       "timing": "graph"
+      },
+      {
+       "config": "BM64_BN256_BK128_w8_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 64,
+        "BLOCK_SIZE_N": 256,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 8,
+        "num_stages": 0
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.002342,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 267.07,
+       "us_min": 250.11,
+       "gbps": 62.8,
+       "timing": "graph"
+      },
+      {
+       "config": "BM64_BN256_BK128_w8_wpe2",
+       "cfg": {
+        "BLOCK_SIZE_M": 64,
+        "BLOCK_SIZE_N": 256,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 8,
+        "num_stages": 0,
+        "waves_per_eu": 2
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.002342,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 267.18,
+       "us_min": 260.65,
+       "gbps": 62.8,
+       "timing": "graph"
+      },
+      {
+       "config": "BM128_BN64_BK128_w4_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 128,
+        "BLOCK_SIZE_N": 64,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.002342,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 271.94,
+       "us_min": 264.36,
+       "gbps": 61.7,
+       "timing": "graph"
+      },
+      {
+       "config": "BM128_BN128_BK128_w8_wpe2",
+       "cfg": {
+        "BLOCK_SIZE_M": 128,
+        "BLOCK_SIZE_N": 128,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 8,
+        "num_stages": 0,
+        "waves_per_eu": 2
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.002342,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 276.15,
+       "us_min": 267.56,
+       "gbps": 60.8,
+       "timing": "graph"
+      },
+      {
+       "config": "BM128_BN64_BK128_w8_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 128,
+        "BLOCK_SIZE_N": 64,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 8,
+        "num_stages": 0
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.002342,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 283.9,
+       "us_min": 272.55,
+       "gbps": 59.1,
+       "timing": "graph"
+      },
+      {
+       "config": "BM128_BN128_BK128_w8_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 128,
+        "BLOCK_SIZE_N": 128,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 8,
+        "num_stages": 0
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.002342,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 287.57,
+       "us_min": 282.72,
+       "gbps": 58.4,
+       "timing": "graph"
+      },
+      {
+       "config": "BM64_BN128_BK128_w8_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 64,
+        "BLOCK_SIZE_N": 128,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 8,
+        "num_stages": 0
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.002342,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 293.93,
+       "us_min": 285.2,
+       "gbps": 57.1,
+       "timing": "graph"
+      }
+     ],
+     "rows_kept": "default + 10 fastest of 48 gated candidates (no gate failures / compile errors)"
+    },
+    "4096": {
+     "default_us": 2372.52,
+     "best": "BM64_BN128_BK128_w4_wpe2",
+     "best_us": 896.5,
+     "gain_pct": 164.64,
+     "graph_bit_identical": true,
+     "weight_copies": 16,
+     "n_candidates": 47,
+     "n_gate_fail": 0,
+     "n_error": 0,
+     "rows": [
+      {
+       "config": "BM16_BN128_BK128_w4_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 16,
+        "BLOCK_SIZE_N": 128,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0
+       },
+       "us": 2372.52,
+       "us_min": 2290.89,
+       "gbps": 7.1,
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999987,
+        "max_err_over_refmax": 0.002613,
+        "pass": true
+       },
+       "is_default": true,
+       "timing": "graph"
+      },
+      {
+       "config": "BM64_BN128_BK128_w4_wpe2",
+       "cfg": {
+        "BLOCK_SIZE_M": 64,
+        "BLOCK_SIZE_N": 128,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0,
+        "waves_per_eu": 2
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999987,
+        "max_err_over_refmax": 0.002613,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 896.5,
+       "us_min": 894.97,
+       "gbps": 18.7,
+       "timing": "graph"
+      },
+      {
+       "config": "BM64_BN128_BK128_w4_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 64,
+        "BLOCK_SIZE_N": 128,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999987,
+        "max_err_over_refmax": 0.002613,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 925.32,
+       "us_min": 921.44,
+       "gbps": 18.1,
+       "timing": "graph"
+      },
+      {
+       "config": "BM128_BN64_BK128_w4_wpe2",
+       "cfg": {
+        "BLOCK_SIZE_M": 128,
+        "BLOCK_SIZE_N": 64,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0,
+        "waves_per_eu": 2
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999987,
+        "max_err_over_refmax": 0.002613,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 983.18,
+       "us_min": 980.34,
+       "gbps": 17.1,
+       "timing": "graph"
+      },
+      {
+       "config": "BM64_BN256_BK128_w8_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 64,
+        "BLOCK_SIZE_N": 256,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 8,
+        "num_stages": 0
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999987,
+        "max_err_over_refmax": 0.002613,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 983.61,
+       "us_min": 980.36,
+       "gbps": 17.1,
+       "timing": "graph"
+      },
+      {
+       "config": "BM64_BN256_BK128_w8_wpe2",
+       "cfg": {
+        "BLOCK_SIZE_M": 64,
+        "BLOCK_SIZE_N": 256,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 8,
+        "num_stages": 0,
+        "waves_per_eu": 2
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999987,
+        "max_err_over_refmax": 0.002613,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 999.42,
+       "us_min": 993.23,
+       "gbps": 16.8,
+       "timing": "graph"
+      },
+      {
+       "config": "BM128_BN64_BK128_w4_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 128,
+        "BLOCK_SIZE_N": 64,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999987,
+        "max_err_over_refmax": 0.002613,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 1018.62,
+       "us_min": 1015.76,
+       "gbps": 16.5,
+       "timing": "graph"
+      },
+      {
+       "config": "BM128_BN128_BK128_w8_wpe2",
+       "cfg": {
+        "BLOCK_SIZE_M": 128,
+        "BLOCK_SIZE_N": 128,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 8,
+        "num_stages": 0,
+        "waves_per_eu": 2
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999987,
+        "max_err_over_refmax": 0.002613,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 1047.0,
+       "us_min": 1039.21,
+       "gbps": 16.0,
+       "timing": "graph"
+      },
+      {
+       "config": "BM128_BN64_BK128_w8_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 128,
+        "BLOCK_SIZE_N": 64,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 8,
+        "num_stages": 0
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999987,
+        "max_err_over_refmax": 0.002613,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 1099.29,
+       "us_min": 1095.3,
+       "gbps": 15.3,
+       "timing": "graph"
+      },
+      {
+       "config": "BM128_BN128_BK128_w8_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 128,
+        "BLOCK_SIZE_N": 128,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 8,
+        "num_stages": 0
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999987,
+        "max_err_over_refmax": 0.002613,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 1119.02,
+       "us_min": 1100.1,
+       "gbps": 15.0,
+       "timing": "graph"
+      },
+      {
+       "config": "BM64_BN128_BK128_w8_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 64,
+        "BLOCK_SIZE_N": 128,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 8,
+        "num_stages": 0
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999987,
+        "max_err_over_refmax": 0.002613,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 1125.72,
+       "us_min": 1119.63,
+       "gbps": 14.9,
+       "timing": "graph"
+      }
+     ],
+     "rows_kept": "default + 10 fastest of 48 gated candidates (no gate failures / compile errors)"
+    }
+   },
+   "m1_default_step_ms": 0.043,
+   "m1_best_step_ms": 0.038,
+   "best_gain_pct_any_m": 164.64
+  },
+  {
+   "projection": "dense0.mlp.down_proj",
+   "N": 2048,
+   "K": 4096,
+   "per_step": 1,
+   "weight_mb": 8.0,
+   "per_m": {
+    "1": {
+     "default_us": 29.28,
+     "best": "BM16_BN16_BK128_w1_wpe0",
+     "best_us": 22.67,
+     "gain_pct": 29.16,
+     "graph_bit_identical": true,
+     "weight_copies": 32,
+     "n_candidates": 113,
+     "n_gate_fail": 0,
+     "n_error": 0,
+     "rows": [
+      {
+       "config": "BM16_BN128_BK128_w4_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 16,
+        "BLOCK_SIZE_N": 128,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0
+       },
+       "us": 29.28,
+       "us_min": 29.2,
+       "gbps": 286.6,
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999987,
+        "max_err_over_refmax": 0.001993,
+        "pass": true
+       },
+       "is_default": true,
+       "timing": "graph"
+      },
+      {
+       "config": "BM16_BN16_BK128_w1_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 16,
+        "BLOCK_SIZE_N": 16,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 1,
+        "num_stages": 0
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999987,
+        "max_err_over_refmax": 0.001993,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 22.67,
+       "us_min": 22.63,
+       "gbps": 370.1,
+       "timing": "graph"
+      },
+      {
+       "config": "BM16_BN16_BK128_w1_wpe2",
+       "cfg": {
+        "BLOCK_SIZE_M": 16,
+        "BLOCK_SIZE_N": 16,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 1,
+        "num_stages": 0,
+        "waves_per_eu": 2
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999987,
+        "max_err_over_refmax": 0.001993,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 22.74,
+       "us_min": 22.7,
+       "gbps": 368.9,
+       "timing": "graph"
+      },
+      {
+       "config": "BM16_BN16_BK128_w1_wpe4",
+       "cfg": {
+        "BLOCK_SIZE_M": 16,
+        "BLOCK_SIZE_N": 16,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 1,
+        "num_stages": 0,
+        "waves_per_eu": 4
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999987,
+        "max_err_over_refmax": 0.001993,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 22.75,
+       "us_min": 22.72,
+       "gbps": 368.9,
+       "timing": "graph"
+      },
+      {
+       "config": "BM32_BN16_BK128_w2_wpe2",
+       "cfg": {
+        "BLOCK_SIZE_M": 32,
+        "BLOCK_SIZE_N": 16,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 2,
+        "num_stages": 0,
+        "waves_per_eu": 2
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999987,
+        "max_err_over_refmax": 0.001993,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 22.92,
+       "us_min": 22.89,
+       "gbps": 366.1,
+       "timing": "graph"
+      },
+      {
+       "config": "BM32_BN16_BK128_w2_wpe4",
+       "cfg": {
+        "BLOCK_SIZE_M": 32,
+        "BLOCK_SIZE_N": 16,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 2,
+        "num_stages": 0,
+        "waves_per_eu": 4
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999987,
+        "max_err_over_refmax": 0.001993,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 22.97,
+       "us_min": 22.91,
+       "gbps": 365.3,
+       "timing": "graph"
+      },
+      {
+       "config": "BM32_BN16_BK128_w2_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 32,
+        "BLOCK_SIZE_N": 16,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 2,
+        "num_stages": 0
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999987,
+        "max_err_over_refmax": 0.001993,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 23.01,
+       "us_min": 22.97,
+       "gbps": 364.6,
+       "timing": "graph"
+      },
+      {
+       "config": "BM16_BN16_BK128_w2_wpe2",
+       "cfg": {
+        "BLOCK_SIZE_M": 16,
+        "BLOCK_SIZE_N": 16,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 2,
+        "num_stages": 0,
+        "waves_per_eu": 2
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999987,
+        "max_err_over_refmax": 0.001993,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 23.13,
+       "us_min": 23.07,
+       "gbps": 362.8,
+       "timing": "graph"
+      },
+      {
+       "config": "BM16_BN16_BK128_w2_wpe4",
+       "cfg": {
+        "BLOCK_SIZE_M": 16,
+        "BLOCK_SIZE_N": 16,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 2,
+        "num_stages": 0,
+        "waves_per_eu": 4
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999987,
+        "max_err_over_refmax": 0.001993,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 23.23,
+       "us_min": 23.2,
+       "gbps": 361.2,
+       "timing": "graph"
+      },
+      {
+       "config": "BM16_BN16_BK128_w2_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 16,
+        "BLOCK_SIZE_N": 16,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 2,
+        "num_stages": 0
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999987,
+        "max_err_over_refmax": 0.001993,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 23.26,
+       "us_min": 23.22,
+       "gbps": 360.8,
+       "timing": "graph"
+      },
+      {
+       "config": "BM32_BN16_BK128_w1_wpe4",
+       "cfg": {
+        "BLOCK_SIZE_M": 32,
+        "BLOCK_SIZE_N": 16,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 1,
+        "num_stages": 0,
+        "waves_per_eu": 4
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999987,
+        "max_err_over_refmax": 0.001993,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 23.43,
+       "us_min": 23.36,
+       "gbps": 358.0,
+       "timing": "graph"
+      }
+     ],
+     "rows_kept": "default + 10 fastest of 114 gated candidates (no gate failures / compile errors)"
+    },
+    "8": {
+     "default_us": 29.17,
+     "best": "BM16_BN64_BK128_w4_wpe2",
+     "best_us": 25.05,
+     "gain_pct": 16.45,
+     "graph_bit_identical": true,
+     "weight_copies": 32,
+     "n_candidates": 47,
+     "n_gate_fail": 0,
+     "n_error": 0,
+     "rows": [
+      {
+       "config": "BM16_BN128_BK128_w4_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 16,
+        "BLOCK_SIZE_N": 128,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0
+       },
+       "us": 29.17,
+       "us_min": 29.11,
+       "gbps": 287.6,
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.002756,
+        "pass": true
+       },
+       "is_default": true,
+       "timing": "graph"
+      },
+      {
+       "config": "BM16_BN64_BK128_w4_wpe2",
+       "cfg": {
+        "BLOCK_SIZE_M": 16,
+        "BLOCK_SIZE_N": 64,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0,
+        "waves_per_eu": 2
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.002756,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 25.05,
+       "us_min": 25.04,
+       "gbps": 335.0,
+       "timing": "graph"
+      },
+      {
+       "config": "BM16_BN64_BK128_w4_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 16,
+        "BLOCK_SIZE_N": 64,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.002756,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 25.5,
+       "us_min": 25.47,
+       "gbps": 329.0,
+       "timing": "graph"
+      },
+      {
+       "config": "BM32_BN64_BK128_w4_wpe2",
+       "cfg": {
+        "BLOCK_SIZE_M": 32,
+        "BLOCK_SIZE_N": 64,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0,
+        "waves_per_eu": 2
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.002756,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 26.14,
+       "us_min": 26.09,
+       "gbps": 321.0,
+       "timing": "graph"
+      },
+      {
+       "config": "BM32_BN64_BK128_w8_wpe2",
+       "cfg": {
+        "BLOCK_SIZE_M": 32,
+        "BLOCK_SIZE_N": 64,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 8,
+        "num_stages": 0,
+        "waves_per_eu": 2
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.002756,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 26.22,
+       "us_min": 26.21,
+       "gbps": 320.0,
+       "timing": "graph"
+      },
+      {
+       "config": "BM32_BN64_BK128_w8_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 32,
+        "BLOCK_SIZE_N": 64,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 8,
+        "num_stages": 0
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.002756,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 26.24,
+       "us_min": 26.2,
+       "gbps": 319.8,
+       "timing": "graph"
+      },
+      {
+       "config": "BM32_BN64_BK128_w4_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 32,
+        "BLOCK_SIZE_N": 64,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.002756,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 26.54,
+       "us_min": 26.48,
+       "gbps": 316.1,
+       "timing": "graph"
+      },
+      {
+       "config": "BM16_BN128_BK128_w8_wpe2",
+       "cfg": {
+        "BLOCK_SIZE_M": 16,
+        "BLOCK_SIZE_N": 128,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 8,
+        "num_stages": 0,
+        "waves_per_eu": 2
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.002756,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 28.33,
+       "us_min": 28.21,
+       "gbps": 296.2,
+       "timing": "graph"
+      },
+      {
+       "config": "BM16_BN128_BK128_w8_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 16,
+        "BLOCK_SIZE_N": 128,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 8,
+        "num_stages": 0
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.002756,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 28.63,
+       "us_min": 28.56,
+       "gbps": 293.0,
+       "timing": "graph"
+      },
+      {
+       "config": "BM64_BN64_BK128_w4_wpe2",
+       "cfg": {
+        "BLOCK_SIZE_M": 64,
+        "BLOCK_SIZE_N": 64,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0,
+        "waves_per_eu": 2
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.002756,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 28.63,
+       "us_min": 28.32,
+       "gbps": 293.1,
+       "timing": "graph"
+      },
+      {
+       "config": "BM64_BN64_BK128_w8_wpe2",
+       "cfg": {
+        "BLOCK_SIZE_M": 64,
+        "BLOCK_SIZE_N": 64,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 8,
+        "num_stages": 0,
+        "waves_per_eu": 2
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.002756,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 29.12,
+       "us_min": 29.04,
+       "gbps": 288.1,
+       "timing": "graph"
+      }
+     ],
+     "rows_kept": "default + 10 fastest of 48 gated candidates (no gate failures / compile errors)"
+    },
+    "64": {
+     "default_us": 32.54,
+     "best": "BM16_BN64_BK128_w4_wpe2",
+     "best_us": 28.7,
+     "gain_pct": 13.39,
+     "graph_bit_identical": true,
+     "weight_copies": 32,
+     "n_candidates": 47,
+     "n_gate_fail": 0,
+     "n_error": 0,
+     "rows": [
+      {
+       "config": "BM16_BN128_BK128_w4_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 16,
+        "BLOCK_SIZE_N": 128,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0
+       },
+       "us": 32.54,
+       "us_min": 32.0,
+       "gbps": 257.8,
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.002201,
+        "pass": true
+       },
+       "is_default": true,
+       "timing": "graph"
+      },
+      {
+       "config": "BM16_BN64_BK128_w4_wpe2",
+       "cfg": {
+        "BLOCK_SIZE_M": 16,
+        "BLOCK_SIZE_N": 64,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0,
+        "waves_per_eu": 2
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.002201,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 28.7,
+       "us_min": 27.99,
+       "gbps": 292.4,
+       "timing": "graph"
+      },
+      {
+       "config": "BM32_BN64_BK128_w4_wpe2",
+       "cfg": {
+        "BLOCK_SIZE_M": 32,
+        "BLOCK_SIZE_N": 64,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0,
+        "waves_per_eu": 2
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.002201,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 29.34,
+       "us_min": 29.24,
+       "gbps": 286.0,
+       "timing": "graph"
+      },
+      {
+       "config": "BM32_BN64_BK128_w8_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 32,
+        "BLOCK_SIZE_N": 64,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 8,
+        "num_stages": 0
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.002201,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 29.63,
+       "us_min": 29.54,
+       "gbps": 283.2,
+       "timing": "graph"
+      },
+      {
+       "config": "BM32_BN64_BK128_w8_wpe2",
+       "cfg": {
+        "BLOCK_SIZE_M": 32,
+        "BLOCK_SIZE_N": 64,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 8,
+        "num_stages": 0,
+        "waves_per_eu": 2
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.002201,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 29.67,
+       "us_min": 29.59,
+       "gbps": 282.8,
+       "timing": "graph"
+      },
+      {
+       "config": "BM32_BN64_BK128_w4_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 32,
+        "BLOCK_SIZE_N": 64,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.002201,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 29.8,
+       "us_min": 29.73,
+       "gbps": 281.6,
+       "timing": "graph"
+      },
+      {
+       "config": "BM64_BN64_BK128_w4_wpe2",
+       "cfg": {
+        "BLOCK_SIZE_M": 64,
+        "BLOCK_SIZE_N": 64,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0,
+        "waves_per_eu": 2
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.002201,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 29.94,
+       "us_min": 29.82,
+       "gbps": 280.3,
+       "timing": "graph"
+      },
+      {
+       "config": "BM64_BN64_BK128_w8_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 64,
+        "BLOCK_SIZE_N": 64,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 8,
+        "num_stages": 0
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.002201,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 30.73,
+       "us_min": 30.67,
+       "gbps": 273.1,
+       "timing": "graph"
+      },
+      {
+       "config": "BM16_BN64_BK128_w4_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 16,
+        "BLOCK_SIZE_N": 64,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.002201,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 31.14,
+       "us_min": 30.43,
+       "gbps": 269.4,
+       "timing": "graph"
+      },
+      {
+       "config": "BM64_BN64_BK128_w8_wpe2",
+       "cfg": {
+        "BLOCK_SIZE_M": 64,
+        "BLOCK_SIZE_N": 64,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 8,
+        "num_stages": 0,
+        "waves_per_eu": 2
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.002201,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 31.33,
+       "us_min": 31.25,
+       "gbps": 267.8,
+       "timing": "graph"
+      },
+      {
+       "config": "BM32_BN128_BK128_w8_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 32,
+        "BLOCK_SIZE_N": 128,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 8,
+        "num_stages": 0
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.002201,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 32.05,
+       "us_min": 31.91,
+       "gbps": 261.8,
+       "timing": "graph"
+      }
+     ],
+     "rows_kept": "default + 10 fastest of 48 gated candidates (no gate failures / compile errors)"
+    },
+    "256": {
+     "default_us": 63.03,
+     "best": "BM64_BN64_BK128_w4_wpe2",
+     "best_us": 43.04,
+     "gain_pct": 46.46,
+     "graph_bit_identical": true,
+     "weight_copies": 32,
+     "n_candidates": 47,
+     "n_gate_fail": 0,
+     "n_error": 0,
+     "rows": [
+      {
+       "config": "BM16_BN128_BK128_w4_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 16,
+        "BLOCK_SIZE_N": 128,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0
+       },
+       "us": 63.03,
+       "us_min": 61.87,
+       "gbps": 133.1,
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999987,
+        "max_err_over_refmax": 0.002375,
+        "pass": true
+       },
+       "is_default": true,
+       "timing": "graph"
+      },
+      {
+       "config": "BM64_BN64_BK128_w4_wpe2",
+       "cfg": {
+        "BLOCK_SIZE_M": 64,
+        "BLOCK_SIZE_N": 64,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0,
+        "waves_per_eu": 2
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999987,
+        "max_err_over_refmax": 0.002375,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 43.04,
+       "us_min": 41.68,
+       "gbps": 194.9,
+       "timing": "graph"
+      },
+      {
+       "config": "BM128_BN64_BK128_w8_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 128,
+        "BLOCK_SIZE_N": 64,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 8,
+        "num_stages": 0
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999987,
+        "max_err_over_refmax": 0.002375,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 46.81,
+       "us_min": 46.44,
+       "gbps": 179.2,
+       "timing": "graph"
+      },
+      {
+       "config": "BM64_BN128_BK128_w8_wpe2",
+       "cfg": {
+        "BLOCK_SIZE_M": 64,
+        "BLOCK_SIZE_N": 128,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 8,
+        "num_stages": 0,
+        "waves_per_eu": 2
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999987,
+        "max_err_over_refmax": 0.002375,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 47.06,
+       "us_min": 46.16,
+       "gbps": 178.3,
+       "timing": "graph"
+      },
+      {
+       "config": "BM64_BN64_BK128_w4_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 64,
+        "BLOCK_SIZE_N": 64,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999987,
+        "max_err_over_refmax": 0.002375,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 47.22,
+       "us_min": 46.1,
+       "gbps": 177.7,
+       "timing": "graph"
+      },
+      {
+       "config": "BM32_BN128_BK128_w4_wpe2",
+       "cfg": {
+        "BLOCK_SIZE_M": 32,
+        "BLOCK_SIZE_N": 128,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0,
+        "waves_per_eu": 2
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999987,
+        "max_err_over_refmax": 0.002375,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 47.9,
+       "us_min": 47.12,
+       "gbps": 175.2,
+       "timing": "graph"
+      },
+      {
+       "config": "BM128_BN64_BK128_w8_wpe2",
+       "cfg": {
+        "BLOCK_SIZE_M": 128,
+        "BLOCK_SIZE_N": 64,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 8,
+        "num_stages": 0,
+        "waves_per_eu": 2
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999987,
+        "max_err_over_refmax": 0.002375,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 48.1,
+       "us_min": 46.46,
+       "gbps": 174.4,
+       "timing": "graph"
+      },
+      {
+       "config": "BM64_BN128_BK128_w4_wpe2",
+       "cfg": {
+        "BLOCK_SIZE_M": 64,
+        "BLOCK_SIZE_N": 128,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0,
+        "waves_per_eu": 2
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999987,
+        "max_err_over_refmax": 0.002375,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 48.25,
+       "us_min": 47.93,
+       "gbps": 173.9,
+       "timing": "graph"
+      },
+      {
+       "config": "BM64_BN64_BK128_w8_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 64,
+        "BLOCK_SIZE_N": 64,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 8,
+        "num_stages": 0
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999987,
+        "max_err_over_refmax": 0.002375,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 48.83,
+       "us_min": 47.73,
+       "gbps": 171.8,
+       "timing": "graph"
+      },
+      {
+       "config": "BM64_BN128_BK128_w8_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 64,
+        "BLOCK_SIZE_N": 128,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 8,
+        "num_stages": 0
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999987,
+        "max_err_over_refmax": 0.002375,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 49.32,
+       "us_min": 47.41,
+       "gbps": 170.1,
+       "timing": "graph"
+      },
+      {
+       "config": "BM128_BN64_BK128_w4_wpe2",
+       "cfg": {
+        "BLOCK_SIZE_M": 128,
+        "BLOCK_SIZE_N": 64,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0,
+        "waves_per_eu": 2
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999987,
+        "max_err_over_refmax": 0.002375,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 50.2,
+       "us_min": 50.11,
+       "gbps": 167.1,
+       "timing": "graph"
+      }
+     ],
+     "rows_kept": "default + 10 fastest of 48 gated candidates (no gate failures / compile errors)"
+    },
+    "1024": {
+     "default_us": 186.26,
+     "best": "BM64_BN128_BK128_w4_wpe2",
+     "best_us": 126.57,
+     "gain_pct": 47.16,
+     "graph_bit_identical": true,
+     "weight_copies": 32,
+     "n_candidates": 47,
+     "n_gate_fail": 0,
+     "n_error": 0,
+     "rows": [
+      {
+       "config": "BM16_BN128_BK128_w4_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 16,
+        "BLOCK_SIZE_N": 128,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0
+       },
+       "us": 186.26,
+       "us_min": 183.58,
+       "gbps": 45.0,
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.002064,
+        "pass": true
+       },
+       "is_default": true,
+       "timing": "graph"
+      },
+      {
+       "config": "BM64_BN128_BK128_w4_wpe2",
+       "cfg": {
+        "BLOCK_SIZE_M": 64,
+        "BLOCK_SIZE_N": 128,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0,
+        "waves_per_eu": 2
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.002064,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 126.57,
+       "us_min": 121.61,
+       "gbps": 66.3,
+       "timing": "graph"
+      },
+      {
+       "config": "BM64_BN128_BK128_w4_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 64,
+        "BLOCK_SIZE_N": 128,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.002064,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 128.13,
+       "us_min": 121.95,
+       "gbps": 65.5,
+       "timing": "graph"
+      },
+      {
+       "config": "BM64_BN256_BK128_w8_wpe2",
+       "cfg": {
+        "BLOCK_SIZE_M": 64,
+        "BLOCK_SIZE_N": 256,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 8,
+        "num_stages": 0,
+        "waves_per_eu": 2
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.002064,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 128.68,
+       "us_min": 124.4,
+       "gbps": 65.2,
+       "timing": "graph"
+      },
+      {
+       "config": "BM64_BN256_BK128_w8_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 64,
+        "BLOCK_SIZE_N": 256,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 8,
+        "num_stages": 0
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.002064,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 129.95,
+       "us_min": 126.03,
+       "gbps": 64.6,
+       "timing": "graph"
+      },
+      {
+       "config": "BM128_BN64_BK128_w4_wpe2",
+       "cfg": {
+        "BLOCK_SIZE_M": 128,
+        "BLOCK_SIZE_N": 64,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0,
+        "waves_per_eu": 2
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.002064,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 132.16,
+       "us_min": 129.52,
+       "gbps": 63.5,
+       "timing": "graph"
+      },
+      {
+       "config": "BM128_BN128_BK128_w8_wpe2",
+       "cfg": {
+        "BLOCK_SIZE_M": 128,
+        "BLOCK_SIZE_N": 128,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 8,
+        "num_stages": 0,
+        "waves_per_eu": 2
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.002064,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 133.46,
+       "us_min": 129.26,
+       "gbps": 62.9,
+       "timing": "graph"
+      },
+      {
+       "config": "BM32_BN256_BK128_w4_wpe2",
+       "cfg": {
+        "BLOCK_SIZE_M": 32,
+        "BLOCK_SIZE_N": 256,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0,
+        "waves_per_eu": 2
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.002064,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 135.02,
+       "us_min": 131.4,
+       "gbps": 62.1,
+       "timing": "graph"
+      },
+      {
+       "config": "BM32_BN256_BK128_w4_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 32,
+        "BLOCK_SIZE_N": 256,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.002064,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 138.33,
+       "us_min": 134.61,
+       "gbps": 60.7,
+       "timing": "graph"
+      },
+      {
+       "config": "BM128_BN128_BK128_w8_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 128,
+        "BLOCK_SIZE_N": 128,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 8,
+        "num_stages": 0
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.002064,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 140.56,
+       "us_min": 138.09,
+       "gbps": 59.7,
+       "timing": "graph"
+      },
+      {
+       "config": "BM128_BN64_BK128_w8_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 128,
+        "BLOCK_SIZE_N": 64,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 8,
+        "num_stages": 0
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999986,
+        "max_err_over_refmax": 0.002064,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 140.96,
+       "us_min": 138.27,
+       "gbps": 59.5,
+       "timing": "graph"
+      }
+     ],
+     "rows_kept": "default + 10 fastest of 48 gated candidates (no gate failures / compile errors)"
+    },
+    "4096": {
+     "default_us": 724.56,
+     "best": "BM64_BN128_BK128_w4_wpe2",
+     "best_us": 438.22,
+     "gain_pct": 65.34,
+     "graph_bit_identical": true,
+     "weight_copies": 32,
+     "n_candidates": 47,
+     "n_gate_fail": 0,
+     "n_error": 0,
+     "rows": [
+      {
+       "config": "BM16_BN128_BK128_w4_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 16,
+        "BLOCK_SIZE_N": 128,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0
+       },
+       "us": 724.56,
+       "us_min": 721.52,
+       "gbps": 11.6,
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999987,
+        "max_err_over_refmax": 0.002022,
+        "pass": true
+       },
+       "is_default": true,
+       "timing": "graph"
+      },
+      {
+       "config": "BM64_BN128_BK128_w4_wpe2",
+       "cfg": {
+        "BLOCK_SIZE_M": 64,
+        "BLOCK_SIZE_N": 128,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0,
+        "waves_per_eu": 2
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999987,
+        "max_err_over_refmax": 0.002022,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 438.22,
+       "us_min": 437.08,
+       "gbps": 19.1,
+       "timing": "graph"
+      },
+      {
+       "config": "BM64_BN256_BK128_w8_wpe2",
+       "cfg": {
+        "BLOCK_SIZE_M": 64,
+        "BLOCK_SIZE_N": 256,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 8,
+        "num_stages": 0,
+        "waves_per_eu": 2
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999987,
+        "max_err_over_refmax": 0.002022,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 453.85,
+       "us_min": 451.57,
+       "gbps": 18.5,
+       "timing": "graph"
+      },
+      {
+       "config": "BM64_BN128_BK128_w4_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 64,
+        "BLOCK_SIZE_N": 128,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999987,
+        "max_err_over_refmax": 0.002022,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 457.2,
+       "us_min": 454.35,
+       "gbps": 18.4,
+       "timing": "graph"
+      },
+      {
+       "config": "BM64_BN256_BK128_w8_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 64,
+        "BLOCK_SIZE_N": 256,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 8,
+        "num_stages": 0
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999987,
+        "max_err_over_refmax": 0.002022,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 465.87,
+       "us_min": 464.71,
+       "gbps": 18.0,
+       "timing": "graph"
+      },
+      {
+       "config": "BM128_BN64_BK128_w4_wpe2",
+       "cfg": {
+        "BLOCK_SIZE_M": 128,
+        "BLOCK_SIZE_N": 64,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0,
+        "waves_per_eu": 2
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999987,
+        "max_err_over_refmax": 0.002022,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 479.76,
+       "us_min": 478.3,
+       "gbps": 17.5,
+       "timing": "graph"
+      },
+      {
+       "config": "BM32_BN256_BK128_w4_wpe2",
+       "cfg": {
+        "BLOCK_SIZE_M": 32,
+        "BLOCK_SIZE_N": 256,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0,
+        "waves_per_eu": 2
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999987,
+        "max_err_over_refmax": 0.002022,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 486.58,
+       "us_min": 485.18,
+       "gbps": 17.2,
+       "timing": "graph"
+      },
+      {
+       "config": "BM128_BN128_BK128_w8_wpe2",
+       "cfg": {
+        "BLOCK_SIZE_M": 128,
+        "BLOCK_SIZE_N": 128,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 8,
+        "num_stages": 0,
+        "waves_per_eu": 2
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999987,
+        "max_err_over_refmax": 0.002022,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 488.5,
+       "us_min": 486.99,
+       "gbps": 17.2,
+       "timing": "graph"
+      },
+      {
+       "config": "BM128_BN64_BK128_w4_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 128,
+        "BLOCK_SIZE_N": 64,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999987,
+        "max_err_over_refmax": 0.002022,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 498.61,
+       "us_min": 494.92,
+       "gbps": 16.8,
+       "timing": "graph"
+      },
+      {
+       "config": "BM32_BN256_BK128_w4_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 32,
+        "BLOCK_SIZE_N": 256,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 4,
+        "num_stages": 0
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999987,
+        "max_err_over_refmax": 0.002022,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 501.21,
+       "us_min": 498.53,
+       "gbps": 16.7,
+       "timing": "graph"
+      },
+      {
+       "config": "BM32_BN256_BK128_w8_wpe0",
+       "cfg": {
+        "BLOCK_SIZE_M": 32,
+        "BLOCK_SIZE_N": 256,
+        "BLOCK_SIZE_K": 128,
+        "GROUP_SIZE_M": 1,
+        "num_warps": 8,
+        "num_stages": 0
+       },
+       "gate": {
+        "finite": true,
+        "cosine": 0.9999987,
+        "max_err_over_refmax": 0.002022,
+        "max_ulp_vs_default": 0.0,
+        "bit_identical_frac": 1.0,
+        "pass": true
+       },
+       "us": 519.29,
+       "us_min": 517.99,
+       "gbps": 16.2,
+       "timing": "graph"
+      }
+     ],
+     "rows_kept": "default + 10 fastest of 48 gated candidates (no gate failures / compile errors)"
+    }
+   },
+   "m1_default_step_ms": 0.029,
+   "m1_best_step_ms": 0.023,
+   "best_gain_pct_any_m": 65.34
+  }
+ ],
+ "emitted": [
+  "N=512,K=2048,device_name=AMD_Radeon_AI_PRO_R9700,dtype=fp8_w8a8,block_shape=[128, 128].json",
+  "N=2048,K=256,device_name=AMD_Radeon_AI_PRO_R9700,dtype=fp8_w8a8,block_shape=[128, 128].json",
+  "N=8192,K=2048,device_name=AMD_Radeon_AI_PRO_R9700,dtype=fp8_w8a8,block_shape=[128, 128].json",
+  "N=2048,K=4096,device_name=AMD_Radeon_AI_PRO_R9700,dtype=fp8_w8a8,block_shape=[128, 128].json"
+ ],
+ "m1_step_ms_default": 0.749,
+ "m1_step_ms_best": 0.577,
+ "note": "Laguna-XS.2-FP8 per-rank dense block-FP8 shapes (server config log), BLOCK_SIZE_M in {16,32,64,128}. Kernel-level wins but a NULL serving result: the order-reversed A/B (/data/logs/fp8-gemm-ab-laguna-20261031-r2) is within \u00b10.5 % on decode and prefill at every point; the first A/B's +5..22 % decode was the day's first cold Laguna boot in the default arm. Configs NOT shipped.",
+ "disposition": "null \u2014 not shipped"
+}

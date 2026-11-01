@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | **Type** | optimization |
-| **Status** | executed 2026-10-31 for Qwen3.8-27B-FP8's six shapes (patch 106); Laguna's two shapes still unswept |
+| **Status** | closed 2026-10-31 — qwen38: shipped as patch 106 (prefill 1.5–2.5×); Laguna: null (kernel wins, serving A/B ±0.5 %), kill criterion met |
 | **Execution host** | r9700-box |
 | **Wall clock** | ~1–2 days: kernel enumeration + tuner build on CPU/GPU, a gated sweep, then a fresh same-depth A/B and re-eval |
 | **GPU time** | ~4–8h: sweep at three M points, patch replay smoke, deep A/B (128/8192/~197K) at 3-run median, capabilities + needle re-gate |
@@ -28,8 +28,10 @@
   Triton 3.6), which is where the serving win is: cold prefill 2.5× / 2.1× / 1.5× at 7.3K / 58K / 197K on both presets. Method lesson recorded in the receipt: time
   weight-streaming kernels over > 64 MB of rotated copies (MALL) and take shapes from the server's config log, not from
   checkpoint dims ÷ TP (DeltaNet projections are replicated by patch 045).
-- **Next action for this spec:** sweep the Laguna shapes with the same tool (`--preset laguna`), then the Laguna
-  deep A/B against a fresh native-Triton baseline as written below.
+- **Laguna (same evening):** `--preset laguna` swept its four dense shapes (shared-expert 512×2048 / 2048×256 ×39,
+  dense-0 MLP 8192×2048 / 2048×4096 ×1); kernel wins of 14–165 % but the slice is 0.75 ms of a 14.5 ms step, and the
+  order-reversed serving A/B is within ±0.5 % on decode and prefill at every point. Null → not shipped, spec closed
+  under its own kill criterion. Receipt section "Laguna's shapes" in the qwen38 tuner receipt.
 
 ## Current assessment — 2026-07-20 post-095
 

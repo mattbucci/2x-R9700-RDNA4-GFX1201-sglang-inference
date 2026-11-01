@@ -247,7 +247,11 @@ the comment is refreshed in patch 005) and emitted one config file per shape key
 tree (default files absent vs installed, `ab_fp8_gemm_configs.sh`, 3-run medians): decode +2.7–3.7 % no-spec and
 +2.0–3.4 % DSpark at 64 tokens to 197K; cold prefill 2.5× at 7.3K, 2.1× at 58K, 1.5× at 197K on both presets
 (197K prompt: 496 → 330 s); `validate_capabilities` 5/5. Not the stock SGLang tuner, which times the unrolled-x4 kernel
-the HIP selector never returns and has no gate. Laguna's shared-expert shapes are not yet swept.
+the HIP selector never returns and has no gate. **Laguna: null.** Its four dense block-FP8 shapes (0.08 GiB per rank,
+0.75 ms of a ~14.5 ms step) gained 14–165 % at the kernel but an order-reversed serving A/B is within ±0.5 % on decode
+and prefill at every point; the first A/B's +5–22 % was the day's first cold Laguna boot sitting in the default arm.
+Not shipped; the FP8-native-follow-on leg closes as "tuned, no headroom at Laguna's shapes". A/B arms now run in both
+orders before a number is read.
 Receipt: [`profiling/fp8-block-gemm-tune-qwen38-2026-10-31.md`](profiling/fp8-block-gemm-tune-qwen38-2026-10-31.md).
 
 ## Long-context attention

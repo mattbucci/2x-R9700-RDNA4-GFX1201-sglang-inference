@@ -3,7 +3,8 @@
 # that scripts/bench/tune_fp8_block_gemm.py emitted. Same preset, same tree, same session; the only change between
 # arms is whether the N=..,K=..,device_name=AMD_Radeon_AI_PRO_R9700 JSON files sit in the kernel's configs dir.
 #
-#   CFG_DIR=/path/to/emitted PRESETS="nospec dspark" bash scripts/bench/ab_fp8_gemm_configs.sh
+#   CFG_DIR=/path/to/emitted PRESETS="nospec dspark" bash scripts/bench/ab_fp8_gemm_configs.sh   # qwen38 no-spec + DSpark
+#   CFG_DIR=/path/to/emitted PRESETS="laguna" bash scripts/bench/ab_fp8_gemm_configs.sh          # any other launch.sh preset
 #
 # Per arm × preset: boot, decode_ab (4 canonical points, 3 runs, --ignore-eos so both arms decode 80 steps),
 # prefill_ttft (cold prefill at 3 depths), teardown via free_gpu.sh. The tuned arm also runs validate_capabilities
@@ -34,11 +35,11 @@ install(){ for f in "${files[@]}"; do cp "$f" "$TARGET/"; done; }
 
 boot(){ # $1 preset-kind
   local kind=$1 slog="$OUT/server-$2-$1.log"
-  if [ "$kind" = nospec ]; then
-    QWEN38_SPEC=0 setsid bash "$REPO/scripts/launch.sh" qwen38 > "$slog" 2>&1 < /dev/null &
-  else
-    setsid bash "$REPO/scripts/launch.sh" qwen38 > "$slog" 2>&1 < /dev/null &
-  fi
+  case "$kind" in
+    nospec) QWEN38_SPEC=0 setsid bash "$REPO/scripts/launch.sh" qwen38 > "$slog" 2>&1 < /dev/null & ;;
+    dspark) setsid bash "$REPO/scripts/launch.sh" qwen38 > "$slog" 2>&1 < /dev/null & ;;
+    *)      setsid bash "$REPO/scripts/launch.sh" "$kind" > "$slog" 2>&1 < /dev/null & ;;   # any other preset name, e.g. laguna
+  esac
   local end=$(( $(date +%s) + 1500 )) ok=0
   while [ "$(date +%s)" -lt "$end" ]; do
     [ "$(health)" = 200 ] && { ok=1; break; }
@@ -54,15 +55,19 @@ boot(){ # $1 preset-kind
   return 0
 }
 teardown(){ bash "$REPO/scripts/free_gpu.sh" >> "$OUT/ab.log" 2>&1 || true; sleep 20; }
+trap 'pgrep -f "sglang.launch_serve[r]" >/dev/null && { log "EXIT with a server up — tearing down"; bash "$REPO/scripts/free_gpu.sh" >> "$OUT/ab.log" 2>&1; }' EXIT
 
 measure(){ # $1 arm $2 kind
   local arm=$1 kind=$2
   ( activate_conda; python "$REPO/scripts/bench/decode_ab.py" --port "$PORT" --contexts "$CONTEXTS" --runs "$RUNS" --maxtok 80 \
-      --ignore-eos --label "qwen38-$kind-$arm" --tag "fp8-gemm-config-ab" --out "$OUT/decode-$arm-$kind.json" ) 2>&1 | tee -a "$OUT/ab.log"
+      --ignore-eos --label "$kind-$arm" --tag "fp8-gemm-config-ab" --out "$OUT/decode-$arm-$kind.json" ) 2>&1 | tee -a "$OUT/ab.log"
   ( activate_conda; python "$REPO/scripts/bench/prefill_ttft.py" --port "$PORT" --contexts "$PREFILL_CONTEXTS" --runs 2 \
-      --label "qwen38-$kind-$arm" --out "$OUT/prefill-$arm-$kind.json" ) 2>&1 | tee -a "$OUT/ab.log"
-  if [ "$arm" = tuned ] && [ "$kind" = nospec ]; then
-    ( activate_conda; python "$REPO/scripts/eval/validate_capabilities.py" --port "$PORT" ) 2>&1 | tee "$OUT/validate-$arm-$kind.log" | tail -5 | tee -a "$OUT/ab.log"
+      --label "$kind-$arm" --out "$OUT/prefill-$arm-$kind.json" ) 2>&1 | tee -a "$OUT/ab.log"
+  if [ "$arm" = tuned ] && [ "$kind" != dspark ]; then
+    # text-only presets (laguna, north-mini) reject image/video input by design: SKIP_VISION=1 passes --skip-vision
+    local vflags=""; [ "${SKIP_VISION:-0}" = 1 ] && vflags="--skip-vision"
+    ( activate_conda; python "$REPO/scripts/eval/validate_capabilities.py" --port "$PORT" $vflags ) > "$OUT/validate-$arm-$kind.log" 2>&1 || true
+    tail -n 5 "$OUT/validate-$arm-$kind.log" | tee -a "$OUT/ab.log"
   fi
 }
 
@@ -83,10 +88,10 @@ for arm in $ARMS; do
   run_arm "$arm"
 done
 
-( activate_conda; python - "$OUT" <<'PY'
+( activate_conda; PRESETS="$PRESETS" python - "$OUT" <<'PY'
 import json, sys, glob, os
 out = sys.argv[1]
-for kind in ("nospec", "dspark"):
+for kind in os.environ.get("PRESETS", "nospec dspark").split():
     d = {arm: json.load(open(f"{out}/decode-{arm}-{kind}.json")) for arm in ("default", "tuned") if os.path.exists(f"{out}/decode-{arm}-{kind}.json")}
     p = {arm: json.load(open(f"{out}/prefill-{arm}-{kind}.json")) for arm in ("default", "tuned") if os.path.exists(f"{out}/prefill-{arm}-{kind}.json")}
     if len(d) == 2:

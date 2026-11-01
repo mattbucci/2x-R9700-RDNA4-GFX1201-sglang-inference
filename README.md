@@ -169,8 +169,9 @@ operational history behind each item lives in the document it links, not here.
    (the recorded `BLOCK_SIZE_M = 64` hang was an older Triton's), **cold prefill 2.5× at 7.3K, 2.1× at 58K, 1.5× at 197K**
    (496 → 330 s). Left on the table: ~4 ms of narrow-K latency per step, and the replicated DeltaNet projections (a TP
    split there is model code with a numerics gate).
-3. **Block-GEMM follow-up** ([R97-L](experiments/12-fp8-exact-shape-gemm-tuner.md)): sweep Laguna's shared-expert
-   shapes with `tune_fp8_block_gemm.py --preset laguna` (same default prefill tile) and run its deep A/B.
+3. **Laguna block-GEMM configs — null (2026-10-31)**: swept with the same tuner; kernel-level wins, but the dense
+   FP8 slice is 0.75 ms of a 14.5 ms step and an order-reversed serving A/B is within ±0.5 % everywhere. Not shipped;
+   R97-L closes. Patch 106 stays qwen38-only.
 4. **LAB-Bench re-measure** of the suppressed Qwen3.5/Gemma4 cells with `--mc-no-think`
    (FINDINGS → LAB-Bench think-budget artifact).
 5. **Agentic turn tax at depth** ([R97-J](experiments/10-extend-attention-kv-split-agentic-turn.md)): split the KV walk in extend attention; gate on
