@@ -437,6 +437,12 @@ PYEOF
             DTYPE="bfloat16"
             CTX=262144; MAX_RUNNING=8; CHUNKED=8192; DECODE_STEPS=8; MEM=0.85
             MAMBA_CACHE="--max-mamba-cache-size 8"
+            # R97-R (2026-11-01): hybrid radix cache on extra_buffer (64-token Mamba state grid, overlap on) — see the
+            # qwen38 block. Gates on this preset: 1-token agentic turn 1.10 / 1.05 / 3.89 s -> 0.10 / 0.47 / 0.90 s at
+            # 6.5K / 52K / 104K cached, needle 6/6 single-message and 5/6 -> 6/6 across a turn boundary, caps 5/5,
+            # pool unchanged. MAMBA_CACHE_STRATEGY=no_buffer restores the old behaviour.
+            EXTRA_ARGS="${EXTRA_ARGS:-} --mamba-radix-cache-strategy ${MAMBA_CACHE_STRATEGY:-extra_buffer}"
+            [[ "${MAMBA_CACHE_STRATEGY:-extra_buffer}" == "no_buffer" ]] && EXTRA_ARGS="$EXTRA_ARGS --disable-overlap-schedule"
             REASONING="--reasoning-parser qwen3"
             TOOL_CALL_PARSER="qwen3_coder"
             WARMUP="--skip-server-warmup"

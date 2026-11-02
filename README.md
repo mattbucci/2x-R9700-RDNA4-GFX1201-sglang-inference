@@ -209,8 +209,8 @@ operational history behind each item lives in the document it links, not here.
      needle grid is identical, but one across-turn cell (131K @ depth 0.1) that `no_buffer` answers runs to the thinking
      cap under `extra_buffer` even at 4,096 tokens; **qwen35-moe held for the same call** (turns 1.3 / 1.1 / 3.9 s →
      0.10 / 0.47 / 0.92 s, single-message needle 6/6 both arms, across-turn 2/6 both arms with different length-capped
-     cells); qwen36-moe, coder-next-ream next with the same gates (coder-next's checkpoint is not on disk). Then patch
-     110's route gate run on the AWQ hybrids.
+     cells); qwen36-moe done (turns 1.10 / 1.05 / 3.89 s → 0.10 / 0.47 / 0.90 s, needle 6/6 both grids, caps 5/5);
+     coder-next-ream next (coder-next's checkpoint is not on disk). Then patch 110's route gate run on the AWQ hybrids.
    - **fp8 QK on the other FP8-cache presets** (north-mini, gemma4, qwen35/36, coder): opt-in `SGLANG_EXTEND_FP8_QK=1`
      until each runs its own needle-grid A/B.
    - Extend-kernel follow-ups: exp2 softmax, `num_stages` pipelining; the verify combine kernel still spills 346 / 2,156
