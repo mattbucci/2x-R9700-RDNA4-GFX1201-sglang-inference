@@ -1,6 +1,6 @@
 {
   "tag": "Gemma4-26B-nothink",
-  "timestamp": "2026-11-02 00:27",
+  "timestamp": "2026-11-02 01:47",
   "max_context": 16384,
   "mc_mode": "no_think",
   "mmlu": {
@@ -9,9 +9,9 @@
     "accuracy": 0.8187134502923976
   },
   "humaneval": {
-    "passed": 0,
+    "passed": 29,
     "total": 30,
-    "pass_rate": 0.0
+    "pass_rate": 0.9666666666666667
   },
   "labbench": {
     "LitQA2": {
@@ -75,5 +75,11 @@
       }
     ],
     "score": 1.0
-  }
+  },
+  "humaneval_completion": {
+    "passed": 0,
+    "total": 30,
+    "pass_rate": 0.0
+  },
+  "he_mode": "chat"
 }

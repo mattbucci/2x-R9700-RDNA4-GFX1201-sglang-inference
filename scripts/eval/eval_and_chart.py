@@ -351,7 +351,8 @@ def generate_charts():
         print("No results found. Run evals first.")
         return
 
-    tags = [r["tag"] for r in results]
+    # HumanEval condition differs per file (raw completion vs chat template); say so in the label
+    tags = [r["tag"] + (" [HE chat]" if r.get("he_mode") == "chat" else "") for r in results]
 
     def get_score(r, path, key):
         """Get score, return None if benchmark wasn't run (total=0)."""

@@ -1,6 +1,6 @@
 {
   "tag": "Gemma4-31B-nothink",
-  "timestamp": "2026-11-01 23:14",
+  "timestamp": "2026-11-02 01:42",
   "max_context": 131072,
   "mc_mode": "no_think",
   "mmlu": {
@@ -9,9 +9,9 @@
     "accuracy": 0.9064327485380117
   },
   "humaneval": {
-    "passed": 0,
+    "passed": 30,
     "total": 30,
-    "pass_rate": 0.0
+    "pass_rate": 1.0
   },
   "labbench": {
     "LitQA2": {
@@ -75,5 +75,11 @@
       }
     ],
     "score": 1.0
-  }
+  },
+  "humaneval_completion": {
+    "passed": 0,
+    "total": 30,
+    "pass_rate": 0.0
+  },
+  "he_mode": "chat"
 }

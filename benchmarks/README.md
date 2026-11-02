@@ -68,7 +68,10 @@ LAB-Bench pass scored 5.1% because the 1024-token MC budget was consumed inside 
 `mc_mode` records the per-benchmark condition. The same artifact suppressed the Qwen3.5 and Gemma 4
 cells; their `--mc-no-think` re-measures are the `quality/*-nothink.json` receipts (Qwen3.5-27B LAB-Bench
 0.405, Qwen3.5-28B-A3B-REAP 0.363, Gemma 4 31B 0.405, Gemma 4 26B-A4B 0.327; FINDINGS → LAB-Bench
-think-budget artifact), and `quality/quality_comparison.png` is regenerated from every result file. The
+think-budget artifact). HumanEval has two conditions: raw `/v1/completions` on the function stub (the
+historical cells) and `--humaneval-chat` through the chat template (`he_mode: chat`; Gemma 4 scores 0/30 on the
+stub and 30/30 / 29/30 through the template). `quality/quality_comparison.png` is regenerated from every
+result file and labels chat-condition bars `[HE chat]`. The
 [single-profile 256K agentic ladder receipt](quality/tooluse256k-qwen38-27b-fp8-v0518-r9700.json)
 passes 7/7 rungs valid+correct to 245,150 actual tokens (`valid_toolcall` 1.0, `correct_action` 1.0).
 

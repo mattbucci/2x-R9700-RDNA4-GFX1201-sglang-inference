@@ -568,12 +568,12 @@ apples-to-apples condition and their cells are unaffected. Results JSONs record 
 The suppressed Qwen3.5 and Gemma 4 cells were re-measured under `--mc-no-think` (`*-nothink.json`
 receipts in `quality/`; MMLU 200 samples, LAB-Bench 50 per benchmark, needle 1K–64K):
 
-| Model (preset) | LAB-Bench think → no-think | MMLU think → no-think | HumanEval (raw completion) | Needle |
+| Model (preset) | LAB-Bench think → no-think | MMLU think → no-think | HumanEval raw completion → chat | Needle |
 |---|---:|---:|---:|---:|
-| Qwen3.5-27B AWQ (`qwen35`) | 0.029 → **0.405** | 0.193 → 0.906 | 0.700 → 0.967 | 1/4 |
-| Qwen3.5-28B-A3B-REAP AWQ (`qwen35-moe`) | 0.000 → **0.363** | — → 0.836 | — → 0.900 | 4/4 |
-| Gemma 4 31B AWQ (`gemma4-31b`) | 0.086 → **0.405** | 0.912 → 0.906 | 0.400 → 0.000 | 4/4 |
-| Gemma 4 26B-A4B AWQ (`gemma4`) | 0.034 → **0.327** | 0.772 → 0.819 | 0.000 → 0.000 | 4/4 |
+| Qwen3.5-27B AWQ (`qwen35`) | 0.029 → **0.405** | 0.193 → 0.906 | 0.967 → 1.000 | 1/4 |
+| Qwen3.5-28B-A3B-REAP AWQ (`qwen35-moe`) | 0.000 → **0.363** | — → 0.836 | 0.900 → — | 4/4 |
+| Gemma 4 31B AWQ (`gemma4-31b`) | 0.086 → **0.405** | 0.912 → 0.906 | 0.000 → **1.000** | 4/4 |
+| Gemma 4 26B-A4B AWQ (`gemma4`) | 0.034 → **0.327** | 0.772 → 0.819 | 0.000 → **0.967** | 4/4 |
 
 Qwen3.8-27B-FP8 (0.423) stays the fleet's best LAB-Bench; Qwen3.5-27B and Gemma 4 31B tie at 0.405 with
 better MMLU (0.906). The Qwen3.5-27B MMLU 0.193 and HumanEval 0.700 think-mode cells were the same budget
@@ -583,8 +583,11 @@ artifact (thinking consumed the 1,024-token MC budget; the 4,096-token code budg
 function stub, i.e. no chat template. Instruct-only checkpoints degenerate there: Gemma 4 31B answers the
 stub with repeated docstring quotes to the token cap (0/30), while the same problem through
 `/v1/chat/completions` returns a correct fenced solution. `--humaneval-chat` (2026-11-02) runs HumanEval
-through the chat template with code-fence extraction and records `he_mode`; the Gemma cells are re-run
-under it with Qwen3.5-27B (0.967 under raw completion) as the control (issue #23).
+through the chat template with code-fence extraction and records `he_mode` (the displaced raw-completion
+cell is kept as `humaneval_completion`). Re-run: Gemma 4 31B **30/30**, Gemma 4 26B-A4B **29/30**; the
+Qwen3.5-27B control moved 29/30 → 30/30, so the chat condition is at most one problem easier on a model
+that does not degenerate. The quality chart labels chat-condition files `[HE chat]`; every other
+HumanEval bar is still the raw-completion condition, so compare HumanEval within a condition only.
 
 ### Post-save processor files are a quantization ship gate (2026-10-25)
 
