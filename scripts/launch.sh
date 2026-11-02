@@ -746,7 +746,11 @@ PYEOF
             # fixed tree, extra_buffer (64-token state grid) vs the HIP no_buffer default, same session: 1-token turn
             # 666 / 1,015 ms -> 144 / 256 ms at 52K / 105K cached, cached tokens = full prefix; needle 5/6 single-message
             # (same miss cell, same output) and 6/6 across a turn on both arms; caps 5/5. MAMBA_CACHE_STRATEGY=no_buffer reverts.
-            EXTRA_ARGS="${EXTRA_ARGS:-} --mamba-radix-cache-strategy ${MAMBA_CACHE_STRATEGY:-extra_buffer}"
+            # SUSPENDED 2026-11-02 (default back to no_buffer): the 3090 found the restored Mamba2 state under extra_buffer
+            # diverging from a fresh prefill in 8 of 12 greedy cells on this model (CROSS-TEAM 2026-11-02), a defect that
+            # single-turn gates cannot see; our cache_hit_determinism_probe run decides whether extra_buffer returns.
+            # MAMBA_CACHE_STRATEGY=extra_buffer opts in.
+            EXTRA_ARGS="${EXTRA_ARGS:-} --mamba-radix-cache-strategy ${MAMBA_CACHE_STRATEGY:-no_buffer}"
             # Patch 108 fp8 QK dot in extend attention (gate 2026-11-02, same session, default first): cold prefill
             # 15.2–16.7 -> 5.9–6.0 s at 58K and 72–86 -> 32.5 s at 197K; warmed 1-token turn 158 -> 108 ms at 52K and
             # 261 -> 188 ms at 104K; natural needle 5/6 on both arms (same 131K @ 0.9 cell wrong on both), 256K reasoning

@@ -445,6 +445,10 @@ to the full prompt (tails 35–107 tokens); needle 5/6 single-message on both ar
 output) and 6/6 across a turn on both, caps 5/5 ([no_buffer](profiling/hybrid-cache-extra-buffer-nemotron-no_buffer-2026-11-02.json),
 [extra_buffer](profiling/hybrid-cache-extra-buffer-nemotron-extra_buffer-2026-11-02.json)). The `nemotron-omni` preset
 runs `extra_buffer`; the 6.6K extra_buffer cell (433 ms) is first-use compile pollution (no warm-up pass in this driver).
+**Suspended the same day:** the 3090 reports the restored Mamba2 state under `extra_buffer` diverging from a fresh prefill
+in 8 of 12 greedy cells on this model (hit-vs-fresh, often within the first 4–57 characters; fresh-vs-fresh byte-identical)
+with a SWE-bench smoke loss — a defect none of the single-turn gates above can see. `nemotron-omni` is back on `no_buffer`
+(patch 114 stays: it only makes the knob work) until `cache_hit_determinism_probe.py` on both strategies here decides it.
 
 ## Split-KV route widened to 64-row chunks — patch 110 (2026-11-01)
 
