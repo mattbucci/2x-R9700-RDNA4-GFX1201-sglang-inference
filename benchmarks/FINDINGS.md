@@ -287,6 +287,14 @@ needle 6/6 on both arms, capabilities 5/5. Shipped as patch 108 (`SGLANG_EXTEND_
 `launch.sh` (`EXTEND_FP8_QK=0` restores the upcast); the other FP8-cache presets stay opt-in until each runs its own
 needle A/B. Receipt: [`profiling/extend-attention-fp8qk-qwen38-2026-10-31.md`](profiling/extend-attention-fp8qk-qwen38-2026-10-31.md).
 
+## DSpark verify kernel: UPCAST_K A/B — default fp8 dot stays (2026-11-02)
+
+`SGLANG_SPLITKV_UPCAST_K=1` (bf16-upcast K in the verify QK dot) vs the default fp8 WMMA dot on the vendor `qwen38`
+DSpark preset, same session, order default → upcast → default, `--ignore-eos` ([receipt](profiling/verify-upcastk-ab-2026-11-02.md)):
+upcast 48.4 / 37.7 / 30.5 / 22.3 vs default 44.1–45.0 / 35.4–35.8 / 33.9–35.5 / 28.8–29.0 tok/s at 24 / 7.3K / 58K /
+197K; accept length 2.94 vs 2.85. +3 % acceptance for a verify cost that grows with the prefix: +6–9 % at short
+context, −12 % at 58K, −23 % at 197K. Default stays; a prefix-length switch would only help short-context decode.
+
 ## Split-KV verify combine stage v2 — patch 109 (2026-11-01)
 
 The 3090 found two defects in the shared `verify_splitkv.py` while widening its route to Gemma 4: the one-warp combine
