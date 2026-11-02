@@ -287,6 +287,20 @@ needle 6/6 on both arms, capabilities 5/5. Shipped as patch 108 (`SGLANG_EXTEND_
 `launch.sh` (`EXTEND_FP8_QK=0` restores the upcast); the other FP8-cache presets stay opt-in until each runs its own
 needle A/B. Receipt: [`profiling/extend-attention-fp8qk-qwen38-2026-10-31.md`](profiling/extend-attention-fp8qk-qwen38-2026-10-31.md).
 
+## Split-KV verify combine stage: 8 warps — patch 111 (2026-11-02)
+
+The patch 109 combine kernel still spilled 346 / 2,156 registers at L_EXT 16 / 64 on qwen38 and 56 / 990 on Laguna
+with 4 warps. A 4 / 8 / 16 warp sweep ([receipt](profiling/verify-combine-warps-2026-11-02.md)) at prefixes 8K / 58K /
+197K and K = 1 / 16 / 64: 8 warps → 56 / 952 (qwen38) and 0 / 374 (Laguna) spills, numerics identical to every printed
+digit, the 64-row route chunk 2× cheaper per layer on Laguna (407 → 188 µs at 8K, 1,092 → 929 at 58K) and −12 % on
+qwen38 at 8K, the 16-row tile (DSpark verify, 1-token turns) within ±1 %, qwen38's first-launch scratch reserve 52 →
+4 MB; 16 warps removes a few more spills but costs 8–15 % at 16 rows on qwen38. Serving gate on Laguna (order
+default → 8 → default, warmed; the first default arm was a 4× slow boot and is discarded): 1 / 64 / 128-token turns
+106 / 119 / 126 → 112 / 120 / 122 ms at 52K and 152 / 179 / 214 → 155 / 176 / 203 ms at 105K — neutral within ±5 %,
+as expected for a stage that is microseconds of the turn. Shipped as patch 111 (default 8, `SGLANG_SPLITKV_COMBINE_WARPS`
+overrides) on the kernel-level evidence; the remaining 64-row spills on qwen38 are the [64, 256] fp32 tiles themselves
+and would need Dv streamed in halves.
+
 ## DSpark verify kernel: UPCAST_K A/B — default fp8 dot stays (2026-11-02)
 
 `SGLANG_SPLITKV_UPCAST_K=1` (bf16-upcast K in the verify QK dot) vs the default fp8 WMMA dot on the vendor `qwen38`

@@ -1,0 +1,275 @@
+{
+ "preset": "laguna",
+ "shape": {
+  "h_q": 24,
+  "h_kv": 4,
+  "head_dim": 128,
+  "v_head_dim": 128,
+  "layers": 10
+ },
+ "kv_dtype": "fp8",
+ "k_scale": 0.07,
+ "v_scale": 0.05,
+ "device": "AMD Radeon AI PRO R9700",
+ "label": "combine_warps=8",
+ "sinks": false,
+ "route_chunk": 0,
+ "extend_fp8_qk": false,
+ "first_launch_free_delta_mb": 4.0,
+ "kernel_stats": [
+  {
+   "kernel": "_verify_prefix_stage1",
+   "n_regs": 131,
+   "n_spills": 0,
+   "constants": {
+    "num_stages": 1,
+    "num_warps": 4
+   }
+  },
+  {
+   "kernel": "_verify_prefix_stage1",
+   "n_regs": 237,
+   "n_spills": 0,
+   "constants": {
+    "num_stages": 1,
+    "num_warps": 4
+   }
+  },
+  {
+   "kernel": "_verify_combine_stage2",
+   "n_regs": 165,
+   "n_spills": 0,
+   "constants": {
+    "num_stages": 1,
+    "num_warps": 8
+   }
+  },
+  {
+   "kernel": "_verify_combine_stage2",
+   "n_regs": 256,
+   "n_spills": 374,
+   "constants": {
+    "num_stages": 1,
+    "num_warps": 8
+   }
+  }
+ ],
+ "upcast_k": "default",
+ "tile_ab": null,
+ "qk_ab": false,
+ "gate": "vs fp32 reference: finite, cosine >= min(0.9999, extend cosine - 2e-5), max and rms error <= 1.25x the extend kernel's own",
+ "worst": {
+  "max_ulp": 12.593548387096774,
+  "min_cos": 0.9995941
+ },
+ "rows": [
+  {
+   "prefix": 8192,
+   "K": 1,
+   "status": "WORSE_THAN_EXTEND",
+   "extend_vs_fp32": {
+    "finite": true,
+    "cosine": 0.999644,
+    "max_err_over_refmax": 0.01863,
+    "rms_err": 9.6e-05
+   },
+   "splitkv_vs_fp32": {
+    "finite": true,
+    "cosine": 0.9996016,
+    "max_err_over_refmax": 0.022532,
+    "rms_err": 0.0001016
+   },
+   "extend_vs_splitkv_ulps_at_refmax": 9.075,
+   "extend_us": 1859.6,
+   "splitkv_us": 95.0,
+   "speedup": 19.57,
+   "per_step_ms_extend": 18.6,
+   "per_step_ms_splitkv": 0.95
+  },
+  {
+   "prefix": 8192,
+   "K": 16,
+   "status": "WORSE_THAN_EXTEND",
+   "extend_vs_fp32": {
+    "finite": true,
+    "cosine": 0.9996532,
+    "max_err_over_refmax": 0.024923,
+    "rms_err": 9.48e-05
+   },
+   "splitkv_vs_fp32": {
+    "finite": true,
+    "cosine": 0.9996004,
+    "max_err_over_refmax": 0.030825,
+    "rms_err": 0.0001018
+   },
+   "extend_vs_splitkv_ulps_at_refmax": 9.374,
+   "extend_us": 1845.8,
+   "splitkv_us": 98.2,
+   "speedup": 18.8,
+   "per_step_ms_extend": 18.46,
+   "per_step_ms_splitkv": 0.98
+  },
+  {
+   "prefix": 8192,
+   "K": 64,
+   "status": "WORSE_THAN_EXTEND",
+   "extend_vs_fp32": {
+    "finite": true,
+    "cosine": 0.9996478,
+    "max_err_over_refmax": 0.023463,
+    "rms_err": 9.52e-05
+   },
+   "splitkv_vs_fp32": {
+    "finite": true,
+    "cosine": 0.9995981,
+    "max_err_over_refmax": 0.027959,
+    "rms_err": 0.0001017
+   },
+   "extend_vs_splitkv_ulps_at_refmax": 10.141,
+   "extend_us": 1846.0,
+   "splitkv_us": 188.4,
+   "speedup": 9.8,
+   "per_step_ms_extend": 18.46,
+   "per_step_ms_splitkv": 1.88
+  },
+  {
+   "prefix": 58000,
+   "K": 1,
+   "status": "WORSE_THAN_EXTEND",
+   "extend_vs_fp32": {
+    "finite": true,
+    "cosine": 0.9996642,
+    "max_err_over_refmax": 0.028244,
+    "rms_err": 3.62e-05
+   },
+   "splitkv_vs_fp32": {
+    "finite": true,
+    "cosine": 0.999602,
+    "max_err_over_refmax": 0.026743,
+    "rms_err": 3.94e-05
+   },
+   "extend_vs_splitkv_ulps_at_refmax": 10.927,
+   "extend_us": 11237.3,
+   "splitkv_us": 581.1,
+   "speedup": 19.34,
+   "per_step_ms_extend": 112.37,
+   "per_step_ms_splitkv": 5.81
+  },
+  {
+   "prefix": 58000,
+   "K": 16,
+   "status": "WORSE_THAN_EXTEND",
+   "extend_vs_fp32": {
+    "finite": true,
+    "cosine": 0.9996606,
+    "max_err_over_refmax": 0.031002,
+    "rms_err": 3.6e-05
+   },
+   "splitkv_vs_fp32": {
+    "finite": true,
+    "cosine": 0.9996068,
+    "max_err_over_refmax": 0.03222,
+    "rms_err": 3.88e-05
+   },
+   "extend_vs_splitkv_ulps_at_refmax": 10.789,
+   "extend_us": 11041.4,
+   "splitkv_us": 592.8,
+   "speedup": 18.63,
+   "per_step_ms_extend": 110.41,
+   "per_step_ms_splitkv": 5.93
+  },
+  {
+   "prefix": 58000,
+   "K": 64,
+   "status": "WORSE_THAN_EXTEND",
+   "extend_vs_fp32": {
+    "finite": true,
+    "cosine": 0.999661,
+    "max_err_over_refmax": 0.031055,
+    "rms_err": 3.6e-05
+   },
+   "splitkv_vs_fp32": {
+    "finite": true,
+    "cosine": 0.9996025,
+    "max_err_over_refmax": 0.03235,
+    "rms_err": 3.9e-05
+   },
+   "extend_vs_splitkv_ulps_at_refmax": 12.59,
+   "extend_us": 11142.1,
+   "splitkv_us": 929.1,
+   "speedup": 11.99,
+   "per_step_ms_extend": 111.42,
+   "per_step_ms_splitkv": 9.29
+  },
+  {
+   "prefix": 197000,
+   "K": 1,
+   "status": "WORSE_THAN_EXTEND",
+   "extend_vs_fp32": {
+    "finite": true,
+    "cosine": 0.9996591,
+    "max_err_over_refmax": 0.028977,
+    "rms_err": 1.97e-05
+   },
+   "splitkv_vs_fp32": {
+    "finite": true,
+    "cosine": 0.9995941,
+    "max_err_over_refmax": 0.030895,
+    "rms_err": 2.15e-05
+   },
+   "extend_vs_splitkv_ulps_at_refmax": 12.594,
+   "extend_us": 36739.5,
+   "splitkv_us": 2143.3,
+   "speedup": 17.14,
+   "per_step_ms_extend": 367.4,
+   "per_step_ms_splitkv": 21.43
+  },
+  {
+   "prefix": 197000,
+   "K": 16,
+   "status": "WORSE_THAN_EXTEND",
+   "extend_vs_fp32": {
+    "finite": true,
+    "cosine": 0.9996604,
+    "max_err_over_refmax": 0.027884,
+    "rms_err": 1.96e-05
+   },
+   "splitkv_vs_fp32": {
+    "finite": true,
+    "cosine": 0.999601,
+    "max_err_over_refmax": 0.031877,
+    "rms_err": 2.12e-05
+   },
+   "extend_vs_splitkv_ulps_at_refmax": 10.387,
+   "extend_us": 36539.4,
+   "splitkv_us": 2209.9,
+   "speedup": 16.53,
+   "per_step_ms_extend": 365.39,
+   "per_step_ms_splitkv": 22.1
+  },
+  {
+   "prefix": 197000,
+   "K": 64,
+   "status": "WORSE_THAN_EXTEND",
+   "extend_vs_fp32": {
+    "finite": true,
+    "cosine": 0.9996608,
+    "max_err_over_refmax": 0.027345,
+    "rms_err": 1.96e-05
+   },
+   "splitkv_vs_fp32": {
+    "finite": true,
+    "cosine": 0.9995977,
+    "max_err_over_refmax": 0.032905,
+    "rms_err": 2.13e-05
+   },
+   "extend_vs_splitkv_ulps_at_refmax": 10.563,
+   "extend_us": 36969.4,
+   "splitkv_us": 3079.2,
+   "speedup": 12.01,
+   "per_step_ms_extend": 369.69,
+   "per_step_ms_splitkv": 30.79
+  }
+ ],
+ "timestamp": "2026-11-02 03:05"
+}

@@ -1,0 +1,88 @@
+### WARPS 4
+first split-KV launch: free VRAM delta 52.0 MB
+P=   8192 K=   1  WORSE_THAN_EXTEND err/refmax extend 0.02500 splitkv 0.02196  rms 0.000096 / 0.000102  cos 0.999649 / 0.999599  extend    3200.3 us  splitkv     242.6 us  x13.19
+P=   8192 K=  16  WORSE_THAN_EXTEND err/refmax extend 0.02786 splitkv 0.03092  rms 0.000095 / 0.000102  cos 0.999649 / 0.999601  extend    3147.8 us  splitkv     254.3 us  x12.38
+P=   8192 K=  64  WORSE_THAN_EXTEND err/refmax extend 0.02452 splitkv 0.02937  rms 0.000095 / 0.000101  cos 0.999650 / 0.999603  extend    3142.9 us  splitkv    1183.5 us  x2.66
+P=  58000 K=   1  WORSE_THAN_EXTEND err/refmax extend 0.02280 splitkv 0.02624  rms 0.000036 / 0.000038  cos 0.999645 / 0.999602  extend   20152.8 us  splitkv    1621.1 us  x12.43
+P=  58000 K=  16  WORSE_THAN_EXTEND err/refmax extend 0.02721 splitkv 0.02707  rms 0.000036 / 0.000039  cos 0.999650 / 0.999593  extend   19936.2 us  splitkv    1678.0 us  x11.88
+P=  58000 K=  64  WORSE_THAN_EXTEND err/refmax extend 0.02819 splitkv 0.02990  rms 0.000036 / 0.000039  cos 0.999649 / 0.999592  extend   21220.4 us  splitkv    3913.0 us  x5.42
+P= 197000 K=   1  WORSE_THAN_EXTEND err/refmax extend 0.02929 splitkv 0.03386  rms 0.000020 / 0.000021  cos 0.999645 / 0.999586  extend   66119.0 us  splitkv    4983.5 us  x13.27
+P= 197000 K=  16  WORSE_THAN_EXTEND err/refmax extend 0.03031 splitkv 0.02899  rms 0.000020 / 0.000021  cos 0.999646 / 0.999586  extend   66184.0 us  splitkv    5255.7 us  x12.59
+P= 197000 K=  64  WORSE_THAN_EXTEND err/refmax extend 0.02835 splitkv 0.03168  rms 0.000020 / 0.000021  cos 0.999647 / 0.999586  extend   66719.5 us  splitkv   11706.4 us  x5.70
+kernel _verify_prefix_stage1    regs 203  spills 0  {'num_stages': 1, 'num_warps': 4}
+kernel _verify_prefix_stage1    regs 241  spills 0  {'num_stages': 1, 'num_warps': 4}
+kernel _verify_combine_stage2   regs 256  spills 346  {'num_stages': 1, 'num_warps': 4}
+kernel _verify_combine_stage2   regs 256  spills 2156  {'num_stages': 1, 'num_warps': 4}
+first split-KV launch: free VRAM delta 4.0 MB
+P=   8192 K=   1  WORSE_THAN_EXTEND err/refmax extend 0.01863 splitkv 0.02253  rms 0.000096 / 0.000102  cos 0.999644 / 0.999602  extend    1844.7 us  splitkv      96.5 us  x19.12
+P=   8192 K=  16  WORSE_THAN_EXTEND err/refmax extend 0.02492 splitkv 0.03083  rms 0.000095 / 0.000102  cos 0.999653 / 0.999600  extend    1838.5 us  splitkv      99.3 us  x18.52
+P=   8192 K=  64  WORSE_THAN_EXTEND err/refmax extend 0.02346 splitkv 0.02796  rms 0.000095 / 0.000102  cos 0.999648 / 0.999598  extend    1833.4 us  splitkv     406.8 us  x4.51
+P=  58000 K=   1  WORSE_THAN_EXTEND err/refmax extend 0.02824 splitkv 0.02674  rms 0.000036 / 0.000039  cos 0.999664 / 0.999602  extend   11109.8 us  splitkv     569.1 us  x19.52
+P=  58000 K=  16  WORSE_THAN_EXTEND err/refmax extend 0.03100 splitkv 0.03222  rms 0.000036 / 0.000039  cos 0.999661 / 0.999607  extend   10865.4 us  splitkv     604.1 us  x17.99
+P=  58000 K=  64  WORSE_THAN_EXTEND err/refmax extend 0.03105 splitkv 0.03235  rms 0.000036 / 0.000039  cos 0.999661 / 0.999603  extend   10723.4 us  splitkv    1091.8 us  x9.82
+P= 197000 K=   1  WORSE_THAN_EXTEND err/refmax extend 0.02898 splitkv 0.03089  rms 0.000020 / 0.000022  cos 0.999659 / 0.999594  extend   36413.8 us  splitkv    2132.9 us  x17.07
+P= 197000 K=  16  WORSE_THAN_EXTEND err/refmax extend 0.02788 splitkv 0.03188  rms 0.000020 / 0.000021  cos 0.999660 / 0.999601  extend   36487.1 us  splitkv    2180.4 us  x16.73
+P= 197000 K=  64  WORSE_THAN_EXTEND err/refmax extend 0.02735 splitkv 0.03290  rms 0.000020 / 0.000021  cos 0.999661 / 0.999598  extend   36838.2 us  splitkv    3162.2 us  x11.65
+kernel _verify_prefix_stage1    regs 131  spills 0  {'num_stages': 1, 'num_warps': 4}
+kernel _verify_prefix_stage1    regs 237  spills 0  {'num_stages': 1, 'num_warps': 4}
+kernel _verify_combine_stage2   regs 256  spills 56  {'num_stages': 1, 'num_warps': 4}
+kernel _verify_combine_stage2   regs 256  spills 990  {'num_stages': 1, 'num_warps': 4}
+### WARPS 8
+first split-KV launch: free VRAM delta 4.0 MB
+P=   8192 K=   1  WORSE_THAN_EXTEND err/refmax extend 0.02500 splitkv 0.02196  rms 0.000096 / 0.000102  cos 0.999649 / 0.999599  extend    3165.8 us  splitkv     242.7 us  x13.04
+P=   8192 K=  16  WORSE_THAN_EXTEND err/refmax extend 0.02786 splitkv 0.03092  rms 0.000095 / 0.000102  cos 0.999649 / 0.999601  extend    3146.0 us  splitkv     257.9 us  x12.20
+P=   8192 K=  64  WORSE_THAN_EXTEND err/refmax extend 0.02452 splitkv 0.02937  rms 0.000095 / 0.000101  cos 0.999650 / 0.999603  extend    4156.0 us  splitkv    1043.4 us  x3.98
+P=  58000 K=   1  WORSE_THAN_EXTEND err/refmax extend 0.02280 splitkv 0.02624  rms 0.000036 / 0.000038  cos 0.999645 / 0.999602  extend   20451.8 us  splitkv    1620.4 us  x12.62
+P=  58000 K=  16  WORSE_THAN_EXTEND err/refmax extend 0.02721 splitkv 0.02707  rms 0.000036 / 0.000039  cos 0.999650 / 0.999593  extend   19972.6 us  splitkv    1700.6 us  x11.74
+P=  58000 K=  64  WORSE_THAN_EXTEND err/refmax extend 0.02819 splitkv 0.02990  rms 0.000036 / 0.000039  cos 0.999649 / 0.999592  extend   20117.5 us  splitkv    3831.4 us  x5.25
+P= 197000 K=   1  WORSE_THAN_EXTEND err/refmax extend 0.02929 splitkv 0.03386  rms 0.000020 / 0.000021  cos 0.999645 / 0.999586  extend   67001.8 us  splitkv    4997.2 us  x13.41
+P= 197000 K=  16  WORSE_THAN_EXTEND err/refmax extend 0.03031 splitkv 0.02899  rms 0.000020 / 0.000021  cos 0.999646 / 0.999586  extend   66716.8 us  splitkv    5264.0 us  x12.67
+P= 197000 K=  64  WORSE_THAN_EXTEND err/refmax extend 0.02835 splitkv 0.03168  rms 0.000020 / 0.000021  cos 0.999647 / 0.999586  extend   67180.4 us  splitkv   11629.3 us  x5.78
+kernel _verify_prefix_stage1    regs 203  spills 0  {'num_stages': 1, 'num_warps': 4}
+kernel _verify_prefix_stage1    regs 241  spills 0  {'num_stages': 1, 'num_warps': 4}
+kernel _verify_combine_stage2   regs 256  spills 56  {'num_stages': 1, 'num_warps': 8}
+kernel _verify_combine_stage2   regs 256  spills 952  {'num_stages': 1, 'num_warps': 8}
+first split-KV launch: free VRAM delta 4.0 MB
+P=   8192 K=   1  WORSE_THAN_EXTEND err/refmax extend 0.01863 splitkv 0.02253  rms 0.000096 / 0.000102  cos 0.999644 / 0.999602  extend    1859.6 us  splitkv      95.0 us  x19.57
+P=   8192 K=  16  WORSE_THAN_EXTEND err/refmax extend 0.02492 splitkv 0.03083  rms 0.000095 / 0.000102  cos 0.999653 / 0.999600  extend    1845.8 us  splitkv      98.2 us  x18.80
+P=   8192 K=  64  WORSE_THAN_EXTEND err/refmax extend 0.02346 splitkv 0.02796  rms 0.000095 / 0.000102  cos 0.999648 / 0.999598  extend    1846.0 us  splitkv     188.4 us  x9.80
+P=  58000 K=   1  WORSE_THAN_EXTEND err/refmax extend 0.02824 splitkv 0.02674  rms 0.000036 / 0.000039  cos 0.999664 / 0.999602  extend   11237.3 us  splitkv     581.1 us  x19.34
+P=  58000 K=  16  WORSE_THAN_EXTEND err/refmax extend 0.03100 splitkv 0.03222  rms 0.000036 / 0.000039  cos 0.999661 / 0.999607  extend   11041.4 us  splitkv     592.8 us  x18.63
+P=  58000 K=  64  WORSE_THAN_EXTEND err/refmax extend 0.03105 splitkv 0.03235  rms 0.000036 / 0.000039  cos 0.999661 / 0.999602  extend   11142.1 us  splitkv     929.1 us  x11.99
+P= 197000 K=   1  WORSE_THAN_EXTEND err/refmax extend 0.02898 splitkv 0.03089  rms 0.000020 / 0.000022  cos 0.999659 / 0.999594  extend   36739.5 us  splitkv    2143.3 us  x17.14
+P= 197000 K=  16  WORSE_THAN_EXTEND err/refmax extend 0.02788 splitkv 0.03188  rms 0.000020 / 0.000021  cos 0.999660 / 0.999601  extend   36539.4 us  splitkv    2209.9 us  x16.53
+P= 197000 K=  64  WORSE_THAN_EXTEND err/refmax extend 0.02735 splitkv 0.03290  rms 0.000020 / 0.000021  cos 0.999661 / 0.999598  extend   36969.4 us  splitkv    3079.2 us  x12.01
+kernel _verify_prefix_stage1    regs 131  spills 0  {'num_stages': 1, 'num_warps': 4}
+kernel _verify_prefix_stage1    regs 237  spills 0  {'num_stages': 1, 'num_warps': 4}
+kernel _verify_combine_stage2   regs 165  spills 0  {'num_stages': 1, 'num_warps': 8}
+kernel _verify_combine_stage2   regs 256  spills 374  {'num_stages': 1, 'num_warps': 8}
+### WARPS 16
+first split-KV launch: free VRAM delta 4.0 MB
+P=   8192 K=   1  WORSE_THAN_EXTEND err/refmax extend 0.02500 splitkv 0.02196  rms 0.000096 / 0.000102  cos 0.999649 / 0.999599  extend    3192.2 us  splitkv     280.3 us  x11.39
+P=   8192 K=  16  WORSE_THAN_EXTEND err/refmax extend 0.02786 splitkv 0.03092  rms 0.000095 / 0.000102  cos 0.999649 / 0.999601  extend    3160.4 us  splitkv     273.7 us  x11.55
+P=   8192 K=  64  WORSE_THAN_EXTEND err/refmax extend 0.02452 splitkv 0.02937  rms 0.000095 / 0.000101  cos 0.999650 / 0.999603  extend    3155.3 us  splitkv    1139.9 us  x2.77
+P=  58000 K=   1  WORSE_THAN_EXTEND err/refmax extend 0.02280 splitkv 0.02624  rms 0.000036 / 0.000038  cos 0.999645 / 0.999602  extend   21269.1 us  splitkv    1678.6 us  x12.67
+P=  58000 K=  16  WORSE_THAN_EXTEND err/refmax extend 0.02721 splitkv 0.02707  rms 0.000036 / 0.000039  cos 0.999650 / 0.999593  extend   19821.0 us  splitkv    1728.1 us  x11.47
+P=  58000 K=  64  WORSE_THAN_EXTEND err/refmax extend 0.02819 splitkv 0.02990  rms 0.000036 / 0.000039  cos 0.999649 / 0.999592  extend   20328.1 us  splitkv    3917.3 us  x5.19
+P= 197000 K=   1  WORSE_THAN_EXTEND err/refmax extend 0.02929 splitkv 0.03386  rms 0.000020 / 0.000021  cos 0.999645 / 0.999586  extend   67099.9 us  splitkv    5053.6 us  x13.28
+P= 197000 K=  16  WORSE_THAN_EXTEND err/refmax extend 0.03031 splitkv 0.02899  rms 0.000020 / 0.000021  cos 0.999646 / 0.999586  extend   67235.5 us  splitkv    5307.9 us  x12.67
+P= 197000 K=  64  WORSE_THAN_EXTEND err/refmax extend 0.02835 splitkv 0.03168  rms 0.000020 / 0.000021  cos 0.999647 / 0.999586  extend   69205.6 us  splitkv   11781.3 us  x5.87
+kernel _verify_prefix_stage1    regs 203  spills 0  {'num_stages': 1, 'num_warps': 4}
+kernel _verify_prefix_stage1    regs 241  spills 0  {'num_stages': 1, 'num_warps': 4}
+kernel _verify_combine_stage2   regs 256  spills 38  {'num_stages': 1, 'num_warps': 16}
+kernel _verify_combine_stage2   regs 256  spills 868  {'num_stages': 1, 'num_warps': 16}
+first split-KV launch: free VRAM delta 4.0 MB
+P=   8192 K=   1  WORSE_THAN_EXTEND err/refmax extend 0.01863 splitkv 0.02253  rms 0.000096 / 0.000102  cos 0.999644 / 0.999602  extend    1855.4 us  splitkv      99.3 us  x18.68
+P=   8192 K=  16  WORSE_THAN_EXTEND err/refmax extend 0.02492 splitkv 0.03083  rms 0.000095 / 0.000102  cos 0.999653 / 0.999600  extend    1835.5 us  splitkv     103.7 us  x17.71
+P=   8192 K=  64  WORSE_THAN_EXTEND err/refmax extend 0.02346 splitkv 0.02796  rms 0.000095 / 0.000102  cos 0.999648 / 0.999598  extend    1842.8 us  splitkv     185.7 us  x9.92
+P=  58000 K=   1  WORSE_THAN_EXTEND err/refmax extend 0.02824 splitkv 0.02674  rms 0.000036 / 0.000039  cos 0.999664 / 0.999602  extend   11252.1 us  splitkv     587.0 us  x19.17
+P=  58000 K=  16  WORSE_THAN_EXTEND err/refmax extend 0.03100 splitkv 0.03222  rms 0.000036 / 0.000039  cos 0.999661 / 0.999607  extend   11053.2 us  splitkv     601.5 us  x18.38
+P=  58000 K=  64  WORSE_THAN_EXTEND err/refmax extend 0.03105 splitkv 0.03235  rms 0.000036 / 0.000039  cos 0.999661 / 0.999603  extend   10781.2 us  splitkv     932.7 us  x11.56
+P= 197000 K=   1  WORSE_THAN_EXTEND err/refmax extend 0.02898 splitkv 0.03089  rms 0.000020 / 0.000022  cos 0.999659 / 0.999594  extend   36561.5 us  splitkv    2153.5 us  x16.98
+P= 197000 K=  16  WORSE_THAN_EXTEND err/refmax extend 0.02788 splitkv 0.03188  rms 0.000020 / 0.000021  cos 0.999660 / 0.999601  extend   36673.9 us  splitkv    2233.8 us  x16.42
+P= 197000 K=  64  WORSE_THAN_EXTEND err/refmax extend 0.02735 splitkv 0.03290  rms 0.000020 / 0.000021  cos 0.999661 / 0.999598  extend   36883.5 us  splitkv    3086.5 us  x11.95
+kernel _verify_prefix_stage1    regs 131  spills 0  {'num_stages': 1, 'num_warps': 4}
+kernel _verify_prefix_stage1    regs 237  spills 0  {'num_stages': 1, 'num_warps': 4}
+kernel _verify_combine_stage2   regs 154  spills 0  {'num_stages': 1, 'num_warps': 16}
+kernel _verify_combine_stage2   regs 256  spills 321  {'num_stages': 1, 'num_warps': 16}
+COMBINE WARPS SWEEP DONE

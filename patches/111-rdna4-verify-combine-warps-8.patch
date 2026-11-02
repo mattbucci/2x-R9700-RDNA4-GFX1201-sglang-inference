@@ -1,0 +1,26 @@
+diff --git a/python/sglang/kernels/ops/attention/verify_splitkv.py b/python/sglang/kernels/ops/attention/verify_splitkv.py
+index c409c64..649657b 100644
+--- a/python/sglang/kernels/ops/attention/verify_splitkv.py
++++ b/python/sglang/kernels/ops/attention/verify_splitkv.py
+@@ -65,6 +65,12 @@ _IS_RDNA = _detect_rdna()
+ # harness: cos 0.99959 vs 0.99965 for the upcast against fp32 with an fp8 cache). SGLANG_SPLITKV_UPCAST_K=1
+ # switches the verify path too; the short-extend route always passes upcast_k=True.
+ _UPCAST_K = os.environ.get("SGLANG_SPLITKV_UPCAST_K", "0") == "1"
++# Combine-stage (stage 2) warps. 4 was the 3090 070 v2 value; on gfx1201 the [L_EXT, 256] fp32 tiles spilled
++# 346 / 2,156 registers at L_EXT 16 / 64 with 4 warps. 8 warps: 56 / 952 on qwen38 (head_dim 256), 0 / 374 on
++# Laguna (head_dim 128), numerics identical, the 64-row route chunk 2x cheaper per layer on Laguna, the 16-row
++# tile neutral; 16 warps gains nothing more and costs 8-15 % at 16 rows (benchmarks/profiling/
++# verify-combine-warps-2026-11-02.md). SGLANG_SPLITKV_COMBINE_WARPS overrides.
++_COMBINE_WARPS = int(os.environ.get("SGLANG_SPLITKV_COMBINE_WARPS", "8") or 8)
+ 
+ # Block-size config keyed on head_dim. The (BLOCK_N, num_warps) tile that best
+ # hides latency depends on head_dim: at head_dim=256 (Qwen3 family) a narrower
+@@ -638,7 +644,7 @@ class VerifySplitKV:
+             BLOCK_DMODEL=triton.next_power_of_2(self.head_dim),
+             BLOCK_DV=triton.next_power_of_2(self.v_head_dim),
+             HAS_SINKS=sinks is not None,
+-            num_warps=4,  # was 1: a one-wave program over [16, 256] fp32 tiles spilled (3090 070 v2)
++            num_warps=_COMBINE_WARPS,  # was 1 (spilled, 3090 070 v2), then 4; 8 on gfx1201 (patch 111)
+             num_stages=1,
+         )
+ 
