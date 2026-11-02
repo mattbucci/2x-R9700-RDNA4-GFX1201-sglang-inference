@@ -1,0 +1,80 @@
+{
+ "tag": "flint-default-fp8qk",
+ "timestamp": "2026-11-02 09:01",
+ "model": "/data/models/Flint-FP8",
+ "port": 23334,
+ "haystack": "benchmarks/quality/haystack-platypus.txt",
+ "chars_per_token": 3.3,
+ "temperature": 0.0,
+ "flush": true,
+ "max_tokens": 2048,
+ "results": [
+  {
+   "found": false,
+   "actual_prompt_tokens": 31226,
+   "completion_tokens": 2048,
+   "finish_reason": "length",
+   "seconds": 54.8,
+   "content_tail": "",
+   "reasoning_tail": "ight and 3 steps up, and we can take those steps in any order.  So in order to specify a path, we must choose 3 of our 7 steps to be `up' (and the other 4 steps",
+   "context": 32768,
+   "depth": 0.1
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 31226,
+   "completion_tokens": 205,
+   "finish_reason": "stop",
+   "seconds": 11.3,
+   "content_tail": "BANANA42",
+   "reasoning_tail": "",
+   "context": 32768,
+   "depth": 0.5
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 31225,
+   "completion_tokens": 80,
+   "finish_reason": "stop",
+   "seconds": 8.4,
+   "content_tail": "BANANA42",
+   "reasoning_tail": "",
+   "context": 32768,
+   "depth": 0.9
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 125904,
+   "completion_tokens": 52,
+   "finish_reason": "stop",
+   "seconds": 65.3,
+   "content_tail": "BANANA42",
+   "reasoning_tail": "",
+   "context": 131072,
+   "depth": 0.1
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 125904,
+   "completion_tokens": 84,
+   "finish_reason": "stop",
+   "seconds": 66.2,
+   "content_tail": " We need comply? The secret password in text is BANANA42. They ask answer with just password. So final should be just BANANA42. Ensure no extra.</think>BANANA42",
+   "reasoning_tail": "",
+   "context": 131072,
+   "depth": 0.5
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 125905,
+   "completion_tokens": 84,
+   "finish_reason": "stop",
+   "seconds": 66.2,
+   "content_tail": "e secret password is: BANANA42.\" So final should be just BANANA42. Ensure no extra? User says Answer with just the password. So final: BANANA42.</think>BANANA42",
+   "reasoning_tail": "",
+   "context": 131072,
+   "depth": 0.9
+  }
+ ],
+ "score": 0.8333333333333334
+}

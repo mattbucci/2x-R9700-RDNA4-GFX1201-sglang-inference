@@ -854,6 +854,11 @@ PYEOF
             # 1-token agentic turn 237 -> 128 ms at 52K and 443 -> 201 ms at 104K cached (64 / 256-token turns the same),
             # natural-haystack needle 6/6 with identical outputs on both arms, text probes 3/3. EXTEND_SPLITKV_MAX=0 disables.
             export SGLANG_EXTEND_SPLITKV_MAX_TOKENS="${EXTEND_SPLITKV_MAX:-256}"
+            # Patch 108 fp8 QK dot in extend attention (gate 2026-11-02, same session, default first): cold prefill
+            # 17.5 -> 10.5 s at 58K and 146 -> 65 s at 197K (-40 % / -55 %), 7.3K unchanged; warmed 1-token turns unchanged
+            # (routed); natural needle 5/6 on both arms (same cell runs to the thinking cap), 256K reasoning probe equal on
+            # both arms (cell by cell), text probes 3/3. EXTEND_FP8_QK=0 restores the bf16-upcast QK.
+            export SGLANG_EXTEND_FP8_QK="${EXTEND_FP8_QK:-1}"
             CUDA_GRAPH=""   # dispatch-bound MoE decode: graphs on
             REASONING="--reasoning-parser flint"
             TOOL_CALL_PARSER="flint"

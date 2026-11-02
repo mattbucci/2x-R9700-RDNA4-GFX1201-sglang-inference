@@ -1,0 +1,46 @@
+{
+  "tag": "flint-fp8qk",
+  "results": [
+    {
+      "approx": 32768,
+      "multikey": {
+        "actual_tokens": 32839,
+        "correct": false,
+        "s": 75.1
+      },
+      "vartrack": {
+        "actual_tokens": 32798,
+        "correct": true,
+        "s": 9.5
+      },
+      "aggregate": {
+        "actual_tokens": 32825,
+        "correct": true,
+        "s": 18.3
+      },
+      "actual_tokens": 32839,
+      "score": 0.6666666666666666
+    },
+    {
+      "approx": 131072,
+      "multikey": {
+        "actual_tokens": 131013,
+        "correct": false,
+        "s": 107.9
+      },
+      "vartrack": {
+        "actual_tokens": 130972,
+        "correct": false,
+        "s": 106.1
+      },
+      "aggregate": {
+        "actual_tokens": 130999,
+        "correct": false,
+        "s": 30.5
+      },
+      "actual_tokens": 131013,
+      "score": 0.0
+    }
+  ],
+  "overall": 0.333
+}

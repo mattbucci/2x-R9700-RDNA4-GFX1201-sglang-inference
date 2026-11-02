@@ -162,7 +162,8 @@ format. Use the 12B or 26B Gemma presets for multimodal workloads.
 - Use FP8 for native gfx1201 FP8 checkpoints and dense-thinking agentic workloads that lose quality
   under int4; use AWQ int4 for weight-bandwidth-bound single-user decode and for models that need the
   extra KV capacity. FP8 is the optimisation target on this rig; AWQ presets are maintained, not tuned.
-- Flint runs an FP8 KV cache (`KV_DTYPE=auto` restores bf16 KV).
+- Flint runs an FP8 KV cache (`KV_DTYPE=auto` restores bf16 KV) and, like `qwen38`, the fp8 QK dot in extend
+  attention (patch 108; `EXTEND_FP8_QK=0` restores the upcast): cold prefill of a 197K prompt 146 → 65 s.
 - Use no speculative decoding at true 256K depth unless a same-depth A/B proves it. The one lane that
   does is `qwen38` + DSpark through the split-KV verify kernel (1.5–2.0× at 24 to 197K input), so it is
   that preset's default; its pool ends at 206K (`QWEN38_SPEC=0` for the 256K no-spec server). Every other

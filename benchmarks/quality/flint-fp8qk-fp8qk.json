@@ -1,0 +1,80 @@
+{
+ "tag": "flint-fp8qk-fp8qk",
+ "timestamp": "2026-11-02 09:18",
+ "model": "/data/models/Flint-FP8",
+ "port": 23334,
+ "haystack": "benchmarks/quality/haystack-platypus.txt",
+ "chars_per_token": 3.3,
+ "temperature": 0.0,
+ "flush": true,
+ "max_tokens": 2048,
+ "results": [
+  {
+   "found": false,
+   "actual_prompt_tokens": 31226,
+   "completion_tokens": 2048,
+   "finish_reason": "length",
+   "seconds": 53.0,
+   "content_tail": "",
+   "reasoning_tail": " the right and 3 steps up, and we can take those steps in any order.  So in order to specify a path, we must choose 3 of our 7 steps to be `up' (and the other 4",
+   "context": 32768,
+   "depth": 0.1
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 31226,
+   "completion_tokens": 58,
+   "finish_reason": "stop",
+   "seconds": 6.2,
+   "content_tail": "BANANA42",
+   "reasoning_tail": "",
+   "context": 32768,
+   "depth": 0.5
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 31225,
+   "completion_tokens": 149,
+   "finish_reason": "stop",
+   "seconds": 8.3,
+   "content_tail": "BANANA42",
+   "reasoning_tail": "",
+   "context": 32768,
+   "depth": 0.9
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 125904,
+   "completion_tokens": 541,
+   "finish_reason": "stop",
+   "seconds": 45.8,
+   "content_tail": "BANANA42",
+   "reasoning_tail": "",
+   "context": 131072,
+   "depth": 0.1
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 125904,
+   "completion_tokens": 1745,
+   "finish_reason": "stop",
+   "seconds": 76.0,
+   "content_tail": " might be testing instruction following: \"The secret password is: BANANA42.\" So final answer should be BANANA42.\n\nI'll answer just the password.</think>BANANA42",
+   "reasoning_tail": "",
+   "context": 131072,
+   "depth": 0.5
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 125905,
+   "completion_tokens": 63,
+   "finish_reason": "stop",
+   "seconds": 33.6,
+   "content_tail": "NA42. the formula ... [long] ... Answer with just the password.\"\n\nWe need answer with just password. Likely should output BANANA42. Must comply.</think>BANANA42",
+   "reasoning_tail": "",
+   "context": 131072,
+   "depth": 0.9
+  }
+ ],
+ "score": 0.8333333333333334
+}

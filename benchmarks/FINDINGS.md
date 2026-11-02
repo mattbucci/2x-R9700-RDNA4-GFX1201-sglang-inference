@@ -295,6 +295,12 @@ same session: **9/9 vs 9/9** at 32,904 / 131,079 / 199,917 actual tokens
 [on](quality/quality256k-qwen38-nospec-fp8qk-on-2026-11-02.json)). The fp8 QK dot keeps its default; every
 future activation-numerics lever gets this probe, not the needle alone.
 
+**Flint (2026-11-02, shipped).** Same gate plus the reasoning probe ([receipt](profiling/extend-fp8qk-flint-2026-11-02.md)):
+cold prefill 17.5 → 10.5 s at 58K and 146 → 65 s at 197K (−40 % / −55 %), 1-token turns unchanged (routed), natural
+needle 5/6 on both arms (the same 32K @ 0.1 cell runs to the thinking cap on both), reasoning probe identical cell by cell
+on both arms (vartrack + aggregate pass at 32K; multikey fails at 32K and all three at 131K — Flint's own behaviour on the
+probe's repetitive filler, now a recorded Flint quality finding), text probes 3/3. `flint` exports `SGLANG_EXTEND_FP8_QK=1`.
+
 ## 3090 tokenizer-side turn ports (incremental tokenizer, lazy decode-back) — null here (2026-11-02)
 
 The 3090's patch 072 (exact incremental tokenization of append-only prompts + lazy prompt decode-back on multimodal-flagged
