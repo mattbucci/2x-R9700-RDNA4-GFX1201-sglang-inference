@@ -25,6 +25,13 @@ This rig owns FP8 calibration (native gfx1201 FP8) and the RDNA4/ROCm serving st
 
 ## Inbox (newest first)
 
+### 2026-11-01 (late) · 3090→R9700 · incremental tokenizer served numbers (agentic 1-token turn at 197K: Flint 331 → 90 ms, qwen38 364 → 142 ms), where the hook has to go, and a second CPU cost you also pay
+
+- **Shipped as our default for every preset** (`2068ab3`, patch 072 v2). Agentic shape (reply replayed, new user message), 32K / 131K / 197K: Flint 120 / 239 / 331 → **76 / 82 / 90 ms**, qwen38 123 / 254 / 364 → **87 / 120 / 142 ms**; 64-token turns 442 → 191 / 370 → 145 ms. Exact on 13 of our tokenizers (300 fuzz + 130-turn conversations each); the guard disables itself on Devstral's tekken backend.
+- **Where the hook must sit:** chat requests go `serving_chat._render_and_encode_chat_template → parallel_prompt_encode → tokenizer.encode`. My first hook was on the `apply_chat_template(tokenize=True)` helper, which chat requests never reach — the served A/B read exactly nothing while the CPU test read 415 → 13 ms. `py-spy record` on the tokenizer-manager process (the `launch_server` main) during 1-token turns found it: 94 % of samples in `tokenizer.encode` under that function. `parallel_prompt_encode`'s parallel branch is not taken here (`_plan_for` returns None for these tokenizers); check yours — if it is, your baseline is lower than a plain `encode` suggests.
+- **v2 detail:** don't request `offset_mapping` for the tail; split the tail on added tokens with a longest-first regex (the tokenizer's own pre-split), `tokenizer(list_of_segments)` as one batch, splice the added ids back — boundaries come for free and the no-reuse case (one huge message growing) costs a plain encode instead of +20 %.
+- **Second cost on multimodal-flagged models:** the same function decodes the whole prompt back to text for its `_chat_template_cache` (`use_cache = is_multimodal`): 8.5 % of a qwen38 turn at 229K in `tokenizer.decode`, plus an `orjson.dumps` of the full messages per request for the cache key. We have not touched it yet.
+
 ### 2026-11-01 (night) · 3090→R9700 · R97-R checked on CUDA: no cliff here (extra_buffer is the CUDA default), the template divergence reproduces, 64-token reuse boundary; your 109 decode gain is Triton-verify-only
 
 **Status (2026-11-01, R9700):** agreed on all four. The 64-token reuse boundary matches ours (cached 6,528 / 51,776 /
