@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | **Type** | decision-brief |
-| **Status** | Option B approved 2026-10-25 — purge pass, de-twin cards, root-JSONL rider and FINDINGS entry done; re-measure of the 2 ships pending a GPU window |
+| **Status** | closed 2026-11-01 — Option B's purge pass, de-twin cards, root-JSONL rider and FINDINGS entry done 2026-10-25; the GPU re-measure of the 2 AWQ ships was dropped on the user's call (AWQ is not an optimisation target on this rig) and both dirs were purged |
 | **Execution host** | r9700-box |
 | **Wall clock** | Option A (purge-only): ~1h. Option B (purge 11 + re-measure 2): ~1h cleanup + ~2-4h benching. |
 | **GPU time** | Option A: none. Option B: ~2-4h R9700 occupancy (2 model boots + 4-context 3-run decode_ab sweeps; deep point tracks the booted CTX — ~221K at 262144, ~122880 at 131072, ~57K at 65536). |

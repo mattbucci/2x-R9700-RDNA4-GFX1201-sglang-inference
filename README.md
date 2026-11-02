@@ -23,10 +23,11 @@ flagship Qwen3.8-27B-FP8.
   no-spec server (`QWEN38_SPEC=0`, 530K-token pool for true 256K work; the DSpark pool is 206K). Cold
   prefill of a 197K prompt is 211 s; a 1-token agentic turn on a 176K cached prefix is 0.17–0.35 s
   (`extra_buffer` hybrid cache + the 64-row split-KV turn route); capability probe 5/5.
-- **Flint FP8 serves** (patch 105, strict tool schemas): 43.7 → 34.2 tok/s from 14 to 219K actual input;
-  basic / tool-call / thinking probes pass, the learned-sink kernels match a PyTorch reference, and
-  natural-text needle retrieval holds to 131K at every depth and to the last 10 % of the window at 243–248K
-  ([receipt](benchmarks/quality/flint/needle-natural-fp8-2026-10-31.md)).
+- **Flint FP8 serves** (patch 105, strict tool schemas) with an FP8 KV cache (2× pools, +2–8 % decode over
+  bf16 KV): 43.7 → 34.2 tok/s from 14 to 219K actual input; basic / tool-call / thinking probes pass, the
+  learned-sink kernels match a PyTorch reference, and natural-text needle retrieval holds to 131K at every
+  depth and to the last 10 % of the window at 243–248K
+  ([receipt](benchmarks/quality/flint/needle-natural-fp8-2026-10-31.md), [KV A/B](benchmarks/profiling/flint-ab-2026-11-01.md)).
 - **The patch series replays byte-identically** onto pristine v0.5.22 under the strict gate in
   [`patches/README.md`](patches/README.md).
 
@@ -107,7 +108,8 @@ scaffold inside the official per-instance SWE-bench image with no network, an op
 prompt on stdin and a 32,000-token output cap. All 2,100 instances are rolled and audited clean
 (`infra_*` = 0). Owed before publication: Docker scoring of the seven cells, the oh-my-pi re-roll on one
 engine version, and `audit_git_peek.py` on every lane (must be 0 exposed). The bake-off's job is to catch
-hosting errors across scaffolds, not to rank engines. Setup, audits and restart decisions:
+hosting errors across scaffolds, not to rank engines. Every lane keeps the same 29-minute wall; a slower
+scaffold is a worse harness, not a case for its own cell. Setup, audits and restart decisions:
 [`evals/swebench/FP8_BAKEOFF_SETUP.md`](evals/swebench/FP8_BAKEOFF_SETUP.md).
 
 Resolved rate per model × scaffold from the [2026-07-18 matrix](evals/swebench/bake-off-2026-07-18.md)
@@ -142,7 +144,8 @@ finished work and its receipts live in [`benchmarks/FINDINGS.md`](benchmarks/FIN
    [R97-Q](experiments/17-extend-attention-fp8-qk-gfx1201.md)): a warp/tile sweep for the split-KV verify
    combine stage (346 / 2,156 register spills at 16 / 64 rows), the 128-row tile (compile stall), exp2
    softmax and `num_stages` pipelining in the extend kernel, DSpark verify `UPCAST_K` A/B (decode vs
-   acceptance), and admitting sink models (Flint) to the split-KV turn route.
+   acceptance), the patch 110 route gate on `qwen35` / `qwen35-moe`, and admitting sink models (Flint) to the
+   split-KV turn route.
 3. **fp8 QK on the other FP8-cache presets** (north-mini, gemma4, qwen35/36, coder): opt-in
    `SGLANG_EXTEND_FP8_QK=1` until each runs its own needle-grid A/B.
 4. **qwen38 decode gap, remaining half** ([attribution](benchmarks/profiling/qwen38-decode-gap-2026-10-31.md)):
@@ -158,19 +161,9 @@ finished work and its receipts live in [`benchmarks/FINDINGS.md`](benchmarks/FIN
 
 **Your decisions**
 
-- **Flint FP8 KV** ([A/Bs](benchmarks/profiling/flint-ab-2026-11-01.md)): +2–8 % decode and 2× KV pools;
-  needle 11/12 vs bf16's 10/12 with one cell swap at the 243K soft edge. `KV_DTYPE=fp8_e4m3` runs it.
-- **`extra_buffer` hybrid cache on `qwen35` and `qwen35-moe`**
-  ([fleet receipt](benchmarks/profiling/hybrid-cache-extra-buffer-fleet-2026-11-01.md)): agentic turns 8–15×
-  faster, single-message needle grids identical, but one across-turn cell on each runs to the thinking cap
-  under `extra_buffer` where `no_buffer` answers.
-- dcode in the v5 matrix: keep its 29-minute wall (47 % walls, same methodology as the other six) or add the
-  3090's 60-minute wall as a separate cell.
 - decode-topk promotion ([R97-B](experiments/07-decode-topk-promotion-brief.md)): 1.77× at 245K on a
-  pre-v0.5.15 gate; needs regeneration.
+  pre-v0.5.15 gate; needs regeneration. Open.
 - `ci-build-canary` (weekly image build) needs a push with a workflow-scoped token.
-- [R97-H](experiments/08-bench-dir-hygiene-purge-or-remeasure.md) GPU half: `decode_ab` re-measure of
-  `qwen3.6-ream-a3b-awq` and `qwen3.6-vl-reap-26b-a3b-awq` (~4 h) or purge them if the boot gate fails.
 
 **Blocked**
 
@@ -251,7 +244,7 @@ root-filesystem layout, and the full threat model are in [`docker/README.md`](do
 |---|---|---|---:|
 | `north-mini` | North-Mini-Code-1.0 | FP8 MoE + hybrid SWA | 256K |
 | `laguna` | Laguna-XS.2 | FP8 MoE + hybrid SWA | 256K |
-| `flint` | RecursiveSI Flint (patch 105) | FP8 MoE + hybrid SWA + learned sinks | 262K |
+| `flint` | RecursiveSI Flint (patch 105) | FP8 MoE + hybrid SWA + learned sinks, FP8 KV | 262K |
 | `coder-30b` | Qwen3-Coder-30B-A3B | AWQ MoE | 32K default; 256K capable |
 | `coder-reap-25b` | Qwen3-Coder REAP 25B-A3B | AWQ MoE | 256K |
 | `coder-next` | Qwen3-Coder-Next-80B | AWQ MoE + DeltaNet | 128K |
@@ -279,14 +272,15 @@ everything.
   identical outputs, so it runs graphs).
 - Use FP8 for native gfx1201 FP8 checkpoints and dense-thinking agentic workloads that lose quality
   under int4; use AWQ int4 for weight-bandwidth-bound single-user decode and for models that need the
-  extra KV capacity.
+  extra KV capacity. FP8 is the optimisation target on this rig; AWQ presets are maintained, not tuned.
+- Flint runs an FP8 KV cache (`KV_DTYPE=auto` restores bf16 KV).
 - Use no speculative decoding at true 256K depth unless a same-depth A/B proves it. The one lane that
   does is `qwen38` + DSpark through the split-KV verify kernel (1.5–2.0× at 24 to 197K input), so it is
   that preset's default; its pool ends at 206K (`QWEN38_SPEC=0` for the 256K no-spec server). Every other
   trained-draft lane collapses at 244K (FINDINGS → Speculative decoding).
 - Hybrid (DeltaNet/Mamba) presets whose template emits a think block run
   `--mamba-radix-cache-strategy extra_buffer` so agentic turns hit the cached state at the exact prompt end
-  (`qwen38`, `qwen36-27b`, `qwen36-moe`; `MAMBA_CACHE_STRATEGY=no_buffer` reverts). Short cache-hit turns
+  (`qwen38`, `qwen36-27b`, `qwen36-moe`, `qwen35`, `qwen35-moe`; `MAMBA_CACHE_STRATEGY=no_buffer` reverts). Short cache-hit turns
   (≤ 256 new tokens) on `laguna`, `qwen38`, `qwen36-27b` and `qwen36-moe` route through the split-KV verify
   kernel (`EXTEND_SPLITKV_MAX=0` disables).
 - Treat tool-call and reasoning parsers as model-specific correctness settings, not optional

@@ -184,13 +184,8 @@ MODELS = {
     "qwen3.6-27b-awq-native":   {"label": "Qwen3.6-27B AWQ (Dense)",           "color": "#8957e5"},
     "qwen3-coder-reap-25b-a3b-awq": {"label": "Coder-REAP-25B AWQ (MoE)",      "color": "#238636"},
     "coder-next-ream-awq":      {"label": "Coder-Next-REAM-60B AWQ (MoE+DeltaNet)", "color": "#2ea043"},
-    # qwen3.6-vl-reap-26b-a3b-awq intentionally excluded: its only results.json is
-    # from the buggy sglang.bench_serving path (--random-range-ratio default 0.0 ->
-    # uniform [1,N] prompt lengths), so its deep-context points are ~half-depth
-    # coin flips (flat ~21 tok/s from 128 to 131K is the tell). It is not in the
-    # README fleet table and was not re-benched with decode_ab in the 2026-07-12
-    # sweep. Re-add only after an immune decode_ab re-bench. See
-    # benchmarks/bench-serving-audit-2026-07-14.md.
+    # qwen3.6-vl-reap-26b-a3b-awq and qwen3.6-ream-a3b-awq: benchmark dirs purged 2026-11-01
+    # (sglang.bench_serving-era data, no decode_ab re-measure; R97-H closed).
     "devstral2-awq":            {"label": "Devstral-2-24B AWQ (Dense)",        "color": "#1f6feb"},
     "qwen3vl-32b-awq":          {"label": "Qwen3-VL-32B AWQ (Dense VL)",       "color": "#f778ba"},
     "north-mini":               {"label": "North-Mini-Code FP8 (cohere2_moe)", "color": "#ff7b72"},

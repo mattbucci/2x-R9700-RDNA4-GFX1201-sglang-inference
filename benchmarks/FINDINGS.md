@@ -319,8 +319,10 @@ class, not a quality trade. Decode, order-controlled and equal-length: cold runs
 24 / 58K / 197K on DSpark), cache-hit runs ±18 % with the generated content, so no decode delta is claimed. Shipped as a `qwen38` preset change (`MAMBA_CACHE_STRATEGY=no_buffer`
 reverts). Fleet roll-out the same day under the same gates ([fleet receipt](profiling/hybrid-cache-extra-buffer-fleet-2026-11-01.md)):
 qwen36-27b (1-token turn 4.8 / 3.5 / 11.4 s → 0.28 / 0.75 / 1.34 s, needle 12/12) and qwen36-moe (1.10 / 1.05 / 3.89 s →
-0.10 / 0.47 / 0.90 s, needle 12/12) shipped; qwen35 and qwen35-moe held for the user (same gains, identical
-single-message grids, across-turn cells shuffling through the 2,048-token thinking cap); coder-next-ream null — its
+0.10 / 0.47 / 0.90 s, needle 12/12) shipped; qwen35 (6.5 / 4.4 / 11.7 s → 0.28 / 0.77 / 1.38 s) and qwen35-moe
+(1.3 / 1.1 / 3.9 s → 0.10 / 0.47 / 0.92 s) shipped on the user's call the same day — their single-message grids are
+identical and their across-turn cells shuffle through the thinking cap on both arms, which the user judged a
+reasoning-length flip rather than a quality trade; coder-next-ream null — its
 template has no think block, so the prompt-end snapshot already hits under `no_buffer`. Receipts:
 [`profiling/hybrid-cache-extra-buffer-qwen38-2026-11-01.md`](profiling/hybrid-cache-extra-buffer-qwen38-2026-11-01.md),
 [`profiling/hybrid-cache-turn-granularity-qwen38-2026-11-01.json`](profiling/hybrid-cache-turn-granularity-qwen38-2026-11-01.json).
@@ -349,8 +351,8 @@ layers (525K → 441K) to the SWA layers (10.5K → 44K) at equal speed; 0.02 st
 (±2 % across an order-controlled triple, outputs byte-identical; reverted). **FP8 KV** (`KV_DTYPE=fp8_e4m3`): decode 44.3 /
 43.3 / 41.4 / 39.2 vs 43.3 / 42.4 / 39.6 / 36.3 tok/s, pools 1,050,610 / 21,012 vs 525,305 / 10,506 tokens, natural needle
 on the receipt's exact cells 11/12 vs bf16's 10/12 (32K @ 0.9 gained; at 243,481 tokens 0.1 gained and 0.5 lost — the soft
-edge the first-boot receipt describes). Recommended as the Flint default; held for the user's decision because it is a
-KV-dtype change with a cell swap at the retrieval edge.
+edge the first-boot receipt describes). Adopted as the Flint preset default on the user's call (2026-11-01;
+`KV_DTYPE=auto` restores bf16 KV); the fleet-table decode points are re-measured under the new default.
 
 ## Long-context attention
 
@@ -587,8 +589,7 @@ decode tok/s at nominal 128 / 16K / 64K / 128K / 256K input): `devstral-24b-awq-
 21.3 / 21.5 / 21.4 / 20.7 / 16.1 (2026-04-28). The flat-to-256K curves are the half-depth artifact,
 not a property of the models. `benchmarks/gemma-4-26b-awq/` and `benchmarks/qwen3.5-27b-awq/` gained
 performance cards so the live `decode_ab` data outranks the deleted twins in a doc grep, and the
-untracked root `sglang*_0*.jsonl` driver output moved to `benchmarks/raw/`. Still open (Option B's
-GPU half, ~4 h at a bake-off boundary): `qwen3.6-ream-a3b-awq/` and `qwen3.6-vl-reap-26b-a3b-awq/`
-keep their `sglang.bench_serving` files until re-measured with `decode_ab` through the `qwen36-moe`
-preset with a `MODEL=` override (boot gate first; both were DOWN at 262144 on the pre-fix stack), or
-are purged if the gate fails.
+untracked root `sglang*_0*.jsonl` driver output moved to `benchmarks/raw/`. Option B's GPU half was
+dropped on 2026-11-01 (user decision: AWQ ships are not an optimisation target on this rig; FP8 is):
+`qwen3.6-ream-a3b-awq/` and `qwen3.6-vl-reap-26b-a3b-awq/` were purged without a re-measure, so no
+tracked `results.json` carries the `sglang.bench_serving` method. R97-H is closed.

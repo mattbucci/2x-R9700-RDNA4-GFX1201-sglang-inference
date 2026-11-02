@@ -225,8 +225,9 @@ table and charts instead come from `decode_ab.py` (one deterministic full-length
 input-token counts). Older `results.json` files whose `method` is `sglang.bench_serving` are
 depth-suspect — see [bench-serving-audit-2026-07-14.md](bench-serving-audit-2026-07-14.md). The eleven
 superseded directories it flagged were purged on 2026-10-25 (legacy values in
-[FINDINGS.md](FINDINGS.md) → Evaluation methodology); `qwen3.6-ream-a3b-awq/` and
-`qwen3.6-vl-reap-26b-a3b-awq/` still carry that method until re-measured.
+[FINDINGS.md](FINDINGS.md) → Evaluation methodology); the last two, `qwen3.6-ream-a3b-awq/` and
+`qwen3.6-vl-reap-26b-a3b-awq/`, were purged on 2026-11-01 without a re-measure (AWQ ships are not an
+optimisation target on this rig). No tracked `results.json` carries the `sglang.bench_serving` method.
 
 ## Data layout
 

@@ -212,12 +212,12 @@
   {
    "id": "R97-H",
    "spec": "08-bench-dir-hygiene-purge-or-remeasure.md",
-   "status": "needs_user",
+   "status": "completed",
    "resource": "filesystem_or_tp2",
    "depends_on": [
     "Explicit Option A or B and rider decisions"
    ],
-   "next_action": "Record the hygiene decision before any deletion, move, or remeasurement.",
+   "next_action": "Closed 2026-11-01: purge pass 2026-10-25; the two AWQ ship re-measures dropped on the user's call (AWQ is not an optimisation target), benchmarks/qwen3.6-ream-a3b-awq and qwen3.6-vl-reap-26b-a3b-awq purged.",
    "test_gate": [
     "Task-owned deletion scope is exact",
     "Pre-existing benchmark modifications are preserved",
@@ -377,12 +377,12 @@
   {
    "id": "R97-R",
    "spec": "18-hybrid-cache-checkpoint-granularity.md",
-   "status": "needs_user",
+   "status": "completed",
    "resource": "gpu",
    "depends_on": [
     "R97-Q"
    ],
-   "next_action": "Shipped 2026-11-01 on qwen38, qwen36-27b and qwen36-moe (launch.sh --mamba-radix-cache-strategy extra_buffer; MAMBA_CACHE_STRATEGY=no_buffer reverts). Rolling out with the same gates to qwen35, qwen35-moe, qwen36-moe, coder-next-ream (coder-next checkpoint missing); then patch 110's route gate on the AWQ hybrids; then consider relaxing patch 073's HIP gate. qwen35 (2026-11-01): turns 6.5/4.4/11.7 s -> 0.28/0.77/1.38 s, single-message needle identical (3/6 both, thinking-cap misses), but across-turn needle 131K@0.1 is found under no_buffer and runs to the 4,096-token cap under extra_buffer — held on no_buffer pending the user's decision (quality trade or noise?). qwen35-moe (2026-11-01): turns 1.3/1.1/3.9 s -> 0.10/0.47/0.92 s, single needle 6/6 both, across-turn 2/6 both with different thinking-capped cells — held with qwen35 for the same decision.",
+   "next_action": "Shipped 2026-11-01 on qwen38, qwen36-27b, qwen36-moe and (user decision the same day) qwen35, qwen35-moe (launch.sh --mamba-radix-cache-strategy extra_buffer; MAMBA_CACHE_STRATEGY=no_buffer reverts). coder-next-ream null (no think block). Left: patch 110 route gate on qwen35 / qwen35-moe; consider relaxing patch 073 HIP gate.",
    "test_gate": [
     "Agentic-shaped turn (measure_extend_cost.py --multi-turn) >= 3x faster at 52K-176K on both qwen38 presets (measured 7-33x)",
     "Needle grid 32K/131K x 0.1/0.5/0.9 single-message AND across a turn boundary (multiturn_needle_probe.py) equal to no_buffer (12/12)",

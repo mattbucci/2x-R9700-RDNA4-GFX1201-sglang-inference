@@ -398,6 +398,13 @@ PYEOF
             DTYPE="bfloat16"
             CTX=262144; MAX_RUNNING=8; CHUNKED=8192; DECODE_STEPS=8; MEM=0.85
             MAMBA_CACHE="--max-mamba-cache-size 8"
+            # R97-R (2026-11-01, user decision): hybrid radix cache on extra_buffer (64-token Mamba state grid, overlap on)
+            # so agentic turns hit the cached state at the exact prompt end — see the qwen38 block. Gates on this preset
+            # (benchmarks/profiling/hybrid-cache-extra-buffer-fleet-2026-11-01.md): 1-token agentic turn 1.3 / 1.1 / 3.9 s -> 0.10 / 0.47 / 0.92 s at 6.5K / 52K / 104K cached;
+            # single-message needle grid identical; across-turn cells shuffle through the thinking cap on both arms.
+            # MAMBA_CACHE_STRATEGY=no_buffer restores the old behaviour.
+            EXTRA_ARGS="${EXTRA_ARGS:-} --mamba-radix-cache-strategy ${MAMBA_CACHE_STRATEGY:-extra_buffer}"
+            [[ "${MAMBA_CACHE_STRATEGY:-extra_buffer}" == "no_buffer" ]] && EXTRA_ARGS="$EXTRA_ARGS --disable-overlap-schedule"
             REASONING="--reasoning-parser qwen3"
             TOOL_CALL_PARSER="qwen3_coder"
             WARMUP="--skip-server-warmup"
@@ -478,6 +485,13 @@ PYEOF
             CTX=262144; MEM=0.80; MAX_RUNNING=8; CHUNKED=8192; DECODE_STEPS=8
             CUDA_GRAPH="--disable-cuda-graph"
             MAMBA_CACHE="--max-mamba-cache-size 8"
+            # R97-R (2026-11-01, user decision): hybrid radix cache on extra_buffer (64-token Mamba state grid, overlap on)
+            # so agentic turns hit the cached state at the exact prompt end — see the qwen38 block. Gates on this preset
+            # (benchmarks/profiling/hybrid-cache-extra-buffer-fleet-2026-11-01.md): 1-token agentic turn 6.5 / 4.4 / 11.7 s -> 0.28 / 0.77 / 1.38 s at 6.5K / 52K / 104K cached;
+            # single-message needle grid identical; across-turn cells shuffle through the thinking cap on both arms.
+            # MAMBA_CACHE_STRATEGY=no_buffer restores the old behaviour.
+            EXTRA_ARGS="${EXTRA_ARGS:-} --mamba-radix-cache-strategy ${MAMBA_CACHE_STRATEGY:-extra_buffer}"
+            [[ "${MAMBA_CACHE_STRATEGY:-extra_buffer}" == "no_buffer" ]] && EXTRA_ARGS="$EXTRA_ARGS --disable-overlap-schedule"
             # pi/little-coder sends a `developer` role the stock template rejects (-> SGLang
             # 400 -> empty 2s rollout); remap dev->system (was \$MODEL/chat_template.jinja).
             CHAT_TEMPLATE="--chat-template $SCRIPT_DIR/qwen3.5_devrole_chat_template.jinja"
@@ -810,10 +824,10 @@ PYEOF
             MODEL="${MODEL:-${FLINT_MODEL:-/data/models/Flint-FP8}}"
             QUANT="compressed-tensors"
             DTYPE="bfloat16"
-            # bf16 KV by default. FP8 KV (KV_DTYPE=fp8_e4m3) measured 2026-11-01: +2-8 % decode, 2x pools, natural needle
-            # 11/12 vs 10/12 with one cell swap at the 243K soft edge (benchmarks/profiling/flint-ab-2026-11-01.md);
-            # recommended, flips when the user signs off. NGRAM speculation and the BF16 attention-sum opt-out are null here.
-            KV_DTYPE="${_ENV_KV_DTYPE:-auto}"
+            # FP8 KV by default (user decision 2026-11-01): +2-8 % decode, 2x pools, natural needle 11/12 vs bf16's
+            # 10/12 with one cell swap at the 243K soft edge (benchmarks/profiling/flint-ab-2026-11-01.md).
+            # KV_DTYPE=auto restores bf16 KV. NGRAM speculation and the BF16 attention-sum opt-out are null here.
+            KV_DTYPE="${_ENV_KV_DTYPE:-fp8_e4m3}"
             ATTN_BACKEND="${ATTN_BACKEND:-triton}"
             CTX="${_ENV_CTX:-262144}"; MAX_RUNNING="${_ENV_MAX_RUNNING:-8}"
             CHUNKED="${_ENV_CHUNKED:-4096}"; DECODE_STEPS=8; MEM="${_ENV_MEM:-0.85}"
