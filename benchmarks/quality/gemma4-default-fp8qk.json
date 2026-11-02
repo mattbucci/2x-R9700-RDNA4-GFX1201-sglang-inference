@@ -1,0 +1,56 @@
+{
+ "tag": "gemma4-default-fp8qk",
+ "timestamp": "2026-11-02 10:21",
+ "model": "/home/letsrtfm/AI/models/gemma-4-26B-A4B-it-AWQ-GPTQ-v2-fixed",
+ "port": 23334,
+ "haystack": "benchmarks/quality/haystack-platypus.txt",
+ "chars_per_token": 3.3,
+ "temperature": 0.0,
+ "flush": true,
+ "max_tokens": 2048,
+ "results": [
+  {
+   "found": false,
+   "http": 400,
+   "error": "{\"object\":\"error\",\"message\":\"The input (33768 tokens) is longer than the model's context length (16384 tokens).\",\"type\":\"BadRequestError\",\"param\":null,\"code\":400}",
+   "context": 32768,
+   "depth": 0.1
+  },
+  {
+   "found": false,
+   "http": 400,
+   "error": "{\"object\":\"error\",\"message\":\"The input (33768 tokens) is longer than the model's context length (16384 tokens).\",\"type\":\"BadRequestError\",\"param\":null,\"code\":400}",
+   "context": 32768,
+   "depth": 0.5
+  },
+  {
+   "found": false,
+   "http": 400,
+   "error": "{\"object\":\"error\",\"message\":\"The input (33768 tokens) is longer than the model's context length (16384 tokens).\",\"type\":\"BadRequestError\",\"param\":null,\"code\":400}",
+   "context": 32768,
+   "depth": 0.9
+  },
+  {
+   "found": false,
+   "http": 400,
+   "error": "{\"object\":\"error\",\"message\":\"The input (136112 tokens) is longer than the model's context length (16384 tokens).\",\"type\":\"BadRequestError\",\"param\":null,\"code\":400}",
+   "context": 131072,
+   "depth": 0.1
+  },
+  {
+   "found": false,
+   "http": 400,
+   "error": "{\"object\":\"error\",\"message\":\"The input (136113 tokens) is longer than the model's context length (16384 tokens).\",\"type\":\"BadRequestError\",\"param\":null,\"code\":400}",
+   "context": 131072,
+   "depth": 0.5
+  },
+  {
+   "found": false,
+   "http": 400,
+   "error": "{\"object\":\"error\",\"message\":\"The input (136113 tokens) is longer than the model's context length (16384 tokens).\",\"type\":\"BadRequestError\",\"param\":null,\"code\":400}",
+   "context": 131072,
+   "depth": 0.9
+  }
+ ],
+ "score": 0.0
+}

@@ -313,6 +313,12 @@ the needle** — a retrieval miss, not a cap flip, so it is a quality trade for 
 on both), reasoning probe identical on both arms (3/3 at 36K actual, 0/3 at 143K), caps 5/5
 ([receipt](profiling/extend-fp8qk-nemotron-omni-2026-11-02.md)). `nemotron-omni` exports `SGLANG_EXTEND_FP8_QK=1`.
 
+**Qwen3.6-27B AWQ (2026-11-02, shipped) and Gemma 4 26B-A4B (not measurable).** qwen36-27b: cold prefill 56.1 → 49.6 s at
+58K and 357 → 240 s at 197K (−12 % / −33 %; the AWQ GEMV owns most of this preset's prefill), turns unchanged (routed),
+needle 6/6 and reasoning probe 6/6 on both arms, caps 5/5 ([receipt](profiling/extend-fp8qk-qwen36-27b-2026-11-02.md));
+`qwen36-27b` exports `SGLANG_EXTEND_FP8_QK=1`. gemma4 serves a 16K context, so the depth cells cannot run; only the 7.3K
+prefill moved (−20 %) and the preset is unchanged.
+
 ## 3090 tokenizer-side turn ports (incremental tokenizer, lazy decode-back) — null here (2026-11-02)
 
 The 3090's patch 072 (exact incremental tokenization of append-only prompts + lazy prompt decode-back on multimodal-flagged

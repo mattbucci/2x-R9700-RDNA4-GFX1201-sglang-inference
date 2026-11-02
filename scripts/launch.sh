@@ -671,6 +671,10 @@ PYEOF
             # tokens 668 / 548 / 596 -> 273 / 329 / 442 ms at 52K and 1,223 / 843 / 867 -> 259 / 340 / 472 ms at 104K
             # cached; needle across a turn boundary 6/6, caps 5/5. EXTEND_SPLITKV_MAX=0 disables.
             export SGLANG_EXTEND_SPLITKV_MAX_TOKENS="${EXTEND_SPLITKV_MAX:-256}"
+            # Patch 108 fp8 QK dot in extend attention (gate 2026-11-02, same session, default first): cold prefill
+            # 56.1 -> 49.6 s at 58K and 357 -> 240 s at 197K (-12 % / -33 %), 7.3K unchanged; warmed turns unchanged (routed);
+            # natural needle 6/6 and 256K reasoning probe 6/6 on both arms, caps 5/5 both. EXTEND_FP8_QK=0 restores the upcast.
+            export SGLANG_EXTEND_FP8_QK="${EXTEND_FP8_QK:-1}"
             # pi/little-coder sends a `developer` role the stock Qwen3.6 template rejects
             # ("Unexpected message role" -> SGLang 400 -> empty 2s rollout); remap dev->system.
             CHAT_TEMPLATE="--chat-template $SCRIPT_DIR/qwen3.6_devrole_chat_template.jinja"

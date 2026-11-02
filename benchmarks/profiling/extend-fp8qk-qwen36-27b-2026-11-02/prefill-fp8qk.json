@@ -1,0 +1,40 @@
+{
+ "label": "qwen36-27b fp8qk",
+ "model": "/home/letsrtfm/AI/models/Qwen3.6-27B-AWQ-native-thinking-vision",
+ "port": 23334,
+ "runs": 2,
+ "method": "flush_cache + non-stream max_tokens=1 wall time",
+ "timestamp": "2026-11-02 11:24",
+ "rows": [
+  {
+   "context": 8192,
+   "input_len": 7331,
+   "runs_s": [
+    5.514,
+    5.324
+   ],
+   "median_s": 5.419,
+   "prefill_tok_per_s": 1352.8
+  },
+  {
+   "context": 65536,
+   "input_len": 58483,
+   "runs_s": [
+    49.575,
+    49.589
+   ],
+   "median_s": 49.582,
+   "prefill_tok_per_s": 1179.5
+  },
+  {
+   "context": 221184,
+   "input_len": 197326,
+   "runs_s": [
+    240.571,
+    240.317
+   ],
+   "median_s": 240.444,
+   "prefill_tok_per_s": 820.7
+  }
+ ]
+}
