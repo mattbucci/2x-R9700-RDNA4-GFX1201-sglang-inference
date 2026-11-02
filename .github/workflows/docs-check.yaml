@@ -22,7 +22,8 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-      # @main until the action has a release tag; then pin the tag and let Dependabot bump it.
-      - uses: mattbucci/m4-sglang-inference/.github/actions/docs-check@main
+      # Pinned to a commit like every other action here. Bump this SHA (same one in all
+      # callers) to roll a rule change out; a release tag + Dependabot can replace it.
+      - uses: mattbucci/m4-sglang-inference/.github/actions/docs-check@7033553cd63f1c07380779b61bd64b078736344a
         with:
           strict: "false"
