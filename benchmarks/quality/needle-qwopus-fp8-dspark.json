@@ -1,0 +1,80 @@
+{
+ "tag": "needle-qwopus-fp8-dspark",
+ "timestamp": "2026-11-02 02:05",
+ "model": "/data/models/Qwopus3.8-27B-Coder-Flash-FP8",
+ "port": 23334,
+ "haystack": "benchmarks/quality/haystack-platypus.txt",
+ "chars_per_token": 3.3,
+ "temperature": 0.0,
+ "flush": true,
+ "max_tokens": 2048,
+ "results": [
+  {
+   "found": true,
+   "actual_prompt_tokens": 34243,
+   "completion_tokens": 102,
+   "finish_reason": "stop",
+   "seconds": 23.7,
+   "content_tail": "\n\nBANANA42",
+   "reasoning_tail": "",
+   "context": 32768,
+   "depth": 0.1
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 34243,
+   "completion_tokens": 94,
+   "finish_reason": "stop",
+   "seconds": 23.5,
+   "content_tail": "\n\nBANANA42",
+   "reasoning_tail": "",
+   "context": 32768,
+   "depth": 0.5
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 34243,
+   "completion_tokens": 169,
+   "finish_reason": "stop",
+   "seconds": 24.6,
+   "content_tail": "\n\nBANANA42",
+   "reasoning_tail": "",
+   "context": 32768,
+   "depth": 0.9
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 138184,
+   "completion_tokens": 91,
+   "finish_reason": "stop",
+   "seconds": 127.4,
+   "content_tail": "\n\nBANANA42",
+   "reasoning_tail": "",
+   "context": 131072,
+   "depth": 0.1
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 138185,
+   "completion_tokens": 76,
+   "finish_reason": "stop",
+   "seconds": 126.3,
+   "content_tail": "\n\nBANANA42",
+   "reasoning_tail": "",
+   "context": 131072,
+   "depth": 0.5
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 138185,
+   "completion_tokens": 92,
+   "finish_reason": "stop",
+   "seconds": 126.8,
+   "content_tail": "\n\nBANANA42",
+   "reasoning_tail": "",
+   "context": 131072,
+   "depth": 0.9
+  }
+ ],
+ "score": 1.0
+}

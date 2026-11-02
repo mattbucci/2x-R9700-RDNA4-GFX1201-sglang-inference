@@ -1,0 +1,86 @@
+{
+  "label": "qwopus fp8 nospec",
+  "tag": "2026-11-02 qwopus block-fp8 nospec",
+  "note": "first boot",
+  "port": 23334,
+  "maxtok": 80,
+  "runs": 3,
+  "points": [
+    {
+      "context": 24,
+      "input_len": 24,
+      "runs_tps": [
+        23.19,
+        23.2,
+        23.15
+      ],
+      "median_tps": 23.186,
+      "min_tps": 23.154,
+      "max_tps": 23.2,
+      "runs_completion_tokens": [
+        80,
+        80,
+        80
+      ],
+      "median_tpot_ms": 43.13,
+      "sample": "# The Architecture of Speed: A Deep Dive into GPU Memory Hie"
+    },
+    {
+      "context": 8192,
+      "input_len": 7331,
+      "runs_tps": [
+        22.8,
+        22.81,
+        22.8
+      ],
+      "median_tps": 22.804,
+      "min_tps": 22.804,
+      "max_tps": 22.807,
+      "runs_completion_tokens": [
+        43,
+        43,
+        43
+      ],
+      "median_tpot_ms": 43.85,
+      "sample": "The provided text consists of the pangram \"The quick brown f"
+    },
+    {
+      "context": 65536,
+      "input_len": 58483,
+      "runs_tps": [
+        21.92,
+        21.91,
+        21.98
+      ],
+      "median_tps": 21.923,
+      "min_tps": 21.914,
+      "max_tps": 21.975,
+      "runs_completion_tokens": [
+        46,
+        45,
+        45
+      ],
+      "median_tpot_ms": 45.61,
+      "sample": "The provided text consists of the pangram \"The quick brown f"
+    },
+    {
+      "context": 221184,
+      "input_len": 197326,
+      "runs_tps": [
+        20.33,
+        20.42,
+        20.4
+      ],
+      "median_tps": 20.395,
+      "min_tps": 20.332,
+      "max_tps": 20.418,
+      "runs_completion_tokens": [
+        42,
+        45,
+        45
+      ],
+      "median_tpot_ms": 49.03,
+      "sample": "The provided text consists of the pangram \"The quick brown f"
+    }
+  ]
+}

@@ -361,6 +361,23 @@ edge the first-boot receipt describes). Adopted as the Flint preset default on t
 58K / 117K / 219K** input (bf16 KV read 43.7 / 42.9 / 39.9 / 37.3 / 34.2), pools 1,050,610 / 21,012 tokens, text
 probes 3/3 (vision / video are not supported by the model).
 
+## Qwopus3.8-27B-Coder-Flash: local block-FP8 build in the vendor layout (2026-11-02)
+
+Jackrong's coding/agentic SFT of Qwen3.8-27B (BF16 only, 55.6 GB) is built with
+[`quantize_fp8_block.py`](../scripts/quantize/quantize_fp8_block.py) — 128×128 block e4m3 + bf16 `weight_scale_inv`,
+the vendor Qwen3.8-27B-FP8 module choice (the vendor block-quantizes DeltaNet `in_proj_qkv` / `in_proj_z` /
+`out_proj`; the per-channel "in_proj stays BF16" rule does not apply to the block grid) — and served through the
+`qwen38` preset with `MODEL=`. Receipt: [`qwopus38-27b-coder-flash-fp8/`](qwopus38-27b-coder-flash-fp8/README.md).
+Build: 1,606 tensors with zero key / dtype / shape differences from the vendor file, relative RMS dequant error
+0.0265 uniform. Gate: capabilities 5/5 (vision + video kept), needle 6/6 at 32K / 131K, no-spec decode 23.2 / 22.8 /
+21.9 / 20.4 tok/s at 24 / 7.3K / 58K / 197K — identical to the vendor's 23.0 / 22.5 / 21.8 / 20.2. Quality (no-think MC,
+chat HumanEval): MMLU 0.860, LAB-Bench 0.408, HumanEval 30/30, within noise of the base (0.842 / 0.423). DSpark on the
+fine-tune (order-controlled `--ignore-eos` pair, vendor → Qwopus → vendor): equal at 24 and 7.3K, inside the vendor's
+own order spread at 58K, **−15 % at 197K** (accept length 2.70 vs 2.85) — the base-trained speculator loses some
+acceptance on the fine-tune at depth. No preset yet (user decision; the card's agentic claims need a scaffold run).
+`--ignore-eos` rows are not comparable with the README's EOS-terminated canonical sweep: forcing past EOS drops the
+vendor itself to 35 / 36 / 29 tok/s at 7.3K / 58K / 197K.
+
 ## Long-context attention
 
 ### Decode-only recency window

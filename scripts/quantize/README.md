@@ -25,6 +25,7 @@ Use `/home/letsrtfm/miniforge3/envs/fp8-quant` on this host (the older documente
 | \`calibration_datasets.py\` | Capability-aware mixed datasets; live audio sources avoid optional codec decoding |
 | \`quantize_fp8.py\` | Native compressed-tensors FP8 build (llmcompressor oneshot) |
 | \`quantize_fp8_manual.py\` | Direct per-channel FP8 cast, shard-streamed on the CPU; the path for large-expert-count MoE (Flint: 36,439 Linears) where llmcompressor segfaults |
+| \`quantize_fp8_block.py\` | 128×128 block-FP8 cast in the vendor Qwen3.8-27B-FP8 layout (\`weight_scale_inv\` bf16 grid, vendor module choice), shard-streamed on the CPU, with \`--verify\` round-trip error and \`--check-against\` key/dtype/shape parity; the path for Qwen3.8-27B fine-tunes so the \`qwen38\` preset, its GEMM configs and the DSpark draft apply unchanged |
 | \`quantize_coder30b_code_thinking.py\` | Qwen3-Coder MoE calibration |
 | \`quantize_qwen35_moe_ream.py\` | Qwen3.5/3.6 MoE calibration |
 | \`quantize_qwen36_thinking_vision.py\` | Qwen3.6 MoE reasoning/vision calibration |

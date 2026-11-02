@@ -1,0 +1,86 @@
+{
+  "label": "vendor1 dspark ignore-eos",
+  "tag": "2026-11-02 qwopus-vs-vendor dspark pair",
+  "note": "same session, ignore-eos, order vendor1",
+  "port": 23334,
+  "maxtok": 80,
+  "runs": 3,
+  "points": [
+    {
+      "context": 24,
+      "input_len": 24,
+      "runs_tps": [
+        44.75,
+        44.54,
+        44.62
+      ],
+      "median_tps": 44.618,
+      "min_tps": 44.54,
+      "max_tps": 44.747,
+      "runs_completion_tokens": [
+        80,
+        80,
+        80
+      ],
+      "median_tpot_ms": 22.41,
+      "sample": "# The Memory Wall: A Deep Dive into GPU Memory Hierarchy and"
+    },
+    {
+      "context": 8192,
+      "input_len": 7331,
+      "runs_tps": [
+        38.17,
+        35.54,
+        35.51
+      ],
+      "median_tps": 35.537,
+      "min_tps": 35.507,
+      "max_tps": 38.174,
+      "runs_completion_tokens": [
+        80,
+        80,
+        80
+      ],
+      "median_tpot_ms": 28.14,
+      "sample": "The provided text consists of the pangram \"The quick brown f"
+    },
+    {
+      "context": 65536,
+      "input_len": 58483,
+      "runs_tps": [
+        34.7,
+        36.0,
+        36.2
+      ],
+      "median_tps": 36.0,
+      "min_tps": 34.702,
+      "max_tps": 36.196,
+      "runs_completion_tokens": [
+        80,
+        80,
+        80
+      ],
+      "median_tpot_ms": 27.78,
+      "sample": "The provided text consists of the pangram \"The quick brown f"
+    },
+    {
+      "context": 221184,
+      "input_len": 197326,
+      "runs_tps": [
+        31.11,
+        29.0,
+        28.78
+      ],
+      "median_tps": 29.001,
+      "min_tps": 28.78,
+      "max_tps": 31.105,
+      "runs_completion_tokens": [
+        80,
+        80,
+        80
+      ],
+      "median_tpot_ms": 34.48,
+      "sample": "The provided text consists of the pangram \"The quick brown f"
+    }
+  ]
+}

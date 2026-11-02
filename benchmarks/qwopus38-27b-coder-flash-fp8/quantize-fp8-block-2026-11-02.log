@@ -1,0 +1,64 @@
+[01:41:11] shard-1 keys:
+392 tensors
+['model.language_model.layers.0.input_layernorm.weight', 'model.language_model.layers.0.linear_attn.A_log', 'model.language_model.layers.0.linear_attn.conv1d.weight', 'model.language_model.layers.0.linear_attn.dt_bias', 'model.language_model.layers.0.linear_attn.in_proj_a.weight', 'model.language_model.layers.0.linear_attn.in_proj_b.weight', 'model.language_model.layers.0.linear_attn.in_proj_qkv.weight', 'model.language_model.layers.0.linear_attn.in_proj_z.weight', 'model.language_model.layers.0.linear_attn.norm.weight', 'model.language_model.layers.0.linear_attn.out_proj.weight', 'model.language_model.layers.0.mlp.down_proj.weight', 'model.language_model.layers.0.mlp.gate_proj.weight', 'model.language_model.layers.0.mlp.up_proj.weight', 'model.language_model.layers.0.post_attention_layernorm.weight']
+mtp keys in shard1: []
+[01:41:12] quantizing
+block-FP8 cast /data/models/Qwopus3.8-27B-Coder-Flash-BF16 -> /data/models/Qwopus3.8-27B-Coder-Flash-FP8
+18 shards, block 128x128
+  [1/18] model-00001-of-00018.safetensors: 417 tensors (quantized so far 25, kept 367)
+  [2/18] model-00002-of-00018.safetensors: 72 tensors (quantized so far 50, kept 389)
+  [3/18] model-00003-of-00018.safetensors: 1 tensors (quantized so far 50, kept 390)
+  [4/18] model-00004-of-00018.safetensors: 101 tensors (quantized so far 82, kept 427)
+  [5/18] model-00005-of-00018.safetensors: 55 tensors (quantized so far 100, kept 446)
+  [6/18] model-00006-of-00018.safetensors: 109 tensors (quantized so far 133, kept 489)
+  [7/18] model-00007-of-00018.safetensors: 47 tensors (quantized so far 150, kept 502)
+  [8/18] model-00008-of-00018.safetensors: 109 tensors (quantized so far 183, kept 545)
+  [9/18] model-00009-of-00018.safetensors: 47 tensors (quantized so far 200, kept 558)
+  [10/18] model-00010-of-00018.safetensors: 109 tensors (quantized so far 233, kept 601)
+  [11/18] model-00011-of-00018.safetensors: 47 tensors (quantized so far 250, kept 614)
+  [12/18] model-00012-of-00018.safetensors: 109 tensors (quantized so far 283, kept 657)
+  [13/18] model-00013-of-00018.safetensors: 47 tensors (quantized so far 300, kept 670)
+  [14/18] model-00014-of-00018.safetensors: 109 tensors (quantized so far 333, kept 713)
+  [15/18] model-00015-of-00018.safetensors: 47 tensors (quantized so far 350, kept 726)
+  [16/18] model-00016-of-00018.safetensors: 110 tensors (quantized so far 383, kept 770)
+  [17/18] model-00017-of-00018.safetensors: 47 tensors (quantized so far 400, kept 783)
+  [18/18] model-00018-of-00018.safetensors: 23 tensors (quantized so far 407, kept 792)
+done: 407 Linears block-quantized, 792 tensors kept bf16, 28.7 GiB
+verify: relative RMS dequant error median 0.0265, max 0.0265 (model.language_model.layers.23.self_attn.k_proj.weight)
+   0.0265 model.language_model.layers.23.self_attn.k_proj.weight
+   0.0265 model.language_model.layers.7.self_attn.k_proj.weight
+   0.0265 model.language_model.layers.30.linear_attn.in_proj_z.weight
+   0.0265 model.language_model.layers.7.self_attn.v_proj.weight
+   0.0265 model.language_model.layers.39.self_attn.v_proj.weight
+check-against /data/models/Qwen3.8-27B-FP8: 1606 vs 1606 tensors; only ours 0, only theirs 0, dtype/shape mismatches 0
+PARITY OK
+quantizer rc=0
+29G	/data/models/Qwopus3.8-27B-Coder-Flash-FP8
+chat_template.jinja
+config.json
+generation_config.json
+model-00001-of-00018.safetensors
+model-00002-of-00018.safetensors
+model-00003-of-00018.safetensors
+model-00004-of-00018.safetensors
+model-00005-of-00018.safetensors
+model-00006-of-00018.safetensors
+model-00007-of-00018.safetensors
+model-00008-of-00018.safetensors
+model-00009-of-00018.safetensors
+model-00010-of-00018.safetensors
+model-00011-of-00018.safetensors
+model-00012-of-00018.safetensors
+model-00013-of-00018.safetensors
+model-00014-of-00018.safetensors
+model-00015-of-00018.safetensors
+model-00016-of-00018.safetensors
+model-00017-of-00018.safetensors
+model-00018-of-00018.safetensors
+model.safetensors.index.json
+preprocessor_config.json
+processor_config.json
+tokenizer_config.json
+tokenizer.json
+video_preprocessor_config.json
+QWOPUS QUANT DONE

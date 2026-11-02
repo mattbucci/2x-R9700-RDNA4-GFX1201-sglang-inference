@@ -1,0 +1,86 @@
+{
+  "label": "qwopus dspark ignore-eos",
+  "tag": "2026-11-02 qwopus-vs-vendor dspark pair",
+  "note": "same session, ignore-eos, order qwopus",
+  "port": 23334,
+  "maxtok": 80,
+  "runs": 3,
+  "points": [
+    {
+      "context": 24,
+      "input_len": 24,
+      "runs_tps": [
+        44.91,
+        44.78,
+        44.82
+      ],
+      "median_tps": 44.816,
+      "min_tps": 44.781,
+      "max_tps": 44.914,
+      "runs_completion_tokens": [
+        80,
+        80,
+        80
+      ],
+      "median_tpot_ms": 22.31,
+      "sample": "# The Architecture of Speed: A Deep Dive into GPU Memory Hie"
+    },
+    {
+      "context": 8192,
+      "input_len": 7331,
+      "runs_tps": [
+        41.01,
+        37.0,
+        36.98
+      ],
+      "median_tps": 37.002,
+      "min_tps": 36.98,
+      "max_tps": 41.015,
+      "runs_completion_tokens": [
+        80,
+        80,
+        80
+      ],
+      "median_tpot_ms": 27.03,
+      "sample": "The provided text consists of the pangram \"The quick brown f"
+    },
+    {
+      "context": 65536,
+      "input_len": 58483,
+      "runs_tps": [
+        29.75,
+        30.69,
+        30.7
+      ],
+      "median_tps": 30.691,
+      "min_tps": 29.749,
+      "max_tps": 30.695,
+      "runs_completion_tokens": [
+        80,
+        80,
+        80
+      ],
+      "median_tpot_ms": 32.58,
+      "sample": "The provided text consists of the pangram \"The quick brown f"
+    },
+    {
+      "context": 221184,
+      "input_len": 197326,
+      "runs_tps": [
+        27.85,
+        24.65,
+        24.64
+      ],
+      "median_tps": 24.651,
+      "min_tps": 24.638,
+      "max_tps": 27.853,
+      "runs_completion_tokens": [
+        80,
+        80,
+        80
+      ],
+      "median_tpot_ms": 40.57,
+      "sample": "The provided text consists of the pangram \"The quick brown f"
+    }
+  ]
+}
