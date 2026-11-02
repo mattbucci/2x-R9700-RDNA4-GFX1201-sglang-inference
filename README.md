@@ -5,6 +5,8 @@ SGLang v0.5.22 with 79 local RDNA4 patches, tuned for coherent single-user infer
 the patch series, the preset launcher, the benchmark and evaluation harnesses, the FP8/AWQ quantization
 pipeline, and the receipts behind every number below. Multi-user throughput is secondary.
 
+Known issues and open work are tracked as [GitHub issues](https://github.com/mattbucci/2x-R9700-RDNA4-GFX1201-sglang-inference/issues?q=is%3Aissue+is%3Aopen+label%3Aknown-issue).
+
 Serving tree `/data/sgl-v0522`, conda environment `sglang-triton36-v0522`, ROCm 7.2. The focus is FP8
 inference for coding and agentic workloads: Cohere North-Mini Code, Poolside Laguna XS.2, and the quality
 flagship Qwen3.8-27B-FP8.
@@ -311,44 +313,6 @@ bash scripts/quantize/run_full_pipeline.sh qwen35   # full AWQ pipeline, base ch
 The AWQ base comparator distinguishes benign zero scales over dead MoE channels from zero scales over
 live weights. Build `mattbucci/*` releases from the upstream BF16 checkpoint with the repository's own
 calibration and pruning scripts; community quantizations are reference data, not release inputs.
-
-## Known limitations
-
-- Long-running TP=2 harnesses can expose one-rank stalls that short serving probes do not. Use the
-  watchdog and capture scheduler stacks on recurrence.
-- Back-to-back TP=2 relaunches intermittently hit an RCCL-init GPU coredump (rank exit -6): a hard kill
-  leaks the communicator's `/dev/shm` IPC segments and a fast relaunch faults on a stale one. Run
-  `bash scripts/free_gpu.sh` between serving runs.
-- Coder-Next full-size remains a diagnostic preset rather than a recommended agentic ship;
-  Qwen3-Coder-30B REAM is research-only until it passes a same-scaffold quality comparison against the
-  unmerged checkpoint.
-- Gemma 4 31B vision and video are non-functional on the local `gemma-4-31B-AWQ` checkpoint: it carries
-  no `vision_tower.*` weights (the tower is randomly initialized at load), so the probe answers are
-  hallucinated; use the 12B or 26B Gemma presets for multimodal workloads.
-- Verbatim needle recall at ~198K is at the boundary for the two recurrent/windowed presets:
-  nemotron-omni greedily returns the planted values' digits without their alpha prefix (full-form to 88K)
-  and north-mini answers not-found; a single T=0.7 sample on either lands on either side of that boundary,
-  so fleet-run LATE flips on these two presets are not regressions
-  ([controls](benchmarks/validation/deep-probe-controls-v0518-v0520-2026-09-19.json)).
-- Flint loses the first 10 % of the window at 243–248K on natural-text needles (a NoPE model; the stock
-  filler is a known-bad input for it).
-- Dense Qwen3.5/3.6 int4 checkpoints are throughput options; FP8 is the preferred agentic format.
-- Devstral tokenization requires patch 083 so rendered `[INST]` and `[TOOL_CALLS]` markers remain
-  single special tokens.
-- Do not use DCP2 with the TP2 GQA coding presets: adjacent ranks hold distinct K/V heads while the DCP
-  MHA reduction requires replicated K/V heads inside each group; North/Laguna also lack hybrid-SWA DCP
-  support.
-- **Agentic turns at depth are prefill-bound.** The gfx1201 extend kernel is compute-bound (~18 % MFU), so
-  a cache-hit turn still pays for the prefix walk; the fp8 QK dot (patch 108), the split-KV turn route
-  (patches 107/110) and `extra_buffer` cut a 1-token turn at 176K on `qwen38` from 10.1 s to 0.17–0.35 s,
-  but a turn with more than 256 new tokens, and every preset without the route, falls back to the extend
-  kernel. Open follow-ups are in Next steps.
-- The AWQ M=1 decode GEMV under-fills the 64 CUs on narrow-output projections (attn_o ~33–52 % of
-  roofline). Grid-level split-K was implemented and **refuted** — it regresses; the cap is per-CU
-  wavefront occupancy, not block count. Details:
-  [dense-gemv-narrow-n-splitk-handoff.md](benchmarks/dense-gemv-narrow-n-splitk-handoff.md).
-
-Final experiment dispositions are summarized in [benchmarks/FINDINGS.md](benchmarks/FINDINGS.md).
 
 ## Repository map
 
