@@ -203,9 +203,10 @@ operational history behind each item lives in the document it links, not here.
      at 176K** cached; Laguna 16–128-token turns 2.1× at 94K–142K
      ([receipt](benchmarks/profiling/extend-splitkv-route-wide-2026-11-01.md)). Left: a warp/tile sweep for the 64-row
      combine (2,156 spills), the 128-row tile (compile stall), Flint sinks on the route.
-   - **`extra_buffer` on the other six hybrid presets** (qwen36-27b, qwen35, qwen35-moe, qwen36-moe, coder-next,
-     coder-next-ream): same mechanism, same gates (agentic turn tax, needle grid single and across a turn boundary,
-     capabilities, pool sizes), ~1 h GPU each; flip each preset's `launch.sh` block on a pass.
+   - **`extra_buffer` on the other hybrid presets** ([fleet receipt](benchmarks/profiling/hybrid-cache-extra-buffer-fleet-2026-11-01.md)):
+     qwen36-27b done (1-token turn 4.8 / 3.5 / 11.4 s → 0.28 / 0.75 / 1.34 s at 6.5K / 52K / 104K, needle 12/12, caps
+     5/5); qwen35, qwen35-moe, qwen36-moe, coder-next-ream next with the same gates (coder-next's checkpoint is not on
+     disk). Then patch 110's route gate run on the AWQ hybrids.
    - **fp8 QK on the other FP8-cache presets** (north-mini, gemma4, qwen35/36, coder): opt-in `SGLANG_EXTEND_FP8_QK=1`
      until each runs its own needle-grid A/B.
    - Extend-kernel follow-ups: exp2 softmax, `num_stages` pipelining; the verify combine kernel still spills 346 / 2,156

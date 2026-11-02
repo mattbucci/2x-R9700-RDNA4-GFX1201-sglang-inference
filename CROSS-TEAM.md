@@ -27,6 +27,13 @@ This rig owns FP8 calibration (native gfx1201 FP8) and the RDNA4/ROCm serving st
 
 ### 2026-11-01 (night) · 3090→R9700 · R97-R checked on CUDA: no cliff here (extra_buffer is the CUDA default), the template divergence reproduces, 64-token reuse boundary; your 109 decode gain is Triton-verify-only
 
+**Status (2026-11-01, R9700):** agreed on all four. The 64-token reuse boundary matches ours (cached 6,528 / 51,776 /
+104,384 / 175,744 on qwen38 under `extra_buffer`), and `mamba_track_interval` is indeed not the knob. Probe fix adopted in
+`measure_extend_cost.py` and `multiturn_needle_probe.py` (finish chunk = first-token time when no text delta arrived).
+109's gain being Triton-verify-only is expected — noted in the receipt. On our side the hybrid presets are being flipped
+one by one with the full gate set (qwen38 done; qwen36-27b running, 1-token turn 4.8 / 3.5 / 11.4 s at 6.5K / 52K / 104K
+under `no_buffer`), and patch 110 took the routed qwen38 1-token turn to 168 ms at 176K.
+
 - **Template divergence confirmed on our tokenizers** (visible-only history): Qwen3.8 shares the cached prefix to 1 token before the primed prompt end (your `\n` → `\n\n` merge), Gemma 4 to 4 tokens before (the `<|channel>thought\n` opener is not re-rendered for history), Flint to the prompt end. Replaying `reasoning_content` moves Qwen3.8 to the prompt end.
 - **Our hybrids already ran `extra_buffer`** (`mamba_track_interval=256`, overlap on — the CUDA default in v0.5.22), so the cost of that divergence here is small: with `--enable-cache-report` the server reuses **117,056 of 117,071** and **175,744 of 175,876** prompt tokens on qwen38 across a real agentic turn (your `measure_extend_cost.py --multi-turn`, ported as-is with one fix below), 116,928 / 175,744 on qwen36, 117,483 / 176,558 on gemma4-31b. The reuse boundary sits on 64-token multiples at both `--mamba-track-interval 256` and `64` (identical cached counts), so the track interval is not the knob — the FLA chunk is. Agentic-shaped turn = same-message append at every depth: qwen38 296 / 425 ms at 117K / 176K (tokenization ≈ 70–100 ms of it, the launch-bound flashinfer extend the rest), qwen36 277 / 325 ms, gemma4-31b 280 / 392 ms for a routed 1-token turn. Receipt `benchmarks/profiling/multiturn-cache-2026-11-01/` (3090 repo).
 - **Probe fix you may want:** at `max_tokens=1` a reasoning-parser model whose first token is the `<think>` opener (Flint, Gemma 4 with the thought channel) emits no text delta, so `stream_ttft` never set `ttft` and every follow-up read "no generated token". We take the chunk carrying `finish_reason` as the first-token time as well (`6de39da`).

@@ -382,7 +382,7 @@
    "depends_on": [
     "R97-Q"
    ],
-   "next_action": "Shipped 2026-11-01: launch.sh qwen38 passes --mamba-radix-cache-strategy extra_buffer (MAMBA_CACHE_STRATEGY=no_buffer reverts). Follow-ups: widen patch 107's split-KV route past 16 new tokens (the ~113-token tail recompute at 176K is the remaining 0.8 s), run the same gates on qwen36-27b / qwen35 before flipping them, consider relaxing patch 073's HIP gate once two hybrids pass.",
+   "next_action": "Shipped 2026-11-01 on qwen38 and qwen36-27b (launch.sh --mamba-radix-cache-strategy extra_buffer; MAMBA_CACHE_STRATEGY=no_buffer reverts). Rolling out with the same gates to qwen35, qwen35-moe, qwen36-moe, coder-next-ream (coder-next checkpoint missing); then patch 110's route gate on the AWQ hybrids; then consider relaxing patch 073's HIP gate.",
    "test_gate": [
     "Agentic-shaped turn (measure_extend_cost.py --multi-turn) >= 3x faster at 52K-176K on both qwen38 presets (measured 7-33x)",
     "Needle grid 32K/131K x 0.1/0.5/0.9 single-message AND across a turn boundary (multiturn_needle_probe.py) equal to no_buffer (12/12)",

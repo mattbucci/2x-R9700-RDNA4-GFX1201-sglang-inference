@@ -627,6 +627,12 @@ PYEOF
             # recover. Stays OFF.
             CUDA_GRAPH="--disable-cuda-graph"
             MAMBA_CACHE="--max-mamba-cache-size 8"
+            # R97-R (2026-11-01): hybrid radix cache on extra_buffer (64-token Mamba state grid, overlap on) — see the
+            # qwen38 block. Same gates on this preset: 1-token agentic turn 4.80 / 3.45 / 11.4 s -> 0.28 / 0.75 / 1.34 s
+            # at 6.5K / 52K / 104K cached, needle grids 6/6 single and across a turn boundary, caps 5/5, pool unchanged.
+            # MAMBA_CACHE_STRATEGY=no_buffer restores the old behaviour.
+            EXTRA_ARGS="${EXTRA_ARGS:-} --mamba-radix-cache-strategy ${MAMBA_CACHE_STRATEGY:-extra_buffer}"
+            [[ "${MAMBA_CACHE_STRATEGY:-extra_buffer}" == "no_buffer" ]] && EXTRA_ARGS="$EXTRA_ARGS --disable-overlap-schedule"
             # pi/little-coder sends a `developer` role the stock Qwen3.6 template rejects
             # ("Unexpected message role" -> SGLang 400 -> empty 2s rollout); remap dev->system.
             CHAT_TEMPLATE="--chat-template $SCRIPT_DIR/qwen3.6_devrole_chat_template.jinja"

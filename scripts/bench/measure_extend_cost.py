@@ -145,6 +145,11 @@ def stream_ttft(base, model, prompt, timeout=3600, max_tokens=1):
                 )
                 if piece and ttft is None:
                     ttft = time.perf_counter() - start
+                # a reasoning-parser model whose first token is the <think> opener (Flint, Gemma 4's thought
+                # channel) emits no text delta at max_tokens=1: take the finishing chunk as the first-token time
+                # (3090 fix 6de39da, 2026-11-01)
+                if ttft is None and choice.get("finish_reason"):
+                    ttft = time.perf_counter() - start
                 if delta.get("content"):
                     content.append(delta["content"])
     usage = usage or {}

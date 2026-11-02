@@ -46,6 +46,9 @@ See [`benchmarks/profiling/hybrid-cache-extra-buffer-qwen38-2026-11-01.md`](../b
   identical. Decode (equal-length, order-controlled): cold runs equal or better than `no_buffer` (45.0 / 33.0 / 31.0 vs 44.2 /
   32.3 / 26.6 tok/s at 24 / 58K / 197K), cache-hit runs ±18 % with the generated content (DSpark acceptance) — no decode
   delta claimed.
+- Fleet roll-out ([receipt](../benchmarks/profiling/hybrid-cache-extra-buffer-fleet-2026-11-01.md)): qwen36-27b flipped
+  2026-11-01 (1-token turn 4.8 / 3.5 / 11.4 s → 0.28 / 0.75 / 1.34 s, needle 12/12, caps 5/5, decode faster with overlap
+  back on); qwen35, qwen35-moe, qwen36-moe, coder-next-ream follow.
 
 ## Not in scope
 

@@ -56,6 +56,8 @@ def chat(port, model, messages, max_tokens, stream_ttft=False):
                     reasoning.append(d["reasoning_content"])
                 if ch.get("finish_reason"):
                     finish = ch["finish_reason"]
+                    if ttft is None:  # no text delta before the end (e.g. a lone <think> opener at small max_tokens)
+                        ttft = time.perf_counter() - t0
     return {"content": "".join(content), "reasoning": "".join(reasoning), "prompt_tokens": usage.get("prompt_tokens"),
             "completion_tokens": usage.get("completion_tokens"), "finish_reason": finish, "ttft_s": round(ttft, 3) if ttft else None}
 
