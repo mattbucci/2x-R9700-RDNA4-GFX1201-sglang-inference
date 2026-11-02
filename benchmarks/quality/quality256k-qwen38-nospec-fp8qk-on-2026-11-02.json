@@ -1,0 +1,66 @@
+{
+  "tag": "qwen38-nospec-fp8qk-on",
+  "results": [
+    {
+      "approx": 32768,
+      "multikey": {
+        "actual_tokens": 32904,
+        "correct": true,
+        "s": 44.5
+      },
+      "vartrack": {
+        "actual_tokens": 32850,
+        "correct": true,
+        "s": 29.9
+      },
+      "aggregate": {
+        "actual_tokens": 32884,
+        "correct": true,
+        "s": 30.1
+      },
+      "actual_tokens": 32904,
+      "score": 1.0
+    },
+    {
+      "approx": 131072,
+      "multikey": {
+        "actual_tokens": 131079,
+        "correct": true,
+        "s": 135.9
+      },
+      "vartrack": {
+        "actual_tokens": 131025,
+        "correct": true,
+        "s": 125.4
+      },
+      "aggregate": {
+        "actual_tokens": 131059,
+        "correct": true,
+        "s": 128.3
+      },
+      "actual_tokens": 131079,
+      "score": 1.0
+    },
+    {
+      "approx": 200000,
+      "multikey": {
+        "actual_tokens": 199917,
+        "correct": true,
+        "s": 234.3
+      },
+      "vartrack": {
+        "actual_tokens": 199865,
+        "correct": true,
+        "s": 225.7
+      },
+      "aggregate": {
+        "actual_tokens": 199897,
+        "correct": true,
+        "s": 226.6
+      },
+      "actual_tokens": 199917,
+      "score": 1.0
+    }
+  ],
+  "overall": 1.0
+}

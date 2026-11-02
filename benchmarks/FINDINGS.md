@@ -287,6 +287,14 @@ needle 6/6 on both arms, capabilities 5/5. Shipped as patch 108 (`SGLANG_EXTEND_
 `launch.sh` (`EXTEND_FP8_QK=0` restores the upcast); the other FP8-cache presets stay opt-in until each runs its own
 needle A/B. Receipt: [`profiling/extend-attention-fp8qk-qwen38-2026-10-31.md`](profiling/extend-attention-fp8qk-qwen38-2026-10-31.md).
 
+**Reasoning-at-depth gate (2026-11-02).** After the 3090's W4A8 sweep showed a needle grid passing where reasoning had
+collapsed (CROSS-TEAM 2026-11-02), patch 108 was re-gated with the ported `probe_256k_quality.py` (multikey retrieval,
+3-step variable chain, aggregation; identical instances per length) on the no-spec `qwen38`, `EXTEND_FP8_QK=0` vs `1`,
+same session: **9/9 vs 9/9** at 32,904 / 131,079 / 199,917 actual tokens
+([off](quality/quality256k-qwen38-nospec-fp8qk-off-2026-11-02.json),
+[on](quality/quality256k-qwen38-nospec-fp8qk-on-2026-11-02.json)). The fp8 QK dot keeps its default; every
+future activation-numerics lever gets this probe, not the needle alone.
+
 ## Split-KV verify combine stage: 8 warps — patch 111 (2026-11-02)
 
 The patch 109 combine kernel still spilled 346 / 2,156 registers at L_EXT 16 / 64 on qwen38 and 56 / 990 on Laguna
