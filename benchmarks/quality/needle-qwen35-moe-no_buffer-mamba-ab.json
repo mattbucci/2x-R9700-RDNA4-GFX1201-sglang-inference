@@ -1,0 +1,80 @@
+{
+ "tag": "needle-qwen35-moe-no_buffer-mamba-ab",
+ "timestamp": "2026-11-01 19:00",
+ "model": "/home/letsrtfm/AI/models/Qwen3.5-28B-A3B-REAP-AWQ",
+ "port": 23334,
+ "haystack": "benchmarks/quality/haystack-platypus.txt",
+ "chars_per_token": 3.3,
+ "temperature": 0.0,
+ "flush": true,
+ "max_tokens": 2048,
+ "results": [
+  {
+   "found": true,
+   "actual_prompt_tokens": 34201,
+   "completion_tokens": 210,
+   "finish_reason": "stop",
+   "seconds": 11.7,
+   "content_tail": "\n\nBANANA42",
+   "reasoning_tail": "",
+   "context": 32768,
+   "depth": 0.1
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 34201,
+   "completion_tokens": 193,
+   "finish_reason": "stop",
+   "seconds": 11.1,
+   "content_tail": "\n\nBANANA42",
+   "reasoning_tail": "",
+   "context": 32768,
+   "depth": 0.5
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 34201,
+   "completion_tokens": 211,
+   "finish_reason": "stop",
+   "seconds": 11.4,
+   "content_tail": "\n\nBANANA42",
+   "reasoning_tail": "",
+   "context": 32768,
+   "depth": 0.9
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 138142,
+   "completion_tokens": 180,
+   "finish_reason": "stop",
+   "seconds": 65.8,
+   "content_tail": "\n\nBANANA42",
+   "reasoning_tail": "",
+   "context": 131072,
+   "depth": 0.1
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 138143,
+   "completion_tokens": 200,
+   "finish_reason": "stop",
+   "seconds": 68.2,
+   "content_tail": "\n\nBANANA42",
+   "reasoning_tail": "",
+   "context": 131072,
+   "depth": 0.5
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 138143,
+   "completion_tokens": 396,
+   "finish_reason": "stop",
+   "seconds": 69.4,
+   "content_tail": "\n\nBANANA42",
+   "reasoning_tail": "",
+   "context": 131072,
+   "depth": 0.9
+  }
+ ],
+ "score": 1.0
+}
