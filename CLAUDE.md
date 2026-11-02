@@ -135,7 +135,8 @@ Keep diagnostic switches off by default and scoped to the affected model or kern
 
 ## Documentation ownership
 
-- [README.md](README.md): current supported stack, presets, results, and limitations.
+- **CI `docs-check` enforces these rules** (`.github/actions/docs-check/` in m4-sglang-inference, shared by all three rig repos): README skeleton and size, CLAUDE.md size, no dates or status markers. Open work and known issues are GitHub issues, not README sections. Run `python3 <m4-repo>/.github/actions/docs-check/docs_check.py --root .` before committing docs.
+- [README.md](README.md): current supported stack, presets and results. Open work and known limitations are GitHub issues.
 - [PATCHES.md](PATCHES.md): active patch collections and counts.
 - [patches/README.md](patches/README.md): current SGLang patch index and replay procedure.
 - [benchmarks/README.md](benchmarks/README.md): benchmark data index.
