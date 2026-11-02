@@ -1,0 +1,46 @@
+{
+  "tag": "qwen35-fp8qk",
+  "results": [
+    {
+      "approx": 32768,
+      "multikey": {
+        "actual_tokens": 32862,
+        "correct": true,
+        "s": 132.9
+      },
+      "vartrack": {
+        "actual_tokens": 32808,
+        "correct": true,
+        "s": 59.4
+      },
+      "aggregate": {
+        "actual_tokens": 32842,
+        "correct": true,
+        "s": 60.6
+      },
+      "actual_tokens": 32862,
+      "score": 1.0
+    },
+    {
+      "approx": 131072,
+      "multikey": {
+        "actual_tokens": 131037,
+        "correct": true,
+        "s": 260.1
+      },
+      "vartrack": {
+        "actual_tokens": 130983,
+        "correct": true,
+        "s": 198.9
+      },
+      "aggregate": {
+        "actual_tokens": 131017,
+        "correct": true,
+        "s": 173.2
+      },
+      "actual_tokens": 131037,
+      "score": 1.0
+    }
+  ],
+  "overall": 1.0
+}

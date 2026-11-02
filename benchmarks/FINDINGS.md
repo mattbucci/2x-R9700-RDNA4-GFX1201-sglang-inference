@@ -323,6 +323,10 @@ prefill moved (−20 %) and the preset is unchanged.
 −37 %), turns unchanged (routed), needle 6/6 and reasoning probe 6/6 on both arms, caps 5/5
 ([receipt](profiling/extend-fp8qk-qwen36-moe-2026-11-02.md)); `qwen36-moe` exports `SGLANG_EXTEND_FP8_QK=1`.
 
+**Qwen3.5-27B AWQ (2026-11-02, shipped).** Cold prefill 56.1 → 49.6 s at 58K and 361 → 241 s at 197K (−12 % / −33 %),
+turns unchanged (routed), needle 3/6 → 4/6 with every miss a thinking-cap cell (same 131K cells on both arms), reasoning
+probe 6/6 on both, caps pass ([receipt](profiling/extend-fp8qk-qwen35-2026-11-02.md)); `qwen35` exports `SGLANG_EXTEND_FP8_QK=1`.
+
 ## 3090 tokenizer-side turn ports (incremental tokenizer, lazy decode-back) — null here (2026-11-02)
 
 The 3090's patch 072 (exact incremental tokenization of append-only prompts + lazy prompt decode-back on multimodal-flagged

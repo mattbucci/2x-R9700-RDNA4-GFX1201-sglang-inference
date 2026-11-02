@@ -1,0 +1,40 @@
+{
+ "label": "qwen35 default",
+ "model": "/home/letsrtfm/AI/models/Qwen3.5-27B-AWQ-4bit-calibrated",
+ "port": 23334,
+ "runs": 2,
+ "method": "flush_cache + non-stream max_tokens=1 wall time",
+ "timestamp": "2026-11-02 14:15",
+ "rows": [
+  {
+   "context": 8192,
+   "input_len": 7331,
+   "runs_s": [
+    5.49,
+    5.293
+   ],
+   "median_s": 5.391,
+   "prefill_tok_per_s": 1359.8
+  },
+  {
+   "context": 65536,
+   "input_len": 58483,
+   "runs_s": [
+    56.073,
+    56.169
+   ],
+   "median_s": 56.121,
+   "prefill_tok_per_s": 1042.1
+  },
+  {
+   "context": 221184,
+   "input_len": 197326,
+   "runs_s": [
+    361.362,
+    360.803
+   ],
+   "median_s": 361.083,
+   "prefill_tok_per_s": 546.5
+  }
+ ]
+}

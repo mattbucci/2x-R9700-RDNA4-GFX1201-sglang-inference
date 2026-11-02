@@ -504,6 +504,11 @@ PYEOF
             # 64-row chunks. Warmed agentic turns 1 / 64 / 256 new tokens 681 / 578 / 595 -> 270 / 323 / 431 ms at 52K and 1,218 / 837 / 867 -> 259 / 339 / 466 ms at 104K cached; needle across a turn equal
             # (every miss is a finish=length thinking-cap cell on both arms), caps 5/5. EXTEND_SPLITKV_MAX=0 disables.
             export SGLANG_EXTEND_SPLITKV_MAX_TOKENS="${EXTEND_SPLITKV_MAX:-256}"
+            # Patch 108 fp8 QK dot in extend attention (gate 2026-11-02, same session, default first): cold prefill
+            # 56.1 -> 49.6 s at 58K and 361 -> 241 s at 197K (-12 % / -33 %), 7.3K unchanged; warmed turns unchanged (routed);
+            # natural needle 3/6 -> 4/6 (every miss a thinking-cap cell, the same 131K cells on both arms), 256K reasoning
+            # probe 6/6 on both arms, caps pass. EXTEND_FP8_QK=0 restores the upcast.
+            export SGLANG_EXTEND_FP8_QK="${EXTEND_FP8_QK:-1}"
             # pi/little-coder sends a `developer` role the stock template rejects (-> SGLang
             # 400 -> empty 2s rollout); remap dev->system (was \$MODEL/chat_template.jinja).
             CHAT_TEMPLATE="--chat-template $SCRIPT_DIR/qwen3.5_devrole_chat_template.jinja"
