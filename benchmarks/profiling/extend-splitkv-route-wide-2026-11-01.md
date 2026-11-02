@@ -70,6 +70,17 @@ Decode TPOT identical across arms (43.6 / 45.1 / 48.5 ms per token). The route i
 first (unwarmed) arm carried 15 s Triton compiles of the new tile variants in its early rows; the persistent Triton cache
 makes that a one-time cost per host.
 
+**qwen36-27b (AWQ, `extra_buffer`, bf16-upcast QK on both paths)**, route off → ≤ 256 in 64-row chunks, warmed measure pass:
+
+| cached prompt | 1 new | 64 new | 256 new |
+|---:|---:|---:|---:|
+| 6,528 | 265 → 233 ms | 283 → 261 | 332 → 330 |
+| 51,712 | 668 → **273** | 548 → **329** | 596 → 442 |
+| 104,384 | 1,223 → **259** | 843 → **340** | 867 → 472 |
+
+Needle across a turn boundary 6/6 on both arms (turn-2 TTFT 1.5–1.7 → 0.48 s at 138K), capabilities 5/5, decode TPOT
+identical. The unwarmed first pass again carried the tile compiles (7.2 s on its first turn). Enabled for `qwen36-27b`.
+
 ## Disposition
 
 **Shipped as patch 110** (`triton_backend.py`: `SGLANG_EXTEND_SPLITKV_TILE`, default 64; chunk loop over

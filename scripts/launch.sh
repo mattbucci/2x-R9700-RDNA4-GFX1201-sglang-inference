@@ -639,6 +639,11 @@ PYEOF
             # MAMBA_CACHE_STRATEGY=no_buffer restores the old behaviour.
             EXTRA_ARGS="${EXTRA_ARGS:-} --mamba-radix-cache-strategy ${MAMBA_CACHE_STRATEGY:-extra_buffer}"
             [[ "${MAMBA_CACHE_STRATEGY:-extra_buffer}" == "no_buffer" ]] && EXTRA_ARGS="$EXTRA_ARGS --disable-overlap-schedule"
+            # Patch 110 (2026-11-01): cache-hit extends of <= 256 new tokens through the split-KV verify kernel in
+            # 64-row chunks (bf16-upcast QK here, matching the extend kernel). Warmed agentic turns 1 / 64 / 256 new
+            # tokens 668 / 548 / 596 -> 273 / 329 / 442 ms at 52K and 1,223 / 843 / 867 -> 259 / 340 / 472 ms at 104K
+            # cached; needle across a turn boundary 6/6, caps 5/5. EXTEND_SPLITKV_MAX=0 disables.
+            export SGLANG_EXTEND_SPLITKV_MAX_TOKENS="${EXTEND_SPLITKV_MAX:-256}"
             # pi/little-coder sends a `developer` role the stock Qwen3.6 template rejects
             # ("Unexpected message role" -> SGLang 400 -> empty 2s rollout); remap dev->system.
             CHAT_TEMPLATE="--chat-template $SCRIPT_DIR/qwen3.6_devrole_chat_template.jinja"
