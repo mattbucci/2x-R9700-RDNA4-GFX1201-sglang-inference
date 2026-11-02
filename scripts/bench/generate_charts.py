@@ -31,12 +31,28 @@ NORTH_PROFILE_AB_RECEIPT = os.path.join(
 NORTH_PROFILE_AB_CHART = os.path.join(
     BENCH_DIR, "north_mini_tooluse_profile_ab.png"
 )
-TOOLUSE_REQUESTED_LENGTHS = [
-    16384, 65536, 116000, 131072, 176000, 196608, 256000,
-]
-TOOLUSE_SCORED_LENGTHS = [
-    16384, 65536, 116000, 131072, 176000, 196608, 245248,
-]
+# Rung lengths are a per-row property derived from the row's served context (R97-I): the probe's canonical
+# requested ladder, with every rung above ``context_length - completion reserve`` collapsing onto that depth.
+# The two names below are the 262,144-context instance that the Laguna / North rows and the receipts on disk use.
+import sys as _sys
+_sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "eval"))
+from probe_256k_tooluse import (  # noqa: E402
+    CANONICAL_REQUESTED_LENGTHS as TOOLUSE_REQUESTED_LENGTHS,
+    completion_reserve as tooluse_completion_reserve,
+    derive_scored_lengths as tooluse_derive_scored_lengths,
+)
+
+TOOLUSE_MAX_TOKENS = 8192
+TOOLUSE_FOLLOWUP_MAX_TOKENS = 8192
+TOOLUSE_COMPLETION_RESERVE = tooluse_completion_reserve(TOOLUSE_MAX_TOKENS, TOOLUSE_FOLLOWUP_MAX_TOKENS)
+
+
+def tooluse_scored_lengths_for(context_length):
+    """The rungs a server of this context scores under the canonical budgets."""
+    return tooluse_derive_scored_lengths(TOOLUSE_REQUESTED_LENGTHS, context_length, TOOLUSE_COMPLETION_RESERVE)
+
+
+TOOLUSE_SCORED_LENGTHS = tooluse_scored_lengths_for(262144)
 # Sampled ladders are run at the model-recommended sampling, once per seed.
 # The per-seed ``seed`` value is added by the loader, so a row declares only
 # the sampling that must be identical across its seeds.
@@ -111,21 +127,26 @@ NORTH_PROFILE_AB_PROFILES = {
 
 # One row per model.  Each row is rendered from every one of its declared
 # seeds; a row with a missing seed is not renderable at all.
+def tooluse_row(tag_prefix, label, order, context_length=262144, seeds=None, sampling=None):
+    """Declare a ladder row; its rung lengths derive from ``context_length`` (no per-preset length table)."""
+    scored = tooluse_scored_lengths_for(context_length)
+    if not scored:
+        raise ValueError(f"row {tag_prefix!r}: context_length {context_length} cannot hold the completion reserve")
+    return {
+        "tag_prefix": tag_prefix,
+        "label": label,
+        "order": order,
+        "seeds": list(TOOLUSE_SEEDS if seeds is None else seeds),
+        "sampling": dict(TOOLUSE_SAMPLED_SAMPLING if sampling is None else sampling),
+        "context_length": int(context_length),
+        "requested_lengths": list(TOOLUSE_REQUESTED_LENGTHS),
+        "scored_lengths": scored,
+    }
+
+
 TOOLUSE_LADDER_ROWS = {
-    "laguna-sampled": {
-        "tag_prefix": "laguna-sampled",
-        "label": "Laguna XS.2 FP8 (MoE)",
-        "order": 0,
-        "seeds": list(TOOLUSE_SEEDS),
-        "sampling": dict(TOOLUSE_SAMPLED_SAMPLING),
-    },
-    "north-mini-post095": {
-        "tag_prefix": "north-mini-post095",
-        "label": "North-Mini-Code FP8 (cohere2_moe)",
-        "order": 1,
-        "seeds": list(TOOLUSE_SEEDS),
-        "sampling": dict(TOOLUSE_SAMPLED_SAMPLING),
-    },
+    "laguna-sampled": tooluse_row("laguna-sampled", "Laguna XS.2 FP8 (MoE)", 0),
+    "north-mini-post095": tooluse_row("north-mini-post095", "North-Mini-Code FP8 (cohere2_moe)", 1),
 }
 
 TOOLUSE_RESULT_STYLES = {
@@ -313,12 +334,12 @@ def tooluse_receipt_reason(receipt, row, seed):
         return "max_tokens must be 8192"
     if settings.get("followup_max_tokens") != 8192:
         return "followup_max_tokens must be 8192"
-    if settings.get("context_length") != 262144:
-        return "context_length must be 262144"
-    if settings.get("requested_lengths") != TOOLUSE_REQUESTED_LENGTHS:
+    if settings.get("context_length") != row["context_length"]:
+        return f"context_length must be {row['context_length']} for this row"
+    if settings.get("requested_lengths") != row["requested_lengths"]:
         return "requested_lengths must be the canonical ladder"
-    if settings.get("scored_lengths") != TOOLUSE_SCORED_LENGTHS:
-        return "scored_lengths must be the canonical ladder"
+    if settings.get("scored_lengths") != row["scored_lengths"]:
+        return f"scored_lengths must be the row's derived ladder {row['scored_lengths']}"
 
     expected_sampling = dict(row["sampling"])
     expected_sampling.update({"seed": seed, "seed_effective": True})
@@ -327,10 +348,10 @@ def tooluse_receipt_reason(receipt, row, seed):
 
     if server.get("tp_size") != 2:
         return "tp_size must be 2"
-    if len(results) != len(TOOLUSE_SCORED_LENGTHS):
-        return f"results must contain exactly {len(TOOLUSE_SCORED_LENGTHS)} rungs"
-    if [result.get("approx_tokens") for result in results] != TOOLUSE_SCORED_LENGTHS:
-        return "rung approx_tokens must be the canonical scored ladder"
+    if len(results) != len(row["scored_lengths"]):
+        return f"results must contain exactly {len(row['scored_lengths'])} rungs"
+    if [result.get("approx_tokens") for result in results] != row["scored_lengths"]:
+        return "rung approx_tokens must be the row's derived scored ladder"
 
     for index, result in enumerate(results):
         if not isinstance(result, dict):
@@ -348,7 +369,8 @@ def tooluse_cross_seed_reason(seed_results):
     seeds of one row only aggregate into a single ladder if they measured the
     same prompt at every rung, so prompt identity is checked, not assumed.
     """
-    for index in range(len(TOOLUSE_SCORED_LENGTHS)):
+    n_rungs = min(len(results) for _, results in seed_results)
+    for index in range(n_rungs):
         rungs = [results[index] for _, results in seed_results]
         fillers = {rung.get("filler_sha256") for rung in rungs}
         if len(fillers) != 1:
@@ -374,7 +396,7 @@ def aggregate_tooluse_seeds(seed_results):
     keep the underlying spread visible.
     """
     rungs = []
-    for index in range(len(TOOLUSE_SCORED_LENGTHS)):
+    for index in range(min(len(results) for _, results in seed_results)):
         rows = [results[index] for _, results in seed_results]
         outcomes = [classify_tooluse_result(row) for row in rows]
         actuals = [
@@ -399,8 +421,11 @@ def aggregate_tooluse_seeds(seed_results):
     return rungs
 
 
-def tooluse_ceiling_text(rungs):
-    """Deepest rung every seed carried end to end, as a row annotation."""
+def tooluse_ceiling_text(rungs, context_length=None):
+    """Deepest rung every seed carried end to end, as a row annotation.
+
+    When that rung is the row's top rung, the row has no measurable ceiling below its served context and says so
+    (a short row must not read as a ceiling it was never tested for)."""
     passed = [
         rung
         for rung in rungs
@@ -410,6 +435,12 @@ def tooluse_ceiling_text(rungs):
         return "no end-to-end pass"
     deepest = max(passed, key=lambda rung: tooluse_result_position(rung) or 0)
     position = tooluse_result_position(deepest)
+    top = max(rungs, key=lambda rung: tooluse_result_position(rung) or 0)
+    if deepest is top and context_length:
+        return (
+            f"no ceiling below {context_length:,} ctx: {position:,} "
+            f"({deepest['pass_count']}/{deepest['seed_count']} seeds)"
+        )
     return (
         f"max end-to-end: {position:,} "
         f"({deepest['pass_count']}/{deepest['seed_count']} seeds)"
@@ -481,6 +512,8 @@ def load_tooluse_ladders(receipt_glob=TOOLUSE_RECEIPT_GLOB, rows=None):
                 "label": row["label"],
                 "order": row["order"],
                 "seeds": seeds,
+                "context_length": row["context_length"],
+                "scored_lengths": list(row["scored_lengths"]),
                 "paths": [found[seed][0] for seed in seeds],
                 "rungs": aggregate_tooluse_seeds(seed_results),
             }
@@ -558,7 +591,7 @@ def make_tooluse_ladder_chart(receipt_glob=TOOLUSE_RECEIPT_GLOB, out_path=TOOLUS
         ax.text(
             1.01,
             y,
-            tooluse_ceiling_text(ladder["rungs"]),
+            tooluse_ceiling_text(ladder["rungs"], ladder.get("context_length")),
             transform=blended_transform_factory(ax.transAxes, ax.transData),
             va="center",
             fontsize=9,
@@ -568,7 +601,8 @@ def make_tooluse_ladder_chart(receipt_glob=TOOLUSE_RECEIPT_GLOB, out_path=TOOLUS
 
     ax.set_xscale("log", base=2)
     ax.set_xlim(x_min, x_max)
-    ticks = [16384, 65536, 116000, 131072, 176000, 196608, 245248]
+    # one shared log axis; ticks are the union of every row's scored rungs so ragged rows read on the same scale
+    ticks = sorted({int(L) for ladder in ladders for L in ladder.get("scored_lengths", TOOLUSE_SCORED_LENGTHS)})
     ax.xaxis.set_major_locator(ticker.FixedLocator(ticks))
     ax.xaxis.set_major_formatter(ticker.FuncFormatter(fmt_actual_tokens))
     ax.tick_params(axis="x", rotation=35)

@@ -227,12 +227,12 @@
   {
    "id": "R97-I",
    "spec": "09-fleet-ladder-per-model-rungs.md",
-   "status": "queued",
+   "status": "in_progress",
    "resource": "cpu_then_tp2_long",
    "depends_on": [
     "R97-D"
    ],
-   "next_action": "Derive ladder rungs from the served context_length and move lengths into the per-row chart contract, then sweep the 14 unmeasured tool-call-qualified presets.",
+   "next_action": "CPU half done 2026-11-02: derive_scored_lengths()/completion_reserve() in probe_256k_tooluse.py (canonical seven requested rungs collapse onto context_length - reserve), tooluse_row() per-row contract in generate_charts.py (context_length, requested/scored lengths), ceiling text says \"no ceiling below <ctx>\" when the top rung passes, x ticks = union of rows. Next: the serial sweep — one preset at a time, 3 seeds, --filler-profile agentic --multi-turn, T=1.0/top-p 0.95, --enable-deterministic-inference; add a tooluse_row() per preset as its receipts land (a declared row without receipts fails the chart closed). Fold in Nemotron 2K/8K budget arms and the Devstral KV_DTYPE control.",
    "test_gate": [
     "Rung sets are derived from the served context_length; no per-preset length table exists",
     "Short-context presets produce zero depth-shortfall rungs from rungs exceeding their context",

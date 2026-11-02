@@ -661,3 +661,50 @@ class TooluseChartTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+@unittest.skipUnless(HAS_CHART_DEPS, "chart environment dependencies are unavailable")
+class PerRowRungDerivationTests(unittest.TestCase):
+    """R97-I: rung lengths are a per-row property derived from the row's served context."""
+
+    def test_scored_lengths_derive_from_context(self):
+        self.assertEqual(charts.tooluse_scored_lengths_for(262144), charts.TOOLUSE_SCORED_LENGTHS)
+        self.assertEqual(charts.TOOLUSE_SCORED_LENGTHS[-1], 262144 - charts.TOOLUSE_COMPLETION_RESERVE)
+        self.assertEqual(charts.tooluse_scored_lengths_for(131072), [16384, 65536, 131072 - charts.TOOLUSE_COMPLETION_RESERVE])
+        self.assertEqual(charts.tooluse_scored_lengths_for(32768), [32768 - charts.TOOLUSE_COMPLETION_RESERVE])
+        self.assertIsNone(charts.tooluse_derive_scored_lengths(charts.TOOLUSE_REQUESTED_LENGTHS, 8192, charts.TOOLUSE_COMPLETION_RESERVE))
+        with self.assertRaises(ValueError):
+            charts.tooluse_row("tiny", "8K preset", 9, context_length=8192)
+
+    def test_row_with_shorter_context_accepts_its_own_ladder_and_rejects_the_canonical_one(self):
+        row = charts.tooluse_row("short-ctx", "131K preset", 5, context_length=131072)
+        self.assertEqual(row["scored_lengths"], [16384, 65536, 114176])
+        results = [_success_result(length, length + 7) for length in row["scored_lengths"]]
+        receipt = _receipt(LAGUNA, 1, results=results, settings_update={
+            "context_length": 131072, "scored_lengths": list(row["scored_lengths"])})
+        receipt["tag"] = "short-ctx-seed1"
+        self.assertIsNone(charts.tooluse_receipt_reason(receipt, row, 1))
+        canonical = _receipt(LAGUNA, 1)
+        canonical["tag"] = "short-ctx-seed1"
+        self.assertIn("context_length must be 131072", charts.tooluse_receipt_reason(canonical, row, 1))
+        wrong_rungs = _receipt(LAGUNA, 1, settings_update={"context_length": 131072, "scored_lengths": list(row["scored_lengths"])})
+        wrong_rungs["tag"] = "short-ctx-seed1"
+        self.assertIn("exactly 3 rungs", charts.tooluse_receipt_reason(wrong_rungs, row, 1))
+
+    def test_ceiling_text_distinguishes_no_ceiling_from_ceiling_found(self):
+        row = charts.tooluse_row("short-ctx", "131K preset", 5, context_length=131072)
+        seed_results = [
+            (seed, [_success_result(length, length + 7) for length in row["scored_lengths"]])
+            for seed in row["seeds"]
+        ]
+        rungs = charts.aggregate_tooluse_seeds(seed_results)
+        self.assertEqual(len(rungs), 3)
+        self.assertEqual(
+            charts.tooluse_ceiling_text(rungs, row["context_length"]),
+            "no ceiling below 131,072 ctx: 114,183 (3/3 seeds)",
+        )
+        # the top rung failing on one seed -> a ceiling is found below the context
+        failing = copy.deepcopy(seed_results)
+        failing[0][1][-1]["correct_action"] = False
+        rungs = charts.aggregate_tooluse_seeds(failing)
+        self.assertTrue(charts.tooluse_ceiling_text(rungs, row["context_length"]).startswith("max end-to-end: 65,543"))

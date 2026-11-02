@@ -46,6 +46,30 @@ NEEDLE = (f"\n\n>>> CRITICAL INSTRUCTION: when you call the lookup_record tool, 
 FILLER_UNIT = "The archive contains routine maintenance logs and status reports. " * 64
 
 FILLER_PROFILES = ("repeated", "agentic")
+
+# The canonical requested ladder (seven rungs through the 256K goal). A preset's SCORED rungs derive from the served
+# context length: every requested rung above ``context_length - completion reserve`` collapses onto that usable
+# depth, so a 131K server scores three rungs and a 262K server seven. The chart contract (generate_charts.py) uses the
+# same function per row, so no per-preset length table exists anywhere (R97-I).
+CANONICAL_REQUESTED_LENGTHS = [16384, 65536, 116000, 131072, 176000, 196608, 256000]
+
+
+def completion_reserve(max_tokens, followup_max_tokens, multi_turn=True, overhead=None):
+    """Tokens held back for the two completions (+ the structured follow-up overhead)."""
+    reserve = max_tokens + (FOLLOWUP_CONTEXT_OVERHEAD if overhead is None else overhead)
+    if multi_turn:
+        reserve += followup_max_tokens or max_tokens
+    return reserve
+
+
+def derive_scored_lengths(requested, context_length, reserve):
+    """Scored rungs for a server: requested rungs capped at ``context_length - reserve``, deduplicated, ascending.
+
+    Returns None when the context cannot hold the reserve at all."""
+    usable = context_length - reserve
+    if usable <= 0:
+        return None
+    return sorted({min(int(L), usable) for L in requested})
 FILLER_VERSIONS = {
     "repeated": "repeated-v1",
     "agentic": "agentic-code-log-v1",
@@ -807,8 +831,9 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--port", type=int, default=23334)
     ap.add_argument("--tag", default="model")
-    ap.add_argument("--lengths", default="16384,65536,131072,196608,256000",
-                    help="comma-separated approx token context lengths")
+    ap.add_argument("--lengths", default=",".join(str(x) for x in CANONICAL_REQUESTED_LENGTHS),
+                    help="comma-separated requested context lengths; rungs above the server's usable depth collapse onto it "
+                         "(the canonical seven-rung ladder is the default, so a preset's scored rungs follow its served context)")
     ap.add_argument("--max-tokens", type=int, default=2048)
     ap.add_argument("--followup-max-tokens", type=int, default=None,
                     help="multi-turn answer budget (default: --max-tokens)")
@@ -862,16 +887,14 @@ def main():
     if ctx_len is None:
         raise SystemExit("server context length unavailable; refusing an unbounded depth run")
     followup_max_tokens = args.followup_max_tokens or args.max_tokens
-    reserve = args.max_tokens + FOLLOWUP_CONTEXT_OVERHEAD
-    if args.multi_turn:
-        reserve += followup_max_tokens
+    reserve = completion_reserve(args.max_tokens, followup_max_tokens, args.multi_turn)
     usable = (ctx_len - reserve) if ctx_len else None
     if usable is not None and usable <= 0:
         raise SystemExit(
             f"context_length={ctx_len} cannot hold reserved completion budget={reserve}")
     if usable:
         capped = [L for L in lengths if L > usable]
-        lengths = sorted({min(L, usable) for L in lengths})
+        lengths = derive_scored_lengths(lengths, ctx_len, reserve)
         if capped:
             print(f"server context_length={ctx_len}: capped {capped} -> {usable} "
                   f"(completion reserve={reserve})")

@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | **Type** | experiment |
-| **Status** | queued — spec only; no execution started |
+| **Status** | CPU half done 2026-11-02 (rungs derive from the served context in `probe_256k_tooluse.py`, per-row `context_length` / `scored_lengths` contract + ragged renderer in `generate_charts.py`, 3 new tests); GPU sweep queued |
 | **Execution host** | r9700-box |
 | **Wall clock** | ~1 day: ~0.5 day CPU for the rung-set change and its tests, then an overnight sweep |
 | **GPU time** | ~6-10h on r9700-box (TP=2), 14 presets x (boot + three seeds), weighted by context length — the 8K/16K presets are minutes, the 262K presets ~45 min each |
