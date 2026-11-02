@@ -546,7 +546,7 @@ the pilot showed all seven scaffolds tolerate. The scoring phase of `run_model_c
 never to have run (sister-rig CLI against our `score_docker.py`) and was replaced by `score_cells.sh`.
 Details: `evals/swebench/FP8_BAKEOFF_SETUP.md` → Answer leakage and isolation.
 
-### LAB-Bench think-budget artifact on thinking models (fixed 2026-08-30)
+### LAB-Bench think-budget artifact on thinking models (fixed 2026-08-30; cells re-measured 2026-11-02)
 
 `eval_and_chart.py` scores the last standalone capital letter in `message.content` under a
 1024-token multiple-choice budget. Heavy thinkers spend the entire budget inside `<think>` on hard
@@ -555,11 +555,29 @@ empty content), so every such item scores 0 regardless of knowledge. Qwen3.8-27B
 0.051 under think mode and **0.423** with `--mc-no-think`
 (`chat_template_kwargs: {"enable_thinking": false}`), the fleet's best LAB-Bench. Non-thinking
 peers (Coder-30B 0.383, Devstral 0.257) always answered directly, so no-think is the
-apples-to-apples condition and their historical cells are unaffected. The near-zero
-Qwen3.5 (0.029 / 0.000) and Gemma4 (0.034 / 0.086) LAB-Bench cells predate the flag and are
-suspect until re-measured; MMLU was not visibly affected (Qwen3.8: 0.842 think-mode). Results
-JSONs record the condition in `mc_mode`. The MC budget "matches the 3090 sister repo", so the
-same artifact likely applies there.
+apples-to-apples condition and their cells are unaffected. Results JSONs record the condition in
+`mc_mode`. The MC budget matches the 3090 sister repo, so the same artifact applies there.
+
+The suppressed Qwen3.5 and Gemma 4 cells were re-measured under `--mc-no-think` (`*-nothink.json`
+receipts in `quality/`; MMLU 200 samples, LAB-Bench 50 per benchmark, needle 1K–64K):
+
+| Model (preset) | LAB-Bench think → no-think | MMLU think → no-think | HumanEval (raw completion) | Needle |
+|---|---:|---:|---:|---:|
+| Qwen3.5-27B AWQ (`qwen35`) | 0.029 → **0.405** | 0.193 → 0.906 | 0.700 → 0.967 | 1/4 |
+| Qwen3.5-28B-A3B-REAP AWQ (`qwen35-moe`) | 0.000 → **0.363** | — → 0.836 | — → 0.900 | 4/4 |
+| Gemma 4 31B AWQ (`gemma4-31b`) | 0.086 → **0.405** | 0.912 → 0.906 | 0.400 → 0.000 | 4/4 |
+| Gemma 4 26B-A4B AWQ (`gemma4`) | 0.034 → **0.327** | 0.772 → 0.819 | 0.000 → 0.000 | 4/4 |
+
+Qwen3.8-27B-FP8 (0.423) stays the fleet's best LAB-Bench; Qwen3.5-27B and Gemma 4 31B tie at 0.405 with
+better MMLU (0.906). The Qwen3.5-27B MMLU 0.193 and HumanEval 0.700 think-mode cells were the same budget
+artifact (thinking consumed the 1,024-token MC budget; the 4,096-token code budget partly).
+
+**HumanEval raw-completion artifact (Gemma 4).** The HumanEval runner drove `/v1/completions` with the bare
+function stub, i.e. no chat template. Instruct-only checkpoints degenerate there: Gemma 4 31B answers the
+stub with repeated docstring quotes to the token cap (0/30), while the same problem through
+`/v1/chat/completions` returns a correct fenced solution. `--humaneval-chat` (2026-11-02) runs HumanEval
+through the chat template with code-fence extraction and records `he_mode`; the Gemma cells are re-run
+under it with Qwen3.5-27B (0.967 under raw completion) as the control (issue #23).
 
 ### Post-save processor files are a quantization ship gate (2026-10-25)
 
