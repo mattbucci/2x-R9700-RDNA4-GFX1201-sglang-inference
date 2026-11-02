@@ -1,0 +1,275 @@
+{
+ "preset": "qwen38",
+ "shape": {
+  "h_q": 48,
+  "h_kv": 4,
+  "head_dim": 256,
+  "v_head_dim": 256,
+  "layers": 16
+ },
+ "kv_dtype": "fp8",
+ "k_scale": 0.07,
+ "v_scale": 0.05,
+ "device": "AMD Radeon AI PRO R9700",
+ "label": "new4 stream=4",
+ "sinks": false,
+ "route_chunk": 0,
+ "extend_fp8_qk": false,
+ "first_launch_free_delta_mb": 4.0,
+ "kernel_stats": [
+  {
+   "kernel": "_verify_prefix_stage1",
+   "n_regs": 178,
+   "n_spills": 0,
+   "constants": {
+    "num_stages": 1,
+    "num_warps": 4
+   }
+  },
+  {
+   "kernel": "_verify_prefix_stage1",
+   "n_regs": 256,
+   "n_spills": 86,
+   "constants": {
+    "num_stages": 1,
+    "num_warps": 4
+   }
+  },
+  {
+   "kernel": "_verify_combine_stage2",
+   "n_regs": 166,
+   "n_spills": 0,
+   "constants": {
+    "num_stages": 1,
+    "num_warps": 8
+   }
+  },
+  {
+   "kernel": "_verify_combine_stage2",
+   "n_regs": 256,
+   "n_spills": 183,
+   "constants": {
+    "num_stages": 1,
+    "num_warps": 8
+   }
+  }
+ ],
+ "upcast_k": "1",
+ "tile_ab": null,
+ "qk_ab": false,
+ "gate": "vs fp32 reference: finite, cosine >= min(0.9999, extend cosine - 2e-5), max and rms error <= 1.25x the extend kernel's own",
+ "worst": {
+  "max_ulp": 10.876847290640393,
+  "min_cos": 0.9996486
+ },
+ "rows": [
+  {
+   "prefix": 8192,
+   "K": 1,
+   "status": "ok",
+   "extend_vs_fp32": {
+    "finite": true,
+    "cosine": 0.9996492,
+    "max_err_over_refmax": 0.025002,
+    "rms_err": 9.57e-05
+   },
+   "splitkv_vs_fp32": {
+    "finite": true,
+    "cosine": 0.9996612,
+    "max_err_over_refmax": 0.025624,
+    "rms_err": 9.4e-05
+   },
+   "extend_vs_splitkv_ulps_at_refmax": 8.18,
+   "extend_us": 3183.0,
+   "splitkv_us": 516.0,
+   "speedup": 6.17,
+   "per_step_ms_extend": 50.93,
+   "per_step_ms_splitkv": 8.26
+  },
+  {
+   "prefix": 8192,
+   "K": 16,
+   "status": "ok",
+   "extend_vs_fp32": {
+    "finite": true,
+    "cosine": 0.9996492,
+    "max_err_over_refmax": 0.027864,
+    "rms_err": 9.54e-05
+   },
+   "splitkv_vs_fp32": {
+    "finite": true,
+    "cosine": 0.9996638,
+    "max_err_over_refmax": 0.02745,
+    "rms_err": 9.34e-05
+   },
+   "extend_vs_splitkv_ulps_at_refmax": 8.727,
+   "extend_us": 3162.2,
+   "splitkv_us": 531.8,
+   "speedup": 5.95,
+   "per_step_ms_extend": 50.6,
+   "per_step_ms_splitkv": 8.51
+  },
+  {
+   "prefix": 8192,
+   "K": 64,
+   "status": "ok",
+   "extend_vs_fp32": {
+    "finite": true,
+    "cosine": 0.9996505,
+    "max_err_over_refmax": 0.02452,
+    "rms_err": 9.52e-05
+   },
+   "splitkv_vs_fp32": {
+    "finite": true,
+    "cosine": 0.999666,
+    "max_err_over_refmax": 0.027866,
+    "rms_err": 9.3e-05
+   },
+   "extend_vs_splitkv_ulps_at_refmax": 9.156,
+   "extend_us": 3165.2,
+   "splitkv_us": 952.3,
+   "speedup": 3.32,
+   "per_step_ms_extend": 50.64,
+   "per_step_ms_splitkv": 15.24
+  },
+  {
+   "prefix": 58000,
+   "K": 1,
+   "status": "ok",
+   "extend_vs_fp32": {
+    "finite": true,
+    "cosine": 0.9996454,
+    "max_err_over_refmax": 0.0228,
+    "rms_err": 3.63e-05
+   },
+   "splitkv_vs_fp32": {
+    "finite": true,
+    "cosine": 0.9996558,
+    "max_err_over_refmax": 0.022029,
+    "rms_err": 3.57e-05
+   },
+   "extend_vs_splitkv_ulps_at_refmax": 7.918,
+   "extend_us": 22260.2,
+   "splitkv_us": 3500.4,
+   "speedup": 6.36,
+   "per_step_ms_extend": 356.16,
+   "per_step_ms_splitkv": 56.01
+  },
+  {
+   "prefix": 58000,
+   "K": 16,
+   "status": "ok",
+   "extend_vs_fp32": {
+    "finite": true,
+    "cosine": 0.9996499,
+    "max_err_over_refmax": 0.02721,
+    "rms_err": 3.61e-05
+   },
+   "splitkv_vs_fp32": {
+    "finite": true,
+    "cosine": 0.9996555,
+    "max_err_over_refmax": 0.02834,
+    "rms_err": 3.58e-05
+   },
+   "extend_vs_splitkv_ulps_at_refmax": 9.187,
+   "extend_us": 20122.8,
+   "splitkv_us": 3581.2,
+   "speedup": 5.62,
+   "per_step_ms_extend": 321.96,
+   "per_step_ms_splitkv": 57.3
+  },
+  {
+   "prefix": 58000,
+   "K": 64,
+   "status": "ok",
+   "extend_vs_fp32": {
+    "finite": true,
+    "cosine": 0.9996493,
+    "max_err_over_refmax": 0.028194,
+    "rms_err": 3.61e-05
+   },
+   "splitkv_vs_fp32": {
+    "finite": true,
+    "cosine": 0.9996553,
+    "max_err_over_refmax": 0.027464,
+    "rms_err": 3.58e-05
+   },
+   "extend_vs_splitkv_ulps_at_refmax": 9.047,
+   "extend_us": 20259.9,
+   "splitkv_us": 5569.2,
+   "speedup": 3.64,
+   "per_step_ms_extend": 324.16,
+   "per_step_ms_splitkv": 89.11
+  },
+  {
+   "prefix": 197000,
+   "K": 1,
+   "status": "ok",
+   "extend_vs_fp32": {
+    "finite": true,
+    "cosine": 0.999645,
+    "max_err_over_refmax": 0.029294,
+    "rms_err": 1.97e-05
+   },
+   "splitkv_vs_fp32": {
+    "finite": true,
+    "cosine": 0.9996486,
+    "max_err_over_refmax": 0.029371,
+    "rms_err": 1.96e-05
+   },
+   "extend_vs_splitkv_ulps_at_refmax": 8.333,
+   "extend_us": 68177.2,
+   "splitkv_us": 11176.8,
+   "speedup": 6.1,
+   "per_step_ms_extend": 1090.84,
+   "per_step_ms_splitkv": 178.83
+  },
+  {
+   "prefix": 197000,
+   "K": 16,
+   "status": "ok",
+   "extend_vs_fp32": {
+    "finite": true,
+    "cosine": 0.9996458,
+    "max_err_over_refmax": 0.030308,
+    "rms_err": 1.96e-05
+   },
+   "splitkv_vs_fp32": {
+    "finite": true,
+    "cosine": 0.9996502,
+    "max_err_over_refmax": 0.032051,
+    "rms_err": 1.95e-05
+   },
+   "extend_vs_splitkv_ulps_at_refmax": 10.877,
+   "extend_us": 67570.9,
+   "splitkv_us": 11667.6,
+   "speedup": 5.79,
+   "per_step_ms_extend": 1081.13,
+   "per_step_ms_splitkv": 186.68
+  },
+  {
+   "prefix": 197000,
+   "K": 64,
+   "status": "ok",
+   "extend_vs_fp32": {
+    "finite": true,
+    "cosine": 0.9996469,
+    "max_err_over_refmax": 0.028346,
+    "rms_err": 1.96e-05
+   },
+   "splitkv_vs_fp32": {
+    "finite": true,
+    "cosine": 0.9996492,
+    "max_err_over_refmax": 0.0319,
+    "rms_err": 1.95e-05
+   },
+   "extend_vs_splitkv_ulps_at_refmax": 10.121,
+   "extend_us": 66519.5,
+   "splitkv_us": 18035.0,
+   "speedup": 3.69,
+   "per_step_ms_extend": 1064.31,
+   "per_step_ms_splitkv": 288.56
+  }
+ ],
+ "timestamp": "2026-11-02 08:35"
+}

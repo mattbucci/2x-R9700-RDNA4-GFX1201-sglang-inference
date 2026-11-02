@@ -306,6 +306,24 @@ caps 5/5. py-spy on the tokenizer manager during the 176K turns: 17 non-idle sam
 Our turn is GPU/scheduler time, so both changes are reverted (issue #35 null); the next lever for the turn is the
 non-routed layers' extend path / small-extend HIP-graph capture, not the tokenizer.
 
+## Prefill HIP graph for small extends (3090 recipe) — null on qwen38 (2026-11-02)
+
+The breakable prefill-graph backend captures on gfx1201 (8–128 tokens, 1.0 GB, pool unchanged) but a 1-token agentic
+turn reads 115 / 130 / 159 ms with it against 107 / 133 / 163 without at 52K / 104K / 176K cached (64-token 171 / 216 /
+268 vs 159 / 216 / 264), needle across a turn 6/6 and caps 5/5 on every arm; a first graph arm that read 151 / 147 / 170
+was a slow boot and is discarded ([receipt](profiling/prefill-graph-qwen38-2026-11-02.md)). Not adopted: once the
+split-KV route serves the full-attention layers the short extend is no longer launch-bound here; the 3090's 2× came off a
+launch-bound flashinfer extend.
+
+## Split-KV verify combine stage: register streaming — null (2026-11-02)
+
+A combine kernel with bf16 QK inputs and the value dimension streamed in 1 / 2 / 4 slices removes the 64-row chunk's spills
+(qwen38 952 → 183, Laguna 374 → 125) with numerics identical to the printed digit, but per layer it is +1–4 % on every
+K = 1 / 16 cell (the DSpark verify step, 1-token turns) and on every Laguna cell, winning only qwen38's 64-row chunk at an
+8K prefix (−28 %) ([receipt](profiling/verify-combine-stream-2026-11-02.md)). Not shipped; the spills were never the cost.
+The 64-row chunk's 1.6–2.6× over the 16-row tile is all stage 1 (4× the QK/PV work per KV block under the head_dim-keyed
+`(BLOCK_N 32, 4 warps)` tile) — a stage-1 tile sweep at `L_EXT` 64 is the follow-up.
+
 ## Split-KV verify combine stage: 8 warps — patch 111 (2026-11-02)
 
 The patch 109 combine kernel still spilled 346 / 2,156 registers at L_EXT 16 / 64 on qwen38 and 56 / 990 on Laguna
