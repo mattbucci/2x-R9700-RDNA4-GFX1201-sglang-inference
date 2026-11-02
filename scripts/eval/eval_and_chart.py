@@ -28,7 +28,13 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 import requests
-from datasets import load_dataset
+
+
+def load_dataset(*args, **kwargs):
+    """Lazy import so --chart works in an environment without `datasets` (matplotlib-only)."""
+    from datasets import load_dataset as _load_dataset
+
+    return _load_dataset(*args, **kwargs)
 
 RESULTS_DIR = Path("benchmarks/quality")
 
@@ -289,7 +295,13 @@ def generate_charts():
     # Load all results
     results = []
     for f in sorted(RESULTS_DIR.glob("*.json")):
-        results.append(json.load(open(f)))
+        try:
+            r = json.load(open(f))
+        except Exception:  # noqa: BLE001
+            continue
+        # benchmarks/quality also holds needle / cache-hit probe receipts; only eval_and_chart result files carry mmlu
+        if isinstance(r, dict) and "tag" in r and "mmlu" in r:
+            results.append(r)
 
     if not results:
         print("No results found. Run evals first.")
@@ -329,6 +341,7 @@ def generate_charts():
     fig.suptitle("Quality Comparison (INT4 AWQ, 2x R9700 RDNA4)", fontsize=14, fontweight="bold")
 
     colors = ["#2196F3", "#4CAF50", "#FF9800", "#9C27B0", "#F44336"][:len(tags)]
+    colors = [colors[i % len(colors)] for i in range(len(tags))]  # cycle: more result files than palette entries
 
     for ax, (title, data) in zip(axes, benchmarks):
         vals = [v * 100 if v is not None else 0 for v in data]
