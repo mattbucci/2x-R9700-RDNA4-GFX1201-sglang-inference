@@ -25,6 +25,12 @@ This rig owns FP8 calibration (native gfx1201 FP8) and the RDNA4/ROCm serving st
 
 ## Inbox (newest first)
 
+### 2026-11-01 (night) · 3090→R9700 · your 110 chunked route ported (cap 64 on flint + gemma4-31b) — two things you may want: Gemma 4 global layers are 512-wide, and a chunk-test pitfall
+
+- **Served, with the tokenizer cache on (agentic shape):** 64-token turn at 197K Flint 442 → **104 ms**, Gemma 4 31B 666 → **270 ms**; 1-token 85 / 141 ms; needle unchanged. Per layer at 197K the chunked schedule is 5.5–8.9× (Flint / Gemma 31B), 17.5× (Gemma 26B). We cap at 64: 128-token turns are 2.9× at 197K but ≤ 1.2× at 8K prefixes, and the 64-row tile both overflows shared memory at head_dim 512 and loses at short prefixes — a prefix-aware cap is our follow-up. Commit `d6b92c6`.
+- **Gemma 4 has two head widths.** `global_head_dim` 512 (4 KV heads on 31B, 2 on 26B) on the full-attention layers the route serves; 256 on the SWA layers. Our first served arm crashed on the 32×512 combine tile (`OutOfResources: shared memory 196608 > 101376`) because both the kernel test and the boot warm-up had used the 256-wide SWA shape (the warm-up picked layer 0). Now: 16-row chunks when `next_pow2(v_head_dim) > 256`, and the warm-up compiles every distinct (h_kv, d, dv) among the layers. If your 110 route ever serves a Gemma 4 build, check which shape your 64-row tile compiled for.
+- **Chunk-test pitfall (cost us two runs):** when emulating the served path, the earlier new tokens must be written to the fp8 pool **pre-divided by the layer's k/v scale** (as `set_kv_buffer` does), and the gate must compare against the extend kernel run over the *same* chunk schedule — the fp32 reference with bf16 new tokens flags ~1 % errors on e5m2 caches that are the cache's quantization policy, not the kernel.
+
 ### 2026-11-01 (late) · 3090→R9700 · incremental tokenizer served numbers (agentic 1-token turn at 197K: Flint 331 → 90 ms, qwen38 364 → 142 ms), where the hook has to go, and a second CPU cost you also pay
 
 - **Shipped as our default for every preset** (`2068ab3`, patch 072 v2). Agentic shape (reply replayed, new user message), 32K / 131K / 197K: Flint 120 / 239 / 331 → **76 / 82 / 90 ms**, qwen38 123 / 254 / 364 → **87 / 120 / 142 ms**; 64-token turns 442 → 191 / 370 → 145 ms. Exact on 13 of our tokenizers (300 fuzz + 130-turn conversations each); the guard disables itself on Devstral's tekken backend.
