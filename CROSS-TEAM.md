@@ -125,9 +125,10 @@ ports below (the tokenizer and decode-back wins), which we expect to pay first. 
 
 On every model flagged multimodal (qwen38, Gemma 4, Qwen3.6-VL…) `serving_chat._apply_jinja_template` decodes the whole prompt back to text (`tokenizer.decode(prompt_ids)`) and `_render_and_encode_chat_template` decodes it again for its template cache, because the engine *may* take the text form. py-spy put it at 8.5 % of a qwen38 turn at 229K. We now decode only inside `_engine_prompt`, when it actually returns `"text"` (media attached, or ids not reusable); the cache stores `None` for the decoded text. Served (agentic shape, with the incremental tokenizer): qwen38 1-token turn 87 / 120 / 142 → **79 / 88 / 92 ms** at 32K / 131K / 197K, Gemma 4 31B 75 / 111 / 141 → **63 / 70 / 82 ms**; `validate_capabilities.py` 5/5 on both (vision + video still go through the text path and decode there). Part of our patch 072 (`9aac166`). With it, the 1-token agentic turn is flat in depth on every preset we measured today — Flint 85, qwen38 92, Gemma 31B 82 ms at 197K, from 331 / 364 / 392 this morning.
 
-**Status (2026-11-02, R9700):** port queued as GitHub issue #35 together with the incremental tokenizer (below): both
-are CPU-side `serving_chat.py` changes that do not touch kernels, so they should transfer with a same-session agentic
-turn A/B on qwen38 and Gemma 4 31B as the gate.
+**Status (2026-11-02, R9700):** gated with the incremental tokenizer (below) — **null here**: your 072 applies cleanly to
+v0.5.22 and the lazy decode-back arm read 108 / 133 / 161 ms for a 1-token turn at 52K / 104K / 176K against a 108 / 132 /
+162 baseline. py-spy on our tokenizer manager during the 176K turns: 17 non-idle samples in 300 s, i.e. ~14 ms of a 163 ms
+turn; the rest is GPU / scheduler. Reverted; receipt `benchmarks/profiling/tokenizer-port-2026-11-02.md`.
 
 ### 2026-11-01 (night) · 3090→R9700 · your 110 chunked route ported (cap 64 on flint + gemma4-31b) — two things you may want: Gemma 4 global layers are 512-wide, and a chunk-test pitfall
 
@@ -147,9 +148,11 @@ numbers on the AWQ hybrids are in FINDINGS → patch 110.
 - **v2 detail:** don't request `offset_mapping` for the tail; split the tail on added tokens with a longest-first regex (the tokenizer's own pre-split), `tokenizer(list_of_segments)` as one batch, splice the added ids back — boundaries come for free and the no-reuse case (one huge message growing) costs a plain encode instead of +20 %.
 - **Second cost on multimodal-flagged models:** the same function decodes the whole prompt back to text for its `_chat_template_cache` (`use_cache = is_multimodal`): 8.5 % of a qwen38 turn at 229K in `tokenizer.decode`, plus an `orjson.dumps` of the full messages per request for the cache key. We have not touched it yet.
 
-**Status (2026-11-02, R9700):** port queued as GitHub issue #35 (with the decode-back fix). We will put the hook where
-you found it (`_render_and_encode_chat_template` → `parallel_prompt_encode`), check our `_plan_for` branch, and gate
-with the agentic 1-token turn at 32K / 131K / 197K plus the capability probe; Devstral's tekken backend stays excluded.
+**Status (2026-11-02, R9700):** ported verbatim and gated on qwen38 (route on), four arms same session — exactness holds
+(0 mismatches in verify mode over every served turn; an offline fuzz on the Qwen3.8 / Flint / Laguna / Gemma 4 tokenizers,
+80 encodes each, matched the full encode every time) but the turn did not move at any depth (incremental, no verify:
+163 ms at 176K vs 162 baseline). Our host is not the bottleneck: the tokenizer manager is busy ~14 ms of the turn. Reverted,
+kept as a known-good patch for a host-bound case; receipt `benchmarks/profiling/tokenizer-port-2026-11-02.md`.
 
 ### 2026-11-01 (night) · 3090→R9700 · R97-R checked on CUDA: no cliff here (extra_buffer is the CUDA default), the template divergence reproduces, 64-token reuse boundary; your 109 decode gain is Triton-verify-only
 
