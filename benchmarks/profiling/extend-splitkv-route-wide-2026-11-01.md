@@ -46,7 +46,10 @@ as shipped) → route ≤ 256 in 64-row chunks, same session, that order:
 | 141,640 | 226 → 211 | 471 → **215** | 473 → **229** | 496 → **272** |
 
 The 16- and 64-row cells at 26K were the first use of the new tile variants and carry their Triton compile (the 128
-cell, compiled by then, shows the real number). Needle across a turn boundary 2/2 with turn-2 TTFT 159 → 81 ms at 33K
+cell, compiled by then, shows the real number). **Order-controlled pair, warmed measure passes, 256 first then 16**
+(`extend-cost-pair-route-{256,16}-measure.json`): 16 / 64 / 128-token turns 77 / 78 / 89 vs 112 / 117 / 123 ms at 26K,
+148 / 159 / 182 vs 302 / 300 / 309 ms at 94K, 218 / 229 / 271 vs 443 / 441 / 460 ms at 142K; the 1-token turn is the same
+on both (80 / 136 / 201 ms). Both orders agree, so the 2× on 16–128-token Laguna turns is not a boot-order effect. Needle across a turn boundary 2/2 with turn-2 TTFT 159 → 81 ms at 33K
 and 409 → 186 ms at 134K; text capabilities 3/3 (video is inapplicable to a text model).
 
 **qwen38 no-spec (extra_buffer), agentic-shaped turns** (`--multi-turn`): route off → route ≤ 256 in 64-row chunks (fp8 QK, matching patch 108), each arm
