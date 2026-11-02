@@ -1,0 +1,14 @@
+P=   8192 K=   1  WORSE_THAN_EXTEND err/refmax extend 0.02373 splitkv 0.03015  rms 0.000092 / 0.000094  cos 0.999666 / 0.999647  extend    2156.3 us  splitkv     207.7 us  x10.38
+P=   8192 K=  16  ok                err/refmax extend 0.02589 splitkv 0.02459  rms 0.000095 / 0.000093  cos 0.999651 / 0.999663  extend    2179.5 us  splitkv     181.6 us  x12.00
+P=   8192 K=  64  ok                err/refmax extend 0.02702 splitkv 0.02702  rms 0.000095 / 0.000093  cos 0.999655 / 0.999670  extend    2165.3 us  splitkv     249.7 us  x8.67
+P=  58000 K=   1  ok                err/refmax extend 0.03281 splitkv 0.02643  rms 0.000036 / 0.000035  cos 0.999633 / 0.999653  extend   13391.0 us  splitkv     829.7 us  x16.14
+P=  58000 K=  16  ok                err/refmax extend 0.02801 splitkv 0.03076  rms 0.000036 / 0.000036  cos 0.999646 / 0.999647  extend   12997.4 us  splitkv     813.4 us  x15.98
+P=  58000 K=  64  ok                err/refmax extend 0.03271 splitkv 0.02803  rms 0.000036 / 0.000036  cos 0.999644 / 0.999649  extend   12931.5 us  splitkv    1091.9 us  x11.84
+P= 197000 K=   1  ok                err/refmax extend 0.02143 splitkv 0.02231  rms 0.000020 / 0.000020  cos 0.999682 / 0.999680  extend   49674.7 us  splitkv    2795.7 us  x17.77
+P= 197000 K=  16  ok                err/refmax extend 0.02531 splitkv 0.02471  rms 0.000020 / 0.000019  cos 0.999698 / 0.999702  extend   49714.1 us  splitkv    2798.4 us  x17.76
+P= 197000 K=  64  ok                err/refmax extend 0.02391 splitkv 0.02531  rms 0.000020 / 0.000020  cos 0.999695 / 0.999693  extend   49406.7 us  splitkv    3649.0 us  x13.54
+kernel _verify_prefix_stage1    regs 122  spills 0  {'num_stages': 1, 'num_warps': 4}
+kernel _verify_prefix_stage1    regs 171  spills 0  {'num_stages': 1, 'num_warps': 4}
+kernel _verify_combine_stage2   regs 166  spills 0  {'num_stages': 1, 'num_warps': 8}
+kernel _verify_combine_stage2   regs 256  spills 374  {'num_stages': 1, 'num_warps': 8}
+9 cells, 1 not ok; worst cosine 0.9996467, worst diff 9.83 ulp

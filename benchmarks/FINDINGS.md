@@ -320,6 +320,19 @@ as expected for a stage that is microseconds of the turn. Shipped as patch 111 (
 overrides) on the kernel-level evidence; the remaining 64-row spills on qwen38 are the [64, 256] fp32 tiles themselves
 and would need Dv streamed in halves.
 
+## Flint on the split-KV turn route: learned sinks forwarded — patch 112 (2026-11-02)
+
+Patch 107's dispatch excluded layers that pass `sinks`, so Flint's 14 full-attention layers never took the route even
+after patch 109 taught the combine stage the sink term. Patch 112 lifts the exclusion and forwards `sinks` into
+`verify_splitkv_fwd` (`can_handle` validates a `[H_Q]` tensor; the 35 SWA layers still fall back). Kernel gate on the
+Flint shape with sinks and 64-row chunks, served (`upcast_k`) numerics: 8 of 9 cells inside the fp32-reference gate, the
+ninth 1e-6 under the cosine floor (noise class, not a sink defect); 8.7–17.8× the extend kernel per layer. Serving,
+order-controlled and warmed ([receipt](profiling/flint-sinks-route-2026-11-02.md)): **1-token agentic turn 237 → 128 ms
+at 52K and 443 → 201 ms at 104K cached (−46 % / −55 %)**, 64 / 256-token turns the same, natural needle 6/6 with
+identical outputs on both arms, text probes 3/3. Two earlier pairs were invalid (the driver set a launcher variable the
+`flint` block does not read, so both arms ran route-off — recorded in the receipt as the control and as a driver rule).
+`flint` now exports `SGLANG_EXTEND_SPLITKV_MAX_TOKENS=256`.
+
 ## DSpark verify kernel: UPCAST_K A/B — default fp8 dot stays (2026-11-02)
 
 `SGLANG_SPLITKV_UPCAST_K=1` (bf16-upcast K in the verify QK dot) vs the default fp8 WMMA dot on the vendor `qwen38`

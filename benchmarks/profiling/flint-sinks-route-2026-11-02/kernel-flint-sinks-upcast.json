@@ -1,0 +1,275 @@
+{
+ "preset": "flint",
+ "shape": {
+  "h_q": 16,
+  "h_kv": 2,
+  "head_dim": 128,
+  "v_head_dim": 128,
+  "layers": 14
+ },
+ "kv_dtype": "fp8",
+ "k_scale": 0.07,
+ "v_scale": 0.05,
+ "device": "AMD Radeon AI PRO R9700",
+ "label": "flint sinks route upcast",
+ "sinks": true,
+ "route_chunk": 64,
+ "extend_fp8_qk": false,
+ "first_launch_free_delta_mb": 6.0,
+ "kernel_stats": [
+  {
+   "kernel": "_verify_prefix_stage1",
+   "n_regs": 122,
+   "n_spills": 0,
+   "constants": {
+    "num_stages": 1,
+    "num_warps": 4
+   }
+  },
+  {
+   "kernel": "_verify_prefix_stage1",
+   "n_regs": 171,
+   "n_spills": 0,
+   "constants": {
+    "num_stages": 1,
+    "num_warps": 4
+   }
+  },
+  {
+   "kernel": "_verify_combine_stage2",
+   "n_regs": 166,
+   "n_spills": 0,
+   "constants": {
+    "num_stages": 1,
+    "num_warps": 8
+   }
+  },
+  {
+   "kernel": "_verify_combine_stage2",
+   "n_regs": 256,
+   "n_spills": 374,
+   "constants": {
+    "num_stages": 1,
+    "num_warps": 8
+   }
+  }
+ ],
+ "upcast_k": "1",
+ "tile_ab": null,
+ "qk_ab": false,
+ "gate": "vs fp32 reference: finite, cosine >= min(0.9999, extend cosine - 2e-5), max and rms error <= 1.25x the extend kernel's own",
+ "worst": {
+  "max_ulp": 9.832402234636872,
+  "min_cos": 0.9996467
+ },
+ "rows": [
+  {
+   "prefix": 8192,
+   "K": 1,
+   "status": "WORSE_THAN_EXTEND",
+   "extend_vs_fp32": {
+    "finite": true,
+    "cosine": 0.9996662,
+    "max_err_over_refmax": 0.023727,
+    "rms_err": 9.17e-05
+   },
+   "splitkv_vs_fp32": {
+    "finite": true,
+    "cosine": 0.9996471,
+    "max_err_over_refmax": 0.030152,
+    "rms_err": 9.43e-05
+   },
+   "extend_vs_splitkv_ulps_at_refmax": 8.716,
+   "extend_us": 2156.3,
+   "splitkv_us": 207.7,
+   "speedup": 10.38,
+   "per_step_ms_extend": 30.19,
+   "per_step_ms_splitkv": 2.91
+  },
+  {
+   "prefix": 8192,
+   "K": 16,
+   "status": "ok",
+   "extend_vs_fp32": {
+    "finite": true,
+    "cosine": 0.9996507,
+    "max_err_over_refmax": 0.025894,
+    "rms_err": 9.5e-05
+   },
+   "splitkv_vs_fp32": {
+    "finite": true,
+    "cosine": 0.9996631,
+    "max_err_over_refmax": 0.024593,
+    "rms_err": 9.33e-05
+   },
+   "extend_vs_splitkv_ulps_at_refmax": 8.918,
+   "extend_us": 2179.5,
+   "splitkv_us": 181.6,
+   "speedup": 12.0,
+   "per_step_ms_extend": 30.51,
+   "per_step_ms_splitkv": 2.54
+  },
+  {
+   "prefix": 8192,
+   "K": 64,
+   "status": "ok",
+   "extend_vs_fp32": {
+    "finite": true,
+    "cosine": 0.9996551,
+    "max_err_over_refmax": 0.027022,
+    "rms_err": 9.5e-05
+   },
+   "splitkv_vs_fp32": {
+    "finite": true,
+    "cosine": 0.9996698,
+    "max_err_over_refmax": 0.027023,
+    "rms_err": 9.3e-05
+   },
+   "extend_vs_splitkv_ulps_at_refmax": 9.354,
+   "extend_us": 2165.3,
+   "splitkv_us": 249.7,
+   "speedup": 8.67,
+   "per_step_ms_extend": 30.31,
+   "per_step_ms_splitkv": 3.5
+  },
+  {
+   "prefix": 58000,
+   "K": 1,
+   "status": "ok",
+   "extend_vs_fp32": {
+    "finite": true,
+    "cosine": 0.9996331,
+    "max_err_over_refmax": 0.032805,
+    "rms_err": 3.63e-05
+   },
+   "splitkv_vs_fp32": {
+    "finite": true,
+    "cosine": 0.9996531,
+    "max_err_over_refmax": 0.026428,
+    "rms_err": 3.53e-05
+   },
+   "extend_vs_splitkv_ulps_at_refmax": 8.0,
+   "extend_us": 13391.0,
+   "splitkv_us": 829.7,
+   "speedup": 16.14,
+   "per_step_ms_extend": 187.47,
+   "per_step_ms_splitkv": 11.62
+  },
+  {
+   "prefix": 58000,
+   "K": 16,
+   "status": "ok",
+   "extend_vs_fp32": {
+    "finite": true,
+    "cosine": 0.9996461,
+    "max_err_over_refmax": 0.028008,
+    "rms_err": 3.6e-05
+   },
+   "splitkv_vs_fp32": {
+    "finite": true,
+    "cosine": 0.9996467,
+    "max_err_over_refmax": 0.030755,
+    "rms_err": 3.59e-05
+   },
+   "extend_vs_splitkv_ulps_at_refmax": 9.234,
+   "extend_us": 12997.4,
+   "splitkv_us": 813.4,
+   "speedup": 15.98,
+   "per_step_ms_extend": 181.96,
+   "per_step_ms_splitkv": 11.39
+  },
+  {
+   "prefix": 58000,
+   "K": 64,
+   "status": "ok",
+   "extend_vs_fp32": {
+    "finite": true,
+    "cosine": 0.9996442,
+    "max_err_over_refmax": 0.032711,
+    "rms_err": 3.61e-05
+   },
+   "splitkv_vs_fp32": {
+    "finite": true,
+    "cosine": 0.9996488,
+    "max_err_over_refmax": 0.02803,
+    "rms_err": 3.58e-05
+   },
+   "extend_vs_splitkv_ulps_at_refmax": 9.832,
+   "extend_us": 12931.5,
+   "splitkv_us": 1091.9,
+   "speedup": 11.84,
+   "per_step_ms_extend": 181.04,
+   "per_step_ms_splitkv": 15.29
+  },
+  {
+   "prefix": 197000,
+   "K": 1,
+   "status": "ok",
+   "extend_vs_fp32": {
+    "finite": true,
+    "cosine": 0.9996821,
+    "max_err_over_refmax": 0.021432,
+    "rms_err": 1.99e-05
+   },
+   "splitkv_vs_fp32": {
+    "finite": true,
+    "cosine": 0.9996799,
+    "max_err_over_refmax": 0.022313,
+    "rms_err": 2e-05
+   },
+   "extend_vs_splitkv_ulps_at_refmax": 9.535,
+   "extend_us": 49674.7,
+   "splitkv_us": 2795.7,
+   "speedup": 17.77,
+   "per_step_ms_extend": 695.45,
+   "per_step_ms_splitkv": 39.14
+  },
+  {
+   "prefix": 197000,
+   "K": 16,
+   "status": "ok",
+   "extend_vs_fp32": {
+    "finite": true,
+    "cosine": 0.9996977,
+    "max_err_over_refmax": 0.025311,
+    "rms_err": 1.96e-05
+   },
+   "splitkv_vs_fp32": {
+    "finite": true,
+    "cosine": 0.9997019,
+    "max_err_over_refmax": 0.024711,
+    "rms_err": 1.94e-05
+   },
+   "extend_vs_splitkv_ulps_at_refmax": 8.286,
+   "extend_us": 49714.1,
+   "splitkv_us": 2798.4,
+   "speedup": 17.76,
+   "per_step_ms_extend": 696.0,
+   "per_step_ms_splitkv": 39.18
+  },
+  {
+   "prefix": 197000,
+   "K": 64,
+   "status": "ok",
+   "extend_vs_fp32": {
+    "finite": true,
+    "cosine": 0.9996946,
+    "max_err_over_refmax": 0.023912,
+    "rms_err": 1.96e-05
+   },
+   "splitkv_vs_fp32": {
+    "finite": true,
+    "cosine": 0.9996934,
+    "max_err_over_refmax": 0.02531,
+    "rms_err": 1.96e-05
+   },
+   "extend_vs_splitkv_ulps_at_refmax": 9.022,
+   "extend_us": 49406.7,
+   "splitkv_us": 3649.0,
+   "speedup": 13.54,
+   "per_step_ms_extend": 691.69,
+   "per_step_ms_splitkv": 51.09
+  }
+ ],
+ "timestamp": "2026-11-02 05:58"
+}

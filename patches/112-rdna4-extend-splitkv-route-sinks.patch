@@ -1,0 +1,20 @@
+diff --git a/python/sglang/srt/layers/attention/triton_backend.py b/python/sglang/srt/layers/attention/triton_backend.py
+index 18042df..e4bcb08 100644
+--- a/python/sglang/srt/layers/attention/triton_backend.py
++++ b/python/sglang/srt/layers/attention/triton_backend.py
+@@ -1888,7 +1888,6 @@ class TritonAttnBackend(AttentionBackend):
+             and forward_batch.batch_size == 1
+             and score_mod is None
+             and aux_tensors is None
+-            and sinks is None
+             and causal
+             and sliding_window_size == -1
+             and logits_soft_cap <= 0
+@@ -1951,6 +1950,7 @@ class TritonAttnBackend(AttentionBackend):
+                     v_descale,
+                     layer.scaling,
+                     logit_cap=0.0,
++                    sinks=sinks,  # learned per-head sinks (Flint): the combine stage carries them since patch 109
+                     max_bs=1,
+                     upcast_k=upcast_k,
+                 ):

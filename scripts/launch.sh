@@ -849,6 +849,11 @@ PYEOF
             # 14/49 layers are full attention; the SWA pool only needs the 512-token
             # window plus a prefill chunk. Laguna's BF16-KV ratio as the starting point.
             EXTRA_ARGS="${EXTRA_ARGS:-} --swa-full-tokens-ratio ${SWA_FULL_TOKENS_RATIO:-0.02} --cuda-graph-max-bs-decode 1 --grammar-backend flint"
+            # Patch 112 (2026-11-02): the split-KV turn route now carries the learned sinks, so the 14 full-attention
+            # layers take it (the 35 SWA layers keep the extend kernel). Order-controlled pair, warmed, same session:
+            # 1-token agentic turn 237 -> 128 ms at 52K and 443 -> 201 ms at 104K cached (64 / 256-token turns the same),
+            # natural-haystack needle 6/6 with identical outputs on both arms, text probes 3/3. EXTEND_SPLITKV_MAX=0 disables.
+            export SGLANG_EXTEND_SPLITKV_MAX_TOKENS="${EXTEND_SPLITKV_MAX:-256}"
             CUDA_GRAPH=""   # dispatch-bound MoE decode: graphs on
             REASONING="--reasoning-parser flint"
             TOOL_CALL_PARSER="flint"

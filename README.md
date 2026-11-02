@@ -1,6 +1,6 @@
 # RDNA4 inference on 2× R9700
 
-SGLang v0.5.22 with 81 local RDNA4 patches, tuned for coherent single-user inference at long context
+SGLang v0.5.22 with 82 local RDNA4 patches, tuned for coherent single-user inference at long context
 (256K) on two AMD Radeon AI PRO R9700 GPUs (gfx1201, 32 GiB each, TP=2 over PCIe). The repository holds
 the patch series, the preset launcher, the benchmark and evaluation harnesses, the FP8/AWQ quantization
 pipeline, and the receipts behind every number below. Multi-user throughput is secondary.
@@ -29,8 +29,8 @@ in [experiments/](experiments/README.md).
   (`extra_buffer` hybrid cache + the 64-row split-KV turn route); capability probe 5/5.
 - **Flint FP8 serves** (patch 105, strict tool schemas) with an FP8 KV cache (1.05M full-attention pool
   tokens, 2× bf16's): 44.2 → 37.5 tok/s from 14 to 219K actual input; basic / tool-call / thinking probes pass, the
-  learned-sink kernels match a PyTorch reference, and natural-text needle retrieval holds to 131K at every
-  depth and to the last 10 % of the window at 243–248K
+  learned-sink kernels match a PyTorch reference, a 1-token agentic turn on a 104K cached prefix is 0.20 s (split-KV
+  route), and natural-text needle retrieval holds to 131K at every depth and to the last 10 % of the window at 243–248K
   ([receipt](benchmarks/quality/flint/needle-natural-fp8-2026-10-31.md), [KV A/B](benchmarks/profiling/flint-ab-2026-11-01.md)).
 - **The patch series replays byte-identically** onto pristine v0.5.22 under the strict gate in
   [`patches/README.md`](patches/README.md).
@@ -171,8 +171,8 @@ format. Use the 12B or 26B Gemma presets for multimodal workloads.
   `--mamba-radix-cache-strategy extra_buffer` so agentic turns hit the cached state at the exact prompt end
   (`qwen38`, `qwen36-27b`, `qwen36-moe`, `qwen35`, `qwen35-moe`, `nemotron-omni`; `MAMBA_CACHE_STRATEGY=no_buffer`
   reverts).
-  Short cache-hit turns (≤ 256 new tokens) on `laguna`, `qwen38`, `qwen36-27b`, `qwen36-moe`, `qwen35` and
-  `qwen35-moe` route through the split-KV verify kernel (`EXTEND_SPLITKV_MAX=0` disables).
+  Short cache-hit turns (≤ 256 new tokens) on `laguna`, `qwen38`, `qwen36-27b`, `qwen36-moe`, `qwen35`, `qwen35-moe`
+  and `flint` (learned sinks carried) route through the split-KV verify kernel (`EXTEND_SPLITKV_MAX=0` disables).
 - Treat tool-call and reasoning parsers as model-specific correctness settings, not optional
   presentation features.
 - Keep the Triton cache warm when collecting comparative numbers; the first boot of a preset on a day and
@@ -236,7 +236,7 @@ relaunch faults on a stale one.
 | Component | Version |
 |---|---|
 | GPUs | 2× AMD Radeon AI PRO R9700, gfx1201, 32 GiB each |
-| SGLang | v0.5.22 + 81 patches |
+| SGLang | v0.5.22 + 82 patches |
 | Python | 3.12 |
 | PyTorch | 2.11.0+rocm7.2 |
 | ROCm | 7.2 |
