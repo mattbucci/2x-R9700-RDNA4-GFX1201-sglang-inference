@@ -11,25 +11,33 @@
       "context": 128,
       "input_len": 20,
       "tpot_ms": 20.56,
-      "tok_per_sec": 48.636
+      "tok_per_sec": 48.636,
+      "actual_input_tokens": 20,
+      "ttft_ms": null
     },
     {
       "context": 8192,
       "input_len": 7327,
       "tpot_ms": 22.38,
-      "tok_per_sec": 44.674
+      "tok_per_sec": 44.674,
+      "actual_input_tokens": 7327,
+      "ttft_ms": null
     },
     {
       "context": 32768,
       "input_len": 29249,
       "tpot_ms": 26.53,
-      "tok_per_sec": 37.693
+      "tok_per_sec": 37.693,
+      "actual_input_tokens": 29249,
+      "ttft_ms": null
     },
     {
       "context": 122880,
       "input_len": 109631,
       "tpot_ms": 44.1,
-      "tok_per_sec": 22.677
+      "tok_per_sec": 22.677,
+      "actual_input_tokens": 109631,
+      "ttft_ms": null
     }
   ],
   "throughput_sweep": [

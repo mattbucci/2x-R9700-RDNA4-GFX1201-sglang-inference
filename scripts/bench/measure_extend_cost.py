@@ -243,7 +243,7 @@ def measure_depth(base, model, depth, suffix_tokens, runs, log=print, multi_turn
 def measure_decode_reference(base, model, depth, maxtok, log=print):
     """Per-token decode cost at the same depth, for the extend/decode ratio."""
     prompt = mdc.build_prompt(depth)
-    tpot_ms, tps, pt, ct, _ = mdc.stream_tpot(
+    tpot_ms, tps, pt, ct, _, _ttft = mdc.stream_tpot(
         base, model, prompt, maxtok, False, True
     )
     log(

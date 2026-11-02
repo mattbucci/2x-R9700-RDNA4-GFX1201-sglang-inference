@@ -237,6 +237,13 @@ optimisation target on this rig). No tracked `results.json` carries the `sglang.
 
 ## Data layout
 
+Every `<preset>/results.json` carries the shared docs-check fields (`results-fields.json` in the m4 repo's docs-check
+action): top-level `model`, `engine`, `hardware`, `timestamp`, `output_tokens`, `context_sweep`; each row `context`,
+`actual_input_tokens` (the server's prompt-token count; `input_len` is the same number under the name the charts read),
+`tok_per_sec`, `tpot_ms`, `ttft_ms`. `decode_ab.py --results-json` writes them; `ttft_ms` is the median first-token time
+of the streamed runs (warm radix cache after the first run) and is `null` in files written before it was recorded —
+null means unmeasured, never a stand-in. `scripts/bench/migrate_results_schema.py` is the idempotent back-fill.
+
 - Per-model `results.json` files are immutable inputs for their charts.
 - Dated campaign receipts and JSON sidecars are the source of truth for their recorded stack.
 - `raw/` contains retained `sglang.bench_serving` JSONL output.

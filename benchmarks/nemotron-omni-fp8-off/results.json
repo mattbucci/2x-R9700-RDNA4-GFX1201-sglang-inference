@@ -9,31 +9,41 @@
       "context": 128,
       "input_len": 28,
       "tpot_ms": 31.66,
-      "tok_per_sec": 31.58
+      "tok_per_sec": 31.58,
+      "actual_input_tokens": 28,
+      "ttft_ms": null
     },
     {
       "context": 4096,
       "input_len": 3697,
       "tpot_ms": 31.88,
-      "tok_per_sec": 31.36
+      "tok_per_sec": 31.36,
+      "actual_input_tokens": 3697,
+      "ttft_ms": null
     },
     {
       "context": 32768,
       "input_len": 29390,
       "tpot_ms": 32.13,
-      "tok_per_sec": 31.12
+      "tok_per_sec": 31.12,
+      "actual_input_tokens": 29390,
+      "ttft_ms": null
     },
     {
       "context": 131072,
       "input_len": 117478,
       "tpot_ms": 32.55,
-      "tok_per_sec": 30.72
+      "tok_per_sec": 30.72,
+      "actual_input_tokens": 117478,
+      "ttft_ms": null
     },
     {
       "context": 245760,
       "input_len": 220243,
       "tpot_ms": 31.74,
-      "tok_per_sec": 31.51
+      "tok_per_sec": 31.51,
+      "actual_input_tokens": 220243,
+      "ttft_ms": null
     }
   ],
   "throughput_sweep": [
@@ -43,5 +53,6 @@
       "tpot_ms": 31.66,
       "ttft_ms": 0
     }
-  ]
+  ],
+  "output_tokens": null
 }

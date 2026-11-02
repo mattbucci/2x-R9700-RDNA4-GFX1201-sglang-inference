@@ -57,6 +57,7 @@ def stream_tpot(base, model, prompt, maxtok, think_off, ignore_eos=False):
     finish_time = None
     usage = None
     txt = ""
+    t_start = time.perf_counter()
     with requests.post(base + "/v1/chat/completions", json=body, stream=True, timeout=1200) as r:
         r.raise_for_status()
         for line in r.iter_lines():
@@ -121,12 +122,15 @@ def stream_tpot(base, model, prompt, maxtok, think_off, ignore_eos=False):
             deltas = sorted(deltas)[1:-1]  # compatibility fallback: trim jitter
         tpot = sum(deltas) / len(deltas) if deltas else 0
     pt = usage.get("prompt_tokens") if usage else None
+    # Time to the first streamed decode event (prefill + scheduling), the shared results-file `ttft_ms` field.
+    ttft_ms = (first_decode - t_start) * 1000.0 if first_decode is not None else None
     return (
         tpot * 1000.0,
         (1.0 / tpot if tpot else 0.0),
         pt,
         completion_tokens or None,
         txt[:60],
+        ttft_ms,
     )
 
 
@@ -154,7 +158,7 @@ def main():
     sweep = []
     for c in ctxs:
         prompt = build_prompt(c)
-        ms, tps, pt, ct, sample = stream_tpot(
+        ms, tps, pt, ct, sample, _ttft = stream_tpot(
             base, model, prompt, args.maxtok, args.think_off
         )
         row = {

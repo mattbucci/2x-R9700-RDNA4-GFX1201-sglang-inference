@@ -50,12 +50,14 @@ def main():
     rows = []
     for c in ctxs:
         prompt = mdc.build_prompt(c)
-        tpss, tpots, pts, cts, sample = [], [], [], [], ""
+        tpss, tpots, pts, cts, ttfts, sample = [], [], [], [], [], ""
         for r in range(a.runs):
-            ms, tps, pt, ct, s = mdc.stream_tpot(
+            ms, tps, pt, ct, s, ttft = mdc.stream_tpot(
                 base, model, prompt, a.maxtok, a.think_off, a.ignore_eos
             )
             tpss.append(tps); tpots.append(ms); pts.append(pt or c); cts.append(ct); sample = s
+            if ttft is not None:
+                ttfts.append(ttft)
             print(
                 f"  ctx~{c} run{r+1}: pt={pt} ct={ct} "
                 f"{tps:.2f} tok/s ({ms:.1f}ms)",
@@ -69,7 +71,9 @@ def main():
                "runs_tps": [round(x, 2) for x in tpss], "median_tps": round(med, 3),
                "min_tps": round(min(tpss), 3), "max_tps": round(max(tpss), 3),
                "runs_completion_tokens": cts,
-               "median_tpot_ms": round(median_tpot, 2), "sample": sample}
+               "median_tpot_ms": round(median_tpot, 2), "sample": sample,
+               # warm-cache first-token time (the prompt is re-sent per run, so runs 2+ hit the radix cache)
+               "median_ttft_ms": round(statistics.median(ttfts), 1) if ttfts else None}
         rows.append(row)
         print(f"  ctx~{c}: MEDIAN {med:.3f} tok/s  input_len~{row['input_len']}  "
               f"[{row['min_tps']:.2f}..{row['max_tps']:.2f}]  sample={sample!r}", flush=True)
@@ -104,9 +108,11 @@ def main():
         if a.note:
             rj["note"] = a.note
         rj["output_tokens"] = a.maxtok
+        # shared docs-check schema (results-fields.json): actual_input_tokens duplicates input_len (the field the charts
+        # read), ttft_ms is the median first-token time of the streamed runs (warm cache after run 1; null if not seen).
         rj["context_sweep"] = [
-            {"context": r["context"], "input_len": r["input_len"],
-             "tpot_ms": r["median_tpot_ms"], "tok_per_sec": r["median_tps"]}
+            {"context": r["context"], "input_len": r["input_len"], "actual_input_tokens": r["input_len"],
+             "tpot_ms": r["median_tpot_ms"], "tok_per_sec": r["median_tps"], "ttft_ms": r["median_ttft_ms"]}
             for r in rows]
         # generate_charts.py needs a throughput_sweep. Keep a real multi-
         # concurrency sweep (bench_all_unified) untouched, but refresh the
