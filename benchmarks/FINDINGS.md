@@ -453,6 +453,18 @@ runs `extra_buffer`; the 6.6K extra_buffer cell (433 ms) is first-use compile po
 in 8 of 12 greedy cells on this model (hit-vs-fresh, often within the first 4–57 characters; fresh-vs-fresh byte-identical)
 with a SWE-bench smoke loss — a defect none of the single-turn gates above can see. `nemotron-omni` is back on `no_buffer`
 (patch 114 stays: it only makes the knob work) until `cache_hit_determinism_probe.py` on both strategies here decides it.
+**Decided (2026-11-02): `no_buffer` stays.** The 3090's `cache_hit_consistency.py` (ported; hit vs fresh judged against a
+fresh-vs-fresh floor, first-token top-5 logprob deltas; 32K / 131K × 3 document cells) on nemotron-omni here:
+`extra_buffer` **11 of 12** hit comparisons worse than the floor, single-turn full hits diverging from the 1st–29th
+character, first-token Δlogp 0.4–4.4 nats; `no_buffer` 6 of 12 — every single-turn full hit exact (Δlogp 0.0), every
+agentic follow-up (22–2,082-token tail re-prefilled on the restored finish state) moved 0.5–2.75 nats
+([extra_buffer](quality/cache-hit-consistency-nemotron-omni-extra_buffer-2026-11-02.json),
+[no_buffer](quality/cache-hit-consistency-nemotron-omni-no_buffer-2026-11-02.json)). The 3090 sees the same shape on both
+hybrids (qwen38 6/12 to 2.0 nats, nemotron 8/12 to 2.9) and filed it as their issue #10: prefilling a tail on top of a
+restored recurrent state moves the distribution, restoring and decoding a token does not. Our nemotron extra_buffer arm is
+the worst class in the fleet (11/12, 4.4 nats), so the 666 → 144 ms turn gain is not taken; `qwen38`'s extra_buffer (the
+production reference, same class as the 3090's 6/12) stands, and the chunked GDN / Mamba2 prefill with a non-zero initial
+state is the open stack item (issue #37 here).
 
 ## Split-KV route widened to 64-row chunks — patch 110 (2026-11-01)
 

@@ -1,7 +1,7 @@
 {
  "tag": "nemotron-omni-extra_buffer",
  "model": "/home/letsrtfm/AI/models/Nemotron-3-Nano-Omni-30B-A3B-Reasoning-FP8",
- "timestamp": "2026-11-02T12:24:50",
+ "timestamp": "2026-11-02T12:31:38",
  "max_tokens": 200,
  "method": "greedy think-off; cold (after flush) vs cache-hit repeat of the same prompt, and an agentic follow-up from cached vs cold history",
  "rows": [
@@ -9,21 +9,21 @@
    "depth": 8192,
    "prompt_tokens": 7369,
    "cold_tokens": 39,
-   "hit_tokens": 39,
-   "hit2_tokens": 39,
-   "cold_vs_hit_first_diff_char": null,
+   "hit_tokens": 12,
+   "hit2_tokens": 12,
+   "cold_vs_hit_first_diff_char": 5,
    "hit_vs_hit2_first_diff_char": null,
    "turn_cold_tokens": 18,
    "turn_cached_tokens": 18,
    "turn_cold_vs_cached_first_diff_char": null,
    "seconds": {
-    "cold": 1.22,
-    "hit": 0.71,
+    "cold": 1.42,
+    "hit": 0.17,
     "turn_cached": 0.26,
     "turn_cold": 0.79
    },
    "cold_text": "\nThe sentence \u201cThe quick brown fox jumps over the lazy dog\u201d is repeated many times, showing a simple, consistent statement about a swift fox leaping over a sluggish dog.",
-   "hit_text": "\nThe sentence \u201cThe quick brown fox jumps over the lazy dog\u201d is repeated many times, showing a simple, consistent statement about a swift fox leaping over a sluggish dog.",
+   "hit_text": "\nThe quick brown fox jumps over the lazy dog.",
    "turn_cold_text": "\nThe repeated sentence simply states that a quick brown fox jumps over a lazy dog.",
    "turn_cached_text": "\nThe repeated sentence simply states that a quick brown fox jumps over a lazy dog."
   },
@@ -39,10 +39,10 @@
    "turn_cached_tokens": 13,
    "turn_cold_vs_cached_first_diff_char": null,
    "seconds": {
-    "cold": 5.24,
-    "hit": 0.49,
-    "turn_cached": 0.24,
-    "turn_cold": 5.18
+    "cold": 5.25,
+    "hit": 0.21,
+    "turn_cached": 0.25,
+    "turn_cold": 5.2
    },
    "cold_text": "\nThe quick brown fox repeatedly jumps over the lazy dog.",
    "hit_text": "\nThe quick brown fox repeatedly jumps over the lazy dog.",
@@ -61,8 +61,8 @@
    "turn_cached_tokens": 13,
    "turn_cold_vs_cached_first_diff_char": null,
    "seconds": {
-    "cold": 12.83,
-    "hit": 0.58,
+    "cold": 12.87,
+    "hit": 0.22,
     "turn_cached": 0.33,
     "turn_cold": 12.8
    },

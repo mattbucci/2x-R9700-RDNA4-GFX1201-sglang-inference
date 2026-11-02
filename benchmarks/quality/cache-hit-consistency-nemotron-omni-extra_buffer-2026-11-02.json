@@ -1,0 +1,253 @@
+{
+ "tag": "nemotron-omni-extra_buffer",
+ "model": "/home/letsrtfm/AI/models/Nemotron-3-Nano-Omni-30B-A3B-Reasoning-FP8",
+ "mismatches": 11,
+ "results": [
+  {
+   "tokens": 32768,
+   "cell": 0,
+   "prompt_tokens": 38951,
+   "A_same": false,
+   "B_same": false,
+   "A_hit_prefix": 29,
+   "A_fresh_fresh_prefix": 253,
+   "B_hit_prefix": 5,
+   "B_fresh_fresh_prefix": 249,
+   "A_worse_than_noise": true,
+   "B_worse_than_noise": true,
+   "A_len": [
+    253,
+    272,
+    253
+   ],
+   "B_len": [
+    249,
+    255,
+    249
+   ],
+   "finish": [
+    "stop",
+    "stop",
+    "stop",
+    "stop"
+   ],
+   "secs": [
+    5.2,
+    1.0,
+    0.8,
+    4.4
+   ],
+   "first_token_top5_max_abs_logprob_delta": {
+    "A_hit_vs_fresh": 0.375,
+    "A_fresh_vs_fresh": 0.0,
+    "B_hit_vs_fresh": 2.25,
+    "B_fresh_vs_fresh": 0.0
+   }
+  },
+  {
+   "tokens": 32768,
+   "cell": 1,
+   "prompt_tokens": 39187,
+   "A_same": true,
+   "B_same": false,
+   "A_hit_prefix": 39,
+   "A_fresh_fresh_prefix": 39,
+   "B_hit_prefix": 5,
+   "B_fresh_fresh_prefix": 239,
+   "A_worse_than_noise": false,
+   "B_worse_than_noise": true,
+   "A_len": [
+    39,
+    39,
+    39
+   ],
+   "B_len": [
+    239,
+    246,
+    239
+   ],
+   "finish": [
+    "stop",
+    "stop",
+    "stop",
+    "stop"
+   ],
+   "secs": [
+    3.9,
+    0.2,
+    0.8,
+    4.6
+   ],
+   "first_token_top5_max_abs_logprob_delta": {
+    "A_hit_vs_fresh": 0.75,
+    "A_fresh_vs_fresh": 0.0,
+    "B_hit_vs_fresh": 1.25,
+    "B_fresh_vs_fresh": 0.0
+   }
+  },
+  {
+   "tokens": 32768,
+   "cell": 2,
+   "prompt_tokens": 40166,
+   "A_same": false,
+   "B_same": false,
+   "A_hit_prefix": 5,
+   "A_fresh_fresh_prefix": 270,
+   "B_hit_prefix": 9,
+   "B_fresh_fresh_prefix": 321,
+   "A_worse_than_noise": true,
+   "B_worse_than_noise": true,
+   "A_len": [
+    270,
+    170,
+    270
+   ],
+   "B_len": [
+    321,
+    236,
+    321
+   ],
+   "finish": [
+    "stop",
+    "stop",
+    "stop",
+    "stop"
+   ],
+   "secs": [
+    5.0,
+    0.4,
+    1.1,
+    5.3
+   ],
+   "first_token_top5_max_abs_logprob_delta": {
+    "A_hit_vs_fresh": 1.0,
+    "A_fresh_vs_fresh": 0.0,
+    "B_hit_vs_fresh": 2.25,
+    "B_fresh_vs_fresh": 0.0
+   }
+  },
+  {
+   "tokens": 131072,
+   "cell": 0,
+   "prompt_tokens": 159821,
+   "A_same": false,
+   "B_same": false,
+   "A_hit_prefix": 1,
+   "A_fresh_fresh_prefix": 124,
+   "B_hit_prefix": 5,
+   "B_fresh_fresh_prefix": 232,
+   "A_worse_than_noise": true,
+   "B_worse_than_noise": true,
+   "A_len": [
+    124,
+    3,
+    124
+   ],
+   "B_len": [
+    232,
+    266,
+    232
+   ],
+   "finish": [
+    "stop",
+    "stop",
+    "stop",
+    "stop"
+   ],
+   "secs": [
+    24.4,
+    0.1,
+    1.2,
+    24.6
+   ],
+   "first_token_top5_max_abs_logprob_delta": {
+    "A_hit_vs_fresh": 4.375,
+    "A_fresh_vs_fresh": 0.0,
+    "B_hit_vs_fresh": 1.25,
+    "B_fresh_vs_fresh": 0.0
+   }
+  },
+  {
+   "tokens": 131072,
+   "cell": 1,
+   "prompt_tokens": 160696,
+   "A_same": false,
+   "B_same": false,
+   "A_hit_prefix": 1,
+   "A_fresh_fresh_prefix": 537,
+   "B_hit_prefix": 135,
+   "B_fresh_fresh_prefix": 294,
+   "A_worse_than_noise": true,
+   "B_worse_than_noise": true,
+   "A_len": [
+    537,
+    37,
+    537
+   ],
+   "B_len": [
+    294,
+    204,
+    294
+   ],
+   "finish": [
+    "length",
+    "stop",
+    "stop",
+    "stop"
+   ],
+   "secs": [
+    26.2,
+    0.2,
+    0.9,
+    24.7
+   ],
+   "first_token_top5_max_abs_logprob_delta": {
+    "A_hit_vs_fresh": 1.0,
+    "A_fresh_vs_fresh": 0.0,
+    "B_hit_vs_fresh": 1.5,
+    "B_fresh_vs_fresh": 0.0
+   }
+  },
+  {
+   "tokens": 131072,
+   "cell": 2,
+   "prompt_tokens": 161826,
+   "A_same": false,
+   "B_same": false,
+   "A_hit_prefix": 15,
+   "A_fresh_fresh_prefix": 19,
+   "B_hit_prefix": 17,
+   "B_fresh_fresh_prefix": 160,
+   "A_worse_than_noise": true,
+   "B_worse_than_noise": true,
+   "A_len": [
+    19,
+    19,
+    19
+   ],
+   "B_len": [
+    160,
+    160,
+    160
+   ],
+   "finish": [
+    "stop",
+    "stop",
+    "length",
+    "length"
+   ],
+   "secs": [
+    24.5,
+    0.2,
+    2.3,
+    26.2
+   ],
+   "first_token_top5_max_abs_logprob_delta": {
+    "A_hit_vs_fresh": 0.5,
+    "A_fresh_vs_fresh": 0.0,
+    "B_hit_vs_fresh": 1.749,
+    "B_fresh_vs_fresh": 0.0
+   }
+  }
+ ]
+}
