@@ -1,0 +1,68 @@
+{
+ "tag": "needle-coder-next-ream-no_buffer-mamba-ab",
+ "timestamp": "2026-11-01 19:55",
+ "model": "/home/letsrtfm/AI/models/Qwen3-Coder-Next-REAM-AWQ",
+ "port": 23334,
+ "haystack": "benchmarks/quality/haystack-platypus.txt",
+ "chars_per_token": 3.3,
+ "temperature": 0.0,
+ "flush": true,
+ "max_tokens": 2048,
+ "results": [
+  {
+   "found": true,
+   "actual_prompt_tokens": 33923,
+   "completion_tokens": 6,
+   "finish_reason": "stop",
+   "seconds": 10.0,
+   "content_tail": "BANANA42",
+   "reasoning_tail": "",
+   "context": 32768,
+   "depth": 0.1
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 33923,
+   "completion_tokens": 6,
+   "finish_reason": "stop",
+   "seconds": 9.5,
+   "content_tail": "BANANA42",
+   "reasoning_tail": "",
+   "context": 32768,
+   "depth": 0.5
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 33922,
+   "completion_tokens": 6,
+   "finish_reason": "stop",
+   "seconds": 9.5,
+   "content_tail": "BANANA42",
+   "reasoning_tail": "",
+   "context": 32768,
+   "depth": 0.9
+  },
+  {
+   "found": false,
+   "http": 400,
+   "error": "{\"object\":\"error\",\"message\":\"The input (136633 tokens) is longer than the model's context length (131072 tokens).\",\"type\":\"BadRequestError\",\"param\":null,\"code\":400}",
+   "context": 131072,
+   "depth": 0.1
+  },
+  {
+   "found": false,
+   "http": 400,
+   "error": "{\"object\":\"error\",\"message\":\"The input (136633 tokens) is longer than the model's context length (131072 tokens).\",\"type\":\"BadRequestError\",\"param\":null,\"code\":400}",
+   "context": 131072,
+   "depth": 0.5
+  },
+  {
+   "found": false,
+   "http": 400,
+   "error": "{\"object\":\"error\",\"message\":\"The input (136634 tokens) is longer than the model's context length (131072 tokens).\",\"type\":\"BadRequestError\",\"param\":null,\"code\":400}",
+   "context": 131072,
+   "depth": 0.9
+  }
+ ],
+ "score": 0.5
+}

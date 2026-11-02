@@ -317,9 +317,11 @@ capabilities 5/5, pools unchanged. Restored states are not bit-identical to a co
 greedy paraphrase flips at 52K; `no_buffer`'s own agentic turn shows the same), hit-vs-hit is always identical — noise
 class, not a quality trade. Decode, order-controlled and equal-length: cold runs equal or better (45.0 / 33.0 / 31.0 vs 44.2 / 32.3 / 26.6 tok/s at
 24 / 58K / 197K on DSpark), cache-hit runs ±18 % with the generated content, so no decode delta is claimed. Shipped as a `qwen38` preset change (`MAMBA_CACHE_STRATEGY=no_buffer`
-reverts). The other hybrid presets follow one by one under the same gates — qwen36-27b flipped the same day (1-token turn
-4.8 / 3.5 / 11.4 s → 0.28 / 0.75 / 1.34 s at 6.5K / 52K / 104K, needle 12/12, caps 5/5;
-[fleet receipt](profiling/hybrid-cache-extra-buffer-fleet-2026-11-01.md)). Receipts:
+reverts). Fleet roll-out the same day under the same gates ([fleet receipt](profiling/hybrid-cache-extra-buffer-fleet-2026-11-01.md)):
+qwen36-27b (1-token turn 4.8 / 3.5 / 11.4 s → 0.28 / 0.75 / 1.34 s, needle 12/12) and qwen36-moe (1.10 / 1.05 / 3.89 s →
+0.10 / 0.47 / 0.90 s, needle 12/12) shipped; qwen35 and qwen35-moe held for the user (same gains, identical
+single-message grids, across-turn cells shuffling through the 2,048-token thinking cap); coder-next-ream null — its
+template has no think block, so the prompt-end snapshot already hits under `no_buffer`. Receipts:
 [`profiling/hybrid-cache-extra-buffer-qwen38-2026-11-01.md`](profiling/hybrid-cache-extra-buffer-qwen38-2026-11-01.md),
 [`profiling/hybrid-cache-turn-granularity-qwen38-2026-11-01.json`](profiling/hybrid-cache-turn-granularity-qwen38-2026-11-01.json).
 

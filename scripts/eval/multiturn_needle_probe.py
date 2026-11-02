@@ -76,9 +76,17 @@ def main() -> int:
     haystack = Path(a.haystack).read_text() if a.haystack else None
     cpt = a.chars_per_token or (3.3 if haystack else 4.5)
     model = served_model(a.port)
+    try:
+        max_len = requests.get(f"http://127.0.0.1:{a.port}/v1/models", timeout=10).json()["data"][0].get("max_model_len")
+    except Exception:  # noqa: BLE001
+        max_len = None
     rows = []
     for L in [int(x) for x in a.lengths.split(",")]:
         for d in [float(x) for x in a.depths.split(",")]:
+            if max_len and L * 1.05 + 1024 > max_len:
+                print(f"  {L:>7} @ {d:<4} skipped: exceeds the served context ({max_len} tokens)", flush=True)
+                rows.append({"length": L, "depth": d, "found": None, "skipped": f"exceeds max_model_len {max_len}"})
+                continue
             doc = build_prompt(L, d, haystack, cpt)
             assert doc.endswith(QUESTION)
             doc = doc[: -len(QUESTION)]  # haystack + needle only
@@ -95,14 +103,15 @@ def main() -> int:
             rows.append(row)
             print(f"  {L:>7} @ {d:<4} {'found' if found else 'MISSED'}  turn1 {t1['prompt_tokens']} tok -> {t1['content'][:20]!r}  "
                   f"turn2 +{row['turn2_new_tokens']} tok TTFT {t2['ttft_s']} s out={t2['completion_tokens']} finish={t2['finish_reason']}", flush=True)
-    n_found = sum(r["found"] for r in rows)
+    rows_scored = [r for r in rows if r.get("found") is not None]
+    n_found = sum(r["found"] for r in rows_scored)
     rec = {"tag": a.tag, "model": model, "timestamp": datetime.now().isoformat(timespec="seconds"), "haystack": a.haystack,
            "method": "turn 1: haystack+needle+ack request; turn 2: history replay + needle question (greedy). Exercises the hybrid-cache restore path.",
-           "score": round(n_found / max(len(rows), 1), 3), "rows": rows}
+           "score": round(n_found / max(len(rows_scored), 1), 3), "rows": rows}
     out = RESULTS_DIR / f"needle-multiturn-{a.tag}.json"
     out.write_text(json.dumps(rec, indent=1) + "\n")
-    print(f"score {rec['score']:.2f} ({n_found}/{len(rows)}) -> {out}")
-    return 0 if n_found == len(rows) else 1
+    print(f"score {rec['score']:.2f} ({n_found}/{len(rows_scored)}) -> {out}")
+    return 0 if n_found == len(rows_scored) else 1
 
 
 if __name__ == "__main__":

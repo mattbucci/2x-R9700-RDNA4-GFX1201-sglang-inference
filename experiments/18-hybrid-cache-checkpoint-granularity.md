@@ -48,7 +48,9 @@ See [`benchmarks/profiling/hybrid-cache-extra-buffer-qwen38-2026-11-01.md`](../b
   delta claimed.
 - Fleet roll-out ([receipt](../benchmarks/profiling/hybrid-cache-extra-buffer-fleet-2026-11-01.md)): qwen36-27b flipped
   2026-11-01 (1-token turn 4.8 / 3.5 / 11.4 s → 0.28 / 0.75 / 1.34 s, needle 12/12, caps 5/5, decode faster with overlap
-  back on); qwen35, qwen35-moe, qwen36-moe, coder-next-ream follow.
+  back on); qwen36-moe flipped (1.10 / 1.05 / 3.89 s → 0.10 / 0.47 / 0.90 s, needle 12/12); qwen35 and qwen35-moe held
+  for the user (across-turn needle cells shuffle through the thinking cap); coder-next-ream null (no think block → the
+  prompt-end snapshot already hits).
 
 ## Not in scope
 
