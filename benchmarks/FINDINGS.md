@@ -295,6 +295,17 @@ same session: **9/9 vs 9/9** at 32,904 / 131,079 / 199,917 actual tokens
 [on](quality/quality256k-qwen38-nospec-fp8qk-on-2026-11-02.json)). The fp8 QK dot keeps its default; every
 future activation-numerics lever gets this probe, not the needle alone.
 
+## 3090 tokenizer-side turn ports (incremental tokenizer, lazy decode-back) — null here (2026-11-02)
+
+The 3090's patch 072 (exact incremental tokenization of append-only prompts + lazy prompt decode-back on multimodal-flagged
+models; 364 → 92 ms on their qwen38 turn at 197K) applies cleanly to v0.5.22 and was gated on our shipped qwen38 preset,
+same session, four arms ([receipt](profiling/tokenizer-port-2026-11-02.md)): baseline 108 / 132 / 162 ms for a 1-token
+turn at 52K / 104K / 176K, lazy decode-back 108 / 133 / 161, incremental + verify 108 / 131 / 163, incremental without
+verify 163 at 176K — no change at any depth; exactness 0 mismatches served and in an offline fuzz on four tokenizers;
+caps 5/5. py-spy on the tokenizer manager during the 176K turns: 17 non-idle samples in 300 s (~14 ms of a 163 ms turn).
+Our turn is GPU/scheduler time, so both changes are reverted (issue #35 null); the next lever for the turn is the
+non-routed layers' extend path / small-extend HIP-graph capture, not the tokenizer.
+
 ## Split-KV verify combine stage: 8 warps — patch 111 (2026-11-02)
 
 The patch 109 combine kernel still spilled 346 / 2,156 registers at L_EXT 16 / 64 on qwen38 and 56 / 990 on Laguna
