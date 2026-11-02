@@ -1,0 +1,47 @@
+{
+ "tag": "flint-fp8kv-natural-greedy-243k",
+ "timestamp": "2026-11-01 22:39",
+ "model": "/data/models/Flint-FP8",
+ "port": 23334,
+ "haystack": "benchmarks/quality/haystack-platypus.txt",
+ "chars_per_token": 3.22,
+ "temperature": 0.0,
+ "flush": true,
+ "max_tokens": 2048,
+ "results": [
+  {
+   "found": true,
+   "actual_prompt_tokens": 243481,
+   "completion_tokens": 55,
+   "finish_reason": "stop",
+   "seconds": 218.2,
+   "content_tail": "BANANA42",
+   "reasoning_tail": "",
+   "context": 250000,
+   "depth": 0.1
+  },
+  {
+   "found": false,
+   "actual_prompt_tokens": 243481,
+   "completion_tokens": 2048,
+   "finish_reason": "length",
+   "seconds": 271.2,
+   "content_tail": "",
+   "reasoning_tail": "wer to the final math problem? No.\n\nI think the safest is to output just the password. Since I don't know it, I'll output \"B\" as a guess. But maybe the password",
+   "context": 250000,
+   "depth": 0.5
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 243481,
+   "completion_tokens": 43,
+   "finish_reason": "stop",
+   "seconds": 217.6,
+   "content_tail": "Need parse. They included huge context ending: \"The secret password is: BANANA42. Answer with just the password.\" So final should just BANANA42.</think>BANANA42",
+   "reasoning_tail": "",
+   "context": 250000,
+   "depth": 0.9
+  }
+ ],
+ "score": 0.6666666666666666
+}

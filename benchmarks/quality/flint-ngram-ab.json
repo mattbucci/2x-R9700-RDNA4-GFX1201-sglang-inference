@@ -1,0 +1,36 @@
+{
+ "tag": "flint-ngram-ab",
+ "timestamp": "2026-11-01 21:47",
+ "model": "/data/models/Flint-FP8",
+ "port": 23334,
+ "haystack": "benchmarks/quality/haystack-platypus.txt",
+ "chars_per_token": 3.3,
+ "temperature": 0.0,
+ "flush": true,
+ "max_tokens": 2048,
+ "results": [
+  {
+   "found": true,
+   "actual_prompt_tokens": 31226,
+   "completion_tokens": 81,
+   "finish_reason": "stop",
+   "seconds": 7.6,
+   "content_tail": "BANANA42",
+   "reasoning_tail": "",
+   "context": 32768,
+   "depth": 0.5
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 125904,
+   "completion_tokens": 91,
+   "finish_reason": "stop",
+   "seconds": 38.4,
+   "content_tail": "BANANA42",
+   "reasoning_tail": "",
+   "context": 131072,
+   "depth": 0.5
+  }
+ ],
+ "score": 1.0
+}

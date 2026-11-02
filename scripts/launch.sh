@@ -810,7 +810,9 @@ PYEOF
             MODEL="${MODEL:-${FLINT_MODEL:-/data/models/Flint-FP8}}"
             QUANT="compressed-tensors"
             DTYPE="bfloat16"
-            # bf16 KV: the sink + FP8-KV combination has no receipt on this rig yet.
+            # bf16 KV by default. FP8 KV (KV_DTYPE=fp8_e4m3) measured 2026-11-01: +2-8 % decode, 2x pools, natural needle
+            # 11/12 vs 10/12 with one cell swap at the 243K soft edge (benchmarks/profiling/flint-ab-2026-11-01.md);
+            # recommended, flips when the user signs off. NGRAM speculation and the BF16 attention-sum opt-out are null here.
             KV_DTYPE="${_ENV_KV_DTYPE:-auto}"
             ATTN_BACKEND="${ATTN_BACKEND:-triton}"
             CTX="${_ENV_CTX:-262144}"; MAX_RUNNING="${_ENV_MAX_RUNNING:-8}"

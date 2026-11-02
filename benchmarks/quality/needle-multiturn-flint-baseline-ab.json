@@ -1,0 +1,38 @@
+{
+ "tag": "flint-baseline-ab",
+ "model": "/data/models/Flint-FP8",
+ "timestamp": "2026-11-01T21:24:36",
+ "haystack": "benchmarks/quality/haystack-platypus.txt",
+ "method": "turn 1: haystack+needle+ack request; turn 2: history replay + needle question (greedy). Exercises the hybrid-cache restore path.",
+ "score": 0.5,
+ "rows": [
+  {
+   "length": 32768,
+   "depth": 0.5,
+   "found": false,
+   "turn1_prompt_tokens": 31230,
+   "turn1_reply": "",
+   "turn2_prompt_tokens": 31244,
+   "turn2_new_tokens": 14,
+   "turn2_ttft_s": 0.146,
+   "turn2_completion_tokens": 2048,
+   "finish_reason": "length",
+   "content_tail": "",
+   "reasoning_tail": "efore her first song, she won't have time to hear all of her favorite song in the first 4 minutes, 30 seconds. So out of the $10!$ ways of ordering the 10 songs"
+  },
+  {
+   "length": 131072,
+   "depth": 0.5,
+   "found": true,
+   "turn1_prompt_tokens": 125908,
+   "turn1_reply": "READY",
+   "turn2_prompt_tokens": 125923,
+   "turn2_new_tokens": 15,
+   "turn2_ttft_s": 0.308,
+   "turn2_completion_tokens": 103,
+   "finish_reason": "stop",
+   "content_tail": "BANANA42",
+   "reasoning_tail": ""
+  }
+ ]
+}

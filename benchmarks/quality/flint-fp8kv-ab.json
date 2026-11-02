@@ -1,0 +1,36 @@
+{
+ "tag": "flint-fp8kv-ab",
+ "timestamp": "2026-11-01 21:29",
+ "model": "/data/models/Flint-FP8",
+ "port": 23334,
+ "haystack": "benchmarks/quality/haystack-platypus.txt",
+ "chars_per_token": 3.3,
+ "temperature": 0.0,
+ "flush": true,
+ "max_tokens": 2048,
+ "results": [
+  {
+   "found": true,
+   "actual_prompt_tokens": 31226,
+   "completion_tokens": 205,
+   "finish_reason": "stop",
+   "seconds": 11.4,
+   "content_tail": "BANANA42",
+   "reasoning_tail": "",
+   "context": 32768,
+   "depth": 0.5
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 125904,
+   "completion_tokens": 84,
+   "finish_reason": "stop",
+   "seconds": 66.2,
+   "content_tail": " We need comply? The secret password in text is BANANA42. They ask answer with just password. So final should be just BANANA42. Ensure no extra.</think>BANANA42",
+   "reasoning_tail": "",
+   "context": 131072,
+   "depth": 0.5
+  }
+ ],
+ "score": 1.0
+}

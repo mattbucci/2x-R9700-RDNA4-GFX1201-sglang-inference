@@ -1,0 +1,113 @@
+{
+ "tag": "flint-fp8kv-natural-grid",
+ "timestamp": "2026-11-01 22:11",
+ "model": "/data/models/Flint-FP8",
+ "port": 23334,
+ "haystack": "benchmarks/quality/haystack-platypus.txt",
+ "chars_per_token": 3.22,
+ "temperature": 0.0,
+ "flush": true,
+ "max_tokens": 2048,
+ "results": [
+  {
+   "found": true,
+   "actual_prompt_tokens": 30498,
+   "completion_tokens": 66,
+   "finish_reason": "stop",
+   "seconds": 8.0,
+   "content_tail": "BANANA42",
+   "reasoning_tail": "",
+   "context": 32768,
+   "depth": 0.1
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 30498,
+   "completion_tokens": 66,
+   "finish_reason": "stop",
+   "seconds": 7.9,
+   "content_tail": "BANANA42",
+   "reasoning_tail": "",
+   "context": 32768,
+   "depth": 0.5
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 30497,
+   "completion_tokens": 130,
+   "finish_reason": "stop",
+   "seconds": 9.5,
+   "content_tail": "BANANA42",
+   "reasoning_tail": "",
+   "context": 32768,
+   "depth": 0.9
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 123034,
+   "completion_tokens": 57,
+   "finish_reason": "stop",
+   "seconds": 66.5,
+   "content_tail": "secret password is: BANANA42. ... Answer with just the password.\" We need answer with just password. Must comply. Final should be just BANANA42.</think>BANANA42",
+   "reasoning_tail": "",
+   "context": 131072,
+   "depth": 0.1
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 123035,
+   "completion_tokens": 135,
+   "finish_reason": "stop",
+   "seconds": 67.7,
+   "content_tail": "ord is: BANANA42.\" User asks: \"The secret password is: BANANA42. Answer with just the password.\" So we should answer just BANANA42. Need comply.</think>BANANA42",
+   "reasoning_tail": "",
+   "context": 131072,
+   "depth": 0.5
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 123035,
+   "completion_tokens": 101,
+   "finish_reason": "stop",
+   "seconds": 65.0,
+   "content_tail": "ord is: BANANA42.\" Then later final asks. Likely answer should be BANANA42. Must comply \"Answer with just the password.\" So final just BANANA42.</think>BANANA42",
+   "reasoning_tail": "",
+   "context": 131072,
+   "depth": 0.9
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 234397,
+   "completion_tokens": 126,
+   "finish_reason": "stop",
+   "seconds": 205.6,
+   "content_tail": "BANANA42",
+   "reasoning_tail": "",
+   "context": 243000,
+   "depth": 0.1
+  },
+  {
+   "found": false,
+   "actual_prompt_tokens": 234396,
+   "completion_tokens": 2048,
+   "finish_reason": "length",
+   "seconds": 256.1,
+   "content_tail": " of possible values of $f(2), What is the secret password? Answer with just the password.\" The final answer before that was \"B\" for the quadratic polynomial? No",
+   "reasoning_tail": "",
+   "context": 243000,
+   "depth": 0.5
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 234397,
+   "completion_tokens": 76,
+   "finish_reason": "stop",
+   "seconds": 203.5,
+   "content_tail": "ANANA42. is the secret password? Answer with just the password.\" Likely answer should be just BANANA42. Need comply. Final answer just password.</think>BANANA42",
+   "reasoning_tail": "",
+   "context": 243000,
+   "depth": 0.9
+  }
+ ],
+ "score": 0.8888888888888888
+}

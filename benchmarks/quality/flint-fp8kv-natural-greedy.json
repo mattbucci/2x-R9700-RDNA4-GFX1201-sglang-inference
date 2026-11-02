@@ -1,0 +1,113 @@
+{
+ "tag": "flint-fp8kv-natural-greedy",
+ "timestamp": "2026-11-01 22:27",
+ "model": "/data/models/Flint-FP8",
+ "port": 23334,
+ "haystack": "benchmarks/quality/haystack-platypus.txt",
+ "chars_per_token": 3.27,
+ "temperature": 0.0,
+ "flush": true,
+ "max_tokens": 2048,
+ "results": [
+  {
+   "found": true,
+   "actual_prompt_tokens": 952,
+   "completion_tokens": 76,
+   "finish_reason": "stop",
+   "seconds": 1.9,
+   "content_tail": "BANANA42",
+   "reasoning_tail": "",
+   "context": 1024,
+   "depth": 0.1
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 952,
+   "completion_tokens": 61,
+   "finish_reason": "stop",
+   "seconds": 1.5,
+   "content_tail": "BANANA42",
+   "reasoning_tail": "",
+   "context": 1024,
+   "depth": 0.5
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 952,
+   "completion_tokens": 108,
+   "finish_reason": "stop",
+   "seconds": 2.6,
+   "content_tail": "BANANA42",
+   "reasoning_tail": "",
+   "context": 1024,
+   "depth": 0.9
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 30931,
+   "completion_tokens": 62,
+   "finish_reason": "stop",
+   "seconds": 8.0,
+   "content_tail": "BANANA42",
+   "reasoning_tail": "",
+   "context": 32768,
+   "depth": 0.1
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 30930,
+   "completion_tokens": 70,
+   "finish_reason": "stop",
+   "seconds": 8.1,
+   "content_tail": "BANANA42",
+   "reasoning_tail": "",
+   "context": 32768,
+   "depth": 0.5
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 30931,
+   "completion_tokens": 701,
+   "finish_reason": "stop",
+   "seconds": 23.0,
+   "content_tail": "BANANA42",
+   "reasoning_tail": "",
+   "context": 32768,
+   "depth": 0.9
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 124868,
+   "completion_tokens": 154,
+   "finish_reason": "stop",
+   "seconds": 67.1,
+   "content_tail": "asks \"What is the secret password? Answer with just the password.\" Likely answer is BANANA42. Need just password. Final should be just BANANA42.</think>BANANA42",
+   "reasoning_tail": "",
+   "context": 131072,
+   "depth": 0.1
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 124869,
+   "completion_tokens": 65,
+   "finish_reason": "stop",
+   "seconds": 65.0,
+   "content_tail": "BANANA42",
+   "reasoning_tail": "",
+   "context": 131072,
+   "depth": 0.5
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 124869,
+   "completion_tokens": 2048,
+   "finish_reason": "length",
+   "seconds": 114.4,
+   "content_tail": "then Paul, and Paul then Wilma.  That gives us a total of $6!\\times 2!$ ways to arrange the people with Wilma and Paul together.)  Thus the number of acceptable",
+   "reasoning_tail": "",
+   "context": 131072,
+   "depth": 0.9
+  }
+ ],
+ "score": 1.0
+}

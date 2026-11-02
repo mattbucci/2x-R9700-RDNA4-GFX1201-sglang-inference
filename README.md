@@ -165,10 +165,13 @@ operational history behind each item lives in the document it links, not here.
 
 **Next GPU slots, in order**
 
-1. **Flint follow-ups** (first boot, numerics, needle grid and decode baseline done 2026-10-31 —
-   [receipt](benchmarks/quality/flint/needle-natural-fp8-2026-10-31.md)): the SWE-bench lane on the scaffold the v5
-   scoring names, then the A/Bs — `PLAIN_ADD_BF16_SUM` opt-out, SWA ratio, FP8 KV, n-gram speculation — and a
-   depth-0.1 retrieval study at 243–248K against the 3090's INT4 build on identical cells.
+1. **Flint follow-ups** ([first-boot receipt](benchmarks/quality/flint/needle-natural-fp8-2026-10-31.md),
+   [A/Bs 2026-11-01](benchmarks/profiling/flint-ab-2026-11-01.md)): the four A/Bs are done — NGRAM speculation loses
+   35–40 % even on copy-heavy decode (off), the SWA ratio is a pool-split trade (0.02 stays), the BF16 attention-sum
+   opt-out is null (±2 %, byte-identical, reverted), and **FP8 KV is recommended but waits for your call**: +2–8 % decode,
+   2× KV pools, needle 11/12 vs bf16's 10/12 with one cell swap at the 243K soft edge (`KV_DTYPE=fp8_e4m3` runs it).
+   Still open: the SWE-bench lane on the scaffold the v5 scoring names, and the depth-0.1 retrieval study at 243–248K
+   against the 3090's INT4 build on identical cells.
 2. **qwen38 decode gap — attributed and the GEMM half tuned (2026-10-31)**
    ([attribution](benchmarks/profiling/qwen38-decode-gap-2026-10-31.md),
    [tuner receipt](benchmarks/profiling/fp8-block-gemm-tune-qwen38-2026-10-31.md)): the six block-FP8 GEMM shapes a rank

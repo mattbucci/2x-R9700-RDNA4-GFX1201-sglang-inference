@@ -1,0 +1,38 @@
+{
+ "tag": "flint-ngram-ab",
+ "model": "/data/models/Flint-FP8",
+ "timestamp": "2026-11-01T21:48:04",
+ "haystack": "benchmarks/quality/haystack-platypus.txt",
+ "method": "turn 1: haystack+needle+ack request; turn 2: history replay + needle question (greedy). Exercises the hybrid-cache restore path.",
+ "score": 0.5,
+ "rows": [
+  {
+   "length": 32768,
+   "depth": 0.5,
+   "found": false,
+   "turn1_prompt_tokens": 31230,
+   "turn1_reply": "",
+   "turn2_prompt_tokens": 31244,
+   "turn2_new_tokens": 14,
+   "turn2_ttft_s": 0.168,
+   "turn2_completion_tokens": 387,
+   "finish_reason": "stop",
+   "content_tail": "READY",
+   "reasoning_tail": "ut first sentence is instruction. To be safe, final response should be exactly READY and nothing else. No punctuation? \"READY\" single word. Ensure nothing else."
+  },
+  {
+   "length": 131072,
+   "depth": 0.5,
+   "found": true,
+   "turn1_prompt_tokens": 125908,
+   "turn1_reply": "READY",
+   "turn2_prompt_tokens": 125923,
+   "turn2_new_tokens": 15,
+   "turn2_ttft_s": 0.39,
+   "turn2_completion_tokens": 96,
+   "finish_reason": "stop",
+   "content_tail": "BANANA42",
+   "reasoning_tail": ""
+  }
+ ]
+}

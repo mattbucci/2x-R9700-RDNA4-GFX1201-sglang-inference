@@ -339,6 +339,19 @@ With R97-R the qwen38 1-token turn at 176K went 10.1 s → 0.17–0.35 s over th
 (`EXTEND_SPLITKV_MAX=0` disables). Receipt:
 [`profiling/extend-splitkv-route-wide-2026-11-01.md`](profiling/extend-splitkv-route-wide-2026-11-01.md).
 
+## Flint A/Bs: FP8 KV recommended, NGRAM / SWA ratio / BF16 attention sum closed (2026-11-01)
+
+Same-session arms on the Flint FP8 preset ([receipt](profiling/flint-ab-2026-11-01.md)). NGRAM speculation (8 drafts)
+reads 105 / 79 tok/s on the repetitive `decode_ab` prompt at 14 / 7.3K but 35 / 26 at 58K / 117K against 40 / 36 no-spec,
+and **26 / 25 vs 41 / 40 tok/s on copy-heavy decode** (accept length 1.4–2.0): Flint's learned sinks keep NGRAM's tree
+verify on the stock kernel, so it stays off. `--swa-full-tokens-ratio 0.10` only moves pool tokens from the full-attention
+layers (525K → 441K) to the SWA layers (10.5K → 44K) at equal speed; 0.02 stays. The `PLAIN_ADD_BF16_SUM` opt-out is null
+(±2 % across an order-controlled triple, outputs byte-identical; reverted). **FP8 KV** (`KV_DTYPE=fp8_e4m3`): decode 44.3 /
+43.3 / 41.4 / 39.2 vs 43.3 / 42.4 / 39.6 / 36.3 tok/s, pools 1,050,610 / 21,012 vs 525,305 / 10,506 tokens, natural needle
+on the receipt's exact cells 11/12 vs bf16's 10/12 (32K @ 0.9 gained; at 243,481 tokens 0.1 gained and 0.5 lost — the soft
+edge the first-boot receipt describes). Recommended as the Flint default; held for the user's decision because it is a
+KV-dtype change with a cell swap at the retrieval edge.
+
 ## Long-context attention
 
 ### Decode-only recency window
