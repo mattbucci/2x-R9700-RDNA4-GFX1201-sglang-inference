@@ -1,0 +1,80 @@
+{
+ "tag": "qwen36-moe-fp8qk-fp8qk",
+ "timestamp": "2026-11-02 12:16",
+ "model": "/home/letsrtfm/AI/models/Qwen3.6-35B-A3B-AWQ",
+ "port": 23334,
+ "haystack": "benchmarks/quality/haystack-platypus.txt",
+ "chars_per_token": 3.3,
+ "temperature": 0.0,
+ "flush": true,
+ "max_tokens": 2048,
+ "results": [
+  {
+   "found": true,
+   "actual_prompt_tokens": 34201,
+   "completion_tokens": 554,
+   "finish_reason": "stop",
+   "seconds": 15.7,
+   "content_tail": "\n\nBANANA42",
+   "reasoning_tail": "",
+   "context": 32768,
+   "depth": 0.1
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 34201,
+   "completion_tokens": 274,
+   "finish_reason": "stop",
+   "seconds": 11.0,
+   "content_tail": "\n\nBANANA42",
+   "reasoning_tail": "",
+   "context": 32768,
+   "depth": 0.5
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 34201,
+   "completion_tokens": 425,
+   "finish_reason": "stop",
+   "seconds": 13.5,
+   "content_tail": "\n\nBANANA42",
+   "reasoning_tail": "",
+   "context": 32768,
+   "depth": 0.9
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 138142,
+   "completion_tokens": 275,
+   "finish_reason": "stop",
+   "seconds": 47.3,
+   "content_tail": "\n\nBANANA42",
+   "reasoning_tail": "",
+   "context": 131072,
+   "depth": 0.1
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 138143,
+   "completion_tokens": 137,
+   "finish_reason": "stop",
+   "seconds": 44.9,
+   "content_tail": "\n\nBANANA42",
+   "reasoning_tail": "",
+   "context": 131072,
+   "depth": 0.5
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 138143,
+   "completion_tokens": 340,
+   "finish_reason": "stop",
+   "seconds": 48.4,
+   "content_tail": "\n\nBANANA42",
+   "reasoning_tail": "",
+   "context": 131072,
+   "depth": 0.9
+  }
+ ],
+ "score": 1.0
+}

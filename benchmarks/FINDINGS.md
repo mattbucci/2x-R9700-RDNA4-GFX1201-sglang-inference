@@ -319,6 +319,10 @@ needle 6/6 and reasoning probe 6/6 on both arms, caps 5/5 ([receipt](profiling/e
 `qwen36-27b` exports `SGLANG_EXTEND_FP8_QK=1`. gemma4 serves a 16K context, so the depth cells cannot run; only the 7.3K
 prefill moved (−20 %) and the preset is unchanged.
 
+**Qwen3.6-35B-A3B AWQ (2026-11-02, shipped).** Cold prefill 15.4 → 12.8 s at 58K and 117 → 73.5 s at 197K (−17 % /
+−37 %), turns unchanged (routed), needle 6/6 and reasoning probe 6/6 on both arms, caps 5/5
+([receipt](profiling/extend-fp8qk-qwen36-moe-2026-11-02.md)); `qwen36-moe` exports `SGLANG_EXTEND_FP8_QK=1`.
+
 ## 3090 tokenizer-side turn ports (incremental tokenizer, lazy decode-back) — null here (2026-11-02)
 
 The 3090's patch 072 (exact incremental tokenization of append-only prompts + lazy prompt decode-back on multimodal-flagged

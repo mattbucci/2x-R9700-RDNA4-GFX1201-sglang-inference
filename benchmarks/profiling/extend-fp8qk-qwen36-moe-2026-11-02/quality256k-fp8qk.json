@@ -1,0 +1,46 @@
+{
+  "tag": "qwen36-moe-fp8qk",
+  "results": [
+    {
+      "approx": 32768,
+      "multikey": {
+        "actual_tokens": 32862,
+        "correct": true,
+        "s": 23.2
+      },
+      "vartrack": {
+        "actual_tokens": 32808,
+        "correct": true,
+        "s": 12.3
+      },
+      "aggregate": {
+        "actual_tokens": 32842,
+        "correct": true,
+        "s": 20.6
+      },
+      "actual_tokens": 32862,
+      "score": 1.0
+    },
+    {
+      "approx": 131072,
+      "multikey": {
+        "actual_tokens": 131037,
+        "correct": true,
+        "s": 61.4
+      },
+      "vartrack": {
+        "actual_tokens": 130983,
+        "correct": true,
+        "s": 47.2
+      },
+      "aggregate": {
+        "actual_tokens": 131017,
+        "correct": true,
+        "s": 62.7
+      },
+      "actual_tokens": 131037,
+      "score": 1.0
+    }
+  ],
+  "overall": 1.0
+}

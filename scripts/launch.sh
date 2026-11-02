@@ -459,6 +459,10 @@ PYEOF
             # and 755 / 583 / 450 -> 72 / 105 / 164 ms at 104K cached; needle across a turn 6/6, caps 5/5.
             # EXTEND_SPLITKV_MAX=0 disables.
             export SGLANG_EXTEND_SPLITKV_MAX_TOKENS="${EXTEND_SPLITKV_MAX:-256}"
+            # Patch 108 fp8 QK dot in extend attention (gate 2026-11-02, same session, default first): cold prefill
+            # 15.4 -> 12.8 s at 58K and 117 -> 73.5 s at 197K (-17 % / -37 %), 7.3K unchanged; warmed turns unchanged (routed);
+            # natural needle 6/6 and 256K reasoning probe 6/6 on both arms, caps 5/5 both. EXTEND_FP8_QK=0 restores the upcast.
+            export SGLANG_EXTEND_FP8_QK="${EXTEND_FP8_QK:-1}"
             REASONING="--reasoning-parser qwen3"
             TOOL_CALL_PARSER="qwen3_coder"
             WARMUP="--skip-server-warmup"

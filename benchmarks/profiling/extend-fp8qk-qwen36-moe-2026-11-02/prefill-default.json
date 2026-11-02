@@ -1,0 +1,40 @@
+{
+ "label": "qwen36-moe default",
+ "model": "/home/letsrtfm/AI/models/Qwen3.6-35B-A3B-AWQ",
+ "port": 23334,
+ "runs": 2,
+ "method": "flush_cache + non-stream max_tokens=1 wall time",
+ "timestamp": "2026-11-02 11:58",
+ "rows": [
+  {
+   "context": 8192,
+   "input_len": 7331,
+   "runs_s": [
+    1.696,
+    1.223
+   ],
+   "median_s": 1.459,
+   "prefill_tok_per_s": 5023.2
+  },
+  {
+   "context": 65536,
+   "input_len": 58483,
+   "runs_s": [
+    15.404,
+    15.409
+   ],
+   "median_s": 15.406,
+   "prefill_tok_per_s": 3796.0
+  },
+  {
+   "context": 221184,
+   "input_len": 197326,
+   "runs_s": [
+    117.53,
+    117.438
+   ],
+   "median_s": 117.484,
+   "prefill_tok_per_s": 1679.6
+  }
+ ]
+}
