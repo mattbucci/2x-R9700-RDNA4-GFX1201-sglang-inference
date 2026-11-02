@@ -1,0 +1,38 @@
+{
+ "tag": "qwen35-no_buffer-recheck4096-131k",
+ "model": "/home/letsrtfm/AI/models/Qwen3.5-27B-AWQ-4bit-calibrated",
+ "timestamp": "2026-11-01T17:57:00",
+ "haystack": "benchmarks/quality/haystack-platypus.txt",
+ "method": "turn 1: haystack+needle+ack request; turn 2: history replay + needle question (greedy). Exercises the hybrid-cache restore path.",
+ "score": 1.0,
+ "rows": [
+  {
+   "length": 131072,
+   "depth": 0.1,
+   "found": true,
+   "turn1_prompt_tokens": 138146,
+   "turn1_reply": "",
+   "turn2_prompt_tokens": 138168,
+   "turn2_new_tokens": 22,
+   "turn2_ttft_s": 16.663,
+   "turn2_completion_tokens": 296,
+   "finish_reason": "stop",
+   "content_tail": "\n\nBANANA42",
+   "reasoning_tail": ""
+  },
+  {
+   "length": 131072,
+   "depth": 0.9,
+   "found": true,
+   "turn1_prompt_tokens": 138147,
+   "turn1_reply": "",
+   "turn2_prompt_tokens": 138169,
+   "turn2_new_tokens": 22,
+   "turn2_ttft_s": 16.623,
+   "turn2_completion_tokens": 2244,
+   "finish_reason": "stop",
+   "content_tail": "\n\nBANANA42",
+   "reasoning_tail": ""
+  }
+ ]
+}

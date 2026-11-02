@@ -1,0 +1,80 @@
+{
+ "tag": "needle-qwen35-extra_buffer-mamba-ab",
+ "timestamp": "2026-11-01 17:21",
+ "model": "/home/letsrtfm/AI/models/Qwen3.5-27B-AWQ-4bit-calibrated",
+ "port": 23334,
+ "haystack": "benchmarks/quality/haystack-platypus.txt",
+ "chars_per_token": 3.3,
+ "temperature": 0.0,
+ "flush": true,
+ "max_tokens": 2048,
+ "results": [
+  {
+   "found": false,
+   "actual_prompt_tokens": 34201,
+   "completion_tokens": 2048,
+   "finish_reason": "length",
+   "seconds": 117.4,
+   "content_tail": "",
+   "reasoning_tail": "}$. The secret password is: BANANA42. as C-D-H-S, S-H-D-C, and so on.\"\nActually, the text in the prompt is:\n\"...which is $24 \\times \\frac{1}{256} = \\frac{3}{32}",
+   "context": 32768,
+   "depth": 0.1
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 34201,
+   "completion_tokens": 1579,
+   "finish_reason": "stop",
+   "seconds": 97.0,
+   "content_tail": "\n\nBANANA42",
+   "reasoning_tail": "",
+   "context": 32768,
+   "depth": 0.5
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 34201,
+   "completion_tokens": 843,
+   "finish_reason": "stop",
+   "seconds": 65.1,
+   "content_tail": "\n\nBANANA42",
+   "reasoning_tail": "",
+   "context": 32768,
+   "depth": 0.9
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 138142,
+   "completion_tokens": 284,
+   "finish_reason": "stop",
+   "seconds": 212.3,
+   "content_tail": "\n\nBANANA42",
+   "reasoning_tail": "",
+   "context": 131072,
+   "depth": 0.1
+  },
+  {
+   "found": false,
+   "actual_prompt_tokens": 138143,
+   "completion_tokens": 2048,
+   "finish_reason": "length",
+   "seconds": 293.2,
+   "content_tail": "",
+   "reasoning_tail": "m $50$ to $1$...\"\n- \"Erika, who is 14 years old...\"\n- \"The probability that Asha will lose a game...\"\n- \"How many three-digit numbers satisfy...\"\n- \"What is the",
+   "context": 131072,
+   "depth": 0.5
+  },
+  {
+   "found": false,
+   "actual_prompt_tokens": 138143,
+   "completion_tokens": 2048,
+   "finish_reason": "length",
+   "seconds": 292.9,
+   "content_tail": "",
+   "reasoning_tail": "cular table...\"\n- \"Ten adults enter a room...\"\n- \"License plates from different states...\"\n- \"A jar contains two red marbles...\"\n- \"What is the value of $\\frac{",
+   "context": 131072,
+   "depth": 0.9
+  }
+ ],
+ "score": 0.5
+}

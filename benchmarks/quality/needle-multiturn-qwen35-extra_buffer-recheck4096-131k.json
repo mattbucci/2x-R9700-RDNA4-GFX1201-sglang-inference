@@ -1,0 +1,38 @@
+{
+ "tag": "qwen35-extra_buffer-recheck4096-131k",
+ "model": "/home/letsrtfm/AI/models/Qwen3.5-27B-AWQ-4bit-calibrated",
+ "timestamp": "2026-11-01T18:12:04",
+ "haystack": "benchmarks/quality/haystack-platypus.txt",
+ "method": "turn 1: haystack+needle+ack request; turn 2: history replay + needle question (greedy). Exercises the hybrid-cache restore path.",
+ "score": 0.5,
+ "rows": [
+  {
+   "length": 131072,
+   "depth": 0.1,
+   "found": false,
+   "turn1_prompt_tokens": 138146,
+   "turn1_reply": "",
+   "turn2_prompt_tokens": 138168,
+   "turn2_new_tokens": 22,
+   "turn2_ttft_s": 1.817,
+   "turn2_completion_tokens": 4096,
+   "finish_reason": "length",
+   "content_tail": "",
+   "reasoning_tail": "hat is the instruction.\nBut the user prompt I see *now* is \"What is the secret password? Answer with just the password.\"\nThis implies the \"Read the document...\""
+  },
+  {
+   "length": 131072,
+   "depth": 0.9,
+   "found": true,
+   "turn1_prompt_tokens": 138147,
+   "turn1_reply": "",
+   "turn2_prompt_tokens": 138169,
+   "turn2_new_tokens": 22,
+   "turn2_ttft_s": 1.579,
+   "turn2_completion_tokens": 789,
+   "finish_reason": "stop",
+   "content_tail": "\n\nBANANA42",
+   "reasoning_tail": ""
+  }
+ ]
+}

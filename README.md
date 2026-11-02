@@ -205,8 +205,10 @@ operational history behind each item lives in the document it links, not here.
      combine (2,156 spills), the 128-row tile (compile stall), Flint sinks on the route.
    - **`extra_buffer` on the other hybrid presets** ([fleet receipt](benchmarks/profiling/hybrid-cache-extra-buffer-fleet-2026-11-01.md)):
      qwen36-27b done (1-token turn 4.8 / 3.5 / 11.4 s → 0.28 / 0.75 / 1.34 s at 6.5K / 52K / 104K, needle 12/12, caps
-     5/5); qwen35, qwen35-moe, qwen36-moe, coder-next-ream next with the same gates (coder-next's checkpoint is not on
-     disk). Then patch 110's route gate run on the AWQ hybrids.
+     5/5); **qwen35 held back for your call** — turns 6.5 / 4.4 / 11.7 s → 0.28 / 0.77 / 1.38 s and the single-message
+     needle grid is identical, but one across-turn cell (131K @ depth 0.1) that `no_buffer` answers runs to the thinking
+     cap under `extra_buffer` even at 4,096 tokens; qwen35-moe, qwen36-moe, coder-next-ream next with the same gates
+     (coder-next's checkpoint is not on disk). Then patch 110's route gate run on the AWQ hybrids.
    - **fp8 QK on the other FP8-cache presets** (north-mini, gemma4, qwen35/36, coder): opt-in `SGLANG_EXTEND_FP8_QK=1`
      until each runs its own needle-grid A/B.
    - Extend-kernel follow-ups: exp2 softmax, `num_stages` pipelining; the verify combine kernel still spills 346 / 2,156
