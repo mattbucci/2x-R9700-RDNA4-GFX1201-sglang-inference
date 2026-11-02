@@ -1,0 +1,46 @@
+{
+  "tag": "north-mini-fp8qk",
+  "results": [
+    {
+      "approx": 32768,
+      "multikey": {
+        "actual_tokens": 32952,
+        "correct": false,
+        "s": 13.3
+      },
+      "vartrack": {
+        "actual_tokens": 32912,
+        "correct": false,
+        "s": 15.8
+      },
+      "aggregate": {
+        "actual_tokens": 32938,
+        "correct": false,
+        "s": 8.5
+      },
+      "actual_tokens": 32952,
+      "score": 0.0
+    },
+    {
+      "approx": 131072,
+      "multikey": {
+        "actual_tokens": 131125,
+        "correct": false,
+        "s": 82.2
+      },
+      "vartrack": {
+        "actual_tokens": 131086,
+        "correct": false,
+        "s": 82.5
+      },
+      "aggregate": {
+        "actual_tokens": 131111,
+        "correct": false,
+        "s": 82.7
+      },
+      "actual_tokens": 131125,
+      "score": 0.0
+    }
+  ],
+  "overall": 0.0
+}

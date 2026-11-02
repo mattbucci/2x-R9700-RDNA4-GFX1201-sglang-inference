@@ -1,0 +1,80 @@
+{
+ "tag": "north-mini-default-fp8qk",
+ "timestamp": "2026-11-02 09:38",
+ "model": "/home/letsrtfm/AI/models/North-Mini-Code-1.0-fp8",
+ "port": 23334,
+ "haystack": "benchmarks/quality/haystack-platypus.txt",
+ "chars_per_token": 3.3,
+ "temperature": 0.0,
+ "flush": true,
+ "max_tokens": 2048,
+ "results": [
+  {
+   "found": true,
+   "actual_prompt_tokens": 31345,
+   "completion_tokens": 227,
+   "finish_reason": "stop",
+   "seconds": 9.7,
+   "content_tail": "BANANA42",
+   "reasoning_tail": "",
+   "context": 32768,
+   "depth": 0.1
+  },
+  {
+   "found": false,
+   "actual_prompt_tokens": 31345,
+   "completion_tokens": 2048,
+   "finish_reason": "length",
+   "seconds": 38.1,
+   "content_tail": "",
+   "reasoning_tail": "T = (1/2)*(1/4 + (3/8) pH1) + (1/2)*(1/2 pH1) = (1/8 + (3/16) pH1) + (1/4 pH1) = 1/8 + (3/16 + 1/4) pH1 = 1/8 + (3/16 + 4/16) pH1 = 1/8 + (7/16) pH1.\n\npH1 = (1/",
+   "context": 32768,
+   "depth": 0.5
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 31344,
+   "completion_tokens": 103,
+   "finish_reason": "stop",
+   "seconds": 7.8,
+   "content_tail": "BANANA42",
+   "reasoning_tail": "",
+   "context": 32768,
+   "depth": 0.9
+  },
+  {
+   "found": false,
+   "actual_prompt_tokens": 125936,
+   "completion_tokens": 617,
+   "finish_reason": "stop",
+   "seconds": 68.8,
+   "content_tail": "North Mini Code",
+   "reasoning_tail": "r says \"Answer with just the password.\" So we should output \"North Mini Code\". That matches the system instruction.\n\nThus, I will answer with \"North Mini Code\".",
+   "context": 131072,
+   "depth": 0.1
+  },
+  {
+   "found": false,
+   "actual_prompt_tokens": 125936,
+   "completion_tokens": 668,
+   "finish_reason": "stop",
+   "seconds": 69.7,
+   "content_tail": "MATH",
+   "reasoning_tail": "So we need to output a single word.\n\nGiven the context, I think the password is \"MATH\". It's a common secret password for math puzzles. So I will answer \"MATH\".",
+   "context": 131072,
+   "depth": 0.5
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 125937,
+   "completion_tokens": 233,
+   "finish_reason": "stop",
+   "seconds": 62.3,
+   "content_tail": "BANANA42",
+   "reasoning_tail": "",
+   "context": 131072,
+   "depth": 0.9
+  }
+ ],
+ "score": 0.5
+}

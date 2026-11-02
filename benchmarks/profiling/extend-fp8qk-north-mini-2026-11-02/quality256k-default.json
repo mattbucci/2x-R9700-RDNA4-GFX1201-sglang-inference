@@ -1,0 +1,46 @@
+{
+  "tag": "north-mini-default",
+  "results": [
+    {
+      "approx": 32768,
+      "multikey": {
+        "actual_tokens": 32952,
+        "correct": false,
+        "s": 15.7
+      },
+      "vartrack": {
+        "actual_tokens": 32912,
+        "correct": false,
+        "s": 7.8
+      },
+      "aggregate": {
+        "actual_tokens": 32938,
+        "correct": false,
+        "s": 11.0
+      },
+      "actual_tokens": 32952,
+      "score": 0.0
+    },
+    {
+      "approx": 131072,
+      "multikey": {
+        "actual_tokens": 131125,
+        "correct": false,
+        "s": 113.1
+      },
+      "vartrack": {
+        "actual_tokens": 131086,
+        "correct": false,
+        "s": 70.4
+      },
+      "aggregate": {
+        "actual_tokens": 131111,
+        "correct": false,
+        "s": 65.8
+      },
+      "actual_tokens": 131125,
+      "score": 0.0
+    }
+  ],
+  "overall": 0.0
+}

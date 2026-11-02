@@ -1,0 +1,40 @@
+{
+ "label": "north-mini fp8qk",
+ "model": "/home/letsrtfm/AI/models/North-Mini-Code-1.0-fp8",
+ "port": 23334,
+ "runs": 2,
+ "method": "flush_cache + non-stream max_tokens=1 wall time",
+ "timestamp": "2026-11-02 09:47",
+ "rows": [
+  {
+   "context": 8192,
+   "input_len": 7435,
+   "runs_s": [
+    0.988,
+    0.791
+   ],
+   "median_s": 0.89,
+   "prefill_tok_per_s": 8358.1
+  },
+  {
+   "context": 65536,
+   "input_len": 58587,
+   "runs_s": [
+    9.821,
+    9.889
+   ],
+   "median_s": 9.855,
+   "prefill_tok_per_s": 5944.8
+  },
+  {
+   "context": 221184,
+   "input_len": 197429,
+   "runs_s": [
+    60.863,
+    60.966
+   ],
+   "median_s": 60.914,
+   "prefill_tok_per_s": 3241.1
+  }
+ ]
+}

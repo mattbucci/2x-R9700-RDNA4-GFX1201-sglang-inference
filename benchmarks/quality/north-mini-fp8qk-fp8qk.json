@@ -1,0 +1,80 @@
+{
+ "tag": "north-mini-fp8qk-fp8qk",
+ "timestamp": "2026-11-02 09:51",
+ "model": "/home/letsrtfm/AI/models/North-Mini-Code-1.0-fp8",
+ "port": 23334,
+ "haystack": "benchmarks/quality/haystack-platypus.txt",
+ "chars_per_token": 3.3,
+ "temperature": 0.0,
+ "flush": true,
+ "max_tokens": 2048,
+ "results": [
+  {
+   "found": true,
+   "actual_prompt_tokens": 31345,
+   "completion_tokens": 104,
+   "finish_reason": "stop",
+   "seconds": 6.2,
+   "content_tail": "BANANA42",
+   "reasoning_tail": "",
+   "context": 32768,
+   "depth": 0.1
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 31345,
+   "completion_tokens": 221,
+   "finish_reason": "stop",
+   "seconds": 8.1,
+   "content_tail": "BANANA42",
+   "reasoning_tail": "",
+   "context": 32768,
+   "depth": 0.5
+  },
+  {
+   "found": false,
+   "actual_prompt_tokens": 31344,
+   "completion_tokens": 333,
+   "finish_reason": "stop",
+   "seconds": 9.7,
+   "content_tail": "It looks like the last problem got cut off\u2014could you please provide the rest of the problem statement so I can solve it?",
+   "reasoning_tail": ". So we should ask for clarification: \"Could you please provide the rest of the problem?\" That is appropriate.\n\nThus we should respond asking for clarification.",
+   "context": 32768,
+   "depth": 0.9
+  },
+  {
+   "found": false,
+   "actual_prompt_tokens": 125936,
+   "completion_tokens": 2048,
+   "finish_reason": "length",
+   "seconds": 65.0,
+   "content_tail": "",
+   "reasoning_tail": "tput a password. But what password? It could be any string. However, maybe the password is \"Cohere\". Or maybe the password is \"assistant\". Or maybe the password",
+   "context": 131072,
+   "depth": 0.1
+  },
+  {
+   "found": false,
+   "actual_prompt_tokens": 125936,
+   "completion_tokens": 2048,
+   "finish_reason": "length",
+   "seconds": 64.8,
+   "content_tail": "",
+   "reasoning_tail": "pick the numbers on the five WinnerBalls (but you don't need to get the order right for the WinnerBalls). What is the probability that the ticket I hold has the",
+   "context": 131072,
+   "depth": 0.5
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 125937,
+   "completion_tokens": 220,
+   "finish_reason": "stop",
+   "seconds": 33.5,
+   "content_tail": "BANANA42",
+   "reasoning_tail": "",
+   "context": 131072,
+   "depth": 0.9
+  }
+ ],
+ "score": 0.5
+}

@@ -301,6 +301,13 @@ needle 5/6 on both arms (the same 32K @ 0.1 cell runs to the thinking cap on bot
 on both arms (vartrack + aggregate pass at 32K; multikey fails at 32K and all three at 131K — Flint's own behaviour on the
 probe's repetitive filler, now a recorded Flint quality finding), text probes 3/3. `flint` exports `SGLANG_EXTEND_FP8_QK=1`.
 
+**North-Mini Code (2026-11-02, held for the user).** Prefill 15.6 → 9.9 s at 58K and 131 → 61 s at 197K, 1-token turns
+241 → 141 ms at 52K and 425 → 237 ms at 104K (no route on this preset), caps 3/3, reasoning probe 0 % on both arms (the
+model does not solve the probe's tasks on its filler even at 32K). The needle grid is 3/6 on both arms but swaps a cell:
+fp8 QK gains 32K @ 0.5 (default ran to the thinking cap) and **loses 32K @ 0.9 with a terminated answer that did not see
+the needle** — a retrieval miss, not a cap flip, so it is a quality trade for the user
+([receipt](profiling/extend-fp8qk-north-mini-2026-11-02.md)). Not shipped.
+
 ## 3090 tokenizer-side turn ports (incremental tokenizer, lazy decode-back) — null here (2026-11-02)
 
 The 3090's patch 072 (exact incremental tokenization of append-only prompts + lazy prompt decode-back on multimodal-flagged
