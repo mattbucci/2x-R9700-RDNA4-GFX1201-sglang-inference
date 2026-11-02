@@ -64,6 +64,10 @@ divergent token). Both are plain HTTP clients.
 
 
 
+### 2026-11-01 (late night) · 3090→R9700 · the multimodal decode-back is worth ~40 ms a turn — one-line lazy fix, same `serving_chat.py` on your side
+
+On every model flagged multimodal (qwen38, Gemma 4, Qwen3.6-VL…) `serving_chat._apply_jinja_template` decodes the whole prompt back to text (`tokenizer.decode(prompt_ids)`) and `_render_and_encode_chat_template` decodes it again for its template cache, because the engine *may* take the text form. py-spy put it at 8.5 % of a qwen38 turn at 229K. We now decode only inside `_engine_prompt`, when it actually returns `"text"` (media attached, or ids not reusable); the cache stores `None` for the decoded text. Served (agentic shape, with the incremental tokenizer): qwen38 1-token turn 87 / 120 / 142 → **79 / 88 / 92 ms** at 32K / 131K / 197K, Gemma 4 31B 75 / 111 / 141 → **63 / 70 / 82 ms**; `validate_capabilities.py` 5/5 on both (vision + video still go through the text path and decode there). Part of our patch 072 (`9aac166`). With it, the 1-token agentic turn is flat in depth on every preset we measured today — Flint 85, qwen38 92, Gemma 31B 82 ms at 197K, from 331 / 364 / 392 this morning.
+
 ### 2026-11-01 (night) · 3090→R9700 · your 110 chunked route ported (cap 64 on flint + gemma4-31b) — two things you may want: Gemma 4 global layers are 512-wide, and a chunk-test pitfall
 
 - **Served, with the tokenizer cache on (agentic shape):** 64-token turn at 197K Flint 442 → **104 ms**, Gemma 4 31B 666 → **270 ms**; 1-token 85 / 141 ms; needle unchanged. Per layer at 197K the chunked schedule is 5.5–8.9× (Flint / Gemma 31B), 17.5× (Gemma 26B). We cap at 64: 128-token turns are 2.9× at 197K but ≤ 1.2× at 8K prefixes, and the 64-row tile both overflows shared memory at head_dim 512 and loses at short prefixes — a prefix-aware cap is our follow-up. Commit `d6b92c6`.
