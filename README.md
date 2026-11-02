@@ -5,11 +5,13 @@ SGLang v0.5.22 with 79 local RDNA4 patches, tuned for coherent single-user infer
 the patch series, the preset launcher, the benchmark and evaluation harnesses, the FP8/AWQ quantization
 pipeline, and the receipts behind every number below. Multi-user throughput is secondary.
 
-Serving tree `/data/sgl-v0522`, conda environment `sglang-triton36-v0522`, ROCm 7.2. The focus is FP8
-inference for coding and agentic workloads: Cohere North-Mini Code, Poolside Laguna XS.2, and the quality
-flagship Qwen3.8-27B-FP8.
+The focus is FP8 inference for coding and agentic workloads: Cohere North-Mini Code, Poolside Laguna XS.2,
+and the quality flagship Qwen3.8-27B-FP8. Open work and known issues are tracked in
+[GitHub issues](https://github.com/mattbucci/2x-R9700-RDNA4-GFX1201-sglang-inference/issues); final
+experiment dispositions are in [benchmarks/FINDINGS.md](benchmarks/FINDINGS.md); the experiment queue is
+in [experiments/](experiments/README.md).
 
-## Where things stand
+## Results
 
 - **Eighteen presets boot and serve** on one launcher (`scripts/launch.sh`); every swept preset (16) emits
   parsed structured tool calls at boot.
@@ -17,7 +19,7 @@ flagship Qwen3.8-27B-FP8.
   the native Triton block-FP8 lane, with a 21/21 seed-rung 256K agentic ladder. North-Mini Code passes the
   same ladder 21/21 to 245,172 actual tokens.
 - **Qwen3.8-27B-FP8 is the quality flagship**: fleet-best LAB-Bench 42.3 % (no-think multiple choice),
-  MMLU 84.2 %, HumanEval 93.3 %, 7/7 agentic rungs to 245,150 actual tokens. The shipped preset is DSpark
+  MMLU 84.2 %, HumanEval 93.3 %, 7/7 agentic rungs to 245,150 actual tokens. The preset is DSpark
   speculative decoding through the split-KV verify kernel: **44.9 / 52.2 / 47.5 / 41.0 tok/s at 24 / 7.3K /
   58K / 197K input** (canonical think-off sweep, 5-run medians) against 23.0 / 22.5 / 21.8 / 20.2 on the
   no-spec server (`QWEN38_SPEC=0`, 530K-token pool for true 256K work; the DSpark pool is 206K). Cold
@@ -30,8 +32,6 @@ flagship Qwen3.8-27B-FP8.
   ([receipt](benchmarks/quality/flint/needle-natural-fp8-2026-10-31.md), [KV A/B](benchmarks/profiling/flint-ab-2026-11-01.md)).
 - **The patch series replays byte-identically** onto pristine v0.5.22 under the strict gate in
   [`patches/README.md`](patches/README.md).
-
-## Results
 
 ### Single-user decode across the fleet
 
@@ -106,13 +106,13 @@ harness line so the two matrices are never read as one.
 little-coder, little-coder-rtk, oh-my-pi, prime-agent, deepagents-code — at 300/300 instances each, every
 scaffold inside the official per-instance SWE-bench image with no network, an opaque work tree, the task
 prompt on stdin and a 32,000-token output cap. All 2,100 instances are rolled and audited clean
-(`infra_*` = 0). Owed before publication: Docker scoring of the seven cells, the oh-my-pi re-roll on one
-engine version, and `audit_git_peek.py` on every lane (must be 0 exposed). The bake-off's job is to catch
-hosting errors across scaffolds, not to rank engines. Every lane keeps the same 29-minute wall; a slower
-scaffold is a worse harness, not a case for its own cell. Setup, audits and restart decisions:
+(`infra_*` = 0); Docker scoring, the oh-my-pi re-roll on one engine version and the `audit_git_peek.py`
+pass (must be 0 exposed) are owed before publication. Every lane keeps the same 29-minute wall; a slower
+scaffold is a worse harness, not a case for its own cell. The bake-off's job is to catch hosting errors
+across scaffolds, not to rank engines. Setup, audits and restart decisions:
 [`evals/swebench/FP8_BAKEOFF_SETUP.md`](evals/swebench/FP8_BAKEOFF_SETUP.md).
 
-Resolved rate per model × scaffold from the [2026-07-18 matrix](evals/swebench/bake-off-2026-07-18.md)
+Resolved rate per model × scaffold from the [July matrix](evals/swebench/bake-off-2026-07-18.md)
 (host-side rollouts at CTX=131072, 300 instances per cell; comparable within the matrix only — its sessions
 were not audited for git/web exposure):
 
@@ -122,57 +122,85 @@ were not audited for git/web exposure):
 | `qwen35-27b` | 45.7% | — | — |
 | `qwen36-35b-a3b` | 46.7% | 42.3% | 25.0% |
 
-## Next steps
+## Presets
 
-Ordered by what the GPUs do next. Specs with an ID live in [`experiments/`](experiments/README.md);
-finished work and its receipts live in [`benchmarks/FINDINGS.md`](benchmarks/FINDINGS.md), not here.
+`scripts/launch.sh` is the source of truth for model paths and runtime flags.
 
-**Stopped, scoring owed**
+| Preset | Model family | Primary lane | Context |
+|---|---|---|---:|
+| `north-mini` | North-Mini-Code-1.0 | FP8 MoE + hybrid SWA | 256K |
+| `laguna` | Laguna-XS.2 | FP8 MoE + hybrid SWA | 256K |
+| `flint` | RecursiveSI Flint (patch 105) | FP8 MoE + hybrid SWA + learned sinks, FP8 KV | 262K |
+| `coder-30b` | Qwen3-Coder-30B-A3B | AWQ MoE | 32K default; 256K capable |
+| `coder-reap-25b` | Qwen3-Coder REAP 25B-A3B | AWQ MoE | 256K |
+| `coder-next` | Qwen3-Coder-Next-80B (diagnostic preset) | AWQ MoE + DeltaNet | 128K |
+| `coder-next-ream` | Coder-Next REAM | AWQ MoE + DeltaNet | 128K |
+| `devstral` | Devstral-24B (patch 083 tokenization) | AWQ dense | model preset |
+| `devstral2` | Devstral-Small-2-24B | AWQ dense + vision | 256K |
+| `qwen35` | Qwen3.5-27B | AWQ/FP8 DeltaNet | 256K |
+| `qwen35-moe` | Qwen3.5-35B-A3B | AWQ MoE + DeltaNet | 256K |
+| `qwen36-27b` | Qwen3.6-27B | AWQ/FP8 DeltaNet + vision | 256K |
+| `qwen38` | Qwen3.8-27B | official FP8 (block) DeltaNet + vision + video + DSpark draft | 206K pool (256K with `QWEN38_SPEC=0`) |
+| `qwen36-moe` | Qwen3.6-35B-A3B | AWQ/FP8 MoE + DeltaNet | 256K |
+| `qwen3vl-32b` | Qwen3-VL-32B | AWQ dense + vision | 256K override |
+| `gemma4` | Gemma 4 26B-A4B | AWQ/FP8 MoE + vision | 256K |
+| `gemma4-12b` | Gemma 4 12B Unified | AWQ multimodal | 256K |
+| `gemma4-31b` | Gemma 4 31B (text only: the local AWQ checkpoint has no vision tower) | AWQ dense | 256K override |
+| `nemotron-omni` | Nemotron-3-Nano-Omni | FP8 Mamba2 hybrid MoE | 256K |
 
-- **Qwen3.8 bake-off v5** — rolled and audited; scoring not run. To finish:
-  `bash /data/logs/run-model-cycle-logs/v5-resume-after-reboot.sh` at a free GPU slot (rollouts skip, the
-  audit re-confirms 0 infra, Phase 5 scores in Docker; re-touch `v5-resume-armed` after it), then
-  `kill -CONT` the oh-my-pi re-roll waiter once `run_model_cycle.sh` is alive, `audit_git_peek.py` on every
-  lane, and publish the matrix with the scaffold-disagreement table.
+Additional fallback presets exist for Gemma 4 31B checkpoint formats; `./scripts/launch.sh -h` lists
+everything. Dense Qwen3.5/3.6 int4 checkpoints are throughput options; FP8 is the preferred agentic
+format. Use the 12B or 26B Gemma presets for multimodal workloads.
 
-**Next GPU slots, in order**
+### Runtime policy
 
-1. **LAB-Bench / MMLU / HumanEval re-measure with `--mc-no-think`**: Qwen3.5-27B and Qwen3.5-28B-A3B-REAP
-   done (LAB-Bench 0.405 / 0.363); Gemma 4 31B and 26B-A4B running. Then the quality chart and the
-   FINDINGS think-budget section are updated.
-2. **Extend / verify kernel follow-ups** ([R97-J](experiments/10-extend-attention-kv-split-agentic-turn.md),
-   [R97-Q](experiments/17-extend-attention-fp8-qk-gfx1201.md)): a warp/tile sweep for the split-KV verify
-   combine stage (346 / 2,156 register spills at 16 / 64 rows), the 128-row tile (compile stall), exp2
-   softmax and `num_stages` pipelining in the extend kernel, DSpark verify `UPCAST_K` A/B (decode vs
-   acceptance), the patch 110 route gate on `qwen35` / `qwen35-moe`, and admitting sink models (Flint) to the
-   split-KV turn route.
-3. **fp8 QK on the other FP8-cache presets** (north-mini, gemma4, qwen35/36, coder): opt-in
-   `SGLANG_EXTEND_FP8_QK=1` until each runs its own needle-grid A/B.
-4. **qwen38 decode gap, remaining half** ([attribution](benchmarks/profiling/qwen38-decode-gap-2026-10-31.md)):
-   ~4 ms of narrow-K GEMM latency per step and the replicated DeltaNet projections (a TP split there is model
-   code with a numerics gate).
-5. **Flint**: the SWE-bench lane on the scaffold the v5 scoring names, and the depth-0.1 retrieval study at
-   243–248K against the 3090's INT4 build on identical cells.
-6. **256K ladder across the agentic-qualified fleet** ([R97-I](experiments/09-fleet-ladder-per-model-rungs.md)),
-   including Nemotron's 2K/8K budget arms and the Devstral `KV_DTYPE` control.
-7. **EAGLE3 drafts in the `--spec` lane, depth curve** ([R97-A](experiments/04-eagle3-dense-vl-spec-lane-depth-curve.md)).
-8. **DeltaNet pool record** under `--max-running > 1` for every DeltaNet preset (recurrent state replicates
-   per slot; `qwen38` pins `MAX_RUNNING=1`).
+- Use CUDA/HIP graphs for dispatch-bound MoE and recurrent hybrid presets; keep compute-bound dense
+  presets eager unless an A/B shows a gain (qwen38 dense DeltaNet FP8 gains +26–33 % on M=1 decode with
+  identical outputs, so it runs graphs).
+- Use FP8 for native gfx1201 FP8 checkpoints and dense-thinking agentic workloads that lose quality
+  under int4; use AWQ int4 for weight-bandwidth-bound single-user decode and for models that need the
+  extra KV capacity. FP8 is the optimisation target on this rig; AWQ presets are maintained, not tuned.
+- Flint runs an FP8 KV cache (`KV_DTYPE=auto` restores bf16 KV).
+- Use no speculative decoding at true 256K depth unless a same-depth A/B proves it. The one lane that
+  does is `qwen38` + DSpark through the split-KV verify kernel (1.5–2.0× at 24 to 197K input), so it is
+  that preset's default; its pool ends at 206K (`QWEN38_SPEC=0` for the 256K no-spec server). Every other
+  trained-draft lane collapses at 244K (FINDINGS → Speculative decoding).
+- Hybrid (DeltaNet/Mamba) presets whose template emits a think block run
+  `--mamba-radix-cache-strategy extra_buffer` so agentic turns hit the cached state at the exact prompt end
+  (`qwen38`, `qwen36-27b`, `qwen36-moe`, `qwen35`, `qwen35-moe`; `MAMBA_CACHE_STRATEGY=no_buffer` reverts).
+  Short cache-hit turns (≤ 256 new tokens) on `laguna`, `qwen38`, `qwen36-27b` and `qwen36-moe` route
+  through the split-KV verify kernel (`EXTEND_SPLITKV_MAX=0` disables).
+- Treat tool-call and reasoning parsers as model-specific correctness settings, not optional
+  presentation features.
+- Keep the Triton cache warm when collecting comparative numbers; the first boot of a preset on a day and
+  the first use of a new kernel tile both measure slow, so run A/B arms in both orders.
+- On gfx1201, decode `num_kv_splits` defaults to 64 (patch 086), not the AMD default of 16, so the
+  flash-decode grid fills the 64 CUs at long context; override with `SGLANG_KV_SPLITS_OVERRIDE`.
+- Native Triton dense block-FP8 is Laguna's default (36.8–47.8 % over `auto`); roll back with
+  `FP8_GEMM_BACKEND=auto ./scripts/launch.sh laguna`. The gfx1201 per-shape block-FP8 GEMM configs
+  (patch 106) are qwen38-only; Laguna's dense FP8 slice is too small for them to matter. Do not use the
+  stock SGLang block-FP8 tuner on gfx1201: it lacks the correctness gates Laguna's K=256 shape needs.
+- Keep Laguna overlap scheduling off for single-user decode. `ENABLE_OVERLAP_SCHEDULE=1` is an
+  experimental concurrency/shared-prefix A/B, not a proven deep-context default.
+- Do not use DCP2 with the TP2 GQA coding presets: adjacent ranks hold distinct K/V heads while the DCP
+  MHA reduction requires replicated K/V heads inside each group; North/Laguna also lack hybrid-SWA DCP
+  support.
 
-**Your decisions**
+### Validation and quantization
 
-- decode-topk promotion ([R97-B](experiments/07-decode-topk-promotion-brief.md)): 1.77× at 245K on a
-  pre-v0.5.15 gate; needs regeneration. Open.
-- `ci-build-canary` (weekly image build) needs a push with a workflow-scoped token.
+Every new or modified ship must pass weight and scale integrity, basic generation, the applicable
+reasoning/tool-call/image/video/audio probes, long-context coherent generation, and a same-method
+performance baseline:
 
-**Blocked**
+```bash
+python scripts/eval/check_awq_scales.py /path/to/awq --base /path/to/bf16
+python scripts/eval/validate_capabilities.py --port 23334
+bash scripts/quantize/run_full_pipeline.sh qwen35   # full AWQ pipeline, base check included
+```
 
-- Qwen3.6-35B-A3B REAP prune ([R97-F](experiments/05-qwen36-35b-reap192-two-rig-relay.md), waiting on the
-  3090 handoff); North/Laguna canonical-eval cells
-  ([R97-G](experiments/06-north-laguna-canonical-eval-ngram-rows.md) Phase B/C); post-FP8 concurrency
-  re-measure ([R97-O](experiments/15-concurrency-hol-blocking-postfp8-remeasure.md)).
-
-Notes and asks from the sister rigs are kept in [`CROSS-TEAM.md`](CROSS-TEAM.md), not here.
+The AWQ base comparator distinguishes benign zero scales over dead MoE channels from zero scales over
+live weights. Build `mattbucci/*` releases from the upstream BF16 checkpoint with the repository's own
+calibration and pruning scripts; community quantizations are reference data, not release inputs.
 
 ## Quick start
 
@@ -196,9 +224,11 @@ ENABLE_OVERLAP_SCHEDULE=1 ./scripts/launch.sh laguna  # experimental scheduler A
 ```
 
 The model checkpoint controls compressed-tensors FP8 detection. Presets supply the validated attention
-backend, quantization path, parsers, memory settings, and graph policy.
+backend, quantization path, parsers, memory settings, and graph policy. Run `bash scripts/free_gpu.sh`
+between serving runs: a hard kill leaks the RCCL communicator's `/dev/shm` IPC segments and a fast
+relaunch faults on a stale one.
 
-## Current stack
+## Stack
 
 | Component | Version |
 |---|---|
@@ -211,10 +241,11 @@ backend, quantization path, parsers, memory settings, and graph policy.
 | RCCL | 2.27.7 |
 | transformers | 5.19.0 |
 
-`/data/sgl-v0522` sits on the peeled commit `baa9befa3` of v0.5.22. Upstream `main` is not tracked: the
-series and the native HIP kernel builds pin to release tags, and the next rebase waits for the next tag
-and a bake-off boundary. v0.5.20 is retained at `/data/sgl-v0520` / `sglang-triton36-v0520` as the
-rollback. Rebase procedure and per-version receipts: [`patches/README.md`](patches/README.md).
+Serving tree `/data/sgl-v0522` on the peeled commit `baa9befa3` of v0.5.22, conda environment
+`sglang-triton36-v0522`. Upstream `main` is not tracked: the series and the native HIP kernel builds pin
+to release tags, and the next rebase waits for the next tag and a bake-off boundary. v0.5.20 is retained
+at `/data/sgl-v0520` / `sglang-triton36-v0520` as the rollback. Rebase procedure and per-version receipts:
+[`patches/README.md`](patches/README.md).
 
 TP=2 requires both kernel P2P support and IOMMU passthrough:
 
@@ -226,7 +257,8 @@ grep -o 'iommu=pt' /proc/cmdline
 Required kernel settings are `CONFIG_HSA_AMD_P2P=y`, `CONFIG_PCI_P2PDMA=y`, and the boot argument
 `iommu=pt`. `HSA_FORCE_FINE_GRAIN_PCIE=1` remains enabled but is not a substitute for those
 requirements. Because `iommu=pt` reduces DMA isolation, use this configuration only on a dedicated host
-with trusted workloads; GPU passthrough is not a safe multi-tenant sandbox.
+with trusted workloads; GPU passthrough is not a safe multi-tenant sandbox. Host boot settings and
+operational invariants are in [`rules-for-agents.md`](rules-for-agents.md).
 
 ### OCI image
 
@@ -236,121 +268,7 @@ preset launcher, disabled remote code and media by default) and must still sit b
 and an authenticating TLS proxy. Device selection, secrets, `docker run` recipes, the read-only
 root-filesystem layout, and the full threat model are in [`docker/README.md`](docker/README.md).
 
-## Supported presets
-
-`scripts/launch.sh` is the source of truth for model paths and runtime flags.
-
-| Preset | Model family | Primary lane | Context |
-|---|---|---|---:|
-| `north-mini` | North-Mini-Code-1.0 | FP8 MoE + hybrid SWA | 256K |
-| `laguna` | Laguna-XS.2 | FP8 MoE + hybrid SWA | 256K |
-| `flint` | RecursiveSI Flint (patch 105) | FP8 MoE + hybrid SWA + learned sinks, FP8 KV | 262K |
-| `coder-30b` | Qwen3-Coder-30B-A3B | AWQ MoE | 32K default; 256K capable |
-| `coder-reap-25b` | Qwen3-Coder REAP 25B-A3B | AWQ MoE | 256K |
-| `coder-next` | Qwen3-Coder-Next-80B | AWQ MoE + DeltaNet | 128K |
-| `coder-next-ream` | Coder-Next REAM | AWQ MoE + DeltaNet | 128K |
-| `devstral` | Devstral-24B | AWQ dense | model preset |
-| `devstral2` | Devstral-Small-2-24B | AWQ dense + vision | 256K |
-| `qwen35` | Qwen3.5-27B | AWQ/FP8 DeltaNet | 256K |
-| `qwen35-moe` | Qwen3.5-35B-A3B | AWQ MoE + DeltaNet | 256K |
-| `qwen36-27b` | Qwen3.6-27B | AWQ/FP8 DeltaNet + vision | 256K |
-| `qwen38` | Qwen3.8-27B | official FP8 (block) DeltaNet + vision + video + DSpark draft | 206K pool (256K with `QWEN38_SPEC=0`) |
-| `qwen36-moe` | Qwen3.6-35B-A3B | AWQ/FP8 MoE + DeltaNet | 256K |
-| `qwen3vl-32b` | Qwen3-VL-32B | AWQ dense + vision | 256K override |
-| `gemma4` | Gemma 4 26B-A4B | AWQ/FP8 MoE + vision | 256K |
-| `gemma4-12b` | Gemma 4 12B Unified | AWQ multimodal | 256K |
-| `gemma4-31b` | Gemma 4 31B | AWQ dense + vision | 256K override |
-| `nemotron-omni` | Nemotron-3-Nano-Omni | FP8 Mamba2 hybrid MoE | 256K |
-
-Additional fallback presets exist for Gemma 4 31B checkpoint formats; `./scripts/launch.sh -h` lists
-everything.
-
-## Runtime policy
-
-- Use CUDA/HIP graphs for dispatch-bound MoE and recurrent hybrid presets; keep compute-bound dense
-  presets eager unless an A/B shows a gain (qwen38 dense DeltaNet FP8 gains +26–33 % on M=1 decode with
-  identical outputs, so it runs graphs).
-- Use FP8 for native gfx1201 FP8 checkpoints and dense-thinking agentic workloads that lose quality
-  under int4; use AWQ int4 for weight-bandwidth-bound single-user decode and for models that need the
-  extra KV capacity. FP8 is the optimisation target on this rig; AWQ presets are maintained, not tuned.
-- Flint runs an FP8 KV cache (`KV_DTYPE=auto` restores bf16 KV).
-- Use no speculative decoding at true 256K depth unless a same-depth A/B proves it. The one lane that
-  does is `qwen38` + DSpark through the split-KV verify kernel (1.5–2.0× at 24 to 197K input), so it is
-  that preset's default; its pool ends at 206K (`QWEN38_SPEC=0` for the 256K no-spec server). Every other
-  trained-draft lane collapses at 244K (FINDINGS → Speculative decoding).
-- Hybrid (DeltaNet/Mamba) presets whose template emits a think block run
-  `--mamba-radix-cache-strategy extra_buffer` so agentic turns hit the cached state at the exact prompt end
-  (`qwen38`, `qwen36-27b`, `qwen36-moe`, `qwen35`, `qwen35-moe`; `MAMBA_CACHE_STRATEGY=no_buffer` reverts). Short cache-hit turns
-  (≤ 256 new tokens) on `laguna`, `qwen38`, `qwen36-27b` and `qwen36-moe` route through the split-KV verify
-  kernel (`EXTEND_SPLITKV_MAX=0` disables).
-- Treat tool-call and reasoning parsers as model-specific correctness settings, not optional
-  presentation features.
-- Keep the Triton cache warm when collecting comparative numbers; the first boot of a preset on a day and
-  the first use of a new kernel tile both measure slow, so run A/B arms in both orders.
-- On gfx1201, decode `num_kv_splits` defaults to 64 (patch 086), not the AMD default of 16, so the
-  flash-decode grid fills the 64 CUs at long context; override with `SGLANG_KV_SPLITS_OVERRIDE`.
-- Native Triton dense block-FP8 is Laguna's default (36.8–47.8 % over `auto`); roll back with
-  `FP8_GEMM_BACKEND=auto ./scripts/launch.sh laguna`. The gfx1201 per-shape block-FP8 GEMM configs
-  (patch 106) are qwen38-only; Laguna's dense FP8 slice is too small for them to matter. Do not use the
-  stock SGLang block-FP8 tuner on gfx1201: it lacks the correctness gates Laguna's K=256 shape needs.
-- Keep Laguna overlap scheduling off for single-user decode. `ENABLE_OVERLAP_SCHEDULE=1` is an
-  experimental concurrency/shared-prefix A/B, not a proven deep-context default.
-
-## Validation and quantization
-
-Every new or modified ship must pass weight and scale integrity, basic generation, the applicable
-reasoning/tool-call/image/video/audio probes, long-context coherent generation, and a same-method
-performance baseline:
-
-```bash
-python scripts/eval/check_awq_scales.py /path/to/awq --base /path/to/bf16
-python scripts/eval/validate_capabilities.py --port 23334
-bash scripts/quantize/run_full_pipeline.sh qwen35   # full AWQ pipeline, base check included
-```
-
-The AWQ base comparator distinguishes benign zero scales over dead MoE channels from zero scales over
-live weights. Build `mattbucci/*` releases from the upstream BF16 checkpoint with the repository's own
-calibration and pruning scripts; community quantizations are reference data, not release inputs.
-
-## Known limitations
-
-- Long-running TP=2 harnesses can expose one-rank stalls that short serving probes do not. Use the
-  watchdog and capture scheduler stacks on recurrence.
-- Back-to-back TP=2 relaunches intermittently hit an RCCL-init GPU coredump (rank exit -6): a hard kill
-  leaks the communicator's `/dev/shm` IPC segments and a fast relaunch faults on a stale one. Run
-  `bash scripts/free_gpu.sh` between serving runs.
-- Coder-Next full-size remains a diagnostic preset rather than a recommended agentic ship;
-  Qwen3-Coder-30B REAM is research-only until it passes a same-scaffold quality comparison against the
-  unmerged checkpoint.
-- Gemma 4 31B vision and video are non-functional on the local `gemma-4-31B-AWQ` checkpoint: it carries
-  no `vision_tower.*` weights (the tower is randomly initialized at load), so the probe answers are
-  hallucinated; use the 12B or 26B Gemma presets for multimodal workloads.
-- Verbatim needle recall at ~198K is at the boundary for the two recurrent/windowed presets:
-  nemotron-omni greedily returns the planted values' digits without their alpha prefix (full-form to 88K)
-  and north-mini answers not-found; a single T=0.7 sample on either lands on either side of that boundary,
-  so fleet-run LATE flips on these two presets are not regressions
-  ([controls](benchmarks/validation/deep-probe-controls-v0518-v0520-2026-09-19.json)).
-- Flint loses the first 10 % of the window at 243–248K on natural-text needles (a NoPE model; the stock
-  filler is a known-bad input for it).
-- Dense Qwen3.5/3.6 int4 checkpoints are throughput options; FP8 is the preferred agentic format.
-- Devstral tokenization requires patch 083 so rendered `[INST]` and `[TOOL_CALLS]` markers remain
-  single special tokens.
-- Do not use DCP2 with the TP2 GQA coding presets: adjacent ranks hold distinct K/V heads while the DCP
-  MHA reduction requires replicated K/V heads inside each group; North/Laguna also lack hybrid-SWA DCP
-  support.
-- **Agentic turns at depth are prefill-bound.** The gfx1201 extend kernel is compute-bound (~18 % MFU), so
-  a cache-hit turn still pays for the prefix walk; the fp8 QK dot (patch 108), the split-KV turn route
-  (patches 107/110) and `extra_buffer` cut a 1-token turn at 176K on `qwen38` from 10.1 s to 0.17–0.35 s,
-  but a turn with more than 256 new tokens, and every preset without the route, falls back to the extend
-  kernel. Open follow-ups are in Next steps.
-- The AWQ M=1 decode GEMV under-fills the 64 CUs on narrow-output projections (attn_o ~33–52 % of
-  roofline). Grid-level split-K was implemented and **refuted** — it regresses; the cap is per-CU
-  wavefront occupancy, not block count. Details:
-  [dense-gemv-narrow-n-splitk-handoff.md](benchmarks/dense-gemv-narrow-n-splitk-handoff.md).
-
-Final experiment dispositions are summarized in [benchmarks/FINDINGS.md](benchmarks/FINDINGS.md).
-
-## Repository map
+## Repo map
 
 | Path | Purpose |
 |---|---|

@@ -30,7 +30,7 @@ zcat /proc/config.gz | grep -E 'CONFIG_HSA_AMD_P2P|CONFIG_PCI_P2PDMA'
 grep -o 'iommu=pt' /proc/cmdline
 ```
 
-Since 2026-09-22 the host also boots with `amdgpu.runpm=0` (no BACO runtime suspend of the cards;
+The host also boots with `amdgpu.runpm=0` (no BACO runtime suspend of the cards;
 one card fell off the bus during a watchdog teardown after 181 suspend cycles — see
 `evals/swebench/gpu-loss-2026-09-22.json`) and `kernel.yama.ptrace_scope=0` (the SGLang watchdog's
 py-spy rank stacks). Check `/sys/module/amdgpu/parameters/runpm` = 0 and
@@ -41,8 +41,8 @@ GPU loss has a temperature/power/clock history.
 
 `systemd-tmpfiles-clean.timer` ages `/tmp` entries out after 10 days whether or not a process holds
 them open, and the bake-off queue keeps its flock on `/tmp/swebench-bakeoff.lock` for a multi-week
-cycle. `/etc/tmpfiles.d/swebench-bakeoff.conf` (source: `systemd/tmpfiles-swebench-bakeoff.conf`,
-installed 2026-09-26) excludes the lock, the score-phase lock dir and the scratchpads; after a host
+cycle. `/etc/tmpfiles.d/swebench-bakeoff.conf` (source: `systemd/tmpfiles-swebench-bakeoff.conf`)
+excludes the lock, the score-phase lock dir and the scratchpads; after a host
 rebuild confirm it with `systemd-tmpfiles --cat-config | grep swebench-bakeoff`. Never park new
 long-lived pid or lock files under `/tmp` without adding them there.
 

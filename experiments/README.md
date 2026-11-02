@@ -29,7 +29,7 @@ post-094 decision below is the current execution sequence.
   R97-G Phase B/C until the short critical path is clear; R97-H (08) closed 2026-11-01 (purge pass 2026-10-25; the AWQ re-measure dropped on the user's call).
 
 The repository-level rationale, completion criteria, and the missing direct native-FP8 follow-on are
-documented in [`README.md`](../README.md#next-steps).
+tracked in the repository's [GitHub issues](https://github.com/mattbucci/2x-R9700-RDNA4-GFX1201-sglang-inference/issues) and summarised in the [`README.md`](../README.md).
 
 | # | ID | Title | Type | Current status | Host | Wall clock |
 |---|---|---|---|---|---|---|
