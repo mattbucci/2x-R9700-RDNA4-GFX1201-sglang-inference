@@ -81,6 +81,18 @@ makes that a one-time cost per host.
 Needle across a turn boundary 6/6 on both arms (turn-2 TTFT 1.5–1.7 → 0.48 s at 138K), capabilities 5/5, decode TPOT
 identical. The unwarmed first pass again carried the tile compiles (7.2 s on its first turn). Enabled for `qwen36-27b`.
 
+**qwen36-moe (Qwen3.6-35B-A3B AWQ, `extra_buffer`)**, route off → ≤ 256 in 64-row chunks, warmed measure pass:
+
+| cached prompt | 1 new | 64 new | 256 new |
+|---:|---:|---:|---:|
+| 6,528 | 84 → 66 ms | 85 → 79 | 107 → 105 |
+| 51,712 | 412 → **79** | 331 → **108** | 286 → **151** |
+| 104,384 | 755 → **72** | 583 → **105** | 450 → **164** |
+
+Needle across a turn boundary 6/6 on both arms (turn-2 TTFT 1.16 → 0.22 s at 138K), capabilities 5/5, decode TPOT
+identical. The MoE's full-attention layers are few, so a 1-token turn at 104K is now 72 ms — launch-bound, the regime
+the 3090 reports on CUDA. Enabled for `qwen36-moe`.
+
 ## Disposition
 
 **Shipped as patch 110** (`triton_backend.py`: `SGLANG_EXTEND_SPLITKV_TILE`, default 64; chunk loop over

@@ -443,6 +443,11 @@ PYEOF
             # pool unchanged. MAMBA_CACHE_STRATEGY=no_buffer restores the old behaviour.
             EXTRA_ARGS="${EXTRA_ARGS:-} --mamba-radix-cache-strategy ${MAMBA_CACHE_STRATEGY:-extra_buffer}"
             [[ "${MAMBA_CACHE_STRATEGY:-extra_buffer}" == "no_buffer" ]] && EXTRA_ARGS="$EXTRA_ARGS --disable-overlap-schedule"
+            # Patch 110 (2026-11-01): cache-hit extends of <= 256 new tokens through the split-KV verify kernel in
+            # 64-row chunks. Warmed agentic turns 1 / 64 / 256 new tokens 412 / 331 / 286 -> 79 / 108 / 151 ms at 52K
+            # and 755 / 583 / 450 -> 72 / 105 / 164 ms at 104K cached; needle across a turn 6/6, caps 5/5.
+            # EXTEND_SPLITKV_MAX=0 disables.
+            export SGLANG_EXTEND_SPLITKV_MAX_TOKENS="${EXTEND_SPLITKV_MAX:-256}"
             REASONING="--reasoning-parser qwen3"
             TOOL_CALL_PARSER="qwen3_coder"
             WARMUP="--skip-server-warmup"
