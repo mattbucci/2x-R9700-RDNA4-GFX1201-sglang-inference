@@ -170,8 +170,8 @@ format. Use the 12B or 26B Gemma presets for multimodal workloads.
 - Hybrid (DeltaNet/Mamba) presets whose template emits a think block run
   `--mamba-radix-cache-strategy extra_buffer` so agentic turns hit the cached state at the exact prompt end
   (`qwen38`, `qwen36-27b`, `qwen36-moe`, `qwen35`, `qwen35-moe`; `MAMBA_CACHE_STRATEGY=no_buffer` reverts).
-  Short cache-hit turns (≤ 256 new tokens) on `laguna`, `qwen38`, `qwen36-27b` and `qwen36-moe` route
-  through the split-KV verify kernel (`EXTEND_SPLITKV_MAX=0` disables).
+  Short cache-hit turns (≤ 256 new tokens) on `laguna`, `qwen38`, `qwen36-27b`, `qwen36-moe`, `qwen35` and
+  `qwen35-moe` route through the split-KV verify kernel (`EXTEND_SPLITKV_MAX=0` disables).
 - Treat tool-call and reasoning parsers as model-specific correctness settings, not optional
   presentation features.
 - Keep the Triton cache warm when collecting comparative numbers; the first boot of a preset on a day and

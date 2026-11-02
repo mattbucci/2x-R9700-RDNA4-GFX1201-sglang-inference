@@ -367,6 +367,14 @@ With R97-R the qwen38 1-token turn at 176K went 10.1 s → 0.17–0.35 s over th
 (`EXTEND_SPLITKV_MAX=0` disables). Receipt:
 [`profiling/extend-splitkv-route-wide-2026-11-01.md`](profiling/extend-splitkv-route-wide-2026-11-01.md).
 
+**qwen35 and qwen35-moe (2026-11-02, after both moved to `extra_buffer`).** Same gate (route off vs 256 / 64-row
+chunks, warm-up pass then measured pass, same session): qwen35 1-token turn 681 → 270 ms at 52K and 1,218 → 259 ms at
+104K (2.5× / 4.7×), 64 / 256-token turns 1.8–2.5×; qwen35-moe 410 → 76 ms at 52K and 805 → 72 ms at 104K (5.4× / 11×),
+64 / 256-token turns 3.3–5×. Capabilities 5/5 on both; the across-turn needle grid shuffles through the 2,048-token
+thinking cap on both arms (qwen35 4/6 → 5/6, qwen35-moe 2/6 → 2/6, every miss `finish=length`), the flip class the
+user accepted for these presets. Route enabled on both ([qwen35](profiling/extend-splitkv-route-qwen35-route-256-2026-11-02.json),
+[qwen35-moe](profiling/extend-splitkv-route-qwen35-moe-route-256-2026-11-02.json); route-off controls beside them).
+
 ## Flint A/Bs: FP8 KV recommended, NGRAM / SWA ratio / BF16 attention sum closed (2026-11-01)
 
 Same-session arms on the Flint FP8 preset ([receipt](profiling/flint-ab-2026-11-01.md)). NGRAM speculation (8 drafts)

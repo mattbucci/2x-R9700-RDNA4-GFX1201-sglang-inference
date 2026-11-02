@@ -405,6 +405,10 @@ PYEOF
             # MAMBA_CACHE_STRATEGY=no_buffer restores the old behaviour.
             EXTRA_ARGS="${EXTRA_ARGS:-} --mamba-radix-cache-strategy ${MAMBA_CACHE_STRATEGY:-extra_buffer}"
             [[ "${MAMBA_CACHE_STRATEGY:-extra_buffer}" == "no_buffer" ]] && EXTRA_ARGS="$EXTRA_ARGS --disable-overlap-schedule"
+            # Patch 110 (2026-11-02 gate): cache-hit extends of <= 256 new tokens through the split-KV verify kernel in
+            # 64-row chunks. Warmed agentic turns 1 / 64 / 256 new tokens 410 / 338 / 285 -> 76 / 102 / 130 ms at 52K and 805 / 514 / 454 -> 72 / 103 / 155 ms at 104K cached; needle across a turn equal
+            # (every miss is a finish=length thinking-cap cell on both arms), caps 5/5. EXTEND_SPLITKV_MAX=0 disables.
+            export SGLANG_EXTEND_SPLITKV_MAX_TOKENS="${EXTEND_SPLITKV_MAX:-256}"
             REASONING="--reasoning-parser qwen3"
             TOOL_CALL_PARSER="qwen3_coder"
             WARMUP="--skip-server-warmup"
@@ -492,6 +496,10 @@ PYEOF
             # MAMBA_CACHE_STRATEGY=no_buffer restores the old behaviour.
             EXTRA_ARGS="${EXTRA_ARGS:-} --mamba-radix-cache-strategy ${MAMBA_CACHE_STRATEGY:-extra_buffer}"
             [[ "${MAMBA_CACHE_STRATEGY:-extra_buffer}" == "no_buffer" ]] && EXTRA_ARGS="$EXTRA_ARGS --disable-overlap-schedule"
+            # Patch 110 (2026-11-02 gate): cache-hit extends of <= 256 new tokens through the split-KV verify kernel in
+            # 64-row chunks. Warmed agentic turns 1 / 64 / 256 new tokens 681 / 578 / 595 -> 270 / 323 / 431 ms at 52K and 1,218 / 837 / 867 -> 259 / 339 / 466 ms at 104K cached; needle across a turn equal
+            # (every miss is a finish=length thinking-cap cell on both arms), caps 5/5. EXTEND_SPLITKV_MAX=0 disables.
+            export SGLANG_EXTEND_SPLITKV_MAX_TOKENS="${EXTEND_SPLITKV_MAX:-256}"
             # pi/little-coder sends a `developer` role the stock template rejects (-> SGLang
             # 400 -> empty 2s rollout); remap dev->system (was \$MODEL/chat_template.jinja).
             CHAT_TEMPLATE="--chat-template $SCRIPT_DIR/qwen3.5_devrole_chat_template.jinja"
