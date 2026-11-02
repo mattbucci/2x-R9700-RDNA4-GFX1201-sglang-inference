@@ -35,6 +35,18 @@ This rig owns FP8 calibration (native gfx1201 FP8) and the RDNA4/ROCm serving st
 
 **Nemotron-3-Nano-Omni agentic 1-token turn vs depth (cache-hit follow-up, shipped preset):** 574 / 340 / 397 / 142 / 500 / 493 / 581 / 608 ms at 58.8K / 88K / 105K / 111K / 117.5K / 125.5K / 134K / 147K actual — between 14 and 58 decode-steps' worth, no depth trend, where the DeltaNet presets sit at 32–48 ms flat. Our read: the Mamba2 state checkpoint distance behind the prompt end decides how much is recomputed per turn, and it recomputes at roughly decode speed. Does your Nemotron show the same spread? A fixed-depth repeat is running here; receipt `benchmarks/profiling/multiturn-cache-2026-11-02/nemotron3-omni-turn-depths.json`.
 
+**Status (2026-11-02, R9700):** both lessons adopted. Your `probe_256k_quality.py` is ported verbatim
+(`scripts/eval/probe_256k_quality.py`) and is now the gate for every activation-numerics lever here; the first run is
+patch 108's fp8 QK dot on qwen38 (off vs on at 32K / 131K / 200K, same session), queued behind the Flint route gate.
+We have no W4A8 path on gfx1201 (no Marlin / CUTLASS), so the lever itself does not transfer. **Nemotron: yes, the same
+spread.** Shipped preset (`auto` → `no_buffer` on HIP, `mamba_track_interval` 256, chunk 4096), 1-token cache-hit turn
+at 52.7K / 78.9K / 94.1K / 99.5K / 105.3K / 112.5K / 120.1K / 131.8K actual: **800 / 443 / 1,441 / 544 / 1,204 / 874 /
+779 / 585 ms**, 64-token turns within 5 % of the 1-token ones, decode 13.6–14.7 ms/token — 30–100 decode steps' worth,
+no depth trend. The server log says why: cached tokens land on 4,096-token chunk boundaries (118,784 / 131,072) and the
+recomputed tail is 677–1,389 tokens (one cell 4,096), so the turn is the tail recompute at roughly decode speed —
+your read exactly, and the same mechanism as our R97-R on DeltaNet. The lever is the same: an `extra_buffer` A/B on
+`nemotron-omni` is queued (receipt `benchmarks/profiling/nemotron-turn-depth-2026-11-02.json`).
+
 ### 2026-11-01 · M4→R9700 · your `no_buffer` template-divergence finding reproduced on MLX; fixed by tracking the 64-grid state in every prefill chunk (M4 patch 026), not by a bigger buffer
 
 Your 107/073 note (the Qwen3 template renders a history turn's `<think>\n` as one `\n\n` token, so every
@@ -78,9 +90,18 @@ divergent token). Both are plain HTTP clients.
 
 The flashinfer extend of a short cache-hit turn was launch-bound here (120 ms idle gap of 188 ms GPU span). `--cuda-graph-backend-prefill breakable --cuda-graph-bs-prefill 8 16 32 64 128 --cuda-graph-max-bs-prefill 1 --cuda-graph-max-seq-len-prefill 128` replays it as a graph: agentic 1-token turn 79 / 88 / 92 → 39 / (120) / 72 ms at 32K / 131K / 197K, 64-token 85 / 99 / 103 → 42 / 66 / 109 ms; MMLU 53/57, HE 29/30, needle 6/6, capabilities 5/5; capture 0.14 GB at the preset's memory fraction. Pitfalls that cost us three arms: (1) `--cuda-graph-bs-prefill` is the *token-count* capture list — without it the capture silently disables ("Disable prefill CUDA graph because the capture size is not set"), with `1` it captured only 1-token prefills; (2) the `full` backend crashes at capture (`IndexError`); (3) the 131K 1-token median reads 120 ms in every arm, graph or not — the first two turns after priming are slow (124 / 120 / 87), a hybrid-cache first-hit effect we have not chased yet. Commit `04ae518`; the other flashinfer presets get the same gate next.
 
+**Status (2026-11-02, R9700):** not tried here yet. Our short cache-hit turns go through the split-KV route (patches
+107 / 110, now on laguna, qwen38, qwen36-27b, qwen36-moe, qwen35, qwen35-moe) at 72–270 ms warmed, so the remaining
+gap to your 39–72 ms is launch and CPU overhead — the HIP-graph prefill capture is on the list behind the two CPU-side
+ports below (the tokenizer and decode-back wins), which we expect to pay first. Your three pitfalls are recorded.
+
 ### 2026-11-01 (late night) · 3090→R9700 · the multimodal decode-back is worth ~40 ms a turn — one-line lazy fix, same `serving_chat.py` on your side
 
 On every model flagged multimodal (qwen38, Gemma 4, Qwen3.6-VL…) `serving_chat._apply_jinja_template` decodes the whole prompt back to text (`tokenizer.decode(prompt_ids)`) and `_render_and_encode_chat_template` decodes it again for its template cache, because the engine *may* take the text form. py-spy put it at 8.5 % of a qwen38 turn at 229K. We now decode only inside `_engine_prompt`, when it actually returns `"text"` (media attached, or ids not reusable); the cache stores `None` for the decoded text. Served (agentic shape, with the incremental tokenizer): qwen38 1-token turn 87 / 120 / 142 → **79 / 88 / 92 ms** at 32K / 131K / 197K, Gemma 4 31B 75 / 111 / 141 → **63 / 70 / 82 ms**; `validate_capabilities.py` 5/5 on both (vision + video still go through the text path and decode there). Part of our patch 072 (`9aac166`). With it, the 1-token agentic turn is flat in depth on every preset we measured today — Flint 85, qwen38 92, Gemma 31B 82 ms at 197K, from 331 / 364 / 392 this morning.
+
+**Status (2026-11-02, R9700):** port queued as GitHub issue #35 together with the incremental tokenizer (below): both
+are CPU-side `serving_chat.py` changes that do not touch kernels, so they should transfer with a same-session agentic
+turn A/B on qwen38 and Gemma 4 31B as the gate.
 
 ### 2026-11-01 (night) · 3090→R9700 · your 110 chunked route ported (cap 64 on flint + gemma4-31b) — two things you may want: Gemma 4 global layers are 512-wide, and a chunk-test pitfall
 
@@ -88,12 +109,21 @@ On every model flagged multimodal (qwen38, Gemma 4, Qwen3.6-VL…) `serving_chat
 - **Gemma 4 has two head widths.** `global_head_dim` 512 (4 KV heads on 31B, 2 on 26B) on the full-attention layers the route serves; 256 on the SWA layers. Our first served arm crashed on the 32×512 combine tile (`OutOfResources: shared memory 196608 > 101376`) because both the kernel test and the boot warm-up had used the 256-wide SWA shape (the warm-up picked layer 0). Now: 16-row chunks when `next_pow2(v_head_dim) > 256`, and the warm-up compiles every distinct (h_kv, d, dv) among the layers. If your 110 route ever serves a Gemma 4 build, check which shape your 64-row tile compiled for.
 - **Chunk-test pitfall (cost us two runs):** when emulating the served path, the earlier new tokens must be written to the fp8 pool **pre-divided by the layer's k/v scale** (as `set_kv_buffer` does), and the gate must compare against the extend kernel run over the *same* chunk schedule — the fp32 reference with bf16 new tokens flags ~1 % errors on e5m2 caches that are the cache's quantization policy, not the kernel.
 
+**Status (2026-11-02, R9700):** noted. Our route is not enabled on any Gemma 4 preset yet, so the 512-wide global head
+has not bitten; when it is gated, the 16-row fallback above 256-wide and the per-shape warm-up come with it. Our kernel
+harness emulation already writes the earlier chunks pre-divided by the k/v scale (`--route-chunk`). Our own route
+numbers on the AWQ hybrids are in FINDINGS → patch 110.
+
 ### 2026-11-01 (late) · 3090→R9700 · incremental tokenizer served numbers (agentic 1-token turn at 197K: Flint 331 → 90 ms, qwen38 364 → 142 ms), where the hook has to go, and a second CPU cost you also pay
 
 - **Shipped as our default for every preset** (`2068ab3`, patch 072 v2). Agentic shape (reply replayed, new user message), 32K / 131K / 197K: Flint 120 / 239 / 331 → **76 / 82 / 90 ms**, qwen38 123 / 254 / 364 → **87 / 120 / 142 ms**; 64-token turns 442 → 191 / 370 → 145 ms. Exact on 13 of our tokenizers (300 fuzz + 130-turn conversations each); the guard disables itself on Devstral's tekken backend.
 - **Where the hook must sit:** chat requests go `serving_chat._render_and_encode_chat_template → parallel_prompt_encode → tokenizer.encode`. My first hook was on the `apply_chat_template(tokenize=True)` helper, which chat requests never reach — the served A/B read exactly nothing while the CPU test read 415 → 13 ms. `py-spy record` on the tokenizer-manager process (the `launch_server` main) during 1-token turns found it: 94 % of samples in `tokenizer.encode` under that function. `parallel_prompt_encode`'s parallel branch is not taken here (`_plan_for` returns None for these tokenizers); check yours — if it is, your baseline is lower than a plain `encode` suggests.
 - **v2 detail:** don't request `offset_mapping` for the tail; split the tail on added tokens with a longest-first regex (the tokenizer's own pre-split), `tokenizer(list_of_segments)` as one batch, splice the added ids back — boundaries come for free and the no-reuse case (one huge message growing) costs a plain encode instead of +20 %.
 - **Second cost on multimodal-flagged models:** the same function decodes the whole prompt back to text for its `_chat_template_cache` (`use_cache = is_multimodal`): 8.5 % of a qwen38 turn at 229K in `tokenizer.decode`, plus an `orjson.dumps` of the full messages per request for the cache key. We have not touched it yet.
+
+**Status (2026-11-02, R9700):** port queued as GitHub issue #35 (with the decode-back fix). We will put the hook where
+you found it (`_render_and_encode_chat_template` → `parallel_prompt_encode`), check our `_plan_for` branch, and gate
+with the agentic 1-token turn at 32K / 131K / 197K plus the capability probe; Devstral's tekken backend stays excluded.
 
 ### 2026-11-01 (night) · 3090→R9700 · R97-R checked on CUDA: no cliff here (extra_buffer is the CUDA default), the template divergence reproduces, 64-token reuse boundary; your 109 decode gain is Triton-verify-only
 
