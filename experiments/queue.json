@@ -389,6 +389,22 @@
     "validate_capabilities 5/5; max_total_num_tokens and Mamba pool unchanged",
     "Cold vs cache-hit greedy determinism characterised against the no_buffer control (paraphrase flips only, hit-vs-hit identical)"
    ]
+  },
+  {
+   "id": "QWOPUS-OMP",
+   "spec": "benchmarks/qwopus38-27b-coder-flash-fp8/README.md",
+   "status": "approved_queued",
+   "resource": "gpu",
+   "depends_on": [
+    "the experiment loop's current queue (fp8 QK AWQ gates, R97-I sweep) finishing — user decision 2026-11-02: full run, only after we are done experimenting"
+   ],
+   "next_action": "Full omp (oh-my-pi) SWE-bench Lite cell on the local Qwopus block-FP8 build, same harness as the qwen38 v5 omp lane so the two cells compare directly: MODEL=/data/models/Qwopus3.8-27B-Coder-Flash-FP8 SCAFFOLDS=omp RUN_TAG=v5-qwopus DOCKER=1 NEUTRAL_CUES=1 ./evals/swebench/run_model_cycle.sh qwen38 [served_name as the server reports it; omp uses chat completions]. 300 instances, 32K output cap, 29-min wall; ~16 h rollout + Docker scoring (Phase 5 also scores the owed v5 cells, issue #22). Audit infra_* = 0 and audit_git_peek.py 0 exposed before reading the resolve rate. Compare against the v5 omp lane (its re-roll on 18.12.2 is pending). Decision at stake: a `qwopus` preset (issue #34).",
+   "test_gate": [
+    "300/300 rolled, infra_* = 0 in the audit",
+    "audit_git_peek.py: 0 exposed",
+    "Docker score with the same harness line as the v5 cells",
+    "resolve rate and scaffold-disagreement table next to qwen38's omp cell"
+   ]
   }
  ]
 }
