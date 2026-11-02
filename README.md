@@ -7,7 +7,9 @@ pipeline, and the receipts behind every number below. Multi-user throughput is s
 
 The focus is FP8 inference for coding and agentic workloads: Cohere North-Mini Code, Poolside Laguna XS.2,
 and the quality flagship Qwen3.8-27B-FP8. Open work and known issues are tracked in
-[GitHub issues](https://github.com/mattbucci/2x-R9700-RDNA4-GFX1201-sglang-inference/issues); final
+[GitHub issues](https://github.com/mattbucci/2x-R9700-RDNA4-GFX1201-sglang-inference/issues)
+(known limitations carry the `known-issue` label:
+[filtered list](https://github.com/mattbucci/2x-R9700-RDNA4-GFX1201-sglang-inference/issues?q=is%3Aissue+is%3Aopen+label%3Aknown-issue)); final
 experiment dispositions are in [benchmarks/FINDINGS.md](benchmarks/FINDINGS.md); the experiment queue is
 in [experiments/](experiments/README.md).
 
