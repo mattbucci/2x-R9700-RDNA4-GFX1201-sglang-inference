@@ -1,0 +1,46 @@
+{
+  "tag": "nemotron-omni-fp8qk",
+  "results": [
+    {
+      "approx": 32768,
+      "multikey": {
+        "actual_tokens": 35846,
+        "correct": true,
+        "s": 8.9
+      },
+      "vartrack": {
+        "actual_tokens": 35793,
+        "correct": true,
+        "s": 5.8
+      },
+      "aggregate": {
+        "actual_tokens": 35826,
+        "correct": true,
+        "s": 6.1
+      },
+      "actual_tokens": 35846,
+      "score": 1.0
+    },
+    {
+      "approx": 131072,
+      "multikey": {
+        "actual_tokens": 142944,
+        "correct": false,
+        "s": 55.4
+      },
+      "vartrack": {
+        "actual_tokens": 142890,
+        "correct": false,
+        "s": 53.9
+      },
+      "aggregate": {
+        "actual_tokens": 142924,
+        "correct": false,
+        "s": 53.8
+      },
+      "actual_tokens": 142944,
+      "score": 0.0
+    }
+  ],
+  "overall": 0.5
+}

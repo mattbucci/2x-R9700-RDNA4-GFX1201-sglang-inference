@@ -1,0 +1,80 @@
+{
+ "tag": "nemotron-omni-default-fp8qk",
+ "timestamp": "2026-11-02 10:06",
+ "model": "/home/letsrtfm/AI/models/Nemotron-3-Nano-Omni-30B-A3B-Reasoning-FP8",
+ "port": 23334,
+ "haystack": "benchmarks/quality/haystack-platypus.txt",
+ "chars_per_token": 3.3,
+ "temperature": 0.0,
+ "flush": true,
+ "max_tokens": 2048,
+ "results": [
+  {
+   "found": true,
+   "actual_prompt_tokens": 33259,
+   "completion_tokens": 118,
+   "finish_reason": "stop",
+   "seconds": 5.5,
+   "content_tail": "\nBANANA42",
+   "reasoning_tail": "",
+   "context": 32768,
+   "depth": 0.1
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 33259,
+   "completion_tokens": 68,
+   "finish_reason": "stop",
+   "seconds": 4.9,
+   "content_tail": "\nBANANA42",
+   "reasoning_tail": "",
+   "context": 32768,
+   "depth": 0.5
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 33258,
+   "completion_tokens": 63,
+   "finish_reason": "stop",
+   "seconds": 4.8,
+   "content_tail": "\nBANANA42",
+   "reasoning_tail": "",
+   "context": 32768,
+   "depth": 0.9
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 133962,
+   "completion_tokens": 101,
+   "finish_reason": "stop",
+   "seconds": 34.5,
+   "content_tail": "\nBANANA42",
+   "reasoning_tail": "",
+   "context": 131072,
+   "depth": 0.1
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 133961,
+   "completion_tokens": 66,
+   "finish_reason": "stop",
+   "seconds": 33.6,
+   "content_tail": "\nBANANA42",
+   "reasoning_tail": "",
+   "context": 131072,
+   "depth": 0.5
+  },
+  {
+   "found": false,
+   "actual_prompt_tokens": 133962,
+   "completion_tokens": 272,
+   "finish_reason": "stop",
+   "seconds": 35.9,
+   "content_tail": "\n\\frac{3}{10}",
+   "reasoning_tail": "se any 3 from 10: C(10,3)=120. So probability = 36/120 = simplify divide by 12 => 3/10. So answer 3/10.\n\nCheck: 36/120 = 3/10. Yes.\n\nThus answer: \\frac{3}{10}.\n",
+   "context": 131072,
+   "depth": 0.9
+  }
+ ],
+ "score": 0.8333333333333334
+}

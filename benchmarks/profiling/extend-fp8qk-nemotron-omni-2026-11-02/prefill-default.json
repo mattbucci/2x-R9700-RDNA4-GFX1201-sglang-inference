@@ -1,0 +1,40 @@
+{
+ "label": "nemotron-omni default",
+ "model": "/home/letsrtfm/AI/models/Nemotron-3-Nano-Omni-30B-A3B-Reasoning-FP8",
+ "port": 23334,
+ "runs": 2,
+ "method": "flush_cache + non-stream max_tokens=1 wall time",
+ "timestamp": "2026-11-02 10:04",
+ "rows": [
+  {
+   "context": 8192,
+   "input_len": 7369,
+   "runs_s": [
+    1.712,
+    1.626
+   ],
+   "median_s": 1.669,
+   "prefill_tok_per_s": 4415.1
+  },
+  {
+   "context": 65536,
+   "input_len": 58751,
+   "runs_s": [
+    15.211,
+    16.668
+   ],
+   "median_s": 15.939,
+   "prefill_tok_per_s": 3685.9
+  },
+  {
+   "context": 221184,
+   "input_len": 198221,
+   "runs_s": [
+    85.819,
+    72.069
+   ],
+   "median_s": 78.944,
+   "prefill_tok_per_s": 2510.9
+  }
+ ]
+}

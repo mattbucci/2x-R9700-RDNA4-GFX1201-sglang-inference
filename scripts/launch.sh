@@ -743,6 +743,11 @@ PYEOF
             # 666 / 1,015 ms -> 144 / 256 ms at 52K / 105K cached, cached tokens = full prefix; needle 5/6 single-message
             # (same miss cell, same output) and 6/6 across a turn on both arms; caps 5/5. MAMBA_CACHE_STRATEGY=no_buffer reverts.
             EXTRA_ARGS="${EXTRA_ARGS:-} --mamba-radix-cache-strategy ${MAMBA_CACHE_STRATEGY:-extra_buffer}"
+            # Patch 108 fp8 QK dot in extend attention (gate 2026-11-02, same session, default first): cold prefill
+            # 15.2–16.7 -> 5.9–6.0 s at 58K and 72–86 -> 32.5 s at 197K; warmed 1-token turn 158 -> 108 ms at 52K and
+            # 261 -> 188 ms at 104K; natural needle 5/6 on both arms (same 131K @ 0.9 cell wrong on both), 256K reasoning
+            # probe equal (100 % at 32K, 0 % at 143K actual on both), caps 5/5 both. EXTEND_FP8_QK=0 restores the upcast.
+            export SGLANG_EXTEND_FP8_QK="${EXTEND_FP8_QK:-1}"
             REASONING="--reasoning-parser nemotron_3"
             TOOL_CALL_PARSER="qwen3_coder"
             ;;

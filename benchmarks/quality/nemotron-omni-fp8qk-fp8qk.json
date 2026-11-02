@@ -1,0 +1,80 @@
+{
+ "tag": "nemotron-omni-fp8qk-fp8qk",
+ "timestamp": "2026-11-02 10:15",
+ "model": "/home/letsrtfm/AI/models/Nemotron-3-Nano-Omni-30B-A3B-Reasoning-FP8",
+ "port": 23334,
+ "haystack": "benchmarks/quality/haystack-platypus.txt",
+ "chars_per_token": 3.3,
+ "temperature": 0.0,
+ "flush": true,
+ "max_tokens": 2048,
+ "results": [
+  {
+   "found": true,
+   "actual_prompt_tokens": 33259,
+   "completion_tokens": 138,
+   "finish_reason": "stop",
+   "seconds": 4.7,
+   "content_tail": "\nBANANA42",
+   "reasoning_tail": "",
+   "context": 32768,
+   "depth": 0.1
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 33259,
+   "completion_tokens": 62,
+   "finish_reason": "stop",
+   "seconds": 3.9,
+   "content_tail": "\nBANANA42",
+   "reasoning_tail": "",
+   "context": 32768,
+   "depth": 0.5
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 33258,
+   "completion_tokens": 119,
+   "finish_reason": "stop",
+   "seconds": 4.5,
+   "content_tail": "\nBANANA42",
+   "reasoning_tail": "",
+   "context": 32768,
+   "depth": 0.9
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 133962,
+   "completion_tokens": 102,
+   "finish_reason": "stop",
+   "seconds": 19.8,
+   "content_tail": "\nBANANA42",
+   "reasoning_tail": "",
+   "context": 131072,
+   "depth": 0.1
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 133961,
+   "completion_tokens": 58,
+   "finish_reason": "stop",
+   "seconds": 19.2,
+   "content_tail": "\nBANANA42",
+   "reasoning_tail": "",
+   "context": 131072,
+   "depth": 0.5
+  },
+  {
+   "found": false,
+   "actual_prompt_tokens": 133962,
+   "completion_tokens": 2048,
+   "finish_reason": "length",
+   "seconds": 43.0,
+   "content_tail": "",
+   "reasoning_tail": "ecall a problem from AoPS maybe: \"A jar contains 10 red marbles and 10 blue marbles. Two marbles are drawn without replacement. What is the probability that the",
+   "context": 131072,
+   "depth": 0.9
+  }
+ ],
+ "score": 0.8333333333333334
+}

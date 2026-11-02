@@ -308,6 +308,11 @@ fp8 QK gains 32K @ 0.5 (default ran to the thinking cap) and **loses 32K @ 0.9 w
 the needle** — a retrieval miss, not a cap flip, so it is a quality trade for the user
 ([receipt](profiling/extend-fp8qk-north-mini-2026-11-02.md)). Not shipped.
 
+**Nemotron-3-Nano-Omni (2026-11-02, shipped).** Cold prefill 15.2–16.7 → 5.9–6.0 s at 58K and 72–86 → 32.5 s at 197K
+(−60 %), 1-token turns 158 → 108 ms at 52K and 261 → 188 ms at 104K, natural needle 5/6 on both arms (the same cell wrong
+on both), reasoning probe identical on both arms (3/3 at 36K actual, 0/3 at 143K), caps 5/5
+([receipt](profiling/extend-fp8qk-nemotron-omni-2026-11-02.md)). `nemotron-omni` exports `SGLANG_EXTEND_FP8_QK=1`.
+
 ## 3090 tokenizer-side turn ports (incremental tokenizer, lazy decode-back) — null here (2026-11-02)
 
 The 3090's patch 072 (exact incremental tokenization of append-only prompts + lazy prompt decode-back on multimodal-flagged
