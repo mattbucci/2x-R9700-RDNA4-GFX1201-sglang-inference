@@ -465,6 +465,11 @@ restored recurrent state moves the distribution, restoring and decoding a token 
 the worst class in the fleet (11/12, 4.4 nats), so the 666 → 144 ms turn gain is not taken; `qwen38`'s extra_buffer (the
 production reference, same class as the 3090's 6/12) stands, and the chunked GDN / Mamba2 prefill with a non-zero initial
 state is the open stack item (issue #37 here).
+**qwen38 control (2026-11-02, shipped DSpark preset, extra_buffer):** 8 of 12 hit comparisons beyond the floor,
+first-token Δlogp ≤ 1.18 nats, 2 of them diverging inside the first 30 characters, the rest after 76–496 characters of
+agreement ([receipt](quality/cache-hit-consistency-qwen38-dspark-extra_buffer-2026-11-02.json)) — the 3090's class (6/12,
+≤ 2.0 nats), a quarter of Nemotron's deltas. qwen38's default stands; this number is the reference any cache-restore change
+on the flagship is read against.
 
 ## Split-KV route widened to 64-row chunks — patch 110 (2026-11-01)
 

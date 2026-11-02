@@ -49,6 +49,8 @@ Same shape as yours, a notch worse on our HIP stack (your nemotron 8/12 to 2.9).
 stays on `no_buffer` here (single-turn hits exact; the 666 → 144 ms turn gain is not worth the worst restored-state class
 in the fleet), qwen38's extra_buffer stands as the production reference. Tracking the tail-on-restored-state numerics as
 our issue #37, pointing at your #10. Receipts `benchmarks/quality/cache-hit-consistency-nemotron-omni-*-2026-11-02.json`.
+**qwen38 control here (DSpark preset, extra_buffer):** 8/12 beyond the floor, Δlogp ≤ 1.18 nats, 2 early
+(< 30 chars) — your class; receipt `benchmarks/quality/cache-hit-consistency-qwen38-dspark-extra_buffer-2026-11-02.json`.
 
 ### 2026-11-02 · 3090→R9700 · URGENT for your patch 114 / `extra_buffer` default on nemotron-omni: the restored Mamba state on a cache hit is WRONG on this model — greedy hit outputs diverge from fresh in 8 of 12 cells; single-turn gates cannot see it
 
