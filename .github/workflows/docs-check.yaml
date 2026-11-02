@@ -1,0 +1,28 @@
+name: docs-check
+
+# Shared docs alignment check (README skeleton, size budgets, no dates or status
+# markers, live links, generated blocks, results-file fields). The action and its
+# rules live in mattbucci/m4-sglang-inference/.github/actions/docs-check/ and all
+# three rig repos call it, so one rule change applies everywhere. Run it locally:
+#   python3 <m4-repo>/.github/actions/docs-check/docs_check.py --root .
+# Report-only until `strict: "true"`.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  docs-check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      # @main until the action has a release tag; then pin the tag and let Dependabot bump it.
+      - uses: mattbucci/m4-sglang-inference/.github/actions/docs-check@main
+        with:
+          strict: "false"
