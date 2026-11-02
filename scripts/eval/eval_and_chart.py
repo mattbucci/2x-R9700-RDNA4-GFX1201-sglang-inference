@@ -48,6 +48,33 @@ RESULTS_DIR = Path("benchmarks/quality")
 # the apples-to-apples condition. Set by --mc-no-think.
 MC_NO_THINK = False
 
+# When True, HumanEval goes through /v1/chat/completions (chat template applied,
+# answer extracted from the first ```python fence) instead of raw /v1/completions.
+# Rationale: instruct-only checkpoints (Gemma 4) degenerate on a raw code prefix
+# (observed: repeated docstring quotes to the token cap, 0/30) while the same
+# problem is solved through the chat template. Set by --humaneval-chat; the
+# results JSON records the condition in `he_mode`.
+HE_CHAT = False
+
+CODE_FENCE = re.compile(r"```(?:python|py)?[ \t]*\n(.*?)```", re.DOTALL)
+
+
+def extract_code(content):
+    """Code from a chat answer: the longest fenced block, else the whole text, minus <think>."""
+    content = re.sub(r"<think>.*?</think>", "", content, flags=re.DOTALL)
+    content = re.sub(r"<think>.*", "", content, flags=re.DOTALL)
+    blocks = CODE_FENCE.findall(content)
+    return max(blocks, key=len) if blocks else content
+
+
+def assemble_program(prompt, code, entry_point):
+    """The chat answer may restate the whole function or give only the body."""
+    if re.search(r"^\s*def\s+" + re.escape(entry_point) + r"\s*\(", code, re.M):
+        # Keep the prompt's imports/helpers (the model may omit them) ahead of the full function.
+        header = prompt.split("def " + entry_point)[0]
+        return header + "\n" + code
+    return prompt + code
+
 
 def get_max_tokens(base_url, default=4096):
     """Query model server for max context length."""
@@ -102,14 +129,25 @@ def humaneval_eval(url, n_samples=30, max_workers=4, max_tokens=4096):
 
     def eval_one(item):
         try:
-            r = requests.post(url.replace("/chat/completions", "/completions"), json={
-                "prompt": item["prompt"], "max_tokens": min(max_tokens, 4096), "temperature": 0,
-                "stop": ["\ndef ", "\nclass ", "\n#", "\nif __name__"],
-            }, timeout=60).json()
-            comp = re.sub(r"<think>.*?</think>", "", r["choices"][0]["text"], flags=re.DOTALL)
-            comp = re.sub(r"<think>.*", "", comp, flags=re.DOTALL)
+            if HE_CHAT:
+                r = requests.post(url, json={"model": "default", "messages": [{"role": "user", "content":
+                    "Complete the following Python function. Reply with the complete function in one "
+                    "```python code block and nothing else.\n\n" + item["prompt"]}],
+                    "max_tokens": min(max_tokens, 4096), "temperature": 0,
+                    **({"chat_template_kwargs": {"enable_thinking": False}} if MC_NO_THINK else {})},
+                    timeout=300).json()
+                code = extract_code(r["choices"][0]["message"]["content"] or "")
+                program = assemble_program(item["prompt"], code, item["entry_point"])
+            else:
+                r = requests.post(url.replace("/chat/completions", "/completions"), json={
+                    "prompt": item["prompt"], "max_tokens": min(max_tokens, 4096), "temperature": 0,
+                    "stop": ["\ndef ", "\nclass ", "\n#", "\nif __name__"],
+                }, timeout=60).json()
+                comp = re.sub(r"<think>.*?</think>", "", r["choices"][0]["text"], flags=re.DOTALL)
+                comp = re.sub(r"<think>.*", "", comp, flags=re.DOTALL)
+                program = item["prompt"] + comp
             g = {}
-            exec(item["prompt"] + comp + "\n" + item["test"], g)
+            exec(program + "\n" + item["test"], g)
             g["check"](g[item["entry_point"]])
             return True
         except Exception:
@@ -248,9 +286,15 @@ def run_eval(port, tag, mmlu_n=200, he_n=30, labbench_n=50, needle_lengths=[1024
     else:
         print(f"\nMMLU: {results['mmlu']['accuracy']:.1%} (cached)")
 
-    if "humaneval" not in results or results["humaneval"].get("total", 0) == 0:
-        print(f"\nHumanEval ({he_n} samples)...")
+    he_mode = "chat" if HE_CHAT else "completion"
+    cached_he = results.get("humaneval", {}).get("total", 0) > 0 and results.get("he_mode", "completion") == he_mode
+    if not cached_he:
+        if results.get("humaneval", {}).get("total", 0) > 0:
+            # keep the other condition's cell beside the new one instead of overwriting it
+            results[f"humaneval_{results.get('he_mode', 'completion')}"] = results["humaneval"]
+        print(f"\nHumanEval ({he_n} samples, {he_mode})...")
         results["humaneval"] = humaneval_eval(url, he_n, max_workers=workers, max_tokens=code_budget)
+        results["he_mode"] = he_mode
         print(f"  {results['humaneval']['pass_rate']:.1%}")
         save()
     else:
@@ -408,8 +452,11 @@ if __name__ == "__main__":
     parser.add_argument("--workers", type=int, default=1, help="Concurrent requests (1 for single-user models)")
     parser.add_argument("--mc-no-think", action="store_true",
                         help="Disable model thinking for MMLU/LAB-Bench via chat_template_kwargs (qwen3-family)")
+    parser.add_argument("--humaneval-chat", action="store_true",
+                        help="Run HumanEval through the chat template (instruct-only checkpoints degenerate on raw completions)")
     args = parser.parse_args()
     MC_NO_THINK = args.mc_no_think
+    HE_CHAT = args.humaneval_chat
 
     if args.run:
         lengths = [int(x) for x in args.needle_lengths.split(",")]
