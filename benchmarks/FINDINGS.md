@@ -315,6 +315,14 @@ was a slow boot and is discarded ([receipt](profiling/prefill-graph-qwen38-2026-
 split-KV route serves the full-attention layers the short extend is no longer launch-bound here; the 3090's 2× came off a
 launch-bound flashinfer extend.
 
+## Split-KV verify stage 1: tile sweep at the 64-row chunk — default stays (2026-11-02)
+
+Six `(BLOCK_N, warps)` configurations for the prefix split-KV stage at K = 1 / 16 / 64 on qwen38 and Laguna
+([receipt](profiling/verify-stage1-tile-2026-11-02.md)): 8 warps halve throughput on both shapes, `BLOCK_N` 64 is
++23–33 % on head_dim 256, `BLOCK_N` 16 wins only Laguna's 64-row chunk (−5 to −8 %) and costs its K = 1 cells +2–3 %.
+`(32, 4)` stays. The 64-row chunk's 1.6–2.6× over the 16-row tile is the tile's own QK/PV work; the route kernel's
+launch-configuration sweeps (warps, streaming, stage-1 tile) are exhausted.
+
 ## Split-KV verify combine stage: register streaming — null (2026-11-02)
 
 A combine kernel with bf16 QK inputs and the value dimension streamed in 1 / 2 / 4 slices removes the 64-row chunk's spills

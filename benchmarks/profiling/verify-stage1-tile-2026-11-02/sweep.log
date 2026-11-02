@@ -1,0 +1,151 @@
+### BLOCK_N=32 warps=4
+P=   8192 K=   1  ok                err/refmax extend 0.02500 splitkv 0.02562  rms 0.000096 / 0.000094  cos 0.999649 / 0.999661  extend    3151.6 us  splitkv     494.9 us  x6.37
+P=   8192 K=  16  ok                err/refmax extend 0.02786 splitkv 0.02745  rms 0.000095 / 0.000093  cos 0.999649 / 0.999664  extend    3139.0 us  splitkv     515.5 us  x6.09
+P=   8192 K=  64  ok                err/refmax extend 0.02452 splitkv 0.02787  rms 0.000095 / 0.000093  cos 0.999650 / 0.999666  extend    3140.4 us  splitkv    1328.2 us  x2.36
+P=  58000 K=   1  ok                err/refmax extend 0.02280 splitkv 0.02203  rms 0.000036 / 0.000036  cos 0.999645 / 0.999656  extend   20305.1 us  splitkv    3382.0 us  x6.00
+P=  58000 K=  16  ok                err/refmax extend 0.02721 splitkv 0.02834  rms 0.000036 / 0.000036  cos 0.999650 / 0.999656  extend   21807.3 us  splitkv    3515.6 us  x6.20
+P=  58000 K=  64  ok                err/refmax extend 0.02819 splitkv 0.02746  rms 0.000036 / 0.000036  cos 0.999649 / 0.999655  extend   26321.7 us  splitkv    5726.5 us  x4.60
+P= 197000 K=   1  ok                err/refmax extend 0.02929 splitkv 0.02937  rms 0.000020 / 0.000020  cos 0.999645 / 0.999649  extend   66961.6 us  splitkv   10994.2 us  x6.09
+P= 197000 K=  16  ok                err/refmax extend 0.03031 splitkv 0.03205  rms 0.000020 / 0.000019  cos 0.999646 / 0.999650  extend   66686.3 us  splitkv   11510.0 us  x5.79
+P= 197000 K=  64  ok                err/refmax extend 0.02835 splitkv 0.03190  rms 0.000020 / 0.000019  cos 0.999647 / 0.999649  extend   66996.1 us  splitkv   17997.6 us  x3.72
+kernel _verify_prefix_stage1    regs 178  spills 0  {'num_stages': 1, 'num_warps': 4}
+kernel _verify_prefix_stage1    regs 256  spills 86  {'num_stages': 1, 'num_warps': 4}
+9 cells, 0 not ok; worst cosine 0.9996486, worst diff 10.88 ulp
+P=   8192 K=   1  ok                err/refmax extend 0.01863 splitkv 0.01914  rms 0.000096 / 0.000092  cos 0.999644 / 0.999674  extend    1841.8 us  splitkv     161.3 us  x11.42
+P=   8192 K=  16  ok                err/refmax extend 0.02492 splitkv 0.02346  rms 0.000095 / 0.000093  cos 0.999653 / 0.999667  extend    1833.7 us  splitkv     171.7 us  x10.68
+P=   8192 K=  64  ok                err/refmax extend 0.02346 splitkv 0.02366  rms 0.000095 / 0.000093  cos 0.999648 / 0.999664  extend    1833.1 us  splitkv     259.9 us  x7.05
+P=  58000 K=   1  ok                err/refmax extend 0.02824 splitkv 0.02431  rms 0.000036 / 0.000035  cos 0.999664 / 0.999679  extend   11180.1 us  splitkv    1180.7 us  x9.47
+P=  58000 K=  16  ok                err/refmax extend 0.03100 splitkv 0.03043  rms 0.000036 / 0.000036  cos 0.999661 / 0.999666  extend   11027.5 us  splitkv    1270.0 us  x8.68
+P=  58000 K=  64  ok                err/refmax extend 0.03105 splitkv 0.03337  rms 0.000036 / 0.000036  cos 0.999661 / 0.999665  extend   11061.6 us  splitkv    1690.2 us  x6.54
+P= 197000 K=   1  ok                err/refmax extend 0.02898 splitkv 0.03170  rms 0.000020 / 0.000020  cos 0.999659 / 0.999665  extend   36789.9 us  splitkv    3696.7 us  x9.95
+P= 197000 K=  16  ok                err/refmax extend 0.02788 splitkv 0.02644  rms 0.000020 / 0.000020  cos 0.999660 / 0.999660  extend   36612.1 us  splitkv    3832.1 us  x9.55
+P= 197000 K=  64  ok                err/refmax extend 0.02735 splitkv 0.02959  rms 0.000020 / 0.000019  cos 0.999661 / 0.999662  extend   36670.6 us  splitkv    5005.9 us  x7.33
+kernel _verify_prefix_stage1    regs 122  spills 0  {'num_stages': 1, 'num_warps': 4}
+kernel _verify_prefix_stage1    regs 171  spills 0  {'num_stages': 1, 'num_warps': 4}
+9 cells, 0 not ok; worst cosine 0.9996603, worst diff 11.77 ulp
+### BLOCK_N=64 warps=4
+P=   8192 K=   1  ok                err/refmax extend 0.02500 splitkv 0.02562  rms 0.000096 / 0.000094  cos 0.999649 / 0.999659  extend    3183.6 us  splitkv     608.2 us  x5.23
+P=   8192 K=  16  ok                err/refmax extend 0.02786 splitkv 0.02933  rms 0.000095 / 0.000094  cos 0.999649 / 0.999661  extend    3150.6 us  splitkv     633.6 us  x4.97
+P=   8192 K=  64  ok                err/refmax extend 0.02452 splitkv 0.02873  rms 0.000095 / 0.000093  cos 0.999650 / 0.999664  extend    3164.1 us  splitkv    1990.3 us  x1.59
+P=  58000 K=   1  ok                err/refmax extend 0.02280 splitkv 0.02411  rms 0.000036 / 0.000036  cos 0.999645 / 0.999654  extend   20074.7 us  splitkv    3964.6 us  x5.06
+P=  58000 K=  16  ok                err/refmax extend 0.02721 splitkv 0.02715  rms 0.000036 / 0.000036  cos 0.999650 / 0.999656  extend   19972.6 us  splitkv    4128.9 us  x4.84
+P=  58000 K=  64  ok                err/refmax extend 0.02819 splitkv 0.02512  rms 0.000036 / 0.000036  cos 0.999649 / 0.999655  extend   24199.1 us  splitkv    7504.1 us  x3.22
+P= 197000 K=   1  ok                err/refmax extend 0.02929 splitkv 0.02937  rms 0.000020 / 0.000020  cos 0.999645 / 0.999649  extend   69405.4 us  splitkv   13135.0 us  x5.28
+P= 197000 K=  16  ok                err/refmax extend 0.03031 splitkv 0.03251  rms 0.000020 / 0.000019  cos 0.999646 / 0.999650  extend   66155.2 us  splitkv   13613.9 us  x4.86
+P= 197000 K=  64  ok                err/refmax extend 0.02835 splitkv 0.03075  rms 0.000020 / 0.000019  cos 0.999647 / 0.999649  extend   74069.6 us  splitkv   23866.8 us  x3.10
+kernel _verify_prefix_stage1    regs 199  spills 0  {'num_stages': 1, 'num_warps': 4}
+kernel _verify_prefix_stage1    regs 256  spills 114  {'num_stages': 1, 'num_warps': 4}
+9 cells, 0 not ok; worst cosine 0.9996490, worst diff 10.88 ulp
+P=   8192 K=   1  ok                err/refmax extend 0.01863 splitkv 0.01940  rms 0.000096 / 0.000093  cos 0.999644 / 0.999664  extend    1856.9 us  splitkv     159.6 us  x11.64
+P=   8192 K=  16  ok                err/refmax extend 0.02492 splitkv 0.02504  rms 0.000095 / 0.000093  cos 0.999653 / 0.999664  extend    1842.2 us  splitkv     175.2 us  x10.51
+P=   8192 K=  64  ok                err/refmax extend 0.02346 splitkv 0.02440  rms 0.000095 / 0.000093  cos 0.999648 / 0.999660  extend    1833.9 us  splitkv     274.0 us  x6.69
+P=  58000 K=   1  ok                err/refmax extend 0.02824 splitkv 0.02585  rms 0.000036 / 0.000036  cos 0.999664 / 0.999676  extend   11254.4 us  splitkv    1192.8 us  x9.44
+P=  58000 K=  16  ok                err/refmax extend 0.03100 splitkv 0.03038  rms 0.000036 / 0.000036  cos 0.999661 / 0.999666  extend   11180.2 us  splitkv    1295.7 us  x8.63
+P=  58000 K=  64  ok                err/refmax extend 0.03105 splitkv 0.03473  rms 0.000036 / 0.000036  cos 0.999661 / 0.999665  extend   11257.3 us  splitkv    1706.7 us  x6.60
+P= 197000 K=   1  ok                err/refmax extend 0.02898 splitkv 0.03009  rms 0.000020 / 0.000019  cos 0.999659 / 0.999666  extend   36552.2 us  splitkv    3697.6 us  x9.89
+P= 197000 K=  16  ok                err/refmax extend 0.02788 splitkv 0.02644  rms 0.000020 / 0.000020  cos 0.999660 / 0.999661  extend   37066.1 us  splitkv    3797.8 us  x9.76
+P= 197000 K=  64  ok                err/refmax extend 0.02735 splitkv 0.02959  rms 0.000020 / 0.000019  cos 0.999661 / 0.999662  extend   36710.7 us  splitkv    4981.2 us  x7.37
+kernel _verify_prefix_stage1    regs 139  spills 0  {'num_stages': 1, 'num_warps': 4}
+kernel _verify_prefix_stage1    regs 196  spills 0  {'num_stages': 1, 'num_warps': 4}
+9 cells, 0 not ok; worst cosine 0.9996604, worst diff 11.66 ulp
+### BLOCK_N=32 warps=8
+P=   8192 K=   1  ok                err/refmax extend 0.02500 splitkv 0.02562  rms 0.000096 / 0.000094  cos 0.999649 / 0.999661  extend    3190.7 us  splitkv     972.1 us  x3.28
+P=   8192 K=  16  ok                err/refmax extend 0.02786 splitkv 0.02745  rms 0.000095 / 0.000093  cos 0.999649 / 0.999664  extend    3174.7 us  splitkv    1007.2 us  x3.15
+P=   8192 K=  64  ok                err/refmax extend 0.02452 splitkv 0.02787  rms 0.000095 / 0.000093  cos 0.999650 / 0.999666  extend    3167.8 us  splitkv    1897.7 us  x1.67
+P=  58000 K=   1  ok                err/refmax extend 0.02280 splitkv 0.02203  rms 0.000036 / 0.000036  cos 0.999645 / 0.999656  extend   22541.1 us  splitkv    6544.5 us  x3.44
+P=  58000 K=  16  ok                err/refmax extend 0.02721 splitkv 0.02834  rms 0.000036 / 0.000036  cos 0.999650 / 0.999656  extend   19778.2 us  splitkv    6798.9 us  x2.91
+P=  58000 K=  64  ok                err/refmax extend 0.02819 splitkv 0.02746  rms 0.000036 / 0.000036  cos 0.999649 / 0.999655  extend   20540.3 us  splitkv    9006.9 us  x2.28
+P= 197000 K=   1  ok                err/refmax extend 0.02929 splitkv 0.02937  rms 0.000020 / 0.000020  cos 0.999645 / 0.999649  extend   70750.7 us  splitkv   21766.2 us  x3.25
+P= 197000 K=  16  ok                err/refmax extend 0.03031 splitkv 0.03205  rms 0.000020 / 0.000019  cos 0.999646 / 0.999650  extend   67425.7 us  splitkv   22623.2 us  x2.98
+P= 197000 K=  64  ok                err/refmax extend 0.02835 splitkv 0.03190  rms 0.000020 / 0.000019  cos 0.999647 / 0.999649  extend   67027.0 us  splitkv   29536.9 us  x2.27
+kernel _verify_prefix_stage1    regs 158  spills 0  {'num_stages': 1, 'num_warps': 8}
+kernel _verify_prefix_stage1    regs 216  spills 0  {'num_stages': 1, 'num_warps': 8}
+9 cells, 0 not ok; worst cosine 0.9996486, worst diff 10.88 ulp
+P=   8192 K=   1  ok                err/refmax extend 0.01863 splitkv 0.01914  rms 0.000096 / 0.000092  cos 0.999644 / 0.999674  extend    1862.2 us  splitkv     322.1 us  x5.78
+P=   8192 K=  16  ok                err/refmax extend 0.02492 splitkv 0.02346  rms 0.000095 / 0.000093  cos 0.999653 / 0.999667  extend    1838.4 us  splitkv     334.9 us  x5.49
+P=   8192 K=  64  ok                err/refmax extend 0.02346 splitkv 0.02366  rms 0.000095 / 0.000093  cos 0.999648 / 0.999664  extend    1838.1 us  splitkv     471.3 us  x3.90
+P=  58000 K=   1  ok                err/refmax extend 0.02824 splitkv 0.02431  rms 0.000036 / 0.000035  cos 0.999664 / 0.999679  extend   11520.3 us  splitkv    2355.1 us  x4.89
+P=  58000 K=  16  ok                err/refmax extend 0.03100 splitkv 0.03043  rms 0.000036 / 0.000036  cos 0.999661 / 0.999666  extend   11459.5 us  splitkv    2503.9 us  x4.58
+P=  58000 K=  64  ok                err/refmax extend 0.03105 splitkv 0.03337  rms 0.000036 / 0.000036  cos 0.999661 / 0.999665  extend   11715.7 us  splitkv    3109.7 us  x3.77
+P= 197000 K=   1  ok                err/refmax extend 0.02898 splitkv 0.03170  rms 0.000020 / 0.000020  cos 0.999659 / 0.999665  extend   36623.7 us  splitkv    7236.6 us  x5.06
+P= 197000 K=  16  ok                err/refmax extend 0.02788 splitkv 0.02644  rms 0.000020 / 0.000020  cos 0.999660 / 0.999660  extend   36592.6 us  splitkv    7426.1 us  x4.93
+P= 197000 K=  64  ok                err/refmax extend 0.02735 splitkv 0.02959  rms 0.000020 / 0.000019  cos 0.999661 / 0.999662  extend   36662.0 us  splitkv    9578.7 us  x3.83
+kernel _verify_prefix_stage1    regs 112  spills 0  {'num_stages': 1, 'num_warps': 8}
+kernel _verify_prefix_stage1    regs 143  spills 0  {'num_stages': 1, 'num_warps': 8}
+9 cells, 0 not ok; worst cosine 0.9996603, worst diff 11.77 ulp
+### BLOCK_N=64 warps=8
+P=   8192 K=   1  ok                err/refmax extend 0.02500 splitkv 0.02562  rms 0.000096 / 0.000094  cos 0.999649 / 0.999659  extend    3169.1 us  splitkv    1493.3 us  x2.12
+P=   8192 K=  16  ok                err/refmax extend 0.02786 splitkv 0.02933  rms 0.000095 / 0.000094  cos 0.999649 / 0.999661  extend    3150.6 us  splitkv    1496.4 us  x2.11
+P=   8192 K=  64  ok                err/refmax extend 0.02452 splitkv 0.02873  rms 0.000095 / 0.000093  cos 0.999650 / 0.999664  extend    3159.8 us  splitkv    2256.9 us  x1.40
+P=  58000 K=   1  ok                err/refmax extend 0.02280 splitkv 0.02411  rms 0.000036 / 0.000036  cos 0.999645 / 0.999654  extend   20829.3 us  splitkv    8557.0 us  x2.43
+P=  58000 K=  16  ok                err/refmax extend 0.02721 splitkv 0.02715  rms 0.000036 / 0.000036  cos 0.999650 / 0.999656  extend   19851.6 us  splitkv    8584.8 us  x2.31
+P=  58000 K=  64  ok                err/refmax extend 0.02819 splitkv 0.02512  rms 0.000036 / 0.000036  cos 0.999649 / 0.999655  extend   20089.4 us  splitkv   10915.8 us  x1.84
+P= 197000 K=   1  ok                err/refmax extend 0.02929 splitkv 0.02937  rms 0.000020 / 0.000020  cos 0.999645 / 0.999649  extend   67348.1 us  splitkv   28496.8 us  x2.36
+P= 197000 K=  16  ok                err/refmax extend 0.03031 splitkv 0.03251  rms 0.000020 / 0.000019  cos 0.999646 / 0.999650  extend   75008.9 us  splitkv   29235.2 us  x2.57
+P= 197000 K=  64  ok                err/refmax extend 0.02835 splitkv 0.03075  rms 0.000020 / 0.000019  cos 0.999647 / 0.999649  extend   68954.1 us  splitkv   35880.9 us  x1.92
+kernel _verify_prefix_stage1    regs 177  spills 0  {'num_stages': 1, 'num_warps': 8}
+kernel _verify_prefix_stage1    regs 249  spills 0  {'num_stages': 1, 'num_warps': 8}
+9 cells, 0 not ok; worst cosine 0.9996490, worst diff 10.88 ulp
+P=   8192 K=   1  ok                err/refmax extend 0.01863 splitkv 0.01940  rms 0.000096 / 0.000093  cos 0.999644 / 0.999664  extend    1845.5 us  splitkv     310.7 us  x5.94
+P=   8192 K=  16  ok                err/refmax extend 0.02492 splitkv 0.02504  rms 0.000095 / 0.000093  cos 0.999653 / 0.999664  extend    1843.1 us  splitkv     314.9 us  x5.85
+P=   8192 K=  64  ok                err/refmax extend 0.02346 splitkv 0.02440  rms 0.000095 / 0.000093  cos 0.999648 / 0.999660  extend    1839.9 us  splitkv     439.9 us  x4.18
+P=  58000 K=   1  ok                err/refmax extend 0.02824 splitkv 0.02585  rms 0.000036 / 0.000036  cos 0.999664 / 0.999676  extend   11271.0 us  splitkv    2242.6 us  x5.03
+P=  58000 K=  16  ok                err/refmax extend 0.03100 splitkv 0.03038  rms 0.000036 / 0.000036  cos 0.999661 / 0.999666  extend   11102.7 us  splitkv    2303.1 us  x4.82
+P=  58000 K=  64  ok                err/refmax extend 0.03105 splitkv 0.03473  rms 0.000036 / 0.000036  cos 0.999661 / 0.999665  extend   11194.8 us  splitkv    2870.1 us  x3.90
+P= 197000 K=   1  ok                err/refmax extend 0.02898 splitkv 0.03009  rms 0.000020 / 0.000019  cos 0.999659 / 0.999666  extend   36712.1 us  splitkv    6855.6 us  x5.36
+P= 197000 K=  16  ok                err/refmax extend 0.02788 splitkv 0.02644  rms 0.000020 / 0.000020  cos 0.999660 / 0.999661  extend   36890.4 us  splitkv    7076.7 us  x5.21
+P= 197000 K=  64  ok                err/refmax extend 0.02735 splitkv 0.02959  rms 0.000020 / 0.000019  cos 0.999661 / 0.999662  extend   37248.4 us  splitkv    8781.7 us  x4.24
+kernel _verify_prefix_stage1    regs 129  spills 0  {'num_stages': 1, 'num_warps': 8}
+kernel _verify_prefix_stage1    regs 175  spills 0  {'num_stages': 1, 'num_warps': 8}
+9 cells, 0 not ok; worst cosine 0.9996604, worst diff 11.66 ulp
+### BLOCK_N=16 warps=4
+P=   8192 K=   1  ok                err/refmax extend 0.02500 splitkv 0.02529  rms 0.000096 / 0.000094  cos 0.999649 / 0.999663  extend    3197.7 us  splitkv     526.5 us  x6.07
+P=   8192 K=  16  ok                err/refmax extend 0.02786 splitkv 0.02623  rms 0.000095 / 0.000093  cos 0.999649 / 0.999665  extend    3173.0 us  splitkv     548.3 us  x5.79
+P=   8192 K=  64  ok                err/refmax extend 0.02452 splitkv 0.02701  rms 0.000095 / 0.000093  cos 0.999650 / 0.999668  extend    3178.3 us  splitkv    1403.3 us  x2.26
+P=  58000 K=   1  ok                err/refmax extend 0.02280 splitkv 0.02186  rms 0.000036 / 0.000036  cos 0.999645 / 0.999656  extend   19953.6 us  splitkv    3642.8 us  x5.48
+P=  58000 K=  16  ok                err/refmax extend 0.02721 splitkv 0.02834  rms 0.000036 / 0.000036  cos 0.999650 / 0.999656  extend   23149.6 us  splitkv    3799.0 us  x6.09
+P=  58000 K=  64  ok                err/refmax extend 0.02819 splitkv 0.02629  rms 0.000036 / 0.000036  cos 0.999649 / 0.999656  extend   20280.7 us  splitkv    6418.9 us  x3.16
+P= 197000 K=   1  ok                err/refmax extend 0.02929 splitkv 0.02937  rms 0.000020 / 0.000020  cos 0.999645 / 0.999648  extend   66800.4 us  splitkv   11719.1 us  x5.70
+P= 197000 K=  16  ok                err/refmax extend 0.03031 splitkv 0.03220  rms 0.000020 / 0.000019  cos 0.999646 / 0.999650  extend   71578.3 us  splitkv   12184.1 us  x5.87
+P= 197000 K=  64  ok                err/refmax extend 0.02835 splitkv 0.03132  rms 0.000020 / 0.000019  cos 0.999647 / 0.999649  extend   66947.2 us  splitkv   20437.7 us  x3.28
+kernel _verify_prefix_stage1    regs 168  spills 0  {'num_stages': 1, 'num_warps': 4}
+kernel _verify_prefix_stage1    regs 256  spills 13  {'num_stages': 1, 'num_warps': 4}
+9 cells, 0 not ok; worst cosine 0.9996483, worst diff 10.72 ulp
+P=   8192 K=   1  ok                err/refmax extend 0.01863 splitkv 0.02053  rms 0.000096 / 0.000093  cos 0.999644 / 0.999669  extend    1858.7 us  splitkv     154.5 us  x12.03
+P=   8192 K=  16  ok                err/refmax extend 0.02492 splitkv 0.02373  rms 0.000095 / 0.000093  cos 0.999653 / 0.999668  extend    1846.5 us  splitkv     167.1 us  x11.05
+P=   8192 K=  64  ok                err/refmax extend 0.02346 splitkv 0.02429  rms 0.000095 / 0.000093  cos 0.999648 / 0.999665  extend    1838.9 us  splitkv     246.6 us  x7.46
+P=  58000 K=   1  ok                err/refmax extend 0.02824 splitkv 0.02586  rms 0.000036 / 0.000036  cos 0.999664 / 0.999677  extend   11328.3 us  splitkv    1208.7 us  x9.37
+P=  58000 K=  16  ok                err/refmax extend 0.03100 splitkv 0.03043  rms 0.000036 / 0.000036  cos 0.999661 / 0.999667  extend   11078.2 us  splitkv    1325.3 us  x8.36
+P=  58000 K=  64  ok                err/refmax extend 0.03105 splitkv 0.03337  rms 0.000036 / 0.000036  cos 0.999661 / 0.999665  extend   11341.7 us  splitkv    1600.3 us  x7.09
+P= 197000 K=   1  ok                err/refmax extend 0.02898 splitkv 0.03170  rms 0.000020 / 0.000020  cos 0.999659 / 0.999664  extend   36697.3 us  splitkv    3791.3 us  x9.68
+P= 197000 K=  16  ok                err/refmax extend 0.02788 splitkv 0.02602  rms 0.000020 / 0.000020  cos 0.999660 / 0.999660  extend   37005.4 us  splitkv    3870.5 us  x9.56
+P= 197000 K=  64  ok                err/refmax extend 0.02735 splitkv 0.02951  rms 0.000020 / 0.000019  cos 0.999661 / 0.999662  extend   36661.6 us  splitkv    4622.4 us  x7.93
+kernel _verify_prefix_stage1    regs 186  spills 0  {'num_stages': 1, 'num_warps': 4}
+kernel _verify_prefix_stage1    regs 235  spills 0  {'num_stages': 1, 'num_warps': 4}
+9 cells, 0 not ok; worst cosine 0.9996600, worst diff 11.97 ulp
+### BLOCK_N=16 warps=8
+P=   8192 K=   1  ok                err/refmax extend 0.02500 splitkv 0.02529  rms 0.000096 / 0.000094  cos 0.999649 / 0.999663  extend    3218.7 us  splitkv    1060.1 us  x3.04
+P=   8192 K=  16  ok                err/refmax extend 0.02786 splitkv 0.02623  rms 0.000095 / 0.000093  cos 0.999649 / 0.999665  extend    3169.6 us  splitkv    1102.7 us  x2.87
+P=   8192 K=  64  ok                err/refmax extend 0.02452 splitkv 0.02701  rms 0.000095 / 0.000093  cos 0.999650 / 0.999668  extend    3175.4 us  splitkv    2018.0 us  x1.57
+P=  58000 K=   1  ok                err/refmax extend 0.02280 splitkv 0.02186  rms 0.000036 / 0.000036  cos 0.999645 / 0.999656  extend   20731.2 us  splitkv    7023.8 us  x2.95
+P=  58000 K=  16  ok                err/refmax extend 0.02721 splitkv 0.02834  rms 0.000036 / 0.000036  cos 0.999650 / 0.999656  extend   20689.8 us  splitkv    7249.5 us  x2.85
+P=  58000 K=  64  ok                err/refmax extend 0.02819 splitkv 0.02629  rms 0.000036 / 0.000036  cos 0.999649 / 0.999656  extend   20178.2 us  splitkv    9787.1 us  x2.06
+P= 197000 K=   1  ok                err/refmax extend 0.02929 splitkv 0.02937  rms 0.000020 / 0.000020  cos 0.999645 / 0.999648  extend   66569.8 us  splitkv   23436.9 us  x2.84
+P= 197000 K=  16  ok                err/refmax extend 0.03031 splitkv 0.03220  rms 0.000020 / 0.000019  cos 0.999646 / 0.999650  extend   66578.8 us  splitkv   24302.4 us  x2.74
+P= 197000 K=  64  ok                err/refmax extend 0.02835 splitkv 0.03132  rms 0.000020 / 0.000019  cos 0.999647 / 0.999649  extend   67923.7 us  splitkv   32252.3 us  x2.11
+kernel _verify_prefix_stage1    regs 148  spills 0  {'num_stages': 1, 'num_warps': 8}
+kernel _verify_prefix_stage1    regs 206  spills 0  {'num_stages': 1, 'num_warps': 8}
+9 cells, 0 not ok; worst cosine 0.9996483, worst diff 10.72 ulp
+P=   8192 K=   1  ok                err/refmax extend 0.01863 splitkv 0.02053  rms 0.000096 / 0.000093  cos 0.999644 / 0.999669  extend    1861.6 us  splitkv     309.8 us  x6.01
+P=   8192 K=  16  ok                err/refmax extend 0.02492 splitkv 0.02373  rms 0.000095 / 0.000093  cos 0.999653 / 0.999668  extend    1837.0 us  splitkv     317.1 us  x5.79
+P=   8192 K=  64  ok                err/refmax extend 0.02346 splitkv 0.02429  rms 0.000095 / 0.000093  cos 0.999648 / 0.999665  extend    1839.2 us  splitkv     453.2 us  x4.06
+P=  58000 K=   1  ok                err/refmax extend 0.02824 splitkv 0.02586  rms 0.000036 / 0.000036  cos 0.999664 / 0.999677  extend   11445.4 us  splitkv    2263.1 us  x5.06
+P=  58000 K=  16  ok                err/refmax extend 0.03100 splitkv 0.03043  rms 0.000036 / 0.000036  cos 0.999661 / 0.999667  extend   11399.5 us  splitkv    2438.2 us  x4.68
+P=  58000 K=  64  ok                err/refmax extend 0.03105 splitkv 0.03337  rms 0.000036 / 0.000036  cos 0.999661 / 0.999665  extend   11822.2 us  splitkv    3110.6 us  x3.80
+P= 197000 K=   1  ok                err/refmax extend 0.02898 splitkv 0.03170  rms 0.000020 / 0.000020  cos 0.999659 / 0.999664  extend   37002.3 us  splitkv    7006.3 us  x5.28
+P= 197000 K=  16  ok                err/refmax extend 0.02788 splitkv 0.02602  rms 0.000020 / 0.000020  cos 0.999660 / 0.999660  extend   36680.6 us  splitkv    7258.7 us  x5.05
+P= 197000 K=  64  ok                err/refmax extend 0.02735 splitkv 0.02951  rms 0.000020 / 0.000019  cos 0.999661 / 0.999662  extend   36716.0 us  splitkv    9591.9 us  x3.83
+kernel _verify_prefix_stage1    regs 175  spills 0  {'num_stages': 1, 'num_warps': 8}
+kernel _verify_prefix_stage1    regs 209  spills 0  {'num_stages': 1, 'num_warps': 8}
+9 cells, 0 not ok; worst cosine 0.9996600, worst diff 11.97 ulp
+STAGE1 TILE SWEEP DONE
