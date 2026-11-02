@@ -35,6 +35,8 @@ PRESETS = {
     # per-rank full-attention shapes (TP=2)
     "qwen38": {"h_q": 48, "h_kv": 4, "head_dim": 256, "v_head_dim": 256, "layers": 16},
     "laguna": {"h_q": 24, "h_kv": 4, "head_dim": 128, "v_head_dim": 128, "layers": 10},
+    # Flint: 32 q / 4 KV heads, head_dim 128, 14 of 49 layers are full attention with learned sinks (SWA layers never route)
+    "flint": {"h_q": 16, "h_kv": 2, "head_dim": 128, "v_head_dim": 128, "layers": 14},
 }
 
 
