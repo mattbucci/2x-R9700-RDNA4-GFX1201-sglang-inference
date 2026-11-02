@@ -737,6 +737,12 @@ PYEOF
             # collapses that launch overhead: ~2.0x short ctx, 1.43x at 256K (45 vs 31
             # tok/s). Graph capture works cleanly on the Mamba2 hybrid. See README.
             CUDA_GRAPH=""
+            # Patch 114 (2026-11-02) puts this arch on the Mamba radix-cache lists (it was missing, so the strategy knob
+            # was ignored and every agentic turn recomputed up to a 4,096-token chunk: 800–1,441 ms at 53K–132K). On the
+            # fixed tree, extra_buffer (64-token state grid) vs the HIP no_buffer default, same session: 1-token turn
+            # 666 / 1,015 ms -> 144 / 256 ms at 52K / 105K cached, cached tokens = full prefix; needle 5/6 single-message
+            # (same miss cell, same output) and 6/6 across a turn on both arms; caps 5/5. MAMBA_CACHE_STRATEGY=no_buffer reverts.
+            EXTRA_ARGS="${EXTRA_ARGS:-} --mamba-radix-cache-strategy ${MAMBA_CACHE_STRATEGY:-extra_buffer}"
             REASONING="--reasoning-parser nemotron_3"
             TOOL_CALL_PARSER="qwen3_coder"
             ;;

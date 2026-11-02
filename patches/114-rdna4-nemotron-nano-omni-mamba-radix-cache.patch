@@ -1,0 +1,37 @@
+diff --git a/python/sglang/srt/arg_groups/overrides.py b/python/sglang/srt/arg_groups/overrides.py
+index b35451b..17233ef 100644
+--- a/python/sglang/srt/arg_groups/overrides.py
++++ b/python/sglang/srt/arg_groups/overrides.py
+@@ -365,6 +365,10 @@ _MAMBA_RADIX_CACHE_ARCHS = frozenset(
+         "NemotronHForCausalLM",
+         "NemotronHPuzzleForCausalLM",
+         "NemotronH_Omni_Reasoning_V3",
++        # Nemotron-3-Nano-Omni-30B-A3B-Reasoning declares this name (models/nano_nemotron_vl.py); without it
++        # uses_mamba_radix_cache resolves False and Mamba states exist only at chunked-prefill ends, so every
++        # agentic turn recomputes up to a chunk (3090 patch 074, 2026-11-02).
++        "NemotronH_Nano_Omni_Reasoning_V3",
+         "FalconH1ForCausalLM",
+         "JetNemotronForCausalLM",
+         "JetVLMForConditionalGeneration",
+@@ -399,6 +403,10 @@ _MAMBA_EXTRA_BUFFER_ARCHS = frozenset(
+         "NemotronHForCausalLM",
+         "NemotronHPuzzleForCausalLM",
+         "NemotronH_Omni_Reasoning_V3",
++        # Nemotron-3-Nano-Omni-30B-A3B-Reasoning declares this name (models/nano_nemotron_vl.py); without it
++        # uses_mamba_radix_cache resolves False and Mamba states exist only at chunked-prefill ends, so every
++        # agentic turn recomputes up to a chunk (3090 patch 074, 2026-11-02).
++        "NemotronH_Nano_Omni_Reasoning_V3",
+         # KDA-based: same MambaPool ping-pong machinery as GDN; requires the
+         # KDA backend's track-snapshot writes (decode + extend) so donated
+         # slots hold real states for prefix-cache restores.
+@@ -936,6 +944,10 @@ _FLASHINFER_ALLREDUCE_FUSION_ARCHS = frozenset(
+         "NemotronHForCausalLM",
+         "NemotronHPuzzleForCausalLM",
+         "NemotronH_Omni_Reasoning_V3",
++        # Nemotron-3-Nano-Omni-30B-A3B-Reasoning declares this name (models/nano_nemotron_vl.py); without it
++        # uses_mamba_radix_cache resolves False and Mamba states exist only at chunked-prefill ends, so every
++        # agentic turn recomputes up to a chunk (3090 patch 074, 2026-11-02).
++        "NemotronH_Nano_Omni_Reasoning_V3",
+     }
+ )
+ 

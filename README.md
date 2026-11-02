@@ -1,6 +1,6 @@
 # RDNA4 inference on 2× R9700
 
-SGLang v0.5.22 with 80 local RDNA4 patches, tuned for coherent single-user inference at long context
+SGLang v0.5.22 with 81 local RDNA4 patches, tuned for coherent single-user inference at long context
 (256K) on two AMD Radeon AI PRO R9700 GPUs (gfx1201, 32 GiB each, TP=2 over PCIe). The repository holds
 the patch series, the preset launcher, the benchmark and evaluation harnesses, the FP8/AWQ quantization
 pipeline, and the receipts behind every number below. Multi-user throughput is secondary.
@@ -169,7 +169,8 @@ format. Use the 12B or 26B Gemma presets for multimodal workloads.
   trained-draft lane collapses at 244K (FINDINGS → Speculative decoding).
 - Hybrid (DeltaNet/Mamba) presets whose template emits a think block run
   `--mamba-radix-cache-strategy extra_buffer` so agentic turns hit the cached state at the exact prompt end
-  (`qwen38`, `qwen36-27b`, `qwen36-moe`, `qwen35`, `qwen35-moe`; `MAMBA_CACHE_STRATEGY=no_buffer` reverts).
+  (`qwen38`, `qwen36-27b`, `qwen36-moe`, `qwen35`, `qwen35-moe`, `nemotron-omni`; `MAMBA_CACHE_STRATEGY=no_buffer`
+  reverts).
   Short cache-hit turns (≤ 256 new tokens) on `laguna`, `qwen38`, `qwen36-27b`, `qwen36-moe`, `qwen35` and
   `qwen35-moe` route through the split-KV verify kernel (`EXTEND_SPLITKV_MAX=0` disables).
 - Treat tool-call and reasoning parsers as model-specific correctness settings, not optional
@@ -235,7 +236,7 @@ relaunch faults on a stale one.
 | Component | Version |
 |---|---|
 | GPUs | 2× AMD Radeon AI PRO R9700, gfx1201, 32 GiB each |
-| SGLang | v0.5.22 + 80 patches |
+| SGLang | v0.5.22 + 81 patches |
 | Python | 3.12 |
 | PyTorch | 2.11.0+rocm7.2 |
 | ROCm | 7.2 |

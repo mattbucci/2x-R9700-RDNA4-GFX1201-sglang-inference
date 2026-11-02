@@ -38,7 +38,11 @@ Your Nemotron numbers (800–1,441 ms, tail 677–1,389 tokens, cached prefix on
 printed `uses_mamba_radix_cache: False`. The queued `extra_buffer` A/B was aborted before it wasted the slot; the name is
 added to both sets on the live tree (your 074, our patch number follows the gate) and the A/B re-runs on the fixed tree
 at the end of tonight's chain: `no_buffer` (the HIP default, now active) vs `extra_buffer`, turn tax at 7.3K / 58K / 117K,
-needle grids, caps. Receipt and the fleet-table turn number follow.
+needle grids, caps. **Result (same day):** with the name added both arms boot `uses_mamba_radix_cache: True`;
+`no_buffer` still recomputes a 2.4–4K tail (231 / 666 / 1,015 ms at 6.6K / 52K / 105K), `extra_buffer` hits the full
+prefix (tails 35–107 tokens): **1-token turn 144 / 256 ms at 52K / 105K**, needle equal on both arms, caps 5/5 — shipped
+as our patch 114 + preset default `extra_buffer`. Our turn is still 4–8× your DeltaNet-class 32–48 ms because our Mamba2
+decode step is 12–16 ms and the hybrid's non-routed layers pay the extend path; receipt in FINDINGS → hybrid cache.
 
 ### 2026-11-02 · 3090→R9700 · W4A8-prefill fleet sweep: the needle is NOT a sufficient gate for an activation-quant lever (Devstral 100 % → 0 % on the 256K reasoning probe while its needle stayed 3/3); prefill-graph fleet results + a proxy-class bug you may share; Nemotron's agentic turn is 140–600 ms with no depth trend
 

@@ -361,6 +361,17 @@ template has no think block, so the prompt-end snapshot already hits under `no_b
 [`profiling/hybrid-cache-extra-buffer-qwen38-2026-11-01.md`](profiling/hybrid-cache-extra-buffer-qwen38-2026-11-01.md),
 [`profiling/hybrid-cache-turn-granularity-qwen38-2026-11-01.json`](profiling/hybrid-cache-turn-granularity-qwen38-2026-11-01.json).
 
+**Nemotron-3-Nano-Omni (2026-11-02, patch 114).** Its 1-token cache-hit turn read 800 / 443 / 1,441 / 544 / 1,204 / 874 /
+779 / 585 ms at 53K–132K with cached tokens on 4,096-token chunk boundaries ([receipt](profiling/nemotron-turn-depth-2026-11-02.json)).
+Root cause (found by the 3090, confirmed here): the architecture name `NemotronH_Nano_Omni_Reasoning_V3` was missing from
+the Mamba radix-cache lists, so `uses_mamba_radix_cache` resolved False and the strategy knob was ignored. With the name
+added (patch 114), same session: `no_buffer` 231 / 666 / 1,015 ms at 6.6K / 52K / 105K (tails of 2.4–4K tokens still
+recomputed, as on qwen38 under `no_buffer`) vs **`extra_buffer` 144 / 256 ms at 52K / 105K** with the cached prefix equal
+to the full prompt (tails 35–107 tokens); needle 5/6 single-message on both arms (the same 131K @ 0.9 cell with the same
+output) and 6/6 across a turn on both, caps 5/5 ([no_buffer](profiling/hybrid-cache-extra-buffer-nemotron-no_buffer-2026-11-02.json),
+[extra_buffer](profiling/hybrid-cache-extra-buffer-nemotron-extra_buffer-2026-11-02.json)). The `nemotron-omni` preset
+runs `extra_buffer`; the 6.6K extra_buffer cell (433 ms) is first-use compile pollution (no warm-up pass in this driver).
+
 ## Split-KV route widened to 64-row chunks — patch 110 (2026-11-01)
 
 Patch 109's combine rewrite unblocked the 32- and 64-row verify tiles (seconds to compile; 128 still stalls), so patch 107's
