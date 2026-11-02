@@ -322,7 +322,11 @@ qwen36-27b (1-token turn 4.8 / 3.5 / 11.4 s → 0.28 / 0.75 / 1.34 s, needle 12/
 0.10 / 0.47 / 0.90 s, needle 12/12) shipped; qwen35 (6.5 / 4.4 / 11.7 s → 0.28 / 0.77 / 1.38 s) and qwen35-moe
 (1.3 / 1.1 / 3.9 s → 0.10 / 0.47 / 0.92 s) shipped on the user's call the same day — their single-message grids are
 identical and their across-turn cells shuffle through the thinking cap on both arms, which the user judged a
-reasoning-length flip rather than a quality trade; coder-next-ream null — its
+reasoning-length flip rather than a quality trade. Preset boot gates (2026-11-02, first boot of the day, strategy
+`extra_buffer` in the server args, cached tokens = the full primed prefix): qwen35 1-token turn 327 / 996 ms at
+6.5K / 52K, caps 5/5; qwen35-moe 95 / 482 ms, caps 5/5
+([qwen35](profiling/hybrid-cache-extra-buffer-gate-qwen35-2026-11-02.json),
+[qwen35-moe](profiling/hybrid-cache-extra-buffer-gate-qwen35-moe-2026-11-02.json)); coder-next-ream null — its
 template has no think block, so the prompt-end snapshot already hits under `no_buffer`. Receipts:
 [`profiling/hybrid-cache-extra-buffer-qwen38-2026-11-01.md`](profiling/hybrid-cache-extra-buffer-qwen38-2026-11-01.md),
 [`profiling/hybrid-cache-turn-granularity-qwen38-2026-11-01.json`](profiling/hybrid-cache-turn-granularity-qwen38-2026-11-01.json).
@@ -352,7 +356,10 @@ layers (525K → 441K) to the SWA layers (10.5K → 44K) at equal speed; 0.02 st
 43.3 / 41.4 / 39.2 vs 43.3 / 42.4 / 39.6 / 36.3 tok/s, pools 1,050,610 / 21,012 vs 525,305 / 10,506 tokens, natural needle
 on the receipt's exact cells 11/12 vs bf16's 10/12 (32K @ 0.9 gained; at 243,481 tokens 0.1 gained and 0.5 lost — the soft
 edge the first-boot receipt describes). Adopted as the Flint preset default on the user's call (2026-11-01;
-`KV_DTYPE=auto` restores bf16 KV); the fleet-table decode points are re-measured under the new default.
+`KV_DTYPE=auto` restores bf16 KV). Fleet-table re-measure under the new default (2026-11-02, 3-run medians,
+[receipt](flint-fp8/decode-fp8kv-default-2026-11-02.json)): **44.2 / 43.6 / 40.7 / 37.9 / 37.5 tok/s at 14 / 7.3K /
+58K / 117K / 219K** input (bf16 KV read 43.7 / 42.9 / 39.9 / 37.3 / 34.2), pools 1,050,610 / 21,012 tokens, text
+probes 3/3 (vision / video are not supported by the model).
 
 ## Long-context attention
 

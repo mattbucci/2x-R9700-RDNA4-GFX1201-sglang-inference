@@ -27,8 +27,8 @@ in [experiments/](experiments/README.md).
   no-spec server (`QWEN38_SPEC=0`, 530K-token pool for true 256K work; the DSpark pool is 206K). Cold
   prefill of a 197K prompt is 211 s; a 1-token agentic turn on a 176K cached prefix is 0.17–0.35 s
   (`extra_buffer` hybrid cache + the 64-row split-KV turn route); capability probe 5/5.
-- **Flint FP8 serves** (patch 105, strict tool schemas) with an FP8 KV cache (2× pools, +2–8 % decode over
-  bf16 KV): 43.7 → 34.2 tok/s from 14 to 219K actual input; basic / tool-call / thinking probes pass, the
+- **Flint FP8 serves** (patch 105, strict tool schemas) with an FP8 KV cache (1.05M full-attention pool
+  tokens, 2× bf16's): 44.2 → 37.5 tok/s from 14 to 219K actual input; basic / tool-call / thinking probes pass, the
   learned-sink kernels match a PyTorch reference, and natural-text needle retrieval holds to 131K at every
   depth and to the last 10 % of the window at 243–248K
   ([receipt](benchmarks/quality/flint/needle-natural-fp8-2026-10-31.md), [KV A/B](benchmarks/profiling/flint-ab-2026-11-01.md)).
@@ -51,7 +51,7 @@ per-model curves are under [benchmarks/](benchmarks/README.md).
 |---|---|---:|---:|
 | North-Mini-Code-1.0 | FP8 MoE + hybrid SWA | 71.8 (128) | 35.6 (197K) |
 | Laguna-XS.2 | FP8 MoE + hybrid SWA | **74.0 (62)** | **55.1 (220K)** |
-| Flint (40B/2.5B-active) | FP8 MoE + hybrid SWA + sinks | 43.7 (14) | 34.2 (219K) |
+| Flint (40B/2.5B-active) | FP8 MoE + hybrid SWA + sinks, FP8 KV | 44.2 (14) | 37.5 (219K) |
 | Nemotron-3-Nano-Omni-30B | FP8 Mamba2 hybrid MoE | 95.6 (28) | 60.9 (198K) |
 | Qwen3-Coder-30B-A3B | AWQ MoE | 88.3 (20) | 57.2 (29K) |
 | Qwen3-Coder-REAP-25B-A3B | AWQ MoE | 89.5 (20) | 18.4 (197K) |

@@ -1,0 +1,105 @@
+{
+  "label": "flint fp8kv default",
+  "tag": "2026-11-01 flint FP8 KV preset default",
+  "note": "fleet-table re-measure under the new preset default",
+  "port": 23334,
+  "maxtok": 80,
+  "runs": 3,
+  "points": [
+    {
+      "context": 128,
+      "input_len": 14,
+      "runs_tps": [
+        43.92,
+        44.25,
+        44.24
+      ],
+      "median_tps": 44.242,
+      "min_tps": 43.924,
+      "max_tps": 44.248,
+      "runs_completion_tokens": [
+        80,
+        80,
+        80
+      ],
+      "median_tpot_ms": 22.6,
+      "sample": "Okay, the user has asked for a long, detailed essay about GP"
+    },
+    {
+      "context": 8192,
+      "input_len": 7321,
+      "runs_tps": [
+        43.51,
+        43.61,
+        43.55
+      ],
+      "median_tps": 43.553,
+      "min_tps": 43.512,
+      "max_tps": 43.615,
+      "runs_completion_tokens": [
+        80,
+        80,
+        80
+      ],
+      "median_tpot_ms": 22.96,
+      "sample": "We need answer user. Need summarize repeated sentence in one"
+    },
+    {
+      "context": 65536,
+      "input_len": 58473,
+      "runs_tps": [
+        40.67,
+        41.07,
+        39.11
+      ],
+      "median_tps": 40.675,
+      "min_tps": 39.109,
+      "max_tps": 41.073,
+      "runs_completion_tokens": [
+        80,
+        80,
+        80
+      ],
+      "median_tpot_ms": 24.59,
+      "sample": "We need answer user. Need parse. User provided huge repeated"
+    },
+    {
+      "context": 131072,
+      "input_len": 116934,
+      "runs_tps": [
+        36.55,
+        37.95,
+        39.18
+      ],
+      "median_tps": 37.947,
+      "min_tps": 36.555,
+      "max_tps": 39.179,
+      "runs_completion_tokens": [
+        80,
+        80,
+        80
+      ],
+      "median_tpot_ms": 26.35,
+      "sample": "We need answer user. Need parse. We need respond to final. W"
+    },
+    {
+      "context": 245760,
+      "input_len": 219238,
+      "runs_tps": [
+        36.95,
+        37.49,
+        37.49
+      ],
+      "median_tps": 37.492,
+      "min_tps": 36.948,
+      "max_tps": 37.495,
+      "runs_completion_tokens": [
+        80,
+        80,
+        80
+      ],
+      "median_tpot_ms": 26.67,
+      "sample": "We need answer user. We need answer likely. We need infer us"
+    }
+  ]
+}

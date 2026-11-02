@@ -1,53 +1,48 @@
 {
-  "model": "Flint FP8 (MoE + hybrid SWA + sinks)",
+  "model": "flint fp8kv default",
   "engine": "SGLang",
   "hardware": "2x R9700 TP=2",
-  "method": "completion-token-counted streaming TPOT (single run)",
+  "method": "completion-token-counted streaming TPOT median (decode_ab, 3-run)",
   "output_tokens": 80,
-  "timestamp": "2026-10-31 v0.5.22 first boot",
-  "note": "first boot, TP=2, bf16 KV, triton, graphs bs=1, kv_splits 64",
+  "timestamp": "2026-11-01 flint FP8 KV preset default",
+  "note": "fleet-table re-measure under the new preset default",
   "context_sweep": [
     {
       "context": 128,
       "input_len": 14,
-      "completion_tokens": 80,
-      "tpot_ms": 22.88,
-      "tok_per_sec": 43.7
+      "tpot_ms": 22.6,
+      "tok_per_sec": 44.242
     },
     {
       "context": 8192,
       "input_len": 7321,
-      "completion_tokens": 80,
-      "tpot_ms": 23.31,
-      "tok_per_sec": 42.9
+      "tpot_ms": 22.96,
+      "tok_per_sec": 43.553
     },
     {
       "context": 65536,
       "input_len": 58473,
-      "completion_tokens": 80,
-      "tpot_ms": 25.08,
-      "tok_per_sec": 39.87
+      "tpot_ms": 24.59,
+      "tok_per_sec": 40.675
     },
     {
       "context": 131072,
       "input_len": 116934,
-      "completion_tokens": 80,
-      "tpot_ms": 26.84,
-      "tok_per_sec": 37.25
+      "tpot_ms": 26.35,
+      "tok_per_sec": 37.947
     },
     {
       "context": 245760,
       "input_len": 219238,
-      "completion_tokens": 80,
-      "tpot_ms": 29.2,
-      "tok_per_sec": 34.24
+      "tpot_ms": 26.67,
+      "tok_per_sec": 37.492
     }
   ],
   "throughput_sweep": [
     {
       "concurrency": 1,
-      "throughput": 43.7,
-      "tpot_ms": 22.88,
+      "throughput": 44.242,
+      "tpot_ms": 22.6,
       "ttft_ms": 0
     }
   ]
