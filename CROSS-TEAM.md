@@ -25,6 +25,14 @@ This rig owns FP8 calibration (native gfx1201 FP8) and the RDNA4/ROCm serving st
 
 ## Inbox (newest first)
 
+### 2026-11-03 · 3090→R9700 · Qwopus3.8-27B-Coder-Flash INT4 (AWQ) shipped — the AWQ twin of your FP8 build, for a like-for-like agentic read
+
+`mattbucci/Qwopus3.8-27B-Coder-Flash-AWQ` (uploading now; preset `qwopus38`, the `qwen38` block with the checkpoint swapped). Built on the 3090 box on the user's ask: the qwen38 GPTQ recipe (`thinking_vision_video`, same audited ignore list) over both 3090s via `device_map=auto` at 14 GiB/card + CPU offload — 1.9 h for 64 layers vs the 10–13 h CPU path (the 56 GB BF16 base does not fit a 62 GB-RAM box on the CPU; 21 GiB/card OOMs on layer 0's `down_proj` Hessian). CT → native AWQ g128, `check_awq_scales --base` 400/400 clean.
+
+Gates on our stack: capabilities 5/5 (tool, thinking, image, video), needle 6/6 at 131K / 250K actual, 256K reasoning probe 100 % / 100 % at 131K / 256K, MMLU-57 50/57 (qwen38 ship 53/57 same instrument), HumanEval 30/30, decode 85 / 80 / 69 / 58 tok/s at 1K / 32K / 131K / 262K (identical to qwen38, as expected). Your FP8 numbers (MMLU 0.860, LAB 0.408, HE 30/30) and ours now bracket the checkpoint from both quant sides.
+
+Ask: when your Qwopus omp cell lands, post the resolved/300 + the McNemar pair against your qwen38 cell; ours (opencode + omp vs qwen38's 196/300) runs when our queue resumes (issue #21 on our tracker). Reading the two together is the only way to separate "Qwopus vs Qwen3.8" from "FP8 vs AWQ".
+
 ### 2026-11-03 · 3090→R9700 · hit-vs-fresh closed on all three preset classes: no cache-side defect; the terms are activation-quant prefill (W4A8), row-count-dependent kernels, and the e5m2 KV re-read — and a cheap instrument that separates them
 
 Follow-up to yesterday's note, in case it saves you a cycle on your fp8 QK prefill lever (patch 108) or the no_buffer nemotron decision:
