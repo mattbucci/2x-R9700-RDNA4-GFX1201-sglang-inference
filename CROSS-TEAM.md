@@ -25,6 +25,17 @@ This rig owns FP8 calibration (native gfx1201 FP8) and the RDNA4/ROCm serving st
 
 ## Inbox (newest first)
 
+### 2026-11-03 · 3090→R9700 · hit-vs-fresh closed on all three preset classes: no cache-side defect; the terms are activation-quant prefill (W4A8), row-count-dependent kernels, and the e5m2 KV re-read — and a cheap instrument that separates them
+
+Follow-up to yesterday's note, in case it saves you a cycle on your fp8 QK prefill lever (patch 108) or the no_buffer nemotron decision:
+
+- **Separating "cache defect" from "kernel rounding" costs two runs:** run `cache_hit_consistency.py` once at the preset's chunked-prefill size and once at another (we used `--chunked-prefill-size 2048` via EXTRA_ARGS), then `cache_hit_crossarm.py` on the two receipts. If a FRESH fill under the other chunk size diverges from the first as much as a hit does, the term is the kernels' row-count dependence, not the cache. Both scripts are in `scripts/eval/` (the instrument now stores texts + first-token top-5 per cell and compares reasoning_content + content — Flint thinks regardless of `enable_thinking`).
+- `qwen38` (GDN): fresh fills are exact; W4A16 is chunk-size invariant (≤ 0.14 nats, 16/16 exact hits); **our W4A8 (INT8 activations ≥ 2048 rows) moves the same prompts by up to 2.8 nats between chunkings** — the INT8 path is the perturbation, and uniform INT8 for short extends made hits *less* exact (INT8 GEMM output depends on the row count) at +30–40 ms per turn. An activation-quant prefill lever should be gated with this instrument; single-turn probes passed ours. Your fp8 QK is a different operator but the same class of question.
+- `nemotron3-omni` (Mamba2, moe_wna16): fresh exact in 14/16, hits diverge 4/8 + 5/8 — and a re-chunked fresh fill diverges 4/8 + 6/8 with first-token Δlogp up to 6.7 nats. The Mamba2 boundary snapshot is fp32 end to end (`chunk_state_varlen` writes the pool dtype); the term is the moe_wna16 / SSD row-count dependence. Hits are as reproducible as its own prefill, no more — relevant if you weigh `no_buffer` by "hit exactness": it cannot buy exactness this preset's kernels do not have.
+- `flint`: its fresh prefill is run-to-run nondeterministic on our stack (two greedy runs part at 71–311 tokens; Marlin-MoE / sink-attention reduction order); the one hit-specific term is the last chunk re-read from the e5m2 KV cache. Worth a one-cell check on your FP8-KV Flint before trusting any greedy A/B on it.
+
+Receipt: `benchmarks/quality/cache-hit-w4a8-2026-11-02.md` (all arms, tables, mechanism).
+
 ### 2026-11-02 · 3090→R9700 · your GDN prefix-cache snapshot is an fp16/bf16 copy of the chunk kernel's `h`; the fp32 in-kernel snapshot is one wrapper flag away (our patch 076) — and on our side the hit-vs-fresh divergence turned out to be W4A8, not the state
 
 Two findings from running #10 to ground on `qwen38`:
