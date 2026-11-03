@@ -1,0 +1,40 @@
+{
+ "label": "coder-reap-25b fp8qk",
+ "model": "/home/letsrtfm/AI/models/Qwen3-Coder-REAP-25B-A3B-AWQ-native",
+ "port": 23334,
+ "runs": 2,
+ "method": "flush_cache + non-stream max_tokens=1 wall time",
+ "timestamp": "2026-11-02 16:31",
+ "rows": [
+  {
+   "context": 8192,
+   "input_len": 7327,
+   "runs_s": [
+    1.045,
+    0.949
+   ],
+   "median_s": 0.997,
+   "prefill_tok_per_s": 7350.6
+  },
+  {
+   "context": 65536,
+   "input_len": 58479,
+   "runs_s": [
+    17.333,
+    17.486
+   ],
+   "median_s": 17.41,
+   "prefill_tok_per_s": 3359.0
+  },
+  {
+   "context": 221184,
+   "input_len": 197321,
+   "runs_s": [
+    155.306,
+    155.645
+   ],
+   "median_s": 155.476,
+   "prefill_tok_per_s": 1269.1
+  }
+ ]
+}

@@ -1,0 +1,40 @@
+{
+  "tag": "coder-reap-25b-default",
+  "results": [
+    {
+      "approx": 32768,
+      "multikey": {
+        "actual_tokens": null,
+        "error": "HTTPConnectionPool(host='localhost', port=23334): Max retries exceeded with url: /v1/chat/"
+      },
+      "vartrack": {
+        "actual_tokens": null,
+        "error": "HTTPConnectionPool(host='localhost', port=23334): Max retries exceeded with url: /v1/chat/"
+      },
+      "aggregate": {
+        "actual_tokens": null,
+        "error": "HTTPConnectionPool(host='localhost', port=23334): Max retries exceeded with url: /v1/chat/"
+      },
+      "actual_tokens": null,
+      "score": 0.0
+    },
+    {
+      "approx": 131072,
+      "multikey": {
+        "actual_tokens": null,
+        "error": "HTTPConnectionPool(host='localhost', port=23334): Max retries exceeded with url: /v1/chat/"
+      },
+      "vartrack": {
+        "actual_tokens": null,
+        "error": "HTTPConnectionPool(host='localhost', port=23334): Max retries exceeded with url: /v1/chat/"
+      },
+      "aggregate": {
+        "actual_tokens": null,
+        "error": "HTTPConnectionPool(host='localhost', port=23334): Max retries exceeded with url: /v1/chat/"
+      },
+      "actual_tokens": null,
+      "score": 0.0
+    }
+  ],
+  "overall": 0.0
+}

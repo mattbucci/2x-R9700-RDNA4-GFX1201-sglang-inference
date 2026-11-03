@@ -1,0 +1,46 @@
+{
+  "tag": "qwen35-moe-fp8qk",
+  "results": [
+    {
+      "approx": 32768,
+      "multikey": {
+        "actual_tokens": 32862,
+        "correct": false,
+        "s": 54.5
+      },
+      "vartrack": {
+        "actual_tokens": 32808,
+        "correct": true,
+        "s": 27.9
+      },
+      "aggregate": {
+        "actual_tokens": 32842,
+        "correct": true,
+        "s": 26.8
+      },
+      "actual_tokens": 32862,
+      "score": 0.6666666666666666
+    },
+    {
+      "approx": 131072,
+      "multikey": {
+        "actual_tokens": 131037,
+        "correct": false,
+        "s": 89.8
+      },
+      "vartrack": {
+        "actual_tokens": 130983,
+        "correct": true,
+        "s": 58.3
+      },
+      "aggregate": {
+        "actual_tokens": 131017,
+        "correct": true,
+        "s": 65.3
+      },
+      "actual_tokens": 131037,
+      "score": 0.6666666666666666
+    }
+  ],
+  "overall": 0.667
+}

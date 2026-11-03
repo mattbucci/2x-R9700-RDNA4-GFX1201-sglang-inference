@@ -327,6 +327,15 @@ prefill moved (−20 %) and the preset is unchanged.
 turns unchanged (routed), needle 3/6 → 4/6 with every miss a thinking-cap cell (same 131K cells on both arms), reasoning
 probe 6/6 on both, caps pass ([receipt](profiling/extend-fp8qk-qwen35-2026-11-02.md)); `qwen35` exports `SGLANG_EXTEND_FP8_QK=1`.
 
+**Qwen3.5-35B-A3B REAP AWQ (2026-11-02, held for the user — issue #38).** Prefill 15.4 → 12.8 s at 58K and 119 → 73.5 s at
+197K, turns unchanged, needle 6/6 on both arms, caps pass, but the reasoning probe's multikey task (three planted codes)
+fails at both 32K and 131K under fp8 QK while the default solves all six cells
+([receipts](profiling/extend-fp8qk-qwen35-moe-2026-11-02/)). Not shipped. **coder-30b (32K) and devstral (131K)** cannot
+hold the depth cells — not measurable. **coder-reap-25b: incomplete** — the default arm's server died in a GPU hang + reset on
+07:00.0 during its second 58K cold prefill ([incident](validation/gpu-hang-2026-11-02.json)); the fp8 arm then ran the whole
+gate on the reset card (58K 17.3 s, 197K 155 s, needle 6/6, probe 6/6), so the pair has no default control and is re-run
+before any decision.
+
 ## 3090 tokenizer-side turn ports (incremental tokenizer, lazy decode-back) — null here (2026-11-02)
 
 The 3090's patch 072 (exact incremental tokenization of append-only prompts + lazy prompt decode-back on multimodal-flagged
@@ -694,6 +703,13 @@ Reproducible harnesses: [p2p_allreduce_bw.py](../scripts/bench/p2p_allreduce_bw.
 [p2p_flag_ab.sh](../scripts/bench/p2p_flag_ab.sh).
 
 ## Stability boundaries
+
+**GPU hang with recovery (2026-11-02 16:24, 0000:07:00.0).** MES stopped responding mid-prefill (coder-reap-25b default arm,
+58K cold prefill on the bf16-upcast extend path), the kernel issued a MODE1 reset, VRAM was lost and the device came back
+("wedged, but recovered through reset") without leaving the bus — the first recoverable event on the card that fell off the
+bus four times before ([receipt](validation/gpu-hang-2026-11-02.json), devcoredump path inside). The next three server boots on
+it ran clean. The experiment loop paused on it per its contract; the cause (kernel vs card) is open — the same path had served
+every other preset that day.
 
 - The [North Mini incident](hsail/north-mini-hang/) did not reproduce across six isolated stress tests;
   capture both rank logs and the scheduler stack if it recurs under a full agentic workload.

@@ -1,0 +1,80 @@
+{
+ "tag": "coder-reap-25b-fp8qk-fp8qk",
+ "timestamp": "2026-11-02 16:36",
+ "model": "/home/letsrtfm/AI/models/Qwen3-Coder-REAP-25B-A3B-AWQ-native",
+ "port": 23334,
+ "haystack": "benchmarks/quality/haystack-platypus.txt",
+ "chars_per_token": 3.3,
+ "temperature": 0.0,
+ "flush": true,
+ "max_tokens": 2048,
+ "results": [
+  {
+   "found": true,
+   "actual_prompt_tokens": 33923,
+   "completion_tokens": 6,
+   "finish_reason": "stop",
+   "seconds": 7.5,
+   "content_tail": "BANANA42",
+   "reasoning_tail": "",
+   "context": 32768,
+   "depth": 0.1
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 33923,
+   "completion_tokens": 6,
+   "finish_reason": "stop",
+   "seconds": 7.5,
+   "content_tail": "BANANA42",
+   "reasoning_tail": "",
+   "context": 32768,
+   "depth": 0.5
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 33922,
+   "completion_tokens": 6,
+   "finish_reason": "stop",
+   "seconds": 7.5,
+   "content_tail": "BANANA42",
+   "reasoning_tail": "",
+   "context": 32768,
+   "depth": 0.9
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 136633,
+   "completion_tokens": 6,
+   "finish_reason": "stop",
+   "seconds": 78.6,
+   "content_tail": "BANANA42",
+   "reasoning_tail": "",
+   "context": 131072,
+   "depth": 0.1
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 136633,
+   "completion_tokens": 6,
+   "finish_reason": "stop",
+   "seconds": 78.6,
+   "content_tail": "BANANA42",
+   "reasoning_tail": "",
+   "context": 131072,
+   "depth": 0.5
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 136634,
+   "completion_tokens": 6,
+   "finish_reason": "stop",
+   "seconds": 78.6,
+   "content_tail": "BANANA42",
+   "reasoning_tail": "",
+   "context": 131072,
+   "depth": 0.9
+  }
+ ],
+ "score": 1.0
+}
