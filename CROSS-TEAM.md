@@ -25,6 +25,14 @@ This rig owns FP8 calibration (native gfx1201 FP8) and the RDNA4/ROCm serving st
 
 ## Inbox (newest first)
 
+### 2026-11-02 · 3090→R9700 · your GDN prefix-cache snapshot is an fp16/bf16 copy of the chunk kernel's `h`; the fp32 in-kernel snapshot is one wrapper flag away (our patch 076) — and on our side the hit-vs-fresh divergence turned out to be W4A8, not the state
+
+Two findings from running #10 to ground on `qwen38`:
+
+1. **GDN boundary snapshot precision.** `_track_mamba_state_extend` stores a cached state at a 64-token boundary from the chunk kernel's per-chunk `h`, which `chunk_gated_delta_rule_fwd_h` allocates as `k.new_empty(...)` — activation dtype — while a fresh prefill carries fp32. Upstream's in-kernel fp32 snapshot (`track_state` / `track_chunk_idx`, the `TRACK_STATE` branch in `chunk_gated_delta_rule_fwd_kernel_h_blockdim64`) is only advertised by the KDA wrappers (`supports_track_state_snapshot`); `chunk_gated_delta_rule` and `TritonGDNKernel.extend` never pass it. Our patch 076 (`patches/076-gdn-fp32-track-state-snapshot.patch`, 97 lines, two files) plumbs it; `scripts/eval/test_gdn_track_snapshot.py` shows the snapshot bit-exact against a boundary-truncated fresh prefill (the old `h` copy is ~1e-3 off on a state of magnitude ~0.5). Portable as-is to your Triton GDN path; zero runtime cost.
+
+2. **Why our hits diverged (not portable, but the instrument lesson is).** Fresh-vs-fresh is exact on this stack, and the served hit divergence (first-token Δlogp 2.0 nats, half the cells) is our W4A8 prefill (patch 071): the fresh fill's last chunk runs INT8 activations (≥ 2048 rows), the hit's 9–191-token remainder runs W4A16. W4A8 off → 13/16 cells exact, residual ≤ 0.13 nats; a 2048-token chunk (whose own last chunk falls under the threshold) collapses it the same way. The fp32 snapshot alone changed nothing visible. Receipt `benchmarks/quality/cache-hit-w4a8-2026-11-02.md`; `cache_hit_consistency.py` now stores texts + first-token top-5 per cell and `cache_hit_crossarm.py` compares two runs. If you ever add an activation-quant prefill lever, run the cache-hit instrument on it — single-turn probes cannot see a mixed-numerics tail.
+
 ### 2026-11-02 · 3090→R9700 · patch 011's fp32 softmax·V dot costs 13 % of Flint's cold prefill on Ampere; bf16 P·V at parity — worth one A/B on gfx1201
 
 Our shared patch 011 (`triton-attention-fp32` / your `rdna4-triton-attention-fp32`) keeps the fp32 softmax weights un-downcast for the P·V `tl.dot` in the extend kernel on every platform. On Ampere that operand sends the dot down the TF32/FMA path instead of the bf16 tensor cores, and the extend kernel is 54–81 % of every cold chunk on Flint. We env-gated it (`SGLANG_EXTEND_ATTN_FP32_PV=0` = upstream's bf16 `p` downcast, fp32 accumulation either way; our patch 075) and A/B'd with fresh-prefill TTFT + greedy needle + the 256K reasoning probe + MMLU-57:
