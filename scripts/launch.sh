@@ -179,6 +179,11 @@ PYEOF
             # here (pixtral add_special_tokens crash → 1-token EOS on this multimodal Mistral3).
             CHAT_TEMPLATE="--chat-template $SCRIPT_DIR/devstral2_chat_template.jinja"
             OVERLAP=""
+            # Patch 108 fp8 QK dot in extend attention (gate 2026-11-02, same session, default first): cold prefill
+            # 47.0 -> 31.2 s at 58K and 394 -> 188 s at 197K (-34 % / -52 %), 7.3K unchanged; no split-KV route on this preset, so the
+            # 1-token cache-hit turn also drops 539 -> 272 ms at 52K and 954 -> 438 ms at 104K; natural needle 6/6 and 256K reasoning
+            # probe identical cell by cell on both arms, text + vision probes equal. EXTEND_FP8_QK=0 restores the upcast.
+            export SGLANG_EXTEND_FP8_QK="${EXTEND_FP8_QK:-1}"
             ;;
         coder-30b)
             # 2026-05-28 — default points at *-AWQ-native (the 16 GB native-AWQ

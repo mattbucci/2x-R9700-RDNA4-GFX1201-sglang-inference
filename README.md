@@ -163,9 +163,9 @@ format. Use the 12B or 26B Gemma presets for multimodal workloads.
   under int4; use AWQ int4 for weight-bandwidth-bound single-user decode and for models that need the
   extra KV capacity. FP8 is the optimisation target on this rig; AWQ presets are maintained, not tuned.
 - Flint runs an FP8 KV cache (`KV_DTYPE=auto` restores bf16 KV). The fp8 QK dot in extend attention (patch 108;
-  `EXTEND_FP8_QK=0` restores the upcast) is on for `qwen38`, `flint`, `nemotron-omni`, `qwen36-27b`, `qwen36-moe` and
-  `qwen35`: cold prefill of a 197K prompt 332 → 211 s, 146 → 65 s, 72–86 → 33 s, 357 → 240 s, 117 → 74 s and 361 → 241 s
-  respectively, needle grids and the 256K reasoning probe equal on both arms.
+  `EXTEND_FP8_QK=0` restores the upcast) is on for `qwen38`, `flint`, `nemotron-omni`, `qwen36-27b`, `qwen36-moe`, `qwen35`
+  and `devstral2`: cold prefill of a 197K prompt 332 → 211 s, 146 → 65 s, 72–86 → 33 s, 357 → 240 s, 117 → 74 s, 361 → 241 s
+  and 394 → 188 s respectively, needle grids and the 256K reasoning probe equal on both arms.
 - Use no speculative decoding at true 256K depth unless a same-depth A/B proves it. The one lane that
   does is `qwen38` + DSpark through the split-KV verify kernel (1.5–2.0× at 24 to 197K input), so it is
   that preset's default; its pool ends at 206K (`QWEN38_SPEC=0` for the 256K no-spec server). Every other

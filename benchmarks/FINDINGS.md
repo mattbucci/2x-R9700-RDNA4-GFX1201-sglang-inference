@@ -336,6 +336,14 @@ hold the depth cells — not measurable. **coder-reap-25b: incomplete** — the 
 gate on the reset card (58K 17.3 s, 197K 155 s, needle 6/6, probe 6/6), so the pair has no default control and is re-run
 before any decision.
 
+**Devstral-Small-2 AWQ (2026-11-02, shipped).** Cold prefill 47.0 → 31.2 s at 58K and 394 → 188 s at 197K (−34 % / −52 %);
+no route on this preset, so the 1-token cache-hit turn also falls 539 → 272 ms at 52K and 954 → 438 ms at 104K; needle 6/6
+and reasoning probe identical cell by cell on both arms, capability probe equal
+([receipt](profiling/extend-fp8qk-devstral2-2026-11-02.md)); `devstral2` exports `SGLANG_EXTEND_FP8_QK=1`. With this the fp8
+QK pass covers every preset that can run the depth gate: on by default for qwen38, flint, nemotron-omni, qwen36-27b,
+qwen36-moe, qwen35 and devstral2; held for the user on north-mini (#36) and qwen35-moe (#38); coder-reap-25b incomplete
+(GPU hang); coder-30b, devstral and gemma4 cannot hold the depth cells.
+
 ## 3090 tokenizer-side turn ports (incremental tokenizer, lazy decode-back) — null here (2026-11-02)
 
 The 3090's patch 072 (exact incremental tokenization of append-only prompts + lazy prompt decode-back on multimodal-flagged

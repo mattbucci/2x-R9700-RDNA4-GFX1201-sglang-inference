@@ -1,0 +1,40 @@
+{
+ "label": "devstral2 default",
+ "model": "/home/letsrtfm/AI/models/Devstral-Small-2-24B-AWQ",
+ "port": 23334,
+ "runs": 2,
+ "method": "flush_cache + non-stream max_tokens=1 wall time",
+ "timestamp": "2026-11-02 17:00",
+ "rows": [
+  {
+   "context": 8192,
+   "input_len": 7356,
+   "runs_s": [
+    3.021,
+    2.845
+   ],
+   "median_s": 2.933,
+   "prefill_tok_per_s": 2508.0
+  },
+  {
+   "context": 65536,
+   "input_len": 58738,
+   "runs_s": [
+    46.992,
+    47.299
+   ],
+   "median_s": 47.146,
+   "prefill_tok_per_s": 1245.9
+  },
+  {
+   "context": 221184,
+   "input_len": 198208,
+   "runs_s": [
+    394.282,
+    394.102
+   ],
+   "median_s": 394.192,
+   "prefill_tok_per_s": 502.8
+  }
+ ]
+}

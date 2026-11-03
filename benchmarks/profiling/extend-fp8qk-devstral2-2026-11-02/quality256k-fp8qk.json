@@ -1,0 +1,46 @@
+{
+  "tag": "devstral2-fp8qk",
+  "results": [
+    {
+      "approx": 32768,
+      "multikey": {
+        "actual_tokens": 35833,
+        "correct": true,
+        "s": 21.2
+      },
+      "vartrack": {
+        "actual_tokens": 35780,
+        "correct": true,
+        "s": 17.6
+      },
+      "aggregate": {
+        "actual_tokens": 35813,
+        "correct": true,
+        "s": 17.5
+      },
+      "actual_tokens": 35833,
+      "score": 1.0
+    },
+    {
+      "approx": 131072,
+      "multikey": {
+        "actual_tokens": 142931,
+        "correct": false,
+        "s": 114.8
+      },
+      "vartrack": {
+        "actual_tokens": 142877,
+        "correct": true,
+        "s": 117.7
+      },
+      "aggregate": {
+        "actual_tokens": 142911,
+        "correct": true,
+        "s": 116.5
+      },
+      "actual_tokens": 142931,
+      "score": 0.6666666666666666
+    }
+  ],
+  "overall": 0.833
+}

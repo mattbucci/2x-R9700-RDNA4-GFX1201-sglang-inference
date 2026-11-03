@@ -1,0 +1,80 @@
+{
+ "tag": "devstral2-default-fp8qk",
+ "timestamp": "2026-11-02 17:11",
+ "model": "/home/letsrtfm/AI/models/Devstral-Small-2-24B-AWQ",
+ "port": 23334,
+ "haystack": "benchmarks/quality/haystack-platypus.txt",
+ "chars_per_token": 3.3,
+ "temperature": 0.0,
+ "flush": true,
+ "max_tokens": 2048,
+ "results": [
+  {
+   "found": true,
+   "actual_prompt_tokens": 33246,
+   "completion_tokens": 12,
+   "finish_reason": "stop",
+   "seconds": 20.0,
+   "content_tail": "The secret password is: BANANA42.",
+   "reasoning_tail": "",
+   "context": 32768,
+   "depth": 0.1
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 33246,
+   "completion_tokens": 12,
+   "finish_reason": "stop",
+   "seconds": 20.0,
+   "content_tail": "The secret password is: BANANA42.",
+   "reasoning_tail": "",
+   "context": 32768,
+   "depth": 0.5
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 33245,
+   "completion_tokens": 12,
+   "finish_reason": "stop",
+   "seconds": 20.0,
+   "content_tail": "The secret password is: BANANA42.",
+   "reasoning_tail": "",
+   "context": 32768,
+   "depth": 0.9
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 133949,
+   "completion_tokens": 12,
+   "finish_reason": "stop",
+   "seconds": 194.2,
+   "content_tail": "The secret password is: BANANA42.",
+   "reasoning_tail": "",
+   "context": 131072,
+   "depth": 0.1
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 133948,
+   "completion_tokens": 12,
+   "finish_reason": "stop",
+   "seconds": 194.2,
+   "content_tail": "The secret password is: BANANA42.",
+   "reasoning_tail": "",
+   "context": 131072,
+   "depth": 0.5
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 133949,
+   "completion_tokens": 12,
+   "finish_reason": "stop",
+   "seconds": 194.2,
+   "content_tail": "The secret password is: BANANA42.",
+   "reasoning_tail": "",
+   "context": 131072,
+   "depth": 0.9
+  }
+ ],
+ "score": 1.0
+}

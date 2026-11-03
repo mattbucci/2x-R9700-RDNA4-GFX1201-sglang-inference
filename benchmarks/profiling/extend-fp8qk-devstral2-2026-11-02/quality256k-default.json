@@ -1,0 +1,46 @@
+{
+  "tag": "devstral2-default",
+  "results": [
+    {
+      "approx": 32768,
+      "multikey": {
+        "actual_tokens": 35833,
+        "correct": true,
+        "s": 26.5
+      },
+      "vartrack": {
+        "actual_tokens": 35780,
+        "correct": true,
+        "s": 23.0
+      },
+      "aggregate": {
+        "actual_tokens": 35813,
+        "correct": true,
+        "s": 22.9
+      },
+      "actual_tokens": 35833,
+      "score": 1.0
+    },
+    {
+      "approx": 131072,
+      "multikey": {
+        "actual_tokens": 142931,
+        "correct": false,
+        "s": 219.3
+      },
+      "vartrack": {
+        "actual_tokens": 142877,
+        "correct": true,
+        "s": 220.1
+      },
+      "aggregate": {
+        "actual_tokens": 142911,
+        "correct": true,
+        "s": 219.2
+      },
+      "actual_tokens": 142931,
+      "score": 0.6666666666666666
+    }
+  ],
+  "overall": 0.833
+}
