@@ -64,10 +64,12 @@ def count_tokens(port: int, text: str) -> int:
     return r.json()["usage"]["prompt_tokens"]
 
 
-def run_cell(port: int, model: str, prompt: str, max_tokens: int, temperature, flush: bool) -> dict:
+def run_cell(port: int, model: str, prompt: str, max_tokens: int, temperature, flush: bool, think_off: bool = False) -> dict:
     if flush:
         requests.post(f"http://127.0.0.1:{port}/flush_cache", timeout=60)
     body = {"model": model, "messages": [{"role": "user", "content": prompt}], "max_tokens": max_tokens}
+    if think_off:
+        body["chat_template_kwargs"] = {"enable_thinking": False}
     if temperature is not None:
         body["temperature"] = temperature
     t0 = time.time()
@@ -100,6 +102,7 @@ def main() -> int:
     ap.add_argument("--temperature", default="0", help="float, or 'default' to omit the field")
     ap.add_argument("--haystack", default=None, help="natural-text corpus to tile instead of the filler")
     ap.add_argument("--chars-per-token", type=float, default=None, help="default 4.5 (filler) / 3.3 (haystack)")
+    ap.add_argument("--think-off", action="store_true", help="send chat_template_kwargs.enable_thinking=false (same switch as decode_ab)")
     ap.add_argument("--flush", action="store_true", help="POST /flush_cache before every cell")
     ap.add_argument("--measure-cpt", type=int, default=None,
                     help="measure chars/token of the chosen haystack over a slice sized for this many tokens, then exit")
@@ -132,7 +135,7 @@ def main() -> int:
     for _ in range(a.repeat):
         for L in lengths:
             for d in depths:
-                r = run_cell(a.port, model, build_prompt(L, d, haystack, cpt), a.max_tokens, temperature, a.flush)
+                r = run_cell(a.port, model, build_prompt(L, d, haystack, cpt), a.max_tokens, temperature, a.flush, a.think_off)
                 r.update({"context": L, "depth": d})
                 results.append(r)
                 print(f"  {L:>7} @ {d:<4} {'found' if r['found'] else 'MISS '} actual={r.get('actual_prompt_tokens')} "
