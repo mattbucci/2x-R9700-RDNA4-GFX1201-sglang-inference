@@ -7,6 +7,8 @@
 #
 #   scripts/bench/radiance_serve.sh start a 8192 8        # native block-FP8, non-speculative
 #   scripts/bench/radiance_serve.sh start b 262144 1      # + DFlash2 K7 (target-matched tcclaviger drafter)
+#   scripts/bench/radiance_serve.sh start c 8192 8        # Quark MXFP4 W4A8 (amd/Qwen3.8-27B-Quark-AWQ-MXFP4), non-spec
+#   scripts/bench/radiance_serve.sh start d 8192 8        # MXFP4 W4A8 + DFlash2 K7 (their headline lane)
 #   scripts/bench/radiance_serve.sh wait [timeout_s]      # /health 200 three times in a row
 #   scripts/bench/radiance_serve.sh stop
 #   scripts/bench/radiance_serve.sh logs [n]
@@ -46,10 +48,7 @@ start() {
     -e RADIANCE_SKINNY_GEMM=1 -e RADIANCE_GDN_META=1 -e RADIANCE_GDN_MERGE_INPROJ=1
     -e RADIANCE_GDN_FUSED_UPDATE=1 -e RADIANCE_GDN_FUSED_MAX_ITEMS=32 -e RADIANCE_GDN_SHARED_BUILD=1
     -e RADIANCE_TOPK_TRITON_MIN_ROWS=1 -e RADIANCE_TOPK_COMPOSITE=1 -e RADIANCE_TOPK_COMPOSITE_KCAP=64
-    -e RADIANCE_WEIGHT_QUANTIZATION=fp8
-    -e RADIANCE_MXFP4=0 -e RADIANCE_MXFP4_W4A8=0 -e RADIANCE_MXFP4_W4A8_MIN_M=0 -e RADIANCE_MXFP4_DECODE_MAX_M=64
-    -e RADIANCE_MXFP4_TN4_MIN_M=2048 -e RADIANCE_MXFP4_EPIFAST=1 -e RADIANCE_MXFP4_WPERM=0 -e RADIANCE_MXFP4_DECODE_NT=0
-    -e RADIANCE_MXFP4_A_TILED_MIN_M=0 -e RADIANCE_GDN_NORM_QUANT=0 -e RADIANCE_NORMQUANT_FUSION=0 -e RADIANCE_FP8_STREAM=0
+        -e RADIANCE_MXFP4_EPIFAST=1 -e RADIANCE_MXFP4_A_TILED_MIN_M=0 -e RADIANCE_GDN_NORM_QUANT=0 -e RADIANCE_NORMQUANT_FUSION=0 -e RADIANCE_FP8_STREAM=0
     -e RADIANCE_QUARK_BF16_MTP=0
     -e RADIANCE_AR_MAX_KB=49152 -e RADIANCE_AR_QUANT_MIN_KB=128 -e RADIANCE_AR_QNT=1024 -e RADIANCE_AR_QNB=96
     -e RADIANCE_KV_GROUP_OPT=1 -e RADIANCE_FUSE_RMS_QUANT=1
@@ -61,17 +60,36 @@ start() {
     -e AITER_ROOT_DIR=/cache/aiter -e TRITON_CACHE_AUTOTUNING=1
     -e RADIANCE_TUNABLEOP_MODE=off -e RADIANCE_FP8_KV_SCALES_VERIFY=1
   )
+  local model="$MODEL" served="$SERVED" util="$GPU_UTIL"
+  # README "AMD Quark MXFP4 with native W4A8": WEIGHT_QUANTIZATION=auto (the entrypoint then omits
+  # --quantization and the checkpoint's Quark metadata selects the method), the W4A8 switch set with
+  # the qualified RX5-safe decode subset (WPERM fragment-order weights + non-temporal decode loads),
+  # 90 % GPU allocation. Third-party quantization: comparison input only.
+  local -a mx=( -e RADIANCE_WEIGHT_QUANTIZATION=auto -e RADIANCE_MXFP4=1 -e RADIANCE_MXFP4_W4A8=1
+    -e RADIANCE_MXFP4_W4A8_MIN_M=0 -e RADIANCE_MXFP4_DECODE_MAX_M=64 -e RADIANCE_MXFP4_TN4_MIN_M=2048
+    -e RADIANCE_MXFP4_WPERM=1 -e RADIANCE_MXFP4_DECODE_NT=1 )
   case "$arm" in
     a)
-      env+=( -e RADIANCE_FAST_DRAFT=0 -e RADIANCE_DYNAMIC_WIDTH=1 -e VLLM_USE_V2_MODEL_RUNNER=0 ) ;;
+      env+=( -e RADIANCE_WEIGHT_QUANTIZATION=fp8 -e RADIANCE_FAST_DRAFT=0 -e RADIANCE_DYNAMIC_WIDTH=1 -e VLLM_USE_V2_MODEL_RUNNER=0 ) ;;
+    c)
+      model="${MXFP4_MODEL:-Qwen3.8-27B-Quark-AWQ-MXFP4}"; served="${MXFP4_SERVED:-Qwen3.8-27B-Quark-MXFP4}"; util="${MXFP4_GPU_UTIL:-0.90}"
+      [ -f "$MODELS/$model/config.json" ] || { echo "MXFP4 checkpoint missing: $MODELS/$model" >&2; exit 2; }
+      env+=( "${mx[@]}" -e RADIANCE_FAST_DRAFT=0 -e RADIANCE_DYNAMIC_WIDTH=1 -e VLLM_USE_V2_MODEL_RUNNER=0 ) ;;
+    d)
+      model="${MXFP4_MODEL:-Qwen3.8-27B-Quark-AWQ-MXFP4}"; served="${MXFP4_SERVED:-Qwen3.8-27B-Quark-MXFP4}"; util="${MXFP4_GPU_UTIL:-0.90}"
+      [ -f "$MODELS/$model/config.json" ] || { echo "MXFP4 checkpoint missing: $MODELS/$model" >&2; exit 2; }
+      [ -f "$MODELS/$DRAFTER/config.json" ] || { echo "drafter missing: $MODELS/$DRAFTER" >&2; exit 2; }
+      env+=( "${mx[@]}" -e RADIANCE_FAST_DRAFT=1 -e RADIANCE_DYNAMIC_WIDTH=0 -e VLLM_USE_V2_MODEL_RUNNER=1
+             -e "RADIANCE_COMPILATION_CONFIG={\"cudagraph_mode\":\"PIECEWISE\"}"
+             -e "RADIANCE_SPECULATIVE_CONFIG={\"method\":\"dflash\",\"model\":\"/models/$DRAFTER\",\"num_speculative_tokens\":7,\"draft_tensor_parallel_size\":2,\"attention_backend\":\"TRITON_ATTN\",\"max_model_len\":$ctx,\"disable_padded_drafter_batch\":true}" ) ;;
     b)
       # README "DFlash2": V2 runner, PIECEWISE graphs, fast draft, draft TP2, matched context.
       # DYNAMIC_WIDTH=0 keeps the full K7 verification at every concurrency (single-user comparison).
       [ -f "$MODELS/$DRAFTER/config.json" ] || { echo "drafter missing: $MODELS/$DRAFTER" >&2; exit 2; }
-      env+=( -e RADIANCE_FAST_DRAFT=1 -e RADIANCE_DYNAMIC_WIDTH=0 -e VLLM_USE_V2_MODEL_RUNNER=1
+      env+=( -e RADIANCE_WEIGHT_QUANTIZATION=fp8 -e RADIANCE_FAST_DRAFT=1 -e RADIANCE_DYNAMIC_WIDTH=0 -e VLLM_USE_V2_MODEL_RUNNER=1
              -e "RADIANCE_COMPILATION_CONFIG={\"cudagraph_mode\":\"PIECEWISE\"}"
              -e "RADIANCE_SPECULATIVE_CONFIG={\"method\":\"dflash\",\"model\":\"/models/$DRAFTER\",\"num_speculative_tokens\":7,\"draft_tensor_parallel_size\":2,\"attention_backend\":\"TRITON_ATTN\",\"max_model_len\":$ctx,\"disable_padded_drafter_batch\":true}" ) ;;
-    *) echo "arm must be a or b" >&2; exit 2 ;;
+    *) echo "arm must be a, b, c or d" >&2; exit 2 ;;
   esac
   # shellcheck disable=SC2206
   local -a extra=( ${ARM_EXTRA:-} )
@@ -79,8 +97,8 @@ start() {
     --cap-add SYS_PTRACE --cap-add SYS_NICE --security-opt seccomp=unconfined --ipc host
     -p "$PORT:8000" -v "$MODELS:/models:ro" -v "$CACHE:/cache" -v "$WORK:/work:ro"
     "${env[@]}" "${extra[@]}" "$IMAGE"
-    "/models/$MODEL" "--served-model-name=$SERVED" --tensor-parallel-size=2
-    "--max-num-seqs=$seqs" "--max-model-len=$ctx" "--gpu-memory-utilization=$GPU_UTIL"
+    "/models/$model" "--served-model-name=$served" --tensor-parallel-size=2
+    "--max-num-seqs=$seqs" "--max-model-len=$ctx" "--gpu-memory-utilization=$util"
     "--max-num-batched-tokens=$BATCHED" --kv-cache-dtype=fp8 --attention-backend=R4D
     --no-enable-prefix-caching --mamba-cache-mode=none
     --no-async-scheduling --enable-auto-tool-choice --tool-call-parser=qwen3_coder --reasoning-parser=qwen3
