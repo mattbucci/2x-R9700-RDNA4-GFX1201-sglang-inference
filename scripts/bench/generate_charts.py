@@ -10,6 +10,7 @@ import argparse
 import glob
 import os
 import json
+import textwrap
 import re
 import matplotlib
 matplotlib.use("Agg")
@@ -1418,10 +1419,16 @@ def make_bakeoff_chart():
     ax.grid(True, axis="y", linestyle="--")
     dates = sorted(str(c.get("timestamp", ""))[:10] for c in cells.values() if c.get("timestamp"))
     harness = sorted({c["harness"] for c in cells.values() if c.get("harness")})
-    foot = ("; ".join(harness) if harness else
-            "official SWE-bench Docker scorer, one attempt per instance (resolved / 300)")
-    ax.text(0.0, -0.22, foot + (f"; cell receipts {dates[0]} .. {dates[-1]}" if dates else ""),
-            transform=ax.transAxes, fontsize=7.5, color="#8b949e")
+    foot_lines = harness or ["official SWE-bench Docker scorer, one attempt per instance (resolved / 300)"]
+    if dates:
+        foot_lines = foot_lines + [f"cell receipts {dates[0]} .. {dates[-1]}"]
+    # One paragraph per harness line, wrapped to the axes width (7.5 pt ≈ 17 chars per inch) so a
+    # long harness description never widens the saved figure.
+    width_chars = max(60, int(fig.get_figwidth() * 17))
+    foot = "\n".join("\n".join(textwrap.wrap("• " + line, width_chars, subsequent_indent="   "))
+                     for line in foot_lines)
+    ax.text(0.0, -0.2, foot, transform=ax.transAxes, fontsize=7.5, color="#8b949e",
+            va="top", linespacing=1.4)
     fig.tight_layout()
     out = os.path.join(BENCH_DIR, "bakeoff_swebench_lite.png")
     fig.savefig(out, dpi=150, bbox_inches="tight")
