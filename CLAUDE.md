@@ -1,6 +1,6 @@
 # RDNA4 inference repository
 
-This repository serves and optimizes SGLang v0.5.22 on two AMD Radeon AI PRO R9700 GPUs. The primary goal is coherent single-user performance at long context; multi-user throughput is secondary.
+This repository serves and optimizes SGLang v0.5.22 on two AMD Radeon AI PRO R9700 GPUs. The primary goal is coherent single-user performance at long context; multi-user throughput is secondary. Agentic quality is scored on SWE-bench Lite through one scaffold, oh-my-pi (`SCAFFOLDS=omp`, the `run_model_cycle.sh` default): the seven-scaffold Qwen3.8 v5 matrix put six scaffolds within four points, so the full set is a hosting-error investigation, not a per-model requirement.
 
 ## Current environment
 

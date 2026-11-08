@@ -125,7 +125,9 @@ every upstream web attempt blocked by the sandbox (`audit_git_peek.py`, sandbox-
 the oh-my-pi lane scores 60.3% against this model's 58.0% on identical instances, a difference inside noise
 (McNemar p = 0.36) with a third of the empty patches. Every lane keeps the same 29-minute wall; a slower scaffold
 is a worse harness, not a case for its own cell. The bake-off's job is to catch hosting errors across scaffolds,
-not to rank engines. Setup, audits and dispositions: [`evals/swebench/FP8_BAKEOFF_SETUP.md`](evals/swebench/FP8_BAKEOFF_SETUP.md)
+not to rank engines, and with six scaffolds inside four points the goal is one scaffold per model: new models
+and presets are scored on oh-my-pi alone (`SCAFFOLDS=omp`, the cycle default) and the full matrix is run only
+to investigate a hosting error. Setup, audits and dispositions: [`evals/swebench/FP8_BAKEOFF_SETUP.md`](evals/swebench/FP8_BAKEOFF_SETUP.md)
 and [`benchmarks/FINDINGS.md`](benchmarks/FINDINGS.md).
 
 The [July matrix](evals/swebench/bake-off-2026-07-18.md) (coder-30b-a3b 36.0%, qwen35-27b 45.7%, qwen36-35b-a3b 46.7%

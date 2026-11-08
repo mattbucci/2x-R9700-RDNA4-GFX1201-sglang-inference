@@ -1,5 +1,11 @@
 # FP8 SWE-bench bake-off
 
+**Default scaffold: oh-my-pi only.** `run_model_cycle.sh` defaults to `SCAFFOLDS=omp`. The seven-scaffold Qwen3.8
+v5 matrix (opencode 58.3, opencode-dcp 57.0, little-coder 59.7, little-coder-rtk 59.0, omp 58.0, prime 56.0,
+dcode 41.7 %) showed that scaffold choice moves the resolve rate by under four points once the harness is sound,
+so a new model or preset is scored on one lane; the full list is passed explicitly only to investigate a hosting
+error (one scaffold off by more than that margin, as dcode's wall-exit behaviour was).
+
 `fp8_bakeoff_matrix.sh` runs SWE-bench Lite across opencode, little-coder, and claw-code against a local SGLang endpoint. Rollouts run on the host; official per-instance Docker images score the resulting patches.
 
 ## Scaffold configuration

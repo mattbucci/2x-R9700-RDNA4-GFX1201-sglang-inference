@@ -74,7 +74,10 @@ if [ -z "$PRESET" ]; then
   exit 1
 fi
 
-SCAFFOLDS="${SCAFFOLDS:-opencode opencode-dcp little-coder little-coder-rtk omp prime dcode}"  # claw retired, omp/prime/dcode/opencode-dcp/little-coder-rtk added 2026-08-30
+# Default scaffold is oh-my-pi alone (user decision 2026-11-08): the seven-scaffold qwen38 v5 matrix put six scaffolds within
+# 3.7 points (56.0-59.7 %), so one lane scores a model and the full set is a hosting-error investigation, not the default.
+# Pass SCAFFOLDS="opencode opencode-dcp little-coder little-coder-rtk omp prime dcode" for the full matrix.
+SCAFFOLDS="${SCAFFOLDS:-omp}"
 INSTANCES="${INSTANCES:-0}"
 RUN_TAG="${RUN_TAG:-v2}"
 DOCKER="${DOCKER:-1}"

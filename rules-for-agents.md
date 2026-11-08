@@ -39,6 +39,10 @@ line lives in `/etc/kernel/cmdline` (dracut `kernel-install`) and the existing s
 under `/efi/loader/entries/`. Keep `scripts/gpu_telemetry.sh` running during multi-day serving so a
 GPU loss has a temperature/power/clock history.
 
+SWE-bench Lite cells run on one scaffold, oh-my-pi (`SCAFFOLDS=omp`, the `run_model_cycle.sh` default). The seven-scaffold
+Qwen3.8 v5 matrix put six scaffolds within four points of each other, so a second scaffold is a hosting-error investigation
+to be named explicitly, never a default cost of scoring a model. Every lane keeps the same 29-minute wall and output cap.
+
 `systemd-tmpfiles-clean.timer` ages `/tmp` entries out after 10 days whether or not a process holds
 them open, and the bake-off queue keeps its flock on `/tmp/swebench-bakeoff.lock` for a multi-week
 cycle. `/etc/tmpfiles.d/swebench-bakeoff.conf` (source: `systemd/tmpfiles-swebench-bakeoff.conf`)
