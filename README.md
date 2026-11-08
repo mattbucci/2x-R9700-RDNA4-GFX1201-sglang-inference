@@ -11,7 +11,10 @@ and the quality flagship Qwen3.8-27B-FP8. Open work and known issues are tracked
 (known limitations carry the `known-issue` label:
 [filtered list](https://github.com/mattbucci/2x-R9700-RDNA4-GFX1201-sglang-inference/issues?q=is%3Aissue+is%3Aopen+label%3Aknown-issue)); final
 experiment dispositions are in [benchmarks/FINDINGS.md](benchmarks/FINDINGS.md); the experiment queue is
-in [experiments/](experiments/README.md).
+in [experiments/](experiments/README.md). The active performance programme is
+[vllm-radiance parity](experiments/19-vllm-radiance-parity.md): a like-for-like benchmark against the hand-tuned
+RDNA4 vLLM fork on these two cards, then the mechanisms it uses that this stack lacks (TP-split DeltaNet
+projections, 1-stage IPC all-reduce, preshuffled block-FP8 GEMM, norm + quant fusion, DFlash2 drafting).
 
 ## Results
 

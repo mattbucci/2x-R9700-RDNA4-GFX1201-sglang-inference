@@ -1,6 +1,6 @@
 {
  "schema_version": 1,
- "updated_at": "2026-11-01",
+ "updated_at": "2026-11-08",
  "ordering": "easiest_to_test_then_hardest",
  "baseline": {
   "sglang": "v0.5.15",
@@ -406,6 +406,168 @@
     "resolve rate and scaffold-disagreement table next to qwen38's omp cell"
    ],
    "result": "2026-11-05: 181/300 resolved (60.3 %), 287 applied, 13 empty (all walls), 40 walls, infra_* 0, audit_git_peek 0/300 exposed (8 first-pass flags were sandbox receipts; audit made outcome-aware). Cell JSON benchmarks/quality/bakeoff-qwen38-v5-qwopus-omp.json, leak receipt benchmarks/quality/audit-git-peek-qwen38-omp-v5-qwopus-2026-11-05.json, FINDINGS Qwopus section. Comparator still open: qwen38 v5 omp lane unscored (#22) and on an older oh-my-pi; rollout shape Qwopus 12.8 min mean / 40 walls / 13 empty vs qwen38 17.6 / 74 / 37. Decision #34 with the user."
+  },
+  {
+   "id": "RAD-0",
+   "spec": "19-vllm-radiance-parity.md",
+   "status": "ready",
+   "resource": "gpu",
+   "depends_on": [
+    "v5 Docker scoring (#22) finished on the host"
+   ],
+   "next_action": "Benchmark vllm-radiance (image pulled; arms A native-FP8 non-spec, B + DFlash2 K7 with /data/models/Qwen3.8-27B-DFlash2-FP8-tcclaviger) against SGLang qwen38 no-spec and DSpark: BetterBench v0.2.2 standard profile (/data/tools/betterbench, bb-venv) + our canonical think-off sweep (decode_ab.py / prefill_ttft.py at 128/8192/65536/221184) + quality gates on the radiance arms. Receipts under benchmarks/radiance-parity/.",
+   "test_gate": [
+    "both engines measured on both methodologies, confound table recorded per arm",
+    "radiance arm B 8-prompt greedy diff and tool gate recorded",
+    "FINDINGS disposition naming which RAD experiments the numbers justify"
+   ]
+  },
+  {
+   "id": "REBASE-0523",
+   "spec": "19-vllm-radiance-parity.md",
+   "status": "ready",
+   "resource": "cpu+gpu",
+   "depends_on": [
+    "RAD-0 (benchmark the shipped tree first)"
+   ],
+   "next_action": "Rebase the 82-patch series onto SGLang v0.5.23 from the dry run at /data/sgl-v0523-dryrun/sglang: regenerate 004,027,077,080,082,084,096,105 (3-way clean), re-anchor 062,065,107,110, port 005,058,079,103,104 by hand (079 needs a North-Mini router decision), drop 063 (upstreamed). sglang-kernel 0.4.10 HIP rebuild. Then decode/extend/verify-route/mamba A/Bs on the new tree.",
+   "test_gate": [
+    "replay gate green: strict apply, byte/mode-identical, second apply rejected",
+    "validate_capabilities 5/5 on qwen38, flint, laguna, north-mini",
+    "decode_ab both orders equal to or better than v0.5.22 at 24/58K/197K on qwen38"
+   ]
+  },
+  {
+   "id": "RAD-2",
+   "spec": "19-vllm-radiance-parity.md",
+   "status": "ready",
+   "resource": "gpu",
+   "depends_on": [
+    "REBASE-0523"
+   ],
+   "next_action": "ENABLE_CUSTOM_ALL_REDUCE=1 SGLANG_USE_1STAGE_ALLREDUCE=1 on qwen38 (SGLang HIP 1-stage IPC all-reduce; launch.sh:72 forces it off); p2p_allreduce_decode_shape.py then decode_ab --ignore-eos both orders; fallback = port r4d_ar_oneshot_2rank_exact.hip into kernels/aot. Also answers the 3090's 2026-10-31 ask.",
+   "test_gate": [
+    "graph capture holds; -3..-4 ms/step expected",
+    "validate_capabilities 5/5; needle grid unchanged",
+    "pool loss recorded"
+   ]
+  },
+  {
+   "id": "RAD-4",
+   "spec": "19-vllm-radiance-parity.md",
+   "status": "ready",
+   "resource": "gpu",
+   "depends_on": [
+    "REBASE-0523"
+   ],
+   "next_action": "Decode-GEMM knobs: split-K at M<=8 for o_proj/out_proj/down_proj (lift the sm90 gate in fp8_kernel.py), cache_modifier .cg / non-temporal B loads at M<=16, waves_per_eu 8, BM16 vs 32, clamped K tails; tune_fp8_block_gemm.py sweep then serving A/B; independent of RAD-3.",
+   "test_gate": [
+    "bench_fp8_block_gemm_m1.py cold-cache gain per shape",
+    "decode_ab both orders; bit-identical or documented partial-order drift"
+   ]
+  },
+  {
+   "id": "RAD-5",
+   "spec": "19-vllm-radiance-parity.md",
+   "status": "ready",
+   "resource": "gpu",
+   "depends_on": [
+    "REBASE-0523"
+   ],
+   "next_action": "Triton Gemma RMSNorm on HIP (gate on _is_hip) + fused per-128-group FP8 quant and residual; silu_and_mul + quant.",
+   "test_gate": [
+    "kernel microbench",
+    "decode_ab both orders",
+    "needle + reasoning probe"
+   ]
+  },
+  {
+   "id": "RAD-3",
+   "spec": "19-vllm-radiance-parity.md",
+   "status": "queued",
+   "resource": "gpu",
+   "depends_on": [
+    "RAD-4 (knob baseline)"
+   ],
+   "next_action": "Preshuffled-B Triton block-FP8 GEMM: load-time 16x16 fragment-order shuffle to [N/16, K*16], new kernel with register-only relayout; verify no ds_read/ds_write in the AMDGCN main loop.",
+   "test_gate": [
+    "bench --preshuffle cold-cache; bit-identical",
+    "decode_ab both orders",
+    "prefill_ttft unchanged or better"
+   ]
+  },
+  {
+   "id": "RAD-1",
+   "spec": "19-vllm-radiance-parity.md",
+   "status": "queued",
+   "resource": "gpu",
+   "depends_on": [
+    "RAD-3"
+   ],
+   "next_action": "TP-split DeltaNet in_proj_qkvz / out_proj on the FP8 preset with the recurrent state kept full per rank (qwen3_5.py:413-422, patch 045); the ~9 ms/step prize.",
+   "test_gate": [
+    "bench rows N=8192,K=5120 and N=5120,K=3072",
+    "greedy ladders + needle grid + cache_hit_consistency equal to replicated",
+    "DSpark accept length unchanged; route and radix paths pass"
+   ]
+  },
+  {
+   "id": "RAD-6",
+   "spec": "19-vllm-radiance-parity.md",
+   "status": "queued",
+   "resource": "gpu",
+   "depends_on": [
+    "REBASE-0523"
+   ],
+   "next_action": "DFlash2 drafter (z-lab BF16 / tcclaviger FP8) vs DSpark on the canonical ladder; selector topk micro A/B on ROCm.",
+   "test_gate": [
+    "decode_ab both orders at 24/7.3K/58K/197K",
+    "capabilities, needle, probe_256k_tooluse",
+    "8-prompt greedy diff vs no-spec"
+   ]
+  },
+  {
+   "id": "RAD-7",
+   "spec": "19-vllm-radiance-parity.md",
+   "status": "queued",
+   "resource": "gpu",
+   "depends_on": [
+    "RAD-6"
+   ],
+   "next_action": "Low-bit draft LM head with exact rerank for the DSpark draft; skinny bf16 GEMMs via TunableOp then router_gemv_hip gate.",
+   "test_gate": [
+    "draft-step microbench",
+    "decode_ab both orders",
+    "greedy equivalence vs current DSpark"
+   ]
+  },
+  {
+   "id": "RAD-8",
+   "spec": "19-vllm-radiance-parity.md",
+   "status": "queued",
+   "resource": "gpu",
+   "depends_on": [
+    "RAD-2"
+   ],
+   "next_action": "bf16 attention all-reduce for qwen3_5 (PLAIN_ADD_BF16_SUM); fused GDN proj+conv decode path on HIP.",
+   "test_gate": [
+    "decode_ab both orders",
+    "needle + cache_hit_consistency"
+   ]
+  },
+  {
+   "id": "RAD-9",
+   "spec": "19-vllm-radiance-parity.md",
+   "status": "queued",
+   "resource": "gpu",
+   "depends_on": [
+    "RAD-6"
+   ],
+   "next_action": "Quality-only numerics: bf16 q in decode attention, calibrated k/v scales, dynamic gamma / n-gram tail for DSpark.",
+   "test_gate": [
+    "needle ladders, cache_hit_consistency",
+    "decode_ab for the gamma controller"
+   ]
   }
  ]
 }

@@ -25,6 +25,7 @@ post-094 decision below is the current execution sequence.
   tool result. The seven-rung, three-seed post-fix ladder is now the active GPU task.
 - **Next existing performance decision:** R97-B (07) Option B is recommended, but no regeneration begins
   until the user records that choice. It remains full-attention-only and does not alter Laguna's default.
+- **Radiance parity programme (19):** eleven queue items (RAD-0..9, REBASE-0523) from a read-only review of vllm-radiance; ordering RAD-0 → rebase → RAD-2/4/5 → RAD-3 → RAD-1 → speculative.
 - **Deferred:** R97-A (04) for 16–64K AWQ speculative decode; R97-F (05) until the 3090-G handoff lands;
   R97-G Phase B/C until the short critical path is clear; R97-H (08) closed 2026-11-01 (purge pass 2026-10-25; the AWQ re-measure dropped on the user's call).
 
@@ -51,6 +52,7 @@ tracked in the repository's [GitHub issues](https://github.com/mattbucci/2x-R970
 | 16 | R97-P | [DiffusionGemma structured reads on SGLang: adopt M4 patch 025, run end to end (TP=2 fits)](16-diffusiongemma-structured-reads.md) | experiment | ready (spec only; needs the pin bump to ≥ v0.5.23) | r9700-box | 1-2 d |
 | 17 | R97-Q | [Extend attention on gfx1201 — compute-bound prefix walk, fp8 QK dot](17-extend-attention-fp8-qk-gfx1201.md) | optimization | shipped 2026-11-01 as patch 108 — qwen38 cold prefill 332 → 211 s at 197K, 1-token turn at 176K 10.1 → 5.7 s, needle grid 9/9 on both arms; default-on for `qwen38`, opt-in on other FP8-cache presets | r9700-box | ~3 h GPU |
 | 18 | R97-R | [Hybrid-cache checkpoint granularity — why every qwen38 turn recomputed the 8K chunk tail](18-hybrid-cache-checkpoint-granularity.md) | investigation → preset change | shipped 2026-11-01 (`qwen38` → `--mamba-radix-cache-strategy extra_buffer`): 1-token agentic turn 5.7 → 0.82 s at 176K, 2.2 → 0.28 s at 52K; needle 12/12, caps 5/5 | r9700-box | ~2.5 h GPU |
+| 19 | RAD | [vllm-radiance parity — benchmark the hand-tuned RDNA4 vLLM fork against SGLang, then close the gap (TP-split DeltaNet, 1-stage all-reduce, preshuffled block-FP8 GEMM, norm+quant fusion, DFlash2)](19-vllm-radiance-parity.md) | benchmark + optimization programme | spec; RAD-0 benchmark first GPU task after v5 scoring, REBASE-0523 before the kernel experiments | r9700-box | RAD-0 ~1 day; RAD-1..9 1–3 days each |
 
 ## Cross-rig edges touching this lane
 
