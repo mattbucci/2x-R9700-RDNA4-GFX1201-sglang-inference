@@ -78,26 +78,28 @@ cap, 29-minute wall, oh-my-pi 18.12.2, neutral cues), scored by the official Doc
 
 | | Qwopus FP8 (v5-qwopus) | Qwen3.8-27B-FP8 (v5, same ids) |
 |---|---:|---:|
-| Resolved | **181 / 300 = 60.3 %** | unscored (issue #22) |
-| Patches applied / empty | 287 / 13 | 263 / 37 (non-empty / empty) |
+| Resolved | **181 / 300 = 60.3 %** | 174 / 300 = 58.0 % |
+| Patches applied / empty | 287 / 13 | 263 / 37 |
 | 29-min walls | 40 (13 of them resolved) | 74 |
 | Mean / median rollout | 12.8 / 10.4 min | 17.6 / 16.8 min |
 | Rollout wall-clock | 64 h | 88 h |
-| Audit | `infra_*` 0, `model_timeout` 13 | `infra_*` 0 |
-| Leak audit ([receipt](../quality/audit-git-peek-qwen38-omp-v5-qwopus-2026-11-05.json)) | 0 / 300 exposed, 143 web attempts all blocked | pending |
+| Audit | `infra_*` 0, `model_timeout` 13 | `infra_*` 0, `model_timeout` 35, `model_silent` 2 |
+| Leak audit ([Qwopus](../quality/audit-git-peek-qwen38-omp-v5-qwopus-2026-11-05.json), [v5](../quality/audit-git-peek-qwen38-v5-2026-11-08.json)) | 0 / 300 exposed, 143 web attempts all blocked | 0 / 300 exposed, 190 web attempts all blocked |
 
-Per repo: django 84/114, sympy 45/77, scikit-learn 18/23, pytest 11/17, matplotlib 8/23, sphinx 4/16, astropy 3/6,
-pylint 3/6, xarray 2/5, seaborn 1/4, flask 1/3, requests 1/6. 58 of the 286 isolated patches overlap the gold patch
-at ≥ 80 % — recall from training data, which the neutral-cue sandbox cannot remove.
+Paired on the same 300 instances: 156 resolved by both, 25 by Qwopus only, 18 by Qwen3.8 only, 101 by neither;
+McNemar exact two-sided p = 0.36. The resolve rates are not distinguishable at n = 300; the rollout shape is: a third
+of the empty patches, half the walls, 27 % less time per instance. Per repo (Qwopus / Qwen3.8 / n): django 84/79/114,
+sympy 45/42/77, scikit-learn 18/18/23, pytest 11/9/17, matplotlib 8/8/23, sphinx 4/4/16, astropy 3/5/6, pylint 3/3/6,
+xarray 2/2/5, seaborn 1/2/4, flask 1/1/3, requests 1/1/6. 58 of the 286 isolated Qwopus patches overlap the gold
+patch at ≥ 80 % (62 of 261 for Qwen3.8) — recall from training data, which the neutral-cue sandbox cannot remove.
 
-The qwen38 column is a rollout-shape comparison only: that lane ran an older oh-my-pi build (no `scaffold_pin`), its
-18.12.2 re-roll is owed, and it is unscored until issue #22 runs. The pre-sandbox qwen38-v2 omp cell (81 %) is not a
-comparator (61 % of its sessions read the upstream fix).
+One bound on the pair: the Qwen3.8 lane ran an older oh-my-pi build (no `scaffold_pin`) while Qwopus ran 18.12.2. The
+pre-sandbox qwen38-v2 omp cell (81 %) is not a comparator (61 % of its sessions read the upstream fix).
 
 ## Disposition
 
 The build is sound (parity, 2.65 % RMS, no-spec decode identical, capabilities 5/5, needle 6/6, quality within noise of
-the base) and the fine-tune's agentic claim holds up in the lane it was built for: 60.3 % resolved on SWE-bench Lite
-with faster, cleaner rollouts than the base model's unscored v5 lane. Whether it earns a `qwopus` preset is the user's
-call (issue #34); the deciding number is the base model's scored omp cell. Until then:
+the base) and the fine-tune's agentic claim holds up in the lane it was built for: the same SWE-bench Lite resolve
+rate as the base model within noise (60.3 % vs 58.0 %, p = 0.36) with a third of the empty patches, half the walls
+and 27 % less time per instance. Whether that earns a `qwopus` preset is the user's call (issue #34). Until then:
 `MODEL=/data/models/Qwopus3.8-27B-Coder-Flash-FP8 ./scripts/launch.sh qwen38`.

@@ -147,7 +147,7 @@ def check_thinking(
 
     choice = r["choices"][0]
     content = choice["message"].get("content") or ""
-    reasoning = choice["message"].get("reasoning_content") or ""
+    reasoning = (choice["message"].get("reasoning_content") or choice["message"].get("reasoning")) or ""
     finish = choice.get("finish_reason")
     usage = r.get("usage", {})
     completion_tokens = usage.get("completion_tokens", 0)
@@ -227,7 +227,7 @@ def check_basic(base_url: str, model: str) -> tuple[bool, str]:
         return False, f"request failed: {e!r}"
     msg = r["choices"][0]["message"]
     content = (msg.get("content") or "").lower()
-    reasoning = (msg.get("reasoning_content") or "").lower()
+    reasoning = ((msg.get("reasoning_content") or msg.get("reasoning")) or "").lower()
     finish = r["choices"][0].get("finish_reason")
     passed = "paris" in content or "paris" in reasoning
     sample = content[:60] if content else f"(reasoning){reasoning[:60]}"
@@ -406,7 +406,7 @@ def check_video(base_url: str, model: str) -> tuple[bool, str]:
 
     msg = r["choices"][0]["message"]
     content = (msg.get("content") or "").lower()
-    reasoning = (msg.get("reasoning_content") or "").lower()
+    reasoning = ((msg.get("reasoning_content") or msg.get("reasoning")) or "").lower()
     # Same pattern as check_vision: thinking-mode models (Qwen3/Gemma) emit
     # the substantive answer into reasoning_content, not content. Without
     # checking both, the validator silently fails clean models.
@@ -462,7 +462,7 @@ def check_vision(base_url: str, model: str) -> tuple[bool, str]:
 
     msg = r["choices"][0]["message"]
     content = (msg.get("content") or "").lower()
-    reasoning = (msg.get("reasoning_content") or "").lower()
+    reasoning = ((msg.get("reasoning_content") or msg.get("reasoning")) or "").lower()
     haystack = content + " " + reasoning
     # The probe image is a solid red circle on a white background.  A model that
     # actually processed the image should mention BOTH color and shape — matching

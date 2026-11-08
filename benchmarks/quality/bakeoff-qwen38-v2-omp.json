@@ -13,6 +13,6 @@
   "completed": 281,
   "harness_returncode": null,
   "run_dir": "evals/swebench/runs/qwen38-omp-v2",
-  "timestamp": "2026-11-08T11:16:07",
+  "timestamp": "2026-11-08T13:37:32",
   "superseded": "answer-leak audit: 45-61 % of v2 sessions exposed; superseded by the sandboxed v3+ lanes"
 }

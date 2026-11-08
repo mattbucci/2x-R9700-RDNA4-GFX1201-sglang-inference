@@ -564,6 +564,45 @@ oh-my-pi 18.12.2 re-roll is owed. On identical instance ids Qwopus finished fast
 walls (40 vs 74) and left fewer empties (13 vs 37). The pre-sandbox qwen38-v2 omp cell (81 %) is not a comparator:
 61 % of its sessions read the upstream fix. Preset decision stays with issue #34.
 
+## Qwen3.8-27B-FP8 v5 bake-off: seven scaffolds scored (2026-11-08)
+
+All seven v5 lanes (300 instances each, rolled 2026-10-15 → 10-31 under the v5 harness: official per-instance
+SWE-bench Docker image, no network, opaque work tree, prompt on stdin, 32,000-token output cap, 29-minute wall,
+neutral cues) were Docker-scored on 2026-11-08 (`score_cells.sh`, 14–19 min per lane). Cell receipts
+[`quality/bakeoff-qwen38-v5-*.json`](quality/), run dirs `evals/swebench/runs/qwen38-*-v5/`.
+
+| Scaffold | Resolved | Applied | Empty | 29-min walls | Mean rollout | Audit (`audit_predictions.py`) |
+|---|---:|---:|---:|---:|---:|---|
+| little-coder | **179 / 300 = 59.7 %** | 276 | 24 | 68 | 16.6 min | infra 0, timeout 24 |
+| little-coder-rtk | 177 = 59.0 % | 270 | 30 | 74 | 17.4 min | infra 0, timeout 28, silent 2 |
+| opencode | 175 = 58.3 % | 262 | 38 | 73 | 16.7 min | infra 0, timeout 28, length 9, silent 1 |
+| oh-my-pi (omp) | 174 = 58.0 % | 263 | 37 | 74 | 17.6 min | infra 0, timeout 35, silent 2 |
+| opencode-dcp | 171 = 57.0 % | 266 | 34 | 59 | 15.7 min | infra 1 (one server 5xx), timeout 20, length 13 |
+| prime-agent | 168 = 56.0 % | 261 | 39 | 65 | 17.1 min | infra 0, timeout 26, silent 13 |
+| deepagents-code (dcode) | 125 = 41.7 % | 194 | 106 | 0 (exits 124 at wall − 60 s) | 21.0 min | infra 0, timeout 91, silent 15 |
+
+Six scaffolds land within 3.7 points of each other (56.0–59.7 %); the bake-off's job was to catch hosting errors
+across scaffolds and it found none above the one 5xx. dcode's 41.7 % is its own harness: 91 of 300 sessions ran to
+the wall with no diff. The Qwopus fine-tune through the same preset on the omp lane scored 181 / 300 (60.3 %)
+against qwen38's 174 on identical instances: 156 both, 25 Qwopus-only, 18 qwen38-only, McNemar exact p = 0.36 —
+no significant difference in resolve rate; Qwopus leaves fewer empties (13 vs 37) and walls (40 vs 74) and runs 27 %
+faster per instance. The qwen38 omp lane ran an older oh-my-pi build (no `scaffold_pin`), which bounds that pair.
+
+**Leak audit** ([`quality/audit-git-peek-qwen38-v5-2026-11-08.json`](quality/audit-git-peek-qwen38-v5-2026-11-08.json),
+2,100 sessions): **0 git-history reads, 5 / 2,100 web flags, all five read by hand as failed attempts.** The audit is
+now sandbox-aware: when every prediction row carries `sandbox: true` the work tree is a single synthetic "Import
+source tree" commit, so a git history walk counts as a read only when its recorded output shows a second commit or a
+diff (object listings, packed-refs and reflog lines of the import commit do not); a web attempt whose tool result
+is empty, a scaffold footer, `000` from `curl -w`, "(no output)", a Python traceback, `command not found`, or a
+`pip download` without its success line is BLOCKED, and an attempt with no recorded result cannot have exposed
+anything because the result is the only channel back to the model. The five remaining flags are `curl` calls whose
+recorded result is a directory listing of an empty download directory (django-12856 on both opencode lanes,
+sympy-15345 on prime), `hello /usr/bin/curl` (a `which`, sklearn-11040 on prime) and `pypi:  gh:  ` (empty echoes,
+sympy-11897 on prime). Of 1,144 upstream web attempts across the seven lanes, 1,139 are classified blocked by the
+audit and the other five by hand. 52–64 isolated patches per
+lane overlap the gold patch at ≥ 80 %: recall from training data, which no sandbox removes. The pre-sandbox v2
+cells (45–61 % exposed) stay in `quality/` flagged `superseded` and off the chart.
+
 ## Long-context attention
 
 ### Decode-only recency window

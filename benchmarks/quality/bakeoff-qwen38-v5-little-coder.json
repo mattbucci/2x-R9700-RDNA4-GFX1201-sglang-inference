@@ -1,0 +1,18 @@
+{
+  "preset": "qwen38-v5",
+  "scaffold": "little-coder",
+  "model_path": "sglang/qwen38",
+  "total_predictions": 300,
+  "resolve_rate_pct": 59.7,
+  "resolved": 179,
+  "unresolved": 97,
+  "error": 0,
+  "empty_patch": 24,
+  "incomplete": 0,
+  "submitted": 300,
+  "completed": 276,
+  "harness_returncode": null,
+  "run_dir": "evals/swebench/runs/qwen38-little-coder-v5",
+  "timestamp": "2026-11-08T13:37:32",
+  "harness": "v5 harness: official per-instance SWE-bench Docker image, no network, opaque work tree, prompt on stdin, 32,000-token output cap, 29-min wall; Qwen3.8-27B-FP8 DSpark preset, CTX=262144"
+}

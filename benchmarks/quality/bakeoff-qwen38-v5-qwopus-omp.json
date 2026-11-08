@@ -13,6 +13,6 @@
   "completed": 287,
   "harness_returncode": null,
   "run_dir": "evals/swebench/runs/qwen38-omp-v5-qwopus",
-  "timestamp": "2026-11-08T11:16:07",
+  "timestamp": "2026-11-08T13:37:32",
   "harness": "v5 harness: official per-instance SWE-bench Docker image, no network, opaque work tree, prompt on stdin, 32,000-token output cap, 29-min wall, oh-my-pi 18.12.2; Qwopus3.8-27B-Coder-Flash block-FP8 through the qwen38 preset (DSpark, CTX=262144); git-peek audit 0 exposed"
 }

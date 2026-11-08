@@ -155,12 +155,24 @@ NET_FAIL_RE = re.compile(
     r"unable to access '|Could not connect to server|getaddrinfo|Failed to connect to|"
     r"ReadTimeout|ConnectTimeout|Connection timed out|network is disabled|no network|"
     # pip with no index reachable retries silently and reports an empty version list
-    r"\(from versions: none\)|No matching distribution found", re.I)
+    r"\(from versions: none\)|No matching distribution found|"
+    # curl -s -w '%{http_code}' with no connection prints 000; scaffold wrappers print (no output) / <no output>;
+    # a missing downloader (uv/pip) prints command not found
+    r"(?:^|\n)\s*000\s*(?:\n|$)|\(no output\)|<no output>|command not found|curl: \(\d+\)|Command failed with exit code|Traceback \(most recent call last\)|URLError|urlopen error|ConnectionError|TimeoutError", re.I)
+# pip download only ever succeeds with one of these lines in its output
+PIP_OK_RE = re.compile(r"Successfully downloaded|Saved \./|Saved /", re.I)
+PIP_CMD_RE = re.compile(r"\bpip3?\s+download\b|python\S*\s+-m\s+pip\s+download\b", re.I)
 # The sandboxed work tree (docker_sandbox.sh, v3+) has no history at all: a single
 # synthetic "Import source tree" commit. `git log --all` there enumerates nothing.
 SANDBOX_HISTORY_RE = re.compile(r"\A\s*[0-9a-f]{7,40} Import source tree\s*\Z")
 # Echo/timing lines a scaffold appends to a bash result; a result that is only these is empty.
-RESULT_NOISE_RE = re.compile(r"^(EXIT:\s*-?\d+|Wall time:.*|\s*)$", re.M)
+RESULT_NOISE_RE = re.compile(r"^(EXIT:\s*-?\d+|exit[=:]\s*-?\d+|Wall time:.*|Exit code:\s*-?\d+|\[Command (succeeded|failed) with exit code -?\d+\]|FAILED|---|\s*)$", re.M)
+# A sandboxed work tree (docker_sandbox.sh, v3+) is imported as ONE synthetic commit, so a history walk can only
+# ever print that commit: a git result with a second commit line is the only way the git channel can expose.
+_SANDBOX = {"on": False}  # set per lane from predictions.jsonl (every row sandbox=true)
+# a commit line is "<hash> <subject>"; object listings ("<hash> blob 123"), packed-refs ("<hash> refs/heads/x")
+# and bare ref-file hashes are the import commit's own objects, not history
+SECOND_COMMIT_RE = re.compile(r"^[0-9a-f]{7,40}[ \t]+(?!(?:blob|tree|commit|tag)\b)(?!refs/)(?!.*Import source tree)\S", re.M)
 NET_BASH_RE = re.compile(r"\b(curl|wget|gh\s+(api|pr|issue)|pip3?\s+(download|install)(?!\s+-e)|python\S*\s+-m\s+pip\s+(download|install)(?!\s+-e)|git\s+clone\s+https?://)\b", re.I)
 
 # instance prefix -> tokens that identify the project's own sites/repos in a URL
@@ -234,7 +246,7 @@ def scan_call(inst: str, name: str, args, rec: dict, call_id: str | None = None)
     if "git" in t or WORK in t or NEUTRAL_ROOT + "repo-" in t:
         why = git_peek(inst, t)
         if why:
-            rec.setdefault("git", []).append((why[0], why[1][:200].replace("\n", "⏎"), call_id))
+            rec.setdefault("git", []).append((why[0], why[1][:200].replace("\n", "⏎"), call_id, False))
     for kind, evidence in web_events(inst, name, args, t):
         # ok: None = no result seen (counts as exposed), False = observably failed, True = returned
         rec.setdefault("web", []).append({"kind": kind, "evidence": evidence[:200].replace("\n", "⏎"),
@@ -245,8 +257,16 @@ def record_result(rec: dict, call_id: str | None, text: str, is_error: bool | No
     """Attach a tool result to the web event it answers (by call id, else the
     latest event still without a result). Failure = the scaffold's error flag,
     or a transport/DNS failure in the result text."""
-    if call_id is not None and SANDBOX_HISTORY_RE.match(text or ""):
-        rec["git"] = [g for g in rec.get("git", []) if g[2] != call_id]
+    if call_id is not None and rec.get("git"):
+        t = text or ""
+        if SANDBOX_HISTORY_RE.match(t):
+            rec["git"] = [g for g in rec["git"] if g[2] != call_id]
+        else:
+            proved = bool(SECOND_COMMIT_RE.search(t)) or "diff --git" in t
+            if os.environ.get("AUDIT_DUMP"):
+                rec.setdefault("_gitres", {})[call_id] = t[:300]
+            rec["git"] = [(tier, reason, cid, proved) if cid == call_id else (tier, reason, cid, conf)
+                          for tier, reason, cid, conf in rec["git"]]
     events = rec.get("web") or []
     ev = None
     if call_id is not None:
@@ -257,7 +277,10 @@ def record_result(rec: dict, call_id: str | None, text: str, is_error: bool | No
         return
     # nothing came back: a `curl -s ... | head` under network-none prints an empty body
     empty = not RESULT_NOISE_RE.sub("", text or "").strip()
-    ev["ok"] = not (bool(is_error) or empty or bool(NET_FAIL_RE.search(text or "")))
+    pip_blocked = bool(PIP_CMD_RE.search(ev.get("evidence") or "")) and not PIP_OK_RE.search(text or "")
+    ev["ok"] = not (bool(is_error) or empty or pip_blocked or bool(NET_FAIL_RE.search(text or "")))
+    if os.environ.get("AUDIT_DUMP"):
+        ev["result"] = (text or "")[:400]
 
 
 # --------------------------------------------------------------------------- pi format
@@ -455,6 +478,14 @@ def main():
                     preds[r["instance_id"]] = r.get("model_patch") or ""
         RESOLVER.add(preds)
         window = lane_window(run_dir)
+        try:
+            _rows = [json.loads(l) for l in open(run_dir / "predictions.jsonl") if l.strip()]
+            sandboxed = bool(_rows) and all(r.get("sandbox") for r in _rows)
+        except Exception:
+            sandboxed = False
+        _SANDBOX["on"] = sandboxed
+        if sandboxed:
+            print(f"  {lane}: sandboxed lane (every prediction row sandbox=true): git history walks need a second commit to count")
         out: dict[str, dict] = defaultdict(dict)
         if kind == "opencode":
             lane_opencode(HOME / ".local/share/opencode/opencode.db", window, out)
@@ -475,9 +506,20 @@ def main():
                 continue
             g = rec.get("git", [])
             w = rec.get("web", [])
+            if _SANDBOX["on"]:
+                # sandboxed tree (one synthetic commit): a READ stands only when its recorded result proved a
+                # second commit or a diff; unproven READs are enumeration of the import commit
+                g = [(("LIST" if (t == "READ" and not conf) else t), r, cid, conf) for t, r, cid, conf in g]
             git_cls = "READ" if any(t == "READ" for t, *_ in g) else ("LIST" if g else "clean")
             leaky = [e for e in w if e["kind"] in ("UPSTREAM", "SEARCH")]
-            live = [e for e in leaky if e["ok"] is not False]  # returned, or no result recorded
+            if _SANDBOX["on"]:
+                # network-none sandbox: the tool result is the only channel back to the model, so an attempt
+                # with no recorded result cannot have exposed anything
+                for e in leaky:
+                    if e["ok"] is None:
+                        e["ok"] = False
+                        e["evidence"] = e["evidence"] + "  [no result recorded]"
+            live = [e for e in leaky if e["ok"] is not False]  # returned (outside a sandbox: or no result recorded)
             blocked = [e for e in leaky if e["ok"] is False]
             if live:
                 web_cls = "UPSTREAM" if any(e["kind"] == "UPSTREAM" for e in live) else "SEARCH"
@@ -489,8 +531,9 @@ def main():
             ov = gold_overlap(preds.get(inst, ""), gold[inst]) if gold and inst in gold else None
             rows[inst] = {"git": git_cls, "web": web_cls, "exposed": exposed, "overlap": ov,
                           "web_attempts": len(leaky), "web_blocked": len(blocked),
-                          "evidence": [f"git {t}: {r}" for t, r, *_ in g]
-                          + [f"web {e['kind']}{' (blocked)' if e['ok'] is False else ''}: {e['evidence']}" for e in w]}
+                          "evidence": [f"git {t}: {r}" + (f"  [cid={cid} conf={conf} res={rec.get('_gitres', {}).get(cid)!r}]" if os.environ.get("AUDIT_DUMP") else "") for t, r, cid, conf in g]
+                          + [f"web {e['kind']}{' (blocked)' if e['ok'] is False else ''}: {e['evidence']}"
+                             + (f"  => RESULT[{e['ok']}]: {e['result']!r}" if os.environ.get("AUDIT_DUMP") and e.get("result") is not None else "") for e in w]}
         n = len(rows)
         have = [r for r in rows.values() if r["exposed"] is not None]
         c = lambda pred: sum(1 for r in have if pred(r))  # noqa: E731
