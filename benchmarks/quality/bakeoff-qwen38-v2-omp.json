@@ -1,0 +1,18 @@
+{
+  "preset": "qwen38-v2",
+  "scaffold": "omp",
+  "model_path": "sglang/qwen38",
+  "total_predictions": 300,
+  "resolve_rate_pct": 81.0,
+  "resolved": 243,
+  "unresolved": 38,
+  "error": 0,
+  "empty_patch": 19,
+  "incomplete": 0,
+  "submitted": 300,
+  "completed": 281,
+  "harness_returncode": null,
+  "run_dir": "evals/swebench/runs/qwen38-omp-v2",
+  "timestamp": "2026-11-08T11:16:07",
+  "superseded": "answer-leak audit: 45-61 % of v2 sessions exposed; superseded by the sandboxed v3+ lanes"
+}

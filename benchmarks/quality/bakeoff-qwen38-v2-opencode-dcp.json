@@ -1,0 +1,18 @@
+{
+  "preset": "qwen38-v2",
+  "scaffold": "opencode-dcp",
+  "model_path": "sglang/qwen38",
+  "total_predictions": 300,
+  "resolve_rate_pct": 71.3,
+  "resolved": 214,
+  "unresolved": 49,
+  "error": 0,
+  "empty_patch": 37,
+  "incomplete": 0,
+  "submitted": 300,
+  "completed": 263,
+  "harness_returncode": null,
+  "run_dir": "evals/swebench/runs/qwen38-opencode-dcp-v2",
+  "timestamp": "2026-11-08T11:16:07",
+  "superseded": "answer-leak audit: 45-61 % of v2 sessions exposed; superseded by the sandboxed v3+ lanes"
+}

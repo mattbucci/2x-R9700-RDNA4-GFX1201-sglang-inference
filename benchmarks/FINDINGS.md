@@ -547,6 +547,23 @@ acceptance on the fine-tune at depth. No preset yet (user decision; the card's a
 `--ignore-eos` rows are not comparable with the README's EOS-terminated canonical sweep: forcing past EOS drops the
 vendor itself to 35 / 36 / 29 tok/s at 7.3K / 58K / 197K.
 
+**SWE-bench Lite, oh-my-pi lane, v5 harness (rolled 2026-11-02 → 05, 65 h 30 m wall):** **181 / 300 resolved
+(60.3 %)**, 287 patches applied, 13 empty (all 13 are 29-minute walls with no diff), 40 walls in all (13 of them
+resolved), 0 infra rows, 0 non-zero rollout exits, mean 12.8 min per instance. Cell receipt
+[`quality/bakeoff-qwen38-v5-qwopus-omp.json`](quality/bakeoff-qwen38-v5-qwopus-omp.json); leak audit
+[`quality/audit-git-peek-qwen38-omp-v5-qwopus-2026-11-05.json`](quality/audit-git-peek-qwen38-omp-v5-qwopus-2026-11-05.json):
+**0 / 300 exposed**, 143 web attempts all blocked by the network-none sandbox, 58 / 286 isolated patches ≥ 80 %
+gold-overlap (recall from training data, not the environment). The audit's first pass flagged 8 instances; the
+transcripts showed every one was the sandbox's receipt — `git log --all` enumerates the single synthetic "Import
+source tree" commit, `curl -s … | head` prints an empty body, `pip download … | tail -1` prints "No matching
+distribution found" — so `audit_git_peek.py` now reads those outcomes as BLOCKED. Per repo: django 84/114,
+sympy 45/77, scikit-learn 18/23, pytest 11/17, matplotlib 8/23, sphinx 4/16, astropy 3/6, pylint 3/6, xarray 2/5,
+seaborn 1/4, flask 1/3, requests 1/6. **Comparison with Qwen3.8-27B-FP8 is still open:** the qwen38 v5 omp lane is
+rolled (300/300, 263 non-empty, 74 walls, mean 17.6 min, older oh-my-pi build) but unscored (issue #22), and its
+oh-my-pi 18.12.2 re-roll is owed. On identical instance ids Qwopus finished faster (12.8 vs 17.6 min mean), hit fewer
+walls (40 vs 74) and left fewer empties (13 vs 37). The pre-sandbox qwen38-v2 omp cell (81 %) is not a comparator:
+61 % of its sessions read the upstream fix. Preset decision stays with issue #34.
+
 ## Long-context attention
 
 ### Decode-only recency window

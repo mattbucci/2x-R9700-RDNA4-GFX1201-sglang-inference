@@ -97,6 +97,27 @@ def display_path(path: Path, repo_root: Path) -> str:
         return str(path)
 
 
+# Harness line per run tag, written into every cell JSON so generate_charts.py labels
+# a matrix by the harness it ran under instead of merging it with an older one.
+# Exact tag first, then the longest prefix (so `v5-qwopus` inherits `v5`'s line).
+TAG_HARNESS = {
+    "v5": ("v5 harness: official per-instance SWE-bench Docker image, no network, opaque work tree, "
+           "prompt on stdin, 32,000-token output cap, 29-min wall; Qwen3.8-27B-FP8 DSpark preset, CTX=262144"),
+    "v5-qwopus": ("v5 harness: official per-instance SWE-bench Docker image, no network, opaque work tree, "
+                  "prompt on stdin, 32,000-token output cap, 29-min wall, oh-my-pi 18.12.2; "
+                  "Qwopus3.8-27B-Coder-Flash block-FP8 through the qwen38 preset (DSpark, CTX=262144); "
+                  "git-peek audit 0 exposed"),
+}
+
+
+def harness_for_preset(preset: str) -> str | None:
+    """Default harness line for a `<preset>-<tag>` row label (None when the tag is unknown)."""
+    for tag in sorted(TAG_HARNESS, key=len, reverse=True):
+        if preset.endswith("-" + tag):
+            return TAG_HARNESS[tag]
+    return None
+
+
 def write_cell_json(preset: str, scaffold: str, run_dir: Path,
                     summary: dict, quality_dir: Path,
                     repo_root: Path, harness: str | None = None) -> Path:
@@ -134,8 +155,14 @@ def write_cell_json(preset: str, scaffold: str, run_dir: Path,
         "run_dir": display_path(run_dir, repo_root),
         "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S"),
     }
+    harness = harness or harness_for_preset(preset)
     if harness:
         payload["harness"] = harness
+    if preset.endswith("-v2"):
+        # The v2 lanes ran before the sandbox: 45-61 % of their sessions read the upstream fix
+        # (git history / web tools; FP8_BAKEOFF_SETUP.md "answer leak"). Kept as receipts, never charted.
+        payload["superseded"] = ("answer-leak audit: 45-61 % of v2 sessions exposed; "
+                                 "superseded by the sandboxed v3+ lanes")
     out.write_text(json.dumps(payload, indent=2) + "\n")
     return out
 
@@ -150,7 +177,7 @@ EXTERNAL_RUN_RE = re.compile(rf"^(.*)-({_SCAFFOLD_ALT})$")
 # score_cells.sh (scores.jsonl + docker-score report). The tag is kept in the row
 # label (`qwen38-v3`) so a re-run under a changed harness never overwrites or
 # blends with the earlier tag's cell.
-TAGGED_RUN_RE = re.compile(rf"^(.*)-({_SCAFFOLD_ALT})-(v\d[\w.]*)$")
+TAGGED_RUN_RE = re.compile(rf"^(.*)-({_SCAFFOLD_ALT})-(v\d[\w.-]*)$")
 
 
 def _read_summary(path: Path) -> dict | None:
@@ -257,8 +284,8 @@ def discover_runs(runs_dir: Path):
     for d in sorted(runs_dir.iterdir()):
         if not d.is_dir():
             continue
-        if "." in d.name:
-            # .empty-pre-devrole-*, .partial-*, .superseded-* etc.: parked, never published
+        if "." in d.name or "-superseded-" in d.name:
+            # .empty-pre-devrole-*, .partial-*, .superseded-*, <lane>-superseded-<date>: parked, never published
             continue
         legacy_match = LEGACY_RUN_RE.match(d.name)
         if legacy_match and (d / "scores-docker-summary.json").exists():

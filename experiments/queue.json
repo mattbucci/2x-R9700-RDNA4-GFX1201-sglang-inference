@@ -393,18 +393,19 @@
   {
    "id": "QWOPUS-OMP",
    "spec": "benchmarks/qwopus38-27b-coder-flash-fp8/README.md",
-   "status": "running",
+   "status": "completed",
    "resource": "gpu",
    "depends_on": [
     "the experiment loop's current queue (fp8 QK AWQ gates, R97-I sweep) finishing — user decision 2026-11-02: full run, only after we are done experimenting"
    ],
-   "next_action": "Launched 2026-11-02 17:4x on the user's go (GPU hang at 16:24 recovered; cards verified on the bus): MODEL=/data/models/Qwopus3.8-27B-Coder-Flash-FP8 SCAFFOLDS=omp RUN_TAG=v5-qwopus DOCKER=1 NEUTRAL_CUES=1 ./evals/swebench/run_model_cycle.sh qwen38 [served_name as the server reports it; omp uses chat completions]. 300 instances, 32K output cap, 29-min wall; ~16 h rollout + Docker scoring (Phase 5 also scores the owed v5 cells, issue #22). Audit infra_* = 0 and audit_git_peek.py 0 exposed before reading the resolve rate. Compare against the v5 omp lane (its re-roll on 18.12.2 is pending). Decision at stake: a `qwopus` preset (issue #34). Logs /data/logs/run-model-cycle-logs/qwen38-v5-qwopus/ (cycle log qwopus-omp-cycle.log, pid file qwopus-omp-cycle.pid); run dir evals/swebench/runs/qwen38-omp-v5-qwopus/.",
+   "next_action": "Done. Score the qwen38 v5 omp lane (issue #22, user's go) to close the comparison and decide #34.",
    "test_gate": [
     "300/300 rolled, infra_* = 0 in the audit",
     "audit_git_peek.py: 0 exposed",
     "Docker score with the same harness line as the v5 cells",
     "resolve rate and scaffold-disagreement table next to qwen38's omp cell"
-   ]
+   ],
+   "result": "2026-11-05: 181/300 resolved (60.3 %), 287 applied, 13 empty (all walls), 40 walls, infra_* 0, audit_git_peek 0/300 exposed (8 first-pass flags were sandbox receipts; audit made outcome-aware). Cell JSON benchmarks/quality/bakeoff-qwen38-v5-qwopus-omp.json, leak receipt benchmarks/quality/audit-git-peek-qwen38-omp-v5-qwopus-2026-11-05.json, FINDINGS Qwopus section. Comparator still open: qwen38 v5 omp lane unscored (#22) and on an older oh-my-pi; rollout shape Qwopus 12.8 min mean / 40 walls / 13 empty vs qwen38 17.6 / 74 / 37. Decision #34 with the user."
   }
  ]
 }

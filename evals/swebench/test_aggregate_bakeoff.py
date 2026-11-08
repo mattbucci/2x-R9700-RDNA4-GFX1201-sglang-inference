@@ -193,6 +193,39 @@ class TaggedRunTest(unittest.TestCase):
         self.assertEqual(rows[0][3]["resolved"], 3)
         self.assertEqual(rows[1][3]["resolved"], 2)
 
+    def test_hyphenated_tag_is_a_row_and_renamed_superseded_dir_is_skipped(self):
+        # run_model_cycle.sh RUN_TAG=v5-qwopus (a fine-tune through the qwen38 preset)
+        # scored in place; a lane parked by renaming (<lane>-superseded-<date>) stays out.
+        with tempfile.TemporaryDirectory() as temp_dir:
+            runs_dir = pathlib.Path(temp_dir)
+            _write_external_run(
+                runs_dir, "qwen38-omp-v5-qwopus", model="sglang__qwen38"
+            )
+            (runs_dir / "qwen38-dcode-v5-superseded-20261026").mkdir()
+            (runs_dir / "qwen38-dcode-v5-superseded-20261026" / "predictions.jsonl").write_text("")
+
+            rows = sorted(aggregate.discover_runs(runs_dir), key=lambda r: r[0])
+
+        self.assertEqual([r[:2] for r in rows], [("qwen38-v5-qwopus", "omp")])
+        self.assertEqual(rows[0][3]["resolved"], 2)
+
+    def test_v2_cell_json_is_flagged_superseded(self):
+        # pre-sandbox lanes (answer leak) stay receipts; generate_charts skips `superseded` cells
+        with tempfile.TemporaryDirectory() as temp_dir:
+            runs_dir = pathlib.Path(temp_dir)
+            _write_external_run(runs_dir, "qwen38-omp-v2", model="sglang__qwen38")
+            _write_external_run(runs_dir, "qwen38-omp-v5", model="sglang__qwen38")
+            out_dir = pathlib.Path(temp_dir) / "cells"
+            out_dir.mkdir()
+            written = {}
+            for preset, scaffold, run_dir, summary in aggregate.discover_runs(runs_dir):
+                path = aggregate.write_cell_json(preset, scaffold, run_dir, summary, out_dir, runs_dir)
+                written[preset] = json.loads(pathlib.Path(path).read_text())
+        self.assertIn("superseded", written["qwen38-v2"])
+        self.assertNotIn("superseded", written["qwen38-v5"])
+        self.assertTrue(written["qwen38-v5"]["harness"].startswith("v5 harness"))
+        self.assertNotIn("harness", written["qwen38-v2"])
+
     def test_unscored_tagged_run_is_queued_and_parked_dirs_skipped(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             runs_dir = pathlib.Path(temp_dir)

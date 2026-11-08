@@ -1,0 +1,18 @@
+{
+  "preset": "qwen38-v2",
+  "scaffold": "little-coder",
+  "model_path": "sglang/qwen38",
+  "total_predictions": 300,
+  "resolve_rate_pct": 67.7,
+  "resolved": 203,
+  "unresolved": 57,
+  "error": 0,
+  "empty_patch": 40,
+  "incomplete": 0,
+  "submitted": 300,
+  "completed": 260,
+  "harness_returncode": null,
+  "run_dir": "evals/swebench/runs/qwen38-little-coder-v2",
+  "timestamp": "2026-11-08T11:16:07",
+  "superseded": "answer-leak audit: 45-61 % of v2 sessions exposed; superseded by the sandboxed v3+ lanes"
+}

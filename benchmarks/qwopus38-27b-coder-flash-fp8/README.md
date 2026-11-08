@@ -68,8 +68,36 @@ Mean accept length 2.70 (Qwopus) vs 2.85 (vendor, both arms). The RedHatAI specu
 on the fine-tune it keeps the DSpark gain at short and mid depth and gives up about 15 % of it at 197K. The no-spec
 server is identical to the vendor's at every depth.
 
+## SWE-bench Lite, oh-my-pi lane (v5 harness, 2026-11-02 → 05)
+
+Full 300-instance cell through `run_model_cycle.sh qwen38` with `MODEL=` this build, `RUN_TAG=v5-qwopus`, the v5
+harness line (official per-instance Docker image, no network, opaque work tree, prompt on stdin, 32,000-token output
+cap, 29-minute wall, oh-my-pi 18.12.2, neutral cues), scored by the official Docker harness. Cell receipt
+[`bakeoff-qwen38-v5-qwopus-omp.json`](../quality/bakeoff-qwen38-v5-qwopus-omp.json); run dir
+`evals/swebench/runs/qwen38-omp-v5-qwopus/`.
+
+| | Qwopus FP8 (v5-qwopus) | Qwen3.8-27B-FP8 (v5, same ids) |
+|---|---:|---:|
+| Resolved | **181 / 300 = 60.3 %** | unscored (issue #22) |
+| Patches applied / empty | 287 / 13 | 263 / 37 (non-empty / empty) |
+| 29-min walls | 40 (13 of them resolved) | 74 |
+| Mean / median rollout | 12.8 / 10.4 min | 17.6 / 16.8 min |
+| Rollout wall-clock | 64 h | 88 h |
+| Audit | `infra_*` 0, `model_timeout` 13 | `infra_*` 0 |
+| Leak audit ([receipt](../quality/audit-git-peek-qwen38-omp-v5-qwopus-2026-11-05.json)) | 0 / 300 exposed, 143 web attempts all blocked | pending |
+
+Per repo: django 84/114, sympy 45/77, scikit-learn 18/23, pytest 11/17, matplotlib 8/23, sphinx 4/16, astropy 3/6,
+pylint 3/6, xarray 2/5, seaborn 1/4, flask 1/3, requests 1/6. 58 of the 286 isolated patches overlap the gold patch
+at ≥ 80 % — recall from training data, which the neutral-cue sandbox cannot remove.
+
+The qwen38 column is a rollout-shape comparison only: that lane ran an older oh-my-pi build (no `scaffold_pin`), its
+18.12.2 re-roll is owed, and it is unscored until issue #22 runs. The pre-sandbox qwen38-v2 omp cell (81 %) is not a
+comparator (61 % of its sessions read the upstream fix).
+
 ## Disposition
 
 The build is sound (parity, 2.65 % RMS, no-spec decode identical, capabilities 5/5, needle 6/6, quality within noise of
-the base). Whether it earns a `qwopus` preset is the user's call: the card's advantage is agentic behaviour, which only a
-scaffold run would show. Until then: `MODEL=/data/models/Qwopus3.8-27B-Coder-Flash-FP8 ./scripts/launch.sh qwen38`.
+the base) and the fine-tune's agentic claim holds up in the lane it was built for: 60.3 % resolved on SWE-bench Lite
+with faster, cleaner rollouts than the base model's unscored v5 lane. Whether it earns a `qwopus` preset is the user's
+call (issue #34); the deciding number is the base model's scored omp cell. Until then:
+`MODEL=/data/models/Qwopus3.8-27B-Coder-Flash-FP8 ./scripts/launch.sh qwen38`.

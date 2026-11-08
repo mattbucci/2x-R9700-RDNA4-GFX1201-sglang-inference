@@ -155,7 +155,12 @@ NET_FAIL_RE = re.compile(
     r"unable to access '|Could not connect to server|getaddrinfo|Failed to connect to|"
     r"ReadTimeout|ConnectTimeout|Connection timed out|network is disabled|no network|"
     # pip with no index reachable retries silently and reports an empty version list
-    r"\(from versions: none\)", re.I)
+    r"\(from versions: none\)|No matching distribution found", re.I)
+# The sandboxed work tree (docker_sandbox.sh, v3+) has no history at all: a single
+# synthetic "Import source tree" commit. `git log --all` there enumerates nothing.
+SANDBOX_HISTORY_RE = re.compile(r"\A\s*[0-9a-f]{7,40} Import source tree\s*\Z")
+# Echo/timing lines a scaffold appends to a bash result; a result that is only these is empty.
+RESULT_NOISE_RE = re.compile(r"^(EXIT:\s*-?\d+|Wall time:.*|\s*)$", re.M)
 NET_BASH_RE = re.compile(r"\b(curl|wget|gh\s+(api|pr|issue)|pip3?\s+(download|install)(?!\s+-e)|python\S*\s+-m\s+pip\s+(download|install)(?!\s+-e)|git\s+clone\s+https?://)\b", re.I)
 
 # instance prefix -> tokens that identify the project's own sites/repos in a URL
@@ -229,7 +234,7 @@ def scan_call(inst: str, name: str, args, rec: dict, call_id: str | None = None)
     if "git" in t or WORK in t or NEUTRAL_ROOT + "repo-" in t:
         why = git_peek(inst, t)
         if why:
-            rec.setdefault("git", []).append((why[0], why[1][:200].replace("\n", "⏎")))
+            rec.setdefault("git", []).append((why[0], why[1][:200].replace("\n", "⏎"), call_id))
     for kind, evidence in web_events(inst, name, args, t):
         # ok: None = no result seen (counts as exposed), False = observably failed, True = returned
         rec.setdefault("web", []).append({"kind": kind, "evidence": evidence[:200].replace("\n", "⏎"),
@@ -240,6 +245,8 @@ def record_result(rec: dict, call_id: str | None, text: str, is_error: bool | No
     """Attach a tool result to the web event it answers (by call id, else the
     latest event still without a result). Failure = the scaffold's error flag,
     or a transport/DNS failure in the result text."""
+    if call_id is not None and SANDBOX_HISTORY_RE.match(text or ""):
+        rec["git"] = [g for g in rec.get("git", []) if g[2] != call_id]
     events = rec.get("web") or []
     ev = None
     if call_id is not None:
@@ -248,7 +255,9 @@ def record_result(rec: dict, call_id: str | None, text: str, is_error: bool | No
         ev = next((e for e in reversed(events) if e["ok"] is None and e["id"] is None), None)
     if ev is None or ev["ok"] is not None:
         return
-    ev["ok"] = not (bool(is_error) or bool(NET_FAIL_RE.search(text or "")))
+    # nothing came back: a `curl -s ... | head` under network-none prints an empty body
+    empty = not RESULT_NOISE_RE.sub("", text or "").strip()
+    ev["ok"] = not (bool(is_error) or empty or bool(NET_FAIL_RE.search(text or "")))
 
 
 # --------------------------------------------------------------------------- pi format
@@ -466,7 +475,7 @@ def main():
                 continue
             g = rec.get("git", [])
             w = rec.get("web", [])
-            git_cls = "READ" if any(t == "READ" for t, _ in g) else ("LIST" if g else "clean")
+            git_cls = "READ" if any(t == "READ" for t, *_ in g) else ("LIST" if g else "clean")
             leaky = [e for e in w if e["kind"] in ("UPSTREAM", "SEARCH")]
             live = [e for e in leaky if e["ok"] is not False]  # returned, or no result recorded
             blocked = [e for e in leaky if e["ok"] is False]
@@ -480,7 +489,7 @@ def main():
             ov = gold_overlap(preds.get(inst, ""), gold[inst]) if gold and inst in gold else None
             rows[inst] = {"git": git_cls, "web": web_cls, "exposed": exposed, "overlap": ov,
                           "web_attempts": len(leaky), "web_blocked": len(blocked),
-                          "evidence": [f"git {t}: {r}" for t, r in g]
+                          "evidence": [f"git {t}: {r}" for t, r, *_ in g]
                           + [f"web {e['kind']}{' (blocked)' if e['ok'] is False else ''}: {e['evidence']}" for e in w]}
         n = len(rows)
         have = [r for r in rows.values() if r["exposed"] is not None]
