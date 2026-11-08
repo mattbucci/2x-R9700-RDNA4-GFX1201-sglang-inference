@@ -25,6 +25,7 @@ post-094 decision below is the current execution sequence.
   tool result. The seven-rung, three-seed post-fix ladder is now the active GPU task.
 - **Next existing performance decision:** R97-B (07) Option B is recommended, but no regeneration begins
   until the user records that choice. It remains full-attention-only and does not alter Laguna's default.
+- **Flint focus (user 2026-11-08, after RAD-0 lands):** FLINT-1 omp SWE-bench cell on the default scaffold → FLINT-2 FP8-KV fleet re-measure + P·V dtype A/B → FLINT-3 depth-0.1 retrieval study vs the 3090 INT4 build → FLINT-4 radiance levers on flint; issue #27 is the spec. The v0.5.23 rebase's CPU half overlaps the Flint rollout.
 - **Radiance parity programme (19):** eleven queue items (RAD-0..9, REBASE-0523) from a read-only review of vllm-radiance; ordering RAD-0 → rebase → RAD-2/4/5 → RAD-3 → RAD-1 → speculative.
 - **Deferred:** R97-A (04) for 16–64K AWQ speculative decode; R97-F (05) until the 3090-G handoff lands;
   R97-G Phase B/C until the short critical path is clear; R97-H (08) closed 2026-11-01 (purge pass 2026-10-25; the AWQ re-measure dropped on the user's call).

@@ -428,7 +428,8 @@
    "status": "ready",
    "resource": "cpu+gpu",
    "depends_on": [
-    "RAD-0 (benchmark the shipped tree first)"
+    "RAD-0 (benchmark the shipped tree first)",
+    "CPU half may overlap FLINT-1's rollout; GPU A/Bs wait for the GPUs"
    ],
    "next_action": "Rebase the 82-patch series onto SGLang v0.5.23 from the dry run at /data/sgl-v0523-dryrun/sglang: regenerate 004,027,077,080,082,084,096,105 (3-way clean), re-anchor 062,065,107,110, port 005,058,079,103,104 by hand (079 needs a North-Mini router decision), drop 063 (upstreamed). sglang-kernel 0.4.10 HIP rebuild. Then decode/extend/verify-route/mamba A/Bs on the new tree.",
    "test_gate": [
@@ -567,6 +568,64 @@
    "test_gate": [
     "needle ladders, cache_hit_consistency",
     "decode_ab for the gamma controller"
+   ]
+  },
+  {
+   "id": "FLINT-1",
+   "spec": "https://github.com/mattbucci/2x-R9700-RDNA4-GFX1201-sglang-inference/issues/27",
+   "status": "ready",
+   "resource": "gpu",
+   "depends_on": [
+    "RAD-0 (the GPUs are the campaign's until RAD0 DRIVER V3 DONE)"
+   ],
+   "next_action": "User 2026-11-08: focus on Flint once the campaign lands. Flint omp SWE-bench Lite cell on the default scaffold (SCAFFOLDS=omp, v5 harness, 300 instances, oh-my-pi 18.12.2 pin, neutral cues, Docker scoring): ./evals/swebench/run_model_cycle.sh flint RUN_TAG=v5. ~2.5 GPU-days. Compare with the 3090's Flint INT4 omp 186/300 (their harness) and our qwen38 omp 174 / Qwopus 181 on identical ids (McNemar). audit_predictions infra 0 + audit_git_peek 0 reads before reading the rate.",
+   "test_gate": [
+    "300/300 rolled, infra_* = 0",
+    "audit_git_peek: 0 history reads, web attempts all blocked",
+    "scored cell JSON with the v5 harness line; McNemar pairs vs qwen38 and Qwopus omp"
+   ]
+  },
+  {
+   "id": "FLINT-2",
+   "spec": "https://github.com/mattbucci/2x-R9700-RDNA4-GFX1201-sglang-inference/issues/27",
+   "status": "ready",
+   "resource": "gpu",
+   "depends_on": [
+    "FLINT-1 (one GPU job at a time)"
+   ],
+   "next_action": "Fleet-table decode re-measure under the FP8 KV preset default (README row 44.2 / 37.5) with the canonical think-off sweep at 24 / 7.3K / 58K / 197K, both orders, merged into benchmarks/flint-fp8/results.json; plus the 3090's P.V dtype A/B (patch 011 fp32 P.V vs bf16, env-gated) on flint with needle + reasoning probe --haystack.",
+   "test_gate": [
+    "decode_ab 3-run medians both orders",
+    "validate_capabilities 5/5, needle natural 6/6",
+    "results.json schema fields present"
+   ]
+  },
+  {
+   "id": "FLINT-3",
+   "spec": "https://github.com/mattbucci/2x-R9700-RDNA4-GFX1201-sglang-inference/issues/27",
+   "status": "queued",
+   "resource": "gpu",
+   "depends_on": [
+    "FLINT-2"
+   ],
+   "next_action": "Depth-0.1 retrieval study at 243-248K against the 3090's INT4 build on identical cells (Flint loses the first 10 % of the window there, #14): needle ladder at depth 0.05/0.1/0.2 x 243K/248K, natural haystack, greedy, 3 seeds; sinks/SWA attribution via the extend route logs.",
+   "test_gate": [
+    "same cells as the 3090 receipt",
+    "greedy ladder byte-stable across seeds or variance recorded"
+   ]
+  },
+  {
+   "id": "FLINT-4",
+   "spec": "https://github.com/mattbucci/2x-R9700-RDNA4-GFX1201-sglang-inference/issues/27",
+   "status": "queued",
+   "resource": "gpu",
+   "depends_on": [
+    "RAD-2 (1-stage all-reduce) and RAD-5 (norm+quant fusion) measured on qwen38 first"
+   ],
+   "next_action": "Apply the radiance-parity levers that are preset-agnostic to flint: 1-stage IPC all-reduce (flint already runs PLAIN_ADD_BF16_SUM), fused norm+quant, decode-GEMM knobs on its MoE/dense shapes; same A/B contract as RAD-2/4/5.",
+   "test_gate": [
+    "decode_ab both orders at 24/58K/197K",
+    "capabilities + needle unchanged"
    ]
   }
  ]
