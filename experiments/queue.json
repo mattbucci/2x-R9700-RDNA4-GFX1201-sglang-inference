@@ -410,12 +410,12 @@
   {
    "id": "RAD-0",
    "spec": "19-vllm-radiance-parity.md",
-   "status": "ready",
+   "status": "in_progress",
    "resource": "gpu",
    "depends_on": [
     "v5 Docker scoring (#22) finished on the host"
    ],
-   "next_action": "Benchmark vllm-radiance (image pulled; arms A native-FP8 non-spec, B + DFlash2 K7 with /data/models/Qwen3.8-27B-DFlash2-FP8-tcclaviger) against SGLang qwen38 no-spec and DSpark: BetterBench v0.2.2 standard profile (/data/tools/betterbench, bb-venv) + our canonical think-off sweep (decode_ab.py / prefill_ttft.py at 128/8192/65536/221184) + quality gates on the radiance arms. Receipts under benchmarks/radiance-parity/.",
+   "next_action": "Benchmark vllm-radiance (image pulled; arms A native-FP8 non-spec, B + DFlash2 K7, C Quark MXFP4 W4A8, D MXFP4 + DFlash2 K7 (user 2026-11-08: also try MXFP4) with /data/models/Qwen3.8-27B-DFlash2-FP8-tcclaviger) against SGLang qwen38 no-spec and DSpark: BetterBench v0.2.2 standard profile (/data/tools/betterbench, bb-venv) + our canonical think-off sweep (decode_ab.py / prefill_ttft.py at 128/8192/65536/221184) + quality gates on the radiance arms. Receipts under benchmarks/radiance-parity/. Drivers: scratchpad rad0_driver.sh (P1-P8, waits for the v5 scorer) and rad0c_driver.sh (P9-P12, waits for the first driver and the MXFP4 download); logs /data/logs/rad0-2026-11-08/.",
    "test_gate": [
     "both engines measured on both methodologies, confound table recorded per arm",
     "radiance arm B 8-prompt greedy diff and tool gate recorded",

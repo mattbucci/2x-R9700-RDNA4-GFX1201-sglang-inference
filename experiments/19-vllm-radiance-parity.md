@@ -80,7 +80,7 @@ Two engines, same cards, same model files, one at a time, both methodologies, qu
   GPU util 0.85, 4,096 batch tokens, `--kv-cache-dtype=fp8 --attention-backend=R4D`, prefix cache off); **B** A plus
   DFlash2 K7 with the target-matched drafter `/data/models/Qwen3.8-27B-DFlash2-FP8-tcclaviger` (downloaded; the
   heretic-ara drafter is for their abliterated target), `VLLM_USE_V2_MODEL_RUNNER=1 RADIANCE_FAST_DRAFT=1`
-  PIECEWISE graphs; **C** (optional, comparison input only) Quark MXFP4 W4A8 `amd/Qwen3.8-27B-Quark-AWQ-MXFP4`.
+  PIECEWISE graphs; **C** Quark MXFP4 W4A8 `amd/Qwen3.8-27B-Quark-AWQ-MXFP4` (user's call: run it; third-party quant, comparison input only, RX5-safe WPERM + non-temporal decode subset, 0.90 allocation) and **D** C plus DFlash2 K7 with the same drafter — their headline lane.
 - **SGLang arms**: `qwen38` no-spec (`QWEN38_SPEC=0`) and DSpark, `EXTRA_ARGS="--disable-radix-cache
   --served-model-name Qwen3.8-27B-FP8"`; for BetterBench `CTX=8192 MAX_RUNNING=8` (decode above bs=1 runs eager on this
   preset — record it).
