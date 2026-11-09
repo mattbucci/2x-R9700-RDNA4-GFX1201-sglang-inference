@@ -578,7 +578,9 @@ PYEOF
             # capability probe, capture 0.29 GB. Receipt:
             # benchmarks/qwen38-27b-fp8/graph-ab-2026-09-19.json.
             CUDA_GRAPH=""
-            EXTRA_ARGS="${EXTRA_ARGS:-} --cuda-graph-max-bs-decode 1"
+            # single-user default; an EXTRA_ARGS --cuda-graph-max-bs-decode N (multi-user A/Bs) must win, so only
+            # append the 1 when the caller did not set one (argparse keeps the last occurrence)
+            [[ "${EXTRA_ARGS:-}" == *--cuda-graph-max-bs-decode* ]] || EXTRA_ARGS="${EXTRA_ARGS:-} --cuda-graph-max-bs-decode 1"
             MAMBA_CACHE="--max-mamba-cache-size 8"
             # R97-Q (patch 108, 2026-11-01): the gfx1201 extend-attention prefix QK runs as an fp8 WMMA dot
             # (q downcast to the FP8 cache dtype, what every non-RDNA platform does) instead of upcasting K to
@@ -793,7 +795,8 @@ PYEOF
             # Hybrid-SWA KV economics: a large SWA sub-pool is wasted because sliding
             # layers can reach only window=4096. The validated 0.0625 ratio leaves
             # 1.57M full-layer tokens while keeping ample SWA concurrency at 256K.
-            EXTRA_ARGS="${EXTRA_ARGS:-} --swa-full-tokens-ratio ${SWA_FULL_TOKENS_RATIO:-0.0625} --cuda-graph-max-bs-decode 1"
+            EXTRA_ARGS="${EXTRA_ARGS:-} --swa-full-tokens-ratio ${SWA_FULL_TOKENS_RATIO:-0.0625}"
+            [[ "${EXTRA_ARGS:-}" == *--cuda-graph-max-bs-decode* ]] || EXTRA_ARGS="$EXTRA_ARGS --cuda-graph-max-bs-decode 1"
             # cuda-graph ON (validated 2026-06-11 on cohere2_moe): 128-expert MoE M=1 decode
             # is dispatch-bound; single-bs capture is the conc=1 throughput path.
             # With the v0.5.15 internal fusions the measured curve is 71.1 tok/s
@@ -840,7 +843,8 @@ PYEOF
             case "$KV_DTYPE" in
                 bf16|bfloat16|fp16|float16) laguna_swa_ratio=0.02 ;;
             esac
-            EXTRA_ARGS="${EXTRA_ARGS:-} --swa-full-tokens-ratio ${SWA_FULL_TOKENS_RATIO:-$laguna_swa_ratio} --cuda-graph-max-bs-decode 1"
+            EXTRA_ARGS="${EXTRA_ARGS:-} --swa-full-tokens-ratio ${SWA_FULL_TOKENS_RATIO:-$laguna_swa_ratio}"
+            [[ "${EXTRA_ARGS:-}" == *--cuda-graph-max-bs-decode* ]] || EXTRA_ARGS="$EXTRA_ARGS --cuda-graph-max-bs-decode 1"
             # R97-J arm A (patch 107, 2026-10-31; widened by patch 110, 2026-11-01): a cache-hit turn whose new
             # suffix is <= 256 tokens (template included) runs its full-attention prefix walk through the
             # split-KV verify kernel in 64-row chunks instead of the serial extend kernel: 1-token turn
@@ -877,7 +881,8 @@ PYEOF
             WATCHDOG=1800
             # 14/49 layers are full attention; the SWA pool only needs the 512-token
             # window plus a prefill chunk. Laguna's BF16-KV ratio as the starting point.
-            EXTRA_ARGS="${EXTRA_ARGS:-} --swa-full-tokens-ratio ${SWA_FULL_TOKENS_RATIO:-0.02} --cuda-graph-max-bs-decode 1 --grammar-backend flint"
+            EXTRA_ARGS="${EXTRA_ARGS:-} --swa-full-tokens-ratio ${SWA_FULL_TOKENS_RATIO:-0.02} --grammar-backend flint"
+            [[ "${EXTRA_ARGS:-}" == *--cuda-graph-max-bs-decode* ]] || EXTRA_ARGS="$EXTRA_ARGS --cuda-graph-max-bs-decode 1"
             # Patch 112 (2026-11-02): the split-KV turn route now carries the learned sinks, so the 14 full-attention
             # layers take it (the 35 SWA layers keep the extend kernel). Order-controlled pair, warmed, same session:
             # 1-token agentic turn 237 -> 128 ms at 52K and 443 -> 201 ms at 104K cached (64 / 256-token turns the same),
