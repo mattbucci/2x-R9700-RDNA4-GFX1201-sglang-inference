@@ -586,7 +586,7 @@
     "audit_git_peek: 0 history reads, web attempts all blocked",
     "scored cell JSON with the v5 harness line; McNemar pairs vs qwen38 and Qwopus omp"
    ],
-   "result": "2026-11-09 01:00: stopped by the user at 16/300 (15 predictions kept in evals/swebench/runs/flint-omp-v5, logs flint-v5/) to restart under DFlash2 once the FLINT-5 gate passes; restart = RUN_TAG v5-dflash, same harness line, server + drafter only. Restarted 2026-11-09 02:05 under DFlash2 (RUN_TAG v5-dflash, logs run-model-cycle-logs/flint-v5-dflash, run dir evals/swebench/runs/flint-omp-v5-dflash); the 15 no-spec predictions stay as a paired same-id check."
+   "result": "2026-11-09 01:00: stopped by the user at 16/300 (15 predictions kept in evals/swebench/runs/flint-omp-v5, logs flint-v5/) to restart under DFlash2 once the FLINT-5 gate passes; restart = RUN_TAG v5-dflash, same harness line, server + drafter only. Restarted 2026-11-09 02:05 under DFlash2 (RUN_TAG v5-dflash, logs run-model-cycle-logs/flint-v5-dflash, run dir evals/swebench/runs/flint-omp-v5-dflash); the 15 no-spec predictions stay as a paired same-id check. 04:22 server death (DFLASH sampler buffers sized by graph bs=1, crashed on a 2-request batch) → patch 115, cycle restarted at an instance boundary on the patched tree; the EMPTY django-11283 row removed for re-roll."
   },
   {
    "id": "FLINT-2",

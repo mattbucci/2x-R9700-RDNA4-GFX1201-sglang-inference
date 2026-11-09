@@ -1,6 +1,6 @@
 # SGLang v0.5.22 RDNA4 patches
 
-This directory contains the **82 active numeric patches** applied to pristine SGLang v0.5.22 for the
+This directory contains the **83 active numeric patches** applied to pristine SGLang v0.5.22 for the
 2× Radeon AI PRO R9700 serving stack. The default tree is `/data/sgl-v0522`; the default conda environment
 is `sglang-triton36-v0522`.
 
@@ -200,12 +200,13 @@ can be proposed upstream. `Partial` requires a fresh comparison with upstream be
 | 111 | `rdna4-verify-combine-warps-8` | Candidate | Launches the split-KV verify combine stage (`_verify_combine_stage2`, patch 109 v2) with 8 warps instead of 4 on every platform (`SGLANG_SPLITKV_COMBINE_WARPS` overrides). gfx1201 sweep at 4 / 8 / 16 warps, L_EXT 16 / 64: spills 346 / 2,156 → 56 / 952 on qwen38 (head_dim 256) and 56 / 990 → 0 / 374 on Laguna, numerics identical to every digit against the fp32 reference, the 64-row route chunk 2× cheaper per layer on Laguna (407 → 188 µs at 8K) and −12 % on qwen38, the 16-row tile neutral, the qwen38 first-launch scratch reserve 52 → 4 MB; 16 warps gains nothing more and costs 8–15 % at 16 rows. Serving turns on Laguna neutral within ±5 % (the combine stage is µs of a 100–200 ms turn). Receipt `benchmarks/profiling/verify-combine-warps-2026-11-02.md`. |
 | 112 | `rdna4-extend-splitkv-route-sinks` | Candidate | Lets the patch 107/110 split-KV turn route serve layers with learned attention sinks (Flint's 14 full-attention layers): the dispatch gate no longer requires `sinks is None` and the per-head sink tensor is forwarded into `verify_splitkv_fwd`, where patch 109's combine stage adds `exp(sink − m)` to the softmax denominator and `can_handle` rejects anything but a `[H_Q]` tensor. Flint, order-controlled pair, warmed: 1-token agentic turn 237 → 128 ms at 52K and 443 → 201 ms at 104K cached, natural needle 6/6 with identical outputs on both arms, text probes 3/3; kernel gate 8/9 cells inside the fp32 gate (the ninth 1e-6 under the cosine floor). Receipt `benchmarks/profiling/flint-sinks-route-2026-11-02.md`. |
 | 114 | `rdna4-nemotron-nano-omni-mamba-radix-cache` | Candidate | Adds `NemotronH_Nano_Omni_Reasoning_V3` (the architecture Nemotron-3-Nano-Omni-30B-A3B-Reasoning declares) to `_MAMBA_RADIX_CACHE_ARCHS` and `_MAMBA_EXTRA_BUFFER_ARCHS` in `arg_groups/overrides.py`, which listed only the non-Nano Omni name, so `uses_mamba_radix_cache` resolved False and the radix tree kept Mamba states only at chunked-prefill ends (every agentic turn recomputed up to a 4,096-token tail: 800–1,441 ms at 53K–132K). With it the strategy knob works; the `nemotron-omni` preset moves to `extra_buffer` (1-token turn 666 / 1,015 → 144 / 256 ms at 52K / 105K). Port of the 3090's patch 074 (root cause found there, 2026-11-02). Receipt `benchmarks/profiling/hybrid-cache-extra-buffer-nemotron-*-2026-11-02.json`. |
+| 115 | `dflash-sampler-buffers-max-running-requests` | Candidate | Sizes the DFLASH draft sampler's static buffers (temperatures, greedy mask, uniforms, candidate/q outputs) by the larger of the decode-graph batch size and `max_running_requests`; the upstream sizing by graph bs alone crashed the scheduler on the second concurrent request whenever a preset pins `--cuda-graph-max-bs-decode 1` (Flint + incoai/Flint-DFlash2, `output with shape [1] doesn't match the broadcast shape [2]`). |
 
 ## Build stack
 
 | Component | Version |
 |---|---|
-| SGLang | v0.5.22 plus this 82-patch series |
+| SGLang | v0.5.22 plus this 83-patch series |
 | transformers | 5.19.0 |
 | Triton | 3.6.0 |
 | PyTorch | 2.11.0+rocm7.2 |

@@ -1,0 +1,48 @@
+diff --git a/python/sglang/srt/speculative/dflash_worker_v2.py b/python/sglang/srt/speculative/dflash_worker_v2.py
+index 872e49a..403ef21 100644
+--- a/python/sglang/srt/speculative/dflash_worker_v2.py
++++ b/python/sglang/srt/speculative/dflash_worker_v2.py
+@@ -810,6 +810,16 @@ class DFlashWorkerV2(BaseSpecWorker):
+         )
+         return result
+ 
++    def _draft_sampler_max_bs(self) -> int:
++        """Static sampler buffers are sliced by the live batch size. The scheduler batches
++        up to max_running_requests even when decode graphs stop at a smaller bs (the flint
++        preset pins --cuda-graph-max-bs-decode 1), and a second concurrent request then
++        crashed stage_sampling_params ("output with shape [1] doesn't match the broadcast
++        shape [2]"); size the buffers by the larger of the two."""
++        graph_bs = int(max(get_exec().graph.cuda_graph_config.decode.bs))
++        running = self.model_runner.max_running_requests
++        return max(graph_bs, int(running) if running else 1)
++
+     def _maybe_build_draft_sampler(self):
+         def _eager(reason):
+             if self._target_tp_rank == 0:
+@@ -847,7 +857,7 @@ class DFlashWorkerV2(BaseSpecWorker):
+             return _SelectorDraftSampler(
+                 draft_model=self.draft_model,
+                 block_size=self.block_size,
+-                max_bs=max(get_exec().graph.cuda_graph_config.decode.bs),
++                max_bs=self._draft_sampler_max_bs(),
+                 device=self.device,
+                 sampling_enabled=self._selector_sampling_enabled,
+             )
+@@ -887,7 +897,7 @@ class DFlashWorkerV2(BaseSpecWorker):
+                 vocab_size=int(self.model_runner.model_config.vocab_size),
+                 block_size=self.block_size,
+                 shift_label=self.draft_model.shift_label,
+-                max_bs=max(get_exec().graph.cuda_graph_config.decode.bs),
++                max_bs=self._draft_sampler_max_bs(),
+                 candidate_pool_size=self.domino_candidate_pool_size,
+                 tp_group=tp_group,
+                 lm_head_org_vocab_start=(
+@@ -922,7 +932,7 @@ class DFlashWorkerV2(BaseSpecWorker):
+             block_size=self.block_size,
+             num_org=num_org,
+             org_vocab_start=org_vocab_start,
+-            max_bs=max(get_exec().graph.cuda_graph_config.decode.bs),
++            max_bs=self._draft_sampler_max_bs(),
+             tp_group=tp_group if tp_group.world_size > 1 else None,
+         )
+ 
