@@ -1,0 +1,46 @@
+{
+ "experiment": "RAD-2",
+ "pass": "first",
+ "date": "2026-11-09",
+ "model": "/data/models/Qwen3.8-27B-FP8",
+ "method": "qwen38 preset, no speculation, one session, arms off1 -> on -> off2; decode_ab canonical think-off sweep 3 runs x 80 tokens; prefill_ttft 2 runs after flush_cache; needle greedy with flush",
+ "arms": {
+  "off1": {
+   "all_reduce": "RCCL two-stage (preset default)",
+   "median_tps": {
+    "24": 23.242,
+    "7331": 22.938,
+    "58483": 22.181,
+    "197326": 20.515
+   }
+  },
+  "on": {
+   "env": "ENABLE_CUSTOM_ALL_REDUCE=1 SGLANG_USE_1STAGE_ALLREDUCE=1",
+   "result": "not measured",
+   "reason": "server came up but the custom all-reduce setup failed: name 'amdsmi_shut_down' is not defined (identity gate stopped the arm); fixed by patch 119, re-run is the second pass",
+   "median_tps": null
+  },
+  "off2": {
+   "all_reduce": "RCCL two-stage (preset default)",
+   "median_tps": {
+    "24": 23.238,
+    "7331": 22.937,
+    "58483": 22.166,
+    "197326": 20.521
+   },
+   "prefill_tok_per_s": {
+    "7331": 1797.7,
+    "58483": 1447.8,
+    "197326": 944.2
+   },
+   "needle": {
+    "score": 1.0,
+    "cells": 9,
+    "receipt": "benchmarks/quality/rad2-off2-natural-greedy.json"
+   },
+   "capabilities": "4/4 (video skipped)"
+  }
+ },
+ "session_floor": "off1 vs off2 medians differ by at most 0.07 % (58K)",
+ "conclusion": "no result on the one-stage path in this pass; the two RCCL arms set the same-session noise floor"
+}
