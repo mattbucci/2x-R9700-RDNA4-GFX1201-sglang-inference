@@ -517,16 +517,17 @@
   {
    "id": "RAD-6",
    "spec": "19-vllm-radiance-parity.md",
-   "status": "queued",
+   "status": "ready",
    "resource": "gpu",
    "depends_on": [
-    "REBASE-0523"
+    "RAD-11 serving re-measure on the quant-free decode path (same day)",
+    "user 2026-11-09: close the radiance gap; DFlash2 path proven on Flint (FLINT-5)"
    ],
-   "next_action": "DFlash2 drafter (z-lab BF16 / tcclaviger FP8) vs DSpark on the canonical ladder; selector topk micro A/B on ROCm.",
+   "next_action": "Next GPU slot after RAD-11: DFlash2 on qwen38 with the drafter already on disk (/data/models/Qwen3.8-27B-DFlash2-FP8-tcclaviger, radiance arm B used it; check its config.json target_layer_ids vs 64 layers, mask token in the Qwen3.8 vocab, draft quant method — the FP8 drafter may need --speculative-draft-model-quantization fp8 or unquant). Arms same session: qwen38 no-spec (QWEN38_SPEC=0) → DFLASH (EXTRA_ARGS --speculative-algorithm DFLASH --speculative-draft-model-path <drafter>) → DSpark (preset default) ; canonical decode ladder 24/7.3K/58K/197K think-off, copy-heavy 27K, prefill, accept length per depth, needle 32K/131K/197K greedy, caps 5/5. Radiance B reference: 99.9/99.7/87.9/91.0 tok/s; our DSpark 45.2/57.9/46.1/41.0.",
    "test_gate": [
-    "decode_ab both orders at 24/7.3K/58K/197K",
-    "capabilities, needle, probe_256k_tooluse",
-    "8-prompt greedy diff vs no-spec"
+    "caps 5/5; needle 9/9 greedy (record divergences vs no-spec like FLINT-5)",
+    "faster than DSpark at every depth incl. 197K to replace it as the preset default; else record and keep DSpark",
+    "accept length per depth recorded; patch 115 covers the 2-request batch"
    ]
   },
   {
@@ -670,7 +671,7 @@
   {
    "id": "RAD-11",
    "spec": "19-vllm-radiance-parity.md",
-   "status": "ready",
+   "status": "in_progress",
    "resource": "gpu",
    "depends_on": [
     "user 2026-11-09: performance before evals; MXFP4 requested sooner (issue #39 option b)",
@@ -681,7 +682,8 @@
     "kernel: max abs err vs torch dequant reference within bf16 rounding at all M; no ds_read/ds_write bloat at M=1 (AMDGCN check)",
     "serving: caps 5/5, needle 32K/131K/197K greedy, canonical sweep both orders vs FP8; adopt only with the quality receipt",
     "FP8 stays the default preset until the user decides (#39)"
-   ]
+   ],
+   "result": "2026-11-09 kernel: patch 117 (GEMV BN8/BK512/1 warp LUT decode: 125 vs 165 us at N=17408 K=5120 M=1; parity on small shapes; WMMA path slower from M>=3). First serving arm of the Quark checkpoint (caps 4/4, pool 667K) decoded 18.7/18.4/17.9/16.7 tok/s vs FP8 23.3/22.8/22.1/20.5 and prefill 499/421 tok/s vs 1800/1462: the HIP per-token fp8 quant fallback is ~8 torch ops per linear (~3,600 launches/step). Fixed in the live tree: W4A16 GEMV at M<=2 (no quant), one-launch Triton per-token quant above; re-measure pending."
   }
  ]
 }
