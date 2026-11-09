@@ -89,6 +89,15 @@ See the historical [v0.5.15 receipt](north-laguna-v0515-r9700-2026-07-12.md) and
 [structured data](north-laguna-v0515-r9700-2026-07-12.json) for configuration, A/B controls, and test
 counts.
 
+### vllm-radiance parity (2026-11-08, RAD-0)
+
+[magiccodingman/vllm-radiance](https://github.com/magiccodingman/vllm-radiance) (vLLM 0.30 + libr4d gfx1201 kernels) and
+this stack, same cards and model files, both methodologies (BetterBench v0.2.2 `standard.json` at 8K; the canonical
+think-off sweep at 256K), gates on every arm — [radiance-parity/README.md](radiance-parity/README.md). Non-spec FP8 decode
+1.5× on radiance at every depth and concurrency (per step 28 vs 44 ms), prefill 2.2–2.7×, DFlash2 K7 91 tok/s at 197K
+against DSpark 41 and in-checkpoint MTP 24; AMD's Quark MXFP4 W4A8 (comparison input) 1.35–1.46× over FP8 and 164 tok/s
+at 197K with DFlash2. Disposition in [FINDINGS → vllm-radiance parity](FINDINGS.md#vllm-radiance-parity).
+
 ### Post-087 FP8 flagship refresh
 
 The [2026-07-18 FP8/256K options receipt](fp8-256k-options-r9700-2026-07-18.md) establishes the current

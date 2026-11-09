@@ -1,0 +1,13 @@
+# Speculative agent (done)
+DFlash2 = block-diffusion drafter (non-causal, one pass emits K=7 drafts), 5 SWA-2048 Qwen3 layers, fc 5120x25600 over target hidden states of layers [5,19,33,47,61], 2-tap grouped dyn depthwise conv, rank-256 candidate selector top-16 + Triton selector walk. ~2B params; BF16 3.58 GiB; tcclaviger FP8 2.34 GiB. heretic-ara = abliterated target variant.
+Their engineering: INT2-g128 draft LM head + exact top-64 rerank (0.167 vs 1.18 GiB/rank, 473 vs 2002 us/call) — lossless for argmax drafting; approximate target verify head TP1-only (66.8 vs 63.9 tok/s); dynamic MTP depth controller (conf product >= 0.28, n-gram tail, lossless, MTP-only); W4 draft linears (-1.14% step); fused GDN spec update (one launch; -0.4% in serve -> skip); per-request verify narrowing only >=5 reqs (irrelevant single-user).
+Acceptance: K5 tau 3.596, K7 3.958 (per-pos 0.788/0.596/0.458/0.363/0.293/0.247/0.212). Our DSpark 3.6 short / 2.85-2.94 at 197K. K7 173.5 tok/s c1 rests on tau~4 over a 53.3 non-spec (MXFP4) base -> cheap per-step cost, not long runs.
+Greedy equivalence 1/8 — their class = reduction-order drift under FP8 (same as our patch-100 note), not relaxed sampling; verify-head/selector paths honestly approximate.
+SGLang 0.5.22 already has DFlash2 (srt/models/dflash.py CandidateSelector, dflash_worker_v2.py, kernels/ops/speculative/dflash.py selector_walk_triton). ROCm caveat: selector falls back to torch.topk without flashinfer ("roughly halves throughput"). Drafters: z-lab/Qwen3.8-27B-DFlash2 (BF16 3.6 GiB), incoai/..., tcclaviger FP8 (fc quant-aware at dflash.py:630), jfan heretic. z-lab card H200 T=1: DFlash2 tau 4.10-5.46 vs DSpark 3.01-4.36. v0.5.23 adds DFlash attention-DP + seeded rejection sampling.
+Ranked experiments:
+ 1. DFlash2 (z-lab BF16, block 8) vs DSpark same ladder: --speculative-algorithm DFLASH --speculative-num-draft-tokens 8; decode_ab 24/7.3K/58K/197K both orders. +15-30% short/mid expected; risks: prefix attention of the 5 SWA layers at depth (FINDINGS:604 DFlash collapsed to 1.2 tok/s at 240K on Qwen3.6), torch.topk selector at 248K vocab, 3.6 GiB pool loss. Gates: validate_capabilities, needle, tooluse probe, greedy 8-prompt diff.
+ 2. Selector top-k micro A/B (dflash.py:64-69) radix vs torch.topk ~1 ms.
+ 3. INT2/INT4 draft LM head + exact rerank on DSpark draft lm_head: ~1.5 ms/slot x gamma 8 ~ 12 ms of ~25 ms step — largest lever; lossless for argmax; re-measure tiles on gfx1201.
+ 4. Confidence-gated dynamic gamma / n-gram verbatim tail for DSpark: +5-10% code/JSON, lossless.
+ 5. Fused GDN spec update: skip (their -0.4%).
+ 6. XGrammar draft validation (#52805/#53046) only if tooluse probe shows FSM errors.

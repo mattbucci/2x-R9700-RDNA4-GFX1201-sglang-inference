@@ -1,0 +1,40 @@
+{
+ "label": "sglang-dspark",
+ "model": "Qwen3.8-27B-FP8",
+ "port": 23334,
+ "runs": 2,
+ "method": "flush_cache + non-stream max_tokens=1 wall time",
+ "timestamp": "2026-11-08 18:46",
+ "rows": [
+  {
+   "context": 8192,
+   "input_len": 7331,
+   "runs_s": [
+    4.109,
+    4.109
+   ],
+   "median_s": 4.109,
+   "prefill_tok_per_s": 1784.1
+  },
+  {
+   "context": 65536,
+   "input_len": 58483,
+   "runs_s": [
+    40.443,
+    40.454
+   ],
+   "median_s": 40.448,
+   "prefill_tok_per_s": 1445.9
+  },
+  {
+   "context": 221184,
+   "input_len": 197326,
+   "runs_s": [
+    209.839,
+    209.805
+   ],
+   "median_s": 209.822,
+   "prefill_tok_per_s": 940.4
+  }
+ ]
+}

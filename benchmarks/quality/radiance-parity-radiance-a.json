@@ -1,0 +1,113 @@
+{
+ "tag": "radiance-parity-radiance-a",
+ "timestamp": "2026-11-08 14:36",
+ "model": "Qwen3.8-27B-FP8",
+ "port": 8000,
+ "haystack": "benchmarks/quality/haystack-platypus.txt",
+ "chars_per_token": 3.3,
+ "temperature": 0.0,
+ "flush": false,
+ "max_tokens": 256,
+ "results": [
+  {
+   "found": true,
+   "actual_prompt_tokens": 34203,
+   "completion_tokens": 5,
+   "finish_reason": "stop",
+   "seconds": 10.7,
+   "content_tail": "BANANA42",
+   "reasoning_tail": "",
+   "context": 32768,
+   "depth": 0.1
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 34203,
+   "completion_tokens": 5,
+   "finish_reason": "stop",
+   "seconds": 9.4,
+   "content_tail": "BANANA42",
+   "reasoning_tail": "",
+   "context": 32768,
+   "depth": 0.5
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 34203,
+   "completion_tokens": 5,
+   "finish_reason": "stop",
+   "seconds": 10.2,
+   "content_tail": "BANANA42",
+   "reasoning_tail": "",
+   "context": 32768,
+   "depth": 0.9
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 138144,
+   "completion_tokens": 5,
+   "finish_reason": "stop",
+   "seconds": 50.5,
+   "content_tail": "BANANA42",
+   "reasoning_tail": "",
+   "context": 131072,
+   "depth": 0.1
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 138145,
+   "completion_tokens": 5,
+   "finish_reason": "stop",
+   "seconds": 50.5,
+   "content_tail": "BANANA42",
+   "reasoning_tail": "",
+   "context": 131072,
+   "depth": 0.5
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 138145,
+   "completion_tokens": 5,
+   "finish_reason": "stop",
+   "seconds": 49.5,
+   "content_tail": "BANANA42",
+   "reasoning_tail": "",
+   "context": 131072,
+   "depth": 0.9
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 210155,
+   "completion_tokens": 5,
+   "finish_reason": "stop",
+   "seconds": 89.9,
+   "content_tail": "BANANA42",
+   "reasoning_tail": "",
+   "context": 197000,
+   "depth": 0.1
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 210155,
+   "completion_tokens": 5,
+   "finish_reason": "stop",
+   "seconds": 89.0,
+   "content_tail": "BANANA42",
+   "reasoning_tail": "",
+   "context": 197000,
+   "depth": 0.5
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 210155,
+   "completion_tokens": 5,
+   "finish_reason": "stop",
+   "seconds": 88.9,
+   "content_tail": "BANANA42",
+   "reasoning_tail": "",
+   "context": 197000,
+   "depth": 0.9
+  }
+ ],
+ "score": 1.0
+}

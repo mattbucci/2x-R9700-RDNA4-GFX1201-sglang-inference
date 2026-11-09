@@ -1,0 +1,170 @@
+{
+  "sglang-nospec": {
+    "tag": "sglang-nospec",
+    "model": "Qwen3.8-27B-FP8",
+    "timestamp": "2026-11-08 17:17",
+    "elapsed_sec": 9.9,
+    "checks": {
+      "basic": {
+        "passed": true,
+        "message": "finish=stop answer='paris'"
+      },
+      "tool_call": {
+        "passed": true,
+        "message": "finish=tool_calls name='get_weather' args='{\"location\": \"Paris\"}'"
+      },
+      "thinking": {
+        "passed": true,
+        "message": "reasoning_seen terminated answer_ok (162 tok, finish=stop)"
+      },
+      "vision": {
+        "passed": true,
+        "message": "saw=['red', 'circle', 'round']  response='a red circle with a black outline is centered on a white background.'"
+      }
+    },
+    "summary": {
+      "passed": 4,
+      "total": 4
+    }
+  },
+  "radiance-b": {
+    "tag": "radiance-b",
+    "model": "Qwen3.8-27B-FP8",
+    "timestamp": "2026-11-08 16:18",
+    "elapsed_sec": 2.2,
+    "checks": {
+      "basic": {
+        "passed": true,
+        "message": "finish=stop answer='paris'"
+      },
+      "tool_call": {
+        "passed": true,
+        "message": "finish=tool_calls name='get_weather' args='{\"location\": \"Paris\"}'"
+      },
+      "thinking": {
+        "passed": true,
+        "message": "reasoning_seen terminated answer_ok (122 tok, finish=stop)"
+      },
+      "vision": {
+        "passed": true,
+        "message": "saw=['red', 'circle', 'round']  response=' a solid red circle with a black outline is centered on a plain white background.'"
+      }
+    },
+    "summary": {
+      "passed": 4,
+      "total": 4
+    }
+  },
+  "sglang-dspark": {
+    "tag": "sglang-dspark",
+    "model": "Qwen3.8-27B-FP8",
+    "timestamp": "2026-11-08 20:05",
+    "elapsed_sec": 4.3,
+    "checks": {
+      "basic": {
+        "passed": true,
+        "message": "finish=stop answer='paris'"
+      },
+      "tool_call": {
+        "passed": true,
+        "message": "finish=tool_calls name='get_weather' args='{\"location\": \"Paris\"}'"
+      },
+      "thinking": {
+        "passed": true,
+        "message": "reasoning_seen terminated answer_ok (209 tok, finish=stop)"
+      },
+      "vision": {
+        "passed": true,
+        "message": "saw=['red', 'circle']  response='a red circle with a black outline'"
+      }
+    },
+    "summary": {
+      "passed": 4,
+      "total": 4
+    }
+  },
+  "radiance-c": {
+    "tag": "radiance-c",
+    "model": "Qwen3.8-27B-Quark-MXFP4",
+    "timestamp": "2026-11-08 18:50",
+    "elapsed_sec": 3.9,
+    "checks": {
+      "basic": {
+        "passed": true,
+        "message": "finish=stop answer='paris'"
+      },
+      "tool_call": {
+        "passed": true,
+        "message": "finish=tool_calls name='get_weather' args='{\"location\": \"Paris\"}'"
+      },
+      "thinking": {
+        "passed": true,
+        "message": "reasoning_seen terminated answer_ok (112 tok, finish=stop)"
+      },
+      "vision": {
+        "passed": true,
+        "message": "saw=['red', 'circle', 'round']  response=' the image shows a red circle with a black outline on a white background.'"
+      }
+    },
+    "summary": {
+      "passed": 4,
+      "total": 4
+    }
+  },
+  "radiance-d": {
+    "tag": "radiance-d",
+    "model": "Qwen3.8-27B-Quark-MXFP4",
+    "timestamp": "2026-11-08 19:31",
+    "elapsed_sec": 1.9,
+    "checks": {
+      "basic": {
+        "passed": true,
+        "message": "finish=stop answer='paris'"
+      },
+      "tool_call": {
+        "passed": true,
+        "message": "finish=tool_calls name='get_weather' args='{\"location\": \"Paris\"}'"
+      },
+      "thinking": {
+        "passed": true,
+        "message": "reasoning_seen terminated answer_ok (121 tok, finish=stop)"
+      },
+      "vision": {
+        "passed": true,
+        "message": "saw=['red', 'circle', 'round']  response=' a solid red circle with a black outline is centered on a plain white background.'"
+      }
+    },
+    "summary": {
+      "passed": 4,
+      "total": 4
+    }
+  },
+  "radiance-a": {
+    "tag": "radiance-a",
+    "model": "Qwen3.8-27B-FP8",
+    "timestamp": "2026-11-08 20:00",
+    "elapsed_sec": 7.7,
+    "checks": {
+      "basic": {
+        "passed": true,
+        "message": "finish=stop answer='paris'"
+      },
+      "tool_call": {
+        "passed": true,
+        "message": "finish=tool_calls name='get_weather' args='{\"location\": \"Paris\"}'"
+      },
+      "thinking": {
+        "passed": true,
+        "message": "reasoning_seen terminated answer_ok (201 tok, finish=stop)"
+      },
+      "vision": {
+        "passed": true,
+        "message": "saw=['red', 'circle', 'round']  response=' a red circle with a black outline on a white background.'"
+      }
+    },
+    "summary": {
+      "passed": 4,
+      "total": 4
+    }
+  }
+}

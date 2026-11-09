@@ -1,0 +1,40 @@
+{
+ "label": "sglang-mtp",
+ "model": "Qwen3.8-27B-FP8",
+ "port": 23334,
+ "runs": 2,
+ "method": "flush_cache + non-stream max_tokens=1 wall time",
+ "timestamp": "2026-11-08 21:09",
+ "rows": [
+  {
+   "context": 8192,
+   "input_len": 7331,
+   "runs_s": [
+    4.08,
+    4.08
+   ],
+   "median_s": 4.08,
+   "prefill_tok_per_s": 1796.9
+  },
+  {
+   "context": 65536,
+   "input_len": 58483,
+   "runs_s": [
+    41.16,
+    41.184
+   ],
+   "median_s": 41.172,
+   "prefill_tok_per_s": 1420.5
+  },
+  {
+   "context": 221184,
+   "input_len": 197326,
+   "runs_s": [
+    217.097,
+    217.045
+   ],
+   "median_s": 217.071,
+   "prefill_tok_per_s": 909.0
+  }
+ ]
+}

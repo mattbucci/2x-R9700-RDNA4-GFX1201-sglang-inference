@@ -1,0 +1,40 @@
+{
+ "label": "radiance-c",
+ "model": "Qwen3.8-27B-Quark-MXFP4",
+ "port": 8000,
+ "runs": 2,
+ "method": "flush_cache + non-stream max_tokens=1 wall time",
+ "timestamp": "2026-11-08 19:28",
+ "rows": [
+  {
+   "context": 8192,
+   "input_len": 7331,
+   "runs_s": [
+    1.747,
+    1.745
+   ],
+   "median_s": 1.746,
+   "prefill_tok_per_s": 4199.6
+  },
+  {
+   "context": 65536,
+   "input_len": 58483,
+   "runs_s": [
+    15.882,
+    15.881
+   ],
+   "median_s": 15.882,
+   "prefill_tok_per_s": 3682.5
+  },
+  {
+   "context": 221184,
+   "input_len": 197326,
+   "runs_s": [
+    77.452,
+    77.435
+   ],
+   "median_s": 77.443,
+   "prefill_tok_per_s": 2548.0
+  }
+ ]
+}

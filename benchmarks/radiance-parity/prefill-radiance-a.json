@@ -1,0 +1,40 @@
+{
+ "label": "radiance-a",
+ "model": "Qwen3.8-27B-FP8",
+ "port": 8000,
+ "runs": 2,
+ "method": "flush_cache + non-stream max_tokens=1 wall time",
+ "timestamp": "2026-11-08 14:44",
+ "rows": [
+  {
+   "context": 8192,
+   "input_len": 7331,
+   "runs_s": [
+    1.771,
+    1.773
+   ],
+   "median_s": 1.772,
+   "prefill_tok_per_s": 4137.2
+  },
+  {
+   "context": 65536,
+   "input_len": 58483,
+   "runs_s": [
+    16.123,
+    16.091
+   ],
+   "median_s": 16.107,
+   "prefill_tok_per_s": 3631.0
+  },
+  {
+   "context": 221184,
+   "input_len": 197326,
+   "runs_s": [
+    78.3,
+    78.307
+   ],
+   "median_s": 78.303,
+   "prefill_tok_per_s": 2520.0
+  }
+ ]
+}

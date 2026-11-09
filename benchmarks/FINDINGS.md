@@ -784,6 +784,32 @@ every other preset that day.
   rank in uninterruptible state and required a GPU reset. Use a timeout longer than cold prefill or warm the
   radix cache before collecting deep-decode measurements.
 
+## vllm-radiance parity
+
+### RAD-0 — the hand-tuned RDNA4 vLLM fork measured against this stack (2026-11-08)
+
+[magiccodingman/vllm-radiance](https://github.com/magiccodingman/vllm-radiance) (vLLM 0.30 + libr4d gfx1201 kernels) and
+SGLang v0.5.22 + 82 patches were measured on the same cards and model files under both methodologies (BetterBench v0.2.2
+`standard.json` at 8K and the canonical think-off sweep at 256K), with capability and needle gates on every arm
+([receipt](radiance-parity/README.md)). Non-speculative FP8 decode is 1.5× faster on radiance at every depth and every
+concurrency (35.4 vs 23.3 tok/s at 24 tokens, 30.4 vs 20.5 at 197K; the same ratio from c1 to c8 once SGLang graphs its
+batches): a per-step cost of 28 ms against 44 ms, which is exactly the premise of RAD-1..5 (TP-split DeltaNet, one-shot
+all-reduce, preshuffled block-FP8 GEMM, decode-GEMM knobs, norm + quant fusion). Prefill is the larger gap, 2.2–2.7×
+(4,137 vs 1,800 tok/s at 7.3K, 2,520 vs 947 at 197K), so the deferred prefill ports gain a measured prize and the 197K
+prefill profile is promoted. Speculation: DFlash2 K7 on radiance holds 91 tok/s at 197K (3.0× its base) while SGLang
+DSpark gives 2.5× at 7.3K and 2.0× at 197K (41.0) and the in-checkpoint MTP head (NEXTN, K=3) equals DSpark at 24 tokens
+(45.2) but collapses to 24.1 at 197K because each draft step attends over the whole cache; MTP is not a DSpark replacement
+here and DFlash2 in SGLang (RAD-6) is the justified speculative experiment. The Qwopus fine-tune's MTP head accepts less
+than the base's (2.85 vs 3.03) and runs 9 % under it; with the base-trained DSpark draft the fine-tune loses 15–32 %
+from 7.3K to 197K (28.0 vs 41.0 tok/s at 197K), so a Qwopus preset would need its own drafter to keep the base's deep-context speed. AMD's Quark MXFP4 W4A8 checkpoint (comparison input only) is
+1.35–1.46× over FP8 on radiance with needle 9/9 and capabilities 4/4, and with DFlash2 reaches 164 tok/s at 197K;
+whether an MXFP4 weight path belongs in the FP8-first programme is a user decision (issue). Two measurement defects were
+found and fixed on the SGLang side: the presets' trailing `--cuda-graph-max-bs-decode 1` silently overrode a caller's
+value (now only appended when none is set), and DSpark cannot serve 8 concurrent requests on 32 GB (6.33 GB of speculative
+DeltaNet scratch; upstream's ReplaySSM switch is the decision-free A/B if multi-user DSpark ever matters). Disposition:
+RAD-0 passed its gate; order RAD-2 → RAD-4 → RAD-5 → RAD-3 → RAD-1 → RAD-6 stands, with the 197K prefill profile added
+ahead of the prefill ports.
+
 ## Evaluation methodology
 
 ### SWE-bench answer leakage through git history and the web (found 2026-09-18)

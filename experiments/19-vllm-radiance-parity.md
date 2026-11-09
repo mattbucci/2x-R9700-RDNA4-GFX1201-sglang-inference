@@ -99,6 +99,14 @@ Two engines, same cards, same model files, one at a time, both methodologies, qu
 - **Receipt**: `benchmarks/radiance-parity/` (results JSON per arm, BetterBench reports, FINDINGS disposition).
   Pass = both engines measured on both methodologies with the confound table filled; the numbers decide the order below.
 
+**Result (2026-11-08, [receipt](../benchmarks/radiance-parity/README.md)):** gate passed, both engines on both
+methodologies with the confound table filled. Non-spec FP8 decode 1.5× (per-step 28 vs 44 ms, constant from c1 to c8);
+prefill 2.2–2.7×; DFlash2 K7 holds 91 tok/s at 197K where DSpark gives 41 and MTP K=3 24; MXFP4 W4A8 1.35–1.46× over FP8
+on radiance, 164 tok/s at 197K with DFlash2. The numbers keep the RAD-1..5 order below, promote RAD-6 (DFlash2) over
+RAD-7, and add RAD-10 (197K prefill profile → prefill ports). Measurement defects fixed on the way: preset
+`--cuda-graph-max-bs-decode 1` overriding EXTRA_ARGS; DSpark 8-request SSM scratch (6.33 GB) does not fit 32 GB
+(ReplaySSM is the A/B if multi-user DSpark matters).
+
 ## Experiments on SGLang (ranked by expected tok/s per engineering day on the qwen38 no-spec step)
 
 Each one is a same-tree A/B with `scripts/bench/decode_ab.py --ignore-eos` at 24 / 7.3K / 58K / 197K in both orders,
@@ -116,6 +124,7 @@ numbered patch plus replay gate when retained.
 | **RAD-7** | Low-bit draft LM head with exact rerank for the DSpark draft (INT2/INT4 g128 copy, per-block top-8 candidates, top-64 rescored on bf16 weights; lossless for argmax drafting); bf16 skinny GEMMs (`in_proj_ba`, lm_head 1.27 GB/rank) via TunableOp offline, then the `router_gemv_hip.py` gfx95 gate | DSpark draft head (`dspark_draft.py`), `router_gemv_hip.py`, TunableOp collect/tune | draft-step microbench; serving A/B; greedy equivalence vs current DSpark | up to 1.5 ms per draft slot × γ (their 473 vs 2002 µs); skinny GEMMs 1–1.5 ms (+2–3 %) | medium: tile configs must be re-measured on gfx1201, not copied |
 | **RAD-8** | bf16 attention all-reduce for qwen3_5 (`PLAIN_ADD_BF16_SUM`, as patches 080/084/085 did for Flint/Laguna); fused GDN proj+conv decode path on HIP (lift the `_is_cuda` gate, `qwen3_5.py:184-186`) | `layer_boundary/ops.py:191-200`, `qwen3_5.py:184-186` | serving A/B; needle + `cache_hit_consistency.py` (this is the precision the fp32 path protects) | ≤ +2 % and ≤ +1.4 % | low; quality-gated |
 | **RAD-9** | Quality-only numerics: bf16 q / upcast K in decode attention on gfx1201 (they never quantize q: 10× worse error), calibrated k/v scales through the existing `k_scale`/`v_scale` loader; confidence-gated dynamic γ or verbatim n-gram tail for DSpark | `decode_attention.py:636-640`, `qwen3_5.py:1149-1153`, `adaptive_spec_params.py` | needle ladders, `cache_hit_consistency.py`, decode A/B (expect 0 to −3 % for the attention change; +5–10 % on code/JSON for the γ controller) | quality first | low |
+| **RAD-10** | 197K prefill profile (FLA GDN `chunk_scan` / conv, extend attention, GEMM shares) → port libr4d `chunk_scan` / `conv_prep` or R4D prefill attention where the share is largest | `kernels/ops/attention/fla/`, `layers/attention/triton_ops/extend_attention.py` | `prefill_ttft.py` 7.3K / 58K / 197K + `rocprof` per-kernel shares | radiance prefills 2.2–2.7× faster: 4,137 vs 1,800 tok/s at 7.3K, 2,520 vs 947 at 197K | prefill-only; numerics gate = needle 9/9 + 8-prompt greedy diff |
 
 Closed by evidence, not run: R4D decode attention (their own "within noise"; ours at roofline), fused single-launch GDN
 update (−0.4 % in their serving), fused AR+residual+norm+quant "FP8 residual stream" (diverged 8/8 greedy prompts),
@@ -139,11 +148,11 @@ shipped today.
 
 ## Ordering
 
-1. RAD-0 (after the v5 scorer leaves the host; radiance arms A and B, SGLang no-spec and DSpark; one day).
+1. RAD-0 — done 2026-11-08 (arms A–D, SGLang no-spec / DSpark / MTP / Qwopus; receipt in benchmarks/radiance-parity).
 2. REBASE-0523.
 3. RAD-2 (half a day, biggest gain per effort, answers the 3090), RAD-4 (tuner-level), RAD-5.
 4. RAD-3 (kernel work), then RAD-1 (model-code work with the heaviest numerics gate; its ~9 ms is the prize).
-5. RAD-6, RAD-7 (speculative), RAD-8, RAD-9.
+5. RAD-6 (DFlash2 — promoted by the 197K column), RAD-10 (prefill profile → ports), RAD-7, RAD-8, RAD-9.
 
 Stop conditions and receipts follow the repository loop contract: one GPU job at a time, both arm orders, discard slow
 first boots, revert neutral results, FINDINGS disposition per experiment, numbered patch + replay gate for anything
