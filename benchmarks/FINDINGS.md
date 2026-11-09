@@ -838,6 +838,20 @@ DeltaNet scratch; upstream's ReplaySSM switch is the decision-free A/B if multi-
 RAD-0 passed its gate; order RAD-2 → RAD-4 → RAD-5 → RAD-3 → RAD-1 → RAD-6 stands, with the 197K prefill profile added
 ahead of the prefill ports.
 
+### RAD-11 — MXFP4 W4A8 Triton GEMM for gfx1201, kernel level (2026-11-09)
+
+SGLang's Quark MXFP4 scheme has no gfx12 path (aiter ops, or a bf16 dequant at load that quadruples weight bytes).
+Patch 117 adds a Triton kernel over the checkpoint's packed e2m1 + e8m0 group-32 layout with per-token fp8
+activations ([receipt](profiling/mxfp4-w4a8-kernel-2026-11-09.json), harness `scripts/bench/test_mxfp4_w4a8_gemm.py`,
+rel. error 2–3.5e-3 vs a torch dequant reference at every shape and M). What the day's sweeps on the Qwen3.8 shapes
+showed: decode throughput is set by tile shape, not arithmetic — square-ish WMMA tiles decode at 25–30 GB/s of packed
+bytes, narrow-N long-K tiles at 275 GB/s, a LUT gather beats arithmetic e2m1 decode, and for M ≤ 2 a WMMA-free GEMV
+(BN 8, BK 512, one warp) reaches 380 GB/s: **125 µs vs 165 µs for the block-FP8 GEMM at N=17408 K=5120, M=1**
+(80 vs 103 at N=10240; parity at N=5120/6144). From M = 3 the WMMA path is 1.5× slower than FP8 (250 vs 170 µs at
+M=16) and 3–5× slower at prefill M (1.5 ms vs 0.37 at M=256), so a speculative-verify or prefill batch loses what
+decode gains; a repack-to-block-FP8 scratch for M > 32 is the next kernel item. Serving measurement of the Quark
+Qwen3.8 checkpoint (comparison input) against the FP8 preset follows once the GPUs free up.
+
 ## Evaluation methodology
 
 ### SWE-bench answer leakage through git history and the web (found 2026-09-18)

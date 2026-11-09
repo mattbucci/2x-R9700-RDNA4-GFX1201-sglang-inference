@@ -1242,6 +1242,9 @@ fi
 # after all preset + config-detect logic so it wins regardless of the preset's hard-set QUANT.
 # Used by the FP8 bake-off matrix to serve BF16 bases (no prebuilt FP8 checkpoint) as runtime-FP8.
 [[ "${FORCE_FP8:-}" == "1" ]] && QUANT="fp8"
+# QUANT_OVERRIDE=<method> serves a checkpoint whose quant method differs from the preset's (e.g. the Quark MXFP4
+# Qwen3.8 build through the qwen38 preset); empty keeps the preset's choice.
+[[ -n "${QUANT_OVERRIDE:-}" ]] && QUANT="$QUANT_OVERRIDE"
 [[ -n "$QUANT" ]] && CMD+=(--quantization "$QUANT")
 [[ -n "$FP8_GEMM_BACKEND" ]] && CMD+=(--fp8-gemm-backend "$FP8_GEMM_BACKEND")
 [[ -n "$TOKENIZER" ]] && CMD+=($TOKENIZER)

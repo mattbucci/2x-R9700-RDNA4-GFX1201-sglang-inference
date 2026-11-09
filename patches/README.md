@@ -1,6 +1,6 @@
 # SGLang v0.5.22 RDNA4 patches
 
-This directory contains the **84 active numeric patches** applied to pristine SGLang v0.5.22 for the
+This directory contains the **85 active numeric patches** applied to pristine SGLang v0.5.22 for the
 2× Radeon AI PRO R9700 serving stack. The default tree is `/data/sgl-v0522`; the default conda environment
 is `sglang-triton36-v0522`.
 
@@ -202,12 +202,13 @@ can be proposed upstream. `Partial` requires a fresh comparison with upstream be
 | 114 | `rdna4-nemotron-nano-omni-mamba-radix-cache` | Candidate | Adds `NemotronH_Nano_Omni_Reasoning_V3` (the architecture Nemotron-3-Nano-Omni-30B-A3B-Reasoning declares) to `_MAMBA_RADIX_CACHE_ARCHS` and `_MAMBA_EXTRA_BUFFER_ARCHS` in `arg_groups/overrides.py`, which listed only the non-Nano Omni name, so `uses_mamba_radix_cache` resolved False and the radix tree kept Mamba states only at chunked-prefill ends (every agentic turn recomputed up to a 4,096-token tail: 800–1,441 ms at 53K–132K). With it the strategy knob works; the `nemotron-omni` preset moves to `extra_buffer` (1-token turn 666 / 1,015 → 144 / 256 ms at 52K / 105K). Port of the 3090's patch 074 (root cause found there, 2026-11-02). Receipt `benchmarks/profiling/hybrid-cache-extra-buffer-nemotron-*-2026-11-02.json`. |
 | 115 | `dflash-sampler-buffers-max-running-requests` | Candidate | Sizes the DFLASH draft sampler's static buffers (temperatures, greedy mask, uniforms, candidate/q outputs) by the larger of the decode-graph batch size and `max_running_requests`; the upstream sizing by graph bs alone crashed the scheduler on the second concurrent request whenever a preset pins `--cuda-graph-max-bs-decode 1` (Flint + incoai/Flint-DFlash2, `output with shape [1] doesn't match the broadcast shape [2]`). |
 | 116 | `fused-moe-tuner-flint-architecture` | Carry | Adds `FlintForCausalLM` to the fused-MoE tuner’s Qwen3Moe-layout architecture list (E=256, moe_intermediate 512, top-6 from the compressed-tensors checkpoint) and repoints its `fp8_dtype` import at `sglang.kernels.ops` (the module moved in v0.5.18; upstream’s benchmark script still imports the old path). |
+| 117 | `rdna4-mxfp4-w4a8-triton-gemm` | Candidate | Serves Quark MXFP4 checkpoints on gfx1201 without aiter: a Triton GEMM/GEMV over the packed e2m1 + e8m0 group-32 weight layout with per-token fp8 activations (decode-shaped GEMV for M ≤ 2, WMMA tiles above), wired into `QuarkW4A4MXFP4` where the aiter ops are absent; N < 256 linears dequantize to bf16 at load. Kernel-level: 1.3× the block-FP8 GEMM at M=1 on the large shapes, parity on the rest, slower from M ≥ 3 (receipt `benchmarks/profiling/mxfp4-w4a8-kernel-2026-11-09.json`). |
 
 ## Build stack
 
 | Component | Version |
 |---|---|
-| SGLang | v0.5.22 plus this 84-patch series |
+| SGLang | v0.5.22 plus this 85-patch series |
 | transformers | 5.19.0 |
 | Triton | 3.6.0 |
 | PyTorch | 2.11.0+rocm7.2 |

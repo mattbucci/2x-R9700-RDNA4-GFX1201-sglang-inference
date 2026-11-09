@@ -1,0 +1,607 @@
+{
+ "device": "AMD Radeon AI PRO R9700",
+ "timestamp": "2026-11-09 09:40",
+ "worst_rel_err": 0.003225245459302002,
+ "rows": [
+  {
+   "N": 17408,
+   "K": 5120,
+   "M": 1,
+   "max_abs_err": 0.97802734375,
+   "max_abs_ref": 358.4949961171875,
+   "rel_err": 0.002728147824496538,
+   "config": {
+    "BLOCK_M": 16,
+    "BLOCK_N": 64,
+    "BLOCK_K": 128,
+    "GROUP_M": 1,
+    "num_warps": 4
+   },
+   "us_kernel": 125.4,
+   "us_bf16_dequantized": 411.1,
+   "us_fp8_block": 165.8,
+   "GBps_kernel": 378.0,
+   "weight_copies": 6
+  },
+  {
+   "N": 17408,
+   "K": 5120,
+   "M": 2,
+   "max_abs_err": 0.9814453125,
+   "max_abs_ref": 401.270752953125,
+   "rel_err": 0.0024458431253140665,
+   "config": {
+    "BLOCK_M": 16,
+    "BLOCK_N": 64,
+    "BLOCK_K": 128,
+    "GROUP_M": 1,
+    "num_warps": 4
+   },
+   "us_kernel": 215.7,
+   "us_bf16_dequantized": 406.2,
+   "us_fp8_block": 159.9,
+   "GBps_kernel": 219.9,
+   "weight_copies": 6
+  },
+  {
+   "N": 17408,
+   "K": 5120,
+   "M": 16,
+   "max_abs_err": 0.997161865234375,
+   "max_abs_ref": 379.2001047597656,
+   "rel_err": 0.002629645542598429,
+   "config": {
+    "BLOCK_M": 16,
+    "BLOCK_N": 64,
+    "BLOCK_K": 128,
+    "GROUP_M": 1,
+    "num_warps": 4
+   },
+   "us_kernel": 254.7,
+   "us_bf16_dequantized": 412.7,
+   "us_fp8_block": 176.7,
+   "GBps_kernel": 188.4,
+   "weight_copies": 6
+  },
+  {
+   "N": 17408,
+   "K": 5120,
+   "M": 64,
+   "max_abs_err": 1.000244140625,
+   "max_abs_ref": 406.18219094140625,
+   "rel_err": 0.0024625504587159263,
+   "config": {
+    "BLOCK_M": 64,
+    "BLOCK_N": 64,
+    "BLOCK_K": 128,
+    "GROUP_M": 4,
+    "num_warps": 4
+   },
+   "us_kernel": 532.8,
+   "us_bf16_dequantized": 429.7,
+   "us_fp8_block": 186.2,
+   "GBps_kernel": 93.7,
+   "weight_copies": 6
+  },
+  {
+   "N": 17408,
+   "K": 5120,
+   "M": 256,
+   "max_abs_err": 1.00006103515625,
+   "max_abs_ref": 439.72265725,
+   "rel_err": 0.0022742995355540096,
+   "config": {
+    "BLOCK_M": 128,
+    "BLOCK_N": 64,
+    "BLOCK_K": 64,
+    "GROUP_M": 8,
+    "num_warps": 4
+   },
+   "us_kernel": 1498.3,
+   "us_bf16_dequantized": 484.6,
+   "us_fp8_block": 368.3,
+   "GBps_kernel": 38.4,
+   "weight_copies": 1
+  },
+  {
+   "N": 5120,
+   "K": 8704,
+   "M": 1,
+   "max_abs_err": 0.995880126953125,
+   "max_abs_ref": 390.73321633203125,
+   "rel_err": 0.002548747035897919,
+   "config": {
+    "BLOCK_M": 16,
+    "BLOCK_N": 64,
+    "BLOCK_K": 128,
+    "GROUP_M": 1,
+    "num_warps": 4
+   },
+   "us_kernel": 73.7,
+   "us_bf16_dequantized": 167.3,
+   "us_fp8_block": 77.3,
+   "GBps_kernel": 321.5,
+   "weight_copies": 13
+  },
+  {
+   "N": 5120,
+   "K": 8704,
+   "M": 2,
+   "max_abs_err": 0.99163818359375,
+   "max_abs_ref": 416.0753489003906,
+   "rel_err": 0.002383313950741048,
+   "config": {
+    "BLOCK_M": 16,
+    "BLOCK_N": 64,
+    "BLOCK_K": 128,
+    "GROUP_M": 1,
+    "num_warps": 4
+   },
+   "us_kernel": 122.5,
+   "us_bf16_dequantized": 171.1,
+   "us_fp8_block": 77.2,
+   "GBps_kernel": 193.5,
+   "weight_copies": 13
+  },
+  {
+   "N": 5120,
+   "K": 8704,
+   "M": 16,
+   "max_abs_err": 0.997589111328125,
+   "max_abs_ref": 487.8834238515625,
+   "rel_err": 0.002044728438307507,
+   "config": {
+    "BLOCK_M": 16,
+    "BLOCK_N": 64,
+    "BLOCK_K": 128,
+    "GROUP_M": 1,
+    "num_warps": 4
+   },
+   "us_kernel": 188.1,
+   "us_bf16_dequantized": 174.8,
+   "us_fp8_block": 78.4,
+   "GBps_kernel": 127.5,
+   "weight_copies": 13
+  },
+  {
+   "N": 5120,
+   "K": 8704,
+   "M": 64,
+   "max_abs_err": 0.999114990234375,
+   "max_abs_ref": 491.13653664453125,
+   "rel_err": 0.002034291720710451,
+   "config": {
+    "BLOCK_M": 64,
+    "BLOCK_N": 64,
+    "BLOCK_K": 128,
+    "GROUP_M": 4,
+    "num_warps": 4
+   },
+   "us_kernel": 322.3,
+   "us_bf16_dequantized": 269.8,
+   "us_fp8_block": 82.7,
+   "GBps_kernel": 77.2,
+   "weight_copies": 13
+  },
+  {
+   "N": 5120,
+   "K": 8704,
+   "M": 256,
+   "max_abs_err": 1.58319091796875,
+   "max_abs_ref": 580.7752085195312,
+   "rel_err": 0.0027259960389915783,
+   "config": {
+    "BLOCK_M": 128,
+    "BLOCK_N": 64,
+    "BLOCK_K": 64,
+    "GROUP_M": 8,
+    "num_warps": 4
+   },
+   "us_kernel": 761.8,
+   "us_bf16_dequantized": 236.1,
+   "us_fp8_block": 143.5,
+   "GBps_kernel": 37.4,
+   "weight_copies": 1
+  },
+  {
+   "N": 10240,
+   "K": 5120,
+   "M": 1,
+   "max_abs_err": 0.9930419921875,
+   "max_abs_ref": 330.9476328359375,
+   "rel_err": 0.0030006015866558145,
+   "config": {
+    "BLOCK_M": 16,
+    "BLOCK_N": 64,
+    "BLOCK_K": 128,
+    "GROUP_M": 1,
+    "num_warps": 4
+   },
+   "us_kernel": 80.1,
+   "us_bf16_dequantized": 198.7,
+   "us_fp8_block": 103.5,
+   "GBps_kernel": 347.9,
+   "weight_copies": 11
+  },
+  {
+   "N": 10240,
+   "K": 5120,
+   "M": 2,
+   "max_abs_err": 0.98651123046875,
+   "max_abs_ref": 316.330323265625,
+   "rel_err": 0.0031186110148547757,
+   "config": {
+    "BLOCK_M": 16,
+    "BLOCK_N": 64,
+    "BLOCK_K": 128,
+    "GROUP_M": 1,
+    "num_warps": 4
+   },
+   "us_kernel": 123.5,
+   "us_bf16_dequantized": 197.0,
+   "us_fp8_block": 105.9,
+   "GBps_kernel": 226.0,
+   "weight_copies": 11
+  },
+  {
+   "N": 10240,
+   "K": 5120,
+   "M": 16,
+   "max_abs_err": 0.9979248046875,
+   "max_abs_ref": 375.5057383046875,
+   "rel_err": 0.0026575487479708715,
+   "config": {
+    "BLOCK_M": 16,
+    "BLOCK_N": 64,
+    "BLOCK_K": 128,
+    "GROUP_M": 1,
+    "num_warps": 4
+   },
+   "us_kernel": 153.8,
+   "us_bf16_dequantized": 204.3,
+   "us_fp8_block": 104.2,
+   "GBps_kernel": 183.8,
+   "weight_copies": 11
+  },
+  {
+   "N": 10240,
+   "K": 5120,
+   "M": 64,
+   "max_abs_err": 0.998382568359375,
+   "max_abs_ref": 414.3172922597656,
+   "rel_err": 0.0024097052838755674,
+   "config": {
+    "BLOCK_M": 64,
+    "BLOCK_N": 64,
+    "BLOCK_K": 128,
+    "GROUP_M": 4,
+    "num_warps": 4
+   },
+   "us_kernel": 280.6,
+   "us_bf16_dequantized": 213.0,
+   "us_fp8_block": 163.2,
+   "GBps_kernel": 105.1,
+   "weight_copies": 11
+  },
+  {
+   "N": 10240,
+   "K": 5120,
+   "M": 256,
+   "max_abs_err": 0.999603271484375,
+   "max_abs_ref": 426.5999765859375,
+   "rel_err": 0.0023431864190058328,
+   "config": {
+    "BLOCK_M": 128,
+    "BLOCK_N": 64,
+    "BLOCK_K": 64,
+    "GROUP_M": 8,
+    "num_warps": 4
+   },
+   "us_kernel": 836.5,
+   "us_bf16_dequantized": 313.9,
+   "us_fp8_block": 426.1,
+   "GBps_kernel": 41.1,
+   "weight_copies": 1
+  },
+  {
+   "N": 6144,
+   "K": 5120,
+   "M": 1,
+   "max_abs_err": 0.941070556640625,
+   "max_abs_ref": 368.9410715566406,
+   "rel_err": 0.002550734058070707,
+   "config": {
+    "BLOCK_M": 16,
+    "BLOCK_N": 64,
+    "BLOCK_K": 128,
+    "GROUP_M": 1,
+    "num_warps": 4
+   },
+   "us_kernel": 57.7,
+   "us_bf16_dequantized": 116.1,
+   "us_fp8_block": 64.2,
+   "GBps_kernel": 289.9,
+   "weight_copies": 16
+  },
+  {
+   "N": 6144,
+   "K": 5120,
+   "M": 2,
+   "max_abs_err": 0.86102294921875,
+   "max_abs_ref": 340.6820993886719,
+   "rel_err": 0.0025273501330530432,
+   "config": {
+    "BLOCK_M": 16,
+    "BLOCK_N": 64,
+    "BLOCK_K": 128,
+    "GROUP_M": 1,
+    "num_warps": 4
+   },
+   "us_kernel": 94.3,
+   "us_bf16_dequantized": 118.0,
+   "us_fp8_block": 64.3,
+   "GBps_kernel": 177.5,
+   "weight_copies": 16
+  },
+  {
+   "N": 6144,
+   "K": 5120,
+   "M": 16,
+   "max_abs_err": 0.99530029296875,
+   "max_abs_ref": 420.2381906972656,
+   "rel_err": 0.00236841942260729,
+   "config": {
+    "BLOCK_M": 16,
+    "BLOCK_N": 64,
+    "BLOCK_K": 128,
+    "GROUP_M": 1,
+    "num_warps": 4
+   },
+   "us_kernel": 116.9,
+   "us_bf16_dequantized": 116.2,
+   "us_fp8_block": 65.9,
+   "GBps_kernel": 145.3,
+   "weight_copies": 16
+  },
+  {
+   "N": 6144,
+   "K": 5120,
+   "M": 64,
+   "max_abs_err": 0.998779296875,
+   "max_abs_ref": 410.2566843496094,
+   "rel_err": 0.0024345229096227666,
+   "config": {
+    "BLOCK_M": 64,
+    "BLOCK_N": 64,
+    "BLOCK_K": 128,
+    "GROUP_M": 4,
+    "num_warps": 4
+   },
+   "us_kernel": 201.2,
+   "us_bf16_dequantized": 122.0,
+   "us_fp8_block": 82.5,
+   "GBps_kernel": 88.6,
+   "weight_copies": 16
+  },
+  {
+   "N": 6144,
+   "K": 5120,
+   "M": 256,
+   "max_abs_err": 0.99951171875,
+   "max_abs_ref": 411.1156015859375,
+   "rel_err": 0.0024312181656308833,
+   "config": {
+    "BLOCK_M": 128,
+    "BLOCK_N": 64,
+    "BLOCK_K": 64,
+    "GROUP_M": 8,
+    "num_warps": 4
+   },
+   "us_kernel": 522.7,
+   "us_bf16_dequantized": 127.4,
+   "us_fp8_block": 215.0,
+   "GBps_kernel": 40.5,
+   "weight_copies": 1
+  },
+  {
+   "N": 5120,
+   "K": 3072,
+   "M": 1,
+   "max_abs_err": 0.493377685546875,
+   "max_abs_ref": 225.53331093652343,
+   "rel_err": 0.0021876044984137028,
+   "config": {
+    "BLOCK_M": 16,
+    "BLOCK_N": 64,
+    "BLOCK_K": 128,
+    "GROUP_M": 1,
+    "num_warps": 4
+   },
+   "us_kernel": 29.3,
+   "us_bf16_dequantized": 69.2,
+   "us_fp8_block": 40.3,
+   "GBps_kernel": 285.4,
+   "weight_copies": 16
+  },
+  {
+   "N": 5120,
+   "K": 3072,
+   "M": 2,
+   "max_abs_err": 0.74456787109375,
+   "max_abs_ref": 316.2948923574219,
+   "rel_err": 0.0023540306501452068,
+   "config": {
+    "BLOCK_M": 16,
+    "BLOCK_N": 64,
+    "BLOCK_K": 128,
+    "GROUP_M": 1,
+    "num_warps": 4
+   },
+   "us_kernel": 51.2,
+   "us_bf16_dequantized": 74.3,
+   "us_fp8_block": 41.5,
+   "GBps_kernel": 163.6,
+   "weight_copies": 16
+  },
+  {
+   "N": 5120,
+   "K": 3072,
+   "M": 16,
+   "max_abs_err": 0.9576416015625,
+   "max_abs_ref": 296.9205332265625,
+   "rel_err": 0.003225245459302002,
+   "config": {
+    "BLOCK_M": 16,
+    "BLOCK_N": 64,
+    "BLOCK_K": 128,
+    "GROUP_M": 1,
+    "num_warps": 4
+   },
+   "us_kernel": 79.5,
+   "us_bf16_dequantized": 71.5,
+   "us_fp8_block": 39.9,
+   "GBps_kernel": 107.8,
+   "weight_copies": 16
+  },
+  {
+   "N": 5120,
+   "K": 3072,
+   "M": 64,
+   "max_abs_err": 0.98065185546875,
+   "max_abs_ref": 315.063233421875,
+   "rel_err": 0.00311255567594471,
+   "config": {
+    "BLOCK_M": 64,
+    "BLOCK_N": 64,
+    "BLOCK_K": 128,
+    "GROUP_M": 4,
+    "num_warps": 4
+   },
+   "us_kernel": 129.6,
+   "us_bf16_dequantized": 70.0,
+   "us_fp8_block": 41.8,
+   "GBps_kernel": 71.1,
+   "weight_copies": 16
+  },
+  {
+   "N": 5120,
+   "K": 3072,
+   "M": 256,
+   "max_abs_err": 0.993438720703125,
+   "max_abs_ref": 338.96502785546875,
+   "rel_err": 0.0029308000503424124,
+   "config": {
+    "BLOCK_M": 128,
+    "BLOCK_N": 64,
+    "BLOCK_K": 64,
+    "GROUP_M": 8,
+    "num_warps": 4
+   },
+   "us_kernel": 281.9,
+   "us_bf16_dequantized": 69.1,
+   "us_fp8_block": 53.2,
+   "GBps_kernel": 41.7,
+   "weight_copies": 1
+  },
+  {
+   "N": 48,
+   "K": 5120,
+   "M": 1,
+   "max_abs_err": 0.482574462890625,
+   "max_abs_ref": 230.7470713125,
+   "rel_err": 0.002091356826960876,
+   "config": {
+    "BLOCK_M": 16,
+    "BLOCK_N": 64,
+    "BLOCK_K": 128,
+    "GROUP_M": 1,
+    "num_warps": 4
+   },
+   "us_kernel": 27.7,
+   "us_bf16_dequantized": 20.8,
+   "us_fp8_block": null,
+   "GBps_kernel": 4.9,
+   "weight_copies": 16
+  },
+  {
+   "N": 48,
+   "K": 5120,
+   "M": 2,
+   "max_abs_err": 0.446929931640625,
+   "max_abs_ref": 201.93011574609375,
+   "rel_err": 0.0022132901275736068,
+   "config": {
+    "BLOCK_M": 16,
+    "BLOCK_N": 64,
+    "BLOCK_K": 128,
+    "GROUP_M": 1,
+    "num_warps": 4
+   },
+   "us_kernel": 30.5,
+   "us_bf16_dequantized": 20.6,
+   "us_fp8_block": null,
+   "GBps_kernel": 4.6,
+   "weight_copies": 16
+  },
+  {
+   "N": 48,
+   "K": 5120,
+   "M": 16,
+   "max_abs_err": 0.4892578125,
+   "max_abs_ref": 312.3118906484375,
+   "rel_err": 0.0015665679954873911,
+   "config": {
+    "BLOCK_M": 16,
+    "BLOCK_N": 64,
+    "BLOCK_K": 128,
+    "GROUP_M": 1,
+    "num_warps": 4
+   },
+   "us_kernel": 82.2,
+   "us_bf16_dequantized": 20.5,
+   "us_fp8_block": null,
+   "GBps_kernel": 2.6,
+   "weight_copies": 16
+  },
+  {
+   "N": 48,
+   "K": 5120,
+   "M": 64,
+   "max_abs_err": 0.56195068359375,
+   "max_abs_ref": 312.56195168359375,
+   "rel_err": 0.0017978857649398488,
+   "config": {
+    "BLOCK_M": 64,
+    "BLOCK_N": 64,
+    "BLOCK_K": 128,
+    "GROUP_M": 4,
+    "num_warps": 4
+   },
+   "us_kernel": 124.3,
+   "us_bf16_dequantized": 20.6,
+   "us_fp8_block": null,
+   "GBps_kernel": 3.7,
+   "weight_copies": 16
+  },
+  {
+   "N": 48,
+   "K": 5120,
+   "M": 256,
+   "max_abs_err": 0.93731689453125,
+   "max_abs_ref": 346.93731789453125,
+   "rel_err": 0.002701689458544191,
+   "config": {
+    "BLOCK_M": 128,
+    "BLOCK_N": 64,
+    "BLOCK_K": 64,
+    "GROUP_M": 8,
+    "num_warps": 4
+   },
+   "us_kernel": 216.2,
+   "us_bf16_dequantized": 20.2,
+   "us_fp8_block": null,
+   "GBps_kernel": 6.8,
+   "weight_copies": 1
+  }
+ ]
+}

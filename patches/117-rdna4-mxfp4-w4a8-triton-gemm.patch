@@ -1,0 +1,389 @@
+diff --git a/python/sglang/kernels/ops/gemm/mxfp4_w4a8_rdna4.py b/python/sglang/kernels/ops/gemm/mxfp4_w4a8_rdna4.py
+new file mode 100644
+index 00000000..e7609618
+--- /dev/null
++++ b/python/sglang/kernels/ops/gemm/mxfp4_w4a8_rdna4.py
+@@ -0,0 +1,330 @@
++"""RDNA4 (gfx1201) dense MXFP4-weight / FP8-activation GEMM in Triton — RDNA4 patch 117 (RAD-11).
++
++SGLang's Quark MXFP4 scheme (``quark_w4a4_mxfp4.py``) runs its dense linears through aiter kernels that
++have no gfx12 build; the only alternative on HIP is dequantizing every FP4 weight to bf16 at load
++(``AITER_FORCE_A8W4=1``), which quadruples the weight bytes. This kernel reads the checkpoint layout
++directly:
++
++* ``w``:       ``(N, K // 2)`` uint8, two OCP MX FP4 (e2m1) codes per byte — element ``2j`` in the low
++               nibble, ``2j + 1`` in the high nibble (the layout ``_dequant_mxfp4_to_bf16`` decodes)
++* ``w_scale``: ``(N, K // 32)`` uint8 e8m0 group scales, ``2 ** (s - 127)``; 255 is the NaN/Inf sentinel
++* ``a_q``:     ``(M, K)`` fp8 (e4m3fn on gfx12) per-token-quantized activations, ``a_s`` ``(M, 1)`` fp32
++
++Decode is pure integer work plus one bit-cast: an e2m1 code ``s e1 e0 m`` is ``base * 2**shift`` with
++``base = 2 + m, shift = e - 2`` for normals and ``base = m, shift = -1`` for the subnormals, and the e8m0
++group scale is a float32 exponent field, so ``base * bitcast((shift + s) << 23)`` yields the scaled weight
++with no ``exp2`` and no gathers. The K loop runs the even and odd nibbles as two half-width ``tl.dot``s
++(bf16 WMMA, fp32 accumulate), so no in-register interleave is needed. ``num_stages`` is 0 on gfx12
++(Triton's software pipeliner miscompiles there, as the block-FP8 GEMM already pins). Per-token activation
++scales are applied in the epilogue.
++
++Tile policy: decode (M <= 16) streams weights with a 16-row M tile; prefill picks the M tile that covers
++the whole M (up to 256) so the per-element decode is paid once per weight byte, not once per M tile.
++Tiny-N projections (DeltaNet ``in_proj_a/b``, N = 48 per rank) are better served dequantized to bf16 at
++load (0.5 MB each); ``MXFP4_MIN_N_FOR_KERNEL`` is the threshold the scheme wiring uses.
++"""
++
++from __future__ import annotations
++
++import functools
++import os
++from typing import Dict, Optional
++
++import torch
++import triton
++import triton.language as tl
++
++MXFP4_MIN_N_FOR_KERNEL = 256
++
++
++@triton.jit
++def _decode_e2m1_scaled(nib, sb):
++    """nib: int32 4-bit codes; sb: int32 e8m0 bytes (same shape). Returns fp32 nib * 2**(sb-127)."""
++    sign = (nib >> 3) & 1
++    e = (nib >> 1) & 3
++    m = nib & 1
++    is_norm = e > 0
++    base = tl.where(is_norm, 2 + m, m)  # int32 in {0,1,2,3}
++    shift = tl.where(is_norm, e - 2, -1)  # 2**shift, shift in {-2..1} (or -1 subnormal)
++    exp_field = sb + shift  # float32 exponent field of 2**(sb-127+shift)
++    exp_field = tl.where(sb == 255, 0, exp_field)  # NaN/Inf sentinel -> zero scale
++    exp_field = tl.maximum(exp_field, 0)
++    pow2 = (exp_field << 23).to(tl.float32, bitcast=True)
++    mag = base.to(tl.float32) * pow2
++    return tl.where(sign == 1, -mag, mag)
++
++
++@triton.jit
++def _mxfp4_w4a8_gemm_kernel(
++    A,  # fp8 (M, K)
++    AS,  # fp32 (M,)
++    W,  # uint8 (N, K//2)
++    WS,  # uint8 (N, K//32)
++    C,  # out (M, N)
++    LUT,  # fp32 (256, 2): byte -> (lo, hi) e2m1 values (used when DECODE_LUT)
++    M,
++    N,
++    K,
++    stride_am,
++    stride_ak,
++    stride_wn,
++    stride_wk,
++    stride_sn,
++    stride_sk,
++    stride_cm,
++    stride_cn,
++    BLOCK_M: tl.constexpr,
++    BLOCK_N: tl.constexpr,
++    BLOCK_K: tl.constexpr,
++    GROUP_M: tl.constexpr,
++    DECODE_LUT: tl.constexpr,
++):
++    # BLOCK_K is a multiple of 32 so every K tile covers whole e8m0 groups.
++    pid = tl.program_id(0)
++    num_pid_m = tl.cdiv(M, BLOCK_M)
++    num_pid_n = tl.cdiv(N, BLOCK_N)
++    num_pid_in_group = GROUP_M * num_pid_n
++    group_id = pid // num_pid_in_group
++    first_pid_m = group_id * GROUP_M
++    group_size_m = min(num_pid_m - first_pid_m, GROUP_M)
++    pid_m = first_pid_m + ((pid % num_pid_in_group) % group_size_m)
++    pid_n = (pid % num_pid_in_group) // group_size_m
++
++    offs_m = pid_m * BLOCK_M + tl.arange(0, BLOCK_M)
++    offs_n = pid_n * BLOCK_N + tl.arange(0, BLOCK_N)
++    offs_j = tl.arange(0, BLOCK_K // 2)  # packed-byte index inside the tile
++    mask_m = offs_m < M
++    mask_n = offs_n < N
++
++    # A is read at even / odd k separately (stride 2) so the two nibbles map onto two dots.
++    a_even_ptrs = A + offs_m[:, None] * stride_am + (2 * offs_j)[None, :] * stride_ak
++    a_odd_ptrs = a_even_ptrs + stride_ak
++    w_ptrs = W + offs_n[:, None] * stride_wn + offs_j[None, :] * stride_wk
++    # scale for packed byte j of this tile: group (k0/2 + j) // 16
++    s_ptrs = WS + offs_n[:, None] * stride_sn + (offs_j[None, :] // 16) * stride_sk
++
++    acc = tl.zeros((BLOCK_M, BLOCK_N), dtype=tl.float32)
++    k_packed = K // 2
++    for kp in range(0, tl.cdiv(k_packed, BLOCK_K // 2)):
++        jmask = (kp * (BLOCK_K // 2) + offs_j) < k_packed
++        wmask = mask_n[:, None] & jmask[None, :]
++        wb = tl.load(w_ptrs, mask=wmask, other=0).to(tl.int32)
++        sb = tl.load(s_ptrs, mask=wmask, other=127).to(tl.int32)
++        if DECODE_LUT:
++            scale = (tl.where(sb == 255, 0, sb) << 23).to(tl.float32, bitcast=True)
++            w_lo = (tl.load(LUT + wb * 2) * scale).to(tl.bfloat16)  # element 2j
++            w_hi = (tl.load(LUT + wb * 2 + 1) * scale).to(tl.bfloat16)  # element 2j+1
++        else:
++            w_lo = _decode_e2m1_scaled(wb & 0xF, sb).to(tl.bfloat16)  # element 2j
++            w_hi = _decode_e2m1_scaled(wb >> 4, sb).to(tl.bfloat16)  # element 2j+1
++        amask = mask_m[:, None] & jmask[None, :]
++        a_even = tl.load(a_even_ptrs, mask=amask, other=0.0).to(tl.bfloat16)
++        a_odd = tl.load(a_odd_ptrs, mask=amask, other=0.0).to(tl.bfloat16)
++        acc += tl.dot(a_even, tl.trans(w_lo))
++        acc += tl.dot(a_odd, tl.trans(w_hi))
++        a_even_ptrs += BLOCK_K * stride_ak
++        a_odd_ptrs += BLOCK_K * stride_ak
++        w_ptrs += (BLOCK_K // 2) * stride_wk
++        s_ptrs += (BLOCK_K // 32) * stride_sk
++
++    a_s = tl.load(AS + offs_m, mask=mask_m, other=0.0)
++    acc = acc * a_s[:, None]
++    c_ptrs = C + offs_m[:, None] * stride_cm + offs_n[None, :] * stride_cn
++    tl.store(c_ptrs, acc.to(C.dtype.element_ty), mask=mask_m[:, None] & mask_n[None, :])
++
++
++@triton.jit
++def _mxfp4_w4a8_gemv_kernel(
++    A, AS, W, WS, C, LUT,
++    M, N, K,
++    stride_am, stride_ak, stride_wn, stride_wk, stride_sn, stride_sk, stride_cm, stride_cn,
++    BLOCK_M: tl.constexpr,  # <= 8 rows of A, all covered by one program
++    BLOCK_N: tl.constexpr,
++    BLOCK_K: tl.constexpr,
++    DECODE_LUT: tl.constexpr,
++    GROUPED: tl.constexpr,  # reduce the 16-byte scale groups first, then apply the e8m0 scale once per group
++):
++    """Decode-shaped GEMV for M <= BLOCK_M: no WMMA; the W tile is (BLOCK_N, BLOCK_K/2) bytes read once,
++    decoded through the LUT, multiplied against the A rows and reduced over K in registers."""
++    pid_n = tl.program_id(0)
++    offs_n = pid_n * BLOCK_N + tl.arange(0, BLOCK_N)
++    offs_m = tl.arange(0, BLOCK_M)
++    offs_j = tl.arange(0, BLOCK_K // 2)
++    mask_n = offs_n < N
++    mask_m = offs_m < M
++    k_packed = K // 2
++    acc = tl.zeros((BLOCK_M, BLOCK_N), dtype=tl.float32)
++    for kp in range(0, tl.cdiv(k_packed, BLOCK_K // 2)):
++        j = kp * (BLOCK_K // 2) + offs_j
++        jmask = j < k_packed
++        wmask = mask_n[:, None] & jmask[None, :]
++        wb = tl.load(W + offs_n[:, None] * stride_wn + j[None, :] * stride_wk, mask=wmask, other=0).to(tl.int32)
++        sb = tl.load(WS + offs_n[:, None] * stride_sn + (j[None, :] // 16) * stride_sk, mask=wmask, other=127).to(tl.int32)
++        amask = mask_m[:, None] & jmask[None, :]
++        a_even = tl.load(A + offs_m[:, None] * stride_am + (2 * j)[None, :] * stride_ak, mask=amask, other=0.0).to(tl.float32)
++        a_odd = tl.load(A + offs_m[:, None] * stride_am + (2 * j + 1)[None, :] * stride_ak, mask=amask, other=0.0).to(tl.float32)
++        if GROUPED:
++            # unscaled products summed inside each 16-byte (32-element) group, then one scale per group
++            if DECODE_LUT:
++                u_lo = tl.load(LUT + wb * 2)
++                u_hi = tl.load(LUT + wb * 2 + 1)
++            else:
++                u_lo = _decode_e2m1_scaled(wb & 0xF, tl.zeros_like(sb) + 127)
++                u_hi = _decode_e2m1_scaled(wb >> 4, tl.zeros_like(sb) + 127)
++            prod = a_even[:, None, :] * u_lo[None, :, :] + a_odd[:, None, :] * u_hi[None, :, :]  # (BM, BN, BK/2)
++            grp = tl.sum(tl.reshape(prod, (BLOCK_M, BLOCK_N, BLOCK_K // 32, 16)), axis=3)  # (BM, BN, BK/32)
++            sbg = tl.load(WS + offs_n[:, None] * stride_sn + ((kp * (BLOCK_K // 32)) + tl.arange(0, BLOCK_K // 32))[None, :] * stride_sk,
++                          mask=mask_n[:, None] & (((kp * (BLOCK_K // 32)) + tl.arange(0, BLOCK_K // 32))[None, :] < (K // 32)), other=127).to(tl.int32)
++            scg = (tl.where(sbg == 255, 0, sbg) << 23).to(tl.float32, bitcast=True)  # (BN, BK/32)
++            acc += tl.sum(grp * scg[None, :, :], axis=2)
++        else:
++            scale = (tl.where(sb == 255, 0, sb) << 23).to(tl.float32, bitcast=True)
++            if DECODE_LUT:
++                w_lo = tl.load(LUT + wb * 2) * scale  # (BN, BK/2) fp32, element 2j
++                w_hi = tl.load(LUT + wb * 2 + 1) * scale  # element 2j+1
++            else:
++                w_lo = _decode_e2m1_scaled(wb & 0xF, sb)
++                w_hi = _decode_e2m1_scaled(wb >> 4, sb)
++            acc += tl.sum(a_even[:, None, :] * w_lo[None, :, :], axis=2)
++            acc += tl.sum(a_odd[:, None, :] * w_hi[None, :, :], axis=2)
++    a_s = tl.load(AS + offs_m, mask=mask_m, other=0.0)
++    acc = acc * a_s[:, None]
++    c_ptrs = C + offs_m[:, None] * stride_cm + offs_n[None, :] * stride_cn
++    tl.store(c_ptrs, acc.to(C.dtype.element_ty), mask=mask_m[:, None] & mask_n[None, :])
++
++
++# Defaults by M. `SGLANG_MXFP4_W4A8_CONFIG="BM,BN,BK,warps"` overrides for tuning.
++_DEFAULT_CONFIGS: Dict[str, Dict[str, int]] = {
++    # WMMA path; decode of the W tile dominates, and 64x128 tiles decode fastest of the shapes tried
++    "m16": {"BLOCK_M": 16, "BLOCK_N": 64, "BLOCK_K": 128, "GROUP_M": 1, "num_warps": 4},
++    "m32": {"BLOCK_M": 32, "BLOCK_N": 64, "BLOCK_K": 128, "GROUP_M": 4, "num_warps": 4},
++    "m64": {"BLOCK_M": 64, "BLOCK_N": 64, "BLOCK_K": 128, "GROUP_M": 4, "num_warps": 4},
++    "m128": {"BLOCK_M": 128, "BLOCK_N": 64, "BLOCK_K": 64, "GROUP_M": 8, "num_warps": 4},
++    "m256": {"BLOCK_M": 128, "BLOCK_N": 64, "BLOCK_K": 64, "GROUP_M": 8, "num_warps": 4},
++}
++
++
++@functools.lru_cache(maxsize=None)
++def _env_override() -> Optional[Dict[str, int]]:
++    v = os.environ.get("SGLANG_MXFP4_W4A8_CONFIG")
++    if not v:
++        return None
++    bm, bn, bk, nw = (int(x) for x in v.split(","))
++    return {"BLOCK_M": bm, "BLOCK_N": bn, "BLOCK_K": bk, "GROUP_M": 4, "num_warps": nw}
++
++
++_LUT_CACHE: Dict[torch.device, torch.Tensor] = {}
++
++
++def _lut(device: torch.device) -> torch.Tensor:
++    t = _LUT_CACHE.get(device)
++    if t is None:
++        vals = torch.tensor(
++            [0.0, 0.5, 1.0, 1.5, 2.0, 3.0, 4.0, 6.0, -0.0, -0.5, -1.0, -1.5, -2.0, -3.0, -4.0, -6.0],
++            device=device, dtype=torch.float32,
++        )
++        codes = torch.arange(256, device=device)
++        t = torch.stack([vals[codes & 0xF], vals[codes >> 4]], dim=1).contiguous()
++        _LUT_CACHE[device] = t
++    return t
++
++
++def _decode_lut() -> bool:
++    return os.environ.get("SGLANG_MXFP4_DECODE", "lut") == "lut"
++
++
++def select_config(M: int, N: int, K: int) -> Dict[str, int]:
++    cfg = _env_override()
++    if cfg is None:
++        key = "m16" if M <= 16 else "m32" if M <= 32 else "m64" if M <= 64 else "m128" if M <= 128 else "m256"
++        cfg = _DEFAULT_CONFIGS[key]
++    cfg = dict(cfg)
++    # K tiles must cover whole 32-wide scale groups and not exceed K
++    cfg["BLOCK_K"] = max(32, min(cfg["BLOCK_K"], K))
++    assert cfg["BLOCK_K"] % 32 == 0
++    return cfg
++
++
++def mxfp4_w4a8_gemm(
++    a_q: torch.Tensor,
++    a_s: torch.Tensor,
++    w: torch.Tensor,
++    w_scale: torch.Tensor,
++    out_dtype: torch.dtype = torch.bfloat16,
++    out: Optional[torch.Tensor] = None,
++) -> torch.Tensor:
++    """``(M, K) fp8 × (N, K) MXFP4^T -> (M, N)``; ``a_s`` is the per-token fp32 scale ``(M,)`` or ``(M, 1)``."""
++    assert a_q.dim() == 2 and w.dim() == 2 and w_scale.dim() == 2
++    M, K = a_q.shape
++    N, k_packed = w.shape
++    assert k_packed * 2 == K, f"packed K {k_packed} does not match activation K {K}"
++    assert w_scale.shape == (N, K // 32), f"scale shape {tuple(w_scale.shape)} != {(N, K // 32)}"
++    assert K % 32 == 0
++    a_s = a_s.reshape(M).to(torch.float32)
++    if out is None:
++        out = torch.empty((M, N), dtype=out_dtype, device=a_q.device)
++    # Measured 2026-11-09 (N=17408, K=5120): GEMV BN=8/BK=512/1 warp 125 us at M=1 (block-FP8 GEMM 165 us),
++    # BN=8/BK=256 212 us at M=2; from M=3 the WMMA kernel below (16x64x128, LUT decode) at ~250 us is the better path.
++    if M <= 2 and os.environ.get("SGLANG_MXFP4_GEMV", "1") == "1":
++        gv = os.environ.get("SGLANG_MXFP4_GEMV_CONFIG", "8,512,1" if M == 1 else "8,256,1")
++        bn, bk, nw = (int(x) for x in gv.split(","))
++        bk = max(32, min(bk, K))
++        bm = 1 if M == 1 else 2
++        _mxfp4_w4a8_gemv_kernel[(triton.cdiv(N, bn),)](
++            a_q, a_s, w, w_scale, out, _lut(a_q.device),
++            M, N, K,
++            a_q.stride(0), a_q.stride(1), w.stride(0), w.stride(1), w_scale.stride(0), w_scale.stride(1), out.stride(0), out.stride(1),
++            BLOCK_M=bm, BLOCK_N=bn, BLOCK_K=bk, DECODE_LUT=_decode_lut(),
++            GROUPED=os.environ.get("SGLANG_MXFP4_GEMV_GROUPED", "0") == "1", num_warps=nw, num_stages=0,
++        )
++        return out
++    cfg = select_config(M, N, K)
++    grid = (triton.cdiv(M, cfg["BLOCK_M"]) * triton.cdiv(N, cfg["BLOCK_N"]),)
++    _mxfp4_w4a8_gemm_kernel[grid](
++        a_q, a_s, w, w_scale, out, _lut(a_q.device),
++        M, N, K,
++        a_q.stride(0), a_q.stride(1),
++        w.stride(0), w.stride(1),
++        w_scale.stride(0), w_scale.stride(1),
++        out.stride(0), out.stride(1),
++        BLOCK_M=cfg["BLOCK_M"], BLOCK_N=cfg["BLOCK_N"], BLOCK_K=cfg["BLOCK_K"], GROUP_M=cfg["GROUP_M"],
++        DECODE_LUT=_decode_lut(), num_warps=cfg["num_warps"], num_stages=0,
++    )
++    return out
++
++
++def mxfp4_w4a8_linear(
++    x: torch.Tensor,
++    w: torch.Tensor,
++    w_scale: torch.Tensor,
++    bias: Optional[torch.Tensor] = None,
++    out_dtype: Optional[torch.dtype] = None,
++) -> torch.Tensor:
++    """bf16/fp16 activations -> per-token fp8 -> MXFP4 GEMM. Drop-in for ``F.linear`` on the Quark scheme."""
++    # scaled_fp8_quant falls back to a torch per-token quant on HIP without aiter (the same path the
++    # compressed-tensors per-channel FP8 linears take); sglang_per_token_quant_fp8 needs the CUDA op.
++    from sglang.kernels.ops.quantization.fp8_kernel import scaled_fp8_quant
++
++    shape = x.shape
++    x2 = x.reshape(-1, shape[-1]).contiguous()
++    a_q, a_s = scaled_fp8_quant(x2, use_per_token_if_dynamic=True)
++    y = mxfp4_w4a8_gemm(a_q, a_s, w, w_scale, out_dtype=out_dtype or x.dtype)
++    if bias is not None:
++        y = y + bias
++    return y.reshape(*shape[:-1], w.shape[0])
++
++
++def dequant_mxfp4_reference(w: torch.Tensor, w_scale: torch.Tensor) -> torch.Tensor:
++    """Torch reference of the checkpoint layout (mirrors ``_dequant_mxfp4_to_bf16``), fp32 output."""
++    lut = torch.tensor(
++        [0.0, 0.5, 1.0, 1.5, 2.0, 3.0, 4.0, 6.0, -0.0, -0.5, -1.0, -1.5, -2.0, -3.0, -4.0, -6.0],
++        device=w.device, dtype=torch.float32,
++    )
++    N, kp = w.shape
++    K = kp * 2
++    vals = torch.empty(N, K, device=w.device, dtype=torch.float32)
++    vals[:, 0::2] = lut[(w & 0xF).long()]
++    vals[:, 1::2] = lut[(w >> 4).long()]
++    scale = torch.exp2(w_scale.to(torch.float32) - 127.0)
++    scale = torch.where(w_scale == 255, torch.zeros_like(scale), scale)
++    return (vals.view(N, K // 32, 32) * scale.view(N, K // 32, 1)).view(N, K)
+diff --git a/python/sglang/srt/layers/quantization/quark/schemes/quark_w4a4_mxfp4.py b/python/sglang/srt/layers/quantization/quark/schemes/quark_w4a4_mxfp4.py
+index 65ffc16d..1735db59 100644
+--- a/python/sglang/srt/layers/quantization/quark/schemes/quark_w4a4_mxfp4.py
++++ b/python/sglang/srt/layers/quantization/quark/schemes/quark_w4a4_mxfp4.py
+@@ -231,6 +231,7 @@ if _aiter_mxfp4_available:
+ 
+ __all__ = ["QuarkW4A4MXFP4"]
+ logger = logging.getLogger(__name__)
++_rdna4_path_logged = False
+ 
+ OCP_MX_BLOCK_SIZE = 32
+ 
+@@ -273,6 +274,26 @@ class QuarkW4A4MXFP4(QuarkLinearScheme):
+             assert layer.weight.dtype == torch.uint8
+             assert layer.weight_scale.dtype == torch.uint8
+ 
++        # RDNA4 patch 117: on HIP without aiter, keep the packed FP4 weight and run the Triton W4A8 GEMM
++        # (kernels/ops/gemm/mxfp4_w4a8_rdna4.py) for every linear wide enough to stream; tiny-N projections
++        # (DeltaNet in_proj_a/b, N=48 per rank) dequantize to bf16 at load as under AITER_FORCE_A8W4.
++        if _is_hip and not _aiter_mxfp4_available and not _dequant_linear_to_bf16:
++            from sglang.kernels.ops.gemm.mxfp4_w4a8_rdna4 import MXFP4_MIN_N_FOR_KERNEL
++
++            if layer.weight.shape[0] >= MXFP4_MIN_N_FOR_KERNEL:
++                global _rdna4_path_logged
++                if not _rdna4_path_logged:
++                    logger.info("[RDNA4] MXFP4 linears run the Triton W4A8 GEMM/GEMV (patch 117); N < %d dequantize to bf16 at load", MXFP4_MIN_N_FOR_KERNEL)
++                    _rdna4_path_logged = True
++                layer.weight = torch.nn.Parameter(layer.weight.data.contiguous(), requires_grad=False)
++                layer.weight_scale = torch.nn.Parameter(layer.weight_scale.data.contiguous(), requires_grad=False)
++                layer.use_rdna4_mxfp4_kernel = True
++                return
++            w_bf16 = _dequant_mxfp4_to_bf16(layer.weight.data, layer.weight_scale.data)
++            layer.weight = torch.nn.Parameter(w_bf16, requires_grad=False)
++            layer.weight_scale = None
++            layer.dequantized_bf16 = True
++            return
+         if _dequant_linear_to_bf16:
+             w_bf16 = _dequant_mxfp4_to_bf16(layer.weight.data, layer.weight_scale.data)
+             layer.weight = torch.nn.Parameter(w_bf16, requires_grad=False)
+@@ -697,6 +718,13 @@ class QuarkW4A4MXFP4(QuarkLinearScheme):
+             if isinstance(x, tuple):
+                 x = x[0]
+             return torch.nn.functional.linear(x, layer.weight, bias)
++        if getattr(layer, "use_rdna4_mxfp4_kernel", False):
++            # RDNA4 patch 117: packed e2m1 + e8m0 weights, per-token fp8 activations, Triton GEMM/GEMV.
++            from sglang.kernels.ops.gemm.mxfp4_w4a8_rdna4 import mxfp4_w4a8_linear
++
++            if isinstance(x, tuple):
++                x = x[0]
++            return mxfp4_w4a8_linear(x, layer.weight, layer.weight_scale, bias, out_dtype=self.out_dtype)
+ 
+         # Bias will be added after the GEMM if provided
+         three_d = False
