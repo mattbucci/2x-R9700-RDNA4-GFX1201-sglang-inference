@@ -684,6 +684,170 @@
     "FP8 stays the default preset until the user decides (#39)"
    ],
    "result": "2026-11-09 kernel: patch 117 (GEMV BN8/BK512/1 warp LUT decode: 125 vs 165 us at N=17408 K=5120 M=1; parity on small shapes; WMMA path slower from M>=3). First serving arm of the Quark checkpoint (caps 4/4, pool 667K) decoded 18.7/18.4/17.9/16.7 tok/s vs FP8 23.3/22.8/22.1/20.5 and prefill 499/421 tok/s vs 1800/1462: the HIP per-token fp8 quant fallback is ~8 torch ops per linear (~3,600 launches/step). Fixed in the live tree: W4A16 GEMV at M<=2 (no quant), one-launch Triton per-token quant above; re-measure pending. Quant-free path (W4A16 GEMV at M<=2, one-launch Triton quant above; patch 117 regenerated), same-session vs FP8: decode 23.19/22.81/21.91/20.23 vs 23.24/22.97/22.25/20.52 tok/s at 24/7.3K/58K/197K (-0.2..-1.5 %, parity, not the kernel-level 1.3x); prefill 543/510/428 vs 1800/1460/946; caps 4/4 + needle 9/9 greedy on both arms (benchmarks/profiling/mxfp4-serving-2026-11-09/). FINDINGS RAD-11 serving paragraph written."
+  },
+  {
+   "id": "RAD-12",
+   "spec": "19-vllm-radiance-parity.md",
+   "status": "ready",
+   "resource": "gpu",
+   "depends_on": [
+    "RAD-6 / RAD-2 / RAD-11-profile chain finished (one GPU job at a time)"
+   ],
+   "next_action": "Radiance ablation ladder: scripts/bench/radiance_serve.sh arms a (FP8) and b (FP8 + DFlash2 K7) at 262144 ctx, one switch off per boot through ARM_EXTRA: RADIANCE_PRESHUFFLE, RADIANCE_USE_R4D_AR, RADIANCE_FUSE_RMS_QUANT, RADIANCE_SKINNY_GEMM, RADIANCE_GDN_MERGE_INPROJ, RADIANCE_USE_R4D_GDN, RADIANCE_KV_GROUP_OPT, RADIANCE_ATTN_TUNE (arm a); RADIANCE_VERIFY_HEAD, RADIANCE_DRAFT_RERANK=0, RADIANCE_TOPK_COMPOSITE, RADIANCE_DYNAMIC_DRAFT (arm b). Per boot: decode_ab canonical sweep + prefill_ttft. Baseline arm first and last. Receipt benchmarks/radiance-parity/ablation/ with a per-switch delta table (ms/step at 24 and 197K, prefill tok/s).",
+   "test_gate": [
+    "each off-arm confirmed from the boot banner (RADIANCE_R4D_REPORT=1), not from the flag",
+    "baseline first and last agree within 1 %",
+    "table reorders RAD-1..5 / 15 / 17 by measured worth; TP-split DeltaNet = residual"
+   ]
+  },
+  {
+   "id": "RAD-13",
+   "spec": "19-vllm-radiance-parity.md",
+   "status": "ready",
+   "resource": "gpu",
+   "depends_on": [
+    "RAD-12 not required; short GPU slots between serving A/Bs"
+   ],
+   "next_action": "Build /data/vllm-radiance-src/radiance (Apache-2.0, commit 451b136) with host hipcc + cmake into a scratch build dir, run r4d_selftest, write scripts/bench/libr4d_kernel_bench.py (ctypes over r4d.h). Time against our kernels on real qwen38 shapes with the >256 MB cold-cache rotation: fp8a16_nt_m1 / fp8a8_nt_m16 vs _w8a8_block_fp8_matmul at M=1/8/16/64; fp8a8_tiled at M=4096/8192; fused_quant_fp8; ar_oneshot_2rank_exact vs RCCL and the SGLang 1-stage; rowtopk_bf16 vs torch.topk; logits_vocab vs the rocBLAS head; GDN conv_w4 / kkt_solve / chunk_scan vs FLA; attn_prefill_h256_gqa6 vs extend attention; mxfp4a8_* vs patch 117. Receipt benchmarks/profiling/libr4d-kernel-bench/.",
+   "test_gate": [
+    "r4d_selftest green on this host before any timing",
+    "outputs compared bit for bit or in ULPs against our kernel on the same inputs",
+    "port-or-keep verdict per kernel family recorded in FINDINGS; ports only as numbered patches with the NOTICE attribution"
+   ]
+  },
+  {
+   "id": "RAD-14",
+   "spec": "19-vllm-radiance-parity.md",
+   "status": "ready",
+   "resource": "cpu",
+   "depends_on": [
+    "RAD-11 per-kernel profile receipts (rad11_profile.sh)"
+   ],
+   "next_action": "Launch census of one decode step at 24 tokens and 58K/197K from the RAD-11 profile receipts: count x us per family (block-FP8 GEMM, quantiser, norm, elementwise, all-reduce, attention, GDN, LM head, sampler) + host gap (wall per step - GPU busy). Size short kernels with the microbenches, not the profiler. Output: table with an owner experiment per family >= 0.3 ms.",
+   "test_gate": [
+    "families sum to the measured step within 5 %",
+    "every family >= 0.3 ms has an owner RAD id or a new one"
+   ]
+  },
+  {
+   "id": "RAD-15",
+   "spec": "19-vllm-radiance-parity.md",
+   "status": "queued",
+   "resource": "gpu",
+   "depends_on": [
+    "RAD-14 (head share)",
+    "REBASE-0523"
+   ],
+   "next_action": "Low-bit target LM head with exact rerank: int2/int4 g128 lm_head copy, top-64 candidates rescored on bf16 rows; per-batch gate on sampler needs (greedy / top-k <= 64 only; full head for logprobs, grammar masks, logit_bias, top-p/min-p tails). Site srt/layers/logits_processor.py:450-466.",
+   "test_gate": [
+    "byte-identical greedy output on the 8-prompt set and the needle grid",
+    "tool-call + structured-output probes unchanged; gate fails closed",
+    "about -1.5 ms/step in a both-orders A/B"
+   ]
+  },
+  {
+   "id": "RAD-16",
+   "spec": "19-vllm-radiance-parity.md",
+   "status": "ready",
+   "resource": "gpu",
+   "depends_on": [
+    "RAD-6 close-out"
+   ],
+   "next_action": "DFlash2 cycle anatomy on qwen38 at 24 / 58K / 197K: time draft pass, selector, verify forward per layer family, commit; check verify rows take the split-KV extend route and the drafter context features do not re-read the prefix. Ours: 65 ms cycle at 24 tokens (1.5x a plain step), 82-98 ms at 197K (1.7-2.0x); radiance 37 and 41 ms (1.3x, 1.25x). Then fix the largest stage.",
+   "test_gate": [
+    "cycle <= 1.3x a plain step at every depth (197K: 37.7 -> about 58 tok/s on today's base step)",
+    "needle 9/9 greedy, caps unchanged, accept length per depth recorded"
+   ]
+  },
+  {
+   "id": "RAD-17",
+   "spec": "19-vllm-radiance-parity.md",
+   "status": "queued",
+   "resource": "gpu",
+   "depends_on": [
+    "RAD-13 (rowtopk verdict)",
+    "RAD-16"
+   ],
+   "next_action": "HIP/Triton row top-k for the DFlash2 selector and sampler, replacing the torch.topk fallback (srt/models/dflash.py:59-68,1099-1103; the server warns it roughly halves throughput). Port r4d_rowtopk_bf16.hip / r4d_dflash_select_bf16.hip or a composite small-k Triton route.",
+   "test_gate": [
+    "candidate set and tie order identical to torch.topk on recorded logits",
+    "selector us at 248K vocab x 8 rows; serving A/B both orders"
+   ]
+  },
+  {
+   "id": "RAD-18",
+   "spec": "19-vllm-radiance-parity.md",
+   "status": "queued",
+   "resource": "gpu",
+   "depends_on": [
+    "RAD-16",
+    "RAD-17"
+   ],
+   "next_action": "Content-adaptive DFlash2 block length / verify width (confidence-gated; radiance schedule 1:8,2:7,4:6,8:5,16:4 tau 0.28). Site srt/speculative/adaptive_spec_params.py:60 (EAGLE-only today), dflash_worker_v2.py, graph buckets per width.",
+   "test_gate": [
+    "decode A/B on prose / code / JSON / copy-heavy prompts",
+    "pool cost of the extra graph buckets recorded"
+   ]
+  },
+  {
+   "id": "RAD-19",
+   "spec": "19-vllm-radiance-parity.md",
+   "status": "ready",
+   "resource": "gpu",
+   "depends_on": [
+    "RAD-10 prefill profile (conv share)"
+   ],
+   "next_action": "GDN prefill conv channel block: BLOCK_N 256 -> 1024 in kernels/ops/mamba/causal_conv1d_triton.py:584,1224; conv microbench at the 197K-prefill shape then prefill_ttft both orders.",
+   "test_gate": [
+    "greedy identity on the 8-prompt set",
+    "retain only with a prefill gain outside run-to-run spread"
+   ]
+  },
+  {
+   "id": "RAD-20",
+   "spec": "19-vllm-radiance-parity.md",
+   "status": "queued",
+   "resource": "gpu",
+   "depends_on": [
+    "RAD-10",
+    "RAD-13 (fp8a8_tiled verdict)"
+   ],
+   "next_action": "Block-FP8 GEMM at M >= 64: tuned tile configs, tiled-kernel verdict, chunked-prefill size sweep 4096/8192/16384 per speculation state.",
+   "test_gate": [
+    "prefill_ttft 7.3K / 58K / 197K both orders",
+    "hybrid-cache hit boundaries re-checked after a chunk-size change"
+   ]
+  },
+  {
+   "id": "RAD-21",
+   "spec": "19-vllm-radiance-parity.md",
+   "status": "queued",
+   "resource": "gpu",
+   "depends_on": [
+    "RAD-11 shows a step-time win",
+    "RAD-16",
+    "RAD-17"
+   ],
+   "next_action": "MXFP4 + DFlash2 stack on the Quark checkpoint (comparison input); local MXFP4 build from BF16 only if the quality receipt holds. Radiance arm D: 136.2 / 163.8 / 148.4 / 163.8 tok/s.",
+   "test_gate": [
+    "canonical sweep, needle 9/9, caps, quality receipts against the FP8 preset",
+    "FP8 stays the published target until the user decides (#39)"
+   ]
+  },
+  {
+   "id": "RAD-22",
+   "spec": "19-vllm-radiance-parity.md",
+   "status": "queued",
+   "resource": "gpu",
+   "depends_on": [
+    "RAD-14 (quantiser launch cost)",
+    "RAD-13 (fp8a16_nt_m1 verdict)"
+   ],
+   "next_action": "Quant-free block-FP8 decode GEMV (W8A16) at M <= 2 in triton_w8a8_block_fp8_linear (quantization/fp8_utils.py:1574-1603): bf16 activation into the FP8 weight, no per-token quantiser launch per linear. Evidence against a large win: the MXFP4 path is already quant-free (patch 117) and decodes at FP8 parity, so size it from RAD-14 before writing a kernel. Alternative to the quant half of RAD-5.",
+   "test_gate": [
+    "numerics change (activations no longer rounded to E4M3): greedy ladders, needle grid, cache_hit_consistency.py",
+    "verify rows at M > 2 stay consistent with decode"
+   ]
   }
  ]
 }
