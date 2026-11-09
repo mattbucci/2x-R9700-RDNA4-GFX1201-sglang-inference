@@ -10,3 +10,16 @@ index 4b243e1a..239dd8aa 100644
      ]:
          E = config.num_experts // ep_size
          topk = config.num_experts_per_tok
+diff --git a/benchmark/kernels/fused_moe_triton/tuning_fused_moe_triton.py b/benchmark/kernels/fused_moe_triton/tuning_fused_moe_triton.py
+index 0fcd4c8e..65c5c2a8 100644
+--- a/benchmark/kernels/fused_moe_triton/tuning_fused_moe_triton.py
++++ b/benchmark/kernels/fused_moe_triton/tuning_fused_moe_triton.py
+@@ -25,7 +25,7 @@ from ray.experimental.tqdm_ray import tqdm
+ 
+ from sglang.srt.layers.moe.fused_moe_triton import override_config
+ from sglang.srt.layers.moe.moe_runner import MoeRunnerConfig
+-from sglang.srt.layers.quantization.fp8_kernel import fp8_dtype
++from sglang.kernels.ops.quantization.fp8_kernel import fp8_dtype  # RDNA4 patch 116: kernels tree moved in v0.5.18
+ from sglang.srt.layers.moe.moe_runner.triton_utils.fused_moe import fused_moe
+ from sglang.srt.layers.moe.moe_runner.triton_utils.fused_moe_triton_config import (
+     get_config_dtype_str,
