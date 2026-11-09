@@ -334,6 +334,24 @@ index 00000000..e7609618
 +    scale = torch.exp2(w_scale.to(torch.float32) - 127.0)
 +    scale = torch.where(w_scale == 255, torch.zeros_like(scale), scale)
 +    return (vals.view(N, K // 32, 32) * scale.view(N, K // 32, 1)).view(N, K)
+diff --git a/python/sglang/srt/layers/linear.py b/python/sglang/srt/layers/linear.py
+index f5d93c1d..f9d2952e 100644
+--- a/python/sglang/srt/layers/linear.py
++++ b/python/sglang/srt/layers/linear.py
+@@ -888,7 +888,12 @@ class MergedColumnParallelLinear(ColumnParallelLinear):
+                     "the same for all partitions."
+                 )
+ 
+-        assert param_data.shape == loaded_weight.shape
++        assert param_data.shape == loaded_weight.shape, (
++            f"MergedColumnParallelLinear.weight_loader shape mismatch: param {tuple(param.shape)} "
++            f"(shard {loaded_shard_id}, narrowed {tuple(param_data.shape)}, output_dim={getattr(param, 'output_dim', None)}, "
++            f"packed_dim={getattr(param, 'packed_dim', None)}) vs loaded {tuple(loaded_weight.shape)} dtype {loaded_weight.dtype}; "
++            f"sizes={getattr(self, 'output_sizes', None)}"
++        )
+         param_data.copy_(loaded_weight)
+ 
+     def _load_fused_module_from_checkpoint(
 diff --git a/python/sglang/srt/layers/quantization/quark/schemes/quark_w4a4_mxfp4.py b/python/sglang/srt/layers/quantization/quark/schemes/quark_w4a4_mxfp4.py
 index 65ffc16d..1735db59 100644
 --- a/python/sglang/srt/layers/quantization/quark/schemes/quark_w4a4_mxfp4.py
@@ -387,3 +405,27 @@ index 65ffc16d..1735db59 100644
  
          # Bias will be added after the GEMM if provided
          three_d = False
+diff --git a/python/sglang/srt/models/qwen3_5.py b/python/sglang/srt/models/qwen3_5.py
+index 478930cd..683da3f9 100644
+--- a/python/sglang/srt/models/qwen3_5.py
++++ b/python/sglang/srt/models/qwen3_5.py
+@@ -471,10 +471,18 @@ class Qwen3_5GatedDeltaNet(nn.Module):
+         # quant_config=None for in_proj_ba: output dim 48 is not divisible
+         # by TP=2 * 16 (hipBLASLt scaled_mm alignment), so FP8 quantization
+         # would fail. Keep projections in full precision.
++        # RDNA4 patch 117: AMD Quark MXFP4 exports quantize in_proj_a/b too (uint8 (48, K/2) + e8m0
++        # scales), so the Quark scheme must own the param to load them; on gfx1201 it dequantizes
++        # these tiny-N layers to bf16 at load (quark_w4a4_mxfp4.process_weights_after_loading).
++        ba_quant_config = (
++            quant_config
++            if quant_config is not None and getattr(quant_config, "get_name", lambda: "")() == "quark"
++            else None
++        )
+         self.in_proj_ba = self.create_ba_proj(
+             hidden_size=self.hidden_size,
+             num_v_heads=self.num_v_heads,
+-            quant_config=None,
++            quant_config=ba_quant_config,
+             prefix=add_prefix("in_proj_ba", prefix),
+             parallel_group=parallel_group,
+         )
