@@ -1,0 +1,117 @@
+{
+ "dflash": {
+  "client": {
+   "prompt_tokens": 26956,
+   "completion_tokens": 600,
+   "wall_s": 8.42,
+   "client_decode_tok_s": 71.26,
+   "note": "use server-log 'gen throughput' for authoritative decode tok/s (esp. with spec)"
+  },
+  "server_gen_tok_s_last40_mean": 72.4,
+  "accept_len": {
+   "n_batches": 60,
+   "mean": 3.62,
+   "min": 1.77,
+   "max": 7.28
+  }
+ },
+ "nospec": {
+  "client": {
+   "prompt_tokens": 26956,
+   "completion_tokens": 600,
+   "wall_s": 18.22,
+   "client_decode_tok_s": 32.92,
+   "note": "use server-log 'gen throughput' for authoritative decode tok/s (esp. with spec)"
+  },
+  "server_gen_tok_s_last40_mean": 37.2
+ },
+ "identity_probe": {
+  "max_tokens": 400,
+  "temperature": 0,
+  "enable_thinking_false_requested": true,
+  "note": "the Flint template thinks regardless; both arms emit reasoning first",
+  "rows": [
+   {
+    "name": "code",
+    "prompt_tokens": 29,
+    "nospec_reasoning_chars": 1446,
+    "nospec_content_chars": 196,
+    "dflash_reasoning_chars": 1728,
+    "dflash_content_chars": 0,
+    "identical_400_tokens": false,
+    "nospec_tok_s": 43.4,
+    "dflash_tok_s": 116.6
+   },
+   {
+    "name": "prose",
+    "prompt_tokens": 23,
+    "nospec_reasoning_chars": 2258,
+    "nospec_content_chars": 0,
+    "dflash_reasoning_chars": 2286,
+    "dflash_content_chars": 0,
+    "identical_400_tokens": false,
+    "nospec_tok_s": 43.4,
+    "dflash_tok_s": 59.2
+   },
+   {
+    "name": "json",
+    "prompt_tokens": 43,
+    "nospec_reasoning_chars": 1606,
+    "nospec_content_chars": 0,
+    "dflash_reasoning_chars": 1636,
+    "dflash_content_chars": 0,
+    "identical_400_tokens": false,
+    "nospec_tok_s": 43.2,
+    "dflash_tok_s": 98.8
+   },
+   {
+    "name": "numbers",
+    "prompt_tokens": 38,
+    "nospec_reasoning_chars": 916,
+    "nospec_content_chars": 0,
+    "dflash_reasoning_chars": 952,
+    "dflash_content_chars": 0,
+    "identical_400_tokens": false,
+    "nospec_tok_s": 43.4,
+    "dflash_tok_s": 152.1
+   },
+   {
+    "name": "refactor",
+    "prompt_tokens": 62,
+    "nospec_reasoning_chars": 1629,
+    "nospec_content_chars": 34,
+    "dflash_reasoning_chars": 1716,
+    "dflash_content_chars": 0,
+    "identical_400_tokens": false,
+    "nospec_tok_s": 43.4,
+    "dflash_tok_s": 95.0
+   },
+   {
+    "name": "ctx-long",
+    "prompt_tokens": 28929,
+    "nospec_reasoning_chars": 2315,
+    "nospec_content_chars": 0,
+    "dflash_reasoning_chars": 2179,
+    "dflash_content_chars": 0,
+    "identical_400_tokens": false,
+    "nospec_tok_s": 28.4,
+    "dflash_tok_s": 34.7
+   }
+  ],
+  "identical": 0
+ },
+ "server": {
+  "dflash": {
+   "max_total_num_tokens": 574683,
+   "draft": "DFlash2DraftModel bf16 0.47 GB, triton draft backend, block_size 8, selector torch.topk fallback (no flashinfer)"
+  },
+  "nospec": {
+   "max_total_num_tokens": 1050610
+  }
+ },
+ "flags": {
+  "dflash_extra_args": "--speculative-algorithm DFLASH --speculative-draft-model-path /data/models/Flint-DFlash2 --speculative-draft-model-quantization unquant",
+  "preset": "flint (fp8 KV, triton attention, mem 0.85, graphs bs 1)",
+  "order": "dflash then nospec, same session 2026-11-09 01:35-01:48"
+ }
+}

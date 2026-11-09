@@ -1,0 +1,296 @@
+{
+ "method": "greedy T=0, top-2 logprobs per generated token, 400 tokens; first divergent token vs the no-spec arm; margin = top1-top2 logprob (nats) at that position on each arm",
+ "prompts": {
+  "code": {
+   "nospec_tokens": 400,
+   "dflash": {
+    "first_divergence_token": 78,
+    "nospec_top2": [
+     [
+      " inclusive",
+      -0.8575211763381958
+     ],
+     [
+      " closed",
+      -1.0482680797576904
+     ]
+    ],
+    "nospec_margin": 0.1907,
+    "arm_top2": [
+     [
+      " closed",
+      -1.0548815727233887
+     ],
+     [
+      " inclusive",
+      -1.0708396434783936
+     ]
+    ],
+    "arm_margin": 0.016,
+    "context": ", so overlapping if start <= current_end (since"
+   },
+   "dflash-fp8qkoff": {
+    "first_divergence_token": 34,
+    "nospec_top2": [
+     [
+      ":\n\n",
+      -1.319728136062622
+     ],
+     [
+      " what",
+      -1.5327627658843994
+     ]
+    ],
+    "nospec_margin": 0.213,
+    "arm_top2": [
+     [
+      " what",
+      -1.2577106952667236
+     ],
+     [
+      ":\n\n",
+      -1.4707032442092896
+     ]
+    ],
+    "arm_margin": 0.213,
+    "context": " a docstring and three doctests.\n\nWe should consider"
+   }
+  },
+  "refactor": {
+   "nospec_tokens": 400,
+   "dflash": {
+    "first_divergence_token": 6,
+    "nospec_top2": [
+     [
+      " rewrite",
+      -0.5603582262992859
+     ],
+     [
+      " parse",
+      -0.9258392453193665
+     ]
+    ],
+    "nospec_margin": 0.3655,
+    "arm_top2": [
+     [
+      " parse",
+      -0.6799112558364868
+     ],
+     [
+      " rewrite",
+      -0.7690378427505493
+     ]
+    ],
+    "arm_margin": 0.0891,
+    "context": "<think>We need answer. Need"
+   },
+   "dflash-fp8qkoff": {
+    "first_divergence_token": 6,
+    "nospec_top2": [
+     [
+      " rewrite",
+      -0.5603582262992859
+     ],
+     [
+      " parse",
+      -0.9258392453193665
+     ]
+    ],
+    "nospec_margin": 0.3655,
+    "arm_top2": [
+     [
+      " parse",
+      -0.5696828961372375
+     ],
+     [
+      " rewrite",
+      -0.9500277638435364
+     ]
+    ],
+    "arm_margin": 0.3803,
+    "context": "<think>We need answer. Need"
+   }
+  },
+  "prose": {
+   "nospec_tokens": 400,
+   "dflash": {
+    "first_divergence_token": 39,
+    "nospec_top2": [
+     [
+      " k",
+      -0.5035631060600281
+     ],
+     [
+      " K",
+      -0.9507696032524109
+     ]
+    ],
+    "nospec_margin": 0.4472,
+    "arm_top2": [
+     [
+      " K",
+      -0.591995120048523
+     ],
+     [
+      " k",
+      -0.8381665945053101
+     ]
+    ],
+    "arm_margin": 0.2462,
+    "context": " accuracy.\n\nSpeculative decoding: draft model generates"
+   },
+   "dflash-fp8qkoff": {
+    "first_divergence_token": 24,
+    "nospec_top2": [
+     [
+      " can",
+      -0.7506396770477295
+     ],
+     [
+      " need",
+      -0.7676271200180054
+     ]
+    ],
+    "nospec_margin": 0.017,
+    "arm_top2": [
+     [
+      " need",
+      -0.7056049108505249
+     ],
+     [
+      " can",
+      -0.9369324445724487
+     ]
+    ],
+    "arm_margin": 0.2313,
+    "context": " About 250 words. Need likely concise. We"
+   }
+  }
+ },
+ "needle_cells": {
+  "flint-dflash-natural-greedy": [
+   [
+    1024,
+    0.1,
+    true,
+    "stop",
+    79
+   ],
+   [
+    1024,
+    0.5,
+    true,
+    "stop",
+    61
+   ],
+   [
+    1024,
+    0.9,
+    true,
+    "stop",
+    63
+   ],
+   [
+    32768,
+    0.1,
+    true,
+    "stop",
+    83
+   ],
+   [
+    32768,
+    0.5,
+    true,
+    "stop",
+    158
+   ],
+   [
+    32768,
+    0.9,
+    false,
+    "length",
+    2048
+   ],
+   [
+    131072,
+    0.1,
+    false,
+    "length",
+    2048
+   ],
+   [
+    131072,
+    0.5,
+    true,
+    "stop",
+    64
+   ],
+   [
+    131072,
+    0.9,
+    true,
+    "stop",
+    64
+   ]
+  ],
+  "flint-nospec-recheck-natural-greedy": [
+   [
+    32768,
+    0.9,
+    false,
+    "length",
+    2048
+   ]
+  ],
+  "flint-nospec-recheck131-natural-greedy": [
+   [
+    131072,
+    0.1,
+    true,
+    "stop",
+    87
+   ]
+  ],
+  "flint-dflash-recheck-natural-greedy": [
+   [
+    32768,
+    0.9,
+    false,
+    "length",
+    2048
+   ]
+  ],
+  "flint-dflash-recheck131-natural-greedy": [
+   [
+    131072,
+    0.1,
+    false,
+    "length",
+    2048
+   ]
+  ],
+  "flint-dflash-fp8qkoff-recheck131-natural-greedy": [
+   [
+    131072,
+    0.1,
+    true,
+    "length",
+    2048
+   ]
+  ],
+  "flint-dflash-fp8qkoff-197k-natural-greedy": [
+   [
+    197000,
+    0.5,
+    true,
+    "stop",
+    56
+   ]
+  ]
+ },
+ "accept_len": {
+  "dflash_recheck": 3.71,
+  "dflash_fp8qkoff": 3.49
+ },
+ "conclusion": "the verify (extend) path and the decode path of the same target differ by 0.2-0.4 nats at near-tie positions with or without the fp8 QK dot; DFLASH makes every token come from the verify path, so greedy paths diverge inside thinking; no-spec already produces the first token of every turn from that path"
+}

@@ -530,6 +530,34 @@ edge the first-boot receipt describes). Adopted as the Flint preset default on t
 58K / 117K / 219K** input (bf16 KV read 43.7 / 42.9 / 39.9 / 37.3 / 34.2), pools 1,050,610 / 21,012 tokens, text
 probes 3/3 (vision / video are not supported by the model).
 
+## Flint + DFlash2 drafter: 1.3–2.4× decode, adopted for the SWE-bench cell on the user's call (2026-11-09)
+
+Inco AI's [Flint-DFlash2](https://huggingface.co/incoai/Flint-DFlash2) (0.4B block-diffusion drafter, block 8, Apache-2.0)
+runs on this tree with `--speculative-algorithm DFLASH --speculative-draft-model-path /data/models/Flint-DFlash2
+--speculative-draft-model-quantization unquant` (the draft inherits the target's `compressed-tensors` method otherwise and
+its config constructor fails); Flint inherits the EAGLE3 hidden-state capture, the draft runs on the triton backend with its
+own graphs, pool 574,683 vs 1,050,610 tokens. Same session, DFlash2 then no-spec ([receipts](profiling/flint-dflash-2026-11-09/)):
+
+| input tokens | no-spec tok/s | DFlash2 tok/s | ratio |
+|---:|---:|---:|---:|
+| 14 | 43.6 | 103.4 | 2.37× |
+| 7,321 | 43.0 | 74.4 | 1.73× |
+| 58,473 | 41.1 | 66.4 | 1.61× |
+| 197,315 | 37.8 | 50.9 | 1.34× |
+| copy-heavy 27K prompt, server-side | 37.2 | 72.4 | 1.95× |
+
+Accept length 3.5–3.7 mean (1.8–7.3 per batch); capabilities 3/3; the selector runs the torch.topk fallback (no flashinfer).
+**Lossless holds against the verify path, not against the decode path.** Greedy 400-token probes: 4/6 byte-identical to
+no-spec; the two that diverge (and three more in a logprob rerun) flip the top-2 at a position where the no-spec decode path
+has a 0.19–0.45 nat margin and the DFlash2 verify path has the reverse order by 0.02–0.38 nats
+([margins](profiling/flint-dflash-2026-11-09/margin-needle-summary.json)). The shift is the same with the fp8 QK dot
+(patch 108) off, so it is the extend/verify kernel path versus the flash-decode path of the same target — a gap the no-spec
+server already carries for the first token of every turn. Needle: 7/9 on the fp8kv cells (32K @ 0.9 runs to the 2,048 cap
+on both arms today; 131K @ 0.1 flipped to the cap twice under DFlash2 with fp8 QK on, found with it off), 197K @ 0.5 found.
+Which path is closer to the bf16 reference is open (RAD-9 scope: bf16-KV no-spec reference at the divergence positions).
+Adopted for the Flint SWE-bench cell (`RUN_TAG v5-dflash`, preset otherwise unchanged) on the user's call, so the cell
+measures the end-to-end effect; the `flint` preset default stays no-spec until that cell and the reference test are in.
+
 ## Qwopus3.8-27B-Coder-Flash: local block-FP8 build in the vendor layout (2026-11-02)
 
 Jackrong's coding/agentic SFT of Qwen3.8-27B (BF16 only, 55.6 GB) is built with

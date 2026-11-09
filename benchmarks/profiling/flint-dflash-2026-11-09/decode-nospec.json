@@ -1,0 +1,90 @@
+{
+  "label": "flint-nospec",
+  "tag": "",
+  "note": "",
+  "port": 23334,
+  "maxtok": 80,
+  "runs": 3,
+  "points": [
+    {
+      "context": 128,
+      "input_len": 14,
+      "runs_tps": [
+        43.56,
+        43.6,
+        43.58
+      ],
+      "median_tps": 43.585,
+      "min_tps": 43.563,
+      "max_tps": 43.6,
+      "runs_completion_tokens": [
+        80,
+        80,
+        80
+      ],
+      "median_tpot_ms": 22.94,
+      "sample": "Okay, the user has asked for a long, detailed essay about GP",
+      "median_ttft_ms": 77.8
+    },
+    {
+      "context": 8192,
+      "input_len": 7321,
+      "runs_tps": [
+        43.04,
+        43.03,
+        43.01
+      ],
+      "median_tps": 43.035,
+      "min_tps": 43.009,
+      "max_tps": 43.039,
+      "runs_completion_tokens": [
+        80,
+        80,
+        80
+      ],
+      "median_tpot_ms": 23.24,
+      "sample": "We need answer user. Need parse. They provided huge repeated",
+      "median_ttft_ms": 97.6
+    },
+    {
+      "context": 65536,
+      "input_len": 58473,
+      "runs_tps": [
+        41.12,
+        41.61,
+        41.02
+      ],
+      "median_tps": 41.119,
+      "min_tps": 41.016,
+      "max_tps": 41.611,
+      "runs_completion_tokens": [
+        80,
+        80,
+        80
+      ],
+      "median_tpot_ms": 24.32,
+      "sample": "We need answer user. Need summarize repeated sentence. We ne",
+      "median_ttft_ms": 150.0
+    },
+    {
+      "context": 221184,
+      "input_len": 197315,
+      "runs_tps": [
+        37.44,
+        37.84,
+        37.86
+      ],
+      "median_tps": 37.842,
+      "min_tps": 37.442,
+      "max_tps": 37.864,
+      "runs_completion_tokens": [
+        80,
+        80,
+        80
+      ],
+      "median_tpot_ms": 26.43,
+      "sample": "We need answer user. Need parse. We need answer likely. We n",
+      "median_ttft_ms": 302.8
+    }
+  ]
+}

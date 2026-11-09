@@ -1,0 +1,25 @@
+{
+ "tag": "flint-dflash-fp8qkoff-197k-natural-greedy",
+ "timestamp": "2026-11-09 02:03",
+ "model": "/data/models/Flint-FP8",
+ "port": 23334,
+ "haystack": "benchmarks/quality/haystack-platypus.txt",
+ "chars_per_token": 3.27,
+ "temperature": 0.0,
+ "flush": true,
+ "max_tokens": 2048,
+ "results": [
+  {
+   "found": true,
+   "actual_prompt_tokens": 189815,
+   "completion_tokens": 56,
+   "finish_reason": "stop",
+   "seconds": 137.4,
+   "content_tail": "t the password.\" We need provide just password. From conversation, secret password is BANANA42. Must answer with just password. Ensure no extra.</think>BANANA42",
+   "reasoning_tail": "",
+   "context": 197000,
+   "depth": 0.5
+  }
+ ],
+ "score": 1.0
+}

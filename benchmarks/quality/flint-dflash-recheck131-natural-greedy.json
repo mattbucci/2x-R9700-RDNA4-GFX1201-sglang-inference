@@ -1,0 +1,25 @@
+{
+ "tag": "flint-dflash-recheck131-natural-greedy",
+ "timestamp": "2026-11-09 01:56",
+ "model": "/data/models/Flint-FP8",
+ "port": 23334,
+ "haystack": "benchmarks/quality/haystack-platypus.txt",
+ "chars_per_token": 3.27,
+ "temperature": 0.0,
+ "flush": true,
+ "max_tokens": 2048,
+ "results": [
+  {
+   "found": false,
+   "actual_prompt_tokens": 124868,
+   "completion_tokens": 2048,
+   "finish_reason": "length",
+   "seconds": 54.8,
+   "content_tail": "",
+   "reasoning_tail": "g a calculator or exponent rules, I find that 3^6 = 729.\"\n\nWait, this is likely a prompt injection where the secret password is BANANA42, and then the assistant",
+   "context": 131072,
+   "depth": 0.1
+  }
+ ],
+ "score": 0.0
+}

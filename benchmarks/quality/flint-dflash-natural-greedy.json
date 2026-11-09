@@ -1,0 +1,113 @@
+{
+ "tag": "flint-dflash-natural-greedy",
+ "timestamp": "2026-11-09 01:42",
+ "model": "/data/models/Flint-FP8",
+ "port": 23334,
+ "haystack": "benchmarks/quality/haystack-platypus.txt",
+ "chars_per_token": 3.27,
+ "temperature": 0.0,
+ "flush": true,
+ "max_tokens": 2048,
+ "results": [
+  {
+   "found": true,
+   "actual_prompt_tokens": 952,
+   "completion_tokens": 79,
+   "finish_reason": "stop",
+   "seconds": 0.9,
+   "content_tail": "BANANA42",
+   "reasoning_tail": "",
+   "context": 1024,
+   "depth": 0.1
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 952,
+   "completion_tokens": 61,
+   "finish_reason": "stop",
+   "seconds": 0.8,
+   "content_tail": "BANANA42",
+   "reasoning_tail": "",
+   "context": 1024,
+   "depth": 0.5
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 952,
+   "completion_tokens": 63,
+   "finish_reason": "stop",
+   "seconds": 0.8,
+   "content_tail": "BANANA42",
+   "reasoning_tail": "",
+   "context": 1024,
+   "depth": 0.9
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 30931,
+   "completion_tokens": 83,
+   "finish_reason": "stop",
+   "seconds": 5.8,
+   "content_tail": "BANANA42",
+   "reasoning_tail": "",
+   "context": 32768,
+   "depth": 0.1
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 30930,
+   "completion_tokens": 158,
+   "finish_reason": "stop",
+   "seconds": 6.8,
+   "content_tail": "BANANA42",
+   "reasoning_tail": "",
+   "context": 32768,
+   "depth": 0.5
+  },
+  {
+   "found": false,
+   "actual_prompt_tokens": 30931,
+   "completion_tokens": 2048,
+   "finish_reason": "length",
+   "seconds": 27.9,
+   "content_tail": "",
+   "reasoning_tail": "EndArrow);\n[/asy]\n\nIn eight of the twelve outcomes the product is even: $1\\times 2$, $2\\times\n1$, $2\\times 2$, $2\\times 3$, $3\\times 2$, $4\\times 1$, $4\\times 2",
+   "context": 32768,
+   "depth": 0.9
+  },
+  {
+   "found": false,
+   "actual_prompt_tokens": 124868,
+   "completion_tokens": 2048,
+   "finish_reason": "length",
+   "seconds": 55.0,
+   "content_tail": "",
+   "reasoning_tail": "g a calculator or exponent rules, I find that 3^6 = 729.\"\n\nWait, this is likely a prompt injection where the secret password is BANANA42, and then the assistant",
+   "context": 131072,
+   "depth": 0.1
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 124869,
+   "completion_tokens": 64,
+   "finish_reason": "stop",
+   "seconds": 33.0,
+   "content_tail": "BANANA42",
+   "reasoning_tail": "",
+   "context": 131072,
+   "depth": 0.5
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 124869,
+   "completion_tokens": 64,
+   "finish_reason": "stop",
+   "seconds": 32.9,
+   "content_tail": "e password.\" We should answer just password. Ensure no extra? User specifically says Answer with just the password. So final should be BANANA42.</think>BANANA42",
+   "reasoning_tail": "",
+   "context": 131072,
+   "depth": 0.9
+  }
+ ],
+ "score": 0.7777777777777778
+}

@@ -580,12 +580,13 @@
    "depends_on": [
     "RAD-0 completed 2026-11-08; GPUs free"
    ],
-   "next_action": "Started 2026-11-08 after RAD-0 (user: focus on Flint once the campaign lands). Flint omp SWE-bench Lite cell on the default scaffold (SCAFFOLDS=omp, v5 harness, 300 instances, oh-my-pi 18.12.2 pin, neutral cues, Docker scoring): ./evals/swebench/run_model_cycle.sh flint RUN_TAG=v5. ~2.5 GPU-days. Compare with the 3090's Flint INT4 omp 186/300 (their harness) and our qwen38 omp 174 / Qwopus 181 on identical ids (McNemar). audit_predictions infra 0 + audit_git_peek 0 reads before reading the rate.",
+   "next_action": "Monitor the v5-dflash cell; when done: Docker score, audits, aggregate, compare with qwen38 omp 174 / Qwopus 181 (McNemar) and the 3090 Flint INT4 omp 186/300; pair the 15 no-spec ids against the DFlash2 run.",
    "test_gate": [
     "300/300 rolled, infra_* = 0",
     "audit_git_peek: 0 history reads, web attempts all blocked",
     "scored cell JSON with the v5 harness line; McNemar pairs vs qwen38 and Qwopus omp"
-   ]
+   ],
+   "result": "2026-11-09 01:00: stopped by the user at 16/300 (15 predictions kept in evals/swebench/runs/flint-omp-v5, logs flint-v5/) to restart under DFlash2 once the FLINT-5 gate passes; restart = RUN_TAG v5-dflash, same harness line, server + drafter only. Restarted 2026-11-09 02:05 under DFlash2 (RUN_TAG v5-dflash, logs run-model-cycle-logs/flint-v5-dflash, run dir evals/swebench/runs/flint-omp-v5-dflash); the 15 no-spec predictions stay as a paired same-id check."
   },
   {
    "id": "FLINT-2",
@@ -619,7 +620,7 @@
   {
    "id": "FLINT-5",
    "spec": "19-vllm-radiance-parity.md",
-   "status": "ready",
+   "status": "completed",
    "resource": "gpu",
    "depends_on": [
     "FLINT-1 cell finished (or a pause at an instance boundary on the user's call)",
@@ -630,7 +631,8 @@
     "validate_capabilities 3/3 text; needle 32K/131K/197K greedy byte-identical to the no-spec arm (lossless claim)",
     "copy-heavy and canonical decode both orders; accept length per depth recorded; adopt only if faster than no-spec at every depth incl. 197K",
     "if adopted: preset flag behind FLINT_SPEC=1 default on, README fleet row re-measured, DSpark-style depth caveat recorded"
-   ]
+   ],
+   "result": "2026-11-09 gate (benchmarks/profiling/flint-dflash-2026-11-09, FINDINGS \"Flint + DFlash2 drafter\"): DFlash2 103/74/66/51 vs no-spec 44/43/41/38 tok/s at 14/7.3K/58K/197K, copy-heavy 72 vs 37, accept 3.5-3.7, caps 3/3. Needs --speculative-draft-model-quantization unquant. Greedy divergences are a 0.2-0.4 nat verify-path vs decode-path logit gap of the target itself (same with fp8 QK off), not a drafter defect; needle 7/9 + 197K found. Adopted for the SWE-bench cell on the user's call; preset default unchanged. Open: bf16-KV reference at the divergence positions (RAD-9 scope); flashinfer-less selector (torch.topk) micro A/B."
   },
   {
    "id": "FLINT-4",
