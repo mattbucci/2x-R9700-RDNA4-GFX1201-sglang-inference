@@ -503,16 +503,15 @@
   {
    "id": "RAD-1",
    "spec": "19-vllm-radiance-parity.md",
-   "status": "queued",
+   "status": "ready",
    "resource": "gpu",
-   "depends_on": [
-    "RAD-3"
-   ],
-   "next_action": "TP-split DeltaNet in_proj_qkvz / out_proj on the FP8 preset with the recurrent state kept full per rank (qwen3_5.py:413-422, patch 045); the ~9 ms/step prize.",
+   "depends_on": [],
+   "next_action": "Serving A/B through chain2's pre-hook after RAD-2b: GEMM tune for N=8192,K=5120 (tune_fp8_block_gemm.py --preset qwen38-tpsplit, emitted into the development tree), then rad1_tpsplit_ab.sh: off1 -> on -> off2 without speculation, DSpark on/off only if the on arm keeps needle and caps. The replication is a local patch (001/016/045); SGLANG_RDNA4_DELTANET_TP_SPLIT=1 restores the upstream head-sharded layout (16384x5120 / 5120x6144 -> 8192x5120 / 5120x3072 per rank). The switch lives in /data/sgl-v0522-rad1/python (two files differ from the live tree); capture it as a numbered patch only if the gates pass, otherwise delete the development tree.",
    "test_gate": [
-    "bench rows N=8192,K=5120 and N=5120,K=3072",
-    "greedy ladders + needle grid + cache_hit_consistency equal to replicated",
-    "DSpark accept length unchanged; route and radix paths pass"
+    "identity line 'DeltaNet projections: TP-split over 2 ranks' and the N=8192,K=5120 config in the server log",
+    "off arms equal the live tree's medians (23.2/22.9/22.2/20.5): the default-off switch is neutral",
+    "needle >= replicated, caps 4/4, cache_hit_consistency within the fresh-vs-fresh floor",
+    "DSpark accept length and decode not worse than replicated"
    ]
   },
   {

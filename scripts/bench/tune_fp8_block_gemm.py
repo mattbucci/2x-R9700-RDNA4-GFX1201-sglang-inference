@@ -53,6 +53,13 @@ SHAPES = {
             ("full_attn.o_proj", 5120, 3072, 16),
         ],
     },
+    "qwen38-tpsplit": {  # the two DeltaNet projections under SGLANG_RDNA4_DELTANET_TP_SPLIT=1 (upstream head-sharded layout)
+        "peak_gbps": 640.0,
+        "rows": [
+            ("linear_attn.in_proj_qkvz", 8192, 5120, 48),
+            ("linear_attn.out_proj", 5120, 3072, 48),  # same shape as full_attn.o_proj, whose config file already exists
+        ],
+    },
     "laguna": {  # Laguna-XS.2-FP8 per rank, from the server's config log: shared experts x39 sparse layers, dense layer-0 MLP x1
         "peak_gbps": 640.0,
         "rows": [
