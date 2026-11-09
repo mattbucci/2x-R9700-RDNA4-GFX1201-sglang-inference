@@ -1,0 +1,12 @@
+diff --git a/benchmark/kernels/fused_moe_triton/common_utils.py b/benchmark/kernels/fused_moe_triton/common_utils.py
+index 4b243e1a..239dd8aa 100644
+--- a/benchmark/kernels/fused_moe_triton/common_utils.py
++++ b/benchmark/kernels/fused_moe_triton/common_utils.py
+@@ -149,6 +149,7 @@ def get_model_config(
+         "Qwen4ExpForConditionalGeneration",
+         "InternS2PreviewForConditionalGeneration",
+         "MellumForCausalLM",
++        "FlintForCausalLM",  # RDNA4 patch 116: Flint (num_experts/moe_intermediate_size/num_experts_per_tok, Qwen3Moe layout)
+     ]:
+         E = config.num_experts // ep_size
+         topk = config.num_experts_per_tok

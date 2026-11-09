@@ -575,10 +575,10 @@
   {
    "id": "FLINT-1",
    "spec": "https://github.com/mattbucci/2x-R9700-RDNA4-GFX1201-sglang-inference/issues/27",
-   "status": "in_progress",
+   "status": "paused",
    "resource": "gpu",
    "depends_on": [
-    "RAD-0 completed 2026-11-08; GPUs free"
+    "performance programme (FLINT-4, RAD-2, RAD-11, RAD-4/5/3) done or the user asks to resume"
    ],
    "next_action": "Monitor the v5-dflash cell; when done: Docker score, audits, aggregate, compare with qwen38 omp 174 / Qwopus 181 (McNemar) and the 3090 Flint INT4 omp 186/300; pair the 15 no-spec ids against the DFlash2 run.",
    "test_gate": [
@@ -586,7 +586,7 @@
     "audit_git_peek: 0 history reads, web attempts all blocked",
     "scored cell JSON with the v5 harness line; McNemar pairs vs qwen38 and Qwopus omp"
    ],
-   "result": "2026-11-09 01:00: stopped by the user at 16/300 (15 predictions kept in evals/swebench/runs/flint-omp-v5, logs flint-v5/) to restart under DFlash2 once the FLINT-5 gate passes; restart = RUN_TAG v5-dflash, same harness line, server + drafter only. Restarted 2026-11-09 02:05 under DFlash2 (RUN_TAG v5-dflash, logs run-model-cycle-logs/flint-v5-dflash, run dir evals/swebench/runs/flint-omp-v5-dflash); the 15 no-spec predictions stay as a paired same-id check. 04:22 server death (DFLASH sampler buffers sized by graph bs=1, crashed on a 2-request batch) → patch 115, cycle restarted at an instance boundary on the patched tree; the EMPTY django-11283 row removed for re-roll."
+   "result": "2026-11-09 01:00: stopped by the user at 16/300 (15 predictions kept in evals/swebench/runs/flint-omp-v5, logs flint-v5/) to restart under DFlash2 once the FLINT-5 gate passes; restart = RUN_TAG v5-dflash, same harness line, server + drafter only. Restarted 2026-11-09 02:05 under DFlash2 (RUN_TAG v5-dflash, logs run-model-cycle-logs/flint-v5-dflash, run dir evals/swebench/runs/flint-omp-v5-dflash); the 15 no-spec predictions stay as a paired same-id check. 04:22 server death (DFLASH sampler buffers sized by graph bs=1, crashed on a 2-request batch) → patch 115, cycle restarted at an instance boundary on the patched tree; the EMPTY django-11283 row removed for re-roll. PAUSED 2026-11-09 ~09:00 at an instance boundary on the user's call (\"focus on boosting performance before evaling\"): 43 of 300 rolled, predictions kept; resume = setsid bash /data/logs/run-model-cycle-logs/flint-v5-dflash/flint-omp-cycle.sh (skip-existing)."
   },
   {
    "id": "FLINT-2",
@@ -637,7 +637,7 @@
   {
    "id": "FLINT-4",
    "spec": "https://github.com/mattbucci/2x-R9700-RDNA4-GFX1201-sglang-inference/issues/27",
-   "status": "ready",
+   "status": "in_progress",
    "resource": "gpu",
    "depends_on": [
     "FLINT-1 cell finished (or a pause at an instance boundary on the user's call)"
@@ -647,7 +647,8 @@
     "validate_capabilities 3/3 text + needle 32K/131K/197K greedy identical or better per arm",
     "decode_ab both arm orders at 24/7.3K/58K/197K, prefill_ttft at 7.3K/58K/197K; adopt only a delta outside the order spread",
     "MoE config: tuner output committed as a numbered patch file set (078-style) and the boot log no longer reports the default config"
-   ]
+   ],
+   "result": "2026-11-09 09:00: item 1 (fused-MoE config tune) started — stock tuner with patch 116 (Flint architecture), gate_up config only (the sep tuner needs captured topk ids), then tuned→default→tuned serving A/B (decode ladder, prefill, caps). Driver /data/logs/flint-moe-tune-2026-11-09/."
   },
   {
    "id": "RAD-10",
@@ -664,6 +665,22 @@
     "prefill_ttft.py both orders",
     "needle 9/9 + 8-prompt greedy diff",
     "numbered patch + replay gate"
+   ]
+  },
+  {
+   "id": "RAD-11",
+   "spec": "19-vllm-radiance-parity.md",
+   "status": "ready",
+   "resource": "gpu",
+   "depends_on": [
+    "user 2026-11-09: performance before evals; MXFP4 requested sooner (issue #39 option b)",
+    "FLINT-4 item 1 + RAD-2 slots first (hours), then this (days)"
+   ],
+   "next_action": "MXFP4 W4A8 serving path for gfx1201 in SGLang: (1) Triton dense GEMM reading Quark's packed e2m1 weight (N, K/2) uint8 + e8m0 group-32 scales (N, K/32) uint8 with per-token fp8 activations, in-register dequant, num_stages 0, M<=16 weight-streaming config and M>=64 WMMA tiles; unit test vs a torch dequant reference at M=1/16/64/256 on the Qwen3.8 shapes (K=5120/8704, N=17408/5120/10240/6144/3072); microbench vs bf16-dequant matmul and vs the FP8 block GEMM at the same shapes (target ~2x fewer bytes). (2) Wire it into quark_w4a4_mxfp4.QuarkW4A4MXFP4.apply_weights on HIP without aiter (today: aiter ops or AITER_FORCE_A8W4 bf16 dequant at load only). (3) Boot /data/models/Qwen3.8-27B-Quark-AWQ-MXFP4 (comparison input; in_proj_a/b, qkv, z, out_proj, MLP quantized; lm_head/MTP excluded) through the qwen38 preset: caps, needle, canonical sweep vs FP8 (radiance measured 1.35-1.46x). (4) Quality receipt (MMLU/LAB-Bench/HumanEval via the quality harness). (5) Local build from BF16 with a Quark-format quantizer (AMD Quark pip in the quant env; BF16 base Qwen3.8-27B must be downloaded) — only after (3)/(4) justify it. DeltaNet/MoE: Qwen3.8 is dense + DeltaNet, no MoE kernel needed.",
+   "test_gate": [
+    "kernel: max abs err vs torch dequant reference within bf16 rounding at all M; no ds_read/ds_write bloat at M=1 (AMDGCN check)",
+    "serving: caps 5/5, needle 32K/131K/197K greedy, canonical sweep both orders vs FP8; adopt only with the quality receipt",
+    "FP8 stays the default preset until the user decides (#39)"
    ]
   }
  ]
