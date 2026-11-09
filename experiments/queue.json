@@ -619,15 +619,16 @@
   {
    "id": "FLINT-4",
    "spec": "https://github.com/mattbucci/2x-R9700-RDNA4-GFX1201-sglang-inference/issues/27",
-   "status": "queued",
+   "status": "ready",
    "resource": "gpu",
    "depends_on": [
-    "RAD-2 (1-stage all-reduce) and RAD-5 (norm+quant fusion) measured on qwen38 first"
+    "FLINT-1 cell finished (or a pause at an instance boundary on the user's call)"
    ],
-   "next_action": "Apply the radiance-parity levers that are preset-agnostic to flint: 1-stage IPC all-reduce (flint already runs PLAIN_ADD_BF16_SUM), fused norm+quant, decode-GEMM knobs on its MoE/dense shapes; same A/B contract as RAD-2/4/5.",
+   "next_action": "Radiance levers re-ranked for Flint (user ask 2026-11-09; Flint is dispatch-bound: ~1.1 GB/GPU weight read per step vs a 22.6 ms step, decode depth-flat). Order: (1) tuned fused-MoE Triton config for E=256,N=256 per_channel_quant=True fp8_w8a8 on R9700 (boot log: \"Using default MoE kernel config\", file missing; Laguna's identical shape is tuned only for block_shape=[128,128]; default = BM64/BN128/BK128 num_stages 2 at M<=E) via the stock tuner with patch 075 compressed-tensors discovery, serving A/B both orders on the canonical sweep + prefill_ttft, precedent +5 % Laguna / +11 % North on v0.5.15; (2) ENABLE_CUSTOM_ALL_REDUCE=1 SGLANG_USE_1STAGE_ALLREDUCE=1 on flint (98 all-reduces/step x 34 us measured at the 4 KB payload = 3.3 ms ceiling), p2p_allreduce_decode_shape.py then decode_ab both orders, R4D one-shot port as fallback; (3) rocprof one decode step at 7.3K and 197K to size norm+quant / act+quant fusion (RAD-5) before writing kernels. Not for Flint: preshuffled GEMM, decode-GEMM knobs, skinny bf16, MXFP4 (weight bytes are ~10 % of the step). Speculation: no Flint EAGLE3/DFlash drafter exists (searched 2026-11-09); NGRAM lost 35-40 % on copy-heavy code; training a drafter (SpecForge) is a user decision.",
    "test_gate": [
-    "decode_ab both orders at 24/58K/197K",
-    "capabilities + needle unchanged"
+    "validate_capabilities 3/3 text + needle 32K/131K/197K greedy identical or better per arm",
+    "decode_ab both arm orders at 24/7.3K/58K/197K, prefill_ttft at 7.3K/58K/197K; adopt only a delta outside the order spread",
+    "MoE config: tuner output committed as a numbered patch file set (078-style) and the boot log no longer reports the default config"
    ]
   },
   {
