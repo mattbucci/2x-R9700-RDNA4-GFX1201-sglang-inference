@@ -1,6 +1,6 @@
 # SGLang v0.5.22 RDNA4 patches
 
-This directory contains the **86 active numeric patches** applied to pristine SGLang v0.5.22 for the
+This directory contains the **87 active numeric patches** applied to pristine SGLang v0.5.22 for the
 2× Radeon AI PRO R9700 serving stack. The default tree is `/data/sgl-v0522`; the default conda environment
 is `sglang-triton36-v0522`.
 
@@ -90,6 +90,7 @@ can be proposed upstream. `Partial` requires a fresh comparison with upstream be
 | 060 | `aiter-mxfp4-moe-guard` | Candidate | Guards the optional AITER MXFP4 MoE import when AITER is unavailable. |
 | 063 | `rdna4-relu2-hip-fallback` | Candidate | Provides the squared-ReLU implementation used by Nemotron on HIP. |
 | 094 | `rdna4-batch-invariant-matmul-lds` | Carry | Uses two Triton pipeline stages for HIP batch-invariant MM/BMM so deterministic inference fits gfx1201's 64 KiB LDS limit; non-HIP platforms retain three stages. |
+| 119 | `hip-custom-allreduce-without-amdsmi` | Candidate | Lets HIP custom all-reduce setup run without the `amdsmi` Python binding: the XGMI query answers "not fully linked" instead of dying on an undefined name (`Setup Custom allreduce failed with name 'amdsmi_shut_down' is not defined`), which kept `SGLANG_USE_1STAGE_ALLREDUCE=1` off every two-card host without the binding. Also logs the path a group really reduces on (`[AR] All-reduce call path: custom all-reduce (...)`), the identity line for an all-reduce A/B. No change under `--disable-custom-all-reduce`, the launcher default. Serving A/B: RAD-2. |
 
 ### MoE serving and routing
 
@@ -209,7 +210,7 @@ can be proposed upstream. `Partial` requires a fresh comparison with upstream be
 
 | Component | Version |
 |---|---|
-| SGLang | v0.5.22 plus this 86-patch series |
+| SGLang | v0.5.22 plus this 87-patch series |
 | transformers | 5.19.0 |
 | Triton | 3.6.0 |
 | PyTorch | 2.11.0+rocm7.2 |

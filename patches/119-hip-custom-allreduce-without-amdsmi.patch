@@ -1,0 +1,73 @@
+diff --git a/python/sglang/srt/distributed/device_communicators/custom_all_reduce_utils.py b/python/sglang/srt/distributed/device_communicators/custom_all_reduce_utils.py
+index 6656143..0d7c673 100644
+--- a/python/sglang/srt/distributed/device_communicators/custom_all_reduce_utils.py
++++ b/python/sglang/srt/distributed/device_communicators/custom_all_reduce_utils.py
+@@ -43,6 +43,7 @@ if _is_musa:
+     except ImportError as e:
+         logger.warning("Failed to import pymtml with %r", e)
+ 
++_amdsmi_available = False
+ if _is_hip:
+     try:
+         from amdsmi import (
+@@ -52,6 +53,8 @@ if _is_hip:
+             amdsmi_shut_down,
+             amdsmi_topo_get_link_type,
+         )
++
++        _amdsmi_available = True
+     except ImportError as e:
+         logger.warning("Failed to import amdsmi with %r", e)
+ 
+@@ -335,6 +338,10 @@ def with_nvml_context(fn: Callable[_P, _R]) -> Callable[_P, _R]:
+     @wraps(fn)
+     def wrapper(*args: _P.args, **kwargs: _P.kwargs) -> _R:
+         if _is_hip:
++            if not _amdsmi_available:
++                # No amdsmi binding to initialise; the wrapped query answers
++                # for itself (see is_full_nvlink).
++                return fn(*args, **kwargs)
+             try:
+                 amdsmi_init()
+                 return fn(*args, **kwargs)
+@@ -356,6 +363,12 @@ def is_full_nvlink(physical_device_ids: List[int], world_size: int) -> bool:
+         """
+         query if the set of gpus are fully connected by xgmi (1 hop)
+         """
++        if not _amdsmi_available:
++            # The XGMI topology cannot be queried without the amdsmi binding.
++            # PCIe-attached cards have no XGMI, so report "not fully linked":
++            # setup used to die here on an undefined amdsmi name, which kept
++            # the one-stage reduce off every two-card HIP host without amdsmi.
++            return False
+         handles = [amdsmi_get_processor_handles()[i] for i in physical_device_ids]
+         for i, handle in enumerate(handles):
+             for j, peer_handle in enumerate(handles):
+diff --git a/python/sglang/srt/distributed/parallel_state.py b/python/sglang/srt/distributed/parallel_state.py
+index 4524b21..13bf799 100644
+--- a/python/sglang/srt/distributed/parallel_state.py
++++ b/python/sglang/srt/distributed/parallel_state.py
+@@ -530,6 +530,23 @@ class GroupCoordinator:
+                 )
+ 
+             if is_hip():
++                # Setup can leave the communicator disabled without raising, so
++                # name the path this group reduces on (the disabled branch
++                # below logs its own line).
++                if self.ca_comm is not None and not getattr(
++                    self.ca_comm, "disabled", False
++                ):
++                    logger.info(
++                        "[AR] All-reduce call path: custom all-reduce (%s, group %s)",
++                        type(self.ca_comm).__name__,
++                        group_name,
++                    )
++                else:
++                    logger.info(
++                        "[AR] All-reduce call path: NCCL (custom AR setup did "
++                        "not engage, group %s)",
++                        group_name,
++                    )
+                 try:
+                     # Initialize a custom quick all-reduce implementation for AMD
+                     # when rocm >= gfx942. Quick reduce is designed as a
