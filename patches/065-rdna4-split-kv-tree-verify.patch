@@ -1,6 +1,6 @@
 diff --git a/python/sglang/kernels/ops/attention/tree_verify_attention.py b/python/sglang/kernels/ops/attention/tree_verify_attention.py
 new file mode 100644
-index 0000000000..e92fec5ac2
+index 00000000..e92fec5a
 --- /dev/null
 +++ b/python/sglang/kernels/ops/attention/tree_verify_attention.py
 @@ -0,0 +1,360 @@
@@ -365,17 +365,18 @@ index 0000000000..e92fec5ac2
 +    o.copy_(merged.to(o.dtype))
 +    return o
 diff --git a/python/sglang/srt/layers/attention/triton_backend.py b/python/sglang/srt/layers/attention/triton_backend.py
-index dfbde16777..5be8854fa9 100644
+index 277b7a99..44317887 100644
 --- a/python/sglang/srt/layers/attention/triton_backend.py
 +++ b/python/sglang/srt/layers/attention/triton_backend.py
-@@ -1,5 +1,6 @@
+@@ -1,6 +1,7 @@
  from __future__ import annotations
  
+ import contextlib
 +import os
  from dataclasses import dataclass
  from typing import TYPE_CHECKING, List, Optional
  
-@@ -40,6 +41,13 @@ from sglang.srt.model_executor.cuda_graph_config import (
+@@ -41,6 +42,13 @@ from sglang.srt.model_executor.cuda_graph_config import (
      cuda_graph_fully_disabled,
  )
  from sglang.srt.model_executor.forward_batch_info import ForwardBatch, ForwardMode
@@ -387,9 +388,9 @@ index dfbde16777..5be8854fa9 100644
 +# decode does. Off by default; SGLANG_TREE_VERIFY_SPLITKV=1 enables it (launch.sh --spec sets it).
 +_TREE_VERIFY_SPLITKV = os.environ.get("SGLANG_TREE_VERIFY_SPLITKV", "") in ("1", "true", "True")
  from sglang.srt.runtime_context import get_exec, get_parallel, get_schedule, get_spec
+ from sglang.srt.speculative.eagle_utils import per_step_draft_out_cache_loc
  from sglang.srt.speculative.spec_utils import (
-     draft_kv_indices_buffer_width,
-@@ -1817,6 +1825,44 @@ class TritonAttnBackend(AttentionBackend):
+@@ -1893,6 +1901,44 @@ class TritonAttnBackend(AttentionBackend):
          ):
              return o
  

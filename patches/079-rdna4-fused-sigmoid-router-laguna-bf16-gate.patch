@@ -1,8 +1,8 @@
 diff --git a/python/sglang/srt/layers/moe/topk.py b/python/sglang/srt/layers/moe/topk.py
-index f57c1727..0fd8ce27 100644
+index dc1c0165..cab5018c 100644
 --- a/python/sglang/srt/layers/moe/topk.py
 +++ b/python/sglang/srt/layers/moe/topk.py
-@@ -923,8 +923,15 @@ def fused_topk(
+@@ -1335,8 +1335,15 @@ def fused_topk(
                  topk_weights *= (
                      routed_scaling_factor if routed_scaling_factor is not None else 1.0
                  )
@@ -21,26 +21,58 @@ index f57c1727..0fd8ce27 100644
                  moe_fused_gate as _jit_moe_fused_gate,
              )
 diff --git a/python/sglang/srt/models/cohere2_moe.py b/python/sglang/srt/models/cohere2_moe.py
-index aa3e39a2..1ca05dce 100644
+index 4af05971..cda967a4 100644
 --- a/python/sglang/srt/models/cohere2_moe.py
 +++ b/python/sglang/srt/models/cohere2_moe.py
-@@ -248,7 +248,10 @@ class Cohere2MoeSparseMoeBlock(nn.Module):
-         self.norm_topk_prob = getattr(config, "norm_topk_prob", True)
+@@ -274,14 +274,6 @@ class Cohere2MoeSparseMoeBlock(nn.Module):
+             prefix=add_prefix("gate", prefix),
+         )
  
-         if self.expert_selection_fn == "sigmoid":
--            custom_routing_function = cohere2_sigmoid_topk
-+            # The generic TopK path now has the same sigmoid semantics and can
-+            # use the fused Triton router on HIP. Keeping the legacy custom
-+            # callable here would bypass that fused path.
+-        self.topk = TopK(
+-            top_k=self.top_k,
+-            renormalize=self.norm_topk_prob,
+-            custom_routing_function=custom_routing_function,
+-            scoring_func=scoring_func,
+-            layer_id=layer_id,
+-        )
+-
+         self.experts = FusedMoE(
+             num_experts=config.num_experts,
+             top_k=self.top_k,
+@@ -295,6 +287,28 @@ class Cohere2MoeSparseMoeBlock(nn.Module):
+             # The decoder reads this buffer on another stream, so in-place races it.
+             inplace=False,
+         )
++
++        if (
++            self.expert_selection_fn == "sigmoid"
++            and not self.norm_topk_prob
++            and self.experts.runner_backend.is_triton()
++        ):
++            # RDNA4 patch 079: upstream keeps the legacy `cohere2_sigmoid_topk`
++            # torch callable for the unnormalized router so the TRT-LLM native
++            # RoutingMethodType.Sigmoid is never bypassed into. On the Triton
++            # runner (every gfx1201 preset) that callable only skips the fused
++            # Triton gate, so North-Mini-Code (norm_topk_prob=False) routes
++            # through the generic TopK as on v0.5.22; other runners keep
++            # upstream's choice.
 +            custom_routing_function = None
-             scoring_func = "sigmoid"
-             routing_method_type = (
-                 RoutingMethodType.SigmoidRenorm
++
++        self.topk = TopK(
++            top_k=self.top_k,
++            renormalize=self.norm_topk_prob,
++            custom_routing_function=custom_routing_function,
++            scoring_func=scoring_func,
++            layer_id=layer_id,
++        )
+         self.topk.bind_runner_backend(
+             self.experts.runner_backend,
+             routing_method_type=self.experts.routing_method_type,
 diff --git a/python/sglang/srt/models/laguna.py b/python/sglang/srt/models/laguna.py
-index c424e326..8ec955bf 100644
+index 67c987d5..a84be7e5 100644
 --- a/python/sglang/srt/models/laguna.py
 +++ b/python/sglang/srt/models/laguna.py
-@@ -122,7 +122,7 @@ class LagunaMoEGate(nn.Module):
+@@ -118,7 +118,7 @@ class LagunaMoEGate(nn.Module):
      ):
          super().__init__()
          self.weight = nn.Parameter(
@@ -49,7 +81,7 @@ index c424e326..8ec955bf 100644
          )
          # Released checkpoint stores this under `mlp.experts.e_score_correction_bias`
          # (load_weights remaps it) but every value is 0.0; zero-init keeps us
-@@ -133,7 +133,11 @@ class LagunaMoEGate(nn.Module):
+@@ -129,7 +129,11 @@ class LagunaMoEGate(nn.Module):
          )
  
      def forward(self, hidden_states: torch.Tensor) -> torch.Tensor:
@@ -63,7 +95,7 @@ index c424e326..8ec955bf 100644
  
  class LagunaMoE(nn.Module):
 diff --git a/test/registered/unit/layers/moe/test_rdna4_sigmoid_topk.py b/test/registered/unit/layers/moe/test_rdna4_sigmoid_topk.py
-index b7350846..4aff91b1 100644
+index b7350846..27b2e0a5 100644
 --- a/test/registered/unit/layers/moe/test_rdna4_sigmoid_topk.py
 +++ b/test/registered/unit/layers/moe/test_rdna4_sigmoid_topk.py
 @@ -1,5 +1,6 @@

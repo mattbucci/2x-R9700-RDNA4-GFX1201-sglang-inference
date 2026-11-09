@@ -1,8 +1,8 @@
 diff --git a/python/sglang/srt/layers/attention/triton_backend.py b/python/sglang/srt/layers/attention/triton_backend.py
-index 409f30f..18042df 100644
+index 604fd68e..d3ef73a3 100644
 --- a/python/sglang/srt/layers/attention/triton_backend.py
 +++ b/python/sglang/srt/layers/attention/triton_backend.py
-@@ -54,6 +54,10 @@ _TREE_VERIFY_SPLITKV = os.environ.get("SGLANG_TREE_VERIFY_SPLITKV", "") in ("1",
+@@ -55,6 +55,10 @@ _TREE_VERIFY_SPLITKV = os.environ.get("SGLANG_TREE_VERIFY_SPLITKV", "") in ("1",
  # RDNA4 R97-J: route short cache-hit extends (K <= MAX new tokens on a prefix >= MIN_PREFIX) through the
  # split-KV verify kernel. 0 (default) = off; the A/B receipt sets the shipped value.
  _EXTEND_SPLITKV_MAX = int(os.environ.get("SGLANG_EXTEND_SPLITKV_MAX_TOKENS", "0") or 0)
@@ -12,8 +12,8 @@ index 409f30f..18042df 100644
 +_EXTEND_SPLITKV_TILE = int(os.environ.get("SGLANG_EXTEND_SPLITKV_TILE", "64") or 64)
  _EXTEND_SPLITKV_MIN_PREFIX = int(os.environ.get("SGLANG_EXTEND_SPLITKV_MIN_PREFIX", "4096") or 0)
  from sglang.srt.runtime_context import get_exec, get_parallel, get_schedule, get_spec
- from sglang.srt.speculative.spec_utils import (
-@@ -1897,46 +1901,69 @@ class TritonAttnBackend(AttentionBackend):
+ from sglang.srt.speculative.eagle_utils import per_step_draft_out_cache_loc
+@@ -1973,46 +1977,69 @@ class TritonAttnBackend(AttentionBackend):
              and forward_batch.extend_prefix_lens_cpu[0] >= _EXTEND_SPLITKV_MIN_PREFIX
          ):
              n_new = int(forward_batch.extend_seq_lens_cpu[0])

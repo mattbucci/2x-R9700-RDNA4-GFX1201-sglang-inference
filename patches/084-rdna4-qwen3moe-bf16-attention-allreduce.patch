@@ -1,16 +1,16 @@
 diff --git a/python/sglang/srt/models/qwen3_moe.py b/python/sglang/srt/models/qwen3_moe.py
-index 5cb3b37161..38b2ebeafc 100644
+index 41efdad5..589bf1cf 100644
 --- a/python/sglang/srt/models/qwen3_moe.py
 +++ b/python/sglang/srt/models/qwen3_moe.py
-@@ -31,6 +31,7 @@ from sglang.srt.eplb.expert_location import ModelConfigForExpertLocation
- from sglang.srt.eplb.expert_location_dispatch import ExpertLocationDispatchInfo
+@@ -30,6 +30,7 @@ from sglang.srt.eplb.expert_distribution import get_global_expert_distribution_r
+ from sglang.srt.eplb.expert_location import ModelConfigForExpertLocation
  from sglang.srt.layers.aux_hidden_states import AuxHiddenStateAccumulator
  from sglang.srt.layers.layer_boundary import (
 +    PLAIN_ADD_BF16_SUM,
      append_stages,
      declare_attn,
      declare_ffn,
-@@ -891,7 +892,12 @@ class Qwen3MoeDecoderLayer(nn.Module):
+@@ -878,7 +879,12 @@ class Qwen3MoeDecoderLayer(nn.Module):
          is_layer_sparse = True
          is_next_layer_sparse = True
          return (
