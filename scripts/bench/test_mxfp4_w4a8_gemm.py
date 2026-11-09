@@ -21,10 +21,11 @@ import torch
 sys.path.insert(0, os.path.join(os.environ.get("SGLANG_DIR", "/data/sgl-v0522"), "python"))
 from sglang.kernels.ops.gemm.mxfp4_w4a8_rdna4 import (  # noqa: E402
     dequant_mxfp4_reference,
-    mxfp4_w4a8_gemm,
+    mxfp4_w4a8_linear,
+    per_token_quant_fp8_triton,
     select_config,
 )
-from sglang.kernels.ops.quantization.fp8_kernel import fp8_dtype, scaled_fp8_quant  # noqa: E402
+from sglang.kernels.ops.quantization.fp8_kernel import fp8_dtype  # noqa: E402
 
 # Qwen3.8-27B per-rank (TP=2) dense shapes from the Quark checkpoint header, (N, K)
 DEFAULT_SHAPES = [(17408, 5120), (5120, 8704), (10240, 5120), (6144, 5120), (5120, 3072), (48, 5120)]
@@ -71,9 +72,12 @@ def main():
         w_ref = dequant_mxfp4_reference(w, ws)  # fp32 (N, K)
         for M in ms:
             x = torch.randn(M, K, device=dev, dtype=torch.bfloat16)
-            a_q, a_s = scaled_fp8_quant(x, use_per_token_if_dynamic=True)
-            y = mxfp4_w4a8_gemm(a_q, a_s, w, ws)
-            ref = (a_q.to(torch.float32) * a_s.to(torch.float32)) @ w_ref.T
+            y = mxfp4_w4a8_linear(x, w, ws)  # serving entry: bf16 x (A16 GEMV at M<=2, Triton fp8 quant + WMMA above)
+            if M <= 2:
+                ref = x.to(torch.float32) @ w_ref.T  # W4A16: exact activations
+            else:
+                a_q, a_s = per_token_quant_fp8_triton(x)  # W4A8: reference on the same fp8 activations (kernel numerics only)
+                ref = (a_q.to(torch.float32) * a_s.to(torch.float32)) @ w_ref.T
             err = (y.to(torch.float32) - ref).abs().max().item()
             scale = ref.abs().max().item() + 1e-6
             rel = err / scale
@@ -89,7 +93,7 @@ def main():
                 def run_kernel():
                     wc, sc = ws_list[i[0] % ncopy]
                     i[0] += 1
-                    return mxfp4_w4a8_gemm(a_q, a_s, wc, sc)
+                    return mxfp4_w4a8_linear(x, wc, sc)
 
                 t_kernel = timeit(run_kernel)
                 w_bf16_list = [w_ref.to(torch.bfloat16) for _ in range(min(ncopy, max(1, (300 << 20) // (N * K * 2))))]

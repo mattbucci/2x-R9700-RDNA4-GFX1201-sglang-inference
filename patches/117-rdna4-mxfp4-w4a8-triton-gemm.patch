@@ -1,9 +1,9 @@
 diff --git a/python/sglang/kernels/ops/gemm/mxfp4_w4a8_rdna4.py b/python/sglang/kernels/ops/gemm/mxfp4_w4a8_rdna4.py
 new file mode 100644
-index 00000000..e7609618
+index 00000000..77bedb3d
 --- /dev/null
 +++ b/python/sglang/kernels/ops/gemm/mxfp4_w4a8_rdna4.py
-@@ -0,0 +1,330 @@
+@@ -0,0 +1,360 @@
 +"""RDNA4 (gfx1201) dense MXFP4-weight / FP8-activation GEMM in Triton — RDNA4 patch 117 (RAD-11).
 +
 +SGLang's Quark MXFP4 scheme (``quark_w4a4_mxfp4.py``) runs its dense linears through aiter kernels that
@@ -149,6 +149,7 @@ index 00000000..e7609618
 +    BLOCK_K: tl.constexpr,
 +    DECODE_LUT: tl.constexpr,
 +    GROUPED: tl.constexpr,  # reduce the 16-byte scale groups first, then apply the e8m0 scale once per group
++    A_IS_FP8: tl.constexpr,  # False: A is bf16/fp16 and no per-token scale is applied (W4A16 decode)
 +):
 +    """Decode-shaped GEMV for M <= BLOCK_M: no WMMA; the W tile is (BLOCK_N, BLOCK_K/2) bytes read once,
 +    decoded through the LUT, multiplied against the A rows and reduced over K in registers."""
@@ -193,10 +194,37 @@ index 00000000..e7609618
 +                w_hi = _decode_e2m1_scaled(wb >> 4, sb)
 +            acc += tl.sum(a_even[:, None, :] * w_lo[None, :, :], axis=2)
 +            acc += tl.sum(a_odd[:, None, :] * w_hi[None, :, :], axis=2)
-+    a_s = tl.load(AS + offs_m, mask=mask_m, other=0.0)
-+    acc = acc * a_s[:, None]
++    if A_IS_FP8:
++        a_s = tl.load(AS + offs_m, mask=mask_m, other=0.0)
++        acc = acc * a_s[:, None]
 +    c_ptrs = C + offs_m[:, None] * stride_cm + offs_n[None, :] * stride_cn
 +    tl.store(c_ptrs, acc.to(C.dtype.element_ty), mask=mask_m[:, None] & mask_n[None, :])
++
++
++@triton.jit
++def _per_token_quant_fp8_kernel(X, Q, S, K, stride_x, stride_q, FP8_MAX: tl.constexpr, BLOCK_K: tl.constexpr):
++    row = tl.program_id(0)
++    offs = tl.arange(0, BLOCK_K)
++    m = offs < K
++    x = tl.load(X + row * stride_x + offs, mask=m, other=0.0).to(tl.float32)
++    amax = tl.maximum(tl.max(tl.abs(x), axis=0), 1e-12)
++    scale = amax / FP8_MAX
++    q = x / scale
++    q = tl.minimum(tl.maximum(q, -FP8_MAX), FP8_MAX)
++    tl.store(Q + row * stride_q + offs, q.to(Q.dtype.element_ty), mask=m)
++    tl.store(S + row, scale)
++
++
++def per_token_quant_fp8_triton(x: torch.Tensor):
++    """One launch for the whole (M, K) activation: fp8 values + fp32 per-token scales (M, 1)."""
++    from sglang.kernels.ops.quantization.fp8_kernel import fp8_dtype, fp8_max
++
++    M, K = x.shape
++    q = torch.empty((M, K), dtype=fp8_dtype, device=x.device)
++    s_ = torch.empty((M, 1), dtype=torch.float32, device=x.device)
++    _per_token_quant_fp8_kernel[(M,)](x, q, s_, K, x.stride(0), q.stride(0), FP8_MAX=float(fp8_max),
++                                       BLOCK_K=triton.next_power_of_2(K), num_warps=4 if K <= 4096 else 8, num_stages=0)
++    return q, s_
 +
 +
 +# Defaults by M. `SGLANG_MXFP4_W4A8_CONFIG="BM,BN,BK,warps"` overrides for tuning.
@@ -266,7 +294,7 @@ index 00000000..e7609618
 +    assert k_packed * 2 == K, f"packed K {k_packed} does not match activation K {K}"
 +    assert w_scale.shape == (N, K // 32), f"scale shape {tuple(w_scale.shape)} != {(N, K // 32)}"
 +    assert K % 32 == 0
-+    a_s = a_s.reshape(M).to(torch.float32)
++    a_s = a_s.reshape(M).to(torch.float32) if a_s is not None else torch.ones(M, dtype=torch.float32, device=a_q.device)
 +    if out is None:
 +        out = torch.empty((M, N), dtype=out_dtype, device=a_q.device)
 +    # Measured 2026-11-09 (N=17408, K=5120): GEMV BN=8/BK=512/1 warp 125 us at M=1 (block-FP8 GEMM 165 us),
@@ -281,7 +309,8 @@ index 00000000..e7609618
 +            M, N, K,
 +            a_q.stride(0), a_q.stride(1), w.stride(0), w.stride(1), w_scale.stride(0), w_scale.stride(1), out.stride(0), out.stride(1),
 +            BLOCK_M=bm, BLOCK_N=bn, BLOCK_K=bk, DECODE_LUT=_decode_lut(),
-+            GROUPED=os.environ.get("SGLANG_MXFP4_GEMV_GROUPED", "0") == "1", num_warps=nw, num_stages=0,
++            GROUPED=os.environ.get("SGLANG_MXFP4_GEMV_GROUPED", "0") == "1",
++            A_IS_FP8=(a_q.dtype != torch.bfloat16 and a_q.dtype != torch.float16), num_warps=nw, num_stages=0,
 +        )
 +        return out
 +    cfg = select_config(M, N, K)
@@ -307,14 +336,15 @@ index 00000000..e7609618
 +    out_dtype: Optional[torch.dtype] = None,
 +) -> torch.Tensor:
 +    """bf16/fp16 activations -> per-token fp8 -> MXFP4 GEMM. Drop-in for ``F.linear`` on the Quark scheme."""
-+    # scaled_fp8_quant falls back to a torch per-token quant on HIP without aiter (the same path the
-+    # compressed-tensors per-channel FP8 linears take); sglang_per_token_quant_fp8 needs the CUDA op.
-+    from sglang.kernels.ops.quantization.fp8_kernel import scaled_fp8_quant
-+
 +    shape = x.shape
 +    x2 = x.reshape(-1, shape[-1]).contiguous()
-+    a_q, a_s = scaled_fp8_quant(x2, use_per_token_if_dynamic=True)
-+    y = mxfp4_w4a8_gemm(a_q, a_s, w, w_scale, out_dtype=out_dtype or x.dtype)
++    M = x2.shape[0]
++    if M <= 2 and os.environ.get("SGLANG_MXFP4_GEMV", "1") == "1":
++        # W4A16 decode: the GEMV reads the bf16 activation directly; no quant launches at all
++        y = mxfp4_w4a8_gemm(x2, None, w, w_scale, out_dtype=out_dtype or x.dtype)
++    else:
++        a_q, a_s = per_token_quant_fp8_triton(x2)  # one launch (the HIP scaled_fp8_quant fallback is ~8 torch ops)
++        y = mxfp4_w4a8_gemm(a_q, a_s, w, w_scale, out_dtype=out_dtype or x.dtype)
 +    if bias is not None:
 +        y = y + bias
 +    return y.reshape(*shape[:-1], w.shape[0])
