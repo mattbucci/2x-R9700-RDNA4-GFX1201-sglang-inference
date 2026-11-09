@@ -15,7 +15,7 @@ import argparse
 import os
 import sys
 
-sys.path.insert(0, "/data/sgl-v0522/python")
+sys.path.insert(0, os.path.join(os.environ.get("SGLANG_DIR", "/data/sgl-v0522"), "python"))
 
 
 def accepts(compiler, tag, tokenizer, text: str) -> bool:

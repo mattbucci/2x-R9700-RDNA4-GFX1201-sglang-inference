@@ -26,7 +26,7 @@ import sys
 import torch
 
 # Upstream modules that need a dependency this stack never installs.
-KNOWN_MISSING_DEPS = {"cutlass"}  # inkling (NVIDIA-only)
+KNOWN_MISSING_DEPS = {"cutlass", "aiter"}  # inkling (NVIDIA-only); glm5_next (MI300 aiter)
 
 
 class _Props:

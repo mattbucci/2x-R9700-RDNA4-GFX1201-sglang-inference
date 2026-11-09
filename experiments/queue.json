@@ -1,6 +1,6 @@
 {
  "schema_version": 1,
- "updated_at": "2026-11-08",
+ "updated_at": "2026-11-09",
  "ordering": "easiest_to_test_then_hardest",
  "baseline": {
   "sglang": "v0.5.15",
@@ -133,7 +133,7 @@
    "progress": {
     "native_fp8_profile": "complete (2026-07-19)",
     "kv_split_resweep": "complete (2026-07-19) -- 64 holds",
-    "exact_shape_tuner": "done 2026-10-31 as R97-L: qwen38 shipped (patch 106); Laguna swept with --preset laguna, kernel wins but serving A/B null (\u00b10.5 %) \u2014 leg closed as 'tuned, no headroom at Laguna's shapes'"
+    "exact_shape_tuner": "done 2026-10-31 as R97-L: qwen38 shipped (patch 106); Laguna swept with --preset laguna, kernel wins but serving A/B null (±0.5 %) — leg closed as 'tuned, no headroom at Laguna's shapes'"
    },
    "receipts": [
     "benchmarks/profiling/laguna-native-decode-profile-2026-07-19.json",
@@ -232,7 +232,7 @@
    "depends_on": [
     "R97-D"
    ],
-   "next_action": "CPU half done 2026-11-02: derive_scored_lengths()/completion_reserve() in probe_256k_tooluse.py (canonical seven requested rungs collapse onto context_length - reserve), tooluse_row() per-row contract in generate_charts.py (context_length, requested/scored lengths), ceiling text says \"no ceiling below <ctx>\" when the top rung passes, x ticks = union of rows. Next: the serial sweep \u2014 one preset at a time, 3 seeds, --filler-profile agentic --multi-turn, T=1.0/top-p 0.95, --enable-deterministic-inference; add a tooluse_row() per preset as its receipts land (a declared row without receipts fails the chart closed). Fold in Nemotron 2K/8K budget arms and the Devstral KV_DTYPE control.",
+   "next_action": "CPU half done 2026-11-02: derive_scored_lengths()/completion_reserve() in probe_256k_tooluse.py (canonical seven requested rungs collapse onto context_length - reserve), tooluse_row() per-row contract in generate_charts.py (context_length, requested/scored lengths), ceiling text says \"no ceiling below <ctx>\" when the top rung passes, x ticks = union of rows. Next: the serial sweep — one preset at a time, 3 seeds, --filler-profile agentic --multi-turn, T=1.0/top-p 0.95, --enable-deterministic-inference; add a tooluse_row() per preset as its receipts land (a declared row without receipts fails the chart closed). Fold in Nemotron 2K/8K budget arms and the Devstral KV_DTYPE control.",
    "test_gate": [
     "Rung sets are derived from the served context_length; no per-preset length table exists",
     "Short-context presets produce zero depth-shortfall rungs from rungs exceeding their context",
@@ -290,7 +290,7 @@
     "FP8-native-follow-on native_fp8_profile (complete 2026-07-19)",
     "FP8-native-follow-on kv_split_resweep (complete 2026-07-19)"
    ],
-   "next_action": "Executed 2026-10-31 for Qwen3.8-27B-FP8: correctness-gated tuner scripts/bench/tune_fp8_block_gemm.py, patch 106 (six per-rank shapes incl. the replicated DeltaNet projections), serving A/B cold prefill 2.5x/2.1x/1.5x at 7.3K/58K/197K and decode +2-4 % on nospec and DSpark, capabilities 5/5; receipt benchmarks/profiling/fp8-block-gemm-tune-qwen38-2026-10-31.md. Laguna: swept the same day (four dense shapes), kernel-level wins but the order-reversed serving A/B is within \u00b10.5 % \u2014 null, not shipped, spec closed. BLOCK_SIZE_M 64/128 tiles ran clean on Triton 3.6 (the recorded hang was an older Triton) and are in the shipped files.",
+   "next_action": "Executed 2026-10-31 for Qwen3.8-27B-FP8: correctness-gated tuner scripts/bench/tune_fp8_block_gemm.py, patch 106 (six per-rank shapes incl. the replicated DeltaNet projections), serving A/B cold prefill 2.5x/2.1x/1.5x at 7.3K/58K/197K and decode +2-4 % on nospec and DSpark, capabilities 5/5; receipt benchmarks/profiling/fp8-block-gemm-tune-qwen38-2026-10-31.md. Laguna: swept the same day (four dense shapes), kernel-level wins but the order-reversed serving A/B is within ±0.5 % — null, not shipped, spec closed. BLOCK_SIZE_M 64/128 tiles ran clean on Triton 3.6 (the recorded hang was an older Triton) and are in the shipped files.",
    "test_gate": [
     "Normal-kernel tuner covers (N,K)=(512,2048) and (2048,256) at M in {1, 2048, 8192}",
     "Every retained config passes cosine>=0.999 vs torch FP8 dequant AND the serving kernel, and a graph-replay with zero OOB at K=256",
@@ -396,7 +396,7 @@
    "status": "completed",
    "resource": "gpu",
    "depends_on": [
-    "the experiment loop's current queue (fp8 QK AWQ gates, R97-I sweep) finishing \u2014 user decision 2026-11-02: full run, only after we are done experimenting"
+    "the experiment loop's current queue (fp8 QK AWQ gates, R97-I sweep) finishing — user decision 2026-11-02: full run, only after we are done experimenting"
    ],
    "next_action": "Done. Score the qwen38 v5 omp lane (issue #22, user's go) to close the comparison and decide #34.",
    "test_gate": [
@@ -426,18 +426,19 @@
   {
    "id": "REBASE-0523",
    "spec": "19-vllm-radiance-parity.md",
-   "status": "ready",
-   "resource": "cpu+gpu",
+   "status": "in_progress",
+   "resource": "gpu",
    "depends_on": [
-    "RAD-0 (benchmark the shipped tree first)",
-    "CPU half may overlap FLINT-1's rollout; GPU A/Bs wait for the GPUs"
+    "CPU half done 2026-11-09 (candidate series staged)",
+    "FLINT-1 cell finished (GPUs free); the GPU half is a dedicated slot, not between Flint cells"
    ],
-   "next_action": "Rebase the 82-patch series onto SGLang v0.5.23 from the dry run at /data/sgl-v0523-dryrun/sglang: regenerate 004,027,077,080,082,084,096,105 (3-way clean), re-anchor 062,065,107,110, port 005,058,079,103,104 by hand (079 needs a North-Mini router decision), drop 063 (upstreamed). sglang-kernel 0.4.10 HIP rebuild. Then decode/extend/verify-route/mamba A/Bs on the new tree.",
+   "next_action": "GPU half on the staged 81-patch candidate (/data/sgl-v0523-dryrun/patches-v0523, worktree wt-v0523, repo branch rebase-v0523-candidate; plan in benchmarks/radiance-parity/notes/agent-rebase-0523-cpu-half.md): build env sglang-triton36-v0523 (openai 2.8.0), rebuild sglang-kernel 0.4.10 + AWQ/skinny GEMMs, registry preflight + publish smoke, GPU kernel tests (082 fused K/V alloc, 058 JIT op, 005/106 block-FP8), boots per preset, A/Bs both orders: 079 router parity on north-mini (greedy identity + tok/s), decode 7K/58K/197K qwen38 + coder-reap-25b (#41229), qwen38 197K prefill + 1-token turn with 108 and 107/110 (#45099/#45098), DSpark/EAGLE3 accept length (#43640), hybrid no_buffer vs extra_buffer (#44971/#45213), 103 dcode preflight. Then copy the series over patches/, drop 063, update patches/README.md, PATCHES.md, README.md.",
    "test_gate": [
     "replay gate green: strict apply, byte/mode-identical, second apply rejected",
     "validate_capabilities 5/5 on qwen38, flint, laguna, north-mini",
     "decode_ab both orders equal to or better than v0.5.22 at 24/58K/197K on qwen38"
-   ]
+   ],
+   "result": "2026-11-09 CPU half: 82 -> 81 patches on v0.5.23 (64 byte-clean, 12 re-anchored: 004 027 062 065 077 080 082 084 096 105 107 110; 5 hand-ported: 005 058 079 103 104; 063 dropped, upstreamed in #44198). Gates: strict pristine replay 81/81, replay tree == branch tip, 67 touched files differ from /data/sgl-v0522 only where upstream changed them, double apply 81/81 rejected, pyflakes = v0.5.22 residue, import smoke 98/100 touched modules (openai 2.8.0 pin; glm4_moe driver-init) and 0/259 models broken, CPU tests 420 pass / 24 environmental. Open decisions for the GPU day: 079 North-Mini route (fused Triton gate as v0.5.22 vs upstream torch callable; config.json confirms norm_topk_prob=false, sigmoid), 103 merge rule now upstream semantics + function_call fold, 058 torch vs upstream Triton reconstruct."
   },
   {
    "id": "RAD-2",

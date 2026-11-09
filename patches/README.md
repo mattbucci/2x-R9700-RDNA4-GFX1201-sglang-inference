@@ -1,10 +1,10 @@
 # SGLang v0.5.22 RDNA4 patches
 
-This directory contains the **76 active numeric patches** applied to pristine SGLang v0.5.22 for the
+This directory contains the **82 active numeric patches** applied to pristine SGLang v0.5.22 for the
 2× Radeon AI PRO R9700 serving stack. The default tree is `/data/sgl-v0522`; the default conda environment
 is `sglang-triton36-v0522`.
 
-Patch 072 is not part of the series because transformers 5.12.1 supplies the Gemma 4 unified configuration
+Patch 072 is not part of the series because transformers (5.12.1 and later) supplies the Gemma 4 unified configuration
 and processor. Patch 083 adds the tokenizer-backend correction required for Mistral checkpoints that ship
 `tekken.json`. Patch 003 includes safe fallbacks for both the base CUDA-only `sgl_kernel` imports and the
 optional `infllm_v2` extension reported in [issue #3](https://github.com/mattbucci/2x-R9700-RDNA4-GFX1201-sglang-inference/issues/3). On the v0.5.16 rebase, patch 059 was dropped because its FuseEP dispatcher target was removed upstream, and patch 097 was added as the JIT fused-gate None-bias guard. The v0.5.18 rebase went 69 → 70: 26 patches were regenerated for upstream's kernel-tree relocation (`sgl-kernel/` → `python/sglang/kernels/aot/`, `sglang.jit_kernel` → `sglang.kernels.ops`), the upstreamed max-head sizing was dropped from 077, and patch 098 was added so `gemma4_unified` resolves to transformers' native `Gemma4UnifiedConfig` (the `Gemma4Config` alias broke the encoder-free 12B at init). The v0.5.20 rebase kept 70 (the index then grew to 73 with 103, the 3090's 066 port): 23 patches were regenerated, mostly for the msgspec-record `ServerArgs` (`arg_groups/fields`, resolution hooks) and upstream's gfx1250 branches; hunks that landed upstream were dropped from 011, 049, 074 and 096, and 073 was rewritten because its cleanly-applying hunk referenced `is_cuda`/`is_musa`/`is_npu` helpers that `overrides.py` no longer imports. The v0.5.22 rebase stayed at 73: 099 was dropped (the DSpark worker takes `pp_proxy_tensors` upstream), 104 was added (upstream's new WNA16 expert-slot mapping indexed the fused shared expert past the EPLB map and GLM-4.5-Air AWQ would not load), and 26 patches were regenerated, chiefly because upstream deleted `layers/communicator.py` for the `layer_boundary` stage framework — the HIP FP32 attention-TP all-reduce (001) now lives in `layer_boundary/ops.attn_tp_all_reduce`, its per-model opt-out (080/084/085) is the `PLAIN_ADD_BF16_SUM` residual-update policy, and the Qwen3.5 DeltaNet replication rides upstream's `ReplicatedParallelGroup`; the block-FP8 GEMM moved to `kernels/ops/gemm/fp8_kernel.py` (005); 073 now pins `no_buffer` on gfx1201 because v0.5.22 lists HIP as an `extra_buffer` platform; upstreamed hunks were dropped from 055, 075, 096 and 098.
@@ -205,8 +205,8 @@ can be proposed upstream. `Partial` requires a fresh comparison with upstream be
 
 | Component | Version |
 |---|---|
-| SGLang | v0.5.22 plus this 73-patch series |
-| transformers | 5.12.1 |
+| SGLang | v0.5.22 plus this 82-patch series |
+| transformers | 5.19.0 |
 | Triton | 3.6.0 |
 | PyTorch | 2.11.0+rocm7.2 |
 | ROCm | 7.2.3 |
