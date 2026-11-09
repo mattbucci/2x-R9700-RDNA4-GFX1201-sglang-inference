@@ -876,6 +876,39 @@ against FP8's 23.24 / 22.97 / 22.25 / 20.52** (−0.2 to −1.5 %, FP8 parity, n
 Disposition: the dense GEMV saving (~5 ms per step at the kernel level) does not reach the step; a per-kernel decode
 profile of both arms with graphs off is the next item, then the M > 32 repack path. FP8 stays the preset (#39).
 
+### RAD-6 — DFlash2 drafter on Qwen3.8 against DSpark, same session (2026-11-09)
+
+The drafter radiance's speculative arm uses (tcclaviger FP8 DFlash2, block 8) served through SGLang's `DFLASH` path on
+the qwen38 FP8 preset, against no speculation and the preset's DSpark draft: three boots in one session, canonical
+think-off sweep with the radix cache on, three runs per depth ([receipts](profiling/rad6-dflash-qwen38-2026-11-09/)).
+Cells are tok/s per run where the runs differ, with completion tokens in brackets where the answer changed.
+
+| arm | pool | 24 | 7.3K | 58K | 197K | prefill tok/s 7.3K / 58K / 197K | 29K copy turn | needle | accept |
+|---|---:|---:|---:|---|---|---|---:|---|---:|
+| no-spec | 525,548 | 23.2 | 22.9 | 22.2 | 20.5 | 1,798 / 1,459 / 945 | 44.5 s | 9/9 | – |
+| DFlash2 | 211,172 | 56.7 | 60.8 | 41.9, 52.0, 52.0 | 31.5, 37.7, 37.8 | 1,780 / 1,426 / 931 | 28.2 s | 8/9 | 3.60 |
+| DSpark | 206,324 | 45.2 | 57.8, 52.5, 52.5 | 46.0 [33], 35.2 [47], 35.4 [47] | 33.5 [37], 31.0 [49], 31.1 [49] | 1,779 / 1,443 / 938 | 32.4 s | 6/6, three 197K cells rejected | 3.50 |
+
+DFlash2 is 25 % faster than DSpark at 24 tokens, 16 % at 7.3K by median and 13 % shorter on the copy-heavy turn
+(29,467 tokens in, 600 out), with capabilities 4/4 on all three arms. At depth the session does not settle the order.
+Run 1 at each depth is a cold prefill and runs 2–3 are prefix hits; DSpark's greedy answer differs between the two
+states (33 against 47 tokens at 58K, 37 against 49 at 197K) and speculative tok/s over 33–49 tokens moves with the
+text. On the cold run at 197K, the one cell where both drafts stop at 37 tokens, DSpark leads 33.5 to
+31.5, and RAD-0's cache-off DSpark row (46.1 at 58K, 41.0 at 197K on a 45-token answer) sits above both DFlash2
+states. DFlash2's answers are stable across cache state, but its first request at a new depth takes about 0.2 s longer
+than the repeats (41.9 against 52.0 at 58K), a per-depth first-request cost for the cycle anatomy (RAD-16) to locate.
+Quality: DFlash2 missed one greedy needle cell, 131K at depth 0.5 (137,094 actual tokens, a reasoned "I don't have a
+secret password to share"), which no-spec and DSpark retrieve; DSpark's pool rejected the three 197K cells
+(208,296-token prompt against a 206,318 input limit), so its 197K retrieval is unmeasured in this session, not failed.
+Greedy output is byte-identical to no-spec on 1 of 6 identity probes under DFlash2.
+
+Disposition: the adoption gate (faster than DSpark at every depth including 197K with needle and capabilities green)
+is not met; **DSpark stays the qwen38 preset**. The radiance like-for-like row is the cold run, 56.7 / 60.4 / 41.9 /
+31.5 against 99.9 / 99.7 / 87.9 / 91.0. A control slot decides what this session could not: cold and warm runs
+separated by a cache flush on all three arms with 400-token cells next to the canonical 80
+(`scripts/bench/spec_cold_warm_bench.py`), the 131K needle at five depths greedy plus six sampled draws, and 190K
+needle cells that fit every pool.
+
 ## Evaluation methodology
 
 ### SWE-bench answer leakage through git history and the web (found 2026-09-18)

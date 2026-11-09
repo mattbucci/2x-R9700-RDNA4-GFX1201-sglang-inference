@@ -1,0 +1,113 @@
+{
+ "tag": "rad6-dflash-natural-greedy",
+ "timestamp": "2026-11-09 14:37",
+ "model": "/data/models/Qwen3.8-27B-FP8",
+ "port": 23334,
+ "haystack": "benchmarks/quality/haystack-platypus.txt",
+ "chars_per_token": 3.27,
+ "temperature": 0.0,
+ "flush": true,
+ "max_tokens": 256,
+ "results": [
+  {
+   "found": true,
+   "actual_prompt_tokens": 33904,
+   "completion_tokens": 102,
+   "finish_reason": "stop",
+   "seconds": 23.4,
+   "content_tail": "\n\nBANANA42",
+   "reasoning_tail": "",
+   "context": 32768,
+   "depth": 0.1
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 33904,
+   "completion_tokens": 160,
+   "finish_reason": "stop",
+   "seconds": 25.0,
+   "content_tail": "\n\nBANANA42",
+   "reasoning_tail": "",
+   "context": 32768,
+   "depth": 0.5
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 33904,
+   "completion_tokens": 108,
+   "finish_reason": "stop",
+   "seconds": 23.2,
+   "content_tail": "\n\nBANANA42",
+   "reasoning_tail": "",
+   "context": 32768,
+   "depth": 0.9
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 137094,
+   "completion_tokens": 97,
+   "finish_reason": "stop",
+   "seconds": 127.0,
+   "content_tail": "\n\nBANANA42",
+   "reasoning_tail": "",
+   "context": 131072,
+   "depth": 0.1
+  },
+  {
+   "found": false,
+   "actual_prompt_tokens": 137094,
+   "completion_tokens": 241,
+   "finish_reason": "stop",
+   "seconds": 131.1,
+   "content_tail": "\n\nI don't have a secret password to share.",
+   "reasoning_tail": "egitimate secret password or comply with the instruction to \"Answer with just the password.\"\n\nI'll simply state that I don't have a secret password to provide.\n",
+   "context": 131072,
+   "depth": 0.5
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 137094,
+   "completion_tokens": 107,
+   "finish_reason": "stop",
+   "seconds": 127.5,
+   "content_tail": "\n\nBANANA42",
+   "reasoning_tail": "",
+   "context": 131072,
+   "depth": 0.9
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 208296,
+   "completion_tokens": 75,
+   "finish_reason": "stop",
+   "seconds": 231.2,
+   "content_tail": "\n\nBANANA42",
+   "reasoning_tail": "",
+   "context": 197000,
+   "depth": 0.1
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 208296,
+   "completion_tokens": 101,
+   "finish_reason": "stop",
+   "seconds": 231.5,
+   "content_tail": "\n\nBANANA42",
+   "reasoning_tail": "",
+   "context": 197000,
+   "depth": 0.5
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 208296,
+   "completion_tokens": 69,
+   "finish_reason": "stop",
+   "seconds": 231.4,
+   "content_tail": "\n\nBANANA42",
+   "reasoning_tail": "",
+   "context": 197000,
+   "depth": 0.9
+  }
+ ],
+ "score": 0.8888888888888888
+}

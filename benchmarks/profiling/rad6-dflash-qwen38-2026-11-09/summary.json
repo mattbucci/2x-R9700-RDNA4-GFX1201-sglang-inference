@@ -1,0 +1,240 @@
+{
+ "experiment": "RAD-6",
+ "date": "2026-11-09",
+ "model": "/data/models/Qwen3.8-27B-FP8",
+ "drafter_dflash": "/data/models/Qwen3.8-27B-DFlash2-FP8-tcclaviger",
+ "method": "three boots in one session (nospec -> dflash -> dspark), radix cache on; decode_ab canonical think-off sweep 3 runs x 80 tokens (run 1 cold, runs 2-3 prefix hits); copyheavy_decode_bench 27000-token target + 600 tokens greedy; needle greedy with flush",
+ "arms": {
+  "nospec": {
+   "max_total_num_tokens": 525548,
+   "decode": [
+    {
+     "input_len": 24,
+     "runs_tps": [
+      23.18,
+      23.2,
+      23.19
+     ],
+     "runs_completion_tokens": [
+      80,
+      80,
+      80
+     ],
+     "median_tps": 23.194
+    },
+    {
+     "input_len": 7331,
+     "runs_tps": [
+      22.75,
+      22.9,
+      22.91
+     ],
+     "runs_completion_tokens": [
+      38,
+      38,
+      38
+     ],
+     "median_tps": 22.897
+    },
+    {
+     "input_len": 58483,
+     "runs_tps": [
+      22.03,
+      22.16,
+      22.16
+     ],
+     "runs_completion_tokens": [
+      33,
+      46,
+      46
+     ],
+     "median_tps": 22.158
+    },
+    {
+     "input_len": 197326,
+     "runs_tps": [
+      20.41,
+      20.49,
+      20.5
+     ],
+     "runs_completion_tokens": [
+      37,
+      37,
+      37
+     ],
+     "median_tps": 20.492
+    }
+   ],
+   "copy_heavy": {
+    "prompt_tokens": 29467,
+    "completion_tokens": 600,
+    "wall_s": 44.52,
+    "client_decode_tok_s": 13.48
+   },
+   "mean_accept_len": null,
+   "accept_len_samples": 0,
+   "needle": {
+    "found": 9,
+    "cells": 9,
+    "rejected_http_400": 0,
+    "misses": []
+   }
+  },
+  "dflash": {
+   "max_total_num_tokens": 211172,
+   "decode": [
+    {
+     "input_len": 24,
+     "runs_tps": [
+      56.71,
+      56.7,
+      56.71
+     ],
+     "runs_completion_tokens": [
+      80,
+      80,
+      80
+     ],
+     "median_tps": 56.705
+    },
+    {
+     "input_len": 7331,
+     "runs_tps": [
+      60.38,
+      60.84,
+      61.09
+     ],
+     "runs_completion_tokens": [
+      38,
+      38,
+      38
+     ],
+     "median_tps": 60.837
+    },
+    {
+     "input_len": 58483,
+     "runs_tps": [
+      41.88,
+      51.96,
+      52.02
+     ],
+     "runs_completion_tokens": [
+      46,
+      46,
+      46
+     ],
+     "median_tps": 51.959
+    },
+    {
+     "input_len": 197326,
+     "runs_tps": [
+      31.52,
+      37.72,
+      37.77
+     ],
+     "runs_completion_tokens": [
+      37,
+      37,
+      37
+     ],
+     "median_tps": 37.719
+    }
+   ],
+   "copy_heavy": {
+    "prompt_tokens": 29467,
+    "completion_tokens": 600,
+    "wall_s": 28.22,
+    "client_decode_tok_s": 21.26
+   },
+   "mean_accept_len": 3.6,
+   "accept_len_samples": 20,
+   "needle": {
+    "found": 8,
+    "cells": 9,
+    "rejected_http_400": 0,
+    "misses": [
+     {
+      "context": 131072,
+      "depth": 0.5,
+      "actual_prompt_tokens": 137094
+     }
+    ]
+   }
+  },
+  "dspark": {
+   "max_total_num_tokens": 206324,
+   "decode": [
+    {
+     "input_len": 24,
+     "runs_tps": [
+      45.19,
+      45.2,
+      45.18
+     ],
+     "runs_completion_tokens": [
+      80,
+      80,
+      80
+     ],
+     "median_tps": 45.188
+    },
+    {
+     "input_len": 7331,
+     "runs_tps": [
+      57.82,
+      52.45,
+      52.48
+     ],
+     "runs_completion_tokens": [
+      38,
+      38,
+      38
+     ],
+     "median_tps": 52.48
+    },
+    {
+     "input_len": 58483,
+     "runs_tps": [
+      46.04,
+      35.2,
+      35.35
+     ],
+     "runs_completion_tokens": [
+      33,
+      47,
+      47
+     ],
+     "median_tps": 35.35
+    },
+    {
+     "input_len": 197326,
+     "runs_tps": [
+      33.53,
+      30.97,
+      31.05
+     ],
+     "runs_completion_tokens": [
+      37,
+      49,
+      49
+     ],
+     "median_tps": 31.05
+    }
+   ],
+   "copy_heavy": {
+    "prompt_tokens": 29467,
+    "completion_tokens": 600,
+    "wall_s": 32.42,
+    "client_decode_tok_s": 18.51
+   },
+   "mean_accept_len": 3.5,
+   "accept_len_samples": 20,
+   "needle": {
+    "found": 6,
+    "cells": 9,
+    "rejected_http_400": 3,
+    "misses": []
+   }
+  }
+ }
+}

@@ -99,6 +99,8 @@ against DSpark 41 and in-checkpoint MTP 24; AMD's Quark MXFP4 W4A8 (comparison i
 at 197K with DFlash2. Disposition in [FINDINGS → vllm-radiance parity](FINDINGS.md#vllm-radiance-parity). The same Quark
 checkpoint served here on the patch-117 Triton W4A8 path decodes at FP8 parity with prefill 3× slower
 ([receipts](profiling/mxfp4-serving-2026-11-09/), [kernel](profiling/mxfp4-w4a8-kernel-2026-11-09.json)).
+The DFlash2 drafter radiance uses, served here against DSpark and no-spec in one session: faster than DSpark to 7.3K, order
+open at 58K–197K, one needle miss, DSpark stays the preset ([receipts](profiling/rad6-dflash-qwen38-2026-11-09/)).
 
 ### Post-087 FP8 flagship refresh
 

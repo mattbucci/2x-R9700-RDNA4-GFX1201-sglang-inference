@@ -77,10 +77,10 @@ server as 256K-depth throughput.
 
 ![Spec-decode coverage: short-depth tok/s per draft lane, with the measured at-depth value (red = collapse at true 256K, white = holds)](benchmarks/specdecode_fleet.png)
 
-Only the Qwen3.8-27B DSpark lane (RedHatAI speculator through the split-KV verify kernel) holds its gain
-at depth: 41.0 tok/s at 197K actual input against 20.2 no-spec. Every EAGLE3/DFlash draft that wins at
-short depth collapses at true 256K (0.8–1.2 tok/s at 240–244K), so the green bars are short-depth server
-capability, not 256K throughput. Data and per-lane notes: [`benchmarks/specdecode.json`](benchmarks/specdecode.json).
+Only Qwen3.8-27B drafts hold a gain at depth: the preset's DSpark lane (RedHatAI speculator through the split-KV
+verify kernel), 41.0 tok/s at 197K actual input against 20.2 no-spec, and a DFlash2 drafter at 31.5–37.7, not
+adopted (one needle miss). Every other EAGLE3/DFlash draft that wins at short depth collapses at true 256K
+(0.8–1.2 tok/s at 240–244K): green bars are short-depth capability. Data: [`benchmarks/specdecode.json`](benchmarks/specdecode.json).
 
 ### 256K agentic tool-use ladder
 
@@ -132,7 +132,7 @@ Qwen3.8-27B files ([receipt](benchmarks/radiance-parity/README.md)). Decode is t
 | Lane | vllm-radiance | This stack | Gap | Experiments that close it, in run order |
 |---|---|---|---|---|
 | FP8, no speculation | 35.4 / 35.0 / 33.7 / 30.4 | 23.2 / 22.9 / 22.2 / 20.5 | 1.5× | RAD-2 one-stage all-reduce, RAD-12 ablation ladder of their switches, RAD-13 their HIP kernels timed against ours, RAD-14 launch census of the 44 ms step, RAD-1 TP-split DeltaNet projections, RAD-3 GEMM weight layout, RAD-22 quant-free decode GEMV or RAD-5 norm + quant fusion, RAD-15 low-bit LM head with exact rerank |
-| FP8 + DFlash2 | 99.9 / 99.7 / 87.9 / 91.0 | 56.7 / 60.8 / 52.0 / 37.7 | 1.6–2.4× | the base step, then RAD-16 draft + verify cycle anatomy and the 197K fix, RAD-17 HIP top-k selector, RAD-18 content-adaptive block length, RAD-7 low-bit draft head |
+| FP8 + DFlash2 | 99.9 / 99.7 / 87.9 / 91.0 | 56.7 / 60.4 / 41.9 / 31.5 | 1.7–2.9× | the base step, then RAD-16 draft + verify cycle anatomy and the 197K fix, RAD-17 HIP top-k selector, RAD-18 content-adaptive block length, RAD-7 low-bit draft head |
 | Cold prefill | 4,137 / 3,631 / 2,520 | 1,800 / 1,460 / 946 | 2.2–2.7× | RAD-10 197K profile, RAD-19 DeltaNet conv block width, RAD-20 GEMM tiles at M ≥ 64 and chunk size, then ports by share |
 | MXFP4, no speculation | 51.6 / 50.8 / 47.4 / 41.0 | 23.2 / 22.8 / 21.9 / 20.2 | 2.0–2.2× | RAD-11 decode profile and the M > 32 repack path, RAD-21 MXFP4 + DFlash2 |
 

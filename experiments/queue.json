@@ -443,17 +443,18 @@
   {
    "id": "RAD-2",
    "spec": "19-vllm-radiance-parity.md",
-   "status": "ready",
+   "status": "in_progress",
    "resource": "gpu",
    "depends_on": [
     "REBASE-0523"
    ],
-   "next_action": "ENABLE_CUSTOM_ALL_REDUCE=1 SGLANG_USE_1STAGE_ALLREDUCE=1 on qwen38 (SGLang HIP 1-stage IPC all-reduce; launch.sh:72 forces it off); p2p_allreduce_decode_shape.py then decode_ab --ignore-eos both orders; fallback = port r4d_ar_oneshot_2rank_exact.hip into kernels/aot. Also answers the 3090's 2026-10-31 ask.",
+   "next_action": "Second pass with patch 119 (scratchpad rad2b_onestage_ar.sh, chain2 pre-hook): on -> off3, on-arm identity = '[AR] All-reduce call path: custom all-reduce' in the server log; decode ladder, greedy identity vs off1, caps, prefill, needle. If P2P IPC between the two PCIe cards fails or regresses: fallback = port r4d_ar_oneshot_2rank_exact.hip into kernels/aot (RAD-13 times it first). Adopt in launch.sh only between drivers.",
    "test_gate": [
     "graph capture holds; -3..-4 ms/step expected",
     "validate_capabilities 5/5; needle grid unchanged",
     "pool loss recorded"
-   ]
+   ],
+   "result": "2026-11-09 first pass (benchmarks/profiling/rad2-onestage-ar-2026-11-09/): eager RCCL at the decode shape 34 us per 20-40 KiB reduce, 4.17 ms per step over 128 reduces. NCCL arms off1 / off2: 23.24 / 22.94 / 22.18 / 20.52 and 23.24 / 22.94 / 22.17 / 20.52 (repeat within 0.1 %). The on arm never engaged: 'Setup Custom allreduce failed with name amdsmi_shut_down is not defined' (no amdsmi Python binding on this host; upstream's HIP setup assumes it). Patch 119 lets setup run without the binding and logs the path a group reduces on."
   },
   {
    "id": "RAD-4",
@@ -517,7 +518,7 @@
   {
    "id": "RAD-6",
    "spec": "19-vllm-radiance-parity.md",
-   "status": "ready",
+   "status": "completed",
    "resource": "gpu",
    "depends_on": [
     "RAD-11 serving re-measure on the quant-free decode path (same day)",
@@ -528,6 +529,22 @@
     "caps 5/5; needle 9/9 greedy (record divergences vs no-spec like FLINT-5)",
     "faster than DSpark at every depth incl. 197K to replace it as the preset default; else record and keep DSpark",
     "accept length per depth recorded; patch 115 covers the 2-request batch"
+   ],
+   "result": "2026-11-09, three boots in one session, radix cache on (receipts benchmarks/profiling/rad6-dflash-qwen38-2026-11-09/, quality/rad6-*-natural-greedy.json). Per-run tok/s at 24 / 7.3K / 58K / 197K: no-spec 23.2 / 22.9 / 22.2 / 20.5 (pool 525,548); DFlash2 56.7 / 60.8 / [41.9, 52.0, 52.0] / [31.5, 37.7, 37.8] (pool 211,172, accept 3.60); DSpark 45.2 / [57.8, 52.5, 52.5] / [46.0, 35.2, 35.4] / [33.5, 31.0, 31.1] (pool 206,324, accept 3.50; answer length changes with cache state, 33 vs 47 and 37 vs 49 tokens). Copy-heavy 29K + 600 tokens: 44.5 / 28.2 / 32.4 s. Prefill within 2 % across arms. Caps 4/4 on all arms. Needle greedy: no-spec 9/9, DFlash2 8/9 (miss at 131K depth 0.5), DSpark 6/6 with the three 197K cells rejected by its pool (208,296 > 206,318). Greedy identity DFlash2 vs no-spec 1/6. Gate not met (needle miss; at 197K the cold run has DSpark ahead 33.5 vs 31.5 and RAD-0's cache-off DSpark row is 41.0): DSpark stays the qwen38 preset. Controls = RAD-6C."
+  },
+  {
+   "id": "RAD-6C",
+   "spec": "19-vllm-radiance-parity.md",
+   "status": "ready",
+   "resource": "gpu",
+   "depends_on": [
+    "RAD-6 (done): order at depth depends on cache state and answer length; one DFlash2 needle miss"
+   ],
+   "next_action": "Controls on the three RAD-6 arms (no-spec, DFlash2, DSpark), about 66 min per arm: scripts/bench/spec_cold_warm_bench.py (3 cold runs split by /flush_cache + 2 warm at 24 / 7.3K / 58K / 197K with 80 tokens, plus 400-token summary and fact cells at 7K / 55K / 180K) -> benchmarks/profiling/rad6-dflash-qwen38-2026-11-09/coldwarm-<arm>.json; needle at 131K: depths 0.3..0.7 greedy with flush, depth 0.5 x6 sampled, depth 0.5 x3 greedy cached; needle at 190K (fits every pool) depths 0.1 / 0.5 / 0.9. Driver: scratchpad rad6_controls.sh, queued behind the RAD-2 second pass.",
+   "test_gate": [
+    "cold medians over 3 flushed runs decide the 58K and 197K order; the 400-token cells confirm it is not an artefact of 33-49-token answers",
+    "DFlash2 131K needle: a miss that repeats on greedy at neighbouring depths or in more than 1 of 6 sampled draws is a quality defect and closes adoption; a lone greedy miss with 6/6 sampled is recorded as a tie-break",
+    "adopt DFlash2 as the qwen38 default only if faster than DSpark cold and warm at every depth with needle and caps green; else DSpark stays"
    ]
   },
   {
@@ -693,7 +710,7 @@
    "depends_on": [
     "RAD-6 / RAD-2 / RAD-11-profile chain finished (one GPU job at a time)"
    ],
-   "next_action": "Radiance ablation ladder: scripts/bench/radiance_serve.sh arms a (FP8) and b (FP8 + DFlash2 K7) at 262144 ctx, one switch off per boot through ARM_EXTRA: RADIANCE_PRESHUFFLE, RADIANCE_USE_R4D_AR, RADIANCE_FUSE_RMS_QUANT, RADIANCE_SKINNY_GEMM, RADIANCE_GDN_MERGE_INPROJ, RADIANCE_USE_R4D_GDN, RADIANCE_KV_GROUP_OPT, RADIANCE_ATTN_TUNE (arm a); RADIANCE_VERIFY_HEAD, RADIANCE_DRAFT_RERANK=0, RADIANCE_TOPK_COMPOSITE, RADIANCE_DYNAMIC_DRAFT (arm b). Per boot: decode_ab canonical sweep + prefill_ttft. Baseline arm first and last. Receipt benchmarks/radiance-parity/ablation/ with a per-switch delta table (ms/step at 24 and 197K, prefill tok/s).",
+   "next_action": "Radiance ablation ladder (scratchpad rad12_ablation.sh, after RAD-6C): scripts/bench/radiance_serve.sh at 262144 ctx, one switch off per boot through ARM_EXTRA, baseline first and last per arm. Arm a (FP8): RADIANCE_PRESHUFFLE, RADIANCE_USE_R4D_AR, RADIANCE_USE_R4D_AR_QUANT, RADIANCE_GDN_MERGE_INPROJ, RADIANCE_USE_R4D_GDN, RADIANCE_GDN_META, RADIANCE_KV_GROUP_OPT, RADIANCE_USE_R4D. Arm b (FP8 + DFlash2 K7): RADIANCE_FAST_DRAFT (+VERIFY_HEAD, which needs it), RADIANCE_VERIFY_HEAD, RADIANCE_TOPK_COMPOSITE, RADIANCE_USE_R4D_GDN, RADIANCE_GDN_SHARED_BUILD, RADIANCE_SKINNY_GEMM. Image 1.0.397 has no reader for RADIANCE_ATTN_TUNE or RADIANCE_FUSE_RMS_QUANT (not phases). Switched-off boots use their own VLLM_CACHE_ROOT / TORCHINDUCTOR_CACHE_DIR because the compile-cache key ignores RADIANCE_*. Per boot: decode_ab canonical sweep (+ prefill_ttft on baselines). Receipt benchmarks/radiance-parity/ablation/ with a per-switch delta table (ms/step at 24 and 197K).",
    "test_gate": [
     "each off-arm confirmed from the boot banner (RADIANCE_R4D_REPORT=1), not from the flag",
     "baseline first and last agree within 1 %",
@@ -753,7 +770,7 @@
    "depends_on": [
     "RAD-6 close-out"
    ],
-   "next_action": "DFlash2 cycle anatomy on qwen38 at 24 / 58K / 197K: time draft pass, selector, verify forward per layer family, commit; check verify rows take the split-KV extend route and the drafter context features do not re-read the prefix. Ours: 65 ms cycle at 24 tokens (1.5x a plain step), 82-98 ms at 197K (1.7-2.0x); radiance 37 and 41 ms (1.3x, 1.25x). Then fix the largest stage.",
+   "next_action": "DFlash2 cycle anatomy on qwen38 at 24 / 58K / 197K: time draft pass, selector, verify forward per layer family, commit; check verify rows take the split-KV extend route and the drafter context features do not re-read the prefix. Ours: 65 ms cycle at 24 tokens (1.5x a plain step), 82-98 ms at 197K (1.7-2.0x); radiance 37 and 41 ms (1.3x, 1.25x). Then fix the largest stage. RAD-6 input: DFlash2's first request at a new depth is about 0.2 s slower than its repeats (41.9 vs 52.0 tok/s at 58K, 31.5 vs 37.7 at 197K over the same answer); find whether that is a cold-cache or a first-request-per-depth cost.",
    "test_gate": [
     "cycle <= 1.3x a plain step at every depth (197K: 37.7 -> about 58 tok/s on today's base step)",
     "needle 9/9 greedy, caps unchanged, accept length per depth recorded"

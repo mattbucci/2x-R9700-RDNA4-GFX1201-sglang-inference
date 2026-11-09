@@ -1,0 +1,101 @@
+{
+ "tag": "rad6-dspark-natural-greedy",
+ "timestamp": "2026-11-09 15:00",
+ "model": "/data/models/Qwen3.8-27B-FP8",
+ "port": 23334,
+ "haystack": "benchmarks/quality/haystack-platypus.txt",
+ "chars_per_token": 3.27,
+ "temperature": 0.0,
+ "flush": true,
+ "max_tokens": 256,
+ "results": [
+  {
+   "found": true,
+   "actual_prompt_tokens": 33904,
+   "completion_tokens": 78,
+   "finish_reason": "stop",
+   "seconds": 22.9,
+   "content_tail": "\n\nBANANA42",
+   "reasoning_tail": "",
+   "context": 32768,
+   "depth": 0.1
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 33904,
+   "completion_tokens": 91,
+   "finish_reason": "stop",
+   "seconds": 22.7,
+   "content_tail": "\n\nBANANA42",
+   "reasoning_tail": "",
+   "context": 32768,
+   "depth": 0.5
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 33904,
+   "completion_tokens": 117,
+   "finish_reason": "stop",
+   "seconds": 23.0,
+   "content_tail": "\n\nBANANA42",
+   "reasoning_tail": "",
+   "context": 32768,
+   "depth": 0.9
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 137094,
+   "completion_tokens": 83,
+   "finish_reason": "stop",
+   "seconds": 126.5,
+   "content_tail": "\n\nBANANA42",
+   "reasoning_tail": "",
+   "context": 131072,
+   "depth": 0.1
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 137094,
+   "completion_tokens": 61,
+   "finish_reason": "stop",
+   "seconds": 125.5,
+   "content_tail": "\n\nBANANA42",
+   "reasoning_tail": "",
+   "context": 131072,
+   "depth": 0.5
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 137094,
+   "completion_tokens": 105,
+   "finish_reason": "stop",
+   "seconds": 126.5,
+   "content_tail": "\n\nBANANA42",
+   "reasoning_tail": "",
+   "context": 131072,
+   "depth": 0.9
+  },
+  {
+   "found": false,
+   "http": 400,
+   "error": "{\"object\":\"error\",\"message\":\"Input length (208296 tokens) exceeds the maximum allowed length (206318 tokens). Use a shorter input or enable --allow-auto-truncate.\",\"type\":\"BadRequestError\",\"param\":null,\"code\":400}",
+   "context": 197000,
+   "depth": 0.1
+  },
+  {
+   "found": false,
+   "http": 400,
+   "error": "{\"object\":\"error\",\"message\":\"Input length (208296 tokens) exceeds the maximum allowed length (206318 tokens). Use a shorter input or enable --allow-auto-truncate.\",\"type\":\"BadRequestError\",\"param\":null,\"code\":400}",
+   "context": 197000,
+   "depth": 0.5
+  },
+  {
+   "found": false,
+   "http": 400,
+   "error": "{\"object\":\"error\",\"message\":\"Input length (208296 tokens) exceeds the maximum allowed length (206318 tokens). Use a shorter input or enable --allow-auto-truncate.\",\"type\":\"BadRequestError\",\"param\":null,\"code\":400}",
+   "context": 197000,
+   "depth": 0.9
+  }
+ ],
+ "score": 0.6666666666666666
+}
