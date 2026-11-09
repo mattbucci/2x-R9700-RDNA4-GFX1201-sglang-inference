@@ -617,6 +617,22 @@
    ]
   },
   {
+   "id": "FLINT-5",
+   "spec": "19-vllm-radiance-parity.md",
+   "status": "ready",
+   "resource": "gpu",
+   "depends_on": [
+    "FLINT-1 cell finished (or a pause at an instance boundary on the user's call)",
+    "drafter on disk: /data/models/Flint-DFlash2 (incoai/Flint-DFlash2, 805 MB bf16, sha256 d5c40afc... verified 2026-11-09)"
+   ],
+   "next_action": "DFlash2 speculative decoding on Flint (user pointed at huggingface.co/incoai/Flint-DFlash2, 2026-11-09). Card: 0.4B block-diffusion drafter, block 8 (7 drafts), lossless; SGLang recipe `--speculative-algorithm DFLASH --speculative-draft-model-path incoai/Flint-DFlash2 --enable-fp32-lm-head`, GB300 TP1 bf16: accept 4.5 HumanEval / 4.3 MBPP / 3.5 MT-Bench, 2.2-2.3x at c1 on code. Our v0.5.22 tree has DFlash2DraftModel + dflash_worker_v2 + Triton kernels (HIP supported); Flint inherits EAGLE3 capture from Qwen3MoeForCausalLM; CPU smoke 2026-11-09: config parses (target_layer_ids 5,15,26,36,46 in range, mask token 150019 in vocab, EOS lists equal), 'triton' is a supported draft backend; num_draft_tokens is inferred from block_size when unset. Known caveats: selector falls back to torch.topk without flashinfer (card's PR #45624 = upstream's Flint port, merged 2026-10-27, not needed with patch 105); FINDINGS depth row (Qwen3.6-35B + DFlash 1.2 tok/s at 240K, accept 1.4) predates the split-KV verify with sinks (109/112) — measure at depth before believing either way. Arms, same session, both orders: flint preset no-spec vs DFLASH (EXTRA_ARGS with the card's flags, fp8 KV kept; a bf16-KV DFLASH arm only if the fp8 arm fails the gates). Ladder: decode_ab 24/7.3K/58K/197K think-off + the copy-heavy decode bench (where NGRAM lost 35-40 %), prefill_ttft 7.3K/58K/197K, accept length from the server log per depth; also --enable-fp32-lm-head on/off on the no-spec arm (numerics, not speed).",
+   "test_gate": [
+    "validate_capabilities 3/3 text; needle 32K/131K/197K greedy byte-identical to the no-spec arm (lossless claim)",
+    "copy-heavy and canonical decode both orders; accept length per depth recorded; adopt only if faster than no-spec at every depth incl. 197K",
+    "if adopted: preset flag behind FLINT_SPEC=1 default on, README fleet row re-measured, DSpark-style depth caveat recorded"
+   ]
+  },
+  {
    "id": "FLINT-4",
    "spec": "https://github.com/mattbucci/2x-R9700-RDNA4-GFX1201-sglang-inference/issues/27",
    "status": "ready",
@@ -624,7 +640,7 @@
    "depends_on": [
     "FLINT-1 cell finished (or a pause at an instance boundary on the user's call)"
    ],
-   "next_action": "Radiance levers re-ranked for Flint (user ask 2026-11-09; Flint is dispatch-bound: ~1.1 GB/GPU weight read per step vs a 22.6 ms step, decode depth-flat). Order: (1) tuned fused-MoE Triton config for E=256,N=256 per_channel_quant=True fp8_w8a8 on R9700 (boot log: \"Using default MoE kernel config\", file missing; Laguna's identical shape is tuned only for block_shape=[128,128]; default = BM64/BN128/BK128 num_stages 2 at M<=E) via the stock tuner with patch 075 compressed-tensors discovery, serving A/B both orders on the canonical sweep + prefill_ttft, precedent +5 % Laguna / +11 % North on v0.5.15; (2) ENABLE_CUSTOM_ALL_REDUCE=1 SGLANG_USE_1STAGE_ALLREDUCE=1 on flint (98 all-reduces/step x 34 us measured at the 4 KB payload = 3.3 ms ceiling), p2p_allreduce_decode_shape.py then decode_ab both orders, R4D one-shot port as fallback; (3) rocprof one decode step at 7.3K and 197K to size norm+quant / act+quant fusion (RAD-5) before writing kernels. Not for Flint: preshuffled GEMM, decode-GEMM knobs, skinny bf16, MXFP4 (weight bytes are ~10 % of the step). Speculation: no Flint EAGLE3/DFlash drafter exists (searched 2026-11-09); NGRAM lost 35-40 % on copy-heavy code; training a drafter (SpecForge) is a user decision.",
+   "next_action": "After FLINT-5 (DFlash2 is the larger prize on a dispatch-bound step). Radiance levers re-ranked for Flint (user ask 2026-11-09; Flint is dispatch-bound: ~1.1 GB/GPU weight read per step vs a 22.6 ms step, decode depth-flat). Order: (1) tuned fused-MoE Triton config for E=256,N=256 per_channel_quant=True fp8_w8a8 on R9700 (boot log: \"Using default MoE kernel config\", file missing; Laguna's identical shape is tuned only for block_shape=[128,128]; default = BM64/BN128/BK128 num_stages 2 at M<=E) via the stock tuner with patch 075 compressed-tensors discovery, serving A/B both orders on the canonical sweep + prefill_ttft, precedent +5 % Laguna / +11 % North on v0.5.15; (2) ENABLE_CUSTOM_ALL_REDUCE=1 SGLANG_USE_1STAGE_ALLREDUCE=1 on flint (98 all-reduces/step x 34 us measured at the 4 KB payload = 3.3 ms ceiling), p2p_allreduce_decode_shape.py then decode_ab both orders, R4D one-shot port as fallback; (3) rocprof one decode step at 7.3K and 197K to size norm+quant / act+quant fusion (RAD-5) before writing kernels. Not for Flint: preshuffled GEMM, decode-GEMM knobs, skinny bf16, MXFP4 (weight bytes are ~10 % of the step). Speculation: no Flint EAGLE3/DFlash drafter exists (searched 2026-11-09); NGRAM lost 35-40 % on copy-heavy code; training a drafter (SpecForge) is a user decision.",
    "test_gate": [
     "validate_capabilities 3/3 text + needle 32K/131K/197K greedy identical or better per arm",
     "decode_ab both arm orders at 24/7.3K/58K/197K, prefill_ttft at 7.3K/58K/197K; adopt only a delta outside the order spread",
