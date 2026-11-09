@@ -1,6 +1,6 @@
 # SGLang v0.5.22 RDNA4 patches
 
-This directory contains the **85 active numeric patches** applied to pristine SGLang v0.5.22 for the
+This directory contains the **86 active numeric patches** applied to pristine SGLang v0.5.22 for the
 2× Radeon AI PRO R9700 serving stack. The default tree is `/data/sgl-v0522`; the default conda environment
 is `sglang-triton36-v0522`.
 
@@ -203,12 +203,13 @@ can be proposed upstream. `Partial` requires a fresh comparison with upstream be
 | 115 | `dflash-sampler-buffers-max-running-requests` | Candidate | Sizes the DFLASH draft sampler's static buffers (temperatures, greedy mask, uniforms, candidate/q outputs) by the larger of the decode-graph batch size and `max_running_requests`; the upstream sizing by graph bs alone crashed the scheduler on the second concurrent request whenever a preset pins `--cuda-graph-max-bs-decode 1` (Flint + incoai/Flint-DFlash2, `output with shape [1] doesn't match the broadcast shape [2]`). |
 | 116 | `fused-moe-tuner-flint-architecture` | Carry | Adds `FlintForCausalLM` to the fused-MoE tuner’s Qwen3Moe-layout architecture list (E=256, moe_intermediate 512, top-6 from the compressed-tensors checkpoint) and repoints its `fp8_dtype` import at `sglang.kernels.ops` (the module moved in v0.5.18; upstream’s benchmark script still imports the old path). |
 | 117 | `rdna4-mxfp4-w4a8-triton-gemm` | Candidate | Serves Quark MXFP4 checkpoints on gfx1201 without aiter: a Triton GEMM/GEMV over the packed e2m1 + e8m0 group-32 weight layout with per-token fp8 activations (decode-shaped GEMV for M ≤ 2, WMMA tiles above), wired into `QuarkW4A4MXFP4` where the aiter ops are absent; N < 256 linears dequantize to bf16 at load. Kernel-level: 1.3× the block-FP8 GEMM at M=1 on the large shapes, parity on the rest, slower from M ≥ 3 (receipt `benchmarks/profiling/mxfp4-w4a8-kernel-2026-11-09.json`). |
+| 118 | `r9700-flint-fp8-moe-config` | Candidate | Tuned fused-MoE Triton config for Flint's expert shapes (E=256, N=256 per rank, fp8_w8a8 per-channel) on R9700, from the stock tuner over a 576-config RDNA4 search space at 13 batch sizes; the gate-up GEMM only (the down GEMM keeps the default until the separate tuner runs on captured router outputs). Serving: decode +1.2–1.5 % at 14 tokens to 197K on both tuned arms of a tuned→default→tuned triple, prefill unchanged, text capabilities 3/3. |
 
 ## Build stack
 
 | Component | Version |
 |---|---|
-| SGLang | v0.5.22 plus this 85-patch series |
+| SGLang | v0.5.22 plus this 86-patch series |
 | transformers | 5.19.0 |
 | Triton | 3.6.0 |
 | PyTorch | 2.11.0+rocm7.2 |

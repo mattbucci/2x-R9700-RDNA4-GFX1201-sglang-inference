@@ -648,7 +648,7 @@
     "decode_ab both arm orders at 24/7.3K/58K/197K, prefill_ttft at 7.3K/58K/197K; adopt only a delta outside the order spread",
     "MoE config: tuner output committed as a numbered patch file set (078-style) and the boot log no longer reports the default config"
    ],
-   "result": "2026-11-09 09:00: item 1 (fused-MoE config tune) started — stock tuner with patch 116 (Flint architecture), gate_up config only (the sep tuner needs captured topk ids), then tuned→default→tuned serving A/B (decode ladder, prefill, caps). Driver /data/logs/flint-moe-tune-2026-11-09/."
+   "result": "2026-11-09 09:00: item 1 (fused-MoE config tune) started — stock tuner with patch 116 (Flint architecture), gate_up config only (the sep tuner needs captured topk ids), then tuned→default→tuned serving A/B (decode ladder, prefill, caps). Driver /data/logs/flint-moe-tune-2026-11-09/. Item 1 done 2026-11-09: tuned gate_up config = patch 118, decode +1.2-1.5 % at every depth (both tuned arms), prefill flat, caps 3/3 (benchmarks/profiling/flint-moe-config-2026-11-09). Down config: sep tuner + topk dump hook later. Next: item 2 (1-stage all-reduce) with RAD-2."
   },
   {
    "id": "RAD-10",

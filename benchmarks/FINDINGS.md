@@ -558,6 +558,19 @@ Which path is closer to the bf16 reference is open (RAD-9 scope: bf16-KV no-spec
 Adopted for the Flint SWE-bench cell (`RUN_TAG v5-dflash`, preset otherwise unchanged) on the user's call, so the cell
 measures the end-to-end effect; the `flint` preset default stays no-spec until that cell and the reference test are in.
 
+## Flint fused-MoE config tune: +1.2–1.5 % decode, shipped as patch 118 (2026-11-09)
+
+Flint's boot log reported the default fused-MoE Triton config: the per-channel FP8 E=256/N=256 file for R9700 did not
+exist (Laguna's identical shape was tuned only for block scale). The stock tuner needed patch 116 (Flint architecture,
+moved `fp8_dtype` import) and an in-process `ray` stand-in; it ran a 576-config RDNA4 space (num_stages 0/2, BM 16–128,
+BK 64–256, BN 32–256, 2–8 warps) at 13 batch sizes in 40 min and writes the gate-up config only. Same-session triple
+tuned → default → tuned ([receipts](profiling/flint-moe-config-2026-11-09/)): decode 44.2 / 43.5 / 42.3 / 38.4 and
+44.1 / 43.5 / 42.2 / 38.2 vs default 43.5 / 42.8 / 41.7 / 37.9 tok/s at 14 / 7.3K / 58K / 197K, both tuned arms above
+default at every depth and outside the within-arm spread; cold prefill 5.4–5.6K / 3.06K tok/s at 7.3K / 58K on all
+three arms; text capabilities 3/3. Small, consistent, zero-risk: shipped. The down GEMM still runs the default config;
+the separate tuner needs captured router outputs (a dump hook plus `tuning_fused_moe_triton_sep.py`) and is the
+follow-up if Flint MoE time matters after the all-reduce item.
+
 ## Qwopus3.8-27B-Coder-Flash: local block-FP8 build in the vendor layout (2026-11-02)
 
 Jackrong's coding/agentic SFT of Qwen3.8-27B (BF16 only, 55.6 GB) is built with

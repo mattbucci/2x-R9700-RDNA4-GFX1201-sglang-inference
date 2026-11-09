@@ -1,0 +1,90 @@
+{
+  "label": "flint-moecfg-tuned2",
+  "tag": "",
+  "note": "",
+  "port": 23334,
+  "maxtok": 80,
+  "runs": 3,
+  "points": [
+    {
+      "context": 128,
+      "input_len": 14,
+      "runs_tps": [
+        43.88,
+        44.08,
+        44.15
+      ],
+      "median_tps": 44.084,
+      "min_tps": 43.879,
+      "max_tps": 44.146,
+      "runs_completion_tokens": [
+        80,
+        80,
+        80
+      ],
+      "median_tpot_ms": 22.68,
+      "sample": "Okay, the user has asked for a long, detailed essay about GP",
+      "median_ttft_ms": 77.2
+    },
+    {
+      "context": 8192,
+      "input_len": 7321,
+      "runs_tps": [
+        43.32,
+        43.46,
+        43.55
+      ],
+      "median_tps": 43.459,
+      "min_tps": 43.32,
+      "max_tps": 43.552,
+      "runs_completion_tokens": [
+        80,
+        80,
+        80
+      ],
+      "median_tpot_ms": 23.01,
+      "sample": "We need answer user. Need parse. They provided huge repeated",
+      "median_ttft_ms": 107.0
+    },
+    {
+      "context": 65536,
+      "input_len": 58473,
+      "runs_tps": [
+        41.64,
+        42.21,
+        42.17
+      ],
+      "median_tps": 42.172,
+      "min_tps": 41.636,
+      "max_tps": 42.212,
+      "runs_completion_tokens": [
+        80,
+        80,
+        80
+      ],
+      "median_tpot_ms": 23.71,
+      "sample": "We need answer user. Need summarize repeated sentence. We ne",
+      "median_ttft_ms": 146.7
+    },
+    {
+      "context": 221184,
+      "input_len": 197315,
+      "runs_tps": [
+        37.86,
+        38.24,
+        38.36
+      ],
+      "median_tps": 38.237,
+      "min_tps": 37.863,
+      "max_tps": 38.363,
+      "runs_completion_tokens": [
+        80,
+        80,
+        80
+      ],
+      "median_tpot_ms": 26.15,
+      "sample": "We need answer user. Need parse. We need answer likely. We n",
+      "median_ttft_ms": 292.2
+    }
+  ]
+}

@@ -1,0 +1,40 @@
+{
+ "label": "flint-moecfg-tuned1",
+ "model": "/data/models/Flint-FP8",
+ "port": 23334,
+ "runs": 2,
+ "method": "flush_cache + non-stream max_tokens=1 wall time",
+ "timestamp": "2026-11-09 10:10",
+ "rows": [
+  {
+   "context": 8192,
+   "input_len": 7321,
+   "runs_s": [
+    1.257,
+    0.931
+   ],
+   "median_s": 1.094,
+   "prefill_tok_per_s": 6692.1
+  },
+  {
+   "context": 65536,
+   "input_len": 58473,
+   "runs_s": [
+    10.983,
+    10.548
+   ],
+   "median_s": 10.766,
+   "prefill_tok_per_s": 5431.5
+  },
+  {
+   "context": 221184,
+   "input_len": 197315,
+   "runs_s": [
+    64.528,
+    64.618
+   ],
+   "median_s": 64.573,
+   "prefill_tok_per_s": 3055.7
+  }
+ ]
+}

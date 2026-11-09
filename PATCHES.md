@@ -1,10 +1,10 @@
 # Patch collections
 
-The repository carries **85 active patches across three environments**:
+The repository carries **86 active patches across three environments**:
 
 | Collection | Target | Count | Purpose |
 |---|---|---:|---|
-| [`patches/`](patches/README.md) | SGLang v0.5.22 (`/data/sgl-v0522`, `sglang-triton36-v0522`) | **85** | RDNA4 serving, model compatibility, correctness, and performance |
+| [`patches/`](patches/README.md) | SGLang v0.5.22 (`/data/sgl-v0522`, `sglang-triton36-v0522`) | **86** | RDNA4 serving, model compatibility, correctness, and performance |
 | [`llmcompressor-patches/`](llmcompressor-patches/README.md) | llmcompressor calibration environment | **1** | Unfused Qwen3 MoE experts for GPTQ calibration |
 | [`ream-patches/`](ream-patches/README.md) | Samsung SAIL REAM clone | **1** | Memory-safe, resumable expert merging |
 
@@ -13,7 +13,7 @@ Tooling files that support REAM/REAP are not counted as patches. Upstream contri
 
 ## SGLang series
 
-Apply the 85 numeric patches in filename order to pristine SGLang v0.5.22. Patch 072 was removed because
+Apply the 86 numeric patches in filename order to pristine SGLang v0.5.22. Patch 072 was removed because
 transformers 5.12.1 provides the Gemma 4 unified configuration and processor natively. Patch 083 replaces
 that count with the Mistral tokenizer-backend correction required by Devstral and Devstral 2. On the
 v0.5.16 rebase, patch 059 was dropped because its FuseEP dispatcher target was removed upstream, and patch
