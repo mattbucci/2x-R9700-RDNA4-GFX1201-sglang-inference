@@ -96,7 +96,9 @@ this stack, same cards and model files, both methodologies (BetterBench v0.2.2 `
 think-off sweep at 256K), gates on every arm — [radiance-parity/README.md](radiance-parity/README.md). Non-spec FP8 decode
 1.5× on radiance at every depth and concurrency (per step 28 vs 44 ms), prefill 2.2–2.7×, DFlash2 K7 91 tok/s at 197K
 against DSpark 41 and in-checkpoint MTP 24; AMD's Quark MXFP4 W4A8 (comparison input) 1.35–1.46× over FP8 and 164 tok/s
-at 197K with DFlash2. Disposition in [FINDINGS → vllm-radiance parity](FINDINGS.md#vllm-radiance-parity).
+at 197K with DFlash2. Disposition in [FINDINGS → vllm-radiance parity](FINDINGS.md#vllm-radiance-parity). The same Quark
+checkpoint served here on the patch-117 Triton W4A8 path decodes at FP8 parity with prefill 3× slower
+([receipts](profiling/mxfp4-serving-2026-11-09/), [kernel](profiling/mxfp4-w4a8-kernel-2026-11-09.json)).
 
 ### Post-087 FP8 flagship refresh
 

@@ -862,8 +862,19 @@ bytes, narrow-N long-K tiles at 275 GB/s, a LUT gather beats arithmetic e2m1 dec
 (BN 8, BK 512, one warp) reaches 380 GB/s: **125 µs vs 165 µs for the block-FP8 GEMM at N=17408 K=5120, M=1**
 (80 vs 103 at N=10240; parity at N=5120/6144). From M = 3 the WMMA path is 1.5× slower than FP8 (250 vs 170 µs at
 M=16) and 3–5× slower at prefill M (1.5 ms vs 0.37 at M=256), so a speculative-verify or prefill batch loses what
-decode gains; a repack-to-block-FP8 scratch for M > 32 is the next kernel item. Serving measurement of the Quark
-Qwen3.8 checkpoint (comparison input) against the FP8 preset follows once the GPUs free up.
+decode gains; a repack-to-block-FP8 scratch for M > 32 is the next kernel item.
+
+Serving, Quark Qwen3.8 checkpoint (comparison input) through the qwen38 preset, no speculation, against the FP8 preset
+in the same session ([receipts](profiling/mxfp4-serving-2026-11-09/)). The first arm was launch-bound, not
+bandwidth-bound: SGLang's HIP per-token fp8 quant fallback is ~8 torch ops per linear (~3,600 launches per step), and
+it decoded 18.7 / 18.4 / 17.9 / 16.7 tok/s at 24 / 7.3K / 58K / 197K with prefill 499 / 421 tok/s
+(`attempt2-quantbound/`). Patch 117 then runs a W4A16 GEMV on the bf16 activations at M ≤ 2 (no quant launch) and a
+one-launch Triton per-token quant above. On that path the checkpoint decodes **23.19 / 22.81 / 21.91 / 20.23 tok/s
+against FP8's 23.24 / 22.97 / 22.25 / 20.52** (−0.2 to −1.5 %, FP8 parity, not the kernel-level 1.3×), prefill
+543 / 510 / 428 tok/s against 1,800 / 1,460 / 946 (the M > 32 WMMA path), caps 4/4 and needle 9/9 greedy at
+32K/131K/197K on both arms (`quality/mxfp4-natural-greedy.json`, `quality/mxfp4-serving-fp8-control-natural-greedy.json`).
+Disposition: the dense GEMV saving (~5 ms per step at the kernel level) does not reach the step; a per-kernel decode
+profile of both arms with graphs off is the next item, then the M > 32 repack path. FP8 stays the preset (#39).
 
 ## Evaluation methodology
 
