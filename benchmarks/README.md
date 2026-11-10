@@ -111,7 +111,10 @@ checkpoint served here on the patch-117 Triton W4A8 path decoded at FP8 parity w
 ([receipts](profiling/mxfp4-serving-2026-11-09/), [kernel](profiling/mxfp4-w4a8-kernel-2026-11-09.json)) while its MLP was
 replicated per rank; TP-split (patch 120) it decodes 29.9 / 29.6 / 28.0 / 25.2 tok/s at 24 / 7.3K / 58K / 197K against
 23.2 / 22.8 / 21.9 / 20.2, split → replicated → split in one session
-([receipts](profiling/rad11-mxfp4-mlp-split-2026-11-09/), [FINDINGS → RAD-11c](FINDINGS.md)).
+([receipts](profiling/rad11-mxfp4-mlp-split-2026-11-09/), [FINDINGS → RAD-11c](FINDINGS.md)); with the DeltaNet
+projections split as well (the preset default for `QUANT_OVERRIDE=quark`) 34.3 / 33.6 / 31.8 / 28.4 and a cold prefill
+of 958 / 854 / 646 tok/s against 800 / 728 / 572
+([receipts](profiling/rad1-mxfp4-deltanet-split-2026-11-09/), [FINDINGS → RAD-1b](FINDINGS.md)).
 Kernel-level comparison with libr4d 0.5.0 on the Qwen3.8 per-rank shapes, cold weight rotation, vendor library inside a
 network-less sandbox (`scripts/bench/libr4d_sandbox.sh`, `libr4d_kernel_bench.py`, `libr4d_kernel_bench_summary.py`): the six
 M=1 block-FP8 linears cost 24.5 ms per rank per step on the vendor W8A16 GEMV against 27.0–27.8 here

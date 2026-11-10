@@ -597,9 +597,11 @@ PYEOF
             # copy-heavy decode 109.8 -> 120.7 tok/s at equal accept length, pool 206,324 -> 430,725 tokens (the
             # 208K needle prompt fits only on the split). Capabilities 4/4 and needle 9/9 where the prompt fits
             # on both arms; cache-hit consistency probe 5/8 beyond the fresh floor against 7/8 on the replicated
-            # control. FP8 checkpoint only: a build served through QUANT_OVERRIDE keeps the replicated layout
-            # until its own gate. DELTANET_TP_SPLIT=0 restores it.
-            if [[ -z "${QUANT_OVERRIDE:-}" ]]; then
+            # control. A build served through QUANT_OVERRIDE keeps the replicated layout until its own gate;
+            # the Quark MXFP4 comparison checkpoint passed it (decode 29.9 / 29.6 / 28.0 / 25.2 -> 34.3 / 33.6 /
+            # 31.8 / 28.4 tok/s, cold prefill 800 / 728 / 572 -> 958 / 854 / 646, pool 953,836 -> 1,091,094,
+            # capabilities 4/4, needle 9/9). DELTANET_TP_SPLIT=0 restores the replicated layout.
+            if [[ -z "${QUANT_OVERRIDE:-}" || "${QUANT_OVERRIDE:-}" == "quark" ]]; then
                 export SGLANG_RDNA4_DELTANET_TP_SPLIT="${DELTANET_TP_SPLIT:-1}"
             fi
             # R97-R (2026-11-01): hybrid radix cache on the extra_buffer strategy (64-token Mamba state grid,

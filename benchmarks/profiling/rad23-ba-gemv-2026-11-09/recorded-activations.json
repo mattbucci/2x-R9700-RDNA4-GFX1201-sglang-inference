@@ -9,6 +9,7 @@
  "activation_source": "final hidden states (LM-head input) of served generations, not the per-layer inputs",
  "device": "AMD Radeon AI PRO R9700",
  "torch": "2.11.0+rocm7.2",
+ "tolerance": "0.5 bf16 ulp of the fp64 product + 64 * eps32 * sum |x_i w_i|",
  "rows": [
   {
    "rows_per_call": 1,
@@ -24,6 +25,24 @@
    "rel_err_kernel": 0.0014087228789652032,
    "rel_err_torch": 0.001408723207618389,
    "finite": true,
+   "kernel_outside_tolerance": 0,
+   "torch_outside_tolerance": 0,
+   "kernel_worst_err_over_tol": 0.9864,
+   "torch_worst_err_over_tol": 0.9864,
+   "more_than_1_ulp": {
+    "kernel_closer_to_fp64": 118,
+    "torch_closer_to_fp64": 2,
+    "largest_gap_in_eps32_of_sum_abs_terms": 0.674,
+    "largest_abs_output_over_sum_abs_terms": 6.984717825647362e-06,
+    "worst": {
+     "layer": "21",
+     "ulp": 300,
+     "kernel": 1.1920928955078125e-07,
+     "torch": 6.407499313354492e-07,
+     "fp64": 3.2549723982810974e-07,
+     "sum_abs_terms": 90.18915181071497
+    }
+   },
    "outputs_per_decode_step": 4608,
    "expected_differing_outputs_per_decode_step": 2.048828125
   },
@@ -41,10 +60,28 @@
    "rel_err_kernel": 0.0014086595757732063,
    "rel_err_torch": 0.0014086599043371766,
    "finite": true,
+   "kernel_outside_tolerance": 0,
+   "torch_outside_tolerance": 0,
+   "kernel_worst_err_over_tol": 0.9864,
+   "torch_worst_err_over_tol": 0.9864,
+   "more_than_1_ulp": {
+    "kernel_closer_to_fp64": 117,
+    "torch_closer_to_fp64": 2,
+    "largest_gap_in_eps32_of_sum_abs_terms": 0.674,
+    "largest_abs_output_over_sum_abs_terms": 6.984717825647362e-06,
+    "worst": {
+     "layer": "21",
+     "ulp": 300,
+     "kernel": 1.1920928955078125e-07,
+     "torch": 6.407499313354492e-07,
+     "fp64": 3.2549723982810974e-07,
+     "sum_abs_terms": 90.18915181071497
+    }
+   },
    "outputs_per_decode_step": 4608,
    "expected_differing_outputs_per_decode_step": 2.049164208456244
   }
  ],
- "elapsed_s": 3.6,
+ "elapsed_s": 3.8,
  "ok": true
 }

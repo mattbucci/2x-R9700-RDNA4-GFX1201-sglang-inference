@@ -49,11 +49,12 @@ class StreamTpotTest(unittest.TestCase):
                 },
             ]
         )
-        with mock.patch.object(mdc.requests, "post", return_value=response), mock.patch.object(
-            mdc.time, "perf_counter", side_effect=[10.0, 10.1, 10.3, 10.4]
+        with mock.patch.object(mdc.requests, "post", return_value=response) as post, mock.patch.object(
+            mdc.time, "perf_counter", side_effect=[9.0, 10.0, 10.1, 10.3, 10.4]
         ):
-            tpot_ms, tps, prompt_tokens, completion_tokens, sample = mdc.stream_tpot(
-                "http://test", "model", "prompt", 80, False
+            tpot_ms, tps, prompt_tokens, completion_tokens, sample, ttft_ms = mdc.stream_tpot(
+                "http://test", "model", "prompt", 80, False,
+                sampling={"temperature": 1.0, "top_k": 20},
             )
 
         self.assertTrue(response.status_checked)
@@ -62,6 +63,9 @@ class StreamTpotTest(unittest.TestCase):
         self.assertEqual(prompt_tokens, 123)
         self.assertEqual(completion_tokens, 5)
         self.assertEqual(sample, "abc")
+        self.assertAlmostEqual(ttft_ms, 1000.0)
+        body = post.call_args.kwargs["json"]
+        self.assertEqual((body["temperature"], body["top_k"], body["max_tokens"]), (1.0, 20, 80))
 
 
 if __name__ == "__main__":

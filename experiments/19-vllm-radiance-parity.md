@@ -120,7 +120,7 @@ radiance serves every request cold (prefix caching off). With the prefix cached 
 | FP8, no speculation | 35.4 / 35.0 / 33.7 / 30.4 | 26.9 / 26.3 / 25.3 / 23.2 | 1.3× | 37 vs 28 ms per step since RAD-1 took the replicated DeltaNet projections out (patch 121, 43 → 37 ms). Census of the 43 ms step by RAD-14 and RAD-13 (2,657 launches per rank per step): block-FP8 GEMM 27.7 ms, of which the activation-quantising GEMM against a W8A16 GEMV 3.3–3.5; all-reduce 5.7–7.1, ≈ 4 recoverable; bf16 rocBLAS 3.8 (LM head 2.3, DeltaNet `in_proj_ba` 1.4); ≈ 2,220 small launches 4.5–5.9, of which fusion recovers 2.5–3.5 |
 | FP8 + DFlash2 | 99.9 / 99.7 / 87.9 / 91.0 | 56.7 / 60.4 / 41.9 / 31.5 | 1.7–2.9× | the base step above, times a draft + verify cycle that costs 1.5× a plain step at 24 tokens and 1.7–2.0× at 197K (radiance: 1.3× and 1.25×, accept length 3.7 on both engines); selector on the `torch.topk` fallback; fixed block length |
 | Cold prefill | 4,137 / 3,631 / 2,520 | 2,125 / 1,658 / 1,024 | 1.9–2.5× | not profiled: GDN conv and chunk scan, extend attention, block-FP8 GEMM tiles at M ≥ 64 |
-| MXFP4 W4A8, no speculation | 51.6 / 50.8 / 47.4 / 41.0 | 29.9 / 29.6 / 28.0 / 25.2 | 1.6–1.7× | with the MLP TP-split (patch 120, RAD-11c; the replicated layout gave 23.2 / 22.8 / 21.9 / 20.2): a 33.4 ms step against 19.4, on the FP8 step's non-GEMM costs (all-reduce, bf16 rocBLAS, ≈ 2,300 small launches) plus an activation-scale fill and bf16 → fp32 copies per GEMV; cold prefill 798 / 725 tok/s at 7.3K / 58K, 2.0–2.3× slower than FP8 until the M > 32 repack path exists |
+| MXFP4 W4A8, no speculation | 51.6 / 50.8 / 47.4 / 41.0 | 34.3 / 33.6 / 31.8 / 28.4 | 1.4–1.5× | with the MLP and the DeltaNet projections TP-split (patches 120 and 121; RAD-11c, RAD-1b; the MLP split alone gave 29.9 / 29.6 / 28.0 / 25.2, the replicated layout 23.2 / 22.8 / 21.9 / 20.2): a 29.2 ms step against 19.4, on the FP8 step's non-GEMM costs (all-reduce, bf16 rocBLAS, ≈ 2,300 small launches) plus an activation-scale fill and bf16 → fp32 copies per GEMV; cold prefill 958 / 854 / 646 tok/s at 7.3K / 58K / 197K, 1.6–2.2× slower than FP8 until the M > 32 repack path exists |
 
 Cycle arithmetic for the DFlash2 row: 3.68 accepted tokens per cycle at 56.7 tok/s is 65 ms against a 43 ms plain step;
 at 197K the cycle is 82–98 ms against 49 ms with the prefix cached, and the first request at 58K and 197K carries a
@@ -218,8 +218,8 @@ Measurement first, so port order follows measured worth instead of the estimated
    197K; DFlash2 replaces DSpark as the qwen38 default only if it is faster at every depth.
 7. Prefill: RAD-10 ports chosen by share (RAD-19, RAD-20, GDN chunk scan, prefill attention). Target: ≥ 3,500 tok/s at
    7.3K and ≥ 2,000 at 197K.
-8. MXFP4: RAD-11c split the MLP (patch 120, +25–30 % decode); next the deep gate, a census of the split layout and
-   the RAD-11 repack path at M > 32, then RAD-21. RAD-9 (quality-only numerics) last.
+8. MXFP4: RAD-11c split the MLP (patch 120, +25–30 % decode) and RAD-1b the DeltaNet projections (+13–15 %); next a
+   census of the split layout and the RAD-11 repack path at M > 32, then RAD-21. RAD-9 (quality-only numerics) last.
 9. The Flint SWE-bench cell (paused at 43/300) resumes after step 5 or on the user's call; Flint inherits every item
    that is not Qwen-specific (RAD-3, RAD-15, RAD-17, RAD-22, RAD-25).
 

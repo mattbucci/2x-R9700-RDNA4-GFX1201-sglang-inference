@@ -134,7 +134,7 @@ Qwen3.8-27B files ([receipt](benchmarks/radiance-parity/README.md)). Decode is t
 | FP8, no speculation | 35.4 / 35.0 / 33.7 / 30.4 | 26.7 / 26.3 / 25.4 / 23.2 | 1.3× | RAD-12 ablation ladder of their switches, RAD-13 their HIP kernels timed against ours, RAD-14 launch census of the step, RAD-3 GEMM weight layout, RAD-22 quant-free decode GEMV or RAD-5 norm + quant fusion, RAD-15 low-bit LM head with exact rerank |
 | FP8 + DFlash2 | 99.9 / 99.7 / 87.9 / 91.0 | 56.7 / 60.4 / 41.9 / 31.5 | 1.7–2.9× | the base step, then RAD-16 draft + verify cycle anatomy and the 197K fix, RAD-17 HIP top-k selector, RAD-18 content-adaptive block length, RAD-7 low-bit draft head |
 | Cold prefill | 4,137 / 3,631 / 2,520 | 2,125 / 1,658 / 1,024 | 1.9–2.5× | RAD-10 197K profile, RAD-19 DeltaNet conv block width, RAD-20 GEMM tiles at M ≥ 64 and chunk size, then ports by share |
-| MXFP4, no speculation | 51.6 / 50.8 / 47.4 / 41.0 | 29.9 / 29.6 / 28.0 / 25.2 | 1.6–1.7× | RAD-11 split-layout census and the M > 32 repack path, RAD-21 MXFP4 + DFlash2 |
+| MXFP4, no speculation | 51.6 / 50.8 / 47.4 / 41.0 | 34.3 / 33.6 / 31.8 / 28.4 | 1.4–1.5× | RAD-11 split-layout census and the M > 32 repack path, RAD-21 MXFP4 + DFlash2 |
 
 Measurement runs first (RAD-2, 12, 13, 14, 10 and 16 need no tree change) so ports follow measured worth. Targets: 33 tok/s
 no-spec and 90 with DFlash2 at 24 tokens, 80 at 197K, prefill 3,500 tok/s at 7.3K, needle and capabilities unchanged.

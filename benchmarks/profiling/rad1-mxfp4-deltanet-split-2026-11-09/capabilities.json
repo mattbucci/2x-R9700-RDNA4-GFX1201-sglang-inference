@@ -1,0 +1,58 @@
+{
+  "split": {
+    "tag": "split",
+    "model": "/data/models/Qwen3.8-27B-Quark-AWQ-MXFP4",
+    "timestamp": "2026-11-10 03:36",
+    "elapsed_sec": 6.7,
+    "checks": {
+      "basic": {
+        "passed": true,
+        "message": "finish=stop answer='paris'"
+      },
+      "tool_call": {
+        "passed": true,
+        "message": "finish=tool_calls name='get_weather' args='{\"location\": \"Paris\"}'"
+      },
+      "thinking": {
+        "passed": true,
+        "message": "reasoning_seen terminated answer_ok (151 tok, finish=stop)"
+      },
+      "vision": {
+        "passed": true,
+        "message": "saw=['red', 'circle']  response=' a red circle is shown in the image.'"
+      }
+    },
+    "summary": {
+      "passed": 4,
+      "total": 4
+    }
+  },
+  "replicated": {
+    "tag": "replicated",
+    "model": "/data/models/Qwen3.8-27B-Quark-AWQ-MXFP4",
+    "timestamp": "2026-11-10 04:26",
+    "elapsed_sec": 7.4,
+    "checks": {
+      "basic": {
+        "passed": true,
+        "message": "finish=stop answer='paris'"
+      },
+      "tool_call": {
+        "passed": true,
+        "message": "finish=tool_calls name='get_weather' args='{\"location\": \"Paris\"}'"
+      },
+      "thinking": {
+        "passed": true,
+        "message": "reasoning_seen terminated answer_ok (140 tok, finish=stop)"
+      },
+      "vision": {
+        "passed": true,
+        "message": "saw=['red', 'circle', 'round']  response='a red circle with a black outline is centered on a white background.'"
+      }
+    },
+    "summary": {
+      "passed": 4,
+      "total": 4
+    }
+  }
+}

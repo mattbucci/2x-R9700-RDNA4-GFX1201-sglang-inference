@@ -1170,8 +1170,33 @@ known class (#37) and does not follow the layout.
 Disposition: patch 121, code default off; the `qwen38` preset exports the switch for the FP8 checkpoint and
 `DELTANET_TP_SPLIT=0` restores the replicated layout. The DSpark server now accepts a 256K prompt; DSpark against
 the no-spec server beyond 208K is not measured, so the 256K rule stands. A checkpoint served through
-`QUANT_OVERRIDE` keeps the replicated projections until its own A/B. RAD-24 (no all-reduce for a replicated stage)
-no longer applies to this preset's DeltaNet stages.
+`QUANT_OVERRIDE` keeps the replicated projections until its own A/B (RAD-1b: the Quark MXFP4 checkpoint passed).
+RAD-24 (no all-reduce for a replicated stage) no longer applies to this preset's DeltaNet stages.
+
+### RAD-1b — the DeltaNet split on the Quark MXFP4 checkpoint: decode +13–15 %, prefill +13–20 % (2026-11-10)
+
+Patch 121 left a checkpoint served through `QUANT_OVERRIDE` on the replicated DeltaNet projections until its own
+A/B. This is that A/B on `amd/Qwen3.8-27B-Quark-AWQ-MXFP4` (comparison input): qwen38 preset without speculation,
+live tree, `SGLANG_RDNA4_DELTANET_TP_SPLIT=1` then `0` in one session
+([receipts](profiling/rad1-mxfp4-deltanet-split-2026-11-09/)):
+
+| arm | 24 | 7,331 | 58,483 | 197,326 input tokens | cold prefill, 7.3K / 58K / 197K | token pool | weights per rank |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| split | 34.26 | 33.61 | 31.82 | 28.37 | 958 / 854 / 646 tok/s | 1,091,094 | 9.10 GB |
+| replicated | 29.90 | 29.60 | 28.00 | 25.22 | 800 / 728 / 572 tok/s | 953,836 | 10.55 GB |
+| split over replicated | +14.6 % | +13.5 % | +13.6 % | +12.5 % | +19.7 / +17.3 / +12.9 % | +14.4 % | −1.45 GB |
+
+One order only. The split arm booted first, the position that measures slow (one of its three 24-token runs reads
+29.8 against 34.3; the median is not affected), and the replicated arm reproduces the RAD-11c live-tree numbers
+(29.90 / 29.56 / 27.99 / 25.23, prefill 799 / 726 / 571). The step falls from 33.5 to 29.2 ms at 24 tokens.
+Capabilities 4/4 on both arms (video skipped); greedy needle 9/9 to 208,296 tokens on the split arm
+([receipt](quality/rad1-mxfp4-split-natural-greedy.json)). Greedy identity between the layouts: 2 of 6 probes match
+to the token (132 and 181 tokens), four diverge after 146–1,002 characters (`identity-compare.json`), as for every
+layout change that reorders a sum.
+
+Disposition: the `qwen38` preset exports the split for `QUANT_OVERRIDE=quark` as well; `DELTANET_TP_SPLIT=0` restores
+the replicated layout and every other override keeps it. MXFP4 without speculation is 1.28× this stack's FP8
+canonical row at 24 tokens and 1.4–1.5× behind radiance's 51.6 / 50.8 / 47.4 / 41.0, from 1.6–1.7×.
 
 ### RAD-22 — native HIP W8A16 GEMV for the one-row block-FP8 linears: decode +7–8 %; patch 122, opt-in (2026-11-10)
 
@@ -1297,7 +1322,10 @@ and a decode step computes 4,608. On recorded activations (`scripts/test/skinny_
 hidden states of served generations against each layer's checkpoint weight, 4.7 M outputs; the final hidden state
 stands in for the per-layer inputs) 0.044 % of the outputs differ from the torch linear, at one row and at nine: 2 per
 decode step. 120 of the 2,098 are more than 1 ULP apart, the largest 300; the kernel is the side closer to the fp64
-product on 1,894 and torch on 204, with a relative error of 0.1409 % on both.
+product on 1,894 and torch on 204, with a relative error of 0.1409 % on both. Against a tolerance anchored on the
+fp64 product (half a bf16 ULP of it plus 64 × eps32 × Σ|xᵢwᵢ|) neither side has an output outside it, the worst at
+0.99 of the tolerance on both. The 120 outputs more than 1 ULP apart are cancellations (|output| at most 7 × 10⁻⁶ of
+Σ|xᵢwᵢ|), and there the kernel is the closer side on 118 (`recorded-activations.json`).
 
 With DSpark, switch on against off:
 

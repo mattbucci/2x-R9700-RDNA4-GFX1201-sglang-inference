@@ -31,10 +31,13 @@ def build_prompt(approx_tokens):
     return body + "\n\nIn one short paragraph, summarize the repeated sentence above."
 
 
-def stream_tpot(base, model, prompt, maxtok, think_off, ignore_eos=False):
+def stream_tpot(base, model, prompt, maxtok, think_off, ignore_eos=False, sampling=None):
     body = {"model": model, "messages": [{"role": "user", "content": prompt}],
             "max_tokens": maxtok, "temperature": 0, "stream": True,
             "stream_options": {"include_usage": True}}
+    if sampling:
+        # Request fields that replace temperature 0 (a sampled row also times the sampler).
+        body.update(sampling)
     if think_off:
         body["chat_template_kwargs"] = {"enable_thinking": False}
     if ignore_eos:

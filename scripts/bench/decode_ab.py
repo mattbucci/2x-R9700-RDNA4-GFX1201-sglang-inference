@@ -32,6 +32,10 @@ def main():
                          "the EOS point (e.g. num_kv_splits), which otherwise makes "
                          "arms decode different lengths and compare different work. "
                          "Kernel isolation only -- not a user-facing rate.")
+    ap.add_argument("--sampling", default="",
+                    help="key=value,... request fields replacing temperature 0, e.g. "
+                         "temperature=1.0,top_p=0.95,top_k=20,seed=7. The text then differs "
+                         "between runs and arms, so pair it with --ignore-eos.")
     ap.add_argument("--label", default="")
     ap.add_argument("--tag", default="")
     ap.add_argument("--note", default="")
@@ -46,6 +50,10 @@ def main():
                   json={"model": model, "messages": [{"role": "user", "content": "hi"}],
                         "max_tokens": 8, "temperature": 0})
 
+    sampling = {}
+    for item in filter(None, a.sampling.split(",")):
+        key, value = item.split("=", 1)
+        sampling[key.strip()] = float(value) if "." in value else int(value)
     ctxs = [int(c) for c in a.contexts.split(",") if c.strip()]
     rows = []
     for c in ctxs:
@@ -53,7 +61,7 @@ def main():
         tpss, tpots, pts, cts, ttfts, sample = [], [], [], [], [], ""
         for r in range(a.runs):
             ms, tps, pt, ct, s, ttft = mdc.stream_tpot(
-                base, model, prompt, a.maxtok, a.think_off, a.ignore_eos
+                base, model, prompt, a.maxtok, a.think_off, a.ignore_eos, sampling or None
             )
             tpss.append(tps); tpots.append(ms); pts.append(pt or c); cts.append(ct); sample = s
             if ttft is not None:
@@ -79,7 +87,8 @@ def main():
               f"[{row['min_tps']:.2f}..{row['max_tps']:.2f}]  sample={sample!r}", flush=True)
 
     result = {"label": a.label, "tag": a.tag, "note": a.note, "port": a.port,
-              "maxtok": a.maxtok, "runs": a.runs, "points": rows}
+              "maxtok": a.maxtok, "runs": a.runs, "sampling": sampling or None,
+              "ignore_eos": a.ignore_eos, "points": rows}
     print("JSON " + json.dumps(result), flush=True)
 
     if a.out:
