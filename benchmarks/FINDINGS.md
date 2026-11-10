@@ -1318,6 +1318,51 @@ on both DSpark arms.
 Disposition: patch 124, code default off. The qwen38 preset exports the switch after the stack confirmation with
 patches 122 and 123.
 
+### RAD-15 study — an int8 copy of the LM head leaves a proven candidate window; 4-bit and 2-bit windows are statistical only (2026-11-10)
+
+The LM head is one rocBLAS GEMM over 124,160 × 5,120 bf16 rows per rank, 2.3–2.5 ms of a 36 ms step. The study asks
+whether a cheaper pass over a low-bit copy can pick candidates that an exact rerank on the bf16 rows then settles,
+with a window that is a proof and not a rate (`scripts/bench/lm_head_capture.py`, `lm_head_lowbit_study.py`,
+[receipt](profiling/rad15-lm-head-study-2026-11-10/study.json)). Head inputs: 4,873 final hidden states captured from
+20 served generations (code, prose, JSON, SQL, tables, German, Chinese, Japanese; 3,737 greedy steps and 1,136
+sampled). The recomputed bf16 arg-max equals the served token on every greedy step. Top logit p50 26.4; top-1 minus
+top-2 is 0.75 at p10 and 7.4 at p50; 38 steps tie at the top in bf16.
+
+A candidate is a row whose upper bound reaches the best lower bound (the 20th best for a top-20 window). Proven
+bound: Cauchy–Schwarz over 128-column groups or the group L1 form, whichever is smaller, plus an arithmetic slack and
+one bf16 ULP. Statistical bound: six standard deviations of an isotropic error. Candidates over both ranks:
+
+| code | bits per weight | GiB per rank | largest logit error | proven arg-max window p50 / p99 / max | proven top-20 window p50 / p99 / max | 6σ arg-max window p99 / max |
+|---|---:|---:|---:|---|---|---|
+| int8, one scale per row | 8.00 | 0.59 | 0.44 | 2 / 66 / 710 | 97 / 2,071 / 6,299 | 3 / 7 |
+| int8, per row per 128 columns | 8.13 | 0.60 | 0.13 | 1 / 19 / 164 | 55 / 421 / 870 | 3 / 5 |
+| int8, per row per 32 columns | 8.50 | 0.63 | 0.08 | 1 / 13 / 86 | 46 / 248 / 445 | 3 / 5 |
+| E4M3, 128 × 128 blocks | 8.00 | 0.59 | 0.56 | 7 / 7,605 / 36,609 | 2,378 / 72,821 / 102,054 | 5 / 12 |
+| int4, per row per 32 columns | 4.50 | 0.33 | 2.16 | 114,022 / all / all | all | 30 / 241 |
+| int2, per row per 32 columns | 2.50 | 0.19 | 11.86 | all | all | 94,236 / 115,703 |
+
+No served token fell outside any window in 4,873 steps. The int4 error reaches 11 isotropic standard deviations (15
+with 128-column scales), so its 6σ window is a rate and not a proof; the proven int4 window is the whole shard.
+Keeping the 64 or 256 heaviest activation columns in bf16 shrinks the int8 window by at most 11 %.
+
+Stage costs on one card, per rank, in µs: bf16 head 2,549 (rocBLAS, 499 GB/s); the patch-122 W8A16 kernel over the
+int8 bytes 1,002 (635 GB/s), over half the bytes 504, over a quarter 257; bound 38; `topk` 121–123 at any size; exact
+rerank 34 / 38 / 68 / 201 / 1,049 at 64 / 256 / 1,024 / 4,096 / 16,384 rows; scatter 7–8.
+
+| path | fast path µs | window fits | expected µs | saving per step, µs |
+|---|---:|---:|---:|---:|
+| int8 per 128 columns, proven window, 256 rows reranked | 1,135 | 100 % | 1,135 | 1,414 |
+| same, 1,024 rows (covers the proven top-20 window) | 1,167 | 100 % | 1,167 | 1,382 |
+| E4M3 blocks, proven window, 1,024 rows | 1,167 | 84.5 % | 1,562 | 987 |
+| int4 per 32 columns, 6σ window, 256 rows | 598 | 100 % | 598 | 1,951 |
+
+A failed window costs one bf16 head pass. The 4-bit row is timed as the E4M3 kernel over half the bytes, not as a
+4-bit kernel.
+
+Disposition: the gate (a proven window worth 0.7 ms or more per step) is met by the int8 code with one scale per row
+per 128 columns: 1.4 ms of a 36.3 ms step. That is the head to build, with the bf16 head as the fallback when the
+certificate fails. The 4-bit head would save 0.55 ms more and has no proof, so it stays out.
+
 ## Evaluation methodology
 
 ### SWE-bench answer leakage through git history and the web (found 2026-09-18)

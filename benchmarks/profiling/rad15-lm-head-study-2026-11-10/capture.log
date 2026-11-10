@@ -1,0 +1,21 @@
+[capture] code-python: prompt_tokens=48 output_ids=320 hidden_rows=320 kept=320 finish={'type': 'length', 'length': 320} 12.8s
+[capture] code-rust: prompt_tokens=37 output_ids=320 hidden_rows=320 kept=320 finish={'type': 'length', 'length': 320} 12.5s
+[capture] code-sampled: prompt_tokens=34 output_ids=320 hidden_rows=320 kept=320 finish={'type': 'length', 'length': 320} 13.4s
+[capture] reason-think: prompt_tokens=98 output_ids=400 hidden_rows=400 kept=400 finish={'type': 'length', 'length': 400} 15.7s
+[capture] think-sampled: prompt_tokens=110 output_ids=400 hidden_rows=400 kept=400 finish={'type': 'length', 'length': 400} 15.9s
+[capture] prose-sampled: prompt_tokens=70 output_ids=320 hidden_rows=320 kept=320 finish={'type': 'length', 'length': 320} 12.7s
+[capture] prose-greedy: prompt_tokens=70 output_ids=320 hidden_rows=320 kept=320 finish={'type': 'length', 'length': 320} 12.5s
+[capture] json: prompt_tokens=46 output_ids=94 hidden_rows=94 kept=94 finish={'type': 'stop', 'matched': 248046} 3.8s
+[capture] extract: prompt_tokens=207 output_ids=186 hidden_rows=186 kept=186 finish={'type': 'stop', 'matched': 248046} 7.6s
+[capture] summary: prompt_tokens=208 output_ids=166 hidden_rows=166 kept=166 finish={'type': 'stop', 'matched': 248046} 6.8s
+[capture] german: prompt_tokens=67 output_ids=137 hidden_rows=137 kept=137 finish={'type': 'stop', 'matched': 248046} 5.5s
+[capture] chinese: prompt_tokens=36 output_ids=106 hidden_rows=106 kept=106 finish={'type': 'stop', 'matched': 248046} 4.2s
+[capture] japanese: prompt_tokens=77 output_ids=135 hidden_rows=135 kept=135 finish={'type': 'stop', 'matched': 248046} 5.4s
+[capture] primes: prompt_tokens=27 output_ids=320 hidden_rows=320 kept=320 finish={'type': 'length', 'length': 320} 12.5s
+[capture] table: prompt_tokens=41 output_ids=320 hidden_rows=320 kept=320 finish={'type': 'length', 'length': 320} 12.5s
+[capture] math: prompt_tokens=41 output_ids=320 hidden_rows=320 kept=320 finish={'type': 'length', 'length': 320} 12.5s
+[capture] sql: prompt_tokens=55 output_ids=222 hidden_rows=222 kept=222 finish={'type': 'stop', 'matched': 248046} 8.7s
+[capture] tool-like: prompt_tokens=58 output_ids=51 hidden_rows=51 kept=51 finish={'type': 'stop', 'matched': 248046} 2.1s
+[capture] dialogue-sampled: prompt_tokens=31 output_ids=96 hidden_rows=96 kept=96 finish={'type': 'stop', 'matched': 248046} 3.8s
+[capture] yaml: prompt_tokens=43 output_ids=320 hidden_rows=320 kept=320 finish={'type': 'length', 'length': 320} 12.5s
+[capture] saved 4873 steps x 5120 to /data/logs/rad15-lm-head-study-2026-11-10/hidden.pt; values exactly bf16: True; greedy steps: 3737

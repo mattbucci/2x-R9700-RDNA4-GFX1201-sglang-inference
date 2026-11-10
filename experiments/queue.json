@@ -752,18 +752,18 @@
   {
    "id": "RAD-15",
    "spec": "19-vllm-radiance-parity.md",
-   "status": "queued",
+   "status": "in_progress",
    "resource": "gpu",
    "depends_on": [
-    "RAD-14 (done): LM head = one rocBLAS launch of 2.25-2.36 ms per step",
-    "REBASE-0523"
+    "RAD-14 (done): LM head = one rocBLAS launch of 2.25-2.36 ms per step"
    ],
-   "next_action": "Low-bit target LM head with exact rerank: int2/int4 g128 lm_head copy, top-64 candidates rescored on bf16 rows; per-batch gate on sampler needs (greedy / top-k <= 64 only; full head for logprobs, grammar masks, logit_bias, top-p/min-p tails). Site srt/layers/logits_processor.py:450-466.",
+   "next_action": "Study done (benchmarks/profiling/rad15-lm-head-study-2026-11-10/study.json): build the int8 head, one scale per row per 128 columns (8.13 bits per weight, 0.60 GiB per rank), first pass + proven bound + exact rerank of the top rows by upper bound, certificate (the best exact value clears the best upper bound outside the reranked rows by more than one bf16 ULP), bf16 head as the fallback. Per-batch gate on sampler needs: greedy first; top-k <= 20 sampling second (the reranked rows cover the proven top-20 window at 1,024 rows); full head for logprobs, grammar masks, logit_bias, penalties. int4 / int2 stay out: their proven window is the whole shard and the 6-sigma window is a rate. Site srt/layers/logits_processor.py (TP all-gather + rocBLAS GEMM).",
    "test_gate": [
     "byte-identical greedy output on the 8-prompt set and the needle grid",
     "tool-call + structured-output probes unchanged; gate fails closed",
     "about -1.1 ms/step net in a both-orders A/B (head 2.3 ms today; radiance 0.47)"
-   ]
+   ],
+   "study": "2026-11-10, 4,873 captured head inputs from 20 served generations, recomputed bf16 arg-max = served token on 3,737/3,737 greedy steps. Proven arg-max window over both ranks p50/p99/max: int8 per row 2/66/710, int8 per row per 128 columns 1/19/164, per 32 columns 1/13/86, E4M3 128x128 blocks 7/7,605/36,609, int4 and int2 the whole shard; proven top-20 window for int8 per 128 columns 55/421/870. 0 misses on every window. Per rank: bf16 head 2,549 us, 8-bit first pass 1,002, bound 38, topk 122, rerank 38 (256 rows) / 68 (1,024), scatter 7-8: fast path 1,135-1,167 us, saving 1.38-1.41 ms per step. int4 with a 6-sigma window 598 us, no proof (error reaches 11 isotropic sigma)."
   },
   {
    "id": "RAD-16",

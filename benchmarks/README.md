@@ -126,7 +126,10 @@ is its exactness and timing bench ([receipts](profiling/rad22-fp8-gemv-2026-11-0
 30.2 / 29.7 / 28.4 / 25.6 tok/s, cold prefill 2,123 / 1,658 / 1,025 → 2,316 / 1,783 / 1,072 tok/s, DSpark +17.7 % at 24 tokens
 ([receipts](profiling/rad5a-gemma-rmsnorm-2026-11-09/), [FINDINGS → RAD-5a](FINDINGS.md)). One-launch bf16 GEMV for the DeltaNet
 `in_proj_ba` (patch 124, opt-in), same design: decode 26.7 / 26.3 / 25.3 / 23.1 → 27.5 / 26.9 / 26.3 / 23.8 tok/s, prefill unchanged,
-DSpark cycle 1.1 ms shorter ([receipts](profiling/rad23-ba-gemv-2026-11-09/), [FINDINGS → RAD-23](FINDINGS.md)). `scripts/bench/dspark_cycle_times.py`
+DSpark cycle 1.1 ms shorter ([receipts](profiling/rad23-ba-gemv-2026-11-09/), [FINDINGS → RAD-23](FINDINGS.md)). Low-bit LM-head study on
+4,873 captured head inputs (`scripts/bench/lm_head_capture.py`, `lm_head_lowbit_study.py`): an int8 copy with a proven candidate window
+and an exact rerank costs 1.14 ms per rank against 2.55 for the bf16 head; 4-bit windows are statistical only
+([receipt](profiling/rad15-lm-head-study-2026-11-10/study.json), [FINDINGS → RAD-15 study](FINDINGS.md)). `scripts/bench/dspark_cycle_times.py`
 reads DSpark cycle time and accept length from a server log; `scripts/bench/copyheavy_multi_bench.py` is the five-target
 copy-heavy probe with decode-only timing.
 Upstream's one-stage HIP all-reduce against RCCL on the FP8 preset: +1.8 % at 24 tokens with wrong sums, so RCCL stays
