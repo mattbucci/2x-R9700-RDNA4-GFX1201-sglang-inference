@@ -1,0 +1,127 @@
+{
+ "experiment": "RAD-1: TP-split DeltaNet projections (patch 121, SGLANG_RDNA4_DELTANET_TP_SPLIT)",
+ "date": "2026-11-09",
+ "preset": "qwen38 (Qwen3.8-27B-FP8), 2x gfx1201, one session, development copy of the tree",
+ "method": "decode_ab think-off, EOS, 80 tokens, 3-run medians; prefill_ttft cold; needle natural text greedy; dflash_identity_probe greedy",
+ "input_tokens": [
+  24,
+  7331,
+  58483,
+  197326
+ ],
+ "no_spec": {
+  "off1_replicated": {
+   "decode_tok_s": [
+    23.261,
+    22.948,
+    22.182,
+    20.529
+   ],
+   "token_pool": 525548,
+   "weights_per_rank_gb": 17.08
+  },
+  "on_tp_split": {
+   "decode_tok_s": [
+    26.891,
+    26.272,
+    25.34,
+    23.22
+   ],
+   "token_pool": 735510,
+   "weights_per_rank_gb": 14.52
+  },
+  "off2_replicated": {
+   "decode_tok_s": [
+    23.234,
+    22.912,
+    22.16,
+    20.508
+   ],
+   "token_pool": 525548,
+   "weights_per_rank_gb": 17.08
+  },
+  "greedy_identity": {
+   "off1_vs_off2": "6/6",
+   "off1_vs_on": "1/6"
+  },
+  "needle": {
+   "off1": "9/9",
+   "on": "9/9"
+  },
+  "capabilities": {
+   "off1": "4/4",
+   "on": "4/4"
+  }
+ },
+ "dspark": {
+  "off_replicated": {
+   "decode_tok_s": [
+    45.183,
+    52.543,
+    35.39,
+    31.041
+   ],
+   "token_pool": 206324,
+   "needle": "6/9 (the three 208,296-token prompts exceed the pool)",
+   "identity_probe_tok_s": {
+    "code": 80.5,
+    "prose": 44.9,
+    "json": 101.2,
+    "numbers": 118.3,
+    "refactor": 60.6,
+    "ctx-long": 8.0
+   },
+   "identity_probe_accept_len": 3.94,
+   "identity_probe_cycles_per_s": 14.85,
+   "copyheavy_single_sample_client_tok_s": 21.68
+  },
+  "on_tp_split": {
+   "decode_tok_s": [
+    47.224,
+    57.66,
+    38.75,
+    33.265
+   ],
+   "token_pool": 430725,
+   "needle": "9/9",
+   "identity_probe_tok_s": {
+    "code": 91.1,
+    "prose": 55.1,
+    "json": 116.8,
+    "numbers": 131.2,
+    "refactor": 71.5,
+    "ctx-long": 10.7
+   },
+   "identity_probe_accept_len": 4.02,
+   "identity_probe_cycles_per_s": 16.24,
+   "copyheavy_single_sample_client_tok_s": 21.33
+  },
+  "greedy_identity_on_vs_off": "2/6",
+  "capabilities": {
+   "on": "4/4",
+   "off": "4/4"
+  },
+  "note": "accept length and cycle rate are means over the server's 'Decode batch' lines inside the identity-probe window (gen throughput > 20 tok/s lines for the cycle rate)"
+ },
+ "cache_hit_consistency": {
+  "args": "--tokens 32768,131072 --cells 2 --chars-per-token 3.27",
+  "on_tp_split": {
+   "beyond_fresh_floor": "5/8",
+   "mean_first_token_dlogp_nats": 0.7,
+   "max": 1.858
+  },
+  "off_replicated_control": {
+   "beyond_fresh_floor": "7/8",
+   "mean_first_token_dlogp_nats": 0.702,
+   "max": 1.374
+  }
+ },
+ "replay_gate": {
+  "patches": 89,
+  "apply_failures": 0,
+  "paths": 149,
+  "mismatches": 0,
+  "second_apply_accepted": 0
+ },
+ "logs": "/data/logs/rad1-deltanet-tpsplit-2026-11-09/"
+}

@@ -448,7 +448,7 @@
    "depends_on": [
     "REBASE-0523"
    ],
-   "next_action": "Done: RCCL stays. Mechanism of the wrong sums: scripts/bench/custom_allreduce_isolation.py (tail queue 05-custom-ar-isolation.sh, receipt benchmarks/profiling/rad2-onestage-ar-2026-11-09/custom-allreduce-isolation.json); a correct in-graph reduce is RAD-25.",
+   "next_action": "Done: RCCL stays. Isolation (benchmarks/profiling/rad2-onestage-ar-2026-11-09/custom-allreduce-isolation.json): the shipped kernel is wrong with its PyTorch-pool staging buffer (own input plus the peer's previous payload) and exact with an uncached fine-grained one, eager and in a 129-reduction graph, at 10.8-10.9 us per reduction; a correct in-graph reduce is RAD-25.",
    "test_gate": [
     "graph capture holds: met (129 addresses)",
     "validate_capabilities and needle unchanged: FAILED (0/4, server died before the needle)",
@@ -503,16 +503,17 @@
   {
    "id": "RAD-1",
    "spec": "19-vllm-radiance-parity.md",
-   "status": "ready",
+   "status": "completed",
    "resource": "gpu",
    "depends_on": [],
-   "next_action": "Serving A/B through chain2's pre-hook after RAD-2b: GEMM tune for N=8192,K=5120 (tune_fp8_block_gemm.py --preset qwen38-tpsplit, emitted into the development tree), then rad1_tpsplit_ab.sh: off1 -> on -> off2 without speculation, DSpark on/off only if the on arm keeps needle and caps. The replication is a local patch (001/016/045); SGLANG_RDNA4_DELTANET_TP_SPLIT=1 restores the upstream head-sharded layout (16384x5120 / 5120x6144 -> 8192x5120 / 5120x3072 per rank). The switch lives in /data/sgl-v0522-rad1/python (two files differ from the live tree); capture it as a numbered patch only if the gates pass, otherwise delete the development tree.",
+   "next_action": "Done: patch 121, exported by the qwen38 preset for the FP8 checkpoint (DELTANET_TP_SPLIT=0 restores the replicated layout). Open on the same layout: the five-target DSpark copy-heavy re-measure (tail queue 15-rad1-dspark-copyheavy.sh), the Quark MXFP4 split-vs-replicated A/B (60-rad1-mxfp4-deltanet-split.sh), and RAD-26.",
    "test_gate": [
-    "identity line 'DeltaNet projections: TP-split over 2 ranks' and the N=8192,K=5120 config in the server log",
-    "off arms equal the live tree's medians (23.2/22.9/22.2/20.5): the default-off switch is neutral",
-    "needle >= replicated, caps 4/4, cache_hit_consistency within the fresh-vs-fresh floor",
-    "DSpark accept length and decode not worse than replicated"
-   ]
+    "identity line 'DeltaNet projections: TP-split over 2 ranks' and the N=8192,K=5120 config in the server log: met",
+    "off arms equal the live tree's medians: met (23.26/22.95/22.18/20.53 and 23.23/22.91/22.16/20.51)",
+    "needle >= replicated, caps 4/4: met (9/9 and 4/4 on both); cache_hit_consistency: not within the fresh floor on either layout (5/8 split, 7/8 replicated control, mean 0.70 nats both), so not worse than the control",
+    "DSpark decode not worse than replicated: met (+4.5 to +9.7 %); accept length 4.02 vs 3.94 on the identity probe, lower on the single copy-heavy sample (re-measure queued)"
+   ],
+   "result": "2026-11-09 (benchmarks/profiling/rad1-deltanet-tpsplit-2026-11-09/). No speculation, replicated -> split -> replicated: 23.26/22.95/22.18/20.53 -> 26.89/26.27/25.34/23.22 tok/s at 24/7.3K/58K/197K (+13-16 %, 42.99 -> 37.19 ms per step), cold prefill 1798/1460/945 -> 2125/1658/1024 tok/s, pool 525,548 -> 735,510, weights per rank 17.08 -> 14.52 GB, caps 4/4, needle 9/9, greedy identity 1/6 against replicated (6/6 between the replicated arms). DSpark: 45.18/52.54/35.39/31.04 -> 47.22/57.66/38.75/33.27, pool 206,324 -> 430,725 (the 208K needle prompts fit only on the split). Replay gate 89 patches, 0 failures, 149 paths, second apply rejected."
   },
   {
    "id": "RAD-6",
@@ -886,13 +887,13 @@
   {
    "id": "RAD-24",
    "spec": "19-vllm-radiance-parity.md",
-   "status": "queued",
+   "status": "closed",
    "resource": "gpu",
    "depends_on": [
     "RAD-1 result: if the TP-split DeltaNet fails its quality gates this is the exact fallback",
     "RAD-2 (what one in-graph all-reduce costs)"
    ],
-   "next_action": "Skip the all-reduce of a replicated stage. A replicated DeltaNet stage divides its output by tp_size and the boundary sums the halves (x/2 + x/2): 48 of the ~130 all-reduces per step on the FP8 preset add two identical tensors. layer_boundary can declare the stage complete on the rank (declare_ffn(dense_tp_size=1 / output_complete=True); for the mixer an EXIT_SCOPED reduction in _qwen3_5_stage_facts, srt/models/qwen3_5.py:261-272) and drop the divide. Byte-identical by construction when both ranks compute the same bits; costs nothing in weight bytes, saves 48 reductions. Competes with RAD-1 (split + all-reduce: saves ~97 us of GEMM per layer but keeps the reduction): keep whichever is faster after RAD-2.",
+   "next_action": "Closed for the qwen38 FP8 preset: RAD-1 split the DeltaNet projections (patch 121), so those stages no longer add two identical halves. Still applies to a layout that stays replicated (AWQ presets, a Quark MXFP4 checkpoint if its split A/B fails); reopen there only with a measured reduction cost.",
    "test_gate": [
     "greedy output byte-identical to the replicated layout on the 8-prompt set and the needle grid",
     "decode_ab both orders against replicated and against RAD-1's split",
@@ -902,16 +903,31 @@
   {
    "id": "RAD-25",
    "spec": "19-vllm-radiance-parity.md",
-   "status": "queued",
+   "status": "ready",
    "resource": "gpu",
    "depends_on": [
-    "custom_allreduce_isolation.py result (tail queue 05-custom-ar-isolation.sh): which staging buffer and which path return correct sums"
+    "isolation result (done): the fine-grained staging buffer sums exactly, eager and in the graph"
    ],
-   "next_action": "Correct in-graph two-rank all-reduce on PCIe. If the isolation test's uncached (fine-grained) staging buffer sums correctly eager and in the 129-reduction graph: a local patch in a development tree (HIP constructor allocates self.buffer with allocate_meta_buffer when the group is not fully linked; should_custom_ar declines inputs >= max_size so prefill chunks stay on RCCL), then a serving A/B in both orders. Otherwise port the push design of radiance's r4d_ar_oneshot_2rank_exact.hip (Apache-2.0 attribution) as a native extension. Worth at most +1.8 % at 24 tokens (RAD-2), so it runs after RAD-22, RAD-5, RAD-23 and RAD-15.",
+   "next_action": "Correct in-graph two-rank all-reduce on PCIe as a local patch in a development tree: the HIP constructor allocates self.buffer uncached (allocate_meta_buffer / hipDeviceMallocUncached) when the group is not fully linked, and should_custom_ar declines inputs >= max_size so prefill chunks stay on RCCL (the in-place path's memory growth across new tensor addresses is not characterised). Then a serving A/B in both orders. Worth at most +1.8 % at 24 tokens (RAD-2), so it runs after RAD-22, RAD-5, RAD-23 and RAD-15.",
    "test_gate": [
     "isolation test: every output is the sum on both ranks, eager and graph, bf16 and fp32",
     "serving arm gates on validate_capabilities before any timing phase; greedy identity against RCCL recorded; needle grid unchanged",
     "decode_ab both orders; no growth of non-PyTorch GPU memory across a 197K prefill"
+   ]
+  },
+  {
+   "id": "RAD-26",
+   "spec": "19-vllm-radiance-parity.md",
+   "status": "queued",
+   "resource": "gpu",
+   "depends_on": [
+    "RAD-1 (done): the DSpark pool is 430,725 tokens on the split layout, 2.5 GB per rank freed"
+   ],
+   "next_action": "DSpark on the split layout beyond the old 206K pool: (1) same-depth A/B against the no-spec server at 244K input (decode_ab think-off, needle at 244K, the 256K agentic ladder), which decides whether the 'no speculation at true 256K' rule still needs QWEN38_SPEC=0 on this preset; (2) the DSpark prefill chunk at 8192 instead of 4096 (it ran out of memory at 58K on the replicated layout), prefill A/B at 7.3K/58K/197K.",
+   "test_gate": [
+    "needle and capabilities equal on both arms at 244K",
+    "decode_ab in both orders",
+    "no OutOfMemoryError across a 197K prefill at chunk 8192; pool recorded"
    ]
   }
  ]

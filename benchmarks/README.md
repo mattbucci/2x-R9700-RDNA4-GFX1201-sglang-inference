@@ -112,7 +112,13 @@ rank on FP8
 `scripts/bench/bench_fp8_gemv_hip.py` is the exactness and timing bench for the native W8A16 GEMV of RAD-22.
 Upstream's one-stage HIP all-reduce against RCCL on the FP8 preset: +1.8 % at 24 tokens with wrong sums, so RCCL stays
 ([receipts](profiling/rad2-onestage-ar-2026-11-09/), [FINDINGS → RAD-2](FINDINGS.md)); `scripts/bench/custom_allreduce_isolation.py`
-drives the same class from two bare ranks and names what each output is.
+drives the same class from two bare ranks and names what each output is: wrong with the PyTorch-pool staging buffer, exact
+with an uncached fine-grained one ([receipt](profiling/rad2-onestage-ar-2026-11-09/custom-allreduce-isolation.json)).
+TP-split DeltaNet projections on the FP8 preset (patch 121), replicated → split → replicated in one session: decode
+23.3 / 22.9 / 22.2 / 20.5 → 26.9 / 26.3 / 25.3 / 23.2 tok/s, cold prefill 1,798 / 1,460 / 945 → 2,125 / 1,658 / 1,024 tok/s,
+pool 525,548 → 735,510 tokens; with DSpark 45.2 / 52.5 / 35.4 / 31.0 → 47.2 / 57.7 / 38.8 / 33.3 and pool 206,324 → 430,725
+([receipts](profiling/rad1-deltanet-tpsplit-2026-11-09/), [GEMM tune](profiling/fp8-block-gemm-tune-qwen38-tpsplit-2026-11-09.json),
+[FINDINGS → RAD-1](FINDINGS.md)).
 The DFlash2 drafter radiance uses, served here against DSpark and no-spec in one session: faster than DSpark to 7.3K, order
 open at 58K–197K, one needle miss, DSpark stays the preset ([receipts](profiling/rad6-dflash-qwen38-2026-11-09/)).
 

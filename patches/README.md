@@ -1,6 +1,6 @@
 # SGLang v0.5.22 RDNA4 patches
 
-This directory contains the **88 active numeric patches** applied to pristine SGLang v0.5.22 for the
+This directory contains the **89 active numeric patches** applied to pristine SGLang v0.5.22 for the
 2× Radeon AI PRO R9700 serving stack. The default tree is `/data/sgl-v0522`; the default conda environment
 is `sglang-triton36-v0522`.
 
@@ -144,6 +144,7 @@ can be proposed upstream. `Partial` requires a fresh comparison with upstream be
 | 045 | `rdna4-ct-fp8-deltanet-mlp-tp-split` | Carry | TP-shards compressed-tensors FP8 MLPs while preserving replicated DeltaNet state projections. |
 | 074 | `compressed-tensors-fp8-kv-cache` | Candidate | Carries compressed-tensors FP8 KV metadata through SGLang configuration and loading. |
 | 082 | `rdna4-fused-fp8-kv-cache-store` | Candidate | Fuses static-scale FP8 K/V conversion and cache scatter into one Triton launch. |
+| 121 | `rdna4-deltanet-tp-split-switch` | Carry | `SGLANG_RDNA4_DELTANET_TP_SPLIT=1` returns the Qwen3.5/3.8 DeltaNet projections to the upstream head-sharded layout (the replication is patch 045's): per rank `in_proj_qkvz` 16384 × 5120 and `out_proj` 5120 × 6144 become 8192 × 5120 and 5120 × 3072, each rank owns half of the heads' recurrent state (`mamba2_cache_params` follows), and the layout is logged at boot (`[RDNA4] DeltaNet projections: TP-split over 2 ranks`). Ships the tuned block-FP8 GEMM config for `N=8192,K=5120`. Code default off; the `qwen38` preset exports it for the FP8 checkpoint (`DELTANET_TP_SPLIT=0` restores the replicated layout). Same-session A/B replicated → split → replicated without speculation: decode 23.26 / 22.95 / 22.18 / 20.53 → 26.89 / 26.27 / 25.34 / 23.22 tok/s at 24 / 7.3K / 58K / 197K input tokens (+13–16 %, second replicated arm within 0.2 %), cold prefill 1,798 / 1,460 / 945 → 2,125 / 1,658 / 1,024 tok/s, token pool 525,548 → 735,510, weights per rank 17.08 → 14.52 GB; with DSpark 45.18 / 52.54 / 35.39 / 31.04 → 47.22 / 57.66 / 38.75 / 33.27 tok/s and pool 206,324 → 430,725; capabilities 4/4, greedy needle 9/9 to 208K tokens; greedy text is not byte-identical between layouts (1 of 6 probes). Receipts: `benchmarks/profiling/rad1-deltanet-tpsplit-2026-11-09/`. |
 
 ### Mamba2 hybrids
 
@@ -211,7 +212,7 @@ can be proposed upstream. `Partial` requires a fresh comparison with upstream be
 
 | Component | Version |
 |---|---|
-| SGLang | v0.5.22 plus this 88-patch series |
+| SGLang | v0.5.22 plus this 89-patch series |
 | transformers | 5.19.0 |
 | Triton | 3.6.0 |
 | PyTorch | 2.11.0+rocm7.2 |

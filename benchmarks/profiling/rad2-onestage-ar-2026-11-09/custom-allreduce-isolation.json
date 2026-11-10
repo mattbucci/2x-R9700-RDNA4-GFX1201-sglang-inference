@@ -1,0 +1,477 @@
+{
+ "world": 2,
+ "hidden": 5120,
+ "graph_len": 129,
+ "device": "AMD Radeon AI PRO R9700",
+ "env": {
+  "HSA_FORCE_FINE_GRAIN_PCIE": "1",
+  "HIP_VISIBLE_DEVICES": "0,1",
+  "CUDA_VISIBLE_DEVICES": "0,1",
+  "NCCL_P2P_DISABLE": "0",
+  "PYTORCH_HIP_ALLOC_CONF": "expandable_segments:True"
+ },
+ "timestamp": "2026-11-09 19:58",
+ "stages": {
+  "rccl-eager": {
+   "rank0": {
+    "bf16x5120": {
+     "calls": 8,
+     "matches": {
+      "sum": 8
+     },
+     "non_sum_distinct_residuals": 0,
+     "non_sum_residual_example": null,
+     "exact_sum": 8,
+     "all_finite": true,
+     "worst_frac_equal_sum": 1.0,
+     "us_per_call": 33.38
+    },
+    "fp32x5120": {
+     "calls": 8,
+     "matches": {
+      "sum": 8
+     },
+     "non_sum_distinct_residuals": 0,
+     "non_sum_residual_example": null,
+     "exact_sum": 8,
+     "all_finite": true,
+     "worst_frac_equal_sum": 1.0,
+     "us_per_call": 31.76
+    },
+    "fp32x1048576": {
+     "calls": 8,
+     "matches": {
+      "sum": 8
+     },
+     "non_sum_distinct_residuals": 0,
+     "non_sum_residual_example": null,
+     "exact_sum": 8,
+     "all_finite": true,
+     "worst_frac_equal_sum": 1.0,
+     "us_per_call": 419.54
+    }
+   },
+   "rank1": {
+    "bf16x5120": {
+     "calls": 8,
+     "matches": {
+      "sum": 8
+     },
+     "non_sum_distinct_residuals": 0,
+     "non_sum_residual_example": null,
+     "exact_sum": 8,
+     "all_finite": true,
+     "worst_frac_equal_sum": 1.0,
+     "us_per_call": 33.38
+    },
+    "fp32x5120": {
+     "calls": 8,
+     "matches": {
+      "sum": 8
+     },
+     "non_sum_distinct_residuals": 0,
+     "non_sum_residual_example": null,
+     "exact_sum": 8,
+     "all_finite": true,
+     "worst_frac_equal_sum": 1.0,
+     "us_per_call": 31.76
+    },
+    "fp32x1048576": {
+     "calls": 8,
+     "matches": {
+      "sum": 8
+     },
+     "non_sum_distinct_residuals": 0,
+     "non_sum_residual_example": null,
+     "exact_sum": 8,
+     "all_finite": true,
+     "worst_frac_equal_sum": 1.0,
+     "us_per_call": 419.54
+    }
+   }
+  },
+  "pool-eager": {
+   "rank0": {
+    "bf16x5120": {
+     "calls": 8,
+     "matches": {
+      "other": 1,
+      "self_plus_stale_peer": 7
+     },
+     "non_sum_distinct_residuals": 8,
+     "non_sum_residual_example": [
+      Infinity,
+      -2.1770048338561108e+33
+     ],
+     "exact_sum": 0,
+     "all_finite": false,
+     "worst_frac_equal_sum": 0.0014,
+     "us_per_call": 10.93
+    },
+    "fp32x5120": {
+     "calls": 8,
+     "matches": {
+      "other": 1,
+      "self_plus_stale_peer": 7
+     },
+     "non_sum_distinct_residuals": 8,
+     "non_sum_residual_example": [
+      0.9735,
+      -7.42
+     ],
+     "exact_sum": 0,
+     "all_finite": true,
+     "worst_frac_equal_sum": 0.0,
+     "us_per_call": 11.36
+    },
+    "fp32x1048576": {
+     "calls": 8,
+     "matches": {
+      "other": 8
+     },
+     "non_sum_distinct_residuals": 8,
+     "non_sum_residual_example": [
+      1.0052,
+      -1.482
+     ],
+     "exact_sum": 0,
+     "all_finite": true,
+     "worst_frac_equal_sum": 0.375,
+     "us_per_call": 339.58
+    }
+   },
+   "rank1": {
+    "bf16x5120": {
+     "calls": 8,
+     "matches": {
+      "other": 1,
+      "self_plus_stale_peer": 7
+     },
+     "non_sum_distinct_residuals": 8,
+     "non_sum_residual_example": [
+      Infinity,
+      8.777811720888868e+35
+     ],
+     "exact_sum": 0,
+     "all_finite": false,
+     "worst_frac_equal_sum": 0.0006,
+     "us_per_call": 10.93
+    },
+    "fp32x5120": {
+     "calls": 8,
+     "matches": {
+      "other": 1,
+      "self_plus_stale_peer": 7
+     },
+     "non_sum_distinct_residuals": 8,
+     "non_sum_residual_example": [
+      0.9632,
+      -9.051
+     ],
+     "exact_sum": 0,
+     "all_finite": true,
+     "worst_frac_equal_sum": 0.0,
+     "us_per_call": 11.36
+    },
+    "fp32x1048576": {
+     "calls": 8,
+     "matches": {
+      "other": 8
+     },
+     "non_sum_distinct_residuals": 8,
+     "non_sum_residual_example": [
+      1.0027,
+      -16.535
+     ],
+     "exact_sum": 0,
+     "all_finite": true,
+     "worst_frac_equal_sum": 0.3796,
+     "us_per_call": 339.59
+    }
+   }
+  },
+  "pool-graph": {
+   "rank0": {
+    "fp32": {
+     "calls": 520,
+     "matches": {
+      "other": 513,
+      "self_plus_stale_peer": 7
+     },
+     "non_sum_distinct_residuals": 8,
+     "non_sum_residual_example": [
+      0.7919,
+      -1.482
+     ],
+     "exact_sum": 0,
+     "all_finite": true,
+     "worst_frac_equal_sum": 0.0
+    },
+    "bf16": {
+     "calls": 512,
+     "matches": {
+      "other": 512
+     },
+     "non_sum_distinct_residuals": 8,
+     "non_sum_residual_example": [
+      Infinity,
+      -2.9751860999404562e+38
+     ],
+     "exact_sum": 0,
+     "all_finite": false,
+     "worst_frac_equal_sum": 0.0
+    },
+    "first_non_sum": {
+     "round": 0,
+     "index": 0,
+     "kind": "fp32",
+     "match": null
+    },
+    "us_per_replay": 1390.6,
+    "us_per_reduce": 10.78
+   },
+   "rank1": {
+    "fp32": {
+     "calls": 520,
+     "matches": {
+      "other": 513,
+      "self_plus_stale_peer": 7
+     },
+     "non_sum_distinct_residuals": 8,
+     "non_sum_residual_example": [
+      0.7993,
+      -16.535
+     ],
+     "exact_sum": 0,
+     "all_finite": true,
+     "worst_frac_equal_sum": 0.0
+    },
+    "bf16": {
+     "calls": 512,
+     "matches": {
+      "other": 512
+     },
+     "non_sum_distinct_residuals": 8,
+     "non_sum_residual_example": [
+      Infinity,
+      4.5541415808829834e+36
+     ],
+     "exact_sum": 0,
+     "all_finite": false,
+     "worst_frac_equal_sum": 0.0002
+    },
+    "first_non_sum": {
+     "round": 0,
+     "index": 0,
+     "kind": "fp32",
+     "match": null
+    },
+    "us_per_replay": 1390.6,
+    "us_per_reduce": 10.78
+   }
+  },
+  "fine-grained-eager": {
+   "rank0": {
+    "bf16x5120": {
+     "calls": 8,
+     "matches": {
+      "sum": 8
+     },
+     "non_sum_distinct_residuals": 0,
+     "non_sum_residual_example": null,
+     "exact_sum": 8,
+     "all_finite": true,
+     "worst_frac_equal_sum": 1.0,
+     "us_per_call": 12.2
+    },
+    "fp32x5120": {
+     "calls": 8,
+     "matches": {
+      "sum": 8
+     },
+     "non_sum_distinct_residuals": 0,
+     "non_sum_residual_example": null,
+     "exact_sum": 8,
+     "all_finite": true,
+     "worst_frac_equal_sum": 1.0,
+     "us_per_call": 12.62
+    },
+    "fp32x1048576": {
+     "calls": 8,
+     "matches": {
+      "sum": 8
+     },
+     "non_sum_distinct_residuals": 0,
+     "non_sum_residual_example": null,
+     "exact_sum": 8,
+     "all_finite": true,
+     "worst_frac_equal_sum": 1.0,
+     "us_per_call": 395.12
+    }
+   },
+   "rank1": {
+    "bf16x5120": {
+     "calls": 8,
+     "matches": {
+      "sum": 8
+     },
+     "non_sum_distinct_residuals": 0,
+     "non_sum_residual_example": null,
+     "exact_sum": 8,
+     "all_finite": true,
+     "worst_frac_equal_sum": 1.0,
+     "us_per_call": 12.2
+    },
+    "fp32x5120": {
+     "calls": 8,
+     "matches": {
+      "sum": 8
+     },
+     "non_sum_distinct_residuals": 0,
+     "non_sum_residual_example": null,
+     "exact_sum": 8,
+     "all_finite": true,
+     "worst_frac_equal_sum": 1.0,
+     "us_per_call": 12.62
+    },
+    "fp32x1048576": {
+     "calls": 8,
+     "matches": {
+      "sum": 8
+     },
+     "non_sum_distinct_residuals": 0,
+     "non_sum_residual_example": null,
+     "exact_sum": 8,
+     "all_finite": true,
+     "worst_frac_equal_sum": 1.0,
+     "us_per_call": 395.12
+    }
+   }
+  },
+  "fine-grained-graph": {
+   "rank0": {
+    "fp32": {
+     "calls": 520,
+     "matches": {
+      "sum": 520
+     },
+     "non_sum_distinct_residuals": 0,
+     "non_sum_residual_example": null,
+     "exact_sum": 520,
+     "all_finite": true,
+     "worst_frac_equal_sum": 1.0
+    },
+    "bf16": {
+     "calls": 512,
+     "matches": {
+      "sum": 512
+     },
+     "non_sum_distinct_residuals": 0,
+     "non_sum_residual_example": null,
+     "exact_sum": 512,
+     "all_finite": true,
+     "worst_frac_equal_sum": 1.0
+    },
+    "first_non_sum": null,
+    "us_per_replay": 1409.2,
+    "us_per_reduce": 10.92
+   },
+   "rank1": {
+    "fp32": {
+     "calls": 520,
+     "matches": {
+      "sum": 520
+     },
+     "non_sum_distinct_residuals": 0,
+     "non_sum_residual_example": null,
+     "exact_sum": 520,
+     "all_finite": true,
+     "worst_frac_equal_sum": 1.0
+    },
+    "bf16": {
+     "calls": 512,
+     "matches": {
+      "sum": 512
+     },
+     "non_sum_distinct_residuals": 0,
+     "non_sum_residual_example": null,
+     "exact_sum": 512,
+     "all_finite": true,
+     "worst_frac_equal_sum": 1.0
+    },
+    "first_non_sum": null,
+    "us_per_replay": 1409.2,
+    "us_per_reduce": 10.92
+   }
+  },
+  "pool-eager-registered-large": {
+   "rank0": {
+    "bytes": 33554432,
+    "free_mb": [
+     31976,
+     31712,
+     31648,
+     31648,
+     31648,
+     31648,
+     31648
+    ],
+    "reserved_mb": [
+     158,
+     422,
+     486,
+     486,
+     486,
+     486,
+     486
+    ],
+    "calls": 6,
+    "matches": {
+     "sum": 6
+    },
+    "non_sum_distinct_residuals": 0,
+    "non_sum_residual_example": null,
+    "exact_sum": 6,
+    "all_finite": true,
+    "worst_frac_equal_sum": 1.0
+   },
+   "rank1": {
+    "bytes": 33554432,
+    "free_mb": [
+     31976,
+     31712,
+     31648,
+     31648,
+     31648,
+     31648,
+     31648
+    ],
+    "reserved_mb": [
+     158,
+     422,
+     486,
+     486,
+     486,
+     486,
+     486
+    ],
+    "calls": 6,
+    "matches": {
+     "sum": 6
+    },
+    "non_sum_distinct_residuals": 0,
+    "non_sum_residual_example": null,
+    "exact_sum": 6,
+    "all_finite": true,
+    "worst_frac_equal_sum": 1.0
+   }
+  }
+ },
+ "verdict": {
+  "rccl-eager": true,
+  "pool-eager": false,
+  "pool-graph": false,
+  "fine-grained-eager": true,
+  "fine-grained-graph": true
+ }
+}

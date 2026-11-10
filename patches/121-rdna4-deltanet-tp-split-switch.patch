@@ -1,0 +1,158 @@
+diff --git a/python/sglang/kernels/ops/gemm/configs/N=8192,K=5120,device_name=AMD_Radeon_AI_PRO_R9700,dtype=fp8_w8a8,block_shape=[128, 128].json b/python/sglang/kernels/ops/gemm/configs/N=8192,K=5120,device_name=AMD_Radeon_AI_PRO_R9700,dtype=fp8_w8a8,block_shape=[128, 128].json
+new file mode 100644
+index 0000000..ceb692e
+--- /dev/null
++++ b/python/sglang/kernels/ops/gemm/configs/N=8192,K=5120,device_name=AMD_Radeon_AI_PRO_R9700,dtype=fp8_w8a8,block_shape=[128, 128].json	
+@@ -0,0 +1,56 @@
++{
++    "1": {
++        "BLOCK_SIZE_M": 32,
++        "BLOCK_SIZE_N": 16,
++        "BLOCK_SIZE_K": 128,
++        "GROUP_SIZE_M": 1,
++        "num_warps": 2,
++        "num_stages": 0,
++        "waves_per_eu": 4
++    },
++    "8": {
++        "BLOCK_SIZE_M": 32,
++        "BLOCK_SIZE_N": 64,
++        "BLOCK_SIZE_K": 128,
++        "GROUP_SIZE_M": 1,
++        "num_warps": 8,
++        "num_stages": 0,
++        "waves_per_eu": 2
++    },
++    "64": {
++        "BLOCK_SIZE_M": 64,
++        "BLOCK_SIZE_N": 64,
++        "BLOCK_SIZE_K": 128,
++        "GROUP_SIZE_M": 1,
++        "num_warps": 8,
++        "num_stages": 0,
++        "waves_per_eu": 2
++    },
++    "256": {
++        "BLOCK_SIZE_M": 128,
++        "BLOCK_SIZE_N": 64,
++        "BLOCK_SIZE_K": 128,
++        "GROUP_SIZE_M": 1,
++        "num_warps": 4,
++        "num_stages": 0,
++        "waves_per_eu": 2
++    },
++    "1024": {
++        "BLOCK_SIZE_M": 64,
++        "BLOCK_SIZE_N": 128,
++        "BLOCK_SIZE_K": 128,
++        "GROUP_SIZE_M": 1,
++        "num_warps": 4,
++        "num_stages": 0,
++        "waves_per_eu": 2
++    },
++    "4096": {
++        "BLOCK_SIZE_M": 64,
++        "BLOCK_SIZE_N": 128,
++        "BLOCK_SIZE_K": 128,
++        "GROUP_SIZE_M": 1,
++        "num_warps": 4,
++        "num_stages": 0,
++        "waves_per_eu": 2
++    }
++}
+diff --git a/python/sglang/srt/configs/qwen3_5.py b/python/sglang/srt/configs/qwen3_5.py
+index 35252ef..44eb096 100644
+--- a/python/sglang/srt/configs/qwen3_5.py
++++ b/python/sglang/srt/configs/qwen3_5.py
+@@ -7,6 +7,17 @@ from sglang.srt.configs.mamba_utils import (
+ )
+ from sglang.srt.configs.qwen3_next import Qwen3NextConfig
+ from sglang.srt.configs.qwen3_vl import Qwen3VLVisionConfig
++from sglang.srt.utils import get_bool_env_var
++
++
++def qwen3_5_deltanet_tp_split() -> bool:
++    """RDNA4: shard the DeltaNet projections and recurrent state over the TP ranks.
++
++    SGLANG_RDNA4_DELTANET_TP_SPLIT=1 selects the upstream layout: each rank reads its
++    half of in_proj_qkvz / out_proj and owns its half of the heads' state. The default
++    keeps the replicated layout, where every rank reads the whole projection.
++    """
++    return get_bool_env_var("SGLANG_RDNA4_DELTANET_TP_SPLIT")
+ 
+ 
+ class Qwen3_5VisionConfig(Qwen3VLVisionConfig):
+@@ -45,6 +56,9 @@ class Qwen3_5TextConfig(Qwen3NextConfig):
+         # state.  The SSM/conv cache must therefore match the full (unsplit)
+         # dimensions.  Qwen3-Next (Coder-Next 80B) uses the upstream sharded
+         # path — see Qwen3NextConfig.mamba2_cache_params.
++        if qwen3_5_deltanet_tp_split():
++            # Head-sharded DeltaNet: the per-rank state is the upstream shape.
++            return super().mamba2_cache_params
+         shape = Mamba2StateShape.create(
+             tp_world_size=1,
+             intermediate_size=self.linear_value_head_dim * self.linear_num_value_heads,
+diff --git a/python/sglang/srt/models/qwen3_5.py b/python/sglang/srt/models/qwen3_5.py
+index 97f8763..cc9550b 100644
+--- a/python/sglang/srt/models/qwen3_5.py
++++ b/python/sglang/srt/models/qwen3_5.py
+@@ -42,6 +42,7 @@ from sglang.srt.configs.qwen3_5 import (
+     Qwen3_5Config,
+     Qwen3_5MoeConfig,
+     Qwen3_5TextConfig,
++    qwen3_5_deltanet_tp_split,
+ )
+ 
+ # Distributed
+@@ -429,10 +430,23 @@ class Qwen3_5GatedDeltaNet(nn.Module):
+         self.real_tp_rank, self.real_tp_size = resolve_linear_parallel_group(
+             base_group
+         )
+-        parallel_group = ReplicatedParallelGroup(base_group, self.real_tp_size)
++        # RDNA4: SGLANG_RDNA4_DELTANET_TP_SPLIT=1 keeps the upstream head-sharded
++        # layout instead, halving the projection bytes each rank reads per step.
++        self.replicated = not qwen3_5_deltanet_tp_split()
++        parallel_group = (
++            ReplicatedParallelGroup(base_group, self.real_tp_size)
++            if self.replicated
++            else base_group
++        )
+         self.attn_tp_rank, self.attn_tp_size = resolve_linear_parallel_group(
+             parallel_group
+         )
++        if layer_id == 0 and self.real_tp_size > 1:
++            logger.info(
++                "[RDNA4] DeltaNet projections: %s over %d ranks",
++                "replicated" if self.replicated else "TP-split",
++                self.real_tp_size,
++            )
+         self.hidden_size = config.hidden_size
+         self.num_v_heads = (
+             config.linear_num_value_heads
+@@ -1048,7 +1062,7 @@ class Qwen3_5GatedDeltaNet(nn.Module):
+         core_attn_out = core_attn_out.reshape(*core_attn_out.shape[:-2], -1)
+ 
+         output, _ = self.out_proj(core_attn_out)
+-        if self.real_tp_size > 1:
++        if self.replicated and self.real_tp_size > 1:
+             output = output / self.real_tp_size
+         return output
+ 
+@@ -1180,7 +1194,7 @@ class Qwen3_5GatedDeltaNet(nn.Module):
+                 quant_heads=nv,
+             )
+             output = self.out_proj(fp8)[0]
+-            if self.real_tp_size > 1:
++            if self.replicated and self.real_tp_size > 1:
+                 output = output / self.real_tp_size
+             return output
+ 
+@@ -1192,7 +1206,7 @@ class Qwen3_5GatedDeltaNet(nn.Module):
+         )
+ 
+         output, _ = self.out_proj(core_attn_out)
+-        if self.real_tp_size > 1:
++        if self.replicated and self.real_tp_size > 1:
+             output = output / self.real_tp_size
+         return output
+ 

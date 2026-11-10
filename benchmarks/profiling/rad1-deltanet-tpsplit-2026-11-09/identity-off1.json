@@ -1,0 +1,61 @@
+{
+ "model": "/data/models/Qwen3.8-27B-FP8",
+ "port": 23334,
+ "max_tokens": 400,
+ "rows": [
+  {
+   "name": "code",
+   "prompt_tokens": 42,
+   "completion_tokens": 328,
+   "finish_reason": "stop",
+   "seconds": 14.19,
+   "content": "```python\ndef merge_intervals(intervals):\n    \"\"\"\n    Merge overlapping closed intervals and return them sorted.\n    \n    Args:\n        intervals: A list of lists, where each inner list contains two numbers [start, end]\n                   representing a closed interval [start, end].\n    \n    Returns:\n        A list of merged non-overlapping intervals, sorted by start value.\n    \n    Examples:\n        >>> merge_intervals([[1, 3], [2, 6], [8, 10], [15, 18]])\n        [[1, 6], [8, 10], [15, 18]]\n        \n        >>> merge_intervals([[1, 4], [4, 5]])\n        [[1, 5]]\n        \n        >>> merge_intervals([])\n        []\n    \"\"\"\n    if not intervals:\n        return []\n    \n    # Sort intervals by start value\n    sorted_intervals = sorted(intervals, key=lambda x: x[0])\n    \n    merged = [sorted_intervals[0]]\n    \n    for current in sorted_intervals[1:]:\n        last = merged[-1]\n        # If current interval overlaps with the last merged interval\n        if current[0] <= last[1]:\n            # Merge by updating the end of the last interval\n            last[1] = max(last[1], current[1])\n        else:\n            # No overlap, add the current interval\n            merged.append(current)\n    \n    return merged\n```",
+   "reasoning": ""
+  },
+  {
+   "name": "prose",
+   "prompt_tokens": 38,
+   "completion_tokens": 370,
+   "finish_reason": "stop",
+   "seconds": 16.03,
+   "content": "Speculative decoding is a technique designed to accelerate Large Language Model (LLM) inference without compromising output quality. It achieves this by leveraging a smaller, faster \"draft\" model to propose a sequence of tokens, which are then verified in parallel by the larger, more accurate \"target\" model.\n\nThe process is fundamentally **lossless** because it strictly adheres to the target model’s probability distribution. When the target model evaluates the draft tokens, it does not simply accept or reject them based on a threshold. Instead, it calculates the exact probability of each token under its own distribution. If the target model’s probability for a draft token is higher than the draft model’s probability, the token is accepted. If the target model’s probability is lower, the token is rejected, and the target model samples a new token from its own distribution, conditioned on the previously accepted prefix.\n\nCrucially, this verification step ensures that the final output sequence is statistically identical to what the target model would have generated if it had run alone, token by token. The draft model merely provides a hypothesis; the target model holds the final authority. Therefore, the resulting text follows the exact same probabilistic path as standard autoregressive decoding, preserving the model’s intended behavior, creativity, and factual accuracy.\n\n**Acceptance length** is the key metric for evaluating the efficiency of this process. It refers to the average number of draft tokens that are successfully accepted by the target model before a rejection occurs. A higher acceptance length indicates that the draft model is highly aligned with the target model’s predictions, allowing the system to generate multiple tokens in a single forward pass of the large model. This significantly reduces the number of expensive forward passes required, thereby speeding up inference. Conversely, a low acceptance length suggests poor alignment between the models, resulting in minimal speedup.",
+   "reasoning": ""
+  },
+  {
+   "name": "json",
+   "prompt_tokens": 53,
+   "completion_tokens": 132,
+   "finish_reason": "stop",
+   "seconds": 5.77,
+   "content": "{\n  \"languages\": [\n    {\"name\": \"Fortran\", \"year\": 1957},\n    {\"name\": \"Lisp\", \"year\": 1958},\n    {\"name\": \"COBOL\", \"year\": 1959},\n    {\"name\": \"ALGOL\", \"year\": 1960},\n    {\"name\": \"BASIC\", \"year\": 1964},\n    {\"name\": \"C\", \"year\": 1972}\n  ],\n  \"oldest\": \"Fortran\"\n}",
+   "reasoning": ""
+  },
+  {
+   "name": "numbers",
+   "prompt_tokens": 52,
+   "completion_tokens": 181,
+   "finish_reason": "stop",
+   "seconds": 7.88,
+   "content": "19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 73, 79, 83, 89, 97, 101, 103, 107, 109, 113, 127, 131, 137, 139, 149, 151, 157, 163, 167, 173, 179, 181, 191, 193, 197, 199, 211",
+   "reasoning": ""
+  },
+  {
+   "name": "refactor",
+   "prompt_tokens": 80,
+   "completion_tokens": 157,
+   "finish_reason": "stop",
+   "seconds": 6.89,
+   "content": "```python\ndef f(xs):\n    return [x * x for x in xs if x % 2 == 0]\n```\n\n1. Replaced the manual list initialization and loop with a list comprehension, which is the standard Pythonic way to build lists from iterables.\n2. Iterated directly over `xs` instead of using `range(len(xs))` and indexing, which is cleaner and avoids unnecessary index lookups.\n3. Moved the conditional check (`x % 2 == 0`) into the list comprehension’s `if` clause, making the filtering logic explicit and concise.\n4. Simplified the expression `xs[i] * xs[i]` to `x * x`, improving readability by using the loop variable directly.",
+   "reasoning": ""
+  },
+  {
+   "name": "ctx-long",
+   "prompt_tokens": 31648,
+   "completion_tokens": 179,
+   "finish_reason": "stop",
+   "seconds": 27.41,
+   "content": "The provided text is a compilation of diverse mathematical problems and their step-by-step solutions, primarily focusing on combinatorics, probability, and basic algebra. The central themes include the application of counting principles, such as permutations, combinations, and the multiplication principle, to solve problems involving arrangements, selections, and distinct outcomes. Probability concepts are extensively explored, covering independent events, conditional probability, geometric probability, and the use of complementary counting to simplify complex scenarios. Additionally, the text addresses number theory topics, including divisibility, prime factorization, and properties of integers, often utilizing the inclusion-exclusion principle to count elements satisfying multiple conditions. The solutions demonstrate logical deduction, algebraic manipulation, and the strategic use of formulas for factorials and binomial coefficients. Overall, the text serves as a comprehensive review of fundamental discrete mathematics techniques, emphasizing clear reasoning and systematic problem-solving approaches across various mathematical domains.",
+   "reasoning": ""
+  }
+ ]
+}

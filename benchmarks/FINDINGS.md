@@ -1071,17 +1071,78 @@ RAD-14 put "all-reduce about 4 ms" against this experiment, from a residual of 5
 0.8 ms of that is RCCL's own launch cost. The rest is either the two ranks waiting for each other at a reduction,
 which a faster kernel does not remove (RAD-24 removes 48 of the reductions), or not all-reduce at all.
 
-Why the sums are wrong is not isolated. Upstream's kernel is a pull design: each rank copies its input into a
-staging buffer taken from the PyTorch pool and the peer reads that buffer through an IPC mapping; an input of 16 MB
-or more (every prefill chunk) is registered in place, one IPC import per new tensor, which fits the memory
-exhaustion. Radiance's two-rank reduce (`r4d_ar_oneshot_2rank_exact.hip`) pushes into uncached fine-grained scratch
-on the peer and shares only scratch and flags. `scripts/bench/custom_allreduce_isolation.py` drives the same class
-from two bare ranks and names every output (sum, own input only, stale peer, other) for the pool buffer and for an
-uncached one, eager and in a 129-reduction graph; it is queued behind RAD-1.
+The wrong sums come from the staging buffer's memory class. Upstream's kernel is a pull design: each rank copies its
+input into a staging buffer taken from the PyTorch pool and the peer reads that buffer through an IPC mapping.
+`scripts/bench/custom_allreduce_isolation.py` drives the same class from two bare ranks and names every output
+([receipt](profiling/rad2-onestage-ar-2026-11-09/custom-allreduce-isolation.json)):
+
+| staging buffer | eager, 8 calls per size | 129-reduction graph, 8 replays | µs per reduction |
+|---|---|---|---:|
+| RCCL (harness control) | 8/8 exact sums | – | 33.4 as an eager launch |
+| PyTorch pool, as shipped | 0/8; at 5,120 elements 7 of 8 are the rank's own input plus the peer's previous payload, bf16 outputs non-finite | 0 of 1,032 | 10.8 |
+| uncached fine-grained (`hipDeviceMallocUncached`) | 8/8 exact sums | 1,032 of 1,032 | 10.9 |
+
+With a pool buffer the reader sees the peer's previous payload. With an uncached fine-grained buffer the same kernel
+is exact, eager and captured, at the same cost. The in-place path for inputs of 16 MB and more returned exact sums
+on six 32 MB reductions with free memory flat after the second call; the pool recycled one address there, so the
+serving arm's memory exhaustion (one IPC import per new tensor address in a prefill) is not reproduced and stays
+open. Radiance's two-rank reduce (`r4d_ar_oneshot_2rank_exact.hip`) pushes into uncached fine-grained scratch on the
+peer and shares only scratch and flags, which is the same memory class.
 
 Disposition: RCCL stays the reduce on every preset, and the two switches must not be set on this rig. Patch 119
 stays: it repairs the setup and logs the path a group reduces on, which is what made this arm checkable. A correct
-in-graph reduce is worth at most +1.8 % on this preset (RAD-25, sized by the isolation result).
+in-graph reduce is the shipped kernel with a fine-grained staging buffer and large inputs left on RCCL (RAD-25),
+worth at most +1.8 % on this preset.
+
+### RAD-1 — TP-split DeltaNet projections: decode +13–16 %, prefill +8–18 %, DSpark pool 206K → 431K; patch 121 (2026-11-09)
+
+Patch 045 replicates the Qwen3.5/3.8 DeltaNet projections on every rank, a precision fix from this stack's FP16 era:
+each rank reads the whole `in_proj_qkvz` (16384 × 5120) and `out_proj` (5120 × 6144) in all 48 DeltaNet layers, halves
+the result and holds every head's recurrent state. `SGLANG_RDNA4_DELTANET_TP_SPLIT=1` (patch 121) returns to the
+upstream head-sharded layout: 8192 × 5120 and 5120 × 3072 per rank, half of the heads' state per rank, with a tuned
+GEMM config for the new `N=8192,K=5120` shape ([tune](profiling/fp8-block-gemm-tune-qwen38-tpsplit-2026-11-09.json)).
+FP8 qwen38 preset, one session through a development copy of the tree, layout logged at boot
+(`[RDNA4] DeltaNet projections: TP-split over 2 ranks`) ([receipts](profiling/rad1-deltanet-tpsplit-2026-11-09/)).
+
+No speculation, decode tok/s by input tokens:
+
+| arm | 24 | 7,331 | 58,483 | 197,326 | cold prefill tok/s at 7.3K / 58K / 197K | token pool | weights per rank |
+|---|---:|---:|---:|---:|---|---:|---:|
+| off1, replicated | 23.261 | 22.948 | 22.182 | 20.529 | 1,798 / 1,460 / 945 | 525,548 | 17.08 GB |
+| on, TP-split | 26.891 | 26.272 | 25.340 | 23.220 | 2,125 / 1,658 / 1,024 | 735,510 | 14.52 GB |
+| off2, replicated | 23.234 | 22.912 | 22.160 | 20.508 | – | 525,548 | – |
+
+Decode +15.6 / +14.5 / +14.2 / +13.1 %: 42.99 → 37.19 ms per step at 24 tokens, −5.8 ms where RAD-13 predicted −4 ms
+before the split shape was tuned. Prefill +18 / +14 / +8 %, pool +40 %. The two replicated arms agree within 0.2 %.
+Capabilities 4/4 and the greedy natural-text needle grid 9/9 (to 208,296 tokens) on both layouts. Greedy text: the
+replicated arms are byte-identical on 6/6 probes; split against replicated matches on 1/6, and the other five diverge
+after 24–780 characters into answers of the same content, as a changed summation order does.
+
+DSpark, the preset's default speculation:
+
+| arm | 24 | 7,331 | 58,483 | 197,326 | token pool | needle grid |
+|---|---:|---:|---:|---:|---:|---|
+| replicated | 45.183 | 52.543 | 35.390 | 31.041 | 206,324 | 6/6 to 137K; the three 208K prompts exceed the pool |
+| TP-split | 47.224 | 57.660 | 38.750 | 33.265 | 430,725 | 9/9 |
+
++4.5 / +9.7 / +9.5 / +7.2 %, capabilities 4/4 on both. On the six-prompt identity probe every request is faster on
+the split (code 91.1 against 80.5 tok/s, prose 55.1 against 44.9, the 32K-context request with its prefill 10.7
+against 8.0) and the draft-and-verify cycle rate is 16.24 against 14.85 per second at accept length 4.02 against
+3.94. The one copy-heavy sample
+(600 tokens behind a 29K cold prefill, wall-clock rate) read 21.3 against 21.7 tok/s: the split ran 15.0 cycles per
+second against 13.7 and accepted fewer tokens per cycle on that sample (3.05–3.60 against 3.15–4.38). One sample
+does not size an accept-length effect.
+
+`cache_hit_consistency.py` (32K and 131K prompts, two cells each, the same arguments on both layouts) exits 1 on
+both: 5 of 8 continuations beyond the fresh-prefill floor on the split and 7 of 8 on the replicated control, mean
+first-token Δlogp 0.70 nats on both, largest 1.86 against 1.37. The hit-against-fresh divergence is this stack's
+known class (#37) and does not follow the layout.
+
+Disposition: patch 121, code default off; the `qwen38` preset exports the switch for the FP8 checkpoint and
+`DELTANET_TP_SPLIT=0` restores the replicated layout. The DSpark server now accepts a 256K prompt; DSpark against
+the no-spec server beyond 208K is not measured, so the 256K rule stands. A checkpoint served through
+`QUANT_OVERRIDE` keeps the replicated projections until its own A/B. RAD-24 (no all-reduce for a replicated stage)
+no longer applies to this preset's DeltaNet stages.
 
 ## Evaluation methodology
 

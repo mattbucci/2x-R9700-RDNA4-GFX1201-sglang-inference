@@ -588,6 +588,19 @@ PYEOF
             # 1-token cache-hit turn 3.08 -> 2.20 s at 52K and 10.1 -> 5.7 s at 176K cached, needle grid 9/9
             # on both arms, capabilities 5/5. EXTEND_FP8_QK=0 restores the bf16-upcast QK.
             export SGLANG_EXTEND_FP8_QK="${EXTEND_FP8_QK:-1}"
+            # RAD-1 (patch 121): the DeltaNet projections run head-sharded over the two ranks (the upstream
+            # layout) instead of replicated per rank (patch 045): each rank reads half of in_proj_qkvz / out_proj
+            # per step and owns half of the heads' recurrent state. Same-session A/B, no speculation: decode
+            # 23.3 / 22.9 / 22.2 / 20.5 -> 26.9 / 26.3 / 25.3 / 23.2 tok/s at 24 / 7.3K / 58K / 197K input, cold
+            # prefill 1798 / 1460 / 945 -> 2125 / 1658 / 1024 tok/s, KV pool 525,548 -> 735,510 tokens. DSpark:
+            # 45.2 / 52.5 / 35.4 / 31.0 -> 47.2 / 57.7 / 38.8 / 33.3 tok/s, pool 206,324 -> 430,725 tokens (the
+            # 208K needle prompt fits only on the split). Capabilities 4/4 and needle 9/9 where the prompt fits
+            # on both arms; cache-hit consistency probe 5/8 beyond the fresh floor against 7/8 on the replicated
+            # control. FP8 checkpoint only: a build served through QUANT_OVERRIDE keeps the replicated layout
+            # until its own gate. DELTANET_TP_SPLIT=0 restores it.
+            if [[ -z "${QUANT_OVERRIDE:-}" ]]; then
+                export SGLANG_RDNA4_DELTANET_TP_SPLIT="${DELTANET_TP_SPLIT:-1}"
+            fi
             # R97-R (2026-11-01): hybrid radix cache on the extra_buffer strategy (64-token Mamba state grid,
             # overlap scheduling on). Under the HIP default no_buffer (patch 073) a state exists only at chunk
             # ends / prompt end, and the chat template's history `<think>\n` -> `\n\n` merge makes every
@@ -616,14 +629,15 @@ PYEOF
             # 2026-09-27): 35.5 / 44.5 / 31.6 / 31.9 tok/s at 24 / 7.3K / 58K /
             # 197K input vs 22.5 / 22.2 / 21.4 / 20.0 no-spec; thinking on
             # 34.5 @64 tok, 45.6 @58K. Memory: the draft weights + draft KV
-            # pool shrink the target pool (530K -> 239K tokens @mem0.88), and
+            # pool shrink the target pool (530K -> 239K tokens @mem0.88 on the replicated
+            # DeltaNet layout; 735K -> 431K on the RAD-1 split below), and
             # the aux-hidden-state capture for the 8 draft input layers adds a
             # ~80 KB/token prefill transient, so mem 0.90 OOMs in decode and
             # mem 0.88 OOMs a 58K prefill at chunk 8192 — 0.88 + chunk 4096 is
             # the validated pair (serves the 197K canonical point; the evals'
             # prefills are 97% cache hits, so the chunk size costs them nothing).
             # QWEN38_SPEC=0 restores the no-spec server (mem 0.85, chunk 8192,
-            # 530K pool) for true 256K work. Receipts:
+            # 735K pool on the split layout) for true 256K work. Receipts:
             # benchmarks/qwen38-27b-fp8/dspark-*.json, results.json.
             if [[ "${QWEN38_SPEC:-1}" != "0" ]]; then
                 QWEN38_DRAFT="${QWEN38_DRAFT:-/data/models/Qwen3.8-27B-speculator.dspark-sgl}"
