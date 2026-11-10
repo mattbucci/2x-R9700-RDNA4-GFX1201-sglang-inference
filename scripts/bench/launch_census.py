@@ -15,9 +15,22 @@ Read it with the profiler's limits in mind:
 
   python scripts/bench/launch_census.py --trace-dir /data/tmp/profile-<tag>/short --attn-layers 16 \
       --label "qwen38 FP8 @24" --wall-ms-per-step 43.0 --out benchmarks/profiling/<tag>/census-short.json
+
+Span mode counts one forward pass instead of the decode phase: the model runner wraps every forward in a
+profiler span (`step[DECODE bs=1]`, `step[TARGET_VERIFY ...]`, the drafter's own), and --span PREFIX takes the
+kernels that start inside the spans whose name begins with PREFIX, per span. That separates the target verify
+of a speculative cycle (`step[VERIFY`) from the drafter's passes (`step[DRAFT`); --list-spans prints the span
+names of a trace, --diff A.json B.json two receipts per family.
+
+  python scripts/bench/launch_census.py --trace-dir /data/tmp/profile-<tag>/short --list-spans
+  python scripts/bench/launch_census.py --trace-dir /data/tmp/profile-<tag>/short --span 'step[VERIFY' \
+      --label "qwen38 FP8 DSpark verify @24" --out benchmarks/profiling/<tag>/census-verify-short.json
+  python scripts/bench/launch_census.py --diff census-decode-short.json census-verify-short.json
 """
 import argparse
+import bisect
 import collections
+import gzip
 import json
 import os
 import statistics
@@ -35,12 +48,13 @@ from profile_decode_kernels import (  # noqa: E402
 # Ordered: the first family with a matching lowercase substring wins. `owner` is the experiment in
 # experiments/19-vllm-radiance-parity.md that would shrink the family.
 FAMILY_RULES = [
-    ("attention", "RAD-9 (decode attention), RAD-19", ["_fwd_kernel", "_fwd_grouped_kernel", "kv_store", "kv_indices", "kv_splits", "mrope", "_rope"]),
+    ("attention", "RAD-9 (decode attention), RAD-19, RAD-27", ["_fwd_kernel", "_fwd_grouped_kernel", "_verify_prefix", "_verify_combine", "kv_store", "kv_indices", "kv_splits", "mrope", "_rope"]),
     ("all_reduce", "RAD-2", ["nccl", "all_reduce", "allreduce", "_ar_"]),
     ("quantiser", "RAD-22 / RAD-5", ["per_token_group_quant", "per_token_quant", "per_tensor_quant", "static_quant"]),
-    ("fp8_gemm", "RAD-1, RAD-3, RAD-4", ["w8a8_block_fp8_matmul", "block_scaled_matmul", "scaled_mm", "fp8_gemm", "fp8_matmul"]),
+    ("fp8_gemm", "RAD-1, RAD-3, RAD-4, RAD-22", ["w8a8_block_fp8_matmul", "block_scaled_matmul", "scaled_mm", "fp8_gemm", "fp8_matmul", "fp8_gemv"]),
     ("mxfp4_gemm", "RAD-11 repack path", ["mxfp4_w4a8", "w4a8"]),
     ("gdn", "RAD-1 (state width), RAD-20", ["gated_delta", "delta_rule", "causal_conv1d", "conv1d_update", "mamba_state"]),
+    ("bf16_gemv", "RAD-23", ["skinny_bf16_gemv"]),
     ("rocblas_gemm", "RAD-15 (LM head)", ["cijk_", "rocblas", "hipblas", "tensile", "gemv", "gemm_kernel"]),
     ("norm", "RAD-5", ["rmsnorm", "layernorm", "layer_norm", "_norm", "norm_", "rsqrt"]),
     ("sampler", "RAD-15, RAD-17", ["topk", "sort", "multinomial", "argmax", "softmax", "cumsum", "bitonic", "radix", "scan_"]),
@@ -79,6 +93,63 @@ def union_us(events):
     return busy
 
 
+def read_spans(path):
+    """GPU-side profiler spans of one trace: [{name, ts, dur}], in start order."""
+    opener = gzip.open if path.endswith(".gz") else open
+    with opener(path, "rt", errors="replace") as handle:
+        data = json.load(handle)
+    spans = [{"name": e["name"], "ts": float(e["ts"]), "dur": float(e["dur"])}
+             for e in data.get("traceEvents", [])
+             if isinstance(e, dict) and e.get("cat") == "gpu_user_annotation" and e.get("ph") == "X"
+             and isinstance(e.get("ts"), (int, float)) and isinstance(e.get("dur"), (int, float))]
+    return sorted(spans, key=lambda s: s["ts"])
+
+
+def list_spans(trace_dir):
+    out = []
+    for path in find_trace_files(trace_dir):
+        by_name = collections.defaultdict(list)
+        for span in read_spans(path):
+            by_name[span["name"]].append(span["dur"])
+        out.append(os.path.basename(path))
+        for name, durs in sorted(by_name.items(), key=lambda kv: -sum(kv[1])):
+            out.append(f"  {len(durs):>6} x {statistics.fmean(durs) / 1000.0:>9.3f} ms  {name}")
+    return "\n".join(out)
+
+
+def census_rank_spans(path, prefix):
+    """Census of the kernels that start inside the spans named PREFIX*; one span is one step."""
+    spans = [s for s in read_spans(path) if s["name"].startswith(prefix)]
+    if not spans:
+        raise SystemExit(f"{path}: no profiler span starts with {prefix!r} (see --list-spans)")
+    starts = [s["ts"] for s in spans]
+    inside = []
+    for event in read_trace_kernel_events(path):
+        if event["ts"] is None:
+            continue
+        i = bisect.bisect_right(starts, event["ts"]) - 1
+        if i >= 0 and event["ts"] < spans[i]["ts"] + spans[i]["dur"]:
+            inside.append(event)
+    steps = len(spans)
+    span_us = sum(s["dur"] for s in spans)
+    busy_us = union_us(inside)
+    by_name = collections.defaultdict(list)
+    for e in inside:
+        by_name[e["name"]].append(e["dur"])
+    names = collections.Counter(s["name"] for s in spans)
+    return {
+        "path": path,
+        "steps": steps,
+        "span_names": dict(names),
+        "decode_events": len(inside),
+        "interleaved": False,
+        "span_ms_per_step": round(span_us / 1000.0 / steps, 3),
+        "busy_ms_per_step": round(busy_us / 1000.0 / steps, 3),
+        "host_gap_ms_per_step": round((span_us - busy_us) / 1000.0 / steps, 3),
+        "sum_kernel_ms_per_step": round(sum(e["dur"] for e in inside) / 1000.0 / steps, 3),
+    }, by_name
+
+
 def census_rank(path, steps, attn_layers=None):
     events = list(read_trace_kernel_events(path))
     phase_events, meta = segment_phases(events)
@@ -110,13 +181,13 @@ def census_rank(path, steps, attn_layers=None):
     }, by_name
 
 
-def build(trace_dir, steps, sizes, label=None, wall_ms_per_step=None, top=40, attn_layers=None):
+def build(trace_dir, steps, sizes, label=None, wall_ms_per_step=None, top=40, attn_layers=None, span=None):
     files = find_trace_files(trace_dir)
     if not files:
         raise SystemExit(f"no *.trace.json* under {trace_dir}")
     ranks, pooled = [], collections.defaultdict(list)
     for path in files:
-        rank, by_name = census_rank(path, steps, attn_layers)
+        rank, by_name = census_rank_spans(path, span) if span else census_rank(path, steps, attn_layers)
         ranks.append(rank)
         for name, durs in by_name.items():
             pooled[name].extend(durs)
@@ -170,7 +241,8 @@ def build(trace_dir, steps, sizes, label=None, wall_ms_per_step=None, top=40, at
         "label": label,
         "trace_dir": trace_dir,
         "steps": steps,
-        "steps_source": f"decode attention launches / {attn_layers} attention layers" if attn_layers else "--steps",
+        "steps_source": (f"profiler spans named {span}*" if span else
+                         f"decode attention launches / {attn_layers} attention layers" if attn_layers else "--steps"),
         "ranks": n_ranks,
         "per_rank": ranks,
         "launches_per_step_per_rank": round(sum(f["launches_per_step_per_rank"] for f in families.values()), 1),
@@ -212,9 +284,52 @@ def render(report):
     return "\n".join(out)
 
 
+def diff(path_a, path_b):
+    """Two census receipts side by side, per family: launches, traced ms and floor ms per step per rank."""
+    loaded = []
+    for path in (path_a, path_b):
+        with open(path) as handle:
+            loaded.append(json.load(handle))
+    a, b = loaded
+    out = [f"A: {a['label'] or path_a} ({a['steps']} steps, {a['launches_per_step_per_rank']} launches)",
+           f"B: {b['label'] or path_b} ({b['steps']} steps, {b['launches_per_step_per_rank']} launches)",
+           f"{'family':<16}{'launch A':>10}{'launch B':>10}{'ms A':>9}{'ms B':>9}{'B - A':>8}{'floor A':>9}{'floor B':>9}{'B - A':>8}"]
+    names = sorted(set(a["families"]) | set(b["families"]),
+                   key=lambda n: -abs(b["families"].get(n, {}).get("ms_per_step_per_rank", 0.0)
+                                      - a["families"].get(n, {}).get("ms_per_step_per_rank", 0.0)))
+    total = [0.0, 0.0, 0.0, 0.0]
+    for name in names:
+        fa, fb = a["families"].get(name, {}), b["families"].get(name, {})
+        la, lb = fa.get("launches_per_step_per_rank", 0.0), fb.get("launches_per_step_per_rank", 0.0)
+        ma, mb = fa.get("ms_per_step_per_rank", 0.0), fb.get("ms_per_step_per_rank", 0.0)
+        ga, gb = fa.get("floor_ms_per_step_per_rank", 0.0), fb.get("floor_ms_per_step_per_rank", 0.0)
+        total = [total[0] + ma, total[1] + mb, total[2] + ga, total[3] + gb]
+        out.append(f"{name:<16}{la:>10.1f}{lb:>10.1f}{ma:>9.3f}{mb:>9.3f}{mb - ma:>+8.3f}{ga:>9.3f}{gb:>9.3f}{gb - ga:>+8.3f}")
+    out.append(f"{'total':<16}{a['launches_per_step_per_rank']:>10.1f}{b['launches_per_step_per_rank']:>10.1f}"
+               f"{total[0]:>9.3f}{total[1]:>9.3f}{total[1] - total[0]:>+8.3f}{total[2]:>9.3f}{total[3]:>9.3f}{total[3] - total[2]:>+8.3f}")
+    by_a = {k["name"]: k for k in a["kernels"]}
+    out.append("kernels by traced ms, B against A (launches A -> B, ms A -> B):")
+    for k in b["kernels"][:24]:
+        ka = by_a.get(k["name"])
+        la, ma = (ka["launches_per_step_per_rank"], ka["ms_per_step_per_rank"]) if ka else (0.0, 0.0)
+        out.append(f"  {la:>8.1f} -> {k['launches_per_step_per_rank']:>8.1f}  {ma:>8.3f} -> {k['ms_per_step_per_rank']:>8.3f}"
+                   f"  [{k['family']}] {k['name'][:80]}")
+    return "\n".join(out)
+
+
 def main(argv=None):
+    if argv is None:
+        argv = sys.argv[1:]
+    if argv[:1] == ["--diff"]:
+        if len(argv) != 3:
+            raise SystemExit("usage: launch_census.py --diff A.json B.json")
+        print(diff(argv[1], argv[2]))
+        return 0
     parser = argparse.ArgumentParser(description="Launch census of one decode step from a profiler trace window.")
     parser.add_argument("--trace-dir", required=True)
+    parser.add_argument("--span", default=None, metavar="PREFIX",
+                        help="census of the forward passes whose profiler span name starts with PREFIX, one span per step")
+    parser.add_argument("--list-spans", action="store_true", help="print the GPU-side profiler spans of the trace and exit")
     parser.add_argument("--steps", type=int, default=None, help="decode steps in the window; a max_tokens=N request holds N-1")
     parser.add_argument("--attn-layers", type=int, default=None,
                         help="attention layers in the model: derive the step count from the decode attention launches instead of --steps")
@@ -225,8 +340,11 @@ def main(argv=None):
     parser.add_argument("--top", type=int, default=40)
     parser.add_argument("--out", default=None)
     args = parser.parse_args(argv)
-    if not args.steps and not args.attn_layers:
-        parser.error("one of --steps or --attn-layers is required")
+    if args.list_spans:
+        print(list_spans(args.trace_dir))
+        return 0
+    if not args.steps and not args.attn_layers and not args.span:
+        parser.error("one of --steps, --attn-layers or --span is required")
     sizes = {}
     for item in args.size:
         family, _, value = item.partition("=")
@@ -234,7 +352,7 @@ def main(argv=None):
             parser.error(f"unknown family {family!r}; one of {sorted(OWNERS)}")
         sizes[family] = float(value)
     report = build(args.trace_dir, args.steps, sizes, label=args.label, wall_ms_per_step=args.wall_ms_per_step, top=args.top,
-                   attn_layers=args.attn_layers)
+                   attn_layers=args.attn_layers, span=args.span)
     print(render(report))
     if args.out:
         os.makedirs(os.path.dirname(os.path.abspath(args.out)), exist_ok=True)
