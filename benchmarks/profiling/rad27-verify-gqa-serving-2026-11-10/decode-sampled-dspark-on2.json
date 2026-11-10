@@ -1,0 +1,89 @@
+{
+  "label": "dspark-on2-sampled",
+  "tag": "",
+  "note": "",
+  "port": 23334,
+  "maxtok": 400,
+  "runs": 2,
+  "sampling": {
+    "temperature": 1.0,
+    "top_p": 0.95,
+    "top_k": 20,
+    "seed": 7
+  },
+  "ignore_eos": true,
+  "points": [
+    {
+      "context": 128,
+      "input_len": 24,
+      "runs_tps": [
+        54.81,
+        48.32
+      ],
+      "median_tps": 51.363,
+      "min_tps": 48.324,
+      "max_tps": 54.809,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "median_tpot_ms": 19.47,
+      "sample": "# The Silicon Bottleneck: A Comprehensive Analysis of GPU Me",
+      "median_ttft_ms": 330.8
+    },
+    {
+      "context": 8192,
+      "input_len": 7331,
+      "runs_tps": [
+        38.11,
+        51.63
+      ],
+      "median_tps": 43.849,
+      "min_tps": 38.105,
+      "max_tps": 51.632,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "median_tpot_ms": 22.81,
+      "sample": "The provided text consists of the pangram \"The quick brown f",
+      "median_ttft_ms": 1791.1
+    },
+    {
+      "context": 65536,
+      "input_len": 58483,
+      "runs_tps": [
+        40.44,
+        43.51
+      ],
+      "median_tps": 41.918,
+      "min_tps": 40.442,
+      "max_tps": 43.506,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "median_tpot_ms": 23.86,
+      "sample": "The provided text consists of the classic English pangram, \"",
+      "median_ttft_ms": 15198.4
+    },
+    {
+      "context": 221184,
+      "input_len": 197326,
+      "runs_tps": [
+        35.3,
+        35.1
+      ],
+      "median_tps": 35.202,
+      "min_tps": 35.101,
+      "max_tps": 35.303,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "median_tpot_ms": 28.41,
+      "sample": "The provided text consists of the pangram \"The quick brown f",
+      "median_ttft_ms": 75991.8
+    }
+  ]
+}

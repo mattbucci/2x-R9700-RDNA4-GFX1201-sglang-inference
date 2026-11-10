@@ -1,0 +1,48 @@
+{
+ "label": "dflash-off1-sampled",
+ "note": "patches 122-124 on",
+ "log": "/data/logs/rad27-verify-gqa-serving-2026-11-10/server-dflash-off1.log",
+ "from_line": 877,
+ "to_line": 959,
+ "line_numbering": "newline",
+ "decode_lines_dropped_after_prefill": 8,
+ "decode_lines_dropped_no_depth": 1,
+ "depths": {
+  "24": {
+   "decode_batches": {
+    "lines": 6,
+    "accept_len": 2.59,
+    "tok_s": 55.97,
+    "cycles_s": 21.62,
+    "cycle_ms": 46.26
+   }
+  },
+  "7.3K": {
+   "decode_batches": {
+    "lines": 11,
+    "accept_len": 1.45,
+    "tok_s": 29.79,
+    "cycles_s": 20.6,
+    "cycle_ms": 48.54
+   }
+  },
+  "58K": {
+   "decode_batches": {
+    "lines": 6,
+    "accept_len": 1.7,
+    "tok_s": 31.14,
+    "cycles_s": 18.35,
+    "cycle_ms": 54.51
+   }
+  },
+  "197K": {
+   "decode_batches": {
+    "lines": 7,
+    "accept_len": 2.0,
+    "tok_s": 26.73,
+    "cycles_s": 13.36,
+    "cycle_ms": 74.88
+   }
+  }
+ }
+}

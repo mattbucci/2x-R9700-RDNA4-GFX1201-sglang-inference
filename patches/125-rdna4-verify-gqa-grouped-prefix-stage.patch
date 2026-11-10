@@ -1,0 +1,539 @@
+diff --git a/python/sglang/kernels/ops/attention/verify_gqa_rdna4.py b/python/sglang/kernels/ops/attention/verify_gqa_rdna4.py
+new file mode 100644
+index 0000000..d4ba123
+--- /dev/null
++++ b/python/sglang/kernels/ops/attention/verify_gqa_rdna4.py
+@@ -0,0 +1,490 @@
++"""GQA-grouped split-KV prefix stage for the speculative verify pass on RDNA4 (gfx1201).
++
++``verify_splitkv`` launches one prefix program per (sequence, query head, split), so the query heads that share a
++KV head each read the same K and V bytes again: six times per layer on a two-rank Qwen3.5-family target. This
++stage launches one program per (sequence, block of query heads sharing a KV head, split) and packs
++``HEADS_PER_BLOCK x L_REAL`` query rows into one dot tile, so the prefix is read once per block.
++
++Split sizing, K/V block order and the per-row arithmetic are those of ``_verify_prefix_stage1``, and the partials
++land in the same ``[BS, H_Q, N_SPLITS, L_PAD, Dv]`` / ``[BS, H_Q, N_SPLITS, L_PAD]`` scratch layout, so the combine
++stage (split merge, draft-draft causal attention, sinks) is ``verify_splitkv``'s, unchanged.
++
++Opt-in: ``SGLANG_RDNA4_VERIFY_GQA=1`` (read by ``TritonAttnBackend``). Shapes this stage does not pack fall back
++to ``verify_splitkv_fwd``.
++"""
++
++import logging
++
++import triton
++import triton.language as tl
++
++from sglang.kernels.ops.attention.verify_splitkv import (
++    _AMD_LAUNCH_KWARGS,
++    _MIN_BLOCK_KV,
++    _UPCAST_K,
++    VerifySplitKV,
++    _min_row_tile,
++    block_config,
++    can_handle,
++    choose_n_splits,
++    verify_splitkv_fwd,
++)
++
++logger = logging.getLogger(__name__)
++
++# Largest packed row tile. 64 rows x head_dim 256 is the tile the short-extend route already runs on gfx1201.
++MAX_ROW_TILE = 64
++
++
++# The grouped stage launches h_q / HEADS_PER_BLOCK programs per split where the per-head stage launches h_q, so
++# the split count grows by this factor to keep the card filled. A power of two: the combine stage reduces over a
++# [N_SPLITS, L_PAD] tile.
++SPLIT_MULT = 4
++
++
++def choose_n_splits_gqa(avg_seqlen, mult=None):
++    """Static-shape split count for the grouped stage: ``choose_n_splits`` times ``SPLIT_MULT``."""
++    return choose_n_splits(avg_seqlen) * (SPLIT_MULT if mult is None else int(mult))
++
++
++def pick_heads_per_block(group, l_ext, max_row_tile=MAX_ROW_TILE):
++    """Largest divisor of the GQA group whose packed rows fit one tile; 0 when grouping gains nothing."""
++    for hb in range(group, 1, -1):
++        if group % hb == 0 and hb * l_ext <= max_row_tile:
++            return hb
++    return 0
++
++
++@triton.jit
++def _verify_gqa_prefix_stage1(
++    Q,  # [extend_tokens, H_Q, D]
++    K_Buffer,  # [pool_tokens, H_KV, D]
++    V_Buffer,  # [pool_tokens, H_KV, Dv]
++    sm_scale,
++    k_scale,
++    v_scale,
++    qo_indptr,  # [BS+1] int32
++    kv_indptr,  # [BS+1] int32
++    kv_indices,  # [sum prefix] int64
++    Att_Out,  # [BS, H_Q, N_SPLITS, L_PAD, Dv]  fp32
++    Att_Lse,  # [BS, H_Q, N_SPLITS, L_PAD]      fp32
++    stride_qbs,
++    stride_qh,
++    stride_buf_kbs,
++    stride_buf_kh,
++    stride_buf_vbs,
++    stride_buf_vh,
++    stride_ob,
++    stride_oh,
++    stride_os,
++    stride_ol,
++    stride_lb,
++    stride_lh,
++    stride_ls,
++    kv_group_num: tl.constexpr,
++    HEADS_PER_BLOCK: tl.constexpr,  # divides kv_group_num: a block never crosses a KV head
++    L_REAL: tl.constexpr,  # draft rows per sequence (static: the verify length)
++    R: tl.constexpr,  # packed row tile, a power of two >= HEADS_PER_BLOCK * L_REAL
++    N_SPLITS: tl.constexpr,
++    HEAD_DIM: tl.constexpr,
++    V_HEAD_DIM: tl.constexpr,
++    BLOCK_DMODEL: tl.constexpr,
++    BLOCK_DV: tl.constexpr,
++    BLOCK_N: tl.constexpr,
++    MIN_BLOCK_KV: tl.constexpr,
++    UPCAST_K: tl.constexpr = False,
++):
++    cur_batch = tl.program_id(0)
++    head_block = tl.program_id(1)
++    split_kv_id = tl.program_id(2)
++
++    head_start = head_block * HEADS_PER_BLOCK
++    cur_kv_head = head_start // kv_group_num
++
++    offs_d = tl.arange(0, BLOCK_DMODEL)
++    offs_dv = tl.arange(0, BLOCK_DV)
++    # packed rows: row r is draft row r % L_REAL of query head head_start + r // L_REAL
++    offs_r = tl.arange(0, R)
++    row_h = offs_r // L_REAL
++    row_l = offs_r - row_h * L_REAL
++    row_head = head_start + row_h
++
++    cur_q_start = tl.load(qo_indptr + cur_batch)
++    l_ext = tl.load(qo_indptr + cur_batch + 1) - cur_q_start
++    mask_r = (offs_r < HEADS_PER_BLOCK * L_REAL) & (row_l < l_ext)
++
++    cur_batch_kv_start_idx = tl.load(kv_indptr + cur_batch)
++    cur_batch_seq_len = tl.load(kv_indptr + cur_batch + 1) - cur_batch_kv_start_idx
++
++    # split sizing identical to _verify_prefix_stage1 (and the decode kernel)
++    kv_len_per_split = (
++        tl.cdiv(tl.cdiv(cur_batch_seq_len, N_SPLITS), MIN_BLOCK_KV) * MIN_BLOCK_KV
++    )
++    split_kv_start = kv_len_per_split * split_kv_id
++    split_kv_end = tl.minimum(split_kv_start + kv_len_per_split, cur_batch_seq_len)
++
++    offs_lse = (
++        cur_batch * stride_lb + row_head * stride_lh + split_kv_id * stride_ls + row_l
++    )
++
++    if split_kv_end > split_kv_start:
++        e_max = tl.zeros([R], dtype=tl.float32) - float("inf")
++        e_sum = tl.zeros([R], dtype=tl.float32)
++        acc = tl.zeros([R, BLOCK_DV], dtype=tl.float32)
++
++        # q tile: [R, D]
++        offs_q = (
++            (cur_q_start + row_l)[:, None] * stride_qbs
++            + row_head[:, None] * stride_qh
++            + offs_d[None, :]
++        )
++        q = tl.load(
++            Q + offs_q,
++            mask=mask_r[:, None] & (offs_d[None, :] < HEAD_DIM),
++            other=0.0,
++        )
++        if UPCAST_K:
++            q_k = q
++        else:
++            q_k = q.to(K_Buffer.dtype.element_ty)
++
++        base_offs_k = cur_kv_head * stride_buf_kh + offs_d[:, None]
++        base_offs_v = cur_kv_head * stride_buf_vh + offs_dv[None, :]
++
++        for start_n in tl.range(split_kv_start, split_kv_end, BLOCK_N):
++            offs_n = start_n + tl.arange(0, BLOCK_N)
++            n_mask = offs_n < split_kv_end
++            kv_loc = tl.load(
++                kv_indices + cur_batch_kv_start_idx + offs_n,
++                mask=n_mask,
++                other=0,
++            )
++            # K block: [D, BLOCK_N], read once for every query head of the block
++            offs_buf_k = kv_loc[None, :] * stride_buf_kbs + base_offs_k
++            k = tl.load(
++                K_Buffer + offs_buf_k,
++                mask=(offs_d[:, None] < HEAD_DIM) & n_mask[None, :],
++                other=0.0,
++            )
++            if UPCAST_K:
++                qk = tl.dot(q_k, k.to(q_k.dtype))  # [R, BLOCK_N]
++            else:
++                qk = tl.dot(q_k, k)  # [R, BLOCK_N]
++            qk *= sm_scale * k_scale
++            # NO causal mask: the whole prefix is visible to every draft row.
++            qk = tl.where(n_mask[None, :], qk, float("-inf"))
++
++            # V block: [BLOCK_N, Dv]
++            offs_buf_v = kv_loc[:, None] * stride_buf_vbs + base_offs_v
++            v = tl.load(
++                V_Buffer + offs_buf_v,
++                mask=n_mask[:, None] & (offs_dv[None, :] < V_HEAD_DIM),
++                other=0.0,
++            )
++
++            n_e_max = tl.maximum(tl.max(qk, 1), e_max)
++            re_scale = tl.exp(e_max - n_e_max)
++            p = tl.exp(qk - n_e_max[:, None])
++            acc *= re_scale[:, None]
++            acc += tl.dot(p.to(v.dtype), v)
++            e_sum = e_sum * re_scale + tl.sum(p, 1)
++            e_max = n_e_max
++
++        # fp8 dequant of prefix V: scale the accumulated (pre-normalised) output.
++        acc *= v_scale
++
++        offs_o = (
++            cur_batch * stride_ob
++            + row_head[:, None] * stride_oh
++            + split_kv_id * stride_os
++            + row_l[:, None] * stride_ol
++            + offs_dv[None, :]
++        )
++        tl.store(
++            Att_Out + offs_o,
++            acc / e_sum[:, None],
++            mask=mask_r[:, None] & (offs_dv[None, :] < V_HEAD_DIM),
++        )
++        tl.store(Att_Lse + offs_lse, e_max + tl.log(e_sum), mask=mask_r)
++    else:
++        # split did not run: write a sentinel lse so the combine stage ignores it.
++        tl.store(
++            Att_Lse + offs_lse,
++            tl.zeros([R], tl.float32) - float("inf"),
++            mask=mask_r,
++        )
++
++
++class VerifyGQA(VerifySplitKV):
++    """``VerifySplitKV`` with the prefix stage grouped over the query heads of one KV head. Scratch buffers, the
++    combine stage and the call signature are inherited."""
++
++    def __init__(self, *args, heads_per_block, block_n, num_warps, **kwargs):
++        super().__init__(*args, block_n=block_n, num_warps=num_warps, **kwargs)
++        if heads_per_block < 1 or self.group % heads_per_block != 0:
++            raise ValueError(
++                f"heads_per_block {heads_per_block} must divide the GQA group {self.group}"
++            )
++        self.heads_per_block = heads_per_block
++        self.row_tile = max(
++            _min_row_tile(self.device),
++            triton.next_power_of_2(heads_per_block * self.l_ext),
++        )
++
++    def _run_prefix_kernel(
++        self,
++        bs,
++        q_extend,
++        k_buffer,
++        v_buffer,
++        qo_indptr,
++        kv_indptr,
++        kv_indices,
++        sm_scale,
++        k_scale,
++        v_scale,
++    ):
++        grid = (bs, self.h_q // self.heads_per_block, self.n_splits)
++        _verify_gqa_prefix_stage1[grid](
++            q_extend,
++            k_buffer,
++            v_buffer,
++            sm_scale,
++            k_scale,
++            v_scale,
++            qo_indptr,
++            kv_indptr,
++            kv_indices,
++            self.att_out,
++            self.att_lse,
++            q_extend.stride(0),
++            q_extend.stride(1),
++            k_buffer.stride(0),
++            k_buffer.stride(1),
++            v_buffer.stride(0),
++            v_buffer.stride(1),
++            self.att_out.stride(0),
++            self.att_out.stride(1),
++            self.att_out.stride(2),
++            self.att_out.stride(3),
++            self.att_lse.stride(0),
++            self.att_lse.stride(1),
++            self.att_lse.stride(2),
++            kv_group_num=self.group,
++            HEADS_PER_BLOCK=self.heads_per_block,
++            L_REAL=self.l_ext,
++            R=self.row_tile,
++            N_SPLITS=self.n_splits,
++            HEAD_DIM=self.head_dim,
++            V_HEAD_DIM=self.v_head_dim,
++            BLOCK_DMODEL=triton.next_power_of_2(self.head_dim),
++            BLOCK_DV=triton.next_power_of_2(self.v_head_dim),
++            BLOCK_N=self.block_n,
++            MIN_BLOCK_KV=_MIN_BLOCK_KV,
++            UPCAST_K=self.upcast_k,
++            num_warps=self.num_warps,
++            num_stages=1,
++            **_AMD_LAUNCH_KWARGS,
++        )
++
++
++_VG_CACHE = {}
++_ACTIVE_LOGGED = set()
++
++
++def _get_vg(
++    max_bs,
++    h_q,
++    h_kv,
++    head_dim,
++    v_head_dim,
++    l_ext,
++    device,
++    n_splits,
++    heads_per_block,
++    block_n=None,
++    num_warps=None,
++    upcast_k=None,
++):
++    upcast_k = _UPCAST_K if upcast_k is None else bool(upcast_k)
++    cfg_block_n, cfg_num_warps = block_config(head_dim)
++    block_n = cfg_block_n if block_n is None else block_n
++    num_warps = cfg_num_warps if num_warps is None else num_warps
++    key = (
++        h_q,
++        h_kv,
++        head_dim,
++        v_head_dim,
++        l_ext,
++        str(device),
++        n_splits,
++        heads_per_block,
++        block_n,
++        num_warps,
++        upcast_k,
++    )
++    vg = _VG_CACHE.get(key)
++    if vg is None:
++        vg = VerifyGQA(
++            max_bs,
++            h_q,
++            h_kv,
++            head_dim,
++            v_head_dim,
++            l_ext,
++            device=device,
++            n_splits=n_splits,
++            heads_per_block=heads_per_block,
++            block_n=block_n,
++            num_warps=num_warps,
++            upcast_k=upcast_k,
++        )
++        _VG_CACHE[key] = vg
++    else:
++        vg.grow_buffers(max_bs)
++    return vg
++
++
++def verify_gqa_fwd(
++    q_extend,
++    k_extend,
++    v_extend,
++    o_extend,
++    k_buffer,
++    v_buffer,
++    qo_indptr,
++    kv_indptr,
++    kv_indices,
++    custom_mask,
++    is_causal,
++    mask_indptr,
++    max_len_extend,
++    k_scale,
++    v_scale,
++    sm_scale=None,
++    logit_cap=0.0,
++    skip_prefix_custom_mask=True,
++    sliding_window_size=-1,
++    sinks=None,
++    window_kv_offsets=None,
++    xai_temperature_len=-1,
++    max_bs=None,
++    upcast_k=None,
++):
++    """Drop-in for ``verify_splitkv_fwd`` on the topk == 1 target-verify shape. Returns True if it ran (``o_extend``
++    written), False when neither this stage nor ``verify_splitkv_fwd`` serves the case and the caller must fall back
++    to ``extend_attention_fwd``."""
++    heads_per_block = 0
++    if can_handle(
++        q_extend,
++        k_extend,
++        v_extend,
++        k_buffer,
++        v_buffer,
++        qo_indptr,
++        kv_indptr,
++        kv_indices,
++        custom_mask,
++        is_causal,
++        mask_indptr,
++        max_len_extend,
++        sliding_window_size=sliding_window_size,
++        sinks=sinks,
++        logit_cap=logit_cap,
++        xai_temperature_len=xai_temperature_len,
++    ):
++        heads_per_block = pick_heads_per_block(
++            q_extend.shape[1] // k_extend.shape[1], int(max_len_extend)
++        )
++    if heads_per_block == 0:
++        return verify_splitkv_fwd(
++            q_extend,
++            k_extend,
++            v_extend,
++            o_extend,
++            k_buffer,
++            v_buffer,
++            qo_indptr,
++            kv_indptr,
++            kv_indices,
++            custom_mask,
++            is_causal,
++            mask_indptr,
++            max_len_extend,
++            k_scale,
++            v_scale,
++            sm_scale=sm_scale,
++            logit_cap=logit_cap,
++            skip_prefix_custom_mask=skip_prefix_custom_mask,
++            sliding_window_size=sliding_window_size,
++            sinks=sinks,
++            window_kv_offsets=window_kv_offsets,
++            xai_temperature_len=xai_temperature_len,
++            max_bs=max_bs,
++            upcast_k=upcast_k,
++        )
++
++    bs = qo_indptr.shape[0] - 1
++    h_q = q_extend.shape[1]
++    h_kv = k_extend.shape[1]
++    head_dim = q_extend.shape[2]
++    v_head_dim = v_extend.shape[2]
++    l_ext = int(max_len_extend)
++
++    if sm_scale is None:
++        sm_scale = 1.0 / (head_dim**0.5)
++    try:
++        k_scale = float(k_scale)
++    except (TypeError, ValueError):
++        k_scale = 1.0
++    try:
++        v_scale = float(v_scale)
++    except (TypeError, ValueError):
++        v_scale = 1.0
++
++    # STATIC shapes only (no device read): this runs inside a captured HIP graph.
++    n_splits = choose_n_splits_gqa(kv_indices.shape[0] / max(1, bs))
++    if max_bs is None or max_bs < bs:
++        max_bs = bs
++    vg = _get_vg(
++        max_bs,
++        h_q,
++        h_kv,
++        head_dim,
++        v_head_dim,
++        l_ext,
++        q_extend.device,
++        n_splits,
++        heads_per_block,
++        upcast_k=upcast_k,
++    )
++    shape = (h_q, h_kv, l_ext, n_splits)
++    if shape not in _ACTIVE_LOGGED:
++        _ACTIVE_LOGGED.add(shape)
++        logger.info(
++            "[RDNA4] verify attention: GQA-grouped split-KV prefix stage active "
++            "(%d query heads over %d KV heads, %d query heads per program, %d-row tile, "
++            "%d draft rows, %d splits)",
++            h_q,
++            h_kv,
++            heads_per_block,
++            vg.row_tile,
++            l_ext,
++            n_splits,
++        )
++    vg(
++        q_extend,
++        k_extend.contiguous(),
++        v_extend.contiguous(),
++        k_buffer,
++        v_buffer,
++        qo_indptr,
++        kv_indptr,
++        kv_indices,
++        sm_scale,
++        o_out=o_extend,
++        k_scale=k_scale,
++        v_scale=v_scale,
++        sinks=sinks,
++    )
++    return True
+diff --git a/python/sglang/srt/layers/attention/triton_backend.py b/python/sglang/srt/layers/attention/triton_backend.py
+index e4bcb08..28875d2 100644
+--- a/python/sglang/srt/layers/attention/triton_backend.py
++++ b/python/sglang/srt/layers/attention/triton_backend.py
+@@ -51,6 +51,11 @@ from sglang.srt.model_executor.forward_batch_info import ForwardBatch, ForwardMo
+ logger = logging.getLogger(__name__)
+ 
+ _TREE_VERIFY_SPLITKV = os.environ.get("SGLANG_TREE_VERIFY_SPLITKV", "") in ("1", "true", "True")
++# RDNA4 RAD-27: the topk == 1 target verify runs the GQA-grouped split-KV prefix stage, which reads the K/V
++# prefix once per KV head instead of once per query head (verify_gqa_rdna4). Opt-in: SGLANG_RDNA4_VERIFY_GQA=1,
++# exported by the launch presets that passed the serving gate. The short-extend route and the draft worker keep the
++# per-head stage.
++_VERIFY_GQA = os.environ.get("SGLANG_RDNA4_VERIFY_GQA", "") in ("1", "true", "True")
+ # RDNA4 R97-J: route short cache-hit extends (K <= MAX new tokens on a prefix >= MIN_PREFIX) through the
+ # split-KV verify kernel. 0 (default) = off; the A/B receipt sets the shipped value.
+ _EXTEND_SPLITKV_MAX = int(os.environ.get("SGLANG_EXTEND_SPLITKV_MAX_TOKENS", "0") or 0)
+@@ -291,6 +296,17 @@ class TritonAttnBackend(AttentionBackend):
+             self.use_mla,
+             self.use_verify_splitkv,
+         )
++        self.use_verify_gqa = (
++            _VERIFY_GQA
++            and _is_hip
++            and self.use_verify_splitkv
++            and not self.use_verify_shared_kv
++            and not model_runner.is_draft_worker
++        )
++        if self.use_verify_gqa:
++            from sglang.kernels.ops.attention.verify_gqa_rdna4 import verify_gqa_fwd
++
++            self.verify_gqa_fwd = torch.compiler.disable(verify_gqa_fwd)
+         # TODO: this logic should be fixed in non-hip platform
+         self.is_hip_dspark_draft = (
+             _is_hip
+@@ -1838,6 +1854,8 @@ class TritonAttnBackend(AttentionBackend):
+         # per-head split-KV kernel.
+         if self.use_verify_shared_kv:
+             verify_fwd = self.verify_shared_kv_fwd
++        elif self.use_verify_gqa:
++            verify_fwd = self.verify_gqa_fwd
+         elif self.use_verify_splitkv:
+             verify_fwd = self.verify_splitkv_fwd
+         else:

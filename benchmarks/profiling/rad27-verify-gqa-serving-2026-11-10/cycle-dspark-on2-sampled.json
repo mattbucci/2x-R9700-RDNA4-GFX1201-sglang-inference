@@ -1,0 +1,48 @@
+{
+ "label": "dspark-on2-sampled",
+ "note": "patches 122-124 on",
+ "log": "/data/logs/rad27-verify-gqa-serving-2026-11-10/server-dspark-on2.log",
+ "from_line": 711,
+ "to_line": 809,
+ "line_numbering": "newline",
+ "decode_lines_dropped_after_prefill": 8,
+ "decode_lines_dropped_no_depth": 0,
+ "depths": {
+  "24": {
+   "decode_batches": {
+    "lines": 5,
+    "accept_len": 2.75,
+    "tok_s": 52.99,
+    "cycles_s": 19.37,
+    "cycle_ms": 51.62
+   }
+  },
+  "7.3K": {
+   "decode_batches": {
+    "lines": 6,
+    "accept_len": 2.33,
+    "tok_s": 39.52,
+    "cycles_s": 16.9,
+    "cycle_ms": 59.19
+   }
+  },
+  "58K": {
+   "decode_batches": {
+    "lines": 6,
+    "accept_len": 2.7,
+    "tok_s": 44.09,
+    "cycles_s": 16.36,
+    "cycle_ms": 61.14
+   }
+  },
+  "197K": {
+   "decode_batches": {
+    "lines": 6,
+    "accept_len": 2.35,
+    "tok_s": 35.0,
+    "cycles_s": 14.86,
+    "cycle_ms": 67.3
+   }
+  }
+ }
+}

@@ -1,0 +1,249 @@
+{
+ "dflash": {
+  "depths": {
+   "24": {
+    "cycle_ms": {
+     "off1": 46.26,
+     "on1": 46.9,
+     "on2": 47.01,
+     "off2": 46.16
+    },
+    "accept_len": {
+     "off1": 2.59,
+     "on1": 2.65,
+     "on2": 2.45,
+     "off2": 2.45
+    },
+    "off_ms": 46.21,
+    "on_ms": 46.95,
+    "ratio": 1.0161,
+    "boots": [
+     2,
+     2
+    ],
+    "off_spread_pct": 0.22,
+    "on_spread_pct": 0.23,
+    "verify_ms_on_timed": 39.07,
+    "verify_ms_rad16_timed": 38.24,
+    "draft_ms_on_timed": 6.31
+   },
+   "7.3K": {
+    "cycle_ms": {
+     "off1": 48.54,
+     "on1": 48.92,
+     "on2": 49.16,
+     "off2": 48.4
+    },
+    "accept_len": {
+     "off1": 1.45,
+     "on1": 1.92,
+     "on2": 2.25,
+     "off2": 1.65
+    },
+    "off_ms": 48.47,
+    "on_ms": 49.04,
+    "ratio": 1.0118,
+    "boots": [
+     2,
+     2
+    ],
+    "off_spread_pct": 0.29,
+    "on_spread_pct": 0.49,
+    "verify_ms_on_timed": 39.82,
+    "verify_ms_rad16_timed": 39.24,
+    "draft_ms_on_timed": 7.56
+   },
+   "58K": {
+    "cycle_ms": {
+     "off1": 54.51,
+     "on1": 51.13,
+     "on2": 51.22,
+     "off2": 54.52
+    },
+    "accept_len": {
+     "off1": 1.7,
+     "on1": 2.79,
+     "on2": 1.68,
+     "off2": 2.23
+    },
+    "off_ms": 54.52,
+    "on_ms": 51.17,
+    "ratio": 0.9387,
+    "boots": [
+     2,
+     2
+    ],
+    "off_spread_pct": 0.02,
+    "on_spread_pct": 0.18,
+    "verify_ms_on_timed": 41.84,
+    "verify_ms_rad16_timed": 45.21,
+    "draft_ms_on_timed": 7.54
+   },
+   "197K": {
+    "cycle_ms": {
+     "off1": 74.88,
+     "on1": 57.09,
+     "on2": 57.15,
+     "off2": 74.73
+    },
+    "accept_len": {
+     "off1": 2.0,
+     "on1": 1.75,
+     "on2": 1.58,
+     "off2": 2.23
+    },
+    "off_ms": 74.81,
+    "on_ms": 57.12,
+    "ratio": 0.7636,
+    "boots": [
+     2,
+     2
+    ],
+    "off_spread_pct": 0.2,
+    "on_spread_pct": 0.11,
+    "verify_ms_on_timed": 47.7,
+    "verify_ms_rad16_timed": 65.3,
+    "draft_ms_on_timed": 7.57
+   }
+  },
+  "sweep_tok_s": {
+   "off1": [
+    66.176,
+    76.38,
+    65.698,
+    48.535
+   ],
+   "on1": [
+    65.502,
+    75.884,
+    69.962,
+    72.138
+   ]
+  },
+  "greedy_same_start": 4
+ },
+ "dspark": {
+  "depths": {
+   "24": {
+    "cycle_ms": {
+     "off1": 50.79,
+     "on1": 51.85,
+     "on2": 51.62,
+     "off2": 50.91
+    },
+    "accept_len": {
+     "off1": 2.5,
+     "on1": 2.62,
+     "on2": 2.75,
+     "off2": 2.65
+    },
+    "off_ms": 50.85,
+    "on_ms": 51.73,
+    "ratio": 1.0174,
+    "boots": [
+     2,
+     2
+    ],
+    "off_spread_pct": 0.24,
+    "on_spread_pct": 0.44,
+    "verify_ms_on_timed": 39.95,
+    "verify_ms_rad16_timed": 39.17,
+    "draft_ms_on_timed": 9.39
+   },
+   "7.3K": {
+    "cycle_ms": {
+     "off1": 58.48,
+     "on1": 59.03,
+     "on2": 59.19,
+     "off2": 58.41
+    },
+    "accept_len": {
+     "off1": 2.77,
+     "on1": 2.7,
+     "on2": 2.33,
+     "off2": 2.56
+    },
+    "off_ms": 58.44,
+    "on_ms": 59.11,
+    "ratio": 1.0114,
+    "boots": [
+     2,
+     2
+    ],
+    "off_spread_pct": 0.12,
+    "on_spread_pct": 0.27,
+    "verify_ms_on_timed": 40.84,
+    "verify_ms_rad16_timed": 40.2,
+    "draft_ms_on_timed": 16.22
+   },
+   "58K": {
+    "cycle_ms": {
+     "off1": 64.49,
+     "on1": 61.05,
+     "on2": 61.14,
+     "off2": 64.47
+    },
+    "accept_len": {
+     "off1": 2.56,
+     "on1": 3.05,
+     "on2": 2.7,
+     "off2": 2.6
+    },
+    "off_ms": 64.48,
+    "on_ms": 61.09,
+    "ratio": 0.9475,
+    "boots": [
+     2,
+     2
+    ],
+    "off_spread_pct": 0.03,
+    "on_spread_pct": 0.15,
+    "verify_ms_on_timed": 42.77,
+    "verify_ms_rad16_timed": 46.14,
+    "draft_ms_on_timed": 16.2
+   },
+   "197K": {
+    "cycle_ms": {
+     "off1": 85.06,
+     "on1": 67.18,
+     "on2": 67.3,
+     "off2": 85.0
+    },
+    "accept_len": {
+     "off1": 2.12,
+     "on1": 2.33,
+     "on2": 2.35,
+     "off2": 2.02
+    },
+    "off_ms": 85.03,
+    "on_ms": 67.24,
+    "ratio": 0.7908,
+    "boots": [
+     2,
+     2
+    ],
+    "off_spread_pct": 0.07,
+    "on_spread_pct": 0.18,
+    "verify_ms_on_timed": 48.74,
+    "verify_ms_rad16_timed": 66.53,
+    "draft_ms_on_timed": 16.23
+   }
+  },
+  "sweep_tok_s": {
+   "off1": [
+    51.049,
+    63.871,
+    55.745,
+    35.626
+   ],
+   "on1": [
+    50.334,
+    63.221,
+    58.906,
+    45.126
+   ]
+  },
+  "greedy_same_start": 4
+ },
+ "gate_speed": "pass"
+}

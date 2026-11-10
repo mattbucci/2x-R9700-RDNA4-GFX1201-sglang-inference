@@ -1,0 +1,89 @@
+{
+  "label": "dflash-on1-sampled",
+  "tag": "",
+  "note": "",
+  "port": 23334,
+  "maxtok": 400,
+  "runs": 2,
+  "sampling": {
+    "temperature": 1.0,
+    "top_p": 0.95,
+    "top_k": 20,
+    "seed": 7
+  },
+  "ignore_eos": true,
+  "points": [
+    {
+      "context": 128,
+      "input_len": 24,
+      "runs_tps": [
+        56.33,
+        53.13
+      ],
+      "median_tps": 54.681,
+      "min_tps": 53.128,
+      "max_tps": 56.326,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "median_tpot_ms": 18.29,
+      "sample": "# The Silicon Bottleneck: A Deep Dive into GPU Memory Hierar",
+      "median_ttft_ms": 89.4
+    },
+    {
+      "context": 8192,
+      "input_len": 7331,
+      "runs_tps": [
+        55.82,
+        37.52
+      ],
+      "median_tps": 44.878,
+      "min_tps": 37.521,
+      "max_tps": 55.822,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "median_tpot_ms": 22.28,
+      "sample": "The text consists of the pangram \"The quick brown fox jumps ",
+      "median_ttft_ms": 1660.5
+    },
+    {
+      "context": 65536,
+      "input_len": 58483,
+      "runs_tps": [
+        48.42,
+        85.82
+      ],
+      "median_tps": 61.907,
+      "min_tps": 48.417,
+      "max_tps": 85.818,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "median_tpot_ms": 16.15,
+      "sample": "The provided text consists of the famous pangram \"The quick ",
+      "median_ttft_ms": 15237.1
+    },
+    {
+      "context": 221184,
+      "input_len": 197326,
+      "runs_tps": [
+        34.85,
+        28.97
+      ],
+      "median_tps": 31.636,
+      "min_tps": 28.965,
+      "max_tps": 34.848,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "median_tpot_ms": 31.61,
+      "sample": "The provided text consists of the standard English pangram \"",
+      "median_ttft_ms": 76550.8
+    }
+  ]
+}

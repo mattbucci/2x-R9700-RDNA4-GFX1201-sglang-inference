@@ -620,6 +620,17 @@ PYEOF
                 export SGLANG_RDNA4_TRITON_GEMMA_RMSNORM="${TRITON_GEMMA_RMSNORM:-1}"
                 export SGLANG_RDNA4_SKINNY_BA_GEMV="${SKINNY_BA_GEMV:-1}"
             fi
+            # RAD-27 (patch 125): the speculative target verify reads the K/V prefix once per KV head (GQA-grouped
+            # split-KV prefix stage, six query heads per program) instead of once per query head. Same session,
+            # two boots per side, sampled 400-token ladder, cycle at 24 / 7.3K / 58K / 197K input: DSpark 50.9 /
+            # 58.4 / 64.5 / 85.0 -> 51.7 / 59.1 / 61.1 / 67.2 ms, DFlash2 46.2 / 48.5 / 54.5 / 74.8 -> 47.0 / 49.0 /
+            # 51.2 / 57.1 ms. The verify runs in one captured graph, so one geometry serves every depth: +0.6-0.9 ms
+            # below 8K tokens, -3.4 ms at 58K, -17.7 ms at 197K. Capabilities 5/5 and needle 9/9 on both
+            # algorithms, greedy ladders start with the control's text at all four depths. Inert without a
+            # speculative target worker; the FP8 checkpoint only. VERIFY_GQA=0 restores the per-head stage.
+            if [[ -z "${QUANT_OVERRIDE:-}" ]]; then
+                export SGLANG_RDNA4_VERIFY_GQA="${VERIFY_GQA:-1}"
+            fi
             # R97-R (2026-11-01): hybrid radix cache on the extra_buffer strategy (64-token Mamba state grid,
             # overlap scheduling on). Under the HIP default no_buffer (patch 073) a state exists only at chunk
             # ends / prompt end, and the chat template's history `<think>\n` -> `\n\n` merge makes every

@@ -1519,6 +1519,54 @@ at the k boundary, 4,000 inside the top 16), and the comparator flags a planted 
 Disposition: `torch.topk` stays and no top-k kernel is written: 54 µs of a 46 ms cycle, and the best exact kernel
 saves 2.4 µs. The cost on that path is the head product.
 
+### RAD-27 — GQA-grouped verify prefix stage: speculative cycle −21–24 % at 197K, −5–6 % at 58K, +1–2 % below 8K; patch 125, qwen38 FP8 preset default (2026-11-10)
+
+The target verify read the K/V prefix once per query head: six times per KV head on the two-rank Qwen3.8-27B target
+(12 query heads over 2 KV heads per rank). Patch 125 adds a prefix stage with one program per (sequence, block of
+query heads sharing a KV head, split) that packs heads × rows into one dot tile
+(`kernels/ops/attention/verify_gqa_rdna4.py`, `SGLANG_RDNA4_VERIFY_GQA=1`). It writes the per-head scratch layout,
+so the combine stage is unchanged; only the topk == 1 target verify takes it, the draft worker and the short-extend
+route keep the per-head stage, and a shape it does not pack falls back to that stage. Kernel level
+([receipts](profiling/rad27-verify-gqa-kernel-2026-11-10/)), 16 layers at 8 rows in a HIP graph over the static
+`kv_indices` buffer: 27.7 → 9.9 ms at 197,326 prefix tokens, 7.5 → 3.5 ms at 58,483, 1.35 → 1.30 ms at 7,331,
+0.47 → 1.08 ms at 24; cosine against an fp32 reference 0.99867 at the worst of six points on both stages. The verify
+runs in one captured graph, so one geometry (6 heads per program, 64 splits, 64-row tile) serves every depth.
+
+Serving A/B on the FP8 `qwen38` preset with patches 122–124 on, one session, per-head → grouped → grouped → per-head
+for each of DFlash2 (tcclaviger FP8 drafter, 8 verify rows) and DSpark (9 rows)
+([receipts](profiling/rad27-verify-gqa-serving-2026-11-10/)). Cycle time and accept length come from the server's
+decode-batch lines on the sampled 400-token ladder (T 1.0 / top-p 0.95 / top-k 20), mean of the two boots per side
+(they agree within 0.5 %); stage times come from one timed boot of the grouped side against the RAD-16 timed boots.
+
+| by input tokens | 24 | 7,331 | 58,483 | 197,326 |
+|---|---:|---:|---:|---:|
+| DFlash2 cycle, ms | 46.2 → 47.0 (+1.6 %) | 48.5 → 49.0 (+1.2 %) | 54.5 → 51.2 (−6.1 %) | 74.8 → 57.1 (−23.6 %) |
+| DSpark cycle, ms | 50.9 → 51.7 (+1.7 %) | 58.4 → 59.1 (+1.1 %) | 64.5 → 61.1 (−5.3 %) | 85.0 → 67.2 (−20.9 %) |
+| DFlash2 cycle / plain step | 1.58 → 1.61 | 1.63 → 1.65 | 1.75 → 1.64 | 2.15 → 1.64 |
+| DSpark cycle / plain step | 1.74 → 1.77 | 1.97 → 1.99 | 2.07 → 1.96 | 2.44 → 1.93 |
+| DFlash2 target verify stage, ms | 38.2 → 39.1 | 39.2 → 39.8 | 45.2 → 41.8 | 65.3 → 47.7 |
+| DSpark target verify stage, ms | 39.2 → 39.9 | 40.2 → 40.8 | 46.1 → 42.8 | 66.5 → 48.7 |
+| DFlash2 accept length, two boots → two boots | 2.59 / 2.45 → 2.65 / 2.45 | 1.45 / 1.65 → 1.92 / 2.25 | 1.70 / 2.23 → 2.79 / 1.68 | 2.00 / 2.23 → 1.75 / 1.58 |
+| DSpark accept length, two boots → two boots | 2.50 / 2.65 → 2.62 / 2.75 | 2.77 / 2.56 → 2.70 / 2.33 | 2.56 / 2.60 → 3.05 / 2.70 | 2.12 / 2.02 → 2.33 / 2.35 |
+| DFlash2 canonical sweep, tok/s | 66.2 → 65.5 | 76.4 → 75.9 | 65.7 → 70.0 | 48.5 → 72.1 |
+| DSpark canonical sweep, tok/s | 51.0 → 50.3 | 63.9 → 63.2 | 55.7 → 58.9 | 35.6 → 45.1 |
+
+The verify's growth from 24 tokens to 197K falls from 27.1 to 8.6 ms (DFlash2) and from 27.4 to 8.8 ms (DSpark); a
+plain step grows by 5.7. Below 8K tokens the cycle is 0.6–0.9 ms longer: the grouped tile is sized for the long
+prefix and the captured graph holds one geometry. Accept length moves by up to 1.1 between two boots of the same
+side (sampled continuations); its mean over depths and boots is 2.04 → 2.13 for DFlash2 and 2.47 → 2.60 for DSpark,
+so the stage does not cost acceptance. The sweep rows are one boot per side and move with the accepted length of
+each 80-token continuation as well as with the cycle; the cycle rows are the A/B.
+
+Quality on the grouped side, both algorithms: capabilities 5/5, greedy needle 9/9 to 197K
+([DFlash2](quality/rad27-dflash-on1-natural-greedy.json), [DSpark](quality/rad27-dspark-on1-natural-greedy.json)),
+and the forced greedy ladder starts with the per-head side's text at all four depths.
+
+Disposition: adopted as patch 125. Code default off; the FP8 `qwen38` preset exports `SGLANG_RDNA4_VERIFY_GQA=1`
+(`VERIFY_GQA=0` restores the per-head stage). The verify still costs 10–11 ms more than a plain step at 24 tokens
+and 13–14 ms at 197K: the multi-row quantising GEMM (RAD-22b) is next on that stage, DSpark's draft propose step
+(RAD-28) next on the cycle.
+
 ## Evaluation methodology
 
 ### SWE-bench answer leakage through git history and the web (found 2026-09-18)

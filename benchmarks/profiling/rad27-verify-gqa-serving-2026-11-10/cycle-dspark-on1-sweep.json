@@ -1,0 +1,11 @@
+{
+ "label": "dspark-on1-sweep",
+ "note": "patches 122-124 on",
+ "log": "/data/logs/rad27-verify-gqa-serving-2026-11-10/server-dspark-on1.log",
+ "from_line": 728,
+ "to_line": 828,
+ "line_numbering": "newline",
+ "decode_lines_dropped_after_prefill": 8,
+ "decode_lines_dropped_no_depth": 1,
+ "depths": {}
+}

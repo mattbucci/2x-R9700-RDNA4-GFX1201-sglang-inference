@@ -1,0 +1,89 @@
+{
+  "label": "dflash-on-timed-sampled",
+  "tag": "",
+  "note": "",
+  "port": 23334,
+  "maxtok": 400,
+  "runs": 2,
+  "sampling": {
+    "temperature": 1.0,
+    "top_p": 0.95,
+    "top_k": 20,
+    "seed": 7
+  },
+  "ignore_eos": true,
+  "points": [
+    {
+      "context": 128,
+      "input_len": 24,
+      "runs_tps": [
+        54.22,
+        56.04
+      ],
+      "median_tps": 55.118,
+      "min_tps": 54.222,
+      "max_tps": 56.044,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "median_tpot_ms": 18.14,
+      "sample": "# The Architecture of Speed: A Comprehensive Analysis of GPU",
+      "median_ttft_ms": 283.0
+    },
+    {
+      "context": 8192,
+      "input_len": 7331,
+      "runs_tps": [
+        44.34,
+        46.42
+      ],
+      "median_tps": 45.353,
+      "min_tps": 44.338,
+      "max_tps": 46.417,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "median_tpot_ms": 22.05,
+      "sample": "The provided text consists of a single pangram sentence, \"Th",
+      "median_ttft_ms": 1778.1
+    },
+    {
+      "context": 65536,
+      "input_len": 58483,
+      "runs_tps": [
+        34.24,
+        44.94
+      ],
+      "median_tps": 38.87,
+      "min_tps": 34.244,
+      "max_tps": 44.94,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "median_tpot_ms": 25.73,
+      "sample": "The provided text consists solely of the classic English pan",
+      "median_ttft_ms": 15260.2
+    },
+    {
+      "context": 221184,
+      "input_len": 197326,
+      "runs_tps": [
+        29.72,
+        27.32
+      ],
+      "median_tps": 28.472,
+      "min_tps": 27.325,
+      "max_tps": 29.72,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "median_tpot_ms": 35.12,
+      "sample": "The provided text consists of the same pangram, \"The quick b",
+      "median_ttft_ms": 76477.1
+    }
+  ]
+}

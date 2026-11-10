@@ -1,0 +1,89 @@
+{
+  "label": "dspark-off1-sampled",
+  "tag": "",
+  "note": "",
+  "port": 23334,
+  "maxtok": 400,
+  "runs": 2,
+  "sampling": {
+    "temperature": 1.0,
+    "top_p": 0.95,
+    "top_k": 20,
+    "seed": 7
+  },
+  "ignore_eos": true,
+  "points": [
+    {
+      "context": 128,
+      "input_len": 24,
+      "runs_tps": [
+        50.38,
+        50.24
+      ],
+      "median_tps": 50.31,
+      "min_tps": 50.239,
+      "max_tps": 50.381,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "median_tpot_ms": 19.88,
+      "sample": "# The Lifeline of High-Performance Computing: An In-Depth An",
+      "median_ttft_ms": 368.9
+    },
+    {
+      "context": 8192,
+      "input_len": 7331,
+      "runs_tps": [
+        55.44,
+        47.69
+      ],
+      "median_tps": 51.272,
+      "min_tps": 47.688,
+      "max_tps": 55.438,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "median_tpot_ms": 19.5,
+      "sample": "The provided text consists of the pangram \"The quick brown f",
+      "median_ttft_ms": 1684.5
+    },
+    {
+      "context": 65536,
+      "input_len": 58483,
+      "runs_tps": [
+        36.11,
+        38.93
+      ],
+      "median_tps": 37.468,
+      "min_tps": 36.115,
+      "max_tps": 38.927,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "median_tpot_ms": 26.69,
+      "sample": "The provided text consists of the famous pangram \"The quick ",
+      "median_ttft_ms": 15204.8
+    },
+    {
+      "context": 221184,
+      "input_len": 197326,
+      "runs_tps": [
+        24.56,
+        30.09
+      ],
+      "median_tps": 27.048,
+      "min_tps": 24.561,
+      "max_tps": 30.095,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "median_tpot_ms": 36.97,
+      "sample": "The provided text consists of the classic English pangram \"T",
+      "median_ttft_ms": 75897.4
+    }
+  ]
+}

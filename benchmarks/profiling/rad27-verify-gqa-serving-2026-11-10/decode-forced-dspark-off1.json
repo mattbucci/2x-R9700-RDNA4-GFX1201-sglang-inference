@@ -1,0 +1,84 @@
+{
+  "label": "dspark-off1-forced",
+  "tag": "",
+  "note": "",
+  "port": 23334,
+  "maxtok": 400,
+  "runs": 2,
+  "sampling": null,
+  "ignore_eos": true,
+  "points": [
+    {
+      "context": 128,
+      "input_len": 24,
+      "runs_tps": [
+        57.47,
+        57.46
+      ],
+      "median_tps": 57.467,
+      "min_tps": 57.462,
+      "max_tps": 57.473,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "median_tpot_ms": 17.4,
+      "sample": "# The Memory Wall: A Deep Dive into GPU Memory Hierarchy and",
+      "median_ttft_ms": 133.5
+    },
+    {
+      "context": 8192,
+      "input_len": 7331,
+      "runs_tps": [
+        51.04,
+        50.72
+      ],
+      "median_tps": 50.883,
+      "min_tps": 50.723,
+      "max_tps": 51.044,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "median_tpot_ms": 19.65,
+      "sample": "The provided text consists of the pangram \"The quick brown f",
+      "median_ttft_ms": 1704.7
+    },
+    {
+      "context": 65536,
+      "input_len": 58483,
+      "runs_tps": [
+        59.97,
+        46.3
+      ],
+      "median_tps": 52.254,
+      "min_tps": 46.295,
+      "max_tps": 59.973,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "median_tpot_ms": 19.14,
+      "sample": "The provided text consists of the pangram \"The quick brown f",
+      "median_ttft_ms": 15176.6
+    },
+    {
+      "context": 221184,
+      "input_len": 197326,
+      "runs_tps": [
+        34.78,
+        27.52
+      ],
+      "median_tps": 30.728,
+      "min_tps": 27.521,
+      "max_tps": 34.78,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "median_tpot_ms": 32.54,
+      "sample": "The provided text consists of the pangram \"The quick brown f",
+      "median_ttft_ms": 75871.4
+    }
+  ]
+}

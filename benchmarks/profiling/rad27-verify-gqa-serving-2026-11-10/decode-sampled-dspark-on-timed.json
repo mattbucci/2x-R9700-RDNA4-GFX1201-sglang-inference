@@ -1,0 +1,89 @@
+{
+  "label": "dspark-on-timed-sampled",
+  "tag": "",
+  "note": "",
+  "port": 23334,
+  "maxtok": 400,
+  "runs": 2,
+  "sampling": {
+    "temperature": 1.0,
+    "top_p": 0.95,
+    "top_k": 20,
+    "seed": 7
+  },
+  "ignore_eos": true,
+  "points": [
+    {
+      "context": 128,
+      "input_len": 24,
+      "runs_tps": [
+        55.04,
+        49.97
+      ],
+      "median_tps": 52.382,
+      "min_tps": 49.969,
+      "max_tps": 55.041,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "median_tpot_ms": 19.09,
+      "sample": "# The Speed of Light in Silicon: A Comprehensive Analysis of",
+      "median_ttft_ms": 342.8
+    },
+    {
+      "context": 8192,
+      "input_len": 7331,
+      "runs_tps": [
+        50.27,
+        35.0
+      ],
+      "median_tps": 41.269,
+      "min_tps": 35.0,
+      "max_tps": 50.272,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "median_tpot_ms": 24.23,
+      "sample": "The provided text consists of the pangram \"The quick brown f",
+      "median_ttft_ms": 1821.6
+    },
+    {
+      "context": 65536,
+      "input_len": 58483,
+      "runs_tps": [
+        39.55,
+        37.04
+      ],
+      "median_tps": 38.256,
+      "min_tps": 37.043,
+      "max_tps": 39.552,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "median_tpot_ms": 26.14,
+      "sample": "The provided text consists of the English pangram \"The quick",
+      "median_ttft_ms": 15287.4
+    },
+    {
+      "context": 221184,
+      "input_len": 197326,
+      "runs_tps": [
+        33.0,
+        31.77
+      ],
+      "median_tps": 32.374,
+      "min_tps": 31.771,
+      "max_tps": 33.001,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "median_tpot_ms": 30.89,
+      "sample": "The provided text consists exclusively of the pangram \"The q",
+      "median_ttft_ms": 76256.1
+    }
+  ]
+}

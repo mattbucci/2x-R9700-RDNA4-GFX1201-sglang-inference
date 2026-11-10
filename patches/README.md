@@ -1,6 +1,6 @@
 # SGLang v0.5.22 RDNA4 patches
 
-This directory contains the **92 active numeric patches** applied to pristine SGLang v0.5.22 for the
+This directory contains the **93 active numeric patches** applied to pristine SGLang v0.5.22 for the
 2× Radeon AI PRO R9700 serving stack. The default tree is `/data/sgl-v0522`; the default conda environment
 is `sglang-triton36-v0522`.
 
@@ -124,6 +124,7 @@ can be proposed upstream. `Partial` requires a fresh comparison with upstream be
 | 087 | `rdna4-flash-decode-bf16-pv` | Carry | Flash-decode PV in bf16 (fp32 accumulate) instead of fp32 in the grouped GQA kernel. fp32 PV inflated VGPR pressure -> low occupancy -> poor KV-load latency hiding, capping decode-attn at ~51% of the KV-read roofline. Measured **+21% 256K decode** (33.2->40.2 tok/s, coder-reap-25b), short ctx +~1%, deep recall unchanged. Standard flash-attn precision; stacks on 086. |
 | 088 | `dcp-kv-replica-topology-validation` | Candidate | Rejects MHA DCP groups that cross TP K/V-head replica blocks before distributed initialization or weight loading, preventing silent LSE merges across unrelated GQA K/V heads. |
 | 123 | `rdna4-triton-gemma-rmsnorm` | Carry | `GemmaRMSNorm.forward_hip` takes upstream's one-launch Triton Gemma kernels (plain, and residual add + norm in one read) on HIP without aiter (`SGLANG_RDNA4_TRITON_GEMMA_RMSNORM=1`); the native fallback is ten torch launches per call, 129 calls per Qwen3.5/3.8 decode step. An empty batch keeps the native path. Logged once (`[RDNA4] Gemma RMSNorm: one-launch Triton kernel active`). Code default off; the FP8 `qwen38` preset exports it. Plain norm bit-identical to native; the fused read within 2 ULP (it normalises the fp32 sum, native the bf16-rounded one), residual bit-identical; 129 norms in a HIP graph 4.22 → 0.45 ms per step per rank. Same-session A/B off → on → off on the FP8 `qwen38` preset without speculation: decode 26.70 / 26.26 / 25.19 / 23.19 → 30.18 / 29.66 / 28.36 / 25.61 tok/s at 24 / 7.3K / 58K / 197K input tokens (+10–13 %), cold prefill 2,123 / 1,658 / 1,025 → 2,316 / 1,783 / 1,072 tok/s, capabilities 4/4, greedy needle 9/9 to 208K tokens; with DSpark +17.7 % at 24 tokens (47.10 → 55.46). Receipts: `benchmarks/profiling/rad5a-gemma-rmsnorm-2026-11-09/`; preflight `scripts/test/preflight_gemma_rmsnorm.py`. |
+| 125 | `rdna4-verify-gqa-grouped-prefix-stage` | Carry | GQA-grouped split-KV prefix stage for the speculative target verify (`kernels/ops/attention/verify_gqa_rdna4.py`, `SGLANG_RDNA4_VERIFY_GQA=1`). The per-head stage reads the K/V prefix once per query head; this one runs one program per (sequence, block of query heads sharing a KV head, split) and packs heads × rows into one dot tile, so the prefix is read once per KV head (six query heads per program on the two-rank Qwen3.8-27B target). Same scratch layout, combine stage unchanged; only the topk == 1 target verify takes it (not the draft worker, the short-extend route or the shared-KV route) and a shape it does not pack falls back to the per-head stage. Logged once (`[RDNA4] verify attention: GQA-grouped split-KV prefix stage active`). Code default off; the FP8 `qwen38` preset exports it. Kernel, 16 layers at 8 rows in a HIP graph over the static `kv_indices` buffer: 27.7 → 9.9 ms at a 197K prefix, 7.5 → 3.5 ms at 58K, 0.47 → 1.08 ms at 24 tokens (the verify graph holds one geometry for every depth); cosine against an fp32 reference 0.99867 at worst on both stages. Same-session A/B, two boots per side, sampled ladder: DFlash2 cycle 46.2 / 48.5 / 54.5 / 74.8 → 47.0 / 49.0 / 51.2 / 57.1 ms at 24 / 7.3K / 58K / 197K input tokens, DSpark 50.9 / 58.4 / 64.5 / 85.0 → 51.7 / 59.1 / 61.1 / 67.2 ms, mean accept length 2.04 → 2.13 and 2.47 → 2.60, capabilities 5/5 and greedy needle 9/9 to 197K on both. Receipts: `benchmarks/profiling/rad27-verify-gqa-kernel-2026-11-10/`, `benchmarks/profiling/rad27-verify-gqa-serving-2026-11-10/`; bench `scripts/bench/bench_verify_attention_gqa.py`. |
 
 ### AWQ int4
 
@@ -215,7 +216,7 @@ can be proposed upstream. `Partial` requires a fresh comparison with upstream be
 
 | Component | Version |
 |---|---|
-| SGLang | v0.5.22 plus this 92-patch series |
+| SGLang | v0.5.22 plus this 93-patch series |
 | transformers | 5.19.0 |
 | Triton | 3.6.0 |
 | PyTorch | 2.11.0+rocm7.2 |

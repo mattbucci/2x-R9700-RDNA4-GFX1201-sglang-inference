@@ -1,0 +1,89 @@
+{
+  "label": "dflash-on2-sampled",
+  "tag": "",
+  "note": "",
+  "port": 23334,
+  "maxtok": 400,
+  "runs": 2,
+  "sampling": {
+    "temperature": 1.0,
+    "top_p": 0.95,
+    "top_k": 20,
+    "seed": 7
+  },
+  "ignore_eos": true,
+  "points": [
+    {
+      "context": 128,
+      "input_len": 24,
+      "runs_tps": [
+        56.9,
+        52.99
+      ],
+      "median_tps": 54.88,
+      "min_tps": 52.994,
+      "max_tps": 56.905,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "median_tpot_ms": 18.22,
+      "sample": "# The Bottleneck of Speed: A Deep Dive into GPU Memory Hiera",
+      "median_ttft_ms": 351.9
+    },
+    {
+      "context": 8192,
+      "input_len": 7331,
+      "runs_tps": [
+        45.12,
+        46.61
+      ],
+      "median_tps": 45.854,
+      "min_tps": 45.121,
+      "max_tps": 46.611,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "median_tpot_ms": 21.81,
+      "sample": "The provided text consists of the classic English pangram \"T",
+      "median_ttft_ms": 1736.7
+    },
+    {
+      "context": 65536,
+      "input_len": 58483,
+      "runs_tps": [
+        38.54,
+        34.08
+      ],
+      "median_tps": 36.172,
+      "min_tps": 34.081,
+      "max_tps": 38.536,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "median_tpot_ms": 27.65,
+      "sample": "The provided text consists of the pangram \"The quick brown f",
+      "median_ttft_ms": 15195.0
+    },
+    {
+      "context": 221184,
+      "input_len": 197326,
+      "runs_tps": [
+        27.46,
+        30.47
+      ],
+      "median_tps": 28.887,
+      "min_tps": 27.457,
+      "max_tps": 30.474,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "median_tpot_ms": 34.62,
+      "sample": "The provided text consists of a single pangram, \"The quick b",
+      "median_ttft_ms": 76437.4
+    }
+  ]
+}
