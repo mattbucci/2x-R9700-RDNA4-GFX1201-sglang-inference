@@ -1244,8 +1244,7 @@ pass is a multi-row forward and keeps the GEMM, so the preset's speculative path
 kernel; a W8A16 kernel for the verify's row count is the open follow-up (RAD-22b in `experiments/queue.json`).
 
 Disposition: patch 122, code default off. `scripts/setup.sh` builds the extension; without it or without the switch
-the Triton path serves unchanged. The qwen38 preset exports the switch only after the stack is confirmed together
-with RAD-5a.
+the Triton path serves unchanged. The FP8 qwen38 preset exports the switch since the stack confirmation below.
 
 ### RAD-5a — GemmaRMSNorm on the one-launch Triton kernels: decode +10–13 %, prefill +5–9 %; patch 123, opt-in (2026-11-10)
 
@@ -1289,8 +1288,8 @@ probes identical), so equal counts are not equal text, and the single copy-heavy
 moves with the accept length: the cycle time on forced equal-length output is measured in the stack confirmation.
 Capabilities 4/4 and needle 9/9 on both DSpark arms.
 
-Disposition: patch 123, code default off. The qwen38 preset exports the switch after the stack confirmation with
-RAD-22; other presets whose model normalises with `GemmaRMSNorm` opt in after their own capability pass.
+Disposition: patch 123, code default off. The FP8 qwen38 preset exports the switch since the stack confirmation
+below; other presets whose model normalises with `GemmaRMSNorm` opt in after their own capability pass.
 
 ### RAD-23 — one-launch bf16 GEMV for the DeltaNet `in_proj_ba`: decode +2–4 %; patch 124, opt-in (2026-11-10)
 
@@ -1343,8 +1342,58 @@ depths and the rest of the 24-token gain is a continuation the drafter predicts 
 the arms, copy-heavy 25.5 against 21.3 tok/s, mean accept length 3.92 against 3.54). Capabilities 4/4 and needle 9/9
 on both DSpark arms.
 
-Disposition: patch 124, code default off. The qwen38 preset exports the switch after the stack confirmation with
-patches 122 and 123.
+Disposition: patch 124, code default off. The FP8 qwen38 preset exports the switch since the stack confirmation
+below.
+
+### Patches 122–124 together — decode +24–28 %, DSpark cycle 7–11 % shorter; qwen38 FP8 preset default (2026-11-10)
+
+The three one-row decode kernels (patch 122 W8A16 GEMV, patch 123 Triton Gemma norm, patch 124 `in_proj_ba` GEMV)
+were each measured alone. One session on the patch-121 preset measures them together
+([receipts](profiling/rad-stack-confirm-2026-11-10/)): no speculation off → on → off, then DSpark on → off, then the
+DSpark cycle time on three layouts. Decode tok/s by input tokens, 5-run medians, think-off, EOS:
+
+| arm, no speculation | 24 | 7,331 | 58,483 | 197,326 | cold prefill tok/s at 7.3K / 58K / 197K |
+|---|---:|---:|---:|---:|---|
+| off1 | 26.685 | 26.291 | 25.319 | 23.218 | 2,121.4 / 1,658.1 / 1,025.5 |
+| on | 34.297 | 33.645 | 32.144 | 28.689 | 2,333.5 / 1,783.6 / 1,072.3 |
+| off2 | 26.711 | 26.304 | 25.510 | 23.205 | not measured |
+
++28.5 / +27.9 / +26.5 / +23.6 % against the mean of the two off arms; prefill +10.0 / +7.6 / +4.6 %. The step at 24
+tokens goes from 37.45 to 29.16 ms. The single-switch A/Bs measured 2.9, 4.3 and 1.1 ms, so the three add up with
+nothing lost between them. KV pool 735,510 tokens on every arm. Radiance's FP8 arm reads 35.4 / 35.0 / 33.7 / 30.4
+on the same sweep: the gap without speculation is 3–6 %, from 1.3×.
+
+Gates on the stack arm: capabilities 5/5 (4/4 on the control, video probe not run there), greedy needle 9/9 to
+208,296 tokens, cache-hit consistency inside the control's band (6/8 turns beyond the fresh floor, first-token delta
+at most 1.10 nats, against 5/8 and 1.86 on the control). Greedy text: the two off arms are byte-identical on 6/6
+probes, on against off on 1/6, the fp32 accumulation order of three kernels.
+
+DSpark, pool 430,725 on both arms:
+
+| arm | 24 | 7,331 | 58,483 | 197,326 |
+|---|---:|---:|---:|---:|
+| on, median | 51.145 | 63.852 | 55.732 | 35.666 |
+| on, completion tokens | 80 | 38 | 33 | 37 |
+| off, median | 47.106 | 57.786 | 38.701 | 33.271 |
+| off, completion tokens | 80 | 38 (one run 46) | 47 | 37 |
+
+The 58K pair decodes two different continuations and is not a step-time delta. Cycle time from the server log on a
+forced 256-token greedy ladder (trimmed mean ms per cycle × mean accept length, `cycle-times.json`):
+
+| layout | 24 | 7,331 | 58,483 | 197,326 | pool |
+|---|---:|---:|---:|---:|---:|
+| replicated DeltaNet, switches off | 63.3 × 2.77 | 71.4 × 2.91 | 77.5 × 2.91 | 97.6 × 3.06 | 206,324 |
+| patch 121, switches off | 57.1 × 2.85 | 64.8 × 2.96 | 71.0 × 2.99 | 91.0 × 2.52 | 430,725 |
+| patch 121, switches on | 50.8 × 2.81 | 58.6 × 2.89 | 64.8 × 3.14 | 85.0 × 2.63 | 430,725 |
+
+The cycle is 6.0–6.3 ms shorter at every depth (11 / 9 / 9 / 7 %), less than the 8.3 ms of the plain step because the
+verify pass is multi-row and keeps the Triton W8A8 GEMM. Copy-heavy decode on the four targets with identical output:
++10.2 to +12.2 % (131.1 → 147.1, 129.9 → 143.3, 126.5 → 139.4, 133.6 → 147.2 tok/s); the fifth target diverges and is
+not compared. Capabilities 5/5 and needle 9/9 on the DSpark stack arm; greedy text on against off 2/6.
+
+Disposition: `scripts/launch.sh` exports the three switches for the FP8 `qwen38` preset (`FP8_GEMV=0`,
+`TRITON_GEMMA_RMSNORM=0`, `SKINNY_BA_GEMV=0` restore the previous kernels one by one). Code defaults stay off, and a
+build served through `QUANT_OVERRIDE` keeps the previous kernels until its own gate.
 
 ### RAD-15 study — an int8 copy of the LM head leaves a proven candidate window; 4-bit and 2-bit windows are statistical only (2026-11-10)
 

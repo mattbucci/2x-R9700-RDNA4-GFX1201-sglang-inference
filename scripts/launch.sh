@@ -604,6 +604,22 @@ PYEOF
             if [[ -z "${QUANT_OVERRIDE:-}" || "${QUANT_OVERRIDE:-}" == "quark" ]]; then
                 export SGLANG_RDNA4_DELTANET_TP_SPLIT="${DELTANET_TP_SPLIT:-1}"
             fi
+            # RAD-22 / RAD-5a / RAD-23 (patches 122-124): the one-row decode step runs the native HIP W8A16 GEMV for
+            # the block-FP8 linears, GemmaRMSNorm on the one-launch Triton kernel and the DeltaNet in_proj_ba on
+            # the one-launch Triton bf16 GEMV. Same-session confirmation of the three together against two
+            # controls, no speculation: decode 26.7 / 26.3 / 25.4 / 23.2 -> 34.3 / 33.6 / 32.1 / 28.7 tok/s at
+            # 24 / 7.3K / 58K / 197K input, cold prefill 2121 / 1658 / 1026 -> 2334 / 1784 / 1072 tok/s, KV pool
+            # unchanged (735,510), capabilities 5/5, needle 9/9, cache-hit consistency inside the control's band.
+            # DSpark: cycle 57.1 / 64.8 / 71.0 / 91.0 -> 50.8 / 58.6 / 64.8 / 85.0 ms on a forced equal-length ladder,
+            # copy-heavy decode +10-12 % on the four targets with identical output, capabilities 5/5, needle 9/9.
+            # Greedy text differs from the control on 5 of 6 probes (fp32 accumulation order). The FP8
+            # checkpoint only: a QUANT_OVERRIDE build keeps the Triton path. FP8_GEMV=0, TRITON_GEMMA_RMSNORM=0
+            # and SKINNY_BA_GEMV=0 restore the previous kernels one by one.
+            if [[ -z "${QUANT_OVERRIDE:-}" ]]; then
+                export SGLANG_RDNA4_FP8_GEMV="${FP8_GEMV:-1}"
+                export SGLANG_RDNA4_TRITON_GEMMA_RMSNORM="${TRITON_GEMMA_RMSNORM:-1}"
+                export SGLANG_RDNA4_SKINNY_BA_GEMV="${SKINNY_BA_GEMV:-1}"
+            fi
             # R97-R (2026-11-01): hybrid radix cache on the extra_buffer strategy (64-token Mamba state grid,
             # overlap scheduling on). Under the HIP default no_buffer (patch 073) a state exists only at chunk
             # ends / prompt end, and the chat template's history `<think>\n` -> `\n\n` merge makes every

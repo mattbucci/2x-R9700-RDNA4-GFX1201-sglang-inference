@@ -1,0 +1,122 @@
+{
+  "off1": {
+    "tag": "off1",
+    "model": "/data/models/Qwen3.8-27B-FP8",
+    "timestamp": "2026-11-10 05:02",
+    "elapsed_sec": 7.8,
+    "checks": {
+      "basic": {
+        "passed": true,
+        "message": "finish=stop answer='paris'"
+      },
+      "tool_call": {
+        "passed": true,
+        "message": "finish=tool_calls name='get_weather' args='{\"location\": \"Paris\"}'"
+      },
+      "thinking": {
+        "passed": true,
+        "message": "reasoning_seen terminated answer_ok (131 tok, finish=stop)"
+      },
+      "vision": {
+        "passed": true,
+        "message": "saw=['red', 'circle']  response='there is a red circle in the middle of the image.'"
+      }
+    },
+    "summary": {
+      "passed": 4,
+      "total": 4
+    }
+  },
+  "on": {
+    "tag": "on",
+    "model": "/data/models/Qwen3.8-27B-FP8",
+    "timestamp": "2026-11-10 05:36",
+    "elapsed_sec": 9.7,
+    "checks": {
+      "basic": {
+        "passed": true,
+        "message": "finish=stop answer='paris'"
+      },
+      "tool_call": {
+        "passed": true,
+        "message": "finish=tool_calls name='get_weather' args='{\"location\": \"Paris\"}'"
+      },
+      "thinking": {
+        "passed": true,
+        "message": "reasoning_seen terminated answer_ok (132 tok, finish=stop)"
+      },
+      "vision": {
+        "passed": true,
+        "message": "saw=['red', 'circle', 'round']  response='a red circle on a white background'"
+      },
+      "video": {
+        "passed": true,
+        "message": "saw=['move', 'right', 'circle', 'red']  response='\\n\\na red circle moves from the left side of the screen to the right side.'"
+      }
+    },
+    "summary": {
+      "passed": 5,
+      "total": 5
+    }
+  },
+  "dspark-on": {
+    "tag": "dspark-on",
+    "model": "/data/models/Qwen3.8-27B-FP8",
+    "timestamp": "2026-11-10 06:32",
+    "elapsed_sec": 5.9,
+    "checks": {
+      "basic": {
+        "passed": true,
+        "message": "finish=stop answer='paris'"
+      },
+      "tool_call": {
+        "passed": true,
+        "message": "finish=tool_calls name='get_weather' args='{\"location\": \"Paris\"}'"
+      },
+      "thinking": {
+        "passed": true,
+        "message": "reasoning_seen terminated answer_ok (151 tok, finish=stop)"
+      },
+      "vision": {
+        "passed": true,
+        "message": "saw=['red', 'circle', 'round']  response=' a red circle is centered on a white background.'"
+      },
+      "video": {
+        "passed": true,
+        "message": "saw=['move', 'right', 'motion', 'circle', 'red']  response='\\n\\na red circle with a dark outline moves from the left side of the white screen to the right side.'"
+      }
+    },
+    "summary": {
+      "passed": 5,
+      "total": 5
+    }
+  },
+  "dspark-off": {
+    "tag": "dspark-off",
+    "model": "/data/models/Qwen3.8-27B-FP8",
+    "timestamp": "2026-11-10 06:55",
+    "elapsed_sec": 4.0,
+    "checks": {
+      "basic": {
+        "passed": true,
+        "message": "finish=stop answer='paris'"
+      },
+      "tool_call": {
+        "passed": true,
+        "message": "finish=tool_calls name='get_weather' args='{\"location\": \"Paris\"}'"
+      },
+      "thinking": {
+        "passed": true,
+        "message": "reasoning_seen terminated answer_ok (146 tok, finish=stop)"
+      },
+      "vision": {
+        "passed": true,
+        "message": "saw=['red', 'circle', 'round']  response='this image displays a solid red circle with a thin black outline, centered on a plain white background.'"
+      }
+    },
+    "summary": {
+      "passed": 4,
+      "total": 4
+    }
+  }
+}
