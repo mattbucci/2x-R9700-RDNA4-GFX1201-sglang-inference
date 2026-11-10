@@ -132,7 +132,7 @@ Qwen3.8-27B files ([receipt](benchmarks/radiance-parity/README.md)). Decode is t
 | Lane | vllm-radiance | This stack | Gap | Experiments that close it, in run order |
 |---|---|---|---|---|
 | FP8, no speculation | 35.4 / 35.0 / 33.7 / 30.4 | 34.3 / 33.6 / 32.1 / 28.7 | 1.03–1.06× | RAD-22 quant-free decode GEMV, RAD-5a Triton norm and RAD-23 DeltaNet GEMV are in the preset (patches 122–124); RAD-15 low-bit LM head with exact rerank, RAD-3 GEMM weight layout, RAD-12 ablation ladder of their switches |
-| FP8 + DFlash2 | 99.9 / 99.7 / 87.9 / 91.0 | 66.8 / 63.4 / 49.6 / 39.9 | 1.5–2.3× | the target verify is 79–87 % of the cycle (RAD-16): RAD-27 GQA-grouped verify prefix stage, RAD-22b multi-row verify GEMM, then RAD-18 content-adaptive block length, RAD-7 low-bit draft head |
+| FP8 + DFlash2 | 99.9 / 99.7 / 87.9 / 91.0 | 66.8 / 63.4 / 49.6 / 39.9 | 1.5–2.3× | the target verify is 79–86 % of the cycle (RAD-16): RAD-27 GQA-grouped verify prefix stage, RAD-22b multi-row verify GEMM, then RAD-18 content-adaptive block length, RAD-7 low-bit draft head |
 | Cold prefill | 4,137 / 3,631 / 2,520 | 2,331 / 1,784 / 1,073 | 1.8–2.3× | RAD-10 197K profile, RAD-19 DeltaNet conv block width, RAD-20 GEMM tiles at M ≥ 64 and chunk size, then ports by share |
 | MXFP4, no speculation | 51.6 / 50.8 / 47.4 / 41.0 | 34.3 / 33.6 / 31.8 / 28.4 | 1.4–1.5× | RAD-11 split-layout census and the M > 32 repack path, RAD-21 MXFP4 + DFlash2 |
 

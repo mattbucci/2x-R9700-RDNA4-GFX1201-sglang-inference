@@ -3,12 +3,16 @@
 
 Reads two kinds of lines from a slice of the log:
   * "Decode batch ... accept len: A ... gen throughput (token/s): T": cycles per second = T / A, cycle time =
-    1000 * A / T ms. The first decode line after a prefill spans the prefill and is dropped.
+    1000 * A / T ms. The first decode line after a prefill spans the prefill and is dropped; so is a line logged
+    after its request released the cache ("#full token: 0"), which carries a cycle time and no depth.
   * "[RDNA4] <worker> cycle timing (device waits after every stage, diagnostic): ..." written by a server booted
     with SGLANG_RDNA4_SPEC_CYCLE_TIMING=1: mean stage times of a window of cycles. The stage waits serialise the
     host and the device, so these lines size the stages; the cycle rate comes from a server without the switch.
 Lines are binned by context depth (tokens in the cache or the cycle's prefix length) and reduced by the median
 over windows, which drops the window that contains the gap between two requests.
+
+Slice bounds are `wc -l` / `grep -n` line numbers: the log is split on "\n" only. The boot section of a server log
+carries bare carriage returns (progress bars); counting those as line ends moves every later slice 60-76 lines early.
 
     python scripts/bench/spec_cycle_report.py --log server.log --from-line 1200 --to-line 1900 --label x --out x.json
 """
@@ -27,6 +31,12 @@ TIMING = re.compile(r"TP(\d+)\] \[RDNA4\] (\w+) cycle timing \(device waits[^)]*
 OUTSIDE = "outside the cycle"
 
 
+def read_lines(path):
+    """Lines of the log numbered the way wc -l, grep -n and sed -n number them."""
+    with open(path, "rb") as f:
+        return f.read().decode("utf-8", errors="replace").split("\n")
+
+
 def depth_of(tokens):
     for limit, name in DEPTHS:
         if tokens < limit:
@@ -43,6 +53,7 @@ def parse(lines):
     timing = {}
     fresh = {}
     dropped = 0
+    no_depth = 0
     for line in lines:
         if "Prefill batch" in line:
             m = re.search(r"TP(\d+)\]", line)
@@ -53,6 +64,9 @@ def parse(lines):
             rank, tokens, accept, tps = m.group(1), int(m.group(2)), float(m.group(3)), float(m.group(4))
             if fresh.pop(rank, False) or tps <= 0 or accept <= 0:
                 dropped += 1
+                continue
+            if tokens <= 0:
+                no_depth += 1
                 continue
             decode.setdefault(depth_of(tokens), []).append({"accept_len": accept, "tok_s": tps,
                                                             "cycles_s": tps / accept, "cycle_ms": 1000.0 * accept / tps})
@@ -66,7 +80,7 @@ def parse(lines):
             timing.setdefault(depth_of(int(m.group(4))), []).append({
                 "rank": m.group(1), "worker": m.group(2), "cycles": int(m.group(3)), "prefix": int(m.group(4)),
                 "tokens_per_cycle": float(m.group(5)), "us_per_cycle": float(m.group(6)), "stages": stages})
-    return decode, timing, dropped
+    return decode, timing, dropped, no_depth
 
 
 def reduce(decode, timing):
@@ -109,13 +123,13 @@ def main():
     ap.add_argument("--note", default="")
     ap.add_argument("--out", required=True)
     a = ap.parse_args()
-    with open(a.log, errors="replace") as f:
-        lines = f.read().splitlines()
+    lines = read_lines(a.log)
     end = a.to_line or len(lines)
-    decode, timing, dropped = parse(lines[a.from_line - 1:end])
+    decode, timing, dropped, no_depth = parse(lines[a.from_line - 1:end])
     depths = reduce(decode, timing)
     out = {"label": a.label, "note": a.note, "log": a.log, "from_line": a.from_line, "to_line": end,
-           "decode_lines_dropped_after_prefill": dropped, "depths": depths}
+           "line_numbering": "newline", "decode_lines_dropped_after_prefill": dropped,
+           "decode_lines_dropped_no_depth": no_depth, "depths": depths}
     with open(a.out, "w") as f:
         json.dump(out, f, indent=1)
         f.write("\n")

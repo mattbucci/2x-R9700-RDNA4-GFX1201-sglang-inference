@@ -4,7 +4,9 @@
  "log": "/data/logs/rad16-spec-cycle-anatomy-2026-11-10/server-dflash.log",
  "from_line": 877,
  "to_line": 961,
+ "line_numbering": "newline",
  "decode_lines_dropped_after_prefill": 8,
+ "decode_lines_dropped_no_depth": 1,
  "depths": {
   "24": {
    "decode_batches": {
@@ -18,28 +20,28 @@
   "7.3K": {
    "decode_batches": {
     "lines": 8,
-    "accept_len": 2.02,
-    "tok_s": 41.89,
-    "cycles_s": 20.68,
-    "cycle_ms": 48.37
+    "accept_len": 1.7,
+    "tok_s": 34.99,
+    "cycles_s": 20.61,
+    "cycle_ms": 48.53
    }
   },
   "58K": {
    "decode_batches": {
     "lines": 9,
-    "accept_len": 1.57,
-    "tok_s": 29.09,
-    "cycles_s": 18.47,
-    "cycle_ms": 54.14
+    "accept_len": 1.68,
+    "tok_s": 30.71,
+    "cycles_s": 18.33,
+    "cycle_ms": 54.55
    }
   },
   "197K": {
    "decode_batches": {
-    "lines": 10,
-    "accept_len": 1.5,
-    "tok_s": 20.19,
-    "cycles_s": 13.45,
-    "cycle_ms": 74.37
+    "lines": 9,
+    "accept_len": 1.7,
+    "tok_s": 22.73,
+    "cycles_s": 13.37,
+    "cycle_ms": 74.77
    }
   }
  }

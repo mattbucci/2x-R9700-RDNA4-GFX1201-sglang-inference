@@ -4,7 +4,9 @@
  "log": "/data/logs/rad16-spec-cycle-anatomy-2026-11-10/server-dflash-timed.log",
  "from_line": 963,
  "to_line": 1232,
+ "line_numbering": "newline",
  "decode_lines_dropped_after_prefill": 8,
+ "decode_lines_dropped_no_depth": 0,
  "depths": {
   "24": {
    "decode_batches": {
@@ -195,61 +197,61 @@
   "197K": {
    "decode_batches": {
     "lines": 7,
-    "accept_len": 1.62,
-    "tok_s": 21.39,
-    "cycles_s": 13.15,
-    "cycle_ms": 76.06
+    "accept_len": 1.65,
+    "tok_s": 21.55,
+    "cycles_s": 13.06,
+    "cycle_ms": 76.56
    },
    "timing": {
     "worker": "DFlash",
-    "windows": 46,
-    "cycles": 736,
+    "windows": 44,
+    "cycles": 704,
     "ranks": [
      "0",
      "1"
     ],
-    "tokens_per_cycle": 1.69,
+    "tokens_per_cycle": 1.72,
     "stages_us": {
-     "outside the cycle": 639.5,
-     "entry wait": 43.0,
-     "block setup": 247.0,
-     "draft forward": 7577.0,
-     "draft tokens": 50.5,
-     "verify setup": 429.0,
-     "target verify": 65296.0,
-     "accept": 139.5,
-     "mask and logprob": 6.0,
-     "mamba commit": 453.5,
-     "draft KV append": 1088.5
+     "outside the cycle": 682.5,
+     "entry wait": 42.0,
+     "block setup": 257.0,
+     "draft forward": 7585.5,
+     "draft tokens": 53.0,
+     "verify setup": 436.0,
+     "target verify": 65300.0,
+     "accept": 544.0,
+     "mask and logprob": 7.0,
+     "mamba commit": 476.0,
+     "draft KV append": 1109.0
     },
-    "inside_cycle_us": 75330.0,
-    "cycle_with_outside_us": 75969.5,
+    "inside_cycle_us": 75809.5,
+    "cycle_with_outside_us": 76492.0,
     "by_rank": {
      "0": {
-      "outside the cycle": 611.0,
-      "entry wait": 47.0,
-      "block setup": 256.0,
-      "draft forward": 7584.0,
-      "draft tokens": 52.0,
-      "verify setup": 431.0,
-      "target verify": 65296.0,
-      "accept": 139.0,
-      "mask and logprob": 6.0,
-      "mamba commit": 455.0,
-      "draft KV append": 1094.0
+      "outside the cycle": 649.5,
+      "entry wait": 46.0,
+      "block setup": 260.0,
+      "draft forward": 7588.0,
+      "draft tokens": 55.0,
+      "verify setup": 439.5,
+      "target verify": 65290.5,
+      "accept": 543.5,
+      "mask and logprob": 7.0,
+      "mamba commit": 480.0,
+      "draft KV append": 1126.0
      },
      "1": {
-      "outside the cycle": 669.0,
-      "entry wait": 36.0,
-      "block setup": 242.0,
-      "draft forward": 7575.0,
-      "draft tokens": 49.0,
-      "verify setup": 426.0,
-      "target verify": 65296.0,
-      "accept": 140.0,
-      "mask and logprob": 6.0,
-      "mamba commit": 450.0,
-      "draft KV append": 1079.0
+      "outside the cycle": 710.0,
+      "entry wait": 39.0,
+      "block setup": 248.5,
+      "draft forward": 7578.0,
+      "draft tokens": 50.5,
+      "verify setup": 433.0,
+      "target verify": 65306.0,
+      "accept": 544.0,
+      "mask and logprob": 7.0,
+      "mamba commit": 473.0,
+      "draft KV append": 1101.5
      }
     }
    }

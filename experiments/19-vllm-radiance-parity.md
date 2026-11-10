@@ -139,7 +139,7 @@ its cells are again the cold first run, and the repeats with the prefix cached r
 | Lane | vllm-radiance | SGLang, this tree | Gap | What the gap is made of |
 |---|---|---|---|---|
 | FP8, no speculation | 35.4 / 35.0 / 33.7 / 30.4 | 34.3 / 33.6 / 32.1 / 28.7 | 1.03–1.06× | 29.2 ms per step against 28.2 at 24 tokens and 34.8 against 32.9 at 197K, after the one-row decode kernels (patches 122–124: W8A16 GEMV, Triton norm, DeltaNet `in_proj_ba` GEMV). Left in the step: the bf16 LM head (RAD-15), the all-reduce, the small launches |
-| FP8 + DFlash2 | 99.9 / 99.7 / 87.9 / 91.0 | 66.8 / 63.4 / 49.6 / 39.9 | 1.5–2.3× | a cycle of 1.59–2.13× a plain step against radiance's 1.3× (RAD-16). The target verify is 79–87 % of the cycle: 9–10 ms over a plain step at 24 tokens (multi-row quantising GEMM, RAD-22b) and 27 ms more at 197K than at 24 tokens (prefix read once per query head, RAD-27) |
+| FP8 + DFlash2 | 99.9 / 99.7 / 87.9 / 91.0 | 66.8 / 63.4 / 49.6 / 39.9 | 1.5–2.3× | a cycle of 1.59–2.14× a plain step against radiance's 1.3× (RAD-16). The target verify is 79–86 % of the cycle: 9–10 ms over a plain step at 24 tokens (multi-row quantising GEMM, RAD-22b) and 27 ms more at 197K than at 24 tokens (prefix read once per query head, RAD-27) |
 | Cold prefill | 4,137 / 3,631 / 2,520 | 2,331 / 1,784 / 1,073 | 1.8–2.3× | not profiled (RAD-10): GDN conv and chunk scan, extend attention, block-FP8 GEMM tiles at M ≥ 64 |
 
 ## Experiments on SGLang (ranked by expected tok/s per engineering day on the qwen38 no-spec step)
@@ -229,7 +229,7 @@ Measurement first, so port order follows measured worth instead of the estimated
    the replicated DeltaNet stages, which the preset no longer has). RAD-2 took the all-reduce line from
    about 4 ms to at most 0.8, so about 3 ms of the gap have no owner until the graphed step can be traced.
    Target: 37 → ≤ 30 ms, 27 → ≥ 33 tok/s at 24 tokens with needle 9/9 and capabilities unchanged.
-6. Speculative lane on the new base: RAD-16 (done: the target verify is 79–87 % of the DFlash2 cycle) → RAD-27 (verify
+6. Speculative lane on the new base: RAD-16 (done: the target verify is 79–86 % of the DFlash2 cycle) → RAD-27 (verify
    prefix stage) → RAD-22b (multi-row verify GEMM) → RAD-18 → RAD-7; RAD-17 is closed, `torch.topk` stays. Target: ≥ 90 tok/s at 24 tokens and ≥ 80 at
    197K; DFlash2 replaces DSpark as the qwen38 default only if it is faster at every depth.
 7. Prefill: RAD-10 ports chosen by share (RAD-19, RAD-20, GDN chunk scan, prefill attention). Target: ≥ 3,500 tok/s at

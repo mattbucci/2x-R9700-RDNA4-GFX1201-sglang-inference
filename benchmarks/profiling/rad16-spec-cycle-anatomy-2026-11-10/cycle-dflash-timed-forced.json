@@ -4,7 +4,9 @@
  "log": "/data/logs/rad16-spec-cycle-anatomy-2026-11-10/server-dflash-timed.log",
  "from_line": 720,
  "to_line": 962,
- "decode_lines_dropped_after_prefill": 6,
+ "line_numbering": "newline",
+ "decode_lines_dropped_after_prefill": 8,
+ "decode_lines_dropped_no_depth": 0,
  "depths": {
   "24": {
    "decode_batches": {
@@ -188,6 +190,68 @@
       "mask and logprob": 6.0,
       "mamba commit": 452.0,
       "draft KV append": 1082.0
+     }
+    }
+   }
+  },
+  "197K": {
+   "decode_batches": {
+    "lines": 7,
+    "accept_len": 1.62,
+    "tok_s": 21.39,
+    "cycles_s": 13.15,
+    "cycle_ms": 76.06
+   },
+   "timing": {
+    "worker": "DFlash",
+    "windows": 46,
+    "cycles": 736,
+    "ranks": [
+     "0",
+     "1"
+    ],
+    "tokens_per_cycle": 1.69,
+    "stages_us": {
+     "outside the cycle": 639.5,
+     "entry wait": 43.0,
+     "block setup": 247.0,
+     "draft forward": 7577.0,
+     "draft tokens": 50.5,
+     "verify setup": 429.0,
+     "target verify": 65296.0,
+     "accept": 139.5,
+     "mask and logprob": 6.0,
+     "mamba commit": 453.5,
+     "draft KV append": 1088.5
+    },
+    "inside_cycle_us": 75330.0,
+    "cycle_with_outside_us": 75969.5,
+    "by_rank": {
+     "0": {
+      "outside the cycle": 611.0,
+      "entry wait": 47.0,
+      "block setup": 256.0,
+      "draft forward": 7584.0,
+      "draft tokens": 52.0,
+      "verify setup": 431.0,
+      "target verify": 65296.0,
+      "accept": 139.0,
+      "mask and logprob": 6.0,
+      "mamba commit": 455.0,
+      "draft KV append": 1094.0
+     },
+     "1": {
+      "outside the cycle": 669.0,
+      "entry wait": 36.0,
+      "block setup": 242.0,
+      "draft forward": 7575.0,
+      "draft tokens": 49.0,
+      "verify setup": 426.0,
+      "target verify": 65296.0,
+      "accept": 140.0,
+      "mask and logprob": 6.0,
+      "mamba commit": 450.0,
+      "draft KV append": 1079.0
      }
     }
    }
