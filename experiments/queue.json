@@ -890,17 +890,18 @@
   {
    "id": "RAD-23",
    "spec": "19-vllm-radiance-parity.md",
-   "status": "ready",
+   "status": "completed",
    "resource": "gpu",
    "depends_on": [
     "RAD-14 (done): DeltaNet in_proj_ba is an unquantised bf16 linear (96 x 5120, quant_config=None at srt/models/qwen3_5.py:482) on rocBLAS MT16x16x32, 48 launches x 30 us = 1.44 ms per step"
    ],
-   "next_action": "Triton bf16 GEMV for skinny unquantised linears at M <= 2 on HIP (N <= 256): in_proj_ba first. Microbench at 96 x 5120 against rocBLAS (30 us) with the cold rotation; a 1 MB weight should cost ~5 us. Then route through the linear's forward behind _is_hip and a both-orders decode A/B. Alternative: fold in_proj_ba into the in_proj_qkvz launch (radiance RADIANCE_GDN_MERGE_INPROJ; RAD-12 reports its worth).",
+   "next_action": "Done as a mechanism: patch 124 (kernels/ops/gemm/skinny_bf16_gemv_hip.py + the in_proj_ba linear method in srt/models/qwen3_5.py), code default off (SGLANG_RDNA4_SKINNY_BA_GEMV=1; active line '[RDNA4] DeltaNet in_proj_ba: one-launch Triton GEMV active'). The qwen38 FP8 preset exports the switch after the combined-stack confirmation with patches 122 and 123 (tail queue 70-qwen38-stack-confirm.sh takes it as the third switch), then the canonical sweep is re-run on the shipped preset. The in_proj_qkvz merge (RADIANCE_GDN_MERGE_INPROJ) stays with RAD-12.",
    "test_gate": [
-    "kernel: bit-identical or within 1 ULP of rocBLAS on recorded activations",
-    "decode_ab both orders: about -1.2 ms per step",
-    "greedy identity on the 8-prompt set; needle grid unchanged"
-   ]
+    "kernel: bit-identical or within 1 ULP of rocBLAS on recorded activations: bit-identical at 1, 2 and 9 rows and 1 ULP on 0.13 % of the outputs at 16 rows, on SYNTHETIC activations (510 outputs at one row; a decode step computes 4,608); same fp64 error as the torch linear on every shape; on RECORDED activations (scripts/test/skinny_ba_gemv_recorded.py: 1,024 final hidden states x 48 checkpoint weights, 4.7 M outputs) 0.044 % of the outputs differ at one row and at nine (2 per decode step), 120 of 2,098 by more than 1 ULP (largest 300), the kernel the closer side to fp64 on 1,894 and torch on 204, relative error 0.1409 % on both: NOT bit-identical, not within 1 ULP everywhere",
+    "decode_ab both orders: about -1.2 ms per step: -1.07 ms (37.41 -> 36.34 ms at 24 tokens, +2.9 / +2.2 / +3.6 / +2.9 % at 24 / 7.3K / 58K / 197K against the mean of the two off arms); the preflight graph timing predicted 1.07 ms (48 launches, 29.7 -> 7.5 us)",
+    "greedy identity on the 8-prompt set; needle grid unchanged: needle 9/9 on both, caps 4/4; greedy text identical on 2/6 probes against off (6/6 between the off arms), so identity is NOT met: the kernel sums in fp32 in a fixed order, rocBLAS in its own"
+   ],
+   "result": "2026-11-10 (benchmarks/profiling/rad23-ba-gemv-2026-11-09/). No speculation, off -> on -> off on the patch-121 layout: 26.725/26.286/25.334/23.066 -> 27.516/26.857/26.259/23.810 -> 26.733/26.267/25.346/23.208 tok/s at 24/7.3K/58K/197K, cold prefill unchanged (2,122 / 1,658 / 1,025), caps 4/4, needle 9/9. DSpark on against off: 57.640/58.695/39.317/33.663 against 47.074/57.708/38.650/33.204 on equal token counts; cycle 58.5 against 59.6 ms at short context and 74.5 against 75.6 at 58K, so the 24-token +22 % is accept length (3.92 against 3.54 mean), not step time; needle 9/9 and caps 4/4 on both. Tile sweep: BN4_BK1024 5.3 us against the shipped BN8_BK512 7.3, not adopted (0.1 ms per step). Replay gate 92 patches, 0 failures, 151 paths, second apply rejected."
   },
   {
    "id": "RAD-24",

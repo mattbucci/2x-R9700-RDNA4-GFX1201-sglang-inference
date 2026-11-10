@@ -1267,6 +1267,57 @@ Capabilities 4/4 and needle 9/9 on both DSpark arms.
 Disposition: patch 123, code default off. The qwen38 preset exports the switch after the stack confirmation with
 RAD-22; other presets whose model normalises with `GemmaRMSNorm` opt in after their own capability pass.
 
+### RAD-23 — one-launch bf16 GEMV for the DeltaNet `in_proj_ba`: decode +2–4 %; patch 124, opt-in (2026-11-10)
+
+The DeltaNet `in_proj_ba` is the one projection the FP8 checkpoint leaves unquantised: 96 × 5120 bf16 (48 × 5120 per
+rank on the TP-split layout), 1 MB. rocBLAS serves it with a tiled GEMM whose launch costs 30 µs, 48 times per decode
+step per rank. `SGLANG_RDNA4_SKINNY_BA_GEMV=1` routes 2-D bf16 inputs of at most 16 rows without a bias (decode and
+the DSpark verify rows) to one Triton launch that accumulates in fp32 in a fixed order; every other call keeps the
+torch linear ([receipts](profiling/rad23-ba-gemv-2026-11-09/), `scripts/test/preflight_skinny_ba_gemv.py`).
+
+Preflight on one card: the same fp64 error as the torch linear on every shape (0.16–0.17 %), bit-identical to it on
+synthetic activations at 1, 2 and 9 rows and 1 ULP apart on 0.13 % of the outputs at 16; a row's bits do not depend
+on the row count or on strided views. 48 launches in a HIP graph over 306 distinct weights (larger than the 64 MB
+cache): 29.7 → 7.5 µs each, 1.07 ms per step per rank, replay equal to eager. Tile sweep: 4 × 1024 reads 5.3 µs
+against the shipped 8 × 512 at 7.3, 0.1 ms per step and below what a serving A/B resolves, so the measured tile ships.
+
+Serving, FP8 qwen38 preset on the patch-121 layout, one session through a development copy of the tree, no
+speculation, decode tok/s by input tokens:
+
+| arm | 24 | 7,331 | 58,483 | 197,326 | cold prefill tok/s at 7.3K / 58K / 197K |
+|---|---:|---:|---:|---:|---|
+| off1 | 26.725 | 26.286 | 25.334 | 23.066 | 2,121.9 / 1,658.5 / 1,025.2 |
+| on | 27.516 | 26.857 | 26.259 | 23.810 | 2,121.9 / 1,657.9 / 1,025.1 |
+| off2 | 26.733 | 26.267 | 25.346 | 23.208 | 2,122.9 / 1,657.6 / 1,024.7 |
+
++2.9 / +2.2 / +3.6 / +2.9 % against the mean of the two off arms, 37.41 → 36.34 ms per step at 24 tokens: the
+1.07 ms the preflight measured. Capabilities 4/4, greedy needle grid 9/9 to 208,296 tokens on both. Greedy text: the
+two off arms are byte-identical on 6/6 probes, on against off on 2/6. The preflight compared 510 outputs at one row
+and a decode step computes 4,608. On recorded activations (`scripts/test/skinny_ba_gemv_recorded.py`: 1,024 final
+hidden states of served generations against each layer's checkpoint weight, 4.7 M outputs; the final hidden state
+stands in for the per-layer inputs) 0.044 % of the outputs differ from the torch linear, at one row and at nine: 2 per
+decode step. 120 of the 2,098 are more than 1 ULP apart, the largest 300; the kernel is the side closer to the fp64
+product on 1,894 and torch on 204, with a relative error of 0.1409 % on both.
+
+With DSpark, switch on against off:
+
+| arm | 24 | 7,331 | 58,483 | 197,326 |
+|---|---:|---:|---:|---:|
+| on, median | 57.640 | 58.695 | 39.317 | 33.663 |
+| on, completion tokens per run | 80 / 80 / 80 | 38 / 38 / 38 | 47 / 47 / 47 | 37 / 37 / 37 |
+| off, median | 47.074 | 57.708 | 38.650 | 33.204 |
+| off, completion tokens per run | 80 / 80 / 80 | 46 / 38 / 38 | 47 / 47 / 47 | 37 / 37 / 37 |
+
+Every median sits on runs of equal token count: +22.4 / +1.7 / +1.7 / +1.4 %. The 24-token pair is accept length, not
+step time: the server log reads a 58.5 ms cycle on against 59.6 off at short context and 74.5 against 75.6 at 58K
+(`dspark-cycle-times.json`, default log interval, 8 and 2 windows), so the cycle is about 1.1 ms shorter at both
+depths and the rest of the 24-token gain is a continuation the drafter predicts better (2/6 probes identical between
+the arms, copy-heavy 25.5 against 21.3 tok/s, mean accept length 3.92 against 3.54). Capabilities 4/4 and needle 9/9
+on both DSpark arms.
+
+Disposition: patch 124, code default off. The qwen38 preset exports the switch after the stack confirmation with
+patches 122 and 123.
+
 ## Evaluation methodology
 
 ### SWE-bench answer leakage through git history and the web (found 2026-09-18)

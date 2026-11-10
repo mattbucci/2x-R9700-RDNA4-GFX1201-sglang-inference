@@ -1,0 +1,155 @@
+diff --git a/python/sglang/kernels/ops/gemm/skinny_bf16_gemv_hip.py b/python/sglang/kernels/ops/gemm/skinny_bf16_gemv_hip.py
+new file mode 100644
+index 0000000..4c24889
+--- /dev/null
++++ b/python/sglang/kernels/ops/gemm/skinny_bf16_gemv_hip.py
+@@ -0,0 +1,90 @@
++"""Skinny bf16 GEMV on gfx1201 for decode row counts: x[M, K] @ w[N, K].T with a few
++output rows (the Qwen3.5 DeltaNet in_proj_ba gate projection) in one launch.
++
++rocBLAS serves this shape with a tiled GEMM solution whose launch costs more than the
++1 MB of weight it reads. Each program owns one input row and BLOCK_N output rows and
++accumulates in fp32 in a fixed K order, so a row's result does not depend on M."""
++
++from __future__ import annotations
++
++import torch
++import triton
++import triton.language as tl
++
++# rows served; above this the tiled GEMM wins back its launch cost
++ROCM_SKINNY_GEMV_MAX_ROWS = 16
++ROCM_SKINNY_GEMV_MAX_N = 256
++
++_BLOCK_N = 8
++_BLOCK_K = 512
++_NUM_WARPS = 4
++
++
++def rocm_skinny_bf16_gemv_supported(
++    x: torch.Tensor, w: torch.Tensor, bias: torch.Tensor | None
++) -> bool:
++    """True when rocm_skinny_bf16_gemv serves x[M, K] @ w[N, K].T (callers gate on HIP)."""
++    return (
++        bias is None
++        and x.dim() == 2
++        and w.dim() == 2
++        and x.dtype == torch.bfloat16
++        and w.dtype == torch.bfloat16
++        and 0 < x.shape[0] <= ROCM_SKINNY_GEMV_MAX_ROWS
++        and 0 < w.shape[0] <= ROCM_SKINNY_GEMV_MAX_N
++        and x.shape[1] == w.shape[1]
++        and x.stride(1) == 1
++        and w.stride(1) == 1
++    )
++
++
++@triton.jit
++def _skinny_bf16_gemv_kernel(
++    x_ptr,
++    w_ptr,
++    out_ptr,
++    N,
++    K,
++    stride_xm,
++    stride_wn,
++    stride_om,
++    BLOCK_N: tl.constexpr,
++    BLOCK_K: tl.constexpr,
++):
++    pid_n = tl.program_id(0)
++    pid_m = tl.program_id(1)
++    offs_n = pid_n * BLOCK_N + tl.arange(0, BLOCK_N)
++    n_mask = offs_n < N
++    acc = tl.zeros((BLOCK_N,), dtype=tl.float32)
++    for k0 in range(0, K, BLOCK_K):
++        offs_k = k0 + tl.arange(0, BLOCK_K)
++        k_mask = offs_k < K
++        x = tl.load(x_ptr + pid_m * stride_xm + offs_k, mask=k_mask, other=0.0)
++        w = tl.load(
++            w_ptr + offs_n[:, None] * stride_wn + offs_k[None, :],
++            mask=n_mask[:, None] & k_mask[None, :],
++            other=0.0,
++        )
++        acc += tl.sum(w.to(tl.float32) * x.to(tl.float32)[None, :], axis=1)
++    tl.store(out_ptr + pid_m * stride_om + offs_n, acc.to(tl.bfloat16), mask=n_mask)
++
++
++def rocm_skinny_bf16_gemv(x: torch.Tensor, w: torch.Tensor) -> torch.Tensor:
++    """x[M, K] @ w[N, K].T in bf16 with fp32 accumulation, one launch."""
++    M, K = x.shape
++    N = w.shape[0]
++    out = torch.empty((M, N), dtype=torch.bfloat16, device=x.device)
++    _skinny_bf16_gemv_kernel[(triton.cdiv(N, _BLOCK_N), M)](
++        x,
++        w,
++        out,
++        N,
++        K,
++        x.stride(0),
++        w.stride(0),
++        out.stride(0),
++        BLOCK_N=_BLOCK_N,
++        BLOCK_K=_BLOCK_K,
++        num_warps=_NUM_WARPS,
++    )
++    return out
+diff --git a/python/sglang/srt/models/qwen3_5.py b/python/sglang/srt/models/qwen3_5.py
+index cc9550b..bcc6167 100644
+--- a/python/sglang/srt/models/qwen3_5.py
++++ b/python/sglang/srt/models/qwen3_5.py
+@@ -32,6 +32,10 @@ from sglang.kernels.ops.attention.triton_gdn_fused_proj import (
+     qwen3_5_gdn_prefill_projection_views,
+ )
+ from sglang.kernels.ops.elementwise.elementwise import fused_sigmoid_mul
++from sglang.kernels.ops.gemm.skinny_bf16_gemv_hip import (
++    rocm_skinny_bf16_gemv,
++    rocm_skinny_bf16_gemv_supported,
++)
+ 
+ # Configs
+ from sglang.srt.configs.model_config import (
+@@ -202,6 +206,31 @@ _GDN_FUSED_QKVZBA_RATIOS = (
+ cached_get_processor = lru_cache(get_processor)
+ 
+ 
++# RDNA4: the DeltaNet in_proj_ba is a few unquantised bf16 output rows (96 x 5120 on
++# Qwen3.8-27B); rocBLAS serves it with a tiled GEMM whose launch outweighs the 1 MB
++# it reads. Opt-in: SGLANG_RDNA4_SKINNY_BA_GEMV=1, exported by the launch presets that
++# passed the serving gate (fp32 accumulation in a fixed order, not rocBLAS's).
++_rdna4_skinny_ba_gemv = _is_hip and get_bool_env_var(
++    "SGLANG_RDNA4_SKINNY_BA_GEMV", "False"
++)
++
++
++class _RocmSkinnyGemvLinearMethod(UnquantizedLinearMethod):
++    """Unquantised linear whose decode row counts run the one-launch bf16 GEMV."""
++
++    _noted = False
++
++    def apply(self, layer, x, bias=None):
++        if rocm_skinny_bf16_gemv_supported(x, layer.weight, bias):
++            if not _RocmSkinnyGemvLinearMethod._noted:
++                _RocmSkinnyGemvLinearMethod._noted = True
++                logger.info(
++                    "[RDNA4] DeltaNet in_proj_ba: one-launch Triton GEMV active"
++                )
++            return rocm_skinny_bf16_gemv(x, layer.weight)
++        return super().apply(layer, x, bias)
++
++
+ def _disable_shared_experts_fusion() -> bool:
+     # Resolved lazily: the flag is written by the owning model's gate before
+     # its layers build (per runner); models without a gate see the config
+@@ -510,6 +539,11 @@ class Qwen3_5GatedDeltaNet(nn.Module):
+             prefix=add_prefix("in_proj_ba", prefix),
+             parallel_group=parallel_group,
+         )
++        if (
++            _rdna4_skinny_ba_gemv
++            and type(self.in_proj_ba.quant_method) is UnquantizedLinearMethod
++        ):
++            self.in_proj_ba.quant_method = _RocmSkinnyGemvLinearMethod()
+ 
+         # Override weight loaders for packed checkpoint format.
+         # Important: for FP8, this must cover not only `.weight` but also

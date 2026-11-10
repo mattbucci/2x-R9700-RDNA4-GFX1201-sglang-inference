@@ -1,0 +1,50 @@
+{
+ "experiment": "RAD-23",
+ "what": "skinny bf16 GEMV against the torch linear on recorded hidden states and checkpoint weights",
+ "tree": "/data/sgl-v0522/python",
+ "hidden": "/data/logs/rad15-lm-head-study-2026-11-10/hidden.pt",
+ "model": "/data/models/Qwen3.8-27B-FP8",
+ "captured_steps": 4873,
+ "hidden_size": 5120,
+ "activation_source": "final hidden states (LM-head input) of served generations, not the per-layer inputs",
+ "device": "AMD Radeon AI PRO R9700",
+ "torch": "2.11.0+rocm7.2",
+ "rows": [
+  {
+   "rows_per_call": 1,
+   "layers": 48,
+   "steps": 1024,
+   "outputs": 4718592,
+   "differ": 2098,
+   "differ_frac": 0.00044462415907118056,
+   "differ_by_more_than_1_ulp": 120,
+   "max_ulp_vs_torch": 300,
+   "kernel_closer_to_fp64": 1894,
+   "torch_closer_to_fp64": 204,
+   "rel_err_kernel": 0.0014087228789652032,
+   "rel_err_torch": 0.001408723207618389,
+   "finite": true,
+   "outputs_per_decode_step": 4608,
+   "expected_differing_outputs_per_decode_step": 2.048828125
+  },
+  {
+   "rows_per_call": 9,
+   "layers": 48,
+   "steps": 1017,
+   "outputs": 4686336,
+   "differ": 2084,
+   "differ_frac": 0.0004446970938490113,
+   "differ_by_more_than_1_ulp": 119,
+   "max_ulp_vs_torch": 300,
+   "kernel_closer_to_fp64": 1880,
+   "torch_closer_to_fp64": 204,
+   "rel_err_kernel": 0.0014086595757732063,
+   "rel_err_torch": 0.0014086599043371766,
+   "finite": true,
+   "outputs_per_decode_step": 4608,
+   "expected_differing_outputs_per_decode_step": 2.049164208456244
+  }
+ ],
+ "elapsed_s": 3.6,
+ "ok": true
+}

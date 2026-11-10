@@ -1,0 +1,430 @@
+{
+ "experiment": "RAD-23",
+ "what": "skinny bf16 GEMV for the DeltaNet in_proj_ba against the torch linear (rocBLAS)",
+ "tree": "/data/sgl-v0522-ba/python",
+ "device": "AMD Radeon AI PRO R9700",
+ "torch": "2.11.0+rocm7.2",
+ "hidden": 5120,
+ "layers": 48,
+ "tile": {
+  "BLOCK_N": 8,
+  "BLOCK_K": 512,
+  "num_warps": 4
+ },
+ "rows": [
+  {
+   "case": "in_proj_ba replicated, M=1",
+   "N": 96,
+   "K": 5120,
+   "M": 1,
+   "rel_err": 0.0016982,
+   "rel_err_torch": 0.0016982,
+   "worst_err_over_tol": 0.918,
+   "torch_worst_err_over_tol": 0.918,
+   "max_ulp_vs_torch": 0,
+   "exact_frac_vs_torch": 1.0,
+   "checks": {
+    "shape_dtype": true,
+    "finite": true,
+    "within_tol": true,
+    "error_not_worse": true
+   },
+   "ok": true
+  },
+  {
+   "case": "in_proj_ba TP-split, M=1",
+   "N": 48,
+   "K": 5120,
+   "M": 1,
+   "rel_err": 0.0015614,
+   "rel_err_torch": 0.0015614,
+   "worst_err_over_tol": 0.914,
+   "torch_worst_err_over_tol": 0.914,
+   "max_ulp_vs_torch": 0,
+   "exact_frac_vs_torch": 1.0,
+   "checks": {
+    "shape_dtype": true,
+    "finite": true,
+    "within_tol": true,
+    "error_not_worse": true
+   },
+   "ok": true
+  },
+  {
+   "case": "replicated, M=2",
+   "N": 96,
+   "K": 5120,
+   "M": 2,
+   "rel_err": 0.001553,
+   "rel_err_torch": 0.001553,
+   "worst_err_over_tol": 0.945,
+   "torch_worst_err_over_tol": 0.945,
+   "max_ulp_vs_torch": 0,
+   "exact_frac_vs_torch": 1.0,
+   "checks": {
+    "shape_dtype": true,
+    "finite": true,
+    "within_tol": true,
+    "error_not_worse": true
+   },
+   "ok": true
+  },
+  {
+   "case": "replicated, verify rows M=9",
+   "N": 96,
+   "K": 5120,
+   "M": 9,
+   "rel_err": 0.0016443,
+   "rel_err_torch": 0.0016443,
+   "worst_err_over_tol": 0.963,
+   "torch_worst_err_over_tol": 0.963,
+   "max_ulp_vs_torch": 0,
+   "exact_frac_vs_torch": 1.0,
+   "checks": {
+    "shape_dtype": true,
+    "finite": true,
+    "within_tol": true,
+    "error_not_worse": true
+   },
+   "ok": true
+  },
+  {
+   "case": "TP-split, M=16",
+   "N": 48,
+   "K": 5120,
+   "M": 16,
+   "rel_err": 0.0017436,
+   "rel_err_torch": 0.0017436,
+   "worst_err_over_tol": 0.97,
+   "torch_worst_err_over_tol": 0.97,
+   "max_ulp_vs_torch": 1,
+   "exact_frac_vs_torch": 0.9987,
+   "checks": {
+    "shape_dtype": true,
+    "finite": true,
+    "within_tol": true,
+    "error_not_worse": true
+   },
+   "ok": true
+  },
+  {
+   "case": "large activations",
+   "N": 96,
+   "K": 5120,
+   "M": 1,
+   "rel_err": 0.0017053,
+   "rel_err_torch": 0.0017053,
+   "worst_err_over_tol": 0.962,
+   "torch_worst_err_over_tol": 0.962,
+   "max_ulp_vs_torch": 0,
+   "exact_frac_vs_torch": 1.0,
+   "checks": {
+    "shape_dtype": true,
+    "finite": true,
+    "within_tol": true,
+    "error_not_worse": true
+   },
+   "ok": true
+  },
+  {
+   "case": "ragged N",
+   "N": 6,
+   "K": 640,
+   "M": 3,
+   "rel_err": 0.0015482,
+   "rel_err_torch": 0.0015482,
+   "worst_err_over_tol": 0.973,
+   "torch_worst_err_over_tol": 0.973,
+   "max_ulp_vs_torch": 0,
+   "exact_frac_vs_torch": 1.0,
+   "checks": {
+    "shape_dtype": true,
+    "finite": true,
+    "within_tol": true,
+    "error_not_worse": true
+   },
+   "ok": true
+  },
+  {
+   "case": "ragged N and K",
+   "N": 13,
+   "K": 1000,
+   "M": 1,
+   "rel_err": 0.0008064,
+   "rel_err_torch": 0.0008064,
+   "worst_err_over_tol": 0.701,
+   "torch_worst_err_over_tol": 0.701,
+   "max_ulp_vs_torch": 0,
+   "exact_frac_vs_torch": 1.0,
+   "checks": {
+    "shape_dtype": true,
+    "finite": true,
+    "within_tol": true,
+    "error_not_worse": true
+   },
+   "ok": true
+  },
+  {
+   "case": "N limit",
+   "N": 256,
+   "K": 5120,
+   "M": 1,
+   "rel_err": 0.0016395,
+   "rel_err_torch": 0.0016395,
+   "worst_err_over_tol": 0.952,
+   "torch_worst_err_over_tol": 0.952,
+   "max_ulp_vs_torch": 0,
+   "exact_frac_vs_torch": 1.0,
+   "checks": {
+    "shape_dtype": true,
+    "finite": true,
+    "within_tol": true,
+    "error_not_worse": true
+   },
+   "ok": true
+  },
+  {
+   "case": "one output row",
+   "N": 1,
+   "K": 512,
+   "M": 1,
+   "rel_err": 0.0021421,
+   "rel_err_torch": 0.0021421,
+   "worst_err_over_tol": 0.569,
+   "torch_worst_err_over_tol": 0.569,
+   "max_ulp_vs_torch": 0,
+   "exact_frac_vs_torch": 1.0,
+   "checks": {
+    "shape_dtype": true,
+    "finite": true,
+    "within_tol": true,
+    "error_not_worse": true
+   },
+   "ok": true
+  },
+  {
+   "case": "row-strided input and weight views",
+   "N": 96,
+   "K": 5120,
+   "M": 16,
+   "checks": {
+    "supported": true,
+    "bit_identical_to_contiguous": true
+   },
+   "ok": true
+  },
+  {
+   "case": "batch invariance: each of 16 rows alone",
+   "N": 96,
+   "K": 5120,
+   "checks": {
+    "rows_bit_identical": true
+   },
+   "ok": true
+  },
+  {
+   "case": "support table",
+   "checks": {
+    "plain": true,
+    "bias_no": true,
+    "rows_17_no": true,
+    "rows_0_no": true,
+    "three_d_no": true,
+    "fp32_no": true,
+    "wide_n_no": true,
+    "column_stride_no": true,
+    "k_mismatch_no": true
+   },
+   "ok": true
+  },
+  {
+   "case": "method: M=1 takes the kernel",
+   "checks": {
+    "calls": true,
+    "same_as_kernel": true
+   },
+   "ok": true
+  },
+  {
+   "case": "method: 17 rows stay on torch",
+   "checks": {
+    "calls": true,
+    "same_as_torch": true
+   },
+   "ok": true
+  },
+  {
+   "case": "method: 3-D input stays on torch",
+   "checks": {
+    "calls": true,
+    "shape": true
+   },
+   "ok": true
+  },
+  {
+   "case": "method: a bias stays on torch",
+   "checks": {
+    "calls": true,
+    "same_as_torch": true
+   },
+   "ok": true
+  },
+  {
+   "case": "HIP graph, 306 distinct weights, N=96 M=1",
+   "copies": 306,
+   "gemv_us": 7.5,
+   "torch_us": 29.708,
+   "replay_equals_eager": true,
+   "saved_ms_per_step_per_rank": 1.066,
+   "checks": {
+    "replay_equals_eager": true,
+    "faster_than_torch": true
+   },
+   "ok": true
+  },
+  {
+   "case": "HIP graph, 306 distinct weights, N=96 M=2",
+   "copies": 306,
+   "gemv_us": 7.426,
+   "torch_us": 29.368,
+   "replay_equals_eager": true,
+   "checks": {
+    "replay_equals_eager": true
+   },
+   "ok": true
+  },
+  {
+   "case": "HIP graph, 306 distinct weights, N=96 M=9",
+   "copies": 306,
+   "gemv_us": 7.584,
+   "torch_us": 29.094,
+   "replay_equals_eager": true,
+   "checks": {
+    "replay_equals_eager": true
+   },
+   "ok": true
+  },
+  {
+   "case": "HIP graph, 306 distinct weights, N=96 M=16",
+   "copies": 306,
+   "gemv_us": 7.87,
+   "torch_us": 28.861,
+   "replay_equals_eager": true,
+   "checks": {
+    "replay_equals_eager": true
+   },
+   "ok": true
+  },
+  {
+   "case": "HIP graph, 611 distinct weights, N=48 M=1",
+   "copies": 611,
+   "gemv_us": 7.448,
+   "torch_us": 29.846,
+   "replay_equals_eager": true,
+   "saved_ms_per_step_per_rank": 1.0751,
+   "checks": {
+    "replay_equals_eager": true,
+    "faster_than_torch": true
+   },
+   "ok": true
+  },
+  {
+   "case": "HIP graph, 611 distinct weights, N=48 M=9",
+   "copies": 611,
+   "gemv_us": 7.348,
+   "torch_us": 29.342,
+   "replay_equals_eager": true,
+   "checks": {
+    "replay_equals_eager": true
+   },
+   "ok": true
+  }
+ ],
+ "timing": {
+  "N96_M1": {
+   "copies": 306,
+   "gemv_us": 7.5,
+   "torch_us": 29.708,
+   "replay_equals_eager": true,
+   "saved_ms_per_step_per_rank": 1.066
+  },
+  "N96_M2": {
+   "copies": 306,
+   "gemv_us": 7.426,
+   "torch_us": 29.368,
+   "replay_equals_eager": true
+  },
+  "N96_M9": {
+   "copies": 306,
+   "gemv_us": 7.584,
+   "torch_us": 29.094,
+   "replay_equals_eager": true
+  },
+  "N96_M16": {
+   "copies": 306,
+   "gemv_us": 7.87,
+   "torch_us": 28.861,
+   "replay_equals_eager": true
+  },
+  "tile_sweep_N96_M1": {
+   "BN8_BK512_W4": {
+    "us": 7.274,
+    "rel_err": 0.0015855
+   },
+   "BN16_BK512_W4": {
+    "us": 7.986,
+    "rel_err": 0.0015855
+   },
+   "BN16_BK256_W4": {
+    "us": 10.367,
+    "rel_err": 0.0015855
+   },
+   "BN4_BK1024_W4": {
+    "us": 5.289,
+    "rel_err": 0.0015855
+   },
+   "BN8_BK256_W2": {
+    "us": 10.058,
+    "rel_err": 0.0015855
+   },
+   "BN8_BK512_W8": {
+    "us": 7.547,
+    "rel_err": 0.0015855
+   },
+   "BN32_BK256_W8": {
+    "us": 11.181,
+    "rel_err": 0.0015855
+   },
+   "BN16_BK512_W8": {
+    "us": 8.111,
+    "rel_err": 0.0015855
+   },
+   "BN8_BK1024_W4": {
+    "us": 6.726,
+    "rel_err": 0.0015855
+   },
+   "BN16_BK1024_W8": {
+    "us": 6.606,
+    "rel_err": 0.0015855
+   },
+   "BN32_BK512_W8": {
+    "us": 11.524,
+    "rel_err": 0.0015855
+   }
+  },
+  "N48_M1": {
+   "copies": 611,
+   "gemv_us": 7.448,
+   "torch_us": 29.846,
+   "replay_equals_eager": true,
+   "saved_ms_per_step_per_rank": 1.0751
+  },
+  "N48_M9": {
+   "copies": 611,
+   "gemv_us": 7.348,
+   "torch_us": 29.342,
+   "replay_equals_eager": true
+  }
+ },
+ "ok": true
+}

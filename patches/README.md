@@ -1,6 +1,6 @@
 # SGLang v0.5.22 RDNA4 patches
 
-This directory contains the **91 active numeric patches** applied to pristine SGLang v0.5.22 for the
+This directory contains the **92 active numeric patches** applied to pristine SGLang v0.5.22 for the
 2× Radeon AI PRO R9700 serving stack. The default tree is `/data/sgl-v0522`; the default conda environment
 is `sglang-triton36-v0522`.
 
@@ -157,6 +157,7 @@ can be proposed upstream. `Partial` requires a fresh comparison with upstream be
 | 047 | `rdna4-triton-attn-hybrid-mamba-vhead-dim` | Candidate | Obtains value-head dimensions from hybrid KV pools without assuming layer zero is attention. |
 | 049 | `rdna4-conv1d-colload-dtype-cast` | Candidate | Casts recurrent convolution state loads to the input dtype before arithmetic. |
 | 073 | `rdna4-mamba-extra-buffer-hip-fallback` | Carry | Resolves automatic Mamba radix-cache selection to the validated `no_buffer` strategy on HIP. v0.5.22 lists HIP among the `extra_buffer` platforms, so without this `auto` would flip every gfx1201 hybrid (and the qwen38 bake-off) to `extra_buffer` + overlap scheduling on untested state-snapshot kernels; opt in explicitly with `--mamba-radix-cache-strategy extra_buffer` after an A/B. `qwen38` opted in 2026-11-01 ([R97-R](../experiments/18-hybrid-cache-checkpoint-granularity.md): agentic turns 7–33× faster, needle 12/12); the gate stays for the other hybrid presets. |
+| 124 | `rdna4-skinny-bf16-gemv-in-proj-ba` | Carry | One-launch Triton bf16 GEMV for the DeltaNet `in_proj_ba` (`kernels/ops/gemm/skinny_bf16_gemv_hip.py`, `SGLANG_RDNA4_SKINNY_BA_GEMV=1`). The projection is an unquantised 96 × 5120 linear (48 × 5120 per rank on the TP-split layout) that rocBLAS serves with a tiled GEMM: 48 launches of 30 µs per decode step per rank for a 1 MB weight. The kernel takes 2-D bf16 inputs of at most 16 rows without a bias (decode and the DSpark verify rows) and accumulates in fp32 in a fixed order; every other call keeps the torch linear. Logged once (`[RDNA4] DeltaNet in_proj_ba: one-launch Triton GEMV active`). Code default off. Preflight: same fp64 error as torch on every shape, each row independent of the row count, 48 launches in a HIP graph over a weight rotation larger than the cache 29.7 → 7.5 µs each (1.07 ms per step per rank), replay equal to eager; on recorded hidden states 0.044 % of the outputs differ from the torch linear, the kernel the closer side to fp64 on nine in ten (`scripts/test/skinny_ba_gemv_recorded.py`). Same-session A/B off → on → off on the FP8 `qwen38` preset without speculation: decode 26.73 / 26.28 / 25.34 / 23.14 → 27.52 / 26.86 / 26.26 / 23.81 tok/s at 24 / 7.3K / 58K / 197K input tokens (+2–4 %), cold prefill unchanged, capabilities 4/4, greedy needle 9/9 to 208K tokens; the DSpark cycle is 1.1 ms shorter (58.5 against 59.6 ms). Receipts: `benchmarks/profiling/rad23-ba-gemv-2026-11-09/`; preflight `scripts/test/preflight_skinny_ba_gemv.py`. |
 
 ### Gemma 4
 
@@ -214,7 +215,7 @@ can be proposed upstream. `Partial` requires a fresh comparison with upstream be
 
 | Component | Version |
 |---|---|
-| SGLang | v0.5.22 plus this 91-patch series |
+| SGLang | v0.5.22 plus this 92-patch series |
 | transformers | 5.19.0 |
 | Triton | 3.6.0 |
 | PyTorch | 2.11.0+rocm7.2 |

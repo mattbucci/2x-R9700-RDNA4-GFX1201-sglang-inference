@@ -27,6 +27,8 @@ Development and investigation tools. Not part of the production workflow.
 |--------|---------|
 | `preflight_fp8_gemv_hook.py` | Patch 122: the block-FP8 linear with `SGLANG_RDNA4_FP8_GEMV` on against off on the Qwen3.8 decode shapes (routing at one and two rows, accuracy against the unquantised product, bias, leading dimensions, graph replay) |
 | `preflight_gemma_rmsnorm.py` | Patch 123: `GemmaRMSNorm` with `SGLANG_RDNA4_TRITON_GEMMA_RMSNORM` on against the native chain (routing, ULP distance, fp64 error, residual identity, graph replay, per-step timing) |
+| `preflight_skinny_ba_gemv.py` | Patch 124: the DeltaNet `in_proj_ba` linear with `SGLANG_RDNA4_SKINNY_BA_GEMV` on against the torch linear (routing by row count, dtype and bias, ULP distance, fp64 error, strided inputs, graph replay, per-step timing over a weight rotation larger than the cache, tile sweep) |
+| `skinny_ba_gemv_recorded.py` | Patch 124 on recorded activations: the kernel against the torch linear on captured hidden states (`scripts/bench/lm_head_capture.py`) and the checkpoint's `in_proj_b` / `in_proj_a` weights (share of differing outputs, largest ULP distance, fp64 error of each side) |
 
 ## AWQ Tuning
 
