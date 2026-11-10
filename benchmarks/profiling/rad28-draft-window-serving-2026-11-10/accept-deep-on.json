@@ -1,0 +1,56 @@
+{
+ "label": "deep-on",
+ "note": "qwen38 FP8 DSpark preset, live tree with patch 126, window switch 1",
+ "model": "/data/models/Qwen3.8-27B-FP8",
+ "max_tokens": 300,
+ "temperature": 0,
+ "cases": [
+  {
+   "id": "doctok-190000-0",
+   "prompt_tokens": 190026,
+   "completion_tokens": 300,
+   "verify_ct": 81,
+   "accept_len": 3.7037,
+   "finish": "length",
+   "seconds": 180.9,
+   "sha": "ac71f5547e020908",
+   "head": "Here is a detailed summary of the provided text, organized b"
+  },
+  {
+   "id": "doctok-190000-1",
+   "prompt_tokens": 190032,
+   "completion_tokens": 300,
+   "verify_ct": 69,
+   "accept_len": 4.3478,
+   "finish": "length",
+   "seconds": 180.3,
+   "sha": "7d59ce309ba1145f",
+   "head": "Based on the text provided, here are ten specific facts, eac"
+  },
+  {
+   "id": "doctok-190000-2",
+   "prompt_tokens": 190032,
+   "completion_tokens": 300,
+   "verify_ct": 102,
+   "accept_len": 2.9412,
+   "finish": "length",
+   "seconds": 182.37,
+   "sha": "f3f15d844e24afcf",
+   "head": "This text is a massive, unstructured compilation of educatio"
+  },
+  {
+   "id": "doctok-190000-3",
+   "prompt_tokens": 190032,
+   "completion_tokens": 300,
+   "verify_ct": 95,
+   "accept_len": 3.1579,
+   "finish": "length",
+   "seconds": 182.0,
+   "sha": "30ba0e6f8424b8c0",
+   "head": "# Algorithmic Problem Study Guide\n\nThis guide categorizes co"
+  }
+ ],
+ "completion_tokens": 1200,
+ "verify_ct": 347,
+ "accept_len": 3.4582
+}

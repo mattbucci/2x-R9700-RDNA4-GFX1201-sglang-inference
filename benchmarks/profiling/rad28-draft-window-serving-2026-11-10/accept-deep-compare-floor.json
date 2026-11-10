@@ -1,0 +1,34 @@
+{
+ "control": "benchmarks/profiling/rad28-draft-window-serving-2026-11-10/accept-deep-off.json",
+ "treatment": "benchmarks/profiling/rad28-draft-window-serving-2026-11-10/accept-deep-off2.json",
+ "cases": 4,
+ "groups": {
+  "doctok-190000": {
+   "cases": 4,
+   "same_text": 4,
+   "control_accept": 3.4682,
+   "treatment_accept": 3.4682,
+   "ratio": 1.0,
+   "ratio_ci95": [
+    1.0,
+    1.0
+   ],
+   "treatment_lower": 0,
+   "treatment_higher": 0
+  },
+  "all": {
+   "cases": 4,
+   "same_text": 4,
+   "control_accept": 3.4682,
+   "treatment_accept": 3.4682,
+   "ratio": 1.0,
+   "ratio_ci95": [
+    1.0,
+    1.0
+   ],
+   "treatment_lower": 0,
+   "treatment_higher": 0
+  }
+ },
+ "verdict": "pass"
+}

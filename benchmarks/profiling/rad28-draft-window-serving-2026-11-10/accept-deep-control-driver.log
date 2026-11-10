@@ -1,0 +1,24 @@
+  f724c9cb5bb6d83e8be79f84bba5bf24b973b9a8381667826d0ebefc1b5fb4c9  /data/sgl-v0522/python/sglang/kernels/ops/attention/verify_splitkv.py
+[2026-11-10 13:13:50] == boot off (qwen38 FP8 DSpark preset, live tree, SPLITKV_WINDOW=0)
+[2026-11-10 13:14:53] off up: window switch 0 in the server environment, 0 window lines
+[2026-11-10 13:14:53] accept probe off: 4 greedy documents of 190,000 tokens, 300 tokens each
+POOLED deep-off: 1200 tokens over 346 verifies, accept length 3.468 (4 cases)
+[2026-11-10 13:27:46] == boot on (qwen38 FP8 DSpark preset, live tree, launcher defaults)
+          2 causal sliding-window prefix stage active (window 2047, 8 rows, 10 query heads over 2 KV heads, head_dim 256, 16 splits)
+[2026-11-10 13:28:49] on up: window switch 1 in the server environment, 2 window lines
+[2026-11-10 13:28:49] accept probe on: 4 greedy documents of 190,000 tokens, 300 tokens each
+POOLED deep-on: 1200 tokens over 347 verifies, accept length 3.458 (4 cases)
+[2026-11-10 13:41:43] == boot off2 (qwen38 FP8 DSpark preset, live tree, SPLITKV_WINDOW=0)
+[2026-11-10 13:42:46] off2 up: window switch 0 in the server environment, 0 window lines
+[2026-11-10 13:42:46] accept probe off2: 4 greedy documents of 190,000 tokens, 300 tokens each
+POOLED deep-off2: 1200 tokens over 346 verifies, accept length 3.468 (4 cases)
+[2026-11-10 13:55:37] == windowed split stage against the extend kernel (treatment on, control off)
+ACCEPT doctok-190000 cases= 4 same-text= 1 control=3.468 treatment=3.458 ratio=0.997 (95% 0.962..1.036 over cases) lower/higher=3/1
+ACCEPT all        cases= 4 same-text= 1 control=3.468 treatment=3.458 ratio=0.997 (95% 0.962..1.036 over cases) lower/higher=3/1
+ACCEPT VERDICT pass (pooled ratio 0.997, floor 0.95)
+[2026-11-10 13:55:37] == boot-to-boot floor: second control boot against the first
+FLOOR doctok-190000 cases= 4 same-text= 4 control=3.468 treatment=3.468 ratio=1.000 (95% 1.000..1.000 over cases) lower/higher=0/0
+FLOOR all        cases= 4 same-text= 4 control=3.468 treatment=3.468 ratio=1.000 (95% 1.000..1.000 over cases) lower/higher=0/0
+FLOOR VERDICT pass (pooled ratio 1.000, floor 0.95)
+[2026-11-10 13:55:37] RAD28 ACCEPT DEEP DONE verdict=pass
+[2026-11-10 13:55:37] EXIT trap: freeing GPUs

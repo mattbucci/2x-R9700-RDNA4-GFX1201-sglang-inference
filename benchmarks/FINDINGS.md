@@ -1612,13 +1612,16 @@ per request from the server (`return_spec_tokens_details`), extend → split →
 | 4 documents, 5.6–8.2K tokens | 4.412 | 4.240 | 0.961 (0.897–1.021) |
 | 4 documents, 38–69K tokens | 3.931 | 3.888 | 0.989 (0.982–1.000) |
 | all 24, 7,077 tokens | 3.821 (1,852 verifies) | 3.789 (1,868 verifies) | 0.991 (0.968–1.017) |
+| 4 documents, 190K tokens (own session) | 3.468 (346 verifies) | 3.458 (347 verifies) | 0.997 (0.962–1.036) |
 
 The second extend boot repeats the first to the token (24 of 24 texts, 1,852 verifies), so the probe has no
 boot-to-boot noise and the 0.9 % is the size of the effect on this prompt set: lower on 10 prompts, higher on 9,
 equal on 5, against the pre-set floor of 0.95. The committed text follows the accept pattern (7 of 24 texts are the
 same over 300 tokens between the two kernels), which is why a single greedy prompt moved by up to 0.47. At the
-pooled ratio the throughput gain is 11–13 % from 7.3K on and about 1 % at 24 tokens; the control's deepest prompt is
-69K tokens.
+pooled ratio the throughput gain is 11–13 % from 7.3K on and about 1 % at 24 tokens. The 190K row is a second
+session of the same three-boot shape on four documents of 190,026–190,032 tokens cut with the model's tokenizer
+(`--doc-tokens`): the second extend boot again repeats the first to the token, and the split stage reads lower on
+three documents and higher on one ([receipts](profiling/rad28-draft-window-serving-2026-11-10/accept-deep-compare.json)).
 
 Quality on the split side: capabilities 5/5, greedy needle 9/9 to 197K
 ([receipt](quality/rad28-on1-natural-greedy.json)), and the forced greedy ladder starts with the extend side's text
