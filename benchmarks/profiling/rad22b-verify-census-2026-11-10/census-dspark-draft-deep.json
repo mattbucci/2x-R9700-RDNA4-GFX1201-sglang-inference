@@ -1,0 +1,426 @@
+{
+ "schema_version": 1,
+ "experiment": "RAD-14",
+ "label": "qwen38 FP8 DSpark eager, drafter passes, deep window",
+ "trace_dir": "/data/tmp/profile-rad22b-verify-census-dspark-2026-11-10/deep",
+ "steps": 10,
+ "steps_source": "profiler spans named step[DRAFT*",
+ "ranks": 2,
+ "per_rank": [
+  {
+   "path": "/data/tmp/profile-rad22b-verify-census-dspark-2026-11-10/deep/1794348086.318386-TP-0.trace.json.gz",
+   "steps": 10,
+   "span_names": {
+    "step[DRAFT bs=1]": 10
+   },
+   "decode_events": 2610,
+   "interleaved": false,
+   "span_ms_per_step": 6.515,
+   "busy_ms_per_step": 3.292,
+   "host_gap_ms_per_step": 3.223,
+   "sum_kernel_ms_per_step": 3.292
+  },
+  {
+   "path": "/data/tmp/profile-rad22b-verify-census-dspark-2026-11-10/deep/1794348086.318386-TP-1.trace.json.gz",
+   "steps": 10,
+   "span_names": {
+    "step[DRAFT bs=1]": 10
+   },
+   "decode_events": 2610,
+   "interleaved": false,
+   "span_ms_per_step": 6.519,
+   "busy_ms_per_step": 4.759,
+   "host_gap_ms_per_step": 1.761,
+   "sum_kernel_ms_per_step": 4.759
+  }
+ ],
+ "launches_per_step_per_rank": 261.0,
+ "traced_kernel_ms_per_step_per_rank": 4.025,
+ "span_ms_per_step": 6.519,
+ "host_gap_ms_per_step": 3.223,
+ "served_wall_ms_per_step": null,
+ "families": {
+  "attention": {
+   "owner": "RAD-9 (decode attention), RAD-19, RAD-27",
+   "launches_per_step_per_rank": 22.0,
+   "mean_us": 12.7,
+   "median_us": 17.02,
+   "min_us": 2.16,
+   "ms_per_step_per_rank": 0.2793,
+   "floor_ms_per_step_per_rank": 0.1957,
+   "kernel_names": 5,
+   "pct_of_traced": 6.9
+  },
+  "all_reduce": {
+   "owner": "RAD-2",
+   "launches_per_step_per_rank": 11.0,
+   "mean_us": 115.85,
+   "median_us": 50.98,
+   "min_us": 24.28,
+   "ms_per_step_per_rank": 1.2743,
+   "floor_ms_per_step_per_rank": 0.2671,
+   "kernel_names": 1,
+   "pct_of_traced": 31.7
+  },
+  "rocblas_gemm": {
+   "owner": "RAD-15 (LM head)",
+   "launches_per_step_per_rank": 20.0,
+   "mean_us": 90.41,
+   "median_us": 75.34,
+   "min_us": 33.52,
+   "ms_per_step_per_rank": 1.8083,
+   "floor_ms_per_step_per_rank": 1.2296,
+   "kernel_names": 3,
+   "pct_of_traced": 44.9
+  },
+  "norm": {
+   "owner": "RAD-5",
+   "launches_per_step_per_rank": 11.0,
+   "mean_us": 3.04,
+   "median_us": 2.8,
+   "min_us": 2.28,
+   "ms_per_step_per_rank": 0.0334,
+   "floor_ms_per_step_per_rank": 0.0283,
+   "kernel_names": 2,
+   "pct_of_traced": 0.8
+  },
+  "sampler": {
+   "owner": "RAD-15, RAD-17",
+   "launches_per_step_per_rank": 3.0,
+   "mean_us": 3.49,
+   "median_us": 3.04,
+   "min_us": 2.76,
+   "ms_per_step_per_rank": 0.0105,
+   "floor_ms_per_step_per_rank": 0.0083,
+   "kernel_names": 1,
+   "pct_of_traced": 0.3
+  },
+  "activation": {
+   "owner": "RAD-5",
+   "launches_per_step_per_rank": 5.0,
+   "mean_us": 3.38,
+   "median_us": 2.92,
+   "min_us": 2.64,
+   "ms_per_step_per_rank": 0.0169,
+   "floor_ms_per_step_per_rank": 0.0132,
+   "kernel_names": 1,
+   "pct_of_traced": 0.4
+  },
+  "copy_cat_index": {
+   "owner": "unowned",
+   "launches_per_step_per_rank": 84.0,
+   "mean_us": 2.59,
+   "median_us": 2.4,
+   "min_us": 1.36,
+   "ms_per_step_per_rank": 0.2176,
+   "floor_ms_per_step_per_rank": 0.1724,
+   "kernel_names": 7,
+   "pct_of_traced": 5.4
+  },
+  "reduce": {
+   "owner": "unowned",
+   "launches_per_step_per_rank": 20.0,
+   "mean_us": 9.01,
+   "median_us": 8.0,
+   "min_us": 5.36,
+   "ms_per_step_per_rank": 0.1802,
+   "floor_ms_per_step_per_rank": 0.1072,
+   "kernel_names": 1,
+   "pct_of_traced": 4.5
+  },
+  "elementwise": {
+   "owner": "RAD-5",
+   "launches_per_step_per_rank": 84.0,
+   "mean_us": 2.37,
+   "median_us": 1.8,
+   "min_us": 1.36,
+   "ms_per_step_per_rank": 0.1992,
+   "floor_ms_per_step_per_rank": 0.1215,
+   "kernel_names": 7,
+   "pct_of_traced": 4.9
+  },
+  "other": {
+   "owner": "unowned",
+   "launches_per_step_per_rank": 1.0,
+   "mean_us": 5.58,
+   "median_us": 2.3,
+   "min_us": 2.08,
+   "ms_per_step_per_rank": 0.0056,
+   "floor_ms_per_step_per_rank": 0.0021,
+   "kernel_names": 1,
+   "pct_of_traced": 0.1
+  }
+ },
+ "kernels": [
+  {
+   "name": "Cijk_Alik_Bljk_F8BS_BH_Bias_SHB_HA_S_SAB_SCD_SAV_UserArgs_MT64x64x128_MI16x16x1_SN_LDSB0_AFC1_AFEM1_AFEM1_ASEM1_CLR1_CADS0_DTLA0_DTLB0_DTVA0_DTVB1_EPS1_FDSI0_GRPM1_GRVWA16_GRVWB16_GSUAMB_GLS0_ISA1201_IU1_K1_LDSTI0_LBSPPA256_LBSPPB0_LBSPPM0_LPA32_LPB0_LPM0_LRVW16_LWPMn1_MIAV1_MIWT2_2_MO40_NTn1_NTA0_NTB0_NTC0_NTD0_NTM0_NEPBS0_NLCA1_NLCB4_ONLL0_PGR1_PLR1_PKA0_SIA3_SS1_SPO0_SRVW0_SSO0_SVW2_SK0_SKFTR0_SKXCCM0_TLDS1_ULSGRO0_USL1_UIOFGRO0_USFGROn1_VSn1_VWA2_VWB2_WSGRA0_WSGRB0_WS32_WG32_4_1",
+   "family": "rocblas_gemm",
+   "launches_per_step_per_rank": 10.0,
+   "mean_us": 132.29,
+   "median_us": 129.24,
+   "min_us": 79.88,
+   "ms_per_step_per_rank": 1.3229
+  },
+  {
+   "name": "ncclDevKernel_Generic_4(ncclDevKernelArgsStorage<4096ul>)",
+   "family": "all_reduce",
+   "launches_per_step_per_rank": 11.0,
+   "mean_us": 115.85,
+   "median_us": 50.98,
+   "min_us": 24.28,
+   "ms_per_step_per_rank": 1.2743
+  },
+  {
+   "name": "Cijk_Alik_Bljk_F8BS_BH_Bias_SHB_HA_S_SAB_SCD_SAV_UserArgs_MT128x128x64_MI16x16x1_SN_LDSB1_AFC1_AFEM1_AFEM1_ASEM1_CLR1_CADS0_DTLA0_DTLB0_DTVA0_DTVB1_EPS1_FDSI0_GRPM1_GRVWA16_GRVWB16_GSUAMB_GLS0_ISA1201_IU1_K1_LDSTI0_LBSPPA256_LBSPPB0_LBSPPM0_LPA32_LPB0_LPM0_LRVW16_LWPMn1_MIAV1_MIWT4_4_MO40_NTn1_NTA0_NTB0_NTC0_NTD0_NTM0_NEPBS0_NLCA1_NLCB2_ONLL0_PGR1_PLR1_PKA0_SIA3_SS1_SPO0_SRVW0_SSO0_SVW4_SK0_SKFTR0_SKXCCM0_TLDS1_ULSGRO0_USL1_UIOFGRO0_USFGROn1_VSn1_VWA4_VWB1_WSGRA0_WSGRB0_WS32_WG32_4_1",
+   "family": "rocblas_gemm",
+   "launches_per_step_per_rank": 5.0,
+   "mean_us": 59.71,
+   "median_us": 59.22,
+   "min_us": 52.64,
+   "ms_per_step_per_rank": 0.2986
+  },
+  {
+   "name": "Cijk_Alik_Bljk_F8BS_BH_Bias_SHB_HA_S_SAB_SCD_SAV_UserArgs_MT64x64x128_MI16x16x1_SN_LDSB0_AFC1_AFEM1_AFEM1_ASEM1_CLR1_CADS0_DTLA0_DTLB0_DTVA0_DTVB1_EPS1_FDSI0_GRPM1_GRVWA16_GRVWB16_GSUAMB_GLS0_ISA1201_IU1_K1_LDSTI0_LBSPPA256_LBSPPB0_LBSPPM0_LPA32_LPB0_LPM0_LRVW16_LWPMn1_MIAV1_MIWT2_2_MO40_NTn1_NTA0_NTB0_NTC0_NTD0_NTM0_NEPBS0_NLCA1_NLCB4_ONLL0_PGR1_PLR1_PKA0_SIA3_SS0_SPO0_SRVW0_SSO0_SVW16_SK0_SKFTR0_SKXCCM0_TLDS1_ULSGRO0_USL1_UIOFGRO0_USFGROn1_VSn1_VWA2_VWB2_WSGRA0_WSGRB0_WS32_WG32_4_1",
+   "family": "rocblas_gemm",
+   "launches_per_step_per_rank": 5.0,
+   "mean_us": 37.37,
+   "median_us": 34.66,
+   "min_us": 33.52,
+   "ms_per_step_per_rank": 0.1868
+  },
+  {
+   "name": "void at::native::reduce_kernel<512, 1, at::native::ReduceOp<c10::BFloat16, at::native::func_wrapper_t<c10::BFloat16, at::native::MaxNanFunctor<c10::BFloat16> >, unsigned int, c10::BFloat16, 4, 4> >(at::native::ReduceOp<c10::BFloat16, at::native::func_wrapper_t<c10::BFloat16, at::native::MaxNanFunctor<c10::BFloat16> >, unsigned int, c10::BFloat16, 4, 4>)",
+   "family": "reduce",
+   "launches_per_step_per_rank": 20.0,
+   "mean_us": 9.01,
+   "median_us": 8.0,
+   "min_us": 5.36,
+   "ms_per_step_per_rank": 0.1802
+  },
+  {
+   "name": "_verify_prefix_stage1",
+   "family": "attention",
+   "launches_per_step_per_rank": 5.0,
+   "mean_us": 21.93,
+   "median_us": 18.14,
+   "min_us": 16.52,
+   "ms_per_step_per_rank": 0.1097
+  },
+  {
+   "name": "void at::native::vectorized_elementwise_kernel<8, at::native::(anonymous namespace)::launch_clamp_scalar(at::TensorIteratorBase&, c10::Scalar, c10::Scalar, at::native::detail::ClampLimits)::{lambda()#1}::operator()() const::{lambda()#9}::operator()() const::{lambda(c10::BFloat16)#1}, std::array<char*, 2ul> >(int, at::native::(anonymous namespace)::launch_clamp_scalar(at::TensorIteratorBase&, c10::Scalar, c10::Scalar, at::native::detail::ClampLimits)::{lambda()#1}::operator()() const::{lambda()#9}::operator()() const::{lambda(c10::BFloat16)#1}, std::array<char*, 2ul>)",
+   "family": "elementwise",
+   "launches_per_step_per_rank": 40.0,
+   "mean_us": 2.3,
+   "median_us": 1.8,
+   "min_us": 1.4,
+   "ms_per_step_per_rank": 0.0921
+  },
+  {
+   "name": "_verify_combine_stage2",
+   "family": "attention",
+   "launches_per_step_per_rank": 5.0,
+   "mean_us": 17.97,
+   "median_us": 17.42,
+   "min_us": 17.04,
+   "ms_per_step_per_rank": 0.0898
+  },
+  {
+   "name": "void at::native::elementwise_kernel_manual_unroll<128, 8, at::native::gpu_kernel_impl_nocast<at::native::direct_copy_kernel_cuda(at::TensorIteratorBase&)::{lambda()#3}::operator()() const::{lambda()#12}::operator()() const::{lambda(c10::BFloat16)#1}>(at::TensorIteratorBase&, at::native::direct_copy_kernel_cuda(at::TensorIteratorBase&)::{lambda()#3}::operator()() const::{lambda()#12}::operator()() const::{lambda(c10::BFloat16)#1} const&)::{lambda(int, bool)#1}>(int, at::native::gpu_kernel_impl_nocast<at::native::direct_copy_kernel_cuda(at::TensorIteratorBase&)::{lambda()#3}::operator()() const::{lambda()#12}::operator()() const::{lambda(c10::BFloat16)#1}>(at::TensorIteratorBase&, at::native::direct_copy_kernel_cuda(at::TensorIteratorBase&)::{lambda()#3}::operator()() const::{lambda()#12}::operator()() const::{lambda(c10::BFloat16)#1} const&)::{lambda(int, bool)#1})",
+   "family": "copy_cat_index",
+   "launches_per_step_per_rank": 20.0,
+   "mean_us": 3.09,
+   "median_us": 2.8,
+   "min_us": 2.52,
+   "ms_per_step_per_rank": 0.0619
+  },
+  {
+   "name": "void at::native::elementwise_kernel_manual_unroll<128, 8, at::native::gpu_kernel_impl_nocast<at::native::BinaryFunctor<c10::BFloat16, c10::BFloat16, c10::BFloat16, at::native::binary_internal::DivFunctor<c10::BFloat16> > >(at::TensorIteratorBase&, at::native::BinaryFunctor<c10::BFloat16, c10::BFloat16, c10::BFloat16, at::native::binary_internal::DivFunctor<c10::BFloat16> > const&)::{lambda(int, bool)#1}>(int, at::native::gpu_kernel_impl_nocast<at::native::BinaryFunctor<c10::BFloat16, c10::BFloat16, c10::BFloat16, at::native::binary_internal::DivFunctor<c10::BFloat16> > >(at::TensorIteratorBase&, at::native::BinaryFunctor<c10::BFloat16, c10::BFloat16, c10::BFloat16, at::native::binary_internal::DivFunctor<c10::BFloat16> > const&)::{lambda(int, bool)#1})",
+   "family": "copy_cat_index",
+   "launches_per_step_per_rank": 20.0,
+   "mean_us": 3.03,
+   "median_us": 2.76,
+   "min_us": 2.52,
+   "ms_per_step_per_rank": 0.0606
+  },
+  {
+   "name": "void at::native::vectorized_elementwise_kernel<8, at::native::AbsFunctor<c10::BFloat16>, std::array<char*, 2ul> >(int, at::native::AbsFunctor<c10::BFloat16>, std::array<char*, 2ul>)",
+   "family": "elementwise",
+   "launches_per_step_per_rank": 20.0,
+   "mean_us": 2.68,
+   "median_us": 1.76,
+   "min_us": 1.36,
+   "ms_per_step_per_rank": 0.0536
+  },
+  {
+   "name": "void at::native::vectorized_elementwise_kernel<8, at::native::float8_copy_kernel_cuda(at::TensorIteratorBase&)::{lambda(c10::BFloat16)#1}, std::array<char*, 2ul> >(int, at::native::float8_copy_kernel_cuda(at::TensorIteratorBase&)::{lambda(c10::BFloat16)#1}, std::array<char*, 2ul>)",
+   "family": "copy_cat_index",
+   "launches_per_step_per_rank": 20.0,
+   "mean_us": 2.43,
+   "median_us": 2.08,
+   "min_us": 1.76,
+   "ms_per_step_per_rank": 0.0486
+  },
+  {
+   "name": "void at::native::vectorized_elementwise_kernel<8, at::native::BUnaryFunctor<c10::BFloat16, c10::BFloat16, c10::BFloat16, at::native::binary_internal::MulFunctor<float> >, std::array<char*, 2ul> >(int, at::native::BUnaryFunctor<c10::BFloat16, c10::BFloat16, c10::BFloat16, at::native::binary_internal::MulFunctor<float> >, std::array<char*, 2ul>)",
+   "family": "elementwise",
+   "launches_per_step_per_rank": 20.0,
+   "mean_us": 1.95,
+   "median_us": 1.8,
+   "min_us": 1.56,
+   "ms_per_step_per_rank": 0.0391
+  },
+  {
+   "name": "void at::native::vectorized_elementwise_kernel<4, at::native::bfloat16tofloat32_copy_kernel_cuda(at::TensorIteratorBase&)::{lambda(c10::BFloat16)#1}, std::array<char*, 2ul> >(int, at::native::bfloat16tofloat32_copy_kernel_cuda(at::TensorIteratorBase&)::{lambda(c10::BFloat16)#1}, std::array<char*, 2ul>)",
+   "family": "copy_cat_index",
+   "launches_per_step_per_rank": 20.0,
+   "mean_us": 1.87,
+   "median_us": 1.72,
+   "min_us": 1.48,
+   "ms_per_step_per_rank": 0.0373
+  },
+  {
+   "name": "create_flashinfer_kv_indices_triton",
+   "family": "attention",
+   "launches_per_step_per_rank": 2.0,
+   "mean_us": 18.01,
+   "median_us": 21.46,
+   "min_us": 3.04,
+   "ms_per_step_per_rank": 0.036
+  },
+  {
+   "name": "_gemma_fused_add_rmsnorm_kernel",
+   "family": "norm",
+   "launches_per_step_per_rank": 10.0,
+   "mean_us": 3.1,
+   "median_us": 2.8,
+   "min_us": 2.6,
+   "ms_per_step_per_rank": 0.031
+  },
+  {
+   "name": "_triton_fused_static_fp8_kv_store_kernel",
+   "family": "attention",
+   "launches_per_step_per_rank": 5.0,
+   "mean_us": 5.84,
+   "median_us": 2.28,
+   "min_us": 2.16,
+   "ms_per_step_per_rank": 0.0292
+  },
+  {
+   "name": "_ZN7sgl_hip10activation18act_and_mul_kernelI14__hip_bfloat16TnPFT_RKS3_EXadL_Z4siluIS2_ES3_S5_EEEEvPS3_PS4_i",
+   "family": "activation",
+   "launches_per_step_per_rank": 5.0,
+   "mean_us": 3.38,
+   "median_us": 2.92,
+   "min_us": 2.64,
+   "ms_per_step_per_rank": 0.0169
+  },
+  {
+   "name": "_table_qk_norm_rope_kernel",
+   "family": "attention",
+   "launches_per_step_per_rank": 5.0,
+   "mean_us": 2.92,
+   "median_us": 2.32,
+   "min_us": 2.2,
+   "ms_per_step_per_rank": 0.0146
+  },
+  {
+   "name": "void rocprim::ROCPRIM_400200_NS::detail::trampoline_kernel<rocprim::ROCPRIM_400200_NS::detail::wrapped_scan_config<rocprim::ROCPRIM_400200_NS::default_config, long>, (rocprim::ROCPRIM_400200_NS::detail::target_arch)1201, rocprim::ROCPRIM_400200_NS::detail::scan_impl<(rocprim::ROCPRIM_400200_NS::detail::lookback_scan_determinism)0, false, false, rocprim::ROCPRIM_400200_NS::default_config, long const*, long*, long, std::plus<long>, long>(void*, unsigned long&, long const*, long*, long, unsigned long, std::plus<long>, ihipStream_t*, bool)::{lambda(auto:1, auto:2)#1}::operator()<std::integral_constant<bool, false>, std::integral_constant<bool, false> >(std::integral_constant<bool, false>, std::integral_constant<bool, false>) const::{lambda(auto:1)#2}, rocprim::ROCPRIM_400200_NS::detail::default_config_selector>(rocprim::ROCPRIM_400200_NS::detail::scan_impl<(rocprim::ROCPRIM_400200_NS::detail::lookback_scan_determinism)0, false, false, rocprim::ROCPRIM_400200_NS::default_config, long const*, long*, long, std::plus<long>, long>(void*, unsigned long&, long const*, long*, long, unsigned long, std::plus<long>, ihipStream_t*, bool)::{lambda(auto:1, auto:2)#1}::operator()<std::integral_constant<bool, false>, std::integral_constant<bool, false> >(std::integral_constant<bool, false>, std::integral_constant<bool, false>) const::{lambda(auto:1)#2})",
+   "family": "sampler",
+   "launches_per_step_per_rank": 3.0,
+   "mean_us": 3.49,
+   "median_us": 3.04,
+   "min_us": 2.76,
+   "ms_per_step_per_rank": 0.0105
+  },
+  {
+   "name": "_vocab_parallel_embedding_kernel",
+   "family": "other",
+   "launches_per_step_per_rank": 1.0,
+   "mean_us": 5.58,
+   "median_us": 2.3,
+   "min_us": 2.08,
+   "ms_per_step_per_rank": 0.0056
+  },
+  {
+   "name": "void at::native::elementwise_kernel_manual_unroll<128, 4, at::native::gpu_kernel_impl<at::native::direct_copy_kernel_cuda(at::TensorIteratorBase&)::{lambda()#3}::operator()() const::{lambda()#3}::operator()() const::{lambda(int)#1}>(at::TensorIteratorBase&, at::native::direct_copy_kernel_cuda(at::TensorIteratorBase&)::{lambda()#3}::operator()() const::{lambda()#3}::operator()() const::{lambda(int)#1} const&)::{lambda(int, bool)#1}>(int, at::native::gpu_kernel_impl<at::native::direct_copy_kernel_cuda(at::TensorIteratorBase&)::{lambda()#3}::operator()() const::{lambda()#3}::operator()() const::{lambda(int)#1}>(at::TensorIteratorBase&, at::native::direct_copy_kernel_cuda(at::TensorIteratorBase&)::{lambda()#3}::operator()() const::{lambda()#3}::operator()() const::{lambda(int)#1} const&)::{lambda(int, bool)#1})",
+   "family": "copy_cat_index",
+   "launches_per_step_per_rank": 2.0,
+   "mean_us": 2.65,
+   "median_us": 1.88,
+   "min_us": 1.72,
+   "ms_per_step_per_rank": 0.0053
+  },
+  {
+   "name": "void at::native::vectorized_elementwise_kernel<4, at::native::CUDAFunctor_add<long>, std::array<char*, 3ul> >(int, at::native::CUDAFunctor_add<long>, std::array<char*, 3ul>)",
+   "family": "elementwise",
+   "launches_per_step_per_rank": 1.0,
+   "mean_us": 5.18,
+   "median_us": 2.9,
+   "min_us": 2.24,
+   "ms_per_step_per_rank": 0.0052
+  },
+  {
+   "name": "void at::native::vectorized_elementwise_kernel<4, at::native::AUnaryFunctor<long, long, long, at::native::binary_internal::MulFunctor<long> >, std::array<char*, 2ul> >(int, at::native::AUnaryFunctor<long, long, long, at::native::binary_internal::MulFunctor<long> >, std::array<char*, 2ul>)",
+   "family": "elementwise",
+   "launches_per_step_per_rank": 1.0,
+   "mean_us": 4.42,
+   "median_us": 1.92,
+   "min_us": 1.8,
+   "ms_per_step_per_rank": 0.0044
+  },
+  {
+   "name": "void at::native::vectorized_elementwise_kernel<4, at::native::CUDAFunctorOnSelf_add<long>, std::array<char*, 2ul> >(int, at::native::CUDAFunctorOnSelf_add<long>, std::array<char*, 2ul>)",
+   "family": "elementwise",
+   "launches_per_step_per_rank": 1.0,
+   "mean_us": 2.94,
+   "median_us": 1.8,
+   "min_us": 1.52,
+   "ms_per_step_per_rank": 0.0029
+  },
+  {
+   "name": "_gemma_rmsnorm_kernel",
+   "family": "norm",
+   "launches_per_step_per_rank": 1.0,
+   "mean_us": 2.4,
+   "median_us": 2.4,
+   "min_us": 2.28,
+   "ms_per_step_per_rank": 0.0024
+  },
+  {
+   "name": "_small_copy_kernel",
+   "family": "copy_cat_index",
+   "launches_per_step_per_rank": 1.0,
+   "mean_us": 2.21,
+   "median_us": 2.2,
+   "min_us": 2.08,
+   "ms_per_step_per_rank": 0.0022
+  },
+  {
+   "name": "void at::native::vectorized_elementwise_kernel<4, at::native::AUnaryFunctor<long, long, long, at::native::minimum_kernel_cuda(at::TensorIteratorBase&)::{lambda()#1}::operator()() const::{lambda()#4}::operator()() const::{lambda(long, long)#1}>, std::array<char*, 2ul> >(int, at::native::AUnaryFunctor<long, long, long, at::native::minimum_kernel_cuda(at::TensorIteratorBase&)::{lambda()#1}::operator()() const::{lambda()#4}::operator()() const::{lambda(long, long)#1}>, std::array<char*, 2ul>)",
+   "family": "elementwise",
+   "launches_per_step_per_rank": 1.0,
+   "mean_us": 1.85,
+   "median_us": 1.8,
+   "min_us": 1.64,
+   "ms_per_step_per_rank": 0.0019
+  },
+  {
+   "name": "void (anonymous namespace)::elementwise_kernel_with_index<int, at::native::arange_cuda_out(c10::Scalar const&, c10::Scalar const&, c10::Scalar const&, at::Tensor&)::{lambda()#1}::operator()() const::{lambda()#3}::operator()() const::{lambda(long)#1}>(int, at::native::arange_cuda_out(c10::Scalar const&, c10::Scalar const&, c10::Scalar const&, at::Tensor&)::{lambda()#1}::operator()() const::{lambda()#3}::operator()() const::{lambda(long)#1}, function_traits<at::native::arange_cuda_out(c10::Scalar const&, c10::Scalar const&, c10::Scalar const&, at::Tensor&)::{lambda()#1}::operator()() const::{lambda()#3}::operator()() const::{lambda(long)#1}>::result_type*)",
+   "family": "copy_cat_index",
+   "launches_per_step_per_rank": 1.0,
+   "mean_us": 1.61,
+   "median_us": 1.44,
+   "min_us": 1.36,
+   "ms_per_step_per_rank": 0.0016
+  }
+ ],
+ "other_names": [
+  "_vocab_parallel_embedding_kernel"
+ ],
+ "caveats": [
+  "counts are exact for an eager (--disable-cuda-graph) window; a graphed window undercounts",
+  "the profiler inflates short kernels: mean_us is an upper bound, floor_ms uses each kernel's minimum",
+  "host gap is eager dispatch under the profiler; the graphed preset replays without it",
+  "ms_per_step_per_rank is per rank: the two ranks run concurrently, so it compares with wall per step"
+ ]
+}

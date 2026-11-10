@@ -1,0 +1,24 @@
+1794348017.1110942-TP-0.trace.json.gz
+      81 x    44.732 ms  scheduler.run_batch
+      40 x    73.242 ms  step[VERIFY bs=1]
+      41 x    70.519 ms  sglang.vlm.language_model_prefill
+      40 x    59.184 ms  step[DRAFT bs=1]
+    5729 x     0.068 ms  nccl:all_reduce
+       1 x    89.494 ms  step[EXTEND bs=1 toks=24]
+      81 x     0.229 ms  nccl:_all_gather_base
+      41 x     0.407 ms  scheduler.get_next_batch_to_run
+     441 x     0.012 ms  nccl:broadcast
+      41 x     0.013 ms  copy_result_to_cpu
+       1 x     0.204 ms  scheduler.process_batch_result
+1794348017.1110942-TP-1.trace.json.gz
+      81 x    44.287 ms  scheduler.run_batch
+      40 x    76.595 ms  step[DRAFT bs=1]
+      40 x    73.246 ms  step[VERIFY bs=1]
+      41 x    70.520 ms  sglang.vlm.language_model_prefill
+    5729 x     0.187 ms  nccl:all_reduce
+       1 x    89.555 ms  step[EXTEND bs=1 toks=24]
+      81 x     0.253 ms  nccl:_all_gather_base
+      41 x     0.305 ms  scheduler.get_next_batch_to_run
+     441 x     0.018 ms  nccl:broadcast
+      41 x     0.013 ms  copy_result_to_cpu
+       1 x     0.170 ms  scheduler.process_batch_result

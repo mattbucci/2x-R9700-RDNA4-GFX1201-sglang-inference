@@ -1,0 +1,36 @@
+qwen38 FP8 DSpark eager, target verify pass, deep window: 10 steps x 2 ranks, 1538.2 launches/step/rank, traced 56.525 ms, span 109.349 ms, host gap 64.356 ms per step
+family           launch/step   mean us   min us  ms/step  floor ms  sized ms    pct  owner
+fp8_gemm               256.0     103.2     43.1   26.425    11.028         -  46.7%  RAD-1, RAD-3, RAD-4, RAD-22
+all_reduce             130.0     139.2     32.2   18.099     4.191         -  32.0%  RAD-2
+other                   17.0     187.9      1.7    3.194     3.095         -   5.7%  unowned
+rocblas_gemm             1.0    2550.1   2270.2    2.550     2.270         -   4.5%  RAD-15 (LM head)
+gdn                     96.0      19.1      5.7    1.836     1.632         -   3.2%  RAD-1 (state width), RAD-20
+copy_cat_index         360.2       3.5      1.2    1.258     0.877         -   2.2%  unowned
+attention               49.0      17.9      2.1    0.879     0.736         -   1.6%  RAD-9 (decode attention), RAD-19, RAD-27
+norm                   193.0       3.9      2.4    0.746     0.468         -   1.3%  RAD-5
+quantiser              256.0       2.7      1.7    0.701     0.430         -   1.2%  RAD-22 / RAD-5
+bf16_gemv               48.0       7.1      6.2    0.342     0.299         -   0.6%  RAD-23
+activation              80.0       3.4      2.0    0.275     0.201         -   0.5%  RAD-5
+elementwise             50.0       4.3      1.4    0.216     0.093         -   0.4%  RAD-5
+sampler                  2.0       2.9      2.8    0.006     0.006         -   0.0%  RAD-15, RAD-17
+top kernels (launches/step/rank, mean us, min us, ms/step/rank):
+     256.0     103.2     43.1   26.425  [fp8_gemm] _w8a8_block_fp8_matmul
+     130.0     139.2     32.2   18.099  [all_reduce] ncclDevKernel_Generic_4(ncclDevKernelArgsStorage<4096ul>)
+      16.0     199.5    193.3    3.192  [other] _verify_gqa_prefix_stage1
+       1.0    2550.1   2270.2    2.550  [rocblas_gemm] Cijk_Alik_Bljk_BBS_BH_Bias_HA_S_SAV_UserArgs_MT128x128x32_MI16x16x1_SN_LDSB0_AFC1_AFEM1_AF
+      48.0      30.8     28.3    1.480  [gdn] fused_sigmoid_gating_delta_rule_update_kernel
+     256.0       2.7      1.7    0.701  [quantiser] _per_token_group_quant_8bit
+      16.0      41.9     40.1    0.670  [attention] _verify_combine_stage2
+     177.0       3.4      2.3    0.596  [copy_cat_index] void at::native::elementwise_kernel_manual_unroll<128, 8, at::native::gpu_kernel_impl_noca
+     128.0       3.2      2.4    0.413  [norm] _gemma_fused_add_rmsnorm_kernel
+      48.0       7.4      5.7    0.356  [gdn] _causal_conv1d_update_kernel
+      48.0       7.1      6.2    0.342  [bf16_gemv] _skinny_bf16_gemv_kernel
+      48.0       5.8      2.4    0.278  [norm] _layer_norm_fwd_1pass_kernel
+      65.0       4.1      2.2    0.268  [copy_cat_index] void at::native::vectorized_elementwise_kernel<4, at::native::bfloat16tofloat32_copy_kerne
+      48.0       4.8      3.7    0.230  [copy_cat_index] void at::native::(anonymous namespace)::CatArrayBatchedCopy<at::native::(anonymous namespa
+      64.0       3.6      2.6    0.229  [activation] _ZN7sgl_hip10activation18act_and_mul_kernelI14__hip_bfloat16TnPFT_RKS3_EXadL_Z4siluIS2_ES3
+      48.0       4.4      1.9    0.212  [elementwise] void at::native::vectorized_elementwise_kernel<4, at::native::compare_scalar_kernel<int>(a
+      64.0       2.3      2.1    0.147  [copy_cat_index] void at::native::vectorized_elementwise_kernel<4, at::native::bfloat16_copy_kernel_cuda(at
+      16.0       8.2      2.1    0.132  [attention] _triton_fused_static_fp8_kv_store_kernel
+unclassified: _verify_gqa_prefix_stage1; _vocab_parallel_embedding_kernel
+-> /home/letsrtfm/AI/2x-R9700-RDNA4-GFX1201-sglang-inference/benchmarks/profiling/rad22b-verify-census-2026-11-10/census-dspark-verify-deep.json

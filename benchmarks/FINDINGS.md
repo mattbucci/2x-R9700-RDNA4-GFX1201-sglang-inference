@@ -1658,6 +1658,52 @@ verify stage is active on both ranks of both, the windowed draft stage on DSpark
 [no-spec](qwen38-27b-fp8/decode-canonical-nospec-2026-11-10-94p.json),
 [DFlash2](qwen38-27b-fp8/decode-canonical-dflash2-2026-11-10-94p.json)). These are the README and results.json rows.
 
+### RAD-22b — verify launch census: the nine-row block-FP8 GEMM and its quantiser are about half of the verify's 10–14 ms over a plain step; no patch, kernel bench next as RAD-29 (2026-11-10)
+
+Eager launch census (`scripts/bench/launch_census.py --span`) of the DSpark target verify (`step[VERIFY`) against
+the no-spec decode step (`step[DECODE`) on the shipped FP8 `qwen38` preset (patches 121–126), one boot per arm with
+`--disable-cuda-graph`, a short window (24 prompt tokens: 31 plain steps, 40 verifies) and a deep one (58,483
+tokens: 31 plain steps, 10 verifies)
+([diffs and censuses](profiling/rad22b-verify-census-2026-11-10/),
+[no-spec windows](profiling/rad22b-verify-census-nospec-2026-11-10/)). Traced ms per pass per rank:
+
+| family | launches, step → verify | 24 tokens | 58,483 tokens | what changes at nine rows |
+|---|---:|---:|---:|---|
+| block-FP8 linears | 256 → 256 | 20.27 → 24.97 (+4.70) | 20.35 → 26.43 (+6.08) | HIP W8A16 GEMV at 600 GB/s → Triton W8A8 tile at 487 / 460 GB/s |
+| activation quantiser | 0 → 256 | +0.65 | +0.70 | one launch in front of every W8A8 tile |
+| all-reduce | 130 → 130 | 9.70 → 16.90 (+7.20) | 9.55 → 18.10 (+8.55) | nine-row payloads; the per-launch minimum gives +1.25 / +1.74 |
+| DeltaNet recurrence and conv | 97 → 96 | 0.44 → 1.75 (+1.30) | 0.46 → 1.84 (+1.37) | snapshotting recurrence, 48 launches of 29 µs |
+| attention | 67 → 66 | 0.35 → 1.02 (+0.67) | 2.18 → 4.07 (+1.89) | grouped prefix stage 0.60 / 3.19 ms plus combine 0.29 / 0.67 against the decode kernel |
+| copies, cat, compare | 188 → 410 | +0.76 | +0.83 | 177 small copies, 48 cat, 48 compare per verify |
+| LM head | 1 → 1 | 2.34 → 2.63 (+0.29) | 2.27 → 2.55 (+0.28) | nine rows through rocBLAS |
+| total traced | 1,061 → 1,538 | 34.81 → 55.14 | 36.57 → 56.53 | |
+
+What the trace can carry. Launch counts are exact and a verify is one target forward: 256 linears, 130 reductions,
+48 recurrence updates, 16 prefix stages and 16 combines, one LM head. Kernels of 20 µs and more trace at their
+kernel-bench rates: the plain step's 256 GEMVs read 12.16 GB of weights per rank in 20.27 ms (600 GB/s, 640 GB/s
+roofline). Three readings are not sizes. The all-reduce duration includes the wait for the peer rank (0.068 ms per
+call on rank 0 against 0.187 on rank 1 in the same window), so its +7–8.5 ms is an upper reading and the
+per-launch minimum a lower one. Host-timed asynchronous operations (an 8-byte device copy, the `argmax` memset)
+include stream queue wait: one `_small_copy_kernel` reads 4.56 ms in the short verify and is left out of the
+copies row, and the short-window draft annotation (59.2 ms on the GPU track against 7.7 ms on the CPU) overlaps
+the following verify, so only the deep draft census is usable (261 launches, 4.0 ms traced, 6.5 ms span). The
+census "floor" column pools every shape of a kernel name and is a weak lower bound.
+
+Sized this way the rows sum to 9.8 ms at 24 tokens and 13.1 ms at 58K with the all-reduce at its lower reading,
+against 10.8 and 11.8 ms between the graphed verify stage and a graphed plain step. The nine-row GEMM with its
+quantiser is the largest family at both depths: 5.4 and 6.8 ms. The second receipt agrees: on the pre-split shapes
+([libr4d bench](profiling/libr4d-kernel-bench/m16-dev0.json), 13.91 GiB per forward, cold rotation) the vendor's
+WMMA tile holds its one-row rate at eight rows (25.1 ms per forward against 24.5 for its GEMV) where our Triton
+tile reads 27.9 ms.
+
+Disposition: census done, no patch. The verify's excess is spread over five kernel families; the eager host gap
+(30 ms per verify against 14 per plain step) is not part of the graphed verify. RAD-29 takes the first family: a W8A16 GEMM for 2–32 rows that decodes E4M3 weights to bf16 in registers and feeds
+`v_wmma_f32_16x16x16_bf16`, no activation quantiser and the checkpoint's row-major weights, the same numeric class
+as the one-row decode GEMV. A scalar multi-row extension of the GEMV is closed on paper: nine rows need about 750
+VALU cycles per 2 KiB of weights per wave, about 410 GB/s, below the Triton tile. The all-reduce at nine-row
+payloads is ranked after a two-card kernel bench at that payload, the snapshotting recurrence (1.3 ms) and the
+copies (0.8 ms) after that.
+
 ## Evaluation methodology
 
 ### SWE-bench answer leakage through git history and the web (found 2026-09-18)

@@ -1,0 +1,33 @@
+qwen38 FP8 DSpark eager, drafter passes, deep window: 10 steps x 2 ranks, 261.0 launches/step/rank, traced 4.025 ms, span 6.519 ms, host gap 3.223 ms per step
+family           launch/step   mean us   min us  ms/step  floor ms  sized ms    pct  owner
+rocblas_gemm            20.0      90.4     33.5    1.808     1.230         -  44.9%  RAD-15 (LM head)
+all_reduce              11.0     115.8     24.3    1.274     0.267         -  31.7%  RAD-2
+attention               22.0      12.7      2.2    0.279     0.196         -   6.9%  RAD-9 (decode attention), RAD-19, RAD-27
+copy_cat_index          84.0       2.6      1.4    0.218     0.172         -   5.4%  unowned
+elementwise             84.0       2.4      1.4    0.199     0.121         -   4.9%  RAD-5
+reduce                  20.0       9.0      5.4    0.180     0.107         -   4.5%  unowned
+norm                    11.0       3.0      2.3    0.033     0.028         -   0.8%  RAD-5
+activation               5.0       3.4      2.6    0.017     0.013         -   0.4%  RAD-5
+sampler                  3.0       3.5      2.8    0.011     0.008         -   0.3%  RAD-15, RAD-17
+other                    1.0       5.6      2.1    0.006     0.002         -   0.1%  unowned
+top kernels (launches/step/rank, mean us, min us, ms/step/rank):
+      10.0     132.3     79.9    1.323  [rocblas_gemm] Cijk_Alik_Bljk_F8BS_BH_Bias_SHB_HA_S_SAB_SCD_SAV_UserArgs_MT64x64x128_MI16x16x1_SN_LDSB0_A
+      11.0     115.8     24.3    1.274  [all_reduce] ncclDevKernel_Generic_4(ncclDevKernelArgsStorage<4096ul>)
+       5.0      59.7     52.6    0.299  [rocblas_gemm] Cijk_Alik_Bljk_F8BS_BH_Bias_SHB_HA_S_SAB_SCD_SAV_UserArgs_MT128x128x64_MI16x16x1_SN_LDSB1_
+       5.0      37.4     33.5    0.187  [rocblas_gemm] Cijk_Alik_Bljk_F8BS_BH_Bias_SHB_HA_S_SAB_SCD_SAV_UserArgs_MT64x64x128_MI16x16x1_SN_LDSB0_A
+      20.0       9.0      5.4    0.180  [reduce] void at::native::reduce_kernel<512, 1, at::native::ReduceOp<c10::BFloat16, at::native::fun
+       5.0      21.9     16.5    0.110  [attention] _verify_prefix_stage1
+      40.0       2.3      1.4    0.092  [elementwise] void at::native::vectorized_elementwise_kernel<8, at::native::(anonymous namespace)::launc
+       5.0      18.0     17.0    0.090  [attention] _verify_combine_stage2
+      20.0       3.1      2.5    0.062  [copy_cat_index] void at::native::elementwise_kernel_manual_unroll<128, 8, at::native::gpu_kernel_impl_noca
+      20.0       3.0      2.5    0.061  [copy_cat_index] void at::native::elementwise_kernel_manual_unroll<128, 8, at::native::gpu_kernel_impl_noca
+      20.0       2.7      1.4    0.054  [elementwise] void at::native::vectorized_elementwise_kernel<8, at::native::AbsFunctor<c10::BFloat16>, s
+      20.0       2.4      1.8    0.049  [copy_cat_index] void at::native::vectorized_elementwise_kernel<8, at::native::float8_copy_kernel_cuda(at::
+      20.0       1.9      1.6    0.039  [elementwise] void at::native::vectorized_elementwise_kernel<8, at::native::BUnaryFunctor<c10::BFloat16,
+      20.0       1.9      1.5    0.037  [copy_cat_index] void at::native::vectorized_elementwise_kernel<4, at::native::bfloat16tofloat32_copy_kerne
+       2.0      18.0      3.0    0.036  [attention] create_flashinfer_kv_indices_triton
+      10.0       3.1      2.6    0.031  [norm] _gemma_fused_add_rmsnorm_kernel
+       5.0       5.8      2.2    0.029  [attention] _triton_fused_static_fp8_kv_store_kernel
+       5.0       3.4      2.6    0.017  [activation] _ZN7sgl_hip10activation18act_and_mul_kernelI14__hip_bfloat16TnPFT_RKS3_EXadL_Z4siluIS2_ES3
+unclassified: _vocab_parallel_embedding_kernel
+-> /home/letsrtfm/AI/2x-R9700-RDNA4-GFX1201-sglang-inference/benchmarks/profiling/rad22b-verify-census-2026-11-10/census-dspark-draft-deep.json

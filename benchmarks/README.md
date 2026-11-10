@@ -158,7 +158,10 @@ input, −5–6 % at 58K, +1–2 % below 8K, needle 9/9 and capabilities 5/5 ([k
 accept length and timed stages from a slice of a server log. DSpark windowed draft layers through the split-KV stage (patch 126, FP8 `qwen38`
 preset default): cycle 59.1 → 51.7 ms at 7.3K, 61.1 → 53.7 at 58K, 67.3 → 59.9 at 197K, −1.7 % at 24 tokens, greedy accept length ×0.991 over
 24 paired prompts (`scripts/bench/spec_accept_probe.py`, verify count per request)
-([kernel](profiling/rad28-draft-window-kernel-2026-11-10/), [serving](profiling/rad28-draft-window-serving-2026-11-10/), [FINDINGS → RAD-28](FINDINGS.md)). `scripts/bench/dspark_cycle_times.py`
+([kernel](profiling/rad28-draft-window-kernel-2026-11-10/), [serving](profiling/rad28-draft-window-serving-2026-11-10/), [FINDINGS → RAD-28](FINDINGS.md)). Verify launch census
+(`scripts/bench/launch_census.py --span`, eager, target verify against a plain step at 24 and 58K tokens): 1,538 against 1,061 launches per
+pass per rank, the nine-row block-FP8 GEMM with its quantiser is +5.4 / +6.8 ms of the verify's 10–14 ms over a plain step
+([receipts](profiling/rad22b-verify-census-2026-11-10/), [FINDINGS → RAD-22b](FINDINGS.md)). `scripts/bench/dspark_cycle_times.py`
 reads DSpark cycle time and accept length from a server log; `scripts/bench/copyheavy_multi_bench.py` is the five-target
 copy-heavy probe with decode-only timing.
 Upstream's one-stage HIP all-reduce against RCCL on the FP8 preset: +1.8 % at 24 tokens with wrong sums, so RCCL stays

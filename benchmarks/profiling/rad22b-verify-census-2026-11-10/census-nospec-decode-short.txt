@@ -1,0 +1,35 @@
+qwen38 FP8 no-spec eager, plain decode step, short window: 31 steps x 2 ranks, 1060.8 launches/step/rank, traced 34.809 ms, span 48.029 ms, host gap 14.369 ms per step
+family           launch/step   mean us   min us  ms/step  floor ms  sized ms    pct  owner
+fp8_gemm               256.0      79.2     26.8   20.267     6.850         -  58.2%  RAD-1, RAD-3, RAD-4, RAD-22
+all_reduce             130.0      74.6     18.9    9.701     2.459         -  27.9%  RAD-2
+rocblas_gemm             1.0    2334.7   2256.8    2.335     2.257         -   6.7%  RAD-15 (LM head)
+copy_cat_index         185.9       3.2      1.4    0.597     0.409         -   1.7%  unowned
+norm                   193.0       2.9      1.5    0.563     0.395         -   1.6%  RAD-5
+gdn                     97.0       4.6      1.5    0.444     0.376         -   1.3%  RAD-1 (state width), RAD-20
+attention               66.0       5.2      2.0    0.343     0.214         -   1.0%  RAD-9 (decode attention), RAD-19, RAD-27
+bf16_gemv               48.0       6.3      5.8    0.301     0.278         -   0.9%  RAD-23
+activation              80.0       2.9      1.8    0.234     0.178         -   0.7%  RAD-5
+elementwise              1.9       9.0      3.4    0.017     0.006         -   0.0%  RAD-5
+other                    1.0       3.9      1.8    0.004     0.002         -   0.0%  unowned
+sampler                  1.0       3.0      3.0    0.003     0.003         -   0.0%  RAD-15, RAD-17
+top kernels (launches/step/rank, mean us, min us, ms/step/rank):
+     256.0      79.2     26.8   20.267  [fp8_gemm] void (anonymous namespace)::fp8_gemv_bf16_kernel<1u>(unsigned char const*, float const*, u
+     130.0      74.6     18.9    9.701  [all_reduce] ncclDevKernel_Generic_4(ncclDevKernelArgsStorage<4096ul>)
+       1.0    2334.7   2256.8    2.335  [rocblas_gemm] Cijk_Alik_Bljk_BBS_BH_Bias_HA_S_SAV_UserArgs_MT128x128x32_MI16x16x1_SN_LDSB0_AFC1_AFEM1_AF
+     128.0       2.9      2.2    0.374  [norm] _gemma_fused_add_rmsnorm_kernel
+      48.0       6.4      5.6    0.306  [gdn] fused_recurrent_gated_delta_rule_packed_decode_kernel
+      48.0       6.3      5.8    0.301  [bf16_gemv] _skinny_bf16_gemv_kernel
+      48.0       4.8      3.4    0.228  [copy_cat_index] void at::native::(anonymous namespace)::CatArrayBatchedCopy_contig<at::native::(anonymous
+      64.0       3.0      2.3    0.192  [activation] _ZN7sgl_hip10activation18act_and_mul_kernelI14__hip_bfloat16TnPFT_RKS3_EXadL_Z4siluIS2_ES3
+      65.0       2.9      1.9    0.187  [copy_cat_index] void at::native::vectorized_elementwise_kernel<4, at::native::bfloat16tofloat32_copy_kerne
+      16.0      10.7      5.9    0.172  [attention] _fwd_grouped_kernel_stage1
+      48.0       3.0      1.5    0.142  [norm] _layer_norm_fwd_1pass_kernel
+      48.0       2.8      2.2    0.136  [gdn] _causal_conv1d_update_kernel
+      64.0       2.0      1.6    0.128  [copy_cat_index] void at::native::vectorized_elementwise_kernel<4, at::native::bfloat16_copy_kernel_cuda(at
+      16.0       5.2      2.6    0.083  [attention] _fwd_kernel_stage2
+      16.0       2.8      2.4    0.045  [norm] _fused_qk_gemma_rmsnorm_gate_kernel
+      16.0       2.7      2.5    0.043  [attention] _triton_mrope_forward_fused
+      16.0       2.6      1.8    0.042  [activation] _fused_sigmoid_mul_kernel
+      16.0       2.5      2.1    0.040  [attention] _triton_fused_static_fp8_kv_store_kernel
+unclassified: _vocab_parallel_embedding_kernel
+-> /home/letsrtfm/AI/2x-R9700-RDNA4-GFX1201-sglang-inference/benchmarks/profiling/rad22b-verify-census-2026-11-10/census-nospec-decode-short.json

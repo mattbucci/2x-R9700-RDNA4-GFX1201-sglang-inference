@@ -876,18 +876,19 @@
   {
    "id": "RAD-22b",
    "spec": "19-vllm-radiance-parity.md",
-   "status": "ready",
+   "status": "completed",
    "resource": "gpu",
    "depends_on": [
     "RAD-27 / RAD-28 (done, patches 125-126): DSpark cycle 50.8 / 51.7 / 53.7 / 59.9 ms at 24 / 7.3K / 58K / 197K on the shipped preset is the baseline; the target verify is 40-49 ms of it, 10-14 ms over a plain step",
     "scripts/bench/launch_census.py span mode (done): one census per forward-pass span and a two-receipt diff"
    ],
-   "next_action": "Verify anatomy. The kernel receipts explain 4-5 ms of the verify's 10.8 ms over a plain step at 24 tokens (the nine rows fall off the one-row W8A16 GEMV, the multi-row GEMM, the LM head), so the first step is the eager launch census of the DSpark target verify against the no-spec decode step at short and deep context (queued: benchmarks/profiling/rad22b-verify-census-2026-11-10/, diff-verify-{short,deep}.txt). Then a kernel bench of the family the census ranks first, at the verify shape with the cold rotation. Candidates read from the source: W8A16 at the verify row count (fp8_gemv_hip per row against the 16-row Triton tile; RAD-13 kept our GEMM at M = 8-64), the DeltaNet snapshotting recurrence (upstream default launch config on gfx1201, one state snapshot per draft token per layer plus a commit copy, about 0.9 GB of traffic per rank per verify), the all-reduce at nine-row payloads. A winner goes behind its own switch with a hook preflight at the verify row counts and a DSpark A/B read by cycle time and accept length (dspark_cycle_times.py, spec_accept_probe.py).",
+   "next_action": "Census done, no patch (FINDINGS RAD-22b). The nine-row block-FP8 GEMM with its quantiser is the first-ranked family (RAD-29). Still to size: the all-reduce at nine-row payloads on two cards (traced +7.2 / +8.5 ms includes the wait for the peer rank, per-launch minimum +1.2 / +1.7 ms), then the snapshotting DeltaNet recurrence (1.3 ms, launch config at nine rows) and the 222 extra copies and compares per verify (0.8 ms).",
    "test_gate": [
     "census: the verify pass and the plain step are read from the same eager session family by family; the diff names at least half of the extra time or the remainder is recorded as host gap",
     "kernel: the candidate is faster than the current path at the verify shape with cold weights, numerics within the current path's class on the check rows",
     "DSpark cycle time lower at every depth at equal accept length (paired greedy accept probe not below 0.95x); capabilities and needle unchanged"
-   ]
+   ],
+   "result": "2026-11-10 (benchmarks/profiling/rad22b-verify-census-2026-11-10/diff-verify-{short,deep}.txt), eager, traced ms per pass per rank, plain step -> verify at 24 / 58,483 prompt tokens: block-FP8 linears 20.27 -> 24.97 / 20.35 -> 26.43 (256 launches both; HIP W8A16 GEMV 600 GB/s against the Triton W8A8 tile 487 / 460 GB/s), quantiser 0 -> 0.65 / 0.70 (256 launches), all-reduce 9.70 -> 16.90 / 9.55 -> 18.10 (130 launches; peer wait included), DeltaNet recurrence and conv 0.44 -> 1.75 / 0.46 -> 1.84, attention with the grouped prefix stage 0.35 -> 1.02 / 2.18 -> 4.07, copies and compares +0.76 / +0.83, LM head +0.29 / +0.28; total 34.81 -> 55.14 / 36.57 -> 56.53 over 1,061 -> 1,538 launches. Sized rows sum to 9.8 / 13.1 ms against 10.8 / 11.8 ms between the graphed verify stage and a graphed plain step. The short-window draft annotation overlaps the following verify (59.2 ms GPU track against 7.7 ms CPU); the deep draft census is clean (261 launches, 4.0 ms traced)."
   },
   {
    "id": "RAD-23",
@@ -984,6 +985,23 @@
     "needle 9/9 greedy to 197K and capabilities 5/5 on the switch-on arm"
    ],
    "result": "Kernel bench, 2026-11-10 (benchmarks/profiling/rad28-draft-window-kernel-2026-11-10/), gate pass, 16 splits: five layers over a 24 / 512 / 2048-token window, extend kernel 0.391 / 3.215 / 10.317 ms against the windowed split stage 0.131 / 0.141 / 0.184 ms (entry point 0.123 / 0.137 / 0.235 ms); cosine vs the fp32 reference about 0.9990 on random and planted windows against 0.26-0.32 for an unmasked read, the switch-off probe declines; the extend kernel's growth 24 -> 2048 tokens (9.9 ms) covers the 6.7 ms serving growth. CPU dry check of the bench: reference vs float64 3.5e-07, split merge 4.1e-07, wrong masks read 0.24 / -0.11 against the planted-window floor 0.95. Serving, 2026-11-10 (benchmarks/profiling/rad28-draft-window-serving-2026-11-10/summary.json), gate pass, patches 122-125 on both sides, extend -> split -> split -> extend, sampled 400-token ladder, mean of two boots per side: DSpark cycle 51.70 / 59.11 / 61.14 / 67.28 -> 50.81 / 51.74 / 53.72 / 59.86 ms at 24 / 7.3K / 58K / 197K (ratio 0.983 / 0.875 / 0.879 / 0.890); boots of one side agree within 0.7 %. Timed boots: draft propose stage 9.37 / 16.22 / 16.23 / 16.23 -> 8.46 / 8.54 / 8.53 / 8.59 ms, target verify 39.98 / 40.92 / 42.83 / 48.75 -> 40.00 / 40.96 / 42.87 / 48.75 ms. Sampled accept length, mean over depths and boots, 2.42 -> 2.47. Canonical sweep, one boot per side: 50.3 / 63.2 / 58.6 / 45.0 -> 50.9 / 72.5 / 67.0 / 50.7 tok/s. Capabilities 5/5, greedy needle 9/9 to 197K; the forced greedy ladder starts with the extend side's text at all four depths but read the accept length at 3.02 / 3.49 / 3.44 / 3.00 -> 2.55 / 3.20 / 3.08 / 3.00 on one prompt per depth. Accept control on the installed patch (accept-*.json, scripts/bench/spec_accept_probe.py: 24 temperature-0 prompts of 300 tokens, 28 to 68,804 input tokens, verify count per request, extend -> split -> extend): 7,077 tokens over 1,852 verifies -> 1,868 verifies, accept length 3.821 -> 3.789, ratio 0.991 (95 % 0.968-1.017 over prompts, lower on 10, higher on 9), floor 0.95: pass; the second extend boot repeats the first to the token (24 of 24 texts, 1,852 verifies); 7 of 24 texts are the same between the two kernels. Patch 126 installed, replay gate 94 patches / 152 paths clean."
+  },
+  {
+   "id": "RAD-29",
+   "spec": "19-vllm-radiance-parity.md",
+   "status": "ready",
+   "resource": "gpu",
+   "depends_on": [
+    "RAD-22b (done): the nine-row block-FP8 GEMM and its quantiser are 5.4 of 10.8 ms of the verify's excess at 24 tokens and 6.8 of 11.8 at 58K",
+    "patch 122 (fp8_gemv_hip): build script, import guard and dispatch site to clone",
+    "libr4d bench (benchmarks/profiling/libr4d-kernel-bench/m16-dev0.json): a WMMA tile fed from registers holds the one-row rate at eight rows (25.1 ms per forward against our Triton tile's 27.9)"
+   ],
+   "next_action": "W8A16 WMMA GEMM for 2 <= M <= 32 rows as a HIP kernel (kernels/aot/csrc/quantization/fp8/fp8_gemm_bf16_hip.cu): E4M3 weights decoded to bf16 in registers and multiplied with the bf16 activations through v_wmma_f32_16x16x16_bf16, weight as the A operand (one lane streams 64 contiguous bytes of one weight row per 128-column block), block scale folded once per block, in-workgroup K split with an LDS reduce for narrow outputs, one or two 16-row activation tiles. Compile probe done on gfx1201 (builtin accepted, decode = 12 VALU instructions per 8 weight bytes). Next: kernel + build script + scripts/bench/bench_fp8_gemm_bf16_hip.py, check then cold-rotation timing on one idle card; a winner goes behind its own switch next to the patch-122 branch with a hook preflight, then the DSpark A/B.",
+   "test_gate": [
+    "check: fp64 reference on ragged shapes with asymmetric operands at M = 2 / 9 / 16 / 17 / 32, every K split, error inside the W8A16 GEMV's tolerance; the E4M3 code table decodes exactly",
+    "kernel: faster than quantiser + Triton W8A8 tile at M = 9 on the six TP-split qwen38 shapes with the cold rotation, summed per forward; reported next to the M = 1 GEMV rate",
+    "serving: DSpark cycle shorter at 24 / 7.3K / 58K / 197K in both orders, paired greedy accept probe not below 0.95x, needle 9/9, capabilities 5/5"
+   ]
   }
  ]
 }
