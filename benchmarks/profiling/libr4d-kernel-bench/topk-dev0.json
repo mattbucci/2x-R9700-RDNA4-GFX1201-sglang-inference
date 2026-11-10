@@ -1,0 +1,389 @@
+{
+ "experiment": "RAD-13 libr4d kernel bench",
+ "timestamp": "2026-11-09T16:12:47-0800",
+ "lib": {
+  "path": "/data/vllm-radiance-src/radiance-build/radiance_home/kernels/libr4d.so",
+  "sha256": "1123ee6cdfeaa9e39436632f98b9dd8bcf5853ce3b949c7f69378f80dbba91c8",
+  "version": "0.5.0",
+  "build_target": "gfx1201",
+  "abi_version": 37
+ },
+ "torch": "2.11.0+rocm7.2",
+ "device": "AMD Radeon AI PRO R9700",
+ "hip_runtime_images": [
+  "/home/letsrtfm/miniforge3/envs/sglang-triton36-v0522/lib/python3.12/site-packages/torch/lib/libamdhip64.so"
+ ],
+ "vram_used_gb_at_start": {
+  "card0": 0.055797576904296875,
+  "card1": 0.055797576904296875,
+  "card2": 0.20057296752929688
+ },
+ "triton_error": null,
+ "args": {
+  "lib": "/data/vllm-radiance-src/radiance-build/radiance_home/kernels/libr4d.so",
+  "out": "/data/tmp/rad13-run/out/topk-dev0.json",
+  "selfcheck": false,
+  "abi_table": null,
+  "abi_rows": null,
+  "list_stubs": false,
+  "families": [
+   "topk"
+  ],
+  "device": 0,
+  "shapes": "qwen38",
+  "shape": null,
+  "iters": 200,
+  "tiled_iters": 10,
+  "repeats": 5,
+  "rotate_mb": 320,
+  "m16_m": [
+   8,
+   16,
+   64
+  ],
+  "tiled_m": [
+   4096,
+   8192
+  ],
+  "quant_m": [
+   1,
+   8,
+   64
+  ],
+  "quant_k": [
+   5120,
+   8704,
+   6144,
+   3072
+  ],
+  "hidden": 5120,
+  "inter": 8704,
+  "topk_n": [
+   15520,
+   124160
+  ],
+  "topk_m": [
+   1,
+   8,
+   64
+  ],
+  "topk_r": 32,
+  "rb": 0,
+  "eps": 1e-06,
+  "wadd": 1.0,
+  "timing": "events",
+  "graph_replays": 3,
+  "a8_layout": "auto",
+  "sglang_python": "/data/sgl-v0522/python",
+  "no_triton": false,
+  "allow_two_hip_runtimes": false,
+  "max_busy_vram_gb": 2.0,
+  "force_busy": false
+ },
+ "families": {
+  "topk": [
+   {
+    "N": 15520,
+    "M": 1,
+    "R": 32,
+    "scratch_bytes": 2048,
+    "values_identical": true,
+    "indices_identical": true,
+    "vendor": {
+     "timing": "events",
+     "us_median": 25.57549476623535,
+     "us_min": 25.567095279693604,
+     "host_enqueue_us_median": 1.6329484060406685,
+     "iters": 200,
+     "repeats": 5,
+     "copies": 1,
+     "host_bound": false
+    },
+    "torch_topk_bf16": {
+     "timing": "events",
+     "us_median": 38.21294069290161,
+     "us_min": 38.06314468383789,
+     "host_enqueue_us_median": 11.623529717326164,
+     "iters": 200,
+     "repeats": 5,
+     "copies": 1,
+     "host_bound": false
+    },
+    "torch_topk_f32": {
+     "timing": "events",
+     "us_median": 40.348548889160156,
+     "us_min": 40.2909517288208,
+     "host_enqueue_us_median": 11.67582580819726,
+     "iters": 200,
+     "repeats": 5,
+     "copies": 1,
+     "host_bound": false
+    },
+    "speedup_vendor_over_torch_topk_bf16": 1.494123223897516
+   },
+   {
+    "N": 15520,
+    "M": 8,
+    "R": 32,
+    "scratch_bytes": 16384,
+    "values_identical": true,
+    "indices_identical": true,
+    "vendor": {
+     "timing": "events",
+     "us_median": 27.68890380859375,
+     "us_min": 25.569894313812256,
+     "host_enqueue_us_median": 1.523899845778942,
+     "iters": 200,
+     "repeats": 5,
+     "copies": 1,
+     "host_bound": false
+    },
+    "torch_topk_bf16": {
+     "timing": "events",
+     "us_median": 106.65639877319336,
+     "us_min": 105.27859687805176,
+     "host_enqueue_us_median": 3.77005897462368,
+     "iters": 200,
+     "repeats": 5,
+     "copies": 1,
+     "host_bound": false
+    },
+    "torch_topk_f32": {
+     "timing": "events",
+     "us_median": 114.69963073730469,
+     "us_min": 113.64002227783203,
+     "host_enqueue_us_median": 3.783758729696274,
+     "iters": 200,
+     "repeats": 5,
+     "copies": 1,
+     "host_bound": false
+    },
+    "speedup_vendor_over_torch_topk_bf16": 3.8519545414466942
+   },
+   {
+    "N": 15520,
+    "M": 64,
+    "R": 32,
+    "scratch_bytes": 131072,
+    "values_identical": true,
+    "indices_identical": true,
+    "vendor": {
+     "timing": "events",
+     "us_median": 28.0737042427063,
+     "us_min": 27.97370433807373,
+     "host_enqueue_us_median": 1.5098555013537407,
+     "iters": 200,
+     "repeats": 5,
+     "copies": 1,
+     "host_bound": false
+    },
+    "torch_topk_bf16": {
+     "timing": "events",
+     "us_median": 113.86981964111328,
+     "us_min": 113.2026195526123,
+     "host_enqueue_us_median": 9.69612505286932,
+     "iters": 200,
+     "repeats": 5,
+     "copies": 1,
+     "host_bound": false
+    },
+    "torch_topk_f32": {
+     "timing": "events",
+     "us_median": 188.19290161132812,
+     "us_min": 187.97550201416016,
+     "host_enqueue_us_median": 12.519629672169685,
+     "iters": 200,
+     "repeats": 5,
+     "copies": 1,
+     "host_bound": false
+    },
+    "speedup_vendor_over_torch_topk_bf16": 4.056102417289563
+   },
+   {
+    "N": 124160,
+    "M": 1,
+    "R": 32,
+    "scratch_bytes": 15616,
+    "values_identical": true,
+    "indices_identical": true,
+    "vendor": {
+     "timing": "events",
+     "us_median": 48.3569860458374,
+     "us_min": 48.24357986450195,
+     "host_enqueue_us_median": 1.5188544057309628,
+     "iters": 200,
+     "repeats": 5,
+     "copies": 1,
+     "host_bound": false
+    },
+    "torch_topk_bf16": {
+     "timing": "events",
+     "us_median": 51.034793853759766,
+     "us_min": 50.88718891143799,
+     "host_enqueue_us_median": 13.253684155642986,
+     "iters": 200,
+     "repeats": 5,
+     "copies": 1,
+     "host_bound": false
+    },
+    "torch_topk_f32": {
+     "timing": "events",
+     "us_median": 120.26405334472656,
+     "us_min": 120.10664939880371,
+     "host_enqueue_us_median": 14.726086519658566,
+     "iters": 200,
+     "repeats": 5,
+     "copies": 1,
+     "host_bound": false
+    },
+    "speedup_vendor_over_torch_topk_bf16": 1.0553758210940625
+   },
+   {
+    "N": 124160,
+    "M": 8,
+    "R": 32,
+    "scratch_bytes": 124928,
+    "values_identical": true,
+    "indices_identical": true,
+    "vendor": {
+     "timing": "events",
+     "us_median": 48.950185775756836,
+     "us_min": 48.88578414916992,
+     "host_enqueue_us_median": 1.5179067850112915,
+     "iters": 200,
+     "repeats": 5,
+     "copies": 1,
+     "host_bound": false
+    },
+    "torch_topk_bf16": {
+     "timing": "events",
+     "us_median": 70.08766174316406,
+     "us_min": 69.50965881347656,
+     "host_enqueue_us_median": 9.655419271439314,
+     "iters": 200,
+     "repeats": 5,
+     "copies": 1,
+     "host_bound": false
+    },
+    "torch_topk_f32": {
+     "timing": "events",
+     "us_median": 104.7481918334961,
+     "us_min": 104.22818183898926,
+     "host_enqueue_us_median": 12.50582979992032,
+     "iters": 200,
+     "repeats": 5,
+     "copies": 1,
+     "host_bound": false
+    },
+    "speedup_vendor_over_torch_topk_bf16": 1.4318160520215188
+   },
+   {
+    "N": 124160,
+    "M": 64,
+    "R": 32,
+    "scratch_bytes": 999424,
+    "values_identical": true,
+    "indices_identical": true,
+    "vendor": {
+     "timing": "events",
+     "us_median": 108.40200424194336,
+     "us_min": 107.57240295410156,
+     "host_enqueue_us_median": 1.5160511247813702,
+     "iters": 200,
+     "repeats": 5,
+     "copies": 1,
+     "host_bound": false
+    },
+    "torch_topk_bf16": {
+     "timing": "events",
+     "us_median": 214.4331932067871,
+     "us_min": 214.16339874267578,
+     "host_enqueue_us_median": 9.642525110393763,
+     "iters": 200,
+     "repeats": 5,
+     "copies": 1,
+     "host_bound": false
+    },
+    "torch_topk_f32": {
+     "timing": "events",
+     "us_median": 308.31153869628906,
+     "us_min": 307.84873962402344,
+     "host_enqueue_us_median": 12.430530041456223,
+     "iters": 200,
+     "repeats": 5,
+     "copies": 1,
+     "host_bound": false
+    },
+    "speedup_vendor_over_torch_topk_bf16": 1.9781294147310398
+   }
+  ]
+ },
+ "stubs": {
+  "ar_oneshot_2rank_exact": {
+   "symbols": [
+    "r4d_ar_oneshot_2rank_exact",
+    "r4d_ar_ipc_alloc",
+    "r4d_ar_ipc_free",
+    "r4d_ar_ipc_enable_peer",
+    "r4d_ar_max_blocks"
+   ],
+   "signature": "void r4d_ar_oneshot_2rank_exact(long peer_scratch, long my_scratch, long peer_flags, long my_flags, long seq_ctrs, long slot_stride16, long inp, long out, long n_elem, long dtype, long stream, long nblocks, long nthreads, long drain, long acq, long stage)",
+   "needs": "both cards in ONE process (a thread per rank, hipDeviceEnablePeerAccess, raw peer pointers) or IPC handles from r4d_ar_ipc_alloc; scratch double-buffered by parity, per-block flags, seq_ctrs = 2 * r4d_ar_max_blocks() zeroed words; both ranks launch in lockstep; dtype 0/1/2 = bf16/fp16/fp32. Plugin-row tunable defaults: ar_oneshot_2rank_exact nblocks 0 (library rule), nthreads 1024, drain 3, acq 0; ar_oneshot_2rank_exact_lane nblocks 8, nthreads 256 (plugin-rows-rad13.txt). The plain entries THROW std::runtime_error on a HIP error, which aborts the process through ctypes: use the plugin rows, whose entry wraps every call (r4d_ar_entry.hip R4D_TRY -> RAD_E_DEVICE) and which need their init/fini hooks.",
+   "our_baseline": "scripts/bench/p2p_allreduce_decode_shape.py (RCCL dist.all_reduce, torchrun 2 procs, numel 1024..1M bf16)"
+  },
+  "logits_vocab": {
+   "plugin_row": "logits_gemm_vocab_iqr",
+   "symbols": [
+    "r4d_rad_logits_gemm_vocab",
+    "r4d_rad_logits_gemm_vocab_scratch",
+    "r4d_logits_gemm_bf16",
+    "r4d_logits_gemm_fp8"
+   ],
+   "needs": "the head stored as IQR trellis-coded width classes, produced by the vendor converter (rad-convert, not built here). Our checkpoint's lm_head is BF16 248320 x 5120, so the like-for-like vendor row is r4d_logits_gemm_bf16(a, w, c, M, K, N, a_ld, c_ld, stream): bf16 row-major weight, f32 output, K % 8 == 0 (prototype is in PROTOS). r4d_logits_gemm_fp8 wants rows of K codes + K/128 bf16 scales padded to 16 bytes (5200 bytes at K = 5120).",
+   "our_baseline": "the server's lm_head F.linear over the rank's vocabulary shard"
+  },
+  "gdn": {
+   "symbols": [
+    "r4d_gdn_conv_prep_w4_h128_bf16",
+    "r4d_gdn_conv_update_w4_h128_bf16",
+    "r4d_gdn_kkt_solve_k128_c64_bf16",
+    "r4d_gdn_chunk_scan_k128_v128_c64_bf16",
+    "r4d_gdn_recurrent_update_k128_v128_bf16_fp32state",
+    "r4d_gdn_dims"
+   ],
+   "signature": "int r4d_gdn_chunk_scan_k128_v128_c64_bf16(q, k, v, A, g, beta, h0, o, ht, cu, int N, int H, int Hg, int K, int V, int bt, float scale, int state_fp16, void* stream); int r4d_gdn_kkt_solve_k128_c64_bf16(k, beta, g, A, cu, int N, int T, int H, int Hg, int K, int bt, void* stream)",
+   "needs": "geometry is compiled in (key/value head dim 128, chunk 64, conv width 4), which Qwen3.8-27B matches (16 key heads, 48 value heads, conv kernel 4); returns 0, a negative for an uncompiled geometry, or a positive hipError_t. Operand layouts (packed sequences through cu, state dtype) must be read from r4d_gdn_args.h and the selftest's gdn cases before a harness is written.",
+   "our_baseline": "the DeltaNet chunk/recurrent kernels under sglang/kernels (prefill and decode state update)"
+  },
+  "attn_prefill_h256_gqa6": {
+   "symbols": [
+    "r4d_attn_prefill_h256_gqa6_fp8kv",
+    "r4d_attn_prefill_h256_gqa6_bf16kv"
+   ],
+   "signature": "int r4d_attn_prefill_h256_gqa6_fp8kv(const R4DArgs*, hipStream_t)",
+   "needs": "struct R4DArgs (r4d_args.h): q bf16, a PAGED KV pool (num_blocks, kv_heads, block 16, 2 * head_dim) in fp8 or bf16, an int32 block table, seqused_k, descales, scratch, cu_q for packed queries. SGLang's KV pool is not paged in 16-token blocks, so a bench must build the vendor pool from ours first.",
+   "our_baseline": "the extend-attention Triton kernel (patch 108 fp8 QK path)"
+  },
+  "gemm_mxfp4a8": {
+   "symbols": [
+    "r4d_gemm_mxfp4a8_nt_m64",
+    "r4d_gemm_mxfp4a8_tiled",
+    "r4d_mxfp4a8_tile_a",
+    "r4d_rad_gemm_mxfp4a8_decode",
+    "r4d_rad_layout_mxfp4"
+   ],
+   "signature": "void r4d_gemm_mxfp4a8_nt_m64(long a, long ascale, long wq, long ws, long wref, long c, int M, int K, int N, int WV, int SK, int MB, int NPW, int as_group, int as_rs, long stream, int lda, int ldws, int ldc)",
+   "needs": "the packed MXFP4 weight layout (group 32, E8M0 scales) from r4d_rad_layout_mxfp4 and its relayout hook; the decode band exists only as a plugin row; the void entries report nothing on failure.",
+   "our_baseline": "scripts/bench/test_mxfp4_w4a8_gemm.py and sglang/kernels/ops/gemm/mxfp4_w4a8_rdna4.py (patch 117)"
+  }
+ },
+ "assumptions_behind_the_reference_gates": [
+  "torch.cuda.current_stream().cuda_stream is a hipStream_t libr4d accepts (0 = default stream)",
+  "libr4d resolves libamdhip64.so.7 to the image torch already mapped (checked at start-up)",
+  "device pointers from tensor.data_ptr() are valid kernel arguments for libr4d launches",
+  "fp8a8 weight codes are in frag64 order (auto layout detection records which layout passed)",
+  "row pitches passed explicitly: bytes for E4M3 planes, elements for bf16 and f32 planes",
+  "the narrow tile's scratch does not need zeroing and its counters warm on the first launch",
+  "torch events bracket libr4d launches made on the same stream"
+ ]
+}

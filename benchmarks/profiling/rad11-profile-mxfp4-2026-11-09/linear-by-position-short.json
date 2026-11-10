@@ -1,0 +1,132 @@
+{
+ "schema_version": 1,
+ "trace_dir": "/data/tmp/profile-rad11-profile-mxfp4-2026-11-09/short",
+ "kernel": "_mxfp4_w4a8_gemv_kernel",
+ "layers": 64,
+ "traces": [
+  {
+   "trace": "1794269282.7677996-TP-0.trace.json.gz",
+   "steps": 31,
+   "full_steps": 30,
+   "launches_per_step_seen": [
+    243,
+    256
+   ],
+   "sum_of_medians_ms_per_step": 26.277,
+   "kinds": {
+    "gdn": {
+     "layers": 48,
+     "linears": {
+      "proj_in": {
+       "median_us": 86.7,
+       "min_us": 84.0,
+       "ms_per_step": 4.163
+      },
+      "proj_out": {
+       "median_us": 57.5,
+       "min_us": 47.4,
+       "ms_per_step": 2.759
+      },
+      "gate_up": {
+       "median_us": 171.6,
+       "min_us": 167.1,
+       "ms_per_step": 8.238
+      },
+      "down": {
+       "median_us": 111.8,
+       "min_us": 107.0,
+       "ms_per_step": 5.365
+      }
+     }
+    },
+    "attn": {
+     "layers": 16,
+     "linears": {
+      "proj_in": {
+       "median_us": 42.9,
+       "min_us": 41.2,
+       "ms_per_step": 0.686
+      },
+      "proj_out": {
+       "median_us": 22.3,
+       "min_us": 20.7,
+       "ms_per_step": 0.357
+      },
+      "gate_up": {
+       "median_us": 169.2,
+       "min_us": 165.9,
+       "ms_per_step": 2.707
+      },
+      "down": {
+       "median_us": 111.3,
+       "min_us": 107.6,
+       "ms_per_step": 1.781
+      }
+     }
+    }
+   }
+  },
+  {
+   "trace": "1794269282.7677996-TP-1.trace.json.gz",
+   "steps": 31,
+   "full_steps": 30,
+   "launches_per_step_seen": [
+    243,
+    256
+   ],
+   "sum_of_medians_ms_per_step": 26.425,
+   "kinds": {
+    "gdn": {
+     "layers": 48,
+     "linears": {
+      "proj_in": {
+       "median_us": 87.0,
+       "min_us": 84.6,
+       "ms_per_step": 4.178
+      },
+      "proj_out": {
+       "median_us": 57.6,
+       "min_us": 46.5,
+       "ms_per_step": 2.765
+      },
+      "gate_up": {
+       "median_us": 172.4,
+       "min_us": 167.6,
+       "ms_per_step": 8.274
+      },
+      "down": {
+       "median_us": 112.1,
+       "min_us": 107.5,
+       "ms_per_step": 5.379
+      }
+     }
+    },
+    "attn": {
+     "layers": 16,
+     "linears": {
+      "proj_in": {
+       "median_us": 43.0,
+       "min_us": 41.4,
+       "ms_per_step": 0.688
+      },
+      "proj_out": {
+       "median_us": 25.5,
+       "min_us": 20.8,
+       "ms_per_step": 0.408
+      },
+      "gate_up": {
+       "median_us": 170.6,
+       "min_us": 166.6,
+       "ms_per_step": 2.73
+      },
+      "down": {
+       "median_us": 111.6,
+       "min_us": 107.2,
+       "ms_per_step": 1.785
+      }
+     }
+    }
+   }
+  }
+ ]
+}

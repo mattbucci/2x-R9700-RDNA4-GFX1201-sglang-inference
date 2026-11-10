@@ -1,0 +1,983 @@
+{
+ "experiment": "RAD-13 libr4d kernel bench",
+ "timestamp": "2026-11-09T16:12:54-0800",
+ "lib": {
+  "path": "/data/vllm-radiance-src/radiance-build/radiance_home/kernels/libr4d.so",
+  "sha256": "1123ee6cdfeaa9e39436632f98b9dd8bcf5853ce3b949c7f69378f80dbba91c8",
+  "version": "0.5.0",
+  "build_target": "gfx1201",
+  "abi_version": 37
+ },
+ "torch": "2.11.0+rocm7.2",
+ "device": "AMD Radeon AI PRO R9700",
+ "hip_runtime_images": [
+  "/home/letsrtfm/miniforge3/envs/sglang-triton36-v0522/lib/python3.12/site-packages/torch/lib/libamdhip64.so"
+ ],
+ "vram_used_gb_at_start": {
+  "card0": 0.055797576904296875,
+  "card1": 0.055797576904296875,
+  "card2": 0.20057296752929688
+ },
+ "triton_error": null,
+ "args": {
+  "lib": "/data/vllm-radiance-src/radiance-build/radiance_home/kernels/libr4d.so",
+  "out": "/data/tmp/rad13-run/out/tiled-dev0.json",
+  "selfcheck": false,
+  "abi_table": null,
+  "abi_rows": null,
+  "list_stubs": false,
+  "families": [
+   "tiled"
+  ],
+  "device": 0,
+  "shapes": "qwen38",
+  "shape": null,
+  "iters": 200,
+  "tiled_iters": 10,
+  "repeats": 5,
+  "rotate_mb": 320,
+  "m16_m": [
+   8,
+   16,
+   64
+  ],
+  "tiled_m": [
+   4096,
+   8192
+  ],
+  "quant_m": [
+   1,
+   8,
+   64
+  ],
+  "quant_k": [
+   5120,
+   8704,
+   6144,
+   3072
+  ],
+  "hidden": 5120,
+  "inter": 8704,
+  "topk_n": [
+   15520,
+   124160
+  ],
+  "topk_m": [
+   1,
+   8,
+   64
+  ],
+  "topk_r": 32,
+  "rb": 0,
+  "eps": 1e-06,
+  "wadd": 1.0,
+  "timing": "events",
+  "graph_replays": 3,
+  "a8_layout": "auto",
+  "sglang_python": "/data/sgl-v0522/python",
+  "no_triton": false,
+  "allow_two_hip_runtimes": false,
+  "max_busy_vram_gb": 2.0,
+  "force_busy": false
+ },
+ "families": {
+  "tiled": [
+   {
+    "linear": "mlp.gate_up_proj",
+    "N": 17408,
+    "K": 5120,
+    "M": 4096,
+    "launches_per_decode_step": 64,
+    "weight_bytes": 89128960,
+    "copies": 4,
+    "layout_trials": {
+     "frag64": 0.0032934859052809844
+    },
+    "weight_layout": "frag64",
+    "vendor_accuracy": {
+     "finite": true,
+     "max_abs_err": 0.0004814267158508301,
+     "max_abs_ref": 0.14617542922496796,
+     "cosine": 0.9999986293629028,
+     "rel_max_err": 0.0032934859052809844,
+     "ulp_max": 25903,
+     "ulp_hist": {
+      "0": 0.9991992221159094,
+      "1": 0.0007494337418500115,
+      "2": 2.1766213809742648e-05,
+      ">2": 2.9577928430893843e-05
+     }
+    },
+    "vendor": {
+     "timing": "events",
+     "us_median": 3546.737289428711,
+     "us_min": 3373.656463623047,
+     "host_enqueue_us_median": 1.943996176123619,
+     "iters": 10,
+     "repeats": 5,
+     "copies": 4,
+     "host_bound": false,
+     "gbps": 25.1298454682998
+    },
+    "ours_accuracy": {
+     "finite": true,
+     "max_abs_err": 0.0004814267158508301,
+     "max_abs_ref": 0.14617542922496796,
+     "cosine": 0.9999986293629,
+     "rel_max_err": 0.0032934859052809844,
+     "ulp_max": 25896,
+     "ulp_hist": {
+      "0": 0.9991989416234633,
+      "1": 0.0007495880126953125,
+      "2": 2.1766213809742648e-05,
+      ">2": 2.970415003159467e-05
+     }
+    },
+    "vendor_vs_ours": {
+     "ulp_max": 79,
+     "bit_identical": false,
+     "frac_equal": 0.9999079283545999
+    },
+    "ours": {
+     "timing": "events",
+     "us_median": 5557.524490356445,
+     "us_min": 5494.591903686523,
+     "host_enqueue_us_median": 29.83701415359974,
+     "iters": 10,
+     "repeats": 5,
+     "copies": 4,
+     "host_bound": false,
+     "gbps": 16.037528967197318
+    },
+    "speedup_vendor_over_ours": 1.5669399893025686
+   },
+   {
+    "linear": "mlp.gate_up_proj",
+    "N": 17408,
+    "K": 5120,
+    "M": 8192,
+    "launches_per_decode_step": 64,
+    "weight_bytes": 89128960,
+    "copies": 4,
+    "layout_trials": {
+     "frag64": 0.0034631163667006174
+    },
+    "weight_layout": "frag64",
+    "vendor_accuracy": {
+     "finite": true,
+     "max_abs_err": 0.00048066675662994385,
+     "max_abs_ref": 0.13879601657390594,
+     "cosine": 0.9999986295974295,
+     "rel_max_err": 0.0034631163667006174,
+     "ulp_max": 26143,
+     "ulp_hist": {
+      "0": 0.9992067252888399,
+      "1": 0.0007425266153672162,
+      "2": 2.117016736198874e-05,
+      ">2": 2.9577928430893843e-05
+     }
+    },
+    "vendor": {
+     "timing": "events",
+     "us_median": 6918.937683105469,
+     "us_min": 6910.5255126953125,
+     "host_enqueue_us_median": 1.8389895558357239,
+     "iters": 10,
+     "repeats": 5,
+     "copies": 4,
+     "host_bound": false,
+     "gbps": 12.881885064181661
+    },
+    "ours_accuracy": {
+     "finite": true,
+     "max_abs_err": 0.00048066675662994385,
+     "max_abs_ref": 0.13879601657390594,
+     "cosine": 0.9999986295974295,
+     "rel_max_err": 0.0034631163667006174,
+     "ulp_max": 26146,
+     "ulp_hist": {
+      "0": 0.9992065780303058,
+      "1": 0.0007425476523006664,
+      "2": 2.1107056561638328e-05,
+      ">2": 2.9767260831945084e-05
+     }
+    },
+    "vendor_vs_ours": {
+     "ulp_max": 25061,
+     "bit_identical": false,
+     "frac_equal": 0.9999099829617668
+    },
+    "ours": {
+     "timing": "events",
+     "us_median": 10869.99282836914,
+     "us_min": 10866.239929199219,
+     "host_enqueue_us_median": 28.93209457397461,
+     "iters": 10,
+     "repeats": 5,
+     "copies": 4,
+     "host_bound": false,
+     "gbps": 8.199541748306038
+    },
+    "speedup_vendor_over_ours": 1.5710493902714695
+   },
+   {
+    "linear": "mlp.down_proj",
+    "N": 5120,
+    "K": 8704,
+    "M": 4096,
+    "launches_per_decode_step": 64,
+    "weight_bytes": 44564480,
+    "copies": 8,
+    "layout_trials": {
+     "frag64": 0.0028850093201630888
+    },
+    "weight_layout": "frag64",
+    "vendor_accuracy": {
+     "finite": true,
+     "max_abs_err": 0.0004885643720626831,
+     "max_abs_ref": 0.16934585571289062,
+     "cosine": 0.9999986199246038,
+     "rel_max_err": 0.0028850093201630888,
+     "ulp_max": 723,
+     "ulp_hist": {
+      "0": 0.9989917278289795,
+      "1": 0.0009437084197998046,
+      "2": 2.6464462280273438e-05,
+      ">2": 3.809928894042969e-05
+     }
+    },
+    "vendor": {
+     "timing": "events",
+     "us_median": 1904.5391082763672,
+     "us_min": 1891.263198852539,
+     "host_enqueue_us_median": 1.8279999494552612,
+     "iters": 10,
+     "repeats": 5,
+     "copies": 8,
+     "host_bound": false,
+     "gbps": 23.39908894826079
+    },
+    "ours_accuracy": {
+     "finite": true,
+     "max_abs_err": 0.0004885643720626831,
+     "max_abs_ref": 0.16934585571289062,
+     "cosine": 0.9999986199245969,
+     "rel_max_err": 0.0028850093201630888,
+     "ulp_max": 732,
+     "ulp_hist": {
+      "0": 0.9989900112152099,
+      "1": 0.0009446620941162109,
+      "2": 2.6655197143554687e-05,
+      ">2": 3.8671493530273435e-05
+     }
+    },
+    "vendor_vs_ours": {
+     "ulp_max": 126,
+     "bit_identical": false,
+     "frac_equal": 0.9998987197875977
+    },
+    "ours": {
+     "timing": "events",
+     "us_median": 2355.2087783813477,
+     "us_min": 2325.7568359375,
+     "host_enqueue_us_median": 29.14397045969963,
+     "iters": 10,
+     "repeats": 5,
+     "copies": 8,
+     "host_bound": false,
+     "gbps": 18.92166860494958
+    },
+    "speedup_vendor_over_ours": 1.2366292548924567
+   },
+   {
+    "linear": "mlp.down_proj",
+    "N": 5120,
+    "K": 8704,
+    "M": 8192,
+    "launches_per_decode_step": 64,
+    "weight_bytes": 44564480,
+    "copies": 8,
+    "layout_trials": {
+     "frag64": 0.0028105744821100677
+    },
+    "weight_layout": "frag64",
+    "vendor_accuracy": {
+     "finite": true,
+     "max_abs_err": 0.0004884600639343262,
+     "max_abs_ref": 0.17379367351531982,
+     "cosine": 0.9999986197507065,
+     "rel_max_err": 0.0028105744821100677,
+     "ulp_max": 26434,
+     "ulp_hist": {
+      "0": 0.9989735126495362,
+      "1": 0.0009567499160766602,
+      "2": 2.777576446533203e-05,
+      ">2": 4.1961669921875e-05
+     }
+    },
+    "vendor": {
+     "timing": "events",
+     "us_median": 3549.309539794922,
+     "us_min": 3540.6814575195312,
+     "host_enqueue_us_median": 1.853983849287033,
+     "iters": 10,
+     "repeats": 5,
+     "copies": 8,
+     "host_bound": false,
+     "gbps": 12.555816701908428
+    },
+    "ours_accuracy": {
+     "finite": true,
+     "max_abs_err": 0.0004884600639343262,
+     "max_abs_ref": 0.17379367351531982,
+     "cosine": 0.9999986197506968,
+     "rel_max_err": 0.0028105744821100677,
+     "ulp_max": 26416,
+     "ulp_hist": {
+      "0": 0.9989727735519409,
+      "1": 0.0009572982788085937,
+      "2": 2.8634071350097655e-05,
+      ">2": 4.129409790039062e-05
+     }
+    },
+    "vendor_vs_ours": {
+     "ulp_max": 24799,
+     "bit_identical": false,
+     "frac_equal": 0.9998951435089112
+    },
+    "ours": {
+     "timing": "events",
+     "us_median": 4496.629333496094,
+     "us_min": 4486.421203613281,
+     "host_enqueue_us_median": 28.721103444695473,
+     "iters": 10,
+     "repeats": 5,
+     "copies": 8,
+     "host_bound": false,
+     "gbps": 9.910641214749955
+    },
+    "speedup_vendor_over_ours": 1.2669025575481105
+   },
+   {
+    "linear": "linear_attn.in_proj_qkvz",
+    "N": 16384,
+    "K": 5120,
+    "M": 4096,
+    "launches_per_decode_step": 48,
+    "weight_bytes": 83886080,
+    "copies": 4,
+    "layout_trials": {
+     "frag64": 0.00336303519513757
+    },
+    "weight_layout": "frag64",
+    "vendor_accuracy": {
+     "finite": true,
+     "max_abs_err": 0.00047759711742401123,
+     "max_abs_ref": 0.14201371371746063,
+     "cosine": 0.999998629107503,
+     "rel_max_err": 0.00336303519513757,
+     "ulp_max": 26213,
+     "ulp_hist": {
+      "0": 0.9992089122533798,
+      "1": 0.0007407516241073608,
+      "2": 2.1010637283325195e-05,
+      ">2": 2.9325485229492188e-05
+     }
+    },
+    "vendor": {
+     "timing": "events",
+     "us_median": 3385.4930877685547,
+     "us_min": 3359.3326568603516,
+     "host_enqueue_us_median": 1.8919818103313446,
+     "iters": 10,
+     "repeats": 5,
+     "copies": 4,
+     "host_bound": false,
+     "gbps": 24.778098145606016
+    },
+    "ours_accuracy": {
+     "finite": true,
+     "max_abs_err": 0.00047759711742401123,
+     "max_abs_ref": 0.14201371371746063,
+     "cosine": 0.9999986291075011,
+     "rel_max_err": 0.00336303519513757,
+     "ulp_max": 26214,
+     "ulp_hist": {
+      "0": 0.999208390712738,
+      "1": 0.000741317868232727,
+      "2": 2.1085143089294434e-05,
+      ">2": 2.9206275939941406e-05
+     }
+    },
+    "vendor_vs_ours": {
+     "ulp_max": 24660,
+     "bit_identical": false,
+     "frac_equal": 0.9999085366725922
+    },
+    "ours": {
+     "timing": "events",
+     "us_median": 5290.680313110352,
+     "us_min": 5288.196563720703,
+     "host_enqueue_us_median": 29.245996847748756,
+     "iters": 10,
+     "repeats": 5,
+     "copies": 4,
+     "host_bound": false,
+     "gbps": 15.855442974342933
+    },
+    "speedup_vendor_over_ours": 1.5627502924832564
+   },
+   {
+    "linear": "linear_attn.in_proj_qkvz",
+    "N": 16384,
+    "K": 5120,
+    "M": 8192,
+    "launches_per_decode_step": 48,
+    "weight_bytes": 83886080,
+    "copies": 4,
+    "layout_trials": {
+     "frag64": 0.0030546833025550924
+    },
+    "weight_layout": "frag64",
+    "vendor_accuracy": {
+     "finite": true,
+     "max_abs_err": 0.0004550367593765259,
+     "max_abs_ref": 0.14896364510059357,
+     "cosine": 0.9999986296134076,
+     "rel_max_err": 0.0030546833025550924,
+     "ulp_max": 25939,
+     "ulp_hist": {
+      "0": 0.9992001503705978,
+      "1": 0.0007476061582565308,
+      "2": 2.1822750568389893e-05,
+      ">2": 3.042072057723999e-05
+     }
+    },
+    "vendor": {
+     "timing": "events",
+     "us_median": 6583.714294433594,
+     "us_min": 6580.149841308594,
+     "host_enqueue_us_median": 1.8689781427383423,
+     "iters": 10,
+     "repeats": 5,
+     "copies": 4,
+     "host_bound": false,
+     "gbps": 12.741452050998644
+    },
+    "ours_accuracy": {
+     "finite": true,
+     "max_abs_err": 0.0004550367593765259,
+     "max_abs_ref": 0.14896364510059357,
+     "cosine": 0.9999986296134064,
+     "rel_max_err": 0.0030546833025550924,
+     "ulp_max": 25920,
+     "ulp_hist": {
+      "0": 0.9992003589868546,
+      "1": 0.000747285783290863,
+      "2": 2.1569430828094482e-05,
+      ">2": 3.078579902648926e-05
+     }
+    },
+    "vendor_vs_ours": {
+     "ulp_max": 25120,
+     "bit_identical": false,
+     "frac_equal": 0.9999064728617668
+    },
+    "ours": {
+     "timing": "events",
+     "us_median": 10358.734130859375,
+     "us_min": 10355.497741699219,
+     "host_enqueue_us_median": 28.89009192585945,
+     "iters": 10,
+     "repeats": 5,
+     "copies": 4,
+     "host_bound": false,
+     "gbps": 8.098101461075021
+    },
+    "speedup_vendor_over_ours": 1.5733875541375617
+   },
+   {
+    "linear": "linear_attn.out_proj",
+    "N": 5120,
+    "K": 6144,
+    "M": 4096,
+    "launches_per_decode_step": 48,
+    "weight_bytes": 31457280,
+    "copies": 11,
+    "layout_trials": {
+     "frag64": 0.0033467303668146967
+    },
+    "weight_layout": "frag64",
+    "vendor_accuracy": {
+     "finite": true,
+     "max_abs_err": 0.0004800260066986084,
+     "max_abs_ref": 0.14343133568763733,
+     "cosine": 0.9999986281902292,
+     "rel_max_err": 0.0033467303668146967,
+     "ulp_max": 25443,
+     "ulp_hist": {
+      "0": 0.9991327285766601,
+      "1": 0.0008125782012939453,
+      "2": 2.3317337036132812e-05,
+      ">2": 3.1375885009765624e-05
+     }
+    },
+    "vendor": {
+     "timing": "events",
+     "us_median": 1425.5337715148926,
+     "us_min": 1372.6296424865723,
+     "host_enqueue_us_median": 1.9419938325881958,
+     "iters": 10,
+     "repeats": 5,
+     "copies": 11,
+     "host_bound": false,
+     "gbps": 22.067018423962583
+    },
+    "ours_accuracy": {
+     "finite": true,
+     "max_abs_err": 0.0004800260066986084,
+     "max_abs_ref": 0.14343133568763733,
+     "cosine": 0.9999986281902221,
+     "rel_max_err": 0.0033467303668146967,
+     "ulp_max": 25321,
+     "ulp_hist": {
+      "0": 0.9991333484649658,
+      "1": 0.0008122920989990234,
+      "2": 2.269744873046875e-05,
+      ">2": 3.16619873046875e-05
+     }
+    },
+    "vendor_vs_ours": {
+     "ulp_max": 122,
+     "bit_identical": false,
+     "frac_equal": 0.99990816116333
+    },
+    "ours": {
+     "timing": "events",
+     "us_median": 1748.7791061401367,
+     "us_min": 1650.1628875732422,
+     "host_enqueue_us_median": 28.8231298327446,
+     "iters": 10,
+     "repeats": 5,
+     "copies": 11,
+     "host_bound": false,
+     "gbps": 17.988138061319678
+    },
+    "speedup_vendor_over_ours": 1.2267538946353662
+   },
+   {
+    "linear": "linear_attn.out_proj",
+    "N": 5120,
+    "K": 6144,
+    "M": 8192,
+    "launches_per_decode_step": 48,
+    "weight_bytes": 31457280,
+    "copies": 11,
+    "layout_trials": {
+     "frag64": 0.0031989997020596956
+    },
+    "weight_layout": "frag64",
+    "vendor_accuracy": {
+     "finite": true,
+     "max_abs_err": 0.00048798322677612305,
+     "max_abs_ref": 0.15254244208335876,
+     "cosine": 0.9999986278325304,
+     "rel_max_err": 0.0031989997020596956,
+     "ulp_max": 26015,
+     "ulp_hist": {
+      "0": 0.9991319417953491,
+      "1": 0.0008087158203125,
+      "2": 2.4652481079101564e-05,
+      ">2": 3.4689903259277344e-05
+     }
+    },
+    "vendor": {
+     "timing": "events",
+     "us_median": 2580.974578857422,
+     "us_min": 2576.1905670166016,
+     "host_enqueue_us_median": 1.8700025975704193,
+     "iters": 10,
+     "repeats": 5,
+     "copies": 11,
+     "host_bound": false,
+     "gbps": 12.18814019234777
+    },
+    "ours_accuracy": {
+     "finite": true,
+     "max_abs_err": 0.00048798322677612305,
+     "max_abs_ref": 0.15254244208335876,
+     "cosine": 0.9999986278325332,
+     "rel_max_err": 0.0031989997020596956,
+     "ulp_max": 26035,
+     "ulp_hist": {
+      "0": 0.9991321086883544,
+      "1": 0.0008085250854492187,
+      "2": 2.4199485778808594e-05,
+      ">2": 3.516674041748047e-05
+     }
+    },
+    "vendor_vs_ours": {
+     "ulp_max": 24436,
+     "bit_identical": false,
+     "frac_equal": 0.9999040603637696
+    },
+    "ours": {
+     "timing": "events",
+     "us_median": 3272.417449951172,
+     "us_min": 3268.833541870117,
+     "host_enqueue_us_median": 28.944993391633034,
+     "iters": 10,
+     "repeats": 5,
+     "copies": 11,
+     "host_bound": false,
+     "gbps": 9.612856697261952
+    },
+    "speedup_vendor_over_ours": 1.2678999153102262
+   },
+   {
+    "linear": "self_attn.qkv_proj",
+    "N": 7168,
+    "K": 5120,
+    "M": 4096,
+    "launches_per_decode_step": 16,
+    "weight_bytes": 36700160,
+    "copies": 10,
+    "layout_trials": {
+     "frag64": 0.0032242336880485014
+    },
+    "weight_layout": "frag64",
+    "vendor_accuracy": {
+     "finite": true,
+     "max_abs_err": 0.0004532933235168457,
+     "max_abs_ref": 0.14058947563171387,
+     "cosine": 0.9999986295430945,
+     "rel_max_err": 0.0032242336880485014,
+     "ulp_max": 25751,
+     "ulp_hist": {
+      "0": 0.9992027282714844,
+      "1": 0.0007457392556326729,
+      "2": 2.125331333705357e-05,
+      ">2": 3.0279159545898438e-05
+     }
+    },
+    "vendor": {
+     "timing": "events",
+     "us_median": 1610.6147766113281,
+     "us_min": 1562.978458404541,
+     "host_enqueue_us_median": 1.8639955669641495,
+     "iters": 10,
+     "repeats": 5,
+     "copies": 10,
+     "host_bound": false,
+     "gbps": 22.78642946342249
+    },
+    "ours_accuracy": {
+     "finite": true,
+     "max_abs_err": 0.0004532933235168457,
+     "max_abs_ref": 0.14058947563171387,
+     "cosine": 0.9999986295430939,
+     "rel_max_err": 0.0032242336880485014,
+     "ulp_max": 25751,
+     "ulp_hist": {
+      "0": 0.9992014339991978,
+      "1": 0.0007474422454833984,
+      "2": 2.125331333705357e-05,
+      ">2": 2.9870441981724332e-05
+     }
+    },
+    "vendor_vs_ours": {
+     "ulp_max": 25008,
+     "bit_identical": false,
+     "frac_equal": 0.9999059268406459
+    },
+    "ours": {
+     "timing": "events",
+     "us_median": 2011.7284774780273,
+     "us_min": 1963.0561828613281,
+     "host_enqueue_us_median": 28.94001081585884,
+     "iters": 10,
+     "repeats": 5,
+     "copies": 10,
+     "host_bound": false,
+     "gbps": 18.243098117300896
+    },
+    "speedup_vendor_over_ours": 1.2490438475366699
+   },
+   {
+    "linear": "self_attn.qkv_proj",
+    "N": 7168,
+    "K": 5120,
+    "M": 8192,
+    "launches_per_decode_step": 16,
+    "weight_bytes": 36700160,
+    "copies": 10,
+    "layout_trials": {
+     "frag64": 0.003311329681648983
+    },
+    "weight_layout": "frag64",
+    "vendor_accuracy": {
+     "finite": true,
+     "max_abs_err": 0.0004828125238418579,
+     "max_abs_ref": 0.1458062380552292,
+     "cosine": 0.9999986295509427,
+     "rel_max_err": 0.003311329681648983,
+     "ulp_max": 26080,
+     "ulp_hist": {
+      "0": 0.9992089101246425,
+      "1": 0.000740987913949149,
+      "2": 2.1270343235560824e-05,
+      ">2": 2.883161817278181e-05
+     }
+    },
+    "vendor": {
+     "timing": "events",
+     "us_median": 3020.728874206543,
+     "us_min": 2984.6126556396484,
+     "host_enqueue_us_median": 1.8360093235969543,
+     "iters": 10,
+     "repeats": 5,
+     "copies": 10,
+     "host_bound": false,
+     "gbps": 12.149438605157854
+    },
+    "ours_accuracy": {
+     "finite": true,
+     "max_abs_err": 0.0004828125238418579,
+     "max_abs_ref": 0.1458062380552292,
+     "cosine": 0.9999986295509395,
+     "rel_max_err": 0.003311329681648983,
+     "ulp_max": 26104,
+     "ulp_hist": {
+      "0": 0.9992090633937291,
+      "1": 0.0007412944521222796,
+      "2": 2.086162567138672e-05,
+      ">2": 2.8780528477260043e-05
+     }
+    },
+    "vendor_vs_ours": {
+     "ulp_max": 24799,
+     "bit_identical": false,
+     "frac_equal": 0.9999091795512608
+    },
+    "ours": {
+     "timing": "events",
+     "us_median": 3802.9918670654297,
+     "us_min": 3801.7921447753906,
+     "host_enqueue_us_median": 28.83709967136383,
+     "iters": 10,
+     "repeats": 5,
+     "copies": 10,
+     "host_bound": false,
+     "gbps": 9.650338807671341
+    },
+    "speedup_vendor_over_ours": 1.2589649801206884
+   },
+   {
+    "linear": "self_attn.o_proj",
+    "N": 5120,
+    "K": 3072,
+    "M": 4096,
+    "launches_per_decode_step": 16,
+    "weight_bytes": 15728640,
+    "copies": 22,
+    "layout_trials": {
+     "frag64": 0.002151811732392582
+    },
+    "weight_layout": "frag64",
+    "vendor_accuracy": {
+     "finite": true,
+     "max_abs_err": 0.00024422258138656616,
+     "max_abs_ref": 0.11349625885486603,
+     "cosine": 0.9999986209078395,
+     "rel_max_err": 0.002151811732392582,
+     "ulp_max": 24701,
+     "ulp_hist": {
+      "0": 0.9993701457977295,
+      "1": 0.0005896091461181641,
+      "2": 1.6641616821289062e-05,
+      ">2": 2.3603439331054688e-05
+     }
+    },
+    "vendor": {
+     "timing": "events",
+     "us_median": 617.8306102752686,
+     "us_min": 597.4064826965332,
+     "host_enqueue_us_median": 1.8230173736810684,
+     "iters": 10,
+     "repeats": 5,
+     "copies": 22,
+     "host_bound": false,
+     "gbps": 25.457851615659276
+    },
+    "ours_accuracy": {
+     "finite": true,
+     "max_abs_err": 0.00024422258138656616,
+     "max_abs_ref": 0.11349625885486603,
+     "cosine": 0.9999986209078343,
+     "rel_max_err": 0.002151811732392582,
+     "ulp_max": 24534,
+     "ulp_hist": {
+      "0": 0.9993727207183838,
+      "1": 0.0005869865417480469,
+      "2": 1.678466796875e-05,
+      ">2": 2.350807189941406e-05
+     }
+    },
+    "vendor_vs_ours": {
+     "ulp_max": 167,
+     "bit_identical": false,
+     "frac_equal": 0.9999165058135986
+    },
+    "ours": {
+     "timing": "events",
+     "us_median": 817.1875,
+     "us_min": 773.8792896270752,
+     "host_enqueue_us_median": 28.960034251213074,
+     "iters": 10,
+     "repeats": 5,
+     "copies": 22,
+     "host_bound": false,
+     "gbps": 19.24728413001912
+    },
+    "speedup_vendor_over_ours": 1.3226724063346584
+   },
+   {
+    "linear": "self_attn.o_proj",
+    "N": 5120,
+    "K": 3072,
+    "M": 8192,
+    "launches_per_decode_step": 16,
+    "weight_bytes": 15728640,
+    "copies": 22,
+    "layout_trials": {
+     "frag64": 0.0021318492254608352
+    },
+    "weight_layout": "frag64",
+    "vendor_accuracy": {
+     "finite": true,
+     "max_abs_err": 0.00024433434009552,
+     "max_abs_ref": 0.11461145430803299,
+     "cosine": 0.9999986208432675,
+     "rel_max_err": 0.0021318492254608352,
+     "ulp_max": 25548,
+     "ulp_hist": {
+      "0": 0.9993725061416626,
+      "1": 0.0005873203277587891,
+      "2": 1.6808509826660156e-05,
+      ">2": 2.3365020751953125e-05
+     }
+    },
+    "vendor": {
+     "timing": "events",
+     "us_median": 1420.4541206359863,
+     "us_min": 1372.5818634033203,
+     "host_enqueue_us_median": 1.8499791622161865,
+     "iters": 10,
+     "repeats": 5,
+     "copies": 22,
+     "host_bound": false,
+     "gbps": 11.07296587161699
+    },
+    "ours_accuracy": {
+     "finite": true,
+     "max_abs_err": 0.00024433434009552,
+     "max_abs_ref": 0.11461145430803299,
+     "cosine": 0.9999986208432685,
+     "rel_max_err": 0.0021318492254608352,
+     "ulp_max": 25508,
+     "ulp_hist": {
+      "0": 0.9993718862533569,
+      "1": 0.0005880355834960938,
+      "2": 1.7118453979492187e-05,
+      ">2": 2.2959709167480468e-05
+     }
+    },
+    "vendor_vs_ours": {
+     "ulp_max": 89,
+     "bit_identical": false,
+     "frac_equal": 0.9999200105667114
+    },
+    "ours": {
+     "timing": "events",
+     "us_median": 1757.3116302490234,
+     "us_min": 1738.7556076049805,
+     "host_enqueue_us_median": 29.32506613433361,
+     "iters": 10,
+     "repeats": 5,
+     "copies": 22,
+     "host_bound": false,
+     "gbps": 8.950398853145439
+    },
+    "speedup_vendor_over_ours": 1.2371477576918952
+   }
+  ]
+ },
+ "stubs": {
+  "ar_oneshot_2rank_exact": {
+   "symbols": [
+    "r4d_ar_oneshot_2rank_exact",
+    "r4d_ar_ipc_alloc",
+    "r4d_ar_ipc_free",
+    "r4d_ar_ipc_enable_peer",
+    "r4d_ar_max_blocks"
+   ],
+   "signature": "void r4d_ar_oneshot_2rank_exact(long peer_scratch, long my_scratch, long peer_flags, long my_flags, long seq_ctrs, long slot_stride16, long inp, long out, long n_elem, long dtype, long stream, long nblocks, long nthreads, long drain, long acq, long stage)",
+   "needs": "both cards in ONE process (a thread per rank, hipDeviceEnablePeerAccess, raw peer pointers) or IPC handles from r4d_ar_ipc_alloc; scratch double-buffered by parity, per-block flags, seq_ctrs = 2 * r4d_ar_max_blocks() zeroed words; both ranks launch in lockstep; dtype 0/1/2 = bf16/fp16/fp32. Plugin-row tunable defaults: ar_oneshot_2rank_exact nblocks 0 (library rule), nthreads 1024, drain 3, acq 0; ar_oneshot_2rank_exact_lane nblocks 8, nthreads 256 (plugin-rows-rad13.txt). The plain entries THROW std::runtime_error on a HIP error, which aborts the process through ctypes: use the plugin rows, whose entry wraps every call (r4d_ar_entry.hip R4D_TRY -> RAD_E_DEVICE) and which need their init/fini hooks.",
+   "our_baseline": "scripts/bench/p2p_allreduce_decode_shape.py (RCCL dist.all_reduce, torchrun 2 procs, numel 1024..1M bf16)"
+  },
+  "logits_vocab": {
+   "plugin_row": "logits_gemm_vocab_iqr",
+   "symbols": [
+    "r4d_rad_logits_gemm_vocab",
+    "r4d_rad_logits_gemm_vocab_scratch",
+    "r4d_logits_gemm_bf16",
+    "r4d_logits_gemm_fp8"
+   ],
+   "needs": "the head stored as IQR trellis-coded width classes, produced by the vendor converter (rad-convert, not built here). Our checkpoint's lm_head is BF16 248320 x 5120, so the like-for-like vendor row is r4d_logits_gemm_bf16(a, w, c, M, K, N, a_ld, c_ld, stream): bf16 row-major weight, f32 output, K % 8 == 0 (prototype is in PROTOS). r4d_logits_gemm_fp8 wants rows of K codes + K/128 bf16 scales padded to 16 bytes (5200 bytes at K = 5120).",
+   "our_baseline": "the server's lm_head F.linear over the rank's vocabulary shard"
+  },
+  "gdn": {
+   "symbols": [
+    "r4d_gdn_conv_prep_w4_h128_bf16",
+    "r4d_gdn_conv_update_w4_h128_bf16",
+    "r4d_gdn_kkt_solve_k128_c64_bf16",
+    "r4d_gdn_chunk_scan_k128_v128_c64_bf16",
+    "r4d_gdn_recurrent_update_k128_v128_bf16_fp32state",
+    "r4d_gdn_dims"
+   ],
+   "signature": "int r4d_gdn_chunk_scan_k128_v128_c64_bf16(q, k, v, A, g, beta, h0, o, ht, cu, int N, int H, int Hg, int K, int V, int bt, float scale, int state_fp16, void* stream); int r4d_gdn_kkt_solve_k128_c64_bf16(k, beta, g, A, cu, int N, int T, int H, int Hg, int K, int bt, void* stream)",
+   "needs": "geometry is compiled in (key/value head dim 128, chunk 64, conv width 4), which Qwen3.8-27B matches (16 key heads, 48 value heads, conv kernel 4); returns 0, a negative for an uncompiled geometry, or a positive hipError_t. Operand layouts (packed sequences through cu, state dtype) must be read from r4d_gdn_args.h and the selftest's gdn cases before a harness is written.",
+   "our_baseline": "the DeltaNet chunk/recurrent kernels under sglang/kernels (prefill and decode state update)"
+  },
+  "attn_prefill_h256_gqa6": {
+   "symbols": [
+    "r4d_attn_prefill_h256_gqa6_fp8kv",
+    "r4d_attn_prefill_h256_gqa6_bf16kv"
+   ],
+   "signature": "int r4d_attn_prefill_h256_gqa6_fp8kv(const R4DArgs*, hipStream_t)",
+   "needs": "struct R4DArgs (r4d_args.h): q bf16, a PAGED KV pool (num_blocks, kv_heads, block 16, 2 * head_dim) in fp8 or bf16, an int32 block table, seqused_k, descales, scratch, cu_q for packed queries. SGLang's KV pool is not paged in 16-token blocks, so a bench must build the vendor pool from ours first.",
+   "our_baseline": "the extend-attention Triton kernel (patch 108 fp8 QK path)"
+  },
+  "gemm_mxfp4a8": {
+   "symbols": [
+    "r4d_gemm_mxfp4a8_nt_m64",
+    "r4d_gemm_mxfp4a8_tiled",
+    "r4d_mxfp4a8_tile_a",
+    "r4d_rad_gemm_mxfp4a8_decode",
+    "r4d_rad_layout_mxfp4"
+   ],
+   "signature": "void r4d_gemm_mxfp4a8_nt_m64(long a, long ascale, long wq, long ws, long wref, long c, int M, int K, int N, int WV, int SK, int MB, int NPW, int as_group, int as_rs, long stream, int lda, int ldws, int ldc)",
+   "needs": "the packed MXFP4 weight layout (group 32, E8M0 scales) from r4d_rad_layout_mxfp4 and its relayout hook; the decode band exists only as a plugin row; the void entries report nothing on failure.",
+   "our_baseline": "scripts/bench/test_mxfp4_w4a8_gemm.py and sglang/kernels/ops/gemm/mxfp4_w4a8_rdna4.py (patch 117)"
+  }
+ },
+ "assumptions_behind_the_reference_gates": [
+  "torch.cuda.current_stream().cuda_stream is a hipStream_t libr4d accepts (0 = default stream)",
+  "libr4d resolves libamdhip64.so.7 to the image torch already mapped (checked at start-up)",
+  "device pointers from tensor.data_ptr() are valid kernel arguments for libr4d launches",
+  "fp8a8 weight codes are in frag64 order (auto layout detection records which layout passed)",
+  "row pitches passed explicitly: bytes for E4M3 planes, elements for bf16 and f32 planes",
+  "the narrow tile's scratch does not need zeroing and its counters warm on the first launch",
+  "torch events bracket libr4d launches made on the same stream"
+ ]
+}

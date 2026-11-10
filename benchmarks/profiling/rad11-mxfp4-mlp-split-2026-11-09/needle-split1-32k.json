@@ -1,0 +1,47 @@
+{
+ "tag": "rad11c-split1-natural-greedy",
+ "timestamp": "2026-11-09 16:42",
+ "model": "/data/models/Qwen3.8-27B-Quark-AWQ-MXFP4",
+ "port": 23334,
+ "haystack": "benchmarks/quality/haystack-platypus.txt",
+ "chars_per_token": 3.27,
+ "temperature": 0.0,
+ "flush": true,
+ "max_tokens": 256,
+ "results": [
+  {
+   "found": true,
+   "actual_prompt_tokens": 33904,
+   "completion_tokens": 199,
+   "finish_reason": "stop",
+   "seconds": 51.7,
+   "content_tail": "\n\nBANANA42",
+   "reasoning_tail": "",
+   "context": 32768,
+   "depth": 0.1
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 33904,
+   "completion_tokens": 56,
+   "finish_reason": "stop",
+   "seconds": 46.5,
+   "content_tail": "\n\nBANANA42",
+   "reasoning_tail": "",
+   "context": 32768,
+   "depth": 0.5
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 33904,
+   "completion_tokens": 112,
+   "finish_reason": "stop",
+   "seconds": 48.5,
+   "content_tail": "\n\nBANANA42",
+   "reasoning_tail": "",
+   "context": 32768,
+   "depth": 0.9
+  }
+ ],
+ "score": 1.0
+}

@@ -1,6 +1,6 @@
 # SGLang v0.5.22 RDNA4 patches
 
-This directory contains the **87 active numeric patches** applied to pristine SGLang v0.5.22 for the
+This directory contains the **88 active numeric patches** applied to pristine SGLang v0.5.22 for the
 2× Radeon AI PRO R9700 serving stack. The default tree is `/data/sgl-v0522`; the default conda environment
 is `sglang-triton36-v0522`.
 
@@ -205,12 +205,13 @@ can be proposed upstream. `Partial` requires a fresh comparison with upstream be
 | 116 | `fused-moe-tuner-flint-architecture` | Carry | Adds `FlintForCausalLM` to the fused-MoE tuner’s Qwen3Moe-layout architecture list (E=256, moe_intermediate 512, top-6 from the compressed-tensors checkpoint) and repoints its `fp8_dtype` import at `sglang.kernels.ops` (the module moved in v0.5.18; upstream’s benchmark script still imports the old path). |
 | 117 | `rdna4-mxfp4-w4a8-triton-gemm` | Candidate | Serves Quark MXFP4 checkpoints on gfx1201 without aiter (also lets the Quark scheme own Qwen3.5 DeltaNet `in_proj_ba`, which AMD’s export quantizes, and makes the merged-column loader’s shape assertion name the tensor): a Triton GEMM/GEMV over the packed e2m1 + e8m0 group-32 weight layout with per-token fp8 activations (decode-shaped GEMV for M ≤ 2, WMMA tiles above), wired into `QuarkW4A4MXFP4` where the aiter ops are absent; N < 256 linears dequantize to bf16 at load. Kernel-level: 1.3× the block-FP8 GEMM at M=1 on the large shapes, parity on the rest, slower from M ≥ 3 (receipt `benchmarks/profiling/mxfp4-w4a8-kernel-2026-11-09.json`). |
 | 118 | `r9700-flint-fp8-moe-config` | Candidate | Tuned fused-MoE Triton config for Flint's expert shapes (E=256, N=256 per rank, fp8_w8a8 per-channel) on R9700, from the stock tuner over a 576-config RDNA4 search space at 13 batch sizes; the gate-up GEMM only (the down GEMM keeps the default until the separate tuner runs on captured router outputs). Serving: decode +1.2–1.5 % at 14 tokens to 197K on both tuned arms of a tuned→default→tuned triple, prefill unchanged, text capabilities 3/3. |
+| 120 | `rdna4-quark-mxfp4-tp-split-mlp` | Candidate | Serves the Qwen3.5/3.8 dense MLP TP-split for Quark (MXFP4) checkpoints on HIP. `_should_replicate_deltanet_for_tp` kept the split layout only for quantisations it recognises as FP8, so the `quark` scheme replicated the MLP: each rank streamed the whole 34816 × 5120 and 5120 × 17408 linears every decode step, halved the result, and the stage all-reduce added two identical halves. `SGLANG_RDNA4_REPLICATE_MLP=1` restores the replicated layout; the layout is logged at boot (`[RDNA4] dense MLP: TP-split over 2 ranks`). Same-session A/B on `amd/Qwen3.8-27B-Quark-AWQ-MXFP4` without speculation, split → replicated → split: decode 29.92 / 29.56 / 28.04 / 25.22 tok/s at 24 / 7.3K / 58K / 197K input tokens against 23.22 / 22.83 / 21.89 / 20.23 (+25–30 %, second split arm within 0.2 %), cold prefill 798 / 725 against 544 / 510 tok/s, token pool 953,836 against 667,116, weights per rank 10.55 against 14.92 GB; capabilities 4/4, greedy needle 4/4 to 137K tokens; greedy text is not byte-identical between layouts (2 of 6 probes match to the token). Receipts: `benchmarks/profiling/rad11-mxfp4-mlp-split-2026-11-09/`. AWQ and unquantised checkpoints keep the replicated MLP. |
 
 ## Build stack
 
 | Component | Version |
 |---|---|
-| SGLang | v0.5.22 plus this 87-patch series |
+| SGLang | v0.5.22 plus this 88-patch series |
 | transformers | 5.19.0 |
 | Triton | 3.6.0 |
 | PyTorch | 2.11.0+rocm7.2 |

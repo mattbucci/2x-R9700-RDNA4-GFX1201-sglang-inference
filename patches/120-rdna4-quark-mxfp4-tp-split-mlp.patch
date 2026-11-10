@@ -1,0 +1,34 @@
+diff --git a/python/sglang/srt/models/qwen3_5.py b/python/sglang/srt/models/qwen3_5.py
+index 683da3f..97f8763 100644
+--- a/python/sglang/srt/models/qwen3_5.py
++++ b/python/sglang/srt/models/qwen3_5.py
+@@ -396,6 +396,16 @@ def _should_replicate_deltanet_for_tp(
+     # memory and OOMs. AWQ/int4 compressed-tensors still replicate.
+     if name == "compressed_tensors" and _is_compressed_tensors_fp8(quant_config):
+         return False
++    # RDNA4: packed Quark weights run the Triton W4A8 kernels, which stream the
++    # whole weight every decode step. A replicated MLP doubles the bytes each
++    # rank reads while the stage boundary still sums the halves, so split it;
++    # SGLANG_RDNA4_REPLICATE_MLP=1 keeps the upstream layout.
++    if (
++        name == "quark"
++        and _is_hip
++        and not get_bool_env_var("SGLANG_RDNA4_REPLICATE_MLP")
++    ):
++        return False
+     return True
+ 
+ 
+@@ -1243,6 +1253,12 @@ class Qwen3_5LinearDecoderLayer(nn.Module):
+                 # forward rescales it so the boundary's sum restores it.
+                 parallel_group="replicated" if self.replicate_mlp else "tp",
+             )
++            if layer_id == 0 and self.real_tp_size > 1:
++                logger.info(
++                    "[RDNA4] dense MLP: %s over %d ranks",
++                    "replicated" if self.replicate_mlp else "TP-split",
++                    self.real_tp_size,
++                )
+             _maybe_enable_silu_fp4_quant_fusion(self.mlp)
+         else:
+             raise ValueError(f"Invalid model type: {config.model_type}")

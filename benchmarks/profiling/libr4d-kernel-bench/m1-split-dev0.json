@@ -1,0 +1,701 @@
+{
+ "experiment": "RAD-13 libr4d kernel bench",
+ "timestamp": "2026-11-09T16:12:23-0800",
+ "lib": {
+  "path": "/data/vllm-radiance-src/radiance-build/radiance_home/kernels/libr4d.so",
+  "sha256": "1123ee6cdfeaa9e39436632f98b9dd8bcf5853ce3b949c7f69378f80dbba91c8",
+  "version": "0.5.0",
+  "build_target": "gfx1201",
+  "abi_version": 37
+ },
+ "torch": "2.11.0+rocm7.2",
+ "device": "AMD Radeon AI PRO R9700",
+ "hip_runtime_images": [
+  "/home/letsrtfm/miniforge3/envs/sglang-triton36-v0522/lib/python3.12/site-packages/torch/lib/libamdhip64.so"
+ ],
+ "vram_used_gb_at_start": {
+  "card0": 0.055797576904296875,
+  "card1": 0.055797576904296875,
+  "card2": 0.20057296752929688
+ },
+ "triton_error": null,
+ "args": {
+  "lib": "/data/vllm-radiance-src/radiance-build/radiance_home/kernels/libr4d.so",
+  "out": "/data/tmp/rad13-run/out/m1-split-dev0.json",
+  "selfcheck": false,
+  "abi_table": null,
+  "abi_rows": null,
+  "list_stubs": false,
+  "families": [
+   "m1"
+  ],
+  "device": 0,
+  "shapes": "qwen38-radiance",
+  "shape": null,
+  "iters": 200,
+  "tiled_iters": 10,
+  "repeats": 5,
+  "rotate_mb": 320,
+  "m16_m": [
+   8,
+   16,
+   64
+  ],
+  "tiled_m": [
+   4096,
+   8192
+  ],
+  "quant_m": [
+   1,
+   8,
+   64
+  ],
+  "quant_k": [
+   5120,
+   8704,
+   6144,
+   3072
+  ],
+  "hidden": 5120,
+  "inter": 8704,
+  "topk_n": [
+   15520,
+   124160
+  ],
+  "topk_m": [
+   1,
+   8,
+   64
+  ],
+  "topk_r": 32,
+  "rb": 0,
+  "eps": 1e-06,
+  "wadd": 1.0,
+  "timing": "events",
+  "graph_replays": 3,
+  "a8_layout": "auto",
+  "sglang_python": "/data/sgl-v0522/python",
+  "no_triton": false,
+  "allow_two_hip_runtimes": false,
+  "max_busy_vram_gb": 2.0,
+  "force_busy": false
+ },
+ "families": {
+  "m1": [
+   {
+    "linear": "mlp.gate_up_proj",
+    "N": 17408,
+    "K": 5120,
+    "M": 1,
+    "launches_per_decode_step": 64,
+    "weight_bytes": 89128960,
+    "copies": 4,
+    "rb": 0,
+    "vendor_accuracy": {
+     "finite": true,
+     "max_abs_err": 0.00024271011352539062,
+     "max_abs_ref": 0.11896670609712601,
+     "cosine": 0.9999986344005787,
+     "rel_max_err": 0.0020401515809577754,
+     "ulp_max": 134,
+     "ulp_hist": {
+      "0": 0.9992532169117647,
+      "1": 0.0005170036764705882,
+      "2": 0.0,
+      ">2": 0.00022977941176470588
+     }
+    },
+    "vendor_last_copy_identical": true,
+    "vendor": {
+     "timing": "events",
+     "us_median": 144.1933822631836,
+     "us_min": 144.17258262634277,
+     "host_enqueue_us_median": 1.7631053924560547,
+     "iters": 200,
+     "repeats": 5,
+     "copies": 4,
+     "host_bound": false,
+     "gbps": 618.121016381464
+    },
+    "ours_accuracy_vs_unquantised_ref": {
+     "finite": true,
+     "max_abs_err": 0.0026346519589424133,
+     "max_abs_ref": 0.11896670609712601,
+     "cosine": 0.9996680194467807,
+     "rel_max_err": 0.022146128487338705,
+     "ulp_max": 29997,
+     "ulp_hist": {
+      "0": 0.06376378676470588,
+      "1": 0.13091681985294118,
+      "2": 0.11316636029411764,
+      ">2": 0.6921530330882353
+     }
+    },
+    "ours_accuracy_vs_own_quantised_ref": {
+     "finite": true,
+     "max_abs_err": 0.00024297833442687988,
+     "max_abs_ref": 0.11907760798931122,
+     "cosine": 0.9999986577818708,
+     "rel_max_err": 0.0020405039917218556,
+     "ulp_max": 1,
+     "ulp_hist": {
+      "0": 0.9993681066176471,
+      "1": 0.0006318933823529412,
+      "2": 0.0,
+      ">2": 0.0
+     }
+    },
+    "vendor_vs_ours": {
+     "ulp_max": 29997,
+     "bit_identical": false,
+     "frac_equal": 0.06376378676470588
+    },
+    "ours_gemm": {
+     "timing": "events",
+     "us_median": 164.58423614501953,
+     "us_min": 161.86323165893555,
+     "host_enqueue_us_median": 28.14962062984705,
+     "iters": 200,
+     "repeats": 5,
+     "copies": 4,
+     "host_bound": false,
+     "gbps": 541.5400775166955
+    },
+    "ours_quant_gemm": {
+     "timing": "events",
+     "us_median": 164.82683181762695,
+     "us_min": 164.70243453979492,
+     "host_enqueue_us_median": 42.416553478688,
+     "iters": 200,
+     "repeats": 5,
+     "copies": 4,
+     "host_bound": false
+    },
+    "speedup_vendor_over_ours_quant_gemm": 1.143095676310463
+   },
+   {
+    "linear": "mlp.down_proj",
+    "N": 5120,
+    "K": 8704,
+    "M": 1,
+    "launches_per_decode_step": 64,
+    "weight_bytes": 44564480,
+    "copies": 8,
+    "rb": 0,
+    "vendor_accuracy": {
+     "finite": true,
+     "max_abs_err": 0.00024389475584030151,
+     "max_abs_ref": 0.11683575809001923,
+     "cosine": 0.9999986392858875,
+     "rel_max_err": 0.0020875009485742052,
+     "ulp_max": 2,
+     "ulp_hist": {
+      "0": 0.9994140625,
+      "1": 0.000390625,
+      "2": 0.0001953125,
+      ">2": 0.0
+     }
+    },
+    "vendor_last_copy_identical": true,
+    "vendor": {
+     "timing": "events",
+     "us_median": 73.51059436798096,
+     "us_min": 73.4939956665039,
+     "host_enqueue_us_median": 1.676054671406746,
+     "iters": 200,
+     "repeats": 5,
+     "copies": 8,
+     "host_bound": false,
+     "gbps": 606.2320728481413
+    },
+    "ours_accuracy_vs_unquantised_ref": {
+     "finite": true,
+     "max_abs_err": 0.0029129646718502045,
+     "max_abs_ref": 0.11683575809001923,
+     "cosine": 0.9996748637100289,
+     "rel_max_err": 0.024932133102657093,
+     "ulp_max": 30043,
+     "ulp_hist": {
+      "0": 0.06875,
+      "1": 0.13671875,
+      "2": 0.1068359375,
+      ">2": 0.6876953125
+     }
+    },
+    "ours_accuracy_vs_own_quantised_ref": {
+     "finite": true,
+     "max_abs_err": 0.00024287402629852295,
+     "max_abs_ref": 0.11727361381053925,
+     "cosine": 0.999998673431605,
+     "rel_max_err": 0.0020710031728952837,
+     "ulp_max": 1,
+     "ulp_hist": {
+      "0": 0.9990234375,
+      "1": 0.0009765625,
+      "2": 0.0,
+      ">2": 0.0
+     }
+    },
+    "vendor_vs_ours": {
+     "ulp_max": 30043,
+     "bit_identical": false,
+     "frac_equal": 0.06875
+    },
+    "ours_gemm": {
+     "timing": "events",
+     "us_median": 76.61320686340332,
+     "us_min": 76.58699989318848,
+     "host_enqueue_us_median": 28.095468878746033,
+     "iters": 200,
+     "repeats": 5,
+     "copies": 8,
+     "host_bound": false,
+     "gbps": 581.6814335869761
+    },
+    "ours_quant_gemm": {
+     "timing": "events",
+     "us_median": 80.47421455383301,
+     "us_min": 80.42620658874512,
+     "host_enqueue_us_median": 42.865106370300055,
+     "iters": 200,
+     "repeats": 5,
+     "copies": 8,
+     "host_bound": false
+    },
+    "speedup_vendor_over_ours_quant_gemm": 1.0947294773729268
+   },
+   {
+    "linear": "linear_attn.in_proj_qkvz/2",
+    "N": 8192,
+    "K": 5120,
+    "M": 1,
+    "launches_per_decode_step": 48,
+    "weight_bytes": 41943040,
+    "copies": 8,
+    "rb": 0,
+    "vendor_accuracy": {
+     "finite": true,
+     "max_abs_err": 0.00024277716875076294,
+     "max_abs_ref": 0.10244378447532654,
+     "cosine": 0.9999986404906649,
+     "rel_max_err": 0.002369857478364005,
+     "ulp_max": 7,
+     "ulp_hist": {
+      "0": 0.9993896484375,
+      "1": 0.00048828125,
+      "2": 0.0,
+      ">2": 0.0001220703125
+     }
+    },
+    "vendor_last_copy_identical": true,
+    "vendor": {
+     "timing": "events",
+     "us_median": 74.1163969039917,
+     "us_min": 74.0761947631836,
+     "host_enqueue_us_median": 1.6845040954649448,
+     "iters": 200,
+     "repeats": 5,
+     "copies": 8,
+     "host_bound": false,
+     "gbps": 565.9077039906816
+    },
+    "ours_accuracy_vs_unquantised_ref": {
+     "finite": true,
+     "max_abs_err": 0.0022298507392406464,
+     "max_abs_ref": 0.10244378447532654,
+     "cosine": 0.9996705136257698,
+     "rel_max_err": 0.021766579111275445,
+     "ulp_max": 29769,
+     "ulp_hist": {
+      "0": 0.0687255859375,
+      "1": 0.133544921875,
+      "2": 0.1151123046875,
+      ">2": 0.6826171875
+     }
+    },
+    "ours_accuracy_vs_own_quantised_ref": {
+     "finite": true,
+     "max_abs_err": 0.00024252384901046753,
+     "max_abs_ref": 0.10388942062854767,
+     "cosine": 0.9999986254287242,
+     "rel_max_err": 0.002334442213106583,
+     "ulp_max": 1,
+     "ulp_hist": {
+      "0": 0.9996337890625,
+      "1": 0.0003662109375,
+      "2": 0.0,
+      ">2": 0.0
+     }
+    },
+    "vendor_vs_ours": {
+     "ulp_max": 29769,
+     "bit_identical": false,
+     "frac_equal": 0.068603515625
+    },
+    "ours_gemm": {
+     "timing": "events",
+     "us_median": 82.18741416931152,
+     "us_min": 82.16921806335449,
+     "host_enqueue_us_median": 28.766619507223368,
+     "iters": 200,
+     "repeats": 5,
+     "copies": 8,
+     "host_bound": false,
+     "gbps": 510.3340994959953
+    },
+    "ours_quant_gemm": {
+     "timing": "events",
+     "us_median": 85.81602096557617,
+     "us_min": 85.78143119812012,
+     "host_enqueue_us_median": 43.53435477241874,
+     "iters": 200,
+     "repeats": 5,
+     "copies": 8,
+     "host_bound": false
+    },
+    "speedup_vendor_over_ours_quant_gemm": 1.1578547332345344
+   },
+   {
+    "linear": "linear_attn.out_proj/2",
+    "N": 5120,
+    "K": 3072,
+    "M": 1,
+    "launches_per_decode_step": 48,
+    "weight_bytes": 15728640,
+    "copies": 22,
+    "rb": 0,
+    "vendor_accuracy": {
+     "finite": true,
+     "max_abs_err": 0.00023794174194335938,
+     "max_abs_ref": 0.07623458653688431,
+     "cosine": 0.9999986481182892,
+     "rel_max_err": 0.003121178362110443,
+     "ulp_max": 1,
+     "ulp_hist": {
+      "0": 0.999609375,
+      "1": 0.000390625,
+      "2": 0.0,
+      ">2": 0.0
+     }
+    },
+    "vendor_last_copy_identical": true,
+    "vendor": {
+     "timing": "events",
+     "us_median": 28.527274131774902,
+     "us_min": 28.49487543106079,
+     "host_enqueue_us_median": 1.682504080235958,
+     "iters": 200,
+     "repeats": 5,
+     "copies": 22,
+     "host_bound": false,
+     "gbps": 551.3544661626387
+    },
+    "ours_accuracy_vs_unquantised_ref": {
+     "finite": true,
+     "max_abs_err": 0.0018415749073028564,
+     "max_abs_ref": 0.07623458653688431,
+     "cosine": 0.9996695744063174,
+     "rel_max_err": 0.024156685186609544,
+     "ulp_max": 29653,
+     "ulp_hist": {
+      "0": 0.0701171875,
+      "1": 0.1326171875,
+      "2": 0.108203125,
+      ">2": 0.6890625
+     }
+    },
+    "ours_accuracy_vs_own_quantised_ref": {
+     "finite": true,
+     "max_abs_err": 0.00023386627435684204,
+     "max_abs_ref": 0.07575764507055283,
+     "cosine": 0.9999985986768072,
+     "rel_max_err": 0.0030870319970881252,
+     "ulp_max": 3,
+     "ulp_hist": {
+      "0": 0.9990234375,
+      "1": 0.00078125,
+      "2": 0.0,
+      ">2": 0.0001953125
+     }
+    },
+    "vendor_vs_ours": {
+     "ulp_max": 29653,
+     "bit_identical": false,
+     "frac_equal": 0.0701171875
+    },
+    "ours_gemm": {
+     "timing": "events",
+     "us_median": 36.41469478607178,
+     "us_min": 36.08989477157593,
+     "host_enqueue_us_median": 28.245074208825827,
+     "iters": 200,
+     "repeats": 5,
+     "copies": 22,
+     "host_bound": false,
+     "gbps": 431.9311226526065
+    },
+    "ours_quant_gemm": {
+     "timing": "events",
+     "us_median": 43.35796356201172,
+     "us_min": 43.21326732635498,
+     "host_enqueue_us_median": 43.27710485085845,
+     "iters": 200,
+     "repeats": 5,
+     "copies": 22,
+     "host_bound": true
+    },
+    "speedup_vendor_over_ours_quant_gemm": 1.5198775516276108
+   },
+   {
+    "linear": "self_attn.qkv_proj",
+    "N": 7168,
+    "K": 5120,
+    "M": 1,
+    "launches_per_decode_step": 16,
+    "weight_bytes": 36700160,
+    "copies": 10,
+    "rb": 0,
+    "vendor_accuracy": {
+     "finite": true,
+     "max_abs_err": 0.00024409592151641846,
+     "max_abs_ref": 0.09769859910011292,
+     "cosine": 0.9999985898898878,
+     "rel_max_err": 0.0024984587677279843,
+     "ulp_max": 1,
+     "ulp_hist": {
+      "0": 0.9993024553571429,
+      "1": 0.0006975446428571429,
+      "2": 0.0,
+      ">2": 0.0
+     }
+    },
+    "vendor_last_copy_identical": true,
+    "vendor": {
+     "timing": "events",
+     "us_median": 61.98836326599121,
+     "us_min": 61.95956230163574,
+     "host_enqueue_us_median": 1.7224554903805256,
+     "iters": 200,
+     "repeats": 5,
+     "copies": 10,
+     "host_bound": false,
+     "gbps": 592.0491857886313
+    },
+    "ours_accuracy_vs_unquantised_ref": {
+     "finite": true,
+     "max_abs_err": 0.0025460608303546906,
+     "max_abs_ref": 0.09769859910011292,
+     "cosine": 0.9996766702299862,
+     "rel_max_err": 0.026060361702276935,
+     "ulp_max": 29984,
+     "ulp_hist": {
+      "0": 0.0654296875,
+      "1": 0.13699776785714285,
+      "2": 0.11635044642857142,
+      ">2": 0.6812220982142857
+     }
+    },
+    "ours_accuracy_vs_own_quantised_ref": {
+     "finite": true,
+     "max_abs_err": 0.00024259090423583984,
+     "max_abs_ref": 0.09784195572137833,
+     "cosine": 0.9999986478933445,
+     "rel_max_err": 0.0024794159361108733,
+     "ulp_max": 67,
+     "ulp_hist": {
+      "0": 0.9993024553571429,
+      "1": 0.0004185267857142857,
+      "2": 0.00013950892857142856,
+      ">2": 0.00013950892857142856
+     }
+    },
+    "vendor_vs_ours": {
+     "ulp_max": 29984,
+     "bit_identical": false,
+     "frac_equal": 0.0654296875
+    },
+    "ours_gemm": {
+     "timing": "events",
+     "us_median": 71.15639209747314,
+     "us_min": 71.1375904083252,
+     "host_enqueue_us_median": 27.979370206594467,
+     "iters": 200,
+     "repeats": 5,
+     "copies": 10,
+     "host_bound": false,
+     "gbps": 515.7675778407443
+    },
+    "ours_quant_gemm": {
+     "timing": "events",
+     "us_median": 74.64999675750732,
+     "us_min": 74.60119724273682,
+     "host_enqueue_us_median": 42.700355406850576,
+     "iters": 200,
+     "repeats": 5,
+     "copies": 10,
+     "host_bound": false
+    },
+    "speedup_vendor_over_ours_quant_gemm": 1.2042582321005189
+   },
+   {
+    "linear": "self_attn.o_proj",
+    "N": 5120,
+    "K": 3072,
+    "M": 1,
+    "launches_per_decode_step": 16,
+    "weight_bytes": 15728640,
+    "copies": 22,
+    "rb": 0,
+    "vendor_accuracy": {
+     "finite": true,
+     "max_abs_err": 0.00023794174194335938,
+     "max_abs_ref": 0.07623458653688431,
+     "cosine": 0.9999986481182892,
+     "rel_max_err": 0.003121178362110443,
+     "ulp_max": 1,
+     "ulp_hist": {
+      "0": 0.999609375,
+      "1": 0.000390625,
+      "2": 0.0,
+      ">2": 0.0
+     }
+    },
+    "vendor_last_copy_identical": true,
+    "vendor": {
+     "timing": "events",
+     "us_median": 28.6148738861084,
+     "us_min": 28.59687566757202,
+     "host_enqueue_us_median": 1.7002550885081291,
+     "iters": 200,
+     "repeats": 5,
+     "copies": 22,
+     "host_bound": false,
+     "gbps": 549.666584679087
+    },
+    "ours_accuracy_vs_unquantised_ref": {
+     "finite": true,
+     "max_abs_err": 0.0018415749073028564,
+     "max_abs_ref": 0.07623458653688431,
+     "cosine": 0.9996695744063174,
+     "rel_max_err": 0.024156685186609544,
+     "ulp_max": 29653,
+     "ulp_hist": {
+      "0": 0.0701171875,
+      "1": 0.1326171875,
+      "2": 0.108203125,
+      ">2": 0.6890625
+     }
+    },
+    "ours_accuracy_vs_own_quantised_ref": {
+     "finite": true,
+     "max_abs_err": 0.00023386627435684204,
+     "max_abs_ref": 0.07575764507055283,
+     "cosine": 0.9999985986768072,
+     "rel_max_err": 0.0030870319970881252,
+     "ulp_max": 3,
+     "ulp_hist": {
+      "0": 0.9990234375,
+      "1": 0.00078125,
+      "2": 0.0,
+      ">2": 0.0001953125
+     }
+    },
+    "vendor_vs_ours": {
+     "ulp_max": 29653,
+     "bit_identical": false,
+     "frac_equal": 0.0701171875
+    },
+    "ours_gemm": {
+     "timing": "events",
+     "us_median": 36.16969585418701,
+     "us_min": 35.97309112548828,
+     "host_enqueue_us_median": 28.401315212249756,
+     "iters": 200,
+     "repeats": 5,
+     "copies": 22,
+     "host_bound": false,
+     "gbps": 434.85684987255013
+    },
+    "ours_quant_gemm": {
+     "timing": "events",
+     "us_median": 43.56391906738281,
+     "us_min": 43.47590923309326,
+     "host_enqueue_us_median": 43.530105613172054,
+     "iters": 200,
+     "repeats": 5,
+     "copies": 22,
+     "host_bound": true
+    },
+    "speedup_vendor_over_ours_quant_gemm": 1.5224221934639277
+   }
+  ]
+ },
+ "stubs": {
+  "ar_oneshot_2rank_exact": {
+   "symbols": [
+    "r4d_ar_oneshot_2rank_exact",
+    "r4d_ar_ipc_alloc",
+    "r4d_ar_ipc_free",
+    "r4d_ar_ipc_enable_peer",
+    "r4d_ar_max_blocks"
+   ],
+   "signature": "void r4d_ar_oneshot_2rank_exact(long peer_scratch, long my_scratch, long peer_flags, long my_flags, long seq_ctrs, long slot_stride16, long inp, long out, long n_elem, long dtype, long stream, long nblocks, long nthreads, long drain, long acq, long stage)",
+   "needs": "both cards in ONE process (a thread per rank, hipDeviceEnablePeerAccess, raw peer pointers) or IPC handles from r4d_ar_ipc_alloc; scratch double-buffered by parity, per-block flags, seq_ctrs = 2 * r4d_ar_max_blocks() zeroed words; both ranks launch in lockstep; dtype 0/1/2 = bf16/fp16/fp32. Plugin-row tunable defaults: ar_oneshot_2rank_exact nblocks 0 (library rule), nthreads 1024, drain 3, acq 0; ar_oneshot_2rank_exact_lane nblocks 8, nthreads 256 (plugin-rows-rad13.txt). The plain entries THROW std::runtime_error on a HIP error, which aborts the process through ctypes: use the plugin rows, whose entry wraps every call (r4d_ar_entry.hip R4D_TRY -> RAD_E_DEVICE) and which need their init/fini hooks.",
+   "our_baseline": "scripts/bench/p2p_allreduce_decode_shape.py (RCCL dist.all_reduce, torchrun 2 procs, numel 1024..1M bf16)"
+  },
+  "logits_vocab": {
+   "plugin_row": "logits_gemm_vocab_iqr",
+   "symbols": [
+    "r4d_rad_logits_gemm_vocab",
+    "r4d_rad_logits_gemm_vocab_scratch",
+    "r4d_logits_gemm_bf16",
+    "r4d_logits_gemm_fp8"
+   ],
+   "needs": "the head stored as IQR trellis-coded width classes, produced by the vendor converter (rad-convert, not built here). Our checkpoint's lm_head is BF16 248320 x 5120, so the like-for-like vendor row is r4d_logits_gemm_bf16(a, w, c, M, K, N, a_ld, c_ld, stream): bf16 row-major weight, f32 output, K % 8 == 0 (prototype is in PROTOS). r4d_logits_gemm_fp8 wants rows of K codes + K/128 bf16 scales padded to 16 bytes (5200 bytes at K = 5120).",
+   "our_baseline": "the server's lm_head F.linear over the rank's vocabulary shard"
+  },
+  "gdn": {
+   "symbols": [
+    "r4d_gdn_conv_prep_w4_h128_bf16",
+    "r4d_gdn_conv_update_w4_h128_bf16",
+    "r4d_gdn_kkt_solve_k128_c64_bf16",
+    "r4d_gdn_chunk_scan_k128_v128_c64_bf16",
+    "r4d_gdn_recurrent_update_k128_v128_bf16_fp32state",
+    "r4d_gdn_dims"
+   ],
+   "signature": "int r4d_gdn_chunk_scan_k128_v128_c64_bf16(q, k, v, A, g, beta, h0, o, ht, cu, int N, int H, int Hg, int K, int V, int bt, float scale, int state_fp16, void* stream); int r4d_gdn_kkt_solve_k128_c64_bf16(k, beta, g, A, cu, int N, int T, int H, int Hg, int K, int bt, void* stream)",
+   "needs": "geometry is compiled in (key/value head dim 128, chunk 64, conv width 4), which Qwen3.8-27B matches (16 key heads, 48 value heads, conv kernel 4); returns 0, a negative for an uncompiled geometry, or a positive hipError_t. Operand layouts (packed sequences through cu, state dtype) must be read from r4d_gdn_args.h and the selftest's gdn cases before a harness is written.",
+   "our_baseline": "the DeltaNet chunk/recurrent kernels under sglang/kernels (prefill and decode state update)"
+  },
+  "attn_prefill_h256_gqa6": {
+   "symbols": [
+    "r4d_attn_prefill_h256_gqa6_fp8kv",
+    "r4d_attn_prefill_h256_gqa6_bf16kv"
+   ],
+   "signature": "int r4d_attn_prefill_h256_gqa6_fp8kv(const R4DArgs*, hipStream_t)",
+   "needs": "struct R4DArgs (r4d_args.h): q bf16, a PAGED KV pool (num_blocks, kv_heads, block 16, 2 * head_dim) in fp8 or bf16, an int32 block table, seqused_k, descales, scratch, cu_q for packed queries. SGLang's KV pool is not paged in 16-token blocks, so a bench must build the vendor pool from ours first.",
+   "our_baseline": "the extend-attention Triton kernel (patch 108 fp8 QK path)"
+  },
+  "gemm_mxfp4a8": {
+   "symbols": [
+    "r4d_gemm_mxfp4a8_nt_m64",
+    "r4d_gemm_mxfp4a8_tiled",
+    "r4d_mxfp4a8_tile_a",
+    "r4d_rad_gemm_mxfp4a8_decode",
+    "r4d_rad_layout_mxfp4"
+   ],
+   "signature": "void r4d_gemm_mxfp4a8_nt_m64(long a, long ascale, long wq, long ws, long wref, long c, int M, int K, int N, int WV, int SK, int MB, int NPW, int as_group, int as_rs, long stream, int lda, int ldws, int ldc)",
+   "needs": "the packed MXFP4 weight layout (group 32, E8M0 scales) from r4d_rad_layout_mxfp4 and its relayout hook; the decode band exists only as a plugin row; the void entries report nothing on failure.",
+   "our_baseline": "scripts/bench/test_mxfp4_w4a8_gemm.py and sglang/kernels/ops/gemm/mxfp4_w4a8_rdna4.py (patch 117)"
+  }
+ },
+ "assumptions_behind_the_reference_gates": [
+  "torch.cuda.current_stream().cuda_stream is a hipStream_t libr4d accepts (0 = default stream)",
+  "libr4d resolves libamdhip64.so.7 to the image torch already mapped (checked at start-up)",
+  "device pointers from tensor.data_ptr() are valid kernel arguments for libr4d launches",
+  "fp8a8 weight codes are in frag64 order (auto layout detection records which layout passed)",
+  "row pitches passed explicitly: bytes for E4M3 planes, elements for bf16 and f32 planes",
+  "the narrow tile's scratch does not need zeroing and its counters warm on the first launch",
+  "torch events bracket libr4d launches made on the same stream"
+ ]
+}

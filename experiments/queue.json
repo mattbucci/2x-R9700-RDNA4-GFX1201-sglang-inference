@@ -693,13 +693,13 @@
     "user 2026-11-09: performance before evals; MXFP4 requested sooner (issue #39 option b)",
     "FLINT-4 item 1 + RAD-2 slots first (hours), then this (days)"
    ],
-   "next_action": "(1) Per-kernel decode profile of both arms, graphs off, 128 + 58K prompts (scratchpad rad11_profile.sh -> benchmarks/profiling/rad11-profile-{fp8,mxfp4}-2026-11-09/; chained after RAD-6 and RAD-2): where the ~5 ms/step GEMV saving goes (dense GEMM share, attention, DeltaNet, all-reduce, norms, remaining quant/cast launches). (2) M>32 repack path: dequant to block-FP8 scratch once per layer per forward + the tuned block-FP8 GEMM, so prefill/verify stop losing 3-5x. (3) Stack with DFlash2 only after (2). (4) Local build from BF16 only if (1)-(3) show a real step-time win; FP8 stays the preset default (#39).",
+   "next_action": "(1) Deep gate on the live tree with patch 120 (tail queue job 10-mxfp4-split-deepgate.sh: identity line, caps, full greedy needle grid 32K/131K/197K x 0.1/0.5/0.9, cold prefill at 7.3K/58K/197K, one decode ladder). (2) Launch census of the split layout (profile_decode_depth.sh + launch_census.py): 3 ms of the 9.7 ms step gain is not attributed by the per-linear medians; remaining MXFP4 costs are the torch.ones activation-scale fill per GEMV (256 launches) and 322 bf16 -> fp32 copies. (3) M>32 repack path: dequant to block-FP8 scratch once per layer per forward + the tuned block-FP8 GEMM, so prefill/verify stop losing 2-2.3x to FP8. (4) Stack with DFlash2 (RAD-21) only after (3). (5) Local build from BF16 only if the user picks MXFP4 as a preset; FP8 stays the default (#39).",
    "test_gate": [
     "kernel: max abs err vs torch dequant reference within bf16 rounding at all M; no ds_read/ds_write bloat at M=1 (AMDGCN check)",
     "serving: caps 5/5, needle 32K/131K/197K greedy, canonical sweep both orders vs FP8; adopt only with the quality receipt",
     "FP8 stays the default preset until the user decides (#39)"
    ],
-   "result": "2026-11-09 kernel: patch 117 (GEMV BN8/BK512/1 warp LUT decode: 125 vs 165 us at N=17408 K=5120 M=1; parity on small shapes; WMMA path slower from M>=3). First serving arm of the Quark checkpoint (caps 4/4, pool 667K) decoded 18.7/18.4/17.9/16.7 tok/s vs FP8 23.3/22.8/22.1/20.5 and prefill 499/421 tok/s vs 1800/1462: the HIP per-token fp8 quant fallback is ~8 torch ops per linear (~3,600 launches/step). Fixed in the live tree: W4A16 GEMV at M<=2 (no quant), one-launch Triton per-token quant above; re-measure pending. Quant-free path (W4A16 GEMV at M<=2, one-launch Triton quant above; patch 117 regenerated), same-session vs FP8: decode 23.19/22.81/21.91/20.23 vs 23.24/22.97/22.25/20.52 tok/s at 24/7.3K/58K/197K (-0.2..-1.5 %, parity, not the kernel-level 1.3x); prefill 543/510/428 vs 1800/1460/946; caps 4/4 + needle 9/9 greedy on both arms (benchmarks/profiling/mxfp4-serving-2026-11-09/). FINDINGS RAD-11 serving paragraph written."
+   "result": "2026-11-09 kernel: patch 117 (GEMV BN8/BK512/1 warp LUT decode: 125 vs 165 us at N=17408 K=5120 M=1; parity on small shapes; WMMA path slower from M>=3). First serving arm of the Quark checkpoint (caps 4/4, pool 667K) decoded 18.7/18.4/17.9/16.7 tok/s vs FP8 23.3/22.8/22.1/20.5 and prefill 499/421 tok/s vs 1800/1462: the HIP per-token fp8 quant fallback is ~8 torch ops per linear (~3,600 launches/step). Fixed in the live tree: W4A16 GEMV at M<=2 (no quant), one-launch Triton per-token quant above; re-measure pending. Quant-free path (W4A16 GEMV at M<=2, one-launch Triton quant above; patch 117 regenerated), same-session vs FP8: decode 23.19/22.81/21.91/20.23 vs 23.24/22.97/22.25/20.52 tok/s at 24/7.3K/58K/197K (-0.2..-1.5 %, parity, not the kernel-level 1.3x); prefill 543/510/428 vs 1800/1460/946; caps 4/4 + needle 9/9 greedy on both arms (benchmarks/profiling/mxfp4-serving-2026-11-09/). FINDINGS RAD-11 serving paragraph written. RAD-11c (benchmarks/profiling/rad11-mxfp4-mlp-split-2026-11-09/, FINDINGS RAD-11c): the Quark scheme replicated the dense MLP (_should_replicate_deltanet_for_tp only split FP8 names); patch 120 TP-splits it on HIP (SGLANG_RDNA4_REPLICATE_MLP=1 restores). Same-session split -> replicated -> split, no speculation: 29.92/29.56/28.04/25.22 vs 23.22/22.83/21.89/20.23 tok/s at 24/7.3K/58K/197K (+25-30 %; second split arm 29.89/29.59/27.99), step 43.1 -> 33.4 ms, cold prefill 798/725 vs 544/510 tok/s, pool 953,836 vs 667,116, weights per rank 10.55 vs 14.92 GB; caps 4/4, greedy needle 4/4 to 137K; greedy identity 2/6 byte-identical between layouts (others diverge into same-content answers). MXFP4 no-spec is now 1.29x the FP8 step and 1.6-1.7x behind radiance (51.6/50.8/47.4/41.0)."
   },
   {
    "id": "RAD-12",
@@ -719,31 +719,33 @@
   {
    "id": "RAD-13",
    "spec": "19-vllm-radiance-parity.md",
-   "status": "ready",
+   "status": "completed",
    "resource": "gpu",
    "depends_on": [
     "RAD-12 not required; short GPU slots between serving A/Bs"
    ],
-   "next_action": "Build /data/vllm-radiance-src/radiance (Apache-2.0, commit 451b136) with host hipcc + cmake into a scratch build dir, run r4d_selftest, write scripts/bench/libr4d_kernel_bench.py (ctypes over r4d.h). Time against our kernels on real qwen38 shapes with the >256 MB cold-cache rotation: fp8a16_nt_m1 / fp8a8_nt_m16 vs _w8a8_block_fp8_matmul at M=1/8/16/64; fp8a8_tiled at M=4096/8192; fused_quant_fp8; ar_oneshot_2rank_exact vs RCCL and the SGLang 1-stage; rowtopk_bf16 vs torch.topk; logits_vocab vs the rocBLAS head; GDN conv_w4 / kkt_solve / chunk_scan vs FLA; attn_prefill_h256_gqa6 vs extend attention; mxfp4a8_* vs patch 117. Receipt benchmarks/profiling/libr4d-kernel-bench/.",
+   "next_action": "Done. Verdicts feed RAD-22 (port the M=1 W8A16 GEMV), RAD-20 (tiled prefill kernel needs the frag64 layout: decide after RAD-10), RAD-5 (fused norm+quant, gated+quant), RAD-17 (row top-k). Not timed: all-reduce (RAD-2 measures it in serving), MXFP4 GEMMs, GDN and prefill-attention kernels (bench stubs, add when RAD-10 names a share).",
    "test_gate": [
     "r4d_selftest green on this host before any timing",
     "outputs compared bit for bit or in ULPs against our kernel on the same inputs",
     "port-or-keep verdict per kernel family recorded in FINDINGS; ports only as numbered patches with the NOTICE attribution"
-   ]
+   ],
+   "result": "2026-11-09 (benchmarks/profiling/libr4d-kernel-bench/, scripts/bench/libr4d_kernel_bench.py inside scripts/bench/libr4d_sandbox.sh; libr4d 0.5.0 ABI 37, two runs, both cards, 320 MiB cold rotation). M=1 r4d_gemm_fp8a16_nt_m1 vs _w8a8_block_fp8_matmul us: gate_up 144.2 vs 164.5 (1.14x), down 73.5 vs 76.6, in_proj_qkvz 135.9 vs 144.6, out_proj 53.5 vs 60.5-71.6, qkv 62.0 vs 70.8, o_proj 28.7 vs 36.7 (1.51x with the quantiser). Per decode step per rank: 24.5 ms vs 27.0-27.5 GEMM-only / 27.8 with the quantiser = -3.3 ms (dev1 -3.3; TP-split DeltaNet shapes 20.3 vs 22.9 / 23.8 = -3.5). libr4d reads 550-620 GB/s on every shape, ours 430-580; its error vs the fp32 product is 2-3e-3 vs ours 2.2-2.7e-2 (no E4M3 activation rounding). M=8/16/64 frag64 kernel 1.03-1.46x. Tiled prefill M=4096/8192: 1.23-1.57x per shape, 616 vs 890 ms per 4096-token chunk per rank (1.45x), needs the frag64 weight layout. Quantiser 4.2-7.1 vs 13 us; fused rmsnorm+quant 5.5 us and gated+quant 5-8.5 us vs 49.5 and 24 us here. Row top-k R=32: 1.5-4.1x at N=15,520, 1.06-2.0x at N=124,160, identical values and indices."
   },
   {
    "id": "RAD-14",
    "spec": "19-vllm-radiance-parity.md",
-   "status": "ready",
+   "status": "completed",
    "resource": "cpu",
    "depends_on": [
     "RAD-11 per-kernel profile receipts (rad11_profile.sh)"
    ],
-   "next_action": "Launch census of one decode step at 24 tokens and 58K/197K from the RAD-11 profile receipts: count x us per family (block-FP8 GEMM, quantiser, norm, elementwise, all-reduce, attention, GDN, LM head, sampler) + host gap (wall per step - GPU busy). Size short kernels with the microbenches, not the profiler. Output: table with an owner experiment per family >= 0.3 ms.",
+   "next_action": "Done. Re-run scripts/bench/launch_census.py on any new eager profile (profile_decode_depth.sh with START_PROFILE_BODY) after a base-step change; a census of the TP-split MXFP4 layout is the next RAD-11 step.",
    "test_gate": [
     "families sum to the measured step within 5 %",
     "every family >= 0.3 ms has an owner RAD id or a new one"
-   ]
+   ],
+   "result": "2026-11-09 (benchmarks/profiling/rad11-profile-{fp8,mxfp4}-2026-11-09/census-{short,deep}.json, scripts/bench/launch_census.py). One decode step = 2,657 launches per rank on FP8, 2,721 on MXFP4. FP8 at 24 tokens, ms per step per rank: block-FP8 GEMM 27.75 (256 launches), all-reduce 13.38 eager (130 launches, median 40 us; 5.7-7.1 in the graphed step by subtraction), rocBLAS bf16 3.80 (LM head 2.3 + DeltaNet in_proj_ba 48 x 30 us = 1.44), copy/cat/index 1.78 (705), elementwise 1.34 (695), GDN 0.63, quantiser 0.54 (256), reduce+norm+attention+activation 1.59; traced 50.8, eager span 76.7. At 58K only attention grows (0.36 -> 2.19). Graphed 43.1 ms step = GEMM 27.7 + rocBLAS 3.8 + ~2,220 small launches 4.5-5.9 + all-reduce 5.7-7.1. Owners of the 14.9 ms to radiance: GEMM 7.4-8.1 (RAD-1 ~4, RAD-22 3.3-3.5), all-reduce ~4 (RAD-2), LM head 1.1 (RAD-15), in_proj_ba 1.2 (RAD-23, new), small-launch fusion 2.5-3.5 (RAD-5). Corrections: RAD-1 ~4 ms not 9; quantiser 256 launches / 0.5 ms; LM head 2.3 ms not 1.5. MXFP4: per-linear medians showed the MLP replicated on every rank (gate_up 171.6 us vs 113.7 on the per-rank shard) -> RAD-11C; 256 torch.ones fills and 322 bf16->fp32 copies per step. Gate met: families sum to the traced step, every family >= 0.3 ms has an owner."
   },
   {
    "id": "RAD-15",
@@ -751,14 +753,14 @@
    "status": "queued",
    "resource": "gpu",
    "depends_on": [
-    "RAD-14 (head share)",
+    "RAD-14 (done): LM head = one rocBLAS launch of 2.25-2.36 ms per step",
     "REBASE-0523"
    ],
    "next_action": "Low-bit target LM head with exact rerank: int2/int4 g128 lm_head copy, top-64 candidates rescored on bf16 rows; per-batch gate on sampler needs (greedy / top-k <= 64 only; full head for logprobs, grammar masks, logit_bias, top-p/min-p tails). Site srt/layers/logits_processor.py:450-466.",
    "test_gate": [
     "byte-identical greedy output on the 8-prompt set and the needle grid",
     "tool-call + structured-output probes unchanged; gate fails closed",
-    "about -1.5 ms/step in a both-orders A/B"
+    "about -1.1 ms/step net in a both-orders A/B (head 2.3 ms today; radiance 0.47)"
    ]
   },
   {
@@ -853,16 +855,48 @@
   {
    "id": "RAD-22",
    "spec": "19-vllm-radiance-parity.md",
+   "status": "in_progress",
+   "resource": "gpu",
+   "depends_on": [
+    "RAD-13 (done): the M=1 W8A16 GEMV is worth -3.3 to -3.5 ms per rank per step",
+    "RAD-1 result (shapes: replicated or TP-split DeltaNet projections)"
+   ],
+   "next_action": "Route decided on the CPU side (2026-11-09): a native HIP extension, not Triton. Triton's fp8e4nv -> f32 cast lowers to ~39 instructions per weight byte on gfx1201 (software decode); a hipcc build with __builtin_amdgcn_cvt_pk_f32_fp8 gives ~60 instructions per 16 weight bytes per lane (~3.75 per byte; 56 v_cvt_pk_f32_fp8 across the RB=1/2/4 kernels in the device disassembly). Kernel written after the design of radiance's r4d_gemm_fp8a16_nt_m1.hip (Apache-2.0 attribution in the file header): one output row per wave, 32 lanes x 16 contiguous weight bytes per pass, one fp32 block scale per lane per pass, DPP wave sum, RB rows per wave for narrow K; binding fp8_gemv_bf16_hip(activation, weight, weight_scale, rb=0, max_blocks=0). It compiles, links against the serving env's torch and imports; not yet run on a GPU. Next: (1) scripts/bench/bench_fp8_gemv_hip.py through the tail queue (20-rad22-gemv-bench.sh): --check (every E4M3 code but the two NaN encodings, ragged N and K, each rb, a three-workgroup grid, against fp64), then the RAD-13 cold rotation (events + graph replay) on both cards against quantiser + Triton GEMM. (2) If the kernel gate holds: source into kernels/aot/csrc/quantization/fp8/ as a numbered patch, scripts/build_fp8_gemv.sh, common.sh PYTHONPATH hook, M=1 dispatch in triton_w8a8_block_fp8_linear (bf16 input, e4m3fn weight, fp32 scales on the [128, 128] grid, not batch-invariant mode, env opt-out, an 'active' log line). (3) Serving A/B in both orders without speculation and with DSpark.",
+   "test_gate": [
+    "kernel: >= 590 GB/s on gate_up / in_proj, error vs the fp32 product <= 3.1e-3 (today 2.2-2.7e-2 through the E4M3 activation)",
+    "serving: -3 ms per step in a both-orders decode A/B; greedy ladders, needle grid, cache_hit_consistency.py (numerics change: activations no longer rounded to E4M3)",
+    "verify rows at M > 2 stay consistent with decode"
+   ]
+  },
+  {
+   "id": "RAD-23",
+   "spec": "19-vllm-radiance-parity.md",
+   "status": "ready",
+   "resource": "gpu",
+   "depends_on": [
+    "RAD-14 (done): DeltaNet in_proj_ba is an unquantised bf16 linear (96 x 5120, quant_config=None at srt/models/qwen3_5.py:482) on rocBLAS MT16x16x32, 48 launches x 30 us = 1.44 ms per step"
+   ],
+   "next_action": "Triton bf16 GEMV for skinny unquantised linears at M <= 2 on HIP (N <= 256): in_proj_ba first. Microbench at 96 x 5120 against rocBLAS (30 us) with the cold rotation; a 1 MB weight should cost ~5 us. Then route through the linear's forward behind _is_hip and a both-orders decode A/B. Alternative: fold in_proj_ba into the in_proj_qkvz launch (radiance RADIANCE_GDN_MERGE_INPROJ; RAD-12 reports its worth).",
+   "test_gate": [
+    "kernel: bit-identical or within 1 ULP of rocBLAS on recorded activations",
+    "decode_ab both orders: about -1.2 ms per step",
+    "greedy identity on the 8-prompt set; needle grid unchanged"
+   ]
+  },
+  {
+   "id": "RAD-24",
+   "spec": "19-vllm-radiance-parity.md",
    "status": "queued",
    "resource": "gpu",
    "depends_on": [
-    "RAD-14 (quantiser launch cost)",
-    "RAD-13 (fp8a16_nt_m1 verdict)"
+    "RAD-1 result: if the TP-split DeltaNet fails its quality gates this is the exact fallback",
+    "RAD-2 (what one in-graph all-reduce costs)"
    ],
-   "next_action": "Quant-free block-FP8 decode GEMV (W8A16) at M <= 2 in triton_w8a8_block_fp8_linear (quantization/fp8_utils.py:1574-1603): bf16 activation into the FP8 weight, no per-token quantiser launch per linear. Evidence against a large win: the MXFP4 path is already quant-free (patch 117) and decodes at FP8 parity, so size it from RAD-14 before writing a kernel. Alternative to the quant half of RAD-5.",
+   "next_action": "Skip the all-reduce of a replicated stage. A replicated DeltaNet stage divides its output by tp_size and the boundary sums the halves (x/2 + x/2): 48 of the ~130 all-reduces per step on the FP8 preset add two identical tensors. layer_boundary can declare the stage complete on the rank (declare_ffn(dense_tp_size=1 / output_complete=True); for the mixer an EXIT_SCOPED reduction in _qwen3_5_stage_facts, srt/models/qwen3_5.py:261-272) and drop the divide. Byte-identical by construction when both ranks compute the same bits; costs nothing in weight bytes, saves 48 reductions. Competes with RAD-1 (split + all-reduce: saves ~97 us of GEMM per layer but keeps the reduction): keep whichever is faster after RAD-2.",
    "test_gate": [
-    "numerics change (activations no longer rounded to E4M3): greedy ladders, needle grid, cache_hit_consistency.py",
-    "verify rows at M > 2 stay consistent with decode"
+    "greedy output byte-identical to the replicated layout on the 8-prompt set and the needle grid",
+    "decode_ab both orders against replicated and against RAD-1's split",
+    "rank determinism check: the two ranks' stage outputs compared bit for bit on a recorded step before the reduction is dropped"
    ]
   }
  ]

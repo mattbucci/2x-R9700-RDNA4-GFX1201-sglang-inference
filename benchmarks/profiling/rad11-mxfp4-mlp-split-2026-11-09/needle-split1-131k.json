@@ -1,0 +1,25 @@
+{
+ "tag": "rad11c-split1-natural-greedy",
+ "timestamp": "2026-11-09 16:46",
+ "model": "/data/models/Qwen3.8-27B-Quark-AWQ-MXFP4",
+ "port": 23334,
+ "haystack": "benchmarks/quality/haystack-platypus.txt",
+ "chars_per_token": 3.27,
+ "temperature": 0.0,
+ "flush": true,
+ "max_tokens": 256,
+ "results": [
+  {
+   "found": true,
+   "actual_prompt_tokens": 137094,
+   "completion_tokens": 108,
+   "finish_reason": "stop",
+   "seconds": 222.1,
+   "content_tail": "\n\nBANANA42",
+   "reasoning_tail": "",
+   "context": 131072,
+   "depth": 0.5
+  }
+ ],
+ "score": 1.0
+}

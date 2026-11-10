@@ -1,6 +1,6 @@
 # RDNA4 inference on 2× R9700
 
-SGLang v0.5.22 with 87 local RDNA4 patches, tuned for coherent single-user inference at long context
+SGLang v0.5.22 with 88 local RDNA4 patches, tuned for coherent single-user inference at long context
 (256K) on two AMD Radeon AI PRO R9700 GPUs (gfx1201, 32 GiB each, TP=2 over PCIe). The repository holds
 the patch series, the preset launcher, the benchmark and evaluation harnesses, the FP8/AWQ quantization
 pipeline, and the receipts behind every number below. Multi-user throughput is secondary.
@@ -134,7 +134,7 @@ Qwen3.8-27B files ([receipt](benchmarks/radiance-parity/README.md)). Decode is t
 | FP8, no speculation | 35.4 / 35.0 / 33.7 / 30.4 | 23.2 / 22.9 / 22.2 / 20.5 | 1.5× | RAD-2 one-stage all-reduce, RAD-12 ablation ladder of their switches, RAD-13 their HIP kernels timed against ours, RAD-14 launch census of the 44 ms step, RAD-1 TP-split DeltaNet projections, RAD-3 GEMM weight layout, RAD-22 quant-free decode GEMV or RAD-5 norm + quant fusion, RAD-15 low-bit LM head with exact rerank |
 | FP8 + DFlash2 | 99.9 / 99.7 / 87.9 / 91.0 | 56.7 / 60.4 / 41.9 / 31.5 | 1.7–2.9× | the base step, then RAD-16 draft + verify cycle anatomy and the 197K fix, RAD-17 HIP top-k selector, RAD-18 content-adaptive block length, RAD-7 low-bit draft head |
 | Cold prefill | 4,137 / 3,631 / 2,520 | 1,800 / 1,460 / 946 | 2.2–2.7× | RAD-10 197K profile, RAD-19 DeltaNet conv block width, RAD-20 GEMM tiles at M ≥ 64 and chunk size, then ports by share |
-| MXFP4, no speculation | 51.6 / 50.8 / 47.4 / 41.0 | 23.2 / 22.8 / 21.9 / 20.2 | 2.0–2.2× | RAD-11 decode profile and the M > 32 repack path, RAD-21 MXFP4 + DFlash2 |
+| MXFP4, no speculation | 51.6 / 50.8 / 47.4 / 41.0 | 29.9 / 29.6 / 28.0 / 25.2 | 1.6–1.7× | RAD-11 split-layout census and the M > 32 repack path, RAD-21 MXFP4 + DFlash2 |
 
 Measurement runs first (RAD-2, 12, 13, 14, 10 and 16 need no tree change) so ports follow measured worth. Targets: 33 tok/s
 no-spec and 90 with DFlash2 at 24 tokens, 80 at 197K, prefill 3,500 tok/s at 7.3K, needle and capabilities unchanged.
@@ -250,7 +250,7 @@ relaunch faults on a stale one.
 | Component | Version |
 |---|---|
 | GPUs | 2× AMD Radeon AI PRO R9700, gfx1201, 32 GiB each |
-| SGLang | v0.5.22 + 87 patches |
+| SGLang | v0.5.22 + 88 patches |
 | Python | 3.12 |
 | PyTorch | 2.11.0+rocm7.2 |
 | ROCm | 7.2 |

@@ -97,8 +97,19 @@ think-off sweep at 256K), gates on every arm — [radiance-parity/README.md](rad
 1.5× on radiance at every depth and concurrency (per step 28 vs 44 ms), prefill 2.2–2.7×, DFlash2 K7 91 tok/s at 197K
 against DSpark 41 and in-checkpoint MTP 24; AMD's Quark MXFP4 W4A8 (comparison input) 1.35–1.46× over FP8 and 164 tok/s
 at 197K with DFlash2. Disposition in [FINDINGS → vllm-radiance parity](FINDINGS.md#vllm-radiance-parity). The same Quark
-checkpoint served here on the patch-117 Triton W4A8 path decodes at FP8 parity with prefill 3× slower
-([receipts](profiling/mxfp4-serving-2026-11-09/), [kernel](profiling/mxfp4-w4a8-kernel-2026-11-09.json)).
+checkpoint served here on the patch-117 Triton W4A8 path decoded at FP8 parity with prefill 3× slower
+([receipts](profiling/mxfp4-serving-2026-11-09/), [kernel](profiling/mxfp4-w4a8-kernel-2026-11-09.json)) while its MLP was
+replicated per rank; TP-split (patch 120) it decodes 29.9 / 29.6 / 28.0 / 25.2 tok/s at 24 / 7.3K / 58K / 197K against
+23.2 / 22.8 / 21.9 / 20.2, split → replicated → split in one session
+([receipts](profiling/rad11-mxfp4-mlp-split-2026-11-09/), [FINDINGS → RAD-11c](FINDINGS.md)).
+Kernel-level comparison with libr4d 0.5.0 on the Qwen3.8 per-rank shapes, cold weight rotation, vendor library inside a
+network-less sandbox (`scripts/bench/libr4d_sandbox.sh`, `libr4d_kernel_bench.py`, `libr4d_kernel_bench_summary.py`): the six
+M=1 block-FP8 linears cost 24.5 ms per rank per step on the vendor W8A16 GEMV against 27.0–27.8 here
+([receipts](profiling/libr4d-kernel-bench/)). Launch census of one graphed decode step from the profiler traces
+(`scripts/bench/launch_census.py`, per-linear medians by launch position from `linear_by_position.py`): 2,657 launches per
+rank on FP8
+([FP8](profiling/rad11-profile-fp8-2026-11-09/), [MXFP4, replicated MLP](profiling/rad11-profile-mxfp4-2026-11-09/)).
+`scripts/bench/bench_fp8_gemv_hip.py` is the exactness and timing bench for the native W8A16 GEMV of RAD-22.
 The DFlash2 drafter radiance uses, served here against DSpark and no-spec in one session: faster than DSpark to 7.3K, order
 open at 58K–197K, one needle miss, DSpark stays the preset ([receipts](profiling/rad6-dflash-qwen38-2026-11-09/)).
 

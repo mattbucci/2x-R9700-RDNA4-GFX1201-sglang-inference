@@ -1,0 +1,28 @@
+{
+ "label": "repl",
+ "model": "/data/models/Qwen3.8-27B-Quark-AWQ-MXFP4",
+ "port": 23334,
+ "runs": 1,
+ "method": "flush_cache + non-stream max_tokens=1 wall time",
+ "timestamp": "2026-11-09 17:00",
+ "rows": [
+  {
+   "context": 8192,
+   "input_len": 7331,
+   "runs_s": [
+    13.487
+   ],
+   "median_s": 13.487,
+   "prefill_tok_per_s": 543.6
+  },
+  {
+   "context": 65536,
+   "input_len": 58483,
+   "runs_s": [
+    114.742
+   ],
+   "median_s": 114.742,
+   "prefill_tok_per_s": 509.7
+  }
+ ]
+}

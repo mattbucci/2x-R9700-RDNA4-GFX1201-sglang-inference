@@ -1,0 +1,294 @@
+{
+ "schema_version": 1,
+ "experiment": "RAD-14",
+ "label": "qwen38 Quark MXFP4 no-spec eager decode, deep window",
+ "trace_dir": "/data/tmp/profile-rad11-profile-mxfp4-2026-11-09/deep",
+ "steps": 31,
+ "steps_source": "decode attention launches / 16 attention layers",
+ "ranks": 2,
+ "per_rank": [
+  {
+   "path": "/data/tmp/profile-rad11-profile-mxfp4-2026-11-09/deep/1794269427.2619114-TP-0.trace.json.gz",
+   "steps": 31,
+   "decode_events": 84348,
+   "step_marker_calls": 496,
+   "marker_calls_per_step": 16.0,
+   "interleaved": false,
+   "span_ms_per_step": 66.447,
+   "busy_ms_per_step": 53.822,
+   "host_gap_ms_per_step": 12.625,
+   "sum_kernel_ms_per_step": 53.884
+  },
+  {
+   "path": "/data/tmp/profile-rad11-profile-mxfp4-2026-11-09/deep/1794269427.2619114-TP-1.trace.json.gz",
+   "steps": 31,
+   "decode_events": 84348,
+   "step_marker_calls": 496,
+   "marker_calls_per_step": 16.0,
+   "interleaved": false,
+   "span_ms_per_step": 66.449,
+   "busy_ms_per_step": 43.131,
+   "host_gap_ms_per_step": 23.318,
+   "sum_kernel_ms_per_step": 43.204
+  }
+ ],
+ "launches_per_step_per_rank": 2720.9,
+ "traced_kernel_ms_per_step_per_rank": 48.544,
+ "span_ms_per_step": 66.449,
+ "host_gap_ms_per_step": 23.318,
+ "served_wall_ms_per_step": null,
+ "families": {
+  "attention": {
+   "owner": "RAD-9 (decode attention), RAD-19",
+   "launches_per_step_per_rank": 65.87,
+   "mean_us": 33.12,
+   "median_us": 21.68,
+   "min_us": 2.12,
+   "ms_per_step_per_rank": 2.1815,
+   "floor_ms_per_step_per_rank": 2.0902,
+   "kernel_names": 6,
+   "pct_of_traced": 4.5
+  },
+  "all_reduce": {
+   "owner": "RAD-2",
+   "launches_per_step_per_rank": 129.77,
+   "mean_us": 78.95,
+   "median_us": 40.34,
+   "min_us": 19.16,
+   "ms_per_step_per_rank": 10.2454,
+   "floor_ms_per_step_per_rank": 2.4863,
+   "kernel_names": 1,
+   "pct_of_traced": 21.1
+  },
+  "mxfp4_gemm": {
+   "owner": "RAD-11 repack path",
+   "launches_per_step_per_rank": 255.58,
+   "mean_us": 103.91,
+   "median_us": 107.56,
+   "min_us": 21.36,
+   "ms_per_step_per_rank": 26.5567,
+   "floor_ms_per_step_per_rank": 5.4589,
+   "kernel_names": 1,
+   "pct_of_traced": 54.7
+  },
+  "gdn": {
+   "owner": "RAD-1 (state width), RAD-20",
+   "launches_per_step_per_rank": 96.81,
+   "mean_us": 5.92,
+   "median_us": 8.32,
+   "min_us": 1.52,
+   "ms_per_step_per_rank": 0.5731,
+   "floor_ms_per_step_per_rank": 0.5188,
+   "kernel_names": 3,
+   "pct_of_traced": 1.2
+  },
+  "rocblas_gemm": {
+   "owner": "RAD-15 (LM head)",
+   "launches_per_step_per_rank": 48.9,
+   "mean_us": 75.68,
+   "median_us": 30.0,
+   "min_us": 28.28,
+   "ms_per_step_per_rank": 3.7009,
+   "floor_ms_per_step_per_rank": 3.5389,
+   "kernel_names": 2,
+   "pct_of_traced": 7.6
+  },
+  "norm": {
+   "owner": "RAD-5",
+   "launches_per_step_per_rank": 192.65,
+   "mean_us": 2.62,
+   "median_us": 1.96,
+   "min_us": 1.56,
+   "ms_per_step_per_rank": 0.5043,
+   "floor_ms_per_step_per_rank": 0.3137,
+   "kernel_names": 3,
+   "pct_of_traced": 1.0
+  },
+  "sampler": {
+   "owner": "RAD-15, RAD-17",
+   "launches_per_step_per_rank": 1.97,
+   "mean_us": 6.06,
+   "median_us": 8.72,
+   "min_us": 2.92,
+   "ms_per_step_per_rank": 0.0119,
+   "floor_ms_per_step_per_rank": 0.0115,
+   "kernel_names": 2,
+   "pct_of_traced": 0.0
+  },
+  "activation": {
+   "owner": "RAD-5",
+   "launches_per_step_per_rank": 79.9,
+   "mean_us": 4.22,
+   "median_us": 4.12,
+   "min_us": 1.84,
+   "ms_per_step_per_rank": 0.3375,
+   "floor_ms_per_step_per_rank": 0.2671,
+   "kernel_names": 2,
+   "pct_of_traced": 0.7
+  },
+  "copy_cat_index": {
+   "owner": "unowned",
+   "launches_per_step_per_rank": 960.13,
+   "mean_us": 2.46,
+   "median_us": 2.2,
+   "min_us": 1.08,
+   "ms_per_step_per_rank": 2.3575,
+   "floor_ms_per_step_per_rank": 1.6449,
+   "kernel_names": 18,
+   "pct_of_traced": 4.9
+  },
+  "reduce": {
+   "owner": "unowned",
+   "launches_per_step_per_rank": 128.77,
+   "mean_us": 4.19,
+   "median_us": 4.0,
+   "min_us": 3.52,
+   "ms_per_step_per_rank": 0.5391,
+   "floor_ms_per_step_per_rank": 0.4532,
+   "kernel_names": 1,
+   "pct_of_traced": 1.1
+  },
+  "elementwise": {
+   "owner": "RAD-5",
+   "launches_per_step_per_rank": 758.61,
+   "mean_us": 2.02,
+   "median_us": 1.64,
+   "min_us": 1.2,
+   "ms_per_step_per_rank": 1.5313,
+   "floor_ms_per_step_per_rank": 1.1083,
+   "kernel_names": 7,
+   "pct_of_traced": 3.2
+  },
+  "other": {
+   "owner": "unowned",
+   "launches_per_step_per_rank": 1.94,
+   "mean_us": 2.33,
+   "median_us": 1.92,
+   "min_us": 1.68,
+   "ms_per_step_per_rank": 0.0045,
+   "floor_ms_per_step_per_rank": 0.0035,
+   "kernel_names": 2,
+   "pct_of_traced": 0.0
+  }
+ },
+ "kernels": [
+  {
+   "name": "_mxfp4_w4a8_gemv_kernel",
+   "family": "mxfp4_gemm",
+   "launches_per_step_per_rank": 255.58,
+   "mean_us": 103.91,
+   "median_us": 107.56,
+   "min_us": 21.36,
+   "ms_per_step_per_rank": 26.5567
+  },
+  {
+   "name": "ncclDevKernel_Generic_4(ncclDevKernelArgsStorage<4096ul>)",
+   "family": "all_reduce",
+   "launches_per_step_per_rank": 129.77,
+   "mean_us": 78.95,
+   "median_us": 40.34,
+   "min_us": 19.16,
+   "ms_per_step_per_rank": 10.2454
+  },
+  {
+   "name": "Cijk_Alik_Bljk_BBS_BH_Bias_HA_S_SAV_UserArgs_MT128x128x32_MI16x16x1_SN_LDSB0_AFC1_AFEM1_AFEM1_ASEM1_CLR0_CADS0_DTLA0_DTLB0_DTVA0_DTVB1_EPS0_FDSI0_GRPM1_GRVWA4_GRVWB8_GSUAMB_GLS0_ISA1201_IU1_K1_LDSTI0_LBSPPA128_LBSPPB0_LBSPPM0_LPA16_LPB0_LPM0_LRVW8_LWPMn1_MIAV1_MIWT4_4_MO40_NTn1_NTA0_NTB0_NTC0_NTD0_NTM0_NEPBS0_NLCA1_NLCB2_ONLL1_PGR2_PLR1_PKA0_SIA3_SS0_SPO0_SRVW0_SSO0_SVW8_SK0_SKFTR0_SKXCCM0_TLDS1_ULSGRO0_USL1_UIOFGRO0_USFGROn1_VSn1_VWA1_VWB1_WSGRA0_WSGRB0_WS32_WG32_4_1",
+   "family": "rocblas_gemm",
+   "launches_per_step_per_rank": 1.0,
+   "mean_us": 2253.51,
+   "median_us": 2242.07,
+   "min_us": 2184.29,
+   "ms_per_step_per_rank": 2.2535
+  },
+  {
+   "name": "_fwd_grouped_kernel_stage1",
+   "family": "attention",
+   "launches_per_step_per_rank": 16.0,
+   "mean_us": 106.18,
+   "median_us": 104.0,
+   "min_us": 102.48,
+   "ms_per_step_per_rank": 1.6989
+  },
+  {
+   "name": "Cijk_Alik_Bljk_BBS_BH_Bias_HA_S_SAV_UserArgs_MT16x16x32_MI16x16x1_SN_LDSB0_AFC1_AFEM1_AFEM1_ASEM1_CLR0_CADS0_DTLA0_DTLB0_DTVA0_DTVB0_EPS0_FDSI0_GRPM1_GRVWA8_GRVWB8_GSUAMB_GLS0_ISA1201_IU1_K1_LDSTI0_LBSPPA128_LBSPPB128_LBSPPM0_LPA16_LPB16_LPM0_LRVW8_LWPMn1_MIAV1_MIWT1_1_MO40_NTn1_NTA0_NTB0_NTC0_NTD0_NTM0_NEPBS0_NLCA1_NLCB1_ONLL1_PGR2_PLR0_PKA0_SIA1_SS1_SPO0_SRVW0_SSO0_SVW1_SK0_SKFTR0_SKXCCM0_TLDS2_ULSGRO0_USL1_UIOFGRO0_USFGROn1_VSn1_VWA1_VWB1_WSGRA0_WSGRB0_WS32_WG16_2_1",
+   "family": "rocblas_gemm",
+   "launches_per_step_per_rank": 47.9,
+   "mean_us": 30.22,
+   "median_us": 30.0,
+   "min_us": 28.28,
+   "ms_per_step_per_rank": 1.4474
+  },
+  {
+   "name": "void at::native::vectorized_elementwise_kernel<4, at::native::bfloat16tofloat32_copy_kernel_cuda(at::TensorIteratorBase&)::{lambda(c10::BFloat16)#1}, std::array<char*, 2ul> >(int, at::native::bfloat16tofloat32_copy_kernel_cuda(at::TensorIteratorBase&)::{lambda(c10::BFloat16)#1}, std::array<char*, 2ul>)",
+   "family": "copy_cat_index",
+   "launches_per_step_per_rank": 322.45,
+   "mean_us": 2.57,
+   "median_us": 2.36,
+   "min_us": 1.84,
+   "ms_per_step_per_rank": 0.8281
+  },
+  {
+   "name": "void at::native::vectorized_elementwise_kernel<4, at::native::FillFunctor<float>, std::array<char*, 1ul> >(int, at::native::FillFunctor<float>, std::array<char*, 1ul>)",
+   "family": "copy_cat_index",
+   "launches_per_step_per_rank": 255.58,
+   "mean_us": 2.16,
+   "median_us": 1.44,
+   "min_us": 1.08,
+   "ms_per_step_per_rank": 0.5519
+  },
+  {
+   "name": "void at::native::reduce_kernel<512, 1, at::native::ReduceOp<float, at::native::MeanOps<float, float, float, float>, unsigned int, float, 4, 4> >(at::native::ReduceOp<float, at::native::MeanOps<float, float, float, float>, unsigned int, float, 4, 4>)",
+   "family": "reduce",
+   "launches_per_step_per_rank": 128.77,
+   "mean_us": 4.19,
+   "median_us": 4.0,
+   "min_us": 3.52,
+   "ms_per_step_per_rank": 0.5391
+  },
+  {
+   "name": "fused_recurrent_gated_delta_rule_packed_decode_kernel",
+   "family": "gdn",
+   "launches_per_step_per_rank": 47.9,
+   "mean_us": 9.07,
+   "median_us": 8.76,
+   "min_us": 8.28,
+   "ms_per_step_per_rank": 0.4346
+  },
+  {
+   "name": "void at::native::vectorized_elementwise_kernel<4, at::native::CUDAFunctorOnSelf_add<float>, std::array<char*, 2ul> >(int, at::native::CUDAFunctorOnSelf_add<float>, std::array<char*, 2ul>)",
+   "family": "elementwise",
+   "launches_per_step_per_rank": 257.55,
+   "mean_us": 1.63,
+   "median_us": 1.52,
+   "min_us": 1.2,
+   "ms_per_step_per_rank": 0.4191
+  },
+  {
+   "name": "_fwd_kernel_stage2",
+   "family": "attention",
+   "launches_per_step_per_rank": 16.0,
+   "mean_us": 22.65,
+   "median_us": 22.28,
+   "min_us": 21.64,
+   "ms_per_step_per_rank": 0.3624
+  },
+  {
+   "name": "void at::native::vectorized_elementwise_kernel<8, at::native::BUnaryFunctor<c10::BFloat16, c10::BFloat16, c10::BFloat16, at::native::binary_internal::MulFunctor<float> >, std::array<char*, 2ul> >(int, at::native::BUnaryFunctor<c10::BFloat16, c10::BFloat16, c10::BFloat16, at::native::binary_internal::MulFunctor<float> >, std::array<char*, 2ul>)",
+   "family": "elementwise",
+   "launches_per_step_per_rank": 111.81,
+   "mean_us": 3.12,
+   "median_us": 2.68,
+   "min_us": 2.04,
+   "ms_per_step_per_rank": 0.3489
+  }
+ ],
+ "other_names": [
+  "_vocab_parallel_embedding_kernel",
+  "void sglang::clamp_position_kernel<long>(long*, long const*, unsigned long)"
+ ],
+ "caveats": [
+  "counts are exact for an eager (--disable-cuda-graph) window; a graphed window undercounts",
+  "the profiler inflates short kernels: mean_us is an upper bound, floor_ms uses each kernel's minimum",
+  "host gap is eager dispatch under the profiler; the graphed preset replays without it",
+  "ms_per_step_per_rank is per rank: the two ranks run concurrently, so it compares with wall per step"
+ ]
+}

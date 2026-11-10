@@ -8,6 +8,10 @@
 # prompt, which leaves the prefix in the radix cache).
 #
 #   PRESET=qwen38 QWEN38_SPEC=0 DEEP_TOKENS=196608 bash scripts/bench/profile_decode_depth.sh
+# Without graphs every decode step is ~2000 visible launches per rank and the profiler's default Python stacks grow each
+# scheduler past 20 GiB in 64 steps (the kernel OOM killer took the server twice), so an eager capture passes
+#   EXTRA_ARGS=--disable-cuda-graph DECODE_TOKENS=32 START_PROFILE_BODY='{"activities":["CPU","GPU"],"with_stack":false,"record_shapes":false}'
+# and the script stops the server itself when MemAvailable falls under MEM_FLOOR_GB.
 #   -> benchmarks/profiling/<preset>-decode-profile-<date>/{short,deep}.json + server.log, traces under /data/tmp
 set -uo pipefail
 trap 'pkill -TERM -f "sglang.launch_serve[r]" 2>/dev/null' EXIT
@@ -15,6 +19,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"; REPO="$(cd "$SCRIPT_
 PRESET="${PRESET:-qwen38}"; PORT="${PORT:-23334}"
 SHORT_TOKENS="${SHORT_TOKENS:-128}"; DEEP_TOKENS="${DEEP_TOKENS:-196608}"; DECODE_TOKENS="${DECODE_TOKENS:-64}"
 STAMP=$(date +%Y-%m-%d); TAG="${TAG:-$PRESET-decode-profile-$STAMP}"
+START_PROFILE_BODY="${START_PROFILE_BODY:-}"; [ -n "$START_PROFILE_BODY" ] || START_PROFILE_BODY='{}'; MEM_FLOOR_GB="${MEM_FLOOR_GB:-8}"
 OUT="$REPO/benchmarks/profiling/$TAG"; PROF_ROOT="${PROF_ROOT:-/data/tmp/profile-$TAG}"
 PY="${PY:-$HOME/miniforge3/envs/sglang-triton36-v0522/bin/python}"
 mkdir -p "$OUT" "$PROF_ROOT"
@@ -31,6 +36,17 @@ end=$(( $(date +%s) + 1200 )); ok=0
 while [ "$(date +%s)" -lt "$end" ]; do [ "$(health)" = 200 ] && { ok=1; break; }; sleep 10; done
 [ "$ok" = 1 ] || { log "boot FAILED"; tail -20 "$OUT/server.log"; kill "$LAUNCH_PID" 2>/dev/null; exit 1; }
 for _ in 1 2 3; do sleep 3; [ "$(health)" = 200 ] || { log "health flapped"; exit 1; }; done
+mem_guard(){  # the profiler buffers live in the schedulers: stop them before the kernel OOM killer picks a victim
+  local avail
+  while sleep 2; do
+    avail=$(awk '/MemAvailable/ {print int($2/1048576)}' /proc/meminfo)
+    [ "$avail" -ge "$MEM_FLOOR_GB" ] && continue
+    log "MemAvailable ${avail} GiB < ${MEM_FLOOR_GB} GiB: killing the server (profiler buffers)"
+    pkill -KILL -f 'sglang::schedule[r]'; pkill -TERM -f 'sglang.launch_serve[r]'; return
+  done
+}
+mem_guard & GUARD_PID=$!
+trap 'kill "$GUARD_PID" 2>/dev/null; pkill -TERM -f "sglang.launch_serve[r]" 2>/dev/null' EXIT
 MODEL=$(curl -s "http://127.0.0.1:$PORT/v1/models" | "$PY" -c 'import sys,json; print(json.load(sys.stdin)["data"][0]["id"])')
 log "server ready, model=$MODEL"
 
@@ -49,11 +65,12 @@ PY
   # warm: prefill the prompt once (1 token) so the profiled request hits the radix cache and is decode-dominated
   ptoks=$(curl -s -m 1800 "http://127.0.0.1:$PORT/v1/chat/completions" -H 'content-type: application/json' -d @"$warmf" | "$PY" -c 'import sys,json; print(json.load(sys.stdin)["usage"]["prompt_tokens"])')
   log "$label: warm prefill done, actual prompt_tokens=$ptoks"
-  curl -s -X POST "http://127.0.0.1:$PORT/start_profile" -H 'content-type: application/json' -d '{}' >/dev/null
+  curl -s -X POST "http://127.0.0.1:$PORT/start_profile" -H 'content-type: application/json' -d "$START_PROFILE_BODY" >/dev/null
   t0=$(date +%s.%N)
   curl -s -m 1800 "http://127.0.0.1:$PORT/v1/chat/completions" -H 'content-type: application/json' -d @"$bodyf" -o "$respf"
   t1=$(date +%s.%N)
   curl -s -X POST "http://127.0.0.1:$PORT/stop_profile" >/dev/null
+  [ "$(health)" = 200 ] || { log "$label: the server died during the profile window or the trace export; no receipt"; exit 1; }
   "$PY" - "$respf" <<'PY'
 import sys, json; j = json.load(open(sys.argv[1])); u = j["usage"]
 print(f"  usage prompt={u['prompt_tokens']} completion={u['completion_tokens']} finish={j['choices'][0]['finish_reason']}")
@@ -64,7 +81,7 @@ PY
   ls "$PROF_ROOT/$label" | head -4
   "$PY" "$REPO/scripts/bench/profile_decode_kernels.py" --trace-dir "$PROF_ROOT/$label" --out "$OUT/$label.json" \
       --label "$PRESET decode @${ptoks} actual input, $DECODE_TOKENS steps" --steps "$DECODE_TOKENS" \
-      --note "preset $PRESET, prompt_tokens=$ptoks, graphs per preset; prefix warmed so the window is decode-dominated" 2>&1 | tail -40
+      --note "preset $PRESET, prompt_tokens=$ptoks, extra args [${EXTRA_ARGS:-}], start_profile $START_PROFILE_BODY; prefix warmed so the window is decode-dominated" 2>&1 | tail -40
 }
 
 profile_one short "$SHORT_TOKENS"

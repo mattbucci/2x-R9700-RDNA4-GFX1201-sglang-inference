@@ -909,6 +909,142 @@ separated by a cache flush on all three arms with 400-token cells next to the ca
 (`scripts/bench/spec_cold_warm_bench.py`), the 131K needle at five depths greedy plus six sampled draws, and 190K
 needle cells that fit every pool.
 
+### RAD-13 — libr4d kernels timed against this stack's on the qwen38 shapes (2026-11-09)
+
+The Apache-2.0 radiance tree builds on this host (libr4d 0.5.0, ABI 37, gfx1201). `scripts/bench/libr4d_kernel_bench.py`
+drives its C ABI through ctypes next to this stack's Triton kernels in one process: the real per-rank qwen38 shapes,
+320 MiB of rotated weight copies so the 64 MB MALL cache is cold, event timing, both cards
+([receipts](profiling/libr4d-kernel-bench/); the library runs only inside `scripts/bench/libr4d_sandbox.sh`: no
+network, home hidden, private Triton cache). Two full runs agree; cells are µs per launch on card 0 from the second
+run, ranges cover both.
+
+Decode at M = 1: `r4d_gemm_fp8a16_nt_m1` takes the bf16 activation straight into the FP8 weight (row-major checkpoint
+layout, no repack), against `_w8a8_block_fp8_matmul` with and without its per-token quantiser.
+
+| linear (launches per step) | N × K | libr4d | ours, GEMM | ours, quant + GEMM | ratio |
+|---|---|---:|---:|---:|---:|
+| MLP gate_up (64) | 17408 × 5120 | 144.2 | 164.5 | 164.7 | 1.14 |
+| MLP down (64) | 5120 × 8704 | 73.5 | 76.6 | 80.4 | 1.09 |
+| DeltaNet in_proj_qkvz (48) | 16384 × 5120 | 135.9 | 144.6 | 148.4 | 1.09 |
+| DeltaNet out_proj (48) | 5120 × 6144 | 53.5 | 60.5–71.6 | 63.9 | 1.20 |
+| attention qkv (16) | 7168 × 5120 | 62.0 | 70.8 | 74.9–79.2 | 1.21–1.28 |
+| attention o_proj (16) | 5120 × 3072 | 28.7 | 36.7 | 43.3 | 1.51 |
+| **step, per rank (13.9 GiB read)** | | **24.5 ms** | 27.0–27.5 | 27.8 | **−3.3 ms** |
+| step with TP-split DeltaNet (11.3 GiB) | | 20.3 ms | 22.9 | 23.8 | −3.5 ms |
+
+libr4d reads 550–620 GB/s on every shape; ours 430–580, weakest on the narrow-K shapes (`out_proj` is bimodal between
+runs, and 70.6 µs in the server). Its error against the unquantised fp32 product is 2.0–3.1e-3 where ours is
+2.2–2.7e-2: the E4M3 rounding of the activation is ten times the weight error. The split `in_proj` row (8192 × 5120,
+74.1 against 82.2) ran on our default config, since no tuned config exists for that shape yet.
+
+| family | libr4d against ours |
+|---|---|
+| M = 8 / 16 / 64 (`r4d_gemm_fp8a8_nt_m16`, frag64 weight layout) | 1.03–1.46×: gate_up 1.03–1.17, down 1.03–1.06, in_proj 1.07–1.19, out_proj 1.14–1.28, qkv 1.14–1.28, o_proj 1.25–1.46; 99.98–99.99 % of bf16 outputs equal |
+| prefill tiles, M = 4096 / 8192 (`r4d_gemm_fp8a8_tiled`, frag64) | gate_up and in_proj 1.56–1.57× (206–211 against 130–134 TFLOP/s), the other four 1.23–1.32×; a layer stack per rank: 616 against 890 ms per 4096-token chunk, 1,181 against 1,727 ms per 8192 (1.45×) |
+| per-token FP8 quantiser | 4.2–7.1 µs against 13 µs (ours is bound by the launch, not the kernel) |
+| fused RMSNorm + quant, gated SiLU·mul + quant | 5.5 and 5.0–8.5 µs in one launch, against 49.5 and 24 µs for the torch op plus the Triton quantiser here |
+| row top-k, R = 32 | 25.6–28.1 µs at N = 15,520 (`torch.topk` 38–114, 1.5–4.1×), 48–108 µs at N = 124,160 (51–214, 1.06–2.0×); values and indices identical |
+
+Not timed: the all-reduce (two ranks in one process; RAD-2 measures it in serving), the MXFP4 GEMMs, the GDN and
+prefill-attention kernels (bench stubs, waiting for RAD-10's shares).
+
+Disposition, per family. **Port the M = 1 W8A16 GEMV (RAD-22, now first in the base-step list):** −3.3 to −3.5 ms of
+a 43 ms step per rank, one launch per linear instead of two, activations no longer rounded to E4M3, and no weight
+repack; as a numbered patch with the NOTICE attribution, or a Triton GEMV that reaches 590–620 GB/s (patch 117's
+MXFP4 GEMV has that shape). The prefill tile kernel is worth 1.45× of a chunk's GEMM time but reads the frag64 layout,
+which means repacking every weight or a second 13.9 GiB copy per rank: RAD-20 decides after RAD-10 reports the GEMM
+share of prefill. M = 8–64 stays ours (verify rows only, same layout cost) with a re-tune. The fused norm and gate
+quantisers and the row top-k justify RAD-5 and RAD-17.
+
+### RAD-14 — launch census of the decode step, FP8 and MXFP4 (2026-11-09)
+
+Eager per-kernel traces of the qwen38 no-speculation preset at 24 and 58K prompt tokens, FP8 and Quark MXFP4, reduced
+by `scripts/bench/launch_census.py` ([FP8](profiling/rad11-profile-fp8-2026-11-09/),
+[MXFP4](profiling/rad11-profile-mxfp4-2026-11-09/): `census-short.json`, `census-deep.json`). One decode step is
+**2,657 kernel launches per rank on FP8 and 2,721 on MXFP4**. Counts are exact; the profiler inflates short kernels,
+so the small-family milliseconds are upper bounds, and the eager all-reduce row includes waiting for the peer rank.
+
+| family, 24 tokens | FP8 launches | FP8 ms / step | MXFP4 launches | MXFP4 ms / step | owner |
+|---|---:|---:|---:|---:|---|
+| quantised GEMM | 256 | 27.75 | 256 | 26.55 | RAD-1, RAD-22, RAD-3 |
+| all-reduce (eager RCCL, median 40 µs) | 130 | 13.38 | 130 | 10.23 | RAD-2, RAD-24 |
+| rocBLAS bf16 GEMM | 49 | 3.80 | 49 | 3.77 | RAD-15, RAD-23 |
+| copy / cat / index | 705 | 1.78 | 960 | 2.34 | RAD-5 |
+| elementwise | 695 | 1.34 | 759 | 1.50 | RAD-5 |
+| GDN recurrence and conv | 97 | 0.63 | 97 | 0.58 | – |
+| per-token quantiser | 256 | 0.54 | 0 | 0 | RAD-22 |
+| reduce, norm, attention, activation | 467 | 1.59 | 467 | 1.66 | RAD-5 |
+| **traced / eager span** | **2,657** | **50.8 / 76.7** | **2,721** | **46.6 / 66.4** | |
+
+At 58K only decode attention grows (0.36 → 2.19 ms on both arms); GEMM is 28.4 and 26.6 ms. The rocBLAS row is two
+things: the LM head, one launch of 2.25–2.36 ms, and DeltaNet's unquantised `in_proj_ba` (96 × 5120, bf16), 48 launches
+of 30 µs = 1.44 ms per step, which no experiment owned (RAD-23: a Triton bf16 GEMV, about −1.2 ms). Per-linear medians
+inside the server, split by launch position:
+
+| linear | FP8 µs | MXFP4 µs | MXFP4 standalone on the per-rank shard |
+|---|---:|---:|---:|
+| DeltaNet in_proj_qkvz | 144.2 | 86.7 | 113.7 |
+| DeltaNet out_proj | 70.6 | 57.5 | 53.5 |
+| MLP gate_up | 168.3 | 171.6 | 113.7 |
+| MLP down | 77.9 | 111.8 | 64.9 |
+| attention qkv / o_proj | 70.1 / 38.4 | 42.9 / 22.3 | – |
+| sum per step | 27.62 ms | 26.28 ms | |
+
+The FP8 column matches the RAD-13 microbench within 1 %, so the graphed 43.1 ms step at 24 tokens is GEMM 27.7 ms,
+bf16 rocBLAS 3.8, about 2,220 small launches 4.5–5.9 and all-reduce 5.7–7.1 by subtraction (graph replays are not
+traceable). The 14.9 ms to radiance's 28.2 ms step has owners: GEMM 7.4–8.1 (RAD-1 about 4, RAD-22 3.3–3.5),
+all-reduce about 4 (RAD-2), LM head 1.1 (RAD-15), `in_proj_ba` 1.2 (RAD-23), small-launch fusion 2.5–3.5 (RAD-5).
+Corrections to the earlier budget: RAD-1 is about 4 ms, not 9; the quantiser is 256 launches and 0.5 ms of GPU time,
+so RAD-22's prize is the GEMV itself; the LM head is 2.3 ms, not 1.5.
+
+The MXFP4 column answers RAD-11's open question. Its DeltaNet and attention projections run 1.4–1.7× faster than FP8,
+but its MLP linears run at FP8 speed or slower, and 1.5–1.7× slower than the same kernel on the per-rank shard. The
+qwen3_5 model replicates the dense MLP on every rank unless the quantisation is named FP8
+(`_should_replicate_deltanet_for_tp`), and Quark's scheme is named `quark`: each rank reads the whole 34816 × 5120
+and 5120 × 17408 MLP, divides by two, and the stage all-reduce adds the halves (per-rank weights 14.92 GB against
+10.55 GB split). The A/B is RAD-11c below. Two smaller MXFP4 costs: a `torch.ones` activation scale per GEMV call
+(256 fill launches) and 322 bf16 → fp32 copies per step. A replicated stage also still pays its all-reduce: the 48
+DeltaNet reductions per step on the FP8 preset add two identical halves (RAD-24: complete the output on the rank, no
+reduction, byte-identical by construction; it competes with RAD-1's split and RAD-2 decides which wins).
+
+Disposition: gate met (families sum to the traced step; every family ≥ 0.3 ms has an owner, with RAD-23 and RAD-24
+new). Base-step order by measured worth: RAD-1 → RAD-2 → RAD-22 → RAD-5 → RAD-23 → RAD-15.
+
+### RAD-11c — Quark MXFP4 with a TP-split MLP: decode +25–30 %, prefill +42–47 % (2026-11-09)
+
+RAD-14 found the MXFP4 arm's MLP linears reading the whole weight on every rank. The qwen3_5 model keeps the dense
+MLP TP-split only for quantisations it recognises as FP8 (`_should_replicate_deltanet_for_tp`); Quark's scheme is
+named `quark`, so each rank streamed the full 34816 × 5120 and 5120 × 17408 linears, halved the output, and the
+stage all-reduce added two identical halves. Patch 120 splits the MLP for Quark on HIP
+(`SGLANG_RDNA4_REPLICATE_MLP=1` restores the replicated layout) and logs the layout at boot
+(`[RDNA4] dense MLP: TP-split over 2 ranks`). Same-session A/B on `amd/Qwen3.8-27B-Quark-AWQ-MXFP4` (comparison
+input), qwen38 preset without speculation, arms in the order split → replicated → split
+([receipts](profiling/rad11-mxfp4-mlp-split-2026-11-09/)):
+
+| arm | 24 | 7,331 | 58,483 | 197,326 input tokens | cold prefill, 7.3K / 58K | token pool | weights per rank |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| TP-split, first | 29.92 | 29.56 | 28.04 | 25.22 | 798 / 725 tok/s | 953,836 | 10.55 GB |
+| replicated (`SGLANG_RDNA4_REPLICATE_MLP=1`) | 23.22 | 22.83 | 21.89 | 20.23 | 544 / 510 tok/s | 667,116 | 14.92 GB |
+| TP-split, last | 29.89 | 29.59 | 27.99 | – | – | 953,836 | 10.55 GB |
+| split over replicated | +28.9 % | +29.5 % | +28.1 % | +24.7 % | +47 % / +42 % | +43 % | −4.37 GB |
+
+The two split arms agree within 0.2 %, and the replicated arm reproduces the earlier serving run (23.19 / 22.81 /
+21.91 / 20.23). The step falls from 43.1 to 33.4 ms at 24 tokens. The RAD-14 per-linear medians predicted −6.7 ms
+(gate_up 171.6 → 113.7 µs, down 111.8 → 64.9 µs, 64 layers); the other 3 ms is not attributed, and a launch census
+of the split layout is the next RAD-11 step. Gates on the split arm: capabilities 4/4 (video skipped), greedy needle
+found at 33,904 tokens (depths 0.1 / 0.5 / 0.9) and at 137,094 tokens (depth 0.5). The greedy identity probe is not
+byte-identical between layouts, as expected when a row-parallel `down_proj` sums two half-K partial products instead
+of two copies of one product: 2 of 6 prompts match to the token (330 and 181 tokens), four diverge after 114–323
+characters into answers of the same content (`identity-compare.json`: the same refactored function with reworded
+notes; a six-language JSON list that ends on C 1972 instead of Pascal 1970, both well-formed).
+
+Disposition: patch 120 (Candidate) is in the series. FP8 stays the preset (#39) and the Quark checkpoint stays a
+comparison input; MXFP4 without speculation is now 1.29× this stack's FP8 step at 24 tokens and still 1.6–1.7× behind
+radiance's 51.6 / 50.8 / 47.4 / 41.0. The full needle grid and the 197K prefill on the live tree are queued as a deep
+gate. Known MXFP4 costs still in the step: a `torch.ones` activation-scale fill per GEMV (256 launches), 322
+bf16 → fp32 copies, and the M > 32 repack path that prefill and speculative verify need. AWQ and unquantised
+checkpoints keep the replicated MLP (not a tuning target).
+
 ## Evaluation methodology
 
 ### SWE-bench answer leakage through git history and the web (found 2026-09-18)

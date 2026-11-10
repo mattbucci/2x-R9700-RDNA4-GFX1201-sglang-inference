@@ -1,0 +1,119 @@
+{
+ "experiment": "RAD-11c greedy identity probe, replicated vs TP-split dense MLP (Quark MXFP4, no speculation)",
+ "timestamp": "2026-11-09 17:03",
+ "model": "/data/models/Qwen3.8-27B-Quark-AWQ-MXFP4",
+ "max_tokens": 400,
+ "temperature": 0,
+ "identical": 2,
+ "probes": 6,
+ "rows": [
+  {
+   "probe": "code",
+   "prompt_tokens": 42,
+   "identical": true,
+   "first_divergence_char": null,
+   "replicated": {
+    "completion_tokens": 330,
+    "finish_reason": "stop",
+    "seconds": 14.58,
+    "content": "```python\ndef merge_intervals(intervals):\n    \"\"\"\n    Merge overlapping closed intervals and return them sorted.\n    \n    Args:\n        intervals: A list of tuples, where each tuple represents a closed interval [start, end].\n        \n    Returns:\n        A list of merged, non-overlapping intervals, sorted by start value.\n        \n    Examples:\n        >>> merge_intervals([(1, 3), (2, 6), (8, 10), (15, 18)])\n        [(1, 6), (8, 10), (15, 18)]\n        \n        >>> merge_intervals([(1, 4), (4, 5)])\n        [(1, 5)]\n        \n        >>> merge_intervals([])\n        []\n    \"\"\"\n    if not intervals:\n        return []\n    \n    # Sort intervals by start value\n    sorted_intervals = sorted(intervals, key=lambda x: x[0])\n    \n    merged = [sorted_intervals[0]]\n    \n    for current in sorted_intervals[1:]:\n        last = merged[-1]\n        # Check if current interval overlaps with the last merged interval\n        if current[0] <= last[1]:\n            # Merge: update the end of the last interval if current extends further\n            merged[-1] = (last[0], max(last[1], current[1]))\n        else:\n            # No overlap, add current interval to merged list\n            merged.append(current)\n    \n    return merged\n```"
+   },
+   "tp_split": {
+    "completion_tokens": 330,
+    "finish_reason": "stop",
+    "seconds": 11.23,
+    "content": "```python\ndef merge_intervals(intervals):\n    \"\"\"\n    Merge overlapping closed intervals and return them sorted.\n    \n    Args:\n        intervals: A list of tuples, where each tuple represents a closed interval [start, end].\n        \n    Returns:\n        A list of merged, non-overlapping intervals, sorted by start value.\n        \n    Examples:\n        >>> merge_intervals([(1, 3), (2, 6), (8, 10), (15, 18)])\n        [(1, 6), (8, 10), (15, 18)]\n        \n        >>> merge_intervals([(1, 4), (4, 5)])\n        [(1, 5)]\n        \n        >>> merge_intervals([])\n        []\n    \"\"\"\n    if not intervals:\n        return []\n    \n    # Sort intervals by start value\n    sorted_intervals = sorted(intervals, key=lambda x: x[0])\n    \n    merged = [sorted_intervals[0]]\n    \n    for current in sorted_intervals[1:]:\n        last = merged[-1]\n        # Check if current interval overlaps with the last merged interval\n        if current[0] <= last[1]:\n            # Merge: update the end of the last interval if current extends further\n            merged[-1] = (last[0], max(last[1], current[1]))\n        else:\n            # No overlap, add current interval to merged list\n            merged.append(current)\n    \n    return merged\n```"
+   }
+  },
+  {
+   "probe": "prose",
+   "prompt_tokens": 38,
+   "identical": false,
+   "first_divergence_char": 323,
+   "replicated": {
+    "completion_tokens": 378,
+    "finish_reason": "stop",
+    "seconds": 16.72,
+    "content": "Speculative decoding is a technique designed to accelerate the inference of large language models (LLMs) without compromising the quality of the generated text. It operates on the principle that generating tokens sequentially is computationally expensive due to the autoregressive nature of transformers. To mitigate this, the method employs a smaller, faster \"draft\" model to propose a sequence of $k$ tokens. These proposed tokens are then passed to the larger, more accurate \"target\" model, which processes them in parallel in a single forward pass.\n\nThe key to its losslessness lies in the verification step. The target model calculates the probability distribution for each token position. It then performs a rejection sampling check: for each token proposed by the draft model, it compares the draft’s probability against the target’s probability. If the target model’s probability for that token is higher than the draft’s, the token is accepted. If the target’s probability is lower, the token is rejected, and a new token is sampled directly from the target model’s distribution. This process ensures that the final output is statistically identical to what the target model would have produced if it had generated the tokens sequentially on its own. Because the target model retains full control over the final token selection, the output distribution remains unchanged, making the process lossless.\n\n\"Acceptance length\" is a critical metric in this context. It refers to the average number of tokens from the draft model that are successfully accepted by the target model before a rejection occurs. A higher acceptance length indicates that the draft model’s predictions closely align with the target model’s, resulting in greater speedup. Conversely, a low acceptance length suggests significant divergence between the two models, reducing the efficiency gains. Essentially, acceptance length quantifies the effectiveness of the speculation: it measures how many \"free\" tokens the draft model provides before the target model must intervene to correct the trajectory."
+   },
+   "tp_split": {
+    "completion_tokens": 399,
+    "finish_reason": "stop",
+    "seconds": 13.58,
+    "content": "Speculative decoding is a technique designed to accelerate the inference of large language models (LLMs) without compromising the quality of the generated text. It operates on the principle that generating tokens sequentially is computationally expensive due to the autoregressive nature of transformers. To mitigate this, speculative decoding employs a smaller, faster \"draft\" model to propose a sequence of $k$ tokens. These proposed tokens are then verified in parallel by the larger, more accurate \"target\" model.\n\nThe process is lossless because it strictly adheres to the target model’s probability distribution. After the target model evaluates the draft tokens, it calculates the probability of each token given the context. If a draft token’s probability under the target model is higher than its probability under the draft model, it is accepted. If the target model assigns a lower probability, the token is rejected, and the target model samples a new token from its own distribution. Crucially, if a token is rejected, the process stops, and the target model generates the next token itself. This rejection-sampling mechanism ensures that the final output sequence is statistically identical to what the target model would have produced if it had generated the tokens sequentially on its own. No information is lost, and the output distribution remains unchanged.\n\n\"Acceptance length\" is a key metric used to evaluate the efficiency of speculative decoding. It refers to the average number of draft tokens that are successfully accepted by the target model before a rejection occurs or the draft sequence ends. A higher acceptance length indicates that the draft model is highly aligned with the target model, meaning fewer tokens need to be generated by the slower target model. This directly correlates with speedup: if the draft model is poor, the acceptance length will be low (often close to 1), offering little benefit. Conversely, a high acceptance length means the target model is primarily just verifying tokens rather than generating them from scratch, significantly reducing latency and computational overhead while maintaining the exact output quality of the original model."
+   }
+  },
+  {
+   "probe": "json",
+   "prompt_tokens": 53,
+   "identical": false,
+   "first_divergence_char": 219,
+   "replicated": {
+    "completion_tokens": 133,
+    "finish_reason": "stop",
+    "seconds": 6.0,
+    "content": "{\n  \"languages\": [\n    {\"name\": \"Fortran\", \"year\": 1957},\n    {\"name\": \"Lisp\", \"year\": 1958},\n    {\"name\": \"COBOL\", \"year\": 1959},\n    {\"name\": \"ALGOL\", \"year\": 1960},\n    {\"name\": \"BASIC\", \"year\": 1964},\n    {\"name\": \"Pascal\", \"year\": 1970}\n  ],\n  \"oldest\": \"Fortran\"\n}"
+   },
+   "tp_split": {
+    "completion_tokens": 132,
+    "finish_reason": "stop",
+    "seconds": 4.58,
+    "content": "{\n  \"languages\": [\n    {\"name\": \"Fortran\", \"year\": 1957},\n    {\"name\": \"Lisp\", \"year\": 1958},\n    {\"name\": \"COBOL\", \"year\": 1959},\n    {\"name\": \"ALGOL\", \"year\": 1960},\n    {\"name\": \"BASIC\", \"year\": 1964},\n    {\"name\": \"C\", \"year\": 1972}\n  ],\n  \"oldest\": \"Fortran\"\n}"
+   }
+  },
+  {
+   "probe": "numbers",
+   "prompt_tokens": 52,
+   "identical": true,
+   "first_divergence_char": null,
+   "replicated": {
+    "completion_tokens": 181,
+    "finish_reason": "stop",
+    "seconds": 8.11,
+    "content": "19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 73, 79, 83, 89, 97, 101, 103, 107, 109, 113, 127, 131, 137, 139, 149, 151, 157, 163, 167, 173, 179, 181, 191, 193, 197, 199, 211"
+   },
+   "tp_split": {
+    "completion_tokens": 181,
+    "finish_reason": "stop",
+    "seconds": 6.24,
+    "content": "19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 73, 79, 83, 89, 97, 101, 103, 107, 109, 113, 127, 131, 137, 139, 149, 151, 157, 163, 167, 173, 179, 181, 191, 193, 197, 199, 211"
+   }
+  },
+  {
+   "probe": "refactor",
+   "prompt_tokens": 80,
+   "identical": false,
+   "first_divergence_char": 146,
+   "replicated": {
+    "completion_tokens": 151,
+    "finish_reason": "stop",
+    "seconds": 6.91,
+    "content": "```python\ndef f(xs):\n    return [x * x for x in xs if x % 2 == 0]\n```\n\n1. Replaced the manual loop and list accumulation with a list comprehension for concise, Pythonic iteration.\n2. Moved the even-number check into the comprehension's `if` clause to filter elements before processing.\n3. Simplified `xs[i] * xs[i]` to `x * x` by iterating directly over values instead of indices.\n4. Removed the explicit `r = []` initialization and `r.append(...)` calls, as the list comprehension builds the result directly.\n5. Eliminated the separate `return r` statement by returning the comprehension expression directly."
+   },
+   "tp_split": {
+    "completion_tokens": 154,
+    "finish_reason": "stop",
+    "seconds": 5.4,
+    "content": "```python\ndef f(xs):\n    return [x * x for x in xs if x % 2 == 0]\n```\n\n1. Replaced the manual loop and list accumulation with a list comprehension, which is the Pythonic way to build lists from iterables.\n2. Iterated directly over `xs` instead of using `range(len(xs))` and indexing, which is cleaner and avoids unnecessary index lookups.\n3. Moved the conditional check (`x % 2 == 0`) into the list comprehension’s `if` clause, making the filtering logic explicit and concise.\n4. Simplified `xs[i] * xs[i]` to `x * x`, improving readability by using the loop variable directly."
+   }
+  },
+  {
+   "probe": "ctx-long",
+   "prompt_tokens": 31648,
+   "identical": false,
+   "first_divergence_char": 114,
+   "replicated": {
+    "completion_tokens": 166,
+    "finish_reason": "stop",
+    "seconds": 67.51,
+    "content": "The provided text presents a diverse collection of mathematical problems spanning probability, combinatorics, and geometry. Central themes include the application of fundamental counting principles, such as permutations, combinations, and the multiplication rule, to solve selection and arrangement scenarios. Probability concepts are heavily featured, utilizing methods like complementary counting, inclusion-exclusion, and geometric probability to determine likelihoods in various contexts, from dice rolls to random arrivals. The text also explores algebraic and number theory concepts, including binomial expansions, factorial simplifications, and properties of integers like palindromes and relatively prime numbers. Additionally, it addresses spatial reasoning through grid path counting and geometric area calculations. Overall, the material serves as a comprehensive review of discrete mathematics techniques, emphasizing logical deduction, systematic case analysis, and the strategic use of formulas to solve complex quantitative problems."
+   },
+   "tp_split": {
+    "completion_tokens": 175,
+    "finish_reason": "stop",
+    "seconds": 47.63,
+    "content": "The provided text presents a diverse collection of mathematical problems spanning probability, combinatorics, and basic arithmetic. The primary themes include calculating probabilities for independent and dependent events, such as rolling dice, drawing cards, or selecting random numbers. Combinatorial concepts are heavily featured, with numerous problems requiring the application of combinations, permutations, and the inclusion-exclusion principle to count possible outcomes in scenarios like arranging objects, forming teams, or analyzing digit patterns.\n\nAdditionally, the text addresses expected values, geometric probability involving areas, and logical reasoning for complex constraints, such as tournament scoring or sequence generation. The solutions demonstrate various problem-solving strategies, including complementary counting, symmetry arguments, and the use of binomial coefficients. Overall, the text serves as a comprehensive review of fundamental discrete mathematics and probability theory, illustrating how to break down complex scenarios into manageable calculations using standard formulas and logical deduction."
+   }
+  }
+ ]
+}

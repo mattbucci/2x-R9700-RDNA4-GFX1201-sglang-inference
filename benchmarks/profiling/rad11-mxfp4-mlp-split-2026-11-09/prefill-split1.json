@@ -1,0 +1,28 @@
+{
+ "label": "split1",
+ "model": "/data/models/Qwen3.8-27B-Quark-AWQ-MXFP4",
+ "port": 23334,
+ "runs": 1,
+ "method": "flush_cache + non-stream max_tokens=1 wall time",
+ "timestamp": "2026-11-09 16:40",
+ "rows": [
+  {
+   "context": 8192,
+   "input_len": 7331,
+   "runs_s": [
+    9.184
+   ],
+   "median_s": 9.184,
+   "prefill_tok_per_s": 798.3
+  },
+  {
+   "context": 65536,
+   "input_len": 58483,
+   "runs_s": [
+    80.636
+   ],
+   "median_s": 80.636,
+   "prefill_tok_per_s": 725.3
+  }
+ ]
+}
