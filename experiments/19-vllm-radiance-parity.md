@@ -128,6 +128,20 @@ further 0.2 s (41.9 and 31.5 tok/s cold), which RAD-16 has to locate. Radiance: 
 197K. Bringing only the cycle ratio to 1.3× lifts this stack to roughly 66 / 65 / 63 / 58 tok/s on today's base step;
 the rest of the row is the base step itself.
 
+## Measured gap with patches 121–124 in the preset (2026-11-10)
+
+Canonical sweep on the shipped `qwen38` preset, five runs per depth
+([no-spec](../benchmarks/qwen38-27b-fp8/decode-canonical-nospec-2026-11-10.json),
+[DSpark](../benchmarks/qwen38-27b-fp8/decode-canonical-dspark-2026-11-10.json): 51.1 / 63.7 / 55.9 / 35.7). The DFlash2
+row is the RAD-16 session on the same base ([receipt](../benchmarks/profiling/rad16-spec-cycle-anatomy-2026-11-10/));
+its cells are again the cold first run, and the repeats with the prefix cached read 66.5 / 76.7 / 65.8 / 48.5.
+
+| Lane | vllm-radiance | SGLang, this tree | Gap | What the gap is made of |
+|---|---|---|---|---|
+| FP8, no speculation | 35.4 / 35.0 / 33.7 / 30.4 | 34.3 / 33.6 / 32.1 / 28.7 | 1.03–1.06× | 29.2 ms per step against 28.2 at 24 tokens and 34.8 against 32.9 at 197K, after the one-row decode kernels (patches 122–124: W8A16 GEMV, Triton norm, DeltaNet `in_proj_ba` GEMV). Left in the step: the bf16 LM head (RAD-15), the all-reduce, the small launches |
+| FP8 + DFlash2 | 99.9 / 99.7 / 87.9 / 91.0 | 66.8 / 63.4 / 49.6 / 39.9 | 1.5–2.3× | a cycle of 1.59–2.13× a plain step against radiance's 1.3× (RAD-16). The target verify is 79–87 % of the cycle: 9–10 ms over a plain step at 24 tokens (multi-row quantising GEMM, RAD-22b) and 27 ms more at 197K than at 24 tokens (prefix read once per query head, RAD-27) |
+| Cold prefill | 4,137 / 3,631 / 2,520 | 2,331 / 1,784 / 1,073 | 1.8–2.3× | not profiled (RAD-10): GDN conv and chunk scan, extend attention, block-FP8 GEMM tiles at M ≥ 64 |
+
 ## Experiments on SGLang (ranked by expected tok/s per engineering day on the qwen38 no-spec step)
 
 Each one is a same-tree A/B with `scripts/bench/decode_ab.py --ignore-eos` at 24 / 7.3K / 58K / 197K in both orders,

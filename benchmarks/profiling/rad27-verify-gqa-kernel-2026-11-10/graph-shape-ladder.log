@@ -1,0 +1,213 @@
+[bench] device AMD Radeon AI PRO R9700 (gfx1201), tree /data/sgl-v0522-rad27/python, pool 199374 slots x 16 layers, prefixes [24, 1024, 4096, 7331, 16384, 32768, 58483, 197326], rows [8, 9]
+[bench] inputs built in 3 s, 3.05 GiB allocated
+[bench] graph rows=8 prefix=24: per-head: 0.466 ms / 16 layers (min 0.465, splits 16, graph)
+[bench] probe gqa hb=6 splits x2 bn=32 warps=4 rows=8 splits=32: ok rc=0 4.0 s cos vs ref 0.999202 (per-head 0.999143), vs per-head 0.9997
+[bench] graph rows=8 prefix=24: gqa hb=6 splits x2 bn=32 warps=4: 0.851 ms / 16 layers (min 0.851, splits 32, graph)
+[bench] probe gqa hb=6 splits x4 bn=32 warps=4 rows=8 splits=64: ok rc=0 4.0 s cos vs ref 0.99921 (per-head 0.999143), vs per-head 0.999609
+[bench] graph rows=8 prefix=24: gqa hb=6 splits x4 bn=32 warps=4: 1.080 ms / 16 layers (min 1.077, splits 64, graph)
+[bench] probe gqa hb=6 splits x8 bn=32 warps=4 rows=8 splits=128: ok rc=0 4.0 s cos vs ref 0.999233 (per-head 0.999143), vs per-head 0.99952
+[bench] graph rows=8 prefix=24: gqa hb=6 splits x8 bn=32 warps=4: 1.483 ms / 16 layers (min 1.447, splits 128, graph)
+[bench] probe gqa hb=6 splits x2 bn=64 warps=4 rows=8 splits=32: ok rc=0 4.0 s cos vs ref 0.999187 (per-head 0.999143), vs per-head 0.999644
+[bench] graph rows=8 prefix=24: gqa hb=6 splits x2 bn=64 warps=4: 0.996 ms / 16 layers (min 0.992, splits 32, graph)
+[bench] probe gqa hb=6 splits x4 bn=64 warps=4 rows=8 splits=64: ok rc=0 4.0 s cos vs ref 0.999218 (per-head 0.999143), vs per-head 0.99956
+[bench] graph rows=8 prefix=24: gqa hb=6 splits x4 bn=64 warps=4: 1.218 ms / 16 layers (min 1.216, splits 64, graph)
+[bench] probe gqa hb=6 splits x8 bn=64 warps=4 rows=8 splits=128: ok rc=0 4.0 s cos vs ref 0.999163 (per-head 0.999143), vs per-head 0.999519
+[bench] graph rows=8 prefix=24: gqa hb=6 splits x8 bn=64 warps=4: 1.636 ms / 16 layers (min 1.490, splits 128, graph)
+[bench] probe gqa hb=3 splits x2 bn=32 warps=4 rows=8 splits=32: ok rc=0 4.0 s cos vs ref 0.999202 (per-head 0.999143), vs per-head 0.9997
+[bench] graph rows=8 prefix=24: gqa hb=3 splits x2 bn=32 warps=4: 0.616 ms / 16 layers (min 0.601, splits 32, graph)
+[bench] probe gqa hb=3 splits x4 bn=32 warps=4 rows=8 splits=64: ok rc=0 4.0 s cos vs ref 0.99921 (per-head 0.999143), vs per-head 0.999609
+[bench] graph rows=8 prefix=24: gqa hb=3 splits x4 bn=32 warps=4: 0.844 ms / 16 layers (min 0.835, splits 64, graph)
+[bench] probe gqa hb=2 splits x2 bn=32 warps=4 rows=8 splits=32: ok rc=0 4.0 s cos vs ref 0.999202 (per-head 0.999143), vs per-head 0.9997
+[bench] graph rows=8 prefix=24: gqa hb=2 splits x2 bn=32 warps=4: 0.558 ms / 16 layers (min 0.545, splits 32, graph)
+[bench] graph rows=8 prefix=1024: per-head: 0.626 ms / 16 layers (min 0.624, splits 16, graph)
+[bench] graph rows=8 prefix=1024: gqa hb=6 splits x2 bn=32 warps=4: 0.953 ms / 16 layers (min 0.865, splits 32, graph)
+[bench] graph rows=8 prefix=1024: gqa hb=6 splits x4 bn=32 warps=4: 1.073 ms / 16 layers (min 1.071, splits 64, graph)
+[bench] graph rows=8 prefix=1024: gqa hb=6 splits x8 bn=32 warps=4: 1.446 ms / 16 layers (min 1.431, splits 128, graph)
+[bench] graph rows=8 prefix=1024: gqa hb=6 splits x2 bn=64 warps=4: 1.011 ms / 16 layers (min 1.007, splits 32, graph)
+[bench] graph rows=8 prefix=1024: gqa hb=6 splits x4 bn=64 warps=4: 1.219 ms / 16 layers (min 1.217, splits 64, graph)
+[bench] graph rows=8 prefix=1024: gqa hb=6 splits x8 bn=64 warps=4: 1.587 ms / 16 layers (min 1.583, splits 128, graph)
+[bench] graph rows=8 prefix=1024: gqa hb=3 splits x2 bn=32 warps=4: 0.633 ms / 16 layers (min 0.630, splits 32, graph)
+[bench] graph rows=8 prefix=1024: gqa hb=3 splits x4 bn=32 warps=4: 0.850 ms / 16 layers (min 0.846, splits 64, graph)
+[bench] graph rows=8 prefix=1024: gqa hb=2 splits x2 bn=32 warps=4: 0.613 ms / 16 layers (min 0.611, splits 32, graph)
+[bench] graph rows=8 prefix=4096: per-head: 0.940 ms / 16 layers (min 0.935, splits 16, graph)
+[bench] graph rows=8 prefix=4096: gqa hb=6 splits x2 bn=32 warps=4: 1.124 ms / 16 layers (min 1.117, splits 32, graph)
+[bench] graph rows=8 prefix=4096: gqa hb=6 splits x4 bn=32 warps=4: 1.310 ms / 16 layers (min 1.305, splits 64, graph)
+[bench] graph rows=8 prefix=4096: gqa hb=6 splits x8 bn=32 warps=4: 2.169 ms / 16 layers (min 2.154, splits 128, graph)
+[bench] graph rows=8 prefix=4096: gqa hb=6 splits x2 bn=64 warps=4: 1.209 ms / 16 layers (min 1.208, splits 32, graph)
+[bench] graph rows=8 prefix=4096: gqa hb=6 splits x4 bn=64 warps=4: 1.411 ms / 16 layers (min 1.406, splits 64, graph)
+[bench] graph rows=8 prefix=4096: gqa hb=6 splits x8 bn=64 warps=4: 2.425 ms / 16 layers (min 2.422, splits 128, graph)
+[bench] graph rows=8 prefix=4096: gqa hb=3 splits x2 bn=32 warps=4: 0.772 ms / 16 layers (min 0.769, splits 32, graph)
+[bench] graph rows=8 prefix=4096: gqa hb=3 splits x4 bn=32 warps=4: 1.054 ms / 16 layers (min 1.052, splits 64, graph)
+[bench] graph rows=8 prefix=4096: gqa hb=2 splits x2 bn=32 warps=4: 0.785 ms / 16 layers (min 0.782, splits 32, graph)
+[bench] graph rows=8 prefix=7331: per-head: 1.347 ms / 16 layers (min 1.342, splits 16, graph)
+[bench] graph rows=8 prefix=7331: gqa hb=6 splits x2 bn=32 warps=4: 1.304 ms / 16 layers (min 1.302, splits 32, graph)
+[bench] graph rows=8 prefix=7331: gqa hb=6 splits x4 bn=32 warps=4: 1.301 ms / 16 layers (min 1.298, splits 64, graph)
+[bench] graph rows=8 prefix=7331: gqa hb=6 splits x8 bn=32 warps=4: 2.314 ms / 16 layers (min 2.297, splits 128, graph)
+[bench] graph rows=8 prefix=7331: gqa hb=6 splits x2 bn=64 warps=4: 1.404 ms / 16 layers (min 1.398, splits 32, graph)
+[bench] graph rows=8 prefix=7331: gqa hb=6 splits x4 bn=64 warps=4: 1.433 ms / 16 layers (min 1.432, splits 64, graph)
+[bench] graph rows=8 prefix=7331: gqa hb=6 splits x8 bn=64 warps=4: 2.499 ms / 16 layers (min 2.492, splits 128, graph)
+[bench] graph rows=8 prefix=7331: gqa hb=3 splits x2 bn=32 warps=4: 0.980 ms / 16 layers (min 0.978, splits 32, graph)
+[bench] graph rows=8 prefix=7331: gqa hb=3 splits x4 bn=32 warps=4: 1.226 ms / 16 layers (min 1.223, splits 64, graph)
+[bench] graph rows=8 prefix=7331: gqa hb=2 splits x2 bn=32 warps=4: 1.025 ms / 16 layers (min 1.024, splits 32, graph)
+[bench] graph rows=8 prefix=16384: per-head: 2.358 ms / 16 layers (min 2.356, splits 16, graph)
+[bench] graph rows=8 prefix=16384: gqa hb=6 splits x2 bn=32 warps=4: 1.959 ms / 16 layers (min 1.953, splits 32, graph)
+[bench] graph rows=8 prefix=16384: gqa hb=6 splits x4 bn=32 warps=4: 1.715 ms / 16 layers (min 1.707, splits 64, graph)
+[bench] graph rows=8 prefix=16384: gqa hb=6 splits x8 bn=32 warps=4: 2.642 ms / 16 layers (min 2.640, splits 128, graph)
+[bench] graph rows=8 prefix=16384: gqa hb=6 splits x2 bn=64 warps=4: 2.025 ms / 16 layers (min 2.022, splits 32, graph)
+[bench] graph rows=8 prefix=16384: gqa hb=6 splits x4 bn=64 warps=4: 1.828 ms / 16 layers (min 1.825, splits 64, graph)
+[bench] graph rows=8 prefix=16384: gqa hb=6 splits x8 bn=64 warps=4: 2.985 ms / 16 layers (min 2.983, splits 128, graph)
+[bench] graph rows=8 prefix=16384: gqa hb=3 splits x2 bn=32 warps=4: 1.431 ms / 16 layers (min 1.430, splits 32, graph)
+[bench] graph rows=8 prefix=16384: gqa hb=3 splits x4 bn=32 warps=4: 1.646 ms / 16 layers (min 1.644, splits 64, graph)
+[bench] graph rows=8 prefix=16384: gqa hb=2 splits x2 bn=32 warps=4: 1.533 ms / 16 layers (min 1.526, splits 32, graph)
+[bench] graph rows=8 prefix=32768: per-head: 4.263 ms / 16 layers (min 4.254, splits 16, graph)
+[bench] graph rows=8 prefix=32768: gqa hb=6 splits x2 bn=32 warps=4: 3.104 ms / 16 layers (min 3.101, splits 32, graph)
+[bench] graph rows=8 prefix=32768: gqa hb=6 splits x4 bn=32 warps=4: 2.393 ms / 16 layers (min 2.387, splits 64, graph)
+[bench] graph rows=8 prefix=32768: gqa hb=6 splits x8 bn=32 warps=4: 3.227 ms / 16 layers (min 3.225, splits 128, graph)
+[bench] graph rows=8 prefix=32768: gqa hb=6 splits x2 bn=64 warps=4: 3.133 ms / 16 layers (min 3.128, splits 32, graph)
+[bench] graph rows=8 prefix=32768: gqa hb=6 splits x4 bn=64 warps=4: 2.467 ms / 16 layers (min 2.460, splits 64, graph)
+[bench] graph rows=8 prefix=32768: gqa hb=6 splits x8 bn=64 warps=4: 3.438 ms / 16 layers (min 3.436, splits 128, graph)
+[bench] graph rows=8 prefix=32768: gqa hb=3 splits x2 bn=32 warps=4: 2.337 ms / 16 layers (min 2.329, splits 32, graph)
+[bench] graph rows=8 prefix=32768: gqa hb=3 splits x4 bn=32 warps=4: 2.473 ms / 16 layers (min 2.467, splits 64, graph)
+[bench] graph rows=8 prefix=32768: gqa hb=2 splits x2 bn=32 warps=4: 2.528 ms / 16 layers (min 2.515, splits 32, graph)
+[bench] graph rows=8 prefix=58483: per-head: 7.511 ms / 16 layers (min 7.260, splits 16, graph)
+[bench] graph rows=8 prefix=58483: gqa hb=6 splits x2 bn=32 warps=4: 5.107 ms / 16 layers (min 5.100, splits 32, graph)
+[bench] graph rows=8 prefix=58483: gqa hb=6 splits x4 bn=32 warps=4: 3.525 ms / 16 layers (min 3.520, splits 64, graph)
+[bench] graph rows=8 prefix=58483: gqa hb=6 splits x8 bn=32 warps=4: 4.209 ms / 16 layers (min 4.201, splits 128, graph)
+[bench] graph rows=8 prefix=58483: gqa hb=6 splits x2 bn=64 warps=4: 4.955 ms / 16 layers (min 4.944, splits 32, graph)
+[bench] graph rows=8 prefix=58483: gqa hb=6 splits x4 bn=64 warps=4: 3.622 ms / 16 layers (min 3.618, splits 64, graph)
+[bench] graph rows=8 prefix=58483: gqa hb=6 splits x8 bn=64 warps=4: 4.583 ms / 16 layers (min 4.573, splits 128, graph)
+[bench] graph rows=8 prefix=58483: gqa hb=3 splits x2 bn=32 warps=4: 3.759 ms / 16 layers (min 3.742, splits 32, graph)
+[bench] graph rows=8 prefix=58483: gqa hb=3 splits x4 bn=32 warps=4: 3.813 ms / 16 layers (min 3.798, splits 64, graph)
+[bench] graph rows=8 prefix=58483: gqa hb=2 splits x2 bn=32 warps=4: 4.252 ms / 16 layers (min 4.150, splits 32, graph)
+[bench] graph rows=8 prefix=197326: per-head: 27.712 ms / 16 layers (min 27.616, splits 16, graph)
+[bench] graph rows=8 prefix=197326: gqa hb=6 splits x2 bn=32 warps=4: 15.836 ms / 16 layers (min 15.829, splits 32, graph)
+[bench] graph rows=8 prefix=197326: gqa hb=6 splits x4 bn=32 warps=4: 9.879 ms / 16 layers (min 9.857, splits 64, graph)
+[bench] graph rows=8 prefix=197326: gqa hb=6 splits x8 bn=32 warps=4: 10.689 ms / 16 layers (min 10.636, splits 128, graph)
+[bench] graph rows=8 prefix=197326: gqa hb=6 splits x2 bn=64 warps=4: 15.269 ms / 16 layers (min 15.257, splits 32, graph)
+[bench] graph rows=8 prefix=197326: gqa hb=6 splits x4 bn=64 warps=4: 9.822 ms / 16 layers (min 9.798, splits 64, graph)
+[bench] graph rows=8 prefix=197326: gqa hb=6 splits x8 bn=64 warps=4: 10.861 ms / 16 layers (min 10.852, splits 128, graph)
+[bench] graph rows=8 prefix=197326: gqa hb=3 splits x2 bn=32 warps=4: 12.122 ms / 16 layers (min 11.597, splits 32, graph)
+[bench] graph rows=8 prefix=197326: gqa hb=3 splits x4 bn=32 warps=4: 11.789 ms / 16 layers (min 11.730, splits 64, graph)
+[bench] graph rows=8 prefix=197326: gqa hb=2 splits x2 bn=32 warps=4: 13.764 ms / 16 layers (min 13.661, splits 32, graph)
+[bench] graph rows=9 prefix=24: per-head: 0.430 ms / 16 layers (min 0.428, splits 16, graph)
+[bench] probe gqa hb=6 splits x2 bn=32 warps=4 rows=9 splits=32: ok rc=0 4.8 s cos vs ref 0.999166 (per-head 0.999143), vs per-head 0.9997
+[bench] graph rows=9 prefix=24: gqa hb=6 splits x2 bn=32 warps=4: 0.914 ms / 16 layers (min 0.911, splits 32, graph)
+[bench] probe gqa hb=6 splits x4 bn=32 warps=4 rows=9 splits=64: ok rc=0 4.8 s cos vs ref 0.99921 (per-head 0.999143), vs per-head 0.999609
+[bench] graph rows=9 prefix=24: gqa hb=6 splits x4 bn=32 warps=4: 1.178 ms / 16 layers (min 1.158, splits 64, graph)
+[bench] probe gqa hb=6 splits x8 bn=32 warps=4 rows=9 splits=128: ok rc=0 4.8 s cos vs ref 0.999233 (per-head 0.999143), vs per-head 0.99952
+[bench] graph rows=9 prefix=24: gqa hb=6 splits x8 bn=32 warps=4: 1.595 ms / 16 layers (min 1.477, splits 128, graph)
+[bench] probe gqa hb=6 splits x2 bn=64 warps=4 rows=9 splits=32: ok rc=0 4.0 s cos vs ref 0.999154 (per-head 0.999143), vs per-head 0.999644
+[bench] graph rows=9 prefix=24: gqa hb=6 splits x2 bn=64 warps=4: 1.049 ms / 16 layers (min 1.038, splits 32, graph)
+[bench] probe gqa hb=6 splits x4 bn=64 warps=4 rows=9 splits=64: ok rc=0 4.0 s cos vs ref 0.999218 (per-head 0.999143), vs per-head 0.99956
+[bench] graph rows=9 prefix=24: gqa hb=6 splits x4 bn=64 warps=4: 1.295 ms / 16 layers (min 1.292, splits 64, graph)
+[bench] probe gqa hb=6 splits x8 bn=64 warps=4 rows=9 splits=128: ok rc=0 4.0 s cos vs ref 0.999163 (per-head 0.999143), vs per-head 0.999519
+[bench] graph rows=9 prefix=24: gqa hb=6 splits x8 bn=64 warps=4: 1.700 ms / 16 layers (min 1.537, splits 128, graph)
+[bench] probe gqa hb=3 splits x2 bn=32 warps=4 rows=9 splits=32: ok rc=0 4.5 s cos vs ref 0.999166 (per-head 0.999143), vs per-head 0.9997
+[bench] graph rows=9 prefix=24: gqa hb=3 splits x2 bn=32 warps=4: 0.683 ms / 16 layers (min 0.682, splits 32, graph)
+[bench] probe gqa hb=3 splits x4 bn=32 warps=4 rows=9 splits=64: ok rc=0 4.5 s cos vs ref 0.99921 (per-head 0.999143), vs per-head 0.999609
+[bench] graph rows=9 prefix=24: gqa hb=3 splits x4 bn=32 warps=4: 0.913 ms / 16 layers (min 0.907, splits 64, graph)
+[bench] probe gqa hb=2 splits x2 bn=32 warps=4 rows=9 splits=32: ok rc=0 4.5 s cos vs ref 0.999166 (per-head 0.999143), vs per-head 0.9997
+[bench] graph rows=9 prefix=24: gqa hb=2 splits x2 bn=32 warps=4: 0.654 ms / 16 layers (min 0.647, splits 32, graph)
+[bench] graph rows=9 prefix=1024: per-head: 0.639 ms / 16 layers (min 0.635, splits 16, graph)
+[bench] graph rows=9 prefix=1024: gqa hb=6 splits x2 bn=32 warps=4: 0.905 ms / 16 layers (min 0.897, splits 32, graph)
+[bench] graph rows=9 prefix=1024: gqa hb=6 splits x4 bn=32 warps=4: 1.119 ms / 16 layers (min 1.115, splits 64, graph)
+[bench] graph rows=9 prefix=1024: gqa hb=6 splits x8 bn=32 warps=4: 1.509 ms / 16 layers (min 1.506, splits 128, graph)
+[bench] graph rows=9 prefix=1024: gqa hb=6 splits x2 bn=64 warps=4: 1.021 ms / 16 layers (min 1.018, splits 32, graph)
+[bench] graph rows=9 prefix=1024: gqa hb=6 splits x4 bn=64 warps=4: 1.245 ms / 16 layers (min 1.240, splits 64, graph)
+[bench] graph rows=9 prefix=1024: gqa hb=6 splits x8 bn=64 warps=4: 1.585 ms / 16 layers (min 1.583, splits 128, graph)
+[bench] graph rows=9 prefix=1024: gqa hb=3 splits x2 bn=32 warps=4: 0.686 ms / 16 layers (min 0.681, splits 32, graph)
+[bench] graph rows=9 prefix=1024: gqa hb=3 splits x4 bn=32 warps=4: 0.879 ms / 16 layers (min 0.877, splits 64, graph)
+[bench] graph rows=9 prefix=1024: gqa hb=2 splits x2 bn=32 warps=4: 0.789 ms / 16 layers (min 0.787, splits 32, graph)
+[bench] graph rows=9 prefix=4096: per-head: 0.948 ms / 16 layers (min 0.946, splits 16, graph)
+[bench] graph rows=9 prefix=4096: gqa hb=6 splits x2 bn=32 warps=4: 1.136 ms / 16 layers (min 1.129, splits 32, graph)
+[bench] graph rows=9 prefix=4096: gqa hb=6 splits x4 bn=32 warps=4: 1.361 ms / 16 layers (min 1.357, splits 64, graph)
+[bench] graph rows=9 prefix=4096: gqa hb=6 splits x8 bn=32 warps=4: 2.221 ms / 16 layers (min 2.210, splits 128, graph)
+[bench] graph rows=9 prefix=4096: gqa hb=6 splits x2 bn=64 warps=4: 1.207 ms / 16 layers (min 1.204, splits 32, graph)
+[bench] graph rows=9 prefix=4096: gqa hb=6 splits x4 bn=64 warps=4: 1.445 ms / 16 layers (min 1.444, splits 64, graph)
+[bench] graph rows=9 prefix=4096: gqa hb=6 splits x8 bn=64 warps=4: 2.517 ms / 16 layers (min 2.512, splits 128, graph)
+[bench] graph rows=9 prefix=4096: gqa hb=3 splits x2 bn=32 warps=4: 0.841 ms / 16 layers (min 0.836, splits 32, graph)
+[bench] graph rows=9 prefix=4096: gqa hb=3 splits x4 bn=32 warps=4: 1.278 ms / 16 layers (min 1.276, splits 64, graph)
+[bench] graph rows=9 prefix=4096: gqa hb=2 splits x2 bn=32 warps=4: 1.099 ms / 16 layers (min 1.092, splits 32, graph)
+[bench] graph rows=9 prefix=7331: per-head: 1.361 ms / 16 layers (min 1.355, splits 16, graph)
+[bench] graph rows=9 prefix=7331: gqa hb=6 splits x2 bn=32 warps=4: 1.361 ms / 16 layers (min 1.361, splits 32, graph)
+[bench] graph rows=9 prefix=7331: gqa hb=6 splits x4 bn=32 warps=4: 1.385 ms / 16 layers (min 1.380, splits 64, graph)
+[bench] graph rows=9 prefix=7331: gqa hb=6 splits x8 bn=32 warps=4: 2.414 ms / 16 layers (min 2.410, splits 128, graph)
+[bench] graph rows=9 prefix=7331: gqa hb=6 splits x2 bn=64 warps=4: 1.453 ms / 16 layers (min 1.451, splits 32, graph)
+[bench] graph rows=9 prefix=7331: gqa hb=6 splits x4 bn=64 warps=4: 1.537 ms / 16 layers (min 1.535, splits 64, graph)
+[bench] graph rows=9 prefix=7331: gqa hb=6 splits x8 bn=64 warps=4: 2.646 ms / 16 layers (min 2.643, splits 128, graph)
+[bench] graph rows=9 prefix=7331: gqa hb=3 splits x2 bn=32 warps=4: 1.054 ms / 16 layers (min 1.050, splits 32, graph)
+[bench] graph rows=9 prefix=7331: gqa hb=3 splits x4 bn=32 warps=4: 1.514 ms / 16 layers (min 1.511, splits 64, graph)
+[bench] graph rows=9 prefix=7331: gqa hb=2 splits x2 bn=32 warps=4: 1.527 ms / 16 layers (min 1.525, splits 32, graph)
+[bench] graph rows=9 prefix=16384: per-head: 2.378 ms / 16 layers (min 2.372, splits 16, graph)
+[bench] graph rows=9 prefix=16384: gqa hb=6 splits x2 bn=32 warps=4: 1.979 ms / 16 layers (min 1.972, splits 32, graph)
+[bench] graph rows=9 prefix=16384: gqa hb=6 splits x4 bn=32 warps=4: 1.801 ms / 16 layers (min 1.799, splits 64, graph)
+[bench] graph rows=9 prefix=16384: gqa hb=6 splits x8 bn=32 warps=4: 2.824 ms / 16 layers (min 2.815, splits 128, graph)
+[bench] graph rows=9 prefix=16384: gqa hb=6 splits x2 bn=64 warps=4: 2.014 ms / 16 layers (min 2.009, splits 32, graph)
+[bench] graph rows=9 prefix=16384: gqa hb=6 splits x4 bn=64 warps=4: 1.936 ms / 16 layers (min 1.933, splits 64, graph)
+[bench] graph rows=9 prefix=16384: gqa hb=6 splits x8 bn=64 warps=4: 3.086 ms / 16 layers (min 3.083, splits 128, graph)
+[bench] graph rows=9 prefix=16384: gqa hb=3 splits x2 bn=32 warps=4: 1.569 ms / 16 layers (min 1.561, splits 32, graph)
+[bench] graph rows=9 prefix=16384: gqa hb=3 splits x4 bn=32 warps=4: 2.004 ms / 16 layers (min 1.999, splits 64, graph)
+[bench] graph rows=9 prefix=16384: gqa hb=2 splits x2 bn=32 warps=4: 2.435 ms / 16 layers (min 2.431, splits 32, graph)
+[bench] graph rows=9 prefix=32768: per-head: 4.295 ms / 16 layers (min 4.281, splits 16, graph)
+[bench] graph rows=9 prefix=32768: gqa hb=6 splits x2 bn=32 warps=4: 3.154 ms / 16 layers (min 3.150, splits 32, graph)
+[bench] graph rows=9 prefix=32768: gqa hb=6 splits x4 bn=32 warps=4: 2.518 ms / 16 layers (min 2.509, splits 64, graph)
+[bench] graph rows=9 prefix=32768: gqa hb=6 splits x8 bn=32 warps=4: 3.377 ms / 16 layers (min 3.367, splits 128, graph)
+[bench] graph rows=9 prefix=32768: gqa hb=6 splits x2 bn=64 warps=4: 3.133 ms / 16 layers (min 3.128, splits 32, graph)
+[bench] graph rows=9 prefix=32768: gqa hb=6 splits x4 bn=64 warps=4: 2.613 ms / 16 layers (min 2.608, splits 64, graph)
+[bench] graph rows=9 prefix=32768: gqa hb=6 splits x8 bn=64 warps=4: 3.619 ms / 16 layers (min 3.615, splits 128, graph)
+[bench] graph rows=9 prefix=32768: gqa hb=3 splits x2 bn=32 warps=4: 2.569 ms / 16 layers (min 2.554, splits 32, graph)
+[bench] graph rows=9 prefix=32768: gqa hb=3 splits x4 bn=32 warps=4: 2.900 ms / 16 layers (min 2.892, splits 64, graph)
+[bench] graph rows=9 prefix=32768: gqa hb=2 splits x2 bn=32 warps=4: 4.228 ms / 16 layers (min 4.221, splits 32, graph)
+[bench] graph rows=9 prefix=58483: per-head: 7.321 ms / 16 layers (min 7.308, splits 16, graph)
+[bench] graph rows=9 prefix=58483: gqa hb=6 splits x2 bn=32 warps=4: 5.118 ms / 16 layers (min 5.103, splits 32, graph)
+[bench] graph rows=9 prefix=58483: gqa hb=6 splits x4 bn=32 warps=4: 3.677 ms / 16 layers (min 3.670, splits 64, graph)
+[bench] graph rows=9 prefix=58483: gqa hb=6 splits x8 bn=32 warps=4: 4.477 ms / 16 layers (min 4.475, splits 128, graph)
+[bench] graph rows=9 prefix=58483: gqa hb=6 splits x2 bn=64 warps=4: 4.962 ms / 16 layers (min 4.954, splits 32, graph)
+[bench] graph rows=9 prefix=58483: gqa hb=6 splits x4 bn=64 warps=4: 3.754 ms / 16 layers (min 3.742, splits 64, graph)
+[bench] graph rows=9 prefix=58483: gqa hb=6 splits x8 bn=64 warps=4: 4.748 ms / 16 layers (min 4.734, splits 128, graph)
+[bench] graph rows=9 prefix=58483: gqa hb=3 splits x2 bn=32 warps=4: 4.169 ms / 16 layers (min 4.162, splits 32, graph)
+[bench] graph rows=9 prefix=58483: gqa hb=3 splits x4 bn=32 warps=4: 4.445 ms / 16 layers (min 4.431, splits 64, graph)
+[bench] graph rows=9 prefix=58483: gqa hb=2 splits x2 bn=32 warps=4: 7.112 ms / 16 layers (min 7.095, splits 32, graph)
+[bench] graph rows=9 prefix=197326: per-head: 27.709 ms / 16 layers (min 27.662, splits 16, graph)
+[bench] graph rows=9 prefix=197326: gqa hb=6 splits x2 bn=32 warps=4: 15.844 ms / 16 layers (min 15.765, splits 32, graph)
+[bench] graph rows=9 prefix=197326: gqa hb=6 splits x4 bn=32 warps=4: 10.278 ms / 16 layers (min 10.073, splits 64, graph)
+[bench] graph rows=9 prefix=197326: gqa hb=6 splits x8 bn=32 warps=4: 10.933 ms / 16 layers (min 10.924, splits 128, graph)
+[bench] graph rows=9 prefix=197326: gqa hb=6 splits x2 bn=64 warps=4: 15.040 ms / 16 layers (min 15.036, splits 32, graph)
+[bench] graph rows=9 prefix=197326: gqa hb=6 splits x4 bn=64 warps=4: 9.861 ms / 16 layers (min 9.771, splits 64, graph)
+[bench] graph rows=9 prefix=197326: gqa hb=6 splits x8 bn=64 warps=4: 11.123 ms / 16 layers (min 11.108, splits 128, graph)
+[bench] graph rows=9 prefix=197326: gqa hb=3 splits x2 bn=32 warps=4: 13.420 ms / 16 layers (min 13.045, splits 32, graph)
+[bench] graph rows=9 prefix=197326: gqa hb=3 splits x4 bn=32 warps=4: 13.656 ms / 16 layers (min 13.395, splits 64, graph)
+[bench] graph rows=9 prefix=197326: gqa hb=2 splits x2 bn=32 warps=4: 26.103 ms / 16 layers (min 26.017, splits 32, graph)
+[bench] rows=8 per-head                             0.466    0.626    0.940    1.347    2.358    4.263    7.511   27.712
+[bench] rows=8 gqa hb=6 splits x2 bn=32 warps=4     0.851    0.953    1.124    1.304    1.959    3.104    5.107   15.836  saved -0.39 -0.33 -0.18 +0.04 +0.40 +1.16 +2.40 +11.88
+[bench] rows=8 gqa hb=6 splits x4 bn=32 warps=4     1.080    1.073    1.310    1.301    1.715    2.393    3.525    9.879  saved -0.61 -0.45 -0.37 +0.05 +0.64 +1.87 +3.99 +17.83
+[bench] rows=8 gqa hb=6 splits x8 bn=32 warps=4     1.483    1.446    2.169    2.314    2.642    3.227    4.209   10.689  saved -1.02 -0.82 -1.23 -0.97 -0.28 +1.04 +3.30 +17.02
+[bench] rows=8 gqa hb=6 splits x2 bn=64 warps=4     0.996    1.011    1.209    1.404    2.025    3.133    4.955   15.269  saved -0.53 -0.39 -0.27 -0.06 +0.33 +1.13 +2.56 +12.44
+[bench] rows=8 gqa hb=6 splits x4 bn=64 warps=4     1.218    1.219    1.411    1.433    1.828    2.467    3.622    9.822  saved -0.75 -0.59 -0.47 -0.09 +0.53 +1.80 +3.89 +17.89
+[bench] rows=8 gqa hb=6 splits x8 bn=64 warps=4     1.636    1.587    2.425    2.499    2.985    3.438    4.583   10.861  saved -1.17 -0.96 -1.49 -1.15 -0.63 +0.82 +2.93 +16.85
+[bench] rows=8 gqa hb=3 splits x2 bn=32 warps=4     0.616    0.633    0.772    0.980    1.431    2.337    3.759   12.122  saved -0.15 -0.01 +0.17 +0.37 +0.93 +1.93 +3.75 +15.59
+[bench] rows=8 gqa hb=3 splits x4 bn=32 warps=4     0.844    0.850    1.054    1.226    1.646    2.473    3.813   11.789  saved -0.38 -0.22 -0.11 +0.12 +0.71 +1.79 +3.70 +15.92
+[bench] rows=8 gqa hb=2 splits x2 bn=32 warps=4     0.558    0.613    0.785    1.025    1.533    2.528    4.252   13.764  saved -0.09 +0.01 +0.15 +0.32 +0.82 +1.74 +3.26 +13.95
+[bench] rows=9 per-head                             0.430    0.639    0.948    1.361    2.378    4.295    7.321   27.709
+[bench] rows=9 gqa hb=6 splits x2 bn=32 warps=4     0.914    0.905    1.136    1.361    1.979    3.154    5.118   15.844  saved -0.48 -0.27 -0.19 +0.00 +0.40 +1.14 +2.20 +11.87
+[bench] rows=9 gqa hb=6 splits x4 bn=32 warps=4     1.178    1.119    1.361    1.385    1.801    2.518    3.677   10.278  saved -0.75 -0.48 -0.41 -0.02 +0.58 +1.78 +3.64 +17.43
+[bench] rows=9 gqa hb=6 splits x8 bn=32 warps=4     1.595    1.509    2.221    2.414    2.824    3.377    4.477   10.933  saved -1.17 -0.87 -1.27 -1.05 -0.45 +0.92 +2.84 +16.78
+[bench] rows=9 gqa hb=6 splits x2 bn=64 warps=4     1.049    1.021    1.207    1.453    2.014    3.133    4.962   15.040  saved -0.62 -0.38 -0.26 -0.09 +0.36 +1.16 +2.36 +12.67
+[bench] rows=9 gqa hb=6 splits x4 bn=64 warps=4     1.295    1.245    1.445    1.537    1.936    2.613    3.754    9.861  saved -0.86 -0.61 -0.50 -0.18 +0.44 +1.68 +3.57 +17.85
+[bench] rows=9 gqa hb=6 splits x8 bn=64 warps=4     1.700    1.585    2.517    2.646    3.086    3.619    4.748   11.123  saved -1.27 -0.95 -1.57 -1.28 -0.71 +0.68 +2.57 +16.59
+[bench] rows=9 gqa hb=3 splits x2 bn=32 warps=4     0.683    0.686    0.841    1.054    1.569    2.569    4.169   13.420  saved -0.25 -0.05 +0.11 +0.31 +0.81 +1.73 +3.15 +14.29
+[bench] rows=9 gqa hb=3 splits x4 bn=32 warps=4     0.913    0.879    1.278    1.514    2.004    2.900    4.445   13.656  saved -0.48 -0.24 -0.33 -0.15 +0.37 +1.40 +2.88 +14.05
+[bench] rows=9 gqa hb=2 splits x2 bn=32 warps=4     0.654    0.789    1.099    1.527    2.435    4.228    7.112   26.103  saved -0.22 -0.15 -0.15 -0.17 -0.06 +0.07 +0.21 +1.61
+[bench] numerics rows=8 prefix=24 gqa hb=6 splits x4 bn=32 warps=4: cos min vs fp32 per-head 0.99867 grouped 0.99867
+[bench] numerics rows=8 prefix=24 gqa hb=6 splits x4 bn=64 warps=4: cos min vs fp32 per-head 0.99867 grouped 0.99867
+[bench] numerics rows=8 prefix=16384 gqa hb=6 splits x4 bn=32 warps=4: cos min vs fp32 per-head 0.999074 grouped 0.999186
+[bench] numerics rows=8 prefix=16384 gqa hb=6 splits x4 bn=64 warps=4: cos min vs fp32 per-head 0.999074 grouped 0.999155
+[bench] numerics rows=8 prefix=197326 gqa hb=6 splits x4 bn=32 warps=4: cos min vs fp32 per-head 0.998965 grouped 0.99899
+[bench] numerics rows=8 prefix=197326 gqa hb=6 splits x4 bn=64 warps=4: cos min vs fp32 per-head 0.998965 grouped 0.998986
+[bench] numerics rows=9 prefix=24 gqa hb=6 splits x4 bn=32 warps=4: cos min vs fp32 per-head 0.99867 grouped 0.99867
+[bench] numerics rows=9 prefix=24 gqa hb=6 splits x4 bn=64 warps=4: cos min vs fp32 per-head 0.99867 grouped 0.99867
+[bench] numerics rows=9 prefix=16384 gqa hb=6 splits x4 bn=32 warps=4: cos min vs fp32 per-head 0.999074 grouped 0.999186
+[bench] numerics rows=9 prefix=16384 gqa hb=6 splits x4 bn=64 warps=4: cos min vs fp32 per-head 0.999074 grouped 0.999155
+[bench] numerics rows=9 prefix=197326 gqa hb=6 splits x4 bn=32 warps=4: cos min vs fp32 per-head 0.998965 grouped 0.99899
+[bench] numerics rows=9 prefix=197326 gqa hb=6 splits x4 bn=64 warps=4: cos min vs fp32 per-head 0.998965 grouped 0.998986
+VERIFY GQA GRAPH-SHAPE DONE arms=9 errors=0 numerics_ok=True deep_best='gqa hb=6 splits x4 bn=64 warps=4' deep_saved_ms=17.89 worst_loss_ms=0.752

@@ -1395,6 +1395,12 @@ Disposition: `scripts/launch.sh` exports the three switches for the FP8 `qwen38`
 `TRITON_GEMMA_RMSNORM=0`, `SKINNY_BA_GEMV=0` restore the previous kernels one by one). Code defaults stay off, and a
 build served through `QUANT_OVERRIDE` keeps the previous kernels until its own gate.
 
+The canonical sweep on the shipped preset, bare `scripts/launch.sh qwen38` with and without `QWEN38_SPEC=0`
+([receipts](qwen38-27b-fp8/decode-canonical-nospec-2026-11-10.json)), repeats the session: no speculation
+34.270 / 33.615 / 32.129 / 28.715, DSpark 51.051 / 63.740 / 55.892 / 35.672 on the same 80 / 38 / 33 / 37-token
+continuations, cold prefill 2,331 / 1,784 / 1,073 and 2,276 / 1,753 / 1,066 tok/s, capabilities 5/5. These are the
+README and results.json rows.
+
 ### RAD-15 study — an int8 copy of the LM head leaves a proven candidate window; 4-bit and 2-bit windows are statistical only (2026-11-10)
 
 The LM head is one rocBLAS GEMM over 124,160 × 5,120 bf16 rows per rank, 2.3–2.5 ms of a 36 ms step. The study asks

@@ -1,0 +1,21 @@
+RAD-27 static verify geometry for the serving A/B
+source: graph-shape-ladder.json (HIP graph, fixed kv_indices buffer of 199,374 slots, 16 base splits, 16 layers, 9 arms, errors 0, numerics ok)
+
+GATE-OK graph-shape
+chosen: 6 query heads per program (one KV head's whole GQA group), 4 x the base splits (64), 32-token K tile, 4 warps
+module defaults: SPLIT_MULT = 4, MAX_ROW_TILE = 64, block_n from block_config(head_dim) = 32 (no module change)
+
+prefix stage, ms per 16 layers, by prefix tokens          24    1024    4096    7331   16384   32768   58483  197326
+ 8 rows (DFlash2)  per-head                             0.466   0.626   0.940   1.347   2.358   4.263   7.511  27.712
+ 8 rows (DFlash2)  chosen (hb 6, x4, bn 32)             1.080   1.073   1.310   1.301   1.715   2.393   3.525   9.879
+ 8 rows (DFlash2)  runner-up (hb 3, x2, bn 32)          0.616   0.633   0.772   0.980   1.431   2.337   3.759  12.122
+ 9 rows (DSpark)   per-head                             0.430   0.639   0.948   1.361   2.378   4.295   7.321  27.709
+ 9 rows (DSpark)   chosen (hb 6, x4, bn 32)             1.178   1.119   1.361   1.385   1.801   2.518   3.677  10.278
+ 9 rows (DSpark)   runner-up (hb 3, x2, bn 32)          0.683   0.686   0.841   1.054   1.569   2.569   4.169  13.420
+
+why: the chosen geometry saves 17.8 / 17.4 ms per verify at 197K and 4.0 / 3.6 ms at 58K, is level at 7.3K, and costs
+0.61 / 0.75 ms at 24 tokens (1.6-1.9 % of a 38-39 ms verify). The runner-up costs 0.15 / 0.25 ms at 24 tokens and saves
+0.3-0.4 ms at 7.3K, but leaves 2.2 / 3.1 ms on the table at 197K; the repository's target is long context.
+hb 6 x4 bn 64 ties the chosen arm at 197K (9.822 / 9.861) and is 0.1-0.14 ms slower below 16K. x8 is slower everywhere.
+hb 2 x2 measures 26.1 ms at 9 rows and 197K (near the per-head 27.7; cause not examined).
+numerics: cosine against the fp32 reference, minimum over six points per arm: per-head 0.99867, grouped 0.99867.
