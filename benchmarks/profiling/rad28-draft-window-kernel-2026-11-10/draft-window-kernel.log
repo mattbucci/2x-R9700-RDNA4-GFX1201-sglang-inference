@@ -1,0 +1,55 @@
+[bench] probe numerics: ok rc=0 10.6 s {}
+[bench] active: split-KV verify: causal sliding-window prefix stage active (window 2048, 8 rows, 10 query heads over 2 KV heads, head_dim 256, 16 splits)
+[bench] active: split-KV verify: causal sliding-window prefix stage active (window 2048, 8 rows, 10 query heads over 2 KV heads, head_dim 256, 32 splits)
+[bench] active: split-KV verify: causal sliding-window prefix stage active (window 2048, 8 rows, 10 query heads over 2 KV heads, head_dim 256, 4 splits)
+[bench] active: split-KV verify: causal sliding-window prefix stage active (window 2048, 8 rows, 10 query heads over 2 KV heads, head_dim 256, 64 splits)
+[bench] active: split-KV verify: causal sliding-window prefix stage active (window 2048, 8 rows, 10 query heads over 2 KV heads, head_dim 256, 8 splits)
+[bench] numerics random window=1: cos min vs fp32 extend 0.999704, split-KV 0.999715 .. 0.999715, split-KV vs extend 0.999997
+[bench] numerics random window=24: cos min vs fp32 extend 0.998795, split-KV 0.998787 .. 0.998787, split-KV vs extend 0.999997
+[bench] numerics random window=33: cos min vs fp32 extend 0.998583, split-KV 0.998595 .. 0.998595, split-KV vs extend 0.999179
+[bench] numerics random window=512: cos min vs fp32 extend 0.99883, split-KV 0.998937 .. 0.998984, split-KV vs extend 0.999313
+[bench] numerics random window=2040: cos min vs fp32 extend 0.999033, split-KV 0.998995 .. 0.999027, split-KV vs extend 0.999306
+[bench] numerics random window=2045: cos min vs fp32 extend 0.999036, split-KV 0.998957 .. 0.999023, split-KV vs extend 0.999304
+[bench] numerics random window=2048: cos min vs fp32 extend 0.999039, split-KV 0.998962 .. 0.999025, split-KV vs extend 0.9993
+[bench] numerics planted window=2048: cos min vs fp32 extend 0.998803, split-KV 0.998935 .. 0.999061, split-KV vs extend 0.999312, unmasked reference 0.261426
+[bench] numerics planted window=2045: cos min vs fp32 extend 0.999032, split-KV 0.999145 .. 0.999249, split-KV vs extend 0.999304, unmasked reference 0.317179
+[bench] probe off: ok rc=0 3.4 s {"switch": false, "declined": true}
+[bench] device AMD Radeon AI PRO R9700 (gfx1201), tree /data/sgl-v0522-rad28/python, pool 61392 slots x 5 layers, windows [24, 512, 2048], 8 rotations
+[bench] dspark window=24: extend kernel: 0.390 ms / 5 layers (min 0.382, graph)
+[RDNA4] split-KV verify: causal sliding-window prefix stage active (window 2048, 8 rows, 10 query heads over 2 KV heads, head_dim 256, 4 splits)
+[bench] dspark window=24: split-KV entry point: 0.123 ms / 5 layers (min 0.112, graph)
+[bench] dspark window=24: split-KV 4 splits: 0.114 ms / 5 layers (min 0.114, graph)
+[RDNA4] split-KV verify: causal sliding-window prefix stage active (window 2048, 8 rows, 10 query heads over 2 KV heads, head_dim 256, 8 splits)
+[bench] dspark window=24: split-KV 8 splits: 0.118 ms / 5 layers (min 0.118, graph)
+[RDNA4] split-KV verify: causal sliding-window prefix stage active (window 2048, 8 rows, 10 query heads over 2 KV heads, head_dim 256, 16 splits)
+[bench] dspark window=24: split-KV 16 splits: 0.131 ms / 5 layers (min 0.130, graph)
+[RDNA4] split-KV verify: causal sliding-window prefix stage active (window 2048, 8 rows, 10 query heads over 2 KV heads, head_dim 256, 32 splits)
+[bench] dspark window=24: split-KV 32 splits: 0.155 ms / 5 layers (min 0.155, graph)
+[RDNA4] split-KV verify: causal sliding-window prefix stage active (window 2048, 8 rows, 10 query heads over 2 KV heads, head_dim 256, 64 splits)
+[bench] dspark window=24: split-KV 64 splits: 0.221 ms / 5 layers (min 0.221, graph)
+[bench] dspark window=24: extend kernel: 0.392 ms / 5 layers (min 0.391, graph)
+[bench] dspark window=512: extend kernel: 3.217 ms / 5 layers (min 3.183, graph)
+[bench] dspark window=512: split-KV entry point: 0.137 ms / 5 layers (min 0.136, graph)
+[bench] dspark window=512: split-KV 4 splits: 0.137 ms / 5 layers (min 0.137, graph)
+[bench] dspark window=512: split-KV 8 splits: 0.130 ms / 5 layers (min 0.130, graph)
+[bench] dspark window=512: split-KV 16 splits: 0.141 ms / 5 layers (min 0.141, graph)
+[bench] dspark window=512: split-KV 32 splits: 0.165 ms / 5 layers (min 0.165, graph)
+[bench] dspark window=512: split-KV 64 splits: 0.230 ms / 5 layers (min 0.229, graph)
+[bench] dspark window=512: extend kernel: 3.212 ms / 5 layers (min 1.779, graph)
+[bench] dspark window=2048: extend kernel: 10.620 ms / 5 layers (min 10.205, graph)
+[bench] dspark window=2048: split-KV entry point: 0.235 ms / 5 layers (min 0.234, graph)
+[bench] dspark window=2048: split-KV 4 splits: 0.234 ms / 5 layers (min 0.234, graph)
+[bench] dspark window=2048: split-KV 8 splits: 0.186 ms / 5 layers (min 0.186, graph)
+[bench] dspark window=2048: split-KV 16 splits: 0.184 ms / 5 layers (min 0.184, graph)
+[bench] dspark window=2048: split-KV 32 splits: 0.224 ms / 5 layers (min 0.223, graph)
+[bench] dspark window=2048: split-KV 64 splits: 0.316 ms / 5 layers (min 0.314, graph)
+[bench] dspark window=2048: extend kernel: 10.015 ms / 5 layers (min 5.509, graph)
+[bench] dflash2 window=24: extend kernel: 0.214 ms / 5 layers (min 0.214, graph)
+[bench] dflash2 window=512: extend kernel: 0.537 ms / 5 layers (min 0.532, graph)
+[bench] dflash2 window=2048: extend kernel: 1.665 ms / 5 layers (min 1.655, graph)
+[bench] split-KV  4 splits: 24: 0.114 512: 0.137 2048: 0.234
+[bench] split-KV  8 splits: 24: 0.118 512: 0.130 2048: 0.186
+[bench] split-KV 16 splits: 24: 0.131 512: 0.141 2048: 0.184
+[bench] split-KV 32 splits: 24: 0.155 512: 0.165 2048: 0.224
+[bench] split-KV 64 splits: 24: 0.221 512: 0.230 2048: 0.316
+DRAFT WINDOW BENCH DONE gate=pass best_splits=16 extend_ms={"24": 0.3906, "512": 3.2146, "2048": 10.3173} splitkv_ms={"24": 0.1305, "512": 0.1413, "2048": 0.1841} entry_ms={"24": 0.1231, "512": 0.1366, "2048": 0.2347} dflash2_extend_ms={"24": 0.2142, "512": 0.5369, "2048": 1.6652} full_ratio=0.018 saved_ms=10.133 shallow_delta_ms=-0.26 extend_growth_ms=9.927 serving_growth_ms=6.7 control_ratio=1.482 numerics_ok=True errors=0

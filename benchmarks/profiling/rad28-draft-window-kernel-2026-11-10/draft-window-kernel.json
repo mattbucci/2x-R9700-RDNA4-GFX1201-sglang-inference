@@ -1,0 +1,1340 @@
+{
+ "meta": {
+  "tree": "/data/sgl-v0522-rad28/python",
+  "windows": [
+   24,
+   512,
+   2048
+  ],
+  "rotations": 8,
+  "rows": 8,
+  "window": 2048,
+  "layers": 5,
+  "static_slots": 16384,
+  "splits": [
+   4,
+   8,
+   16,
+   32,
+   64
+  ],
+  "geo": {
+   "dspark": {
+    "name": "dspark",
+    "h_q": 10,
+    "h_kv": 2,
+    "head_dim": 256,
+    "causal": true
+   },
+   "dflash2": {
+    "name": "dflash2",
+    "h_q": 16,
+    "h_kv": 4,
+    "head_dim": 128,
+    "causal": false
+   }
+  },
+  "k_scale": 0.05,
+  "v_scale": 0.03,
+  "kv_dtype": "fp8_e4m3",
+  "serving_propose_ms": {
+   "24": 9.5,
+   "7331": 16.2
+  },
+  "device": "AMD Radeon AI PRO R9700",
+  "arch": "gfx1201",
+  "torch": "2.11.0+rocm7.2",
+  "pool": 61392,
+  "seconds": 30.8
+ },
+ "numerics": [
+  {
+   "case": "random",
+   "window": 1,
+   "extend_vs_ref": {
+    "cos_min": 0.999704,
+    "cos_mean": 0.999979,
+    "max_abs_over_rms": 0.05951,
+    "finite": true
+   },
+   "splitkv": {
+    "split-KV entry point": {
+     "vs_ref": {
+      "cos_min": 0.999715,
+      "cos_mean": 0.999979,
+      "max_abs_over_rms": 0.05792,
+      "finite": true
+     },
+     "vs_extend": {
+      "cos_min": 0.999997,
+      "cos_mean": 0.999999,
+      "max_abs_over_rms": 0.0254,
+      "finite": true
+     }
+    },
+    "split-KV 4 splits": {
+     "vs_ref": {
+      "cos_min": 0.999715,
+      "cos_mean": 0.999979,
+      "max_abs_over_rms": 0.05792,
+      "finite": true
+     },
+     "vs_extend": {
+      "cos_min": 0.999997,
+      "cos_mean": 0.999999,
+      "max_abs_over_rms": 0.0254,
+      "finite": true
+     }
+    },
+    "split-KV 8 splits": {
+     "vs_ref": {
+      "cos_min": 0.999715,
+      "cos_mean": 0.999979,
+      "max_abs_over_rms": 0.05792,
+      "finite": true
+     },
+     "vs_extend": {
+      "cos_min": 0.999997,
+      "cos_mean": 0.999999,
+      "max_abs_over_rms": 0.0254,
+      "finite": true
+     }
+    },
+    "split-KV 16 splits": {
+     "vs_ref": {
+      "cos_min": 0.999715,
+      "cos_mean": 0.999979,
+      "max_abs_over_rms": 0.05792,
+      "finite": true
+     },
+     "vs_extend": {
+      "cos_min": 0.999997,
+      "cos_mean": 0.999999,
+      "max_abs_over_rms": 0.0254,
+      "finite": true
+     }
+    },
+    "split-KV 32 splits": {
+     "vs_ref": {
+      "cos_min": 0.999715,
+      "cos_mean": 0.999979,
+      "max_abs_over_rms": 0.05792,
+      "finite": true
+     },
+     "vs_extend": {
+      "cos_min": 0.999997,
+      "cos_mean": 0.999999,
+      "max_abs_over_rms": 0.0254,
+      "finite": true
+     }
+    },
+    "split-KV 64 splits": {
+     "vs_ref": {
+      "cos_min": 0.999715,
+      "cos_mean": 0.999979,
+      "max_abs_over_rms": 0.05792,
+      "finite": true
+     },
+     "vs_extend": {
+      "cos_min": 0.999997,
+      "cos_mean": 0.999999,
+      "max_abs_over_rms": 0.0254,
+      "finite": true
+     }
+    }
+   }
+  },
+  {
+   "case": "random",
+   "window": 24,
+   "extend_vs_ref": {
+    "cos_min": 0.998795,
+    "cos_mean": 0.999625,
+    "max_abs_over_rms": 0.15238,
+    "finite": true
+   },
+   "splitkv": {
+    "split-KV entry point": {
+     "vs_ref": {
+      "cos_min": 0.998787,
+      "cos_mean": 0.999625,
+      "max_abs_over_rms": 0.15238,
+      "finite": true
+     },
+     "vs_extend": {
+      "cos_min": 0.999997,
+      "cos_mean": 0.999999,
+      "max_abs_over_rms": 0.02789,
+      "finite": true
+     }
+    },
+    "split-KV 4 splits": {
+     "vs_ref": {
+      "cos_min": 0.998787,
+      "cos_mean": 0.999625,
+      "max_abs_over_rms": 0.15238,
+      "finite": true
+     },
+     "vs_extend": {
+      "cos_min": 0.999997,
+      "cos_mean": 0.999999,
+      "max_abs_over_rms": 0.02789,
+      "finite": true
+     }
+    },
+    "split-KV 8 splits": {
+     "vs_ref": {
+      "cos_min": 0.998787,
+      "cos_mean": 0.999625,
+      "max_abs_over_rms": 0.15238,
+      "finite": true
+     },
+     "vs_extend": {
+      "cos_min": 0.999997,
+      "cos_mean": 0.999999,
+      "max_abs_over_rms": 0.02789,
+      "finite": true
+     }
+    },
+    "split-KV 16 splits": {
+     "vs_ref": {
+      "cos_min": 0.998787,
+      "cos_mean": 0.999625,
+      "max_abs_over_rms": 0.15238,
+      "finite": true
+     },
+     "vs_extend": {
+      "cos_min": 0.999997,
+      "cos_mean": 0.999999,
+      "max_abs_over_rms": 0.02789,
+      "finite": true
+     }
+    },
+    "split-KV 32 splits": {
+     "vs_ref": {
+      "cos_min": 0.998787,
+      "cos_mean": 0.999625,
+      "max_abs_over_rms": 0.15238,
+      "finite": true
+     },
+     "vs_extend": {
+      "cos_min": 0.999997,
+      "cos_mean": 0.999999,
+      "max_abs_over_rms": 0.02789,
+      "finite": true
+     }
+    },
+    "split-KV 64 splits": {
+     "vs_ref": {
+      "cos_min": 0.998787,
+      "cos_mean": 0.999625,
+      "max_abs_over_rms": 0.15238,
+      "finite": true
+     },
+     "vs_extend": {
+      "cos_min": 0.999997,
+      "cos_mean": 0.999999,
+      "max_abs_over_rms": 0.02789,
+      "finite": true
+     }
+    }
+   }
+  },
+  {
+   "case": "random",
+   "window": 33,
+   "extend_vs_ref": {
+    "cos_min": 0.998583,
+    "cos_mean": 0.999566,
+    "max_abs_over_rms": 0.16917,
+    "finite": true
+   },
+   "splitkv": {
+    "split-KV entry point": {
+     "vs_ref": {
+      "cos_min": 0.998595,
+      "cos_mean": 0.999575,
+      "max_abs_over_rms": 0.1752,
+      "finite": true
+     },
+     "vs_extend": {
+      "cos_min": 0.999179,
+      "cos_mean": 0.99997,
+      "max_abs_over_rms": 0.10846,
+      "finite": true
+     }
+    },
+    "split-KV 4 splits": {
+     "vs_ref": {
+      "cos_min": 0.998595,
+      "cos_mean": 0.999575,
+      "max_abs_over_rms": 0.1752,
+      "finite": true
+     },
+     "vs_extend": {
+      "cos_min": 0.999179,
+      "cos_mean": 0.99997,
+      "max_abs_over_rms": 0.10846,
+      "finite": true
+     }
+    },
+    "split-KV 8 splits": {
+     "vs_ref": {
+      "cos_min": 0.998595,
+      "cos_mean": 0.999575,
+      "max_abs_over_rms": 0.1752,
+      "finite": true
+     },
+     "vs_extend": {
+      "cos_min": 0.999179,
+      "cos_mean": 0.99997,
+      "max_abs_over_rms": 0.10846,
+      "finite": true
+     }
+    },
+    "split-KV 16 splits": {
+     "vs_ref": {
+      "cos_min": 0.998595,
+      "cos_mean": 0.999575,
+      "max_abs_over_rms": 0.1752,
+      "finite": true
+     },
+     "vs_extend": {
+      "cos_min": 0.999179,
+      "cos_mean": 0.99997,
+      "max_abs_over_rms": 0.10846,
+      "finite": true
+     }
+    },
+    "split-KV 32 splits": {
+     "vs_ref": {
+      "cos_min": 0.998595,
+      "cos_mean": 0.999575,
+      "max_abs_over_rms": 0.1752,
+      "finite": true
+     },
+     "vs_extend": {
+      "cos_min": 0.999179,
+      "cos_mean": 0.99997,
+      "max_abs_over_rms": 0.10846,
+      "finite": true
+     }
+    },
+    "split-KV 64 splits": {
+     "vs_ref": {
+      "cos_min": 0.998595,
+      "cos_mean": 0.999575,
+      "max_abs_over_rms": 0.1752,
+      "finite": true
+     },
+     "vs_extend": {
+      "cos_min": 0.999179,
+      "cos_mean": 0.99997,
+      "max_abs_over_rms": 0.10846,
+      "finite": true
+     }
+    }
+   }
+  },
+  {
+   "case": "random",
+   "window": 512,
+   "extend_vs_ref": {
+    "cos_min": 0.99883,
+    "cos_mean": 0.999392,
+    "max_abs_over_rms": 0.22897,
+    "finite": true
+   },
+   "splitkv": {
+    "split-KV entry point": {
+     "vs_ref": {
+      "cos_min": 0.998937,
+      "cos_mean": 0.999432,
+      "max_abs_over_rms": 0.24256,
+      "finite": true
+     },
+     "vs_extend": {
+      "cos_min": 0.999328,
+      "cos_mean": 0.999695,
+      "max_abs_over_rms": 0.10871,
+      "finite": true
+     }
+    },
+    "split-KV 4 splits": {
+     "vs_ref": {
+      "cos_min": 0.998937,
+      "cos_mean": 0.999432,
+      "max_abs_over_rms": 0.24256,
+      "finite": true
+     },
+     "vs_extend": {
+      "cos_min": 0.999328,
+      "cos_mean": 0.999695,
+      "max_abs_over_rms": 0.10871,
+      "finite": true
+     }
+    },
+    "split-KV 8 splits": {
+     "vs_ref": {
+      "cos_min": 0.998972,
+      "cos_mean": 0.999465,
+      "max_abs_over_rms": 0.24256,
+      "finite": true
+     },
+     "vs_extend": {
+      "cos_min": 0.999313,
+      "cos_mean": 0.99966,
+      "max_abs_over_rms": 0.12229,
+      "finite": true
+     }
+    },
+    "split-KV 16 splits": {
+     "vs_ref": {
+      "cos_min": 0.998984,
+      "cos_mean": 0.999476,
+      "max_abs_over_rms": 0.22897,
+      "finite": true
+     },
+     "vs_extend": {
+      "cos_min": 0.999352,
+      "cos_mean": 0.99963,
+      "max_abs_over_rms": 0.1138,
+      "finite": true
+     }
+    },
+    "split-KV 32 splits": {
+     "vs_ref": {
+      "cos_min": 0.998984,
+      "cos_mean": 0.999476,
+      "max_abs_over_rms": 0.22897,
+      "finite": true
+     },
+     "vs_extend": {
+      "cos_min": 0.999352,
+      "cos_mean": 0.99963,
+      "max_abs_over_rms": 0.1138,
+      "finite": true
+     }
+    },
+    "split-KV 64 splits": {
+     "vs_ref": {
+      "cos_min": 0.998984,
+      "cos_mean": 0.999476,
+      "max_abs_over_rms": 0.22897,
+      "finite": true
+     },
+     "vs_extend": {
+      "cos_min": 0.999352,
+      "cos_mean": 0.99963,
+      "max_abs_over_rms": 0.1138,
+      "finite": true
+     }
+    }
+   }
+  },
+  {
+   "case": "random",
+   "window": 2040,
+   "extend_vs_ref": {
+    "cos_min": 0.999033,
+    "cos_mean": 0.99935,
+    "max_abs_over_rms": 0.20285,
+    "finite": true
+   },
+   "splitkv": {
+    "split-KV entry point": {
+     "vs_ref": {
+      "cos_min": 0.999027,
+      "cos_mean": 0.999375,
+      "max_abs_over_rms": 0.18936,
+      "finite": true
+     },
+     "vs_extend": {
+      "cos_min": 0.999362,
+      "cos_mean": 0.999647,
+      "max_abs_over_rms": 0.11986,
+      "finite": true
+     }
+    },
+    "split-KV 4 splits": {
+     "vs_ref": {
+      "cos_min": 0.999027,
+      "cos_mean": 0.999375,
+      "max_abs_over_rms": 0.18936,
+      "finite": true
+     },
+     "vs_extend": {
+      "cos_min": 0.999362,
+      "cos_mean": 0.999647,
+      "max_abs_over_rms": 0.11986,
+      "finite": true
+     }
+    },
+    "split-KV 8 splits": {
+     "vs_ref": {
+      "cos_min": 0.998995,
+      "cos_mean": 0.999401,
+      "max_abs_over_rms": 0.16237,
+      "finite": true
+     },
+     "vs_extend": {
+      "cos_min": 0.999342,
+      "cos_mean": 0.999581,
+      "max_abs_over_rms": 0.11817,
+      "finite": true
+     }
+    },
+    "split-KV 16 splits": {
+     "vs_ref": {
+      "cos_min": 0.999014,
+      "cos_mean": 0.999424,
+      "max_abs_over_rms": 0.18936,
+      "finite": true
+     },
+     "vs_extend": {
+      "cos_min": 0.999335,
+      "cos_mean": 0.999553,
+      "max_abs_over_rms": 0.12197,
+      "finite": true
+     }
+    },
+    "split-KV 32 splits": {
+     "vs_ref": {
+      "cos_min": 0.999002,
+      "cos_mean": 0.999448,
+      "max_abs_over_rms": 0.20285,
+      "finite": true
+     },
+     "vs_extend": {
+      "cos_min": 0.999306,
+      "cos_mean": 0.999547,
+      "max_abs_over_rms": 0.14265,
+      "finite": true
+     }
+    },
+    "split-KV 64 splits": {
+     "vs_ref": {
+      "cos_min": 0.998996,
+      "cos_mean": 0.999468,
+      "max_abs_over_rms": 0.21635,
+      "finite": true
+     },
+     "vs_extend": {
+      "cos_min": 0.999348,
+      "cos_mean": 0.999551,
+      "max_abs_over_rms": 0.14687,
+      "finite": true
+     }
+    }
+   }
+  },
+  {
+   "case": "random",
+   "window": 2045,
+   "extend_vs_ref": {
+    "cos_min": 0.999036,
+    "cos_mean": 0.999352,
+    "max_abs_over_rms": 0.19365,
+    "finite": true
+   },
+   "splitkv": {
+    "split-KV entry point": {
+     "vs_ref": {
+      "cos_min": 0.999023,
+      "cos_mean": 0.999376,
+      "max_abs_over_rms": 0.19365,
+      "finite": true
+     },
+     "vs_extend": {
+      "cos_min": 0.999385,
+      "cos_mean": 0.999648,
+      "max_abs_over_rms": 0.11823,
+      "finite": true
+     }
+    },
+    "split-KV 4 splits": {
+     "vs_ref": {
+      "cos_min": 0.999023,
+      "cos_mean": 0.999376,
+      "max_abs_over_rms": 0.19365,
+      "finite": true
+     },
+     "vs_extend": {
+      "cos_min": 0.999385,
+      "cos_mean": 0.999648,
+      "max_abs_over_rms": 0.11823,
+      "finite": true
+     }
+    },
+    "split-KV 8 splits": {
+     "vs_ref": {
+      "cos_min": 0.998971,
+      "cos_mean": 0.999402,
+      "max_abs_over_rms": 0.16839,
+      "finite": true
+     },
+     "vs_extend": {
+      "cos_min": 0.999352,
+      "cos_mean": 0.999581,
+      "max_abs_over_rms": 0.11654,
+      "finite": true
+     }
+    },
+    "split-KV 16 splits": {
+     "vs_ref": {
+      "cos_min": 0.998986,
+      "cos_mean": 0.999425,
+      "max_abs_over_rms": 0.19365,
+      "finite": true
+     },
+     "vs_extend": {
+      "cos_min": 0.999332,
+      "cos_mean": 0.999553,
+      "max_abs_over_rms": 0.12161,
+      "finite": true
+     }
+    },
+    "split-KV 32 splits": {
+     "vs_ref": {
+      "cos_min": 0.998957,
+      "cos_mean": 0.999448,
+      "max_abs_over_rms": 0.20715,
+      "finite": true
+     },
+     "vs_extend": {
+      "cos_min": 0.999304,
+      "cos_mean": 0.999548,
+      "max_abs_over_rms": 0.14103,
+      "finite": true
+     }
+    },
+    "split-KV 64 splits": {
+     "vs_ref": {
+      "cos_min": 0.998968,
+      "cos_mean": 0.999469,
+      "max_abs_over_rms": 0.22065,
+      "finite": true
+     },
+     "vs_extend": {
+      "cos_min": 0.999339,
+      "cos_mean": 0.999552,
+      "max_abs_over_rms": 0.14652,
+      "finite": true
+     }
+    }
+   }
+  },
+  {
+   "case": "random",
+   "window": 2048,
+   "extend_vs_ref": {
+    "cos_min": 0.999039,
+    "cos_mean": 0.999352,
+    "max_abs_over_rms": 0.20362,
+    "finite": true
+   },
+   "splitkv": {
+    "split-KV entry point": {
+     "vs_ref": {
+      "cos_min": 0.999025,
+      "cos_mean": 0.999377,
+      "max_abs_over_rms": 0.19012,
+      "finite": true
+     },
+     "vs_extend": {
+      "cos_min": 0.999381,
+      "cos_mean": 0.999647,
+      "max_abs_over_rms": 0.1182,
+      "finite": true
+     }
+    },
+    "split-KV 4 splits": {
+     "vs_ref": {
+      "cos_min": 0.999025,
+      "cos_mean": 0.999377,
+      "max_abs_over_rms": 0.19012,
+      "finite": true
+     },
+     "vs_extend": {
+      "cos_min": 0.999381,
+      "cos_mean": 0.999647,
+      "max_abs_over_rms": 0.1182,
+      "finite": true
+     }
+    },
+    "split-KV 8 splits": {
+     "vs_ref": {
+      "cos_min": 0.998985,
+      "cos_mean": 0.999402,
+      "max_abs_over_rms": 0.16655,
+      "finite": true
+     },
+     "vs_extend": {
+      "cos_min": 0.999351,
+      "cos_mean": 0.999581,
+      "max_abs_over_rms": 0.11693,
+      "finite": true
+     }
+    },
+    "split-KV 16 splits": {
+     "vs_ref": {
+      "cos_min": 0.998992,
+      "cos_mean": 0.999426,
+      "max_abs_over_rms": 0.19012,
+      "finite": true
+     },
+     "vs_extend": {
+      "cos_min": 0.999335,
+      "cos_mean": 0.999553,
+      "max_abs_over_rms": 0.122,
+      "finite": true
+     }
+    },
+    "split-KV 32 splits": {
+     "vs_ref": {
+      "cos_min": 0.998962,
+      "cos_mean": 0.999449,
+      "max_abs_over_rms": 0.21712,
+      "finite": true
+     },
+     "vs_extend": {
+      "cos_min": 0.9993,
+      "cos_mean": 0.999547,
+      "max_abs_over_rms": 0.14099,
+      "finite": true
+     }
+    },
+    "split-KV 64 splits": {
+     "vs_ref": {
+      "cos_min": 0.998964,
+      "cos_mean": 0.999469,
+      "max_abs_over_rms": 0.21712,
+      "finite": true
+     },
+     "vs_extend": {
+      "cos_min": 0.999337,
+      "cos_mean": 0.999552,
+      "max_abs_over_rms": 0.14648,
+      "finite": true
+     }
+    }
+   }
+  },
+  {
+   "case": "planted",
+   "window": 2048,
+   "extend_vs_ref": {
+    "cos_min": 0.998803,
+    "cos_mean": 0.999509,
+    "max_abs_over_rms": 0.03822,
+    "finite": true
+   },
+   "splitkv": {
+    "split-KV entry point": {
+     "vs_ref": {
+      "cos_min": 0.998935,
+      "cos_mean": 0.999525,
+      "max_abs_over_rms": 0.03411,
+      "finite": true
+     },
+     "vs_extend": {
+      "cos_min": 0.999433,
+      "cos_mean": 0.999729,
+      "max_abs_over_rms": 0.03501,
+      "finite": true
+     }
+    },
+    "split-KV 4 splits": {
+     "vs_ref": {
+      "cos_min": 0.998935,
+      "cos_mean": 0.999525,
+      "max_abs_over_rms": 0.03411,
+      "finite": true
+     },
+     "vs_extend": {
+      "cos_min": 0.999433,
+      "cos_mean": 0.999729,
+      "max_abs_over_rms": 0.03501,
+      "finite": true
+     }
+    },
+    "split-KV 8 splits": {
+     "vs_ref": {
+      "cos_min": 0.999039,
+      "cos_mean": 0.99955,
+      "max_abs_over_rms": 0.03411,
+      "finite": true
+     },
+     "vs_extend": {
+      "cos_min": 0.999312,
+      "cos_mean": 0.999663,
+      "max_abs_over_rms": 0.03501,
+      "finite": true
+     }
+    },
+    "split-KV 16 splits": {
+     "vs_ref": {
+      "cos_min": 0.999061,
+      "cos_mean": 0.999561,
+      "max_abs_over_rms": 0.03411,
+      "finite": true
+     },
+     "vs_extend": {
+      "cos_min": 0.999352,
+      "cos_mean": 0.999652,
+      "max_abs_over_rms": 0.03501,
+      "finite": true
+     }
+    },
+    "split-KV 32 splits": {
+     "vs_ref": {
+      "cos_min": 0.999016,
+      "cos_mean": 0.999574,
+      "max_abs_over_rms": 0.03411,
+      "finite": true
+     },
+     "vs_extend": {
+      "cos_min": 0.99939,
+      "cos_mean": 0.999647,
+      "max_abs_over_rms": 0.03501,
+      "finite": true
+     }
+    },
+    "split-KV 64 splits": {
+     "vs_ref": {
+      "cos_min": 0.998991,
+      "cos_mean": 0.999585,
+      "max_abs_over_rms": 0.0306,
+      "finite": true
+     },
+     "vs_extend": {
+      "cos_min": 0.999403,
+      "cos_mean": 0.999649,
+      "max_abs_over_rms": 0.03501,
+      "finite": true
+     }
+    }
+   },
+   "unmasked_vs_ref_cos_min": 0.261426
+  },
+  {
+   "case": "planted",
+   "window": 2045,
+   "extend_vs_ref": {
+    "cos_min": 0.999032,
+    "cos_mean": 0.99945,
+    "max_abs_over_rms": 0.04663,
+    "finite": true
+   },
+   "splitkv": {
+    "split-KV entry point": {
+     "vs_ref": {
+      "cos_min": 0.99916,
+      "cos_mean": 0.999468,
+      "max_abs_over_rms": 0.04194,
+      "finite": true
+     },
+     "vs_extend": {
+      "cos_min": 0.999349,
+      "cos_mean": 0.99968,
+      "max_abs_over_rms": 0.0447,
+      "finite": true
+     }
+    },
+    "split-KV 4 splits": {
+     "vs_ref": {
+      "cos_min": 0.99916,
+      "cos_mean": 0.999468,
+      "max_abs_over_rms": 0.04194,
+      "finite": true
+     },
+     "vs_extend": {
+      "cos_min": 0.999349,
+      "cos_mean": 0.99968,
+      "max_abs_over_rms": 0.0447,
+      "finite": true
+     }
+    },
+    "split-KV 8 splits": {
+     "vs_ref": {
+      "cos_min": 0.999145,
+      "cos_mean": 0.99949,
+      "max_abs_over_rms": 0.04194,
+      "finite": true
+     },
+     "vs_extend": {
+      "cos_min": 0.999387,
+      "cos_mean": 0.999629,
+      "max_abs_over_rms": 0.0447,
+      "finite": true
+     }
+    },
+    "split-KV 16 splits": {
+     "vs_ref": {
+      "cos_min": 0.999186,
+      "cos_mean": 0.999509,
+      "max_abs_over_rms": 0.04194,
+      "finite": true
+     },
+     "vs_extend": {
+      "cos_min": 0.999304,
+      "cos_mean": 0.999595,
+      "max_abs_over_rms": 0.0447,
+      "finite": true
+     }
+    },
+    "split-KV 32 splits": {
+     "vs_ref": {
+      "cos_min": 0.999249,
+      "cos_mean": 0.999537,
+      "max_abs_over_rms": 0.04194,
+      "finite": true
+     },
+     "vs_extend": {
+      "cos_min": 0.999337,
+      "cos_mean": 0.999594,
+      "max_abs_over_rms": 0.0447,
+      "finite": true
+     }
+    },
+    "split-KV 64 splits": {
+     "vs_ref": {
+      "cos_min": 0.999244,
+      "cos_mean": 0.99955,
+      "max_abs_over_rms": 0.03748,
+      "finite": true
+     },
+     "vs_extend": {
+      "cos_min": 0.999399,
+      "cos_mean": 0.9996,
+      "max_abs_over_rms": 0.0447,
+      "finite": true
+     }
+    }
+   },
+   "unmasked_vs_ref_cos_min": 0.317179
+  }
+ ],
+ "timing": [
+  {
+   "geo": "dspark",
+   "arm": "extend kernel",
+   "spec": {
+    "kind": "extend"
+   },
+   "window": 24,
+   "layers": 5,
+   "rotations": 8,
+   "ms": 0.3895,
+   "ms_min": 0.3815,
+   "mode": "graph"
+  },
+  {
+   "geo": "dspark",
+   "arm": "split-KV entry point",
+   "spec": {
+    "kind": "entry"
+   },
+   "window": 24,
+   "layers": 5,
+   "rotations": 8,
+   "ms": 0.1231,
+   "ms_min": 0.1123,
+   "mode": "graph"
+  },
+  {
+   "geo": "dspark",
+   "arm": "split-KV 4 splits",
+   "spec": {
+    "kind": "splitkv",
+    "n": 4
+   },
+   "window": 24,
+   "layers": 5,
+   "rotations": 8,
+   "ms": 0.1143,
+   "ms_min": 0.1141,
+   "mode": "graph"
+  },
+  {
+   "geo": "dspark",
+   "arm": "split-KV 8 splits",
+   "spec": {
+    "kind": "splitkv",
+    "n": 8
+   },
+   "window": 24,
+   "layers": 5,
+   "rotations": 8,
+   "ms": 0.118,
+   "ms_min": 0.1178,
+   "mode": "graph"
+  },
+  {
+   "geo": "dspark",
+   "arm": "split-KV 16 splits",
+   "spec": {
+    "kind": "splitkv",
+    "n": 16
+   },
+   "window": 24,
+   "layers": 5,
+   "rotations": 8,
+   "ms": 0.1305,
+   "ms_min": 0.1304,
+   "mode": "graph"
+  },
+  {
+   "geo": "dspark",
+   "arm": "split-KV 32 splits",
+   "spec": {
+    "kind": "splitkv",
+    "n": 32
+   },
+   "window": 24,
+   "layers": 5,
+   "rotations": 8,
+   "ms": 0.1553,
+   "ms_min": 0.1552,
+   "mode": "graph"
+  },
+  {
+   "geo": "dspark",
+   "arm": "split-KV 64 splits",
+   "spec": {
+    "kind": "splitkv",
+    "n": 64
+   },
+   "window": 24,
+   "layers": 5,
+   "rotations": 8,
+   "ms": 0.2211,
+   "ms_min": 0.2207,
+   "mode": "graph"
+  },
+  {
+   "geo": "dspark",
+   "arm": "extend kernel",
+   "spec": {
+    "kind": "extend"
+   },
+   "window": 24,
+   "layers": 5,
+   "rotations": 8,
+   "ms": 0.3918,
+   "ms_min": 0.3912,
+   "mode": "graph"
+  },
+  {
+   "geo": "dspark",
+   "arm": "extend kernel",
+   "spec": {
+    "kind": "extend"
+   },
+   "window": 512,
+   "layers": 5,
+   "rotations": 8,
+   "ms": 3.2174,
+   "ms_min": 3.1832,
+   "mode": "graph"
+  },
+  {
+   "geo": "dspark",
+   "arm": "split-KV entry point",
+   "spec": {
+    "kind": "entry"
+   },
+   "window": 512,
+   "layers": 5,
+   "rotations": 8,
+   "ms": 0.1366,
+   "ms_min": 0.1361,
+   "mode": "graph"
+  },
+  {
+   "geo": "dspark",
+   "arm": "split-KV 4 splits",
+   "spec": {
+    "kind": "splitkv",
+    "n": 4
+   },
+   "window": 512,
+   "layers": 5,
+   "rotations": 8,
+   "ms": 0.1368,
+   "ms_min": 0.1366,
+   "mode": "graph"
+  },
+  {
+   "geo": "dspark",
+   "arm": "split-KV 8 splits",
+   "spec": {
+    "kind": "splitkv",
+    "n": 8
+   },
+   "window": 512,
+   "layers": 5,
+   "rotations": 8,
+   "ms": 0.13,
+   "ms_min": 0.1299,
+   "mode": "graph"
+  },
+  {
+   "geo": "dspark",
+   "arm": "split-KV 16 splits",
+   "spec": {
+    "kind": "splitkv",
+    "n": 16
+   },
+   "window": 512,
+   "layers": 5,
+   "rotations": 8,
+   "ms": 0.1413,
+   "ms_min": 0.141,
+   "mode": "graph"
+  },
+  {
+   "geo": "dspark",
+   "arm": "split-KV 32 splits",
+   "spec": {
+    "kind": "splitkv",
+    "n": 32
+   },
+   "window": 512,
+   "layers": 5,
+   "rotations": 8,
+   "ms": 0.1649,
+   "ms_min": 0.1645,
+   "mode": "graph"
+  },
+  {
+   "geo": "dspark",
+   "arm": "split-KV 64 splits",
+   "spec": {
+    "kind": "splitkv",
+    "n": 64
+   },
+   "window": 512,
+   "layers": 5,
+   "rotations": 8,
+   "ms": 0.2297,
+   "ms_min": 0.2288,
+   "mode": "graph"
+  },
+  {
+   "geo": "dspark",
+   "arm": "extend kernel",
+   "spec": {
+    "kind": "extend"
+   },
+   "window": 512,
+   "layers": 5,
+   "rotations": 8,
+   "ms": 3.2118,
+   "ms_min": 1.7792,
+   "mode": "graph"
+  },
+  {
+   "geo": "dspark",
+   "arm": "extend kernel",
+   "spec": {
+    "kind": "extend"
+   },
+   "window": 2048,
+   "layers": 5,
+   "rotations": 8,
+   "ms": 10.62,
+   "ms_min": 10.2049,
+   "mode": "graph"
+  },
+  {
+   "geo": "dspark",
+   "arm": "split-KV entry point",
+   "spec": {
+    "kind": "entry"
+   },
+   "window": 2048,
+   "layers": 5,
+   "rotations": 8,
+   "ms": 0.2347,
+   "ms_min": 0.2341,
+   "mode": "graph"
+  },
+  {
+   "geo": "dspark",
+   "arm": "split-KV 4 splits",
+   "spec": {
+    "kind": "splitkv",
+    "n": 4
+   },
+   "window": 2048,
+   "layers": 5,
+   "rotations": 8,
+   "ms": 0.2343,
+   "ms_min": 0.2341,
+   "mode": "graph"
+  },
+  {
+   "geo": "dspark",
+   "arm": "split-KV 8 splits",
+   "spec": {
+    "kind": "splitkv",
+    "n": 8
+   },
+   "window": 2048,
+   "layers": 5,
+   "rotations": 8,
+   "ms": 0.1863,
+   "ms_min": 0.1862,
+   "mode": "graph"
+  },
+  {
+   "geo": "dspark",
+   "arm": "split-KV 16 splits",
+   "spec": {
+    "kind": "splitkv",
+    "n": 16
+   },
+   "window": 2048,
+   "layers": 5,
+   "rotations": 8,
+   "ms": 0.1841,
+   "ms_min": 0.184,
+   "mode": "graph"
+  },
+  {
+   "geo": "dspark",
+   "arm": "split-KV 32 splits",
+   "spec": {
+    "kind": "splitkv",
+    "n": 32
+   },
+   "window": 2048,
+   "layers": 5,
+   "rotations": 8,
+   "ms": 0.2235,
+   "ms_min": 0.2232,
+   "mode": "graph"
+  },
+  {
+   "geo": "dspark",
+   "arm": "split-KV 64 splits",
+   "spec": {
+    "kind": "splitkv",
+    "n": 64
+   },
+   "window": 2048,
+   "layers": 5,
+   "rotations": 8,
+   "ms": 0.3156,
+   "ms_min": 0.3142,
+   "mode": "graph"
+  },
+  {
+   "geo": "dspark",
+   "arm": "extend kernel",
+   "spec": {
+    "kind": "extend"
+   },
+   "window": 2048,
+   "layers": 5,
+   "rotations": 8,
+   "ms": 10.0147,
+   "ms_min": 5.509,
+   "mode": "graph"
+  },
+  {
+   "geo": "dflash2",
+   "arm": "extend kernel",
+   "spec": {
+    "kind": "extend"
+   },
+   "window": 24,
+   "layers": 5,
+   "rotations": 8,
+   "ms": 0.2142,
+   "ms_min": 0.2141,
+   "mode": "graph"
+  },
+  {
+   "geo": "dflash2",
+   "arm": "extend kernel",
+   "spec": {
+    "kind": "extend"
+   },
+   "window": 512,
+   "layers": 5,
+   "rotations": 8,
+   "ms": 0.5369,
+   "ms_min": 0.5325,
+   "mode": "graph"
+  },
+  {
+   "geo": "dflash2",
+   "arm": "extend kernel",
+   "spec": {
+    "kind": "extend"
+   },
+   "window": 2048,
+   "layers": 5,
+   "rotations": 8,
+   "ms": 1.6652,
+   "ms_min": 1.6547,
+   "mode": "graph"
+  }
+ ],
+ "probes": {
+  "numerics": {
+   "rc": 0,
+   "seconds": 10.6,
+   "ok": true,
+   "active_lines": [
+    "split-KV verify: causal sliding-window prefix stage active (window 2048, 8 rows, 10 query heads over 2 KV heads, head_dim 256, 16 splits)",
+    "split-KV verify: causal sliding-window prefix stage active (window 2048, 8 rows, 10 query heads over 2 KV heads, head_dim 256, 32 splits)",
+    "split-KV verify: causal sliding-window prefix stage active (window 2048, 8 rows, 10 query heads over 2 KV heads, head_dim 256, 4 splits)",
+    "split-KV verify: causal sliding-window prefix stage active (window 2048, 8 rows, 10 query heads over 2 KV heads, head_dim 256, 64 splits)",
+    "split-KV verify: causal sliding-window prefix stage active (window 2048, 8 rows, 10 query heads over 2 KV heads, head_dim 256, 8 splits)"
+   ]
+  },
+  "off": {
+   "rc": 0,
+   "seconds": 3.4,
+   "ok": true,
+   "switch": false,
+   "declined": true,
+   "active_lines": []
+  }
+ },
+ "verdict": {
+  "numerics_ok": true,
+  "numerics_note": "",
+  "serving_growth_ms": 6.7,
+  "extend_ms": {
+   "24": 0.3906,
+   "512": 3.2146,
+   "2048": 10.3173
+  },
+  "extend_growth_ms": 9.927,
+  "control_ratio": 1.482,
+  "best_splits": 16,
+  "splitkv_ms": {
+   "24": 0.1305,
+   "512": 0.1413,
+   "2048": 0.1841
+  },
+  "full_ratio": 0.018,
+  "saved_ms": 10.133,
+  "shallow_delta_ms": -0.26,
+  "gate": "pass",
+  "dflash2_extend_ms": {
+   "24": 0.2142,
+   "512": 0.5369,
+   "2048": 1.6652
+  },
+  "entry_ms": {
+   "24": 0.1231,
+   "512": 0.1366,
+   "2048": 0.2347
+  }
+ }
+}
