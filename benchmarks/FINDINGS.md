@@ -1045,6 +1045,44 @@ gate. Known MXFP4 costs still in the step: a `torch.ones` activation-scale fill 
 bf16 → fp32 copies, and the M > 32 repack path that prefill and speculative verify need. AWQ and unquantised
 checkpoints keep the replicated MLP (not a tuning target).
 
+### RAD-2 — upstream's one-stage HIP all-reduce on two PCIe cards: +1.8 % and garbage output, RCCL stays (2026-11-09)
+
+`ENABLE_CUSTOM_ALL_REDUCE=1 SGLANG_USE_1STAGE_ALLREDUCE=1` moves the `tp` group's reductions from RCCL to upstream's
+in-graph `cross_device_reduce_1stage` kernel. FP8 qwen38 preset, no speculation, one session on the live tree with
+patch 119; without it the setup died on the missing `amdsmi` binding and the first pass's "on" arm never left RCCL
+([receipts](profiling/rad2-onestage-ar-2026-11-09/)):
+
+| arm | 24 | 7,331 | 58,483 | 197,326 input tokens | greedy identity against off1 | capabilities |
+|---|---:|---:|---:|---:|---|---|
+| off1, RCCL | 23.242 | 22.938 | 22.181 | 20.515 | – | – |
+| off2, RCCL | 23.238 | 22.937 | 22.166 | 20.521 | 6/6 byte-identical | 4/4 |
+| on, one-stage kernel | 23.656 | – | – | – | 0/6 | 0/4 |
+| off3, RCCL (`ENABLE_CUSTOM_ALL_REDUCE=0`) | 23.254 | 22.943 | 22.195 | 20.530 | 6/6 byte-identical | – |
+
+The one-stage arm engaged (`[AR] All-reduce call path: custom all-reduce (CustomAllreduce, group tp)`, 129 graph
+addresses registered, token pool 522,828 against 525,548) and decoded noise from the first token (`重温 adonarops迈
+widespread…` on the code prompt). Its deeper ladder cells ended after 1–4 tokens, so only the 24-token cell (three
+80-token runs) is a rate: 42.27 against 43.03 ms per step, −0.76 ms, +1.8 %. The server then died in the 58K prefill
+with `torch.OutOfMemoryError` (GPU 0 at 0 bytes free, 26.9 GiB held by PyTorch); no amdgpu fault line. The three
+RCCL arms agree within 0.07 %, so patch 119 leaves the default path unchanged.
+
+What the rate says: an in-graph kernel in place of the RCCL launch buys 0.76 ms over 129 reductions, 5.9 µs each.
+RAD-14 put "all-reduce about 4 ms" against this experiment, from a residual of 5.7–7.1 ms by subtraction. At most
+0.8 ms of that is RCCL's own launch cost. The rest is either the two ranks waiting for each other at a reduction,
+which a faster kernel does not remove (RAD-24 removes 48 of the reductions), or not all-reduce at all.
+
+Why the sums are wrong is not isolated. Upstream's kernel is a pull design: each rank copies its input into a
+staging buffer taken from the PyTorch pool and the peer reads that buffer through an IPC mapping; an input of 16 MB
+or more (every prefill chunk) is registered in place, one IPC import per new tensor, which fits the memory
+exhaustion. Radiance's two-rank reduce (`r4d_ar_oneshot_2rank_exact.hip`) pushes into uncached fine-grained scratch
+on the peer and shares only scratch and flags. `scripts/bench/custom_allreduce_isolation.py` drives the same class
+from two bare ranks and names every output (sum, own input only, stale peer, other) for the pool buffer and for an
+uncached one, eager and in a 129-reduction graph; it is queued behind RAD-1.
+
+Disposition: RCCL stays the reduce on every preset, and the two switches must not be set on this rig. Patch 119
+stays: it repairs the setup and logs the path a group reduces on, which is what made this arm checkable. A correct
+in-graph reduce is worth at most +1.8 % on this preset (RAD-25, sized by the isolation result).
+
 ## Evaluation methodology
 
 ### SWE-bench answer leakage through git history and the web (found 2026-09-18)

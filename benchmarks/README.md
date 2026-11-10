@@ -110,6 +110,9 @@ M=1 block-FP8 linears cost 24.5 ms per rank per step on the vendor W8A16 GEMV ag
 rank on FP8
 ([FP8](profiling/rad11-profile-fp8-2026-11-09/), [MXFP4, replicated MLP](profiling/rad11-profile-mxfp4-2026-11-09/)).
 `scripts/bench/bench_fp8_gemv_hip.py` is the exactness and timing bench for the native W8A16 GEMV of RAD-22.
+Upstream's one-stage HIP all-reduce against RCCL on the FP8 preset: +1.8 % at 24 tokens with wrong sums, so RCCL stays
+([receipts](profiling/rad2-onestage-ar-2026-11-09/), [FINDINGS → RAD-2](FINDINGS.md)); `scripts/bench/custom_allreduce_isolation.py`
+drives the same class from two bare ranks and names what each output is.
 The DFlash2 drafter radiance uses, served here against DSpark and no-spec in one session: faster than DSpark to 7.3K, order
 open at 58K–197K, one needle miss, DSpark stays the preset ([receipts](profiling/rad6-dflash-qwen38-2026-11-09/)).
 

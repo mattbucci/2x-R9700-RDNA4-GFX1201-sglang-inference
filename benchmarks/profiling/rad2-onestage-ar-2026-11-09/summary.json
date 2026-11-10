@@ -1,12 +1,11 @@
 {
  "experiment": "RAD-2",
- "pass": "first",
  "date": "2026-11-09",
  "model": "/data/models/Qwen3.8-27B-FP8",
- "method": "qwen38 preset, no speculation, one session, arms off1 -> on -> off2; decode_ab canonical think-off sweep 3 runs x 80 tokens; prefill_ttft 2 runs after flush_cache; needle greedy with flush",
+ "method": "qwen38 preset, no speculation, one session. First pass off1 -> on -> off2 (the on arm stopped at its identity gate), second pass on the live tree with patch 119: on -> off3. decode_ab canonical think-off sweep, 3 runs x 80 tokens; greedy identity probe; validate_capabilities (video skipped); prefill_ttft and greedy needle where the server survived",
  "arms": {
   "off1": {
-   "all_reduce": "RCCL two-stage (preset default)",
+   "all_reduce": "RCCL (preset default)",
    "median_tps": {
     "24": 23.242,
     "7331": 22.938,
@@ -14,14 +13,8 @@
     "197326": 20.515
    }
   },
-  "on": {
-   "env": "ENABLE_CUSTOM_ALL_REDUCE=1 SGLANG_USE_1STAGE_ALLREDUCE=1",
-   "result": "not measured",
-   "reason": "server came up but the custom all-reduce setup failed: name 'amdsmi_shut_down' is not defined (identity gate stopped the arm); fixed by patch 119, re-run is the second pass",
-   "median_tps": null
-  },
   "off2": {
-   "all_reduce": "RCCL two-stage (preset default)",
+   "all_reduce": "RCCL (preset default)",
    "median_tps": {
     "24": 23.238,
     "7331": 22.937,
@@ -38,9 +31,71 @@
     "cells": 9,
     "receipt": "benchmarks/quality/rad2-off2-natural-greedy.json"
    },
-   "capabilities": "4/4 (video skipped)"
+   "capabilities": "4/4 (video skipped)",
+   "identity_vs_off1": "6/6 byte-identical"
+  },
+  "on_first_pass": {
+   "env": "ENABLE_CUSTOM_ALL_REDUCE=1 SGLANG_USE_1STAGE_ALLREDUCE=1",
+   "result": "not measured",
+   "reason": "custom all-reduce setup failed: name 'amdsmi_shut_down' is not defined; the group stayed on RCCL and the identity gate stopped the arm. Fixed by patch 119"
+  },
+  "on": {
+   "env": "ENABLE_CUSTOM_ALL_REDUCE=1 SGLANG_USE_1STAGE_ALLREDUCE=1",
+   "boot_identity": "[AR] All-reduce call path: custom all-reduce (CustomAllreduce, group tp); Registering 129 cuda graph addresses; max_total_num_tokens=522828",
+   "median_tps": {
+    "24": 23.656,
+    "7331": 23.591,
+    "58483": 22.543,
+    "197326": 20.95
+   },
+   "runs_completion_tokens": {
+    "24": [
+     80,
+     80,
+     80
+    ],
+    "7331": [
+     2,
+     1,
+     2
+    ],
+    "58483": [
+     4,
+     3,
+     3
+    ],
+    "197326": [
+     3,
+     2,
+     1
+    ]
+   },
+   "rate_note": "only the 24-token cell is a decode rate (3 x 80 tokens). The deeper cells ended on EOS after 1-4 tokens of noise and are not comparable",
+   "ms_per_step_24": {
+    "on": 42.27,
+    "off1": 43.03,
+    "delta": -0.76
+   },
+   "identity_vs_off1": "0/6, divergent at character 0 on every prompt",
+   "capabilities": "0/4 (basic, tool_call, thinking, vision all fail on noise output)",
+   "failure": "torch.OutOfMemoryError in the 58K prefill (GPU 0: 0 bytes free of 31.86 GiB, 26.92 GiB allocated by PyTorch); server gone before the needle. No amdgpu fault line"
+  },
+  "off3": {
+   "env": "ENABLE_CUSTOM_ALL_REDUCE=0",
+   "all_reduce": "RCCL",
+   "boot_identity": "max_total_num_tokens=525548",
+   "median_tps": {
+    "24": 23.254,
+    "7331": 22.943,
+    "58483": 22.195,
+    "197326": 20.53
+   },
+   "identity_vs_off1": "6/6 byte-identical"
   }
  },
- "session_floor": "off1 vs off2 medians differ by at most 0.07 % (58K)",
- "conclusion": "no result on the one-stage path in this pass; the two RCCL arms set the same-session noise floor"
+ "session_floor": "the three RCCL arms differ by at most 0.07 % at every depth",
+ "eager_rccl_latency": "allreduce-decode-shape-rccl.json: 32-34 us per call up to 20 KiB, 4.17 ms over one step's reduces (eager, includes the peer wait)",
+ "identity": "identity-compare.json",
+ "isolation": "custom-allreduce-isolation.json (scripts/bench/custom_allreduce_isolation.py), queued behind the RAD-1 A/B",
+ "conclusion": "the upstream one-stage HIP all-reduce engages with patch 119, is +1.8 % at 24 tokens (-0.76 ms per step, 5.9 us per reduction) and returns wrong sums on two PCIe-attached gfx1201 cards; RCCL stays. The -3 to -4 ms estimate for replacing the RCCL launch was wrong"
 }

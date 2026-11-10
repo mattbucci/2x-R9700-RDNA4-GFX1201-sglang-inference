@@ -131,7 +131,7 @@ Qwen3.8-27B files ([receipt](benchmarks/radiance-parity/README.md)). Decode is t
 
 | Lane | vllm-radiance | This stack | Gap | Experiments that close it, in run order |
 |---|---|---|---|---|
-| FP8, no speculation | 35.4 / 35.0 / 33.7 / 30.4 | 23.2 / 22.9 / 22.2 / 20.5 | 1.5× | RAD-2 one-stage all-reduce, RAD-12 ablation ladder of their switches, RAD-13 their HIP kernels timed against ours, RAD-14 launch census of the 44 ms step, RAD-1 TP-split DeltaNet projections, RAD-3 GEMM weight layout, RAD-22 quant-free decode GEMV or RAD-5 norm + quant fusion, RAD-15 low-bit LM head with exact rerank |
+| FP8, no speculation | 35.4 / 35.0 / 33.7 / 30.4 | 23.2 / 22.9 / 22.2 / 20.5 | 1.5× | RAD-12 ablation ladder of their switches, RAD-13 their HIP kernels timed against ours, RAD-14 launch census of the 44 ms step, RAD-1 TP-split DeltaNet projections, RAD-3 GEMM weight layout, RAD-22 quant-free decode GEMV or RAD-5 norm + quant fusion, RAD-15 low-bit LM head with exact rerank |
 | FP8 + DFlash2 | 99.9 / 99.7 / 87.9 / 91.0 | 56.7 / 60.4 / 41.9 / 31.5 | 1.7–2.9× | the base step, then RAD-16 draft + verify cycle anatomy and the 197K fix, RAD-17 HIP top-k selector, RAD-18 content-adaptive block length, RAD-7 low-bit draft head |
 | Cold prefill | 4,137 / 3,631 / 2,520 | 1,800 / 1,460 / 946 | 2.2–2.7× | RAD-10 197K profile, RAD-19 DeltaNet conv block width, RAD-20 GEMM tiles at M ≥ 64 and chunk size, then ports by share |
 | MXFP4, no speculation | 51.6 / 50.8 / 47.4 / 41.0 | 29.9 / 29.6 / 28.0 / 25.2 | 1.6–1.7× | RAD-11 split-layout census and the M > 32 repack path, RAD-21 MXFP4 + DFlash2 |

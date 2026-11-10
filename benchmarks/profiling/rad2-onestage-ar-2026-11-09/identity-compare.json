@@ -1,0 +1,177 @@
+{
+ "method": "greedy identity probe (six prompts, 400 tokens, temperature 0), text compared against the first RCCL arm",
+ "off1_vs_off2": {
+  "identical": 6,
+  "prompts": 6,
+  "rows": {
+   "code": {
+    "identical": true,
+    "tokens": [
+     328,
+     328
+    ],
+    "first_divergent_char": null
+   },
+   "prose": {
+    "identical": true,
+    "tokens": [
+     370,
+     370
+    ],
+    "first_divergent_char": null
+   },
+   "json": {
+    "identical": true,
+    "tokens": [
+     132,
+     132
+    ],
+    "first_divergent_char": null
+   },
+   "numbers": {
+    "identical": true,
+    "tokens": [
+     181,
+     181
+    ],
+    "first_divergent_char": null
+   },
+   "refactor": {
+    "identical": true,
+    "tokens": [
+     157,
+     157
+    ],
+    "first_divergent_char": null
+   },
+   "ctx-long": {
+    "identical": true,
+    "tokens": [
+     179,
+     179
+    ],
+    "first_divergent_char": null
+   }
+  }
+ },
+ "off1_vs_on": {
+  "identical": 0,
+  "prompts": 6,
+  "rows": {
+   "code": {
+    "identical": false,
+    "tokens": [
+     328,
+     400
+    ],
+    "first_divergent_char": 0,
+    "a_head": "```python\ndef merge_intervals(intervals)",
+    "b_head": "重温 adonarops迈 widespreadургNICgen'/-''il"
+   },
+   "prose": {
+    "identical": false,
+    "tokens": [
+     370,
+     400
+    ],
+    "first_divergent_char": 0,
+    "a_head": "Speculative decoding is a technique desi",
+    "b_head": "、 (闪电高一 &9� s 弯1''�USH\n triple (ollenha/"
+   },
+   "json": {
+    "identical": false,
+    "tokens": [
+     132,
+     400
+    ],
+    "first_divergent_char": 0,
+    "a_head": "{\n  \"languages\": [\n    {\"name\": \"Fortran",
+    "b_head": "there  �s=S、'om'\n'\n\n\n\n!由! s'  \n\n分身'' mor"
+   },
+   "numbers": {
+    "identical": false,
+    "tokens": [
+     181,
+     400
+    ],
+    "first_divergent_char": 0,
+    "a_head": "19, 23, 29, 31, 37, 41, 43, 47, 53, 59, ",
+    "b_head": "\n\n\n/roma&aposhasss company，,ant和平  (�os "
+   },
+   "refactor": {
+    "identical": false,
+    "tokens": [
+     157,
+     4
+    ],
+    "first_divergent_char": 0,
+    "a_head": "```python\ndef f(xs):\n    return [x * x f",
+    "b_head": ". ( "
+   },
+   "ctx-long": {
+    "identical": false,
+    "tokens": [
+     179,
+     2
+    ],
+    "first_divergent_char": 0,
+    "a_head": "The provided text is a compilation of di",
+    "b_head": " "
+   }
+  }
+ },
+ "off1_vs_off3": {
+  "identical": 6,
+  "prompts": 6,
+  "rows": {
+   "code": {
+    "identical": true,
+    "tokens": [
+     328,
+     328
+    ],
+    "first_divergent_char": null
+   },
+   "prose": {
+    "identical": true,
+    "tokens": [
+     370,
+     370
+    ],
+    "first_divergent_char": null
+   },
+   "json": {
+    "identical": true,
+    "tokens": [
+     132,
+     132
+    ],
+    "first_divergent_char": null
+   },
+   "numbers": {
+    "identical": true,
+    "tokens": [
+     181,
+     181
+    ],
+    "first_divergent_char": null
+   },
+   "refactor": {
+    "identical": true,
+    "tokens": [
+     157,
+     157
+    ],
+    "first_divergent_char": null
+   },
+   "ctx-long": {
+    "identical": true,
+    "tokens": [
+     179,
+     179
+    ],
+    "first_divergent_char": null
+   }
+  }
+ }
+}

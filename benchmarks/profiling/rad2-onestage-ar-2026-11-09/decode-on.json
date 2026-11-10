@@ -1,0 +1,90 @@
+{
+  "label": "on",
+  "tag": "",
+  "note": "",
+  "port": 23334,
+  "maxtok": 80,
+  "runs": 3,
+  "points": [
+    {
+      "context": 128,
+      "input_len": 24,
+      "runs_tps": [
+        23.67,
+        23.66,
+        23.65
+      ],
+      "median_tps": 23.656,
+      "min_tps": 23.653,
+      "max_tps": 23.67,
+      "runs_completion_tokens": [
+        80,
+        80,
+        80
+      ],
+      "median_tpot_ms": 42.27,
+      "sample": "chererrahchUantHiBhi/BBCcreens CH0'   (\ufffdagC_antakerso_0/   C",
+      "median_ttft_ms": 86.8
+    },
+    {
+      "context": 8192,
+      "input_len": 7331,
+      "runs_tps": [
+        23.59,
+        0.0,
+        23.29
+      ],
+      "median_tps": 23.591,
+      "min_tps": 0.0,
+      "max_tps": 23.591,
+      "runs_completion_tokens": [
+        2,
+        1,
+        2
+      ],
+      "median_tpot_ms": 42.39,
+      "sample": "\n\n",
+      "median_ttft_ms": 168.6
+    },
+    {
+      "context": 65536,
+      "input_len": 58483,
+      "runs_tps": [
+        22.54,
+        22.46,
+        22.59
+      ],
+      "median_tps": 22.543,
+      "min_tps": 22.459,
+      "max_tps": 22.589,
+      "runs_completion_tokens": [
+        4,
+        3,
+        3
+      ],
+      "median_tpot_ms": 44.36,
+      "sample": "\n\n.",
+      "median_ttft_ms": 169.7
+    },
+    {
+      "context": 221184,
+      "input_len": 197326,
+      "runs_tps": [
+        20.91,
+        20.95,
+        0.0
+      ],
+      "median_tps": 20.95,
+      "min_tps": 0.0,
+      "max_tps": 20.95,
+      "runs_completion_tokens": [
+        3,
+        2,
+        1
+      ],
+      "median_tpot_ms": 47.73,
+      "sample": "",
+      "median_ttft_ms": 148.8
+    }
+  ]
+}

@@ -443,18 +443,18 @@
   {
    "id": "RAD-2",
    "spec": "19-vllm-radiance-parity.md",
-   "status": "in_progress",
+   "status": "completed",
    "resource": "gpu",
    "depends_on": [
     "REBASE-0523"
    ],
-   "next_action": "Second pass with patch 119 (scratchpad rad2b_onestage_ar.sh, chain2 pre-hook): on -> off3, on-arm identity = '[AR] All-reduce call path: custom all-reduce' in the server log; decode ladder, greedy identity vs off1, caps, prefill, needle. If P2P IPC between the two PCIe cards fails or regresses: fallback = port r4d_ar_oneshot_2rank_exact.hip into kernels/aot (RAD-13 times it first). Adopt in launch.sh only between drivers.",
+   "next_action": "Done: RCCL stays. Mechanism of the wrong sums: scripts/bench/custom_allreduce_isolation.py (tail queue 05-custom-ar-isolation.sh, receipt benchmarks/profiling/rad2-onestage-ar-2026-11-09/custom-allreduce-isolation.json); a correct in-graph reduce is RAD-25.",
    "test_gate": [
-    "graph capture holds; -3..-4 ms/step expected",
-    "validate_capabilities 5/5; needle grid unchanged",
-    "pool loss recorded"
+    "graph capture holds: met (129 addresses)",
+    "validate_capabilities and needle unchanged: FAILED (0/4, server died before the needle)",
+    "pool loss recorded: 2,720 tokens"
    ],
-   "result": "2026-11-09 first pass (benchmarks/profiling/rad2-onestage-ar-2026-11-09/): eager RCCL at the decode shape 34 us per 20-40 KiB reduce, 4.17 ms per step over 128 reduces. NCCL arms off1 / off2: 23.24 / 22.94 / 22.18 / 20.52 and 23.24 / 22.94 / 22.17 / 20.52 (repeat within 0.1 %). The on arm never engaged: 'Setup Custom allreduce failed with name amdsmi_shut_down is not defined' (no amdsmi Python binding on this host; upstream's HIP setup assumes it). Patch 119 lets setup run without the binding and logs the path a group reduces on."
+   "result": "2026-11-09 (benchmarks/profiling/rad2-onestage-ar-2026-11-09/, summary.json). First pass: the on arm never engaged ('Setup Custom allreduce failed with name amdsmi_shut_down is not defined'), fixed by patch 119. Second pass, one session: RCCL arms off1 / off2 / off3 23.24 / 22.94 / 22.18 / 20.52, 23.24 / 22.94 / 22.17 / 20.52, 23.25 / 22.94 / 22.20 / 20.53 (within 0.07 %, greedy identity 6/6 byte-identical). One-stage arm (custom path engaged on group tp, 129 graph addresses): 23.66 tok/s at 24 tokens (+1.8 %, -0.76 ms per step), output is noise (identity 0/6, capabilities 0/4, deeper ladder cells end after 1-4 tokens), then torch.OutOfMemoryError in the 58K prefill; no amdgpu fault. The expected -3 to -4 ms was wrong: the RCCL launch itself is worth at most 0.8 ms of the step."
   },
   {
    "id": "RAD-4",
@@ -897,6 +897,21 @@
     "greedy output byte-identical to the replicated layout on the 8-prompt set and the needle grid",
     "decode_ab both orders against replicated and against RAD-1's split",
     "rank determinism check: the two ranks' stage outputs compared bit for bit on a recorded step before the reduction is dropped"
+   ]
+  },
+  {
+   "id": "RAD-25",
+   "spec": "19-vllm-radiance-parity.md",
+   "status": "queued",
+   "resource": "gpu",
+   "depends_on": [
+    "custom_allreduce_isolation.py result (tail queue 05-custom-ar-isolation.sh): which staging buffer and which path return correct sums"
+   ],
+   "next_action": "Correct in-graph two-rank all-reduce on PCIe. If the isolation test's uncached (fine-grained) staging buffer sums correctly eager and in the 129-reduction graph: a local patch in a development tree (HIP constructor allocates self.buffer with allocate_meta_buffer when the group is not fully linked; should_custom_ar declines inputs >= max_size so prefill chunks stay on RCCL), then a serving A/B in both orders. Otherwise port the push design of radiance's r4d_ar_oneshot_2rank_exact.hip (Apache-2.0 attribution) as a native extension. Worth at most +1.8 % at 24 tokens (RAD-2), so it runs after RAD-22, RAD-5, RAD-23 and RAD-15.",
+   "test_gate": [
+    "isolation test: every output is the sum on both ranks, eager and graph, bf16 and fp32",
+    "serving arm gates on validate_capabilities before any timing phase; greedy identity against RCCL recorded; needle grid unchanged",
+    "decode_ab both orders; no growth of non-PyTorch GPU memory across a 197K prefill"
    ]
   }
  ]

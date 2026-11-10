@@ -26,5 +26,33 @@
       "passed": 4,
       "total": 4
     }
+  },
+  "on": {
+    "tag": "on",
+    "model": "/data/models/Qwen3.8-27B-FP8",
+    "timestamp": "2026-11-09 17:11",
+    "elapsed_sec": 42.6,
+    "checks": {
+      "basic": {
+        "passed": false,
+        "message": "finish=length answer='adi, moda/articles\u5c4b\\n*, applicationsc\ufffdscoviebnthe: d1\u00f3:\u671d\u5e080cor'"
+      },
+      "tool_call": {
+        "passed": false,
+        "message": "no tool_calls finish=length content=\" 'ilagFor\uff0cX\uff0c\uff0c\uff0c\\n\\n\u7af9er\u4ece\u7684bkNCNC\u5ba2\u7b49NCes\u3001\u7af9\u7af9\u7684\uff0cD\u5f26\u7eb3\u7b49wha\u671d\uff0c</think>',\u3001\u7b49\u8fde\""
+      },
+      "thinking": {
+        "passed": false,
+        "message": "reasoning_seen                 (194 tok, finish=stop)"
+      },
+      "vision": {
+        "passed": false,
+        "message": "saw=[]  response=' /\ufffd\ufffd/\ufffd mistr\u76d7\u7a83\ufffdifulfrspy'"
+      }
+    },
+    "summary": {
+      "passed": 0,
+      "total": 4
+    }
   }
 }
