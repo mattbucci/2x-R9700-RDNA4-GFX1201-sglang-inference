@@ -1,0 +1,28 @@
+  f724c9cb5bb6d83e8be79f84bba5bf24b973b9a8381667826d0ebefc1b5fb4c9  /data/sgl-v0522/python/sglang/kernels/ops/attention/verify_splitkv.py
+[2026-11-10 12:23:19] == boot off (qwen38 FP8 DSpark preset, live tree, SPLITKV_WINDOW=0)
+[2026-11-10 12:24:12] off up: window switch 0 in the server environment, 0 window lines
+[2026-11-10 12:24:12] accept probe off: 24 greedy prompts, 300 tokens each
+POOLED off: 7077 tokens over 1852 verifies, accept length 3.821 (24 cases)
+[2026-11-10 12:28:52] == boot on (qwen38 FP8 DSpark preset, live tree, launcher defaults)
+          2 causal sliding-window prefix stage active (window 2047, 8 rows, 10 query heads over 2 KV heads, head_dim 256, 16 splits)
+[2026-11-10 12:29:55] on up: window switch 1 in the server environment, 2 window lines
+[2026-11-10 12:29:55] accept probe on: 24 greedy prompts, 300 tokens each
+POOLED on: 7077 tokens over 1868 verifies, accept length 3.789 (24 cases)
+[2026-11-10 12:34:34] == boot off2 (qwen38 FP8 DSpark preset, live tree, SPLITKV_WINDOW=0)
+[2026-11-10 12:35:37] off2 up: window switch 0 in the server environment, 0 window lines
+[2026-11-10 12:35:37] accept probe off2: 24 greedy prompts, 300 tokens each
+POOLED off2: 7077 tokens over 1852 verifies, accept length 3.821 (24 cases)
+[2026-11-10 12:40:19] == windowed split stage against the extend kernel (treatment on, control off)
+ACCEPT short      cases=16 same-text= 3 control=3.675 treatment=3.670 ratio=0.998 (95% 0.967..1.031 over cases) lower/higher=6/7
+ACCEPT doc-24000  cases= 4 same-text= 1 control=4.412 treatment=4.240 ratio=0.961 (95% 0.897..1.021 over cases) lower/higher=2/2
+ACCEPT doc-190000 cases= 4 same-text= 3 control=3.931 treatment=3.888 ratio=0.989 (95% 0.982..1.000 over cases) lower/higher=2/0
+ACCEPT all        cases=24 same-text= 7 control=3.821 treatment=3.789 ratio=0.991 (95% 0.968..1.017 over cases) lower/higher=10/9
+ACCEPT VERDICT pass (pooled ratio 0.991, floor 0.95)
+[2026-11-10 12:40:19] == boot-to-boot floor: second control boot against the first
+FLOOR short      cases=16 same-text=16 control=3.675 treatment=3.675 ratio=1.000 (95% 1.000..1.000 over cases) lower/higher=0/0
+FLOOR doc-24000  cases= 4 same-text= 4 control=4.412 treatment=4.412 ratio=1.000 (95% 1.000..1.000 over cases) lower/higher=0/0
+FLOOR doc-190000 cases= 4 same-text= 4 control=3.931 treatment=3.931 ratio=1.000 (95% 1.000..1.000 over cases) lower/higher=0/0
+FLOOR all        cases=24 same-text=24 control=3.821 treatment=3.821 ratio=1.000 (95% 1.000..1.000 over cases) lower/higher=0/0
+FLOOR VERDICT pass (pooled ratio 1.000, floor 0.95)
+[2026-11-10 12:40:20] RAD28 ACCEPT CONTROL DONE verdict=pass
+[2026-11-10 12:40:20] EXIT trap: freeing GPUs

@@ -1,0 +1,89 @@
+{
+  "label": "on2-sampled",
+  "tag": "",
+  "note": "",
+  "port": 23334,
+  "maxtok": 400,
+  "runs": 2,
+  "sampling": {
+    "temperature": 1.0,
+    "top_p": 0.95,
+    "top_k": 20,
+    "seed": 7
+  },
+  "ignore_eos": true,
+  "points": [
+    {
+      "context": 128,
+      "input_len": 24,
+      "runs_tps": [
+        49.63,
+        47.39
+      ],
+      "median_tps": 48.482,
+      "min_tps": 47.387,
+      "max_tps": 49.628,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "median_tpot_ms": 20.63,
+      "sample": "# The Bottleneck of the Modern Compute Age: A Deep Dive into",
+      "median_ttft_ms": 354.8
+    },
+    {
+      "context": 8192,
+      "input_len": 7331,
+      "runs_tps": [
+        51.32,
+        49.09
+      ],
+      "median_tps": 50.181,
+      "min_tps": 49.091,
+      "max_tps": 51.321,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "median_tpot_ms": 19.93,
+      "sample": "The provided text consists of the pangram \"The quick brown f",
+      "median_ttft_ms": 1752.9
+    },
+    {
+      "context": 65536,
+      "input_len": 58483,
+      "runs_tps": [
+        54.77,
+        47.87
+      ],
+      "median_tps": 51.086,
+      "min_tps": 47.868,
+      "max_tps": 54.768,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "median_tpot_ms": 19.57,
+      "sample": "The provided text consists of the classic English pangram, \"",
+      "median_ttft_ms": 15282.4
+    },
+    {
+      "context": 221184,
+      "input_len": 197326,
+      "runs_tps": [
+        36.81,
+        36.46
+      ],
+      "median_tps": 36.633,
+      "min_tps": 36.463,
+      "max_tps": 36.805,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "median_tpot_ms": 27.3,
+      "sample": "The provided text consists of the pangram \"The quick brown f",
+      "median_ttft_ms": 76716.0
+    }
+  ]
+}

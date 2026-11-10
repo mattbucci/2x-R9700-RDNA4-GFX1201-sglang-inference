@@ -631,6 +631,20 @@ PYEOF
             if [[ -z "${QUANT_OVERRIDE:-}" ]]; then
                 export SGLANG_RDNA4_VERIFY_GQA="${VERIFY_GQA:-1}"
             fi
+            # RAD-28 (patch 126): the DSpark drafter's block forward (8 rows over five 2048-token sliding-window
+            # layers) runs through the split-KV prefix stage with the extend kernel's window rule instead of
+            # walking the window serially per head. Same session, two boots per side, sampled 400-token ladder,
+            # DSpark cycle at 24 / 7.3K / 58K / 197K input: 51.7 / 59.1 / 61.1 / 67.3 -> 50.8 / 51.7 / 53.7 /
+            # 59.9 ms; the draft propose stage 9.4 / 16.2 / 16.2 / 16.2 -> 8.5 / 8.5 / 8.5 / 8.6 ms, the target
+            # verify unchanged. Capabilities 5/5, needle 9/9; greedy accept length over 24 prompts 3.82 -> 3.79
+            # (x0.99, a control that repeats to the token across boots). Inert without a causal sliding-window
+            # verify layer (DFlash2 and the no-spec preset never reach it); the FP8 checkpoint only.
+            # SPLITKV_WINDOW=0 restores the extend kernel; SPLITKV_WINDOW_SPLITS=0 lets the kernel pick the split
+            # count from the window.
+            if [[ -z "${QUANT_OVERRIDE:-}" ]]; then
+                export SGLANG_RDNA4_SPLITKV_WINDOW="${SPLITKV_WINDOW:-1}"
+                export SGLANG_RDNA4_SPLITKV_WINDOW_SPLITS="${SPLITKV_WINDOW_SPLITS:-16}"
+            fi
             # R97-R (2026-11-01): hybrid radix cache on the extra_buffer strategy (64-token Mamba state grid,
             # overlap scheduling on). Under the HIP default no_buffer (patch 073) a state exists only at chunk
             # ends / prompt end, and the chat template's history `<think>\n` -> `\n\n` merge makes every

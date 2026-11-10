@@ -1,0 +1,89 @@
+{
+  "label": "off2-sampled",
+  "tag": "",
+  "note": "",
+  "port": 23334,
+  "maxtok": 400,
+  "runs": 2,
+  "sampling": {
+    "temperature": 1.0,
+    "top_p": 0.95,
+    "top_k": 20,
+    "seed": 7
+  },
+  "ignore_eos": true,
+  "points": [
+    {
+      "context": 128,
+      "input_len": 24,
+      "runs_tps": [
+        48.08,
+        50.31
+      ],
+      "median_tps": 49.171,
+      "min_tps": 48.08,
+      "max_tps": 50.313,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "median_tpot_ms": 20.34,
+      "sample": "# The Data Bottleneck: A Deep Dive into GPU Memory Hierarchy",
+      "median_ttft_ms": 311.0
+    },
+    {
+      "context": 8192,
+      "input_len": 7331,
+      "runs_tps": [
+        41.61,
+        42.38
+      ],
+      "median_tps": 41.993,
+      "min_tps": 41.612,
+      "max_tps": 42.382,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "median_tpot_ms": 23.81,
+      "sample": "The provided text consists of the pangram \"The quick brown f",
+      "median_ttft_ms": 1758.7
+    },
+    {
+      "context": 65536,
+      "input_len": 58483,
+      "runs_tps": [
+        37.86,
+        38.39
+      ],
+      "median_tps": 38.123,
+      "min_tps": 37.861,
+      "max_tps": 38.39,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "median_tpot_ms": 26.23,
+      "sample": "The provided text consists of the pangram \"The quick brown f",
+      "median_ttft_ms": 15249.3
+    },
+    {
+      "context": 221184,
+      "input_len": 197326,
+      "runs_tps": [
+        32.09,
+        31.29
+      ],
+      "median_tps": 31.685,
+      "min_tps": 31.29,
+      "max_tps": 32.091,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "median_tpot_ms": 31.56,
+      "sample": "The provided text consists of the classic pangram \"The quick",
+      "median_ttft_ms": 76194.8
+    }
+  ]
+}

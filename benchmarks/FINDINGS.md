@@ -1565,7 +1565,70 @@ and the forced greedy ladder starts with the per-head side's text at all four de
 Disposition: adopted as patch 125. Code default off; the FP8 `qwen38` preset exports `SGLANG_RDNA4_VERIFY_GQA=1`
 (`VERIFY_GQA=0` restores the per-head stage). The verify still costs 10–11 ms more than a plain step at 24 tokens
 and 13–14 ms at 197K: the multi-row quantising GEMM (RAD-22b) is next on that stage, DSpark's draft propose step
-(RAD-28) next on the cycle.
+(RAD-28, below) next on the cycle.
+
+### RAD-28 — DSpark windowed draft layers through the split-KV stage: speculative cycle −11–12.5 % from 7.3K on, −1.7 % at 24 tokens; patch 126, qwen38 FP8 preset default (2026-11-10)
+
+The DSpark drafter's block forward is a verify batch of 8 rows over five causal 2048-token sliding-window layers
+(10 query heads over 2 KV heads per rank, head_dim 256). The split-KV verify entry declined every windowed layer, so
+the draft walked its window serially per (sequence, head) in the extend kernel, whose tiles are sized for prefill
+rows; RAD-16 put the propose stage at 9.5 ms at 24 tokens and 16.2 ms from 7.3K on. Patch 126 gives the split stage
+the extend kernel's window rule (`kernels/ops/attention/verify_splitkv.py`, `SGLANG_RDNA4_SPLITKV_WINDOW=1`, split
+count `SGLANG_RDNA4_SPLITKV_WINDOW_SPLITS`). `can_handle()` takes a windowed layer only when the row count fits the
+first K tile and does not exceed the window, so the keys the window drops stay in the first tile of split 0. No
+backend change: the backend already hands a windowed layer its window buffers. The target and the non-causal DFlash2
+drafter never reach the rule. Kernel level ([receipts](profiling/rad28-draft-window-kernel-2026-11-10/)), five
+layers at 8 rows over a 24 / 512 / 2048-token window: extend kernel 0.39 / 3.22 / 10.32 ms, windowed split stage at
+16 splits 0.13 / 0.14 / 0.18 ms; cosine against an fp32 reference that applies the window rule about 0.9990 on random
+and planted windows on both kernels (an unmasked read gives 0.26–0.32). The extend kernel's growth from 24 to 2048
+tokens (9.9 ms) covers the 6.7 ms the propose stage grows in serving.
+
+Serving A/B on the FP8 `qwen38` DSpark preset with patches 122–125 on both sides, one session, extend → split →
+split → extend plus one timed boot per side ([receipts](profiling/rad28-draft-window-serving-2026-11-10/)). Cycle
+time and accept length come from the server's decode-batch lines on the sampled 400-token ladder (T 1.0 / top-p
+0.95 / top-k 20), mean of the two boots per side (they agree within 0.7 %); stage times come from the timed boots.
+
+| by input tokens | 24 | 7,331 | 58,483 | 197,326 |
+|---|---:|---:|---:|---:|
+| DSpark cycle, ms | 51.7 → 50.8 (−1.7 %) | 59.1 → 51.7 (−12.5 %) | 61.1 → 53.7 (−12.1 %) | 67.3 → 59.9 (−11.0 %) |
+| DSpark cycle / plain step | 1.77 → 1.74 | 1.99 → 1.74 | 1.96 → 1.73 | 1.93 → 1.72 |
+| draft propose stage, ms | 9.4 → 8.5 | 16.2 → 8.5 | 16.2 → 8.5 | 16.2 → 8.6 |
+| target verify stage, ms | 40.0 → 40.0 | 40.9 → 41.0 | 42.8 → 42.9 | 48.8 → 48.8 |
+| accept length, sampled, two boots → two boots | 2.59 / 2.35 → 2.62 / 2.48 | 2.62 / 2.55 → 2.87 / 2.55 | 2.54 / 2.17 → 2.45 / 2.80 | 2.44 / 2.09 → 1.92 / 2.10 |
+| accept length, forced greedy ladder, one prompt | 3.02 → 2.55 | 3.49 → 3.20 | 3.44 → 3.08 | 3.00 → 3.00 |
+| canonical sweep, tok/s | 50.3 → 50.9 | 63.2 → 72.5 | 58.6 → 67.0 | 45.0 → 50.7 |
+
+The propose stage no longer grows with the prompt: 8.5 ms at every depth, of which the five windowed layers are now
+a small part. The sampled accept length reads 2.42 → 2.47 as a mean over depths and boots, but the forced greedy
+ladder read it lower with the split stage at three of four depths, on one prompt per depth. One greedy prompt
+cannot separate a numerics effect on the drafter from the path a continuation takes, so the accept length was
+re-measured on the installed patch with `scripts/bench/spec_accept_probe.py`: 24 temperature-0 prompts of 300 output
+tokens (16 short tasks at 28–74 input tokens, four documents at 5.6–8.2K, four at 38–69K), the verify count read
+per request from the server (`return_spec_tokens_details`), extend → split → extend in three boots.
+
+| accept length, greedy, tokens per verify | extend kernel | windowed split stage | ratio (95 % over prompts) |
+|---|---:|---:|---:|
+| 16 short tasks | 3.675 | 3.670 | 0.998 (0.967–1.031) |
+| 4 documents, 5.6–8.2K tokens | 4.412 | 4.240 | 0.961 (0.897–1.021) |
+| 4 documents, 38–69K tokens | 3.931 | 3.888 | 0.989 (0.982–1.000) |
+| all 24, 7,077 tokens | 3.821 (1,852 verifies) | 3.789 (1,868 verifies) | 0.991 (0.968–1.017) |
+
+The second extend boot repeats the first to the token (24 of 24 texts, 1,852 verifies), so the probe has no
+boot-to-boot noise and the 0.9 % is the size of the effect on this prompt set: lower on 10 prompts, higher on 9,
+equal on 5, against the pre-set floor of 0.95. The committed text follows the accept pattern (7 of 24 texts are the
+same over 300 tokens between the two kernels), which is why a single greedy prompt moved by up to 0.47. At the
+pooled ratio the throughput gain is 11–13 % from 7.3K on and about 1 % at 24 tokens; the control's deepest prompt is
+69K tokens.
+
+Quality on the split side: capabilities 5/5, greedy needle 9/9 to 197K
+([receipt](quality/rad28-on1-natural-greedy.json)), and the forced greedy ladder starts with the extend side's text
+at all four depths.
+
+Disposition: adopted as patch 126. Code default off; the FP8 `qwen38` preset exports
+`SGLANG_RDNA4_SPLITKV_WINDOW=1` with 16 splits (`SPLITKV_WINDOW=0` restores the extend kernel), read back from the
+server environment and the active line on both ranks in the control's split boot. A kernel change on the
+speculative path now takes the paired greedy accept probe next to the sampled ladder. The target verify is 40–49 ms
+of the 51–60 ms DSpark cycle: the multi-row quantising GEMM (RAD-22b) is next.
 
 ## Evaluation methodology
 

@@ -20,7 +20,7 @@ Stages:
     timing    extend kernel, entry point and explicit split counts at window lengths 24 / 512 / 2048
     info      extend kernel on the DFlash2 drafter shape (16 over 4 heads, head_dim 128, non-causal), timing only
 
-    python scripts/bench/bench_draft_window_verify.py --tree /data/sgl-v0522-rad28/python --out bench.json
+    python scripts/bench/bench_draft_window_verify.py --tree /data/sgl-v0522/python --out bench.json
     python scripts/bench/bench_draft_window_verify.py --dry-cpu      # reference, merge algebra and verdict logic
 """
 from __future__ import annotations
@@ -545,7 +545,7 @@ def dry_cpu():
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--tree", default="/data/sgl-v0522-rad28/python")
+    ap.add_argument("--tree", default="/data/sgl-v0522/python")
     ap.add_argument("--device", type=int, default=0)
     ap.add_argument("--windows", default="24,512,2048")
     ap.add_argument("--rotations", type=int, default=8, help="distinct pool windows launched per graph replay")

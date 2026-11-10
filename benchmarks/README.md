@@ -144,7 +144,10 @@ and an exact rerank costs 1.14 ms per rank against 2.55 for the bf16 head; 4-bit
 (patch 125, FP8 `qwen38` preset default), two boots per side in one session: DFlash2 cycle 74.8 → 57.1 ms and DSpark 85.0 → 67.2 ms at 197K
 input, −5–6 % at 58K, +1–2 % below 8K, needle 9/9 and capabilities 5/5 ([kernel](profiling/rad27-verify-gqa-kernel-2026-11-10/),
 [serving](profiling/rad27-verify-gqa-serving-2026-11-10/), [FINDINGS → RAD-27](FINDINGS.md)); `scripts/bench/spec_cycle_report.py` reads cycle time,
-accept length and timed stages from a slice of a server log. `scripts/bench/dspark_cycle_times.py`
+accept length and timed stages from a slice of a server log. DSpark windowed draft layers through the split-KV stage (patch 126, FP8 `qwen38`
+preset default): cycle 59.1 → 51.7 ms at 7.3K, 61.1 → 53.7 at 58K, 67.3 → 59.9 at 197K, −1.7 % at 24 tokens, greedy accept length ×0.991 over
+24 paired prompts (`scripts/bench/spec_accept_probe.py`, verify count per request)
+([kernel](profiling/rad28-draft-window-kernel-2026-11-10/), [serving](profiling/rad28-draft-window-serving-2026-11-10/), [FINDINGS → RAD-28](FINDINGS.md)). `scripts/bench/dspark_cycle_times.py`
 reads DSpark cycle time and accept length from a server log; `scripts/bench/copyheavy_multi_bench.py` is the five-target
 copy-heavy probe with decode-only timing.
 Upstream's one-stage HIP all-reduce against RCCL on the FP8 preset: +1.8 % at 24 tokens with wrong sums, so RCCL stays

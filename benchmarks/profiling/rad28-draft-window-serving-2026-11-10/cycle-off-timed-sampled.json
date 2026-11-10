@@ -1,0 +1,260 @@
+{
+ "label": "off-timed-sampled",
+ "note": "patches 122-124 on, grouped target verify 1",
+ "log": "/data/logs/rad28-draft-window-serving-2026-11-10/server-off-timed.log",
+ "from_line": 714,
+ "to_line": 963,
+ "line_numbering": "newline",
+ "decode_lines_dropped_after_prefill": 8,
+ "decode_lines_dropped_no_depth": 0,
+ "depths": {
+  "24": {
+   "decode_batches": {
+    "lines": 5,
+    "accept_len": 2.55,
+    "tok_s": 47.7,
+    "cycles_s": 18.76,
+    "cycle_ms": 53.31
+   },
+   "timing": {
+    "worker": "DSpark",
+    "windows": 38,
+    "cycles": 608,
+    "ranks": [
+     "0",
+     "1"
+    ],
+    "tokens_per_cycle": 2.69,
+    "stages_us": {
+     "entry wait": 43.0,
+     "verify window": 77.0,
+     "draft propose": 9374.5,
+     "verify plan": 85.0,
+     "target verify": 39980.0,
+     "accept": 732.5,
+     "mask and logprob": 6.0,
+     "mamba commit": 504.5,
+     "draft KV commit": 1759.0,
+     "observers": 20.0,
+     "outside the cycle": 653.0
+    },
+    "inside_cycle_us": 52581.5,
+    "cycle_with_outside_us": 53234.5,
+    "by_rank": {
+     "0": {
+      "entry wait": 45.0,
+      "verify window": 78.0,
+      "draft propose": 9384.0,
+      "verify plan": 86.0,
+      "target verify": 39981.0,
+      "accept": 730.0,
+      "mask and logprob": 6.0,
+      "mamba commit": 508.0,
+      "draft KV commit": 1781.0,
+      "observers": 20.0,
+      "outside the cycle": 591.0
+     },
+     "1": {
+      "entry wait": 40.0,
+      "verify window": 77.0,
+      "draft propose": 9365.0,
+      "verify plan": 83.0,
+      "target verify": 39979.0,
+      "accept": 735.0,
+      "mask and logprob": 6.0,
+      "mamba commit": 499.0,
+      "draft KV commit": 1732.0,
+      "observers": 20.0,
+      "outside the cycle": 684.0
+     }
+    }
+   }
+  },
+  "7.3K": {
+   "decode_batches": {
+    "lines": 6,
+    "accept_len": 2.44,
+    "tok_s": 39.87,
+    "cycles_s": 16.33,
+    "cycle_ms": 61.25
+   },
+   "timing": {
+    "worker": "DSpark",
+    "windows": 40,
+    "cycles": 640,
+    "ranks": [
+     "0",
+     "1"
+    ],
+    "tokens_per_cycle": 2.59,
+    "stages_us": {
+     "outside the cycle": 679.5,
+     "entry wait": 44.5,
+     "verify window": 81.0,
+     "draft propose": 16217.0,
+     "verify plan": 87.0,
+     "target verify": 40919.5,
+     "accept": 825.5,
+     "mask and logprob": 6.0,
+     "mamba commit": 502.5,
+     "draft KV commit": 1743.5,
+     "observers": 21.0
+    },
+    "inside_cycle_us": 60447.5,
+    "cycle_with_outside_us": 61127.0,
+    "by_rank": {
+     "0": {
+      "outside the cycle": 617.5,
+      "entry wait": 46.0,
+      "verify window": 81.0,
+      "draft propose": 16228.5,
+      "verify plan": 87.0,
+      "target verify": 40920.5,
+      "accept": 824.5,
+      "mask and logprob": 6.0,
+      "mamba commit": 505.0,
+      "draft KV commit": 1764.0,
+      "observers": 21.0
+     },
+     "1": {
+      "outside the cycle": 698.0,
+      "entry wait": 37.5,
+      "verify window": 81.0,
+      "draft propose": 16208.5,
+      "verify plan": 87.0,
+      "target verify": 40911.5,
+      "accept": 827.5,
+      "mask and logprob": 6.0,
+      "mamba commit": 499.0,
+      "draft KV commit": 1720.0,
+      "observers": 21.0
+     }
+    }
+   }
+  },
+  "58K": {
+   "decode_batches": {
+    "lines": 5,
+    "accept_len": 2.48,
+    "tok_s": 39.27,
+    "cycles_s": 15.83,
+    "cycle_ms": 63.15
+   },
+   "timing": {
+    "worker": "DSpark",
+    "windows": 32,
+    "cycles": 512,
+    "ranks": [
+     "0",
+     "1"
+    ],
+    "tokens_per_cycle": 2.69,
+    "stages_us": {
+     "outside the cycle": 692.0,
+     "entry wait": 37.5,
+     "verify window": 80.5,
+     "draft propose": 16228.0,
+     "verify plan": 87.0,
+     "target verify": 42829.5,
+     "accept": 816.0,
+     "mask and logprob": 6.0,
+     "mamba commit": 505.0,
+     "draft KV commit": 1760.0,
+     "observers": 21.0
+    },
+    "inside_cycle_us": 62370.5,
+    "cycle_with_outside_us": 63062.5,
+    "by_rank": {
+     "0": {
+      "outside the cycle": 608.5,
+      "entry wait": 15.0,
+      "verify window": 79.0,
+      "draft propose": 16283.0,
+      "verify plan": 86.5,
+      "target verify": 42831.5,
+      "accept": 803.5,
+      "mask and logprob": 6.0,
+      "mamba commit": 506.0,
+      "draft KV commit": 1770.5,
+      "observers": 21.0
+     },
+     "1": {
+      "outside the cycle": 730.5,
+      "entry wait": 40.5,
+      "verify window": 81.0,
+      "draft propose": 16187.5,
+      "verify plan": 90.0,
+      "target verify": 42822.5,
+      "accept": 819.0,
+      "mask and logprob": 6.0,
+      "mamba commit": 502.5,
+      "draft KV commit": 1731.0,
+      "observers": 21.0
+     }
+    }
+   }
+  },
+  "197K": {
+   "decode_batches": {
+    "lines": 6,
+    "accept_len": 2.23,
+    "tok_s": 32.25,
+    "cycles_s": 14.5,
+    "cycle_ms": 68.98
+   },
+   "timing": {
+    "worker": "DSpark",
+    "windows": 42,
+    "cycles": 672,
+    "ranks": [
+     "0",
+     "1"
+    ],
+    "tokens_per_cycle": 2.25,
+    "stages_us": {
+     "outside the cycle": 678.0,
+     "entry wait": 32.0,
+     "verify window": 81.0,
+     "draft propose": 16235.0,
+     "verify plan": 87.0,
+     "target verify": 48754.5,
+     "accept": 814.5,
+     "mask and logprob": 6.0,
+     "mamba commit": 505.0,
+     "draft KV commit": 1744.5,
+     "observers": 21.0
+    },
+    "inside_cycle_us": 68280.5,
+    "cycle_with_outside_us": 68958.5,
+    "by_rank": {
+     "0": {
+      "outside the cycle": 603.0,
+      "entry wait": 39.0,
+      "verify window": 81.0,
+      "draft propose": 16285.0,
+      "verify plan": 86.0,
+      "target verify": 48760.0,
+      "accept": 812.0,
+      "mask and logprob": 6.0,
+      "mamba commit": 506.0,
+      "draft KV commit": 1759.0,
+      "observers": 21.0
+     },
+     "1": {
+      "outside the cycle": 704.0,
+      "entry wait": 30.0,
+      "verify window": 82.0,
+      "draft propose": 16225.0,
+      "verify plan": 89.0,
+      "target verify": 48751.0,
+      "accept": 816.0,
+      "mask and logprob": 6.0,
+      "mamba commit": 500.0,
+      "draft KV commit": 1725.0,
+      "observers": 21.0
+     }
+    }
+   }
+  }
+ }
+}

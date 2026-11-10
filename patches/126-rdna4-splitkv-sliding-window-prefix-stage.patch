@@ -1,0 +1,167 @@
+diff --git a/python/sglang/kernels/ops/attention/verify_splitkv.py b/python/sglang/kernels/ops/attention/verify_splitkv.py
+index 649657b..89d4f10 100644
+--- a/python/sglang/kernels/ops/attention/verify_splitkv.py
++++ b/python/sglang/kernels/ops/attention/verify_splitkv.py
+@@ -29,8 +29,11 @@ bit-equivalently and returns True, otherwise returns False (doing nothing) so
+ the caller falls back to ``extend_attention_fwd``. Supported case: causal
+ (topk=1) verify with a constant per-sequence extend length, no sinks /
+ sliding-window / logit-cap / xai-temperature. Correctness is never violated.
++RDNA4: a causal sliding window is also served under
++``SGLANG_RDNA4_SPLITKV_WINDOW=1`` (see ``can_handle``).
+ """
+ 
++import logging
+ import os
+ 
+ import torch
+@@ -39,6 +42,8 @@ import triton.language as tl
+ 
+ from sglang.srt.utils import is_hip
+ 
++logger = logging.getLogger(__name__)
++
+ _MIN_BLOCK_KV = 32
+ 
+ # AMD/CDNA-only Triton launch hints (waves_per_eu, matrix_instr_nonkdim); NVIDIA's
+@@ -71,6 +76,14 @@ _UPCAST_K = os.environ.get("SGLANG_SPLITKV_UPCAST_K", "0") == "1"
+ # tile neutral; 16 warps gains nothing more and costs 8-15 % at 16 rows (benchmarks/profiling/
+ # verify-combine-warps-2026-11-02.md). SGLANG_SPLITKV_COMBINE_WARPS overrides.
+ _COMBINE_WARPS = int(os.environ.get("SGLANG_SPLITKV_COMBINE_WARPS", "8") or 8)
++# RDNA4 RAD-28 (opt-in): serve causal sliding-window layers too. The DSpark drafter's block forward is a
++# TARGET_VERIFY batch of 8 rows over five 2048-token sliding-window layers; can_handle() used to decline every
++# windowed layer, so the draft walked its window serially per (sequence, head) in extend_attention_fwd, whose
++# tiles are sized for prefill rows. The backend hands a windowed layer window_kv_indptr / window_kv_indices,
++# so the split stage only needs extend_attention_fwd's window rule (see _verify_prefix_stage1).
++_SPLITKV_WINDOW = os.environ.get("SGLANG_RDNA4_SPLITKV_WINDOW", "0") == "1"
++# split count of a windowed prefix stage; 0 = choose_n_splits() on the window size
++_WINDOW_SPLITS = int(os.environ.get("SGLANG_RDNA4_SPLITKV_WINDOW_SPLITS", "0") or 0)
+ 
+ # Block-size config keyed on head_dim. The (BLOCK_N, num_warps) tile that best
+ # hides latency depends on head_dim: at head_dim=256 (Qwen3 family) a narrower
+@@ -193,6 +206,7 @@ def _verify_prefix_stage1(
+     BLOCK_N: tl.constexpr,
+     MIN_BLOCK_KV: tl.constexpr,
+     UPCAST_K: tl.constexpr = False,  # RDNA4: dot(q, k.to(q.dtype)) like extend_attention's gfx1201 branch
++    SLIDING_WINDOW_SIZE: tl.constexpr = -1,  # RDNA4 RAD-28: > 0 when kv_indptr / kv_indices span a causal window
+ ):
+     cur_batch = tl.program_id(0)
+     cur_head = tl.program_id(1)
+@@ -268,6 +282,17 @@ def _verify_prefix_stage1(
+             qk *= sm_scale * k_scale  # fp8 dequant of prefix K (k_scale==1 if bf16)
+             # NO causal mask: full prefix is visible to all draft tokens.
+             qk = tl.where(n_mask[None, :], qk, float("-inf"))
++            if SLIDING_WINDOW_SIZE > 0:
++                # extend_attention_fwd's prefix rule, q_id <= kv_id + SLIDING_WINDOW_SIZE with q_id =
++                # window_len + row and kv_id = the index inside the window: a full window drops its first
++                # `row` keys. can_handle() bounds the row count so those keys sit in split 0's first tile
++                # and every row keeps a key there (no empty softmax).
++                qk = tl.where(
++                    (cur_batch_seq_len + offs_l[:, None])
++                    <= (offs_n[None, :] + SLIDING_WINDOW_SIZE),
++                    qk,
++                    float("-inf"),
++                )
+ 
+             # V block: [BLOCK_N, Dv]
+             offs_buf_v = kv_loc[:, None] * stride_buf_vbs + base_offs_v
+@@ -515,9 +540,12 @@ class VerifySplitKV:
+         block_n=DEFAULT_BLOCK_N,
+         num_warps=DEFAULT_NUM_WARPS,
+         upcast_k=None,
++        sliding_window_size=-1,
+     ):
+         # prefix QK numerics: dot(q, k.to(q.dtype)) (extend_attention's gfx1201 path) vs dot(q.to(k.dtype), k)
+         self.upcast_k = _UPCAST_K if upcast_k is None else bool(upcast_k)
++        # RDNA4 RAD-28: > 0 = the prefix arguments span a causal sliding window of this size
++        self.sliding_window_size = int(sliding_window_size)
+         self.h_q = h_q
+         self.h_kv = h_kv
+         self.group = h_q // h_kv
+@@ -602,6 +630,7 @@ class VerifySplitKV:
+             BLOCK_N=self.block_n,
+             MIN_BLOCK_KV=_MIN_BLOCK_KV,
+             UPCAST_K=self.upcast_k,
++            SLIDING_WINDOW_SIZE=self.sliding_window_size,
+             num_warps=self.num_warps,
+             num_stages=1,
+             **_AMD_LAUNCH_KWARGS,
+@@ -712,10 +741,11 @@ _VK_CACHE = {}
+ 
+ 
+ def _get_vk(
+-    max_bs, h_q, h_kv, head_dim, v_head_dim, l_ext, device, n_splits=DEFAULT_N_SPLITS, upcast_k=None
++    max_bs, h_q, h_kv, head_dim, v_head_dim, l_ext, device, n_splits=DEFAULT_N_SPLITS, upcast_k=None,
++    sliding_window_size=-1,
+ ):
+     upcast_k = _UPCAST_K if upcast_k is None else bool(upcast_k)
+-    key = (h_q, h_kv, head_dim, v_head_dim, l_ext, str(device), n_splits, upcast_k)
++    key = (h_q, h_kv, head_dim, v_head_dim, l_ext, str(device), n_splits, upcast_k, sliding_window_size)
+     vk = _VK_CACHE.get(key)
+     if vk is None:
+         block_n, num_warps = block_config(head_dim)
+@@ -731,7 +761,14 @@ def _get_vk(
+             block_n=block_n,
+             num_warps=num_warps,
+             upcast_k=upcast_k,
++            sliding_window_size=sliding_window_size,
+         )
++        if sliding_window_size > 0:
++            logger.info(
++                "[RDNA4] split-KV verify: causal sliding-window prefix stage active (window %d, %d rows, "
++                "%d query heads over %d KV heads, head_dim %d, %d splits)",
++                sliding_window_size, l_ext, h_q, h_kv, head_dim, n_splits,
++            )
+         _VK_CACHE[key] = vk
+     else:
+         vk.grow_buffers(max_bs)
+@@ -773,7 +810,21 @@ def can_handle(
+     ):
+         return False
+     if sliding_window_size is not None and sliding_window_size > 0:
+-        return False
++        # RDNA4 RAD-28 (opt-in): a causal sliding window is served when the caller's prefix arguments span the
++        # window (TritonAttnBackend passes window_kv_indptr / window_kv_indices for such a layer, with
++        # window_len <= sliding_window_size). A row then loses at most max_len_extend - 1 keys, all at the
++        # head of the window; both bounds below keep them inside the first tile of split 0 with a visible
++        # key left for every row, and make the window rule vacuous in the draft-draft block.
++        if not _SPLITKV_WINDOW:
++            return False
++        try:
++            rows = int(max_len_extend)
++        except (TypeError, ValueError):
++            return False
++        if rows > min(block_config(q_extend.shape[2])[0], _MIN_BLOCK_KV):
++            return False
++        if sliding_window_size < rows:
++            return False
+     if logit_cap and logit_cap > 0:
+         return False
+     if xai_temperature_len is not None and xai_temperature_len > 0:
+@@ -916,7 +967,18 @@ def verify_splitkv_fwd(
+     # mixed-length batches stay correct -- shorter seqs simply write fewer
+     # active splits (the rest emit the -inf lse sentinel, ignored in stage2).
+     avg_seqlen = kv_indices.shape[0] / max(1, bs)
+-    n_splits = choose_n_splits(avg_seqlen)
++    window = (
++        int(sliding_window_size)
++        if sliding_window_size is not None and sliding_window_size > 0
++        else -1
++    )
++    if window > 0 and _WINDOW_SPLITS > 0:
++        n_splits = _WINDOW_SPLITS
++    else:
++        if window > 0:
++            # a window never holds more than `window` keys, whatever the static buffer length
++            avg_seqlen = min(avg_seqlen, window)
++        n_splits = choose_n_splits(avg_seqlen)
+ 
+     # Size scratch by the stable max_bs (backend passes req_to_token_pool size);
+     # fall back to this call's bs if not provided / smaller.
+@@ -932,6 +994,7 @@ def verify_splitkv_fwd(
+         q_extend.device,
+         n_splits=n_splits,
+         upcast_k=upcast_k,
++        sliding_window_size=window,
+     )
+     vk(
+         q_extend,

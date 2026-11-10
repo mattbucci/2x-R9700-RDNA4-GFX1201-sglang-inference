@@ -1,0 +1,48 @@
+{
+ "label": "off1-sampled",
+ "note": "patches 122-124 on, grouped target verify 1",
+ "log": "/data/logs/rad28-draft-window-serving-2026-11-10/server-off1.log",
+ "from_line": 906,
+ "to_line": 1001,
+ "line_numbering": "newline",
+ "decode_lines_dropped_after_prefill": 8,
+ "decode_lines_dropped_no_depth": 0,
+ "depths": {
+  "24": {
+   "decode_batches": {
+    "lines": 6,
+    "accept_len": 2.59,
+    "tok_s": 50.03,
+    "cycles_s": 19.35,
+    "cycle_ms": 51.69
+   }
+  },
+  "7.3K": {
+   "decode_batches": {
+    "lines": 5,
+    "accept_len": 2.62,
+    "tok_s": 44.48,
+    "cycles_s": 16.98,
+    "cycle_ms": 58.91
+   }
+  },
+  "58K": {
+   "decode_batches": {
+    "lines": 6,
+    "accept_len": 2.54,
+    "tok_s": 41.55,
+    "cycles_s": 16.36,
+    "cycle_ms": 61.13
+   }
+  },
+  "197K": {
+   "decode_batches": {
+    "lines": 6,
+    "accept_len": 2.44,
+    "tok_s": 36.27,
+    "cycles_s": 14.86,
+    "cycle_ms": 67.28
+   }
+  }
+ }
+}

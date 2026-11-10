@@ -1,0 +1,60 @@
+{
+ "control": "benchmarks/profiling/rad28-draft-window-serving-2026-11-10/accept-off.json",
+ "treatment": "benchmarks/profiling/rad28-draft-window-serving-2026-11-10/accept-on.json",
+ "cases": 24,
+ "groups": {
+  "short": {
+   "cases": 16,
+   "same_text": 3,
+   "control_accept": 3.6753,
+   "treatment_accept": 3.6697,
+   "ratio": 0.9985,
+   "ratio_ci95": [
+    0.9669,
+    1.0308
+   ],
+   "treatment_lower": 6,
+   "treatment_higher": 7
+  },
+  "doc-24000": {
+   "cases": 4,
+   "same_text": 1,
+   "control_accept": 4.4118,
+   "treatment_accept": 4.2403,
+   "ratio": 0.9611,
+   "ratio_ci95": [
+    0.8971,
+    1.0211
+   ],
+   "treatment_lower": 2,
+   "treatment_higher": 2
+  },
+  "doc-190000": {
+   "cases": 4,
+   "same_text": 3,
+   "control_accept": 3.9307,
+   "treatment_accept": 3.8881,
+   "ratio": 0.9892,
+   "ratio_ci95": [
+    0.9821,
+    1.0
+   ],
+   "treatment_lower": 2,
+   "treatment_higher": 0
+  },
+  "all": {
+   "cases": 24,
+   "same_text": 7,
+   "control_accept": 3.8213,
+   "treatment_accept": 3.7885,
+   "ratio": 0.9914,
+   "ratio_ci95": [
+    0.9679,
+    1.0174
+   ],
+   "treatment_lower": 10,
+   "treatment_higher": 9
+  }
+ },
+ "verdict": "pass"
+}

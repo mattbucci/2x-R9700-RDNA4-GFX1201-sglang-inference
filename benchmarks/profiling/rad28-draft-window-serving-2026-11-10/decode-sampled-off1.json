@@ -1,0 +1,89 @@
+{
+  "label": "off1-sampled",
+  "tag": "",
+  "note": "",
+  "port": 23334,
+  "maxtok": 400,
+  "runs": 2,
+  "sampling": {
+    "temperature": 1.0,
+    "top_p": 0.95,
+    "top_k": 20,
+    "seed": 7
+  },
+  "ignore_eos": true,
+  "points": [
+    {
+      "context": 128,
+      "input_len": 24,
+      "runs_tps": [
+        48.45,
+        53.22
+      ],
+      "median_tps": 50.724,
+      "min_tps": 48.454,
+      "max_tps": 53.217,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "median_tpot_ms": 19.71,
+      "sample": "# The Bottleneck of Compute: A Deep Dive into GPU Memory Hie",
+      "median_ttft_ms": 403.6
+    },
+    {
+      "context": 8192,
+      "input_len": 7331,
+      "runs_tps": [
+        41.96,
+        46.63
+      ],
+      "median_tps": 44.171,
+      "min_tps": 41.956,
+      "max_tps": 46.633,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "median_tpot_ms": 22.64,
+      "sample": "The text consists of a continuous, repetitive stream of the ",
+      "median_ttft_ms": 1683.4
+    },
+    {
+      "context": 65536,
+      "input_len": 58483,
+      "runs_tps": [
+        40.76,
+        46.04
+      ],
+      "median_tps": 43.237,
+      "min_tps": 40.759,
+      "max_tps": 46.036,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "median_tpot_ms": 23.13,
+      "sample": "The provided text consists of the classic English pangram \"T",
+      "median_ttft_ms": 15200.7
+    },
+    {
+      "context": 221184,
+      "input_len": 197326,
+      "runs_tps": [
+        36.83,
+        36.66
+      ],
+      "median_tps": 36.746,
+      "min_tps": 36.659,
+      "max_tps": 36.834,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "median_tpot_ms": 27.21,
+      "sample": "The provided text consists of the pangram \"The quick brown f",
+      "median_ttft_ms": 76018.3
+    }
+  ]
+}
