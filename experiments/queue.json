@@ -879,14 +879,14 @@
    "status": "ready",
    "resource": "gpu",
    "depends_on": [
-    "RAD-22 (done): the one-row W8A16 GEMV is patch 122; the DSpark verify pass is a multi-row forward and keeps the quantiser + W8A8 GEMM",
-    "the combined-stack confirmation (done): DSpark cycle 50.8 / 58.6 / 64.8 / 85.0 ms at 24 / 7.3K / 58K / 197K on the shipped preset is the baseline; the cycle gained 6.0-6.3 ms where the plain step gained 8.3"
+    "RAD-27 / RAD-28 (done, patches 125-126): DSpark cycle 50.8 / 51.7 / 53.7 / 59.9 ms at 24 / 7.3K / 58K / 197K on the shipped preset is the baseline; the target verify is 40-49 ms of it, 10-14 ms over a plain step",
+    "scripts/bench/launch_census.py span mode (done): one census per forward-pass span and a two-receipt diff"
    ],
-   "next_action": "W8A16 for the DSpark verify row count: record the verify pass's M per linear from a served DSpark request (draft length + 1 rows), then bench fp8_gemv_hip per row against the 16-row Triton tile at that M with the cold rotation (the RAD-13 sandbox bench kept our GEMM at M = 8-64, so a kernel is written only if the row loop or a small-M tile wins at the recorded M). If it wins: route M <= that bound to it behind the patch-122 switch, hook preflight at the new row counts, DSpark A/B read by cycle time and accept length (dspark_cycle_times.py, --decode-log-interval 4, forced equal-length output).",
+   "next_action": "Verify anatomy. The kernel receipts explain 4-5 ms of the verify's 10.8 ms over a plain step at 24 tokens (the nine rows fall off the one-row W8A16 GEMV, the multi-row GEMM, the LM head), so the first step is the eager launch census of the DSpark target verify against the no-spec decode step at short and deep context (queued: benchmarks/profiling/rad22b-verify-census-2026-11-10/, diff-verify-{short,deep}.txt). Then a kernel bench of the family the census ranks first, at the verify shape with the cold rotation. Candidates read from the source: W8A16 at the verify row count (fp8_gemv_hip per row against the 16-row Triton tile; RAD-13 kept our GEMM at M = 8-64), the DeltaNet snapshotting recurrence (upstream default launch config on gfx1201, one state snapshot per draft token per layer plus a commit copy, about 0.9 GB of traffic per rank per verify), the all-reduce at nine-row payloads. A winner goes behind its own switch with a hook preflight at the verify row counts and a DSpark A/B read by cycle time and accept length (dspark_cycle_times.py, spec_accept_probe.py).",
    "test_gate": [
-    "kernel: faster than quantiser + GEMM at the verify M with cold weights, within 2 ULP of fp64 on the check rows",
-    "DSpark cycle time lower at every depth at equal accept length; byte-identical or needle-equal against the one-row-only arm",
-    "caps and needle unchanged; verify and one-row decode share one arithmetic after the change"
+    "census: the verify pass and the plain step are read from the same eager session family by family; the diff names at least half of the extra time or the remainder is recorded as host gap",
+    "kernel: the candidate is faster than the current path at the verify shape with cold weights, numerics within the current path's class on the check rows",
+    "DSpark cycle time lower at every depth at equal accept length (paired greedy accept probe not below 0.95x); capabilities and needle unchanged"
    ]
   },
   {

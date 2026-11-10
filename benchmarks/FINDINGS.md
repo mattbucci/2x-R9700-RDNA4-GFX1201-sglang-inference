@@ -1628,7 +1628,32 @@ Disposition: adopted as patch 126. Code default off; the FP8 `qwen38` preset exp
 `SGLANG_RDNA4_SPLITKV_WINDOW=1` with 16 splits (`SPLITKV_WINDOW=0` restores the extend kernel), read back from the
 server environment and the active line on both ranks in the control's split boot. A kernel change on the
 speculative path now takes the paired greedy accept probe next to the sampled ladder. The target verify is 40–49 ms
-of the 51–60 ms DSpark cycle: the multi-row quantising GEMM (RAD-22b) is next.
+of the 51–60 ms DSpark cycle, 10–14 ms over a plain step; RAD-22b starts with a launch census of the verify pass.
+
+The canonical sweep on the shipped preset with patches 125 and 126 (bare `scripts/launch.sh qwen38`, the same with
+`QWEN38_SPEC=0`, and the DFlash2 comparison drafter), five runs per depth, tok/s at 24 / 7.3K / 58K / 197K input:
+
+| arm | 24 | 7,331 | 58,483 | 197,326 |
+|---|---:|---:|---:|---:|
+| DSpark (preset), median | 50.844 | 72.459 | 66.800 | 50.720 |
+| DSpark, previous canonical row (patches 121–124) | 51.051 | 63.740 | 55.892 | 35.672 |
+| no speculation, median | 34.264 | 33.560 | 32.115 | 28.681 |
+| DSpark / no speculation | 1.48× | 2.16× | 2.08× | 1.77× |
+| DFlash2 drafter, cold first run | 65.66 | 75.56 | 67.68 | 52.03 |
+| DFlash2 drafter, median | 65.478 | 76.084 | 70.163 | 71.912 |
+
+Both DSpark rows sit on the same 80 / 38 / 33 / 37-token continuations, so they compare kernels: +13.7 % / +19.5 % /
++42.2 % at 7.3K / 58K / 197K and −0.4 % at 24 tokens. The no-spec row repeats the previous one (34.270 / 33.615 /
+32.129 / 28.715) within 0.2 %: the two patches are on the speculative path. The DFlash2 rate follows its
+continuation: the 197K cold run decodes the 37-token continuation of the other two arms at 52.0 tok/s and the four
+repeats decode a 46-token one at 71.5–72.1, and at 58K the cold run takes 46 tokens and the repeats 33. The gap table
+against vllm-radiance uses the cold runs (radiance serves every request cold): 1.52 / 1.32 / 1.30 / 1.75× behind,
+from 1.5–2.3×. Cold prefill at 7.3K / 58K / 197K: 2,334 / 1,782 / 1,070 tok/s without speculation, 2,277 / 1,745 /
+1,052 on the DSpark server (187.6 s for the 197K prompt). Capabilities 5/5 on both speculative servers; the grouped
+verify stage is active on both ranks of both, the windowed draft stage on DSpark only
+([DSpark](qwen38-27b-fp8/decode-canonical-dspark-2026-11-10-94p.json),
+[no-spec](qwen38-27b-fp8/decode-canonical-nospec-2026-11-10-94p.json),
+[DFlash2](qwen38-27b-fp8/decode-canonical-dflash2-2026-11-10-94p.json)). These are the README and results.json rows.
 
 ## Evaluation methodology
 

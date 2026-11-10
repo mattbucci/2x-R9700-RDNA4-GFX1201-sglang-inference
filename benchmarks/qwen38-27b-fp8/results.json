@@ -1,53 +1,53 @@
 {
   "model": "Qwen3.8-27B official FP8 (dense DeltaNet VL+video) + DSpark",
-  "engine": "SGLang v0.5.22 + 92 patches",
+  "engine": "SGLang v0.5.22 + 94 patches",
   "method": "completion-token-counted streaming TPOT median (decode_ab, 5-run)",
   "hardware": "2x R9700 TP=2",
-  "timestamp": "2026-11-10 v0.5.22+92p shipped preset (patch 121 TP-split DeltaNet, patches 122-124 one-row decode kernels) think-off",
+  "timestamp": "2026-11-10 v0.5.22+94p shipped preset (patches 121-124, patch 125 GQA-grouped verify prefix stage, patch 126 windowed draft layers through the split-KV stage) think-off",
   "output_tokens": 80,
   "context_sweep": [
     {
       "context": 128,
       "input_len": 24,
       "actual_input_tokens": 24,
-      "tpot_ms": 19.59,
-      "tok_per_sec": 51.051,
-      "ttft_ms": 132.5
+      "tpot_ms": 19.67,
+      "tok_per_sec": 50.844,
+      "ttft_ms": 133.8
     },
     {
       "context": 8192,
       "input_len": 7331,
       "actual_input_tokens": 7331,
-      "tpot_ms": 15.69,
-      "tok_per_sec": 63.74,
-      "ttft_ms": 149.5
+      "tpot_ms": 13.8,
+      "tok_per_sec": 72.459,
+      "ttft_ms": 145.5
     },
     {
       "context": 65536,
       "input_len": 58483,
       "actual_input_tokens": 58483,
-      "tpot_ms": 17.89,
-      "tok_per_sec": 55.892,
-      "ttft_ms": 161.4
+      "tpot_ms": 14.97,
+      "tok_per_sec": 66.8,
+      "ttft_ms": 150.6
     },
     {
       "context": 221184,
       "input_len": 197326,
       "actual_input_tokens": 197326,
-      "tpot_ms": 28.03,
-      "tok_per_sec": 35.672,
-      "ttft_ms": 170.1
+      "tpot_ms": 19.72,
+      "tok_per_sec": 50.72,
+      "ttft_ms": 146.4
     }
   ],
   "throughput_sweep": [
     {
       "concurrency": 1,
-      "throughput": 51.051,
-      "tpot_ms": 19.59,
+      "throughput": 50.844,
+      "tpot_ms": 19.67,
       "ttft_ms": 0
     }
   ],
-  "note": "canonical 4-point sweep on the shipped qwen38 preset (DSpark, TP-split DeltaNet projections, patches 122-124 exported by launch.sh), 5 runs, EOS; pool 430,725 tokens. Completion tokens per run: 80 / 38 / 33 / 37, the same on every run. DSpark throughput is acceptance-bound: rows of different days compare only where the continuation is the same (24, 7.3K and 197K against previous_context_sweep_2026_11_09; the 58K point was a 47-token continuation then and is a 33-token one now). Cold prefill on this server (flush_cache, 2 runs): 2,276 / 1,753 / 1,066 tok/s at 7.3K / 58K / 197K, 185.1 s for the 197K prompt; capability probe 5/5 (capabilities-canonical-dspark-2026-11-10.json). Receipts: decode-canonical-dspark-2026-11-10.json, prefill-canonical-dspark-2026-11-10.json.",
+  "note": "canonical 4-point sweep on the shipped qwen38 preset (DSpark, TP-split DeltaNet projections, patches 122-126 exported by launch.sh), 5 runs, EOS; pool 430,725 tokens. Completion tokens per run: 80 / 38 / 33 / 37, the same on every run, the continuations of previous_context_sweep_2026_11_10_92p, so the two rows compare kernels: patch 125 (GQA-grouped verify prefix stage) and patch 126 (windowed draft layers through the split-KV stage) take the 7.3K / 58K / 197K points from 63.74 / 55.892 / 35.672. Cold prefill on this server (flush_cache, 2 runs): 2,277 / 1,745 / 1,052 tok/s at 7.3K / 58K / 197K, 187.6 s for the 197K prompt; capability probe 5/5 (capabilities-canonical-dspark-2026-11-10-94p.json). Receipts: decode-canonical-dspark-2026-11-10-94p.json, prefill-canonical-dspark-2026-11-10-94p.json; the DFlash2 comparison arm of the same sweep is decode-canonical-dflash2-2026-11-10-94p.json.",
   "previous_context_sweep_2026_11_09": [
     {
       "context": 128,
@@ -124,6 +124,32 @@
       "input_len": 197326,
       "tpot_ms": 24.39,
       "tok_per_sec": 41.009
+    }
+  ],
+  "previous_context_sweep_2026_11_10_92p": [
+    {
+      "context": 128,
+      "input_len": 24,
+      "tpot_ms": 19.59,
+      "tok_per_sec": 51.051
+    },
+    {
+      "context": 8192,
+      "input_len": 7331,
+      "tpot_ms": 15.69,
+      "tok_per_sec": 63.74
+    },
+    {
+      "context": 65536,
+      "input_len": 58483,
+      "tpot_ms": 17.89,
+      "tok_per_sec": 55.892
+    },
+    {
+      "context": 221184,
+      "input_len": 197326,
+      "tpot_ms": 28.03,
+      "tok_per_sec": 35.672
     }
   ]
 }

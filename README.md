@@ -23,10 +23,10 @@ in [experiments/](experiments/README.md). The active performance programme is
   same ladder 21/21 to 245,172 actual tokens.
 - **Qwen3.8-27B-FP8 is the quality flagship**: fleet-best LAB-Bench 42.3 % (no-think multiple choice),
   MMLU 84.2 %, HumanEval 93.3 %, 7/7 agentic rungs to 245,150 actual tokens. The preset is DSpark
-  speculative decoding through the split-KV verify kernel: **51.1 / 63.7 / 55.9 / 35.7 tok/s at 24 / 7.3K /
+  speculative decoding through the split-KV verify kernel: **50.8 / 72.5 / 66.8 / 50.7 tok/s at 24 / 7.3K /
   58K / 197K input** (canonical think-off sweep, 5-run medians; the rate follows the text's acceptance) against
   34.3 / 33.6 / 32.1 / 28.7 on the no-spec server (`QWEN38_SPEC=0`; pools 735K no-spec, 431K with DSpark). Cold
-  prefill of a 197K prompt is 185 s; a 1-token agentic turn on a 176K cached prefix is 0.17–0.35 s
+  prefill of a 197K prompt is 188 s; a 1-token agentic turn on a 176K cached prefix is 0.17–0.35 s
   (`extra_buffer` hybrid cache + the 64-row split-KV turn route); capability probe 5/5.
 - **Flint FP8 serves** (patch 105, strict tool schemas) with an FP8 KV cache (1.05M full-attention pool
   tokens, 2× bf16's): 44.2 → 37.5 tok/s from 14 to 219K actual input; basic / tool-call / thinking probes pass, the
@@ -78,7 +78,7 @@ server as 256K-depth throughput.
 ![Spec-decode coverage: short-depth tok/s per draft lane, with the measured at-depth value (red = collapse at true 256K, white = holds)](benchmarks/specdecode_fleet.png)
 
 Only Qwen3.8-27B drafts hold a gain at depth: the preset's DSpark lane (RedHatAI speculator through the split-KV
-verify kernel), 35.7 tok/s at 197K actual input against 28.7 no-spec; a DFlash2 drafter also holds and is not
+verify kernel), 50.7 tok/s at 197K actual input against 28.7 no-spec; a DFlash2 drafter also holds and is not
 adopted (one needle miss). Every other EAGLE3/DFlash draft that wins at short depth collapses at true 256K
 (0.8–1.2 tok/s at 240–244K): green bars are short-depth capability. Data: [`benchmarks/specdecode.json`](benchmarks/specdecode.json).
 
@@ -132,8 +132,8 @@ Qwen3.8-27B files ([receipt](benchmarks/radiance-parity/README.md)). Decode is t
 | Lane | vllm-radiance | This stack | Gap | Experiments that close it, in run order |
 |---|---|---|---|---|
 | FP8, no speculation | 35.4 / 35.0 / 33.7 / 30.4 | 34.3 / 33.6 / 32.1 / 28.7 | 1.03–1.06× | RAD-22 quant-free decode GEMV, RAD-5a Triton norm and RAD-23 DeltaNet GEMV are in the preset (patches 122–124); RAD-15 low-bit LM head with exact rerank, RAD-3 GEMM weight layout, RAD-12 ablation ladder of their switches |
-| FP8 + DFlash2 | 99.9 / 99.7 / 87.9 / 91.0 | 66.8 / 63.4 / 49.6 / 39.9 | 1.5–2.3× | the target verify is 79–86 % of the cycle (RAD-16): RAD-27 GQA-grouped verify prefix stage, RAD-22b multi-row verify GEMM, then RAD-18 content-adaptive block length, RAD-7 low-bit draft head |
-| Cold prefill | 4,137 / 3,631 / 2,520 | 2,331 / 1,784 / 1,073 | 1.8–2.3× | RAD-10 197K profile, RAD-19 DeltaNet conv block width, RAD-20 GEMM tiles at M ≥ 64 and chunk size, then ports by share |
+| FP8 + DFlash2 | 99.9 / 99.7 / 87.9 / 91.0 | 65.7 / 75.6 / 67.7 / 52.0 | 1.3–1.7× | RAD-27 grouped verify prefix stage is in the preset (patch 125; patch 126 is DSpark's draft stage); the verify is still 10–13 ms over a plain step: RAD-22b verify census, then RAD-18 content-adaptive block length, RAD-7 low-bit draft head |
+| Cold prefill | 4,137 / 3,631 / 2,520 | 2,334 / 1,782 / 1,070 | 1.8–2.4× | RAD-10 197K profile, RAD-19 DeltaNet conv block width, RAD-20 GEMM tiles at M ≥ 64 and chunk size, then ports by share |
 | MXFP4, no speculation | 51.6 / 50.8 / 47.4 / 41.0 | 34.3 / 33.6 / 31.8 / 28.4 | 1.4–1.5× | RAD-11 split-layout census and the M > 32 repack path, RAD-21 MXFP4 + DFlash2 |
 
 Measurement runs first (RAD-2, 12, 13, 14, 10 and 16 need no tree change) so ports follow measured worth. Targets: 33 tok/s
@@ -182,7 +182,7 @@ everything. Use the 12B or 26B Gemma presets for multimodal workloads.
   and `devstral2`: cold prefill of a 197K prompt 332 → 211 s, 146 → 65 s, 72–86 → 33 s, 357 → 240 s, 117 → 74 s, 361 → 241 s
   and 394 → 188 s respectively, needle grids and the 256K reasoning probe equal on both arms.
 - Use no speculative decoding at true 256K depth unless a same-depth A/B proves it. The one lane that
-  does is `qwen38` + DSpark through the split-KV verify kernel (1.2–1.9× at 24 to 197K input), so it is
+  does is `qwen38` + DSpark through the split-KV verify kernel (1.5–2.2× at 24 to 197K input), so it is
   that preset's default; beyond 208K it is not A/B'd (`QWEN38_SPEC=0` is the no-spec server). Every other
   trained-draft lane collapses at 244K (FINDINGS → Speculative decoding).
 - Hybrid (DeltaNet/Mamba) presets whose template emits a think block run

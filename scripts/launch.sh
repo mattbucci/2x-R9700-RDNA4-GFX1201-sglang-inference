@@ -669,10 +669,11 @@ PYEOF
             # our former patch 099, is upstream since v0.5.22).
             # Same-server ladder vs no-spec: 60-tok 80 vs 22 tok/s, thinking 60
             # vs 22, 49K 32 vs 21, 150K 25 vs 20; validate_capabilities 5/5.
-            # Canonical sweep on this preset (decode_ab, 3-run, think-off,
-            # 2026-09-27): 35.5 / 44.5 / 31.6 / 31.9 tok/s at 24 / 7.3K / 58K /
-            # 197K input vs 22.5 / 22.2 / 21.4 / 20.0 no-spec; thinking on
-            # 34.5 @64 tok, 45.6 @58K. Memory: the draft weights + draft KV
+            # Canonical sweep on this preset (decode_ab, 5-run, think-off, patches
+            # 121-126): 50.8 / 72.5 / 66.8 / 50.7 tok/s at 24 / 7.3K / 58K / 197K
+            # input vs 34.3 / 33.6 / 32.1 / 28.7 no-spec (2026-09-27, 3-run: 35.5 /
+            # 44.5 / 31.6 / 31.9 vs 22.5 / 22.2 / 21.4 / 20.0; thinking on
+            # 34.5 @64 tok, 45.6 @58K). Memory: the draft weights + draft KV
             # pool shrink the target pool (530K -> 239K tokens @mem0.88 on the replicated
             # DeltaNet layout; 735K -> 431K on the RAD-1 split below), and
             # the aux-hidden-state capture for the 8 draft input layers adds a

@@ -18,13 +18,14 @@ Fleet charts regenerated from the same files by `scripts/bench/generate_charts.p
 (SWE-bench Lite resolve rate per preset × scaffold from `quality/bakeoff-*.json`; cells carry a `harness`
 line so matrices run under different harnesses are labelled, never merged).
 
-### Qwen3.8-27B-FP8 (2026-11-10, v0.5.22 + 92 patches, HIP graphs on, DSpark speculative preset)
+### Qwen3.8-27B-FP8 (2026-11-10, v0.5.22 + 94 patches, HIP graphs on, DSpark speculative preset)
 
 Official vendor block-FP8 ship under the `qwen38` preset (TP=2, FP8-e4m3 KV, `MAX_RUNNING=1`,
 `--cuda-graph-max-bs-decode 1`, `--speculative-algorithm DSPARK` with the RedHatAI speculator (γ=8,
 sliding-window draft, converted by `scripts/convert_dspark_speculators_config.py`) through the split-KV
 verify kernel (patch 100), `mem 0.88`, `chunked-prefill 4096`, TP-split DeltaNet projections (patch 121), one-row
-decode kernels (patches 122–124)).
+decode kernels (patches 122–124), GQA-grouped verify prefix stage (patch 125), windowed draft layers through the
+split-KV stage (patch 126)).
 Canonical decode sweep (`decode_ab`, 5-run streaming-TPOT median, think-off, EOS;
 [qwen38-27b-fp8/results.json](qwen38-27b-fp8/results.json)); the no-spec server (`QWEN38_SPEC=0`, mem 0.85,
 735,510-token pool) is the reference curve in
@@ -32,9 +33,12 @@ Canonical decode sweep (`decode_ab`, 5-run streaming-TPOT median, think-off, EOS
 
 | Actual input tokens | 24 | 7,331 | 58,483 | 197,326 |
 |---|---:|---:|---:|---:|
-| **Decode tok/s, DSpark, patches 121–124 (preset default, 2026-11-10)** | **51.051** | **63.740** | **55.892** | **35.672** |
-| Decode tok/s, no-spec, patches 121–124 (2026-11-10, reference) | 34.270 | 33.615 | 32.129 | 28.715 |
-| Speed-up (DSpark vs no-spec, 2026-11-10) | 1.49× | 1.90× | 1.74× | 1.24× |
+| **Decode tok/s, DSpark, patches 121–126 (preset default, 2026-11-10)** | **50.844** | **72.459** | **66.800** | **50.720** |
+| Decode tok/s, no-spec, same tree (2026-11-10, reference) | 34.264 | 33.560 | 32.115 | 28.681 |
+| Speed-up (DSpark vs no-spec, 2026-11-10) | 1.48× | 2.16× | 2.08× | 1.77× |
+| Decode tok/s, DFlash2 comparison drafter, same tree (2026-11-10, not a preset) | 65.478 | 76.084 | 70.163 | 71.912 |
+| Decode tok/s, DSpark, patches 121–124 (2026-11-10) | 51.051 | 63.740 | 55.892 | 35.672 |
+| Decode tok/s, no-spec, patches 121–124 (2026-11-10) | 34.270 | 33.615 | 32.129 | 28.715 |
 | Decode tok/s, DSpark, TP-split DeltaNet (2026-11-09) | 47.175 | 57.851 | 38.705 | 33.311 |
 | Decode tok/s, no-spec, TP-split DeltaNet (2026-11-09) | 26.711 | 26.313 | 25.355 | 23.230 |
 | Decode tok/s, DSpark, replicated DeltaNet (2026-11-01) | 44.914 | 52.233 | 47.465 | 41.009 |
@@ -42,16 +46,23 @@ Canonical decode sweep (`decode_ab`, 5-run streaming-TPOT median, think-off, EOS
 | Decode tok/s, DSpark + split-KV verify, v0.5.20 (2026-09-27) | 35.493 | 44.512 | 31.631 | 31.874 |
 | Decode tok/s, no-spec (2026-09-19 canonical) | 22.543 | 22.227 | 21.438 | 19.955 |
 
-Receipts: [DSpark](qwen38-27b-fp8/decode-canonical-dspark-2026-11-10.json),
-[no-spec](qwen38-27b-fp8/decode-canonical-nospec-2026-11-10.json); cold prefill at 7.3K / 58K / 197K is
-2,276 / 1,753 / 1,066 tok/s on the DSpark server and 2,331 / 1,784 / 1,073 without speculation
-([DSpark](qwen38-27b-fp8/prefill-canonical-dspark-2026-11-10.json),
-[no-spec](qwen38-27b-fp8/prefill-canonical-nospec-2026-11-10.json)), capability probe 5/5
-([receipt](qwen38-27b-fp8/capabilities-canonical-dspark-2026-11-10.json)). A DSpark rate is draft-and-verify cycles per
+Receipts: [DSpark](qwen38-27b-fp8/decode-canonical-dspark-2026-11-10-94p.json),
+[no-spec](qwen38-27b-fp8/decode-canonical-nospec-2026-11-10-94p.json),
+[DFlash2](qwen38-27b-fp8/decode-canonical-dflash2-2026-11-10-94p.json); cold prefill at 7.3K / 58K / 197K is
+2,277 / 1,745 / 1,052 tok/s on the DSpark server and 2,334 / 1,782 / 1,070 without speculation
+([DSpark](qwen38-27b-fp8/prefill-canonical-dspark-2026-11-10-94p.json),
+[no-spec](qwen38-27b-fp8/prefill-canonical-nospec-2026-11-10-94p.json)), capability probe 5/5 on both speculative
+servers ([DSpark](qwen38-27b-fp8/capabilities-canonical-dspark-2026-11-10-94p.json),
+[DFlash2](qwen38-27b-fp8/capabilities-canonical-dflash2-2026-11-10-94p.json)). The DFlash2 row is the third-party
+tcclaviger FP8 drafter radiance serves, a comparison input: its 197K median sits on a 46-token continuation, and its
+cold first runs, the cells the radiance gap table uses, read 65.7 / 75.6 / 67.7 / 52.0 (37 tokens at 197K, the
+continuation of the DSpark and no-spec rows). A DSpark rate is draft-and-verify cycles per
 second times accepted tokens per cycle, and the second factor follows the continuation a run lands on: the
 2026-11-01 deep medians sat on a 45-token continuation, the 2026-11-09 ones on 47 and 37 tokens, the 2026-11-10 ones
-on 33 and 37, so the DSpark rows of different days do not compare kernels (FINDINGS → RAD-1). The no-spec rows do:
-+13–16 % from the layout (patch 121), then +24–28 % from the one-row decode kernels (patches 122–124).
+on 33 and 37, so the DSpark rows of different days do not compare kernels (FINDINGS → RAD-1). The two 2026-11-10
+DSpark rows share their 80 / 38 / 33 / 37-token continuations and do: +14 % / +20 % / +42 % at 7.3K / 58K / 197K from
+the verify prefix stage and the windowed draft stage (patches 125–126), −0.4 % at 24 tokens. The no-spec rows compare
+throughout: +13–16 % from the layout (patch 121), then +24–28 % from the one-row decode kernels (patches 122–124).
 The pool is 430,725 tokens on the DSpark server (206,324 on the replicated layout).
 
 Thinking on (same v0.5.22 server, 3-run): 44.3 tok/s at 64 input tokens, 55.4 at 58,523 (v0.5.20: 34.5 and

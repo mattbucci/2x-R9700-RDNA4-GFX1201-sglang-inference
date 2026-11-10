@@ -1,0 +1,34 @@
+{
+  "canonical-dspark": {
+    "tag": "canonical-dspark",
+    "model": "/data/models/Qwen3.8-27B-FP8",
+    "timestamp": "2026-11-10 12:42",
+    "elapsed_sec": 6.2,
+    "checks": {
+      "basic": {
+        "passed": true,
+        "message": "finish=stop answer='paris'"
+      },
+      "tool_call": {
+        "passed": true,
+        "message": "finish=tool_calls name='get_weather' args='{\"location\": \"Paris\"}'"
+      },
+      "thinking": {
+        "passed": true,
+        "message": "reasoning_seen terminated answer_ok (215 tok, finish=stop)"
+      },
+      "vision": {
+        "passed": true,
+        "message": "saw=['red', 'circle']  response='a red circle with a black outline.'"
+      },
+      "video": {
+        "passed": true,
+        "message": "saw=['move', 'right', 'circle', 'red']  response='\\n\\na red circle moves from the left side of the screen to the right.'"
+      }
+    },
+    "summary": {
+      "passed": 5,
+      "total": 5
+    }
+  }
+}
