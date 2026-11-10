@@ -1,0 +1,40 @@
+{
+ "label": "live-split",
+ "model": "/data/models/Qwen3.8-27B-Quark-AWQ-MXFP4",
+ "port": 23334,
+ "runs": 2,
+ "method": "flush_cache + non-stream max_tokens=1 wall time",
+ "timestamp": "2026-11-09 20:20",
+ "rows": [
+  {
+   "context": 8192,
+   "input_len": 7331,
+   "runs_s": [
+    9.174,
+    9.175
+   ],
+   "median_s": 9.174,
+   "prefill_tok_per_s": 799.1
+  },
+  {
+   "context": 65536,
+   "input_len": 58483,
+   "runs_s": [
+    80.554,
+    80.557
+   ],
+   "median_s": 80.555,
+   "prefill_tok_per_s": 726.0
+  },
+  {
+   "context": 221184,
+   "input_len": 197326,
+   "runs_s": [
+    345.517,
+    345.598
+   ],
+   "median_s": 345.558,
+   "prefill_tok_per_s": 571.0
+  }
+ ]
+}

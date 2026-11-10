@@ -18,23 +18,33 @@ Fleet charts regenerated from the same files by `scripts/bench/generate_charts.p
 (SWE-bench Lite resolve rate per preset × scaffold from `quality/bakeoff-*.json`; cells carry a `harness`
 line so matrices run under different harnesses are labelled, never merged).
 
-### Qwen3.8-27B-FP8 (2026-10-19, v0.5.22 + 73 patches, HIP graphs on, DSpark speculative preset)
+### Qwen3.8-27B-FP8 (2026-11-09, v0.5.22 + 89 patches, HIP graphs on, DSpark speculative preset)
 
 Official vendor block-FP8 ship under the `qwen38` preset (TP=2, FP8-e4m3 KV, `MAX_RUNNING=1`,
-`--cuda-graph-max-bs-decode 1`; since 2026-09-27 also `--speculative-algorithm DSPARK` with the
-RedHatAI speculator (γ=8, sliding-window draft, converted by
-`scripts/convert_dspark_speculators_config.py`) through the split-KV verify kernel (patch 100),
-`mem 0.88`, `chunked-prefill 4096`). Canonical decode sweep (`decode_ab`, 3-run streaming-TPOT median,
-think-off; [qwen38-27b-fp8/results.json](qwen38-27b-fp8/results.json)); the no-spec server
-(`QWEN38_SPEC=0`, mem 0.85, 530K-token pool) is kept as the reference curve in
+`--cuda-graph-max-bs-decode 1`, `--speculative-algorithm DSPARK` with the RedHatAI speculator (γ=8,
+sliding-window draft, converted by `scripts/convert_dspark_speculators_config.py`) through the split-KV
+verify kernel (patch 100), `mem 0.88`, `chunked-prefill 4096`, TP-split DeltaNet projections (patch 121)).
+Canonical decode sweep (`decode_ab`, 5-run streaming-TPOT median, think-off, EOS;
+[qwen38-27b-fp8/results.json](qwen38-27b-fp8/results.json)); the no-spec server (`QWEN38_SPEC=0`, mem 0.85,
+735,510-token pool) is the reference curve in
 [qwen38-27b-fp8-nospec/results.json](qwen38-27b-fp8-nospec/results.json):
 
 | Actual input tokens | 24 | 7,331 | 58,483 | 197,326 |
 |---|---:|---:|---:|---:|
-| **Decode tok/s, DSpark + split-KV verify, v0.5.22 (preset default, 2026-10-19)** | **34.326** | **44.526** | **41.594** | **30.058** |
+| **Decode tok/s, DSpark, TP-split DeltaNet (preset default, 2026-11-09)** | **47.175** | **57.851** | **38.705** | **33.311** |
+| Decode tok/s, no-spec, TP-split DeltaNet (2026-11-09, reference) | 26.711 | 26.313 | 25.355 | 23.230 |
+| Speed-up (DSpark vs no-spec, 2026-11-09) | 1.77× | 2.20× | 1.53× | 1.43× |
+| Decode tok/s, DSpark, replicated DeltaNet (2026-11-01) | 44.914 | 52.233 | 47.465 | 41.009 |
+| Decode tok/s, DSpark + split-KV verify, v0.5.22 (2026-10-19) | 34.326 | 44.526 | 41.594 | 30.058 |
 | Decode tok/s, DSpark + split-KV verify, v0.5.20 (2026-09-27) | 35.493 | 44.512 | 31.631 | 31.874 |
-| Decode tok/s, no-spec (2026-09-19 canonical, reference) | 22.543 | 22.227 | 21.438 | 19.955 |
-| Speed-up (v0.5.22 vs no-spec) | 1.52× | 2.00× | 1.94× | 1.51× |
+| Decode tok/s, no-spec (2026-09-19 canonical) | 22.543 | 22.227 | 21.438 | 19.955 |
+
+Receipts: [DSpark](qwen38-27b-fp8/decode-canonical-dspark-2026-11-09.json),
+[no-spec](qwen38-27b-fp8/decode-canonical-nospec-2026-11-09.json). A DSpark rate is draft-and-verify cycles per
+second times accepted tokens per cycle, and the second factor follows the continuation a run lands on: the
+2026-11-01 deep medians sat on a 45-token continuation, the 2026-11-09 ones on 47 and 37 tokens, so the DSpark
+rows of different days do not compare layouts (FINDINGS → RAD-1). The no-spec rows do: +13–16 % from the layout.
+The pool is 430,725 tokens on the DSpark server (206,324 on the replicated layout).
 
 Thinking on (same v0.5.22 server, 3-run): 44.3 tok/s at 64 input tokens, 55.4 at 58,523 (v0.5.20: 34.5 and
 45.6). Accept length 2.9–3.5 on the synthetic sweep text, 2.6–3.4 on code and summaries. The draft weights
@@ -109,14 +119,22 @@ M=1 block-FP8 linears cost 24.5 ms per rank per step on the vendor W8A16 GEMV ag
 (`scripts/bench/launch_census.py`, per-linear medians by launch position from `linear_by_position.py`): 2,657 launches per
 rank on FP8
 ([FP8](profiling/rad11-profile-fp8-2026-11-09/), [MXFP4, replicated MLP](profiling/rad11-profile-mxfp4-2026-11-09/)).
-`scripts/bench/bench_fp8_gemv_hip.py` is the exactness and timing bench for the native W8A16 GEMV of RAD-22.
+Native W8A16 GEMV for the one-row block-FP8 linears (patch 122, opt-in), off → on → off in one session without speculation:
+decode 26.7 / 26.2 / 25.3 / 23.2 → 28.9 / 28.4 / 27.4 / 24.9 tok/s, prefill and DSpark unchanged; `scripts/bench/bench_fp8_gemv_hip.py`
+is its exactness and timing bench ([receipts](profiling/rad22-fp8-gemv-2026-11-09/), [FINDINGS → RAD-22](FINDINGS.md)).
+`GemmaRMSNorm` on the one-launch Triton kernels (patch 123, opt-in), same design: decode 26.7 / 26.3 / 25.2 / 23.2 →
+30.2 / 29.7 / 28.4 / 25.6 tok/s, cold prefill 2,123 / 1,658 / 1,025 → 2,316 / 1,783 / 1,072 tok/s, DSpark +17.7 % at 24 tokens
+([receipts](profiling/rad5a-gemma-rmsnorm-2026-11-09/), [FINDINGS → RAD-5a](FINDINGS.md)). `scripts/bench/dspark_cycle_times.py`
+reads DSpark cycle time and accept length from a server log; `scripts/bench/copyheavy_multi_bench.py` is the five-target
+copy-heavy probe with decode-only timing.
 Upstream's one-stage HIP all-reduce against RCCL on the FP8 preset: +1.8 % at 24 tokens with wrong sums, so RCCL stays
 ([receipts](profiling/rad2-onestage-ar-2026-11-09/), [FINDINGS → RAD-2](FINDINGS.md)); `scripts/bench/custom_allreduce_isolation.py`
 drives the same class from two bare ranks and names what each output is: wrong with the PyTorch-pool staging buffer, exact
 with an uncached fine-grained one ([receipt](profiling/rad2-onestage-ar-2026-11-09/custom-allreduce-isolation.json)).
 TP-split DeltaNet projections on the FP8 preset (patch 121), replicated → split → replicated in one session: decode
 23.3 / 22.9 / 22.2 / 20.5 → 26.9 / 26.3 / 25.3 / 23.2 tok/s, cold prefill 1,798 / 1,460 / 945 → 2,125 / 1,658 / 1,024 tok/s,
-pool 525,548 → 735,510 tokens; with DSpark 45.2 / 52.5 / 35.4 / 31.0 → 47.2 / 57.7 / 38.8 / 33.3 and pool 206,324 → 430,725
+pool 525,548 → 735,510 tokens; with DSpark +4.5 % at 24 tokens, +10.0 % on copy-heavy decode at equal accept length and
+pool 206,324 → 430,725
 ([receipts](profiling/rad1-deltanet-tpsplit-2026-11-09/), [GEMM tune](profiling/fp8-block-gemm-tune-qwen38-tpsplit-2026-11-09.json),
 [FINDINGS → RAD-1](FINDINGS.md)).
 The DFlash2 drafter radiance uses, served here against DSpark and no-spec in one session: faster than DSpark to 7.3K, order

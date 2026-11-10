@@ -1,0 +1,163 @@
+{
+ "experiment": "RAD-22 hook preflight",
+ "tree": "/data/sgl-v0522-gemv/python",
+ "fp8_utils": "/data/sgl-v0522-gemv/python/sglang/srt/layers/quantization/fp8_utils.py",
+ "device": "AMD Radeon AI PRO R9700",
+ "ok": true,
+ "rows": [
+  {
+   "linear": "mlp.gate_up_proj",
+   "N": 17408,
+   "K": 5120,
+   "gemv_calls": {
+    "m1_on": 1,
+    "m1_off": 0,
+    "m1_3d_on": 1,
+    "m2_on": 0,
+    "noncontig_on": 0
+   },
+   "rel_err_on": 0.0016474890291841885,
+   "rel_err_off": 0.025278056828369016,
+   "dtype_shape_ok": true,
+   "bias_exact": true,
+   "leading_dims_exact": true,
+   "m2_bit_identical_to_off": true,
+   "noncontig_equals_off": "AssertionError: ",
+   "graph_replay_equals_eager": true,
+   "finite": true,
+   "ok": true
+  },
+  {
+   "linear": "mlp.down_proj",
+   "N": 5120,
+   "K": 8704,
+   "gemv_calls": {
+    "m1_on": 1,
+    "m1_off": 0,
+    "m1_3d_on": 1,
+    "m2_on": 0,
+    "noncontig_on": 0
+   },
+   "rel_err_on": 0.0016602128934608898,
+   "rel_err_off": 0.026127988538075866,
+   "dtype_shape_ok": true,
+   "bias_exact": true,
+   "leading_dims_exact": true,
+   "m2_bit_identical_to_off": true,
+   "noncontig_equals_off": "AssertionError: ",
+   "graph_replay_equals_eager": true,
+   "finite": true,
+   "ok": true
+  },
+  {
+   "linear": "linear_attn.in_proj_qkvz",
+   "N": 16384,
+   "K": 5120,
+   "gemv_calls": {
+    "m1_on": 1,
+    "m1_off": 0,
+    "m1_3d_on": 1,
+    "m2_on": 0,
+    "noncontig_on": 0
+   },
+   "rel_err_on": 0.001662432738951856,
+   "rel_err_off": 0.026185715825579173,
+   "dtype_shape_ok": true,
+   "bias_exact": true,
+   "leading_dims_exact": true,
+   "m2_bit_identical_to_off": true,
+   "noncontig_equals_off": "AssertionError: ",
+   "graph_replay_equals_eager": true,
+   "finite": true,
+   "ok": true
+  },
+  {
+   "linear": "linear_attn.in_proj_qkvz/2",
+   "N": 8192,
+   "K": 5120,
+   "gemv_calls": {
+    "m1_on": 1,
+    "m1_off": 0,
+    "m1_3d_on": 1,
+    "m2_on": 0,
+    "noncontig_on": 0
+   },
+   "rel_err_on": 0.0016710077813439639,
+   "rel_err_off": 0.02598737425436087,
+   "dtype_shape_ok": true,
+   "bias_exact": true,
+   "leading_dims_exact": true,
+   "m2_bit_identical_to_off": true,
+   "noncontig_equals_off": "AssertionError: ",
+   "graph_replay_equals_eager": true,
+   "finite": true,
+   "ok": true
+  },
+  {
+   "linear": "linear_attn.out_proj",
+   "N": 5120,
+   "K": 6144,
+   "gemv_calls": {
+    "m1_on": 1,
+    "m1_off": 0,
+    "m1_3d_on": 1,
+    "m2_on": 0,
+    "noncontig_on": 0
+   },
+   "rel_err_on": 0.0016662607883646118,
+   "rel_err_off": 0.02568027686147609,
+   "dtype_shape_ok": true,
+   "bias_exact": true,
+   "leading_dims_exact": true,
+   "m2_bit_identical_to_off": true,
+   "noncontig_equals_off": "AssertionError: ",
+   "graph_replay_equals_eager": true,
+   "finite": true,
+   "ok": true
+  },
+  {
+   "linear": "self_attn.qkv_proj",
+   "N": 7168,
+   "K": 5120,
+   "gemv_calls": {
+    "m1_on": 1,
+    "m1_off": 0,
+    "m1_3d_on": 1,
+    "m2_on": 0,
+    "noncontig_on": 0
+   },
+   "rel_err_on": 0.0016387149275023862,
+   "rel_err_off": 0.025663703665185146,
+   "dtype_shape_ok": true,
+   "bias_exact": true,
+   "leading_dims_exact": true,
+   "m2_bit_identical_to_off": true,
+   "noncontig_equals_off": "AssertionError: ",
+   "graph_replay_equals_eager": true,
+   "finite": true,
+   "ok": true
+  },
+  {
+   "linear": "self_attn.o_proj",
+   "N": 5120,
+   "K": 3072,
+   "gemv_calls": {
+    "m1_on": 1,
+    "m1_off": 0,
+    "m1_3d_on": 1,
+    "m2_on": 0,
+    "noncontig_on": 0
+   },
+   "rel_err_on": 0.0016639022643627265,
+   "rel_err_off": 0.025918322788300686,
+   "dtype_shape_ok": true,
+   "bias_exact": true,
+   "leading_dims_exact": true,
+   "m2_bit_identical_to_off": true,
+   "noncontig_equals_off": "AssertionError: ",
+   "graph_replay_equals_eager": true,
+   "finite": true,
+   "ok": true
+  }
+ ]
+}

@@ -10,6 +10,7 @@
 !docker/secure-launch.py
 !scripts/
 !scripts/build_awq_gemv.sh
+!scripts/build_fp8_gemv.sh
 !scripts/build_skinny_gemms_int4.sh
 !scripts/common.sh
 !scripts/gpu-selection.sh

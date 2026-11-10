@@ -1,0 +1,90 @@
+{
+  "label": "live-split",
+  "tag": "",
+  "note": "",
+  "port": 23334,
+  "maxtok": 80,
+  "runs": 3,
+  "points": [
+    {
+      "context": 128,
+      "input_len": 24,
+      "runs_tps": [
+        29.9,
+        29.92,
+        28.71
+      ],
+      "median_tps": 29.903,
+      "min_tps": 28.714,
+      "max_tps": 29.924,
+      "runs_completion_tokens": [
+        80,
+        80,
+        80
+      ],
+      "median_tpot_ms": 33.44,
+      "sample": "# The Architecture of Speed: A Deep Dive into GPU Memory Hie",
+      "median_ttft_ms": 99.9
+    },
+    {
+      "context": 8192,
+      "input_len": 7331,
+      "runs_tps": [
+        29.56,
+        29.61,
+        29.56
+      ],
+      "median_tps": 29.563,
+      "min_tps": 29.561,
+      "max_tps": 29.609,
+      "runs_completion_tokens": [
+        45,
+        45,
+        45
+      ],
+      "median_tpot_ms": 33.83,
+      "sample": "The provided text consists of the pangram \"The quick brown f",
+      "median_ttft_ms": 191.5
+    },
+    {
+      "context": 65536,
+      "input_len": 58483,
+      "runs_tps": [
+        27.96,
+        28.02,
+        27.98
+      ],
+      "median_tps": 27.985,
+      "min_tps": 27.959,
+      "max_tps": 28.017,
+      "runs_completion_tokens": [
+        33,
+        33,
+        33
+      ],
+      "median_tpot_ms": 35.73,
+      "sample": "The provided text consists of the pangram \"The quick brown f",
+      "median_ttft_ms": 216.8
+    },
+    {
+      "context": 221184,
+      "input_len": 197326,
+      "runs_tps": [
+        25.25,
+        25.23,
+        25.22
+      ],
+      "median_tps": 25.233,
+      "min_tps": 25.22,
+      "max_tps": 25.245,
+      "runs_completion_tokens": [
+        37,
+        37,
+        37
+      ],
+      "median_tpot_ms": 39.63,
+      "sample": "The provided text consists of the pangram \"The quick brown f",
+      "median_ttft_ms": 162.9
+    }
+  ]
+}

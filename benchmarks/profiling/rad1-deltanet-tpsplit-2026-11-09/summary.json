@@ -101,7 +101,78 @@
    "on": "4/4",
    "off": "4/4"
   },
-  "note": "accept length and cycle rate are means over the server's 'Decode batch' lines inside the identity-probe window (gen throughput > 20 tok/s lines for the cycle rate)"
+  "note": "accept length and cycle rate are means over the server's 'Decode batch' lines inside the identity-probe window (gen throughput > 20 tok/s lines for the cycle rate)",
+  "completion_tokens_per_run": {
+   "off_replicated": [
+    [
+     80,
+     80,
+     80
+    ],
+    [
+     38,
+     38,
+     38
+    ],
+    [
+     33,
+     47,
+     47
+    ],
+    [
+     37,
+     49,
+     49
+    ]
+   ],
+   "on_tp_split": [
+    [
+     80,
+     80,
+     80
+    ],
+    [
+     46,
+     38,
+     38
+    ],
+    [
+     47,
+     47,
+     47
+    ],
+    [
+     37,
+     37,
+     37
+    ]
+   ]
+  },
+  "comparability": "decode_tok_s is the 3-run median per depth. Only the 24-token point decodes the same continuation on both arms (+4.5 %); the 7.3K / 58K / 197K medians sit on different continuations per arm and are not pairs. Read the layout effect from the cycle rate, the copy-heavy receipts below and the forced equal-length cycle-time arms of the stack confirmation.",
+  "copyheavy_five_targets": {
+   "receipts": [
+    "copyheavy-dspark-off1.json",
+    "copyheavy-dspark-on.json",
+    "copyheavy-dspark-off2.json"
+   ],
+   "order": "replicated -> TP-split -> replicated",
+   "total_tok_per_decode_s": {
+    "off1_replicated": 109.78,
+    "on_tp_split": 120.74,
+    "off2_replicated": 109.83
+   },
+   "accept_len": {
+    "off1_replicated": 7.74,
+    "on_tp_split": 7.77,
+    "off2_replicated": 7.74
+   },
+   "cycles_per_s": {
+    "off1_replicated": 12.19,
+    "on_tp_split": 13.44,
+    "off2_replicated": 12.19
+   },
+   "gain_pct": 10.0
+  }
  },
  "cache_hit_consistency": {
   "args": "--tokens 32768,131072 --cells 2 --chars-per-token 3.27",

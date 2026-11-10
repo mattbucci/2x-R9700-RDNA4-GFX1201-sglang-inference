@@ -1040,8 +1040,10 @@ notes; a six-language JSON list that ends on C 1972 instead of Pascal 1970, both
 
 Disposition: patch 120 (Candidate) is in the series. FP8 stays the preset (#39) and the Quark checkpoint stays a
 comparison input; MXFP4 without speculation is now 1.29× this stack's FP8 step at 24 tokens and still 1.6–1.7× behind
-radiance's 51.6 / 50.8 / 47.4 / 41.0. The full needle grid and the 197K prefill on the live tree are queued as a deep
-gate. Known MXFP4 costs still in the step: a `torch.ones` activation-scale fill per GEMV (256 launches), 322
+radiance's 51.6 / 50.8 / 47.4 / 41.0. Deep gate on the live tree with patch 120 installed (`decode-live-split.json`,
+`prefill-live-split.json`): decode 29.90 / 29.56 / 27.99 / 25.23 tok/s, cold prefill 799 / 726 / 571 tok/s at 7.3K /
+58K / 197K (346 s for the 197K prompt, where the FP8 checkpoint takes 193 s), capabilities 4/4, greedy needle 9/9 to
+208,296 tokens. Known MXFP4 costs still in the step: a `torch.ones` activation-scale fill per GEMV (256 launches), 322
 bf16 → fp32 copies, and the M > 32 repack path that prefill and speculative verify need. AWQ and unquantised
 checkpoints keep the replicated MLP (not a tuning target).
 
@@ -1124,14 +1126,41 @@ DSpark, the preset's default speculation:
 |---|---:|---:|---:|---:|---:|---|
 | replicated | 45.183 | 52.543 | 35.390 | 31.041 | 206,324 | 6/6 to 137K; the three 208K prompts exceed the pool |
 | TP-split | 47.224 | 57.660 | 38.750 | 33.265 | 430,725 | 9/9 |
+| replicated, completion tokens per run | 80 / 80 / 80 | 38 / 38 / 38 | 33 / 47 / 47 | 37 / 49 / 49 | | |
+| TP-split, completion tokens per run | 80 / 80 / 80 | 46 / 38 / 38 | 47 / 47 / 47 | 37 / 37 / 37 | | |
 
-+4.5 / +9.7 / +9.5 / +7.2 %, capabilities 4/4 on both. On the six-prompt identity probe every request is faster on
-the split (code 91.1 against 80.5 tok/s, prose 55.1 against 44.9, the 32K-context request with its prefill 10.7
+Capabilities 4/4 on both. Only the 24-token point is a like-for-like pair: +4.5 % on 80 tokens in every run. The
+deeper medians sit on different continuations per arm, so their ratios (+9.7 / +9.5 / +7.2 %) mix layout and text.
+At 58K the 47-token runs read 35.33 / 35.39 replicated against 38.50 / 38.75 / 38.82 split. At 197K the one shared
+count is 37 tokens, where the replicated cold run reads 33.56 tok/s against the split's 32.92 / 33.26 / 33.34: no
+gain is established at that depth, and the replicated median (31.04) belongs to its 49-token runs. An equal count
+does not prove equal text either (the replicated 38-token runs at 7.3K read 58.04 cold and 52.41 / 52.54 on cache
+hits). The layout evidence for DSpark is the cycle rate: on the six-prompt identity probe every request is faster
+on the split (code 91.1 against 80.5 tok/s, prose 55.1 against 44.9, the 32K-context request with its prefill 10.7
 against 8.0) and the draft-and-verify cycle rate is 16.24 against 14.85 per second at accept length 4.02 against
-3.94. The one copy-heavy sample
-(600 tokens behind a 29K cold prefill, wall-clock rate) read 21.3 against 21.7 tok/s: the split ran 15.0 cycles per
-second against 13.7 and accepted fewer tokens per cycle on that sample (3.05–3.60 against 3.15–4.38). One sample
-does not size an accept-length effect.
+3.94. Copy-heavy decode (five verbatim-copy targets of 1,944 characters behind a shared 24K prefix, decode-only
+timing, arms replicated → split → replicated, `copyheavy-dspark-*.json`) reads 109.78 / 120.74 / 109.83 tok/s
+token-weighted, +10.0 %, at the same accept length (7.74 / 7.77 / 7.74) and 12.19 / 13.44 / 12.19 cycles per second.
+The two replicated arms are byte-identical on all five targets and within 0.15 % on each; the split arm copies four
+of the five byte-identically to them.
+
+Canonical sweep on the shipped preset after the change (`decode_ab`, 5-run medians, EOS, think-off;
+[DSpark](qwen38-27b-fp8/decode-canonical-dspark-2026-11-09.json),
+[no-spec](qwen38-27b-fp8/decode-canonical-nospec-2026-11-09.json)):
+
+| server | 24 | 7,331 | 58,483 | 197,326 | completion tokens per run | cold 197K prefill |
+|---|---:|---:|---:|---:|---|---:|
+| DSpark (preset default) | 47.175 | 57.851 | 38.705 | 33.311 | 80 / 46 then 38 / 47 / 37 | 194.1 s |
+| no speculation (`QWEN38_SPEC=0`) | 26.711 | 26.313 | 25.355 | 23.230 | 80 / 38 / 33 then 37 / 37 | 192.7 s (A/B arm) |
+
+Capability probe 5/5 on the DSpark server. The DSpark row replaces 44.9 / 52.2 / 47.5 / 41.0 from 2026-11-01, and
+its two deep points are lower although every arm above is faster: DSpark throughput is cycles per second times
+accepted tokens per cycle, and the second factor belongs to the text. The 2026-11-01 medians sat on a 45-token
+continuation that its cache-hit runs took (cold first runs: 41.2 and 30.4 tok/s); today the split layout takes a
+47-token continuation at 58K and a 37-token one at 197K on all five runs, and the replicated A/B arm above split
+its runs between 33 and 47 tokens at 58K and between 37 and 49 at 197K. A DSpark change is therefore read from the
+cycle time and the accept length in the server log (`scripts/bench/dspark_cycle_times.py`, server booted with a
+fine `--decode-log-interval`) or from a pair with byte-equal outputs, never from two canonical rows.
 
 `cache_hit_consistency.py` (32K and 131K prompts, two cells each, the same arguments on both layouts) exits 1 on
 both: 5 of 8 continuations beyond the fresh-prefill floor on the split and 7 of 8 on the replicated control, mean
@@ -1143,6 +1172,100 @@ Disposition: patch 121, code default off; the `qwen38` preset exports the switch
 the no-spec server beyond 208K is not measured, so the 256K rule stands. A checkpoint served through
 `QUANT_OVERRIDE` keeps the replicated projections until its own A/B. RAD-24 (no all-reduce for a replicated stage)
 no longer applies to this preset's DeltaNet stages.
+
+### RAD-22 — native HIP W8A16 GEMV for the one-row block-FP8 linears: decode +7–8 %; patch 122, opt-in (2026-11-10)
+
+One no-spec decode step of the FP8 Qwen3.8 runs 256 block-FP8 linears per rank at one row. The Triton path quantises
+the bf16 activation per token group and feeds a W8A8 GEMM whose tile is laid out for 16 rows.
+`fp8_gemv_hip.cu` (written after radiance's `r4d_gemm_fp8a16_nt_m1`, Apache-2.0, attribution in the file header)
+reads the bf16 activation directly: one output row per wave, `v_cvt_pk_f32_fp8` weight decode, one fp32 block scale
+per lane, no activation quantiser. `SGLANG_RDNA4_FP8_GEMV=1` routes a dense 128 × 128 block-FP8 linear to it when the
+input is one bf16 row; every other shape keeps the Triton path
+([receipts](profiling/rad22-fp8-gemv-2026-11-09/), `scripts/bench/bench_fp8_gemv_hip.py`, `scripts/build_fp8_gemv.sh`).
+
+Kernel, cold weights (320 MiB of copies rotated inside a HIP graph), the six linears of one step per rank:
+
+| layout | quantiser + Triton GEMM | native GEMV | graph replay, same order |
+|---|---:|---:|---:|
+| replicated DeltaNet shapes | 28.14 ms | 24.46 ms | 27.92 → 24.87 ms |
+| TP-split DeltaNet shapes (the preset) | 24.09 ms | 20.31 ms | 23.40 → 20.65 ms |
+
+Exactness: 64 check rows (every finite E4M3 code, ragged N and K, each rows-per-wave variant) within 2 ULP of the fp64
+product. Against the product with the unquantised activation the GEMV sits at 0.16 % relative error and the W8A8
+path at 2.5–2.6 %: the activation quantiser's error is gone. Hook preflight on one card
+(`scripts/test/preflight_fp8_gemv_hook.py`): the GEMV is taken for a one-row
+2-D or 3-D input and not for two rows (bit-identical to the switch off), bias and leading dimensions exact, graph
+replay equal to eager.
+
+Serving, FP8 qwen38 preset on the patch-121 layout, one session through a development copy of the tree, no
+speculation, decode tok/s by input tokens:
+
+| arm | 24 | 7,331 | 58,483 | 197,326 | cold prefill tok/s at 7.3K / 58K / 197K |
+|---|---:|---:|---:|---:|---|
+| off1 | 26.684 | 26.242 | 25.333 | 23.210 | 2,124 / 1,657 / 1,024 |
+| on | 28.927 | 28.393 | 27.359 | 24.912 | 2,123 / 1,657 / 1,025 |
+| off2 | 26.703 | 26.212 | 25.317 | 23.194 | – |
+
++8.4 / +8.3 / +8.0 / +7.4 % against the mean of the two off arms, 37.5 → 34.6 ms per step at 24 tokens, as the
+graph-replay column predicts. Prefill is
+unchanged: more than one row stays on the GEMM. Capabilities 4/4, greedy needle grid 9/9 to 208,296 tokens. Greedy
+text: the two off arms are byte-identical on 6/6 probes, on against off on 3/6 (different arithmetic, as above).
+
+DSpark is not reached: 47.170 / 57.754 / 38.679 / 33.203 with the switch against 47.166 / 48.933 / 38.693 / 33.173
+without (the 7.3K runs read 46.6 / 57.8 / 57.8 against 46.6 / 57.7 / 48.9, three continuations of which two are
+38 tokens long; the other depths agree within 0.5 % per run), byte-identical on 6/6 probes and on the lengths of
+the nine needle answers, accept length 3.59 against 3.56. The verify
+pass is a multi-row forward and keeps the GEMM, so the preset's speculative path gains nothing from a one-row
+kernel; a W8A16 kernel for the verify's row count is the open follow-up (RAD-22b in `experiments/queue.json`).
+
+Disposition: patch 122, code default off. `scripts/setup.sh` builds the extension; without it or without the switch
+the Triton path serves unchanged. The qwen38 preset exports the switch only after the stack is confirmed together
+with RAD-5a.
+
+### RAD-5a — GemmaRMSNorm on the one-launch Triton kernels: decode +10–13 %, prefill +5–9 %; patch 123, opt-in (2026-11-10)
+
+Qwen3.5/3.8 normalise with `GemmaRMSNorm`, 129 calls per decode step per rank. Upstream gates its one-launch Triton
+Gemma kernels (plain, and residual add + norm in one read) behind aiter, so `forward_hip` fell to the native chain
+here: ten torch launches per call (cast, pow, mean, add eps, rsqrt, mul, weight cast, 1 + w, mul, cast back).
+`SGLANG_RDNA4_TRITON_GEMMA_RMSNORM=1` takes the Triton kernels without aiter; an empty batch keeps the native path
+([receipts](profiling/rad5a-gemma-rmsnorm-2026-11-09/), `scripts/test/preflight_gemma_rmsnorm.py`).
+
+Preflight on one card: the plain norm is bit-identical to native on every shape (one row, several rows, 3-D,
+row-strided view, the 256-wide head norm). The fused read differs on 21–22 % of the elements, by 1 ULP at decode and
+verify row counts and at most 2 ULP on an 8,192-row prefill chunk: it normalises the fp32 residual sum, native the
+bf16-rounded one. The residual it hands on is bit-identical and its distance from the fp64 norm matches native's
+(0.16–0.17 %). 129 norms in a HIP graph: 4.22 → 0.45 ms per step per rank, replay equal to eager on both.
+
+Serving, FP8 qwen38 preset on the patch-121 layout, one session through a development copy of the tree, no
+speculation, decode tok/s by input tokens:
+
+| arm | 24 | 7,331 | 58,483 | 197,326 | cold prefill tok/s at 7.3K / 58K / 197K |
+|---|---:|---:|---:|---:|---|
+| off1 | 26.701 | 26.260 | 25.191 | 23.193 | 2,123 / 1,658 / 1,025 |
+| on | 30.177 | 29.660 | 28.363 | 25.614 | 2,316 / 1,783 / 1,072 |
+| off2 | 26.718 | 26.287 | 25.381 | 23.222 | 2,125 / 1,658 / 1,024 |
+
++13.0 / +12.9 / +12.2 / +10.4 % against the mean of the two off arms, 37.4 → 33.1 ms per step at 24 tokens; cold
+prefill +9.0 / +7.6 / +4.6 %. Capabilities 4/4, greedy needle grid 9/9 to 208,296 tokens on both. Greedy text: the two
+off arms are byte-identical on 6/6 probes, on against off on 2/6 (the fused read's ULP differences).
+
+With DSpark, switch on against off:
+
+| arm | 24 | 7,331 | 58,483 | 197,326 |
+|---|---:|---:|---:|---:|
+| on, median | 55.463 | 62.635 | 54.678 | 35.199 |
+| on, completion tokens per run | 80 / 80 / 80 | 38 / 38 / 38 | 33 / 33 / 33 | 37 / 37 / 37 |
+| off, median | 47.104 | 57.665 | 38.693 | 33.209 |
+| off, completion tokens per run | 80 / 80 / 80 | 46 / 38 / 38 | 47 / 47 / 47 | 37 / 37 / 37 |
+
+The medians at 24 tokens, 7.3K and 197K sit on runs of equal token count (80, 38, 37): +17.7 / +8.6 / +6.0 %. The
+58K medians sit on a 33- and a 47-token continuation and are not a pair. The text differs between the arms (2/6
+probes identical), so equal counts are not equal text, and the single copy-heavy sample (30.3 against 21.3 tok/s)
+moves with the accept length: the cycle time on forced equal-length output is measured in the stack confirmation.
+Capabilities 4/4 and needle 9/9 on both DSpark arms.
+
+Disposition: patch 123, code default off. The qwen38 preset exports the switch after the stack confirmation with
+RAD-22; other presets whose model normalises with `GemmaRMSNorm` opt in after their own capability pass.
 
 ## Evaluation methodology
 

@@ -21,6 +21,13 @@ Development and investigation tools. Not part of the production workflow.
 | `test_tp2_quality.py` | End-to-end TP=2 quality validation |
 | `test_triton_kernels.py` | Test individual Triton kernels in the current environment |
 
+## Kernel hook preflights (one card, no server)
+
+| Script | Purpose |
+|--------|---------|
+| `preflight_fp8_gemv_hook.py` | Patch 122: the block-FP8 linear with `SGLANG_RDNA4_FP8_GEMV` on against off on the Qwen3.8 decode shapes (routing at one and two rows, accuracy against the unquantised product, bias, leading dimensions, graph replay) |
+| `preflight_gemma_rmsnorm.py` | Patch 123: `GemmaRMSNorm` with `SGLANG_RDNA4_TRITON_GEMMA_RMSNORM` on against the native chain (routing, ULP distance, fp64 error, residual identity, graph replay, per-step timing) |
+
 ## AWQ Tuning
 
 | Script | Purpose |

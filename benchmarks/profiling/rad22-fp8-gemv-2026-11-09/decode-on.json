@@ -1,0 +1,90 @@
+{
+  "label": "on",
+  "tag": "",
+  "note": "",
+  "port": 23334,
+  "maxtok": 80,
+  "runs": 3,
+  "points": [
+    {
+      "context": 128,
+      "input_len": 24,
+      "runs_tps": [
+        28.9,
+        28.93,
+        28.94
+      ],
+      "median_tps": 28.927,
+      "min_tps": 28.9,
+      "max_tps": 28.943,
+      "runs_completion_tokens": [
+        80,
+        80,
+        80
+      ],
+      "median_tpot_ms": 34.57,
+      "sample": "# The Memory Wall: A Deep Dive into GPU Memory Hierarchy and",
+      "median_ttft_ms": 85.5
+    },
+    {
+      "context": 8192,
+      "input_len": 7331,
+      "runs_tps": [
+        28.36,
+        28.39,
+        28.43
+      ],
+      "median_tps": 28.393,
+      "min_tps": 28.364,
+      "max_tps": 28.427,
+      "runs_completion_tokens": [
+        38,
+        38,
+        38
+      ],
+      "median_tpot_ms": 35.22,
+      "sample": "The provided text consists of the pangram \"The quick brown f",
+      "median_ttft_ms": 148.4
+    },
+    {
+      "context": 65536,
+      "input_len": 58483,
+      "runs_tps": [
+        27.23,
+        27.37,
+        27.36
+      ],
+      "median_tps": 27.359,
+      "min_tps": 27.231,
+      "max_tps": 27.367,
+      "runs_completion_tokens": [
+        33,
+        33,
+        33
+      ],
+      "median_tpot_ms": 36.55,
+      "sample": "The provided text consists of the pangram \"The quick brown f",
+      "median_ttft_ms": 146.7
+    },
+    {
+      "context": 221184,
+      "input_len": 197326,
+      "runs_tps": [
+        24.81,
+        24.91,
+        24.91
+      ],
+      "median_tps": 24.912,
+      "min_tps": 24.807,
+      "max_tps": 24.913,
+      "runs_completion_tokens": [
+        37,
+        37,
+        37
+      ],
+      "median_tpot_ms": 40.14,
+      "sample": "The provided text consists of the pangram \"The quick brown f",
+      "median_ttft_ms": 132.5
+    }
+  ]
+}

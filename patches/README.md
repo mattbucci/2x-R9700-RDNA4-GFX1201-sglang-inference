@@ -1,6 +1,6 @@
 # SGLang v0.5.22 RDNA4 patches
 
-This directory contains the **89 active numeric patches** applied to pristine SGLang v0.5.22 for the
+This directory contains the **91 active numeric patches** applied to pristine SGLang v0.5.22 for the
 2× Radeon AI PRO R9700 serving stack. The default tree is `/data/sgl-v0522`; the default conda environment
 is `sglang-triton36-v0522`.
 
@@ -123,6 +123,7 @@ can be proposed upstream. `Partial` requires a fresh comparison with upstream be
 | 086 | `rdna4-amd-num-kv-splits-64` | Carry | Raises the AMD Triton flash-decode `num_kv_splits` default 16->64 so the decode grid (head_groups x splits) fills gfx1201's 64 CUs at long context. Measured **2.14x 256K decode** (14.4->30.7 tok/s, coder-reap-25b); short context unregressed (the get_num_kv_splits heuristic still scales down). `SGLANG_KV_SPLITS_OVERRIDE` forces a value. |
 | 087 | `rdna4-flash-decode-bf16-pv` | Carry | Flash-decode PV in bf16 (fp32 accumulate) instead of fp32 in the grouped GQA kernel. fp32 PV inflated VGPR pressure -> low occupancy -> poor KV-load latency hiding, capping decode-attn at ~51% of the KV-read roofline. Measured **+21% 256K decode** (33.2->40.2 tok/s, coder-reap-25b), short ctx +~1%, deep recall unchanged. Standard flash-attn precision; stacks on 086. |
 | 088 | `dcp-kv-replica-topology-validation` | Candidate | Rejects MHA DCP groups that cross TP K/V-head replica blocks before distributed initialization or weight loading, preventing silent LSE merges across unrelated GQA K/V heads. |
+| 123 | `rdna4-triton-gemma-rmsnorm` | Carry | `GemmaRMSNorm.forward_hip` takes upstream's one-launch Triton Gemma kernels (plain, and residual add + norm in one read) on HIP without aiter (`SGLANG_RDNA4_TRITON_GEMMA_RMSNORM=1`); the native fallback is ten torch launches per call, 129 calls per Qwen3.5/3.8 decode step. An empty batch keeps the native path. Logged once (`[RDNA4] Gemma RMSNorm: one-launch Triton kernel active`). Code default off. Plain norm bit-identical to native; the fused read within 2 ULP (it normalises the fp32 sum, native the bf16-rounded one), residual bit-identical; 129 norms in a HIP graph 4.22 → 0.45 ms per step per rank. Same-session A/B off → on → off on the FP8 `qwen38` preset without speculation: decode 26.70 / 26.26 / 25.19 / 23.19 → 30.18 / 29.66 / 28.36 / 25.61 tok/s at 24 / 7.3K / 58K / 197K input tokens (+10–13 %), cold prefill 2,123 / 1,658 / 1,025 → 2,316 / 1,783 / 1,072 tok/s, capabilities 4/4, greedy needle 9/9 to 208K tokens; with DSpark +17.7 % at 24 tokens (47.10 → 55.46). Receipts: `benchmarks/profiling/rad5a-gemma-rmsnorm-2026-11-09/`; preflight `scripts/test/preflight_gemma_rmsnorm.py`. |
 
 ### AWQ int4
 
@@ -144,7 +145,8 @@ can be proposed upstream. `Partial` requires a fresh comparison with upstream be
 | 045 | `rdna4-ct-fp8-deltanet-mlp-tp-split` | Carry | TP-shards compressed-tensors FP8 MLPs while preserving replicated DeltaNet state projections. |
 | 074 | `compressed-tensors-fp8-kv-cache` | Candidate | Carries compressed-tensors FP8 KV metadata through SGLang configuration and loading. |
 | 082 | `rdna4-fused-fp8-kv-cache-store` | Candidate | Fuses static-scale FP8 K/V conversion and cache scatter into one Triton launch. |
-| 121 | `rdna4-deltanet-tp-split-switch` | Carry | `SGLANG_RDNA4_DELTANET_TP_SPLIT=1` returns the Qwen3.5/3.8 DeltaNet projections to the upstream head-sharded layout (the replication is patch 045's): per rank `in_proj_qkvz` 16384 × 5120 and `out_proj` 5120 × 6144 become 8192 × 5120 and 5120 × 3072, each rank owns half of the heads' recurrent state (`mamba2_cache_params` follows), and the layout is logged at boot (`[RDNA4] DeltaNet projections: TP-split over 2 ranks`). Ships the tuned block-FP8 GEMM config for `N=8192,K=5120`. Code default off; the `qwen38` preset exports it for the FP8 checkpoint (`DELTANET_TP_SPLIT=0` restores the replicated layout). Same-session A/B replicated → split → replicated without speculation: decode 23.26 / 22.95 / 22.18 / 20.53 → 26.89 / 26.27 / 25.34 / 23.22 tok/s at 24 / 7.3K / 58K / 197K input tokens (+13–16 %, second replicated arm within 0.2 %), cold prefill 1,798 / 1,460 / 945 → 2,125 / 1,658 / 1,024 tok/s, token pool 525,548 → 735,510, weights per rank 17.08 → 14.52 GB; with DSpark 45.18 / 52.54 / 35.39 / 31.04 → 47.22 / 57.66 / 38.75 / 33.27 tok/s and pool 206,324 → 430,725; capabilities 4/4, greedy needle 9/9 to 208K tokens; greedy text is not byte-identical between layouts (1 of 6 probes). Receipts: `benchmarks/profiling/rad1-deltanet-tpsplit-2026-11-09/`. |
+| 121 | `rdna4-deltanet-tp-split-switch` | Carry | `SGLANG_RDNA4_DELTANET_TP_SPLIT=1` returns the Qwen3.5/3.8 DeltaNet projections to the upstream head-sharded layout (the replication is patch 045's): per rank `in_proj_qkvz` 16384 × 5120 and `out_proj` 5120 × 6144 become 8192 × 5120 and 5120 × 3072, each rank owns half of the heads' recurrent state (`mamba2_cache_params` follows), and the layout is logged at boot (`[RDNA4] DeltaNet projections: TP-split over 2 ranks`). Ships the tuned block-FP8 GEMM config for `N=8192,K=5120`. Code default off; the `qwen38` preset exports it for the FP8 checkpoint (`DELTANET_TP_SPLIT=0` restores the replicated layout). Same-session A/B replicated → split → replicated without speculation: decode 23.26 / 22.95 / 22.18 / 20.53 → 26.89 / 26.27 / 25.34 / 23.22 tok/s at 24 / 7.3K / 58K / 197K input tokens (+13–16 %, second replicated arm within 0.2 %), cold prefill 1,798 / 1,460 / 945 → 2,125 / 1,658 / 1,024 tok/s, token pool 525,548 → 735,510, weights per rank 17.08 → 14.52 GB; with DSpark +4.5 % at 24 tokens (45.18 → 47.22, the one like-for-like point of the ladder), +10.0 % on copy-heavy decode at equal accept length and pool 206,324 → 430,725; capabilities 4/4, greedy needle 9/9 to 208K tokens; greedy text is not byte-identical between layouts (1 of 6 probes). Receipts: `benchmarks/profiling/rad1-deltanet-tpsplit-2026-11-09/`. |
+| 122 | `rdna4-fp8-gemv-m1-decode` | Carry | Native HIP W8A16 GEMV for the one-row form of the dense block-FP8 linears (`fp8_gemv_hip.cu`, built by `scripts/build_fp8_gemv.sh`; loop design after radiance's `r4d_gemm_fp8a16_nt_m1`, Apache-2.0, attribution in the source header). With `SGLANG_RDNA4_FP8_GEMV=1` a dense 128 × 128 block-FP8 linear called with one bf16 row reads the activation directly: no activation-quantiser launch, no 16-row GEMM tile. Every other shape, a missing extension or the switch off keeps the Triton W8A8 path. Logged once (`[RDNA4] block-FP8 M=1 decode: native HIP W8A16 GEMV active`). Code default off. Within 2 ULP of the fp64 product; 0.16 % from the unquantised-activation product against 2.5 % on the W8A8 path. Same-session A/B off → on → off on the FP8 `qwen38` preset without speculation: decode 26.68 / 26.24 / 25.33 / 23.21 → 28.93 / 28.39 / 27.36 / 24.91 tok/s at 24 / 7.3K / 58K / 197K input tokens (+7–8 %, second off arm within 0.2 %), prefill unchanged, capabilities 4/4, greedy needle 9/9 to 208K tokens; DSpark decode unchanged and byte-identical (its verify pass is multi-row). Receipts: `benchmarks/profiling/rad22-fp8-gemv-2026-11-09/`; preflight `scripts/test/preflight_fp8_gemv_hook.py`. |
 
 ### Mamba2 hybrids
 
@@ -212,7 +214,7 @@ can be proposed upstream. `Partial` requires a fresh comparison with upstream be
 
 | Component | Version |
 |---|---|
-| SGLang | v0.5.22 plus this 89-patch series |
+| SGLang | v0.5.22 plus this 91-patch series |
 | transformers | 5.19.0 |
 | Triton | 3.6.0 |
 | PyTorch | 2.11.0+rocm7.2 |
@@ -225,6 +227,7 @@ Build the optional native components with:
 scripts/setup_sgl_kernel.sh --env sglang-triton36-v0522
 scripts/build_awq_gemv.sh --env sglang-triton36-v0522
 scripts/build_skinny_gemms_int4.sh --env sglang-triton36-v0522
+scripts/build_fp8_gemv.sh --env sglang-triton36-v0522
 ```
 
 ## Related documentation

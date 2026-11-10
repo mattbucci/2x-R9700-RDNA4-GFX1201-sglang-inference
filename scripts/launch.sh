@@ -593,7 +593,8 @@ PYEOF
             # per step and owns half of the heads' recurrent state. Same-session A/B, no speculation: decode
             # 23.3 / 22.9 / 22.2 / 20.5 -> 26.9 / 26.3 / 25.3 / 23.2 tok/s at 24 / 7.3K / 58K / 197K input, cold
             # prefill 1798 / 1460 / 945 -> 2125 / 1658 / 1024 tok/s, KV pool 525,548 -> 735,510 tokens. DSpark:
-            # 45.2 / 52.5 / 35.4 / 31.0 -> 47.2 / 57.7 / 38.8 / 33.3 tok/s, pool 206,324 -> 430,725 tokens (the
+            # 45.2 -> 47.2 tok/s at 24 tokens (the one depth where both arms decode the same continuation),
+            # copy-heavy decode 109.8 -> 120.7 tok/s at equal accept length, pool 206,324 -> 430,725 tokens (the
             # 208K needle prompt fits only on the split). Capabilities 4/4 and needle 9/9 where the prompt fits
             # on both arms; cache-hit consistency probe 5/8 beyond the fresh floor against 7/8 on the replicated
             # control. FP8 checkpoint only: a build served through QUANT_OVERRIDE keeps the replicated layout

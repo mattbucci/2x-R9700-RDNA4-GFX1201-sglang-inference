@@ -408,6 +408,17 @@ if [ -f "$SCRIPT_DIR/build_skinny_gemms_int4.sh" ]; then
 fi
 
 # -------------------------------------------------------------------
+# Step 5c: Build block-FP8 W8A16 GEMV kernel (patches/122)
+# -------------------------------------------------------------------
+echo ""
+echo "[5c/6] Building block-FP8 GEMV HIP kernel for gfx1201..."
+echo "  One-row decode form of the dense block-FP8 linears (SGLANG_RDNA4_FP8_GEMV=1)."
+if [ -f "$SCRIPT_DIR/build_fp8_gemv.sh" ]; then
+    SGL_KERNEL_DIR="$SGL_KERNEL_DIR" "$SCRIPT_DIR/build_fp8_gemv.sh" --env "$ENV_NAME" || \
+      echo "  WARNING: FP8 GEMV kernel build failed (non-fatal — Triton W8A8 GEMM serves M=1)"
+fi
+
+# -------------------------------------------------------------------
 # Step 6: Verify installation
 # -------------------------------------------------------------------
 echo ""

@@ -1,6 +1,6 @@
 {
  "schema_version": 1,
- "updated_at": "2026-11-09",
+ "updated_at": "2026-11-10",
  "ordering": "easiest_to_test_then_hardest",
  "baseline": {
   "sglang": "v0.5.15",
@@ -473,17 +473,18 @@
   {
    "id": "RAD-5",
    "spec": "19-vllm-radiance-parity.md",
-   "status": "ready",
+   "status": "in_progress",
    "resource": "gpu",
    "depends_on": [
     "REBASE-0523"
    ],
-   "next_action": "Triton Gemma RMSNorm on HIP (gate on _is_hip) + fused per-128-group FP8 quant and residual; silu_and_mul + quant.",
+   "next_action": "RAD-5a done: patch 123 takes the upstream one-launch Triton Gemma kernels (plain, and residual add + norm in one read) on HIP without aiter, code default off (SGLANG_RDNA4_TRITON_GEMMA_RMSNORM=1; active line '[RDNA4] Gemma RMSNorm: one-launch Triton kernel active'). The qwen38 FP8 preset exports it after the combined-stack confirmation with patch 122 (tail queue 70-qwen38-stack-confirm.sh); other GemmaRMSNorm presets opt in after their own capability pass. Open (RAD-5b): the per-128-group FP8 activation quant fused into the norm for the multi-row paths that keep the W8A8 GEMM (prefill, DSpark verify), and silu_and_mul + quant; re-size both on the launch census of the stacked step before writing a kernel.",
    "test_gate": [
-    "kernel microbench",
-    "decode_ab both orders",
-    "needle + reasoning probe"
-   ]
+    "kernel microbench: 129 norms in a HIP graph 4.22 -> 0.45 ms per step per rank; plain norm bit-identical to native, fused read within 1 ULP at decode rows and 2 ULP on an 8,192-row chunk (met)",
+    "decode_ab both orders: +13.0 / +12.9 / +12.2 / +10.4 % at 24 / 7.3K / 58K / 197K, 37.4 -> 33.1 ms per step (met)",
+    "needle + reasoning probe: needle 9/9 and caps 4/4 (thinking included) on the no-spec and DSpark arms (met)"
+   ],
+   "result": "RAD-5a, 2026-11-10 (benchmarks/profiling/rad5a-gemma-rmsnorm-2026-11-09/). No speculation, off -> on -> off on the patch-121 layout: 26.70/26.26/25.19/23.19 -> 30.18/29.66/28.36/25.61 -> 26.72/26.29/25.38/23.22 tok/s at 24/7.3K/58K/197K, cold prefill 2,123 / 1,658 / 1,025 -> 2,316 / 1,783 / 1,072 tok/s (+9.0 / +7.6 / +4.6 %), greedy identity 2/6 against off (6/6 between the off arms). DSpark on equal token counts: +17.7 / +8.6 / +6.0 % at 24 / 7.3K / 197K (55.46 / 62.64 / 35.20 against 47.10 / 57.67 / 33.21); the 58K medians are not a pair. Replay gate 91 patches, 0 failures, 150 paths, second apply rejected."
   },
   {
    "id": "RAD-3",
@@ -506,14 +507,14 @@
    "status": "completed",
    "resource": "gpu",
    "depends_on": [],
-   "next_action": "Done: patch 121, exported by the qwen38 preset for the FP8 checkpoint (DELTANET_TP_SPLIT=0 restores the replicated layout). Open on the same layout: the five-target DSpark copy-heavy re-measure (tail queue 15-rad1-dspark-copyheavy.sh), the Quark MXFP4 split-vs-replicated A/B (60-rad1-mxfp4-deltanet-split.sh), and RAD-26.",
+   "next_action": "Done: patch 121, exported by the qwen38 preset for the FP8 checkpoint (DELTANET_TP_SPLIT=0 restores the replicated layout). The five-target DSpark copy-heavy re-measure is in: +10.0 % at equal accept length. Open on the same layout: the Quark MXFP4 split-vs-replicated A/B (tail queue 60-rad1-mxfp4-deltanet-split.sh), the DSpark cycle time by depth on forced equal-length output (replicated against split, phase C of the stack confirmation, tail queue 70-qwen38-stack-confirm.sh), and RAD-26.",
    "test_gate": [
     "identity line 'DeltaNet projections: TP-split over 2 ranks' and the N=8192,K=5120 config in the server log: met",
     "off arms equal the live tree's medians: met (23.26/22.95/22.18/20.53 and 23.23/22.91/22.16/20.51)",
     "needle >= replicated, caps 4/4: met (9/9 and 4/4 on both); cache_hit_consistency: not within the fresh floor on either layout (5/8 split, 7/8 replicated control, mean 0.70 nats both), so not worse than the control",
-    "DSpark decode not worse than replicated: met (+4.5 to +9.7 %); accept length 4.02 vs 3.94 on the identity probe, lower on the single copy-heavy sample (re-measure queued)"
+    "DSpark decode not worse than replicated: met where the arms are comparable. +4.5 % at 24 tokens (80 tokens in every run of both arms), +10.0 % on five-target copy-heavy decode at equal accept length (109.8 -> 120.7 tok/s token-weighted, accept 7.74 / 7.77, 12.19 -> 13.44 cycles/s), cycle rate 14.85 -> 16.24 per second on the identity probe at accept length 3.94 / 4.02. The canonical medians at 7.3K / 58K / 197K sit on different continuations per arm and are not pairs"
    ],
-   "result": "2026-11-09 (benchmarks/profiling/rad1-deltanet-tpsplit-2026-11-09/). No speculation, replicated -> split -> replicated: 23.26/22.95/22.18/20.53 -> 26.89/26.27/25.34/23.22 tok/s at 24/7.3K/58K/197K (+13-16 %, 42.99 -> 37.19 ms per step), cold prefill 1798/1460/945 -> 2125/1658/1024 tok/s, pool 525,548 -> 735,510, weights per rank 17.08 -> 14.52 GB, caps 4/4, needle 9/9, greedy identity 1/6 against replicated (6/6 between the replicated arms). DSpark: 45.18/52.54/35.39/31.04 -> 47.22/57.66/38.75/33.27, pool 206,324 -> 430,725 (the 208K needle prompts fit only on the split). Replay gate 89 patches, 0 failures, 149 paths, second apply rejected."
+   "result": "2026-11-09 (benchmarks/profiling/rad1-deltanet-tpsplit-2026-11-09/). No speculation, replicated -> split -> replicated: 23.26/22.95/22.18/20.53 -> 26.89/26.27/25.34/23.22 tok/s at 24/7.3K/58K/197K (+13-16 %, 42.99 -> 37.19 ms per step), cold prefill 1798/1460/945 -> 2125/1658/1024 tok/s, pool 525,548 -> 735,510, weights per rank 17.08 -> 14.52 GB, caps 4/4, needle 9/9, greedy identity 1/6 against replicated (6/6 between the replicated arms). DSpark: 45.18 -> 47.22 tok/s at 24 tokens (+4.5 %, the one like-for-like point of the ladder; the deeper medians, 52.54/35.39/31.04 against 57.66/38.75/33.27, land on different continuations per arm and are not a pair), copy-heavy decode 109.8 -> 120.7 tok/s at equal accept length (+10.0 %), pool 206,324 -> 430,725 (the 208K needle prompts fit only on the split). Replay gate 89 patches, 0 failures, 149 paths, second apply rejected."
   },
   {
    "id": "RAD-6",
@@ -856,17 +857,34 @@
   {
    "id": "RAD-22",
    "spec": "19-vllm-radiance-parity.md",
-   "status": "in_progress",
+   "status": "completed",
    "resource": "gpu",
    "depends_on": [
     "RAD-13 (done): the M=1 W8A16 GEMV is worth -3.3 to -3.5 ms per rank per step",
     "RAD-1 result (shapes: replicated or TP-split DeltaNet projections)"
    ],
-   "next_action": "Route decided on the CPU side (2026-11-09): a native HIP extension, not Triton. Triton's fp8e4nv -> f32 cast lowers to ~39 instructions per weight byte on gfx1201 (software decode); a hipcc build with __builtin_amdgcn_cvt_pk_f32_fp8 gives ~60 instructions per 16 weight bytes per lane (~3.75 per byte; 56 v_cvt_pk_f32_fp8 across the RB=1/2/4 kernels in the device disassembly). Kernel written after the design of radiance's r4d_gemm_fp8a16_nt_m1.hip (Apache-2.0 attribution in the file header): one output row per wave, 32 lanes x 16 contiguous weight bytes per pass, one fp32 block scale per lane per pass, DPP wave sum, RB rows per wave for narrow K; binding fp8_gemv_bf16_hip(activation, weight, weight_scale, rb=0, max_blocks=0). It compiles, links against the serving env's torch and imports; not yet run on a GPU. Next: (1) scripts/bench/bench_fp8_gemv_hip.py through the tail queue (20-rad22-gemv-bench.sh): --check (every E4M3 code but the two NaN encodings, ragged N and K, each rb, a three-workgroup grid, against fp64), then the RAD-13 cold rotation (events + graph replay) on both cards against quantiser + Triton GEMM. (2) If the kernel gate holds: source into kernels/aot/csrc/quantization/fp8/ as a numbered patch, scripts/build_fp8_gemv.sh, common.sh PYTHONPATH hook, M=1 dispatch in triton_w8a8_block_fp8_linear (bf16 input, e4m3fn weight, fp32 scales on the [128, 128] grid, not batch-invariant mode, env opt-out, an 'active' log line). (3) Serving A/B in both orders without speculation and with DSpark.",
+   "next_action": "Done as a mechanism: patch 122 (fp8_gemv_hip.cu + the one-row dispatch in triton_w8a8_block_fp8_linear), code default off (SGLANG_RDNA4_FP8_GEMV=1; scripts/build_fp8_gemv.sh, setup.sh step 5c; active line '[RDNA4] block-FP8 M=1 decode: native HIP W8A16 GEMV active'). The qwen38 FP8 preset exports the switch after the combined-stack confirmation with patch 123 (tail queue 70-qwen38-stack-confirm.sh: both orders without speculation, DSpark arms, the cache-hit consistency pair on the stack and control arms with identical arguments, DSpark cycle time on forced equal-length output), then the canonical sweep is re-run on the shipped preset. The verify pass is RAD-22b.",
    "test_gate": [
-    "kernel: >= 590 GB/s on gate_up / in_proj, error vs the fp32 product <= 3.1e-3 (today 2.2-2.7e-2 through the E4M3 activation)",
-    "serving: -3 ms per step in a both-orders decode A/B; greedy ladders, needle grid, cache_hit_consistency.py (numerics change: activations no longer rounded to E4M3)",
-    "verify rows at M > 2 stay consistent with decode"
+    "kernel: >= 590 GB/s on gate_up / in_proj, error vs the fp32 product <= 3.1e-3: gate_up 618 GB/s, in_proj_qkvz 617 on the replicated shape and 583 on the split half the preset serves (under the line; the W8A8 path reads 467 there), out_proj/2 and o_proj 548-550; relative error 2.0e-3 to 3.1e-3 against 2.2e-2 to 2.7e-2 through the E4M3 activation",
+    "serving: -3 ms per step in a both-orders decode A/B: -2.9 ms (37.5 -> 34.6 ms at 24 tokens, +8.4 / +8.3 / +8.0 / +7.4 % at 24 / 7.3K / 58K / 197K against the mean of the two off arms); greedy ladders 3/6 identical to off (6/6 between the off arms), needle 9/9, caps 4/4; cache_hit_consistency.py not yet run for this switch: measured on the stack and its control in the confirmation job",
+    "verify rows at M > 2 stay consistent with decode: the DSpark verify pass keeps the Triton GEMM (two-row input bit-identical to the switch off in the hook preflight), DSpark arms byte-identical on 6/6 probes, accept length 3.59 against 3.56; the verify and the one-row decode now use different arithmetic for the same linear, which the stack confirmation reads through the DSpark accept length and needle"
+   ],
+   "result": "2026-11-10 (benchmarks/profiling/rad22-fp8-gemv-2026-11-09/). Kernel, six linears of one step per rank, cold rotation: 28.14 -> 24.46 ms on the replicated shapes, 24.09 -> 20.31 ms on the TP-split shapes (graph replay 23.40 -> 20.65). No speculation, off -> on -> off on the patch-121 layout: 26.68/26.24/25.33/23.21 -> 28.93/28.39/27.36/24.91 -> 26.70/26.21/25.32/23.19 tok/s at 24/7.3K/58K/197K, cold prefill unchanged (2,123 / 1,657 / 1,025), caps 4/4, needle 9/9. DSpark unchanged (47.17/57.75/38.68/33.20 on, 47.17/48.93/38.69/33.17 off: the 7.3K medians sit on different continuations; byte-identical on 6/6 probes). Replay gate 91 patches, 0 failures, 150 paths, second apply rejected."
+  },
+  {
+   "id": "RAD-22b",
+   "spec": "19-vllm-radiance-parity.md",
+   "status": "queued",
+   "resource": "gpu",
+   "depends_on": [
+    "RAD-22 (done): the one-row W8A16 GEMV is patch 122; the DSpark verify pass is a multi-row forward and keeps the quantiser + W8A8 GEMM",
+    "the combined-stack confirmation (its DSpark cycle time is the baseline this item is measured against)"
+   ],
+   "next_action": "W8A16 for the DSpark verify row count: record the verify pass's M per linear from a served DSpark request (draft length + 1 rows), then bench fp8_gemv_hip per row against the 16-row Triton tile at that M with the cold rotation (the RAD-13 sandbox bench kept our GEMM at M = 8-64, so a kernel is written only if the row loop or a small-M tile wins at the recorded M). If it wins: route M <= that bound to it behind the patch-122 switch, hook preflight at the new row counts, DSpark A/B read by cycle time and accept length (dspark_cycle_times.py, --decode-log-interval 4, forced equal-length output).",
+   "test_gate": [
+    "kernel: faster than quantiser + GEMM at the verify M with cold weights, within 2 ULP of fp64 on the check rows",
+    "DSpark cycle time lower at every depth at equal accept length; byte-identical or needle-equal against the one-row-only arm",
+    "caps and needle unchanged; verify and one-row decode share one arithmetic after the change"
    ]
   },
   {

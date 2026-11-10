@@ -1,0 +1,324 @@
+{
+ "experiment": "RAD-5a",
+ "what": "GemmaRMSNorm.forward_hip: Triton Gemma kernels against the native torch chain",
+ "tree": "/data/sgl-v0522-norm/python",
+ "device": "AMD Radeon AI PRO R9700",
+ "torch": "2.11.0+rocm7.2",
+ "hidden": 5120,
+ "eps": 1e-06,
+ "rows": [
+  {
+   "case": "plain M=1",
+   "shape": [
+    1,
+    5120
+   ],
+   "kind": "plain",
+   "triton_calls_on": 1,
+   "triton_calls_off": 0,
+   "ulp_max_vs_native": 0,
+   "ulp_nonzero_frac": 0.0,
+   "ulp_gt1_frac": 0.0,
+   "rel_err_on": 0.0016655671017206382,
+   "rel_err_off": 0.0016655671017206382,
+   "checks": {
+    "calls": true,
+    "shape_dtype": true,
+    "finite": true,
+    "ulp_bound": true,
+    "error_not_worse": true
+   },
+   "ok": true
+  },
+  {
+   "case": "plain M=2",
+   "shape": [
+    2,
+    5120
+   ],
+   "kind": "plain",
+   "triton_calls_on": 1,
+   "triton_calls_off": 0,
+   "ulp_max_vs_native": 0,
+   "ulp_nonzero_frac": 0.0,
+   "ulp_gt1_frac": 0.0,
+   "rel_err_on": 0.0016368460687310182,
+   "rel_err_off": 0.0016368460687310182,
+   "checks": {
+    "calls": true,
+    "shape_dtype": true,
+    "finite": true,
+    "ulp_bound": true,
+    "error_not_worse": true
+   },
+   "ok": true
+  },
+  {
+   "case": "plain 3-D",
+   "shape": [
+    2,
+    3,
+    5120
+   ],
+   "kind": "plain",
+   "triton_calls_on": 1,
+   "triton_calls_off": 0,
+   "ulp_max_vs_native": 0,
+   "ulp_nonzero_frac": 0.0,
+   "ulp_gt1_frac": 0.0,
+   "rel_err_on": 0.0016599940999132224,
+   "rel_err_off": 0.0016599940999132224,
+   "checks": {
+    "calls": true,
+    "shape_dtype": true,
+    "finite": true,
+    "ulp_bound": true,
+    "error_not_worse": true
+   },
+   "ok": true
+  },
+  {
+   "case": "plain large activations",
+   "shape": [
+    1,
+    5120
+   ],
+   "kind": "plain",
+   "triton_calls_on": 1,
+   "triton_calls_off": 0,
+   "ulp_max_vs_native": 0,
+   "ulp_nonzero_frac": 0.0,
+   "ulp_gt1_frac": 0.0,
+   "rel_err_on": 0.0016650625411899179,
+   "rel_err_off": 0.0016650625411899179,
+   "checks": {
+    "calls": true,
+    "shape_dtype": true,
+    "finite": true,
+    "ulp_bound": true,
+    "error_not_worse": true
+   },
+   "ok": true
+  },
+  {
+   "case": "plain row-strided view",
+   "shape": [
+    3,
+    5120
+   ],
+   "kind": "plain",
+   "triton_calls_on": 1,
+   "triton_calls_off": 0,
+   "ulp_max_vs_native": 0,
+   "ulp_nonzero_frac": 0.0,
+   "ulp_gt1_frac": 0.0,
+   "rel_err_on": 0.0016615348312644263,
+   "rel_err_off": 0.0016615348312644263,
+   "checks": {
+    "calls": true,
+    "shape_dtype": true,
+    "finite": true,
+    "ulp_bound": true,
+    "error_not_worse": true
+   },
+   "ok": true
+  },
+  {
+   "case": "fused read M=1",
+   "shape": [
+    1,
+    5120
+   ],
+   "kind": "fused",
+   "triton_calls_on": 1,
+   "triton_calls_off": 0,
+   "ulp_max_vs_native": 1,
+   "ulp_nonzero_frac": 0.20977,
+   "ulp_gt1_frac": 0.0,
+   "rel_err_on": 0.0016880153742856471,
+   "rel_err_off": 0.001654685080932165,
+   "residual_mismatches": 0,
+   "checks": {
+    "calls": true,
+    "shape_dtype": true,
+    "finite": true,
+    "ulp_bound": true,
+    "error_not_worse": true,
+    "residual_bit_identical": true
+   },
+   "ok": true
+  },
+  {
+   "case": "fused read M=1 with post_residual_addition",
+   "shape": [
+    1,
+    5120
+   ],
+   "kind": "fused",
+   "triton_calls_on": 1,
+   "triton_calls_off": 0,
+   "ulp_max_vs_native": 1,
+   "ulp_nonzero_frac": 0.21191,
+   "ulp_gt1_frac": 0.0,
+   "rel_err_on": 0.0017047432619761672,
+   "rel_err_off": 0.0016170038158401792,
+   "residual_mismatches": 0,
+   "checks": {
+    "calls": true,
+    "shape_dtype": true,
+    "finite": true,
+    "ulp_bound": true,
+    "error_not_worse": true,
+    "residual_bit_identical": true
+   },
+   "ok": true
+  },
+  {
+   "case": "fused read M=8 (verify rows)",
+   "shape": [
+    8,
+    5120
+   ],
+   "kind": "fused",
+   "triton_calls_on": 1,
+   "triton_calls_off": 0,
+   "ulp_max_vs_native": 1,
+   "ulp_nonzero_frac": 0.22212,
+   "ulp_gt1_frac": 0.0,
+   "rel_err_on": 0.0016733569691611211,
+   "rel_err_off": 0.001672363793682121,
+   "residual_mismatches": 0,
+   "checks": {
+    "calls": true,
+    "shape_dtype": true,
+    "finite": true,
+    "ulp_bound": true,
+    "error_not_worse": true,
+    "residual_bit_identical": true
+   },
+   "ok": true
+  },
+  {
+   "case": "fused read M=8192 (prefill chunk)",
+   "shape": [
+    8192,
+    5120
+   ],
+   "kind": "fused",
+   "triton_calls_on": 1,
+   "triton_calls_off": 0,
+   "ulp_max_vs_native": 2,
+   "ulp_nonzero_frac": 0.21893,
+   "ulp_gt1_frac": 0.0,
+   "rel_err_on": 0.0016587270842729214,
+   "rel_err_off": 0.001658788679681475,
+   "residual_mismatches": 0,
+   "checks": {
+    "calls": true,
+    "shape_dtype": true,
+    "finite": true,
+    "ulp_bound": true,
+    "error_not_worse": true,
+    "residual_bit_identical": true
+   },
+   "ok": true
+  },
+  {
+   "case": "head-dim norm (M, heads, 256)",
+   "shape": [
+    3,
+    8,
+    256
+   ],
+   "kind": "plain",
+   "triton_calls_on": 1,
+   "triton_calls_off": 0,
+   "ulp_max_vs_native": 0,
+   "ulp_nonzero_frac": 0.0,
+   "ulp_gt1_frac": 0.0,
+   "rel_err_on": 0.0016673617256489075,
+   "rel_err_off": 0.0016673617256489075,
+   "checks": {
+    "calls": true,
+    "shape_dtype": true,
+    "finite": true,
+    "ulp_bound": true,
+    "error_not_worse": true
+   },
+   "ok": true
+  },
+  {
+   "case": "head-dim norm on a split view",
+   "shape": [
+    3,
+    8,
+    256
+   ],
+   "kind": "plain",
+   "triton_calls_on": 1,
+   "triton_calls_off": 0,
+   "ulp_max_vs_native": 0,
+   "ulp_nonzero_frac": 0.0,
+   "ulp_gt1_frac": 0.0,
+   "rel_err_on": 0.0016693016341635563,
+   "rel_err_off": 0.0016693016341635563,
+   "checks": {
+    "calls": true,
+    "shape_dtype": true,
+    "finite": true,
+    "ulp_bound": true,
+    "error_not_worse": true
+   },
+   "ok": true
+  },
+  {
+   "case": "empty batch",
+   "shape": [
+    0,
+    5120
+   ],
+   "kind": "both",
+   "checks": {
+    "native_route": true,
+    "shapes": true
+   },
+   "ok": true
+  },
+  {
+   "case": "HIP graph of 129 norms, M=1",
+   "norms": 129,
+   "replays": 300,
+   "on_ms_per_step": 0.4457,
+   "on_replay_equals_eager": true,
+   "on_finite": true,
+   "off_ms_per_step": 4.2154,
+   "off_replay_equals_eager": true,
+   "off_finite": true,
+   "saved_ms_per_step_per_rank": 3.7697,
+   "checks": {
+    "on_replay_equals_eager": true,
+    "off_replay_equals_eager": true,
+    "finite": true
+   },
+   "ok": true
+  }
+ ],
+ "graph": {
+  "norms": 129,
+  "replays": 300,
+  "on_ms_per_step": 0.4457,
+  "on_replay_equals_eager": true,
+  "on_finite": true,
+  "off_ms_per_step": 4.2154,
+  "off_replay_equals_eager": true,
+  "off_finite": true,
+  "saved_ms_per_step_per_rank": 3.7697
+ },
+ "eager_timing": {
+  "M8_on_ms_per_call": 0.0213,
+  "M8_off_ms_per_call": 0.0434,
+  "M8192_on_ms_per_call": 0.6273,
+  "M8192_off_ms_per_call": 3.2275
+ },
+ "ok": true
+}

@@ -26,5 +26,33 @@
       "passed": 4,
       "total": 4
     }
+  },
+  "live-split": {
+    "tag": "live-split",
+    "model": "/data/models/Qwen3.8-27B-Quark-AWQ-MXFP4",
+    "timestamp": "2026-11-09 19:59",
+    "elapsed_sec": 8.4,
+    "checks": {
+      "basic": {
+        "passed": true,
+        "message": "finish=stop answer='paris'"
+      },
+      "tool_call": {
+        "passed": true,
+        "message": "finish=tool_calls name='get_weather' args='{\"location\": \"Paris\"}'"
+      },
+      "thinking": {
+        "passed": true,
+        "message": "reasoning_seen terminated answer_ok (170 tok, finish=stop)"
+      },
+      "vision": {
+        "passed": true,
+        "message": "saw=['red', 'circle', 'round']  response='a red circle with a black outline is centered on a white background.'"
+      }
+    },
+    "summary": {
+      "passed": 4,
+      "total": 4
+    }
   }
 }

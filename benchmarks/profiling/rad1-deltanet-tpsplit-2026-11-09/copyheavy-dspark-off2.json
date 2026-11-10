@@ -1,0 +1,80 @@
+{
+ "label": "off2",
+ "model": "/data/models/Qwen3.8-27B-FP8",
+ "prompt_tokens_target": 27000,
+ "output_tokens": 600,
+ "mean_decode_tok_s": 112.56,
+ "total_tok_per_decode_s": 109.83,
+ "rows": [
+  {
+   "target": "observability/forward_pass_metrics.py",
+   "started": "2026-11-09 20:59:33",
+   "ended": "2026-11-09 20:59:52",
+   "prompt_tokens": 24313,
+   "cached_tokens": null,
+   "completion_tokens": 521,
+   "ttft_s": 14.86,
+   "decode_tok_s": 121.48,
+   "copied_chars": 1944,
+   "target_chars": 1944,
+   "sha": "8484b99267cca066",
+   "text": "```python\n\"\"\"\nForward pass metrics for per-iteration scheduler telemetry.\n\nEmits per-iteration scheduling metrics over ZMQ PUB so that external\nconsumers can observe scheduler behavior in real time without polling\nPrometheus.\n\nUses msgspec.Struct for zero-copy serialization.\n\nData flow::\n\n    Scheduler process:\n        SchedulerMetricsMixin._emit_forward_pass_metrics()\n          -> _FpmPublisherThread -> ZMQ PUB (localhost)\n\n    External consumer:\n        ZMQ SUB -> deserialize ForwardPassMetrics\n\n\"\"\"\n\nfrom __future__ import annotations\n\nimport logging\nimport queue\nimport threading\nimport time\nfrom itertools import count\n\nimport msgspec\n\n# Schema version. Must match the consumer (Dynamo's ForwardPassMetrics).\n# Bump when the schema changes incompatibly.\nFPM_VERSION: int = 1\n\nlogger = logging.getLogger(__name__)\n\n\nclass WelfordAccumulator:\n    \"\"\"Welford's online algorithm for count / total / population-variance.\n\n    Numerically stable single-pass computation.\n    \"\"\"\n\n    __slots__ = (\"count\", \"total\", \"_mean\", \"_m2\")\n\n    def __init__(self) -> None:\n        self.count = 0\n        self.total = 0\n        self._mean = 0.0\n        self._m2 = 0.0\n\n    def add(self, v: int) -> None:\n        self.count += 1\n        self.total += v\n        delta = v - self._mean\n        self._mean += delta / self.count\n        delta2 = v - self._mean\n        self._m2 += delta * delta2\n\n    def variance(self) -> float:\n        if self.count == 0:\n            return 0.0\n        return self._m2 / self.count\n\n\nclass ScheduledRequestMetrics(\n    msgspec.Struct,\n    frozen=True,\n    gc=False,\n):\n    \"\"\"Metrics for requests scheduled in this iteration.\"\"\"\n\n    num_prefill_requests: int = 0\n    sum_prefill_tokens: int = 0\n    var_prefill_length: float = 0.0\n    sum_prefill_kv_tokens: int = 0\n    num_decode_requests: int = 0\n    sum_decode_kv_tokens: int = 0\n    var_decode_kv_tokens: float = 0.0\n\n\nclass QueuedRequestMetrics(\n    msgspec.Struct,\n    fro\n```"
+  },
+  {
+   "target": "models/glm4_moe_nextn.py",
+   "started": "2026-11-09 20:59:52",
+   "ended": "2026-11-09 20:59:59",
+   "prompt_tokens": 24274,
+   "cached_tokens": null,
+   "completion_tokens": 482,
+   "ttft_s": 2.61,
+   "decode_tok_s": 118.19,
+   "copied_chars": 1944,
+   "target_chars": 1944,
+   "sha": "57674fe07ef68853",
+   "text": "```python\n# Copyright 2023-2024 SGLang Team\n# Licensed under the Apache License, Version 2.0 (the \"License\");\n# you may not use this file except in compliance with the License.\n# You may obtain a copy of the License at\n#\n#     http://www.apache.org/licenses/LICENSE-2.0\n#\n# Unless required by applicable law or agreed to in writing, software\n# distributed under the License is distributed on an \"AS IS\" BASIS,\n# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.\n# See the License for the specific language governing permissions and\n# limitations under the License.\n# ==============================================================================\n\n\"\"\"Inference-only GLM-4.5, GLM-4.6 and GLM-4.7 Speculative Decoding.\"\"\"\n\nimport logging\nfrom typing import Iterable, Optional, Tuple\n\nimport torch\nfrom torch import nn\nfrom transformers import PretrainedConfig\n\nfrom sglang.srt.eplb.expert_distribution import get_global_expert_distribution_recorder\nfrom sglang.srt.layers.dp_attention import is_dp_attention_enabled\nfrom sglang.srt.layers.layernorm import RMSNorm\nfrom sglang.srt.layers.logits_processor import LogitsProcessor\nfrom sglang.srt.layers.quantization.base_config import QuantizationConfig\nfrom sglang.srt.layers.vocab_parallel_embedding import (\n    ParallelLMHead,\n    VocabParallelEmbedding,\n)\nfrom sglang.srt.model_executor.forward_batch_info import ForwardBatch\nfrom sglang.srt.models.glm4_moe import Glm4MoeDecoderLayer, Glm4MoeForCausalLM\nfrom sglang.srt.runtime_context import get_parallel, get_spec\nfrom sglang.srt.utils import add_prefix, is_npu\n\nlogger = logging.getLogger(__name__)\n\n\nclass Glm4MoeModelNextN(nn.Module):\n    def __init__(\n        self,\n        config: PretrainedConfig,\n        quant_config: Optional[QuantizationConfig] = None,\n        prefix: str = \"\",\n    ) -> None:\n        super().__init__()\n        if quant_config is not None and quant_config.get_name() == \"modelopt_fp4\":\n            log\n```"
+  },
+  {
+   "target": "model_executor/step_span_utils.py",
+   "started": "2026-11-09 20:59:59",
+   "ended": "2026-11-09 21:00:06",
+   "prompt_tokens": 24242,
+   "cached_tokens": null,
+   "completion_tokens": 600,
+   "ttft_s": 0.44,
+   "decode_tok_s": 88.88,
+   "copied_chars": 1944,
+   "target_chars": 1944,
+   "sha": "096f99b808d9535d",
+   "text": "```python\n# Copyright 2023-2024 SGLang Team\n# Licensed under the Apache License, Version 2.0 (the \"License\");\n# you may not use this file except in compliance with the License.\n# You may obtain a copy of the License at\n#\n#     http://www.apache.org/licenses/LICENSE-2.0\n#\n# Unless required by applicable law or agreed to in writing, software\n# distributed under the License is distributed on an \"AS IS\" BASIS,\n# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.\n# See the License for the specific language governing permissions and\n# limitations under the License.\n# ==============================================================================\n\"\"\"Profile-trace step-span naming (kept dependency-light for CPU unit tests).\n\nThe step span wraps each ``ModelRunner.forward`` in the torch/Perfetto trace.\nIts name carries the forward mode and batch shape; when detailed annotations\nare enabled it also folds in the per-iteration aggregates (for roofline-style\nanalysis) so a single label describes both timing and the analytical work of\nthat forward.\n\"\"\"\n\nfrom __future__ import annotations\n\nfrom typing import TYPE_CHECKING, List, Tuple\n\nfrom sglang.srt.model_executor.forward_batch_info import ForwardMode\n\nif TYPE_CHECKING:\n    from sglang.srt.model_executor.forward_batch_info import ForwardBatch\n\n\n# Process-wide toggle for detailed step-span annotations. Set by the scheduler's\n# profiler manager on profile start/stop and read by build_step_span_name, so no\n# per-runner flag or scheduler bridge is needed. Covers all model runners in the\n# process (e.g. both the EAGLE draft and target runners).\n_DETAILED_ANNOTATIONS_ENABLED = False\n\n\ndef set_detailed_annotations_enabled(enabled: bool) -> None:\n    global _DETAILED_ANNOTATIONS_ENABLED\n    _DETAILED_ANNOTATIONS_ENABLED = bool(enabled)\n\n\ndef detailed_annotations_enabled() -> bool:\n    return _DETAILED_ANNOTATIONS_ENABLED\n\n\ndef _agg(nqs: List[int], nkvs: List[int]) -> Tuple[int, int]:\n    \"\"\"Sum the per-layer query/key-value token counts.\n\n    Returns ``(total_q, total_kv)``.\n    \"\"\"\n    total_q = sum(nqs)\n    total_kv = sum(nkvs)\n    return total_q, total_kv\n\n\ndef build_step_span_name(\n    forward_mode: ForwardMode,\n    batch: \"ForwardBatch\",\n    *,\n    nqs: List[int] | None = None,\n    nkvs: List[int] | None = None,\n) -> str:\n    \"\"\"Build the name for the per-step trace span.\n\n    Base form: ``forward_<mode>_bs<batch_size>``.\n\n    When detailed annotations are enabled"
+  },
+  {
+   "target": "model_executor/runner/base_cuda_graph_runner.py",
+   "started": "2026-11-09 21:00:06",
+   "ended": "2026-11-09 21:00:10",
+   "prompt_tokens": 24244,
+   "cached_tokens": null,
+   "completion_tokens": 451,
+   "ttft_s": 0.44,
+   "decode_tok_s": 112.93,
+   "copied_chars": 1932,
+   "target_chars": 1944,
+   "sha": "df57c8083ba4fbc0",
+   "text": "```python\n# Copyright 2023-2026 SGLang Team\n# Licensed under the Apache License, Version 2.0 (the \"License\");\n# you may not use this file except in compliance with the License.\n# You may obtain a copy of the License at\n#\n#     http://www.apache.org/licenses/LICENSE-2.0\n#\n# Unless required by applicable law or agreed to in writing, software\n# distributed under the License is distributed on an \"AS IS\" BASIS,\n# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.\n# See the License for the specific language governing permissions and\n# limitations under the License.\n# ==============================================================================\n\"\"\"Shared scaffolding for the prefill and decode CUDA graph runners.\"\"\"\n\nfrom __future__ import annotations\n\nimport bisect\nimport gc\nimport logging\nfrom abc import abstractmethod\nfrom contextlib import contextmanager\nfrom typing import TYPE_CHECKING, Any, List, Sequence, Tuple\n\nfrom sglang.srt.model_executor.runner.base_runner import BaseRunner\nfrom sglang.srt.runtime_context import (\n    get_exec,\n    get_flags,\n)\nfrom sglang.srt.utils import (\n    get_cuda_graph_batch_size_alignment,\n    get_cuda_graph_max_batch_size,\n)\n\nif TYPE_CHECKING:\n    from sglang.srt.model_executor.input_buffers import ForwardInputBuffers\n    from sglang.srt.model_executor.model_runner import ModelRunner\n    from sglang.srt.model_executor.runner_backend.base_cuda_graph_backend import (\n        BaseCudaGraphBackend,\n    )\n\nlogger = logging.getLogger(__name__)\n\n\n@contextmanager\ndef freeze_gc(enable_cudagraph_gc: bool):\n    \"\"\"Optimize garbage collection during CUDA graph capture.\n\n    Clean up first, then freeze remaining objects from being included in\n    future collections if GC is disabled during capture.\n    \"\"\"\n    gc.collect()\n    should_freeze = not enable_cudagraph_gc\n    if should_freeze:\n        gc.freeze()\n    try:\n        yield\n    finally:\n        if should_freeze:\n```"
+  },
+  {
+   "target": "layers/quantization/compressed_tensors/schemes/compressed_tensors_w4a4_nvfp4.py",
+   "started": "2026-11-09 21:00:10",
+   "ended": "2026-11-09 21:00:15",
+   "prompt_tokens": 24268,
+   "cached_tokens": null,
+   "completion_tokens": 476,
+   "ttft_s": 0.47,
+   "decode_tok_s": 121.33,
+   "copied_chars": 1944,
+   "target_chars": 1944,
+   "sha": "15afe09f034f7b67",
+   "text": "```python\n# Adapted from https://github.com/vllm-project/vllm/tree/main/vllm/model_executor/layers/quantization/compressed_tensors\n# SPDX-License-Identifier: Apache-2.0\n# SPDX-FileCopyrightText: Copyright contributors to the vLLM project\nimport logging\nfrom collections.abc import Callable\nfrom typing import Optional\n\nimport torch\nfrom torch.nn.parameter import Parameter\n\nfrom sglang.srt.layers.parameter import (\n    GroupQuantScaleParameter,\n    ModelWeightParameter,\n    PerTensorScaleParameter,\n)\nfrom sglang.srt.layers.quantization.compressed_tensors.schemes import (\n    CompressedTensorsLinearScheme,\n)\nfrom sglang.srt.layers.quantization.fp4_utils import get_fp4_gemm_runner_backend\nfrom sglang.srt.layers.quantization.modelopt_quant import (\n    enable_flashinfer_fp4_gemm,\n    fp4_gemm,\n    fp4_quantize,\n)\nfrom sglang.srt.layers.quantization.utils import swizzle_blockscale\n\nlogger = logging.getLogger(__name__)\n\n__all__ = [\"CompressedTensorsW4A4Fp4\"]\n\n\nclass CompressedTensorsW4A4Fp4(CompressedTensorsLinearScheme):\n    def __init__(self):\n        self.group_size = 16\n\n    @classmethod\n    def get_min_capability(cls) -> int:\n        return 100\n\n    def create_weights(\n        self,\n        layer: torch.nn.Module,\n        output_partition_sizes: list[int],\n        input_size_per_partition: int,\n        params_dtype: torch.dtype,\n        weight_loader: Callable,\n        **kwargs,\n    ):\n        output_size_per_partition = sum(output_partition_sizes)\n        layer.logical_widths = output_partition_sizes\n        layer.input_size_per_partition = input_size_per_partition\n        layer.output_size_per_partition = output_size_per_partition\n\n        # Weight\n        weight = ModelWeightParameter(\n            data=torch.empty(\n                sum(output_partition_sizes),\n                input_size_per_partition // 2,\n                dtype=torch.uint8,\n            ),\n            input_dim=1,\n            output_dim=0,\n            weig\n```"
+  }
+ ]
+}

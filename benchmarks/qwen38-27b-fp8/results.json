@@ -1,53 +1,53 @@
 {
   "model": "Qwen3.8-27B official FP8 (dense DeltaNet VL+video) + DSpark",
-  "engine": "SGLang v0.5.22 + 72 patches",
+  "engine": "SGLang v0.5.22 + 89 patches",
   "method": "completion-token-counted streaming TPOT median (decode_ab, 5-run)",
   "hardware": "2x R9700 TP=2",
-  "timestamp": "2026-11-01 v0.5.22+78p shipped preset (extra_buffer, patch 109) think-off",
+  "timestamp": "2026-11-09 v0.5.22+89p shipped preset (patch 121 TP-split DeltaNet) think-off",
   "output_tokens": 80,
   "context_sweep": [
     {
       "context": 128,
       "input_len": 24,
-      "tpot_ms": 22.26,
-      "tok_per_sec": 44.914,
       "actual_input_tokens": 24,
-      "ttft_ms": null
+      "tpot_ms": 21.2,
+      "tok_per_sec": 47.175,
+      "ttft_ms": 141.9
     },
     {
       "context": 8192,
       "input_len": 7331,
-      "tpot_ms": 19.14,
-      "tok_per_sec": 52.233,
       "actual_input_tokens": 7331,
-      "ttft_ms": null
+      "tpot_ms": 17.29,
+      "tok_per_sec": 57.851,
+      "ttft_ms": 161.9
     },
     {
       "context": 65536,
       "input_len": 58483,
-      "tpot_ms": 21.07,
-      "tok_per_sec": 47.465,
       "actual_input_tokens": 58483,
-      "ttft_ms": null
+      "tpot_ms": 25.84,
+      "tok_per_sec": 38.705,
+      "ttft_ms": 176.4
     },
     {
       "context": 221184,
       "input_len": 197326,
-      "tpot_ms": 24.39,
-      "tok_per_sec": 41.009,
       "actual_input_tokens": 197326,
-      "ttft_ms": null
+      "tpot_ms": 30.02,
+      "tok_per_sec": 33.311,
+      "ttft_ms": 181.6
     }
   ],
   "throughput_sweep": [
     {
       "concurrency": 1,
-      "throughput": 44.914,
-      "tpot_ms": 22.26,
+      "throughput": 47.175,
+      "tpot_ms": 21.2,
       "ttft_ms": 0
     }
   ],
-  "note": "canonical 4-point sweep on the shipped qwen38 preset after R97-R (extra_buffer) + patch 109; 5 runs to expose the first-run-slow pattern seen in the 3-run A/B. Cold first run at 58K / 197K: 41.2 / 30.4 tok/s (the restored hybrid-cache state yields a different greedy continuation on the cache-hit runs; DSpark throughput is acceptance-bound). Previous row (2026-11-01 no_buffer, patch 109): 44.3 / 51.0 / 45.2 / 33.1.",
+  "note": "canonical 4-point sweep on the shipped qwen38 preset with the TP-split DeltaNet projections (patch 121), 5 runs, EOS. Completion tokens per run: 80 / 46 then 38 / 47 / 37; the deep points sit on the 47- and 37-token continuations on every run. DSpark throughput is acceptance-bound: the 2026-11-01 row (44.9 / 52.2 / 47.5 / 41.0, kept under previous_context_sweep_2026_11_01) read its deep medians on a 45-token cache-hit continuation with cold first runs of 41.2 / 30.4. The same-session layout A/B (profiling/rad1-deltanet-tpsplit-2026-11-09) is like-for-like only at 24 tokens (replicated 45.2, TP-split 47.2); its deeper medians sit on different continuations per arm. Cold prefill of the 197K prompt on this server: 194.1 s (1,017 tok/s); capability probe 5/5.",
   "previous_context_sweep_v0520_2026_09_27": [
     {
       "context": 128,
@@ -72,6 +72,32 @@
       "input_len": 197326,
       "tpot_ms": 31.37,
       "tok_per_sec": 31.874
+    }
+  ],
+  "previous_context_sweep_2026_11_01": [
+    {
+      "context": 128,
+      "input_len": 24,
+      "tpot_ms": 22.26,
+      "tok_per_sec": 44.914
+    },
+    {
+      "context": 8192,
+      "input_len": 7331,
+      "tpot_ms": 19.14,
+      "tok_per_sec": 52.233
+    },
+    {
+      "context": 65536,
+      "input_len": 58483,
+      "tpot_ms": 21.07,
+      "tok_per_sec": 47.465
+    },
+    {
+      "context": 221184,
+      "input_len": 197326,
+      "tpot_ms": 24.39,
+      "tok_per_sec": 41.009
     }
   ]
 }

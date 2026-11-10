@@ -1,0 +1,49 @@
+diff --git a/python/sglang/srt/layers/layernorm.py b/python/sglang/srt/layers/layernorm.py
+index 6fe54e0..b9b166b 100644
+--- a/python/sglang/srt/layers/layernorm.py
++++ b/python/sglang/srt/layers/layernorm.py
+@@ -60,6 +60,15 @@ _flashinfer_rmsnorm_quant_available = False
+ _use_triton_hip_rmsnorm = _is_hip and get_bool_env_var(
+     "SGLANG_RDNA4_TRITON_RMSNORM", "True"
+ )
++# RDNA4: GemmaRMSNorm.forward_hip takes the one-launch Triton Gemma kernels without aiter
++# too. Its native fallback is ten torch launches per call (cast, pow, mean, add eps, rsqrt,
++# mul, weight cast, 1 + w, mul, cast back), 129 calls per Qwen3.5 decode step.
++# Opt-in: SGLANG_RDNA4_TRITON_GEMMA_RMSNORM=1, exported by the launch presets that passed
++# the serving gate (the fused read normalises the fp32 sum, native the bf16-rounded one).
++_use_triton_hip_gemma_rmsnorm = _is_hip and get_bool_env_var(
++    "SGLANG_RDNA4_TRITON_GEMMA_RMSNORM", "False"
++)
++_triton_hip_gemma_rmsnorm_noted = False
+ 
+ if _is_cuda or _is_xpu or _is_musa:
+     if _is_flashinfer_available:
+@@ -1124,6 +1133,13 @@ class LayerNorm(BaseFusedOp):
+             return self.forward_native(x)
+ 
+ 
++def _note_triton_hip_gemma_rmsnorm() -> None:
++    global _triton_hip_gemma_rmsnorm_noted
++    if not _triton_hip_gemma_rmsnorm_noted:
++        _triton_hip_gemma_rmsnorm_noted = True
++        logger.info("[RDNA4] Gemma RMSNorm: one-launch Triton kernel active")
++
++
+ class GemmaRMSNorm(BaseFusedOp):
+     def __init__(
+         self,
+@@ -1203,7 +1219,13 @@ class GemmaRMSNorm(BaseFusedOp):
+         residual: Optional[torch.Tensor] = None,
+         post_residual_addition: Optional[torch.Tensor] = None,
+     ) -> Union[torch.Tensor, Tuple[torch.Tensor, torch.Tensor]]:
+-        if _use_aiter and _has_rocm_triton_gemma_rms_norm:
++        if _has_rocm_triton_gemma_rms_norm and (
++            _use_aiter
++            # an empty batch has no grid to launch: it keeps the native path
++            or (_use_triton_hip_gemma_rmsnorm and x.numel() > 0)
++        ):
++            if not _use_aiter:
++                _note_triton_hip_gemma_rmsnorm()
+             if residual is not None:
+                 if post_residual_addition is not None:
+                     residual = residual + post_residual_addition
