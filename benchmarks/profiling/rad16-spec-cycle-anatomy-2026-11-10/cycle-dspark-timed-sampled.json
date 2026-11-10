@@ -1,0 +1,258 @@
+{
+ "label": "dspark-timed-sampled",
+ "note": "122-124 stack on",
+ "log": "/data/logs/rad16-spec-cycle-anatomy-2026-11-10/server-dspark-timed.log",
+ "from_line": 942,
+ "to_line": 1198,
+ "decode_lines_dropped_after_prefill": 8,
+ "depths": {
+  "24": {
+   "decode_batches": {
+    "lines": 5,
+    "accept_len": 2.6,
+    "tok_s": 49.54,
+    "cycles_s": 19.05,
+    "cycle_ms": 52.48
+   },
+   "timing": {
+    "worker": "DSpark",
+    "windows": 36,
+    "cycles": 576,
+    "ranks": [
+     "0",
+     "1"
+    ],
+    "tokens_per_cycle": 2.88,
+    "stages_us": {
+     "outside the cycle": 698.0,
+     "entry wait": 36.0,
+     "verify window": 81.5,
+     "draft propose": 9479.0,
+     "verify plan": 85.0,
+     "target verify": 39170.5,
+     "accept": 740.0,
+     "mask and logprob": 6.0,
+     "mamba commit": 501.5,
+     "draft KV commit": 1761.0,
+     "observers": 20.0
+    },
+    "inside_cycle_us": 51880.5,
+    "cycle_with_outside_us": 52578.5,
+    "by_rank": {
+     "0": {
+      "outside the cycle": 613.5,
+      "entry wait": 13.0,
+      "verify window": 84.0,
+      "draft propose": 9517.0,
+      "verify plan": 85.0,
+      "target verify": 39172.0,
+      "accept": 738.5,
+      "mask and logprob": 6.0,
+      "mamba commit": 504.5,
+      "draft KV commit": 1769.5,
+      "observers": 20.0
+     },
+     "1": {
+      "outside the cycle": 754.5,
+      "entry wait": 40.0,
+      "verify window": 78.5,
+      "draft propose": 9409.0,
+      "verify plan": 85.0,
+      "target verify": 39169.0,
+      "accept": 742.0,
+      "mask and logprob": 6.0,
+      "mamba commit": 499.0,
+      "draft KV commit": 1731.5,
+      "observers": 20.0
+     }
+    }
+   }
+  },
+  "7.3K": {
+   "decode_batches": {
+    "lines": 6,
+    "accept_len": 2.67,
+    "tok_s": 43.57,
+    "cycles_s": 16.52,
+    "cycle_ms": 60.52
+   },
+   "timing": {
+    "worker": "DSpark",
+    "windows": 38,
+    "cycles": 608,
+    "ranks": [
+     "0",
+     "1"
+    ],
+    "tokens_per_cycle": 2.62,
+    "stages_us": {
+     "outside the cycle": 681.0,
+     "entry wait": 38.5,
+     "verify window": 84.0,
+     "draft propose": 16174.5,
+     "verify plan": 88.0,
+     "target verify": 40199.0,
+     "accept": 790.5,
+     "mask and logprob": 6.0,
+     "mamba commit": 514.0,
+     "draft KV commit": 1776.0,
+     "observers": 21.0
+    },
+    "inside_cycle_us": 59691.5,
+    "cycle_with_outside_us": 60372.5,
+    "by_rank": {
+     "0": {
+      "outside the cycle": 629.0,
+      "entry wait": 15.0,
+      "verify window": 84.0,
+      "draft propose": 16214.0,
+      "verify plan": 87.0,
+      "target verify": 40202.0,
+      "accept": 788.0,
+      "mask and logprob": 6.0,
+      "mamba commit": 515.0,
+      "draft KV commit": 1789.0,
+      "observers": 21.0
+     },
+     "1": {
+      "outside the cycle": 716.0,
+      "entry wait": 39.0,
+      "verify window": 84.0,
+      "draft propose": 16159.0,
+      "verify plan": 92.0,
+      "target verify": 40194.0,
+      "accept": 792.0,
+      "mask and logprob": 6.0,
+      "mamba commit": 513.0,
+      "draft KV commit": 1748.0,
+      "observers": 21.0
+     }
+    }
+   }
+  },
+  "58K": {
+   "decode_batches": {
+    "lines": 6,
+    "accept_len": 2.45,
+    "tok_s": 36.88,
+    "cycles_s": 15.07,
+    "cycle_ms": 66.37
+   },
+   "timing": {
+    "worker": "DSpark",
+    "windows": 44,
+    "cycles": 704,
+    "ranks": [
+     "0",
+     "1"
+    ],
+    "tokens_per_cycle": 2.44,
+    "stages_us": {
+     "outside the cycle": 677.5,
+     "entry wait": 41.0,
+     "verify window": 80.0,
+     "draft propose": 16182.5,
+     "verify plan": 87.0,
+     "target verify": 46140.5,
+     "accept": 825.0,
+     "mask and logprob": 6.0,
+     "mamba commit": 512.0,
+     "draft KV commit": 1763.5,
+     "observers": 21.0
+    },
+    "inside_cycle_us": 65658.5,
+    "cycle_with_outside_us": 66336.0,
+    "by_rank": {
+     "0": {
+      "outside the cycle": 637.0,
+      "entry wait": 44.0,
+      "verify window": 82.0,
+      "draft propose": 16185.5,
+      "verify plan": 87.0,
+      "target verify": 46143.0,
+      "accept": 823.0,
+      "mask and logprob": 6.0,
+      "mamba commit": 513.0,
+      "draft KV commit": 1781.0,
+      "observers": 21.0
+     },
+     "1": {
+      "outside the cycle": 705.0,
+      "entry wait": 40.0,
+      "verify window": 77.5,
+      "draft propose": 16166.0,
+      "verify plan": 86.5,
+      "target verify": 46139.0,
+      "accept": 828.0,
+      "mask and logprob": 6.0,
+      "mamba commit": 511.0,
+      "draft KV commit": 1743.0,
+      "observers": 21.0
+     }
+    }
+   }
+  },
+  "197K": {
+   "decode_batches": {
+    "lines": 6,
+    "accept_len": 2.65,
+    "tok_s": 30.73,
+    "cycles_s": 11.59,
+    "cycle_ms": 86.31
+   },
+   "timing": {
+    "worker": "DSpark",
+    "windows": 38,
+    "cycles": 608,
+    "ranks": [
+     "0",
+     "1"
+    ],
+    "tokens_per_cycle": 2.56,
+    "stages_us": {
+     "outside the cycle": 701.5,
+     "entry wait": 39.0,
+     "verify window": 84.0,
+     "draft propose": 16265.0,
+     "verify plan": 88.5,
+     "target verify": 66494.5,
+     "accept": 252.5,
+     "mask and logprob": 6.0,
+     "mamba commit": 484.0,
+     "draft KV commit": 1765.0,
+     "observers": 21.0
+    },
+    "inside_cycle_us": 85499.5,
+    "cycle_with_outside_us": 86201.0,
+    "by_rank": {
+     "0": {
+      "outside the cycle": 639.0,
+      "entry wait": 13.0,
+      "verify window": 84.0,
+      "draft propose": 16319.0,
+      "verify plan": 89.0,
+      "target verify": 66496.0,
+      "accept": 255.0,
+      "mask and logprob": 6.0,
+      "mamba commit": 485.0,
+      "draft KV commit": 1783.0,
+      "observers": 21.0
+     },
+     "1": {
+      "outside the cycle": 739.0,
+      "entry wait": 43.0,
+      "verify window": 84.0,
+      "draft propose": 16236.0,
+      "verify plan": 88.0,
+      "target verify": 66489.0,
+      "accept": 251.0,
+      "mask and logprob": 6.0,
+      "mamba commit": 482.0,
+      "draft KV commit": 1746.0,
+      "observers": 21.0
+     }
+    }
+   }
+  }
+ }
+}

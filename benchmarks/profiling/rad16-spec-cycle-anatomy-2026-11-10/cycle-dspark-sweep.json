@@ -1,0 +1,9 @@
+{
+ "label": "dspark-sweep",
+ "note": "122-124 stack on",
+ "log": "/data/logs/rad16-spec-cycle-anatomy-2026-11-10/server-dspark.log",
+ "from_line": 709,
+ "to_line": 808,
+ "decode_lines_dropped_after_prefill": 4,
+ "depths": {}
+}

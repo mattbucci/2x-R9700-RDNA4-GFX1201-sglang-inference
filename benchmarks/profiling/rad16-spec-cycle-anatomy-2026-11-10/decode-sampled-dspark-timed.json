@@ -1,0 +1,89 @@
+{
+  "label": "dspark-timed-sampled",
+  "tag": "",
+  "note": "",
+  "port": 23334,
+  "maxtok": 400,
+  "runs": 2,
+  "sampling": {
+    "temperature": 1.0,
+    "top_p": 0.95,
+    "top_k": 20,
+    "seed": 7
+  },
+  "ignore_eos": true,
+  "points": [
+    {
+      "context": 128,
+      "input_len": 24,
+      "runs_tps": [
+        56.12,
+        52.01
+      ],
+      "median_tps": 53.986,
+      "min_tps": 52.008,
+      "max_tps": 56.12,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "median_tpot_ms": 18.52,
+      "sample": "# The Speed of Silicon: A Deep Dive into GPU Memory Hierarch",
+      "median_ttft_ms": 480.4
+    },
+    {
+      "context": 8192,
+      "input_len": 7331,
+      "runs_tps": [
+        44.29,
+        41.69
+      ],
+      "median_tps": 42.952,
+      "min_tps": 41.689,
+      "max_tps": 44.293,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "median_tpot_ms": 23.28,
+      "sample": "The provided text consists of the pangram \"The quick brown f",
+      "median_ttft_ms": 1715.8
+    },
+    {
+      "context": 65536,
+      "input_len": 58483,
+      "runs_tps": [
+        37.98,
+        31.63
+      ],
+      "median_tps": 34.512,
+      "min_tps": 31.627,
+      "max_tps": 37.976,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "median_tpot_ms": 28.98,
+      "sample": "The provided text consists of the pangram \"The quick brown f",
+      "median_ttft_ms": 15219.7
+    },
+    {
+      "context": 221184,
+      "input_len": 197326,
+      "runs_tps": [
+        26.49,
+        27.74
+      ],
+      "median_tps": 27.103,
+      "min_tps": 26.492,
+      "max_tps": 27.743,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "median_tpot_ms": 36.9,
+      "sample": "The provided text consists solely of the sentence \"The quick",
+      "median_ttft_ms": 75875.6
+    }
+  ]
+}

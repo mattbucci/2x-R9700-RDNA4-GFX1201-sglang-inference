@@ -1,0 +1,19 @@
+{
+ "label": "dspark-forced",
+ "note": "122-124 stack on",
+ "log": "/data/logs/rad16-spec-cycle-anatomy-2026-11-10/server-dspark.log",
+ "from_line": 809,
+ "to_line": 900,
+ "decode_lines_dropped_after_prefill": 6,
+ "depths": {
+  "24": {
+   "decode_batches": {
+    "lines": 5,
+    "accept_len": 3.05,
+    "tok_s": 60.49,
+    "cycles_s": 19.94,
+    "cycle_ms": 50.16
+   }
+  }
+ }
+}

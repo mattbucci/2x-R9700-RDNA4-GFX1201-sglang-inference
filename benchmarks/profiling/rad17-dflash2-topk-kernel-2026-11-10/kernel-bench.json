@@ -1,0 +1,241 @@
+{
+ "what": "DFlash2 selector candidate top-k on one LM-head shard, torch.topk against tiled Triton top-k",
+ "mode": "kernels",
+ "source": "/data/models/Qwen3.8-27B-FP8 lm_head.weight, /data/logs/rad15-lm-head-study-2026-11-10/hidden.pt",
+ "note": "inputs are recorded target final hidden states; the selector reads drafter hidden states of the same width, timing is bound by the shape",
+ "vocab": 248320,
+ "shard_rows": 124160,
+ "hidden": 5120,
+ "rows": 7,
+ "k": 16,
+ "blocks": 696,
+ "ties": {
+  "rows": 4872,
+  "rows_with_tie_at_k_boundary": 922,
+  "rows_with_tie_inside_top_k": 4000
+ },
+ "comparator_flags_a_wrong_index": true,
+ "head_matmul_us": {
+  "1": {
+   "eager_us": 2560.3,
+   "graph_us": 2561.3
+  },
+  "7": {
+   "eager_us": 2800.0,
+   "graph_us": 2809.6
+  },
+  "8": {
+   "eager_us": 2837.1,
+   "graph_us": 2845.9
+  },
+  "9": {
+   "eager_us": 2857.0,
+   "graph_us": 2866.2
+  }
+ },
+ "verify_argmax": {
+  "eager_us": 47.6,
+  "graph_us": 47.2,
+  "shape": [
+   8,
+   248320
+  ]
+ },
+ "arms": [
+  {
+   "arm": "torch",
+   "reference": true,
+   "chained_eager_us": 2866.4,
+   "chained_graph_us": 2863.8,
+   "after_head_eager_us": 66.4,
+   "after_head_graph_us": 54.2,
+   "alone_eager_us": 72.0,
+   "alone_graph_us": 69.2
+  },
+  {
+   "arm": "lilicorr",
+   "rows": 4872,
+   "rows_with_value_mismatch": 0,
+   "index_differences": 9092,
+   "index_differences_on_ties": 9092,
+   "wrong_indices": 0,
+   "exact": true,
+   "chained_eager_us": 3100.3,
+   "chained_graph_us": 3098.5,
+   "after_head_eager_us": 300.3,
+   "after_head_graph_us": 288.9,
+   "alone_eager_us": 305.2,
+   "alone_graph_us": 296.5
+  },
+  {
+   "arm": "tiled tile=1024 tpp=8 warps=4",
+   "rows": 4872,
+   "rows_with_value_mismatch": 0,
+   "index_differences": 9092,
+   "index_differences_on_ties": 9092,
+   "wrong_indices": 0,
+   "exact": true,
+   "chained_eager_us": 3063.7,
+   "chained_graph_us": 3074.2,
+   "after_head_eager_us": 263.7,
+   "after_head_graph_us": 264.6,
+   "alone_eager_us": 270.9,
+   "alone_graph_us": 270.2
+  },
+  {
+   "arm": "tiled tile=1024 tpp=4 warps=4",
+   "rows": 4872,
+   "rows_with_value_mismatch": 0,
+   "index_differences": 9092,
+   "index_differences_on_ties": 9092,
+   "wrong_indices": 0,
+   "exact": true,
+   "chained_eager_us": 3059.5,
+   "chained_graph_us": 3069.7,
+   "after_head_eager_us": 259.5,
+   "after_head_graph_us": 260.1,
+   "alone_eager_us": 270.8,
+   "alone_graph_us": 269.7
+  },
+  {
+   "arm": "tiled tile=512 tpp=8 warps=4",
+   "rows": 4872,
+   "rows_with_value_mismatch": 0,
+   "index_differences": 9092,
+   "index_differences_on_ties": 9092,
+   "wrong_indices": 0,
+   "exact": true,
+   "chained_eager_us": 2882.3,
+   "chained_graph_us": 2891.1,
+   "after_head_eager_us": 82.3,
+   "after_head_graph_us": 81.5,
+   "alone_eager_us": 109.6,
+   "alone_graph_us": 108.4
+  },
+  {
+   "arm": "tiled tile=512 tpp=16 warps=4",
+   "rows": 4872,
+   "rows_with_value_mismatch": 0,
+   "index_differences": 9092,
+   "index_differences_on_ties": 9092,
+   "wrong_indices": 0,
+   "exact": true,
+   "chained_eager_us": 2877.0,
+   "chained_graph_us": 2883.3,
+   "after_head_eager_us": 77.0,
+   "after_head_graph_us": 73.7,
+   "alone_eager_us": 110.6,
+   "alone_graph_us": 109.0
+  },
+  {
+   "arm": "tiled tile=256 tpp=16 warps=4",
+   "rows": 4872,
+   "rows_with_value_mismatch": 0,
+   "index_differences": 9086,
+   "index_differences_on_ties": 9086,
+   "wrong_indices": 0,
+   "exact": true,
+   "chained_eager_us": 2859.3,
+   "chained_graph_us": 2874.1,
+   "after_head_eager_us": 59.3,
+   "after_head_graph_us": 64.5,
+   "alone_eager_us": 92.6,
+   "alone_graph_us": 92.1
+  },
+  {
+   "arm": "tiled tile=256 tpp=32 warps=4",
+   "rows": 4872,
+   "rows_with_value_mismatch": 0,
+   "index_differences": 9085,
+   "index_differences_on_ties": 9085,
+   "wrong_indices": 0,
+   "exact": true,
+   "chained_eager_us": 2856.7,
+   "chained_graph_us": 2861.4,
+   "after_head_eager_us": 56.7,
+   "after_head_graph_us": 51.8,
+   "alone_eager_us": 93.3,
+   "alone_graph_us": 92.3
+  },
+  {
+   "arm": "tiled tile=2048 tpp=4 warps=4",
+   "rows": 4872,
+   "rows_with_value_mismatch": 0,
+   "index_differences": 9092,
+   "index_differences_on_ties": 9092,
+   "wrong_indices": 0,
+   "exact": true,
+   "chained_eager_us": 4043.1,
+   "chained_graph_us": 4050.9,
+   "after_head_eager_us": 1243.1,
+   "after_head_graph_us": 1241.3,
+   "alone_eager_us": 1259.5,
+   "alone_graph_us": 1421.3
+  },
+  {
+   "arm": "tiled tile=1024 tpp=8 warps=8",
+   "rows": 4872,
+   "rows_with_value_mismatch": 0,
+   "index_differences": 9092,
+   "index_differences_on_ties": 9092,
+   "wrong_indices": 0,
+   "exact": true,
+   "chained_eager_us": 2877.4,
+   "chained_graph_us": 2884.5,
+   "after_head_eager_us": 77.4,
+   "after_head_graph_us": 74.9,
+   "alone_eager_us": 110.3,
+   "alone_graph_us": 108.4
+  },
+  {
+   "arm": "tiled-ts tile=256 tpp=16 warps=4",
+   "rows": 4872,
+   "rows_with_value_mismatch": 0,
+   "index_differences": 5077,
+   "index_differences_on_ties": 5077,
+   "wrong_indices": 0,
+   "exact": true,
+   "chained_eager_us": 2885.0,
+   "chained_graph_us": 2889.6,
+   "after_head_eager_us": 85.0,
+   "after_head_graph_us": 80.0,
+   "alone_eager_us": 108.6,
+   "alone_graph_us": 99.8
+  },
+  {
+   "arm": "tiled-ts tile=512 tpp=8 warps=4",
+   "rows": 4872,
+   "rows_with_value_mismatch": 0,
+   "index_differences": 4857,
+   "index_differences_on_ties": 4857,
+   "wrong_indices": 0,
+   "exact": true,
+   "chained_eager_us": 2909.0,
+   "chained_graph_us": 2912.8,
+   "after_head_eager_us": 109.0,
+   "after_head_graph_us": 103.2,
+   "alone_eager_us": 130.2,
+   "alone_graph_us": 121.2
+  },
+  {
+   "arm": "tiled-ts tile=1024 tpp=8 warps=4",
+   "rows": 4872,
+   "rows_with_value_mismatch": 0,
+   "index_differences": 4812,
+   "index_differences_on_ties": 4812,
+   "wrong_indices": 0,
+   "exact": true,
+   "chained_eager_us": 2928.5,
+   "chained_graph_us": 2930.8,
+   "after_head_eager_us": 128.5,
+   "after_head_graph_us": 121.2,
+   "alone_eager_us": 120.2,
+   "alone_graph_us": 110.5
+  }
+ ],
+ "errors": {},
+ "best_exact_arm": "tiled tile=256 tpp=32 warps=4",
+ "gate": "PASS",
+ "torch_version": "2.11.0+rocm7.2",
+ "device_name": "AMD Radeon AI PRO R9700"
+}

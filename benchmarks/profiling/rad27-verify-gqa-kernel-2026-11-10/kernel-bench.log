@@ -1,0 +1,118 @@
+[bench] device AMD Radeon AI PRO R9700 (gfx1201), tree /data/sgl-v0522-rad27/python, pool 199374 slots x 16 layers, prefixes [24, 7331, 58483, 197326], rows [8, 9]
+[bench] inputs built in 3 s, 3.05 GiB allocated
+[bench] sweep rows=8 prefix=197326: per-head: 27.611 ms / 16 layers (min 27.517, splits 16, graph)
+[bench] probe gqa hb=6 splits x1 bn=32 warps=4 rows=8 splits=16: ok rc=0 5.5 s cos vs ref 0.999143 (per-head 0.999143), vs per-head 1.0
+[bench] sweep rows=8 prefix=197326: gqa hb=6 splits x1 bn=32 warps=4: 32.224 ms / 16 layers (min 32.005, splits 16, graph)
+[bench] probe gqa hb=6 splits x2 bn=32 warps=4 rows=8 splits=32: ok rc=0 5.3 s cos vs ref 0.999202 (per-head 0.999143), vs per-head 0.9997
+[bench] sweep rows=8 prefix=197326: gqa hb=6 splits x2 bn=32 warps=4: 15.907 ms / 16 layers (min 15.891, splits 32, graph)
+[bench] probe gqa hb=6 splits x4 bn=32 warps=4 rows=8 splits=64: ok rc=0 5.3 s cos vs ref 0.99921 (per-head 0.999143), vs per-head 0.999609
+[bench] sweep rows=8 prefix=197326: gqa hb=6 splits x4 bn=32 warps=4: 9.882 ms / 16 layers (min 9.859, splits 64, graph)
+[bench] probe gqa hb=6 splits x8 bn=32 warps=4 rows=8 splits=128: ok rc=0 5.3 s cos vs ref 0.999233 (per-head 0.999143), vs per-head 0.99952
+[bench] sweep rows=8 prefix=197326: gqa hb=6 splits x8 bn=32 warps=4: 10.624 ms / 16 layers (min 10.599, splits 128, graph)
+[bench] probe gqa hb=1 splits x1 bn=32 warps=4 rows=8 splits=16: ok rc=0 4.3 s cos vs ref 0.999143 (per-head 0.999143), vs per-head 1.0
+[bench] sweep rows=8 prefix=197326: gqa hb=1 splits x1 bn=32 warps=4: 27.647 ms / 16 layers (min 27.492, splits 16, graph)
+[bench] probe gqa hb=3 splits x2 bn=32 warps=4 rows=8 splits=32: ok rc=0 4.5 s cos vs ref 0.999202 (per-head 0.999143), vs per-head 0.9997
+[bench] sweep rows=8 prefix=197326: gqa hb=3 splits x2 bn=32 warps=4: 11.761 ms / 16 layers (min 11.634, splits 32, graph)
+[bench] probe gqa hb=3 splits x4 bn=32 warps=4 rows=8 splits=64: ok rc=0 4.5 s cos vs ref 0.99921 (per-head 0.999143), vs per-head 0.999609
+[bench] sweep rows=8 prefix=197326: gqa hb=3 splits x4 bn=32 warps=4: 11.476 ms / 16 layers (min 11.241, splits 64, graph)
+[bench] probe gqa hb=2 splits x1 bn=32 warps=4 rows=8 splits=16: ok rc=0 4.3 s cos vs ref 0.999143 (per-head 0.999143), vs per-head 1.0
+[bench] sweep rows=8 prefix=197326: gqa hb=2 splits x1 bn=32 warps=4: 13.832 ms / 16 layers (min 13.598, splits 16, graph)
+[bench] probe gqa hb=2 splits x2 bn=32 warps=4 rows=8 splits=32: ok rc=0 4.3 s cos vs ref 0.999202 (per-head 0.999143), vs per-head 0.9997
+[bench] sweep rows=8 prefix=197326: gqa hb=2 splits x2 bn=32 warps=4: 13.419 ms / 16 layers (min 13.279, splits 32, graph)
+[bench] probe gqa hb=6 splits x4 bn=64 warps=4 rows=8 splits=64: ok rc=0 5.0 s cos vs ref 0.999218 (per-head 0.999143), vs per-head 0.99956
+[bench] sweep rows=8 prefix=197326: gqa hb=6 splits x4 bn=64 warps=4: 9.808 ms / 16 layers (min 9.774, splits 64, graph)
+[bench] probe gqa hb=6 splits x4 bn=32 warps=8 rows=8 splits=64: ok rc=0 4.5 s cos vs ref 0.99921 (per-head 0.999143), vs per-head 0.999609
+[bench] sweep rows=8 prefix=197326: gqa hb=6 splits x4 bn=32 warps=8: 13.636 ms / 16 layers (min 13.605, splits 64, graph)
+[bench] probe gqa hb=6 splits x4 bn=64 warps=8 rows=8 splits=64: ok rc=0 4.6 s cos vs ref 0.999218 (per-head 0.999143), vs per-head 0.99956
+[bench] sweep rows=8 prefix=197326: gqa hb=6 splits x4 bn=64 warps=8: 13.261 ms / 16 layers (min 13.235, splits 64, graph)
+[bench] probe gqa hb=6 splits x4 bn=32 warps=4 upcast rows=8 splits=64: ok rc=0 4.9 s cos vs ref 0.999711 (per-head 0.999143), vs per-head 0.998953
+[bench] sweep rows=8 prefix=197326: gqa hb=6 splits x4 bn=32 warps=4 upcast: 13.670 ms / 16 layers (min 13.655, splits 64, graph)
+[bench] fastest grouped geometry at 197326: gqa hb=6 splits x4 bn=64 warps=4
+[bench] ladder rows=8 prefix=24: per-head: 0.412 ms / 16 layers (min 0.412, splits 4, graph)
+[bench] probe gqa hb=6 splits x1 bn=64 warps=4 rows=8 splits=4: ok rc=0 4.9 s cos vs ref 0.999036 (per-head 0.999143), vs per-head 0.999353
+[bench] ladder rows=8 prefix=24: gqa hb=6 splits x1 bn=64 warps=4: 0.863 ms / 16 layers (min 0.843, splits 4, graph)
+[bench] probe gqa hb=6 splits x2 bn=64 warps=4 rows=8 splits=8: ok rc=0 4.9 s cos vs ref 0.999065 (per-head 0.999143), vs per-head 0.999567
+[bench] ladder rows=8 prefix=24: gqa hb=6 splits x2 bn=64 warps=4: 0.863 ms / 16 layers (min 0.862, splits 8, graph)
+[bench] probe gqa hb=6 splits x4 bn=64 warps=4 rows=8 splits=16: ok rc=0 4.9 s cos vs ref 0.999137 (per-head 0.999143), vs per-head 0.999949
+[bench] ladder rows=8 prefix=24: gqa hb=6 splits x4 bn=64 warps=4: 0.912 ms / 16 layers (min 0.893, splits 16, graph)
+[bench] probe gqa hb=6 splits x8 bn=64 warps=4 rows=8 splits=32: ok rc=0 4.9 s cos vs ref 0.999187 (per-head 0.999143), vs per-head 0.999644
+[bench] ladder rows=8 prefix=24: gqa hb=6 splits x8 bn=64 warps=4: 0.994 ms / 16 layers (min 0.975, splits 32, graph)
+[bench] ladder rows=8 prefix=7331: per-head: 1.399 ms / 16 layers (min 1.356, splits 8, graph)
+[bench] probe gqa hb=6 splits x1 bn=64 warps=4 rows=8 splits=8: ok rc=0 4.0 s cos vs ref 0.999065 (per-head 0.999143), vs per-head 0.999567
+[bench] ladder rows=8 prefix=7331: gqa hb=6 splits x1 bn=64 warps=4: 2.666 ms / 16 layers (min 2.616, splits 8, graph)
+[bench] probe gqa hb=6 splits x2 bn=64 warps=4 rows=8 splits=16: ok rc=0 4.0 s cos vs ref 0.999137 (per-head 0.999143), vs per-head 0.999949
+[bench] ladder rows=8 prefix=7331: gqa hb=6 splits x2 bn=64 warps=4: 1.950 ms / 16 layers (min 1.761, splits 16, graph)
+[bench] probe gqa hb=6 splits x4 bn=64 warps=4 rows=8 splits=32: ok rc=0 4.0 s cos vs ref 0.999187 (per-head 0.999143), vs per-head 0.999644
+[bench] ladder rows=8 prefix=7331: gqa hb=6 splits x4 bn=64 warps=4: 1.544 ms / 16 layers (min 1.512, splits 32, graph)
+[bench] probe gqa hb=6 splits x8 bn=64 warps=4 rows=8 splits=64: ok rc=0 4.0 s cos vs ref 0.999218 (per-head 0.999143), vs per-head 0.99956
+[bench] ladder rows=8 prefix=7331: gqa hb=6 splits x8 bn=64 warps=4: 1.562 ms / 16 layers (min 1.488, splits 64, graph)
+[bench] ladder rows=8 prefix=58483: per-head: 7.447 ms / 16 layers (min 7.308, splits 16, graph)
+[bench] probe gqa hb=6 splits x1 bn=64 warps=4 rows=8 splits=16: ok rc=0 4.0 s cos vs ref 0.999137 (per-head 0.999143), vs per-head 0.999949
+[bench] ladder rows=8 prefix=58483: gqa hb=6 splits x1 bn=64 warps=4: 8.513 ms / 16 layers (min 8.504, splits 16, graph)
+[bench] probe gqa hb=6 splits x2 bn=64 warps=4 rows=8 splits=32: ok rc=0 4.0 s cos vs ref 0.999187 (per-head 0.999143), vs per-head 0.999644
+[bench] ladder rows=8 prefix=58483: gqa hb=6 splits x2 bn=64 warps=4: 4.973 ms / 16 layers (min 4.966, splits 32, graph)
+[bench] ladder rows=8 prefix=58483: gqa hb=6 splits x4 bn=64 warps=4: 3.607 ms / 16 layers (min 3.603, splits 64, graph)
+[bench] probe gqa hb=6 splits x8 bn=64 warps=4 rows=8 splits=128: ok rc=0 4.9 s cos vs ref 0.999163 (per-head 0.999143), vs per-head 0.999519
+[bench] ladder rows=8 prefix=58483: gqa hb=6 splits x8 bn=64 warps=4: 4.602 ms / 16 layers (min 4.596, splits 128, graph)
+[bench] ladder rows=8 prefix=197326: per-head: 27.609 ms / 16 layers (min 27.563, splits 16, graph)
+[bench] ladder rows=8 prefix=197326: gqa hb=6 splits x1 bn=64 warps=4: 30.591 ms / 16 layers (min 30.435, splits 16, graph)
+[bench] ladder rows=8 prefix=197326: gqa hb=6 splits x2 bn=64 warps=4: 15.170 ms / 16 layers (min 15.052, splits 32, graph)
+[bench] ladder rows=8 prefix=197326: gqa hb=6 splits x4 bn=64 warps=4: 9.823 ms / 16 layers (min 9.805, splits 64, graph)
+[bench] ladder rows=8 prefix=197326: gqa hb=6 splits x8 bn=64 warps=4: 10.789 ms / 16 layers (min 10.768, splits 128, graph)
+[bench] ladder rows=9 prefix=24: per-head: 0.369 ms / 16 layers (min 0.368, splits 4, graph)
+[bench] probe gqa hb=6 splits x1 bn=64 warps=4 rows=9 splits=4: ok rc=0 5.5 s cos vs ref 0.999036 (per-head 0.999143), vs per-head 0.999353
+[bench] ladder rows=9 prefix=24: gqa hb=6 splits x1 bn=64 warps=4: 0.884 ms / 16 layers (min 0.883, splits 4, graph)
+[bench] probe gqa hb=6 splits x2 bn=64 warps=4 rows=9 splits=8: ok rc=0 5.5 s cos vs ref 0.999065 (per-head 0.999143), vs per-head 0.999567
+[bench] ladder rows=9 prefix=24: gqa hb=6 splits x2 bn=64 warps=4: 0.898 ms / 16 layers (min 0.895, splits 8, graph)
+[bench] probe gqa hb=6 splits x4 bn=64 warps=4 rows=9 splits=16: ok rc=0 5.5 s cos vs ref 0.999137 (per-head 0.999143), vs per-head 0.999949
+[bench] ladder rows=9 prefix=24: gqa hb=6 splits x4 bn=64 warps=4: 0.939 ms / 16 layers (min 0.938, splits 16, graph)
+[bench] probe gqa hb=6 splits x8 bn=64 warps=4 rows=9 splits=32: ok rc=0 5.5 s cos vs ref 0.999154 (per-head 0.999143), vs per-head 0.999644
+[bench] ladder rows=9 prefix=24: gqa hb=6 splits x8 bn=64 warps=4: 1.047 ms / 16 layers (min 1.044, splits 32, graph)
+[bench] ladder rows=9 prefix=7331: per-head: 1.324 ms / 16 layers (min 1.280, splits 8, graph)
+[bench] probe gqa hb=6 splits x1 bn=64 warps=4 rows=9 splits=8: ok rc=0 4.0 s cos vs ref 0.999065 (per-head 0.999143), vs per-head 0.999567
+[bench] ladder rows=9 prefix=7331: gqa hb=6 splits x1 bn=64 warps=4: 2.609 ms / 16 layers (min 2.581, splits 8, graph)
+[bench] probe gqa hb=6 splits x2 bn=64 warps=4 rows=9 splits=16: ok rc=0 4.0 s cos vs ref 0.999137 (per-head 0.999143), vs per-head 0.999949
+[bench] ladder rows=9 prefix=7331: gqa hb=6 splits x2 bn=64 warps=4: 1.960 ms / 16 layers (min 1.774, splits 16, graph)
+[bench] probe gqa hb=6 splits x4 bn=64 warps=4 rows=9 splits=32: ok rc=0 4.0 s cos vs ref 0.999154 (per-head 0.999143), vs per-head 0.999644
+[bench] ladder rows=9 prefix=7331: gqa hb=6 splits x4 bn=64 warps=4: 1.595 ms / 16 layers (min 1.482, splits 32, graph)
+[bench] probe gqa hb=6 splits x8 bn=64 warps=4 rows=9 splits=64: ok rc=0 5.5 s cos vs ref 0.999218 (per-head 0.999143), vs per-head 0.99956
+[bench] ladder rows=9 prefix=7331: gqa hb=6 splits x8 bn=64 warps=4: 1.659 ms / 16 layers (min 1.528, splits 64, graph)
+[bench] ladder rows=9 prefix=58483: per-head: 7.491 ms / 16 layers (min 7.321, splits 16, graph)
+[bench] probe gqa hb=6 splits x1 bn=64 warps=4 rows=9 splits=16: ok rc=0 4.0 s cos vs ref 0.999137 (per-head 0.999143), vs per-head 0.999949
+[bench] ladder rows=9 prefix=58483: gqa hb=6 splits x1 bn=64 warps=4: 8.229 ms / 16 layers (min 8.220, splits 16, graph)
+[bench] probe gqa hb=6 splits x2 bn=64 warps=4 rows=9 splits=32: ok rc=0 4.0 s cos vs ref 0.999154 (per-head 0.999143), vs per-head 0.999644
+[bench] ladder rows=9 prefix=58483: gqa hb=6 splits x2 bn=64 warps=4: 4.988 ms / 16 layers (min 4.978, splits 32, graph)
+[bench] probe gqa hb=6 splits x4 bn=64 warps=4 rows=9 splits=64: ok rc=0 4.0 s cos vs ref 0.999218 (per-head 0.999143), vs per-head 0.99956
+[bench] ladder rows=9 prefix=58483: gqa hb=6 splits x4 bn=64 warps=4: 3.758 ms / 16 layers (min 3.734, splits 64, graph)
+[bench] probe gqa hb=6 splits x8 bn=64 warps=4 rows=9 splits=128: ok rc=0 5.5 s cos vs ref 0.999163 (per-head 0.999143), vs per-head 0.999519
+[bench] ladder rows=9 prefix=58483: gqa hb=6 splits x8 bn=64 warps=4: 4.738 ms / 16 layers (min 4.733, splits 128, graph)
+[bench] ladder rows=9 prefix=197326: per-head: 27.673 ms / 16 layers (min 27.611, splits 16, graph)
+[bench] ladder rows=9 prefix=197326: gqa hb=6 splits x1 bn=64 warps=4: 29.735 ms / 16 layers (min 29.723, splits 16, graph)
+[bench] ladder rows=9 prefix=197326: gqa hb=6 splits x2 bn=64 warps=4: 14.990 ms / 16 layers (min 14.986, splits 32, graph)
+[bench] ladder rows=9 prefix=197326: gqa hb=6 splits x4 bn=64 warps=4: 9.841 ms / 16 layers (min 9.785, splits 64, graph)
+[bench] ladder rows=9 prefix=197326: gqa hb=6 splits x8 bn=64 warps=4: 11.034 ms / 16 layers (min 11.024, splits 128, graph)
+[bench] numerics rows=8 prefix=24 q x1: cos min vs fp32 per-head 0.99867 grouped 0.99867, grouped vs per-head 1.0 (max abs / rms 0.0)
+[bench] numerics rows=8 prefix=24 q x4: cos min vs fp32 per-head 0.987057 grouped 0.987057, grouped vs per-head 1.0 (max abs / rms 0.0)
+[bench] numerics rows=8 prefix=7331 q x1: cos min vs fp32 per-head 0.998928 grouped 0.998929, grouped vs per-head 0.999464 (max abs / rms 0.12059)
+[bench] numerics rows=8 prefix=7331 q x4: cos min vs fp32 per-head 0.990547 grouped 0.990837, grouped vs per-head 0.999867 (max abs / rms 0.06362)
+[bench] numerics rows=8 prefix=58483 q x1: cos min vs fp32 per-head 0.999088 grouped 0.999117, grouped vs per-head 0.999451 (max abs / rms 0.11693)
+[bench] numerics rows=8 prefix=58483 q x4: cos min vs fp32 per-head 0.987235 grouped 0.987263, grouped vs per-head 0.999935 (max abs / rms 0.03654)
+[bench] numerics rows=8 prefix=197326 q x1: cos min vs fp32 per-head 0.998965 grouped 0.998986, grouped vs per-head 0.999375 (max abs / rms 0.12033)
+[bench] numerics rows=8 prefix=197326 q x4: cos min vs fp32 per-head 0.98487 grouped 0.984898, grouped vs per-head 0.999868 (max abs / rms 0.03278)
+[bench] numerics rows=9 prefix=24 q x1: cos min vs fp32 per-head 0.99867 grouped 0.99867, grouped vs per-head 1.0 (max abs / rms 0.0)
+[bench] numerics rows=9 prefix=24 q x4: cos min vs fp32 per-head 0.987057 grouped 0.987057, grouped vs per-head 1.0 (max abs / rms 0.0)
+[bench] numerics rows=9 prefix=7331 q x1: cos min vs fp32 per-head 0.998928 grouped 0.998929, grouped vs per-head 0.999464 (max abs / rms 0.12062)
+[bench] numerics rows=9 prefix=7331 q x4: cos min vs fp32 per-head 0.990547 grouped 0.990837, grouped vs per-head 0.999847 (max abs / rms 0.06368)
+[bench] numerics rows=9 prefix=58483 q x1: cos min vs fp32 per-head 0.999087 grouped 0.999117, grouped vs per-head 0.999451 (max abs / rms 0.11681)
+[bench] numerics rows=9 prefix=58483 q x4: cos min vs fp32 per-head 0.987235 grouped 0.987263, grouped vs per-head 0.999935 (max abs / rms 0.03606)
+[bench] numerics rows=9 prefix=197326 q x1: cos min vs fp32 per-head 0.998965 grouped 0.998986, grouped vs per-head 0.999375 (max abs / rms 0.12025)
+[bench] numerics rows=9 prefix=197326 q x4: cos min vs fp32 per-head 0.98487 grouped 0.984898, grouped vs per-head 0.999868 (max abs / rms 0.03276)
+[bench] rows=8 prefix=24: per-head 0.412 ms, grouped 0.863 ms (splits x1), saved -0.451 ms, 0.48x
+[bench] rows=8 prefix=7331: per-head 1.399 ms, grouped 1.544 ms (splits x4), saved -0.145 ms, 0.91x
+[bench] rows=8 prefix=58483: per-head 7.447 ms, grouped 3.607 ms (splits x4), saved 3.840 ms, 2.06x
+[bench] rows=8 prefix=197326: per-head 27.609 ms, grouped 9.823 ms (splits x4), saved 17.786 ms, 2.81x
+[bench] rows=9 prefix=24: per-head 0.369 ms, grouped 0.884 ms (splits x1), saved -0.515 ms, 0.42x
+[bench] rows=9 prefix=7331: per-head 1.324 ms, grouped 1.595 ms (splits x4), saved -0.271 ms, 0.83x
+[bench] rows=9 prefix=58483: per-head 7.491 ms, grouped 3.758 ms (splits x4), saved 3.733 ms, 1.99x
+[bench] rows=9 prefix=197326: per-head 27.673 ms, grouped 9.841 ms (splits x4), saved 17.832 ms, 2.81x
+VERIFY GQA BENCH DONE gate=partial best='gqa hb=6 splits x4 bn=64 warps=4' deep_speedup_min=2.811 worst_ratio=2.396 perhead_growth_ms=27.197 serving_growth_ms=27.13 control_ratio=1.002 numerics_ok=True errors=0

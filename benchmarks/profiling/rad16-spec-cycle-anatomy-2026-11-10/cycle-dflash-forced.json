@@ -1,0 +1,28 @@
+{
+ "label": "dflash-forced",
+ "note": "122-124 stack on",
+ "log": "/data/logs/rad16-spec-cycle-anatomy-2026-11-10/server-dflash.log",
+ "from_line": 798,
+ "to_line": 876,
+ "decode_lines_dropped_after_prefill": 7,
+ "depths": {
+  "24": {
+   "decode_batches": {
+    "lines": 6,
+    "accept_len": 2.76,
+    "tok_s": 60.21,
+    "cycles_s": 21.75,
+    "cycle_ms": 45.98
+   }
+  },
+  "7.3K": {
+   "decode_batches": {
+    "lines": 1,
+    "accept_len": 2.67,
+    "tok_s": 55.6,
+    "cycles_s": 20.82,
+    "cycle_ms": 48.02
+   }
+  }
+ }
+}

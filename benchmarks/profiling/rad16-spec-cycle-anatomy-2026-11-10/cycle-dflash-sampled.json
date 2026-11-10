@@ -1,0 +1,46 @@
+{
+ "label": "dflash-sampled",
+ "note": "122-124 stack on",
+ "log": "/data/logs/rad16-spec-cycle-anatomy-2026-11-10/server-dflash.log",
+ "from_line": 877,
+ "to_line": 961,
+ "decode_lines_dropped_after_prefill": 8,
+ "depths": {
+  "24": {
+   "decode_batches": {
+    "lines": 6,
+    "accept_len": 2.69,
+    "tok_s": 58.15,
+    "cycles_s": 21.61,
+    "cycle_ms": 46.27
+   }
+  },
+  "7.3K": {
+   "decode_batches": {
+    "lines": 8,
+    "accept_len": 2.02,
+    "tok_s": 41.89,
+    "cycles_s": 20.68,
+    "cycle_ms": 48.37
+   }
+  },
+  "58K": {
+   "decode_batches": {
+    "lines": 9,
+    "accept_len": 1.57,
+    "tok_s": 29.09,
+    "cycles_s": 18.47,
+    "cycle_ms": 54.14
+   }
+  },
+  "197K": {
+   "decode_batches": {
+    "lines": 10,
+    "accept_len": 1.5,
+    "tok_s": 20.19,
+    "cycles_s": 13.45,
+    "cycle_ms": 74.37
+   }
+  }
+ }
+}

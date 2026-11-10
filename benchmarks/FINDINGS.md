@@ -1440,6 +1440,77 @@ Disposition: the gate (a proven window worth 0.7 ms or more per step) is met by 
 per 128 columns: 1.4 ms of a 36.3 ms step. That is the head to build, with the bf16 head as the fallback when the
 certificate fails. The 4-bit head would save 0.55 ms more and has no proof, so it stays out.
 
+### RAD-16 — the target verify is 79–87 % of the DFlash2 cycle and 67–78 % of DSpark's; its growth with depth is the prefix read (2026-11-10)
+
+Where a speculative cycle goes on the FP8 `qwen38` preset with patches 122–124 on
+([receipts](profiling/rad16-spec-cycle-anatomy-2026-11-10/)). DFlash2 (tcclaviger FP8 drafter, 8 verify rows) and
+DSpark (9 verify rows), one boot each for rates and one with a cycle timing diagnostic that waits for the device
+after every stage (`SGLANG_RDNA4_SPEC_CYCLE_TIMING=1`, a dev-tree hook, off on every rate arm). Rates come from the
+server's decode-batch lines (`scripts/bench/spec_cycle_report.py`), stage times from the timed boot; the two are
+never mixed. Ladder: 400 forced tokens, T 1.0 / top-p 0.95 / top-k 20, the only ladder that yields decode-batch
+lines at all four depths (a forced greedy continuation repeats itself and finishes in too few cycles).
+
+| by input tokens | 24 | 7,331 | 58,483 | 197,326 |
+|---|---:|---:|---:|---:|
+| plain step, ms (no speculation, stack confirmation) | 29.2 | 29.7 | 31.1 | 34.9 |
+| DFlash2 cycle, ms × accept length | 46.3 × 2.69 | 48.4 × 2.02 | 54.1 × 1.57 | 74.4 × 1.50 |
+| DFlash2 cycle / plain step | 1.59 | 1.63 | 1.74 | 2.13 |
+| DSpark cycle, ms × accept length | 51.0 × 2.58 | 57.9 × 3.00 | 63.8 × 3.00 | 84.2 × 2.25 |
+| DSpark cycle / plain step | 1.75 | 1.95 | 2.05 | 2.42 |
+| DFlash2, canonical sweep tok/s | 66.5 | 76.7 | 65.8 | 48.5 |
+| DSpark, canonical sweep tok/s | 51.2 | 63.9 | 55.7 | 35.7 |
+
+Stage times on the timed boots, ms per cycle, mean of the two ranks:
+
+| stage | 24 | 7,331 | 58,483 | 197,326 |
+|---|---:|---:|---:|---:|
+| DFlash2 target verify | 38.2 | 39.2 | 45.2 | 65.3 |
+| DFlash2 draft forward | 6.3 | 7.5 | 7.5 | 7.6 |
+| DFlash2 draft KV append | 1.1 | 1.1 | 1.1 | 1.1 |
+| DFlash2 everything else inside the cycle | 1.7 | 1.7 | 1.7 | 1.4 |
+| DFlash2 cycle | 47.3 | 49.6 | 55.5 | 75.3 |
+| DSpark target verify | 39.2 | 40.2 | 46.1 | 66.5 |
+| DSpark draft propose | 9.5 | 16.2 | 16.2 | 16.3 |
+| DSpark draft KV commit | 1.8 | 1.8 | 1.8 | 1.8 |
+| DSpark everything else inside the cycle | 1.5 | 1.5 | 1.6 | 1.0 |
+| DSpark cycle | 51.9 | 59.7 | 65.7 | 85.5 |
+
+Three costs stand out. The verify pass costs 9–10 ms more than a plain step at 24 tokens (38.2 and 39.2 against
+29.2): its 8–9 rows keep the quantiser and the Triton W8A8 GEMM that patch 122 replaced for one row (RAD-22b). The
+verify grows by 27.1 ms (DFlash2) and 27.3 ms (DSpark) from 24 tokens to 197K where a plain step grows by 5.7: the
+prefix stage reads the K/V prefix once per query head (RAD-27). DSpark's draft propose steps from 9.5 to 16.2 ms
+between 24 tokens and 7.3K and is flat after that. Selector, accept, mask and commit stages together stay under
+2 ms. With a verify at the price of a plain step the DFlash2 cycle would read 38.3 ms at 24 tokens and 45.0 at 197K
+(1.31× and 1.29×); radiance reads 37 and 41.
+
+In the canonical sweep the first of five DFlash2 runs at a depth is slower than its repeats (63.4 against 76.7 tok/s
+at 7.3K, 49.6 against 65.8 at 58K, 39.9 against 48.5 at 197K); the medians above are the repeats.
+
+Disposition: the gate (cycle at most 1.3× a plain step) fails at every depth, 1.59–2.13× for DFlash2. No change
+ships from the anatomy itself. The order of work is the verify prefix stage (RAD-27), the multi-row verify GEMM
+(RAD-22b), then DSpark's draft propose step.
+
+### RAD-17 — a tiled Triton top-k ties `torch.topk` on the DFlash2 selector shape; no kernel (2026-11-10)
+
+The server warns that the DFlash2 selector's `torch.topk` fallback roughly halves throughput. On the selector shape
+(top 16 of 124,160 shard logits, 7 rows, recorded hidden states) it does not
+(`scripts/bench/bench_dflash2_head_topk.py`, [receipt](profiling/rad17-dflash2-topk-kernel-2026-11-10/kernel-bench.json)):
+
+| stage, µs in a HIP graph | time |
+|---|---:|
+| head product, 1 / 7 / 8 / 9 rows | 2,561 / 2,810 / 2,846 / 2,866 |
+| `torch.topk` after the head | 54.2 |
+| tiled Triton top-k, best exact arm (256-row tiles, 32 per program) | 51.8 |
+| tiled Triton top-k, other arms | 64.5–1,241 |
+| `lilicorr_topk_lse` | 288.9 |
+| verify arg-max, 8 × 248,320 | 47.2 |
+
+Every Triton arm returns the same values as `torch.topk` on 4,872 rows; indices differ only inside ties (922 rows tie
+at the k boundary, 4,000 inside the top 16), and the comparator flags a planted wrong index.
+
+Disposition: `torch.topk` stays and no top-k kernel is written: 54 µs of a 46 ms cycle, and the best exact kernel
+saves 2.4 µs. The cost on that path is the head product.
+
 ## Evaluation methodology
 
 ### SWE-bench answer leakage through git history and the web (found 2026-09-18)

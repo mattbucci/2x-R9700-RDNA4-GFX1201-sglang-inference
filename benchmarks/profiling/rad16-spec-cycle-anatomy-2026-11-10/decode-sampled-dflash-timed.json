@@ -1,0 +1,89 @@
+{
+  "label": "dflash-timed-sampled",
+  "tag": "",
+  "note": "",
+  "port": 23334,
+  "maxtok": 400,
+  "runs": 2,
+  "sampling": {
+    "temperature": 1.0,
+    "top_p": 0.95,
+    "top_k": 20,
+    "seed": 7
+  },
+  "ignore_eos": true,
+  "points": [
+    {
+      "context": 128,
+      "input_len": 24,
+      "runs_tps": [
+        54.67,
+        55.78
+      ],
+      "median_tps": 55.217,
+      "min_tps": 54.665,
+      "max_tps": 55.78,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "median_tpot_ms": 18.11,
+      "sample": "# The Memory Wall and the Data Highway: A Deep Dive into GPU",
+      "median_ttft_ms": 274.0
+    },
+    {
+      "context": 8192,
+      "input_len": 7331,
+      "runs_tps": [
+        37.02,
+        51.48
+      ],
+      "median_tps": 43.067,
+      "min_tps": 37.016,
+      "max_tps": 51.484,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "median_tpot_ms": 23.22,
+      "sample": "The provided text consists of the classic pangram \"The quick",
+      "median_ttft_ms": 1688.2
+    },
+    {
+      "context": 65536,
+      "input_len": 58483,
+      "runs_tps": [
+        29.9,
+        30.84
+      ],
+      "median_tps": 30.364,
+      "min_tps": 29.902,
+      "max_tps": 30.842,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "median_tpot_ms": 32.93,
+      "sample": "The text consists of the classic English pangram \"The quick ",
+      "median_ttft_ms": 15249.4
+    },
+    {
+      "context": 221184,
+      "input_len": 197326,
+      "runs_tps": [
+        22.15,
+        44.54
+      ],
+      "median_tps": 29.583,
+      "min_tps": 22.147,
+      "max_tps": 44.537,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "median_tpot_ms": 33.8,
+      "sample": "The provided text consists of the pangram \"The quick brown f",
+      "median_ttft_ms": 76301.1
+    }
+  ]
+}
