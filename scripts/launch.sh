@@ -645,6 +645,19 @@ PYEOF
                 export SGLANG_RDNA4_SPLITKV_WINDOW="${SPLITKV_WINDOW:-1}"
                 export SGLANG_RDNA4_SPLITKV_WINDOW_SPLITS="${SPLITKV_WINDOW_SPLITS:-16}"
             fi
+            # RAD-29 (patch 128): block-FP8 linears on 2..32 rows (the speculative verify block, short prefill
+            # tails) run the native HIP W8A16 WMMA GEMM: it reads the bf16 activation directly, so the activation
+            # quantiser launch goes away and the rows keep the numeric class of the one-row decode GEMV. Same
+            # session, two boots per side in both orders, sampled 400-token ladder, DSpark cycle at 24 / 7.3K /
+            # 58K / 197K input: 50.8 / 51.7 / 53.8 / 59.9 -> 46.9 / 47.6 / 49.7 / 56.0 ms; canonical DSpark sweep
+            # on equal completion tokens 50.8 / 72.3 / 66.7 / 50.7 -> 58.9 / 78.8 / 72.3 / 59.0 tok/s. Capabilities
+            # 5/5, needle 9/9; greedy accept length over 24 prompts 3.79 -> 3.77 (x0.995, a control that repeats
+            # to the token across boots). No-spec canonical rows stay within 0.7 % of the control with identical
+            # greedy text (one-row decode never reaches the kernel). Needs scripts/build_fp8_gemm_bf16.sh; the
+            # FP8 checkpoint only. FP8_GEMM_BF16=0 restores the quantiser and the Triton tile.
+            if [[ -z "${QUANT_OVERRIDE:-}" ]]; then
+                export SGLANG_RDNA4_FP8_GEMM_BF16="${FP8_GEMM_BF16:-1}"
+            fi
             # RAD-15 (patch 127), opt-in: INT8_LM_HEAD=1 ends the one-row decode graph at the hidden state and
             # serves greedy requests with no logit processing from an int8 copy of the LM head with a proven
             # arg-max window; every other step and every step the filter cannot prove runs the bf16 head.

@@ -1,0 +1,89 @@
+{
+  "label": "gemm2-sampled",
+  "tag": "",
+  "note": "",
+  "port": 23334,
+  "maxtok": 400,
+  "runs": 2,
+  "sampling": {
+    "temperature": 1.0,
+    "top_p": 0.95,
+    "top_k": 20,
+    "seed": 7
+  },
+  "ignore_eos": true,
+  "points": [
+    {
+      "context": 128,
+      "input_len": 24,
+      "runs_tps": [
+        59.2,
+        56.4
+      ],
+      "median_tps": 57.767,
+      "min_tps": 56.399,
+      "max_tps": 59.204,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "median_tpot_ms": 17.31,
+      "sample": "# The Architect\u2019s Ledger: A Deep Dive into GPU Memory Hierar",
+      "median_ttft_ms": 334.0
+    },
+    {
+      "context": 8192,
+      "input_len": 7331,
+      "runs_tps": [
+        53.74,
+        50.28
+      ],
+      "median_tps": 51.953,
+      "min_tps": 50.282,
+      "max_tps": 53.738,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "median_tpot_ms": 19.25,
+      "sample": "The provided text consists of the pangram \"The quick brown f",
+      "median_ttft_ms": 1675.3
+    },
+    {
+      "context": 65536,
+      "input_len": 58483,
+      "runs_tps": [
+        51.39,
+        44.92
+      ],
+      "median_tps": 47.934,
+      "min_tps": 44.917,
+      "max_tps": 51.386,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "median_tpot_ms": 20.86,
+      "sample": "The provided text consists of the pangram \"The quick brown f",
+      "median_ttft_ms": 15238.6
+    },
+    {
+      "context": 221184,
+      "input_len": 197326,
+      "runs_tps": [
+        40.68,
+        44.58
+      ],
+      "median_tps": 42.539,
+      "min_tps": 40.678,
+      "max_tps": 44.579,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "median_tpot_ms": 23.51,
+      "sample": "The provided text consists of the pangram \"The quick brown f",
+      "median_ttft_ms": 76628.4
+    }
+  ]
+}

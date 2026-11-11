@@ -166,7 +166,12 @@ preset default): cycle 59.1 → 51.7 ms at 7.3K, 61.1 → 53.7 at 58K, 67.3 → 
 ([kernel](profiling/rad28-draft-window-kernel-2026-11-10/), [serving](profiling/rad28-draft-window-serving-2026-11-10/), [FINDINGS → RAD-28](FINDINGS.md)). Verify launch census
 (`scripts/bench/launch_census.py --span`, eager, target verify against a plain step at 24 and 58K tokens): 1,538 against 1,061 launches per
 pass per rank, the nine-row block-FP8 GEMM with its quantiser is +5.4 / +6.8 ms of the verify's 10–14 ms over a plain step
-([receipts](profiling/rad22b-verify-census-2026-11-10/), [FINDINGS → RAD-22b](FINDINGS.md)). `scripts/bench/dspark_cycle_times.py`
+([receipts](profiling/rad22b-verify-census-2026-11-10/), [FINDINGS → RAD-22b](FINDINGS.md)). W8A16 WMMA GEMM for 2–32 rows
+(patch 128, FP8 `qwen38` preset default; `scripts/bench/bench_fp8_gemm_bf16_hip.py`): 24.1 → 20.8 ms per forward per rank at nine rows
+with cold weights, DSpark cycle 50.8 / 51.7 / 53.8 / 59.9 → 46.9 / 47.6 / 49.7 / 56.0 ms at 24 / 7.3K / 58K / 197K in both boot orders,
+canonical sweep 50.8 / 72.3 / 66.7 / 50.7 → 58.9 / 78.8 / 72.3 / 59.0 tok/s, greedy accept length ×0.995 over 24 paired prompts, needle
+9/9 and capabilities 5/5 ([kernel](profiling/rad29-gemm-bf16-kernel-2026-11-10/), [serving](profiling/rad29-gemm-bf16-serving-2026-11-10/),
+[FINDINGS → RAD-29](FINDINGS.md)). `scripts/bench/dspark_cycle_times.py`
 reads DSpark cycle time and accept length from a server log; `scripts/bench/copyheavy_multi_bench.py` is the five-target
 copy-heavy probe with decode-only timing.
 Upstream's one-stage HIP all-reduce against RCCL on the FP8 preset: +1.8 % at 24 tokens with wrong sums, so RCCL stays

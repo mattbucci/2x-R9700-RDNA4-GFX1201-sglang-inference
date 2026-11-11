@@ -1,6 +1,6 @@
 # RDNA4 inference on 2× R9700
 
-SGLang v0.5.22 with 95 local RDNA4 patches, tuned for coherent single-user inference at long context
+SGLang v0.5.22 with 96 local RDNA4 patches, tuned for coherent single-user inference at long context
 (256K) on two AMD Radeon AI PRO R9700 GPUs (gfx1201, 32 GiB each, TP=2 over PCIe). The repository holds
 the patch series, the preset launcher, the benchmark and evaluation harnesses, the FP8/AWQ quantization
 pipeline, and the receipts behind every number below. Multi-user throughput is secondary.
@@ -132,7 +132,7 @@ Qwen3.8-27B files ([receipt](benchmarks/radiance-parity/README.md)). Decode is t
 | Lane | vllm-radiance | This stack | Gap | Experiments that close it, in run order |
 |---|---|---|---|---|
 | FP8, no speculation | 35.4 / 35.0 / 33.7 / 30.4 | 34.3 / 33.6 / 32.1 / 28.7 | 1.03–1.06× | RAD-22 decode GEMV, RAD-5a Triton norm and RAD-23 DeltaNet GEMV are in the preset (patches 122–124); RAD-15 int8 LM head is opt-in for greedy decode (patch 127, +1–2.5 %); its sampling path, RAD-3 GEMM weight layout, RAD-12 switch ablation |
-| FP8 + DFlash2 | 99.9 / 99.7 / 87.9 / 91.0 | 65.7 / 75.6 / 67.7 / 52.0 | 1.3–1.7× | RAD-27 grouped verify prefix stage is in the preset (patch 125; patch 126 is DSpark's draft stage); the verify is still 10–13 ms over a plain step: RAD-29 verify-row GEMM, then RAD-18 content-adaptive block length, RAD-7 low-bit draft head |
+| FP8 + DFlash2 | 99.9 / 99.7 / 87.9 / 91.0 | 65.7 / 75.6 / 67.7 / 52.0 | 1.3–1.7× | RAD-27 grouped verify prefix stage and RAD-29 verify-row GEMM are in the preset (patches 125, 128; 126 is DSpark's draft stage); RAD-25 in-graph all-reduce, then RAD-18 content-adaptive block length, RAD-7 low-bit draft head |
 | Cold prefill | 4,137 / 3,631 / 2,520 | 2,334 / 1,782 / 1,070 | 1.8–2.4× | RAD-10 197K profile, RAD-19 DeltaNet conv block width, RAD-20 GEMM tiles at M ≥ 64 and chunk size, then ports by share |
 | MXFP4, no speculation | 51.6 / 50.8 / 47.4 / 41.0 | 34.3 / 33.6 / 31.8 / 28.4 | 1.4–1.5× | RAD-11 split-layout census and the M > 32 repack path, RAD-21 MXFP4 + DFlash2 |
 
@@ -250,7 +250,7 @@ relaunch faults on a stale one.
 | Component | Version |
 |---|---|
 | GPUs | 2× AMD Radeon AI PRO R9700, gfx1201, 32 GiB each |
-| SGLang | v0.5.22 + 95 patches |
+| SGLang | v0.5.22 + 96 patches |
 | Python | 3.12 |
 | PyTorch | 2.11.0+rocm7.2 |
 | ROCm | 7.2 |

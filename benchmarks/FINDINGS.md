@@ -1764,6 +1764,80 @@ no-spec FP8 `qwen38` server in; it speeds up greedy requests only, and the model
 bf16 head. A preset default waits for a sampling path (the study's proven top-20 window fits 1,024 rescored rows).
 Radiance's head (0.47 ms) stays about 0.6 ms per step ahead of the filter kernel.
 
+### RAD-29 — W8A16 WMMA GEMM for verify rows: DSpark cycle −6.5–7.9 % at every depth, canonical DSpark sweep +8–16 %; patch 128, qwen38 FP8 preset default (2026-11-10)
+
+Mechanism (patch 128, `SGLANG_RDNA4_FP8_GEMM_BF16=1`, row cap `SGLANG_RDNA4_FP8_GEMM_BF16_MAX_M`). A dense
+128 × 128 block-FP8 linear called with 2–32 bf16 rows (the speculative verify block, prompt tails) goes to a
+native HIP kernel (`kernels/aot/csrc/quantization/fp8/fp8_gemm_bf16_hip.cu`, built by
+`scripts/build_fp8_gemm_bf16.sh`) instead of the activation quantiser and the Triton W8A8 tile. A wave owns
+sixteen weight rows: E4M3 bytes become bf16 in registers (exact, four significant bits), the bf16 activation is
+the other `v_wmma_f32_16x16x16_bf16` operand, the weight is read row-major straight from the checkpoint layout,
+and a 128-column block accumulates unscaled and folds its scale once. The WMMA lane map, the weight-as-A
+arrangement and the per-block fold follow radiance's `r4d_fp8_wmma.h` and `r4d_gemm_fp8a8.hip` (Apache-2.0,
+attribution in the source header); the bf16 activation path, the row-major read and the K split inside the
+workgroup are local. One row stays on the patch-122 GEMV, more than 32 rows on the Triton tile.
+
+Kernel (`scripts/bench/bench_fp8_gemm_bf16_hip.py`,
+[receipts](profiling/rad29-gemm-bf16-kernel-2026-11-10/)), one idle card, the TP-split `qwen38` linears with their
+launch counts summed per forward pass, 320 MB of rotating weight copies so the cache is cold, ms per forward per
+rank:
+
+| rows | 9 | 16 | 17 | 24 | 32 |
+|---|---:|---:|---:|---:|---:|
+| quantiser + Triton W8A8 tile | 24.11 | 24.43 | 33.72 | 34.52 | 34.56 |
+| HIP W8A16 GEMM | 20.78 | 20.93 | 21.69 | 21.61 | 22.08 |
+| one-row GEMV, same weights | 20.31 | 20.31 | 20.33 | 20.35 | 20.35 |
+
+The GEMM stays within 2–9 % of the one-row rate up to 32 rows; the Triton tile pays a second 16-row tile from 17
+rows on. Replayed from a captured graph the rows read 24.15 / 24.51 / 33.29 / 33.78 / 34.28 against 21.10 / 21.22
+/ 22.03 / 21.93 / 22.37 ms. Check against an fp64 product on ragged shapes with asymmetric operands at 1 / 2 / 9
+/ 16 / 17 / 32 rows and every K split: 702 of 702 cases inside the GEMV's tolerance, the E4M3 code table decodes
+exactly. Against the product with unquantised activations (`mlp.gate_up_proj`, nine rows) the W8A8 path's largest
+relative error is 3.1 % (cosine 0.99967) and the GEMM's 0.21 % (cosine 0.9999986). Hook preflight
+(`scripts/test/preflight_fp8_gemm_bf16_hook.py`): seven linears at 2 / 9 / 16 / 17 / 32 rows through
+`fp8_utils`, one extension call each with the switch on and none with it off, relative error 0.17 % on against
+2.6 % off.
+
+Serving A/B on the FP8 `qwen38` DSpark preset with patches 121–126 on both sides, one session, boot order control
+→ GEMM → GEMM → control, then one no-spec boot per side
+([receipts](profiling/rad29-gemm-bf16-serving-2026-11-10/)). Cycle time and accept length come from the server's
+decode-batch lines; the sampled ladder is 400 tokens at T 1.0 / top-p 0.95 / top-k 20.
+
+| by input tokens | 24 | 7,331 | 58,483 | 197,326 |
+|---|---:|---:|---:|---:|
+| DSpark cycle, ms, sampled ladder, mean of two boots | 50.84 → 46.90 (−7.7 %) | 51.72 → 47.64 (−7.9 %) | 53.78 → 49.70 (−7.6 %) | 59.86 → 55.98 (−6.5 %) |
+| the four boots, control / GEMM | 50.84, 50.84 / 46.91, 46.89 | 51.74, 51.69 / 47.71, 47.57 | 53.85, 53.71 / 49.71, 49.69 | 59.83, 59.89 / 56.04, 55.93 |
+| DSpark cycle / plain step | 1.76 → 1.61 | 1.74 → 1.60 | 1.73 → 1.60 | 1.72 → 1.60 |
+| canonical sweep, tok/s, two boots → two boots | 50.69 / 50.81 → 58.93 / 58.86 | 72.16 / 72.37 → 78.87 / 78.69 | 66.65 / 66.82 → 72.36 / 72.26 | 50.73 / 50.74 → 58.92 / 59.10 |
+| sampled ladder, tok/s, mean of two boots | 51.3 → 56.2 | 51.6 → 54.9 | 47.6 → 49.6 | 37.3 → 40.5 |
+| accept length, sampled, two boots → two boots | 2.60 / 2.60 → 2.44 / 2.58 | 2.62 / 2.50 → 2.58 / 2.51 | 2.48 / 2.44 → 2.51 / 2.38 | 2.42 / 2.00 → 1.85 / 2.35 |
+| forced greedy ladder, one prompt: tok/s (accept) | 52.9 (2.67) → 57.4 (2.63) | 63.4 (3.00) → 62.9 (3.00) | 53.5 (2.80) → 61.5 (2.97) | 49.5 (3.00) → 44.0 (2.42) |
+| no-spec canonical sweep, tok/s | 34.53 → 34.31 | 33.66 → 33.66 | 32.16 → 32.14 | 28.69 → 28.67 |
+
+Every GEMM boot is shorter than every control boot at every depth; the canonical sweep has equal completion
+tokens on both sides (80 / 38 / 33 / 37). The cycle saves 3.9–4.1 ms, the kernel bench predicts 3.3 ms per rank at
+nine rows. A spec-arm rate follows its continuation: the single forced greedy prompt at 197K loses accept length
+(3.00 → 2.42) and reads 11 % slower, while the paired probe at that depth does not move.
+
+Accept length (`scripts/bench/spec_accept_probe.py`, 24 greedy prompts of 300 tokens, verify count per request):
+3.787 → 3.769 pooled (×0.995, 95 % 0.972–1.019 over prompts) in the first order and 3.787 → 3.767 in the second;
+the two control boots repeat to the token (24 of 24 texts). By group: 16 short prompts ×1.008, four documents of
+190,000 characters ×1.011, four documents of 24,000 characters ×0.925 (all four lower, 95 % 0.908–0.961). The
+verify now runs in the decode GEMV's numeric class, so the committed text differs from the control's on 22 of
+24 prompts; the greedy sweep and the forced ladder start with the control's text at all four depths. No-spec:
+greedy text identical on 6 of 6 probes, canonical rows within 0.7 % (one-row decode never reaches the kernel;
+prompt tails of 2–32 rows do, first-token time 83 → 63 ms at 24 tokens and 118 → 145 ms at 7.3K on one boot per
+side, not gated). Capabilities 5/5 on the GEMM arm (basic, tool call, thinking, image, video), greedy needle 9/9
+at 32K / 131K / 197K ([receipt](quality/rad29-gemm1-natural-greedy.json), 33,904 / 137,094 / 208,296 actual
+prompt tokens).
+
+Disposition: adopted as patch 128, code default off, default on in the FP8 `qwen38` preset (`FP8_GEMM_BF16=0`
+restores the quantiser and the Triton tile). The gate held as written: cycle shorter at all four depths in both
+orders, pooled accept ×0.995 against a floor of 0.95, needle 9/9, capabilities 5/5, no no-spec row more than 2 %
+below the control. The four-document group at 24,000 characters is below the floor on its own and too small to
+read; a larger paired control at that size runs with the canonical sweep on the shipped preset. Other FP8 presets
+keep the Triton tile until their own A/B. The cycle is 1.60 plain steps at every depth, against radiance's 1.3.
+
 ## Evaluation methodology
 
 ### SWE-bench answer leakage through git history and the web (found 2026-09-18)

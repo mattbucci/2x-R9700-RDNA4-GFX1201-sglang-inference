@@ -943,12 +943,12 @@
   {
    "id": "RAD-25",
    "spec": "19-vllm-radiance-parity.md",
-   "status": "ready",
+   "status": "in_progress",
    "resource": "gpu",
    "depends_on": [
     "isolation result (done): the fine-grained staging buffer sums exactly, eager and in the graph"
    ],
-   "next_action": "Correct in-graph two-rank all-reduce on PCIe as a local patch in a development tree: the HIP constructor allocates self.buffer uncached (allocate_meta_buffer / hipDeviceMallocUncached) when the group is not fully linked, and should_custom_ar declines inputs >= max_size so prefill chunks stay on RCCL (the in-place path's memory growth across new tensor addresses is not characterised). Then a serving A/B in both orders. Worth at most +1.8 % at 24 tokens (RAD-2), so it runs after RAD-22, RAD-5, RAD-23 and RAD-15.",
+   "next_action": "Development tree /data/sgl-v0522-rad25: the HIP constructor allocates the staging buffer uncached when the group is not fully linked and should_custom_ar declines inputs at or above the buffer size (SGLANG_RDNA4_CUSTOM_AR_MAX_BYTES lowers the limit). Two-rank bench (scripts/bench/allreduce_rows_ladder.py): sums exact eager and in the graph, 10.7 / 22.3 / 32.2 / 58.9 us against RCCL's 17.8 / 29.5 / 38.9 / 61.2 us at 1 / 9 / 16 / 32 rows in a captured graph, no cap needed. Serving A/B running: two boots per side with DSpark, two without, patch 128 on every arm, memory growth over each arm recorded. Adopt when one side passes, the other is not slower, and quality and memory hold; otherwise revert.",
    "test_gate": [
     "isolation test: every output is the sum on both ranks, eager and graph, bf16 and fp32",
     "serving arm gates on validate_capabilities before any timing phase; greedy identity against RCCL recorded; needle grid unchanged",
@@ -1007,18 +1007,35 @@
   {
    "id": "RAD-29",
    "spec": "19-vllm-radiance-parity.md",
-   "status": "in_progress",
+   "status": "completed",
    "resource": "gpu",
    "depends_on": [
     "RAD-22b (done): the nine-row block-FP8 GEMM and its quantiser are 5.4 of 10.8 ms of the verify's excess at 24 tokens and 6.8 of 11.8 at 58K",
     "patch 122 (fp8_gemv_hip): build script, import guard and dispatch site to clone",
     "libr4d bench (benchmarks/profiling/libr4d-kernel-bench/m16-dev0.json): a WMMA tile fed from registers holds the one-row rate at eight rows (25.1 ms per forward against our Triton tile's 27.9)"
    ],
-   "next_action": "W8A16 WMMA GEMM for 2 <= M <= 32 rows as a HIP kernel (kernels/aot/csrc/quantization/fp8/fp8_gemm_bf16_hip.cu): E4M3 weights decoded to bf16 in registers and multiplied with the bf16 activations through v_wmma_f32_16x16x16_bf16, weight as the A operand (one lane streams 64 contiguous bytes of one weight row per 128-column block), block scale folded once per block, in-workgroup K split with an LDS reduce for narrow outputs, one or two 16-row activation tiles. Compile probe done on gfx1201 (builtin accepted, decode = 12 VALU instructions per 8 weight bytes). Next: kernel + build script + scripts/bench/bench_fp8_gemm_bf16_hip.py, check then cold-rotation timing on one idle card; a winner goes behind its own switch next to the patch-122 branch with a hook preflight, then the DSpark A/B.",
+   "next_action": "Adopted as patch 128, code default off, default on in the FP8 qwen38 preset (FP8_GEMM_BF16=0 restores the quantiser and the Triton tile). Follow-ups are RAD-29b: canonical sweep on the shipped preset from the live tree, a larger paired accept control at 24,000-character documents, the DFlash2 lane and the other FP8 presets.",
    "test_gate": [
     "check: fp64 reference on ragged shapes with asymmetric operands at M = 2 / 9 / 16 / 17 / 32, every K split, error inside the W8A16 GEMV's tolerance; the E4M3 code table decodes exactly",
     "kernel: faster than quantiser + Triton W8A8 tile at M = 9 on the six TP-split qwen38 shapes with the cold rotation, summed per forward; reported next to the M = 1 GEMV rate",
     "serving: DSpark cycle shorter at 24 / 7.3K / 58K / 197K in both orders, paired greedy accept probe not below 0.95x, needle 9/9, capabilities 5/5"
+   ],
+   "result": "2026-11-10. Kernel (benchmarks/profiling/rad29-gemm-bf16-kernel-2026-11-10/), ms per forward per rank with cold weights at 9 / 16 / 17 / 24 / 32 rows: quantiser + Triton tile 24.11 / 24.43 / 33.72 / 34.52 / 34.56, HIP GEMM 20.78 / 20.93 / 21.69 / 21.61 / 22.08, one-row GEMV 20.3; 702 of 702 fp64 check cases inside the GEMV's tolerance; 0.21 % from the unquantised-activation product against 3.1 % on the W8A8 path. Serving (benchmarks/profiling/rad29-gemm-bf16-serving-2026-11-10/), DSpark preset, control -> GEMM -> GEMM -> control: sampled-ladder cycle 50.84 / 51.72 / 53.78 / 59.86 -> 46.90 / 47.64 / 49.70 / 55.98 ms at 24 / 7.3K / 58K / 197K (x0.923 / 0.921 / 0.924 / 0.935, every GEMM boot shorter than every control boot), canonical sweep 50.7 / 72.2 / 66.7 / 50.7 and 50.8 / 72.4 / 66.8 / 50.7 -> 58.9 / 78.9 / 72.4 / 58.9 and 58.9 / 78.7 / 72.3 / 59.1 tok/s on equal completion tokens, paired greedy accept 3.787 -> 3.769 (x0.995 in both orders, control boots repeat to the token; four 24,000-character documents x0.925, all four lower), needle 9/9, capabilities 5/5, no-spec canonical rows x0.994 / 1.000 / 0.999 / 0.999 with identical greedy text on 6 of 6 probes. FINDINGS RAD-29."
+  },
+  {
+   "id": "RAD-29b",
+   "spec": "19-vllm-radiance-parity.md",
+   "status": "ready",
+   "resource": "gpu",
+   "depends_on": [
+    "RAD-29 (done, patch 128): the W8A16 GEMM is the qwen38 FP8 preset default; the A/B served it from a development tree",
+    "RAD-29 accept probe: four 24,000-character documents read x0.925 (all four lower) while 16 short prompts and four 190,000-character documents read x1.008 / x1.011"
+   ],
+   "next_action": "On the shipped preset from the live tree (extension rebuilt by scripts/build_fp8_gemm_bf16.sh, launcher defaults): canonical DSpark and no-spec sweeps for the README headline; paired greedy accept probe with 12 documents each at 24,000 and 96,000 characters against a FP8_GEMM_BF16=0 boot (also the restore knob's receipt). Then the DFlash2 lane on the same preset, and an A/B per other FP8 preset before any of them exports the switch.",
+   "test_gate": [
+    "the shipped boot logs the GEMM's active line and serves from /data/sgl-v0522; the FP8_GEMM_BF16=0 boot logs none",
+    "mid-depth accept: pooled ratio over the 24 documents not below 0.95x, or tok/s on those documents not below the control's; otherwise the preset default is reverted for DSpark",
+    "README headline rows change only from this sweep"
    ]
   }
  ]

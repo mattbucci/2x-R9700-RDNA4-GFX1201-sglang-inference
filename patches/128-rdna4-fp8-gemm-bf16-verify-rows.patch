@@ -1,0 +1,431 @@
+diff --git a/python/sglang/kernels/aot/csrc/quantization/fp8/fp8_gemm_bf16_hip.cu b/python/sglang/kernels/aot/csrc/quantization/fp8/fp8_gemm_bf16_hip.cu
+new file mode 100644
+index 0000000..583b063
+--- /dev/null
++++ b/python/sglang/kernels/aot/csrc/quantization/fp8/fp8_gemm_bf16_hip.cu
+@@ -0,0 +1,326 @@
++// SPDX-License-Identifier: Apache-2.0
++//
++// Block-scaled FP8 (E4M3) weight x bf16 activation GEMM for a few rows (M <= 32) on gfx1201
++// (RDNA4): the speculative-verify and short-tail form of a dense block-FP8 linear. Like the
++// one-row GEMV (fp8_gemv_hip.cu) it reads the bf16 activation directly (W8A16), so the
++// per-token-group activation quantiser in front of the W8A8 GEMM is not launched and the rows
++// keep the numeric class of plain decode.
++//
++// A wave owns sixteen weight rows and runs v_wmma_f32_16x16x16_bf16 with the weight as the A
++// operand. E4M3 bytes become bf16 in registers (v_cvt_pk_f32_fp8, then the top half of each
++// f32: exact, an E4M3 value has four significant bits), the activation is the B operand, and a
++// lane's eight accumulator slots are eight consecutive weight rows of one activation row. The
++// block scale is constant over a 128-column block, so a block accumulates unscaled and folds
++// once.
++//
++// The WMMA lane map, the weight-as-A arrangement and the per-block fold follow radiance's
++// libr4d/r4d_fp8_wmma.h and r4d_gemm_fp8a8.hip (Apache-2.0, Copyright 2026 Deadcode and the
++// radiance contributors, https://codeberg.org/StillDeadcode/radiance, revision 451b1368).
++// Changed here: bf16 activations through the 16-bit WMMA instead of quantised fp8 x fp8,
++// row-major weights read straight from the checkpoint layout (the K labelling below gives a
++// lane 64 contiguous bytes of its row per block, so there is no fragment-order weight copy and
++// no LDS staging), fp32 block scales on SGLang's [ceil(N/128)][ceil(K/128)] grid, a K split
++// inside the workgroup, and a torch extension binding.
++
++#ifdef USE_ROCM
++
++#include <torch/all.h>
++#include <ATen/hip/HIPContext.h>
++#include <c10/hip/HIPStream.h>
++#include <hip/hip_runtime.h>
++#include <cstdint>
++
++namespace {
++
++constexpr uint32_t kWave = 32;
++constexpr uint32_t kBlock = 128;  // scale block, rows and columns
++constexpr uint32_t kTile = 16;    // WMMA tile edge
++constexpr int64_t kMaxTokens = 32;  // two activation tiles
++
++// The return type of __builtin_amdgcn_cvt_pk_f32_fp8.
++typedef float v2f __attribute__((ext_vector_type(2)));
++// RDNA4 operand widths: eight bf16 per lane (4 VGPRs), eight f32 accumulator slots.
++typedef short s8v __attribute__((ext_vector_type(8)));
++typedef float f8v __attribute__((ext_vector_type(8)));
++
++// E4M3 -> f32, as in fp8_gemv_hip.cu: one instruction on gfx1201, the fallback handles
++// subnormal codes. They differ only on 0x7F / 0xFF (NaN in hardware), which no quantiser emits.
++__device__ __forceinline__ float e4m3(uint32_t b) {
++#if __has_builtin(__builtin_amdgcn_cvt_f32_fp8)
++  return __builtin_amdgcn_cvt_f32_fp8(b, 0);
++#else
++  const uint32_t sign = (b & 0x80u) << 24;
++  const uint32_t ex = (b >> 3) & 0x0Fu;
++  const uint32_t mn = b & 0x07u;
++  const float nrm = __uint_as_float(((ex + 120u) << 23) | (mn << 20));
++  const float sub = (float)mn * (1.0f / 512.0f);
++  return __uint_as_float(__float_as_uint(ex ? nrm : sub) | sign);
++#endif
++}
++
++// Two E4M3 bytes of a dword (bytes 2,3 when HI, else 0,1) to two bf16 packed in one dword. The
++// top sixteen bits of the f32 are the value: E4M3 subnormals (m * 2^-9) are normal bf16.
++template <bool HI>
++__device__ __forceinline__ uint32_t e4m3_pk_bf16(uint32_t q) {
++#if __has_builtin(__builtin_amdgcn_cvt_pk_f32_fp8)
++  const v2f e = __builtin_amdgcn_cvt_pk_f32_fp8(q, HI);
++  return (__float_as_uint(e.x) >> 16) | (__float_as_uint(e.y) & 0xFFFF0000u);
++#else
++  constexpr uint32_t s = HI ? 16u : 0u;
++  return (__float_as_uint(e4m3((q >> s) & 0xFFu)) >> 16) |
++         (__float_as_uint(e4m3((q >> (s + 8u)) & 0xFFu)) & 0xFFFF0000u);
++#endif
++}
++
++// Round to nearest even, as a bf16 cast does for finite values.
++__device__ __forceinline__ uint32_t f32_to_bf16(float f) {
++  const uint32_t u = __float_as_uint(f);
++  return (u + 0x7fffu + ((u >> 16) & 1u)) >> 16;
++}
++
++// One workgroup is one 16-row weight tile; its KS waves split the K blocks and wave 0 sums
++// the partials in wave order. NT is the number of 16-row activation tiles, PF how many blocks
++// of weight a lane keeps in flight ahead of the one it multiplies.
++//
++// Lane l with c = l % 16, h = l / 16 holds, for fragment t of block kb:
++//   A  weight row row0 + c,        k = 128 kb + 64 h + 8 t + j, j = 0..7 (64 contiguous bytes)
++//   B  activation row 16 n + c,    the same k
++//   D  slot j = output [16 n + c][row0 + 8 h + j]
++// The k labelling is a permutation of the block's columns applied to both operands, so the
++// sum is the same. The accumulator is column-distributed: a lane owns one activation row and
++// eight weight rows, not the other way round, so tests of this code need asymmetric operands.
++template <uint32_t KS, uint32_t NT, uint32_t PF>
++__global__ __launch_bounds__(KS * kWave) void fp8_gemm_bf16_kernel(
++    const uint8_t* __restrict__ W, const float* __restrict__ S,
++    const uint16_t* __restrict__ X, uint16_t* __restrict__ Y, uint32_t rows,
++    uint32_t cols, uint32_t sc_cols, uint32_t tokens, uint32_t interleave) {
++  __shared__ float part[(KS > 1u ? KS - 1u : 1u) * NT * 256u];
++  const uint32_t lane = threadIdx.x & (kWave - 1u);
++  // The wave index is the same in every lane; saying so keeps the K loop and the scale read
++  // scalar when the waves of a workgroup take different blocks.
++#if __has_builtin(__builtin_amdgcn_readfirstlane)
++  const uint32_t wave = __builtin_amdgcn_readfirstlane(threadIdx.x / kWave);
++#else
++  const uint32_t wave = threadIdx.x / kWave;
++#endif
++  const uint32_t c = lane & 15u, h = lane >> 4;
++  const uint32_t row0 = blockIdx.x * kTile;
++  // Weight rows past N re-read the last row and activation rows past M the first; neither is
++  // stored. An output depends on one weight row and one activation row only.
++  const uint32_t wrow = row0 + c < rows ? row0 + c : rows - 1u;
++  const uint8_t* wp = W + (size_t)wrow * cols + h * 64u;
++  const uint16_t* xp[NT];
++#pragma unroll
++  for (uint32_t n = 0; n < NT; ++n) {
++    const uint32_t tok = n * kTile + c;
++    xp[n] = X + (size_t)(tok < tokens ? tok : 0u) * cols + h * 64u;
++  }
++  const float* sp = S + (size_t)(row0 / kBlock) * sc_cols;
++  const uint32_t nblk = cols / kBlock;
++  // Interleaved waves take every KS-th block (neighbouring waves share a cacheline of each
++  // row), contiguous waves a K range each.
++  uint32_t kb = 0u, kend = nblk, kstep = 1u;
++  if (KS > 1u) {
++    if (interleave) {
++      kb = wave;
++      kstep = KS;
++    } else {
++      kb = nblk * wave / KS;
++      kend = nblk * (wave + 1u) / KS;
++    }
++  }
++
++  f8v out[NT];
++#pragma unroll
++  for (uint32_t n = 0; n < NT; ++n)
++#pragma unroll
++    for (uint32_t j = 0; j < 8u; ++j) out[n][j] = 0.0f;
++
++  uint32_t ahead[PF][16];
++#pragma unroll
++  for (uint32_t p = 0; p < PF; ++p) {
++#pragma unroll
++    for (uint32_t i = 0; i < 16u; ++i) ahead[p][i] = 0u;
++    const uint32_t kp = kb + p * kstep;
++    if (kp < kend) __builtin_memcpy(ahead[p], wp + (size_t)kp * kBlock, 64);
++  }
++
++  for (; kb < kend; kb += kstep) {
++    uint32_t cur[16];
++#pragma unroll
++    for (uint32_t i = 0; i < 16u; ++i) cur[i] = ahead[0][i];
++#pragma unroll
++    for (uint32_t p = 0; p + 1u < PF; ++p)
++#pragma unroll
++      for (uint32_t i = 0; i < 16u; ++i) ahead[p][i] = ahead[p + 1u][i];
++    const uint32_t kn = kb + PF * kstep;
++    if (kn < kend) __builtin_memcpy(ahead[PF - 1u], wp + (size_t)kn * kBlock, 64);
++
++    // The block's activations, 128 contiguous bytes per lane per tile, issued together.
++    uint32_t xa[NT][32];
++#pragma unroll
++    for (uint32_t n = 0; n < NT; ++n)
++      __builtin_memcpy(xa[n], xp[n] + (size_t)kb * kBlock, 128);
++
++    f8v raw[NT];
++#pragma unroll
++    for (uint32_t n = 0; n < NT; ++n)
++#pragma unroll
++      for (uint32_t j = 0; j < 8u; ++j) raw[n][j] = 0.0f;
++#pragma unroll
++    for (uint32_t t = 0; t < 8u; ++t) {
++      const uint32_t q0 = cur[2u * t], q1 = cur[2u * t + 1u];
++      uint32_t d[4];
++      d[0] = e4m3_pk_bf16<false>(q0);
++      d[1] = e4m3_pk_bf16<true>(q0);
++      d[2] = e4m3_pk_bf16<false>(q1);
++      d[3] = e4m3_pk_bf16<true>(q1);
++      s8v a;
++      __builtin_memcpy(&a, d, 16);
++#pragma unroll
++      for (uint32_t n = 0; n < NT; ++n) {
++        s8v b;
++        __builtin_memcpy(&b, &xa[n][4u * t], 16);
++        raw[n] = __builtin_amdgcn_wmma_f32_16x16x16_bf16_w32_gfx12(a, b, raw[n]);
++      }
++    }
++    const float s = sp[kb];
++#pragma unroll
++    for (uint32_t n = 0; n < NT; ++n)
++#pragma unroll
++      for (uint32_t j = 0; j < 8u; ++j) out[n][j] = fmaf(raw[n][j], s, out[n][j]);
++  }
++
++  if (KS > 1u) {
++    if (wave != 0u) {
++#pragma unroll
++      for (uint32_t n = 0; n < NT; ++n)
++#pragma unroll
++        for (uint32_t j = 0; j < 8u; ++j)
++          part[((wave - 1u) * NT + n) * 256u + lane * 8u + j] = out[n][j];
++    }
++    __syncthreads();
++    if (wave != 0u) return;
++    for (uint32_t w = 1u; w < KS; ++w)
++#pragma unroll
++      for (uint32_t n = 0; n < NT; ++n)
++#pragma unroll
++        for (uint32_t j = 0; j < 8u; ++j)
++          out[n][j] += part[((w - 1u) * NT + n) * 256u + lane * 8u + j];
++  }
++
++  const uint32_t col0 = row0 + h * 8u;  // this lane's first output column
++#pragma unroll
++  for (uint32_t n = 0; n < NT; ++n) {
++    const uint32_t tok = n * kTile + c;
++    if (tok >= tokens) continue;
++    uint16_t* y = Y + (size_t)tok * rows + col0;
++    if (col0 + 8u <= rows) {
++      uint32_t o[4];
++#pragma unroll
++      for (uint32_t i = 0; i < 4u; ++i)
++        o[i] = f32_to_bf16(out[n][2u * i]) | (f32_to_bf16(out[n][2u * i + 1u]) << 16);
++      __builtin_memcpy(y, o, 16);
++    } else {
++#pragma unroll
++      for (uint32_t j = 0; j < 8u; ++j)
++        if (col0 + j < rows) y[j] = (uint16_t)f32_to_bf16(out[n][j]);
++    }
++  }
++}
++
++// Two waves per sixteen rows, each on its own contiguous K range: on gfx1201 that is the fastest
++// form on 5120 to 17408 rows at 9, 17 and 32 tokens (four waves tie, one wave is 25 % slower).
++uint32_t ks_default(uint32_t) { return 2u; }
++
++}  // namespace
++
++// out[m][n] = sum_k x[m][k] * W[n][k] * S[n / 128][k / 128], bf16 in and out.
++//   activation    bf16 [M][K], 1 <= M <= 32, contiguous
++//   weight        float8_e4m3fn [N][K], K a multiple of 128, contiguous
++//   weight_scale  float32 [ceil(N/128)][K/128], contiguous
++//   ks            waves that split K inside a workgroup: 0 picks ks_default; 1, 2 and 4 pin it.
++//                 The split fixes the summation order, so it is part of the output.
++//   interleave    with ks > 1: zero gives wave w a contiguous K range (the default); nonzero
++//                 the blocks w, w + ks, ...
++//   prefetch      weight blocks a lane loads ahead: 0 picks one for up to sixteen tokens and two
++//                 above (one is 40 % slower at 32 tokens); 1 and 2 pin it.
++torch::Tensor fp8_gemm_bf16_hip(torch::Tensor activation, torch::Tensor weight,
++                                torch::Tensor weight_scale, int64_t ks,
++                                int64_t interleave, int64_t prefetch) {
++  TORCH_CHECK(activation.is_cuda() && weight.is_cuda() && weight_scale.is_cuda(),
++              "fp8_gemm_bf16_hip: tensors must be on a HIP device");
++  TORCH_CHECK(activation.scalar_type() == at::ScalarType::BFloat16,
++              "fp8_gemm_bf16_hip: activation must be bf16");
++  TORCH_CHECK(weight.scalar_type() == at::ScalarType::Float8_e4m3fn,
++              "fp8_gemm_bf16_hip: weight must be float8_e4m3fn");
++  TORCH_CHECK(weight_scale.scalar_type() == at::ScalarType::Float,
++              "fp8_gemm_bf16_hip: weight_scale must be float32");
++  TORCH_CHECK(activation.dim() == 2 && weight.dim() == 2 && weight_scale.dim() == 2,
++              "fp8_gemm_bf16_hip: activation, weight and weight_scale must be 2-D");
++  TORCH_CHECK(activation.is_contiguous() && weight.is_contiguous() &&
++                  weight_scale.is_contiguous(),
++              "fp8_gemm_bf16_hip: tensors must be contiguous");
++  const int64_t M = activation.size(0), N = weight.size(0), K = weight.size(1);
++  TORCH_CHECK(N > 0 && K > 0 && N <= INT32_MAX && K <= INT32_MAX);
++  TORCH_CHECK(M >= 1 && M <= kMaxTokens, "fp8_gemm_bf16_hip: 1 <= M <= 32");
++  TORCH_CHECK(activation.size(1) == K, "fp8_gemm_bf16_hip: activation must be [M][K]");
++  TORCH_CHECK(K % kBlock == 0, "fp8_gemm_bf16_hip: K must be a multiple of 128");
++  TORCH_CHECK(weight_scale.size(0) == (N + kBlock - 1) / kBlock &&
++                  weight_scale.size(1) == K / kBlock,
++              "fp8_gemm_bf16_hip: weight_scale must be on the 128 x 128 block grid");
++  TORCH_CHECK(ks == 0 || ks == 1 || ks == 2 || ks == 4,
++              "fp8_gemm_bf16_hip: ks must be 0, 1, 2 or 4");
++  TORCH_CHECK(prefetch >= 0 && prefetch <= 2, "fp8_gemm_bf16_hip: prefetch must be 0, 1 or 2");
++
++  auto output = torch::empty({M, N}, activation.options());
++  const auto stream = at::hip::getCurrentHIPStream();
++  const uint32_t rows = (uint32_t)N, cols = (uint32_t)K, tokens = (uint32_t)M;
++  const uint32_t k = ks ? (uint32_t)ks : ks_default(rows);
++  const uint32_t nt = tokens > kTile ? 2u : 1u;
++  const uint32_t pf = prefetch ? (uint32_t)prefetch : nt;
++  const uint32_t grid = (rows + kTile - 1u) / kTile;
++
++#define FP8_GEMM_LAUNCH(KSV, NTV, PFV)                                              \
++  hipLaunchKernelGGL((fp8_gemm_bf16_kernel<KSV, NTV, PFV>), dim3(grid),             \
++                     dim3(KSV * kWave), 0, stream,                                  \
++                     (const uint8_t*)weight.data_ptr(),                             \
++                     (const float*)weight_scale.data_ptr(),                         \
++                     (const uint16_t*)activation.data_ptr(),                        \
++                     (uint16_t*)output.data_ptr(), rows, cols,                      \
++                     (uint32_t)weight_scale.size(1), tokens,                        \
++                     (uint32_t)(interleave != 0))
++#define FP8_GEMM_SHAPE(KSV)                 \
++  if (nt == 1u && pf == 1u) {               \
++    FP8_GEMM_LAUNCH(KSV, 1, 1);             \
++  } else if (nt == 1u) {                    \
++    FP8_GEMM_LAUNCH(KSV, 1, 2);             \
++  } else if (pf == 1u) {                    \
++    FP8_GEMM_LAUNCH(KSV, 2, 1);             \
++  } else {                                  \
++    FP8_GEMM_LAUNCH(KSV, 2, 2);             \
++  }
++  if (k == 1u) {
++    FP8_GEMM_SHAPE(1)
++  } else if (k == 2u) {
++    FP8_GEMM_SHAPE(2)
++  } else {
++    FP8_GEMM_SHAPE(4)
++  }
++#undef FP8_GEMM_SHAPE
++#undef FP8_GEMM_LAUNCH
++  return output;
++}
++
++#endif  // USE_ROCM
++
++#ifdef USE_ROCM
++#include <torch/extension.h>
++
++PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
++  m.def("fp8_gemm_bf16_hip", &fp8_gemm_bf16_hip,
++        "Block-FP8 weight x bf16 activation GEMM for 1 <= M <= 32 rows (HIP/ROCm)",
++        py::arg("activation"), py::arg("weight"), py::arg("weight_scale"),
++        py::arg("ks") = 0, py::arg("interleave") = 0, py::arg("prefetch") = 0);
++}
++#endif
+diff --git a/python/sglang/srt/layers/quantization/fp8_utils.py b/python/sglang/srt/layers/quantization/fp8_utils.py
+index 2ed04d7..94451f9 100755
+--- a/python/sglang/srt/layers/quantization/fp8_utils.py
++++ b/python/sglang/srt/layers/quantization/fp8_utils.py
+@@ -52,7 +52,7 @@ from sglang.srt.utils import (
+     is_xpu,
+     offloader,
+ )
+-from sglang.srt.utils.common import torch_release
++from sglang.srt.utils.common import get_int_env_var, torch_release
+ from sglang.srt.utils.custom_op import register_custom_op
+ 
+ if TYPE_CHECKING:
+@@ -73,6 +73,25 @@ _fp8_gemv_hip_enabled = _fp8_gemv_bf16_hip is not None and get_bool_env_var(
+ )
+ _fp8_gemv_hip_logged = False
+ 
++# RDNA4: native HIP W8A16 WMMA GEMM for the few-row form (2 <= M <= 32) of a
++# dense block-FP8 linear: the speculative verify pass, short extends and small
++# decode batches (kernels/aot/csrc/quantization/fp8/fp8_gemm_bf16_hip.cu, built
++# by scripts/build_fp8_gemm_bf16.sh). Like the GEMV it reads the bf16
++# activation, so the per-token-group quantiser is skipped and the rows see the
++# same activation precision as a one-row decode step. Opt-in:
++# SGLANG_RDNA4_FP8_GEMM_BF16=1; SGLANG_RDNA4_FP8_GEMM_BF16_MAX_M caps the rows.
++try:
++    from fp8_gemm_bf16_hip_ext import fp8_gemm_bf16_hip as _fp8_gemm_bf16_hip
++except ImportError:
++    _fp8_gemm_bf16_hip = None
++_fp8_gemm_bf16_enabled = _fp8_gemm_bf16_hip is not None and get_bool_env_var(
++    "SGLANG_RDNA4_FP8_GEMM_BF16", "false"
++)
++_fp8_gemm_bf16_max_m = max(
++    2, min(32, get_int_env_var("SGLANG_RDNA4_FP8_GEMM_BF16_MAX_M", 32))
++)
++_fp8_gemm_bf16_logged = False
++
+ 
+ def _fp8_gemv_hip_eligible(
+     input_2d: torch.Tensor,
+@@ -92,6 +111,29 @@ def _fp8_gemv_hip_eligible(
+         and weight_scale.is_contiguous()
+     )
+ 
++
++def _fp8_gemm_bf16_eligible(
++    input_2d: torch.Tensor,
++    weight: torch.Tensor,
++    block_size: List[int],
++    weight_scale: torch.Tensor,
++) -> bool:
++    n, k = weight.shape
++    return (
++        2 <= input_2d.shape[0] <= _fp8_gemm_bf16_max_m
++        and input_2d.dtype == torch.bfloat16
++        and weight.dtype == torch.float8_e4m3fn
++        and weight_scale.dtype == torch.float32
++        and weight_scale.dim() == 2
++        and block_size[0] == 128
++        and block_size[1] == 128
++        and k % 128 == 0
++        and weight_scale.shape[0] == (n + 127) // 128
++        and weight_scale.shape[1] == k // 128
++        and weight.is_contiguous()
++        and weight_scale.is_contiguous()
++    )
++
+ logger = logging.getLogger(__name__)
+ 
+ _is_hip = is_hip()
+@@ -1650,6 +1692,29 @@ def triton_w8a8_block_fp8_linear(
+                 if bias is not None:
+                     output = output + bias
+                 return output.view(*output_shape)
++        if (
++            _fp8_gemm_bf16_enabled
++            and not act_scale_ue8m0
++            and _fp8_gemm_bf16_eligible(input_2d, weight, block_size, weight_scale)
++        ):
++            from sglang.srt.batch_invariant_ops import (
++                is_batch_invariant_mode_enabled,
++            )
++
++            if not is_batch_invariant_mode_enabled():
++                global _fp8_gemm_bf16_logged
++                if not _fp8_gemm_bf16_logged:
++                    _fp8_gemm_bf16_logged = True
++                    logger.info(
++                        "[RDNA4] block-FP8 M=2..%d rows: native HIP W8A16 WMMA GEMM active",
++                        _fp8_gemm_bf16_max_m,
++                    )
++                output = _fp8_gemm_bf16_hip(
++                    input_2d.contiguous(), weight, weight_scale
++                )
++                if bias is not None:
++                    output = output + bias
++                return output.view(*output_shape)
+         if act_scale_ue8m0:
+             # Power-of-two scales in fp32 storage, as ue8m0 checkpoints quantize.
+             q_input, x_scale = sglang_per_token_group_quant_fp8(

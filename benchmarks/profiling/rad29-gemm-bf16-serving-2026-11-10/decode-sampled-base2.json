@@ -1,0 +1,89 @@
+{
+  "label": "base2-sampled",
+  "tag": "",
+  "note": "",
+  "port": 23334,
+  "maxtok": 400,
+  "runs": 2,
+  "sampling": {
+    "temperature": 1.0,
+    "top_p": 0.95,
+    "top_k": 20,
+    "seed": 7
+  },
+  "ignore_eos": true,
+  "points": [
+    {
+      "context": 128,
+      "input_len": 24,
+      "runs_tps": [
+        52.63,
+        52.72
+      ],
+      "median_tps": 52.677,
+      "min_tps": 52.63,
+      "max_tps": 52.724,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "median_tpot_ms": 18.98,
+      "sample": "# The Hierarchy of Speed: An In-Depth Analysis of GPU Memory",
+      "median_ttft_ms": 378.7
+    },
+    {
+      "context": 8192,
+      "input_len": 7331,
+      "runs_tps": [
+        65.96,
+        47.92
+      ],
+      "median_tps": 55.513,
+      "min_tps": 47.925,
+      "max_tps": 65.957,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "median_tpot_ms": 18.01,
+      "sample": "The provided text consists of the famous pangram \"The quick ",
+      "median_ttft_ms": 1700.5
+    },
+    {
+      "context": 65536,
+      "input_len": 58483,
+      "runs_tps": [
+        45.43,
+        47.02
+      ],
+      "median_tps": 46.211,
+      "min_tps": 45.434,
+      "max_tps": 47.016,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "median_tpot_ms": 21.64,
+      "sample": "The provided text consists of the classic English pangram \"T",
+      "median_ttft_ms": 15234.7
+    },
+    {
+      "context": 221184,
+      "input_len": 197326,
+      "runs_tps": [
+        30.96,
+        35.26
+      ],
+      "median_tps": 32.966,
+      "min_tps": 30.956,
+      "max_tps": 35.256,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "median_tpot_ms": 30.33,
+      "sample": "The text consists of the single pangram \"The quick brown fox",
+      "median_ttft_ms": 76666.5
+    }
+  ]
+}

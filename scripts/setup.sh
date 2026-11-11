@@ -430,6 +430,17 @@ if [ -f "$SCRIPT_DIR/build_lm_head_int8.sh" ]; then
 fi
 
 # -------------------------------------------------------------------
+# Step 5e: Build block-FP8 bf16 GEMM kernel (patches/128)
+# -------------------------------------------------------------------
+echo ""
+echo "[5e/6] Building block-FP8 bf16 GEMM HIP kernel for gfx1201..."
+echo "  Speculative verify rows and short prefill tails (2..32 rows), qwen38 FP8 preset."
+if [ -f "$SCRIPT_DIR/build_fp8_gemm_bf16.sh" ]; then
+    SGL_KERNEL_DIR="$SGL_KERNEL_DIR" "$SCRIPT_DIR/build_fp8_gemm_bf16.sh" --env "$ENV_NAME" || \
+      echo "  WARNING: block-FP8 bf16 GEMM kernel build failed (non-fatal — the quantiser and the Triton tile serve those rows)"
+fi
+
+# -------------------------------------------------------------------
 # Step 6: Verify installation
 # -------------------------------------------------------------------
 echo ""

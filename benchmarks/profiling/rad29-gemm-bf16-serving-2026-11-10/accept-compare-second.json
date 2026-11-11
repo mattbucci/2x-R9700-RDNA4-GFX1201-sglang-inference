@@ -1,0 +1,60 @@
+{
+ "control": "/home/letsrtfm/AI/2x-R9700-RDNA4-GFX1201-sglang-inference/benchmarks/profiling/rad29-gemm-bf16-serving-2026-11-10/accept-base2.json",
+ "treatment": "/home/letsrtfm/AI/2x-R9700-RDNA4-GFX1201-sglang-inference/benchmarks/profiling/rad29-gemm-bf16-serving-2026-11-10/accept-gemm2.json",
+ "cases": 24,
+ "groups": {
+  "short": {
+   "cases": 16,
+   "same_text": 0,
+   "control_accept": 3.6669,
+   "treatment_accept": 3.6923,
+   "ratio": 1.0069,
+   "ratio_ci95": [
+    0.9778,
+    1.0359
+   ],
+   "treatment_lower": 6,
+   "treatment_higher": 9
+  },
+  "doc-24000": {
+   "cases": 4,
+   "same_text": 1,
+   "control_accept": 4.2403,
+   "treatment_accept": 3.9216,
+   "ratio": 0.9248,
+   "ratio_ci95": [
+    0.9085,
+    0.9612
+   ],
+   "treatment_lower": 4,
+   "treatment_higher": 0
+  },
+  "doc-190000": {
+   "cases": 4,
+   "same_text": 1,
+   "control_accept": 3.8881,
+   "treatment_accept": 3.9324,
+   "ratio": 1.0114,
+   "ratio_ci95": [
+    0.9691,
+    1.0302
+   ],
+   "treatment_lower": 1,
+   "treatment_higher": 1
+  },
+  "all": {
+   "cases": 24,
+   "same_text": 2,
+   "control_accept": 3.7865,
+   "treatment_accept": 3.7666,
+   "ratio": 0.9947,
+   "ratio_ci95": [
+    0.971,
+    1.0187
+   ],
+   "treatment_lower": 11,
+   "treatment_higher": 10
+  }
+ },
+ "verdict": "pass"
+}

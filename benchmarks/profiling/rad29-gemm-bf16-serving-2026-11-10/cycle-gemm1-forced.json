@@ -1,0 +1,48 @@
+{
+ "label": "gemm1-forced",
+ "note": "qwen38 FP8 DSpark preset, dev tree rad29",
+ "log": "/data/logs/rad29-gemm-bf16-serving-2026-11-10/server-gemm1.log",
+ "from_line": 835,
+ "to_line": 929,
+ "line_numbering": "newline",
+ "decode_lines_dropped_after_prefill": 8,
+ "decode_lines_dropped_no_depth": 0,
+ "depths": {
+  "24": {
+   "decode_batches": {
+    "lines": 6,
+    "accept_len": 2.63,
+    "tok_s": 56.89,
+    "cycles_s": 21.55,
+    "cycle_ms": 46.4
+   }
+  },
+  "7.3K": {
+   "decode_batches": {
+    "lines": 5,
+    "accept_len": 3.0,
+    "tok_s": 63.83,
+    "cycles_s": 21.28,
+    "cycle_ms": 46.99
+   }
+  },
+  "58K": {
+   "decode_batches": {
+    "lines": 4,
+    "accept_len": 2.97,
+    "tok_s": 60.6,
+    "cycles_s": 20.38,
+    "cycle_ms": 49.07
+   }
+  },
+  "197K": {
+   "decode_batches": {
+    "lines": 7,
+    "accept_len": 2.42,
+    "tok_s": 43.82,
+    "cycles_s": 18.06,
+    "cycle_ms": 55.38
+   }
+  }
+ }
+}

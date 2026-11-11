@@ -1,0 +1,443 @@
+{
+ "experiment": "RAD-29 hook preflight",
+ "tree": "/data/sgl-v0522-rad29/python",
+ "fp8_utils": "/data/sgl-v0522-rad29/python/sglang/srt/layers/quantization/fp8_utils.py",
+ "device": "AMD Radeon AI PRO R9700",
+ "ok": true,
+ "rows": [
+  {
+   "linear": "mlp.gate_up_proj",
+   "N": 17408,
+   "K": 5120,
+   "row_cap": 32,
+   "per_rows": {
+    "2": {
+     "calls_on": 1,
+     "calls_off": 0,
+     "rel_err_on": 0.001649955287330283,
+     "rel_err_off": 0.025334038710937624,
+     "finite": true
+    },
+    "9": {
+     "calls_on": 1,
+     "calls_off": 0,
+     "rel_err_on": 0.001654364311973674,
+     "rel_err_off": 0.025591126478232782,
+     "finite": true
+    },
+    "16": {
+     "calls_on": 1,
+     "calls_off": 0,
+     "rel_err_on": 0.0016556607219033205,
+     "rel_err_off": 0.02568094626382416,
+     "finite": true
+    },
+    "17": {
+     "calls_on": 1,
+     "calls_off": 0,
+     "rel_err_on": 0.0016547899456710272,
+     "rel_err_off": 0.02569235019828834,
+     "finite": true
+    },
+    "32": {
+     "calls_on": 1,
+     "calls_off": 0,
+     "rel_err_on": 0.0016555820783090587,
+     "rel_err_off": 0.025821807401379085,
+     "finite": true
+    }
+   },
+   "gemm_calls": {
+    "m1_on": 0,
+    "m33_on": 0,
+    "m9_3d_on": 1,
+    "m9_3d_rows_first_on": 1,
+    "strided_on": 1,
+    "m17_cap16_on": 0,
+    "noncontig_weight_on": 0
+   },
+   "dtype_shape_ok": true,
+   "bias_exact": true,
+   "leading_dims_exact": true,
+   "strided_equals_contiguous": true,
+   "rows_independent": true,
+   "m1_bit_identical_to_off": true,
+   "m33_bit_identical_to_off": true,
+   "noncontig_weight_equals_off": "AssertionError: ",
+   "graph_replay_equals_eager": true,
+   "ok": true
+  },
+  {
+   "linear": "mlp.down_proj",
+   "N": 5120,
+   "K": 8704,
+   "row_cap": 32,
+   "per_rows": {
+    "2": {
+     "calls_on": 1,
+     "calls_off": 0,
+     "rel_err_on": 0.001655167196506426,
+     "rel_err_off": 0.025904354725198784,
+     "finite": true
+    },
+    "9": {
+     "calls_on": 1,
+     "calls_off": 0,
+     "rel_err_on": 0.001656416296340588,
+     "rel_err_off": 0.025821201641090558,
+     "finite": true
+    },
+    "16": {
+     "calls_on": 1,
+     "calls_off": 0,
+     "rel_err_on": 0.0016635371448226561,
+     "rel_err_off": 0.02584931333512312,
+     "finite": true
+    },
+    "17": {
+     "calls_on": 1,
+     "calls_off": 0,
+     "rel_err_on": 0.0016608286585888376,
+     "rel_err_off": 0.025843181099180098,
+     "finite": true
+    },
+    "32": {
+     "calls_on": 1,
+     "calls_off": 0,
+     "rel_err_on": 0.001661529131670526,
+     "rel_err_off": 0.02582852937325761,
+     "finite": true
+    }
+   },
+   "gemm_calls": {
+    "m1_on": 0,
+    "m33_on": 0,
+    "m9_3d_on": 1,
+    "m9_3d_rows_first_on": 1,
+    "strided_on": 1,
+    "m17_cap16_on": 0,
+    "noncontig_weight_on": 0
+   },
+   "dtype_shape_ok": true,
+   "bias_exact": true,
+   "leading_dims_exact": true,
+   "strided_equals_contiguous": true,
+   "rows_independent": true,
+   "m1_bit_identical_to_off": true,
+   "m33_bit_identical_to_off": true,
+   "noncontig_weight_equals_off": "AssertionError: ",
+   "graph_replay_equals_eager": true,
+   "ok": true
+  },
+  {
+   "linear": "linear_attn.in_proj_qkvz",
+   "N": 16384,
+   "K": 5120,
+   "row_cap": 32,
+   "per_rows": {
+    "2": {
+     "calls_on": 1,
+     "calls_off": 0,
+     "rel_err_on": 0.0016553072726936066,
+     "rel_err_off": 0.025856323502097343,
+     "finite": true
+    },
+    "9": {
+     "calls_on": 1,
+     "calls_off": 0,
+     "rel_err_on": 0.0016474602602443936,
+     "rel_err_off": 0.025703055202335307,
+     "finite": true
+    },
+    "16": {
+     "calls_on": 1,
+     "calls_off": 0,
+     "rel_err_on": 0.001652102989106951,
+     "rel_err_off": 0.025728441321770868,
+     "finite": true
+    },
+    "17": {
+     "calls_on": 1,
+     "calls_off": 0,
+     "rel_err_on": 0.0016528936703105776,
+     "rel_err_off": 0.02570570419120967,
+     "finite": true
+    },
+    "32": {
+     "calls_on": 1,
+     "calls_off": 0,
+     "rel_err_on": 0.0016557104242826428,
+     "rel_err_off": 0.025702807695579324,
+     "finite": true
+    }
+   },
+   "gemm_calls": {
+    "m1_on": 0,
+    "m33_on": 0,
+    "m9_3d_on": 1,
+    "m9_3d_rows_first_on": 1,
+    "strided_on": 1,
+    "m17_cap16_on": 0,
+    "noncontig_weight_on": 0
+   },
+   "dtype_shape_ok": true,
+   "bias_exact": true,
+   "leading_dims_exact": true,
+   "strided_equals_contiguous": true,
+   "rows_independent": true,
+   "m1_bit_identical_to_off": true,
+   "m33_bit_identical_to_off": true,
+   "noncontig_weight_equals_off": "AssertionError: ",
+   "graph_replay_equals_eager": true,
+   "ok": true
+  },
+  {
+   "linear": "linear_attn.in_proj_qkvz/2",
+   "N": 8192,
+   "K": 5120,
+   "row_cap": 32,
+   "per_rows": {
+    "2": {
+     "calls_on": 1,
+     "calls_off": 0,
+     "rel_err_on": 0.0016559816105685121,
+     "rel_err_off": 0.025820165437811043,
+     "finite": true
+    },
+    "9": {
+     "calls_on": 1,
+     "calls_off": 0,
+     "rel_err_on": 0.0016549171853822524,
+     "rel_err_off": 0.025532602898102448,
+     "finite": true
+    },
+    "16": {
+     "calls_on": 1,
+     "calls_off": 0,
+     "rel_err_on": 0.0016562286099425082,
+     "rel_err_off": 0.02563129435004811,
+     "finite": true
+    },
+    "17": {
+     "calls_on": 1,
+     "calls_off": 0,
+     "rel_err_on": 0.0016560347829340384,
+     "rel_err_off": 0.02565961928009035,
+     "finite": true
+    },
+    "32": {
+     "calls_on": 1,
+     "calls_off": 0,
+     "rel_err_on": 0.0016579600312627942,
+     "rel_err_off": 0.025701828503208655,
+     "finite": true
+    }
+   },
+   "gemm_calls": {
+    "m1_on": 0,
+    "m33_on": 0,
+    "m9_3d_on": 1,
+    "m9_3d_rows_first_on": 1,
+    "strided_on": 1,
+    "m17_cap16_on": 0,
+    "noncontig_weight_on": 0
+   },
+   "dtype_shape_ok": true,
+   "bias_exact": true,
+   "leading_dims_exact": true,
+   "strided_equals_contiguous": true,
+   "rows_independent": true,
+   "m1_bit_identical_to_off": true,
+   "m33_bit_identical_to_off": true,
+   "noncontig_weight_equals_off": "AssertionError: ",
+   "graph_replay_equals_eager": true,
+   "ok": true
+  },
+  {
+   "linear": "linear_attn.out_proj",
+   "N": 5120,
+   "K": 6144,
+   "row_cap": 32,
+   "per_rows": {
+    "2": {
+     "calls_on": 1,
+     "calls_off": 0,
+     "rel_err_on": 0.0016562276830986598,
+     "rel_err_off": 0.025615756413769765,
+     "finite": true
+    },
+    "9": {
+     "calls_on": 1,
+     "calls_off": 0,
+     "rel_err_on": 0.0016596866552872095,
+     "rel_err_off": 0.025736691046708872,
+     "finite": true
+    },
+    "16": {
+     "calls_on": 1,
+     "calls_off": 0,
+     "rel_err_on": 0.0016589773456526895,
+     "rel_err_off": 0.025823829655108443,
+     "finite": true
+    },
+    "17": {
+     "calls_on": 1,
+     "calls_off": 0,
+     "rel_err_on": 0.001657868989066083,
+     "rel_err_off": 0.025791948261930243,
+     "finite": true
+    },
+    "32": {
+     "calls_on": 1,
+     "calls_off": 0,
+     "rel_err_on": 0.0016586647382148098,
+     "rel_err_off": 0.025686449077474548,
+     "finite": true
+    }
+   },
+   "gemm_calls": {
+    "m1_on": 0,
+    "m33_on": 0,
+    "m9_3d_on": 1,
+    "m9_3d_rows_first_on": 1,
+    "strided_on": 1,
+    "m17_cap16_on": 0,
+    "noncontig_weight_on": 0
+   },
+   "dtype_shape_ok": true,
+   "bias_exact": true,
+   "leading_dims_exact": true,
+   "strided_equals_contiguous": true,
+   "rows_independent": true,
+   "m1_bit_identical_to_off": true,
+   "m33_bit_identical_to_off": true,
+   "noncontig_weight_equals_off": "AssertionError: ",
+   "graph_replay_equals_eager": true,
+   "ok": true
+  },
+  {
+   "linear": "self_attn.qkv_proj",
+   "N": 7168,
+   "K": 5120,
+   "row_cap": 32,
+   "per_rows": {
+    "2": {
+     "calls_on": 1,
+     "calls_off": 0,
+     "rel_err_on": 0.0016541836910633739,
+     "rel_err_off": 0.02590825078630628,
+     "finite": true
+    },
+    "9": {
+     "calls_on": 1,
+     "calls_off": 0,
+     "rel_err_on": 0.0016491394509589193,
+     "rel_err_off": 0.025766988260321956,
+     "finite": true
+    },
+    "16": {
+     "calls_on": 1,
+     "calls_off": 0,
+     "rel_err_on": 0.001649527193251968,
+     "rel_err_off": 0.025809399824935582,
+     "finite": true
+    },
+    "17": {
+     "calls_on": 1,
+     "calls_off": 0,
+     "rel_err_on": 0.00164837031008971,
+     "rel_err_off": 0.025794794930992362,
+     "finite": true
+    },
+    "32": {
+     "calls_on": 1,
+     "calls_off": 0,
+     "rel_err_on": 0.001654305090243767,
+     "rel_err_off": 0.02581578383605947,
+     "finite": true
+    }
+   },
+   "gemm_calls": {
+    "m1_on": 0,
+    "m33_on": 0,
+    "m9_3d_on": 1,
+    "m9_3d_rows_first_on": 1,
+    "strided_on": 1,
+    "m17_cap16_on": 0,
+    "noncontig_weight_on": 0
+   },
+   "dtype_shape_ok": true,
+   "bias_exact": true,
+   "leading_dims_exact": true,
+   "strided_equals_contiguous": true,
+   "rows_independent": true,
+   "m1_bit_identical_to_off": true,
+   "m33_bit_identical_to_off": true,
+   "noncontig_weight_equals_off": "AssertionError: ",
+   "graph_replay_equals_eager": true,
+   "ok": true
+  },
+  {
+   "linear": "self_attn.o_proj",
+   "N": 5120,
+   "K": 3072,
+   "row_cap": 32,
+   "per_rows": {
+    "2": {
+     "calls_on": 1,
+     "calls_off": 0,
+     "rel_err_on": 0.0016561534365192685,
+     "rel_err_off": 0.025969324912410836,
+     "finite": true
+    },
+    "9": {
+     "calls_on": 1,
+     "calls_off": 0,
+     "rel_err_on": 0.0016653833415417121,
+     "rel_err_off": 0.025792414413789294,
+     "finite": true
+    },
+    "16": {
+     "calls_on": 1,
+     "calls_off": 0,
+     "rel_err_on": 0.001666089446633857,
+     "rel_err_off": 0.025759498188836057,
+     "finite": true
+    },
+    "17": {
+     "calls_on": 1,
+     "calls_off": 0,
+     "rel_err_on": 0.0016659458972421365,
+     "rel_err_off": 0.025742150983366244,
+     "finite": true
+    },
+    "32": {
+     "calls_on": 1,
+     "calls_off": 0,
+     "rel_err_on": 0.0016636446194161813,
+     "rel_err_off": 0.02581567981192309,
+     "finite": true
+    }
+   },
+   "gemm_calls": {
+    "m1_on": 0,
+    "m33_on": 0,
+    "m9_3d_on": 1,
+    "m9_3d_rows_first_on": 1,
+    "strided_on": 1,
+    "m17_cap16_on": 0,
+    "noncontig_weight_on": 0
+   },
+   "dtype_shape_ok": true,
+   "bias_exact": true,
+   "leading_dims_exact": true,
+   "strided_equals_contiguous": true,
+   "rows_independent": true,
+   "m1_bit_identical_to_off": true,
+   "m33_bit_identical_to_off": true,
+   "noncontig_weight_equals_off": "AssertionError: ",
+   "graph_replay_equals_eager": true,
+   "ok": true
+  }
+ ]
+}

@@ -1,0 +1,11 @@
+{
+ "label": "base2-sweep",
+ "note": "qwen38 FP8 DSpark preset, dev tree rad29",
+ "log": "/data/logs/rad29-gemm-bf16-serving-2026-11-10/server-base2.log",
+ "from_line": 716,
+ "to_line": 815,
+ "line_numbering": "newline",
+ "decode_lines_dropped_after_prefill": 8,
+ "decode_lines_dropped_no_depth": 0,
+ "depths": {}
+}

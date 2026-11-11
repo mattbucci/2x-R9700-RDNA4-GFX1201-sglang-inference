@@ -1,0 +1,89 @@
+{
+  "label": "base1-sampled",
+  "tag": "",
+  "note": "",
+  "port": 23334,
+  "maxtok": 400,
+  "runs": 2,
+  "sampling": {
+    "temperature": 1.0,
+    "top_p": 0.95,
+    "top_k": 20,
+    "seed": 7
+  },
+  "ignore_eos": true,
+  "points": [
+    {
+      "context": 128,
+      "input_len": 24,
+      "runs_tps": [
+        49.31,
+        50.62
+      ],
+      "median_tps": 49.956,
+      "min_tps": 49.31,
+      "max_tps": 50.62,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "median_tpot_ms": 20.02,
+      "sample": "# The Lifeline of Computation: A Deep Dive into GPU Memory H",
+      "median_ttft_ms": 354.7
+    },
+    {
+      "context": 8192,
+      "input_len": 7331,
+      "runs_tps": [
+        48.12,
+        47.33
+      ],
+      "median_tps": 47.721,
+      "min_tps": 47.33,
+      "max_tps": 48.119,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "median_tpot_ms": 20.96,
+      "sample": "The provided text consists of the famous pangram \"The quick ",
+      "median_ttft_ms": 1701.9
+    },
+    {
+      "context": 65536,
+      "input_len": 58483,
+      "runs_tps": [
+        55.72,
+        43.64
+      ],
+      "median_tps": 48.944,
+      "min_tps": 43.638,
+      "max_tps": 55.72,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "median_tpot_ms": 20.43,
+      "sample": "The provided text consists of the pangram \"The quick brown f",
+      "median_ttft_ms": 15286.2
+    },
+    {
+      "context": 221184,
+      "input_len": 197326,
+      "runs_tps": [
+        39.64,
+        43.91
+      ],
+      "median_tps": 41.665,
+      "min_tps": 39.643,
+      "max_tps": 43.905,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "median_tpot_ms": 24.0,
+      "sample": "The provided text consists of the classic English pangram \"T",
+      "median_ttft_ms": 76702.6
+    }
+  ]
+}

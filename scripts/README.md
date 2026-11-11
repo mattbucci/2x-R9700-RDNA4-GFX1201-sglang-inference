@@ -47,6 +47,7 @@ bash scripts/fleet_drift_check.sh
 | `build_awq_gemv.sh` | Build HIP AWQ GEMV kernel |
 | `build_fp8_gemv.sh` | Build HIP block-FP8 W8A16 GEMV kernel (patch 122) |
 | `build_lm_head_int8.sh` | Build HIP int8 LM-head arg-max filter kernel (patch 127, opt-in) |
+| `build_fp8_gemm_bf16.sh` | Build HIP block-FP8 W8A16 WMMA GEMM kernel for 2..32 rows (patch 128) |
 | `fleet_drift_check.sh` / `KNOWN_DRIFT.tsv` | Fail closed on unreviewed sister-script divergence |
 | `gpu_telemetry.sh` | Per-card sysfs/hwmon telemetry → `/data/logs/gpu-telemetry/gpu-YYYY-MM-DD.jsonl` every 30 s (temps, power, clocks, link, config-space sentinel); skips runtime-suspended cards |
 | [`bench/`](bench/) | Benchmark scripts |
