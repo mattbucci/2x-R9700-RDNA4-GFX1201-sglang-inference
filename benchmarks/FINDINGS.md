@@ -1091,10 +1091,11 @@ serving arm's memory exhaustion (one IPC import per new tensor address in a pref
 open. Radiance's two-rank reduce (`r4d_ar_oneshot_2rank_exact.hip`) pushes into uncached fine-grained scratch on the
 peer and shares only scratch and flags, which is the same memory class.
 
-Disposition: RCCL stays the reduce on every preset, and the two switches must not be set on this rig. Patch 119
+Disposition: without patch 129, RCCL stays the reduce on every preset and the two switches must not be set on
+this rig. Patch 119
 stays: it repairs the setup and logs the path a group reduces on, which is what made this arm checkable. A correct
 in-graph reduce is the shipped kernel with a fine-grained staging buffer and large inputs left on RCCL (RAD-25),
-worth at most +1.8 % on this preset.
+worth at most +1.8 % on this preset; RAD-25 measured it and patch 129 carries it.
 
 ### RAD-1 — TP-split DeltaNet projections: decode +13–16 %, prefill +8–18 %, DSpark pool 206K → 431K; patch 121 (2026-11-09)
 
@@ -1837,6 +1838,84 @@ orders, pooled accept ×0.995 against a floor of 0.95, needle 9/9, capabilities 
 below the control. The four-document group at 24,000 characters is below the floor on its own and too small to
 read; a larger paired control at that size runs with the canonical sweep on the shipped preset. Other FP8 presets
 keep the Triton tile until their own A/B. The cycle is 1.60 plain steps at every depth, against radiance's 1.3.
+
+### RAD-25 — in-graph all-reduce on an uncached staging buffer: no-spec decode +1.8–2.1 % at every depth, DSpark cycle −1.0–1.1 %; patch 129, qwen38 FP8 preset default (2026-11-10)
+
+Mechanism (patch 129 on top of patch 119; the server takes the path with `SGLANG_USE_1STAGE_ALLREDUCE=1` and no
+`--disable-custom-all-reduce`). Upstream's one-stage HIP all-reduce is a pull design: each rank copies its input
+into a staging buffer and the peer reads that buffer through an IPC mapping. RAD-2 measured wrong sums on this rig
+and its isolation test put the fault in the buffer's memory class: out of the PyTorch pool the peer reads the
+previous payload, allocated uncached and fine-grained the same kernel is exact. Patch 129 allocates the staging
+buffer with `allocate_meta_buffer` (the class of the signal buffer) when the group is not fully XGMI-linked, and
+`should_custom_ar` declines every input that does not fit it (16 MiB less one byte;
+`SGLANG_RDNA4_CUSTOM_AR_MAX_BYTES` lowers the limit). Decode steps and verify blocks reduce on the kernel inside
+the captured graph and prompt tails below the limit on the same kernel eager; prefill chunks stay on RCCL, so the
+in-place IPC path behind RAD-2's memory exhaustion is never taken. Logged once per group: `[RDNA4] custom
+all-reduce: uncached staging buffer on a PCIe-linked group, inputs above 16777215 bytes stay on RCCL`, next to
+patch 119's `[AR] All-reduce call path: custom all-reduce (CustomAllreduce, group tp)`.
+
+Kernel (`scripts/bench/allreduce_rows_ladder.py`, two bare ranks on the patched class,
+[receipts](profiling/rad25-custom-ar-serving-2026-11-10/allreduce-rows-ladder.json)), hidden size 5,120, a captured
+graph of 130 reductions with fp32 and bf16 alternating, µs per reduction:
+
+| rows | 1 | 9 | 16 | 32 |
+|---|---:|---:|---:|---:|
+| RCCL | 17.78 | 29.53 | 38.85 | 61.22 |
+| one-stage kernel, uncached staging buffer | 10.75 | 22.26 | 32.21 | 58.85 |
+
+Eager at 1 / 4 / 8 / 15 MB the kernel reads 108.7 / 398.2 / 779.9 / 1,435.1 µs against RCCL's 127.9 / 412.4 /
+801.3 / 1,509.9, so no size cap below the buffer is set. Every output is the exact sum on both ranks, eager and in
+the graph, at every row count and both dtypes; an input of the buffer size is declined.
+
+Serving A/B on the FP8 `qwen38` preset with patches 121–128 on both sides, one session
+([receipts](profiling/rad25-custom-ar-serving-2026-11-10/)): four DSpark boots in the order RCCL → custom → custom
+→ RCCL, then four boots without speculation in the order custom → RCCL → RCCL → custom. Cycle time and accept
+length come from the server's decode-batch lines; the sampled ladder is 400 tokens at T 1.0 / top-p 0.95 / top-k
+20.
+
+| by input tokens | 24 | 7,331 | 58,483 | 197,326 |
+|---|---:|---:|---:|---:|
+| no-spec canonical sweep, tok/s, two boots → two boots | 34.32 / 34.30 → 34.98 / 34.98 (+1.9 %) | 33.65 / 33.65 → 34.34 / 34.37 (+2.1 %) | 32.14 / 32.14 → 32.77 / 32.73 (+1.9 %) | 28.67 / 28.71 → 29.21 / 29.20 (+1.8 %) |
+| no-spec step, ms | 29.14 → 28.59 | 29.72 → 29.11 | 31.12 → 30.54 | 34.86 → 34.24 |
+| no-spec first token, ms | 62.4 / 62.9 → 58.4 / 59.0 | 119.3 / 118.3 → 112.9 / 113.5 | 123.3 / 123.5 → 119.3 / 118.9 | 107.0 / 106.7 → 103.7 / 103.3 |
+| DSpark cycle, ms, sampled ladder, mean of two boots | 46.92 → 46.43 (−1.0 %) | 47.59 → 47.06 (−1.1 %) | 49.75 → 49.27 (−1.0 %) | 56.01 → 55.45 (−1.0 %) |
+| the four boots, RCCL / custom | 46.94, 46.90 / 46.44, 46.42 | 47.61, 47.57 / 47.01, 47.11 | 49.80, 49.70 / 49.27, 49.27 | 56.00, 56.02 / 55.41, 55.50 |
+| DSpark canonical sweep, tok/s, two boots → two boots | 59.00 / 58.97 → 59.82 / 59.64 | 78.81 / 78.79 → 79.57 / 79.66 | 72.59 / 72.36 → 73.21 / 73.10 | 59.06 / 59.09 → 59.59 / 59.61 |
+| forced greedy ladder, one prompt: tok/s (cycle ms) | 57.32 (46.38) → 57.93 (45.81) | 62.90 (46.96) → 63.59 (46.46) | 61.49 (49.10) → 62.12 (48.65) | 44.02 (55.37) → 44.48 (54.82) |
+| sampled ladder, tok/s, mean of two boots | 59.4 → 58.5 | 56.0 → 59.6 | 52.1 → 51.0 | 42.4 → 45.8 |
+| accept length, sampled, two boots → two boots | 2.77 / 2.75 → 2.65 / 2.70 | 2.70 / 2.62 → 2.85 / 2.55 | 2.50 / 2.52 → 2.65 / 2.47 | 2.29 / 2.35 → 2.47 / 2.66 |
+
+Every custom boot is faster than every RCCL boot at every depth, with and without speculation. The plain step
+loses 0.55–0.62 ms against 0.91 ms predicted from the one-row kernel cell over 129 reductions; the DSpark cycle
+loses 0.48–0.56 ms. The driver's line for a pass was 1 %: the no-spec side passes, the DSpark side reads
+`partial` (×0.990 / 0.989 / 0.990 / 0.990, 58K and 197K miss the line by 0.01–0.04 points). The sampled ladder's
+rate follows its unpaired accept length; the greedy rows are the rate compare. The canonical DSpark sweep has
+equal completion tokens on all four boots (80 / 38 / 33 / 37) and reads +1.3 / +1.0 / +0.9 / +0.9 %, the forced
+ladder +1.0–1.1 % with the same text.
+
+Quality. The kernel adds the same two operands, so numerics do not move. No-spec greedy text is identical on 6 of
+6 probes in both pairs. With DSpark the paired probe (`scripts/bench/spec_accept_probe.py`, 24 greedy prompts of
+300 tokens, verify count per request) returns the control's text on 24 of 24 prompts in both pairs with accept
+length 3.767 → 3.769 and 3.767 → 3.767 (one verify of 1,902 fewer on the first custom boot; the two RCCL boots
+repeat to the token), and the greedy sweep and the forced ladder start with the control's text at all four
+depths. Capabilities 5/5 on the first custom boot (basic, tool call, thinking, image, video), greedy needle 9/9 at
+32K / 131K / 197K ([receipt](quality/rad25-car1-natural-greedy.json), 33,904 / 137,094 / 208,296 actual prompt
+tokens).
+
+Memory. VRAM in use per card, boot against the end of the arm, each arm with a 197K prefill: 1,340–1,342 MiB of
+growth on the DSpark boots that run the same phases (custom +1 / +2 MiB against its control) and 1,710–1,711 MiB
+on all four no-spec boots; the first custom boot also ran capabilities and the needle and grew 1,398 / 1,394 MiB.
+The growth RAD-2's arm died of does not occur. The custom path costs 0.4–0.5 % of the token pool, as in RAD-2:
+430,725 → 428,579 tokens with DSpark and 735,510 → 732,790 without.
+
+Disposition: adopted as patch 129. The code path still needs both switches; the FP8 `qwen38` preset drops
+`--disable-custom-all-reduce` and exports `SGLANG_USE_1STAGE_ALLREDUCE=1` (`ENABLE_CUSTOM_ALL_REDUCE=0` restores
+RCCL). The rule fixed before the run was: adopt when one side passes, the other is not slower, and quality and
+memory hold. RAD-2's disposition stands for a tree without patch 129: the PyTorch-pool buffer returns wrong sums.
+Every other preset stays on RCCL until its own A/B. This A/B did not serve DFlash2 or concurrent requests; the
+canonical sweep on the shipped preset boots a DFlash2 RCCL control and runs the request matrix with its
+three-concurrent-request case on every arm. In this session's rows no-spec decode is 1.01–1.04× below radiance's
+35.4 / 35.0 / 33.7 / 30.4 tok/s.
 
 ## Evaluation methodology
 

@@ -178,6 +178,13 @@ Upstream's one-stage HIP all-reduce against RCCL on the FP8 preset: +1.8 % at 24
 ([receipts](profiling/rad2-onestage-ar-2026-11-09/), [FINDINGS → RAD-2](FINDINGS.md)); `scripts/bench/custom_allreduce_isolation.py`
 drives the same class from two bare ranks and names what each output is: wrong with the PyTorch-pool staging buffer, exact
 with an uncached fine-grained one ([receipt](profiling/rad2-onestage-ar-2026-11-09/custom-allreduce-isolation.json)).
+Patch 129 allocates that staging buffer uncached on a PCIe-linked group and leaves inputs that do not fit it on RCCL
+(FP8 `qwen38` preset default; `scripts/bench/allreduce_rows_ladder.py`: 10.8 / 22.3 / 32.2 / 58.9 µs per reduction against
+RCCL's 17.8 / 29.5 / 38.9 / 61.2 at 1 / 9 / 16 / 32 rows in a captured graph, exact sums): two boots per side in both orders,
+no-spec canonical sweep 34.3 / 33.7 / 32.1 / 28.7 → 35.0 / 34.4 / 32.7 / 29.2 tok/s at 24 / 7.3K / 58K / 197K with identical
+greedy text, DSpark cycle 46.9 / 47.6 / 49.8 / 56.0 → 46.4 / 47.1 / 49.3 / 55.5 ms, greedy accept length unchanged over 24
+paired prompts, needle 9/9, capabilities 5/5, VRAM growth within 2 MiB per card
+([receipts](profiling/rad25-custom-ar-serving-2026-11-10/), [FINDINGS → RAD-25](FINDINGS.md)).
 TP-split DeltaNet projections on the FP8 preset (patch 121), replicated → split → replicated in one session: decode
 23.3 / 22.9 / 22.2 / 20.5 → 26.9 / 26.3 / 25.3 / 23.2 tok/s, cold prefill 1,798 / 1,460 / 945 → 2,125 / 1,658 / 1,024 tok/s,
 pool 525,548 → 735,510 tokens; with DSpark +4.5 % at 24 tokens, +10.0 % on copy-heavy decode at equal accept length and

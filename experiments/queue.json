@@ -943,17 +943,18 @@
   {
    "id": "RAD-25",
    "spec": "19-vllm-radiance-parity.md",
-   "status": "in_progress",
+   "status": "completed",
    "resource": "gpu",
    "depends_on": [
     "isolation result (done): the fine-grained staging buffer sums exactly, eager and in the graph"
    ],
-   "next_action": "Development tree /data/sgl-v0522-rad25: the HIP constructor allocates the staging buffer uncached when the group is not fully linked and should_custom_ar declines inputs at or above the buffer size (SGLANG_RDNA4_CUSTOM_AR_MAX_BYTES lowers the limit). Two-rank bench (scripts/bench/allreduce_rows_ladder.py): sums exact eager and in the graph, 10.7 / 22.3 / 32.2 / 58.9 us against RCCL's 17.8 / 29.5 / 38.9 / 61.2 us at 1 / 9 / 16 / 32 rows in a captured graph, no cap needed. Serving A/B running: two boots per side with DSpark, two without, patch 128 on every arm, memory growth over each arm recorded. Adopt when one side passes, the other is not slower, and quality and memory hold; otherwise revert.",
+   "next_action": "Adopted as patch 129: the staging buffer is uncached on a PCIe-linked group and inputs that do not fit it stay on RCCL. The FP8 qwen38 preset drops --disable-custom-all-reduce and exports SGLANG_USE_1STAGE_ALLREDUCE=1 (ENABLE_CUSTOM_ALL_REDUCE=0 restores RCCL). Follow-ups ride on the shipped-preset canonical sweep: a DFlash2 RCCL control boot and the request matrix with three concurrent requests on every arm; then an A/B per other preset before any of them leaves RCCL.",
    "test_gate": [
     "isolation test: every output is the sum on both ranks, eager and graph, bf16 and fp32",
     "serving arm gates on validate_capabilities before any timing phase; greedy identity against RCCL recorded; needle grid unchanged",
     "decode_ab both orders; no growth of non-PyTorch GPU memory across a 197K prefill"
-   ]
+   ],
+   "result": "2026-11-10. Kernel (scripts/bench/allreduce_rows_ladder.py, two bare ranks, 130-reduction graph, us per reduction at 1 / 9 / 16 / 32 rows): 10.75 / 22.26 / 32.21 / 58.85 against RCCL's 17.78 / 29.53 / 38.85 / 61.22, eager 1-15 MB no slower, every output the exact sum, an input of the buffer size declined. Serving (benchmarks/profiling/rad25-custom-ar-serving-2026-11-10/), FP8 qwen38 with patches 121-128 on both sides, two boots per side in both orders, gate dspark-partial:nospec-pass:accept-pass:memory-ok: no-spec canonical sweep 34.32 / 33.65 / 32.14 / 28.67 and 34.30 / 33.65 / 32.14 / 28.71 -> 34.98 / 34.34 / 32.77 / 29.21 and 34.98 / 34.37 / 32.73 / 29.20 tok/s at 24 / 7.3K / 58K / 197K (x1.019 / 1.021 / 1.019 / 1.018, every custom boot above every RCCL boot), identical greedy text on 6 of 6 probes in both pairs; DSpark sampled-ladder cycle 46.92 / 47.59 / 49.75 / 56.01 -> 46.43 / 47.06 / 49.27 / 55.45 ms (x0.990 / 0.989 / 0.990 / 0.990, every custom boot shorter), canonical DSpark sweep 59.0 / 78.8 / 72.5 / 59.1 -> 59.7 / 79.6 / 73.2 / 59.6 tok/s on equal completion tokens, paired greedy accept 3.767 -> 3.769 and 3.767 -> 3.767 with the control's text on 24 of 24 prompts, needle 9/9, capabilities 5/5, VRAM growth within 2 MiB per card of the control's, token pool 430,725 -> 428,579 (DSpark) and 735,510 -> 732,790 (no-spec). FINDINGS RAD-25."
   },
   {
    "id": "RAD-26",

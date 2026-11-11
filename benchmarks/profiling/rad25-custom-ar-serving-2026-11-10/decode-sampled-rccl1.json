@@ -1,0 +1,89 @@
+{
+  "label": "rccl1-sampled",
+  "tag": "",
+  "note": "",
+  "port": 23334,
+  "maxtok": 400,
+  "runs": 2,
+  "sampling": {
+    "temperature": 1.0,
+    "top_p": 0.95,
+    "top_k": 20,
+    "seed": 7
+  },
+  "ignore_eos": true,
+  "points": [
+    {
+      "context": 128,
+      "input_len": 24,
+      "runs_tps": [
+        59.72,
+        58.23
+      ],
+      "median_tps": 58.97,
+      "min_tps": 58.235,
+      "max_tps": 59.724,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "median_tpot_ms": 16.96,
+      "sample": "# The Bandwidth Bottleneck: A Deep Dive into GPU Memory Hier",
+      "median_ttft_ms": 389.7
+    },
+    {
+      "context": 8192,
+      "input_len": 7331,
+      "runs_tps": [
+        55.83,
+        59.15
+      ],
+      "median_tps": 57.442,
+      "min_tps": 55.825,
+      "max_tps": 59.155,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "median_tpot_ms": 17.41,
+      "sample": "The provided text consists entirely of the pangram \"The quic",
+      "median_ttft_ms": 1652.9
+    },
+    {
+      "context": 65536,
+      "input_len": 58483,
+      "runs_tps": [
+        55.6,
+        51.16
+      ],
+      "median_tps": 53.286,
+      "min_tps": 51.159,
+      "max_tps": 55.596,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "median_tpot_ms": 18.77,
+      "sample": "The text consists entirely of the pangram \"The quick brown f",
+      "median_ttft_ms": 15309.5
+    },
+    {
+      "context": 221184,
+      "input_len": 197326,
+      "runs_tps": [
+        40.87,
+        43.46
+      ],
+      "median_tps": 42.122,
+      "min_tps": 40.865,
+      "max_tps": 43.458,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "median_tpot_ms": 23.74,
+      "sample": "The provided text consists of the pangram \"The quick brown f",
+      "median_ttft_ms": 76618.0
+    }
+  ]
+}

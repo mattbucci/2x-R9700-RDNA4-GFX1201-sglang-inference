@@ -1,0 +1,11 @@
+{
+ "label": "car2-sweep",
+ "note": "qwen38 FP8 DSpark preset, dev tree rad25",
+ "log": "/data/logs/rad25-custom-ar-serving-2026-11-10/server-car2.log",
+ "from_line": 721,
+ "to_line": 820,
+ "line_numbering": "newline",
+ "decode_lines_dropped_after_prefill": 8,
+ "decode_lines_dropped_no_depth": 0,
+ "depths": {}
+}

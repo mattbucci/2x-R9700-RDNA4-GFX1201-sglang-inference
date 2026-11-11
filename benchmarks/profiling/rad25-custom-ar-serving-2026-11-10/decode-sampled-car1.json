@@ -1,0 +1,89 @@
+{
+  "label": "car1-sampled",
+  "tag": "",
+  "note": "",
+  "port": 23334,
+  "maxtok": 400,
+  "runs": 2,
+  "sampling": {
+    "temperature": 1.0,
+    "top_p": 0.95,
+    "top_k": 20,
+    "seed": 7
+  },
+  "ignore_eos": true,
+  "points": [
+    {
+      "context": 128,
+      "input_len": 24,
+      "runs_tps": [
+        56.56,
+        62.29
+      ],
+      "median_tps": 59.283,
+      "min_tps": 56.557,
+      "max_tps": 62.286,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "median_tpot_ms": 16.87,
+      "sample": "# The Architecture of Speed: A Deep Dive into GPU Memory Hie",
+      "median_ttft_ms": 107.6
+    },
+    {
+      "context": 8192,
+      "input_len": 7331,
+      "runs_tps": [
+        60.52,
+        67.36
+      ],
+      "median_tps": 63.754,
+      "min_tps": 60.517,
+      "max_tps": 67.357,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "median_tpot_ms": 15.69,
+      "sample": "The text consists of the pangram \"The quick brown fox jumps ",
+      "median_ttft_ms": 1676.6
+    },
+    {
+      "context": 65536,
+      "input_len": 58483,
+      "runs_tps": [
+        49.66,
+        54.77
+      ],
+      "median_tps": 52.089,
+      "min_tps": 49.655,
+      "max_tps": 54.774,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "median_tpot_ms": 19.2,
+      "sample": "The provided text consists of a single pangram, \"The quick b",
+      "median_ttft_ms": 15214.2
+    },
+    {
+      "context": 221184,
+      "input_len": 197326,
+      "runs_tps": [
+        42.03,
+        48.37
+      ],
+      "median_tps": 44.975,
+      "min_tps": 42.025,
+      "max_tps": 48.37,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "median_tpot_ms": 22.23,
+      "sample": "The provided text consists of the classic English pangram \"T",
+      "median_ttft_ms": 76653.7
+    }
+  ]
+}

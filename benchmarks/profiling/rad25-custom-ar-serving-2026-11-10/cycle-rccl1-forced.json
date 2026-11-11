@@ -1,0 +1,48 @@
+{
+ "label": "rccl1-forced",
+ "note": "qwen38 FP8 DSpark preset, dev tree rad25",
+ "log": "/data/logs/rad25-custom-ar-serving-2026-11-10/server-rccl1.log",
+ "from_line": 818,
+ "to_line": 911,
+ "line_numbering": "newline",
+ "decode_lines_dropped_after_prefill": 8,
+ "decode_lines_dropped_no_depth": 0,
+ "depths": {
+  "24": {
+   "decode_batches": {
+    "lines": 5,
+    "accept_len": 2.6,
+    "tok_s": 56.06,
+    "cycles_s": 21.56,
+    "cycle_ms": 46.38
+   }
+  },
+  "7.3K": {
+   "decode_batches": {
+    "lines": 5,
+    "accept_len": 3.0,
+    "tok_s": 63.88,
+    "cycles_s": 21.29,
+    "cycle_ms": 46.96
+   }
+  },
+  "58K": {
+   "decode_batches": {
+    "lines": 5,
+    "accept_len": 3.08,
+    "tok_s": 62.61,
+    "cycles_s": 20.37,
+    "cycle_ms": 49.1
+   }
+  },
+  "197K": {
+   "decode_batches": {
+    "lines": 6,
+    "accept_len": 2.5,
+    "tok_s": 45.14,
+    "cycles_s": 18.06,
+    "cycle_ms": 55.37
+   }
+  }
+ }
+}

@@ -1,0 +1,11 @@
+{
+ "label": "rccl2-sweep",
+ "note": "qwen38 FP8 DSpark preset, dev tree rad25",
+ "log": "/data/logs/rad25-custom-ar-serving-2026-11-10/server-rccl2.log",
+ "from_line": 719,
+ "to_line": 818,
+ "line_numbering": "newline",
+ "decode_lines_dropped_after_prefill": 8,
+ "decode_lines_dropped_no_depth": 0,
+ "depths": {}
+}

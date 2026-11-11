@@ -658,6 +658,20 @@ PYEOF
             if [[ -z "${QUANT_OVERRIDE:-}" ]]; then
                 export SGLANG_RDNA4_FP8_GEMM_BF16="${FP8_GEMM_BF16:-1}"
             fi
+            # RAD-25 (patch 129): decode-sized tensor-parallel all-reduces run the in-graph one-stage custom
+            # all-reduce instead of RCCL. Its staging buffer is allocated uncached: on cards linked over PCIe only,
+            # the peer reads the previous payload out of a PyTorch-pool buffer (RAD-2). Inputs that do not fit
+            # the buffer (prefill chunks) stay on RCCL. Same session, two boots per side in both orders: no-spec
+            # canonical sweep at 24 / 7.3K / 58K / 197K input 34.3 / 33.7 / 32.1 / 28.7 -> 35.0 / 34.4 / 32.7 /
+            # 29.2 tok/s with identical greedy text on 6 of 6 probes; DSpark cycle on the sampled 400-token ladder
+            # 46.9 / 47.6 / 49.8 / 56.0 -> 46.4 / 47.1 / 49.3 / 55.5 ms, canonical DSpark sweep 59.0 / 78.8 /
+            # 72.5 / 59.1 -> 59.7 / 79.6 / 73.2 / 59.6 tok/s on equal completion tokens, greedy accept length
+            # over 24 prompts unchanged (3.767), capabilities 5/5, needle 9/9, VRAM within 2 MiB per card. The
+            # FP8 checkpoint only. ENABLE_CUSTOM_ALL_REDUCE=0 restores RCCL.
+            if [[ -z "${QUANT_OVERRIDE:-}" && "${ENABLE_CUSTOM_ALL_REDUCE:-1}" == "1" ]]; then
+                CUSTOM_AR=""
+                export SGLANG_USE_1STAGE_ALLREDUCE="${SGLANG_USE_1STAGE_ALLREDUCE:-1}"
+            fi
             # RAD-15 (patch 127), opt-in: INT8_LM_HEAD=1 ends the one-row decode graph at the hidden state and
             # serves greedy requests with no logit processing from an int8 copy of the LM head with a proven
             # arg-max window; every other step and every step the filter cannot prove runs the bf16 head.

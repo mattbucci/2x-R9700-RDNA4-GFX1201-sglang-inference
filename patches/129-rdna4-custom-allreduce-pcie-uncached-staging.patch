@@ -1,0 +1,58 @@
+diff --git a/python/sglang/srt/distributed/device_communicators/custom_all_reduce.py b/python/sglang/srt/distributed/device_communicators/custom_all_reduce.py
+index 55c292c..6907ee8 100644
+--- a/python/sglang/srt/distributed/device_communicators/custom_all_reduce.py
++++ b/python/sglang/srt/distributed/device_communicators/custom_all_reduce.py
+@@ -4,6 +4,7 @@
+ 
+ import ctypes
+ import logging
++import os
+ from contextlib import contextmanager
+ from functools import partial
+ from typing import Any, List, Optional, Union
+@@ -68,6 +69,8 @@ class CustomAllreduce:
+         self.disabled = True  # This can be modified in-place by context manager in piecewise cuda graph runner
+         self.original_disabled = True  # To store the original state
+         self.use_amd_deterministic_impl = _use_amd_deterministic_impl()
++        self.staging_uncached = False
++        self.pcie_max_bytes = 0
+ 
+         if not ops.IS_CUSTOM_AR_AVAILABLE:
+             # disable because of missing custom allreduce library
+@@ -124,7 +127,26 @@ class CustomAllreduce:
+         else:
+             # meta data buffers need to be "uncached" for signal on MI200
+             self.meta = ops.allocate_meta_buffer(ops.meta_size() + max_size)
+-            self.buffer = torch.empty(max_size, dtype=torch.uint8, device=self.device)
++            # RDNA4: the peer rank reads this staging buffer through its IPC mapping. On
++            # cards linked over PCIe only, PyTorch-pool (coarse-grained) memory shows the
++            # peer the previous payload, so the buffer is allocated uncached like the
++            # signal buffer. Inputs that do not fit it stay on RCCL (should_custom_ar).
++            self.staging_uncached = not full_nvlink
++            if self.staging_uncached:
++                self.buffer = ops.allocate_meta_buffer(max_size)
++                cap = int(os.environ.get("SGLANG_RDNA4_CUSTOM_AR_MAX_BYTES", "0") or 0)
++                self.pcie_max_bytes = (
++                    min(cap, max_size - 1) if cap > 0 else max_size - 1
++                )
++                log_info_on_rank0(
++                    logger,
++                    "[RDNA4] custom all-reduce: uncached staging buffer on a PCIe-linked "
++                    f"group, inputs above {self.pcie_max_bytes} bytes stay on RCCL",
++                )
++            else:
++                self.buffer = torch.empty(
++                    max_size, dtype=torch.uint8, device=self.device
++                )
+             handle = ops.get_meta_buffer_ipc_handle(self.meta)
+             shard_data = (
+                 bytes(handle),  # ipc handle to base ptr
+@@ -275,6 +297,8 @@ class CustomAllreduce:
+ 
+         if _is_hip:
+             if self.use_amd_deterministic_impl:
++                if self.staging_uncached:
++                    return inp_size <= self.pcie_max_bytes
+                 return True
+             if self.full_nvlink:
+                 return inp_size <= self.max_size

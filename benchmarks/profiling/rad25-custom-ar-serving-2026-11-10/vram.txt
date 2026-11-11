@@ -1,0 +1,16 @@
+VRAM rccl1 boot 29412 29183
+VRAM rccl1 end 30752 30523
+VRAM car1 boot 29392 29162
+VRAM car1 end 30790 30556
+VRAM car2 boot 29392 29162
+VRAM car2 end 30733 30504
+VRAM rccl2 boot 29412 29183
+VRAM rccl2 end 30752 30523
+VRAM nospec-car1 boot 28755 28526
+VRAM nospec-car1 end 30466 30237
+VRAM nospec-rccl1 boot 28771 28542
+VRAM nospec-rccl1 end 30482 30253
+VRAM nospec-rccl2 boot 28772 28542
+VRAM nospec-rccl2 end 30482 30253
+VRAM nospec-car2 boot 28755 28526
+VRAM nospec-car2 end 30466 30237

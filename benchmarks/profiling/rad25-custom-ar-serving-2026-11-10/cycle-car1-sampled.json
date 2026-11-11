@@ -1,0 +1,48 @@
+{
+ "label": "car1-sampled",
+ "note": "qwen38 FP8 DSpark preset, dev tree rad25",
+ "log": "/data/logs/rad25-custom-ar-serving-2026-11-10/server-car1.log",
+ "from_line": 932,
+ "to_line": 1026,
+ "line_numbering": "newline",
+ "decode_lines_dropped_after_prefill": 8,
+ "decode_lines_dropped_no_depth": 1,
+ "depths": {
+  "24": {
+   "decode_batches": {
+    "lines": 5,
+    "accept_len": 2.65,
+    "tok_s": 57.12,
+    "cycles_s": 21.53,
+    "cycle_ms": 46.44
+   }
+  },
+  "7.3K": {
+   "decode_batches": {
+    "lines": 5,
+    "accept_len": 2.85,
+    "tok_s": 60.62,
+    "cycles_s": 21.27,
+    "cycle_ms": 47.01
+   }
+  },
+  "58K": {
+   "decode_batches": {
+    "lines": 5,
+    "accept_len": 2.65,
+    "tok_s": 53.82,
+    "cycles_s": 20.3,
+    "cycle_ms": 49.27
+   }
+  },
+  "197K": {
+   "decode_batches": {
+    "lines": 6,
+    "accept_len": 2.47,
+    "tok_s": 44.66,
+    "cycles_s": 18.05,
+    "cycle_ms": 55.41
+   }
+  }
+ }
+}

@@ -1,6 +1,6 @@
 # SGLang v0.5.22 RDNA4 patches
 
-This directory contains the **96 active numeric patches** applied to pristine SGLang v0.5.22 for the
+This directory contains the **97 active numeric patches** applied to pristine SGLang v0.5.22 for the
 2× Radeon AI PRO R9700 serving stack. The default tree is `/data/sgl-v0522`; the default conda environment
 is `sglang-triton36-v0522`.
 
@@ -91,6 +91,7 @@ can be proposed upstream. `Partial` requires a fresh comparison with upstream be
 | 063 | `rdna4-relu2-hip-fallback` | Candidate | Provides the squared-ReLU implementation used by Nemotron on HIP. |
 | 094 | `rdna4-batch-invariant-matmul-lds` | Carry | Uses two Triton pipeline stages for HIP batch-invariant MM/BMM so deterministic inference fits gfx1201's 64 KiB LDS limit; non-HIP platforms retain three stages. |
 | 119 | `hip-custom-allreduce-without-amdsmi` | Candidate | Lets HIP custom all-reduce setup run without the `amdsmi` Python binding: the XGMI query answers "not fully linked" instead of dying on an undefined name (`Setup Custom allreduce failed with name 'amdsmi_shut_down' is not defined`), which kept `SGLANG_USE_1STAGE_ALLREDUCE=1` off every two-card host without the binding. Also logs the path a group really reduces on (`[AR] All-reduce call path: custom all-reduce (...)`), the identity line for an all-reduce A/B. No change under `--disable-custom-all-reduce`, the launcher default. Serving A/B: RAD-2. |
+| 129 | `rdna4-custom-allreduce-pcie-uncached-staging` | Carry | Makes upstream's one-stage HIP custom all-reduce correct on two cards linked over PCIe only. The kernel is a pull design: each rank copies its input into a staging buffer and the peer reads it through an IPC mapping; taken from the PyTorch pool, that buffer showed the peer the previous payload (RAD-2: wrong sums, noise from the first token). When the group is not fully XGMI-linked the HIP constructor allocates the staging buffer with `allocate_meta_buffer` (uncached fine-grained memory, the class of the signal buffer), and `should_custom_ar` declines every input that does not fit it (`max_size − 1` bytes; `SGLANG_RDNA4_CUSTOM_AR_MAX_BYTES` lowers the limit), so prefill chunks stay on RCCL and the in-place IPC path is never taken. Logged once per group (`[RDNA4] custom all-reduce: uncached staging buffer on a PCIe-linked group, inputs above N bytes stay on RCCL`). No change under `--disable-custom-all-reduce` or without `SGLANG_USE_1STAGE_ALLREDUCE=1`; the FP8 `qwen38` preset drops the flag and exports the switch (`ENABLE_CUSTOM_ALL_REDUCE=0` restores RCCL), every other preset stays on RCCL. Two bare ranks (`scripts/bench/allreduce_rows_ladder.py`): exact sums eager and in a 130-reduction graph, 10.8 / 22.3 / 32.2 / 58.9 µs per reduction against RCCL's 17.8 / 29.5 / 38.9 / 61.2 at 1 / 9 / 16 / 32 rows. Same-session A/B, two boots per side in both orders: no-spec canonical sweep 34.3 / 33.7 / 32.1 / 28.7 → 35.0 / 34.4 / 32.7 / 29.2 tok/s at 24 / 7.3K / 58K / 197K input tokens with identical greedy text on 6 of 6 probes; DSpark cycle 46.9 / 47.6 / 49.8 / 56.0 → 46.4 / 47.1 / 49.3 / 55.5 ms, canonical DSpark sweep 59.0 / 78.8 / 72.5 / 59.1 → 59.7 / 79.6 / 73.2 / 59.6 tok/s on equal completion tokens, greedy accept length unchanged over 24 paired prompts with the control's text on 24 of 24, capabilities 5/5, greedy needle 9/9 to 208K tokens, VRAM growth within 2 MiB per card of the control's. Receipts: `benchmarks/profiling/rad25-custom-ar-serving-2026-11-10/`. |
 
 ### MoE serving and routing
 
@@ -219,7 +220,7 @@ can be proposed upstream. `Partial` requires a fresh comparison with upstream be
 
 | Component | Version |
 |---|---|
-| SGLang | v0.5.22 plus this 96-patch series |
+| SGLang | v0.5.22 plus this 97-patch series |
 | transformers | 5.19.0 |
 | Triton | 3.6.0 |
 | PyTorch | 2.11.0+rocm7.2 |
