@@ -175,8 +175,10 @@ preset derives from its own knob and overwrites, so each would have booted as a 
 stops after the static checks. The summary reports, per arm and row, the shipped preset over the arm as the mean
 of both orders, the two orders separately and the control-to-control spread of the block; an arm with an
 unreadable receipt is reported as incomplete, never as a verdict. The keep and drop thresholds are parameters of
-the summary. `qwen38-nospec.json` holds the eleven switch arms of the no-speculation session; the four replay arms
-join it with their development trees.
+the summary. `qwen38-nospec.json` holds the eleven switch arms of the no-speculation session and
+`qwen38-dspark.json` the four switch arms of the DSpark session; the replay arms join them with their development
+trees. On the DSpark session the tok/s rows are reported but not judged: a speculative server's tok/s follows the
+continuation it writes, so cycle time and accept length carry the verdict.
 
 ## CONSOL-2 — correctness ablation (GPU)
 

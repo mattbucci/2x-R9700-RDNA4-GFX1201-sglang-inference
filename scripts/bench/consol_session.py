@@ -11,7 +11,8 @@ answers the driver's questions. Standard library only, starts nothing.
     consol_session.py identity <session.json> <arm|ctl> <server log> <environ file> --stage boot|end
     consol_session.py summary  <session.json> <receipt dir> <log dir> [--keep 0.03] [--drop 0.01]
 
-A session is one launcher preset. Boot order: one discarded warm-up control, then blocks of at most `block` arms
+A session is one launcher preset. On a speculative session the decode tok/s rows are reported but not judged:
+they follow the continuation the server happens to write; cycle time and accept length carry the verdict. Boot order: one discarded warm-up control, then blocks of at most `block` arms
 run as control, arms, arms in reverse order, control. An arm is the shipped preset with one mechanism off: by
 environment (`env`), or from a development tree replayed without the patch (`tree`). No arm is read on the
 launcher variable alone: the server's own environment, the mechanism's log lines and, for a tree arm, the source
@@ -362,6 +363,8 @@ def cmd_summary(s, rcpt, out, keep, drop):
                 table[r] = {"control": round(cv, 3), "arm": round(av, 3), "gain": round(g, 4),
                             "gain_by_order": [round(first, 4), round(second, 4)],
                             "beyond_spread": abs(g) > (noise.get(r) or 0)}
+                if spec and r.startswith("decode@"):
+                    table[r]["informational"] = True
             if spec:
                 acc = accept_gain(rcpt, [(f"b{b}-ctl1", f"b{b}-{n}a"), (f"b{b}-ctl2", f"b{b}-{n}b")])
                 if acc is None:
@@ -375,12 +378,13 @@ def cmd_summary(s, rcpt, out, keep, drop):
                 table["accept"] = {"gain": round(acc["gain"], 4), "ci95": [round(x, 4) for x in acc["ci95"]],
                                    "documents": acc["documents"], "blank_texts": acc["blank_texts"],
                                    "beyond_spread": not (acc["ci95"][0] <= 0 <= acc["ci95"][1])}
-            real = {r: v["gain"] for r, v in table.items() if v["beyond_spread"]}
+            judged = {r: v for r, v in table.items() if not v.get("informational")}
+            real = {r: v["gain"] for r, v in judged.items() if v["beyond_spread"]}
             best = max(real, key=lambda r: real[r]) if real else None
             worst = min(real, key=lambda r: real[r]) if real else None
             if best and real[best] >= keep:
                 verdict = "keep"
-            elif all(abs(v["gain"]) < drop for v in table.values()):
+            elif all(abs(v["gain"]) < drop for v in judged.values()):
                 verdict = "drop-candidate"
             else:
                 verdict = "between"

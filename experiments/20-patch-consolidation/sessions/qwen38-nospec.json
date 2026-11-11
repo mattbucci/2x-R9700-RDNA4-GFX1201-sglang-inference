@@ -37,6 +37,7 @@
   "SGLANG_SPLITKV_COMBINE_WARPS": "unset"
  },
  "markers": {
+  "nospec": "'speculative_algorithm': None\\b",
   "layout121": "\\[RDNA4\\] DeltaNet projections: TP-split over 2 ranks",
   "mlp121": "\\[RDNA4\\] dense MLP: TP-split over 2 ranks",
   "gemv122": "\\[RDNA4\\] block-FP8 M=1 decode: native HIP W8A16 GEMV active",

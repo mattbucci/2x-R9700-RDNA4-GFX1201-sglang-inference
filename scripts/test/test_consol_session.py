@@ -183,13 +183,14 @@ class Summary(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             receipts(d, "b1-ctl1", 60.0, 3.0, cycle=50.0, accept=(first, 100))
             receipts(d, "b1-ctl2", 60.0, 3.0, cycle=50.0, accept=(second, 100))
-            receipts(d, "b1-p121a", 60.0, 3.0, cycle=55.0, accept=(first, 100))
-            receipts(d, "b1-p121b", 60.0, 3.0, cycle=55.0, accept=(second, 100))
+            receipts(d, "b1-p121a", 45.0, 3.0, cycle=55.0, accept=(first, 100))     # tok/s: another continuation
+            receipts(d, "b1-p121b", 45.0, 3.0, cycle=55.0, accept=(second, 100))
             receipts(d, "b1-p081a", 60.0, 3.0, cycle=50.0, accept=(first, 120))    # accept length 3.0 -> 2.5
             receipts(d, "b1-p081b", 60.0, 3.0, cycle=50.0, accept=(first, 120))    # wrong document set on the reverse pass
             summary, _ = summarize(s, d)
         self.assertEqual(summary["arms"]["p121"]["verdict"], "keep")
         self.assertEqual(summary["arms"]["p121"]["best_row"], "cycle@24")
+        self.assertTrue(summary["arms"]["p121"]["rows"]["decode@128"]["informational"])
         self.assertEqual(summary["arms"]["p121"]["rows"]["accept"]["documents"], 4)
         self.assertEqual(summary["gate"], "incomplete:p081")
 
@@ -199,7 +200,7 @@ class Summary(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             for boot, ids in (("b1-ctl1", first), ("b1-ctl2", second), ("b1-p121a", first), ("b1-p121b", second),
                               ("b1-p081a", first), ("b1-p081b", second)):
-                receipts(d, boot, 60.0, 3.0, cycle=50.0, accept=(ids, 100))
+                receipts(d, boot, 40.0 if "p121" in boot else 60.0, 3.0, cycle=50.0, accept=(ids, 100))
             path = os.path.join(d, "accept-b1-p081b.json")
             with open(path) as f:
                 doc = json.load(f)
