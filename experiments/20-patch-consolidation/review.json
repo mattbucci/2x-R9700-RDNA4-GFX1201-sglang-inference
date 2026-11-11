@@ -1625,14 +1625,14 @@
   "receipt": "benchmarks/profiling/extend-splitkv-route-qwen35-route-256-2026-11-02.json",
   "findings_heading": "Short cache-hit extends through the split-KV verify kernel — patch 107, Laguna only (2026-10-31)",
   "patch_state": "SGLang v0.5.22; series size not stated",
-  "ablation_arm": "switch: SGLANG_EXTEND_SPLITKV_MAX_TOKENS=0 on presets qwen35-moe, qwen36-moe, qwen35, qwen38, qwen36-27b, laguna, flint",
+  "ablation_arm": "switch: EXTEND_SPLITKV_MAX=0 on presets qwen35-moe, qwen36-moe, qwen35, qwen38, qwen36-27b, laguna, flint",
   "reproducer": null,
   "merge_candidates": [
    "110",
    "112"
   ],
   "superseded_evidence": null,
-  "notes": "110 rewrites this patch's route body and 112 is a one-line gate change on it, so 107 + 110 + 112 are one mechanism; 110, 111, 112, 125 and 126 do not apply without 107. The index row is stale (MAX=16 for laguna only, qwen38 on the stock path), _detect_rdna/_IS_RDNA is defined and never read, and SGLANG_SPLITKV_UPCAST_K is set by no preset (its A/B kept the default)."
+  "notes": "110 rewrites this patch's route body and 112 is a one-line gate change on it, so 107 + 110 + 112 are one mechanism; 110, 111, 112, 125 and 126 do not apply without 107. The index row is stale (MAX=16 for laguna only, qwen38 on the stock path), _detect_rdna/_IS_RDNA is defined and never read, and SGLANG_SPLITKV_UPCAST_K is set by no preset (its A/B kept the default). The arm uses the launcher knob: the preset exports the server variable from it, so a value passed under the server's name is overwritten."
  },
  "108": {
   "class": "performance",
@@ -1652,11 +1652,11 @@
   "receipt": "benchmarks/profiling/rad10b-prefill-attention-v2-2026-11-11",
   "findings_heading": "fp8 QK dot in gfx1201 extend attention — patch 108, qwen38 default (2026-11-01)",
   "patch_state": "SGLang v0.5.22; series size not stated",
-  "ablation_arm": "switch: SGLANG_EXTEND_FP8_QK=0 on presets devstral2, qwen36-moe, qwen35, qwen38, qwen36-27b, nemotron-omni, flint",
+  "ablation_arm": "switch: EXTEND_FP8_QK=0 on presets devstral2, qwen36-moe, qwen35, qwen38, qwen36-27b, nemotron-omni, flint",
   "reproducer": null,
   "merge_candidates": [],
   "superseded_evidence": null,
-  "notes": "Index row and heading still say 'qwen38 default, off elsewhere' while launch.sh exports it on seven presets (north-mini #36 and qwen35-moe #38 are held for the user). SGLANG_EXTEND_TILE is a sweep hook no preset sets, and RAD-10b's verdict for this kernel at depth is `port` (it takes 3.5× the time of radiance's fp8-QK row)."
+  "notes": "Index row and heading still say 'qwen38 default, off elsewhere' while launch.sh exports it on seven presets (north-mini #36 and qwen35-moe #38 are held for the user). SGLANG_EXTEND_TILE is a sweep hook no preset sets, and RAD-10b's verdict for this kernel at depth is `port` (it takes 3.5× the time of radiance's fp8-QK row). The arm uses the launcher knob: the preset exports the server variable from it, so a value passed under the server's name is overwritten."
  },
  "109": {
   "class": "performance",
@@ -1749,14 +1749,14 @@
   "receipt": "benchmarks/profiling/flint-sinks-route-2026-11-02.md",
   "findings_heading": "Flint on the split-KV turn route: learned sinks forwarded — patch 112 (2026-11-02)",
   "patch_state": "SGLang v0.5.22; series size not stated",
-  "ablation_arm": "switch: SGLANG_EXTEND_SPLITKV_MAX_TOKENS=0 on presets flint",
+  "ablation_arm": "switch: EXTEND_SPLITKV_MAX=0 on presets flint",
   "reproducer": null,
   "merge_candidates": [
    "107",
    "110"
   ],
   "superseded_evidence": null,
-  "notes": "Two changed lines on top of 107/110 (the gate condition removed, sinks=sinks added; needs 109's sink term in the combine stage), and nothing fails to apply without it, so drop-alone also replays. On Flint the route-off arm equals dropping this patch, because only the 14 sink layers are full attention and the 35 sliding-window layers never take the route."
+  "notes": "Two changed lines on top of 107/110 (the gate condition removed, sinks=sinks added; needs 109's sink term in the combine stage), and nothing fails to apply without it, so drop-alone also replays. On Flint the route-off arm equals dropping this patch, because only the 14 sink layers are full attention and the 35 sliding-window layers never take the route. The arm uses the launcher knob: the preset exports the server variable from it, so a value passed under the server's name is overwritten."
  },
  "114": {
   "class": "performance",
@@ -1904,14 +1904,14 @@
   "receipt": "benchmarks/profiling/rad1-deltanet-tpsplit-2026-11-09",
   "findings_heading": "RAD-1 — TP-split DeltaNet projections: decode +13–16 %, prefill +8–18 %, DSpark pool 206K → 431K; patch 121 (2026-11-09)",
   "patch_state": "SGLang v0.5.22; series size not stated (RAD-1 ran through a development copy of the tree)",
-  "ablation_arm": "switch: SGLANG_RDNA4_DELTANET_TP_SPLIT=0 on presets qwen38",
+  "ablation_arm": "switch: DELTANET_TP_SPLIT=0 on presets qwen38",
   "reproducer": null,
   "merge_candidates": [
    "045",
    "120"
   ],
   "superseded_evidence": null,
-  "notes": "It switches off, for qwen38 only, the DeltaNet replication that patch 045 adds, so 045 + 120 + 121 are one replication policy spread over three patches; other DeltaNet presets keep the replicated layout and only gain the log line. Greedy text is not byte-identical between layouts (1 of 6 probes match on FP8), and the shipped GEMM config is the same kind of file as patch 106's."
+  "notes": "It switches off, for qwen38 only, the DeltaNet replication that patch 045 adds, so 045 + 120 + 121 are one replication policy spread over three patches; other DeltaNet presets keep the replicated layout and only gain the log line. Greedy text is not byte-identical between layouts (1 of 6 probes match on FP8), and the shipped GEMM config is the same kind of file as patch 106's. The arm uses the launcher knob: the preset exports the server variable from it, so a value passed under the server's name is overwritten."
  },
  "122": {
   "class": "performance",

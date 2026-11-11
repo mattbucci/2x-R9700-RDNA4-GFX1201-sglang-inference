@@ -611,7 +611,7 @@
   {
    "patch": "107",
    "kind": "switch",
-   "switch": "SGLANG_EXTEND_SPLITKV_MAX_TOKENS=0",
+   "switch": "EXTEND_SPLITKV_MAX=0",
    "dropped_together": [],
    "confidence": "high",
    "measured_by": "",
@@ -630,7 +630,7 @@
   {
    "patch": "108",
    "kind": "switch",
-   "switch": "SGLANG_EXTEND_FP8_QK=0",
+   "switch": "EXTEND_FP8_QK=0",
    "dropped_together": [],
    "confidence": "high",
    "measured_by": "",
@@ -710,7 +710,7 @@
   {
    "patch": "112",
    "kind": "switch",
-   "switch": "SGLANG_EXTEND_SPLITKV_MAX_TOKENS=0",
+   "switch": "EXTEND_SPLITKV_MAX=0",
    "dropped_together": [],
    "confidence": "high",
    "measured_by": "",
@@ -754,7 +754,7 @@
   {
    "patch": "121",
    "kind": "switch",
-   "switch": "SGLANG_RDNA4_DELTANET_TP_SPLIT=0",
+   "switch": "DELTANET_TP_SPLIT=0",
    "dropped_together": [],
    "confidence": "high",
    "measured_by": "",

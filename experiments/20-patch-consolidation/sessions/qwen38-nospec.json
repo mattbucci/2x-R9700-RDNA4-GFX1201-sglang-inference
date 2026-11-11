@@ -1,0 +1,238 @@
+{
+ "session": "qwen38-nospec",
+ "preset": "qwen38",
+ "env": {
+  "QWEN38_SPEC": "0"
+ },
+ "spec": false,
+ "seed": 7,
+ "caps": 5,
+ "block": 5,
+ "decode": {
+  "contexts": "128,8192,65536,221184",
+  "args": [
+   "--think-off"
+  ]
+ },
+ "prefill": {
+  "contexts": "8192,65536,221184",
+  "runs": 2
+ },
+ "poke": {
+  "chat_template_kwargs": {
+   "enable_thinking": false
+  }
+ },
+ "server_env": {
+  "SGLANG_RDNA4_DELTANET_TP_SPLIT": "1",
+  "SGLANG_RDNA4_FP8_GEMV": "1",
+  "SGLANG_RDNA4_TRITON_GEMMA_RMSNORM": "1",
+  "SGLANG_RDNA4_SKINNY_BA_GEMV": "1",
+  "SGLANG_USE_1STAGE_ALLREDUCE": "1",
+  "SGLANG_HIP_BF16_ATTN_SUM": "1",
+  "SGLANG_EXTEND_FP8_QK": "1",
+  "SGLANG_EXTEND_SPLITKV_MAX_TOKENS": "256",
+  "SGLANG_RDNA4_FUSED_FP8_KV_STORE": "unset",
+  "SGLANG_KV_SPLITS_OVERRIDE": "unset",
+  "SGLANG_SPLITKV_COMBINE_WARPS": "unset"
+ },
+ "markers": {
+  "layout121": "\\[RDNA4\\] DeltaNet projections: TP-split over 2 ranks",
+  "mlp121": "\\[RDNA4\\] dense MLP: TP-split over 2 ranks",
+  "gemv122": "\\[RDNA4\\] block-FP8 M=1 decode: native HIP W8A16 GEMV active",
+  "norm123": "\\[RDNA4\\] Gemma RMSNorm: one-launch Triton kernel active",
+  "ba124": "\\[RDNA4\\] DeltaNet in_proj_ba: one-launch Triton GEMV active",
+  "ar129": "All-reduce call path: custom all-reduce \\(CustomAllreduce, group tp\\)",
+  "wire130": "\\[RDNA4\\] attention-TP sum: BF16 wire on a two-rank group active",
+  "kvsplits64": "'triton_attention_num_kv_splits': 64\\b",
+  "route107": {
+   "re": "extend split-KV route active: \\d+ new tokens",
+   "late": true
+  },
+  "routefp8": {
+   "re": "extend split-KV route active: [^\\n]{0,60}\\(upcast_k=False\\)",
+   "late": true
+  }
+ },
+ "arms": [
+  {
+   "name": "p121",
+   "patches": [
+    "121"
+   ],
+   "env": {
+    "DELTANET_TP_SPLIT": "0"
+   },
+   "server_env": {
+    "SGLANG_RDNA4_DELTANET_TP_SPLIT": "0"
+   },
+   "off": [
+    "layout121",
+    "mlp121"
+   ]
+  },
+  {
+   "name": "p122",
+   "patches": [
+    "122"
+   ],
+   "env": {
+    "FP8_GEMV": "0"
+   },
+   "server_env": {
+    "SGLANG_RDNA4_FP8_GEMV": "0"
+   },
+   "off": [
+    "gemv122"
+   ]
+  },
+  {
+   "name": "p123",
+   "patches": [
+    "123"
+   ],
+   "env": {
+    "TRITON_GEMMA_RMSNORM": "0"
+   },
+   "server_env": {
+    "SGLANG_RDNA4_TRITON_GEMMA_RMSNORM": "0"
+   },
+   "off": [
+    "norm123"
+   ]
+  },
+  {
+   "name": "p124",
+   "patches": [
+    "124"
+   ],
+   "env": {
+    "SKINNY_BA_GEMV": "0"
+   },
+   "server_env": {
+    "SGLANG_RDNA4_SKINNY_BA_GEMV": "0"
+   },
+   "off": [
+    "ba124"
+   ]
+  },
+  {
+   "name": "p129",
+   "patches": [
+    "129",
+    "119"
+   ],
+   "env": {
+    "ENABLE_CUSTOM_ALL_REDUCE": "0"
+   },
+   "server_env": {
+    "SGLANG_USE_1STAGE_ALLREDUCE": "unset"
+   },
+   "off": [
+    "ar129"
+   ]
+  },
+  {
+   "name": "p130",
+   "patches": [
+    "130"
+   ],
+   "env": {
+    "SGLANG_HIP_BF16_ATTN_SUM": "0"
+   },
+   "server_env": {
+    "SGLANG_HIP_BF16_ATTN_SUM": "0"
+   },
+   "off": [
+    "wire130"
+   ]
+  },
+  {
+   "name": "p107",
+   "patches": [
+    "107"
+   ],
+   "env": {
+    "EXTEND_SPLITKV_MAX": "0"
+   },
+   "server_env": {
+    "SGLANG_EXTEND_SPLITKV_MAX_TOKENS": "0"
+   },
+   "off": [
+    "route107",
+    "routefp8"
+   ]
+  },
+  {
+   "name": "p108",
+   "patches": [
+    "108"
+   ],
+   "env": {
+    "EXTEND_FP8_QK": "0"
+   },
+   "server_env": {
+    "SGLANG_EXTEND_FP8_QK": "0"
+   },
+   "off": [
+    "routefp8"
+   ],
+   "on": {
+    "routebf16": {
+     "re": "extend split-KV route active: [^\\n]{0,60}\\(upcast_k=True\\)",
+     "late": true
+    }
+   }
+  },
+  {
+   "name": "p111",
+   "patches": [
+    "111"
+   ],
+   "env": {
+    "SGLANG_SPLITKV_COMBINE_WARPS": "4"
+   },
+   "server_env": {
+    "SGLANG_SPLITKV_COMBINE_WARPS": "4"
+   },
+   "reads": {
+    "file": "sglang/kernels/ops/attention/verify_splitkv.py",
+    "pattern": "_COMBINE_WARPS = int\\(os\\.environ\\.get\\(\\\"SGLANG_SPLITKV_COMBINE_WARPS\\\""
+   }
+  },
+  {
+   "name": "p082",
+   "patches": [
+    "082"
+   ],
+   "env": {
+    "SGLANG_RDNA4_FUSED_FP8_KV_STORE": "0"
+   },
+   "server_env": {
+    "SGLANG_RDNA4_FUSED_FP8_KV_STORE": "0"
+   },
+   "reads": {
+    "file": "sglang/srt/mem_cache/memory_pool.py",
+    "pattern": "get_bool_env_var\\(\\s*\\\"SGLANG_RDNA4_FUSED_FP8_KV_STORE\\\""
+   }
+  },
+  {
+   "name": "p086",
+   "patches": [
+    "086"
+   ],
+   "env": {
+    "SGLANG_KV_SPLITS_OVERRIDE": "16"
+   },
+   "server_env": {
+    "SGLANG_KV_SPLITS_OVERRIDE": "16"
+   },
+   "off": [
+    "kvsplits64"
+   ],
+   "on": {
+    "kvsplits16": "'triton_attention_num_kv_splits': 16\\b"
+   }
+  }
+ ]
+}

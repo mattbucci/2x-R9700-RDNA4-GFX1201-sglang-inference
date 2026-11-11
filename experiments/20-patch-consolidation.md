@@ -159,6 +159,25 @@ server log is checked for the mechanism's own line, present on the control and a
 the KV pool capacity at boot, not on a throughput row. The DSpark session reads cycle time from the sampled
 ladder and accept length from the paired greedy probe on two disjoint document sets.
 
+`scripts/bench/consol_session.sh <session file>` runs one session; the session files live in
+`experiments/20-patch-consolidation/sessions/`. A session file names the preset, the rows to measure and, per
+arm, the launcher variable that turns the mechanism off, the value the server process must then show, and the log
+lines that prove it. Three checks stand between an arm and its rows:
+
+- before any boot, the launcher's print-only mode is traced per arm and its exports are compared with the arm's
+  server environment;
+- at boot, the server process environment, the source tree on its path and the mechanism lines of the log are
+  read, after one short request so lazily logged lines exist;
+- after the measurements, the lines only a deep or multi-turn request produces are read.
+
+The first check corrected four recorded arms (107, 108, 112, 121): they named the server variable, which the
+preset derives from its own knob and overwrites, so each would have booted as a second control. `CONSOL_DRY=1`
+stops after the static checks. The summary reports, per arm and row, the shipped preset over the arm as the mean
+of both orders, the two orders separately and the control-to-control spread of the block; an arm with an
+unreadable receipt is reported as incomplete, never as a verdict. The keep and drop thresholds are parameters of
+the summary. `qwen38-nospec.json` holds the eleven switch arms of the no-speculation session; the four replay arms
+join it with their development trees.
+
 ## CONSOL-2 — correctness ablation (GPU)
 
 Remove each required patch on a development tree and run the reproducer it was written for, or
