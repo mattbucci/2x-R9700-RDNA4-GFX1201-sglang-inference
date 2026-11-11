@@ -23,10 +23,10 @@ in [experiments/](experiments/README.md). The active performance programme is
   same ladder 21/21 to 245,172 actual tokens.
 - **Qwen3.8-27B-FP8 is the quality flagship**: fleet-best LAB-Bench 42.3 % (no-think multiple choice),
   MMLU 84.2 %, HumanEval 93.3 %, 7/7 agentic rungs to 245,150 actual tokens. The preset is DSpark
-  speculative decoding through the split-KV verify kernel: **59.6 / 79.8 / 73.1 / 59.5 tok/s at 24 / 7.3K /
+  speculative decoding through the split-KV verify kernel: **60.7 / 81.0 / 74.5 / 60.6 tok/s at 24 / 7.3K /
   58K / 197K input** (canonical think-off sweep, 5-run medians; the rate follows the text's acceptance) against
-  35.0 / 34.3 / 32.7 / 29.2 on the no-spec server (`QWEN38_SPEC=0`; pools 733K no-spec, 429K with DSpark). Cold
-  prefill of a 197K prompt is 187 s; a 1-token agentic turn on a 176K cached prefix is 0.17–0.35 s
+  35.6 / 34.9 / 33.3 / 29.9 on the no-spec server (`QWEN38_SPEC=0`; pools 733K no-spec, 429K with DSpark). Cold
+  prefill of a 197K prompt is 173 s; a 1-token agentic turn on a 176K cached prefix is 0.17–0.35 s
   (`extra_buffer` hybrid cache + the 64-row split-KV turn route); capability probe 5/5.
 - **Flint FP8 serves** (patch 105, strict tool schemas) with an FP8 KV cache (1.05M full-attention pool
   tokens, 2× bf16's): 44.2 → 37.5 tok/s from 14 to 219K actual input; basic / tool-call / thinking probes pass, the
@@ -64,7 +64,7 @@ per-model curves are under [benchmarks/](benchmarks/README.md).
 | Devstral-Small-2-24B | AWQ dense + vision | 52.7 (15) | 17.0 (198K) |
 | Qwen3.5-27B | AWQ dense + DeltaNet | 24.5 (22) | 11.2 (197K) |
 | Qwen3.6-27B | AWQ dense + vision | 24.9 (22) | 11.5 (197K) |
-| Qwen3.8-27B | official FP8 dense + DeltaNet (VL + video) | 35.0 (24) | **29.2 (197K)** |
+| Qwen3.8-27B | official FP8 dense + DeltaNet (VL + video) | 35.6 (24) | **29.9 (197K)** |
 | Qwen3-VL-32B | AWQ dense + vision | 23.4 (20) | 16.5 (27K) |
 | Gemma 4 31B | AWQ dense + SWA | 29.4 (25) | 10.5 (110K) |
 | Gemma 4 12B | AWQ omni + SWA | 38.6 (25) | 10.9 (198K) |
@@ -78,7 +78,7 @@ server as 256K-depth throughput.
 ![Spec-decode coverage: short-depth tok/s per draft lane, with the measured at-depth value (red = collapse at true 256K, white = holds)](benchmarks/specdecode_fleet.png)
 
 Only Qwen3.8-27B drafts hold a gain at depth: the preset's DSpark lane (RedHatAI speculator through the split-KV
-verify kernel), 59.5 tok/s at 197K actual input against 29.2 no-spec; a DFlash2 drafter also holds and is not
+verify kernel), 60.6 tok/s at 197K actual input against 29.9 no-spec; a DFlash2 drafter also holds and is not
 adopted (one needle miss). Every other EAGLE3/DFlash draft that wins at short depth collapses at true 256K
 (0.8–1.2 tok/s at 240–244K): green bars are short-depth capability. Data: [`benchmarks/specdecode.json`](benchmarks/specdecode.json).
 
@@ -131,9 +131,9 @@ Qwen3.8-27B files ([receipt](benchmarks/radiance-parity/README.md)). Decode is t
 
 | Lane | vllm-radiance | This stack | Gap | Experiments that close it, in run order |
 |---|---|---|---|---|
-| FP8, no speculation | 35.4 / 35.0 / 33.7 / 30.4 | 35.0 / 34.3 / 32.7 / 29.2 | 1.01–1.04× | RAD-22 decode GEMV, RAD-5a Triton norm, RAD-23 DeltaNet GEMV and RAD-25 in-graph all-reduce are in the preset (patches 122–124, 129); RAD-15 int8 LM head is opt-in for greedy decode (patch 127, +1–2.5 %); its sampling path, RAD-3 GEMM weight layout, RAD-12 switch ablation |
-| FP8 + DFlash2 | 99.9 / 99.7 / 87.9 / 91.0 | 79.3 / 76.8 / 58.7 / 56.8 | 1.3–1.6× | RAD-27 grouped verify prefix stage and RAD-29 verify-row GEMM are in the preset (patches 125, 128; 126 is DSpark's draft stage); RAD-18 content-adaptive block length, RAD-7 low-bit draft head |
-| Cold prefill | 4,137 / 3,631 / 2,520 | 2,334 / 1,785 / 1,072 | 1.8–2.4× | RAD-10 197K profile, RAD-19 DeltaNet conv block width, RAD-20 GEMM tiles at M ≥ 64 and chunk size, then ports by share |
+| FP8, no speculation | 35.4 / 35.0 / 33.7 / 30.4 | 35.6 / 34.9 / 33.3 / 29.9 | 0.99–1.02× | RAD-22 decode GEMV, RAD-5a Triton norm, RAD-23 DeltaNet GEMV, RAD-25 in-graph all-reduce and RAD-30 BF16 attention sum are in the preset (patches 122–124, 129, 130); RAD-15 int8 LM head is opt-in for greedy decode (patch 127, +1–2.5 %); its sampling path, RAD-3 GEMM weight layout |
+| FP8 + DFlash2 | 99.9 / 99.7 / 87.9 / 91.0 | 81.2 / 77.9 / 59.6 / 57.7 | 1.2–1.6× | RAD-27 grouped verify prefix stage and RAD-29 verify-row GEMM are in the preset (patches 125, 128; 126 is DSpark's draft stage); RAD-18 content-adaptive block length, RAD-7 low-bit draft head |
+| Cold prefill | 4,137 / 3,631 / 2,520 | 2,779 / 2,035 / 1,155 | 1.5–2.2× | RAD-30 is in the preset (time ×0.84–0.93); RAD-10c prefix-attention kernel port, RAD-20 GEMM tiles at M ≥ 64 and chunk size |
 | MXFP4, no speculation | 51.6 / 50.8 / 47.4 / 41.0 | 34.3 / 33.6 / 31.8 / 28.4 | 1.4–1.5× | RAD-11 split-layout census and the M > 32 repack path, RAD-21 MXFP4 + DFlash2 |
 
 Measurement runs first (RAD-2, 12, 13, 14, 10 and 16 need no tree change) so ports follow measured worth. Targets: 33 tok/s

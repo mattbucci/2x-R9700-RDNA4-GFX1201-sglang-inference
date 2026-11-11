@@ -189,6 +189,23 @@ reduction at nine rows against 10.8 at one). Not yet touched: the snapshotting D
 grouped prefix stage and combine +0.7 / +1.9 ms, 222 extra copies and compares +0.8 ms, the LM head at nine rows
 +0.3 ms. The no-spec target of step 5 (≥ 33 tok/s at 24 tokens, step ≤ 30 ms) is met: 35.0 tok/s, 28.6 ms.
 
+## Measured gap with patches 121–130 in the preset (2026-11-11)
+
+Canonical sweep on the shipped `qwen38` preset after the BF16 wire for the two-rank attention sum (patch 130, RAD-30),
+five runs per depth, every arm on the previous sweep's token counts
+([no-spec](../benchmarks/qwen38-27b-fp8/decode-canonical-nospec-2026-11-11-98p.json),
+[DSpark](../benchmarks/qwen38-27b-fp8/decode-canonical-dspark-2026-11-11-98p.json): 60.7 / 81.0 / 74.5 / 60.6,
+[DFlash2](../benchmarks/qwen38-27b-fp8/decode-canonical-dflash2-2026-11-11-98p.json),
+[DFlash2 on RCCL](../benchmarks/qwen38-27b-fp8/decode-canonical-dflash2-rccl-2026-11-11-98p.json)). The DFlash2 cells
+are the cold first run (80 / 38 / 47 / 37 completion tokens, radiance's counts); the repeats read 80.6 / 78.4 / 71.4 /
+58.2, the 58K ones on a 46-token continuation.
+
+| Lane | vllm-radiance | SGLang, this tree | Gap | What the gap is made of |
+|---|---|---|---|---|
+| FP8, no speculation | 35.4 / 35.0 / 33.7 / 30.4 | 35.6 / 34.9 / 33.3 / 29.9 | 0.99–1.02× | level at 24 and 7.3K tokens; the remainder grows with depth (1–2 % at 58K and 197K), which points at the depth-bound decode attention, not profiled; the int8 LM head stays opt-in (patch 127) |
+| FP8 + DFlash2 | 99.9 / 99.7 / 87.9 / 91.0 | 81.2 / 77.9 / 59.6 / 57.7 | 1.2–1.6× | the cycle's excess over a plain step (the previous section's census); the DFlash2 cycle of this tree is not measured (RAD-29d) |
+| Cold prefill | 4,137 / 3,631 / 2,520 | 2,779 / 2,035 / 1,155 | 1.5–2.2× | the wire removed 0.5 / 4.0 / 13.2 s; the prefix attention is the largest remaining stage (RAD-10c port in serving A/B), then the depth-free stages (RAD-20) |
+
 ## Experiments on SGLang (ranked by expected tok/s per engineering day on the qwen38 no-spec step)
 
 Each one is a same-tree A/B with `scripts/bench/decode_ab.py --ignore-eos` at 24 / 7.3K / 58K / 197K in both orders,

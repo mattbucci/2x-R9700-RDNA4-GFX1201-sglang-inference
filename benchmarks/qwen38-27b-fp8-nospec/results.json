@@ -1,51 +1,51 @@
 {
   "model": "Qwen3.8-27B official FP8 (dense DeltaNet VL+video), no speculation",
-  "engine": "SGLang v0.5.22 + 97 patches",
+  "engine": "SGLang v0.5.22 + 98 patches",
   "method": "completion-token-counted streaming TPOT median (decode_ab, 5-run)",
   "hardware": "2x R9700 TP=2",
-  "timestamp": "2026-11-10 v0.5.22+97p shipped preset (patches 121-126, patch 128 W8A16 verify-row GEMM, patch 129 in-graph custom all-reduce) think-off",
+  "timestamp": "2026-11-11 v0.5.22+98p shipped preset (patches 121-126, 128, 129, patch 130 BF16 wire for the two-rank attention sum) think-off",
   "output_tokens": 80,
   "context_sweep": [
     {
       "context": 128,
       "input_len": 24,
       "actual_input_tokens": 24,
-      "tpot_ms": 28.55,
-      "tok_per_sec": 35.022,
-      "ttft_ms": 58.6
+      "tpot_ms": 28.09,
+      "tok_per_sec": 35.594,
+      "ttft_ms": 56.5
     },
     {
       "context": 8192,
       "input_len": 7331,
       "actual_input_tokens": 7331,
-      "tpot_ms": 29.14,
-      "tok_per_sec": 34.32,
-      "ttft_ms": 114.1
+      "tpot_ms": 28.67,
+      "tok_per_sec": 34.876,
+      "ttft_ms": 111.0
     },
     {
       "context": 65536,
       "input_len": 58483,
       "actual_input_tokens": 58483,
-      "tpot_ms": 30.54,
-      "tok_per_sec": 32.744,
-      "ttft_ms": 120.7
+      "tpot_ms": 30.04,
+      "tok_per_sec": 33.291,
+      "ttft_ms": 116.8
     },
     {
       "context": 221184,
       "input_len": 197326,
       "actual_input_tokens": 197326,
-      "tpot_ms": 34.27,
-      "tok_per_sec": 29.181,
-      "ttft_ms": 103.5
+      "tpot_ms": 33.5,
+      "tok_per_sec": 29.854,
+      "ttft_ms": 100.8
     }
   ],
   "throughput_sweep": [
     {
       "concurrency": 1,
-      "throughput": 35.022,
-      "tpot_ms": 28.55,
+      "throughput": 35.594,
+      "tpot_ms": 28.09,
       "ttft_ms": 0
     }
   ],
-  "note": "canonical 4-point sweep on the no-spec server (QWEN38_SPEC=0) with the TP-split DeltaNet projections, patches 122-124 and the in-graph custom all-reduce of patch 129 (exported by launch.sh; patches 125, 126 and 128 are on the speculative path only), 5 runs, EOS; pool 732,790 tokens. Cold prefill (flush_cache, 2 runs): 2,334 / 1,785 / 1,072 tok/s at 7.3K / 58K / 197K. Previous row (94 patches, same day): 34.264 / 33.56 / 32.115 / 28.681. Greedy route probe 10/10 including the concurrent-request case. Receipts: ../qwen38-27b-fp8/decode-canonical-nospec-2026-11-10-97p.json, ../qwen38-27b-fp8/prefill-canonical-nospec-2026-11-10-97p.json, ../qwen38-27b-fp8/route-canonical-nospec-2026-11-10-97p.json."
+  "note": "canonical 4-point sweep on the no-spec server (QWEN38_SPEC=0) with the TP-split DeltaNet projections, patches 122-124, the in-graph custom all-reduce of patch 129 and the BF16 attention-sum wire of patch 130 (exported by launch.sh; patches 125, 126 and 128 are on the speculative path only), 5 runs, EOS; pool 732,790 tokens. Cold prefill (flush_cache, 2 runs): 2,779 / 2,035 / 1,155 tok/s at 7.3K / 58K / 197K (2.64 / 28.74 / 170.88 s, x0.840 / x0.877 / x0.928 of the 97-patch times). Previous row (97 patches, 2026-11-10): 35.022 / 34.32 / 32.744 / 29.181 (+1.6 % / +1.6 % / +1.7 % / +2.3 %). Greedy route probe 10/10 including the concurrent-request case. Receipts: ../qwen38-27b-fp8/decode-canonical-nospec-2026-11-11-98p.json, ../qwen38-27b-fp8/prefill-canonical-nospec-2026-11-11-98p.json, ../qwen38-27b-fp8/route-canonical-nospec-2026-11-11-98p.json."
 }

@@ -2477,6 +2477,48 @@ neither gains nor loses.
 
 ## Evaluation methodology
 
+### Canonical sweep with patches 121–130 in the preset: DSpark 60.7 / 81.0 / 74.5 / 60.6 tok/s, no speculation 35.6 / 34.9 / 33.3 / 29.9, the 197K cold prefill in 171–173 s (2026-11-11)
+
+Shipped `qwen38` preset from the live tree (98 patches, launcher defaults), `decode_ab.py` with five runs of 80
+tokens, EOS on, thinking off, four boots: DSpark (the preset), the DFlash2 comparison drafter on the preset's
+in-graph all-reduce, the same on RCCL (`ENABLE_CUSTOM_ALL_REDUCE=0`), and `QWEN38_SPEC=0`. The one change against the
+previous canonical sweep is patch 130, the BF16 wire for the two-rank attention sum (RAD-30).
+
+| arm | 24 | 7,331 | 58,483 | 197,326 |
+|---|---:|---:|---:|---:|
+| DSpark (preset), median | 60.675 | 80.951 | 74.495 | 60.555 |
+| DSpark, previous canonical row (patches 121–129) | 59.628 | 79.822 | 73.089 | 59.471 |
+| no speculation, median | 35.594 | 34.876 | 33.291 | 29.854 |
+| no speculation, previous canonical row | 35.022 | 34.320 | 32.744 | 29.181 |
+| DSpark / no speculation | 1.70× | 2.32× | 2.24× | 2.03× |
+| DFlash2 drafter, in-graph all-reduce, median | 80.564 | 78.368 | 71.373 | 58.189 |
+| DFlash2 drafter, RCCL, median | 79.520 | 77.599 | 70.615 | 57.748 |
+| DFlash2 drafter, in-graph all-reduce, cold first run | 81.16 | 77.94 | 59.62 | 57.73 |
+| completion tokens, DSpark | 80 | 38 | 33 | 37 |
+| completion tokens, no speculation and both DFlash2 boots | 80 | 38 | 47, then 46 | 37 |
+
+Every arm decodes the previous sweep's token counts on every run, so each row compares kernels: DSpark +1.8 % /
++1.4 % / +1.9 % / +1.8 %, no speculation +1.6 % / +1.6 % / +1.7 % / +2.3 %, DFlash2 +1.9 % / +1.8 % / +2.0 % /
++1.4 % (+1.8 % / +2.0 % / +1.7 % / +1.5 % on RCCL). RAD-30's A/B read +1.2–1.7 % without speculation and a DSpark
+cycle of ×0.98. Cold prefill at 7.3K / 58K / 197K is 2,779 / 2,035 / 1,155 tok/s without speculation (2.64 / 28.74 /
+170.88 s) and 2,720 / 1,996 / 1,138 on the DSpark server (2.69 / 29.30 / 173.33 s): time ×0.84 / ×0.88 / ×0.93 of
+the previous sweep on both servers, the A/B's ratios. Pools are unchanged: 428,579 tokens with DSpark, 732,790
+without speculation. Each server logs the wire's active line on both ranks at boot and after its sweep.
+
+The DFlash2 pair reads ×1.013 / ×1.010 / ×1.011 / ×1.008 for the in-graph all-reduce on the medians and ×1.013 /
+×1.013 / ×1.010 / ×1.013 on the cold first runs, on equal token counts. The route probe passes 10 of 10 on all four
+servers with three concurrent requests among its cases; the capability probe passes 5 of 5 on the three speculative
+servers. Mean accept length over the sweep's decode batches: 3.31 with DSpark, 3.34 with DFlash2.
+
+Against vllm-radiance: no speculation 0.99 / 1.00 / 1.01 / 1.02× (from 1.01–1.04×), level at 24 and 7.3K tokens
+and 1–2 % behind at depth. DFlash2 on the cold first runs, which carry radiance's completion tokens (80 / 38 / 47 /
+37): 1.23 / 1.28 / 1.47 / 1.58× behind (from 1.26 / 1.30 / 1.50 / 1.60×). Cold prefill is 1.49 / 1.78 / 2.18×
+behind (from 1.77 / 2.03 / 2.35×).
+
+Receipts: `qwen38-27b-fp8/{decode,capabilities,route}-canonical-<arm>-2026-11-11-98p.json` for `dspark`, `dflash2`,
+`dflash2-rccl` and (decode, route) `nospec`, `prefill-canonical-{dspark,nospec}-2026-11-11-98p.json`. These are the
+README and results.json rows.
+
 ### SWE-bench answer leakage through git history and the web (found 2026-09-18)
 
 The v2 qwen38 bakeoff gave every scaffold a work tree cloned from the full upstream mirror and
