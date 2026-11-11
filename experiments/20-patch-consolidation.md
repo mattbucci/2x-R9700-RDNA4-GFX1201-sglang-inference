@@ -37,6 +37,22 @@ receipt and the patch state it was measured under, upstream disposition, the pat
 series still apply strictly without it), and its rebase cost (which base bumps needed a manual edit). The record
 names the ablation arm for CONSOL-1 or CONSOL-2: a switch, or a tree replayed without the patch.
 
+The mechanical pass is `scripts/test/patch_inventory.py` (the launcher in print-only mode, a leave-one-out replay
+on a scratch clone, the history of `patches/`). It reads:
+
+- 76 of the 97 patches can be left out alone and the rest still replays; 21 carry dependents (001, 065 and 107
+  carry five to seven each).
+- Ablation arms: 13 patches have a switch that is on by default or in a preset (the arm is the switch), 63 need a
+  tree replayed without them, 15 a tree without them and their dependents.
+- 6 patches (2,273 added lines; 032 alone is 1,796 and 065 is 406) sit behind switches that are off by default
+  and in every preset; 3 more (653 lines) look the same but also edit upstream files without naming a switch.
+- Rebase cost: 37 patches had their own added lines edited in at least one of the four base bumps (15 to 17 per
+  bump); the v0.5.23 dry run regenerated 12 and hand-ported 5 of 82.
+
+`class_guess` is a first guess with its reason. The reviewed class, mechanism, presets and last measured effect
+per patch are kept in `review.json` beside the inventory and merged into it on each run; a record without a
+reviewed class is not ready for an ablation arm.
+
 ## CONSOL-1 — performance ablation (GPU)
 
 Leave one mechanism out on every preset that turns it on, against the shipped preset, in both orders in one

@@ -1205,11 +1205,12 @@
   {
    "id": "CONSOL-0",
    "spec": "20-patch-consolidation.md",
-   "status": "ready",
+   "status": "in_progress",
    "resource": "cpu",
    "depends_on": [],
-   "next_action": "Inventory script over patches/: class, mechanism, files, lines, switch, presets that turn it on (launcher print-only mode), last measured effect with receipt and patch state, upstream disposition, dependents (strict apply of the series without the patch), rebase cost; write experiments/20-patch-consolidation/inventory.json with the ablation arm per patch.",
-   "test_gate": "97 records, every patch classed required / performance / opt-in / superseded, every performance and required record names its ablation arm (switch or tree without the patch) and the presets it runs on."
+   "next_action": "Review pass into experiments/20-patch-consolidation/review.json (merged by the script): per patch the class (required / performance / opt-in / superseded), mechanism, the presets that exercise it, the last measured effect with receipt and patch state; start with the 9 off-everywhere candidates and the 13 switch arms.",
+   "test_gate": "97 records, every patch classed required / performance / opt-in / superseded, every performance and required record names its ablation arm (switch or tree without the patch) and the presets it runs on.",
+   "result": "Mechanical pass done: scripts/test/patch_inventory.py writes experiments/20-patch-consolidation/inventory.json (97 records: lines, files, switches with defaults, presets exporting them, index row, FINDINGS and launcher mentions, leave-one-out dependents, rebase history over four base bumps, v0.5.23 dry-run outcome, class guess with reason, ablation arm). 76 patches drop alone, 21 carry dependents; arms: 13 switch, 63 tree without the patch, 15 tree without the patch and its dependents; 6 patches (2,273 lines) are off by default and in every preset, 3 more (653 lines) likely so; 37 patches needed their added lines edited in at least one base bump."
   },
   {
    "id": "CONSOL-1",

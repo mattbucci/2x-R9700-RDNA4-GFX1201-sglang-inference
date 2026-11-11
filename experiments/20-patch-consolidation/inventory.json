@@ -1,0 +1,5403 @@
+{
+ "totals": {
+  "patches": 97,
+  "added": 14570,
+  "deleted": 598,
+  "upstream_files_touched": 159,
+  "new_files": 50,
+  "switches": 41,
+  "presets": [
+   "devstral",
+   "devstral2",
+   "coder-30b",
+   "coder-next",
+   "coder-next-ream",
+   "gemma4",
+   "gemma4-31b",
+   "gemma4-12b",
+   "gemma4-31b-autoround",
+   "gemma4-31b-ct",
+   "qwen35-moe",
+   "qwen36-moe",
+   "qwen35",
+   "coder-reap-25b",
+   "qwen38",
+   "qwen36-27b",
+   "qwen3vl-32b",
+   "nemotron-omni",
+   "north-mini",
+   "laguna",
+   "flint"
+  ],
+  "presets_without_print_only_line": [],
+  "class_guess": {
+   "opt-in": 6,
+   "opt-in?": 3,
+   "performance": 49,
+   "required": 39
+  },
+  "class_guess_added_lines": {
+   "opt-in": 2273,
+   "opt-in?": 653,
+   "performance": 8645,
+   "required": 2999
+  },
+  "reviewed": 0,
+  "rebase": {
+   "added_lines_changed_in_a_bump": [
+    "001",
+    "004",
+    "005",
+    "008",
+    "011",
+    "026",
+    "027",
+    "032",
+    "039",
+    "043",
+    "047",
+    "049",
+    "055",
+    "057",
+    "058",
+    "065",
+    "073",
+    "074",
+    "075",
+    "077",
+    "079",
+    "080",
+    "081",
+    "082",
+    "083",
+    "084",
+    "085",
+    "086",
+    "087",
+    "088",
+    "089",
+    "090",
+    "092",
+    "094",
+    "096",
+    "097",
+    "098"
+   ],
+   "next_bump": {
+    "regenerated": [
+     "004",
+     "027",
+     "062",
+     "065",
+     "077",
+     "080",
+     "082",
+     "084",
+     "096",
+     "105",
+     "107",
+     "110"
+    ],
+    "hand-ported": [
+     "005",
+     "058",
+     "079",
+     "103",
+     "104"
+    ],
+    "dropped": [
+     "063"
+    ]
+   }
+  },
+  "drop_alone": 76
+ },
+ "preset_exports": {
+  "devstral": {
+   "SGLANG_USE_AITER": [
+    "0"
+   ],
+   "SGLANG_USE_AITER_AR": [
+    "0"
+   ],
+   "SGLANG_ALLOW_OVERWRITE_LONGER_CONTEXT_LEN": [
+    "1"
+   ]
+  },
+  "devstral2": {
+   "SGLANG_EXTEND_FP8_QK": [
+    "1"
+   ],
+   "SGLANG_USE_AITER": [
+    "0"
+   ],
+   "SGLANG_USE_AITER_AR": [
+    "0"
+   ],
+   "SGLANG_ALLOW_OVERWRITE_LONGER_CONTEXT_LEN": [
+    "1"
+   ]
+  },
+  "coder-30b": {
+   "SGLANG_USE_AITER": [
+    "0"
+   ],
+   "SGLANG_USE_AITER_AR": [
+    "0"
+   ],
+   "SGLANG_ALLOW_OVERWRITE_LONGER_CONTEXT_LEN": [
+    "1"
+   ]
+  },
+  "coder-next": {
+   "SGLANG_USE_AITER": [
+    "0"
+   ],
+   "SGLANG_USE_AITER_AR": [
+    "0"
+   ],
+   "SGLANG_ALLOW_OVERWRITE_LONGER_CONTEXT_LEN": [
+    "1"
+   ]
+  },
+  "coder-next-ream": {
+   "SGLANG_USE_AITER": [
+    "0"
+   ],
+   "SGLANG_USE_AITER_AR": [
+    "0"
+   ],
+   "SGLANG_ALLOW_OVERWRITE_LONGER_CONTEXT_LEN": [
+    "1"
+   ]
+  },
+  "gemma4": {
+   "SGLANG_USE_AITER": [
+    "0"
+   ],
+   "SGLANG_USE_AITER_AR": [
+    "0"
+   ],
+   "SGLANG_ALLOW_OVERWRITE_LONGER_CONTEXT_LEN": [
+    "1"
+   ]
+  },
+  "gemma4-31b": {
+   "SGLANG_USE_AITER": [
+    "0"
+   ],
+   "SGLANG_USE_AITER_AR": [
+    "0"
+   ],
+   "SGLANG_ALLOW_OVERWRITE_LONGER_CONTEXT_LEN": [
+    "1"
+   ]
+  },
+  "gemma4-12b": {
+   "SGLANG_USE_AITER": [
+    "0"
+   ],
+   "SGLANG_USE_AITER_AR": [
+    "0"
+   ],
+   "SGLANG_ALLOW_OVERWRITE_LONGER_CONTEXT_LEN": [
+    "1"
+   ]
+  },
+  "gemma4-31b-autoround": {
+   "SGLANG_USE_AITER": [
+    "0"
+   ],
+   "SGLANG_USE_AITER_AR": [
+    "0"
+   ],
+   "SGLANG_ALLOW_OVERWRITE_LONGER_CONTEXT_LEN": [
+    "1"
+   ]
+  },
+  "gemma4-31b-ct": {
+   "SGLANG_USE_AITER": [
+    "0"
+   ],
+   "SGLANG_USE_AITER_AR": [
+    "0"
+   ],
+   "SGLANG_ALLOW_OVERWRITE_LONGER_CONTEXT_LEN": [
+    "1"
+   ]
+  },
+  "qwen35-moe": {
+   "SGLANG_EXTEND_SPLITKV_MAX_TOKENS": [
+    "256"
+   ],
+   "SGLANG_USE_AITER": [
+    "0"
+   ],
+   "SGLANG_USE_AITER_AR": [
+    "0"
+   ],
+   "SGLANG_ALLOW_OVERWRITE_LONGER_CONTEXT_LEN": [
+    "1"
+   ]
+  },
+  "qwen36-moe": {
+   "SGLANG_EXTEND_SPLITKV_MAX_TOKENS": [
+    "256"
+   ],
+   "SGLANG_EXTEND_FP8_QK": [
+    "1"
+   ],
+   "SGLANG_USE_AITER": [
+    "0"
+   ],
+   "SGLANG_USE_AITER_AR": [
+    "0"
+   ],
+   "SGLANG_ALLOW_OVERWRITE_LONGER_CONTEXT_LEN": [
+    "1"
+   ]
+  },
+  "qwen35": {
+   "SGLANG_EXTEND_SPLITKV_MAX_TOKENS": [
+    "256"
+   ],
+   "SGLANG_EXTEND_FP8_QK": [
+    "1"
+   ],
+   "SGLANG_USE_AITER": [
+    "0"
+   ],
+   "SGLANG_USE_AITER_AR": [
+    "0"
+   ],
+   "SGLANG_ALLOW_OVERWRITE_LONGER_CONTEXT_LEN": [
+    "1"
+   ]
+  },
+  "coder-reap-25b": {
+   "SGLANG_USE_AITER": [
+    "0"
+   ],
+   "SGLANG_USE_AITER_AR": [
+    "0"
+   ],
+   "SGLANG_ALLOW_OVERWRITE_LONGER_CONTEXT_LEN": [
+    "1"
+   ]
+  },
+  "qwen38": {
+   "SGLANG_EXTEND_FP8_QK": [
+    "1"
+   ],
+   "SGLANG_RDNA4_DELTANET_TP_SPLIT": [
+    "1"
+   ],
+   "SGLANG_RDNA4_FP8_GEMV": [
+    "1"
+   ],
+   "SGLANG_RDNA4_TRITON_GEMMA_RMSNORM": [
+    "1"
+   ],
+   "SGLANG_RDNA4_SKINNY_BA_GEMV": [
+    "1"
+   ],
+   "SGLANG_RDNA4_VERIFY_GQA": [
+    "1"
+   ],
+   "SGLANG_RDNA4_SPLITKV_WINDOW": [
+    "1"
+   ],
+   "SGLANG_RDNA4_SPLITKV_WINDOW_SPLITS": [
+    "16"
+   ],
+   "SGLANG_RDNA4_FP8_GEMM_BF16": [
+    "1"
+   ],
+   "SGLANG_USE_1STAGE_ALLREDUCE": [
+    "1"
+   ],
+   "SGLANG_EXTEND_SPLITKV_MAX_TOKENS": [
+    "256"
+   ],
+   "SGLANG_USE_AITER": [
+    "0"
+   ],
+   "SGLANG_USE_AITER_AR": [
+    "0"
+   ],
+   "SGLANG_ALLOW_OVERWRITE_LONGER_CONTEXT_LEN": [
+    "1"
+   ]
+  },
+  "qwen36-27b": {
+   "SGLANG_EXTEND_SPLITKV_MAX_TOKENS": [
+    "256"
+   ],
+   "SGLANG_EXTEND_FP8_QK": [
+    "1"
+   ],
+   "SGLANG_USE_AITER": [
+    "0"
+   ],
+   "SGLANG_USE_AITER_AR": [
+    "0"
+   ],
+   "SGLANG_ALLOW_OVERWRITE_LONGER_CONTEXT_LEN": [
+    "1"
+   ]
+  },
+  "qwen3vl-32b": {
+   "SGLANG_USE_AITER": [
+    "0"
+   ],
+   "SGLANG_USE_AITER_AR": [
+    "0"
+   ],
+   "SGLANG_ALLOW_OVERWRITE_LONGER_CONTEXT_LEN": [
+    "1"
+   ]
+  },
+  "nemotron-omni": {
+   "SGLANG_EXTEND_FP8_QK": [
+    "1"
+   ],
+   "SGLANG_USE_AITER": [
+    "0"
+   ],
+   "SGLANG_USE_AITER_AR": [
+    "0"
+   ],
+   "SGLANG_ALLOW_OVERWRITE_LONGER_CONTEXT_LEN": [
+    "1"
+   ]
+  },
+  "north-mini": {
+   "SGLANG_USE_AITER": [
+    "0"
+   ],
+   "SGLANG_USE_AITER_AR": [
+    "0"
+   ],
+   "SGLANG_ALLOW_OVERWRITE_LONGER_CONTEXT_LEN": [
+    "1"
+   ]
+  },
+  "laguna": {
+   "SGLANG_EXTEND_SPLITKV_MAX_TOKENS": [
+    "256"
+   ],
+   "SGLANG_USE_AITER": [
+    "0"
+   ],
+   "SGLANG_USE_AITER_AR": [
+    "0"
+   ],
+   "SGLANG_ALLOW_OVERWRITE_LONGER_CONTEXT_LEN": [
+    "1"
+   ]
+  },
+  "flint": {
+   "SGLANG_EXTEND_SPLITKV_MAX_TOKENS": [
+    "256"
+   ],
+   "SGLANG_EXTEND_FP8_QK": [
+    "1"
+   ],
+   "SGLANG_USE_AITER": [
+    "0"
+   ],
+   "SGLANG_USE_AITER_AR": [
+    "0"
+   ],
+   "SGLANG_ALLOW_OVERWRITE_LONGER_CONTEXT_LEN": [
+    "1"
+   ]
+  }
+ },
+ "patches": [
+  {
+   "patch": "001",
+   "name": "upstream-sync",
+   "added": 115,
+   "deleted": 37,
+   "files": [
+    "python/sglang/srt/configs/model_config.py",
+    "python/sglang/srt/layers/attention/triton_backend.py",
+    "python/sglang/srt/layers/layer_boundary/ops.py",
+    "python/sglang/srt/layers/layer_boundary/prepare.py",
+    "python/sglang/srt/layers/layernorm.py",
+    "python/sglang/srt/models/gemma4_causal.py",
+    "python/sglang/srt/models/qwen3_5.py",
+    "python/sglang/srt/models/qwen3_next.py"
+   ],
+   "new_files": [],
+   "switches_introduced": [],
+   "switches_touched": [],
+   "switch_defaults": {},
+   "default_on": [],
+   "presets_on": [],
+   "launcher_presets_naming": [
+    "gemma4",
+    "gemma4-31b",
+    "north-mini"
+   ],
+   "unswitched_existing_files": [
+    "python/sglang/srt/configs/model_config.py",
+    "python/sglang/srt/layers/attention/triton_backend.py",
+    "python/sglang/srt/layers/layer_boundary/ops.py",
+    "python/sglang/srt/layers/layer_boundary/prepare.py",
+    "python/sglang/srt/layers/layernorm.py",
+    "python/sglang/srt/models/gemma4_causal.py",
+    "python/sglang/srt/models/qwen3_5.py",
+    "python/sglang/srt/models/qwen3_next.py"
+   ],
+   "born": "2026-04-12",
+   "rebase_history": {
+    "v0.5.16": "added lines changed",
+    "v0.5.18": "added lines changed",
+    "v0.5.20": "added lines changed",
+    "v0.5.22": "added lines changed"
+   },
+   "next_bump_dry_run": {
+    "v0.5.23": "clean"
+   },
+   "index": {
+    "collection": "Core RDNA4 enablement",
+    "upstream": "Partial",
+    "purpose": "Supplies model, configuration, attention, and cache compatibility required by the supported model set."
+   },
+   "findings": [],
+   "mentioned_in": {
+    "benchmarks/README.md": 2
+   },
+   "shares_files_with": [
+    "023",
+    "031",
+    "036",
+    "044",
+    "045",
+    "047",
+    "062",
+    "065",
+    "077",
+    "080",
+    "081",
+    "100",
+    "105",
+    "107",
+    "110",
+    "112",
+    "117",
+    "120",
+    "121",
+    "123",
+    "124",
+    "125"
+   ],
+   "breaks_without": [
+    "045",
+    "077",
+    "080",
+    "082",
+    "117",
+    "120",
+    "121"
+   ],
+   "class_guess": "required",
+   "class_guess_reason": "no switch; the index purpose reads as enablement or correctness",
+   "ablation_arm": "drop-with:045,077,080,082,117,120,121",
+   "class": null,
+   "disposition": null
+  },
+  {
+   "patch": "002",
+   "name": "rdna4-torch-compile-disable",
+   "added": 5,
+   "deleted": 4,
+   "files": [
+    "python/sglang/srt/layers/rotary_embedding/utils.py",
+    "python/sglang/srt/layers/sampler.py",
+    "python/sglang/srt/layers/vocab_parallel_embedding.py"
+   ],
+   "new_files": [],
+   "switches_introduced": [],
+   "switches_touched": [],
+   "switch_defaults": {},
+   "default_on": [],
+   "presets_on": [],
+   "launcher_presets_naming": [],
+   "unswitched_existing_files": [
+    "python/sglang/srt/layers/rotary_embedding/utils.py",
+    "python/sglang/srt/layers/sampler.py",
+    "python/sglang/srt/layers/vocab_parallel_embedding.py"
+   ],
+   "born": "2026-04-12",
+   "rebase_history": {
+    "v0.5.16": "re-anchored"
+   },
+   "next_bump_dry_run": {
+    "v0.5.23": "clean"
+   },
+   "index": {
+    "collection": "Core RDNA4 enablement",
+    "upstream": "Carry",
+    "purpose": "Disables compile paths that stall on HIP for rotary, sampling, and embedding operations."
+   },
+   "findings": [],
+   "mentioned_in": {
+    "benchmarks/README.md": 2
+   },
+   "shares_files_with": [],
+   "breaks_without": [],
+   "class_guess": "required",
+   "class_guess_reason": "no switch; the index purpose reads as enablement or correctness",
+   "ablation_arm": "drop-alone",
+   "class": null,
+   "disposition": null
+  },
+  {
+   "patch": "003",
+   "name": "rdna4-sgl-kernel-fallbacks",
+   "added": 17,
+   "deleted": 6,
+   "files": [
+    "python/sglang/kernels/aot/python/sgl_kernel/__init__.py"
+   ],
+   "new_files": [],
+   "switches_introduced": [],
+   "switches_touched": [],
+   "switch_defaults": {},
+   "default_on": [],
+   "presets_on": [],
+   "launcher_presets_naming": [],
+   "unswitched_existing_files": [
+    "python/sglang/kernels/aot/python/sgl_kernel/__init__.py"
+   ],
+   "born": "2026-04-12",
+   "rebase_history": {
+    "v0.5.16": "re-anchored",
+    "v0.5.18": "re-anchored"
+   },
+   "next_bump_dry_run": {
+    "v0.5.23": "clean"
+   },
+   "index": {
+    "collection": "Core RDNA4 enablement",
+    "upstream": "Carry",
+    "purpose": "Guards CUDA-only `sgl_kernel` and `infllm_v2` imports and provides safe native fallbacks or sentinels."
+   },
+   "findings": [],
+   "mentioned_in": {
+    "benchmarks/README.md": 2
+   },
+   "shares_files_with": [],
+   "breaks_without": [],
+   "class_guess": "required",
+   "class_guess_reason": "no switch; the index purpose reads as enablement or correctness",
+   "ablation_arm": "drop-alone",
+   "class": null,
+   "disposition": null
+  },
+  {
+   "patch": "004",
+   "name": "rdna4-moe-fixes",
+   "added": 960,
+   "deleted": 28,
+   "files": [
+    "python/sglang/kernels/ops/moe/fused_moe_triton_kernels.py",
+    "python/sglang/srt/layers/moe/fused_moe_triton/layer.py",
+    "python/sglang/srt/layers/moe/moe_runner/triton_utils/configs/triton_3_6_0/E=128,N=1536,device_name=AMD_Radeon_AI_PRO_R9700,dtype=fp8_w8a8,block_shape=[128, 128].json",
+    "python/sglang/srt/layers/moe/moe_runner/triton_utils/configs/triton_3_6_0/E=128,N=1536,device_name=AMD_Radeon_AI_PRO_R9700,dtype=fp8_w8a8,block_shape=[128, 128]_down.json",
+    "python/sglang/srt/layers/moe/moe_runner/triton_utils/configs/triton_3_6_0/E=128,N=2048,device_name=AMD_Radeon_AI_PRO_R9700,dtype=fp8_w8a8,block_shape=[128, 128].json",
+    "python/sglang/srt/layers/moe/moe_runner/triton_utils/configs/triton_3_6_0/E=128,N=2048,device_name=AMD_Radeon_AI_PRO_R9700,dtype=fp8_w8a8,block_shape=[128, 128]_down.json",
+    "python/sglang/srt/layers/moe/moe_runner/triton_utils/configs/triton_3_6_0/E=128,N=384,device_name=AMD_Radeon_AI_PRO_R9700,dtype=fp8_w8a8,block_shape=[128, 128].json",
+    "python/sglang/srt/layers/moe/moe_runner/triton_utils/configs/triton_3_6_0/E=128,N=384,device_name=AMD_Radeon_AI_PRO_R9700,dtype=fp8_w8a8,block_shape=[128, 128]_down.json",
+    "python/sglang/srt/layers/moe/moe_runner/triton_utils/configs/triton_3_6_0/E=128,N=768,device_name=AMD_Radeon_AI_PRO_R9700,dtype=fp8_w8a8,block_shape=[128, 128].json",
+    "python/sglang/srt/layers/moe/moe_runner/triton_utils/configs/triton_3_6_0/E=128,N=768,device_name=AMD_Radeon_AI_PRO_R9700,dtype=fp8_w8a8,block_shape=[128, 128]_down.json",
+    "python/sglang/srt/layers/moe/moe_runner/triton_utils/configs/triton_3_7_0",
+    "python/sglang/srt/layers/moe/moe_runner/triton_utils/fused_moe.py",
+    "python/sglang/srt/layers/moe/moe_runner/triton_utils/fused_moe_triton_config.py",
+    "python/sglang/srt/layers/moe/token_dispatcher/__init__.py",
+    "python/sglang/srt/layers/moe/topk.py"
+   ],
+   "new_files": [
+    "python/sglang/srt/layers/moe/moe_runner/triton_utils/configs/triton_3_6_0/E=128,N=1536,device_name=AMD_Radeon_AI_PRO_R9700,dtype=fp8_w8a8,block_shape=[128, 128].json",
+    "python/sglang/srt/layers/moe/moe_runner/triton_utils/configs/triton_3_6_0/E=128,N=1536,device_name=AMD_Radeon_AI_PRO_R9700,dtype=fp8_w8a8,block_shape=[128, 128]_down.json",
+    "python/sglang/srt/layers/moe/moe_runner/triton_utils/configs/triton_3_6_0/E=128,N=2048,device_name=AMD_Radeon_AI_PRO_R9700,dtype=fp8_w8a8,block_shape=[128, 128].json",
+    "python/sglang/srt/layers/moe/moe_runner/triton_utils/configs/triton_3_6_0/E=128,N=2048,device_name=AMD_Radeon_AI_PRO_R9700,dtype=fp8_w8a8,block_shape=[128, 128]_down.json",
+    "python/sglang/srt/layers/moe/moe_runner/triton_utils/configs/triton_3_6_0/E=128,N=384,device_name=AMD_Radeon_AI_PRO_R9700,dtype=fp8_w8a8,block_shape=[128, 128].json",
+    "python/sglang/srt/layers/moe/moe_runner/triton_utils/configs/triton_3_6_0/E=128,N=384,device_name=AMD_Radeon_AI_PRO_R9700,dtype=fp8_w8a8,block_shape=[128, 128]_down.json",
+    "python/sglang/srt/layers/moe/moe_runner/triton_utils/configs/triton_3_6_0/E=128,N=768,device_name=AMD_Radeon_AI_PRO_R9700,dtype=fp8_w8a8,block_shape=[128, 128].json",
+    "python/sglang/srt/layers/moe/moe_runner/triton_utils/configs/triton_3_6_0/E=128,N=768,device_name=AMD_Radeon_AI_PRO_R9700,dtype=fp8_w8a8,block_shape=[128, 128]_down.json",
+    "python/sglang/srt/layers/moe/moe_runner/triton_utils/configs/triton_3_7_0"
+   ],
+   "switches_introduced": [],
+   "switches_touched": [],
+   "switch_defaults": {},
+   "default_on": [],
+   "presets_on": [],
+   "launcher_presets_naming": [],
+   "unswitched_existing_files": [
+    "python/sglang/kernels/ops/moe/fused_moe_triton_kernels.py",
+    "python/sglang/srt/layers/moe/fused_moe_triton/layer.py",
+    "python/sglang/srt/layers/moe/moe_runner/triton_utils/fused_moe.py",
+    "python/sglang/srt/layers/moe/moe_runner/triton_utils/fused_moe_triton_config.py",
+    "python/sglang/srt/layers/moe/token_dispatcher/__init__.py",
+    "python/sglang/srt/layers/moe/topk.py"
+   ],
+   "born": "2026-04-12",
+   "rebase_history": {
+    "v0.5.16": "added lines changed",
+    "v0.5.18": "re-anchored",
+    "v0.5.20": "re-anchored",
+    "v0.5.22": "added lines changed"
+   },
+   "next_bump_dry_run": {
+    "v0.5.23": "regenerated"
+   },
+   "index": {
+    "collection": "MoE serving and routing",
+    "upstream": "Carry",
+    "purpose": "Adds HIP-safe routing, alignment fallbacks, and gfx1201 Triton MoE configuration support."
+   },
+   "findings": [],
+   "mentioned_in": {
+    "benchmarks/README.md": 2
+   },
+   "shares_files_with": [
+    "076",
+    "079",
+    "097"
+   ],
+   "breaks_without": [],
+   "class_guess": "required",
+   "class_guess_reason": "no switch; the index purpose reads as enablement or correctness",
+   "ablation_arm": "drop-alone",
+   "class": null,
+   "disposition": null
+  },
+  {
+   "patch": "005",
+   "name": "rdna4-fp8-fallbacks",
+   "added": 144,
+   "deleted": 21,
+   "files": [
+    "python/sglang/kernels/ops/gemm/fp8_kernel.py",
+    "python/sglang/srt/layers/quantization/fp8_utils.py",
+    "python/sglang/srt/layers/quantization/quark/schemes/quark_w4a4_mxfp4.py",
+    "python/sglang/srt/layers/quantization/quark_int4fp8_moe.py"
+   ],
+   "new_files": [],
+   "switches_introduced": [
+    "SGLANG_RDNA4_TORCH_FP8_LINEAR"
+   ],
+   "switches_touched": [],
+   "switch_defaults": {
+    "SGLANG_RDNA4_TORCH_FP8_LINEAR": null
+   },
+   "default_on": [],
+   "presets_on": [],
+   "launcher_presets_naming": [],
+   "unswitched_existing_files": [
+    "python/sglang/kernels/ops/gemm/fp8_kernel.py",
+    "python/sglang/srt/layers/quantization/quark/schemes/quark_w4a4_mxfp4.py",
+    "python/sglang/srt/layers/quantization/quark_int4fp8_moe.py"
+   ],
+   "born": "2026-04-12",
+   "rebase_history": {
+    "v0.5.16": "added lines changed",
+    "v0.5.18": "re-anchored",
+    "v0.5.20": "added lines changed",
+    "v0.5.22": "added lines changed"
+   },
+   "next_bump_dry_run": {
+    "v0.5.23": "hand-ported"
+   },
+   "index": {
+    "collection": "FP8",
+    "upstream": "Carry",
+    "purpose": "Adds gfx1201 FP8 quantization fallbacks and guards unsupported Quark paths. Since 2026-08-30 the dense block-FP8 dispatch uses the Triton W8A8 GEMM (the historical gfx1201 ISA crash no longer reproduces on Triton 3.6/ROCm 7.2.3; 18-26x faster than the torch dequant fallback at M=1, which `SGLANG_RDNA4_TORCH_FP8_LINEAR=1` still forces for A/B). The stale `BLOCK_SIZE_M=64 causes GPU hangs` comment was refreshed 2026-10-31 (Triton 3.6 runs 64/128 tiles; patch 106 ships them)."
+   },
+   "findings": [
+    "gfx1201 block-FP8 GEMM configs — adopted as patch 106 (2026-10-31)"
+   ],
+   "mentioned_in": {
+    "benchmarks/README.md": 2
+   },
+   "shares_files_with": [
+    "117",
+    "122",
+    "128"
+   ],
+   "breaks_without": [],
+   "class_guess": "opt-in?",
+   "class_guess_reason": "switches off everywhere, but it also edits upstream files without naming a switch",
+   "ablation_arm": "drop-alone",
+   "class": null,
+   "disposition": null
+  },
+  {
+   "patch": "006",
+   "name": "rdna4-awq-hip-kernels",
+   "added": 2117,
+   "deleted": 0,
+   "files": [
+    "python/sglang/kernels/aot/csrc/quantization/awq/awq_gemv_hip.cu",
+    "python/sglang/kernels/aot/csrc/quantization/awq/awq_gemv_hip.hip"
+   ],
+   "new_files": [
+    "python/sglang/kernels/aot/csrc/quantization/awq/awq_gemv_hip.cu",
+    "python/sglang/kernels/aot/csrc/quantization/awq/awq_gemv_hip.hip"
+   ],
+   "switches_introduced": [],
+   "switches_touched": [],
+   "switch_defaults": {},
+   "default_on": [],
+   "presets_on": [],
+   "launcher_presets_naming": [],
+   "unswitched_existing_files": [],
+   "born": "2026-05-09",
+   "rebase_history": {
+    "v0.5.18": "re-anchored"
+   },
+   "next_bump_dry_run": {
+    "v0.5.23": "clean"
+   },
+   "index": {
+    "collection": "AWQ int4",
+    "upstream": "Carry",
+    "purpose": "Provides native HIP AWQ GEMV kernels for gfx1201."
+   },
+   "findings": [],
+   "mentioned_in": {
+    "benchmarks/README.md": 2
+   },
+   "shares_files_with": [],
+   "breaks_without": [],
+   "class_guess": "performance",
+   "class_guess_reason": "no switch; the index purpose reads as speed",
+   "ablation_arm": "drop-alone",
+   "class": null,
+   "disposition": null
+  },
+  {
+   "patch": "007",
+   "name": "rdna4-model-fixes",
+   "added": 2,
+   "deleted": 0,
+   "files": [
+    "python/sglang/srt/models/llama.py",
+    "python/sglang/srt/models/ministral3.py"
+   ],
+   "new_files": [],
+   "switches_introduced": [],
+   "switches_touched": [],
+   "switch_defaults": {},
+   "default_on": [],
+   "presets_on": [],
+   "launcher_presets_naming": [],
+   "unswitched_existing_files": [
+    "python/sglang/srt/models/llama.py",
+    "python/sglang/srt/models/ministral3.py"
+   ],
+   "born": "2026-04-12",
+   "rebase_history": {},
+   "next_bump_dry_run": {
+    "v0.5.23": "clean"
+   },
+   "index": {
+    "collection": "Model, parser, and speculative-decode plumbing",
+    "upstream": "Carry",
+    "purpose": "Collects small model-loader fixes for Gemma, Qwen, Devstral, and Llama checkpoints used on this stack."
+   },
+   "findings": [],
+   "mentioned_in": {
+    "benchmarks/README.md": 2
+   },
+   "shares_files_with": [],
+   "breaks_without": [],
+   "class_guess": "performance",
+   "class_guess_reason": "no switch; the index purpose reads as speed",
+   "ablation_arm": "drop-alone",
+   "class": null,
+   "disposition": null
+  },
+  {
+   "patch": "008",
+   "name": "rdna4-sgl-kernel-build-arch",
+   "added": 15,
+   "deleted": 3,
+   "files": [
+    "python/sglang/kernels/aot/setup_rocm.py"
+   ],
+   "new_files": [],
+   "switches_introduced": [],
+   "switches_touched": [],
+   "switch_defaults": {},
+   "default_on": [],
+   "presets_on": [],
+   "launcher_presets_naming": [],
+   "unswitched_existing_files": [
+    "python/sglang/kernels/aot/setup_rocm.py"
+   ],
+   "born": "2026-06-01",
+   "rebase_history": {
+    "v0.5.18": "added lines changed",
+    "v0.5.20": "added lines changed"
+   },
+   "next_bump_dry_run": {
+    "v0.5.23": "clean"
+   },
+   "index": {
+    "collection": "Core RDNA4 enablement",
+    "upstream": "Carry",
+    "purpose": "Adds gfx12xx to the native `sgl_kernel` ROCm architecture list (`python/sglang/kernels/aot/setup_rocm.py` since v0.5.17)."
+   },
+   "findings": [],
+   "mentioned_in": {
+    "benchmarks/README.md": 2
+   },
+   "shares_files_with": [],
+   "breaks_without": [],
+   "class_guess": "required",
+   "class_guess_reason": "no switch; the index purpose reads as enablement or correctness",
+   "ablation_arm": "drop-alone",
+   "class": null,
+   "disposition": null
+  },
+  {
+   "patch": "011",
+   "name": "rdna4-triton-attention-fp32",
+   "added": 6,
+   "deleted": 3,
+   "files": [
+    "python/sglang/kernels/ops/attention/decode_attention.py",
+    "python/sglang/kernels/ops/attention/extend_attention.py"
+   ],
+   "new_files": [],
+   "switches_introduced": [],
+   "switches_touched": [],
+   "switch_defaults": {},
+   "default_on": [],
+   "presets_on": [],
+   "launcher_presets_naming": [],
+   "unswitched_existing_files": [
+    "python/sglang/kernels/ops/attention/decode_attention.py",
+    "python/sglang/kernels/ops/attention/extend_attention.py"
+   ],
+   "born": "2026-04-13",
+   "rebase_history": {
+    "v0.5.16": "re-anchored",
+    "v0.5.20": "added lines changed"
+   },
+   "next_bump_dry_run": {
+    "v0.5.23": "clean"
+   },
+   "index": {
+    "collection": "Attention and numerics",
+    "upstream": "Carry",
+    "purpose": "Uses FP32 value accumulation in Triton attention to limit long-context BF16 error."
+   },
+   "findings": [],
+   "mentioned_in": {
+    "benchmarks/README.md": 2
+   },
+   "shares_files_with": [
+    "027",
+    "087",
+    "108"
+   ],
+   "breaks_without": [
+    "087",
+    "108"
+   ],
+   "class_guess": "required",
+   "class_guess_reason": "no switch; the index purpose reads as enablement or correctness",
+   "ablation_arm": "drop-with:087,108",
+   "class": null,
+   "disposition": null
+  },
+  {
+   "patch": "015",
+   "name": "qwen36-vision-config-dict-wrap",
+   "added": 8,
+   "deleted": 0,
+   "files": [
+    "python/sglang/srt/multimodal/processors/qwen_vl.py"
+   ],
+   "new_files": [],
+   "switches_introduced": [],
+   "switches_touched": [],
+   "switch_defaults": {},
+   "default_on": [],
+   "presets_on": [],
+   "launcher_presets_naming": [],
+   "unswitched_existing_files": [
+    "python/sglang/srt/multimodal/processors/qwen_vl.py"
+   ],
+   "born": "2026-04-20",
+   "rebase_history": {},
+   "next_bump_dry_run": {
+    "v0.5.23": "clean"
+   },
+   "index": {
+    "collection": "Model, parser, and speculative-decode plumbing",
+    "upstream": "Carry",
+    "purpose": "Wraps dictionary Qwen vision configuration for attribute-based SGLang access."
+   },
+   "findings": [],
+   "mentioned_in": {
+    "benchmarks/README.md": 2
+   },
+   "shares_files_with": [],
+   "breaks_without": [],
+   "class_guess": "required",
+   "class_guess_reason": "no switch; the index purpose reads as enablement or correctness",
+   "ablation_arm": "drop-alone",
+   "class": null,
+   "disposition": null
+  },
+  {
+   "patch": "016",
+   "name": "qwen3next-conv1d-tp",
+   "added": 29,
+   "deleted": 0,
+   "files": [
+    "python/sglang/srt/configs/qwen3_5.py",
+    "python/sglang/srt/configs/qwen3_next.py"
+   ],
+   "new_files": [],
+   "switches_introduced": [],
+   "switches_touched": [],
+   "switch_defaults": {},
+   "default_on": [],
+   "presets_on": [],
+   "launcher_presets_naming": [],
+   "unswitched_existing_files": [
+    "python/sglang/srt/configs/qwen3_5.py",
+    "python/sglang/srt/configs/qwen3_next.py"
+   ],
+   "born": "2026-04-24",
+   "rebase_history": {
+    "v0.5.16": "re-anchored",
+    "v0.5.22": "re-anchored"
+   },
+   "next_bump_dry_run": {
+    "v0.5.23": "clean"
+   },
+   "index": {
+    "collection": "Model, parser, and speculative-decode plumbing",
+    "upstream": "Carry",
+    "purpose": "Separates Qwen3-Next TP-sharded recurrent state from Qwen3.5's replicated DeltaNet state."
+   },
+   "findings": [],
+   "mentioned_in": {
+    "benchmarks/README.md": 2
+   },
+   "shares_files_with": [
+    "121"
+   ],
+   "breaks_without": [
+    "121"
+   ],
+   "class_guess": "performance",
+   "class_guess_reason": "no switch; the index purpose reads as speed",
+   "ablation_arm": "drop-with:121",
+   "class": null,
+   "disposition": null
+  },
+  {
+   "patch": "023",
+   "name": "gemma4-moe-mlp-no-quant-config",
+   "added": 35,
+   "deleted": 1,
+   "files": [
+    "python/sglang/srt/models/gemma4_causal.py"
+   ],
+   "new_files": [],
+   "switches_introduced": [
+    "SGLANG_GEMMA4_TRACE"
+   ],
+   "switches_touched": [],
+   "switch_defaults": {
+    "SGLANG_GEMMA4_TRACE": null
+   },
+   "default_on": [],
+   "presets_on": [],
+   "launcher_presets_naming": [],
+   "unswitched_existing_files": [],
+   "born": "2026-05-03",
+   "rebase_history": {
+    "v0.5.22": "re-anchored"
+   },
+   "next_bump_dry_run": {
+    "v0.5.23": "clean"
+   },
+   "index": {
+    "collection": "Gemma 4",
+    "upstream": "Carry",
+    "purpose": "Chooses BF16 or quantized dense Gemma MLP construction from the checkpoint ignore rules."
+   },
+   "findings": [],
+   "mentioned_in": {
+    "benchmarks/README.md": 2
+   },
+   "shares_files_with": [
+    "001"
+   ],
+   "breaks_without": [],
+   "class_guess": "opt-in",
+   "class_guess_reason": "its switches are off by default and no preset turns them on",
+   "ablation_arm": "off-everywhere: no speed arm; drop needs only the replay and the capability gates",
+   "class": null,
+   "disposition": null
+  },
+  {
+   "patch": "024",
+   "name": "gemma4-mm-towers-no-quant-config",
+   "added": 33,
+   "deleted": 9,
+   "files": [
+    "python/sglang/srt/models/gemma4_mm.py"
+   ],
+   "new_files": [],
+   "switches_introduced": [],
+   "switches_touched": [],
+   "switch_defaults": {},
+   "default_on": [],
+   "presets_on": [],
+   "launcher_presets_naming": [],
+   "unswitched_existing_files": [
+    "python/sglang/srt/models/gemma4_mm.py"
+   ],
+   "born": "2026-05-03",
+   "rebase_history": {},
+   "next_bump_dry_run": {
+    "v0.5.23": "clean"
+   },
+   "index": {
+    "collection": "Gemma 4",
+    "upstream": "Carry",
+    "purpose": "Loads vision and audio towers through their preserved BF16 Linear modules."
+   },
+   "findings": [],
+   "mentioned_in": {
+    "benchmarks/README.md": 2
+   },
+   "shares_files_with": [
+    "026",
+    "061"
+   ],
+   "breaks_without": [
+    "061"
+   ],
+   "class_guess": "performance",
+   "class_guess_reason": "no switch; the index purpose reads as speed",
+   "ablation_arm": "drop-with:061",
+   "class": null,
+   "disposition": null
+  },
+  {
+   "patch": "025",
+   "name": "gemma4-vision-pooler-padding-fp32",
+   "added": 12,
+   "deleted": 1,
+   "files": [
+    "python/sglang/srt/models/gemma4_vision.py"
+   ],
+   "new_files": [],
+   "switches_introduced": [],
+   "switches_touched": [],
+   "switch_defaults": {},
+   "default_on": [],
+   "presets_on": [],
+   "launcher_presets_naming": [],
+   "unswitched_existing_files": [
+    "python/sglang/srt/models/gemma4_vision.py"
+   ],
+   "born": "2026-05-07",
+   "rebase_history": {},
+   "next_bump_dry_run": {
+    "v0.5.23": "clean"
+   },
+   "index": {
+    "collection": "Gemma 4",
+    "upstream": "Carry",
+    "purpose": "Performs vision-pooler padding in FP32 to avoid overflow."
+   },
+   "findings": [],
+   "mentioned_in": {
+    "benchmarks/README.md": 2
+   },
+   "shares_files_with": [],
+   "breaks_without": [],
+   "class_guess": "performance",
+   "class_guess_reason": "no switch; the index purpose reads as speed",
+   "ablation_arm": "drop-alone",
+   "class": null,
+   "disposition": null
+  },
+  {
+   "patch": "026",
+   "name": "gemma4-mm-video-per-frame-batching",
+   "added": 30,
+   "deleted": 8,
+   "files": [
+    "python/sglang/srt/models/gemma4_mm.py",
+    "python/sglang/srt/models/gemma4_mm.py"
+   ],
+   "new_files": [],
+   "switches_introduced": [],
+   "switches_touched": [],
+   "switch_defaults": {},
+   "default_on": [],
+   "presets_on": [],
+   "launcher_presets_naming": [],
+   "unswitched_existing_files": [
+    "python/sglang/srt/models/gemma4_mm.py",
+    "python/sglang/srt/models/gemma4_mm.py"
+   ],
+   "born": "2026-05-04",
+   "rebase_history": {
+    "v0.5.18": "added lines changed"
+   },
+   "next_bump_dry_run": {
+    "v0.5.23": "clean"
+   },
+   "index": {
+    "collection": "Gemma 4",
+    "upstream": "Carry",
+    "purpose": "Processes image and video frames individually through the vision tower to avoid invalid batched pooler shapes and the all-frames position one-hot (~1.15 GiB for 12 frames) that OOMs a 128K dense server."
+   },
+   "findings": [],
+   "mentioned_in": {
+    "benchmarks/README.md": 2
+   },
+   "shares_files_with": [
+    "024",
+    "061"
+   ],
+   "breaks_without": [],
+   "class_guess": "performance",
+   "class_guess_reason": "no switch; the index purpose reads as speed",
+   "ablation_arm": "drop-alone",
+   "class": null,
+   "disposition": null
+  },
+  {
+   "patch": "027",
+   "name": "rdna4-softcap-fp32",
+   "added": 14,
+   "deleted": 8,
+   "files": [
+    "python/sglang/kernels/ops/activation/softcap.py",
+    "python/sglang/kernels/ops/attention/decode_attention.py",
+    "python/sglang/kernels/ops/attention/extend_attention.py"
+   ],
+   "new_files": [],
+   "switches_introduced": [],
+   "switches_touched": [],
+   "switch_defaults": {},
+   "default_on": [],
+   "presets_on": [],
+   "launcher_presets_naming": [],
+   "unswitched_existing_files": [
+    "python/sglang/kernels/ops/activation/softcap.py",
+    "python/sglang/kernels/ops/attention/decode_attention.py",
+    "python/sglang/kernels/ops/attention/extend_attention.py"
+   ],
+   "born": "2026-04-13",
+   "rebase_history": {
+    "v0.5.16": "added lines changed",
+    "v0.5.18": "added lines changed",
+    "v0.5.20": "added lines changed",
+    "v0.5.22": "added lines changed"
+   },
+   "next_bump_dry_run": {
+    "v0.5.23": "regenerated"
+   },
+   "index": {
+    "collection": "Attention and numerics",
+    "upstream": "Carry",
+    "purpose": "Computes attention and logits softcapping in FP32."
+   },
+   "findings": [],
+   "mentioned_in": {
+    "benchmarks/README.md": 2
+   },
+   "shares_files_with": [
+    "011",
+    "087",
+    "108"
+   ],
+   "breaks_without": [],
+   "class_guess": "required",
+   "class_guess_reason": "no switch; the index purpose reads as enablement or correctness",
+   "ablation_arm": "drop-alone",
+   "class": null,
+   "disposition": null
+  },
+  {
+   "patch": "028",
+   "name": "rdna4-moe-runner-imports",
+   "added": 9,
+   "deleted": 1,
+   "files": [
+    "python/sglang/srt/layers/moe/moe_runner/triton.py"
+   ],
+   "new_files": [],
+   "switches_introduced": [],
+   "switches_touched": [],
+   "switch_defaults": {},
+   "default_on": [],
+   "presets_on": [],
+   "launcher_presets_naming": [],
+   "unswitched_existing_files": [
+    "python/sglang/srt/layers/moe/moe_runner/triton.py"
+   ],
+   "born": "2026-05-07",
+   "rebase_history": {},
+   "next_bump_dry_run": {
+    "v0.5.23": "clean"
+   },
+   "index": {
+    "collection": "MoE serving and routing",
+    "upstream": "Carry",
+    "purpose": "Prevents CUDA-only MoE runner imports from breaking ROCm startup."
+   },
+   "findings": [],
+   "mentioned_in": {
+    "benchmarks/README.md": 2
+   },
+   "shares_files_with": [],
+   "breaks_without": [],
+   "class_guess": "required",
+   "class_guess_reason": "no switch; the index purpose reads as enablement or correctness",
+   "ablation_arm": "drop-alone",
+   "class": null,
+   "disposition": null
+  },
+  {
+   "patch": "030",
+   "name": "rdna4-awq-bf16-act",
+   "added": 9,
+   "deleted": 1,
+   "files": [
+    "python/sglang/srt/layers/quantization/awq/awq.py"
+   ],
+   "new_files": [],
+   "switches_introduced": [],
+   "switches_touched": [],
+   "switch_defaults": {},
+   "default_on": [],
+   "presets_on": [],
+   "launcher_presets_naming": [],
+   "unswitched_existing_files": [
+    "python/sglang/srt/layers/quantization/awq/awq.py"
+   ],
+   "born": "2026-05-07",
+   "rebase_history": {},
+   "next_bump_dry_run": {
+    "v0.5.23": "clean"
+   },
+   "index": {
+    "collection": "AWQ int4",
+    "upstream": "Carry",
+    "purpose": "Makes AWQ dequantization honor BF16 activation dtype."
+   },
+   "findings": [],
+   "mentioned_in": {
+    "benchmarks/README.md": 2
+   },
+   "shares_files_with": [],
+   "breaks_without": [],
+   "class_guess": "required",
+   "class_guess_reason": "no switch; the index purpose reads as enablement or correctness",
+   "ablation_arm": "drop-alone",
+   "class": null,
+   "disposition": null
+  },
+  {
+   "patch": "031",
+   "name": "rdna4-moe-wna16-rocm-supported",
+   "added": 8,
+   "deleted": 0,
+   "files": [
+    "python/sglang/srt/configs/model_config.py"
+   ],
+   "new_files": [],
+   "switches_introduced": [
+    "SGLANG_FORCE_CT_MOE_TRITON"
+   ],
+   "switches_touched": [],
+   "switch_defaults": {
+    "SGLANG_FORCE_CT_MOE_TRITON": null
+   },
+   "default_on": [],
+   "presets_on": [],
+   "launcher_presets_naming": [],
+   "unswitched_existing_files": [],
+   "born": "2026-05-07",
+   "rebase_history": {},
+   "next_bump_dry_run": {
+    "v0.5.23": "clean"
+   },
+   "index": {
+    "collection": "MoE serving and routing",
+    "upstream": "Candidate",
+    "purpose": "Enables the existing W4A16 MoE backend on ROCm."
+   },
+   "findings": [],
+   "mentioned_in": {
+    "benchmarks/README.md": 2
+   },
+   "shares_files_with": [
+    "001",
+    "044",
+    "062",
+    "105"
+   ],
+   "breaks_without": [
+    "044"
+   ],
+   "class_guess": "opt-in",
+   "class_guess_reason": "its switches are off by default and no preset turns them on",
+   "ablation_arm": "off-everywhere: no speed arm; drop needs only the replay and the capability gates; dependents 044",
+   "class": null,
+   "disposition": null
+  },
+  {
+   "patch": "032",
+   "name": "rdna4-hybrid-w4a16-moe",
+   "added": 1796,
+   "deleted": 0,
+   "files": [
+    "python/sglang/kernels/aot/csrc/quantization/awq/skinny_gemms_int4.cu",
+    "python/sglang/srt/environ.py",
+    "python/sglang/srt/layers/moe/hybrid_w4a16_moe.py"
+   ],
+   "new_files": [
+    "python/sglang/kernels/aot/csrc/quantization/awq/skinny_gemms_int4.cu",
+    "python/sglang/srt/layers/moe/hybrid_w4a16_moe.py"
+   ],
+   "switches_introduced": [
+    "SGLANG_MOE_HYBRID_W4A16",
+    "SGLANG_MOE_HYBRID_W4A16_MAX_BATCH"
+   ],
+   "switches_touched": [],
+   "switch_defaults": {
+    "SGLANG_MOE_HYBRID_W4A16": null,
+    "SGLANG_MOE_HYBRID_W4A16_MAX_BATCH": null
+   },
+   "default_on": [],
+   "presets_on": [],
+   "launcher_presets_naming": [],
+   "unswitched_existing_files": [],
+   "born": "2026-05-11",
+   "rebase_history": {
+    "v0.5.16": "re-anchored",
+    "v0.5.18": "added lines changed"
+   },
+   "next_bump_dry_run": {
+    "v0.5.23": "clean"
+   },
+   "index": {
+    "collection": "AWQ int4",
+    "upstream": "Carry",
+    "purpose": "Adds the gfx1201 skinny W4A16 MoE kernel and load-time layout conversion."
+   },
+   "findings": [],
+   "mentioned_in": {
+    "benchmarks/README.md": 2
+   },
+   "shares_files_with": [],
+   "breaks_without": [],
+   "class_guess": "opt-in",
+   "class_guess_reason": "its switches are off by default and no preset turns them on",
+   "ablation_arm": "off-everywhere: no speed arm; drop needs only the replay and the capability gates",
+   "class": null,
+   "disposition": null
+  },
+  {
+   "patch": "033",
+   "name": "moe-wna16-gelu-activation",
+   "added": 7,
+   "deleted": 3,
+   "files": [
+    "python/sglang/srt/layers/quantization/moe_wna16.py"
+   ],
+   "new_files": [],
+   "switches_introduced": [],
+   "switches_touched": [],
+   "switch_defaults": {},
+   "default_on": [],
+   "presets_on": [],
+   "launcher_presets_naming": [],
+   "unswitched_existing_files": [
+    "python/sglang/srt/layers/quantization/moe_wna16.py"
+   ],
+   "born": "2026-05-11",
+   "rebase_history": {
+    "v0.5.20": "removed lines changed"
+   },
+   "next_bump_dry_run": {
+    "v0.5.23": "clean"
+   },
+   "index": {
+    "collection": "MoE serving and routing",
+    "upstream": "Candidate",
+    "purpose": "Allows the fused W4A16 MoE runner to serve GELU experts such as Gemma 4."
+   },
+   "findings": [],
+   "mentioned_in": {
+    "benchmarks/README.md": 2
+   },
+   "shares_files_with": [
+    "104"
+   ],
+   "breaks_without": [],
+   "class_guess": "performance",
+   "class_guess_reason": "no switch; the index purpose reads as speed",
+   "ablation_arm": "drop-alone",
+   "class": null,
+   "disposition": null
+  },
+  {
+   "patch": "036",
+   "name": "qwen3next-radixattn-no-quant-config",
+   "added": 7,
+   "deleted": 1,
+   "files": [
+    "python/sglang/srt/models/qwen3_next.py"
+   ],
+   "new_files": [],
+   "switches_introduced": [],
+   "switches_touched": [],
+   "switch_defaults": {},
+   "default_on": [],
+   "presets_on": [],
+   "launcher_presets_naming": [],
+   "unswitched_existing_files": [
+    "python/sglang/srt/models/qwen3_next.py"
+   ],
+   "born": "2026-05-11",
+   "rebase_history": {},
+   "next_bump_dry_run": {
+    "v0.5.23": "clean"
+   },
+   "index": {
+    "collection": "Model, parser, and speculative-decode plumbing",
+    "upstream": "Candidate",
+    "purpose": "Keeps RadixAttention out of the W4A16 quant-method construction path."
+   },
+   "findings": [],
+   "mentioned_in": {
+    "benchmarks/README.md": 2
+   },
+   "shares_files_with": [
+    "001"
+   ],
+   "breaks_without": [],
+   "class_guess": "required",
+   "class_guess_reason": "no switch; the index purpose reads as enablement or correctness",
+   "ablation_arm": "drop-alone",
+   "class": null,
+   "disposition": null
+  },
+  {
+   "patch": "037",
+   "name": "token-dispatcher-flashinfer-assertion-guard",
+   "added": 1,
+   "deleted": 1,
+   "files": [
+    "python/sglang/srt/layers/moe/token_dispatcher/flashinfer.py"
+   ],
+   "new_files": [],
+   "switches_introduced": [],
+   "switches_touched": [],
+   "switch_defaults": {},
+   "default_on": [],
+   "presets_on": [],
+   "launcher_presets_naming": [],
+   "unswitched_existing_files": [
+    "python/sglang/srt/layers/moe/token_dispatcher/flashinfer.py"
+   ],
+   "born": "2026-05-12",
+   "rebase_history": {},
+   "next_bump_dry_run": {
+    "v0.5.23": "clean"
+   },
+   "index": {
+    "collection": "MoE serving and routing",
+    "upstream": "Candidate",
+    "purpose": "Treats FlashInfer's missing-CUDA assertion as an unavailable optional backend on ROCm."
+   },
+   "findings": [],
+   "mentioned_in": {
+    "benchmarks/README.md": 2
+   },
+   "shares_files_with": [],
+   "breaks_without": [],
+   "class_guess": "required",
+   "class_guess_reason": "no switch; the index purpose reads as enablement or correctness",
+   "ablation_arm": "drop-alone",
+   "class": null,
+   "disposition": null
+  },
+  {
+   "patch": "039",
+   "name": "rdna4-fp8-pertoken-padding-fix",
+   "added": 4,
+   "deleted": 2,
+   "files": [
+    "python/sglang/kernels/ops/quantization/fp8_kernel.py"
+   ],
+   "new_files": [],
+   "switches_introduced": [],
+   "switches_touched": [],
+   "switch_defaults": {},
+   "default_on": [],
+   "presets_on": [],
+   "launcher_presets_naming": [],
+   "unswitched_existing_files": [
+    "python/sglang/kernels/ops/quantization/fp8_kernel.py"
+   ],
+   "born": "2026-05-27",
+   "rebase_history": {
+    "v0.5.16": "re-anchored",
+    "v0.5.22": "added lines changed"
+   },
+   "next_bump_dry_run": {
+    "v0.5.23": "clean"
+   },
+   "index": {
+    "collection": "FP8",
+    "upstream": "Carry",
+    "purpose": "Corrects padding in native dynamic per-token FP8 activation quantization."
+   },
+   "findings": [],
+   "mentioned_in": {
+    "benchmarks/README.md": 2
+   },
+   "shares_files_with": [],
+   "breaks_without": [],
+   "class_guess": "required",
+   "class_guess_reason": "no switch; the index purpose reads as enablement or correctness",
+   "ablation_arm": "drop-alone",
+   "class": null,
+   "disposition": null
+  },
+  {
+   "patch": "040",
+   "name": "devstral-toolcall-omission-recovery",
+   "added": 165,
+   "deleted": 2,
+   "files": [
+    "python/sglang/srt/function_call/mistral_detector.py"
+   ],
+   "new_files": [],
+   "switches_introduced": [],
+   "switches_touched": [],
+   "switch_defaults": {},
+   "default_on": [],
+   "presets_on": [],
+   "launcher_presets_naming": [
+    "devstral2"
+   ],
+   "unswitched_existing_files": [
+    "python/sglang/srt/function_call/mistral_detector.py"
+   ],
+   "born": "2026-05-31",
+   "rebase_history": {},
+   "next_bump_dry_run": {
+    "v0.5.23": "clean"
+   },
+   "index": {
+    "collection": "Model, parser, and speculative-decode plumbing",
+    "upstream": "Partial",
+    "purpose": "Recovers streamed Devstral tool calls that omit the outer marker."
+   },
+   "findings": [],
+   "mentioned_in": {
+    "benchmarks/README.md": 2
+   },
+   "shares_files_with": [
+    "056"
+   ],
+   "breaks_without": [
+    "056"
+   ],
+   "class_guess": "required",
+   "class_guess_reason": "no switch; the index purpose reads as enablement or correctness",
+   "ablation_arm": "drop-with:056",
+   "class": null,
+   "disposition": null
+  },
+  {
+   "patch": "041",
+   "name": "rdna4-awq-dense-gemv-decode",
+   "added": 51,
+   "deleted": 3,
+   "files": [
+    "python/sglang/srt/hardware_backend/gpu/quantization/awq_kernels.py"
+   ],
+   "new_files": [],
+   "switches_introduced": [],
+   "switches_touched": [],
+   "switch_defaults": {},
+   "default_on": [],
+   "presets_on": [],
+   "launcher_presets_naming": [],
+   "unswitched_existing_files": [
+    "python/sglang/srt/hardware_backend/gpu/quantization/awq_kernels.py"
+   ],
+   "born": "2026-05-31",
+   "rebase_history": {},
+   "next_bump_dry_run": {
+    "v0.5.23": "clean"
+   },
+   "index": {
+    "collection": "AWQ int4",
+    "upstream": "Carry",
+    "purpose": "Dispatches dense batch-one AWQ decode through the native HIP GEMV path."
+   },
+   "findings": [],
+   "mentioned_in": {
+    "benchmarks/README.md": 2
+   },
+   "shares_files_with": [],
+   "breaks_without": [],
+   "class_guess": "performance",
+   "class_guess_reason": "no switch; the index purpose reads as speed",
+   "ablation_arm": "drop-alone",
+   "class": null,
+   "disposition": null
+  },
+  {
+   "patch": "042",
+   "name": "rdna4-reclaim-fp8-load-transients",
+   "added": 14,
+   "deleted": 0,
+   "files": [
+    "python/sglang/srt/model_executor/model_runner.py"
+   ],
+   "new_files": [],
+   "switches_introduced": [],
+   "switches_touched": [],
+   "switch_defaults": {},
+   "default_on": [],
+   "presets_on": [],
+   "launcher_presets_naming": [],
+   "unswitched_existing_files": [
+    "python/sglang/srt/model_executor/model_runner.py"
+   ],
+   "born": "2026-05-31",
+   "rebase_history": {
+    "v0.5.18": "re-anchored"
+   },
+   "next_bump_dry_run": {
+    "v0.5.23": "clean"
+   },
+   "index": {
+    "collection": "FP8",
+    "upstream": "Carry",
+    "purpose": "Reclaims temporary FP8 load allocations before KV-pool sizing."
+   },
+   "findings": [],
+   "mentioned_in": {
+    "benchmarks/README.md": 2
+   },
+   "shares_files_with": [
+    "088",
+    "127"
+   ],
+   "breaks_without": [
+    "127"
+   ],
+   "class_guess": "required",
+   "class_guess_reason": "no switch; the index purpose reads as enablement or correctness",
+   "ablation_arm": "drop-with:127",
+   "class": null,
+   "disposition": null
+  },
+  {
+   "patch": "043",
+   "name": "rdna4-mamba-hip-causal-conv1d",
+   "added": 13,
+   "deleted": 0,
+   "files": [
+    "python/sglang/srt/layers/attention/mamba/mamba.py"
+   ],
+   "new_files": [],
+   "switches_introduced": [],
+   "switches_touched": [],
+   "switch_defaults": {},
+   "default_on": [],
+   "presets_on": [],
+   "launcher_presets_naming": [
+    "nemotron-omni"
+   ],
+   "unswitched_existing_files": [
+    "python/sglang/srt/layers/attention/mamba/mamba.py"
+   ],
+   "born": "2026-05-31",
+   "rebase_history": {
+    "v0.5.16": "added lines changed"
+   },
+   "next_bump_dry_run": {
+    "v0.5.23": "clean"
+   },
+   "index": {
+    "collection": "Mamba2 hybrids",
+    "upstream": "Candidate",
+    "purpose": "Selects SGLang's Triton causal-conv1d implementation on HIP."
+   },
+   "findings": [],
+   "mentioned_in": {
+    "benchmarks/README.md": 2
+   },
+   "shares_files_with": [],
+   "breaks_without": [],
+   "class_guess": "required",
+   "class_guess_reason": "no switch; the index purpose reads as enablement or correctness",
+   "ablation_arm": "drop-alone",
+   "class": null,
+   "disposition": null
+  },
+  {
+   "patch": "044",
+   "name": "rdna4-modelopt-fp8-rocm-allowlist",
+   "added": 13,
+   "deleted": 0,
+   "files": [
+    "python/sglang/srt/configs/model_config.py"
+   ],
+   "new_files": [],
+   "switches_introduced": [],
+   "switches_touched": [],
+   "switch_defaults": {},
+   "default_on": [],
+   "presets_on": [],
+   "launcher_presets_naming": [
+    "nemotron-omni"
+   ],
+   "unswitched_existing_files": [
+    "python/sglang/srt/configs/model_config.py"
+   ],
+   "born": "2026-05-31",
+   "rebase_history": {},
+   "next_bump_dry_run": {
+    "v0.5.23": "clean"
+   },
+   "index": {
+    "collection": "FP8",
+    "upstream": "Candidate",
+    "purpose": "Enables ModelOpt FP8 checkpoints on the ROCm backends they already support."
+   },
+   "findings": [],
+   "mentioned_in": {
+    "benchmarks/README.md": 2
+   },
+   "shares_files_with": [
+    "001",
+    "031",
+    "062",
+    "105"
+   ],
+   "breaks_without": [],
+   "class_guess": "required",
+   "class_guess_reason": "no switch; the index purpose reads as enablement or correctness",
+   "ablation_arm": "drop-alone",
+   "class": null,
+   "disposition": null
+  },
+  {
+   "patch": "045",
+   "name": "rdna4-ct-fp8-deltanet-mlp-tp-split",
+   "added": 33,
+   "deleted": 1,
+   "files": [
+    "python/sglang/srt/models/qwen3_5.py"
+   ],
+   "new_files": [],
+   "switches_introduced": [],
+   "switches_touched": [],
+   "switch_defaults": {},
+   "default_on": [],
+   "presets_on": [],
+   "launcher_presets_naming": [
+    "qwen38"
+   ],
+   "unswitched_existing_files": [
+    "python/sglang/srt/models/qwen3_5.py"
+   ],
+   "born": "2026-05-31",
+   "rebase_history": {
+    "v0.5.16": "re-anchored"
+   },
+   "next_bump_dry_run": {
+    "v0.5.23": "clean"
+   },
+   "index": {
+    "collection": "FP8",
+    "upstream": "Carry",
+    "purpose": "TP-shards compressed-tensors FP8 MLPs while preserving replicated DeltaNet state projections."
+   },
+   "findings": [
+    "qwen38 no-spec decode gap — the block-FP8 GEMMs own it (attributed 2026-10-31, corrected the same day)",
+    "RAD-1 — TP-split DeltaNet projections: decode +13–16 %, prefill +8–18 %, DSpark pool 206K → 431K; patch 121 (2026-11-09)"
+   ],
+   "mentioned_in": {
+    "benchmarks/README.md": 2
+   },
+   "shares_files_with": [
+    "001",
+    "117",
+    "120",
+    "121",
+    "124"
+   ],
+   "breaks_without": [
+    "120"
+   ],
+   "class_guess": "performance",
+   "class_guess_reason": "no switch; the index purpose reads as speed",
+   "ablation_arm": "drop-with:120",
+   "class": null,
+   "disposition": null
+  },
+  {
+   "patch": "046",
+   "name": "rdna4-mamba-ssd-divergent-ptr-buffer-ops",
+   "added": 87,
+   "deleted": 35,
+   "files": [
+    "python/sglang/kernels/ops/mamba/triton_ops/ssd_chunk_scan.py",
+    "python/sglang/kernels/ops/mamba/triton_ops/ssd_chunk_state.py"
+   ],
+   "new_files": [],
+   "switches_introduced": [],
+   "switches_touched": [],
+   "switch_defaults": {},
+   "default_on": [],
+   "presets_on": [],
+   "launcher_presets_naming": [
+    "nemotron-omni"
+   ],
+   "unswitched_existing_files": [
+    "python/sglang/kernels/ops/mamba/triton_ops/ssd_chunk_scan.py",
+    "python/sglang/kernels/ops/mamba/triton_ops/ssd_chunk_state.py"
+   ],
+   "born": "2026-05-31",
+   "rebase_history": {
+    "v0.5.16": "re-anchored",
+    "v0.5.20": "removed lines changed"
+   },
+   "next_bump_dry_run": {
+    "v0.5.23": "clean"
+   },
+   "index": {
+    "collection": "Mamba2 hybrids",
+    "upstream": "Candidate",
+    "purpose": "Rewrites divergent SSD state-pointer selection into value selection accepted by AMD buffer-op lowering."
+   },
+   "findings": [],
+   "mentioned_in": {
+    "benchmarks/README.md": 2
+   },
+   "shares_files_with": [],
+   "breaks_without": [],
+   "class_guess": "required",
+   "class_guess_reason": "no switch; the index purpose reads as enablement or correctness",
+   "ablation_arm": "drop-alone",
+   "class": null,
+   "disposition": null
+  },
+  {
+   "patch": "047",
+   "name": "rdna4-triton-attn-hybrid-mamba-vhead-dim",
+   "added": 9,
+   "deleted": 1,
+   "files": [
+    "python/sglang/srt/layers/attention/triton_backend.py"
+   ],
+   "new_files": [],
+   "switches_introduced": [],
+   "switches_touched": [],
+   "switch_defaults": {},
+   "default_on": [],
+   "presets_on": [],
+   "launcher_presets_naming": [
+    "nemotron-omni"
+   ],
+   "unswitched_existing_files": [
+    "python/sglang/srt/layers/attention/triton_backend.py"
+   ],
+   "born": "2026-05-31",
+   "rebase_history": {
+    "v0.5.16": "re-anchored",
+    "v0.5.18": "added lines changed"
+   },
+   "next_bump_dry_run": {
+    "v0.5.23": "clean"
+   },
+   "index": {
+    "collection": "Mamba2 hybrids",
+    "upstream": "Candidate",
+    "purpose": "Obtains value-head dimensions from hybrid KV pools without assuming layer zero is attention."
+   },
+   "findings": [],
+   "mentioned_in": {
+    "benchmarks/README.md": 2
+   },
+   "shares_files_with": [
+    "001",
+    "065",
+    "077",
+    "100",
+    "107",
+    "110",
+    "112",
+    "125"
+   ],
+   "breaks_without": [],
+   "class_guess": "required",
+   "class_guess_reason": "no switch; the index purpose reads as enablement or correctness",
+   "ablation_arm": "drop-alone",
+   "class": null,
+   "disposition": null
+  },
+  {
+   "patch": "048",
+   "name": "rdna4-loading-timeout-cold-cache",
+   "added": 1,
+   "deleted": 1,
+   "files": [
+    "python/sglang/srt/model_executor/model_runner_components/load_model_utils.py"
+   ],
+   "new_files": [],
+   "switches_introduced": [],
+   "switches_touched": [],
+   "switch_defaults": {},
+   "default_on": [],
+   "presets_on": [],
+   "launcher_presets_naming": [],
+   "unswitched_existing_files": [
+    "python/sglang/srt/model_executor/model_runner_components/load_model_utils.py"
+   ],
+   "born": "2026-06-10",
+   "rebase_history": {
+    "v0.5.16": "re-anchored",
+    "v0.5.18": "re-anchored"
+   },
+   "next_bump_dry_run": {
+    "v0.5.23": "clean"
+   },
+   "index": {
+    "collection": "Model, parser, and speculative-decode plumbing",
+    "upstream": "Candidate",
+    "purpose": "Extends the unbalanced-loading timeout for large TP checkpoints on a cold page cache."
+   },
+   "findings": [],
+   "mentioned_in": {
+    "benchmarks/README.md": 2
+   },
+   "shares_files_with": [],
+   "breaks_without": [],
+   "class_guess": "required",
+   "class_guess_reason": "no switch; the index purpose reads as enablement or correctness",
+   "ablation_arm": "drop-alone",
+   "class": null,
+   "disposition": null
+  },
+  {
+   "patch": "049",
+   "name": "rdna4-conv1d-colload-dtype-cast",
+   "added": 4,
+   "deleted": 4,
+   "files": [
+    "python/sglang/kernels/ops/mamba/causal_conv1d_triton.py"
+   ],
+   "new_files": [],
+   "switches_introduced": [],
+   "switches_touched": [],
+   "switch_defaults": {},
+   "default_on": [],
+   "presets_on": [],
+   "launcher_presets_naming": [],
+   "unswitched_existing_files": [
+    "python/sglang/kernels/ops/mamba/causal_conv1d_triton.py"
+   ],
+   "born": "2026-06-10",
+   "rebase_history": {
+    "v0.5.16": "re-anchored",
+    "v0.5.20": "added lines changed"
+   },
+   "next_bump_dry_run": {
+    "v0.5.23": "clean"
+   },
+   "index": {
+    "collection": "Mamba2 hybrids",
+    "upstream": "Candidate",
+    "purpose": "Casts recurrent convolution state loads to the input dtype before arithmetic."
+   },
+   "findings": [],
+   "mentioned_in": {
+    "benchmarks/README.md": 2
+   },
+   "shares_files_with": [],
+   "breaks_without": [],
+   "class_guess": "required",
+   "class_guess_reason": "no switch; the index purpose reads as enablement or correctness",
+   "ablation_arm": "drop-alone",
+   "class": null,
+   "disposition": null
+  },
+  {
+   "patch": "055",
+   "name": "rdna4-eagle3-deltanet-vl-enablement",
+   "added": 39,
+   "deleted": 0,
+   "files": [
+    "python/sglang/srt/utils/hf_transformers_patches.py"
+   ],
+   "new_files": [],
+   "switches_introduced": [],
+   "switches_touched": [],
+   "switch_defaults": {},
+   "default_on": [],
+   "presets_on": [],
+   "launcher_presets_naming": [],
+   "unswitched_existing_files": [
+    "python/sglang/srt/utils/hf_transformers_patches.py"
+   ],
+   "born": "2026-06-14",
+   "rebase_history": {
+    "v0.5.18": "re-anchored",
+    "v0.5.22": "added lines changed"
+   },
+   "next_bump_dry_run": {
+    "v0.5.23": "clean"
+   },
+   "index": {
+    "collection": "Model, parser, and speculative-decode plumbing",
+    "upstream": "Carry",
+    "purpose": "Captures the correct hidden layers for EAGLE3 across dense and DeltaNet Qwen VL wrappers."
+   },
+   "findings": [],
+   "mentioned_in": {
+    "benchmarks/README.md": 2
+   },
+   "shares_files_with": [],
+   "breaks_without": [],
+   "class_guess": "required",
+   "class_guess_reason": "no switch; the index purpose reads as enablement or correctness",
+   "ablation_arm": "drop-alone",
+   "class": null,
+   "disposition": null
+  },
+  {
+   "patch": "056",
+   "name": "devstral-multitoken-toolname-omission-recovery",
+   "added": 19,
+   "deleted": 3,
+   "files": [
+    "python/sglang/srt/function_call/mistral_detector.py"
+   ],
+   "new_files": [],
+   "switches_introduced": [],
+   "switches_touched": [],
+   "switch_defaults": {},
+   "default_on": [],
+   "presets_on": [],
+   "launcher_presets_naming": [
+    "devstral2"
+   ],
+   "unswitched_existing_files": [
+    "python/sglang/srt/function_call/mistral_detector.py"
+   ],
+   "born": "2026-06-17",
+   "rebase_history": {},
+   "next_bump_dry_run": {
+    "v0.5.23": "clean"
+   },
+   "index": {
+    "collection": "Model, parser, and speculative-decode plumbing",
+    "upstream": "Candidate",
+    "purpose": "Holds streamed tool-name prefixes until Devstral's argument marker resolves the call."
+   },
+   "findings": [],
+   "mentioned_in": {
+    "benchmarks/README.md": 2
+   },
+   "shares_files_with": [
+    "040"
+   ],
+   "breaks_without": [],
+   "class_guess": "required",
+   "class_guess_reason": "no switch; the index purpose reads as enablement or correctness",
+   "ablation_arm": "drop-alone",
+   "class": null,
+   "disposition": null
+  },
+  {
+   "patch": "057",
+   "name": "rdna4-evs-video-combined-path-routing",
+   "added": 10,
+   "deleted": 0,
+   "files": [
+    "python/sglang/srt/managers/mm_schedule.py"
+   ],
+   "new_files": [],
+   "switches_introduced": [],
+   "switches_touched": [],
+   "switch_defaults": {},
+   "default_on": [],
+   "presets_on": [],
+   "launcher_presets_naming": [],
+   "unswitched_existing_files": [
+    "python/sglang/srt/managers/mm_schedule.py"
+   ],
+   "born": "2026-06-15",
+   "rebase_history": {
+    "v0.5.16": "added lines changed",
+    "v0.5.18": "re-anchored",
+    "v0.5.20": "added lines changed",
+    "v0.5.22": "added lines changed"
+   },
+   "next_bump_dry_run": {
+    "v0.5.23": "clean"
+   },
+   "index": {
+    "collection": "Model, parser, and speculative-decode plumbing",
+    "upstream": "Candidate",
+    "purpose": "Routes EVS video embeddings through the combined path that unwraps and redistributes pruned frames."
+   },
+   "findings": [],
+   "mentioned_in": {
+    "benchmarks/README.md": 2
+   },
+   "shares_files_with": [],
+   "breaks_without": [],
+   "class_guess": "required",
+   "class_guess_reason": "no switch; the index purpose reads as enablement or correctness",
+   "ablation_arm": "drop-alone",
+   "class": null,
+   "disposition": null
+  },
+  {
+   "patch": "058",
+   "name": "rdna4-ngram-reconstruct-fallback",
+   "added": 63,
+   "deleted": 1,
+   "files": [
+    "python/sglang/srt/speculative/ngram_worker.py"
+   ],
+   "new_files": [],
+   "switches_introduced": [],
+   "switches_touched": [],
+   "switch_defaults": {},
+   "default_on": [],
+   "presets_on": [],
+   "launcher_presets_naming": [],
+   "unswitched_existing_files": [
+    "python/sglang/srt/speculative/ngram_worker.py"
+   ],
+   "born": "2026-06-15",
+   "rebase_history": {
+    "v0.5.16": "re-anchored",
+    "v0.5.22": "added lines changed"
+   },
+   "next_bump_dry_run": {
+    "v0.5.23": "hand-ported"
+   },
+   "index": {
+    "collection": "Model, parser, and speculative-decode plumbing",
+    "upstream": "Candidate",
+    "purpose": "Provides a GPU-vectorized reconstruction fallback around the NGRAM tree-reconstruct kernel (v0.5.22 routes HIP to the tvm_ffi JIT kernel; the fallback covers a JIT build or load failure on gfx1201)."
+   },
+   "findings": [],
+   "mentioned_in": {
+    "benchmarks/README.md": 2
+   },
+   "shares_files_with": [],
+   "breaks_without": [],
+   "class_guess": "required",
+   "class_guess_reason": "no switch; the index purpose reads as enablement or correctness",
+   "ablation_arm": "drop-alone",
+   "class": null,
+   "disposition": null
+  },
+  {
+   "patch": "060",
+   "name": "aiter-mxfp4-moe-guard",
+   "added": 10,
+   "deleted": 1,
+   "files": [
+    "python/sglang/srt/layers/quantization/quark/schemes/quark_w4a4_mxfp4_moe.py"
+   ],
+   "new_files": [],
+   "switches_introduced": [],
+   "switches_touched": [],
+   "switch_defaults": {},
+   "default_on": [],
+   "presets_on": [],
+   "launcher_presets_naming": [],
+   "unswitched_existing_files": [
+    "python/sglang/srt/layers/quantization/quark/schemes/quark_w4a4_mxfp4_moe.py"
+   ],
+   "born": "2026-06-16",
+   "rebase_history": {
+    "v0.5.20": "re-anchored"
+   },
+   "next_bump_dry_run": {
+    "v0.5.23": "clean"
+   },
+   "index": {
+    "collection": "Core RDNA4 enablement",
+    "upstream": "Candidate",
+    "purpose": "Guards the optional AITER MXFP4 MoE import when AITER is unavailable."
+   },
+   "findings": [],
+   "mentioned_in": {
+    "benchmarks/README.md": 2
+   },
+   "shares_files_with": [],
+   "breaks_without": [],
+   "class_guess": "required",
+   "class_guess_reason": "no switch; the index purpose reads as enablement or correctness",
+   "ablation_arm": "drop-alone",
+   "class": null,
+   "disposition": null
+  },
+  {
+   "patch": "061",
+   "name": "gemma4-mm-pp-wrap-restore",
+   "added": 17,
+   "deleted": 21,
+   "files": [
+    "python/sglang/srt/models/gemma4_mm.py"
+   ],
+   "new_files": [],
+   "switches_introduced": [],
+   "switches_touched": [],
+   "switch_defaults": {},
+   "default_on": [],
+   "presets_on": [],
+   "launcher_presets_naming": [],
+   "unswitched_existing_files": [
+    "python/sglang/srt/models/gemma4_mm.py"
+   ],
+   "born": "2026-06-16",
+   "rebase_history": {},
+   "next_bump_dry_run": {
+    "v0.5.23": "clean"
+   },
+   "index": {
+    "collection": "Gemma 4",
+    "upstream": "Carry",
+    "purpose": "Restores correct pipeline-parallel wrapping for Gemma multimodal towers."
+   },
+   "findings": [],
+   "mentioned_in": {
+    "benchmarks/README.md": 2
+   },
+   "shares_files_with": [
+    "024",
+    "026"
+   ],
+   "breaks_without": [],
+   "class_guess": "performance",
+   "class_guess_reason": "no switch; the index purpose reads as speed",
+   "ablation_arm": "drop-alone",
+   "class": null,
+   "disposition": null
+  },
+  {
+   "patch": "062",
+   "name": "cohere2moe-v0513-hybrid-swa-classification",
+   "added": 19,
+   "deleted": 0,
+   "files": [
+    "python/sglang/srt/configs/model_config.py"
+   ],
+   "new_files": [],
+   "switches_introduced": [],
+   "switches_touched": [],
+   "switch_defaults": {},
+   "default_on": [],
+   "presets_on": [],
+   "launcher_presets_naming": [
+    "north-mini"
+   ],
+   "unswitched_existing_files": [
+    "python/sglang/srt/configs/model_config.py"
+   ],
+   "born": "2026-06-16",
+   "rebase_history": {
+    "v0.5.16": "re-anchored"
+   },
+   "next_bump_dry_run": {
+    "v0.5.23": "regenerated"
+   },
+   "index": {
+    "collection": "Model, parser, and speculative-decode plumbing",
+    "upstream": "Candidate",
+    "purpose": "Classifies Cohere2 MoE as hybrid SWA so North receives valid layer and window cache metadata."
+   },
+   "findings": [],
+   "mentioned_in": {
+    "benchmarks/README.md": 2
+   },
+   "shares_files_with": [
+    "001",
+    "031",
+    "044",
+    "105"
+   ],
+   "breaks_without": [],
+   "class_guess": "performance",
+   "class_guess_reason": "no switch; the index purpose reads as speed",
+   "ablation_arm": "drop-alone",
+   "class": null,
+   "disposition": null
+  },
+  {
+   "patch": "063",
+   "name": "rdna4-relu2-hip-fallback",
+   "added": 10,
+   "deleted": 0,
+   "files": [
+    "python/sglang/srt/layers/activation.py"
+   ],
+   "new_files": [],
+   "switches_introduced": [],
+   "switches_touched": [],
+   "switch_defaults": {},
+   "default_on": [],
+   "presets_on": [],
+   "launcher_presets_naming": [],
+   "unswitched_existing_files": [
+    "python/sglang/srt/layers/activation.py"
+   ],
+   "born": "2026-06-16",
+   "rebase_history": {},
+   "next_bump_dry_run": {
+    "v0.5.23": "dropped"
+   },
+   "index": {
+    "collection": "Core RDNA4 enablement",
+    "upstream": "Candidate",
+    "purpose": "Provides the squared-ReLU implementation used by Nemotron on HIP."
+   },
+   "findings": [],
+   "mentioned_in": {
+    "benchmarks/README.md": 2
+   },
+   "shares_files_with": [],
+   "breaks_without": [],
+   "class_guess": "required",
+   "class_guess_reason": "no switch; the index purpose reads as enablement or correctness",
+   "ablation_arm": "drop-alone",
+   "class": null,
+   "disposition": null
+  },
+  {
+   "patch": "065",
+   "name": "rdna4-split-kv-tree-verify",
+   "added": 406,
+   "deleted": 0,
+   "files": [
+    "python/sglang/kernels/ops/attention/tree_verify_attention.py",
+    "python/sglang/srt/layers/attention/triton_backend.py"
+   ],
+   "new_files": [
+    "python/sglang/kernels/ops/attention/tree_verify_attention.py"
+   ],
+   "switches_introduced": [
+    "SGLANG_TREE_VERIFY_SPLITKV"
+   ],
+   "switches_touched": [],
+   "switch_defaults": {
+    "SGLANG_TREE_VERIFY_SPLITKV": ""
+   },
+   "default_on": [],
+   "presets_on": [],
+   "launcher_presets_naming": [],
+   "unswitched_existing_files": [],
+   "born": "2026-06-17",
+   "rebase_history": {
+    "v0.5.18": "added lines changed",
+    "v0.5.20": "re-anchored",
+    "v0.5.22": "re-anchored"
+   },
+   "next_bump_dry_run": {
+    "v0.5.23": "regenerated"
+   },
+   "index": {
+    "collection": "Attention and numerics",
+    "upstream": "Carry",
+    "purpose": "Adds an opt-in split-KV speculative-verification kernel for mid-depth workloads; it remains off by default."
+   },
+   "findings": [
+    "Measure real depth",
+    "NGRAM and split-KV verify"
+   ],
+   "mentioned_in": {
+    "benchmarks/README.md": 2
+   },
+   "shares_files_with": [
+    "001",
+    "047",
+    "077",
+    "100",
+    "107",
+    "110",
+    "112",
+    "125"
+   ],
+   "breaks_without": [
+    "107",
+    "110",
+    "111",
+    "112",
+    "125",
+    "126"
+   ],
+   "class_guess": "opt-in",
+   "class_guess_reason": "its switches are off by default and no preset turns them on",
+   "ablation_arm": "off-everywhere: no speed arm; drop needs only the replay and the capability gates; dependents 107,110,111,112,125,126",
+   "class": null,
+   "disposition": null
+  },
+  {
+   "patch": "066",
+   "name": "glm4moe-bf16-mlp-gateup-skip",
+   "added": 23,
+   "deleted": 2,
+   "files": [
+    "python/sglang/srt/models/glm4_moe.py"
+   ],
+   "new_files": [],
+   "switches_introduced": [],
+   "switches_touched": [],
+   "switch_defaults": {},
+   "default_on": [],
+   "presets_on": [],
+   "launcher_presets_naming": [],
+   "unswitched_existing_files": [
+    "python/sglang/srt/models/glm4_moe.py"
+   ],
+   "born": "2026-06-17",
+   "rebase_history": {
+    "v0.5.22": "re-anchored"
+   },
+   "next_bump_dry_run": {
+    "v0.5.23": "clean"
+   },
+   "index": {
+    "collection": "MoE serving and routing",
+    "upstream": "Candidate",
+    "purpose": "Preserves merged GLM gate/up projections in BF16 when the checkpoint excludes their component projections from quantization."
+   },
+   "findings": [],
+   "mentioned_in": {
+    "benchmarks/README.md": 2
+   },
+   "shares_files_with": [
+    "085"
+   ],
+   "breaks_without": [],
+   "class_guess": "required",
+   "class_guess_reason": "no switch; the index purpose reads as enablement or correctness",
+   "ablation_arm": "drop-alone",
+   "class": null,
+   "disposition": null
+  },
+  {
+   "patch": "073",
+   "name": "rdna4-mamba-extra-buffer-hip-fallback",
+   "added": 15,
+   "deleted": 2,
+   "files": [
+    "python/sglang/srt/arg_groups/overrides.py"
+   ],
+   "new_files": [],
+   "switches_introduced": [],
+   "switches_touched": [],
+   "switch_defaults": {},
+   "default_on": [],
+   "presets_on": [],
+   "launcher_presets_naming": [
+    "qwen38"
+   ],
+   "unswitched_existing_files": [
+    "python/sglang/srt/arg_groups/overrides.py"
+   ],
+   "born": "2026-06-26",
+   "rebase_history": {
+    "v0.5.20": "added lines changed",
+    "v0.5.22": "added lines changed"
+   },
+   "next_bump_dry_run": {
+    "v0.5.23": "clean"
+   },
+   "index": {
+    "collection": "Mamba2 hybrids",
+    "upstream": "Carry",
+    "purpose": "Resolves automatic Mamba radix-cache selection to the validated `no_buffer` strategy on HIP. v0.5.22 lists HIP among the `extra_buffer` platforms, so without this `auto` would flip every gfx1201 hybrid (and the qwen38 bake-off) to `extra_buffer` + overlap scheduling on untested state-snapshot kernels; opt in explicitly with `--mamba-radix-cache-strategy extra_buffer` after an A/B. `qwen38` opted in 2026-11-01 ([R97-R](../experiments/18-hybrid-cache-checkpoint-granularity.md): agentic turns 7–33× faster, needle 12/12); the gate stays for the other hybrid presets."
+   },
+   "findings": [],
+   "mentioned_in": {
+    "benchmarks/README.md": 2
+   },
+   "shares_files_with": [
+    "114"
+   ],
+   "breaks_without": [],
+   "class_guess": "performance",
+   "class_guess_reason": "no switch; the index purpose reads as speed",
+   "ablation_arm": "drop-alone",
+   "class": null,
+   "disposition": null
+  },
+  {
+   "patch": "074",
+   "name": "compressed-tensors-fp8-kv-cache",
+   "added": 9,
+   "deleted": 1,
+   "files": [
+    "python/sglang/srt/models/laguna.py"
+   ],
+   "new_files": [],
+   "switches_introduced": [],
+   "switches_touched": [],
+   "switch_defaults": {},
+   "default_on": [],
+   "presets_on": [],
+   "launcher_presets_naming": [
+    "laguna"
+   ],
+   "unswitched_existing_files": [
+    "python/sglang/srt/models/laguna.py"
+   ],
+   "born": "2026-07-12",
+   "rebase_history": {
+    "v0.5.16": "re-anchored",
+    "v0.5.18": "re-anchored",
+    "v0.5.20": "added lines changed",
+    "v0.5.22": "re-anchored"
+   },
+   "next_bump_dry_run": {
+    "v0.5.23": "clean"
+   },
+   "index": {
+    "collection": "FP8",
+    "upstream": "Candidate",
+    "purpose": "Carries compressed-tensors FP8 KV metadata through SGLang configuration and loading."
+   },
+   "findings": [],
+   "mentioned_in": {
+    "benchmarks/README.md": 3
+   },
+   "shares_files_with": [
+    "079",
+    "080",
+    "081"
+   ],
+   "breaks_without": [
+    "081",
+    "123"
+   ],
+   "class_guess": "required",
+   "class_guess_reason": "no switch; the index purpose reads as enablement or correctness",
+   "ablation_arm": "drop-with:081,123",
+   "class": null,
+   "disposition": null
+  },
+  {
+   "patch": "075",
+   "name": "rdna4-fused-moe-tuner-model-support",
+   "added": 511,
+   "deleted": 78,
+   "files": [
+    "benchmark/kernels/fused_moe_triton/common_utils.py",
+    "benchmark/kernels/fused_moe_triton/tuning_fused_moe_triton.py",
+    "benchmark/kernels/fused_moe_triton/tuning_fused_moe_triton_sep.py",
+    "test/registered/unit/test_fused_moe_tuner_common_utils.py"
+   ],
+   "new_files": [
+    "test/registered/unit/test_fused_moe_tuner_common_utils.py"
+   ],
+   "switches_introduced": [],
+   "switches_touched": [],
+   "switch_defaults": {},
+   "default_on": [],
+   "presets_on": [],
+   "launcher_presets_naming": [],
+   "unswitched_existing_files": [
+    "benchmark/kernels/fused_moe_triton/common_utils.py",
+    "benchmark/kernels/fused_moe_triton/tuning_fused_moe_triton.py",
+    "benchmark/kernels/fused_moe_triton/tuning_fused_moe_triton_sep.py"
+   ],
+   "born": "2026-07-12",
+   "rebase_history": {
+    "v0.5.18": "added lines changed",
+    "v0.5.22": "added lines changed"
+   },
+   "next_bump_dry_run": {
+    "v0.5.23": "clean"
+   },
+   "index": {
+    "collection": "MoE serving and routing",
+    "upstream": "Carry",
+    "purpose": "Adds compressed-tensors FP8 shape discovery and output support for North and Laguna to the MoE tuner."
+   },
+   "findings": [],
+   "mentioned_in": {
+    "benchmarks/README.md": 3
+   },
+   "shares_files_with": [
+    "116"
+   ],
+   "breaks_without": [
+    "116"
+   ],
+   "class_guess": "performance",
+   "class_guess_reason": "no switch; the index purpose reads as speed",
+   "ablation_arm": "drop-with:116",
+   "class": null,
+   "disposition": null
+  },
+  {
+   "patch": "076",
+   "name": "rdna4-sigmoid-topk-hip-fallback",
+   "added": 105,
+   "deleted": 0,
+   "files": [
+    "python/sglang/srt/layers/moe/topk.py",
+    "test/registered/unit/layers/moe/test_rdna4_sigmoid_topk.py"
+   ],
+   "new_files": [
+    "test/registered/unit/layers/moe/test_rdna4_sigmoid_topk.py"
+   ],
+   "switches_introduced": [],
+   "switches_touched": [],
+   "switch_defaults": {},
+   "default_on": [],
+   "presets_on": [],
+   "launcher_presets_naming": [
+    "laguna"
+   ],
+   "unswitched_existing_files": [
+    "python/sglang/srt/layers/moe/topk.py"
+   ],
+   "born": "2026-07-12",
+   "rebase_history": {
+    "v0.5.16": "re-anchored"
+   },
+   "next_bump_dry_run": {
+    "v0.5.23": "clean"
+   },
+   "index": {
+    "collection": "MoE serving and routing",
+    "upstream": "Carry",
+    "purpose": "Implements correct grouped sigmoid top-k routing when the fused router is disabled."
+   },
+   "findings": [],
+   "mentioned_in": {
+    "benchmarks/README.md": 3
+   },
+   "shares_files_with": [
+    "004",
+    "079",
+    "097"
+   ],
+   "breaks_without": [
+    "079"
+   ],
+   "class_guess": "performance",
+   "class_guess_reason": "no switch; the index purpose reads as speed",
+   "ablation_arm": "drop-with:079",
+   "class": null,
+   "disposition": null
+  },
+  {
+   "patch": "077",
+   "name": "triton-mixed-head-fp8-kv-correctness",
+   "added": 178,
+   "deleted": 30,
+   "files": [
+    "python/sglang/srt/layers/attention/triton_backend.py",
+    "python/sglang/srt/mem_cache/memory_pool.py",
+    "test/registered/unit/layers/attention/test_triton_backend_head_count.py",
+    "test/registered/unit/test_kv_cache_dtype_handling.py"
+   ],
+   "new_files": [
+    "test/registered/unit/layers/attention/test_triton_backend_head_count.py",
+    "test/registered/unit/test_kv_cache_dtype_handling.py"
+   ],
+   "switches_introduced": [],
+   "switches_touched": [],
+   "switch_defaults": {},
+   "default_on": [],
+   "presets_on": [],
+   "launcher_presets_naming": [
+    "laguna"
+   ],
+   "unswitched_existing_files": [
+    "python/sglang/srt/layers/attention/triton_backend.py",
+    "python/sglang/srt/mem_cache/memory_pool.py"
+   ],
+   "born": "2026-07-12",
+   "rebase_history": {
+    "v0.5.16": "re-anchored",
+    "v0.5.18": "added lines changed",
+    "v0.5.22": "re-anchored"
+   },
+   "next_bump_dry_run": {
+    "v0.5.23": "regenerated"
+   },
+   "index": {
+    "collection": "Attention and numerics",
+    "upstream": "Candidate",
+    "purpose": "Derives KV descales from the actual cache dtype and saturates before the ROCm FP8 store; the unequal-head scratch sizing was upstreamed in v0.5.18 (`ModelConfig.get_max_num_attention_heads`)."
+   },
+   "findings": [],
+   "mentioned_in": {
+    "benchmarks/README.md": 3
+   },
+   "shares_files_with": [
+    "001",
+    "047",
+    "065",
+    "082",
+    "100",
+    "107",
+    "110",
+    "112",
+    "125"
+   ],
+   "breaks_without": [
+    "082"
+   ],
+   "class_guess": "required",
+   "class_guess_reason": "no switch; the index purpose reads as enablement or correctness",
+   "ablation_arm": "drop-with:082",
+   "class": null,
+   "disposition": null
+  },
+  {
+   "patch": "078",
+   "name": "r9700-north-laguna-fp8-moe-configs",
+   "added": 588,
+   "deleted": 0,
+   "files": [
+    "python/sglang/srt/layers/moe/moe_runner/triton_utils/configs/triton_3_6_0/E=128,N=384,device_name=AMD_Radeon_AI_PRO_R9700,dtype=fp8_w8a8,per_channel_quant=True.json",
+    "python/sglang/srt/layers/moe/moe_runner/triton_utils/configs/triton_3_6_0/E=128,N=384,device_name=AMD_Radeon_AI_PRO_R9700,dtype=fp8_w8a8,per_channel_quant=True_down.json",
+    "python/sglang/srt/layers/moe/moe_runner/triton_utils/configs/triton_3_6_0/E=256,N=256,device_name=AMD_Radeon_AI_PRO_R9700,dtype=fp8_w8a8,block_shape=[128, 128].json",
+    "python/sglang/srt/layers/moe/moe_runner/triton_utils/configs/triton_3_6_0/E=256,N=256,device_name=AMD_Radeon_AI_PRO_R9700,dtype=fp8_w8a8,block_shape=[128, 128]_down.json"
+   ],
+   "new_files": [
+    "python/sglang/srt/layers/moe/moe_runner/triton_utils/configs/triton_3_6_0/E=128,N=384,device_name=AMD_Radeon_AI_PRO_R9700,dtype=fp8_w8a8,per_channel_quant=True.json",
+    "python/sglang/srt/layers/moe/moe_runner/triton_utils/configs/triton_3_6_0/E=128,N=384,device_name=AMD_Radeon_AI_PRO_R9700,dtype=fp8_w8a8,per_channel_quant=True_down.json",
+    "python/sglang/srt/layers/moe/moe_runner/triton_utils/configs/triton_3_6_0/E=256,N=256,device_name=AMD_Radeon_AI_PRO_R9700,dtype=fp8_w8a8,block_shape=[128, 128].json",
+    "python/sglang/srt/layers/moe/moe_runner/triton_utils/configs/triton_3_6_0/E=256,N=256,device_name=AMD_Radeon_AI_PRO_R9700,dtype=fp8_w8a8,block_shape=[128, 128]_down.json"
+   ],
+   "switches_introduced": [],
+   "switches_touched": [],
+   "switch_defaults": {},
+   "default_on": [],
+   "presets_on": [],
+   "launcher_presets_naming": [
+    "laguna"
+   ],
+   "unswitched_existing_files": [],
+   "born": "2026-07-12",
+   "rebase_history": {},
+   "next_bump_dry_run": {
+    "v0.5.23": "clean"
+   },
+   "index": {
+    "collection": "MoE serving and routing",
+    "upstream": "Carry",
+    "purpose": "Installs measured gfx1201 FP8 MoE configurations for North and Laguna."
+   },
+   "findings": [],
+   "mentioned_in": {
+    "benchmarks/README.md": 3
+   },
+   "shares_files_with": [],
+   "breaks_without": [],
+   "class_guess": "required",
+   "class_guess_reason": "no switch; the index purpose reads as enablement or correctness",
+   "ablation_arm": "drop-alone",
+   "class": null,
+   "disposition": null
+  },
+  {
+   "patch": "079",
+   "name": "rdna4-fused-sigmoid-router-laguna-bf16-gate",
+   "added": 96,
+   "deleted": 5,
+   "files": [
+    "python/sglang/srt/layers/moe/topk.py",
+    "python/sglang/srt/models/cohere2_moe.py",
+    "python/sglang/srt/models/laguna.py",
+    "test/registered/unit/layers/moe/test_rdna4_sigmoid_topk.py",
+    "test/registered/unit/models/test_laguna_router.py"
+   ],
+   "new_files": [
+    "test/registered/unit/models/test_laguna_router.py"
+   ],
+   "switches_introduced": [
+    "SGLANG_OPT_USE_JIT_KERNEL_FUSED_TOPK"
+   ],
+   "switches_touched": [],
+   "switch_defaults": {
+    "SGLANG_OPT_USE_JIT_KERNEL_FUSED_TOPK": "true"
+   },
+   "default_on": [
+    "SGLANG_OPT_USE_JIT_KERNEL_FUSED_TOPK"
+   ],
+   "presets_on": [],
+   "launcher_presets_naming": [
+    "laguna"
+   ],
+   "unswitched_existing_files": [
+    "python/sglang/srt/models/cohere2_moe.py",
+    "python/sglang/srt/models/laguna.py"
+   ],
+   "born": "2026-07-12",
+   "rebase_history": {
+    "v0.5.16": "added lines changed",
+    "v0.5.18": "added lines changed"
+   },
+   "next_bump_dry_run": {
+    "v0.5.23": "hand-ported"
+   },
+   "index": {
+    "collection": "MoE serving and routing",
+    "upstream": "Candidate",
+    "purpose": "Enables the unified Triton sigmoid router on HIP (keeping the removed upstream `SGLANG_OPT_USE_JIT_KERNEL_FUSED_TOPK` gate HIP-only so 076's torch fallback stays reachable) and keeps Laguna's gate GEMV in checkpoint BF16 before FP32 logits."
+   },
+   "findings": [],
+   "mentioned_in": {
+    "benchmarks/README.md": 3
+   },
+   "shares_files_with": [
+    "004",
+    "074",
+    "076",
+    "080",
+    "081",
+    "090",
+    "093",
+    "097"
+   ],
+   "breaks_without": [],
+   "class_guess": "performance",
+   "class_guess_reason": "switchable and on (by default or in a preset): the ablation arm is the switch",
+   "ablation_arm": "switch",
+   "class": null,
+   "disposition": null
+  },
+  {
+   "patch": "080",
+   "name": "laguna-bf16-attention-allreduce",
+   "added": 47,
+   "deleted": 7,
+   "files": [
+    "python/sglang/srt/layers/layer_boundary/__init__.py",
+    "python/sglang/srt/layers/layer_boundary/exit.py",
+    "python/sglang/srt/layers/layer_boundary/ops.py",
+    "python/sglang/srt/layers/layer_boundary/prepare.py",
+    "python/sglang/srt/layers/layer_boundary/residual/__init__.py",
+    "python/sglang/srt/layers/layer_boundary/residual/add_norm.py",
+    "python/sglang/srt/models/laguna.py"
+   ],
+   "new_files": [],
+   "switches_introduced": [],
+   "switches_touched": [],
+   "switch_defaults": {},
+   "default_on": [],
+   "presets_on": [],
+   "launcher_presets_naming": [
+    "laguna"
+   ],
+   "unswitched_existing_files": [
+    "python/sglang/srt/layers/layer_boundary/__init__.py",
+    "python/sglang/srt/layers/layer_boundary/exit.py",
+    "python/sglang/srt/layers/layer_boundary/ops.py",
+    "python/sglang/srt/layers/layer_boundary/prepare.py",
+    "python/sglang/srt/layers/layer_boundary/residual/__init__.py",
+    "python/sglang/srt/layers/layer_boundary/residual/add_norm.py",
+    "python/sglang/srt/models/laguna.py"
+   ],
+   "born": "2026-07-12",
+   "rebase_history": {
+    "v0.5.16": "added lines changed",
+    "v0.5.18": "added lines changed",
+    "v0.5.20": "added lines changed",
+    "v0.5.22": "added lines changed"
+   },
+   "next_bump_dry_run": {
+    "v0.5.23": "regenerated"
+   },
+   "index": {
+    "collection": "Attention and numerics",
+    "upstream": "Candidate",
+    "purpose": "Lets Laguna use its native BF16 attention collective while retaining the defensive HIP FP32 default elsewhere. Since v0.5.22 the switch is a residual-update policy (`PLAIN_ADD_BF16_SUM`, `hip_fp32_sum=False`) read by `layer_boundary/ops.attn_tp_all_reduce`; a model opts out with `declare_attn(update=PLAIN_ADD_BF16_SUM)`."
+   },
+   "findings": [],
+   "mentioned_in": {
+    "benchmarks/README.md": 3
+   },
+   "shares_files_with": [
+    "001",
+    "074",
+    "079",
+    "081"
+   ],
+   "breaks_without": [],
+   "class_guess": "performance",
+   "class_guess_reason": "no switch; the index purpose reads as speed",
+   "ablation_arm": "drop-alone",
+   "class": null,
+   "disposition": null
+  },
+  {
+   "patch": "081",
+   "name": "rdna4-triton-rmsnorm-laguna-fused-qk",
+   "added": 295,
+   "deleted": 30,
+   "files": [
+    "python/sglang/kernels/ops/layernorm/minimax_m3_rmsnorm.py",
+    "python/sglang/srt/layers/layernorm.py",
+    "python/sglang/srt/models/laguna.py",
+    "python/sglang/srt/models/utils.py",
+    "test/registered/kernels/test_rdna4_standard_rmsnorm.py"
+   ],
+   "new_files": [
+    "test/registered/kernels/test_rdna4_standard_rmsnorm.py"
+   ],
+   "switches_introduced": [
+    "SGLANG_LAGUNA_FUSED_QK_RMSNORM",
+    "SGLANG_RDNA4_TRITON_RMSNORM"
+   ],
+   "switches_touched": [],
+   "switch_defaults": {
+    "SGLANG_LAGUNA_FUSED_QK_RMSNORM": null,
+    "SGLANG_RDNA4_TRITON_RMSNORM": null
+   },
+   "default_on": [],
+   "presets_on": [],
+   "launcher_presets_naming": [
+    "laguna"
+   ],
+   "unswitched_existing_files": [
+    "python/sglang/kernels/ops/layernorm/minimax_m3_rmsnorm.py",
+    "python/sglang/srt/models/utils.py"
+   ],
+   "born": "2026-07-12",
+   "rebase_history": {
+    "v0.5.16": "added lines changed",
+    "v0.5.18": "added lines changed",
+    "v0.5.22": "added lines changed"
+   },
+   "next_bump_dry_run": {
+    "v0.5.23": "clean"
+   },
+   "index": {
+    "collection": "Attention and numerics",
+    "upstream": "Candidate",
+    "purpose": "Extends the HIP Triton RMSNorm path to standard weights and fuses Laguna's query/key head norms."
+   },
+   "findings": [],
+   "mentioned_in": {
+    "benchmarks/README.md": 3
+   },
+   "shares_files_with": [
+    "001",
+    "074",
+    "079",
+    "080",
+    "123"
+   ],
+   "breaks_without": [
+    "123"
+   ],
+   "class_guess": "performance",
+   "class_guess_reason": "no switch; the index purpose reads as speed",
+   "ablation_arm": "drop-with:123",
+   "class": null,
+   "disposition": null
+  },
+  {
+   "patch": "082",
+   "name": "rdna4-fused-fp8-kv-cache-store",
+   "added": 293,
+   "deleted": 0,
+   "files": [
+    "python/sglang/kernels/ops/kvcache/triton_store_cache.py",
+    "python/sglang/srt/mem_cache/memory_pool.py",
+    "test/registered/kernels/test_rdna4_fp8_kv_store.py"
+   ],
+   "new_files": [
+    "test/registered/kernels/test_rdna4_fp8_kv_store.py"
+   ],
+   "switches_introduced": [
+    "SGLANG_RDNA4_FUSED_FP8_KV_STORE"
+   ],
+   "switches_touched": [],
+   "switch_defaults": {
+    "SGLANG_RDNA4_FUSED_FP8_KV_STORE": null
+   },
+   "default_on": [],
+   "presets_on": [],
+   "launcher_presets_naming": [
+    "laguna"
+   ],
+   "unswitched_existing_files": [
+    "python/sglang/kernels/ops/kvcache/triton_store_cache.py"
+   ],
+   "born": "2026-07-12",
+   "rebase_history": {
+    "v0.5.16": "added lines changed",
+    "v0.5.18": "added lines changed",
+    "v0.5.22": "re-anchored"
+   },
+   "next_bump_dry_run": {
+    "v0.5.23": "regenerated"
+   },
+   "index": {
+    "collection": "FP8",
+    "upstream": "Candidate",
+    "purpose": "Fuses static-scale FP8 K/V conversion and cache scatter into one Triton launch."
+   },
+   "findings": [],
+   "mentioned_in": {
+    "benchmarks/README.md": 3
+   },
+   "shares_files_with": [
+    "077"
+   ],
+   "breaks_without": [],
+   "class_guess": "performance",
+   "class_guess_reason": "no switch; the index purpose reads as speed",
+   "ablation_arm": "drop-alone",
+   "class": null,
+   "disposition": null
+  },
+  {
+   "patch": "083",
+   "name": "mistral-common-backend-optout",
+   "added": 11,
+   "deleted": 0,
+   "files": [
+    "python/sglang/srt/utils/hf_transformers/tokenizer.py"
+   ],
+   "new_files": [],
+   "switches_introduced": [],
+   "switches_touched": [],
+   "switch_defaults": {},
+   "default_on": [],
+   "presets_on": [],
+   "launcher_presets_naming": [],
+   "unswitched_existing_files": [
+    "python/sglang/srt/utils/hf_transformers/tokenizer.py"
+   ],
+   "born": "2026-07-12",
+   "rebase_history": {
+    "v0.5.16": "added lines changed"
+   },
+   "next_bump_dry_run": {
+    "v0.5.23": "clean"
+   },
+   "index": {
+    "collection": "Model, parser, and speculative-decode plumbing",
+    "upstream": "Candidate",
+    "purpose": "Reroutes MistralCommonBackend tokenizers to TokenizersBackend so rendered special tokens retain their IDs."
+   },
+   "findings": [],
+   "mentioned_in": {
+    "README.md": 1,
+    "PATCHES.md": 1,
+    "benchmarks/README.md": 2
+   },
+   "shares_files_with": [
+    "089"
+   ],
+   "breaks_without": [],
+   "class_guess": "required",
+   "class_guess_reason": "no switch; the index purpose reads as enablement or correctness",
+   "ablation_arm": "drop-alone",
+   "class": null,
+   "disposition": null
+  },
+  {
+   "patch": "084",
+   "name": "rdna4-qwen3moe-bf16-attention-allreduce",
+   "added": 7,
+   "deleted": 1,
+   "files": [
+    "python/sglang/srt/models/qwen3_moe.py"
+   ],
+   "new_files": [],
+   "switches_introduced": [],
+   "switches_touched": [],
+   "switch_defaults": {},
+   "default_on": [],
+   "presets_on": [],
+   "launcher_presets_naming": [],
+   "unswitched_existing_files": [
+    "python/sglang/srt/models/qwen3_moe.py"
+   ],
+   "born": "2026-07-12",
+   "rebase_history": {
+    "v0.5.22": "added lines changed"
+   },
+   "next_bump_dry_run": {
+    "v0.5.23": "regenerated"
+   },
+   "index": {
+    "collection": "Attention and numerics",
+    "upstream": "Candidate",
+    "purpose": "Opts Qwen3-MoE (coder-30b, coder-reap-25b) out of the HIP FP32 attention all-reduce, using the BF16 collective. Measured +1-3% single-user decode, coherent; FP32 stays the default for recurrent hybrids."
+   },
+   "findings": [],
+   "mentioned_in": {
+    "benchmarks/README.md": 2
+   },
+   "shares_files_with": [],
+   "breaks_without": [],
+   "class_guess": "performance",
+   "class_guess_reason": "no switch; the index purpose reads as speed",
+   "ablation_arm": "drop-alone",
+   "class": null,
+   "disposition": null
+  },
+  {
+   "patch": "085",
+   "name": "rdna4-glm4moe-bf16-attention-allreduce",
+   "added": 6,
+   "deleted": 1,
+   "files": [
+    "python/sglang/srt/models/glm4_moe.py"
+   ],
+   "new_files": [],
+   "switches_introduced": [],
+   "switches_touched": [],
+   "switch_defaults": {},
+   "default_on": [],
+   "presets_on": [],
+   "launcher_presets_naming": [],
+   "unswitched_existing_files": [
+    "python/sglang/srt/models/glm4_moe.py"
+   ],
+   "born": "2026-07-12",
+   "rebase_history": {
+    "v0.5.22": "added lines changed"
+   },
+   "next_bump_dry_run": {
+    "v0.5.23": "clean"
+   },
+   "index": {
+    "collection": "Attention and numerics",
+    "upstream": "Candidate",
+    "purpose": "Opts GLM-4.5 MoE (glm45-air) out of the HIP FP32 attention all-reduce, using the BF16 collective. Reverse-confirmed +1.3-4.1% single-user decode, coherent; FP32 stays the default for recurrent hybrids."
+   },
+   "findings": [],
+   "mentioned_in": {
+    "benchmarks/README.md": 2
+   },
+   "shares_files_with": [
+    "066"
+   ],
+   "breaks_without": [],
+   "class_guess": "performance",
+   "class_guess_reason": "no switch; the index purpose reads as speed",
+   "ablation_arm": "drop-alone",
+   "class": null,
+   "disposition": null
+  },
+  {
+   "patch": "086",
+   "name": "rdna4-amd-num-kv-splits-64",
+   "added": 12,
+   "deleted": 1,
+   "files": [
+    "python/sglang/srt/arg_groups/platform_hook.py"
+   ],
+   "new_files": [],
+   "switches_introduced": [
+    "SGLANG_KV_SPLITS_OVERRIDE"
+   ],
+   "switches_touched": [],
+   "switch_defaults": {
+    "SGLANG_KV_SPLITS_OVERRIDE": null
+   },
+   "default_on": [],
+   "presets_on": [],
+   "launcher_presets_naming": [],
+   "unswitched_existing_files": [],
+   "born": "2026-07-14",
+   "rebase_history": {
+    "v0.5.16": "re-anchored",
+    "v0.5.20": "added lines changed"
+   },
+   "next_bump_dry_run": {
+    "v0.5.23": "clean"
+   },
+   "index": {
+    "collection": "Attention and numerics",
+    "upstream": "Carry",
+    "purpose": "Raises the AMD Triton flash-decode `num_kv_splits` default 16->64 so the decode grid (head_groups x splits) fills gfx1201's 64 CUs at long context. Measured **2.14x 256K decode** (14.4->30.7 tok/s, coder-reap-25b); short context unregressed (the get_num_kv_splits heuristic still scales down). `SGLANG_KV_SPLITS_OVERRIDE` forces a value."
+   },
+   "findings": [
+    "256K attention split-KV CU occupancy (fixed — patch 086)",
+    "Laguna native-FP8 KV-split resweep — 64 holds",
+    "Extend attention has no KV split — the agentic turn tax (open, Laguna)"
+   ],
+   "mentioned_in": {
+    "README.md": 1,
+    "benchmarks/README.md": 3
+   },
+   "shares_files_with": [],
+   "breaks_without": [],
+   "class_guess": "opt-in",
+   "class_guess_reason": "its switches are off by default and no preset turns them on",
+   "ablation_arm": "off-everywhere: no speed arm; drop needs only the replay and the capability gates",
+   "class": null,
+   "disposition": null
+  },
+  {
+   "patch": "087",
+   "name": "rdna4-flash-decode-bf16-pv",
+   "added": 5,
+   "deleted": 2,
+   "files": [
+    "python/sglang/kernels/ops/attention/decode_attention.py"
+   ],
+   "new_files": [],
+   "switches_introduced": [],
+   "switches_touched": [],
+   "switch_defaults": {},
+   "default_on": [],
+   "presets_on": [],
+   "launcher_presets_naming": [],
+   "unswitched_existing_files": [
+    "python/sglang/kernels/ops/attention/decode_attention.py"
+   ],
+   "born": "2026-07-16",
+   "rebase_history": {
+    "v0.5.16": "re-anchored",
+    "v0.5.20": "added lines changed"
+   },
+   "next_bump_dry_run": {
+    "v0.5.23": "clean"
+   },
+   "index": {
+    "collection": "Attention and numerics",
+    "upstream": "Carry",
+    "purpose": "Flash-decode PV in bf16 (fp32 accumulate) instead of fp32 in the grouped GQA kernel. fp32 PV inflated VGPR pressure -> low occupancy -> poor KV-load latency hiding, capping decode-attn at ~51% of the KV-read roofline. Measured **+21% 256K decode** (33.2->40.2 tok/s, coder-reap-25b), short ctx +~1%, deep recall unchanged. Standard flash-attn precision; stacks on 086."
+   },
+   "findings": [
+    "256K attention split-KV CU occupancy (fixed — patch 086)"
+   ],
+   "mentioned_in": {
+    "benchmarks/README.md": 3
+   },
+   "shares_files_with": [
+    "011",
+    "027"
+   ],
+   "breaks_without": [],
+   "class_guess": "performance",
+   "class_guess_reason": "no switch; the index purpose reads as speed",
+   "ablation_arm": "drop-alone",
+   "class": null,
+   "disposition": null
+  },
+  {
+   "patch": "088",
+   "name": "dcp-kv-replica-topology-validation",
+   "added": 91,
+   "deleted": 0,
+   "files": [
+    "python/sglang/srt/layers/dcp/__init__.py",
+    "python/sglang/srt/layers/dcp/layout.py",
+    "python/sglang/srt/model_executor/model_runner.py",
+    "test/registered/dcp/test_dcp_layout_unit.py"
+   ],
+   "new_files": [],
+   "switches_introduced": [],
+   "switches_touched": [],
+   "switch_defaults": {},
+   "default_on": [],
+   "presets_on": [],
+   "launcher_presets_naming": [],
+   "unswitched_existing_files": [
+    "python/sglang/srt/layers/dcp/__init__.py",
+    "python/sglang/srt/layers/dcp/layout.py",
+    "python/sglang/srt/model_executor/model_runner.py",
+    "test/registered/dcp/test_dcp_layout_unit.py"
+   ],
+   "born": "2026-07-19",
+   "rebase_history": {
+    "v0.5.16": "added lines changed",
+    "v0.5.18": "added lines changed",
+    "v0.5.20": "added lines changed",
+    "v0.5.22": "re-anchored"
+   },
+   "next_bump_dry_run": {
+    "v0.5.23": "clean"
+   },
+   "index": {
+    "collection": "Attention and numerics",
+    "upstream": "Candidate",
+    "purpose": "Rejects MHA DCP groups that cross TP K/V-head replica blocks before distributed initialization or weight loading, preventing silent LSE merges across unrelated GQA K/V heads."
+   },
+   "findings": [],
+   "mentioned_in": {
+    "benchmarks/README.md": 1
+   },
+   "shares_files_with": [
+    "042",
+    "127"
+   ],
+   "breaks_without": [],
+   "class_guess": "required",
+   "class_guess_reason": "no switch; the index purpose reads as enablement or correctness",
+   "ablation_arm": "drop-alone",
+   "class": null,
+   "disposition": null
+  },
+  {
+   "patch": "089",
+   "name": "laguna-preserve-custom-tokenizer-regex",
+   "added": 90,
+   "deleted": 0,
+   "files": [
+    "python/sglang/srt/utils/hf_transformers/tokenizer.py",
+    "test/registered/unit/utils/test_hf_transformers.py"
+   ],
+   "new_files": [],
+   "switches_introduced": [],
+   "switches_touched": [],
+   "switch_defaults": {},
+   "default_on": [],
+   "presets_on": [],
+   "launcher_presets_naming": [],
+   "unswitched_existing_files": [
+    "python/sglang/srt/utils/hf_transformers/tokenizer.py",
+    "test/registered/unit/utils/test_hf_transformers.py"
+   ],
+   "born": "2026-07-19",
+   "rebase_history": {
+    "v0.5.16": "added lines changed",
+    "v0.5.18": "re-anchored",
+    "v0.5.20": "re-anchored",
+    "v0.5.22": "re-anchored"
+   },
+   "next_bump_dry_run": {
+    "v0.5.23": "clean"
+   },
+   "index": {
+    "collection": "Model, parser, and speculative-decode plumbing",
+    "upstream": "Candidate",
+    "purpose": "Preserves Laguna's custom training-time BPE regex so Transformers does not apply its false-positive Mistral rewrite to local checkpoints; explicit caller overrides still win."
+   },
+   "findings": [],
+   "mentioned_in": {
+    "benchmarks/README.md": 1
+   },
+   "shares_files_with": [
+    "083"
+   ],
+   "breaks_without": [],
+   "class_guess": "required",
+   "class_guess_reason": "no switch; the index purpose reads as enablement or correctness",
+   "ablation_arm": "drop-alone",
+   "class": null,
+   "disposition": null
+  },
+  {
+   "patch": "090",
+   "name": "cohere2moe-rmsnorm-selection",
+   "added": 71,
+   "deleted": 4,
+   "files": [
+    "python/sglang/srt/models/cohere2_moe.py",
+    "test/registered/unit/models/test_cohere2_moe_norm.py"
+   ],
+   "new_files": [
+    "test/registered/unit/models/test_cohere2_moe_norm.py"
+   ],
+   "switches_introduced": [],
+   "switches_touched": [],
+   "switch_defaults": {},
+   "default_on": [],
+   "presets_on": [],
+   "launcher_presets_naming": [],
+   "unswitched_existing_files": [
+    "python/sglang/srt/models/cohere2_moe.py"
+   ],
+   "born": "2026-07-19",
+   "rebase_history": {
+    "v0.5.20": "added lines changed"
+   },
+   "next_bump_dry_run": {
+    "v0.5.23": "clean"
+   },
+   "index": {
+    "collection": "Model, parser, and speculative-decode plumbing",
+    "upstream": "Candidate",
+    "purpose": "Selects checkpoint-declared RMSNorm for North while retaining centered Cohere LayerNorm for older configurations."
+   },
+   "findings": [
+    "256K attention split-KV CU occupancy (fixed — patch 086)"
+   ],
+   "mentioned_in": {
+    "benchmarks/README.md": 1
+   },
+   "shares_files_with": [
+    "079",
+    "093"
+   ],
+   "breaks_without": [
+    "093"
+   ],
+   "class_guess": "required",
+   "class_guess_reason": "no switch; the index purpose reads as enablement or correctness",
+   "ablation_arm": "drop-with:093",
+   "class": null,
+   "disposition": null
+  },
+  {
+   "patch": "091",
+   "name": "cohere-command4-tool-call-id-name-recovery",
+   "added": 196,
+   "deleted": 4,
+   "files": [
+    "python/sglang/srt/function_call/cohere_command4_detector.py",
+    "test/registered/unit/function_call/test_cohere_command4_detector.py"
+   ],
+   "new_files": [
+    "test/registered/unit/function_call/test_cohere_command4_detector.py"
+   ],
+   "switches_introduced": [
+    "SGLANG_FORWARD_UNKNOWN_TOOLS"
+   ],
+   "switches_touched": [],
+   "switch_defaults": {
+    "SGLANG_FORWARD_UNKNOWN_TOOLS": null
+   },
+   "default_on": [],
+   "presets_on": [],
+   "launcher_presets_naming": [],
+   "unswitched_existing_files": [
+    "python/sglang/srt/function_call/cohere_command4_detector.py"
+   ],
+   "born": "2026-07-19",
+   "rebase_history": {},
+   "next_bump_dry_run": {
+    "v0.5.23": "clean"
+   },
+   "index": {
+    "collection": "Model, parser, and speculative-decode plumbing",
+    "upstream": "Candidate",
+    "purpose": "Narrowly recovers a missing Cohere tool name when `tool_call_id` exactly matches an exposed function name."
+   },
+   "findings": [],
+   "mentioned_in": {},
+   "shares_files_with": [
+    "095"
+   ],
+   "breaks_without": [
+    "095"
+   ],
+   "class_guess": "opt-in?",
+   "class_guess_reason": "switches off everywhere, but it also edits upstream files without naming a switch",
+   "ablation_arm": "drop-with:095",
+   "class": null,
+   "disposition": null
+  },
+  {
+   "patch": "092",
+   "name": "openai-tool-call-finish-reason-correctness",
+   "added": 32,
+   "deleted": 3,
+   "files": [
+    "python/sglang/srt/entrypoints/openai/serving_chat.py",
+    "test/registered/unit/entrypoints/openai/test_serving_chat.py"
+   ],
+   "new_files": [],
+   "switches_introduced": [],
+   "switches_touched": [],
+   "switch_defaults": {},
+   "default_on": [],
+   "presets_on": [],
+   "launcher_presets_naming": [],
+   "unswitched_existing_files": [
+    "python/sglang/srt/entrypoints/openai/serving_chat.py",
+    "test/registered/unit/entrypoints/openai/test_serving_chat.py"
+   ],
+   "born": "2026-07-19",
+   "rebase_history": {
+    "v0.5.16": "added lines changed",
+    "v0.5.18": "re-anchored"
+   },
+   "next_bump_dry_run": {
+    "v0.5.23": "clean"
+   },
+   "index": {
+    "collection": "Model, parser, and speculative-decode plumbing",
+    "upstream": "Candidate",
+    "purpose": "Reports `tool_calls` only when structured calls survive parsing and otherwise restores the original content and finish metadata."
+   },
+   "findings": [],
+   "mentioned_in": {},
+   "shares_files_with": [],
+   "breaks_without": [],
+   "class_guess": "required",
+   "class_guess_reason": "no switch; the index purpose reads as enablement or correctness",
+   "ablation_arm": "drop-alone",
+   "class": null,
+   "disposition": null
+  },
+  {
+   "patch": "093",
+   "name": "cohere2moe-swa-window-off-by-one",
+   "added": 87,
+   "deleted": 1,
+   "files": [
+    "python/sglang/srt/models/cohere2_moe.py",
+    "test/registered/unit/models/test_cohere2_moe_sliding_window.py"
+   ],
+   "new_files": [
+    "test/registered/unit/models/test_cohere2_moe_sliding_window.py"
+   ],
+   "switches_introduced": [],
+   "switches_touched": [],
+   "switch_defaults": {},
+   "default_on": [],
+   "presets_on": [],
+   "launcher_presets_naming": [],
+   "unswitched_existing_files": [
+    "python/sglang/srt/models/cohere2_moe.py"
+   ],
+   "born": "2026-07-19",
+   "rebase_history": {},
+   "next_bump_dry_run": {
+    "v0.5.23": "clean"
+   },
+   "index": {
+    "collection": "Model, parser, and speculative-decode plumbing",
+    "upstream": "Candidate",
+    "purpose": "Converts Hugging Face's inclusive Cohere2-MoE SWA window to SGLang's exclusive distance for both layers and backend metadata."
+   },
+   "findings": [],
+   "mentioned_in": {},
+   "shares_files_with": [
+    "079",
+    "090"
+   ],
+   "breaks_without": [],
+   "class_guess": "performance",
+   "class_guess_reason": "no switch; the index purpose reads as speed",
+   "ablation_arm": "drop-alone",
+   "class": null,
+   "disposition": null
+  },
+  {
+   "patch": "094",
+   "name": "rdna4-batch-invariant-matmul-lds",
+   "added": 100,
+   "deleted": 62,
+   "files": [
+    "python/sglang/srt/batch_invariant_ops/batch_invariant_ops.py",
+    "test/registered/unit/batch_invariant_ops/test_batch_invariant_ops_config.py"
+   ],
+   "new_files": [
+    "test/registered/unit/batch_invariant_ops/test_batch_invariant_ops_config.py"
+   ],
+   "switches_introduced": [],
+   "switches_touched": [],
+   "switch_defaults": {},
+   "default_on": [],
+   "presets_on": [],
+   "launcher_presets_naming": [],
+   "unswitched_existing_files": [
+    "python/sglang/srt/batch_invariant_ops/batch_invariant_ops.py"
+   ],
+   "born": "2026-07-19",
+   "rebase_history": {
+    "v0.5.20": "added lines changed"
+   },
+   "next_bump_dry_run": {
+    "v0.5.23": "clean"
+   },
+   "index": {
+    "collection": "Core RDNA4 enablement",
+    "upstream": "Carry",
+    "purpose": "Uses two Triton pipeline stages for HIP batch-invariant MM/BMM so deterministic inference fits gfx1201's 64 KiB LDS limit; non-HIP platforms retain three stages."
+   },
+   "findings": [],
+   "mentioned_in": {},
+   "shares_files_with": [],
+   "breaks_without": [],
+   "class_guess": "required",
+   "class_guess_reason": "no switch; the index purpose reads as enablement or correctness",
+   "ablation_arm": "drop-alone",
+   "class": null,
+   "disposition": null
+  },
+  {
+   "patch": "095",
+   "name": "cohere-command4-function-key-name-recovery",
+   "added": 161,
+   "deleted": 3,
+   "files": [
+    "python/sglang/srt/function_call/cohere_command4_detector.py",
+    "test/registered/unit/function_call/test_cohere_command4_detector.py"
+   ],
+   "new_files": [],
+   "switches_introduced": [],
+   "switches_touched": [
+    "SGLANG_FORWARD_UNKNOWN_TOOLS"
+   ],
+   "switch_defaults": {},
+   "default_on": [],
+   "presets_on": [],
+   "launcher_presets_naming": [],
+   "unswitched_existing_files": [
+    "python/sglang/srt/function_call/cohere_command4_detector.py"
+   ],
+   "born": "2026-07-19",
+   "rebase_history": {},
+   "next_bump_dry_run": {
+    "v0.5.23": "clean"
+   },
+   "index": {
+    "collection": "Model, parser, and speculative-decode plumbing",
+    "upstream": "Candidate",
+    "purpose": "Recovers a missing Cohere tool name from a string `function` field that exactly matches an exposed function name — the second malformed North variant, which 091 did not cover. Dropped calls surfaced as raw `<\\|START_ACTION\\|>` markup in `content` with `finish_reason == \"stop\"`. The OpenAI nested `{\"function\": {...}}` object is left untouched."
+   },
+   "findings": [
+    "North serving correctness — patches 090–094"
+   ],
+   "mentioned_in": {
+    "benchmarks/README.md": 1
+   },
+   "shares_files_with": [
+    "091"
+   ],
+   "breaks_without": [],
+   "class_guess": "required",
+   "class_guess_reason": "no switch; the index purpose reads as enablement or correctness",
+   "ablation_arm": "drop-alone",
+   "class": null,
+   "disposition": null
+  },
+  {
+   "patch": "096",
+   "name": "sglang-api-auth-hardening",
+   "added": 313,
+   "deleted": 56,
+   "files": [
+    "python/sglang/srt/arg_groups/arg_utils.py",
+    "python/sglang/srt/arg_groups/fields/serving.py",
+    "python/sglang/srt/distributed/bootstrap.py",
+    "python/sglang/srt/entrypoints/engine.py",
+    "python/sglang/srt/entrypoints/http_server.py",
+    "python/sglang/srt/managers/scheduler_components/internal_state.py",
+    "python/sglang/srt/managers/tokenizer_manager.py",
+    "python/sglang/srt/multimodal/processors/mimo_audio.py",
+    "python/sglang/srt/multimodal/processors/mimo_v2.py",
+    "python/sglang/srt/multimodal/processors/moss_vl.py",
+    "python/sglang/srt/multimodal/processors/transformers_auto.py",
+    "python/sglang/srt/server_args.py",
+    "python/sglang/srt/utils/auth.py",
+    "python/sglang/srt/utils/common.py"
+   ],
+   "new_files": [],
+   "switches_introduced": [
+    "SGLANG_ALLOW_LOCAL_MEDIA",
+    "SGLANG_ALLOW_REMOTE_MEDIA"
+   ],
+   "switches_touched": [],
+   "switch_defaults": {
+    "SGLANG_ALLOW_LOCAL_MEDIA": null,
+    "SGLANG_ALLOW_REMOTE_MEDIA": null
+   },
+   "default_on": [],
+   "presets_on": [],
+   "launcher_presets_naming": [],
+   "unswitched_existing_files": [
+    "python/sglang/srt/arg_groups/arg_utils.py",
+    "python/sglang/srt/arg_groups/fields/serving.py",
+    "python/sglang/srt/distributed/bootstrap.py",
+    "python/sglang/srt/entrypoints/engine.py",
+    "python/sglang/srt/entrypoints/http_server.py",
+    "python/sglang/srt/managers/scheduler_components/internal_state.py",
+    "python/sglang/srt/managers/tokenizer_manager.py",
+    "python/sglang/srt/multimodal/processors/transformers_auto.py",
+    "python/sglang/srt/server_args.py",
+    "python/sglang/srt/utils/auth.py"
+   ],
+   "born": "2026-07-27",
+   "rebase_history": {
+    "v0.5.16": "added lines changed",
+    "v0.5.18": "added lines changed",
+    "v0.5.20": "added lines changed",
+    "v0.5.22": "added lines changed"
+   },
+   "next_bump_dry_run": {
+    "v0.5.23": "regenerated"
+   },
+   "index": {
+    "collection": "Model, parser, and speculative-decode plumbing",
+    "upstream": "Candidate",
+    "purpose": "Hardens the served API for untrusted networks: forces admin auth on `/server_info` and `/get_server_info`, authenticates WebSocket upgrades, redacts `api_key`/`admin_api_key`/`ssl_keyfile_password` from logs and info payloads, gates remote-URL and local-file multimodal sources behind `SGLANG_ALLOW_REMOTE_MEDIA`/`SGLANG_ALLOW_LOCAL_MEDIA`, and binds single-node distributed init to loopback."
+   },
+   "findings": [],
+   "mentioned_in": {},
+   "shares_files_with": [],
+   "breaks_without": [],
+   "class_guess": "opt-in?",
+   "class_guess_reason": "switches off everywhere, but it also edits upstream files without naming a switch",
+   "ablation_arm": "drop-alone",
+   "class": null,
+   "disposition": null
+  },
+  {
+   "patch": "097",
+   "name": "moe-jit-fused-gate-none-bias-guard",
+   "added": 12,
+   "deleted": 0,
+   "files": [
+    "python/sglang/srt/layers/moe/topk.py"
+   ],
+   "new_files": [],
+   "switches_introduced": [],
+   "switches_touched": [],
+   "switch_defaults": {},
+   "default_on": [],
+   "presets_on": [],
+   "launcher_presets_naming": [],
+   "unswitched_existing_files": [
+    "python/sglang/srt/layers/moe/topk.py"
+   ],
+   "born": "2026-07-27",
+   "rebase_history": {
+    "v0.5.16": "new in this bump",
+    "v0.5.18": "re-anchored",
+    "v0.5.20": "added lines changed"
+   },
+   "next_bump_dry_run": {
+    "v0.5.23": "clean"
+   },
+   "index": {
+    "collection": "MoE serving and routing",
+    "upstream": "Candidate",
+    "purpose": "Substitutes a zero bias for a None correction_bias before the JIT fused-gate kernel so bias-free sigmoid routers (Cohere2/North) do not fault under v0.5.16's default-on `SGLANG_OPT_USE_JIT_KERNEL_FUSED_TOPK`."
+   },
+   "findings": [],
+   "mentioned_in": {},
+   "shares_files_with": [
+    "004",
+    "076",
+    "079"
+   ],
+   "breaks_without": [],
+   "class_guess": "performance",
+   "class_guess_reason": "no switch; the index purpose reads as speed",
+   "ablation_arm": "drop-alone",
+   "class": null,
+   "disposition": null
+  },
+  {
+   "patch": "098",
+   "name": "gemma4-unified-native-config",
+   "added": 18,
+   "deleted": 4,
+   "files": [
+    "python/sglang/srt/utils/hf_transformers/common.py"
+   ],
+   "new_files": [],
+   "switches_introduced": [],
+   "switches_touched": [],
+   "switch_defaults": {},
+   "default_on": [],
+   "presets_on": [],
+   "launcher_presets_naming": [],
+   "unswitched_existing_files": [
+    "python/sglang/srt/utils/hf_transformers/common.py"
+   ],
+   "born": "2026-08-30",
+   "rebase_history": {
+    "v0.5.18": "new in this bump",
+    "v0.5.22": "added lines changed"
+   },
+   "next_bump_dry_run": {
+    "v0.5.23": "clean"
+   },
+   "index": {
+    "collection": "Gemma 4",
+    "upstream": "Candidate",
+    "purpose": "Registers transformers' native `Gemma4UnifiedConfig` for `model_type=gemma4_unified` (alias onto `Gemma4Config` only as the fallback for older transformers), so the encoder-free 12B gets `vision_config.model_patch_size`; also sets `lm_head_is_tied` in the unified `__init__`, which the shared v0.5.18 `Gemma4ForConditionalGeneration.forward` reads."
+   },
+   "findings": [],
+   "mentioned_in": {},
+   "shares_files_with": [
+    "105"
+   ],
+   "breaks_without": [],
+   "class_guess": "performance",
+   "class_guess_reason": "no switch; the index purpose reads as speed",
+   "ablation_arm": "drop-alone",
+   "class": null,
+   "disposition": null
+  },
+  {
+   "patch": "100",
+   "name": "rdna4-splitkv-verify-enable",
+   "added": 24,
+   "deleted": 6,
+   "files": [
+    "python/sglang/kernels/ops/attention/verify_splitkv.py",
+    "python/sglang/srt/layers/attention/triton_backend.py"
+   ],
+   "new_files": [],
+   "switches_introduced": [
+    "SGLANG_ENABLE_SPLITKV_VERIFY"
+   ],
+   "switches_touched": [],
+   "switch_defaults": {
+    "SGLANG_ENABLE_SPLITKV_VERIFY": null
+   },
+   "default_on": [],
+   "presets_on": [],
+   "launcher_presets_naming": [
+    "qwen38"
+   ],
+   "unswitched_existing_files": [
+    "python/sglang/kernels/ops/attention/verify_splitkv.py"
+   ],
+   "born": "2026-09-27",
+   "rebase_history": {
+    "v0.5.22": "re-anchored"
+   },
+   "next_bump_dry_run": {
+    "v0.5.23": "clean"
+   },
+   "index": {
+    "collection": "Model, parser, and speculative-decode plumbing",
+    "upstream": "Carry",
+    "purpose": "Enables the split-KV (flash-decode) speculative-verify kernel on gfx1201: drops the gfx95-only gate in `TritonAttnBackend` (upstream PR #39316 does the same for CUDA) and floors the kernel's row tile at 16 on RDNA because Triton's AMD dot-operand pass rejects 2/4/8-row WMMA tiles (`PassManager::run failed`); padded rows are masked on every load and store. Kernel test 9/9 + 12 subtests on gfx1201. DSpark on `qwen38` at a 49K input: 5.3 → 32 tok/s (no-spec 21)."
+   },
+   "findings": [
+    "Measure real depth"
+   ],
+   "mentioned_in": {
+    "PATCHES.md": 1,
+    "benchmarks/README.md": 2
+   },
+   "shares_files_with": [
+    "001",
+    "047",
+    "065",
+    "077",
+    "107",
+    "109",
+    "110",
+    "111",
+    "112",
+    "125",
+    "126"
+   ],
+   "breaks_without": [],
+   "class_guess": "performance",
+   "class_guess_reason": "no switch; the index purpose reads as speed",
+   "ablation_arm": "drop-alone",
+   "class": null,
+   "disposition": null
+  },
+  {
+   "patch": "103",
+   "name": "responses-merge-assistant-turn-across-phase",
+   "added": 18,
+   "deleted": 2,
+   "files": [
+    "python/sglang/srt/entrypoints/openai/serving_responses.py"
+   ],
+   "new_files": [],
+   "switches_introduced": [],
+   "switches_touched": [],
+   "switch_defaults": {},
+   "default_on": [],
+   "presets_on": [],
+   "launcher_presets_naming": [],
+   "unswitched_existing_files": [
+    "python/sglang/srt/entrypoints/openai/serving_responses.py"
+   ],
+   "born": "2026-10-18",
+   "rebase_history": {},
+   "next_bump_dry_run": {
+    "v0.5.23": "hand-ported"
+   },
+   "index": {
+    "collection": "Model, parser, and speculative-decode plumbing",
+    "upstream": "Candidate",
+    "purpose": "Port of the 3090's patch 066. `OpenAIServingResponses._merge_consecutive_assistant_messages` only folded consecutive assistant items when their `phase` tags were equal, but `phase` survives only on `message` items, so a Responses-API client that echoes `phase: commentary` (langchain-openai 1.x, i.e. deepagents / dcode) got the announcement text and its own tool call rendered as two assistant turns; the model then learns in-context to stop after the announcement (3090 qwen38 dcode v4: 213/300 empty). A missing phase on either side now merges and adopts the phase that exists; two `message` items with different phases still stay apart. Gate: `scripts/eval/test_responses_merge_assistant_turn_phase.py` (pristine 2/5 → 5/5) and the wire-level history-merge step in the dcode preflight of `evals/swebench/run_rollouts.py` (equal `usage.input_tokens` with and without `phase`; unpatched live server 441 vs 423). Upstream main still carries the bug (2026-10-18). 101/102 are reserved for the 3090's 063/065."
+   },
+   "findings": [],
+   "mentioned_in": {
+    "PATCHES.md": 1
+   },
+   "shares_files_with": [],
+   "breaks_without": [],
+   "class_guess": "required",
+   "class_guess_reason": "no switch; the index purpose reads as enablement or correctness",
+   "ablation_arm": "drop-alone",
+   "class": null,
+   "disposition": null
+  },
+  {
+   "patch": "104",
+   "name": "moe-wna16-fused-shared-expert-slot",
+   "added": 10,
+   "deleted": 5,
+   "files": [
+    "python/sglang/srt/layers/quantization/moe_wna16.py"
+   ],
+   "new_files": [],
+   "switches_introduced": [],
+   "switches_touched": [],
+   "switch_defaults": {},
+   "default_on": [],
+   "presets_on": [],
+   "launcher_presets_naming": [],
+   "unswitched_existing_files": [
+    "python/sglang/srt/layers/quantization/moe_wna16.py"
+   ],
+   "born": "2026-10-19",
+   "rebase_history": {},
+   "next_bump_dry_run": {
+    "v0.5.23": "hand-ported"
+   },
+   "index": {
+    "collection": "Model, parser, and speculative-decode plumbing",
+    "upstream": "Candidate",
+    "purpose": "v0.5.22's `moe_wna16._local_expert_ids` (#41807) resolves a checkpoint expert id through the EPLB logical map before mapping it to this rank's slot, but a model that fuses its shared experts into the MoE (GLM-4.5 via `iter_weights_with_fused_shared_experts`) appends them as id `n_routed_experts + k`, past the map: `IndexError: index 96 is out of bounds for dimension 1 with size 96` in `Glm4MoeForCausalLM.load_weights` on the 96-expert REAP AWQ. A shared-expert id now stays its own physical id (EPLB never relocates it), exactly as `FusedMoE._map_global_expert_id_to_local_expert_id` already handles it. glm45-air boots and passes its usual 2/3 on 2026-10-19."
+   },
+   "findings": [],
+   "mentioned_in": {},
+   "shares_files_with": [
+    "033"
+   ],
+   "breaks_without": [],
+   "class_guess": "performance",
+   "class_guess_reason": "no switch; the index purpose reads as speed",
+   "ablation_arm": "drop-alone",
+   "class": null,
+   "disposition": null
+  },
+  {
+   "patch": "105",
+   "name": "flint-model-port",
+   "added": 1104,
+   "deleted": 1,
+   "files": [
+    "python/sglang/srt/arg_groups/choices.py",
+    "python/sglang/srt/configs/__init__.py",
+    "python/sglang/srt/configs/flint.py",
+    "python/sglang/srt/configs/model_config.py",
+    "python/sglang/srt/constrained/base_grammar_backend.py",
+    "python/sglang/srt/constrained/flint_grammar_backend.py",
+    "python/sglang/srt/constrained/flint_structural_tags.py",
+    "python/sglang/srt/function_call/flint_detector.py",
+    "python/sglang/srt/function_call/function_call_parser.py",
+    "python/sglang/srt/function_call/parser_names.py",
+    "python/sglang/srt/models/flint.py",
+    "python/sglang/srt/parser/reasoning_parser.py",
+    "python/sglang/srt/parser/reasoning_parser_names.py",
+    "python/sglang/srt/utils/hf_transformers/common.py"
+   ],
+   "new_files": [
+    "python/sglang/srt/configs/flint.py",
+    "python/sglang/srt/constrained/flint_grammar_backend.py",
+    "python/sglang/srt/constrained/flint_structural_tags.py",
+    "python/sglang/srt/function_call/flint_detector.py",
+    "python/sglang/srt/models/flint.py"
+   ],
+   "switches_introduced": [],
+   "switches_touched": [],
+   "switch_defaults": {},
+   "default_on": [],
+   "presets_on": [],
+   "launcher_presets_naming": [
+    "flint"
+   ],
+   "unswitched_existing_files": [
+    "python/sglang/srt/arg_groups/choices.py",
+    "python/sglang/srt/configs/__init__.py",
+    "python/sglang/srt/configs/model_config.py",
+    "python/sglang/srt/constrained/base_grammar_backend.py",
+    "python/sglang/srt/function_call/function_call_parser.py",
+    "python/sglang/srt/function_call/parser_names.py",
+    "python/sglang/srt/parser/reasoning_parser.py",
+    "python/sglang/srt/parser/reasoning_parser_names.py",
+    "python/sglang/srt/utils/hf_transformers/common.py"
+   ],
+   "born": "2026-10-22",
+   "rebase_history": {},
+   "next_bump_dry_run": {
+    "v0.5.23": "regenerated"
+   },
+   "index": {
+    "collection": "Model, parser, and speculative-decode plumbing",
+    "upstream": "Candidate",
+    "purpose": "Adds RecursiveSI Flint (`FlintForCausalLM`, `model_type: flint`): a 40B-total / 2.5B-active MoE coder with 35 sliding-window (513) + 14 full-attention layers, learned per-head sinks (`softmax_offset`), no RoPE on the full layers, sigmoid + expert-bias top-6 routing and an ungated shared expert. Port of the vendor's `flint_sglang` 0.1.4 kit (SGLang 0.5.16, `LayerCommunicator`) onto the `layer_boundary` stages: `configs/flint.py` (registered with AutoConfig, so no `--trust-remote-code`), `models/flint.py` (Qwen3-MoE attention/MoE subclasses; sinks ride `RadixAttention(sinks=)`, which the Triton extend and flash-decode kernels already implement), `FlintForCausalLM` in `SWA_SINK_ARCHS`, the `flint` tool-call parser (GLM-4.7 wire format + Flint's turn grammar), the `flint` reasoning parser (never assumes a turn starts in reasoning) and the `flint` grammar backend (XGrammar with an optional `<think>` block before every constraint). Offline receipts on the local FP8 build: config/hybrid-SWA classification 35/14, every protocol marker a single token, chat-template round trip, 20-case grammar accept/reject matrix (tools auto/required/named, strict schema, parallel off, json/regex/ebnf with and without reasoning), registry import preflight 0 broken. GPU validation (sink numerics, FP8 MoE load, decode A/Bs) waits for the qwen38 v5 chain to release the cards. Since 2026-10-31 `FLINT_STRICT_TOOLS` (default 1) forces `function.strict` on every tool before the structural tag is built, so the real parameter schema (`required` keys) is compiled — SGLang's `Function.strict` defaults False and xgrammar then emits schema-free arguments, which Flint exploits (3090: 23/24 opencode calls missing a required key); the strict schema is compiled in declaration order, so `_as_strict` also moves metadata keys (`i`, `description`, `intent`, `explanation`, `reason`, `summary`) after the payload keys (3090 2026-10-28: omp's `i`-first schema forced the intent key onto the wire in 7.4 % of bash calls). CPU test: `scripts/eval/test_flint_tool_grammar_key_order.py`."
+   },
+   "findings": [],
+   "mentioned_in": {
+    "README.md": 2,
+    "PATCHES.md": 1
+   },
+   "shares_files_with": [
+    "001",
+    "031",
+    "044",
+    "062",
+    "098"
+   ],
+   "breaks_without": [],
+   "class_guess": "performance",
+   "class_guess_reason": "no switch; the index purpose reads as speed",
+   "ablation_arm": "drop-alone",
+   "class": null,
+   "disposition": null
+  },
+  {
+   "patch": "106",
+   "name": "rdna4-qwen38-fp8-block-gemm-configs",
+   "added": 333,
+   "deleted": 0,
+   "files": [
+    "python/sglang/kernels/ops/gemm/configs/N=16384,K=5120,device_name=AMD_Radeon_AI_PRO_R9700,dtype=fp8_w8a8,block_shape=[128, 128].json",
+    "python/sglang/kernels/ops/gemm/configs/N=17408,K=5120,device_name=AMD_Radeon_AI_PRO_R9700,dtype=fp8_w8a8,block_shape=[128, 128].json",
+    "python/sglang/kernels/ops/gemm/configs/N=5120,K=3072,device_name=AMD_Radeon_AI_PRO_R9700,dtype=fp8_w8a8,block_shape=[128, 128].json",
+    "python/sglang/kernels/ops/gemm/configs/N=5120,K=6144,device_name=AMD_Radeon_AI_PRO_R9700,dtype=fp8_w8a8,block_shape=[128, 128].json",
+    "python/sglang/kernels/ops/gemm/configs/N=5120,K=8704,device_name=AMD_Radeon_AI_PRO_R9700,dtype=fp8_w8a8,block_shape=[128, 128].json",
+    "python/sglang/kernels/ops/gemm/configs/N=7168,K=5120,device_name=AMD_Radeon_AI_PRO_R9700,dtype=fp8_w8a8,block_shape=[128, 128].json"
+   ],
+   "new_files": [
+    "python/sglang/kernels/ops/gemm/configs/N=16384,K=5120,device_name=AMD_Radeon_AI_PRO_R9700,dtype=fp8_w8a8,block_shape=[128, 128].json",
+    "python/sglang/kernels/ops/gemm/configs/N=17408,K=5120,device_name=AMD_Radeon_AI_PRO_R9700,dtype=fp8_w8a8,block_shape=[128, 128].json",
+    "python/sglang/kernels/ops/gemm/configs/N=5120,K=3072,device_name=AMD_Radeon_AI_PRO_R9700,dtype=fp8_w8a8,block_shape=[128, 128].json",
+    "python/sglang/kernels/ops/gemm/configs/N=5120,K=6144,device_name=AMD_Radeon_AI_PRO_R9700,dtype=fp8_w8a8,block_shape=[128, 128].json",
+    "python/sglang/kernels/ops/gemm/configs/N=5120,K=8704,device_name=AMD_Radeon_AI_PRO_R9700,dtype=fp8_w8a8,block_shape=[128, 128].json",
+    "python/sglang/kernels/ops/gemm/configs/N=7168,K=5120,device_name=AMD_Radeon_AI_PRO_R9700,dtype=fp8_w8a8,block_shape=[128, 128].json"
+   ],
+   "switches_introduced": [],
+   "switches_touched": [],
+   "switch_defaults": {},
+   "default_on": [],
+   "presets_on": [],
+   "launcher_presets_naming": [],
+   "unswitched_existing_files": [],
+   "born": "2026-10-31",
+   "rebase_history": {},
+   "next_bump_dry_run": {
+    "v0.5.23": "clean"
+   },
+   "index": {
+    "collection": "Model, parser, and speculative-decode plumbing",
+    "upstream": "Carry",
+    "purpose": "Installs correctness-gated gfx1201 configs for the Triton W8A8 block-FP8 GEMM (`kernels/ops/gemm/configs/N=*,K=*,device_name=AMD_Radeon_AI_PRO_R9700,…`) at the six per-rank shapes Qwen3.8-27B-FP8 runs under TP=2 (`17408×5120`, `5120×8704`, `16384×5120` and `5120×6144` — the DeltaNet projections patch 045 replicates per rank — `7168×5120`, `5120×3072`), keyed at M = 1 / 8 / 64 / 256 / 1024 / 4096. Swept by `scripts/bench/tune_fp8_block_gemm.py` (not the stock tuner: it times the unrolled-x4 kernel the HIP selector never returns and has no numerical gate) through the serving entry point with cold-cache HIP-graph timing; every retained config matched an fp32 reference (cosine ≥ 0.9999) and the default kernel within 2 bf16 ulps, and replays bit-identically under graph capture. At M=1 the files take the per-step GEMM time from 30.2 to 28.0 ms (83 % of the 640 GB/s roofline, decode +2–4 %); from M=256 up the winners are `BM128_BN64_w4` / `BM64_BN128_w4` (3–6× the RDNA4 default tile — the `BLOCK_SIZE_M=64` hang recorded in 005 was an older Triton's; 2,088 wide-tile candidates ran clean on Triton 3.6), so cold prefill is 2.5× / 2.1× / 1.5× at 7.3K / 58K / 197K on both qwen38 presets. Receipt `benchmarks/profiling/fp8-block-gemm-tune-qwen38-2026-10-31.{json,md}`."
+   },
+   "findings": [],
+   "mentioned_in": {
+    "README.md": 1,
+    "PATCHES.md": 1
+   },
+   "shares_files_with": [],
+   "breaks_without": [],
+   "class_guess": "performance",
+   "class_guess_reason": "no switch; the index purpose reads as speed",
+   "ablation_arm": "drop-alone",
+   "class": null,
+   "disposition": null
+  },
+  {
+   "patch": "107",
+   "name": "rdna4-extend-splitkv-route",
+   "added": 132,
+   "deleted": 5,
+   "files": [
+    "python/sglang/kernels/ops/attention/verify_splitkv.py",
+    "python/sglang/srt/layers/attention/triton_backend.py"
+   ],
+   "new_files": [],
+   "switches_introduced": [
+    "SGLANG_EXTEND_SPLITKV_MAX_TOKENS",
+    "SGLANG_EXTEND_SPLITKV_MIN_PREFIX",
+    "SGLANG_SPLITKV_UPCAST_K"
+   ],
+   "switches_touched": [],
+   "switch_defaults": {
+    "SGLANG_EXTEND_SPLITKV_MAX_TOKENS": "0",
+    "SGLANG_EXTEND_SPLITKV_MIN_PREFIX": "4096",
+    "SGLANG_SPLITKV_UPCAST_K": "0"
+   },
+   "default_on": [
+    "SGLANG_EXTEND_SPLITKV_MIN_PREFIX"
+   ],
+   "presets_on": [
+    "flint",
+    "laguna",
+    "qwen35",
+    "qwen35-moe",
+    "qwen36-27b",
+    "qwen36-moe",
+    "qwen38"
+   ],
+   "launcher_presets_naming": [
+    "laguna"
+   ],
+   "unswitched_existing_files": [],
+   "born": "2026-10-31",
+   "rebase_history": {},
+   "next_bump_dry_run": {
+    "v0.5.23": "regenerated"
+   },
+   "index": {
+    "collection": "Model, parser, and speculative-decode plumbing",
+    "upstream": "Candidate",
+    "purpose": "R97-J arm A. `verify_splitkv.py` gains `upcast_k` (per-instance constexpr `UPCAST_K`, `SGLANG_SPLITKV_UPCAST_K` default): the prefix QK runs as `dot(q, k.to(q.dtype))` like `extend_attention_fwd`'s gfx1201 branch instead of downcasting q to fp8, which makes the kernel numerically no worse than the extend path against an fp32 reference (both carry the FP8-cache softmax-weight cast, cos ≈ 0.99965). `TritonAttnBackend.forward_extend` then routes a plain `EXTEND` batch of one request with `0 < K <= SGLANG_EXTEND_SPLITKV_MAX_TOKENS` new tokens on a prefix ≥ `SGLANG_EXTEND_SPLITKV_MIN_PREFIX` (4096) — causal, no sinks / sliding window / logit cap / custom mask / MLA — through `verify_splitkv_fwd(..., upcast_k=True)` with q/k/v zero-padded to the 16-row tile; off by default (MAX=0), `launch.sh` enables MAX=16 for `laguna`. Laguna 1-token cache-hit turn 371 → 163 ms at 105K and 523 → 241 ms at 158K cached tokens, decode unchanged, text capabilities 3/3. K > 16 is not served (the kernel's 32-row tile does not compile on Triton 3.6) and hybrid-cache models see chunk-aligned tail recomputes, so qwen38 turns stay on the stock path. Receipt `benchmarks/profiling/extend-splitkv-route-2026-10-31.md`."
+   },
+   "findings": [
+    "Flint on the split-KV turn route: learned sinks forwarded — patch 112 (2026-11-02)",
+    "Split-KV verify combine stage v2 — patch 109 (2026-11-01)",
+    "Split-KV route widened to 64-row chunks — patch 110 (2026-11-01)"
+   ],
+   "mentioned_in": {
+    "PATCHES.md": 1,
+    "benchmarks/README.md": 1
+   },
+   "shares_files_with": [
+    "001",
+    "047",
+    "065",
+    "077",
+    "100",
+    "109",
+    "110",
+    "111",
+    "112",
+    "125",
+    "126"
+   ],
+   "breaks_without": [
+    "110",
+    "111",
+    "112",
+    "125",
+    "126"
+   ],
+   "class_guess": "performance",
+   "class_guess_reason": "switchable and on (by default or in a preset): the ablation arm is the switch",
+   "ablation_arm": "switch",
+   "class": null,
+   "disposition": null
+  },
+  {
+   "patch": "108",
+   "name": "rdna4-extend-attention-fp8-qk",
+   "added": 29,
+   "deleted": 0,
+   "files": [
+    "python/sglang/kernels/ops/attention/extend_attention.py"
+   ],
+   "new_files": [],
+   "switches_introduced": [
+    "SGLANG_EXTEND_FP8_QK",
+    "SGLANG_EXTEND_TILE"
+   ],
+   "switches_touched": [],
+   "switch_defaults": {
+    "SGLANG_EXTEND_FP8_QK": "0",
+    "SGLANG_EXTEND_TILE": ""
+   },
+   "default_on": [],
+   "presets_on": [
+    "devstral2",
+    "flint",
+    "nemotron-omni",
+    "qwen35",
+    "qwen36-27b",
+    "qwen36-moe",
+    "qwen38"
+   ],
+   "launcher_presets_naming": [
+    "devstral2",
+    "qwen36-moe",
+    "qwen35",
+    "qwen38",
+    "qwen36-27b",
+    "nemotron-omni",
+    "flint"
+   ],
+   "unswitched_existing_files": [],
+   "born": "2026-11-01",
+   "rebase_history": {},
+   "next_bump_dry_run": {
+    "v0.5.23": "clean"
+   },
+   "index": {
+    "collection": "Model, parser, and speculative-decode plumbing",
+    "upstream": "Candidate",
+    "purpose": "R97-Q. `extend_attention.py`: the gfx1201 prefix QK in `_fwd_kernel` and `_fwd_kernel_unified` gains an `FP8_QK` constexpr — `dot(q.to(k.dtype), k)` (the fp8 WMMA form every non-RDNA platform runs) instead of the bf16 upcast `dot(q, k.to(q.dtype))` — selected by `SGLANG_EXTEND_FP8_QK=1`; plus a `SGLANG_EXTEND_TILE=\"BM,BN,WARPS\"` override of the HIP tile for sweeps. Measured first: the kernel is compute-bound (~18 % MFU; a 128-row tile saved 3 %, GQA packing dropped), the fp8 QK is 1.6–1.9× faster per layer at K = 512–4096 over 49K–172K at cos 0.99959 vs 0.99965 against fp32 (both arms already cast the softmax weights to fp8 for PV). Same-session qwen38 A/B: cold prefill 47.2 → 40.8 s at 58K and 332 → 211 s at 197K, 1-token cache-hit turn 10.1 → 5.7 s at 176K, decode untouched, needle grid 9/9 on both arms, capabilities 5/5; DSpark preset, arms reversed: 320 → 213 s at 197K, needle 6/6 both arms. Default-on for `qwen38` in `launch.sh` (`EXTEND_FP8_QK=0` restores the upcast), off elsewhere. Receipt `benchmarks/profiling/extend-attention-fp8qk-qwen38-2026-10-31.md`."
+   },
+   "findings": [
+    "fp8 QK dot in gfx1201 extend attention — patch 108, qwen38 default (2026-11-01)",
+    "Split-KV route widened to 64-row chunks — patch 110 (2026-11-01)",
+    "Flint + DFlash2 drafter: 1.3–2.4× decode, adopted for the SWE-bench cell on the user's call (2026-11-09)",
+    "RAD-10 — cold prefill split from the server's chunk reports: the 197K prompt is 84 s depth-free and 100 s depth-bound, and the prefix attention runs 3× behind the rate radiance states for its kernel; no patch, kernel profile in RAD-10a (2026-11-10)",
+    "RAD-10b — the prefix attention on equal operands: the served extend kernel takes 3.5× the time of radiance's fp8-QK row at depth and is less exact than it; verdict `port` on both cards (2026-11-11)"
+   ],
+   "mentioned_in": {
+    "README.md": 1,
+    "PATCHES.md": 1,
+    "benchmarks/README.md": 1
+   },
+   "shares_files_with": [
+    "011",
+    "027"
+   ],
+   "breaks_without": [],
+   "class_guess": "performance",
+   "class_guess_reason": "switchable and on (by default or in a preset): the ablation arm is the switch",
+   "ablation_arm": "switch",
+   "class": null,
+   "disposition": null
+  },
+  {
+   "patch": "109",
+   "name": "rdna4-verify-splitkv-combine-v2",
+   "added": 51,
+   "deleted": 17,
+   "files": [
+    "python/sglang/kernels/ops/attention/verify_splitkv.py"
+   ],
+   "new_files": [],
+   "switches_introduced": [],
+   "switches_touched": [],
+   "switch_defaults": {},
+   "default_on": [],
+   "presets_on": [],
+   "launcher_presets_naming": [],
+   "unswitched_existing_files": [
+    "python/sglang/kernels/ops/attention/verify_splitkv.py"
+   ],
+   "born": "2026-11-01",
+   "rebase_history": {},
+   "next_bump_dry_run": {
+    "v0.5.23": "clean"
+   },
+   "index": {
+    "collection": "Model, parser, and speculative-decode plumbing",
+    "upstream": "Candidate",
+    "purpose": "Port of the 3090's 070 v2 (CROSS-TEAM 2026-11-01) for the shared split-KV verify kernel. `_verify_combine_stage2` streamed the prefix splits one `[L_EXT, Dv]` tile at a time instead of a `[N_SPLITS, L_EXT, Dv]` fp32 register tile, uses fp32-exact `tl.dot(..., input_precision=\"ieee\")` for the draft-draft block at the 16-row tile (the 4-row verify tile keeps the broadcast form), launches with 4 warps instead of 1, and gains `HAS_SINKS` (a `[H_Q]` learned-sink logit joins the final LSE merge); `VerifySplitKV.__call__` now forwards `sinks` (it was dropped, so `HAS_SINKS` could never fire) and `can_handle` admits a `[H_Q]` sink tensor. gfx1201: numerics identical to the previous kernel to 7 digits in every cell, spills 1,989 → 346 (qwen38, head_dim 256) and 903 → 56 (Laguna), split-KV path 2.1–3.7× faster per layer at an 8K prefix and +3–27 % at 58K–197K; sinks cells pass the route gate 4/4 with `upcast_k`. Serving (same session): DSpark qwen38 decode 36.7 / 51.3 / 41.0 / 29.9 → 44.3 / 51.0 / 45.2 / 33.1 tok/s at 24 / 7.3K / 58K / 197K (accept length unchanged, capabilities 5/5). Patch 107's dispatch gate still excludes sinks pending a Flint serving measurement. Receipt `benchmarks/profiling/verify-splitkv-combine-v2-2026-11-01.md`."
+   },
+   "findings": [
+    "Split-KV verify combine stage: 8 warps — patch 111 (2026-11-02)",
+    "Flint on the split-KV turn route: learned sinks forwarded — patch 112 (2026-11-02)",
+    "Split-KV route widened to 64-row chunks — patch 110 (2026-11-01)"
+   ],
+   "mentioned_in": {
+    "PATCHES.md": 1
+   },
+   "shares_files_with": [
+    "100",
+    "107",
+    "111",
+    "126"
+   ],
+   "breaks_without": [
+    "111",
+    "126"
+   ],
+   "class_guess": "performance",
+   "class_guess_reason": "no switch; the index purpose reads as speed",
+   "ablation_arm": "drop-with:111,126",
+   "class": null,
+   "disposition": null
+  },
+  {
+   "patch": "110",
+   "name": "rdna4-extend-splitkv-route-chunked",
+   "added": 60,
+   "deleted": 33,
+   "files": [
+    "python/sglang/srt/layers/attention/triton_backend.py"
+   ],
+   "new_files": [],
+   "switches_introduced": [
+    "SGLANG_EXTEND_SPLITKV_TILE"
+   ],
+   "switches_touched": [],
+   "switch_defaults": {
+    "SGLANG_EXTEND_SPLITKV_TILE": "64"
+   },
+   "default_on": [
+    "SGLANG_EXTEND_SPLITKV_TILE"
+   ],
+   "presets_on": [],
+   "launcher_presets_naming": [
+    "qwen35-moe",
+    "qwen36-moe",
+    "qwen35",
+    "qwen38",
+    "qwen36-27b",
+    "laguna"
+   ],
+   "unswitched_existing_files": [],
+   "born": "2026-11-01",
+   "rebase_history": {},
+   "next_bump_dry_run": {
+    "v0.5.23": "regenerated"
+   },
+   "index": {
+    "collection": "Model, parser, and speculative-decode plumbing",
+    "upstream": "Candidate",
+    "purpose": "Widens patch 107. `TritonAttnBackend.forward_extend` serves a cache-hit extend of `0 < K <= SGLANG_EXTEND_SPLITKV_MAX_TOKENS` new tokens in consecutive `SGLANG_EXTEND_SPLITKV_TILE` (default 64) row chunks: chunk *c* attends to the prefix plus the new tokens before it through `kv_indices` + `out_cache_loc` (already in the KV pool after `set_kv_buffer`) and causally within itself through its own k/v rows; the last chunk pads to a power of two ≥ 16. `upcast_k` follows `extend_attention._EXTEND_FP8_QK`, so the route stays in the extend kernel's QK numerics class (fp8 QK on qwen38, bf16 upcast on Laguna). The 32- and 64-row verify tiles compile in seconds since patch 109 (128 still stalls on Triton 3.6). Kernel level 22/22 cells within the extend kernel's fp32 error; qwen38 113-token tail 45.0 → 23.9 ms/layer at 197K, Laguna 128 new tokens 30.0 → 8.7 ms/layer at 158K. Serving (warmed, same session): qwen38 agentic turns 1 / 64 / 256 new tokens 231 / 265 / 307 → 109 / 165 / 255 ms at 52K and 600 / 625 / 643 → 168 / 275 / 363 ms at 176K (neutral at 6.5K, decode unchanged, needle across a turn boundary 6/6, caps 5/5); Laguna 16 / 64 / 128-token turns 307 / 307 / 335 → 146 / 158 / 187 ms at 94K, 471 / 473 / 496 → 215 / 229 / 272 ms at 142K. `launch.sh`: MAX 256 for `laguna`, `qwen38`, `qwen36-27b` (gated the same day: 1-token turn 668 → 273 ms at 52K, 1,223 → 259 ms at 104K) and `qwen36-moe` (412 → 79 ms at 52K, 755 → 72 ms at 104K), needle 6/6 and caps 5/5 on both. Receipt `benchmarks/profiling/extend-splitkv-route-wide-2026-11-01.md`."
+   },
+   "findings": [],
+   "mentioned_in": {
+    "PATCHES.md": 1,
+    "benchmarks/README.md": 1
+   },
+   "shares_files_with": [
+    "001",
+    "047",
+    "065",
+    "077",
+    "100",
+    "107",
+    "112",
+    "125"
+   ],
+   "breaks_without": [
+    "112"
+   ],
+   "class_guess": "performance",
+   "class_guess_reason": "switchable and on (by default or in a preset): the ablation arm is the switch",
+   "ablation_arm": "switch",
+   "class": null,
+   "disposition": null
+  },
+  {
+   "patch": "111",
+   "name": "rdna4-verify-combine-warps-8",
+   "added": 7,
+   "deleted": 1,
+   "files": [
+    "python/sglang/kernels/ops/attention/verify_splitkv.py"
+   ],
+   "new_files": [],
+   "switches_introduced": [
+    "SGLANG_SPLITKV_COMBINE_WARPS"
+   ],
+   "switches_touched": [],
+   "switch_defaults": {
+    "SGLANG_SPLITKV_COMBINE_WARPS": "8"
+   },
+   "default_on": [
+    "SGLANG_SPLITKV_COMBINE_WARPS"
+   ],
+   "presets_on": [],
+   "launcher_presets_naming": [],
+   "unswitched_existing_files": [],
+   "born": "2026-11-02",
+   "rebase_history": {},
+   "next_bump_dry_run": {
+    "v0.5.23": "clean"
+   },
+   "index": {
+    "collection": "Model, parser, and speculative-decode plumbing",
+    "upstream": "Candidate",
+    "purpose": "Launches the split-KV verify combine stage (`_verify_combine_stage2`, patch 109 v2) with 8 warps instead of 4 on every platform (`SGLANG_SPLITKV_COMBINE_WARPS` overrides). gfx1201 sweep at 4 / 8 / 16 warps, L_EXT 16 / 64: spills 346 / 2,156 → 56 / 952 on qwen38 (head_dim 256) and 56 / 990 → 0 / 374 on Laguna, numerics identical to every digit against the fp32 reference, the 64-row route chunk 2× cheaper per layer on Laguna (407 → 188 µs at 8K) and −12 % on qwen38, the 16-row tile neutral, the qwen38 first-launch scratch reserve 52 → 4 MB; 16 warps gains nothing more and costs 8–15 % at 16 rows. Serving turns on Laguna neutral within ±5 % (the combine stage is µs of a 100–200 ms turn). Receipt `benchmarks/profiling/verify-combine-warps-2026-11-02.md`."
+   },
+   "findings": [
+    "Split-KV verify combine stage: 8 warps — patch 111 (2026-11-02)"
+   ],
+   "mentioned_in": {},
+   "shares_files_with": [
+    "100",
+    "107",
+    "109",
+    "126"
+   ],
+   "breaks_without": [
+    "126"
+   ],
+   "class_guess": "performance",
+   "class_guess_reason": "switchable and on (by default or in a preset): the ablation arm is the switch",
+   "ablation_arm": "switch",
+   "class": null,
+   "disposition": null
+  },
+  {
+   "patch": "112",
+   "name": "rdna4-extend-splitkv-route-sinks",
+   "added": 1,
+   "deleted": 1,
+   "files": [
+    "python/sglang/srt/layers/attention/triton_backend.py"
+   ],
+   "new_files": [],
+   "switches_introduced": [],
+   "switches_touched": [],
+   "switch_defaults": {},
+   "default_on": [],
+   "presets_on": [],
+   "launcher_presets_naming": [
+    "flint"
+   ],
+   "unswitched_existing_files": [
+    "python/sglang/srt/layers/attention/triton_backend.py"
+   ],
+   "born": "2026-11-02",
+   "rebase_history": {},
+   "next_bump_dry_run": {
+    "v0.5.23": "clean"
+   },
+   "index": {
+    "collection": "Model, parser, and speculative-decode plumbing",
+    "upstream": "Candidate",
+    "purpose": "Lets the patch 107/110 split-KV turn route serve layers with learned attention sinks (Flint's 14 full-attention layers): the dispatch gate no longer requires `sinks is None` and the per-head sink tensor is forwarded into `verify_splitkv_fwd`, where patch 109's combine stage adds `exp(sink − m)` to the softmax denominator and `can_handle` rejects anything but a `[H_Q]` tensor. Flint, order-controlled pair, warmed: 1-token agentic turn 237 → 128 ms at 52K and 443 → 201 ms at 104K cached, natural needle 6/6 with identical outputs on both arms, text probes 3/3; kernel gate 8/9 cells inside the fp32 gate (the ninth 1e-6 under the cosine floor). Receipt `benchmarks/profiling/flint-sinks-route-2026-11-02.md`."
+   },
+   "findings": [
+    "Flint on the split-KV turn route: learned sinks forwarded — patch 112 (2026-11-02)"
+   ],
+   "mentioned_in": {},
+   "shares_files_with": [
+    "001",
+    "047",
+    "065",
+    "077",
+    "100",
+    "107",
+    "110",
+    "125"
+   ],
+   "breaks_without": [],
+   "class_guess": "performance",
+   "class_guess_reason": "no switch; the index purpose reads as speed",
+   "ablation_arm": "drop-alone",
+   "class": null,
+   "disposition": null
+  },
+  {
+   "patch": "114",
+   "name": "rdna4-nemotron-nano-omni-mamba-radix-cache",
+   "added": 12,
+   "deleted": 0,
+   "files": [
+    "python/sglang/srt/arg_groups/overrides.py"
+   ],
+   "new_files": [],
+   "switches_introduced": [],
+   "switches_touched": [],
+   "switch_defaults": {},
+   "default_on": [],
+   "presets_on": [],
+   "launcher_presets_naming": [
+    "nemotron-omni"
+   ],
+   "unswitched_existing_files": [
+    "python/sglang/srt/arg_groups/overrides.py"
+   ],
+   "born": "2026-11-02",
+   "rebase_history": {},
+   "next_bump_dry_run": {
+    "v0.5.23": "clean"
+   },
+   "index": {
+    "collection": "Model, parser, and speculative-decode plumbing",
+    "upstream": "Candidate",
+    "purpose": "Adds `NemotronH_Nano_Omni_Reasoning_V3` (the architecture Nemotron-3-Nano-Omni-30B-A3B-Reasoning declares) to `_MAMBA_RADIX_CACHE_ARCHS` and `_MAMBA_EXTRA_BUFFER_ARCHS` in `arg_groups/overrides.py`, which listed only the non-Nano Omni name, so `uses_mamba_radix_cache` resolved False and the radix tree kept Mamba states only at chunked-prefill ends (every agentic turn recomputed up to a 4,096-token tail: 800–1,441 ms at 53K–132K). With it the strategy knob works; the `nemotron-omni` preset moves to `extra_buffer` (1-token turn 666 / 1,015 → 144 / 256 ms at 52K / 105K). Port of the 3090's patch 074 (root cause found there, 2026-11-02). Receipt `benchmarks/profiling/hybrid-cache-extra-buffer-nemotron-*-2026-11-02.json`."
+   },
+   "findings": [
+    "Hybrid-cache checkpoint granularity: qwen38 turns recomputed the 8K chunk tail — `extra_buffer` (2026-11-01)"
+   ],
+   "mentioned_in": {},
+   "shares_files_with": [
+    "073"
+   ],
+   "breaks_without": [],
+   "class_guess": "performance",
+   "class_guess_reason": "no switch; the index purpose reads as speed",
+   "ablation_arm": "drop-alone",
+   "class": null,
+   "disposition": null
+  },
+  {
+   "patch": "115",
+   "name": "dflash-sampler-buffers-max-running-requests",
+   "added": 13,
+   "deleted": 3,
+   "files": [
+    "python/sglang/srt/speculative/dflash_worker_v2.py"
+   ],
+   "new_files": [],
+   "switches_introduced": [],
+   "switches_touched": [],
+   "switch_defaults": {},
+   "default_on": [],
+   "presets_on": [],
+   "launcher_presets_naming": [],
+   "unswitched_existing_files": [
+    "python/sglang/srt/speculative/dflash_worker_v2.py"
+   ],
+   "born": "2026-11-09",
+   "rebase_history": {},
+   "next_bump_dry_run": {
+    "v0.5.23": "not covered: newer than the dry run"
+   },
+   "index": {
+    "collection": "Model, parser, and speculative-decode plumbing",
+    "upstream": "Candidate",
+    "purpose": "Sizes the DFLASH draft sampler's static buffers (temperatures, greedy mask, uniforms, candidate/q outputs) by the larger of the decode-graph batch size and `max_running_requests`; the upstream sizing by graph bs alone crashed the scheduler on the second concurrent request whenever a preset pins `--cuda-graph-max-bs-decode 1` (Flint + incoai/Flint-DFlash2, `output with shape [1] doesn't match the broadcast shape [2]`)."
+   },
+   "findings": [],
+   "mentioned_in": {},
+   "shares_files_with": [],
+   "breaks_without": [],
+   "class_guess": "performance",
+   "class_guess_reason": "no switch; the index purpose reads as speed",
+   "ablation_arm": "drop-alone",
+   "class": null,
+   "disposition": null
+  },
+  {
+   "patch": "116",
+   "name": "fused-moe-tuner-flint-architecture",
+   "added": 2,
+   "deleted": 1,
+   "files": [
+    "benchmark/kernels/fused_moe_triton/common_utils.py",
+    "benchmark/kernels/fused_moe_triton/tuning_fused_moe_triton.py"
+   ],
+   "new_files": [],
+   "switches_introduced": [],
+   "switches_touched": [],
+   "switch_defaults": {},
+   "default_on": [],
+   "presets_on": [],
+   "launcher_presets_naming": [],
+   "unswitched_existing_files": [
+    "benchmark/kernels/fused_moe_triton/common_utils.py",
+    "benchmark/kernels/fused_moe_triton/tuning_fused_moe_triton.py"
+   ],
+   "born": "2026-11-09",
+   "rebase_history": {},
+   "next_bump_dry_run": {
+    "v0.5.23": "not covered: newer than the dry run"
+   },
+   "index": {
+    "collection": "Model, parser, and speculative-decode plumbing",
+    "upstream": "Carry",
+    "purpose": "Adds `FlintForCausalLM` to the fused-MoE tuner’s Qwen3Moe-layout architecture list (E=256, moe_intermediate 512, top-6 from the compressed-tensors checkpoint) and repoints its `fp8_dtype` import at `sglang.kernels.ops` (the module moved in v0.5.18; upstream’s benchmark script still imports the old path)."
+   },
+   "findings": [
+    "Flint fused-MoE config tune: +1.2–1.5 % decode, shipped as patch 118 (2026-11-09)"
+   ],
+   "mentioned_in": {},
+   "shares_files_with": [
+    "075"
+   ],
+   "breaks_without": [],
+   "class_guess": "performance",
+   "class_guess_reason": "no switch; the index purpose reads as speed",
+   "ablation_arm": "drop-alone",
+   "class": null,
+   "disposition": null
+  },
+  {
+   "patch": "117",
+   "name": "rdna4-mxfp4-w4a8-triton-gemm",
+   "added": 403,
+   "deleted": 2,
+   "files": [
+    "python/sglang/kernels/ops/gemm/mxfp4_w4a8_rdna4.py",
+    "python/sglang/srt/layers/linear.py",
+    "python/sglang/srt/layers/quantization/quark/schemes/quark_w4a4_mxfp4.py",
+    "python/sglang/srt/models/qwen3_5.py"
+   ],
+   "new_files": [
+    "python/sglang/kernels/ops/gemm/mxfp4_w4a8_rdna4.py"
+   ],
+   "switches_introduced": [
+    "SGLANG_MXFP4_DECODE",
+    "SGLANG_MXFP4_GEMV",
+    "SGLANG_MXFP4_GEMV_CONFIG",
+    "SGLANG_MXFP4_GEMV_GROUPED",
+    "SGLANG_MXFP4_W4A8_CONFIG"
+   ],
+   "switches_touched": [],
+   "switch_defaults": {
+    "SGLANG_MXFP4_DECODE": "lut",
+    "SGLANG_MXFP4_GEMV": "1",
+    "SGLANG_MXFP4_GEMV_CONFIG": "8",
+    "SGLANG_MXFP4_GEMV_GROUPED": "0",
+    "SGLANG_MXFP4_W4A8_CONFIG": null
+   },
+   "default_on": [
+    "SGLANG_MXFP4_DECODE",
+    "SGLANG_MXFP4_GEMV",
+    "SGLANG_MXFP4_GEMV_CONFIG"
+   ],
+   "presets_on": [],
+   "launcher_presets_naming": [],
+   "unswitched_existing_files": [
+    "python/sglang/srt/layers/linear.py",
+    "python/sglang/srt/layers/quantization/quark/schemes/quark_w4a4_mxfp4.py",
+    "python/sglang/srt/models/qwen3_5.py"
+   ],
+   "born": "2026-11-09",
+   "rebase_history": {},
+   "next_bump_dry_run": {
+    "v0.5.23": "not covered: newer than the dry run"
+   },
+   "index": {
+    "collection": "Model, parser, and speculative-decode plumbing",
+    "upstream": "Candidate",
+    "purpose": "Serves Quark MXFP4 checkpoints on gfx1201 without aiter (also lets the Quark scheme own Qwen3.5 DeltaNet `in_proj_ba`, which AMD’s export quantizes, and makes the merged-column loader’s shape assertion name the tensor): a Triton GEMM/GEMV over the packed e2m1 + e8m0 group-32 weight layout with per-token fp8 activations (decode-shaped GEMV for M ≤ 2, WMMA tiles above), wired into `QuarkW4A4MXFP4` where the aiter ops are absent; N < 256 linears dequantize to bf16 at load. Kernel-level: 1.3× the block-FP8 GEMM at M=1 on the large shapes, parity on the rest, slower from M ≥ 3 (receipt `benchmarks/profiling/mxfp4-w4a8-kernel-2026-11-09.json`)."
+   },
+   "findings": [
+    "RAD-11 — MXFP4 W4A8 Triton GEMM for gfx1201, kernel level (2026-11-09)",
+    "RAD-13 — libr4d kernels timed against this stack's on the qwen38 shapes (2026-11-09)"
+   ],
+   "mentioned_in": {},
+   "shares_files_with": [
+    "001",
+    "005",
+    "045",
+    "120",
+    "121",
+    "124"
+   ],
+   "breaks_without": [],
+   "class_guess": "performance",
+   "class_guess_reason": "switchable and on (by default or in a preset): the ablation arm is the switch",
+   "ablation_arm": "switch",
+   "class": null,
+   "disposition": null
+  },
+  {
+   "patch": "118",
+   "name": "r9700-flint-fp8-moe-config",
+   "added": 119,
+   "deleted": 0,
+   "files": [
+    "python/sglang/srt/layers/moe/moe_runner/triton_utils/configs/triton_3_6_0/E=256,N=256,device_name=AMD_Radeon_AI_PRO_R9700,dtype=fp8_w8a8,per_channel_quant=True.json"
+   ],
+   "new_files": [
+    "python/sglang/srt/layers/moe/moe_runner/triton_utils/configs/triton_3_6_0/E=256,N=256,device_name=AMD_Radeon_AI_PRO_R9700,dtype=fp8_w8a8,per_channel_quant=True.json"
+   ],
+   "switches_introduced": [],
+   "switches_touched": [],
+   "switch_defaults": {},
+   "default_on": [],
+   "presets_on": [],
+   "launcher_presets_naming": [],
+   "unswitched_existing_files": [],
+   "born": "2026-11-09",
+   "rebase_history": {},
+   "next_bump_dry_run": {
+    "v0.5.23": "not covered: newer than the dry run"
+   },
+   "index": {
+    "collection": "Model, parser, and speculative-decode plumbing",
+    "upstream": "Candidate",
+    "purpose": "Tuned fused-MoE Triton config for Flint's expert shapes (E=256, N=256 per rank, fp8_w8a8 per-channel) on R9700, from the stock tuner over a 576-config RDNA4 search space at 13 batch sizes; the gate-up GEMM only (the down GEMM keeps the default until the separate tuner runs on captured router outputs). Serving: decode +1.2–1.5 % at 14 tokens to 197K on both tuned arms of a tuned→default→tuned triple, prefill unchanged, text capabilities 3/3."
+   },
+   "findings": [],
+   "mentioned_in": {},
+   "shares_files_with": [],
+   "breaks_without": [],
+   "class_guess": "performance",
+   "class_guess_reason": "no switch; the index purpose reads as speed",
+   "ablation_arm": "drop-alone",
+   "class": null,
+   "disposition": null
+  },
+  {
+   "patch": "119",
+   "name": "hip-custom-allreduce-without-amdsmi",
+   "added": 30,
+   "deleted": 0,
+   "files": [
+    "python/sglang/srt/distributed/device_communicators/custom_all_reduce_utils.py",
+    "python/sglang/srt/distributed/parallel_state.py"
+   ],
+   "new_files": [],
+   "switches_introduced": [],
+   "switches_touched": [],
+   "switch_defaults": {},
+   "default_on": [],
+   "presets_on": [],
+   "launcher_presets_naming": [],
+   "unswitched_existing_files": [
+    "python/sglang/srt/distributed/device_communicators/custom_all_reduce_utils.py",
+    "python/sglang/srt/distributed/parallel_state.py"
+   ],
+   "born": "2026-11-09",
+   "rebase_history": {},
+   "next_bump_dry_run": {
+    "v0.5.23": "not covered: newer than the dry run"
+   },
+   "index": {
+    "collection": "Core RDNA4 enablement",
+    "upstream": "Candidate",
+    "purpose": "Lets HIP custom all-reduce setup run without the `amdsmi` Python binding: the XGMI query answers \"not fully linked\" instead of dying on an undefined name (`Setup Custom allreduce failed with name 'amdsmi_shut_down' is not defined`), which kept `SGLANG_USE_1STAGE_ALLREDUCE=1` off every two-card host without the binding. Also logs the path a group really reduces on (`[AR] All-reduce call path: custom all-reduce (...)`), the identity line for an all-reduce A/B. No change under `--disable-custom-all-reduce`, the launcher default. Serving A/B: RAD-2."
+   },
+   "findings": [
+    "RAD-2 — upstream's one-stage HIP all-reduce on two PCIe cards: +1.8 % and garbage output, RCCL stays (2026-11-09)",
+    "RAD-25 — in-graph all-reduce on an uncached staging buffer: no-spec decode +1.8–2.1 % at every depth, DSpark cycle −1.0–1.1 %; patch 129, qwen38 FP8 preset default (2026-11-10)"
+   ],
+   "mentioned_in": {},
+   "shares_files_with": [],
+   "breaks_without": [],
+   "class_guess": "performance",
+   "class_guess_reason": "no switch; the index purpose reads as speed",
+   "ablation_arm": "drop-alone",
+   "class": null,
+   "disposition": null
+  },
+  {
+   "patch": "120",
+   "name": "rdna4-quark-mxfp4-tp-split-mlp",
+   "added": 16,
+   "deleted": 0,
+   "files": [
+    "python/sglang/srt/models/qwen3_5.py"
+   ],
+   "new_files": [],
+   "switches_introduced": [
+    "SGLANG_RDNA4_REPLICATE_MLP"
+   ],
+   "switches_touched": [],
+   "switch_defaults": {
+    "SGLANG_RDNA4_REPLICATE_MLP": null
+   },
+   "default_on": [],
+   "presets_on": [],
+   "launcher_presets_naming": [],
+   "unswitched_existing_files": [],
+   "born": "2026-11-09",
+   "rebase_history": {},
+   "next_bump_dry_run": {
+    "v0.5.23": "not covered: newer than the dry run"
+   },
+   "index": {
+    "collection": "Model, parser, and speculative-decode plumbing",
+    "upstream": "Candidate",
+    "purpose": "Serves the Qwen3.5/3.8 dense MLP TP-split for Quark (MXFP4) checkpoints on HIP. `_should_replicate_deltanet_for_tp` kept the split layout only for quantisations it recognises as FP8, so the `quark` scheme replicated the MLP: each rank streamed the whole 34816 × 5120 and 5120 × 17408 linears every decode step, halved the result, and the stage all-reduce added two identical halves. `SGLANG_RDNA4_REPLICATE_MLP=1` restores the replicated layout; the layout is logged at boot (`[RDNA4] dense MLP: TP-split over 2 ranks`). Same-session A/B on `amd/Qwen3.8-27B-Quark-AWQ-MXFP4` without speculation, split → replicated → split: decode 29.92 / 29.56 / 28.04 / 25.22 tok/s at 24 / 7.3K / 58K / 197K input tokens against 23.22 / 22.83 / 21.89 / 20.23 (+25–30 %, second split arm within 0.2 %), cold prefill 798 / 725 against 544 / 510 tok/s, token pool 953,836 against 667,116, weights per rank 10.55 against 14.92 GB; capabilities 4/4, greedy needle 4/4 to 137K tokens; greedy text is not byte-identical between layouts (2 of 6 probes match to the token). Receipts: `benchmarks/profiling/rad11-mxfp4-mlp-split-2026-11-09/`. AWQ and unquantised checkpoints keep the replicated MLP."
+   },
+   "findings": [
+    "RAD-11c — Quark MXFP4 with a TP-split MLP: decode +25–30 %, prefill +42–47 % (2026-11-09)"
+   ],
+   "mentioned_in": {
+    "benchmarks/README.md": 1
+   },
+   "shares_files_with": [
+    "001",
+    "045",
+    "117",
+    "121",
+    "124"
+   ],
+   "breaks_without": [],
+   "class_guess": "opt-in",
+   "class_guess_reason": "its switches are off by default and no preset turns them on",
+   "ablation_arm": "off-everywhere: no speed arm; drop needs only the replay and the capability gates",
+   "class": null,
+   "disposition": null
+  },
+  {
+   "patch": "121",
+   "name": "rdna4-deltanet-tp-split-switch",
+   "added": 88,
+   "deleted": 4,
+   "files": [
+    "python/sglang/kernels/ops/gemm/configs/N=8192,K=5120,device_name=AMD_Radeon_AI_PRO_R9700,dtype=fp8_w8a8,block_shape=[128, 128].json",
+    "python/sglang/srt/configs/qwen3_5.py",
+    "python/sglang/srt/models/qwen3_5.py"
+   ],
+   "new_files": [
+    "python/sglang/kernels/ops/gemm/configs/N=8192,K=5120,device_name=AMD_Radeon_AI_PRO_R9700,dtype=fp8_w8a8,block_shape=[128, 128].json"
+   ],
+   "switches_introduced": [
+    "SGLANG_RDNA4_DELTANET_TP_SPLIT"
+   ],
+   "switches_touched": [],
+   "switch_defaults": {
+    "SGLANG_RDNA4_DELTANET_TP_SPLIT": null
+   },
+   "default_on": [],
+   "presets_on": [
+    "qwen38"
+   ],
+   "launcher_presets_naming": [
+    "qwen38"
+   ],
+   "unswitched_existing_files": [],
+   "born": "2026-11-09",
+   "rebase_history": {},
+   "next_bump_dry_run": {
+    "v0.5.23": "not covered: newer than the dry run"
+   },
+   "index": {
+    "collection": "FP8",
+    "upstream": "Carry",
+    "purpose": "`SGLANG_RDNA4_DELTANET_TP_SPLIT=1` returns the Qwen3.5/3.8 DeltaNet projections to the upstream head-sharded layout (the replication is patch 045's): per rank `in_proj_qkvz` 16384 × 5120 and `out_proj` 5120 × 6144 become 8192 × 5120 and 5120 × 3072, each rank owns half of the heads' recurrent state (`mamba2_cache_params` follows), and the layout is logged at boot (`[RDNA4] DeltaNet projections: TP-split over 2 ranks`). Ships the tuned block-FP8 GEMM config for `N=8192,K=5120`. Code default off; the `qwen38` preset exports it for the FP8 checkpoint (`DELTANET_TP_SPLIT=0` restores the replicated layout). Same-session A/B replicated → split → replicated without speculation: decode 23.26 / 22.95 / 22.18 / 20.53 → 26.89 / 26.27 / 25.34 / 23.22 tok/s at 24 / 7.3K / 58K / 197K input tokens (+13–16 %, second replicated arm within 0.2 %), cold prefill 1,798 / 1,460 / 945 → 2,125 / 1,658 / 1,024 tok/s, token pool 525,548 → 735,510, weights per rank 17.08 → 14.52 GB; with DSpark +4.5 % at 24 tokens (45.18 → 47.22, the one like-for-like point of the ladder), +10.0 % on copy-heavy decode at equal accept length and pool 206,324 → 430,725; capabilities 4/4, greedy needle 9/9 to 208K tokens; greedy text is not byte-identical between layouts (1 of 6 probes). Receipts: `benchmarks/profiling/rad1-deltanet-tpsplit-2026-11-09/`."
+   },
+   "findings": [
+    "RAD-1 — TP-split DeltaNet projections: decode +13–16 %, prefill +8–18 %, DSpark pool 206K → 431K; patch 121 (2026-11-09)",
+    "RAD-1b — the DeltaNet split on the Quark MXFP4 checkpoint: decode +13–15 %, prefill +13–20 % (2026-11-10)",
+    "Patches 122–124 together — decode +24–28 %, DSpark cycle 7–11 % shorter; qwen38 FP8 preset default (2026-11-10)",
+    "RAD-28 — DSpark windowed draft layers through the split-KV stage: speculative cycle −11–12.5 % from 7.3K on, −1.7 % at 24 tokens; patch 126, qwen38 FP8 preset default (2026-11-10)",
+    "RAD-22b — verify launch census: the nine-row block-FP8 GEMM and its quantiser are about half of the verify's 10–14 ms over a plain step; no patch, kernel bench next as RAD-29 (2026-11-10)",
+    "RAD-29 — W8A16 WMMA GEMM for verify rows: DSpark cycle −6.5–7.9 % at every depth, canonical DSpark sweep +8–16 %; patch 128, qwen38 FP8 preset default (2026-11-10)",
+    "RAD-25 — in-graph all-reduce on an uncached staging buffer: no-spec decode +1.8–2.1 % at every depth, DSpark cycle −1.0–1.1 %; patch 129, qwen38 FP8 preset default (2026-11-10)",
+    "Canonical sweep with patches 121–129 in the preset: DSpark 59.6 / 79.8 / 73.1 / 59.5 tok/s, no speculation 35.0 / 34.3 / 32.7 / 29.2; the in-graph all-reduce holds behind DFlash2 (2026-11-10)",
+    "RAD-29d — the verify-row GEMM behind DFlash2: cycle −7.6–9.2 % at every depth, greedy accept length ×0.999 over 48 documents, the cycle is 1.46–1.52× a plain step; the preset default stays for the lane (2026-11-11)"
+   ],
+   "mentioned_in": {
+    "benchmarks/README.md": 11
+   },
+   "shares_files_with": [
+    "001",
+    "016",
+    "045",
+    "117",
+    "120",
+    "124"
+   ],
+   "breaks_without": [],
+   "class_guess": "performance",
+   "class_guess_reason": "switchable and on (by default or in a preset): the ablation arm is the switch",
+   "ablation_arm": "switch",
+   "class": null,
+   "disposition": null
+  },
+  {
+   "patch": "122",
+   "name": "rdna4-fp8-gemv-m1-decode",
+   "added": 300,
+   "deleted": 0,
+   "files": [
+    "python/sglang/kernels/aot/csrc/quantization/fp8/fp8_gemv_hip.cu",
+    "python/sglang/srt/layers/quantization/fp8_utils.py"
+   ],
+   "new_files": [
+    "python/sglang/kernels/aot/csrc/quantization/fp8/fp8_gemv_hip.cu"
+   ],
+   "switches_introduced": [
+    "SGLANG_RDNA4_FP8_GEMV"
+   ],
+   "switches_touched": [],
+   "switch_defaults": {
+    "SGLANG_RDNA4_FP8_GEMV": null
+   },
+   "default_on": [],
+   "presets_on": [
+    "qwen38"
+   ],
+   "launcher_presets_naming": [
+    "qwen38"
+   ],
+   "unswitched_existing_files": [],
+   "born": "2026-11-10",
+   "rebase_history": {},
+   "next_bump_dry_run": {
+    "v0.5.23": "not covered: newer than the dry run"
+   },
+   "index": {
+    "collection": "FP8",
+    "upstream": "Carry",
+    "purpose": "Native HIP W8A16 GEMV for the one-row form of the dense block-FP8 linears (`fp8_gemv_hip.cu`, built by `scripts/build_fp8_gemv.sh`; loop design after radiance's `r4d_gemm_fp8a16_nt_m1`, Apache-2.0, attribution in the source header). With `SGLANG_RDNA4_FP8_GEMV=1` a dense 128 × 128 block-FP8 linear called with one bf16 row reads the activation directly: no activation-quantiser launch, no 16-row GEMM tile. Every other shape, a missing extension or the switch off keeps the Triton W8A8 path. Logged once (`[RDNA4] block-FP8 M=1 decode: native HIP W8A16 GEMV active`). Code default off; the FP8 `qwen38` preset exports it. Within 2 ULP of the fp64 product; 0.16 % from the unquantised-activation product against 2.5 % on the W8A8 path. Same-session A/B off → on → off on the FP8 `qwen38` preset without speculation: decode 26.68 / 26.24 / 25.33 / 23.21 → 28.93 / 28.39 / 27.36 / 24.91 tok/s at 24 / 7.3K / 58K / 197K input tokens (+7–8 %, second off arm within 0.2 %), prefill unchanged, capabilities 4/4, greedy needle 9/9 to 208K tokens; DSpark decode unchanged and byte-identical (its verify pass is multi-row). Receipts: `benchmarks/profiling/rad22-fp8-gemv-2026-11-09/`; preflight `scripts/test/preflight_fp8_gemv_hook.py`."
+   },
+   "findings": [
+    "RAD-22 — native HIP W8A16 GEMV for the one-row block-FP8 linears: decode +7–8 %; patch 122, opt-in (2026-11-10)",
+    "Patches 122–124 together — decode +24–28 %, DSpark cycle 7–11 % shorter; qwen38 FP8 preset default (2026-11-10)",
+    "RAD-16 — the target verify is 79–86 % of the DFlash2 cycle and 67–77 % of DSpark's; its growth with depth is the prefix read (2026-11-10)",
+    "RAD-27 — GQA-grouped verify prefix stage: speculative cycle −21–24 % at 197K, −5–6 % at 58K, +1–2 % below 8K; patch 125, qwen38 FP8 preset default (2026-11-10)",
+    "RAD-28 — DSpark windowed draft layers through the split-KV stage: speculative cycle −11–12.5 % from 7.3K on, −1.7 % at 24 tokens; patch 126, qwen38 FP8 preset default (2026-11-10)",
+    "RAD-22b — verify launch census: the nine-row block-FP8 GEMM and its quantiser are about half of the verify's 10–14 ms over a plain step; no patch, kernel bench next as RAD-29 (2026-11-10)",
+    "RAD-29 — W8A16 WMMA GEMM for verify rows: DSpark cycle −6.5–7.9 % at every depth, canonical DSpark sweep +8–16 %; patch 128, qwen38 FP8 preset default (2026-11-10)",
+    "RAD-25 — in-graph all-reduce on an uncached staging buffer: no-spec decode +1.8–2.1 % at every depth, DSpark cycle −1.0–1.1 %; patch 129, qwen38 FP8 preset default (2026-11-10)",
+    "Canonical sweep with patches 121–129 in the preset: DSpark 59.6 / 79.8 / 73.1 / 59.5 tok/s, no speculation 35.0 / 34.3 / 32.7 / 29.2; the in-graph all-reduce holds behind DFlash2 (2026-11-10)",
+    "RAD-29d — the verify-row GEMM behind DFlash2: cycle −7.6–9.2 % at every depth, greedy accept length ×0.999 over 48 documents, the cycle is 1.46–1.52× a plain step; the preset default stays for the lane (2026-11-11)"
+   ],
+   "mentioned_in": {
+    "README.md": 1,
+    "benchmarks/README.md": 12
+   },
+   "shares_files_with": [
+    "005",
+    "128"
+   ],
+   "breaks_without": [
+    "128"
+   ],
+   "class_guess": "performance",
+   "class_guess_reason": "switchable and on (by default or in a preset): the ablation arm is the switch",
+   "ablation_arm": "switch",
+   "class": null,
+   "disposition": null
+  },
+  {
+   "patch": "123",
+   "name": "rdna4-triton-gemma-rmsnorm",
+   "added": 23,
+   "deleted": 1,
+   "files": [
+    "python/sglang/srt/layers/layernorm.py"
+   ],
+   "new_files": [],
+   "switches_introduced": [
+    "SGLANG_RDNA4_TRITON_GEMMA_RMSNORM"
+   ],
+   "switches_touched": [],
+   "switch_defaults": {
+    "SGLANG_RDNA4_TRITON_GEMMA_RMSNORM": null
+   },
+   "default_on": [],
+   "presets_on": [
+    "qwen38"
+   ],
+   "launcher_presets_naming": [
+    "qwen38"
+   ],
+   "unswitched_existing_files": [],
+   "born": "2026-11-10",
+   "rebase_history": {},
+   "next_bump_dry_run": {
+    "v0.5.23": "not covered: newer than the dry run"
+   },
+   "index": {
+    "collection": "Attention and numerics",
+    "upstream": "Carry",
+    "purpose": "`GemmaRMSNorm.forward_hip` takes upstream's one-launch Triton Gemma kernels (plain, and residual add + norm in one read) on HIP without aiter (`SGLANG_RDNA4_TRITON_GEMMA_RMSNORM=1`); the native fallback is ten torch launches per call, 129 calls per Qwen3.5/3.8 decode step. An empty batch keeps the native path. Logged once (`[RDNA4] Gemma RMSNorm: one-launch Triton kernel active`). Code default off; the FP8 `qwen38` preset exports it. Plain norm bit-identical to native; the fused read within 2 ULP (it normalises the fp32 sum, native the bf16-rounded one), residual bit-identical; 129 norms in a HIP graph 4.22 → 0.45 ms per step per rank. Same-session A/B off → on → off on the FP8 `qwen38` preset without speculation: decode 26.70 / 26.26 / 25.19 / 23.19 → 30.18 / 29.66 / 28.36 / 25.61 tok/s at 24 / 7.3K / 58K / 197K input tokens (+10–13 %), cold prefill 2,123 / 1,658 / 1,025 → 2,316 / 1,783 / 1,072 tok/s, capabilities 4/4, greedy needle 9/9 to 208K tokens; with DSpark +17.7 % at 24 tokens (47.10 → 55.46). Receipts: `benchmarks/profiling/rad5a-gemma-rmsnorm-2026-11-09/`; preflight `scripts/test/preflight_gemma_rmsnorm.py`."
+   },
+   "findings": [
+    "RAD-5a — GemmaRMSNorm on the one-launch Triton kernels: decode +10–13 %, prefill +5–9 %; patch 123, opt-in (2026-11-10)",
+    "Patches 122–124 together — decode +24–28 %, DSpark cycle 7–11 % shorter; qwen38 FP8 preset default (2026-11-10)",
+    "RAD-16 — the target verify is 79–86 % of the DFlash2 cycle and 67–77 % of DSpark's; its growth with depth is the prefix read (2026-11-10)",
+    "RAD-27 — GQA-grouped verify prefix stage: speculative cycle −21–24 % at 197K, −5–6 % at 58K, +1–2 % below 8K; patch 125, qwen38 FP8 preset default (2026-11-10)",
+    "RAD-28 — DSpark windowed draft layers through the split-KV stage: speculative cycle −11–12.5 % from 7.3K on, −1.7 % at 24 tokens; patch 126, qwen38 FP8 preset default (2026-11-10)",
+    "RAD-22b — verify launch census: the nine-row block-FP8 GEMM and its quantiser are about half of the verify's 10–14 ms over a plain step; no patch, kernel bench next as RAD-29 (2026-11-10)",
+    "RAD-29 — W8A16 WMMA GEMM for verify rows: DSpark cycle −6.5–7.9 % at every depth, canonical DSpark sweep +8–16 %; patch 128, qwen38 FP8 preset default (2026-11-10)",
+    "RAD-25 — in-graph all-reduce on an uncached staging buffer: no-spec decode +1.8–2.1 % at every depth, DSpark cycle −1.0–1.1 %; patch 129, qwen38 FP8 preset default (2026-11-10)",
+    "Canonical sweep with patches 121–129 in the preset: DSpark 59.6 / 79.8 / 73.1 / 59.5 tok/s, no speculation 35.0 / 34.3 / 32.7 / 29.2; the in-graph all-reduce holds behind DFlash2 (2026-11-10)",
+    "RAD-29d — the verify-row GEMM behind DFlash2: cycle −7.6–9.2 % at every depth, greedy accept length ×0.999 over 48 documents, the cycle is 1.46–1.52× a plain step; the preset default stays for the lane (2026-11-11)"
+   ],
+   "mentioned_in": {
+    "README.md": 1,
+    "benchmarks/README.md": 12
+   },
+   "shares_files_with": [
+    "001",
+    "081"
+   ],
+   "breaks_without": [],
+   "class_guess": "performance",
+   "class_guess_reason": "switchable and on (by default or in a preset): the ablation arm is the switch",
+   "ablation_arm": "switch",
+   "class": null,
+   "disposition": null
+  },
+  {
+   "patch": "124",
+   "name": "rdna4-skinny-bf16-gemv-in-proj-ba",
+   "added": 124,
+   "deleted": 0,
+   "files": [
+    "python/sglang/kernels/ops/gemm/skinny_bf16_gemv_hip.py",
+    "python/sglang/srt/models/qwen3_5.py"
+   ],
+   "new_files": [
+    "python/sglang/kernels/ops/gemm/skinny_bf16_gemv_hip.py"
+   ],
+   "switches_introduced": [
+    "SGLANG_RDNA4_SKINNY_BA_GEMV"
+   ],
+   "switches_touched": [],
+   "switch_defaults": {
+    "SGLANG_RDNA4_SKINNY_BA_GEMV": null
+   },
+   "default_on": [],
+   "presets_on": [
+    "qwen38"
+   ],
+   "launcher_presets_naming": [
+    "qwen38"
+   ],
+   "unswitched_existing_files": [],
+   "born": "2026-11-10",
+   "rebase_history": {},
+   "next_bump_dry_run": {
+    "v0.5.23": "not covered: newer than the dry run"
+   },
+   "index": {
+    "collection": "Mamba2 hybrids",
+    "upstream": "Carry",
+    "purpose": "One-launch Triton bf16 GEMV for the DeltaNet `in_proj_ba` (`kernels/ops/gemm/skinny_bf16_gemv_hip.py`, `SGLANG_RDNA4_SKINNY_BA_GEMV=1`). The projection is an unquantised 96 × 5120 linear (48 × 5120 per rank on the TP-split layout) that rocBLAS serves with a tiled GEMM: 48 launches of 30 µs per decode step per rank for a 1 MB weight. The kernel takes 2-D bf16 inputs of at most 16 rows without a bias (decode and the DSpark verify rows) and accumulates in fp32 in a fixed order; every other call keeps the torch linear. Logged once (`[RDNA4] DeltaNet in_proj_ba: one-launch Triton GEMV active`). Code default off; the FP8 `qwen38` preset exports it. Preflight: same fp64 error as torch on every shape, each row independent of the row count, 48 launches in a HIP graph over a weight rotation larger than the cache 29.7 → 7.5 µs each (1.07 ms per step per rank), replay equal to eager; on recorded hidden states 0.044 % of the outputs differ from the torch linear, the kernel the closer side to fp64 on nine in ten (`scripts/test/skinny_ba_gemv_recorded.py`). Same-session A/B off → on → off on the FP8 `qwen38` preset without speculation: decode 26.73 / 26.28 / 25.34 / 23.14 → 27.52 / 26.86 / 26.26 / 23.81 tok/s at 24 / 7.3K / 58K / 197K input tokens (+2–4 %), cold prefill unchanged, capabilities 4/4, greedy needle 9/9 to 208K tokens; the DSpark cycle is 1.1 ms shorter (58.5 against 59.6 ms). Receipts: `benchmarks/profiling/rad23-ba-gemv-2026-11-09/`; preflight `scripts/test/preflight_skinny_ba_gemv.py`."
+   },
+   "findings": [
+    "RAD-23 — one-launch bf16 GEMV for the DeltaNet `in_proj_ba`: decode +2–4 %; patch 124, opt-in (2026-11-10)",
+    "Patches 122–124 together — decode +24–28 %, DSpark cycle 7–11 % shorter; qwen38 FP8 preset default (2026-11-10)",
+    "RAD-16 — the target verify is 79–86 % of the DFlash2 cycle and 67–77 % of DSpark's; its growth with depth is the prefix read (2026-11-10)",
+    "RAD-27 — GQA-grouped verify prefix stage: speculative cycle −21–24 % at 197K, −5–6 % at 58K, +1–2 % below 8K; patch 125, qwen38 FP8 preset default (2026-11-10)",
+    "RAD-28 — DSpark windowed draft layers through the split-KV stage: speculative cycle −11–12.5 % from 7.3K on, −1.7 % at 24 tokens; patch 126, qwen38 FP8 preset default (2026-11-10)",
+    "RAD-22b — verify launch census: the nine-row block-FP8 GEMM and its quantiser are about half of the verify's 10–14 ms over a plain step; no patch, kernel bench next as RAD-29 (2026-11-10)",
+    "RAD-29 — W8A16 WMMA GEMM for verify rows: DSpark cycle −6.5–7.9 % at every depth, canonical DSpark sweep +8–16 %; patch 128, qwen38 FP8 preset default (2026-11-10)",
+    "RAD-25 — in-graph all-reduce on an uncached staging buffer: no-spec decode +1.8–2.1 % at every depth, DSpark cycle −1.0–1.1 %; patch 129, qwen38 FP8 preset default (2026-11-10)",
+    "Canonical sweep with patches 121–129 in the preset: DSpark 59.6 / 79.8 / 73.1 / 59.5 tok/s, no speculation 35.0 / 34.3 / 32.7 / 29.2; the in-graph all-reduce holds behind DFlash2 (2026-11-10)",
+    "RAD-29d — the verify-row GEMM behind DFlash2: cycle −7.6–9.2 % at every depth, greedy accept length ×0.999 over 48 documents, the cycle is 1.46–1.52× a plain step; the preset default stays for the lane (2026-11-11)"
+   ],
+   "mentioned_in": {
+    "README.md": 1,
+    "benchmarks/README.md": 12
+   },
+   "shares_files_with": [
+    "001",
+    "045",
+    "117",
+    "120",
+    "121"
+   ],
+   "breaks_without": [],
+   "class_guess": "performance",
+   "class_guess_reason": "switchable and on (by default or in a preset): the ablation arm is the switch",
+   "ablation_arm": "switch",
+   "class": null,
+   "disposition": null
+  },
+  {
+   "patch": "125",
+   "name": "rdna4-verify-gqa-grouped-prefix-stage",
+   "added": 508,
+   "deleted": 0,
+   "files": [
+    "python/sglang/kernels/ops/attention/verify_gqa_rdna4.py",
+    "python/sglang/srt/layers/attention/triton_backend.py"
+   ],
+   "new_files": [
+    "python/sglang/kernels/ops/attention/verify_gqa_rdna4.py"
+   ],
+   "switches_introduced": [
+    "SGLANG_RDNA4_VERIFY_GQA"
+   ],
+   "switches_touched": [],
+   "switch_defaults": {
+    "SGLANG_RDNA4_VERIFY_GQA": ""
+   },
+   "default_on": [],
+   "presets_on": [
+    "qwen38"
+   ],
+   "launcher_presets_naming": [
+    "qwen38"
+   ],
+   "unswitched_existing_files": [],
+   "born": "2026-11-10",
+   "rebase_history": {},
+   "next_bump_dry_run": {
+    "v0.5.23": "not covered: newer than the dry run"
+   },
+   "index": {
+    "collection": "Attention and numerics",
+    "upstream": "Carry",
+    "purpose": "GQA-grouped split-KV prefix stage for the speculative target verify (`kernels/ops/attention/verify_gqa_rdna4.py`, `SGLANG_RDNA4_VERIFY_GQA=1`). The per-head stage reads the K/V prefix once per query head; this one runs one program per (sequence, block of query heads sharing a KV head, split) and packs heads × rows into one dot tile, so the prefix is read once per KV head (six query heads per program on the two-rank Qwen3.8-27B target). Same scratch layout, combine stage unchanged; only the topk == 1 target verify takes it (not the draft worker, the short-extend route or the shared-KV route) and a shape it does not pack falls back to the per-head stage. Logged once (`[RDNA4] verify attention: GQA-grouped split-KV prefix stage active`). Code default off; the FP8 `qwen38` preset exports it. Kernel, 16 layers at 8 rows in a HIP graph over the static `kv_indices` buffer: 27.7 → 9.9 ms at a 197K prefix, 7.5 → 3.5 ms at 58K, 0.47 → 1.08 ms at 24 tokens (the verify graph holds one geometry for every depth); cosine against an fp32 reference 0.99867 at worst on both stages. Same-session A/B, two boots per side, sampled ladder: DFlash2 cycle 46.2 / 48.5 / 54.5 / 74.8 → 47.0 / 49.0 / 51.2 / 57.1 ms at 24 / 7.3K / 58K / 197K input tokens, DSpark 50.9 / 58.4 / 64.5 / 85.0 → 51.7 / 59.1 / 61.1 / 67.2 ms, mean accept length 2.04 → 2.13 and 2.47 → 2.60, capabilities 5/5 and greedy needle 9/9 to 197K on both. Receipts: `benchmarks/profiling/rad27-verify-gqa-kernel-2026-11-10/`, `benchmarks/profiling/rad27-verify-gqa-serving-2026-11-10/`; bench `scripts/bench/bench_verify_attention_gqa.py`."
+   },
+   "findings": [
+    "RAD-27 — GQA-grouped verify prefix stage: speculative cycle −21–24 % at 197K, −5–6 % at 58K, +1–2 % below 8K; patch 125, qwen38 FP8 preset default (2026-11-10)",
+    "RAD-28 — DSpark windowed draft layers through the split-KV stage: speculative cycle −11–12.5 % from 7.3K on, −1.7 % at 24 tokens; patch 126, qwen38 FP8 preset default (2026-11-10)",
+    "RAD-22b — verify launch census: the nine-row block-FP8 GEMM and its quantiser are about half of the verify's 10–14 ms over a plain step; no patch, kernel bench next as RAD-29 (2026-11-10)",
+    "RAD-29 — W8A16 WMMA GEMM for verify rows: DSpark cycle −6.5–7.9 % at every depth, canonical DSpark sweep +8–16 %; patch 128, qwen38 FP8 preset default (2026-11-10)",
+    "RAD-25 — in-graph all-reduce on an uncached staging buffer: no-spec decode +1.8–2.1 % at every depth, DSpark cycle −1.0–1.1 %; patch 129, qwen38 FP8 preset default (2026-11-10)",
+    "Canonical sweep with patches 121–129 in the preset: DSpark 59.6 / 79.8 / 73.1 / 59.5 tok/s, no speculation 35.0 / 34.3 / 32.7 / 29.2; the in-graph all-reduce holds behind DFlash2 (2026-11-10)",
+    "RAD-29d — the verify-row GEMM behind DFlash2: cycle −7.6–9.2 % at every depth, greedy accept length ×0.999 over 48 documents, the cycle is 1.46–1.52× a plain step; the preset default stays for the lane (2026-11-11)"
+   ],
+   "mentioned_in": {
+    "README.md": 1,
+    "benchmarks/README.md": 10
+   },
+   "shares_files_with": [
+    "001",
+    "047",
+    "065",
+    "077",
+    "100",
+    "107",
+    "110",
+    "112"
+   ],
+   "breaks_without": [],
+   "class_guess": "performance",
+   "class_guess_reason": "switchable and on (by default or in a preset): the ablation arm is the switch",
+   "ablation_arm": "switch",
+   "class": null,
+   "disposition": null
+  },
+  {
+   "patch": "126",
+   "name": "rdna4-splitkv-sliding-window-prefix-stage",
+   "added": 67,
+   "deleted": 4,
+   "files": [
+    "python/sglang/kernels/ops/attention/verify_splitkv.py"
+   ],
+   "new_files": [],
+   "switches_introduced": [
+    "SGLANG_RDNA4_SPLITKV_WINDOW",
+    "SGLANG_RDNA4_SPLITKV_WINDOW_SPLITS"
+   ],
+   "switches_touched": [],
+   "switch_defaults": {
+    "SGLANG_RDNA4_SPLITKV_WINDOW": "0",
+    "SGLANG_RDNA4_SPLITKV_WINDOW_SPLITS": "0"
+   },
+   "default_on": [],
+   "presets_on": [
+    "qwen38"
+   ],
+   "launcher_presets_naming": [
+    "qwen38"
+   ],
+   "unswitched_existing_files": [],
+   "born": "2026-11-10",
+   "rebase_history": {},
+   "next_bump_dry_run": {
+    "v0.5.23": "not covered: newer than the dry run"
+   },
+   "index": {
+    "collection": "Attention and numerics",
+    "upstream": "Carry",
+    "purpose": "Causal sliding-window rule in the split-KV verify prefix stage (`kernels/ops/attention/verify_splitkv.py`, `SGLANG_RDNA4_SPLITKV_WINDOW=1`; split count `SGLANG_RDNA4_SPLITKV_WINDOW_SPLITS`, 0 = chosen from the window). The entry declined every windowed layer, so the DSpark drafter's block forward (8 rows over five 2048-token sliding-window layers) walked its window per (sequence, head) in the extend kernel. The stage takes the extend kernel's window rule as a constexpr; `can_handle()` serves a windowed layer only when the rows fit the first K tile and do not exceed the window, so the keys the window drops stay in the first tile of split 0. No backend change; the target and the non-causal DFlash2 drafter never reach the rule. Logged when the stage is built (`[RDNA4] split-KV verify: causal sliding-window prefix stage active`). Code default off; the FP8 `qwen38` preset exports it with 16 splits. Kernel, five layers at 8 rows over a 24 / 512 / 2048-token window: 0.39 / 3.22 / 10.32 → 0.13 / 0.14 / 0.18 ms; cosine against an fp32 reference with the window rule 0.9990 on both kernels (an unmasked read 0.26–0.32). Same-session A/B, two boots per side, sampled ladder: DSpark cycle 51.7 / 59.1 / 61.1 / 67.3 → 50.8 / 51.7 / 53.7 / 59.9 ms at 24 / 7.3K / 58K / 197K input tokens, draft propose stage 16.2 → 8.5 ms from 7.3K on, target verify unchanged; greedy accept length over 24 prompts 3.82 → 3.79 against a control that repeats to the token; capabilities 5/5 and greedy needle 9/9 to 197K. Receipts: `benchmarks/profiling/rad28-draft-window-kernel-2026-11-10/`, `benchmarks/profiling/rad28-draft-window-serving-2026-11-10/`; bench `scripts/bench/bench_draft_window_verify.py`, accept probe `scripts/bench/spec_accept_probe.py`."
+   },
+   "findings": [
+    "RAD-28 — DSpark windowed draft layers through the split-KV stage: speculative cycle −11–12.5 % from 7.3K on, −1.7 % at 24 tokens; patch 126, qwen38 FP8 preset default (2026-11-10)",
+    "RAD-22b — verify launch census: the nine-row block-FP8 GEMM and its quantiser are about half of the verify's 10–14 ms over a plain step; no patch, kernel bench next as RAD-29 (2026-11-10)",
+    "RAD-29 — W8A16 WMMA GEMM for verify rows: DSpark cycle −6.5–7.9 % at every depth, canonical DSpark sweep +8–16 %; patch 128, qwen38 FP8 preset default (2026-11-10)",
+    "RAD-25 — in-graph all-reduce on an uncached staging buffer: no-spec decode +1.8–2.1 % at every depth, DSpark cycle −1.0–1.1 %; patch 129, qwen38 FP8 preset default (2026-11-10)",
+    "Canonical sweep with patches 121–129 in the preset: DSpark 59.6 / 79.8 / 73.1 / 59.5 tok/s, no speculation 35.0 / 34.3 / 32.7 / 29.2; the in-graph all-reduce holds behind DFlash2 (2026-11-10)",
+    "RAD-29d — the verify-row GEMM behind DFlash2: cycle −7.6–9.2 % at every depth, greedy accept length ×0.999 over 48 documents, the cycle is 1.46–1.52× a plain step; the preset default stays for the lane (2026-11-11)"
+   ],
+   "mentioned_in": {
+    "benchmarks/README.md": 10
+   },
+   "shares_files_with": [
+    "100",
+    "107",
+    "109",
+    "111"
+   ],
+   "breaks_without": [],
+   "class_guess": "performance",
+   "class_guess_reason": "switchable and on (by default or in a preset): the ablation arm is the switch",
+   "ablation_arm": "switch",
+   "class": null,
+   "disposition": null
+  },
+  {
+   "patch": "127",
+   "name": "rdna4-int8-lm-head-greedy-argmax",
+   "added": 941,
+   "deleted": 2,
+   "files": [
+    "python/sglang/kernels/aot/csrc/quantization/int8/lm_head_int8_hip.cu",
+    "python/sglang/srt/layers/lm_head_int8_filter.py",
+    "python/sglang/srt/layers/lm_head_int8_tail.py",
+    "python/sglang/srt/layers/logits_processor.py",
+    "python/sglang/srt/model_executor/model_runner.py",
+    "python/sglang/srt/model_executor/runner/decode_cuda_graph_runner.py"
+   ],
+   "new_files": [
+    "python/sglang/kernels/aot/csrc/quantization/int8/lm_head_int8_hip.cu",
+    "python/sglang/srt/layers/lm_head_int8_filter.py",
+    "python/sglang/srt/layers/lm_head_int8_tail.py"
+   ],
+   "switches_introduced": [
+    "SGLANG_RDNA4_INT8_LM_HEAD",
+    "SGLANG_RDNA4_INT8_LM_HEAD_FULL",
+    "SGLANG_RDNA4_INT8_LM_HEAD_TIMING"
+   ],
+   "switches_touched": [],
+   "switch_defaults": {
+    "SGLANG_RDNA4_INT8_LM_HEAD": "false",
+    "SGLANG_RDNA4_INT8_LM_HEAD_FULL": "false",
+    "SGLANG_RDNA4_INT8_LM_HEAD_TIMING": "false"
+   },
+   "default_on": [],
+   "presets_on": [],
+   "launcher_presets_naming": [
+    "qwen38"
+   ],
+   "unswitched_existing_files": [
+    "python/sglang/srt/layers/logits_processor.py",
+    "python/sglang/srt/model_executor/runner/decode_cuda_graph_runner.py"
+   ],
+   "born": "2026-11-10",
+   "rebase_history": {},
+   "next_bump_dry_run": {
+    "v0.5.23": "not covered: newer than the dry run"
+   },
+   "index": {
+    "collection": "Attention and numerics",
+    "upstream": "Carry",
+    "purpose": "Opt-in deferred LM head for the one-row decode step (`SGLANG_RDNA4_INT8_LM_HEAD=1`; `srt/layers/lm_head_int8_tail.py`, `srt/layers/lm_head_int8_filter.py`, kernel `kernels/aot/csrc/quantization/int8/lm_head_int8_hip.cu` built by `scripts/build_lm_head_int8.sh`). The decode graph ends at the hidden state and the head runs eagerly after each replay. A greedy request with no logit processing (no logprobs, grammar, logit bias, penalties or custom processors) goes through an int8 copy of the head with one scale per row per 128 columns: every vocabulary row gets an approximate logit and a proven half width (Cauchy–Schwarz per column group on the quantisation error plus an fp32 slack), the rows that can still be the arg-max are rescored on the bf16 weight, and the token is served only when the window fits 256 slots and best minus second exceeds two bf16 steps over all ranks. Every other step and every unproven step runs the unchanged bf16 head on the stored hidden row, so the served token is the bf16 arg-max either way. The filter stays off under speculative decoding, batch-invariant mode, DP attention and a LoRA-wrapped or quantised head (`[RDNA4] LM head: int8 arg-max filter off (<reason>)`); `[RDNA4] LM head: int8 arg-max filter active` is logged when it is built, and the counters at 256 deferred steps and every doubling. `SGLANG_RDNA4_INT8_LM_HEAD_FULL=1` keeps the deferral with the bf16 head on every step (the plumbing arm of an A/B); `SGLANG_RDNA4_INT8_LM_HEAD_TIMING=1` is a stage-timing diagnostic, not a timing arm. Code default off and in no preset: it speeds up greedy requests only; `INT8_LM_HEAD=1` on the launcher opts the no-spec FP8 `qwen38` server in. Kernel, one rank's shard of 124,160 × 5,120 over 4,873 captured head inputs: bf16 head 2,549 µs → filter 1,095 µs, 0 bound violations, 0 wrong tokens, 95.4 % of the steps served. Same-session A/B, both boot orders, canonical no-spec sweep at temperature 0: 34.4 / 33.6 / 32.1 / 28.8 → 35.3 / 34.4 / 32.7 / 29.2 tok/s at 24 / 7.3K / 58K / 197K input tokens (+2.5 / +2.2 / +1.8 / +1.2 %), the plumbing arm −0.2 to −0.7 %, sampled rows unchanged; 56 greedy outputs identical to the control's, greedy needle 9/9 to 197K, capabilities 4/4 (video not run). The int8 copy is 0.63 GiB per card: KV pool 735,510 → 692,246 tokens. Receipts: `benchmarks/profiling/rad15-lm-head-kernel-2026-11-10/`, `benchmarks/profiling/rad15-lm-head-serving-2026-11-10/`; bench `scripts/bench/bench_lm_head_int8_hip.py`, tail preflight `scripts/test/preflight_lm_head_int8_tail.py`, route probe `scripts/eval/greedy_route_probe.py`."
+   },
+   "findings": [
+    "RAD-15 — int8 LM head with a proven arg-max window: greedy no-spec decode +1.2–2.5 % with the control's text; patch 127, opt-in (2026-11-10)",
+    "RAD-25 — in-graph all-reduce on an uncached staging buffer: no-spec decode +1.8–2.1 % at every depth, DSpark cycle −1.0–1.1 %; patch 129, qwen38 FP8 preset default (2026-11-10)",
+    "RAD-29d — the verify-row GEMM behind DFlash2: cycle −7.6–9.2 % at every depth, greedy accept length ×0.999 over 48 documents, the cycle is 1.46–1.52× a plain step; the preset default stays for the lane (2026-11-11)"
+   ],
+   "mentioned_in": {
+    "README.md": 1,
+    "benchmarks/README.md": 3
+   },
+   "shares_files_with": [
+    "042",
+    "088"
+   ],
+   "breaks_without": [],
+   "class_guess": "performance",
+   "class_guess_reason": "no switch; the index purpose reads as speed",
+   "ablation_arm": "drop-alone",
+   "class": null,
+   "disposition": null
+  },
+  {
+   "patch": "128",
+   "name": "rdna4-fp8-gemm-bf16-verify-rows",
+   "added": 392,
+   "deleted": 1,
+   "files": [
+    "python/sglang/kernels/aot/csrc/quantization/fp8/fp8_gemm_bf16_hip.cu",
+    "python/sglang/srt/layers/quantization/fp8_utils.py"
+   ],
+   "new_files": [
+    "python/sglang/kernels/aot/csrc/quantization/fp8/fp8_gemm_bf16_hip.cu"
+   ],
+   "switches_introduced": [
+    "SGLANG_RDNA4_FP8_GEMM_BF16",
+    "SGLANG_RDNA4_FP8_GEMM_BF16_MAX_M"
+   ],
+   "switches_touched": [],
+   "switch_defaults": {
+    "SGLANG_RDNA4_FP8_GEMM_BF16": null,
+    "SGLANG_RDNA4_FP8_GEMM_BF16_MAX_M": "32"
+   },
+   "default_on": [
+    "SGLANG_RDNA4_FP8_GEMM_BF16_MAX_M"
+   ],
+   "presets_on": [
+    "qwen38"
+   ],
+   "launcher_presets_naming": [
+    "qwen38"
+   ],
+   "unswitched_existing_files": [],
+   "born": "2026-11-10",
+   "rebase_history": {},
+   "next_bump_dry_run": {
+    "v0.5.23": "not covered: newer than the dry run"
+   },
+   "index": {
+    "collection": "FP8",
+    "upstream": "Carry",
+    "purpose": "Native HIP W8A16 WMMA GEMM for the 2–32 row form of the dense block-FP8 linears (`fp8_gemm_bf16_hip.cu`, built by `scripts/build_fp8_gemm_bf16.sh`; WMMA lane map, weight-as-A arrangement and per-block scale fold after radiance's `r4d_fp8_wmma.h` and `r4d_gemm_fp8a8.hip`, Apache-2.0, attribution in the source header). With `SGLANG_RDNA4_FP8_GEMM_BF16=1` a dense 128 × 128 block-FP8 linear called with 2–32 bf16 rows (the speculative verify block, prompt tails; cap `SGLANG_RDNA4_FP8_GEMM_BF16_MAX_M`) reads the activation directly: E4M3 weights are decoded to bf16 in registers and multiplied through `v_wmma_f32_16x16x16_bf16`, no activation-quantiser launch, row-major weights as stored. One row stays on patch 122's GEMV; more rows, another dtype or layout, a missing extension or the switch off keep the Triton W8A8 path. Logged once (`[RDNA4] block-FP8 M=2..32 rows: native HIP W8A16 WMMA GEMM active`). Code default off; the FP8 `qwen38` preset exports it (`FP8_GEMM_BF16=0` restores). Kernel, per forward per rank with cold weights: 24.1 / 24.4 / 33.7 / 34.6 → 20.8 / 20.9 / 21.7 / 22.1 ms at 9 / 16 / 17 / 32 rows; 702 of 702 fp64 check cases inside the GEMV's tolerance; 0.2 % from the unquantised-activation product against 3.1 % on the W8A8 path. Same-session A/B control → GEMM → GEMM → control on the DSpark preset: cycle 50.8 / 51.7 / 53.8 / 59.9 → 46.9 / 47.6 / 49.7 / 56.0 ms at 24 / 7.3K / 58K / 197K input tokens, canonical sweep 50.8 / 72.3 / 66.7 / 50.7 → 58.9 / 78.8 / 72.3 / 59.0 tok/s on equal completion tokens, greedy accept length over 24 paired prompts ×0.995, capabilities 5/5, greedy needle 9/9 to 208K tokens; no-spec rows within 0.7 % with identical greedy text. Receipts: `benchmarks/profiling/rad29-gemm-bf16-kernel-2026-11-10/`, `benchmarks/profiling/rad29-gemm-bf16-serving-2026-11-10/`; preflight `scripts/test/preflight_fp8_gemm_bf16_hook.py`."
+   },
+   "findings": [
+    "RAD-29 — W8A16 WMMA GEMM for verify rows: DSpark cycle −6.5–7.9 % at every depth, canonical DSpark sweep +8–16 %; patch 128, qwen38 FP8 preset default (2026-11-10)",
+    "RAD-25 — in-graph all-reduce on an uncached staging buffer: no-spec decode +1.8–2.1 % at every depth, DSpark cycle −1.0–1.1 %; patch 129, qwen38 FP8 preset default (2026-11-10)",
+    "Canonical sweep with patches 121–129 in the preset: DSpark 59.6 / 79.8 / 73.1 / 59.5 tok/s, no speculation 35.0 / 34.3 / 32.7 / 29.2; the in-graph all-reduce holds behind DFlash2 (2026-11-10)",
+    "RAD-29d — the verify-row GEMM behind DFlash2: cycle −7.6–9.2 % at every depth, greedy accept length ×0.999 over 48 documents, the cycle is 1.46–1.52× a plain step; the preset default stays for the lane (2026-11-11)"
+   ],
+   "mentioned_in": {
+    "README.md": 1,
+    "benchmarks/README.md": 4
+   },
+   "shares_files_with": [
+    "005",
+    "122"
+   ],
+   "breaks_without": [],
+   "class_guess": "performance",
+   "class_guess_reason": "switchable and on (by default or in a preset): the ablation arm is the switch",
+   "ablation_arm": "switch",
+   "class": null,
+   "disposition": null
+  },
+  {
+   "patch": "129",
+   "name": "rdna4-custom-allreduce-pcie-uncached-staging",
+   "added": 25,
+   "deleted": 1,
+   "files": [
+    "python/sglang/srt/distributed/device_communicators/custom_all_reduce.py"
+   ],
+   "new_files": [],
+   "switches_introduced": [
+    "SGLANG_RDNA4_CUSTOM_AR_MAX_BYTES"
+   ],
+   "switches_touched": [],
+   "switch_defaults": {
+    "SGLANG_RDNA4_CUSTOM_AR_MAX_BYTES": "0"
+   },
+   "default_on": [],
+   "presets_on": [],
+   "launcher_presets_naming": [
+    "qwen38"
+   ],
+   "unswitched_existing_files": [],
+   "born": "2026-11-10",
+   "rebase_history": {},
+   "next_bump_dry_run": {
+    "v0.5.23": "not covered: newer than the dry run"
+   },
+   "index": {
+    "collection": "Core RDNA4 enablement",
+    "upstream": "Carry",
+    "purpose": "Makes upstream's one-stage HIP custom all-reduce correct on two cards linked over PCIe only. The kernel is a pull design: each rank copies its input into a staging buffer and the peer reads it through an IPC mapping; taken from the PyTorch pool, that buffer showed the peer the previous payload (RAD-2: wrong sums, noise from the first token). When the group is not fully XGMI-linked the HIP constructor allocates the staging buffer with `allocate_meta_buffer` (uncached fine-grained memory, the class of the signal buffer), and `should_custom_ar` declines every input that does not fit it (`max_size − 1` bytes; `SGLANG_RDNA4_CUSTOM_AR_MAX_BYTES` lowers the limit), so prefill chunks stay on RCCL and the in-place IPC path is never taken. Logged once per group (`[RDNA4] custom all-reduce: uncached staging buffer on a PCIe-linked group, inputs above N bytes stay on RCCL`). No change under `--disable-custom-all-reduce` or without `SGLANG_USE_1STAGE_ALLREDUCE=1`; the FP8 `qwen38` preset drops the flag and exports the switch (`ENABLE_CUSTOM_ALL_REDUCE=0` restores RCCL), every other preset stays on RCCL. Two bare ranks (`scripts/bench/allreduce_rows_ladder.py`): exact sums eager and in a 130-reduction graph, 10.8 / 22.3 / 32.2 / 58.9 µs per reduction against RCCL's 17.8 / 29.5 / 38.9 / 61.2 at 1 / 9 / 16 / 32 rows. Same-session A/B, two boots per side in both orders: no-spec canonical sweep 34.3 / 33.7 / 32.1 / 28.7 → 35.0 / 34.4 / 32.7 / 29.2 tok/s at 24 / 7.3K / 58K / 197K input tokens with identical greedy text on 6 of 6 probes; DSpark cycle 46.9 / 47.6 / 49.8 / 56.0 → 46.4 / 47.1 / 49.3 / 55.5 ms, canonical DSpark sweep 59.0 / 78.8 / 72.5 / 59.1 → 59.7 / 79.6 / 73.2 / 59.6 tok/s on equal completion tokens, greedy accept length unchanged over 24 paired prompts with the control's text on 24 of 24, capabilities 5/5, greedy needle 9/9 to 208K tokens, VRAM growth within 2 MiB per card of the control's. Receipts: `benchmarks/profiling/rad25-custom-ar-serving-2026-11-10/`."
+   },
+   "findings": [
+    "RAD-2 — upstream's one-stage HIP all-reduce on two PCIe cards: +1.8 % and garbage output, RCCL stays (2026-11-09)",
+    "RAD-25 — in-graph all-reduce on an uncached staging buffer: no-spec decode +1.8–2.1 % at every depth, DSpark cycle −1.0–1.1 %; patch 129, qwen38 FP8 preset default (2026-11-10)",
+    "RAD-29b — verify-row GEMM on the shipped preset: accept length ×1.003 over 48 mid-depth documents against the restore knob, cycle −7–8 %; the preset default stays (2026-11-10)",
+    "Canonical sweep with patches 121–129 in the preset: DSpark 59.6 / 79.8 / 73.1 / 59.5 tok/s, no speculation 35.0 / 34.3 / 32.7 / 29.2; the in-graph all-reduce holds behind DFlash2 (2026-11-10)",
+    "RAD-29c — greedy speculative output repeats to the token across boots on equal request history; the sampled ladder ahead of the probe moves it, the boot seed does not (2026-11-10)",
+    "RAD-29d — the verify-row GEMM behind DFlash2: cycle −7.6–9.2 % at every depth, greedy accept length ×0.999 over 48 documents, the cycle is 1.46–1.52× a plain step; the preset default stays for the lane (2026-11-11)"
+   ],
+   "mentioned_in": {
+    "README.md": 1,
+    "benchmarks/README.md": 7
+   },
+   "shares_files_with": [],
+   "breaks_without": [],
+   "class_guess": "performance",
+   "class_guess_reason": "no switch; the index purpose reads as speed",
+   "ablation_arm": "drop-alone",
+   "class": null,
+   "disposition": null
+  }
+ ]
+}
