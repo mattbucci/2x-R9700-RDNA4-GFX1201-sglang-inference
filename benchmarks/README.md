@@ -237,6 +237,9 @@ radiance's prefill attention kernel built from source against this tree's two fp
 RAD-10c): every ported row bit-identical to the library's row on both cards; at 8192 queries behind 188K of prefix `port-exact`
 253 ms and `port-qk8` 156 ms (×1.05 / ×1.06 of the library's rows, the served kernel ×2.08 / ×3.37 of them), a shuffled slot
 table costs nothing ([receipts](profiling/rad10c-kernel-bench-2026-11-11/), [FINDINGS → RAD-10c kernel](FINDINGS.md)).
+At 389 odd row counts, prefixes and slot orders per card the port holds its fp64 reference, planted keys and padded twins on both
+cards, after a device guard fixed a launch on the wrong card ([receipts](profiling/rad10c-port-shapes-2026-11-11/),
+[FINDINGS → RAD-10c shapes](FINDINGS.md)).
 In-graph custom all-reduce on the `flint` preset, eight boots in both orders (FLINT-4b): no-spec decode 44.2 / 43.5 / 42.2 /
 38.3 → 45.4 / 44.6 / 43.3 / 39.3 tok/s at 14 / 7.3K / 58K / 197K input tokens (×1.026), DFlash2 cycle ×1.000–1.002, cold
 prefill ×0.999–1.004, accept 2.803 against 2.804 over 48 greedy documents

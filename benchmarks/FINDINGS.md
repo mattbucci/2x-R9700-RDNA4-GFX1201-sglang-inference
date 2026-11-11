@@ -2418,6 +2418,35 @@ Disposition, by the gate fixed before the run (`pass` on both cards): serving ro
 reads the chunk's own keys and values from the pool as fp8 where the served path uses the BF16 tensors of the
 chunk, so the serving quality gates decide; nothing is patched before them.
 
+### RAD-10c shapes — the ported kernel holds at 389 odd shapes on both cards; the first run faulted on card 1 because the launch went to the calling thread's current card (2026-11-11)
+
+The kernel bench timed row counts that are multiples of 64 behind contexts that are multiples of 16. A serving
+route brings any row count, any prefix and pool slots in any order, so `scripts/bench/prefill_attn_port_shapes.py`
+runs 389 (rows, prefix) shapes per card for the exact and the fp8-QK legs: an fp64 reference of sampled rows,
+keys planted at the last context position, the last prefix position and the first chunk position, sentinel rows
+around the output, fp8 NaN in every pool slot the table does not list, and a padded twin for every row count that
+is not a multiple of 64 ([receipts](profiling/rad10c-port-shapes-2026-11-11/)).
+
+| Each card, both cards equal | exact | fp8 QK |
+|---|---:|---:|
+| Calls | 389 | 389 |
+| Lowest row cosine against fp64 (floor) | 0.9999975 (0.9999) | 0.99275 (0.98) |
+| Lowest mean cosine of a call (floor) | 0.9999984 (0.9999) | 0.99922 (0.995) |
+| Planted keys, lowest cosine | 1.0 | 1.0 |
+| Padded twins bit-identical | 365 of 365 | 365 of 365 |
+
+The first run passed on card 0 and died at the first call on card 1 with a GPU page fault (`Memory access fault
+... Page not present`; no reset, no device loss). The binding took the current stream of the calling thread's
+current card, card 0, and launched there with card 1's pointers. The kernel bench selects its card through device
+visibility, where the card under test is always the current one, so it never ran that case. The binding now
+holds a device guard built from the query tensor and takes that card's stream, as the in-tree extensions do; the
+rebuilt extension passes on both cards while the test still leaves card 0 current during the card 1 run. A
+serving rank makes its own card current, so the route would not have reached the fault, but the port must not
+depend on that.
+
+Disposition: gate `pass/pass` on the guarded build; the serving A/B boots only on a build whose hash the shape
+log names.
+
 ### FLINT-4b — the in-graph custom all-reduce on Flint: no-spec decode +2.6 % at every depth, DFlash2 cycle unchanged, texts equal wherever the controls repeat themselves (2026-11-11)
 
 Third start, the whole matrix under one method: eight boots of the `flint` preset at `--random-seed 7`, RCCL and
