@@ -1084,13 +1084,14 @@
   {
    "id": "RAD-29d",
    "spec": "19-vllm-radiance-parity.md",
-   "status": "ready",
+   "status": "queued",
    "resource": "gpu",
    "depends_on": [
     "canonical sweep with patches 121-129: the DFlash2 rows moved +20.7 % at 24 tokens, +1.2 % at 7.3K and +9.1 % on the 197K cold run against the patches 121-126 sweep on equal completion tokens, and the sweep records no verify counts",
-    "RAD-29c: what pins greedy speculative output across boots decides how the two sides are paired"
+    "RAD-29c: what pins greedy speculative output across boots decides how the two sides are paired",
+    "tail queue jobs 83 (RAD-29c) and 84 (FLINT-4b) finished: one GPU job at a time"
    ],
-   "next_action": "DFlash2 lane of patch 128 on the shipped tree: the canonical driver's DFlash2 boot against the same boot with FP8_GEMM_BF16=0, boots in both orders, equal request history on both sides (pairing per RAD-29c). Per boot: cycle on the sampled ladder at 24 / 7.3K / 58K / 197K, the 48-document greedy accept probe, the canonical five-run rows with completion tokens, capabilities. Output: the DFlash2 cycle of this tree over a plain step, the number radiance's 1.3x compares with.",
+   "next_action": "Tail queue job 85 (scratchpad rad29d/rad29d_dflash2_lane.sh, live tree, five boots, every boot with --random-seed 7): the DFlash2 lane of patch 128 on the shipped tree. Boots in the order ship1 (QWEN38_SPEC=0 plus the DFlash2 drafter, the canonical driver's boot), off1 (the same with FP8_GEMM_BF16=0), plain (QWEN38_SPEC=0, no drafter), off2, ship2: both orders, and two boots per arm as the boot-to-boot scale. Equal request history on every drafter boot: one fixed short request, capabilities, the seeded sampled ladder (two 400-token runs at 24 / 7.3K / 58K / 197K, cycle per depth from the server's decode-batch lines), the 48-document greedy accept probe, the canonical five-run rows with completion tokens, then the same prompts through scripts/bench/spec_decode_rows.py (verify count per run, so a canonical cell splits into accept length and cycle). The plain boot runs capabilities, the ladder and the canonical rows. Output: the DFlash2 cycle of this tree over the plain step of the same session, the number radiance's 1.3x compares with.",
    "test_gate": [
     "both shipped boots log the GEMM's active line, both knob-off boots log none; every boot logs the DFlash2 drafter",
     "keep for the lane: cycle shorter on every shipped boot than on every knob-off boot at every depth, and pooled accept not below 0.95x of the control's or the estimated decode rate on the documents not below the control's",
