@@ -1,0 +1,66 @@
+{
+ "model": "/data/models/Flint-FP8",
+ "passed": 2,
+ "cases": [
+  {
+   "name": "plain",
+   "ok": false,
+   "detail": "",
+   "identity": ""
+  },
+  {
+   "name": "code",
+   "ok": false,
+   "detail": "",
+   "identity": ""
+  },
+  {
+   "name": "tool-call",
+   "ok": true,
+   "detail": "get_weather {'city': 'Osaka', 'unit': 'celsius'}",
+   "identity": "[\"get_weather\", {\"city\": \"Osaka\", \"unit\": \"celsius\"}]"
+  },
+  {
+   "name": "think-tool",
+   "ok": true,
+   "detail": "reasoning 154 chars, get_weather {'city': 'Lima', 'unit': 'celsius'}",
+   "identity": "[\"The user wants the current weather in Lima in Celsius and explicitly asked to use the tool. I should call get_weather with city 'Lima' and unit 'celsius'.\", \"get_weather\", {\"city\": \"Lima\", \"unit\": \"celsius\"}]"
+  },
+  {
+   "name": "json-schema",
+   "ok": false,
+   "detail": "",
+   "identity": ""
+  },
+  {
+   "name": "logprobs",
+   "ok": false,
+   "detail": "6 tokens, lowest alternative -18.49",
+   "identity": ""
+  },
+  {
+   "name": "logit-bias",
+   "ok": false,
+   "detail": "banned ids [842, 12834, 13709, 51574, 123366]: ''",
+   "identity": ""
+  },
+  {
+   "name": "penalty",
+   "ok": false,
+   "detail": "",
+   "identity": ""
+  },
+  {
+   "name": "concurrent",
+   "ok": false,
+   "detail": "{'Japan': '', 'Egypt': '', 'Peru': ''}",
+   "identity": null
+  },
+  {
+   "name": "sampled",
+   "ok": false,
+   "detail": "",
+   "identity": null
+  }
+ ]
+}

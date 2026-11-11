@@ -5,7 +5,9 @@ Every case is a temperature-0 chat request with thinking off, so one arm repeats
 what moves between arms is the drafter: how many of its tokens each verify accepts. The server reports the verify
 count per request (`return_spec_tokens_details`), so accept length = completion tokens / verify count per prompt,
 without reading the server log. The committed text can still follow the accept pattern; the compare reports how
-many texts match. Cases: short tasks of different kinds, plus document prompts cut from a haystack at different
+many texts match. The text of a case is its reasoning followed by its content: a model whose template has no
+thinking switch spends a short budget on reasoning alone, and a hash of the content would then compare empty
+strings. Cases: short tasks of different kinds, plus document prompts cut from a haystack at different
 offsets for each `--doc-chars` size (characters) or `--doc-tokens` size (cut with the model's tokenizer, for a
 fixed depth: characters per token vary by a factor of two across this haystack).
 
@@ -45,6 +47,7 @@ SHORT = [
     "Explain how a B-tree insert splits nodes, with a worked example inserting ten keys into an order-4 tree.",
     "Write a bash script that rotates log files older than seven days into a dated archive, with comments.",
 ]
+EMPTY_SHA = hashlib.sha256(b"").hexdigest()[:16]
 DOC_TASKS = [
     "Summarise the text above in detail, section by section.",
     "List the ten most specific facts stated in the text above, each with one sentence of context.",
@@ -91,6 +94,14 @@ def cases(haystack, doc_chars, docs_per_size, short=True, doc_tokens=(), tokeniz
     return out
 
 
+def identity_text(message):
+    """What a case's hash covers: the content, behind the reasoning when the reply has any (a reply without
+    reasoning hashes as its content alone, as before)."""
+    content = message.get("content") or ""
+    reasoning = message.get("reasoning_content") or message.get("reasoning") or ""
+    return reasoning + "\x00" + content if reasoning else content
+
+
 def find(obj, key):
     if isinstance(obj, dict):
         if key in obj:
@@ -122,7 +133,8 @@ def run(a):
         r = requests.post(base + "/v1/chat/completions", json=body, timeout=1800)
         r.raise_for_status()
         j = r.json()
-        text = j["choices"][0]["message"].get("content") or ""
+        message = j["choices"][0]["message"]
+        text = identity_text(message)
         verify = find(j, "spec_verify_ct")
         if not verify:
             print(f"{case['id']}: no spec_verify_ct in the response (no speculative worker?)", flush=True)
@@ -131,7 +143,8 @@ def run(a):
         row = {"id": case["id"], "prompt_tokens": j["usage"]["prompt_tokens"], "completion_tokens": ct,
                "verify_ct": int(verify), "accept_len": round(ct / verify, 4),
                "finish": j["choices"][0].get("finish_reason"), "seconds": round(time.time() - t0, 2),
-               "sha": hashlib.sha256(text.encode()).hexdigest()[:16], "head": text[:60]}
+               "sha": hashlib.sha256(text.encode()).hexdigest()[:16], "head": text[:60],
+               "content_chars": len(message.get("content") or ""), "text_chars": len(text)}
         rows.append(row)
         print(f"  {row['id']:<16} in={row['prompt_tokens']:>6} out={ct:>4} verifies={row['verify_ct']:>4} "
               f"accept={row['accept_len']:.3f} {row['finish']} {row['seconds']:.1f}s {row['head'][:40]!r}", flush=True)
@@ -176,14 +189,18 @@ def compare(a):
         )
         lo, hi = boots[int(0.025 * len(boots))], boots[int(0.975 * len(boots)) - 1]
         same = sum(1 for x, y in ps if x["sha"] == y["sha"])
+        blank = sum(1 for x, y in ps if x["sha"] == y["sha"] == EMPTY_SHA)  # equal because both are empty
         lower = sum(1 for x, y in ps if y["accept_len"] < x["accept_len"])
         higher = sum(1 for x, y in ps if y["accept_len"] > x["accept_len"])
-        out["groups"][name] = {"cases": len(ps), "same_text": same, "control_accept": round(c, 4),
+        out["groups"][name] = {"cases": len(ps), "same_text": same, "blank_text": blank,
+                               "same_verify_count": sum(1 for x, y in ps if x["verify_ct"] == y["verify_ct"]),
+                               "control_accept": round(c, 4),
                                "treatment_accept": round(t, 4), "ratio": round(t / c, 4),
                                "ratio_ci95": [round(lo, 4), round(hi, 4)], "treatment_lower": lower,
                                "treatment_higher": higher}
         print(f"ACCEPT {name:<10} cases={len(ps):>2} same-text={same:>2} control={c:.3f} treatment={t:.3f} "
-              f"ratio={t / c:.3f} (95% {lo:.3f}..{hi:.3f} over cases) lower/higher={lower}/{higher}")
+              f"ratio={t / c:.3f} (95% {lo:.3f}..{hi:.3f} over cases) lower/higher={lower}/{higher}"
+              + (f" blank-text={blank}" if blank else ""))
     ratio = out["groups"]["all"]["ratio"]
     out["verdict"] = "pass" if ratio >= a.floor else "accept-drop"
     print(f"ACCEPT VERDICT {out['verdict']} (pooled ratio {ratio:.3f}, floor {a.floor})")

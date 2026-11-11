@@ -1,0 +1,515 @@
+{
+ "ladders": {
+  "sampled": {
+   "24": {
+    "cycle_ms": {
+     "rccl1": 36.89,
+     "rccl2": null,
+     "car1": 36.97,
+     "car2": null
+    },
+    "accept_len": {
+     "rccl1": 2.26,
+     "rccl2": null,
+     "car1": 2.26,
+     "car2": null
+    },
+    "rccl_ms": 36.89,
+    "car_ms": 36.97,
+    "ratio": 1.0022,
+    "boots": [
+     1,
+     1
+    ],
+    "every_boot_shorter": false,
+    "every_boot_longer": true,
+    "rccl_spread_pct": 0.0,
+    "car_spread_pct": 0.0
+   },
+   "7.3K": {
+    "cycle_ms": {
+     "rccl1": 39.25,
+     "rccl2": null,
+     "car1": 39.31,
+     "car2": null
+    },
+    "accept_len": {
+     "rccl1": 3.8,
+     "rccl2": null,
+     "car1": 3.8,
+     "car2": null
+    },
+    "rccl_ms": 39.25,
+    "car_ms": 39.31,
+    "ratio": 1.0015,
+    "boots": [
+     1,
+     1
+    ],
+    "every_boot_shorter": false,
+    "every_boot_longer": true,
+    "rccl_spread_pct": 0.0,
+    "car_spread_pct": 0.0
+   },
+   "58K": {
+    "cycle_ms": {
+     "rccl1": 44.0,
+     "rccl2": null,
+     "car1": 44.08,
+     "car2": null
+    },
+    "accept_len": {
+     "rccl1": 2.96,
+     "rccl2": null,
+     "car1": 2.96,
+     "car2": null
+    },
+    "rccl_ms": 44.0,
+    "car_ms": 44.08,
+    "ratio": 1.0018,
+    "boots": [
+     1,
+     1
+    ],
+    "every_boot_shorter": false,
+    "every_boot_longer": true,
+    "rccl_spread_pct": 0.0,
+    "car_spread_pct": 0.0
+   },
+   "197K": {
+    "cycle_ms": {
+     "rccl1": 59.08,
+     "rccl2": null,
+     "car1": 59.2,
+     "car2": null
+    },
+    "accept_len": {
+     "rccl1": 8.0,
+     "rccl2": null,
+     "car1": 8.0,
+     "car2": null
+    },
+    "rccl_ms": 59.08,
+    "car_ms": 59.2,
+    "ratio": 1.002,
+    "boots": [
+     1,
+     1
+    ],
+    "every_boot_shorter": false,
+    "every_boot_longer": true,
+    "rccl_spread_pct": 0.0,
+    "car_spread_pct": 0.0
+   }
+  },
+  "sweep": {
+   "24": {
+    "cycle_ms": {
+     "rccl1": null,
+     "rccl2": null,
+     "car1": null,
+     "car2": null
+    },
+    "accept_len": {
+     "rccl1": null,
+     "rccl2": null,
+     "car1": null,
+     "car2": null
+    }
+   },
+   "7.3K": {
+    "cycle_ms": {
+     "rccl1": null,
+     "rccl2": null,
+     "car1": null,
+     "car2": null
+    },
+    "accept_len": {
+     "rccl1": null,
+     "rccl2": null,
+     "car1": null,
+     "car2": null
+    }
+   },
+   "58K": {
+    "cycle_ms": {
+     "rccl1": null,
+     "rccl2": null,
+     "car1": null,
+     "car2": null
+    },
+    "accept_len": {
+     "rccl1": null,
+     "rccl2": null,
+     "car1": null,
+     "car2": null
+    }
+   },
+   "197K": {
+    "cycle_ms": {
+     "rccl1": null,
+     "rccl2": null,
+     "car1": null,
+     "car2": null
+    },
+    "accept_len": {
+     "rccl1": null,
+     "rccl2": null,
+     "car1": null,
+     "car2": null
+    }
+   }
+  },
+  "accept": {
+   "24": {
+    "cycle_ms": {
+     "rccl1": null,
+     "rccl2": null,
+     "car1": null,
+     "car2": null
+    },
+    "accept_len": {
+     "rccl1": null,
+     "rccl2": null,
+     "car1": null,
+     "car2": null
+    }
+   },
+   "7.3K": {
+    "cycle_ms": {
+     "rccl1": 38.42,
+     "rccl2": null,
+     "car1": 38.52,
+     "car2": null
+    },
+    "accept_len": {
+     "rccl1": 2.55,
+     "rccl2": null,
+     "car1": 2.55,
+     "car2": null
+    },
+    "rccl_ms": 38.42,
+    "car_ms": 38.52,
+    "ratio": 1.0026,
+    "boots": [
+     1,
+     1
+    ],
+    "every_boot_shorter": false,
+    "every_boot_longer": true,
+    "rccl_spread_pct": 0.0,
+    "car_spread_pct": 0.0
+   },
+   "58K": {
+    "cycle_ms": {
+     "rccl1": 40.73,
+     "rccl2": null,
+     "car1": 40.84,
+     "car2": null
+    },
+    "accept_len": {
+     "rccl1": 2.65,
+     "rccl2": null,
+     "car1": 2.65,
+     "car2": null
+    },
+    "rccl_ms": 40.73,
+    "car_ms": 40.84,
+    "ratio": 1.0027,
+    "boots": [
+     1,
+     1
+    ],
+    "every_boot_shorter": false,
+    "every_boot_longer": true,
+    "rccl_spread_pct": 0.0,
+    "car_spread_pct": 0.0
+   },
+   "197K": {
+    "cycle_ms": {
+     "rccl1": null,
+     "rccl2": null,
+     "car1": null,
+     "car2": null
+    },
+    "accept_len": {
+     "rccl1": null,
+     "rccl2": null,
+     "car1": null,
+     "car2": null
+    }
+   }
+  }
+ },
+ "sweep_tok_s": {
+  "warm0": [
+   [
+    14,
+    104.259,
+    [
+     80,
+     80,
+     80,
+     80,
+     80
+    ]
+   ],
+   [
+    7321,
+    74.544,
+    [
+     80,
+     80,
+     80,
+     80,
+     80
+    ]
+   ],
+   [
+    58473,
+    66.446,
+    [
+     80,
+     80,
+     80,
+     80,
+     80
+    ]
+   ],
+   [
+    197315,
+    51.127,
+    [
+     80,
+     80,
+     80,
+     80,
+     80
+    ]
+   ]
+  ],
+  "rccl1": [
+   [
+    14,
+    104.585,
+    [
+     80,
+     80,
+     80,
+     80,
+     80
+    ]
+   ],
+   [
+    7321,
+    74.404,
+    [
+     80,
+     80,
+     80,
+     80,
+     80
+    ]
+   ],
+   [
+    58473,
+    66.617,
+    [
+     80,
+     80,
+     80,
+     80,
+     80
+    ]
+   ],
+   [
+    197315,
+    51.327,
+    [
+     80,
+     80,
+     80,
+     80,
+     80
+    ]
+   ]
+  ],
+  "car1": [
+   [
+    14,
+    104.663,
+    [
+     80,
+     80,
+     80,
+     80,
+     80
+    ]
+   ],
+   [
+    7321,
+    74.479,
+    [
+     80,
+     80,
+     80,
+     80,
+     80
+    ]
+   ],
+   [
+    58473,
+    66.718,
+    [
+     80,
+     80,
+     80,
+     80,
+     80
+    ]
+   ],
+   [
+    197315,
+    51.205,
+    [
+     80,
+     80,
+     80,
+     80,
+     80
+    ]
+   ]
+  ]
+ },
+ "sampled_tok_s": {
+  "rccl1": [
+   [
+    14,
+    63.298,
+    [
+     800,
+     800,
+     800
+    ]
+   ],
+   [
+    7321,
+    93.377,
+    [
+     800,
+     800,
+     800
+    ]
+   ],
+   [
+    58473,
+    71.656,
+    [
+     800,
+     800,
+     800
+    ]
+   ],
+   [
+    197315,
+    106.662,
+    [
+     800,
+     800,
+     800
+    ]
+   ]
+  ],
+  "car1": [
+   [
+    14,
+    63.077,
+    [
+     800,
+     800,
+     800
+    ]
+   ],
+   [
+    7321,
+    93.249,
+    [
+     800,
+     800,
+     800
+    ]
+   ],
+   [
+    58473,
+    71.712,
+    [
+     800,
+     800,
+     800
+    ]
+   ],
+   [
+    197315,
+    106.417,
+    [
+     800,
+     800,
+     800
+    ]
+   ]
+  ]
+ },
+ "vram_mib": {
+  "used": {
+   "warm0": {
+    "boot": [
+     28843,
+     28843
+    ]
+   },
+   "rccl1": {
+    "boot": [
+     28842,
+     28842
+    ],
+    "end": [
+     29620,
+     29620
+    ]
+   },
+   "car1": {
+    "boot": [
+     28784,
+     28784
+    ],
+    "end": [
+     29562,
+     29562
+    ]
+   }
+  },
+  "growth": {
+   "rccl1": [
+    778,
+    778
+   ],
+   "car1": [
+    778,
+    778
+   ]
+  },
+  "car_minus_rccl_growth": {
+   "car1-vs-rccl1": [
+    0,
+    0
+   ]
+  }
+ },
+ "gate_dflash2": "unreadable",
+ "gate_nospec": "unreadable",
+ "gate_prefill": "unreadable",
+ "gate_identity": "unreadable",
+ "gate_route": "unreadable",
+ "gate_needle": "unreadable",
+ "gate_memory": "unreadable"
+}

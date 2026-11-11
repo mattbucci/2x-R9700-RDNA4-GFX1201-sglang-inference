@@ -1,0 +1,30 @@
+{
+ "label": "rccl1-accept",
+ "note": "flint FP8 preset, live tree, 97 patches, --random-seed 7",
+ "log": "/data/logs/flint-custom-ar-2026-11-10/server-rccl1.log",
+ "from_line": 395,
+ "to_line": 746,
+ "line_numbering": "newline",
+ "decode_lines_dropped_after_prefill": 48,
+ "decode_lines_dropped_no_depth": 1,
+ "depths": {
+  "7.3K": {
+   "decode_batches": {
+    "lines": 65,
+    "accept_len": 2.55,
+    "tok_s": 65.98,
+    "cycles_s": 26.03,
+    "cycle_ms": 38.42
+   }
+  },
+  "58K": {
+   "decode_batches": {
+    "lines": 15,
+    "accept_len": 2.65,
+    "tok_s": 64.98,
+    "cycles_s": 24.55,
+    "cycle_ms": 40.73
+   }
+  }
+ }
+}

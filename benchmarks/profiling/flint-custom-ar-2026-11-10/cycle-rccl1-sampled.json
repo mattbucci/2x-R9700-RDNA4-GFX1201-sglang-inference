@@ -1,0 +1,48 @@
+{
+ "label": "rccl1-sampled",
+ "note": "flint FP8 preset, live tree, 97 patches, --random-seed 7",
+ "log": "/data/logs/flint-custom-ar-2026-11-10/server-rccl1.log",
+ "from_line": 250,
+ "to_line": 394,
+ "line_numbering": "newline",
+ "decode_lines_dropped_after_prefill": 12,
+ "decode_lines_dropped_no_depth": 1,
+ "depths": {
+  "24": {
+   "decode_batches": {
+    "lines": 22,
+    "accept_len": 2.26,
+    "tok_s": 63.35,
+    "cycles_s": 27.11,
+    "cycle_ms": 36.89
+   }
+  },
+  "7.3K": {
+   "decode_batches": {
+    "lines": 13,
+    "accept_len": 3.8,
+    "tok_s": 96.31,
+    "cycles_s": 25.48,
+    "cycle_ms": 39.25
+   }
+  },
+  "58K": {
+   "decode_batches": {
+    "lines": 16,
+    "accept_len": 2.96,
+    "tok_s": 69.0,
+    "cycles_s": 22.73,
+    "cycle_ms": 44.0
+   }
+  },
+  "197K": {
+   "decode_batches": {
+    "lines": 6,
+    "accept_len": 8.0,
+    "tok_s": 134.83,
+    "cycles_s": 16.93,
+    "cycle_ms": 59.08
+   }
+  }
+ }
+}

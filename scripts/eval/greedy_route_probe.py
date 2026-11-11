@@ -7,7 +7,12 @@ a JSON schema (grammar), log-probabilities, a logit bias, penalties, three concu
 request. `--compare` reads two saved runs and reports which deterministic cases are byte-identical, which is the
 A/B evidence that both arms decoded the same tokens.
 
+The budgets are sized for a model that honours `enable_thinking: false`. A template without a thinking switch
+spends them on reasoning and every text case then reads an empty content, on the control as on the treatment:
+give such a model `--extra-tokens N`, which adds N to every request's budget.
+
     python scripts/eval/greedy_route_probe.py --port 23334 --out arm.json
+    python scripts/eval/greedy_route_probe.py --port 23334 --extra-tokens 1024 --out arm.json
     python scripts/eval/greedy_route_probe.py --compare control.json treatment.json
 """
 import argparse
@@ -31,14 +36,16 @@ CODE = "Write a Python function that merges two sorted lists into one sorted lis
 
 
 class Probe:
-    def __init__(self, port):
+    def __init__(self, port, extra_tokens=0):
         self.base = f"http://127.0.0.1:{port}"
+        self.extra_tokens = extra_tokens
         self.model = requests.get(f"{self.base}/v1/models", timeout=30).json()["data"][0]["id"]
 
     def chat(self, content, think=False, **extra):
         body = {"model": self.model, "messages": [{"role": "user", "content": content}], "temperature": 0.0,
                 "seed": 0, "max_tokens": 64, "chat_template_kwargs": {"enable_thinking": think}}
         body.update(extra)
+        body["max_tokens"] += self.extra_tokens
         r = requests.post(f"{self.base}/v1/chat/completions", json=body, timeout=1800)
         r.raise_for_status()
         return r.json()["choices"][0]
@@ -153,7 +160,7 @@ CASES = [("plain", case_plain), ("code", case_code), ("tool-call", case_tool), (
 
 
 def run(a):
-    p = Probe(a.port)
+    p = Probe(a.port, a.extra_tokens)
     rows = []
     for name, fn in CASES:
         try:
@@ -165,30 +172,41 @@ def run(a):
     passed = sum(r["ok"] for r in rows)
     if a.out:
         with open(a.out, "w", encoding="utf-8") as fh:
-            json.dump({"model": p.model, "passed": passed, "cases": rows}, fh, indent=1, ensure_ascii=False)
+            json.dump({"model": p.model, "extra_tokens": a.extra_tokens, "passed": passed, "cases": rows}, fh,
+                      indent=1, ensure_ascii=False)
     print(f"ROUTE PROBE DONE passed={passed}/{len(rows)}")
     return 0 if passed == len(rows) else 1
 
 
 def compare(a_path, b_path):
     with open(a_path, encoding="utf-8") as fh:
-        a = {r["name"]: r for r in json.load(fh)["cases"]}
+        ja = json.load(fh)
     with open(b_path, encoding="utf-8") as fh:
-        b = {r["name"]: r for r in json.load(fh)["cases"]}
-    same = total = 0
+        jb = json.load(fh)
+    if ja.get("extra_tokens", 0) != jb.get("extra_tokens", 0):
+        print(f"ROUTE COMPARE budgets differ: --extra-tokens {ja.get('extra_tokens', 0)} against "
+              f"{jb.get('extra_tokens', 0)}")
+        return 1
+    a = {r["name"]: r for r in ja["cases"]}
+    b = {r["name"]: r for r in jb["cases"]}
+    same = total = blank = 0
     for name, ra in a.items():
         rb = b.get(name)
         if rb is None or ra["identity"] is None or rb["identity"] is None:
             continue
-        total += 1
         x, y = ra["identity"], rb["identity"]
+        if not x and not y:  # two empty replies agree without showing that the arms decoded the same tokens
+            blank += 1
+            print(f"{name}: BLANK on both")
+            continue
+        total += 1
         if x == y:
             same += 1
             print(f"{name}: IDENTICAL ({len(x)} chars)")
         else:
             k = next((i for i, (c, d) in enumerate(zip(x, y)) if c != d), min(len(x), len(y)))
             print(f"{name}: DIVERGE at char {k}/{len(x)} | A: {x[max(0, k - 30):k + 30]!r} | B: {y[max(0, k - 30):k + 30]!r}")
-    print(f"ROUTE COMPARE identical={same}/{total}")
+    print(f"ROUTE COMPARE identical={same}/{total}" + (f" blank={blank}" if blank else ""))
     return 0 if same == total and total else 1
 
 
@@ -196,6 +214,8 @@ if __name__ == "__main__":
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--port", type=int, default=23334)
     ap.add_argument("--out")
+    ap.add_argument("--extra-tokens", type=int, default=0,
+                    help="added to every request's max_tokens, for a model that reasons before every answer")
     ap.add_argument("--compare", nargs=2, metavar=("CONTROL", "TREATMENT"))
     args = ap.parse_args()
     sys.exit(compare(*args.compare) if args.compare else run(args))
