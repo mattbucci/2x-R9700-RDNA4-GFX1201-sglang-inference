@@ -698,9 +698,10 @@
    "depends_on": [
     "RAD-0 (done): prefill gap 2.2-2.7x measured",
     "chunk curve from the canonical sweep's server logs (FINDINGS RAD-10): 197K cold = 83.8 s depth-free + 99.7 s depth-bound, 58K = 25.0 + 7.8 s; prefix attention 2.99 G pairs/s per card against the 8.93 radiance states for r4d_attn_prefill_h256_gqa6",
-    "RAD-10a: kernel families per depth"
+    "RAD-10a: kernel families per depth",
+    "RAD-10b: same-data kernel bench of the prefix attention, this tree against libr4d"
    ],
-   "next_action": "After RAD-10a: order the ports from its receipts. Candidate 1, the prefix attention (two thirds of the 197K gap by the two-term model): time radiance's r4d_attn_prefill_h256_gqa6 in the libr4d sandbox against the Triton extend kernel at the serving shape (8192 queries, 12 query heads over 2 KV heads per rank, prefix to 197K), then a native HIP prefix stage as a numbered patch with attribution. Candidate 2, the depth-free stages by share (GDN chunk kernels, RAD-19 conv block, RAD-20 GEMM tiles). prefill_ttft.py A/B at 7.3K/58K/197K both orders.",
+   "next_action": "After RAD-10a: order the ports from its receipts. Candidate 1, the prefix attention (two thirds of the 197K gap by the two-term model): RAD-10b times radiance's paged prefill rows against the Triton extend kernel on equal operands and sets the order (port, tile sweep first, or look elsewhere). Candidate 2, the depth-free stages by share (GDN chunk kernels, RAD-19 conv block, RAD-20 GEMM tiles). prefill_ttft.py A/B at 7.3K/58K/197K both orders.",
    "test_gate": [
     "kernel microbench vs the FLA reference",
     "prefill_ttft.py both orders",
@@ -725,6 +726,25 @@
     "ok: prefill and curve receipts present, a profile for every depth with traces from both ranks, listed kernels covering at least 90 % of the traced GPU time, wall receipts present",
     "incomplete:<what> names the missing receipt, depth, rank or coverage; fail:<phase> names the phase that failed",
     "every profile is read with its profiled wall over the unprofiled run of the same depth as the inflation caveat"
+   ]
+  },
+  {
+   "id": "RAD-10b",
+   "spec": "19-vllm-radiance-parity.md",
+   "status": "queued",
+   "resource": "gpu",
+   "depends_on": [
+    "RAD-10 chunk curve: the depth-bound part of the 197K cold prefill is 99.7 s, a slope of 0.0438 s per 8192-token chunk per 1K tokens of prefix over 16 attention layers, 2.99 G (query, key) pairs/s per card against the 8.93 radiance states for its prefill kernel (a source comment, not a measurement on this rig)",
+    "libr4d sandbox (RAD-13): the vendor library runs only under scripts/bench/libr4d_sandbox.sh with a private Triton cache and no network",
+    "tail queue jobs 84-y (FLINT-4b), 84-z (RAD-10a) and 85 (RAD-29d) finished: one GPU job at a time"
+   ],
+   "next_action": "Tail queue job 86 (scratchpad rad10b/rad10b_prefill_attention.sh, no server boot, about 30 min): scripts/bench/bench_prefill_attention.py inside the libr4d sandbox. One card, the operands of a full-attention layer of the qwen38 preset per rank (12 query heads over 2 KV heads, head size 256, fp8 e4m3 KV cache with descale 1.0, causal, 8192 / 4096 / 2048 queries at the end of 8K to 197K tokens), the same data for every arm. Our arms call extend_attention_fwd with the argument list of TritonAttnBackend.forward_extend (ours-fp8qk = the served preset, ours-exact = the switch off); the vendor arms are the paged rows attn_prefill_h256_gqa6_fp8kv (exact legs), _qk8, _pv8 and _qk8pv8. Each arm is compared with an fp64 reference on 48 sampled rows (lowest cosine per row and head: 0.9999 for exact legs, 0.995 for lossy ones) before its time counts; times are medians over forward and reverse order on rotated copies. The bench also fits ms = a + b x prefix at 8192 queries, checks its slope x 16 layers against the server's 0.0438 s per chunk per 1K of prefix (flag model-mismatch beyond 20 %), times the vendor's stated shape (2048 queries at 100K, 22.7 ms stated) and projects the 197K prompt. Card 0 runs every case, card 1 repeats the two deep cases. By verdict: port = a native HIP prefix-attention stage as a numbered patch with attribution to the Apache-2.0 radiance tree, serving A/B with prefill_ttft.py at 7.3K / 58K / 197K in both orders, needle 9/9 and the 8-prompt greedy diff; marginal = a tile sweep of the Triton kernel through SGLANG_EXTEND_TILE before any port; none = the depth-bound slope is not this kernel's inner loop, read RAD-10a's profile for where it goes; unreadable = fix the bench and run it again.",
+   "test_gate": [
+    "verdict from the served kernel's time over the faster valid row of vendor-qk8 / vendor-exact at 8192 queries behind 123K and 188K of prefix: port when both ratios are at least 1.5, marginal at least 1.15, none below; the PV-lossy vendor rows never carry the verdict",
+    "unreadable when a deep ratio is missing: an arm failed to load, missed its accuracy floor or was launcher-bound",
+    "flags after the verdict: model-mismatch, invalid-<arm>, error-<arm>, missing-<arm>, host-bound-<arm>, case-error-<Q:CTX>",
+    "preflight inside the sandbox before the cards are touched: cache layouts against an independent byte-level reader, the reference, the 197K prompt model, the verdict rules and the call's argument list against the live tree's source",
+    "no start with a device-lost, GPU-reset or ring-timeout line in the kernel log; receipts benchmarks/profiling/rad10b-prefill-attention-2026-11-11/"
    ]
   },
   {
