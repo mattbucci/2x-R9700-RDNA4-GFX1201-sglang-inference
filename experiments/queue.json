@@ -1201,6 +1201,62 @@
     "greedy texts are expected to differ (the numerics change): the 8-prompt diff is read for coherence, not gated on identity",
     "numbered patch + replay gate; canonical sweep re-queued only if a decode or DSpark row moves"
    ]
+  },
+  {
+   "id": "CONSOL-0",
+   "spec": "20-patch-consolidation.md",
+   "status": "ready",
+   "resource": "cpu",
+   "depends_on": [],
+   "next_action": "Inventory script over patches/: class, mechanism, files, lines, switch, presets that turn it on (launcher print-only mode), last measured effect with receipt and patch state, upstream disposition, dependents (strict apply of the series without the patch), rebase cost; write experiments/20-patch-consolidation/inventory.json with the ablation arm per patch.",
+   "test_gate": "97 records, every patch classed required / performance / opt-in / superseded, every performance and required record names its ablation arm (switch or tree without the patch) and the presets it runs on."
+  },
+  {
+   "id": "CONSOL-1",
+   "spec": "20-patch-consolidation.md",
+   "status": "queued",
+   "resource": "gpu",
+   "depends_on": [
+    "CONSOL-0",
+    "the open performance adoptions (RAD-30, RAD-10c, FLINT-4b) landed or closed and their canonical sweeps re-measured"
+   ],
+   "next_action": "Leave-one-out per performance mechanism on every preset that turns it on, both orders in one session: canonical decode rows, cold prefill, warm first-token time, cycle time and accept length on speculative presets; group arms for mechanisms that only pay together.",
+   "test_gate": "Disposition per mechanism: keep at 3 % or more on any headline row of any shipped preset, drop under 1 % everywhere, between only when the patch is small and never needed a manual edit on a rebase; every arm carries its active or inactive log line and a receipt."
+  },
+  {
+   "id": "CONSOL-2",
+   "spec": "20-patch-consolidation.md",
+   "status": "queued",
+   "resource": "gpu",
+   "depends_on": [
+    "CONSOL-0",
+    "the open performance adoptions (RAD-30, RAD-10c, FLINT-4b) landed or closed and their canonical sweeps re-measured"
+   ],
+   "next_action": "Remove each required patch on a development tree and run its reproducer, or capabilities, needle and finite-value checks on the presets it names; opt-in switches no preset uses are listed for removal unless they are a documented restore knob or diagnostic.",
+   "test_gate": "A required patch is dropped only when its removal changes no behavior on the current base on every preset it names; every kept patch has a failing receipt without it."
+  },
+  {
+   "id": "CONSOL-3",
+   "spec": "20-patch-consolidation.md",
+   "status": "queued",
+   "resource": "cpu",
+   "depends_on": [
+    "CONSOL-1",
+    "CONSOL-2"
+   ],
+   "next_action": "Rewrite the series as one patch per retained mechanism: fold follow-up fixes into the introducing patch, move switch defaults into the presets, remove the code of dropped arms, keep one restore knob per adopted mechanism; install the dropped-patch tree in a safe window.",
+   "test_gate": "The merged series replays strictly onto the pristine base to a tree byte-identical to the live tree after the drops; replay gate with zero fallbacks, zero failures and a rejected second application; pyflakes shows no new line."
+  },
+  {
+   "id": "CONSOL-4",
+   "spec": "20-patch-consolidation.md",
+   "status": "queued",
+   "resource": "gpu",
+   "depends_on": [
+    "CONSOL-3"
+   ],
+   "next_action": "Every launcher preset on the consolidated tree: boot, capabilities, canonical rows against same-session rows of the pre-consolidation tree, needle at depth on the long-context presets; then PATCHES.md, the patch index and README numbers from the canonical sweeps.",
+   "test_gate": "No headline row below 0.99 of its pre-consolidation value, no capability lost on any preset; before and after counts of patches, added lines, upstream files touched and switches recorded."
   }
  ]
 }
