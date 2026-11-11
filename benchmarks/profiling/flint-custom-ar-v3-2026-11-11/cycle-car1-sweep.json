@@ -1,0 +1,11 @@
+{
+ "label": "car1-sweep",
+ "note": "flint FP8 preset, live tree, 97 patches, --random-seed 7",
+ "log": "/data/logs/flint-custom-ar-v3-2026-11-11/server-car1.log",
+ "from_line": 147,
+ "to_line": 252,
+ "line_numbering": "newline",
+ "decode_lines_dropped_after_prefill": 13,
+ "decode_lines_dropped_no_depth": 0,
+ "depths": {}
+}

@@ -1,0 +1,4946 @@
+{
+ "experiment": "RAD-10b prefill attention: Triton extend kernel against libr4d's paged prefill rows",
+ "timestamp": "2026-11-11T03:12:54-0800",
+ "torch": "2.11.0+rocm7.2",
+ "device": "AMD Radeon AI PRO R9700",
+ "hip_runtime_images": [
+  "/home/letsrtfm/miniforge3/envs/sglang-triton36-v0522/lib/python3.12/site-packages/torch/lib/libamdhip64.so"
+ ],
+ "vram_used_gb_at_start": {
+  "card0": 0.055797576904296875,
+  "card1": 0.055797576904296875,
+  "card2": 0.20057296752929688
+ },
+ "args": {
+  "lib": "/data/vllm-radiance-src/radiance-build/radiance_home/kernels/libr4d.so",
+  "out": "/data/tmp/rad10c-run/out/rad10c-kernel-bench-2026-11-11-card0.json",
+  "tree": "/data/sgl-v0522/python",
+  "device": 0,
+  "shapes": "8192:8192,8192:65536,8192:131072,8192:196608,4096:65536,4096:196608,2048:100000",
+  "sample_rows": 48,
+  "repeats": 3,
+  "target_s": 1.5,
+  "no_vendor": false,
+  "no_ours": false,
+  "port_ext": "/data/tmp/rad10c-run/ext",
+  "allow_two_hip_runtimes": false,
+  "max_busy_vram_gb": 2.0,
+  "force_busy": false,
+  "dry_cpu": false,
+  "summarize": null
+ },
+ "env": {
+  "GPU_MAX_HW_QUEUES": "8",
+  "HIP_FORCE_DEV_KERNARG": "1",
+  "HIP_VISIBLE_DEVICES": "0",
+  "HSA_FORCE_FINE_GRAIN_PCIE": "1",
+  "PYTORCH_HIP_ALLOC_CONF": "expandable_segments:True",
+  "PYTORCH_TUNABLEOP_ENABLED": "0",
+  "SGLANG_USE_AITER": "0",
+  "SGLANG_USE_AITER_AR": "0",
+  "TRITON_CACHE_DIR": "/data/tmp/rad10c-run/triton-cache"
+ },
+ "geometry": {
+  "q_heads": 12,
+  "kv_heads": 2,
+  "head_dim": 256,
+  "kv": "fp8_e4m3, descale 1.0",
+  "causal": true,
+  "k_std": 1.5,
+  "v_std": 1.0
+ },
+ "arms": [
+  "ours-fp8qk",
+  "ours-exact",
+  "vendor-exact",
+  "vendor-qk8",
+  "vendor-pv8",
+  "vendor-qk8pv8",
+  "port-exact",
+  "port-qk8",
+  "port-pv8",
+  "port-qk8pv8",
+  "port-qk8-scatter"
+ ],
+ "arm_errors": {},
+ "shapes": [
+  {
+   "q": 8192,
+   "ctx": 8192,
+   "pairs": 33558528,
+   "copies": 16,
+   "kv_bytes_per_copy": 8388608,
+   "sampled_rows": 48,
+   "arms": {
+    "ours-fp8qk": {
+     "single_launch_ms": 9.532,
+     "accuracy": {
+      "cos_min": 0.9999966,
+      "cos_mean": 0.9999978,
+      "max_abs_over_rms": 0.012762,
+      "finite": true
+     },
+     "floor": [
+      0.9999,
+      0.9999
+     ],
+     "valid": true,
+     "passes": [
+      {
+       "timing": "events",
+       "us_median": 8959.201049804688,
+       "us_min": 8951.338195800781,
+       "host_enqueue_us_median": 28.85602880269289,
+       "iters": 40,
+       "repeats": 3,
+       "copies": 16,
+       "host_bound": false,
+       "order": "forward"
+      },
+      {
+       "timing": "events",
+       "us_median": 9101.176452636719,
+       "us_min": 9090.327453613281,
+       "host_enqueue_us_median": 28.508540708571672,
+       "iters": 40,
+       "repeats": 3,
+       "copies": 16,
+       "host_bound": false,
+       "order": "reverse"
+      }
+     ],
+     "ms": 9.0302,
+     "ms_min": 8.9513,
+     "gpairs_per_s": 3.7163,
+     "host_blocked": false,
+     "host_bound": false,
+     "clobbered": false
+    },
+    "ours-exact": {
+     "single_launch_ms": 7.948,
+     "accuracy": {
+      "cos_min": 0.9999966,
+      "cos_mean": 0.9999978,
+      "max_abs_over_rms": 0.012762,
+      "finite": true
+     },
+     "floor": [
+      0.9999,
+      0.9999
+     ],
+     "valid": true,
+     "passes": [
+      {
+       "timing": "events",
+       "us_median": 7618.573760986328,
+       "us_min": 7618.549346923828,
+       "host_enqueue_us_median": 28.945552185177803,
+       "iters": 40,
+       "repeats": 3,
+       "copies": 16,
+       "host_bound": false,
+       "order": "forward"
+      },
+      {
+       "timing": "events",
+       "us_median": 7712.725067138672,
+       "us_min": 7709.587097167969,
+       "host_enqueue_us_median": 28.700055554509163,
+       "iters": 40,
+       "repeats": 3,
+       "copies": 16,
+       "host_bound": false,
+       "order": "reverse"
+      }
+     ],
+     "ms": 7.6656,
+     "ms_min": 7.6185,
+     "gpairs_per_s": 4.3778,
+     "host_blocked": false,
+     "host_bound": false,
+     "clobbered": false
+    },
+    "vendor-exact": {
+     "single_launch_ms": 6.05,
+     "accuracy": {
+      "cos_min": 0.999998,
+      "cos_mean": 0.9999985,
+      "max_abs_over_rms": 0.015755,
+      "finite": true
+     },
+     "floor": [
+      0.9999,
+      0.9999
+     ],
+     "valid": true,
+     "passes": [
+      {
+       "timing": "events",
+       "us_median": 5792.738342285156,
+       "us_min": 5784.051132202148,
+       "host_enqueue_us_median": 1.2802542187273502,
+       "iters": 40,
+       "repeats": 3,
+       "copies": 16,
+       "host_bound": false,
+       "order": "forward"
+      },
+      {
+       "timing": "events",
+       "us_median": 5908.9324951171875,
+       "us_min": 5849.972915649414,
+       "host_enqueue_us_median": 1.2702541425824165,
+       "iters": 40,
+       "repeats": 3,
+       "copies": 16,
+       "host_bound": false,
+       "order": "reverse"
+      }
+     ],
+     "row": "attn_prefill_h256_gqa6_fp8kv",
+     "scratch_bytes": 0,
+     "ms": 5.8508,
+     "ms_min": 5.7841,
+     "gpairs_per_s": 5.7357,
+     "host_blocked": false,
+     "host_bound": false,
+     "clobbered": false
+    },
+    "vendor-qk8": {
+     "single_launch_ms": 3.701,
+     "accuracy": {
+      "cos_min": 0.9980064,
+      "cos_mean": 0.9993121,
+      "max_abs_over_rms": 0.170356,
+      "finite": true
+     },
+     "floor": [
+      0.98,
+      0.995
+     ],
+     "valid": true,
+     "passes": [
+      {
+       "timing": "events",
+       "us_median": 3755.6358337402344,
+       "us_min": 3742.2653198242188,
+       "host_enqueue_us_median": 1.2684962712228298,
+       "iters": 40,
+       "repeats": 3,
+       "copies": 16,
+       "host_bound": false,
+       "order": "forward"
+      },
+      {
+       "timing": "events",
+       "us_median": 3784.7427368164062,
+       "us_min": 3779.172134399414,
+       "host_enqueue_us_median": 1.2620235793292522,
+       "iters": 40,
+       "repeats": 3,
+       "copies": 16,
+       "host_bound": false,
+       "order": "reverse"
+      }
+     ],
+     "row": "attn_prefill_h256_gqa6_fp8kv_qk8",
+     "scratch_bytes": 0,
+     "ms": 3.7702,
+     "ms_min": 3.7423,
+     "gpairs_per_s": 8.901,
+     "host_blocked": false,
+     "host_bound": false,
+     "clobbered": false
+    },
+    "vendor-pv8": {
+     "single_launch_ms": 5.348,
+     "accuracy": {
+      "cos_min": 0.9993289,
+      "cos_mean": 0.9996889,
+      "max_abs_over_rms": 0.334469,
+      "finite": true
+     },
+     "floor": [
+      0.98,
+      0.995
+     ],
+     "valid": true,
+     "passes": [
+      {
+       "timing": "events",
+       "us_median": 5466.7327880859375,
+       "us_min": 5458.147811889648,
+       "host_enqueue_us_median": 1.2582517229020596,
+       "iters": 40,
+       "repeats": 3,
+       "copies": 16,
+       "host_bound": false,
+       "order": "forward"
+      },
+      {
+       "timing": "events",
+       "us_median": 5478.531646728516,
+       "us_min": 5473.964691162109,
+       "host_enqueue_us_median": 1.2725009582936764,
+       "iters": 40,
+       "repeats": 3,
+       "copies": 16,
+       "host_bound": false,
+       "order": "reverse"
+      }
+     ],
+     "row": "attn_prefill_h256_gqa6_fp8kv_pv8",
+     "scratch_bytes": 0,
+     "ms": 5.4726,
+     "ms_min": 5.4581,
+     "gpairs_per_s": 6.1321,
+     "host_blocked": false,
+     "host_bound": false,
+     "clobbered": false
+    },
+    "vendor-qk8pv8": {
+     "single_launch_ms": 3.027,
+     "accuracy": {
+      "cos_min": 0.996787,
+      "cos_mean": 0.999001,
+      "max_abs_over_rms": 0.359105,
+      "finite": true
+     },
+     "floor": [
+      0.98,
+      0.995
+     ],
+     "valid": true,
+     "passes": [
+      {
+       "timing": "events",
+       "us_median": 2947.03369140625,
+       "us_min": 2932.589530944824,
+       "host_enqueue_us_median": 1.2657605111598969,
+       "iters": 40,
+       "repeats": 3,
+       "copies": 16,
+       "host_bound": false,
+       "order": "forward"
+      },
+      {
+       "timing": "events",
+       "us_median": 2969.850730895996,
+       "us_min": 2966.3997650146484,
+       "host_enqueue_us_median": 1.280754804611206,
+       "iters": 40,
+       "repeats": 3,
+       "copies": 16,
+       "host_bound": false,
+       "order": "reverse"
+      }
+     ],
+     "row": "attn_prefill_h256_gqa6_fp8kv_qk8pv8",
+     "scratch_bytes": 0,
+     "ms": 2.9584,
+     "ms_min": 2.9326,
+     "gpairs_per_s": 11.3433,
+     "host_blocked": false,
+     "host_bound": false,
+     "clobbered": false
+    },
+    "port-exact": {
+     "single_launch_ms": 6.103,
+     "accuracy": {
+      "cos_min": 0.999998,
+      "cos_mean": 0.9999985,
+      "max_abs_over_rms": 0.015755,
+      "finite": true
+     },
+     "floor": [
+      0.9999,
+      0.9999
+     ],
+     "valid": true,
+     "passes": [
+      {
+       "timing": "events",
+       "us_median": 6145.230484008789,
+       "us_min": 6143.45703125,
+       "host_enqueue_us_median": 1.0537449270486832,
+       "iters": 40,
+       "repeats": 3,
+       "copies": 16,
+       "host_bound": false,
+       "order": "forward"
+      },
+      {
+       "timing": "events",
+       "us_median": 6169.587326049805,
+       "us_min": 6167.922210693359,
+       "host_enqueue_us_median": 1.0722549632191658,
+       "iters": 40,
+       "repeats": 3,
+       "copies": 16,
+       "host_bound": false,
+       "order": "reverse"
+      }
+     ],
+     "ms": 6.1574,
+     "ms_min": 6.1435,
+     "gpairs_per_s": 5.4501,
+     "host_blocked": false,
+     "host_bound": false,
+     "clobbered": false
+    },
+    "port-qk8": {
+     "single_launch_ms": 4.009,
+     "accuracy": {
+      "cos_min": 0.9980064,
+      "cos_mean": 0.9993121,
+      "max_abs_over_rms": 0.170356,
+      "finite": true
+     },
+     "floor": [
+      0.98,
+      0.995
+     ],
+     "valid": true,
+     "passes": [
+      {
+       "timing": "events",
+       "us_median": 3984.212875366211,
+       "us_min": 3979.064178466797,
+       "host_enqueue_us_median": 1.0560033842921257,
+       "iters": 40,
+       "repeats": 3,
+       "copies": 16,
+       "host_bound": false,
+       "order": "forward"
+      },
+      {
+       "timing": "events",
+       "us_median": 4000.3055572509766,
+       "us_min": 3995.532989501953,
+       "host_enqueue_us_median": 1.1087511666119099,
+       "iters": 40,
+       "repeats": 3,
+       "copies": 16,
+       "host_bound": false,
+       "order": "reverse"
+      }
+     ],
+     "ms": 3.9923,
+     "ms_min": 3.9791,
+     "gpairs_per_s": 8.4059,
+     "host_blocked": false,
+     "host_bound": false,
+     "clobbered": false
+    },
+    "port-pv8": {
+     "single_launch_ms": 5.147,
+     "accuracy": {
+      "cos_min": 0.9993289,
+      "cos_mean": 0.9996889,
+      "max_abs_over_rms": 0.334469,
+      "finite": true
+     },
+     "floor": [
+      0.98,
+      0.995
+     ],
+     "valid": true,
+     "passes": [
+      {
+       "timing": "events",
+       "us_median": 5493.46923828125,
+       "us_min": 5487.747955322266,
+       "host_enqueue_us_median": 1.0544899851083755,
+       "iters": 40,
+       "repeats": 3,
+       "copies": 16,
+       "host_bound": false,
+       "order": "forward"
+      },
+      {
+       "timing": "events",
+       "us_median": 5485.477447509766,
+       "us_min": 5444.197845458984,
+       "host_enqueue_us_median": 1.0512769222259521,
+       "iters": 40,
+       "repeats": 3,
+       "copies": 16,
+       "host_bound": false,
+       "order": "reverse"
+      }
+     ],
+     "ms": 5.4895,
+     "ms_min": 5.4442,
+     "gpairs_per_s": 6.1133,
+     "host_blocked": false,
+     "host_bound": false,
+     "clobbered": false
+    },
+    "port-qk8pv8": {
+     "single_launch_ms": 2.972,
+     "accuracy": {
+      "cos_min": 0.996787,
+      "cos_mean": 0.999001,
+      "max_abs_over_rms": 0.359105,
+      "finite": true
+     },
+     "floor": [
+      0.98,
+      0.995
+     ],
+     "valid": true,
+     "passes": [
+      {
+       "timing": "events",
+       "us_median": 2984.5502853393555,
+       "us_min": 2979.1683197021484,
+       "host_enqueue_us_median": 1.0499963536858559,
+       "iters": 40,
+       "repeats": 3,
+       "copies": 16,
+       "host_bound": false,
+       "order": "forward"
+      },
+      {
+       "timing": "events",
+       "us_median": 2991.286849975586,
+       "us_min": 2988.9097213745117,
+       "host_enqueue_us_median": 1.0432559065520763,
+       "iters": 40,
+       "repeats": 3,
+       "copies": 16,
+       "host_bound": false,
+       "order": "reverse"
+      }
+     ],
+     "ms": 2.9879,
+     "ms_min": 2.9792,
+     "gpairs_per_s": 11.2314,
+     "host_blocked": false,
+     "host_bound": false,
+     "clobbered": false
+    },
+    "port-qk8-scatter": {
+     "single_launch_ms": 4.323,
+     "accuracy": {
+      "cos_min": 0.9980064,
+      "cos_mean": 0.9993121,
+      "max_abs_over_rms": 0.170356,
+      "finite": true
+     },
+     "floor": [
+      0.98,
+      0.995
+     ],
+     "valid": true,
+     "passes": [
+      {
+       "timing": "events",
+       "us_median": 4002.4566650390625,
+       "us_min": 3998.525619506836,
+       "host_enqueue_us_median": 1.0577496141195297,
+       "iters": 40,
+       "repeats": 3,
+       "copies": 16,
+       "host_bound": false,
+       "order": "forward"
+      },
+      {
+       "timing": "events",
+       "us_median": 4019.2047119140625,
+       "us_min": 4016.6980743408203,
+       "host_enqueue_us_median": 1.062755472958088,
+       "iters": 40,
+       "repeats": 3,
+       "copies": 16,
+       "host_bound": false,
+       "order": "reverse"
+      }
+     ],
+     "ms": 4.0108,
+     "ms_min": 3.9985,
+     "gpairs_per_s": 8.367,
+     "host_blocked": false,
+     "host_bound": false,
+     "clobbered": false
+    }
+   },
+   "agreement": {
+    "same_class": {
+     "cos_min": 0.9933407,
+     "cos_mean": 0.9989726,
+     "max_abs_over_rms": 1.571821,
+     "finite": true,
+     "bit_identical": false
+    },
+    "pv8_class": {
+     "cos_min": 0.9989016,
+     "cos_mean": 0.9996819,
+     "max_abs_over_rms": 1.377159,
+     "finite": true,
+     "bit_identical": false
+    },
+    "ours": {
+     "cos_min": 1.0,
+     "cos_mean": 1.0,
+     "max_abs_over_rms": 0.0,
+     "finite": true,
+     "bit_identical": true
+    },
+    "port-exact": {
+     "cos_min": 1.0,
+     "cos_mean": 1.0,
+     "max_abs_over_rms": 0.0,
+     "finite": true,
+     "bit_identical": true
+    },
+    "port-qk8": {
+     "cos_min": 1.0,
+     "cos_mean": 1.0,
+     "max_abs_over_rms": 0.0,
+     "finite": true,
+     "bit_identical": true
+    },
+    "port-pv8": {
+     "cos_min": 1.0,
+     "cos_mean": 1.0,
+     "max_abs_over_rms": 0.0,
+     "finite": true,
+     "bit_identical": true
+    },
+    "port-qk8pv8": {
+     "cos_min": 1.0,
+     "cos_mean": 1.0,
+     "max_abs_over_rms": 0.0,
+     "finite": true,
+     "bit_identical": true
+    },
+    "port-qk8-scatter": {
+     "cos_min": 1.0,
+     "cos_mean": 1.0,
+     "max_abs_over_rms": 0.0,
+     "finite": true,
+     "bit_identical": true
+    }
+   }
+  },
+  {
+   "q": 8192,
+   "ctx": 65536,
+   "pairs": 503320576,
+   "copies": 5,
+   "kv_bytes_per_copy": 67108864,
+   "sampled_rows": 48,
+   "arms": {
+    "ours-fp8qk": {
+     "single_launch_ms": 163.821,
+     "accuracy": {
+      "cos_min": 0.9960154,
+      "cos_mean": 0.9985457,
+      "max_abs_over_rms": 0.644026,
+      "finite": true
+     },
+     "floor": [
+      0.98,
+      0.995
+     ],
+     "valid": true,
+     "passes": [
+      {
+       "timing": "events",
+       "us_median": 164498.83355034722,
+       "us_min": 163998.01974826388,
+       "host_enqueue_us_median": 29.532238841056824,
+       "iters": 9,
+       "repeats": 3,
+       "copies": 5,
+       "host_bound": false,
+       "order": "forward"
+      },
+      {
+       "timing": "events",
+       "us_median": 165762.70887586806,
+       "us_min": 165569.3359375,
+       "host_enqueue_us_median": 29.066681034035152,
+       "iters": 9,
+       "repeats": 3,
+       "copies": 5,
+       "host_bound": false,
+       "order": "reverse"
+      }
+     ],
+     "class_model": {
+      "tile": 64,
+      "against_reference": {
+       "cos_min": 0.9960202,
+       "cos_mean": 0.9985474,
+       "max_abs_over_rms": 0.642463,
+       "finite": true
+      },
+      "kernel_against_model": {
+       "cos_min": 0.9999979,
+       "cos_mean": 0.9999986,
+       "max_abs_over_rms": 0.012781,
+       "finite": true
+      }
+     },
+     "ms": 165.1308,
+     "ms_min": 163.998,
+     "gpairs_per_s": 3.048,
+     "host_blocked": false,
+     "host_bound": false,
+     "clobbered": false
+    },
+    "ours-exact": {
+     "single_launch_ms": 330.142,
+     "accuracy": {
+      "cos_min": 0.996671,
+      "cos_mean": 0.9993155,
+      "max_abs_over_rms": 0.633175,
+      "finite": true
+     },
+     "floor": [
+      0.98,
+      0.995
+     ],
+     "valid": true,
+     "passes": [
+      {
+       "timing": "events",
+       "us_median": 324008.0078125,
+       "us_min": 320816.2841796875,
+       "host_enqueue_us_median": 30.882004648447037,
+       "iters": 5,
+       "repeats": 3,
+       "copies": 5,
+       "host_bound": false,
+       "order": "forward"
+      },
+      {
+       "timing": "events",
+       "us_median": 323473.2666015625,
+       "us_min": 320399.853515625,
+       "host_enqueue_us_median": 30.71194514632225,
+       "iters": 5,
+       "repeats": 3,
+       "copies": 5,
+       "host_bound": false,
+       "order": "reverse"
+      }
+     ],
+     "class_model": {
+      "tile": 64,
+      "against_reference": {
+       "cos_min": 0.9966683,
+       "cos_mean": 0.9993167,
+       "max_abs_over_rms": 0.631015,
+       "finite": true
+      },
+      "kernel_against_model": {
+       "cos_min": 0.9999975,
+       "cos_mean": 0.9999986,
+       "max_abs_over_rms": 0.018189,
+       "finite": true
+      }
+     },
+     "ms": 323.7406,
+     "ms_min": 320.3999,
+     "gpairs_per_s": 1.5547,
+     "host_blocked": false,
+     "host_bound": false,
+     "clobbered": false
+    },
+    "vendor-exact": {
+     "single_launch_ms": 74.603,
+     "accuracy": {
+      "cos_min": 0.9999979,
+      "cos_mean": 0.9999985,
+      "max_abs_over_rms": 0.024171,
+      "finite": true
+     },
+     "floor": [
+      0.9999,
+      0.9999
+     ],
+     "valid": true,
+     "passes": [
+      {
+       "timing": "events",
+       "us_median": 76901.52587890625,
+       "us_min": 76765.49072265625,
+       "host_enqueue_us_median": 1.3705110177397728,
+       "iters": 20,
+       "repeats": 3,
+       "copies": 5,
+       "host_bound": false,
+       "order": "forward"
+      },
+      {
+       "timing": "events",
+       "us_median": 77194.87915039062,
+       "us_min": 77087.71362304688,
+       "host_enqueue_us_median": 1.3314886018633842,
+       "iters": 20,
+       "repeats": 3,
+       "copies": 5,
+       "host_bound": false,
+       "order": "reverse"
+      }
+     ],
+     "row": "attn_prefill_h256_gqa6_fp8kv",
+     "scratch_bytes": 0,
+     "ms": 77.0482,
+     "ms_min": 76.7655,
+     "gpairs_per_s": 6.5325,
+     "host_blocked": false,
+     "host_bound": false,
+     "clobbered": false
+    },
+    "vendor-qk8": {
+     "single_launch_ms": 47.61,
+     "accuracy": {
+      "cos_min": 0.9979195,
+      "cos_mean": 0.9992015,
+      "max_abs_over_rms": 0.305709,
+      "finite": true
+     },
+     "floor": [
+      0.98,
+      0.995
+     ],
+     "valid": true,
+     "passes": [
+      {
+       "timing": "events",
+       "us_median": 47264.564514160156,
+       "us_min": 47214.58053588867,
+       "host_enqueue_us_median": 1.2921809684485197,
+       "iters": 32,
+       "repeats": 3,
+       "copies": 5,
+       "host_bound": false,
+       "order": "forward"
+      },
+      {
+       "timing": "events",
+       "us_median": 47319.454193115234,
+       "us_min": 47302.547454833984,
+       "host_enqueue_us_median": 1.362204784527421,
+       "iters": 32,
+       "repeats": 3,
+       "copies": 5,
+       "host_bound": false,
+       "order": "reverse"
+      }
+     ],
+     "row": "attn_prefill_h256_gqa6_fp8kv_qk8",
+     "scratch_bytes": 0,
+     "ms": 47.292,
+     "ms_min": 47.2146,
+     "gpairs_per_s": 10.6428,
+     "host_blocked": false,
+     "host_bound": false,
+     "clobbered": false
+    },
+    "vendor-pv8": {
+     "single_launch_ms": 71.232,
+     "accuracy": {
+      "cos_min": 0.9964851,
+      "cos_mean": 0.9996346,
+      "max_abs_over_rms": 0.598962,
+      "finite": true
+     },
+     "floor": [
+      0.98,
+      0.995
+     ],
+     "valid": true,
+     "passes": [
+      {
+       "timing": "events",
+       "us_median": 73311.98265438988,
+       "us_min": 72885.16671316964,
+       "host_enqueue_us_median": 1.3323678147225153,
+       "iters": 21,
+       "repeats": 3,
+       "copies": 5,
+       "host_bound": false,
+       "order": "forward"
+      },
+      {
+       "timing": "events",
+       "us_median": 72928.98414248512,
+       "us_min": 72773.82696242559,
+       "host_enqueue_us_median": 1.3600192254497891,
+       "iters": 21,
+       "repeats": 3,
+       "copies": 5,
+       "host_bound": false,
+       "order": "reverse"
+      }
+     ],
+     "row": "attn_prefill_h256_gqa6_fp8kv_pv8",
+     "scratch_bytes": 0,
+     "ms": 73.1205,
+     "ms_min": 72.7738,
+     "gpairs_per_s": 6.8834,
+     "host_blocked": false,
+     "host_bound": false,
+     "clobbered": false
+    },
+    "vendor-qk8pv8": {
+     "single_launch_ms": 37.025,
+     "accuracy": {
+      "cos_min": 0.9958454,
+      "cos_mean": 0.9988441,
+      "max_abs_over_rms": 0.629004,
+      "finite": true
+     },
+     "floor": [
+      0.98,
+      0.995
+     ],
+     "valid": true,
+     "passes": [
+      {
+       "timing": "events",
+       "us_median": 37086.69128417969,
+       "us_min": 37031.14318847656,
+       "host_enqueue_us_median": 1.3077515177428722,
+       "iters": 40,
+       "repeats": 3,
+       "copies": 5,
+       "host_bound": false,
+       "order": "forward"
+      },
+      {
+       "timing": "events",
+       "us_median": 37076.446533203125,
+       "us_min": 37005.68542480469,
+       "host_enqueue_us_median": 1.3740034773945808,
+       "iters": 40,
+       "repeats": 3,
+       "copies": 5,
+       "host_bound": false,
+       "order": "reverse"
+      }
+     ],
+     "row": "attn_prefill_h256_gqa6_fp8kv_qk8pv8",
+     "scratch_bytes": 0,
+     "ms": 37.0816,
+     "ms_min": 37.0057,
+     "gpairs_per_s": 13.5733,
+     "host_blocked": false,
+     "host_bound": false,
+     "clobbered": false
+    },
+    "port-exact": {
+     "single_launch_ms": 79.375,
+     "accuracy": {
+      "cos_min": 0.9999979,
+      "cos_mean": 0.9999985,
+      "max_abs_over_rms": 0.024171,
+      "finite": true
+     },
+     "floor": [
+      0.9999,
+      0.9999
+     ],
+     "valid": true,
+     "passes": [
+      {
+       "timing": "events",
+       "us_median": 81880.69875616777,
+       "us_min": 81764.53279194079,
+       "host_enqueue_us_median": 1.1057739979342411,
+       "iters": 19,
+       "repeats": 3,
+       "copies": 5,
+       "host_bound": false,
+       "order": "forward"
+      },
+      {
+       "timing": "events",
+       "us_median": 81747.36585115132,
+       "us_min": 81712.23530016448,
+       "host_enqueue_us_median": 1.132635301665256,
+       "iters": 19,
+       "repeats": 3,
+       "copies": 5,
+       "host_bound": false,
+       "order": "reverse"
+      }
+     ],
+     "ms": 81.814,
+     "ms_min": 81.7122,
+     "gpairs_per_s": 6.152,
+     "host_blocked": false,
+     "host_bound": false,
+     "clobbered": false
+    },
+    "port-qk8": {
+     "single_launch_ms": 49.833,
+     "accuracy": {
+      "cos_min": 0.9979195,
+      "cos_mean": 0.9992015,
+      "max_abs_over_rms": 0.305709,
+      "finite": true
+     },
+     "floor": [
+      0.98,
+      0.995
+     ],
+     "valid": true,
+     "passes": [
+      {
+       "timing": "events",
+       "us_median": 50257.633463541664,
+       "us_min": 50251.424153645836,
+       "host_enqueue_us_median": 1.0640049974123638,
+       "iters": 30,
+       "repeats": 3,
+       "copies": 5,
+       "host_bound": false,
+       "order": "forward"
+      },
+      {
+       "timing": "events",
+       "us_median": 50205.908203125,
+       "us_min": 50163.553873697914,
+       "host_enqueue_us_median": 1.0663333038489025,
+       "iters": 30,
+       "repeats": 3,
+       "copies": 5,
+       "host_bound": false,
+       "order": "reverse"
+      }
+     ],
+     "ms": 50.2318,
+     "ms_min": 50.1636,
+     "gpairs_per_s": 10.02,
+     "host_blocked": false,
+     "host_bound": false,
+     "clobbered": false
+    },
+    "port-pv8": {
+     "single_launch_ms": 72.39,
+     "accuracy": {
+      "cos_min": 0.9964851,
+      "cos_mean": 0.9996346,
+      "max_abs_over_rms": 0.598962,
+      "finite": true
+     },
+     "floor": [
+      0.98,
+      0.995
+     ],
+     "valid": true,
+     "passes": [
+      {
+       "timing": "events",
+       "us_median": 72310.14578683036,
+       "us_min": 72288.83579799107,
+       "host_enqueue_us_median": 1.0847468816098713,
+       "iters": 21,
+       "repeats": 3,
+       "copies": 5,
+       "host_bound": false,
+       "order": "forward"
+      },
+      {
+       "timing": "events",
+       "us_median": 72576.02074032738,
+       "us_min": 72539.56240699405,
+       "host_enqueue_us_median": 1.1147709474677132,
+       "iters": 21,
+       "repeats": 3,
+       "copies": 5,
+       "host_bound": false,
+       "order": "reverse"
+      }
+     ],
+     "ms": 72.4431,
+     "ms_min": 72.2888,
+     "gpairs_per_s": 6.9478,
+     "host_blocked": false,
+     "host_bound": false,
+     "clobbered": false
+    },
+    "port-qk8pv8": {
+     "single_launch_ms": 36.712,
+     "accuracy": {
+      "cos_min": 0.9958454,
+      "cos_mean": 0.9988441,
+      "max_abs_over_rms": 0.629004,
+      "finite": true
+     },
+     "floor": [
+      0.98,
+      0.995
+     ],
+     "valid": true,
+     "passes": [
+      {
+       "timing": "events",
+       "us_median": 36735.26306152344,
+       "us_min": 36653.546142578125,
+       "host_enqueue_us_median": 1.065258402377367,
+       "iters": 40,
+       "repeats": 3,
+       "copies": 5,
+       "host_bound": false,
+       "order": "forward"
+      },
+      {
+       "timing": "events",
+       "us_median": 36736.70959472656,
+       "us_min": 36735.61706542969,
+       "host_enqueue_us_median": 1.0602525435388088,
+       "iters": 40,
+       "repeats": 3,
+       "copies": 5,
+       "host_bound": false,
+       "order": "reverse"
+      }
+     ],
+     "ms": 36.736,
+     "ms_min": 36.6535,
+     "gpairs_per_s": 13.701,
+     "host_blocked": false,
+     "host_bound": false,
+     "clobbered": false
+    },
+    "port-qk8-scatter": {
+     "single_launch_ms": 49.816,
+     "accuracy": {
+      "cos_min": 0.9979195,
+      "cos_mean": 0.9992015,
+      "max_abs_over_rms": 0.305709,
+      "finite": true
+     },
+     "floor": [
+      0.98,
+      0.995
+     ],
+     "valid": true,
+     "passes": [
+      {
+       "timing": "events",
+       "us_median": 50299.198404947914,
+       "us_min": 50250.2197265625,
+       "host_enqueue_us_median": 1.1616696914037068,
+       "iters": 30,
+       "repeats": 3,
+       "copies": 5,
+       "host_bound": false,
+       "order": "forward"
+      },
+      {
+       "timing": "events",
+       "us_median": 50239.213053385414,
+       "us_min": 50214.937337239586,
+       "host_enqueue_us_median": 1.078999290863673,
+       "iters": 30,
+       "repeats": 3,
+       "copies": 5,
+       "host_bound": false,
+       "order": "reverse"
+      }
+     ],
+     "ms": 50.2692,
+     "ms_min": 50.2149,
+     "gpairs_per_s": 10.0125,
+     "host_blocked": false,
+     "host_bound": false,
+     "clobbered": false
+    }
+   },
+   "agreement": {
+    "same_class": {
+     "cos_min": 0.9900613,
+     "cos_mean": 0.997428,
+     "max_abs_over_rms": 2.1124,
+     "finite": true,
+     "bit_identical": false
+    },
+    "pv8_class": {
+     "cos_min": 0.995056,
+     "cos_mean": 0.9989812,
+     "max_abs_over_rms": 0.783967,
+     "finite": true,
+     "bit_identical": false
+    },
+    "ours": {
+     "cos_min": 0.9941674,
+     "cos_mean": 0.9984723,
+     "max_abs_over_rms": 1.369974,
+     "finite": true,
+     "bit_identical": false
+    },
+    "port-exact": {
+     "cos_min": 1.0,
+     "cos_mean": 1.0,
+     "max_abs_over_rms": 0.0,
+     "finite": true,
+     "bit_identical": true
+    },
+    "port-qk8": {
+     "cos_min": 1.0,
+     "cos_mean": 1.0,
+     "max_abs_over_rms": 0.0,
+     "finite": true,
+     "bit_identical": true
+    },
+    "port-pv8": {
+     "cos_min": 1.0,
+     "cos_mean": 1.0,
+     "max_abs_over_rms": 0.0,
+     "finite": true,
+     "bit_identical": true
+    },
+    "port-qk8pv8": {
+     "cos_min": 1.0,
+     "cos_mean": 1.0,
+     "max_abs_over_rms": 0.0,
+     "finite": true,
+     "bit_identical": true
+    },
+    "port-qk8-scatter": {
+     "cos_min": 1.0,
+     "cos_mean": 1.0,
+     "max_abs_over_rms": 0.0,
+     "finite": true,
+     "bit_identical": true
+    }
+   }
+  },
+  {
+   "q": 8192,
+   "ctx": 131072,
+   "pairs": 1040191488,
+   "copies": 3,
+   "kv_bytes_per_copy": 134217728,
+   "sampled_rows": 48,
+   "arms": {
+    "ours-fp8qk": {
+     "single_launch_ms": 344.194,
+     "accuracy": {
+      "cos_min": 0.9935781,
+      "cos_mean": 0.9982307,
+      "max_abs_over_rms": 0.652497,
+      "finite": true
+     },
+     "floor": [
+      0.98,
+      0.995
+     ],
+     "valid": true,
+     "passes": [
+      {
+       "timing": "events",
+       "us_median": 345064.4836425781,
+       "us_min": 344977.84423828125,
+       "host_enqueue_us_median": 32.22748637199402,
+       "iters": 4,
+       "repeats": 3,
+       "copies": 3,
+       "host_bound": false,
+       "order": "forward"
+      },
+      {
+       "timing": "events",
+       "us_median": 344838.43994140625,
+       "us_min": 344574.03564453125,
+       "host_enqueue_us_median": 30.789989978075027,
+       "iters": 4,
+       "repeats": 3,
+       "copies": 3,
+       "host_bound": false,
+       "order": "reverse"
+      }
+     ],
+     "class_model": {
+      "tile": 64,
+      "against_reference": {
+       "cos_min": 0.9935784,
+       "cos_mean": 0.9982327,
+       "max_abs_over_rms": 0.651948,
+       "finite": true
+      },
+      "kernel_against_model": {
+       "cos_min": 0.9999982,
+       "cos_mean": 0.9999986,
+       "max_abs_over_rms": 0.013925,
+       "finite": true
+      }
+     },
+     "ms": 344.9515,
+     "ms_min": 344.574,
+     "gpairs_per_s": 3.0155,
+     "host_blocked": false,
+     "host_bound": false,
+     "clobbered": false
+    },
+    "ours-exact": {
+     "single_launch_ms": 716.783,
+     "accuracy": {
+      "cos_min": 0.9938499,
+      "cos_mean": 0.9989965,
+      "max_abs_over_rms": 0.543716,
+      "finite": true
+     },
+     "floor": [
+      0.98,
+      0.995
+     ],
+     "valid": true,
+     "passes": [
+      {
+       "timing": "events",
+       "us_median": 733019.6533203125,
+       "us_min": 729505.0659179688,
+       "host_enqueue_us_median": 32.85985440015793,
+       "iters": 2,
+       "repeats": 3,
+       "copies": 3,
+       "host_bound": false,
+       "order": "forward"
+      },
+      {
+       "timing": "events",
+       "us_median": 737312.1948242188,
+       "us_min": 734520.9350585938,
+       "host_enqueue_us_median": 34.765107557177544,
+       "iters": 2,
+       "repeats": 3,
+       "copies": 3,
+       "host_bound": false,
+       "order": "reverse"
+      }
+     ],
+     "class_model": {
+      "tile": 64,
+      "against_reference": {
+       "cos_min": 0.9938509,
+       "cos_mean": 0.9989977,
+       "max_abs_over_rms": 0.546326,
+       "finite": true
+      },
+      "kernel_against_model": {
+       "cos_min": 0.999998,
+       "cos_mean": 0.9999986,
+       "max_abs_over_rms": 0.014123,
+       "finite": true
+      }
+     },
+     "ms": 735.1659,
+     "ms_min": 729.5051,
+     "gpairs_per_s": 1.4149,
+     "host_blocked": false,
+     "host_bound": false,
+     "clobbered": false
+    },
+    "vendor-exact": {
+     "single_launch_ms": 156.974,
+     "accuracy": {
+      "cos_min": 0.999998,
+      "cos_mean": 0.9999984,
+      "max_abs_over_rms": 0.020275,
+      "finite": true
+     },
+     "floor": [
+      0.9999,
+      0.9999
+     ],
+     "valid": true,
+     "passes": [
+      {
+       "timing": "events",
+       "us_median": 158581.75048828125,
+       "us_min": 157888.3544921875,
+       "host_enqueue_us_median": 1.5120021998882294,
+       "iters": 10,
+       "repeats": 3,
+       "copies": 3,
+       "host_bound": false,
+       "order": "forward"
+      },
+      {
+       "timing": "events",
+       "us_median": 158942.32177734375,
+       "us_min": 157449.1943359375,
+       "host_enqueue_us_median": 1.3750046491622925,
+       "iters": 10,
+       "repeats": 3,
+       "copies": 3,
+       "host_bound": false,
+       "order": "reverse"
+      }
+     ],
+     "row": "attn_prefill_h256_gqa6_fp8kv",
+     "scratch_bytes": 0,
+     "ms": 158.762,
+     "ms_min": 157.4492,
+     "gpairs_per_s": 6.5519,
+     "host_blocked": false,
+     "host_bound": false,
+     "clobbered": false
+    },
+    "vendor-qk8": {
+     "single_launch_ms": 97.127,
+     "accuracy": {
+      "cos_min": 0.998542,
+      "cos_mean": 0.9992279,
+      "max_abs_over_rms": 0.237108,
+      "finite": true
+     },
+     "floor": [
+      0.98,
+      0.995
+     ],
+     "valid": true,
+     "passes": [
+      {
+       "timing": "events",
+       "us_median": 96926.26139322917,
+       "us_min": 96840.2587890625,
+       "host_enqueue_us_median": 1.3320085903008778,
+       "iters": 15,
+       "repeats": 3,
+       "copies": 3,
+       "host_bound": false,
+       "order": "forward"
+      },
+      {
+       "timing": "events",
+       "us_median": 96824.9267578125,
+       "us_min": 96684.80631510417,
+       "host_enqueue_us_median": 1.3886640469233196,
+       "iters": 15,
+       "repeats": 3,
+       "copies": 3,
+       "host_bound": false,
+       "order": "reverse"
+      }
+     ],
+     "row": "attn_prefill_h256_gqa6_fp8kv_qk8",
+     "scratch_bytes": 0,
+     "ms": 96.8756,
+     "ms_min": 96.6848,
+     "gpairs_per_s": 10.7374,
+     "host_blocked": false,
+     "host_bound": false,
+     "clobbered": false
+    },
+    "vendor-pv8": {
+     "single_launch_ms": 149.356,
+     "accuracy": {
+      "cos_min": 0.993595,
+      "cos_mean": 0.9995946,
+      "max_abs_over_rms": 0.551083,
+      "finite": true
+     },
+     "floor": [
+      0.98,
+      0.995
+     ],
+     "valid": true,
+     "passes": [
+      {
+       "timing": "events",
+       "us_median": 149773.2666015625,
+       "us_min": 149710.97412109375,
+       "host_enqueue_us_median": 1.393025740981102,
+       "iters": 10,
+       "repeats": 3,
+       "copies": 3,
+       "host_bound": false,
+       "order": "forward"
+      },
+      {
+       "timing": "events",
+       "us_median": 149323.66943359375,
+       "us_min": 149314.41650390625,
+       "host_enqueue_us_median": 1.576961949467659,
+       "iters": 10,
+       "repeats": 3,
+       "copies": 3,
+       "host_bound": false,
+       "order": "reverse"
+      }
+     ],
+     "row": "attn_prefill_h256_gqa6_fp8kv_pv8",
+     "scratch_bytes": 0,
+     "ms": 149.5485,
+     "ms_min": 149.3144,
+     "gpairs_per_s": 6.9555,
+     "host_blocked": false,
+     "host_bound": false,
+     "clobbered": false
+    },
+    "vendor-qk8pv8": {
+     "single_launch_ms": 76.733,
+     "accuracy": {
+      "cos_min": 0.9923242,
+      "cos_mean": 0.9988192,
+      "max_abs_over_rms": 0.739551,
+      "finite": true
+     },
+     "floor": [
+      0.98,
+      0.995
+     ],
+     "valid": true,
+     "passes": [
+      {
+       "timing": "events",
+       "us_median": 75946.51489257812,
+       "us_min": 75927.7587890625,
+       "host_enqueue_us_median": 1.345016062259674,
+       "iters": 20,
+       "repeats": 3,
+       "copies": 3,
+       "host_bound": false,
+       "order": "forward"
+      },
+      {
+       "timing": "events",
+       "us_median": 75880.13916015625,
+       "us_min": 75760.17456054688,
+       "host_enqueue_us_median": 1.3625016435980797,
+       "iters": 20,
+       "repeats": 3,
+       "copies": 3,
+       "host_bound": false,
+       "order": "reverse"
+      }
+     ],
+     "row": "attn_prefill_h256_gqa6_fp8kv_qk8pv8",
+     "scratch_bytes": 0,
+     "ms": 75.9133,
+     "ms_min": 75.7602,
+     "gpairs_per_s": 13.7024,
+     "host_blocked": false,
+     "host_bound": false,
+     "clobbered": false
+    },
+    "port-exact": {
+     "single_launch_ms": 170.013,
+     "accuracy": {
+      "cos_min": 0.999998,
+      "cos_mean": 0.9999984,
+      "max_abs_over_rms": 0.020275,
+      "finite": true
+     },
+     "floor": [
+      0.9999,
+      0.9999
+     ],
+     "valid": true,
+     "passes": [
+      {
+       "timing": "events",
+       "us_median": 167772.28461371528,
+       "us_min": 167284.15256076388,
+       "host_enqueue_us_median": 1.2100467251406775,
+       "iters": 9,
+       "repeats": 3,
+       "copies": 3,
+       "host_bound": false,
+       "order": "forward"
+      },
+      {
+       "timing": "events",
+       "us_median": 167516.83213975694,
+       "us_min": 167187.20160590278,
+       "host_enqueue_us_median": 1.2277935942014058,
+       "iters": 9,
+       "repeats": 3,
+       "copies": 3,
+       "host_bound": false,
+       "order": "reverse"
+      }
+     ],
+     "ms": 167.6446,
+     "ms_min": 167.1872,
+     "gpairs_per_s": 6.2047,
+     "host_blocked": false,
+     "host_bound": false,
+     "clobbered": false
+    },
+    "port-qk8": {
+     "single_launch_ms": 103.171,
+     "accuracy": {
+      "cos_min": 0.998542,
+      "cos_mean": 0.9992279,
+      "max_abs_over_rms": 0.237108,
+      "finite": true
+     },
+     "floor": [
+      0.98,
+      0.995
+     ],
+     "valid": true,
+     "passes": [
+      {
+       "timing": "events",
+       "us_median": 102954.20735677083,
+       "us_min": 102878.06803385417,
+       "host_enqueue_us_median": 1.126000036795934,
+       "iters": 15,
+       "repeats": 3,
+       "copies": 3,
+       "host_bound": false,
+       "order": "forward"
+      },
+      {
+       "timing": "events",
+       "us_median": 102976.4404296875,
+       "us_min": 102934.44010416667,
+       "host_enqueue_us_median": 1.1726592977841694,
+       "iters": 15,
+       "repeats": 3,
+       "copies": 3,
+       "host_bound": false,
+       "order": "reverse"
+      }
+     ],
+     "ms": 102.9653,
+     "ms_min": 102.8781,
+     "gpairs_per_s": 10.1023,
+     "host_blocked": false,
+     "host_bound": false,
+     "clobbered": false
+    },
+    "port-pv8": {
+     "single_launch_ms": 148.382,
+     "accuracy": {
+      "cos_min": 0.993595,
+      "cos_mean": 0.9995946,
+      "max_abs_over_rms": 0.551083,
+      "finite": true
+     },
+     "floor": [
+      0.98,
+      0.995
+     ],
+     "valid": true,
+     "passes": [
+      {
+       "timing": "events",
+       "us_median": 149091.49169921875,
+       "us_min": 148896.142578125,
+       "host_enqueue_us_median": 1.1560041457414627,
+       "iters": 10,
+       "repeats": 3,
+       "copies": 3,
+       "host_bound": false,
+       "order": "forward"
+      },
+      {
+       "timing": "events",
+       "us_median": 150018.24951171875,
+       "us_min": 149689.88037109375,
+       "host_enqueue_us_median": 1.2570060789585114,
+       "iters": 10,
+       "repeats": 3,
+       "copies": 3,
+       "host_bound": false,
+       "order": "reverse"
+      }
+     ],
+     "ms": 149.5549,
+     "ms_min": 148.8961,
+     "gpairs_per_s": 6.9552,
+     "host_blocked": false,
+     "host_bound": false,
+     "clobbered": false
+    },
+    "port-qk8pv8": {
+     "single_launch_ms": 76.225,
+     "accuracy": {
+      "cos_min": 0.9923242,
+      "cos_mean": 0.9988192,
+      "max_abs_over_rms": 0.739551,
+      "finite": true
+     },
+     "floor": [
+      0.98,
+      0.995
+     ],
+     "valid": true,
+     "passes": [
+      {
+       "timing": "events",
+       "us_median": 75587.90283203125,
+       "us_min": 75473.23608398438,
+       "host_enqueue_us_median": 1.127016730606556,
+       "iters": 20,
+       "repeats": 3,
+       "copies": 3,
+       "host_bound": false,
+       "order": "forward"
+      },
+      {
+       "timing": "events",
+       "us_median": 75486.41967773438,
+       "us_min": 75481.26831054688,
+       "host_enqueue_us_median": 1.1024996638298035,
+       "iters": 20,
+       "repeats": 3,
+       "copies": 3,
+       "host_bound": false,
+       "order": "reverse"
+      }
+     ],
+     "ms": 75.5372,
+     "ms_min": 75.4732,
+     "gpairs_per_s": 13.7706,
+     "host_blocked": false,
+     "host_bound": false,
+     "clobbered": false
+    },
+    "port-qk8-scatter": {
+     "single_launch_ms": 103.361,
+     "accuracy": {
+      "cos_min": 0.998542,
+      "cos_mean": 0.9992279,
+      "max_abs_over_rms": 0.237108,
+      "finite": true
+     },
+     "floor": [
+      0.98,
+      0.995
+     ],
+     "valid": true,
+     "passes": [
+      {
+       "timing": "events",
+       "us_median": 102985.90494791667,
+       "us_min": 102970.35319010417,
+       "host_enqueue_us_median": 1.1880571643511455,
+       "iters": 15,
+       "repeats": 3,
+       "copies": 3,
+       "host_bound": false,
+       "order": "forward"
+      },
+      {
+       "timing": "events",
+       "us_median": 102944.14876302083,
+       "us_min": 102942.4560546875,
+       "host_enqueue_us_median": 1.2113402287165325,
+       "iters": 15,
+       "repeats": 3,
+       "copies": 3,
+       "host_bound": false,
+       "order": "reverse"
+      }
+     ],
+     "ms": 102.965,
+     "ms_min": 102.9425,
+     "gpairs_per_s": 10.1024,
+     "host_blocked": false,
+     "host_bound": false,
+     "clobbered": false
+    }
+   },
+   "agreement": {
+    "same_class": {
+     "cos_min": 0.9876354,
+     "cos_mean": 0.9971311,
+     "max_abs_over_rms": 1.566256,
+     "finite": true,
+     "bit_identical": false
+    },
+    "pv8_class": {
+     "cos_min": 0.9912613,
+     "cos_mean": 0.9987217,
+     "max_abs_over_rms": 0.749737,
+     "finite": true,
+     "bit_identical": false
+    },
+    "ours": {
+     "cos_min": 0.9925389,
+     "cos_mean": 0.9982894,
+     "max_abs_over_rms": 0.790686,
+     "finite": true,
+     "bit_identical": false
+    },
+    "port-exact": {
+     "cos_min": 1.0,
+     "cos_mean": 1.0,
+     "max_abs_over_rms": 0.0,
+     "finite": true,
+     "bit_identical": true
+    },
+    "port-qk8": {
+     "cos_min": 1.0,
+     "cos_mean": 1.0,
+     "max_abs_over_rms": 0.0,
+     "finite": true,
+     "bit_identical": true
+    },
+    "port-pv8": {
+     "cos_min": 1.0,
+     "cos_mean": 1.0,
+     "max_abs_over_rms": 0.0,
+     "finite": true,
+     "bit_identical": true
+    },
+    "port-qk8pv8": {
+     "cos_min": 1.0,
+     "cos_mean": 1.0,
+     "max_abs_over_rms": 0.0,
+     "finite": true,
+     "bit_identical": true
+    },
+    "port-qk8-scatter": {
+     "cos_min": 1.0,
+     "cos_mean": 1.0,
+     "max_abs_over_rms": 0.0,
+     "finite": true,
+     "bit_identical": true
+    }
+   }
+  },
+  {
+   "q": 8192,
+   "ctx": 196608,
+   "pairs": 1577062400,
+   "copies": 3,
+   "kv_bytes_per_copy": 201326592,
+   "sampled_rows": 48,
+   "arms": {
+    "ours-fp8qk": {
+     "single_launch_ms": 527.342,
+     "accuracy": {
+      "cos_min": 0.9916572,
+      "cos_mean": 0.9980161,
+      "max_abs_over_rms": 1.004764,
+      "finite": true
+     },
+     "floor": [
+      0.98,
+      0.995
+     ],
+     "valid": true,
+     "passes": [
+      {
+       "timing": "events",
+       "us_median": 525234.0901692709,
+       "us_min": 525063.6800130209,
+       "host_enqueue_us_median": 33.163310339053474,
+       "iters": 3,
+       "repeats": 3,
+       "copies": 3,
+       "host_bound": false,
+       "order": "forward"
+      },
+      {
+       "timing": "events",
+       "us_median": 526716.552734375,
+       "us_min": 525109.7005208334,
+       "host_enqueue_us_median": 32.413750886917114,
+       "iters": 3,
+       "repeats": 3,
+       "copies": 3,
+       "host_bound": false,
+       "order": "reverse"
+      }
+     ],
+     "class_model": {
+      "tile": 64,
+      "against_reference": {
+       "cos_min": 0.9916517,
+       "cos_mean": 0.9980171,
+       "max_abs_over_rms": 1.020822,
+       "finite": true
+      },
+      "kernel_against_model": {
+       "cos_min": 0.9999981,
+       "cos_mean": 0.9999986,
+       "max_abs_over_rms": 0.017131,
+       "finite": true
+      }
+     },
+     "ms": 525.9753,
+     "ms_min": 525.0637,
+     "gpairs_per_s": 2.9984,
+     "host_blocked": false,
+     "host_bound": false,
+     "clobbered": false
+    },
+    "ours-exact": {
+     "single_launch_ms": 1158.504,
+     "accuracy": {
+      "cos_min": 0.9917212,
+      "cos_mean": 0.9987922,
+      "max_abs_over_rms": 0.894839,
+      "finite": true
+     },
+     "floor": [
+      0.98,
+      0.995
+     ],
+     "valid": true,
+     "passes": [
+      {
+       "timing": "events",
+       "us_median": 1138693.2373046875,
+       "us_min": 1135609.86328125,
+       "host_enqueue_us_median": 37.804944440722466,
+       "iters": 2,
+       "repeats": 3,
+       "copies": 3,
+       "host_bound": false,
+       "order": "forward"
+      },
+      {
+       "timing": "events",
+       "us_median": 1142028.4423828125,
+       "us_min": 1139622.6806640625,
+       "host_enqueue_us_median": 37.125078961253166,
+       "iters": 2,
+       "repeats": 3,
+       "copies": 3,
+       "host_bound": false,
+       "order": "reverse"
+      }
+     ],
+     "class_model": {
+      "tile": 64,
+      "against_reference": {
+       "cos_min": 0.9917127,
+       "cos_mean": 0.9987935,
+       "max_abs_over_rms": 0.896283,
+       "finite": true
+      },
+      "kernel_against_model": {
+       "cos_min": 0.9999975,
+       "cos_mean": 0.9999986,
+       "max_abs_over_rms": 0.016489,
+       "finite": true
+      }
+     },
+     "ms": 1140.3608,
+     "ms_min": 1135.6099,
+     "gpairs_per_s": 1.383,
+     "host_blocked": false,
+     "host_bound": false,
+     "clobbered": false
+    },
+    "vendor-exact": {
+     "single_launch_ms": 235.588,
+     "accuracy": {
+      "cos_min": 0.9999978,
+      "cos_mean": 0.9999984,
+      "max_abs_over_rms": 0.030156,
+      "finite": true
+     },
+     "floor": [
+      0.9999,
+      0.9999
+     ],
+     "valid": true,
+     "passes": [
+      {
+       "timing": "events",
+       "us_median": 240376.40380859375,
+       "us_min": 240292.15494791666,
+       "host_enqueue_us_median": 1.5749440838893254,
+       "iters": 6,
+       "repeats": 3,
+       "copies": 3,
+       "host_bound": false,
+       "order": "forward"
+      },
+      {
+       "timing": "events",
+       "us_median": 242097.49348958334,
+       "us_min": 241989.6443684896,
+       "host_enqueue_us_median": 1.525040715932846,
+       "iters": 6,
+       "repeats": 3,
+       "copies": 3,
+       "host_bound": false,
+       "order": "reverse"
+      }
+     ],
+     "row": "attn_prefill_h256_gqa6_fp8kv",
+     "scratch_bytes": 0,
+     "ms": 241.2369,
+     "ms_min": 240.2922,
+     "gpairs_per_s": 6.5374,
+     "host_blocked": false,
+     "host_bound": false,
+     "clobbered": false
+    },
+    "vendor-qk8": {
+     "single_launch_ms": 146.391,
+     "accuracy": {
+      "cos_min": 0.9985383,
+      "cos_mean": 0.9992123,
+      "max_abs_over_rms": 0.260934,
+      "finite": true
+     },
+     "floor": [
+      0.98,
+      0.995
+     ],
+     "valid": true,
+     "passes": [
+      {
+       "timing": "events",
+       "us_median": 146645.068359375,
+       "us_min": 146384.375,
+       "host_enqueue_us_median": 1.3990327715873718,
+       "iters": 10,
+       "repeats": 3,
+       "copies": 3,
+       "host_bound": false,
+       "order": "forward"
+      },
+      {
+       "timing": "events",
+       "us_median": 146252.6611328125,
+       "us_min": 146087.63427734375,
+       "host_enqueue_us_median": 1.3509765267372131,
+       "iters": 10,
+       "repeats": 3,
+       "copies": 3,
+       "host_bound": false,
+       "order": "reverse"
+      }
+     ],
+     "row": "attn_prefill_h256_gqa6_fp8kv_qk8",
+     "scratch_bytes": 0,
+     "ms": 146.4489,
+     "ms_min": 146.0876,
+     "gpairs_per_s": 10.7687,
+     "host_blocked": false,
+     "host_bound": false,
+     "clobbered": false
+    },
+    "vendor-pv8": {
+     "single_launch_ms": 229.841,
+     "accuracy": {
+      "cos_min": 0.9918897,
+      "cos_mean": 0.9995377,
+      "max_abs_over_rms": 0.920615,
+      "finite": true
+     },
+     "floor": [
+      0.98,
+      0.995
+     ],
+     "valid": true,
+     "passes": [
+      {
+       "timing": "events",
+       "us_median": 227943.15011160713,
+       "us_min": 227622.66322544642,
+       "host_enqueue_us_median": 1.4771441263811929,
+       "iters": 7,
+       "repeats": 3,
+       "copies": 3,
+       "host_bound": false,
+       "order": "forward"
+      },
+      {
+       "timing": "events",
+       "us_median": 226602.50418526787,
+       "us_min": 226596.40066964287,
+       "host_enqueue_us_median": 1.3814174703189306,
+       "iters": 7,
+       "repeats": 3,
+       "copies": 3,
+       "host_bound": false,
+       "order": "reverse"
+      }
+     ],
+     "row": "attn_prefill_h256_gqa6_fp8kv_pv8",
+     "scratch_bytes": 0,
+     "ms": 227.2728,
+     "ms_min": 226.5964,
+     "gpairs_per_s": 6.9391,
+     "host_blocked": false,
+     "host_bound": false,
+     "clobbered": false
+    },
+    "vendor-qk8pv8": {
+     "single_launch_ms": 113.682,
+     "accuracy": {
+      "cos_min": 0.9911448,
+      "cos_mean": 0.9987611,
+      "max_abs_over_rms": 0.603732,
+      "finite": true
+     },
+     "floor": [
+      0.98,
+      0.995
+     ],
+     "valid": true,
+     "passes": [
+      {
+       "timing": "events",
+       "us_median": 114515.54987980769,
+       "us_min": 114414.34420072116,
+       "host_enqueue_us_median": 1.4638599868004138,
+       "iters": 13,
+       "repeats": 3,
+       "copies": 3,
+       "host_bound": false,
+       "order": "forward"
+      },
+      {
+       "timing": "events",
+       "us_median": 114365.90106670673,
+       "us_min": 114157.74301382211,
+       "host_enqueue_us_median": 1.4269294647070079,
+       "iters": 13,
+       "repeats": 3,
+       "copies": 3,
+       "host_bound": false,
+       "order": "reverse"
+      }
+     ],
+     "row": "attn_prefill_h256_gqa6_fp8kv_qk8pv8",
+     "scratch_bytes": 0,
+     "ms": 114.4407,
+     "ms_min": 114.1577,
+     "gpairs_per_s": 13.7806,
+     "host_blocked": false,
+     "host_bound": false,
+     "clobbered": false
+    },
+    "port-exact": {
+     "single_launch_ms": 249.459,
+     "accuracy": {
+      "cos_min": 0.9999978,
+      "cos_mean": 0.9999984,
+      "max_abs_over_rms": 0.030156,
+      "finite": true
+     },
+     "floor": [
+      0.9999,
+      0.9999
+     ],
+     "valid": true,
+     "passes": [
+      {
+       "timing": "events",
+       "us_median": 253136.92220052084,
+       "us_min": 253043.74186197916,
+       "host_enqueue_us_median": 1.2700135509173076,
+       "iters": 6,
+       "repeats": 3,
+       "copies": 3,
+       "host_bound": false,
+       "order": "forward"
+      },
+      {
+       "timing": "events",
+       "us_median": 253118.896484375,
+       "us_min": 253059.04134114584,
+       "host_enqueue_us_median": 1.2566645940144856,
+       "iters": 6,
+       "repeats": 3,
+       "copies": 3,
+       "host_bound": false,
+       "order": "reverse"
+      }
+     ],
+     "ms": 253.1279,
+     "ms_min": 253.0437,
+     "gpairs_per_s": 6.2303,
+     "host_blocked": false,
+     "host_bound": false,
+     "clobbered": false
+    },
+    "port-qk8": {
+     "single_launch_ms": 156.237,
+     "accuracy": {
+      "cos_min": 0.9985383,
+      "cos_mean": 0.9992123,
+      "max_abs_over_rms": 0.260934,
+      "finite": true
+     },
+     "floor": [
+      0.98,
+      0.995
+     ],
+     "valid": true,
+     "passes": [
+      {
+       "timing": "events",
+       "us_median": 155884.423828125,
+       "us_min": 155746.9970703125,
+       "host_enqueue_us_median": 1.1730007827281952,
+       "iters": 10,
+       "repeats": 3,
+       "copies": 3,
+       "host_bound": false,
+       "order": "forward"
+      },
+      {
+       "timing": "events",
+       "us_median": 155856.79931640625,
+       "us_min": 155673.828125,
+       "host_enqueue_us_median": 1.1180061846971512,
+       "iters": 10,
+       "repeats": 3,
+       "copies": 3,
+       "host_bound": false,
+       "order": "reverse"
+      }
+     ],
+     "ms": 155.8706,
+     "ms_min": 155.6738,
+     "gpairs_per_s": 10.1178,
+     "host_blocked": false,
+     "host_bound": false,
+     "clobbered": false
+    },
+    "port-pv8": {
+     "single_launch_ms": 227.456,
+     "accuracy": {
+      "cos_min": 0.9918897,
+      "cos_mean": 0.9995377,
+      "max_abs_over_rms": 0.920615,
+      "finite": true
+     },
+     "floor": [
+      0.98,
+      0.995
+     ],
+     "valid": true,
+     "passes": [
+      {
+       "timing": "events",
+       "us_median": 225370.13462611608,
+       "us_min": 225045.4624720982,
+       "host_enqueue_us_median": 1.1871701904705592,
+       "iters": 7,
+       "repeats": 3,
+       "copies": 3,
+       "host_bound": false,
+       "order": "forward"
+      },
+      {
+       "timing": "events",
+       "us_median": 226390.95633370537,
+       "us_min": 225934.2738560268,
+       "host_enqueue_us_median": 1.2085240866456712,
+       "iters": 7,
+       "repeats": 3,
+       "copies": 3,
+       "host_bound": false,
+       "order": "reverse"
+      }
+     ],
+     "ms": 225.8805,
+     "ms_min": 225.0455,
+     "gpairs_per_s": 6.9818,
+     "host_blocked": false,
+     "host_bound": false,
+     "clobbered": false
+    },
+    "port-qk8pv8": {
+     "single_launch_ms": 113.74,
+     "accuracy": {
+      "cos_min": 0.9911448,
+      "cos_mean": 0.9987611,
+      "max_abs_over_rms": 0.603732,
+      "finite": true
+     },
+     "floor": [
+      0.98,
+      0.995
+     ],
+     "valid": true,
+     "passes": [
+      {
+       "timing": "events",
+       "us_median": 114531.24060997597,
+       "us_min": 114360.23888221153,
+       "host_enqueue_us_median": 1.1946003024394696,
+       "iters": 13,
+       "repeats": 3,
+       "copies": 3,
+       "host_bound": false,
+       "order": "forward"
+      },
+      {
+       "timing": "events",
+       "us_median": 114446.45808293269,
+       "us_min": 114401.26389723558,
+       "host_enqueue_us_median": 1.198468873134026,
+       "iters": 13,
+       "repeats": 3,
+       "copies": 3,
+       "host_bound": false,
+       "order": "reverse"
+      }
+     ],
+     "ms": 114.4888,
+     "ms_min": 114.3602,
+     "gpairs_per_s": 13.7748,
+     "host_blocked": false,
+     "host_bound": false,
+     "clobbered": false
+    },
+    "port-qk8-scatter": {
+     "single_launch_ms": 155.709,
+     "accuracy": {
+      "cos_min": 0.9985383,
+      "cos_mean": 0.9992123,
+      "max_abs_over_rms": 0.260934,
+      "finite": true
+     },
+     "floor": [
+      0.98,
+      0.995
+     ],
+     "valid": true,
+     "passes": [
+      {
+       "timing": "events",
+       "us_median": 155971.32568359375,
+       "us_min": 155904.60205078125,
+       "host_enqueue_us_median": 1.2429896742105484,
+       "iters": 10,
+       "repeats": 3,
+       "copies": 3,
+       "host_bound": false,
+       "order": "forward"
+      },
+      {
+       "timing": "events",
+       "us_median": 155766.0400390625,
+       "us_min": 155762.70751953125,
+       "host_enqueue_us_median": 1.214025542140007,
+       "iters": 10,
+       "repeats": 3,
+       "copies": 3,
+       "host_bound": false,
+       "order": "reverse"
+      }
+     ],
+     "ms": 155.8687,
+     "ms_min": 155.7627,
+     "gpairs_per_s": 10.1179,
+     "host_blocked": false,
+     "host_bound": false,
+     "clobbered": false
+    }
+   },
+   "agreement": {
+    "same_class": {
+     "cos_min": 0.9865944,
+     "cos_mean": 0.9968751,
+     "max_abs_over_rms": 2.074499,
+     "finite": true,
+     "bit_identical": false
+    },
+    "pv8_class": {
+     "cos_min": 0.9898691,
+     "cos_mean": 0.9985118,
+     "max_abs_over_rms": 0.97012,
+     "finite": true,
+     "bit_identical": false
+    },
+    "ours": {
+     "cos_min": 0.9919024,
+     "cos_mean": 0.9981499,
+     "max_abs_over_rms": 2.075016,
+     "finite": true,
+     "bit_identical": false
+    },
+    "port-exact": {
+     "cos_min": 1.0,
+     "cos_mean": 1.0,
+     "max_abs_over_rms": 0.0,
+     "finite": true,
+     "bit_identical": true
+    },
+    "port-qk8": {
+     "cos_min": 1.0,
+     "cos_mean": 1.0,
+     "max_abs_over_rms": 0.0,
+     "finite": true,
+     "bit_identical": true
+    },
+    "port-pv8": {
+     "cos_min": 1.0,
+     "cos_mean": 1.0,
+     "max_abs_over_rms": 0.0,
+     "finite": true,
+     "bit_identical": true
+    },
+    "port-qk8pv8": {
+     "cos_min": 1.0,
+     "cos_mean": 1.0,
+     "max_abs_over_rms": 0.0,
+     "finite": true,
+     "bit_identical": true
+    },
+    "port-qk8-scatter": {
+     "cos_min": 1.0,
+     "cos_mean": 1.0,
+     "max_abs_over_rms": 0.0,
+     "finite": true,
+     "bit_identical": true
+    }
+   }
+  },
+  {
+   "q": 4096,
+   "ctx": 65536,
+   "pairs": 260048896,
+   "copies": 5,
+   "kv_bytes_per_copy": 67108864,
+   "sampled_rows": 48,
+   "arms": {
+    "ours-fp8qk": {
+     "single_launch_ms": 83.868,
+     "accuracy": {
+      "cos_min": 0.9962049,
+      "cos_mean": 0.9985155,
+      "max_abs_over_rms": 0.351572,
+      "finite": true
+     },
+     "floor": [
+      0.98,
+      0.995
+     ],
+     "valid": true,
+     "passes": [
+      {
+       "timing": "events",
+       "us_median": 85183.99386935764,
+       "us_min": 85174.51985677083,
+       "host_enqueue_us_median": 28.872836588157547,
+       "iters": 18,
+       "repeats": 3,
+       "copies": 5,
+       "host_bound": false,
+       "order": "forward"
+      },
+      {
+       "timing": "events",
+       "us_median": 85328.04361979167,
+       "us_min": 85275.03797743056,
+       "host_enqueue_us_median": 29.25783499247498,
+       "iters": 18,
+       "repeats": 3,
+       "copies": 5,
+       "host_bound": false,
+       "order": "reverse"
+      }
+     ],
+     "class_model": {
+      "tile": 64,
+      "against_reference": {
+       "cos_min": 0.9962097,
+       "cos_mean": 0.998517,
+       "max_abs_over_rms": 0.351053,
+       "finite": true
+      },
+      "kernel_against_model": {
+       "cos_min": 0.9999981,
+       "cos_mean": 0.9999986,
+       "max_abs_over_rms": 0.010268,
+       "finite": true
+      }
+     },
+     "ms": 85.256,
+     "ms_min": 85.1745,
+     "gpairs_per_s": 3.0502,
+     "host_blocked": false,
+     "host_bound": false,
+     "clobbered": false
+    },
+    "ours-exact": {
+     "single_launch_ms": 175.461,
+     "accuracy": {
+      "cos_min": 0.9969225,
+      "cos_mean": 0.9992777,
+      "max_abs_over_rms": 0.344964,
+      "finite": true
+     },
+     "floor": [
+      0.98,
+      0.995
+     ],
+     "valid": true,
+     "passes": [
+      {
+       "timing": "events",
+       "us_median": 168217.20377604166,
+       "us_min": 167445.08192274306,
+       "host_enqueue_us_median": 29.221125360992218,
+       "iters": 9,
+       "repeats": 3,
+       "copies": 5,
+       "host_bound": false,
+       "order": "forward"
+      },
+      {
+       "timing": "events",
+       "us_median": 168358.85959201388,
+       "us_min": 167815.09060329862,
+       "host_enqueue_us_median": 29.774434450599884,
+       "iters": 9,
+       "repeats": 3,
+       "copies": 5,
+       "host_bound": false,
+       "order": "reverse"
+      }
+     ],
+     "class_model": {
+      "tile": 64,
+      "against_reference": {
+       "cos_min": 0.9969401,
+       "cos_mean": 0.999279,
+       "max_abs_over_rms": 0.348948,
+       "finite": true
+      },
+      "kernel_against_model": {
+       "cos_min": 0.9999978,
+       "cos_mean": 0.9999986,
+       "max_abs_over_rms": 0.019816,
+       "finite": true
+      }
+     },
+     "ms": 168.288,
+     "ms_min": 167.4451,
+     "gpairs_per_s": 1.5453,
+     "host_blocked": false,
+     "host_bound": false,
+     "clobbered": false
+    },
+    "vendor-exact": {
+     "single_launch_ms": 38.179,
+     "accuracy": {
+      "cos_min": 0.9999979,
+      "cos_mean": 0.9999984,
+      "max_abs_over_rms": 0.024337,
+      "finite": true
+     },
+     "floor": [
+      0.9999,
+      0.9999
+     ],
+     "valid": true,
+     "passes": [
+      {
+       "timing": "events",
+       "us_median": 39792.561848958336,
+       "us_min": 39770.197941706734,
+       "host_enqueue_us_median": 1.296412963897754,
+       "iters": 39,
+       "repeats": 3,
+       "copies": 5,
+       "host_bound": false,
+       "order": "forward"
+      },
+      {
+       "timing": "events",
+       "us_median": 39897.88974859776,
+       "us_min": 39813.063401442305,
+       "host_enqueue_us_median": 1.2920548518498738,
+       "iters": 39,
+       "repeats": 3,
+       "copies": 5,
+       "host_bound": false,
+       "order": "reverse"
+      }
+     ],
+     "row": "attn_prefill_h256_gqa6_fp8kv",
+     "scratch_bytes": 0,
+     "ms": 39.8452,
+     "ms_min": 39.7702,
+     "gpairs_per_s": 6.5265,
+     "host_blocked": false,
+     "host_bound": false,
+     "clobbered": false
+    },
+    "vendor-qk8": {
+     "single_launch_ms": 24.678,
+     "accuracy": {
+      "cos_min": 0.9981267,
+      "cos_mean": 0.9992334,
+      "max_abs_over_rms": 0.276325,
+      "finite": true
+     },
+     "floor": [
+      0.98,
+      0.995
+     ],
+     "valid": true,
+     "passes": [
+      {
+       "timing": "events",
+       "us_median": 24550.570678710938,
+       "us_min": 24535.903930664062,
+       "host_enqueue_us_median": 1.2577511370182037,
+       "iters": 40,
+       "repeats": 3,
+       "copies": 5,
+       "host_bound": false,
+       "order": "forward"
+      },
+      {
+       "timing": "events",
+       "us_median": 24533.13446044922,
+       "us_min": 24519.927978515625,
+       "host_enqueue_us_median": 1.2732460163533688,
+       "iters": 40,
+       "repeats": 3,
+       "copies": 5,
+       "host_bound": false,
+       "order": "reverse"
+      }
+     ],
+     "row": "attn_prefill_h256_gqa6_fp8kv_qk8",
+     "scratch_bytes": 0,
+     "ms": 24.5419,
+     "ms_min": 24.5199,
+     "gpairs_per_s": 10.5961,
+     "host_blocked": false,
+     "host_bound": false,
+     "clobbered": false
+    },
+    "vendor-pv8": {
+     "single_launch_ms": 36.656,
+     "accuracy": {
+      "cos_min": 0.9983553,
+      "cos_mean": 0.9996436,
+      "max_abs_over_rms": 0.235726,
+      "finite": true
+     },
+     "floor": [
+      0.98,
+      0.995
+     ],
+     "valid": true,
+     "passes": [
+      {
+       "timing": "events",
+       "us_median": 37698.34899902344,
+       "us_min": 37623.223876953125,
+       "host_enqueue_us_median": 1.2510106898844242,
+       "iters": 40,
+       "repeats": 3,
+       "copies": 5,
+       "host_bound": false,
+       "order": "forward"
+      },
+      {
+       "timing": "events",
+       "us_median": 37518.15185546875,
+       "us_min": 37514.36767578125,
+       "host_enqueue_us_median": 1.278251875191927,
+       "iters": 40,
+       "repeats": 3,
+       "copies": 5,
+       "host_bound": false,
+       "order": "reverse"
+      }
+     ],
+     "row": "attn_prefill_h256_gqa6_fp8kv_pv8",
+     "scratch_bytes": 0,
+     "ms": 37.6083,
+     "ms_min": 37.5144,
+     "gpairs_per_s": 6.9147,
+     "host_blocked": false,
+     "host_bound": false,
+     "clobbered": false
+    },
+    "vendor-qk8pv8": {
+     "single_launch_ms": 19.364,
+     "accuracy": {
+      "cos_min": 0.9975465,
+      "cos_mean": 0.9988775,
+      "max_abs_over_rms": 0.380693,
+      "finite": true
+     },
+     "floor": [
+      0.98,
+      0.995
+     ],
+     "valid": true,
+     "passes": [
+      {
+       "timing": "events",
+       "us_median": 19294.244384765625,
+       "us_min": 19286.00616455078,
+       "host_enqueue_us_median": 1.2720003724098206,
+       "iters": 40,
+       "repeats": 3,
+       "copies": 5,
+       "host_bound": false,
+       "order": "forward"
+      },
+      {
+       "timing": "events",
+       "us_median": 19260.354614257812,
+       "us_min": 19248.899841308594,
+       "host_enqueue_us_median": 1.2845033779740334,
+       "iters": 40,
+       "repeats": 3,
+       "copies": 5,
+       "host_bound": false,
+       "order": "reverse"
+      }
+     ],
+     "row": "attn_prefill_h256_gqa6_fp8kv_qk8pv8",
+     "scratch_bytes": 0,
+     "ms": 19.2773,
+     "ms_min": 19.2489,
+     "gpairs_per_s": 13.4899,
+     "host_blocked": false,
+     "host_bound": false,
+     "clobbered": false
+    },
+    "port-exact": {
+     "single_launch_ms": 41.44,
+     "accuracy": {
+      "cos_min": 0.9999979,
+      "cos_mean": 0.9999984,
+      "max_abs_over_rms": 0.024337,
+      "finite": true
+     },
+     "floor": [
+      0.9999,
+      0.9999
+     ],
+     "valid": true,
+     "passes": [
+      {
+       "timing": "events",
+       "us_median": 42363.722059461805,
+       "us_min": 42297.39040798611,
+       "host_enqueue_us_median": 1.0594441038038995,
+       "iters": 36,
+       "repeats": 3,
+       "copies": 5,
+       "host_bound": false,
+       "order": "forward"
+      },
+      {
+       "timing": "events",
+       "us_median": 42205.247667100695,
+       "us_min": 42167.48725043403,
+       "host_enqueue_us_median": 1.0780576202604506,
+       "iters": 36,
+       "repeats": 3,
+       "copies": 5,
+       "host_bound": false,
+       "order": "reverse"
+      }
+     ],
+     "ms": 42.2845,
+     "ms_min": 42.1675,
+     "gpairs_per_s": 6.15,
+     "host_blocked": false,
+     "host_bound": false,
+     "clobbered": false
+    },
+    "port-qk8": {
+     "single_launch_ms": 26.059,
+     "accuracy": {
+      "cos_min": 0.9981267,
+      "cos_mean": 0.9992334,
+      "max_abs_over_rms": 0.276325,
+      "finite": true
+     },
+     "floor": [
+      0.98,
+      0.995
+     ],
+     "valid": true,
+     "passes": [
+      {
+       "timing": "events",
+       "us_median": 26055.398559570312,
+       "us_min": 26048.541259765625,
+       "host_enqueue_us_median": 1.039507333189249,
+       "iters": 40,
+       "repeats": 3,
+       "copies": 5,
+       "host_bound": false,
+       "order": "forward"
+      },
+      {
+       "timing": "events",
+       "us_median": 26039.749145507812,
+       "us_min": 26024.990844726562,
+       "host_enqueue_us_median": 1.1005089618265629,
+       "iters": 40,
+       "repeats": 3,
+       "copies": 5,
+       "host_bound": false,
+       "order": "reverse"
+      }
+     ],
+     "ms": 26.0476,
+     "ms_min": 26.025,
+     "gpairs_per_s": 9.9836,
+     "host_blocked": false,
+     "host_bound": false,
+     "clobbered": false
+    },
+    "port-pv8": {
+     "single_launch_ms": 36.85,
+     "accuracy": {
+      "cos_min": 0.9983553,
+      "cos_mean": 0.9996436,
+      "max_abs_over_rms": 0.235726,
+      "finite": true
+     },
+     "floor": [
+      0.98,
+      0.995
+     ],
+     "valid": true,
+     "passes": [
+      {
+       "timing": "events",
+       "us_median": 37456.640625,
+       "us_min": 37450.018310546875,
+       "host_enqueue_us_median": 1.078250352293253,
+       "iters": 40,
+       "repeats": 3,
+       "copies": 5,
+       "host_bound": false,
+       "order": "forward"
+      },
+      {
+       "timing": "events",
+       "us_median": 37465.966796875,
+       "us_min": 37428.88488769531,
+       "host_enqueue_us_median": 1.0757590644061565,
+       "iters": 40,
+       "repeats": 3,
+       "copies": 5,
+       "host_bound": false,
+       "order": "reverse"
+      }
+     ],
+     "ms": 37.4613,
+     "ms_min": 37.4289,
+     "gpairs_per_s": 6.9418,
+     "host_blocked": false,
+     "host_bound": false,
+     "clobbered": false
+    },
+    "port-qk8pv8": {
+     "single_launch_ms": 19.184,
+     "accuracy": {
+      "cos_min": 0.9975465,
+      "cos_mean": 0.9988775,
+      "max_abs_over_rms": 0.380693,
+      "finite": true
+     },
+     "floor": [
+      0.98,
+      0.995
+     ],
+     "valid": true,
+     "passes": [
+      {
+       "timing": "events",
+       "us_median": 19093.24493408203,
+       "us_min": 19087.48321533203,
+       "host_enqueue_us_median": 1.0502524673938751,
+       "iters": 40,
+       "repeats": 3,
+       "copies": 5,
+       "host_bound": false,
+       "order": "forward"
+      },
+      {
+       "timing": "events",
+       "us_median": 19101.248168945312,
+       "us_min": 19097.171020507812,
+       "host_enqueue_us_median": 1.0702526196837425,
+       "iters": 40,
+       "repeats": 3,
+       "copies": 5,
+       "host_bound": false,
+       "order": "reverse"
+      }
+     ],
+     "ms": 19.0972,
+     "ms_min": 19.0875,
+     "gpairs_per_s": 13.6171,
+     "host_blocked": false,
+     "host_bound": false,
+     "clobbered": false
+    },
+    "port-qk8-scatter": {
+     "single_launch_ms": 26.103,
+     "accuracy": {
+      "cos_min": 0.9981267,
+      "cos_mean": 0.9992334,
+      "max_abs_over_rms": 0.276325,
+      "finite": true
+     },
+     "floor": [
+      0.98,
+      0.995
+     ],
+     "valid": true,
+     "passes": [
+      {
+       "timing": "events",
+       "us_median": 26068.42041015625,
+       "us_min": 26058.621215820312,
+       "host_enqueue_us_median": 1.0640011169016361,
+       "iters": 40,
+       "repeats": 3,
+       "copies": 5,
+       "host_bound": false,
+       "order": "forward"
+      },
+      {
+       "timing": "events",
+       "us_median": 26054.977416992188,
+       "us_min": 26052.2705078125,
+       "host_enqueue_us_median": 1.057249028235674,
+       "iters": 40,
+       "repeats": 3,
+       "copies": 5,
+       "host_bound": false,
+       "order": "reverse"
+      }
+     ],
+     "ms": 26.0617,
+     "ms_min": 26.0523,
+     "gpairs_per_s": 9.9782,
+     "host_blocked": false,
+     "host_bound": false,
+     "clobbered": false
+    }
+   },
+   "agreement": {
+    "same_class": {
+     "cos_min": 0.9901913,
+     "cos_mean": 0.9974096,
+     "max_abs_over_rms": 1.382769,
+     "finite": true,
+     "bit_identical": false
+    },
+    "pv8_class": {
+     "cos_min": 0.9949605,
+     "cos_mean": 0.9989594,
+     "max_abs_over_rms": 0.692841,
+     "finite": true,
+     "bit_identical": false
+    },
+    "ours": {
+     "cos_min": 0.994957,
+     "cos_mean": 0.9984364,
+     "max_abs_over_rms": 1.028087,
+     "finite": true,
+     "bit_identical": false
+    },
+    "port-exact": {
+     "cos_min": 1.0,
+     "cos_mean": 1.0,
+     "max_abs_over_rms": 0.0,
+     "finite": true,
+     "bit_identical": true
+    },
+    "port-qk8": {
+     "cos_min": 1.0,
+     "cos_mean": 1.0,
+     "max_abs_over_rms": 0.0,
+     "finite": true,
+     "bit_identical": true
+    },
+    "port-pv8": {
+     "cos_min": 1.0,
+     "cos_mean": 1.0,
+     "max_abs_over_rms": 0.0,
+     "finite": true,
+     "bit_identical": true
+    },
+    "port-qk8pv8": {
+     "cos_min": 1.0,
+     "cos_mean": 1.0,
+     "max_abs_over_rms": 0.0,
+     "finite": true,
+     "bit_identical": true
+    },
+    "port-qk8-scatter": {
+     "cos_min": 1.0,
+     "cos_mean": 1.0,
+     "max_abs_over_rms": 0.0,
+     "finite": true,
+     "bit_identical": true
+    }
+   }
+  },
+  {
+   "q": 4096,
+   "ctx": 196608,
+   "pairs": 796919808,
+   "copies": 3,
+   "kv_bytes_per_copy": 201326592,
+   "sampled_rows": 48,
+   "arms": {
+    "ours-fp8qk": {
+     "single_launch_ms": 262.388,
+     "accuracy": {
+      "cos_min": 0.9937262,
+      "cos_mean": 0.9979509,
+      "max_abs_over_rms": 0.495854,
+      "finite": true
+     },
+     "floor": [
+      0.98,
+      0.995
+     ],
+     "valid": true,
+     "passes": [
+      {
+       "timing": "events",
+       "us_median": 262311.46240234375,
+       "us_min": 261910.1765950521,
+       "host_enqueue_us_median": 31.06511818865935,
+       "iters": 6,
+       "repeats": 3,
+       "copies": 3,
+       "host_bound": false,
+       "order": "forward"
+      },
+      {
+       "timing": "events",
+       "us_median": 262413.3707682292,
+       "us_min": 261595.0927734375,
+       "host_enqueue_us_median": 29.625138267874718,
+       "iters": 6,
+       "repeats": 3,
+       "copies": 3,
+       "host_bound": false,
+       "order": "reverse"
+      }
+     ],
+     "class_model": {
+      "tile": 64,
+      "against_reference": {
+       "cos_min": 0.993738,
+       "cos_mean": 0.9979523,
+       "max_abs_over_rms": 0.495246,
+       "finite": true
+      },
+      "kernel_against_model": {
+       "cos_min": 0.9999982,
+       "cos_mean": 0.9999986,
+       "max_abs_over_rms": 0.016779,
+       "finite": true
+      }
+     },
+     "ms": 262.3624,
+     "ms_min": 261.5951,
+     "gpairs_per_s": 3.0375,
+     "host_blocked": false,
+     "host_bound": false,
+     "clobbered": false
+    },
+    "ours-exact": {
+     "single_launch_ms": 567.48,
+     "accuracy": {
+      "cos_min": 0.9947259,
+      "cos_mean": 0.9987163,
+      "max_abs_over_rms": 0.423241,
+      "finite": true
+     },
+     "floor": [
+      0.98,
+      0.995
+     ],
+     "valid": true,
+     "passes": [
+      {
+       "timing": "events",
+       "us_median": 558813.0289713541,
+       "us_min": 554261.3932291666,
+       "host_enqueue_us_median": 34.69673295815786,
+       "iters": 3,
+       "repeats": 3,
+       "copies": 3,
+       "host_bound": false,
+       "order": "forward"
+      },
+      {
+       "timing": "events",
+       "us_median": 563008.5042317709,
+       "us_min": 562804.6061197916,
+       "host_enqueue_us_median": 31.54001509149869,
+       "iters": 3,
+       "repeats": 3,
+       "copies": 3,
+       "host_bound": false,
+       "order": "reverse"
+      }
+     ],
+     "class_model": {
+      "tile": 64,
+      "against_reference": {
+       "cos_min": 0.9946925,
+       "cos_mean": 0.9987179,
+       "max_abs_over_rms": 0.422923,
+       "finite": true
+      },
+      "kernel_against_model": {
+       "cos_min": 0.9999961,
+       "cos_mean": 0.9999986,
+       "max_abs_over_rms": 0.017308,
+       "finite": true
+      }
+     },
+     "ms": 560.9108,
+     "ms_min": 554.2614,
+     "gpairs_per_s": 1.4208,
+     "host_blocked": false,
+     "host_bound": false,
+     "clobbered": false
+    },
+    "vendor-exact": {
+     "single_launch_ms": 118.741,
+     "accuracy": {
+      "cos_min": 0.9999978,
+      "cos_mean": 0.9999984,
+      "max_abs_over_rms": 0.029347,
+      "finite": true
+     },
+     "floor": [
+      0.9999,
+      0.9999
+     ],
+     "valid": true,
+     "passes": [
+      {
+       "timing": "events",
+       "us_median": 121127.77944711539,
+       "us_min": 120729.48279747597,
+       "host_enqueue_us_median": 1.47084490611003,
+       "iters": 13,
+       "repeats": 3,
+       "copies": 3,
+       "host_bound": false,
+       "order": "forward"
+      },
+      {
+       "timing": "events",
+       "us_median": 121249.44598858173,
+       "us_min": 121013.46529447116,
+       "host_enqueue_us_median": 1.3930794711296375,
+       "iters": 13,
+       "repeats": 3,
+       "copies": 3,
+       "host_bound": false,
+       "order": "reverse"
+      }
+     ],
+     "row": "attn_prefill_h256_gqa6_fp8kv",
+     "scratch_bytes": 0,
+     "ms": 121.1886,
+     "ms_min": 120.7295,
+     "gpairs_per_s": 6.5759,
+     "host_blocked": false,
+     "host_bound": false,
+     "clobbered": false
+    },
+    "vendor-qk8": {
+     "single_launch_ms": 74.499,
+     "accuracy": {
+      "cos_min": 0.9980641,
+      "cos_mean": 0.9992184,
+      "max_abs_over_rms": 0.303193,
+      "finite": true
+     },
+     "floor": [
+      0.98,
+      0.995
+     ],
+     "valid": true,
+     "passes": [
+      {
+       "timing": "events",
+       "us_median": 74144.93408203125,
+       "us_min": 74080.322265625,
+       "host_enqueue_us_median": 1.3325130566954613,
+       "iters": 20,
+       "repeats": 3,
+       "copies": 3,
+       "host_bound": false,
+       "order": "forward"
+      },
+      {
+       "timing": "events",
+       "us_median": 74093.90258789062,
+       "us_min": 74050.439453125,
+       "host_enqueue_us_median": 1.3380078598856926,
+       "iters": 20,
+       "repeats": 3,
+       "copies": 3,
+       "host_bound": false,
+       "order": "reverse"
+      }
+     ],
+     "row": "attn_prefill_h256_gqa6_fp8kv_qk8",
+     "scratch_bytes": 0,
+     "ms": 74.1194,
+     "ms_min": 74.0504,
+     "gpairs_per_s": 10.7518,
+     "host_blocked": false,
+     "host_bound": false,
+     "clobbered": false
+    },
+    "vendor-pv8": {
+     "single_launch_ms": 113.535,
+     "accuracy": {
+      "cos_min": 0.9949242,
+      "cos_mean": 0.999576,
+      "max_abs_over_rms": 0.441802,
+      "finite": true
+     },
+     "floor": [
+      0.98,
+      0.995
+     ],
+     "valid": true,
+     "passes": [
+      {
+       "timing": "events",
+       "us_median": 114576.09675480769,
+       "us_min": 114394.98197115384,
+       "host_enqueue_us_median": 1.389210900435081,
+       "iters": 13,
+       "repeats": 3,
+       "copies": 3,
+       "host_bound": false,
+       "order": "forward"
+      },
+      {
+       "timing": "events",
+       "us_median": 114094.12560096153,
+       "us_min": 114015.7470703125,
+       "host_enqueue_us_median": 1.403825500836739,
+       "iters": 13,
+       "repeats": 3,
+       "copies": 3,
+       "host_bound": false,
+       "order": "reverse"
+      }
+     ],
+     "row": "attn_prefill_h256_gqa6_fp8kv_pv8",
+     "scratch_bytes": 0,
+     "ms": 114.3351,
+     "ms_min": 114.0157,
+     "gpairs_per_s": 6.97,
+     "host_blocked": false,
+     "host_bound": false,
+     "clobbered": false
+    },
+    "vendor-qk8pv8": {
+     "single_launch_ms": 58.458,
+     "accuracy": {
+      "cos_min": 0.9941946,
+      "cos_mean": 0.9988045,
+      "max_abs_over_rms": 0.406925,
+      "finite": true
+     },
+     "floor": [
+      0.98,
+      0.995
+     ],
+     "valid": true,
+     "passes": [
+      {
+       "timing": "events",
+       "us_median": 57905.67251352163,
+       "us_min": 57905.663123497594,
+       "host_enqueue_us_median": 1.3369135558605194,
+       "iters": 26,
+       "repeats": 3,
+       "copies": 3,
+       "host_bound": false,
+       "order": "forward"
+      },
+      {
+       "timing": "events",
+       "us_median": 57879.21142578125,
+       "us_min": 57769.31997445913,
+       "host_enqueue_us_median": 1.328854033580193,
+       "iters": 26,
+       "repeats": 3,
+       "copies": 3,
+       "host_bound": false,
+       "order": "reverse"
+      }
+     ],
+     "row": "attn_prefill_h256_gqa6_fp8kv_qk8pv8",
+     "scratch_bytes": 0,
+     "ms": 57.8924,
+     "ms_min": 57.7693,
+     "gpairs_per_s": 13.7655,
+     "host_blocked": false,
+     "host_bound": false,
+     "clobbered": false
+    },
+    "port-exact": {
+     "single_launch_ms": 126.119,
+     "accuracy": {
+      "cos_min": 0.9999978,
+      "cos_mean": 0.9999984,
+      "max_abs_over_rms": 0.029347,
+      "finite": true
+     },
+     "floor": [
+      0.9999,
+      0.9999
+     ],
+     "valid": true,
+     "passes": [
+      {
+       "timing": "events",
+       "us_median": 128054.71801757812,
+       "us_min": 127982.21842447917,
+       "host_enqueue_us_median": 1.2675300240516663,
+       "iters": 12,
+       "repeats": 3,
+       "copies": 3,
+       "host_bound": false,
+       "order": "forward"
+      },
+      {
+       "timing": "events",
+       "us_median": 127892.67985026042,
+       "us_min": 127858.99861653645,
+       "host_enqueue_us_median": 1.1125036204854648,
+       "iters": 12,
+       "repeats": 3,
+       "copies": 3,
+       "host_bound": false,
+       "order": "reverse"
+      }
+     ],
+     "ms": 127.9737,
+     "ms_min": 127.859,
+     "gpairs_per_s": 6.2272,
+     "host_blocked": false,
+     "host_bound": false,
+     "clobbered": false
+    },
+    "port-qk8": {
+     "single_launch_ms": 79.302,
+     "accuracy": {
+      "cos_min": 0.9980641,
+      "cos_mean": 0.9992184,
+      "max_abs_over_rms": 0.303193,
+      "finite": true
+     },
+     "floor": [
+      0.98,
+      0.995
+     ],
+     "valid": true,
+     "passes": [
+      {
+       "timing": "events",
+       "us_median": 78872.75776110198,
+       "us_min": 78821.19911595395,
+       "host_enqueue_us_median": 1.0789372026920319,
+       "iters": 19,
+       "repeats": 3,
+       "copies": 3,
+       "host_bound": false,
+       "order": "forward"
+      },
+      {
+       "timing": "events",
+       "us_median": 78854.46006373355,
+       "us_min": 78783.49223889802,
+       "host_enqueue_us_median": 1.139473170042038,
+       "iters": 19,
+       "repeats": 3,
+       "copies": 3,
+       "host_bound": false,
+       "order": "reverse"
+      }
+     ],
+     "ms": 78.8636,
+     "ms_min": 78.7835,
+     "gpairs_per_s": 10.105,
+     "host_blocked": false,
+     "host_bound": false,
+     "clobbered": false
+    },
+    "port-pv8": {
+     "single_launch_ms": 112.748,
+     "accuracy": {
+      "cos_min": 0.9949242,
+      "cos_mean": 0.999576,
+      "max_abs_over_rms": 0.441802,
+      "finite": true
+     },
+     "floor": [
+      0.98,
+      0.995
+     ],
+     "valid": true,
+     "passes": [
+      {
+       "timing": "events",
+       "us_median": 113418.06265024039,
+       "us_min": 113210.02666766827,
+       "host_enqueue_us_median": 1.184606494811865,
+       "iters": 13,
+       "repeats": 3,
+       "copies": 3,
+       "host_bound": false,
+       "order": "forward"
+      },
+      {
+       "timing": "events",
+       "us_median": 114386.95350060097,
+       "us_min": 114284.23602764423,
+       "host_enqueue_us_median": 1.2838281691074371,
+       "iters": 13,
+       "repeats": 3,
+       "copies": 3,
+       "host_bound": false,
+       "order": "reverse"
+      }
+     ],
+     "ms": 113.9025,
+     "ms_min": 113.21,
+     "gpairs_per_s": 6.9965,
+     "host_blocked": false,
+     "host_bound": false,
+     "clobbered": false
+    },
+    "port-qk8pv8": {
+     "single_launch_ms": 58.559,
+     "accuracy": {
+      "cos_min": 0.9941946,
+      "cos_mean": 0.9988045,
+      "max_abs_over_rms": 0.406925,
+      "finite": true
+     },
+     "floor": [
+      0.98,
+      0.995
+     ],
+     "valid": true,
+     "passes": [
+      {
+       "timing": "events",
+       "us_median": 57894.42795973558,
+       "us_min": 57810.33559945913,
+       "host_enqueue_us_median": 1.1103693395853043,
+       "iters": 26,
+       "repeats": 3,
+       "copies": 3,
+       "host_bound": false,
+       "order": "forward"
+      },
+      {
+       "timing": "events",
+       "us_median": 57843.05044320913,
+       "us_min": 57833.58529897837,
+       "host_enqueue_us_median": 1.0850087094765444,
+       "iters": 26,
+       "repeats": 3,
+       "copies": 3,
+       "host_bound": false,
+       "order": "reverse"
+      }
+     ],
+     "ms": 57.8687,
+     "ms_min": 57.8103,
+     "gpairs_per_s": 13.7712,
+     "host_blocked": false,
+     "host_bound": false,
+     "clobbered": false
+    },
+    "port-qk8-scatter": {
+     "single_launch_ms": 79.17,
+     "accuracy": {
+      "cos_min": 0.9980641,
+      "cos_mean": 0.9992184,
+      "max_abs_over_rms": 0.303193,
+      "finite": true
+     },
+     "floor": [
+      0.98,
+      0.995
+     ],
+     "valid": true,
+     "passes": [
+      {
+       "timing": "events",
+       "us_median": 78947.73463199013,
+       "us_min": 78871.42783717105,
+       "host_enqueue_us_median": 1.152634228530683,
+       "iters": 19,
+       "repeats": 3,
+       "copies": 3,
+       "host_bound": false,
+       "order": "forward"
+      },
+      {
+       "timing": "events",
+       "us_median": 78863.24270148027,
+       "us_min": 78847.90681537829,
+       "host_enqueue_us_median": 1.1189595649116917,
+       "iters": 19,
+       "repeats": 3,
+       "copies": 3,
+       "host_bound": false,
+       "order": "reverse"
+      }
+     ],
+     "ms": 78.9055,
+     "ms_min": 78.8479,
+     "gpairs_per_s": 10.0997,
+     "host_blocked": false,
+     "host_bound": false,
+     "clobbered": false
+    }
+   },
+   "agreement": {
+    "same_class": {
+     "cos_min": 0.9883619,
+     "cos_mean": 0.9968765,
+     "max_abs_over_rms": 3.179763,
+     "finite": true,
+     "bit_identical": false
+    },
+    "pv8_class": {
+     "cos_min": 0.9884686,
+     "cos_mean": 0.9985064,
+     "max_abs_over_rms": 0.731828,
+     "finite": true,
+     "bit_identical": false
+    },
+    "ours": {
+     "cos_min": 0.9906463,
+     "cos_mean": 0.998144,
+     "max_abs_over_rms": 2.904964,
+     "finite": true,
+     "bit_identical": false
+    },
+    "port-exact": {
+     "cos_min": 1.0,
+     "cos_mean": 1.0,
+     "max_abs_over_rms": 0.0,
+     "finite": true,
+     "bit_identical": true
+    },
+    "port-qk8": {
+     "cos_min": 1.0,
+     "cos_mean": 1.0,
+     "max_abs_over_rms": 0.0,
+     "finite": true,
+     "bit_identical": true
+    },
+    "port-pv8": {
+     "cos_min": 1.0,
+     "cos_mean": 1.0,
+     "max_abs_over_rms": 0.0,
+     "finite": true,
+     "bit_identical": true
+    },
+    "port-qk8pv8": {
+     "cos_min": 1.0,
+     "cos_mean": 1.0,
+     "max_abs_over_rms": 0.0,
+     "finite": true,
+     "bit_identical": true
+    },
+    "port-qk8-scatter": {
+     "cos_min": 1.0,
+     "cos_mean": 1.0,
+     "max_abs_over_rms": 0.0,
+     "finite": true,
+     "bit_identical": true
+    }
+   }
+  },
+  {
+   "q": 2048,
+   "ctx": 100000,
+   "pairs": 202703872,
+   "copies": 4,
+   "kv_bytes_per_copy": 102400000,
+   "sampled_rows": 48,
+   "arms": {
+    "ours-fp8qk": {
+     "single_launch_ms": 63.928,
+     "accuracy": {
+      "cos_min": 0.9955288,
+      "cos_mean": 0.9982944,
+      "max_abs_over_rms": 0.753622,
+      "finite": true
+     },
+     "floor": [
+      0.98,
+      0.995
+     ],
+     "valid": true,
+     "passes": [
+      {
+       "timing": "events",
+       "us_median": 65331.288213315216,
+       "us_min": 65289.40217391304,
+       "host_enqueue_us_median": 28.871769166511037,
+       "iters": 23,
+       "repeats": 3,
+       "copies": 4,
+       "host_bound": false,
+       "order": "forward"
+      },
+      {
+       "timing": "events",
+       "us_median": 65296.58840013587,
+       "us_min": 65285.45346467391,
+       "host_enqueue_us_median": 28.780519800341647,
+       "iters": 23,
+       "repeats": 3,
+       "copies": 4,
+       "host_bound": false,
+       "order": "reverse"
+      }
+     ],
+     "class_model": {
+      "tile": 64,
+      "against_reference": {
+       "cos_min": 0.9955213,
+       "cos_mean": 0.998296,
+       "max_abs_over_rms": 0.748889,
+       "finite": true
+      },
+      "kernel_against_model": {
+       "cos_min": 0.9999981,
+       "cos_mean": 0.9999986,
+       "max_abs_over_rms": 0.024292,
+       "finite": true
+      }
+     },
+     "ms": 65.3139,
+     "ms_min": 65.2855,
+     "gpairs_per_s": 3.1035,
+     "host_blocked": false,
+     "host_bound": false,
+     "clobbered": false
+    },
+    "ours-exact": {
+     "single_launch_ms": 133.839,
+     "accuracy": {
+      "cos_min": 0.9960555,
+      "cos_mean": 0.9991014,
+      "max_abs_over_rms": 0.66934,
+      "finite": true
+     },
+     "floor": [
+      0.98,
+      0.995
+     ],
+     "valid": true,
+     "passes": [
+      {
+       "timing": "events",
+       "us_median": 132207.78586647726,
+       "us_min": 131349.7314453125,
+       "host_enqueue_us_median": 29.29373559626666,
+       "iters": 11,
+       "repeats": 3,
+       "copies": 4,
+       "host_bound": false,
+       "order": "forward"
+      },
+      {
+       "timing": "events",
+       "us_median": 132820.3457919034,
+       "us_min": 132491.28861860794,
+       "host_enqueue_us_median": 29.184643856503747,
+       "iters": 11,
+       "repeats": 3,
+       "copies": 4,
+       "host_bound": false,
+       "order": "reverse"
+      }
+     ],
+     "class_model": {
+      "tile": 64,
+      "against_reference": {
+       "cos_min": 0.9960462,
+       "cos_mean": 0.9991027,
+       "max_abs_over_rms": 0.672123,
+       "finite": true
+      },
+      "kernel_against_model": {
+       "cos_min": 0.999997,
+       "cos_mean": 0.9999986,
+       "max_abs_over_rms": 0.01245,
+       "finite": true
+      }
+     },
+     "ms": 132.5141,
+     "ms_min": 131.3497,
+     "gpairs_per_s": 1.5297,
+     "host_blocked": false,
+     "host_bound": false,
+     "clobbered": false
+    },
+    "vendor-exact": {
+     "single_launch_ms": 29.861,
+     "accuracy": {
+      "cos_min": 0.9999978,
+      "cos_mean": 0.9999984,
+      "max_abs_over_rms": 0.04068,
+      "finite": true
+     },
+     "floor": [
+      0.9999,
+      0.9999
+     ],
+     "valid": true,
+     "passes": [
+      {
+       "timing": "events",
+       "us_median": 30777.655029296875,
+       "us_min": 30771.4599609375,
+       "host_enqueue_us_median": 1.304002944380045,
+       "iters": 40,
+       "repeats": 3,
+       "copies": 4,
+       "host_bound": false,
+       "order": "forward"
+      },
+      {
+       "timing": "events",
+       "us_median": 30813.833618164062,
+       "us_min": 30813.778686523438,
+       "host_enqueue_us_median": 1.2634904123842716,
+       "iters": 40,
+       "repeats": 3,
+       "copies": 4,
+       "host_bound": false,
+       "order": "reverse"
+      }
+     ],
+     "row": "attn_prefill_h256_gqa6_fp8kv",
+     "scratch_bytes": 0,
+     "ms": 30.7957,
+     "ms_min": 30.7715,
+     "gpairs_per_s": 6.5822,
+     "host_blocked": false,
+     "host_bound": false,
+     "clobbered": false
+    },
+    "vendor-qk8": {
+     "single_launch_ms": 18.72,
+     "accuracy": {
+      "cos_min": 0.9981232,
+      "cos_mean": 0.9992026,
+      "max_abs_over_rms": 0.401623,
+      "finite": true
+     },
+     "floor": [
+      0.98,
+      0.995
+     ],
+     "valid": true,
+     "passes": [
+      {
+       "timing": "events",
+       "us_median": 19047.87139892578,
+       "us_min": 19046.617126464844,
+       "host_enqueue_us_median": 1.3240030966699123,
+       "iters": 40,
+       "repeats": 3,
+       "copies": 4,
+       "host_bound": false,
+       "order": "forward"
+      },
+      {
+       "timing": "events",
+       "us_median": 19029.714965820312,
+       "us_min": 18998.733520507812,
+       "host_enqueue_us_median": 1.2569944374263287,
+       "iters": 40,
+       "repeats": 3,
+       "copies": 4,
+       "host_bound": false,
+       "order": "reverse"
+      }
+     ],
+     "row": "attn_prefill_h256_gqa6_fp8kv_qk8",
+     "scratch_bytes": 0,
+     "ms": 19.0388,
+     "ms_min": 18.9987,
+     "gpairs_per_s": 10.6469,
+     "host_blocked": false,
+     "host_bound": false,
+     "clobbered": false
+    },
+    "vendor-pv8": {
+     "single_launch_ms": 28.895,
+     "accuracy": {
+      "cos_min": 0.9969339,
+      "cos_mean": 0.9996144,
+      "max_abs_over_rms": 0.313073,
+      "finite": true
+     },
+     "floor": [
+      0.98,
+      0.995
+     ],
+     "valid": true,
+     "passes": [
+      {
+       "timing": "events",
+       "us_median": 29222.476196289062,
+       "us_min": 29192.913818359375,
+       "host_enqueue_us_median": 1.2499978765845299,
+       "iters": 40,
+       "repeats": 3,
+       "copies": 4,
+       "host_bound": false,
+       "order": "forward"
+      },
+      {
+       "timing": "events",
+       "us_median": 29153.298950195312,
+       "us_min": 29129.06494140625,
+       "host_enqueue_us_median": 1.3017794117331505,
+       "iters": 40,
+       "repeats": 3,
+       "copies": 4,
+       "host_bound": false,
+       "order": "reverse"
+      }
+     ],
+     "row": "attn_prefill_h256_gqa6_fp8kv_pv8",
+     "scratch_bytes": 0,
+     "ms": 29.1879,
+     "ms_min": 29.1291,
+     "gpairs_per_s": 6.9448,
+     "host_blocked": false,
+     "host_bound": false,
+     "clobbered": false
+    },
+    "vendor-qk8pv8": {
+     "single_launch_ms": 15.018,
+     "accuracy": {
+      "cos_min": 0.9962251,
+      "cos_mean": 0.9988158,
+      "max_abs_over_rms": 0.384242,
+      "finite": true
+     },
+     "floor": [
+      0.98,
+      0.995
+     ],
+     "valid": true,
+     "passes": [
+      {
+       "timing": "events",
+       "us_median": 14918.185424804688,
+       "us_min": 14912.562561035156,
+       "host_enqueue_us_median": 1.265492755919695,
+       "iters": 40,
+       "repeats": 3,
+       "copies": 4,
+       "host_bound": false,
+       "order": "forward"
+      },
+      {
+       "timing": "events",
+       "us_median": 14877.114868164062,
+       "us_min": 14871.983337402344,
+       "host_enqueue_us_median": 1.2622447684407234,
+       "iters": 40,
+       "repeats": 3,
+       "copies": 4,
+       "host_bound": false,
+       "order": "reverse"
+      }
+     ],
+     "row": "attn_prefill_h256_gqa6_fp8kv_qk8pv8",
+     "scratch_bytes": 0,
+     "ms": 14.8977,
+     "ms_min": 14.872,
+     "gpairs_per_s": 13.6064,
+     "host_blocked": false,
+     "host_bound": false,
+     "clobbered": false
+    },
+    "port-exact": {
+     "single_launch_ms": 32.12,
+     "accuracy": {
+      "cos_min": 0.9999978,
+      "cos_mean": 0.9999984,
+      "max_abs_over_rms": 0.04068,
+      "finite": true
+     },
+     "floor": [
+      0.9999,
+      0.9999
+     ],
+     "valid": true,
+     "passes": [
+      {
+       "timing": "events",
+       "us_median": 33042.32177734375,
+       "us_min": 33007.16552734375,
+       "host_enqueue_us_median": 1.0677496902644634,
+       "iters": 40,
+       "repeats": 3,
+       "copies": 4,
+       "host_bound": false,
+       "order": "forward"
+      },
+      {
+       "timing": "events",
+       "us_median": 32968.402099609375,
+       "us_min": 32937.42980957031,
+       "host_enqueue_us_median": 1.0994961485266685,
+       "iters": 40,
+       "repeats": 3,
+       "copies": 4,
+       "host_bound": false,
+       "order": "reverse"
+      }
+     ],
+     "ms": 33.0054,
+     "ms_min": 32.9374,
+     "gpairs_per_s": 6.1415,
+     "host_blocked": false,
+     "host_bound": false,
+     "clobbered": false
+    },
+    "port-qk8": {
+     "single_launch_ms": 20.245,
+     "accuracy": {
+      "cos_min": 0.9981232,
+      "cos_mean": 0.9992026,
+      "max_abs_over_rms": 0.401623,
+      "finite": true
+     },
+     "floor": [
+      0.98,
+      0.995
+     ],
+     "valid": true,
+     "passes": [
+      {
+       "timing": "events",
+       "us_median": 20276.99432373047,
+       "us_min": 20260.321044921875,
+       "host_enqueue_us_median": 1.056748442351818,
+       "iters": 40,
+       "repeats": 3,
+       "copies": 4,
+       "host_bound": false,
+       "order": "forward"
+      },
+      {
+       "timing": "events",
+       "us_median": 20244.752502441406,
+       "us_min": 20240.406799316406,
+       "host_enqueue_us_median": 1.0529998689889908,
+       "iters": 40,
+       "repeats": 3,
+       "copies": 4,
+       "host_bound": false,
+       "order": "reverse"
+      }
+     ],
+     "ms": 20.2609,
+     "ms_min": 20.2404,
+     "gpairs_per_s": 10.0047,
+     "host_blocked": false,
+     "host_bound": false,
+     "clobbered": false
+    },
+    "port-pv8": {
+     "single_launch_ms": 29.277,
+     "accuracy": {
+      "cos_min": 0.9969339,
+      "cos_mean": 0.9996144,
+      "max_abs_over_rms": 0.313073,
+      "finite": true
+     },
+     "floor": [
+      0.98,
+      0.995
+     ],
+     "valid": true,
+     "passes": [
+      {
+       "timing": "events",
+       "us_median": 29278.018188476562,
+       "us_min": 29268.194580078125,
+       "host_enqueue_us_median": 1.080264337360859,
+       "iters": 40,
+       "repeats": 3,
+       "copies": 4,
+       "host_bound": false,
+       "order": "forward"
+      },
+      {
+       "timing": "events",
+       "us_median": 29245.639038085938,
+       "us_min": 29232.43408203125,
+       "host_enqueue_us_median": 1.062254887074232,
+       "iters": 40,
+       "repeats": 3,
+       "copies": 4,
+       "host_bound": false,
+       "order": "reverse"
+      }
+     ],
+     "ms": 29.2618,
+     "ms_min": 29.2324,
+     "gpairs_per_s": 6.9272,
+     "host_blocked": false,
+     "host_bound": false,
+     "clobbered": false
+    },
+    "port-qk8pv8": {
+     "single_launch_ms": 14.971,
+     "accuracy": {
+      "cos_min": 0.9962251,
+      "cos_mean": 0.9988158,
+      "max_abs_over_rms": 0.384242,
+      "finite": true
+     },
+     "floor": [
+      0.98,
+      0.995
+     ],
+     "valid": true,
+     "passes": [
+      {
+       "timing": "events",
+       "us_median": 14875.901794433594,
+       "us_min": 14872.148132324219,
+       "host_enqueue_us_median": 1.0519986972212791,
+       "iters": 40,
+       "repeats": 3,
+       "copies": 4,
+       "host_bound": false,
+       "order": "forward"
+      },
+      {
+       "timing": "events",
+       "us_median": 14892.684936523438,
+       "us_min": 14887.715148925781,
+       "host_enqueue_us_median": 1.059030182659626,
+       "iters": 40,
+       "repeats": 3,
+       "copies": 4,
+       "host_bound": false,
+       "order": "reverse"
+      }
+     ],
+     "ms": 14.8843,
+     "ms_min": 14.8721,
+     "gpairs_per_s": 13.6186,
+     "host_blocked": false,
+     "host_bound": false,
+     "clobbered": false
+    },
+    "port-qk8-scatter": {
+     "single_launch_ms": 20.145,
+     "accuracy": {
+      "cos_min": 0.9981232,
+      "cos_mean": 0.9992026,
+      "max_abs_over_rms": 0.401623,
+      "finite": true
+     },
+     "floor": [
+      0.98,
+      0.995
+     ],
+     "valid": true,
+     "passes": [
+      {
+       "timing": "events",
+       "us_median": 20328.40118408203,
+       "us_min": 20326.49383544922,
+       "host_enqueue_us_median": 1.0594958439469337,
+       "iters": 40,
+       "repeats": 3,
+       "copies": 4,
+       "host_bound": false,
+       "order": "forward"
+      },
+      {
+       "timing": "events",
+       "us_median": 20323.11248779297,
+       "us_min": 20322.218322753906,
+       "host_enqueue_us_median": 1.0637450031936169,
+       "iters": 40,
+       "repeats": 3,
+       "copies": 4,
+       "host_bound": false,
+       "order": "reverse"
+      }
+     ],
+     "ms": 20.3258,
+     "ms_min": 20.3222,
+     "gpairs_per_s": 9.9728,
+     "host_blocked": false,
+     "host_bound": false,
+     "clobbered": false
+    }
+   },
+   "agreement": {
+    "same_class": {
+     "cos_min": 0.9906662,
+     "cos_mean": 0.9971659,
+     "max_abs_over_rms": 1.888095,
+     "finite": true,
+     "bit_identical": false
+    },
+    "pv8_class": {
+     "cos_min": 0.9934996,
+     "cos_mean": 0.9987778,
+     "max_abs_over_rms": 0.927231,
+     "finite": true,
+     "bit_identical": false
+    },
+    "ours": {
+     "cos_min": 0.9931088,
+     "cos_mean": 0.9982848,
+     "max_abs_over_rms": 1.342131,
+     "finite": true,
+     "bit_identical": false
+    },
+    "port-exact": {
+     "cos_min": 1.0,
+     "cos_mean": 1.0,
+     "max_abs_over_rms": 0.0,
+     "finite": true,
+     "bit_identical": true
+    },
+    "port-qk8": {
+     "cos_min": 1.0,
+     "cos_mean": 1.0,
+     "max_abs_over_rms": 0.0,
+     "finite": true,
+     "bit_identical": true
+    },
+    "port-pv8": {
+     "cos_min": 1.0,
+     "cos_mean": 1.0,
+     "max_abs_over_rms": 0.0,
+     "finite": true,
+     "bit_identical": true
+    },
+    "port-qk8pv8": {
+     "cos_min": 1.0,
+     "cos_mean": 1.0,
+     "max_abs_over_rms": 0.0,
+     "finite": true,
+     "bit_identical": true
+    },
+    "port-qk8-scatter": {
+     "cos_min": 1.0,
+     "cos_mean": 1.0,
+     "max_abs_over_rms": 0.0,
+     "finite": true,
+     "bit_identical": true
+    }
+   }
+  }
+ ],
+ "lib": {
+  "path": "/data/vllm-radiance-src/radiance-build/radiance_home/kernels/libr4d.so",
+  "sha256": "1123ee6cdfeaa9e39436632f98b9dd8bcf5853ce3b949c7f69378f80dbba91c8",
+  "version": "0.5.0",
+  "build_target": "gfx1201",
+  "abi_version": 37
+ },
+ "port_ext": {
+  "file": "/data/tmp/rad10c-run/ext/prefill_attn_fp8_hip_ext.so",
+  "sha256": "833d3a0683aa4f8891a4ed9337febb0d1a1550aec66b4a1c4a5e4e163f0427fe"
+ },
+ "extend_attention": {
+  "file": "/data/sgl-v0522/python/sglang/kernels/ops/attention/extend_attention.py",
+  "sha256": "afd9d37962d1dd51c247698cc5d26b25eab20df6815ab3ff950809632d28eb80",
+  "tile": [
+   64,
+   64,
+   4
+  ]
+ },
+ "summary": {
+  "ratios": [
+   {
+    "q": 8192,
+    "ctx": 8192,
+    "same_class": 3.052,
+    "pv8_class": 1.401,
+    "served_over": {
+     "vendor-exact": 1.543,
+     "vendor-qk8": 2.395,
+     "vendor-pv8": 1.65,
+     "vendor-qk8pv8": 3.052
+    },
+    "like_row": "vendor-exact",
+    "served_over_like": 1.543,
+    "fastest_vendor_row": "vendor-qk8pv8",
+    "served_over_fastest": 3.052
+   },
+   {
+    "q": 8192,
+    "ctx": 65536,
+    "same_class": 4.453,
+    "pv8_class": 4.427,
+    "served_over": {
+     "vendor-exact": 2.143,
+     "vendor-qk8": 3.492,
+     "vendor-pv8": 2.258,
+     "vendor-qk8pv8": 4.453
+    },
+    "like_row": "vendor-qk8",
+    "served_over_like": 3.492,
+    "fastest_vendor_row": "vendor-qk8pv8",
+    "served_over_fastest": 4.453
+   },
+   {
+    "q": 8192,
+    "ctx": 131072,
+    "same_class": 4.544,
+    "pv8_class": 4.916,
+    "served_over": {
+     "vendor-exact": 2.173,
+     "vendor-qk8": 3.561,
+     "vendor-pv8": 2.307,
+     "vendor-qk8pv8": 4.544
+    },
+    "like_row": "vendor-qk8",
+    "served_over_like": 3.561,
+    "fastest_vendor_row": "vendor-qk8pv8",
+    "served_over_fastest": 4.544
+   },
+   {
+    "q": 8192,
+    "ctx": 196608,
+    "same_class": 4.596,
+    "pv8_class": 5.018,
+    "served_over": {
+     "vendor-exact": 2.18,
+     "vendor-qk8": 3.592,
+     "vendor-pv8": 2.314,
+     "vendor-qk8pv8": 4.596
+    },
+    "like_row": "vendor-qk8",
+    "served_over_like": 3.592,
+    "fastest_vendor_row": "vendor-qk8pv8",
+    "served_over_fastest": 4.596
+   },
+   {
+    "q": 4096,
+    "ctx": 65536,
+    "same_class": 4.423,
+    "pv8_class": 4.475,
+    "served_over": {
+     "vendor-exact": 2.14,
+     "vendor-qk8": 3.474,
+     "vendor-pv8": 2.267,
+     "vendor-qk8pv8": 4.423
+    },
+    "like_row": "vendor-qk8",
+    "served_over_like": 3.474,
+    "fastest_vendor_row": "vendor-qk8pv8",
+    "served_over_fastest": 4.423
+   },
+   {
+    "q": 4096,
+    "ctx": 196608,
+    "same_class": 4.532,
+    "pv8_class": 4.906,
+    "served_over": {
+     "vendor-exact": 2.165,
+     "vendor-qk8": 3.54,
+     "vendor-pv8": 2.295,
+     "vendor-qk8pv8": 4.532
+    },
+    "like_row": "vendor-qk8",
+    "served_over_like": 3.54,
+    "fastest_vendor_row": "vendor-qk8pv8",
+    "served_over_fastest": 4.532
+   },
+   {
+    "q": 2048,
+    "ctx": 100000,
+    "same_class": 4.384,
+    "pv8_class": 4.54,
+    "served_over": {
+     "vendor-exact": 2.121,
+     "vendor-qk8": 3.431,
+     "vendor-pv8": 2.238,
+     "vendor-qk8pv8": 4.384
+    },
+    "like_row": "vendor-qk8",
+    "served_over_like": 3.431,
+    "fastest_vendor_row": "vendor-qk8pv8",
+    "served_over_fastest": 4.384
+   }
+  ],
+  "fits": {
+   "ours-fp8qk": {
+    "points": 4,
+    "ms_at_depth_0": 8.393,
+    "ms_per_1k_prefix": 2.74391,
+    "rms_ms": 0.612,
+    "gpairs_per_s_on_the_slope": 2.986,
+    "prompt_197k": {
+     "chunks": 24,
+     "depth_free_s": 3.22,
+     "depth_bound_s": 99.26,
+     "total_s": 102.49
+    }
+   },
+   "ours-exact": {
+    "points": 4,
+    "ms_at_depth_0": -5.326,
+    "ms_per_1k_prefix": 6.04448,
+    "rms_ms": 11.491,
+    "gpairs_per_s_on_the_slope": 1.355,
+    "prompt_197k": {
+     "chunks": 24,
+     "depth_free_s": -2.05,
+     "depth_bound_s": 218.66,
+     "total_s": 216.62
+    }
+   },
+   "vendor-exact": {
+    "points": 4,
+    "ms_at_depth_0": 5.604,
+    "ms_per_1k_prefix": 1.24913,
+    "rms_ms": 0.267,
+    "gpairs_per_s_on_the_slope": 6.558,
+    "prompt_197k": {
+     "chunks": 24,
+     "depth_free_s": 2.15,
+     "depth_bound_s": 45.19,
+     "total_s": 47.34
+    }
+   },
+   "vendor-qk8": {
+    "points": 4,
+    "ms_at_depth_0": 3.816,
+    "ms_per_1k_prefix": 0.75717,
+    "rms_ms": 0.041,
+    "gpairs_per_s_on_the_slope": 10.819,
+    "prompt_197k": {
+     "chunks": 24,
+     "depth_free_s": 1.47,
+     "depth_bound_s": 27.39,
+     "total_s": 28.86
+    }
+   },
+   "vendor-pv8": {
+    "points": 4,
+    "ms_at_depth_0": 5.469,
+    "ms_per_1k_prefix": 1.17604,
+    "rms_ms": 0.265,
+    "gpairs_per_s_on_the_slope": 6.966,
+    "prompt_197k": {
+     "chunks": 24,
+     "depth_free_s": 2.1,
+     "depth_bound_s": 42.54,
+     "total_s": 44.64
+    }
+   },
+   "vendor-qk8pv8": {
+    "points": 4,
+    "ms_at_depth_0": 3.065,
+    "ms_per_1k_prefix": 0.59173,
+    "rms_ms": 0.112,
+    "gpairs_per_s_on_the_slope": 13.844,
+    "prompt_197k": {
+     "chunks": 24,
+     "depth_free_s": 1.18,
+     "depth_bound_s": 21.41,
+     "total_s": 22.58
+    }
+   }
+  },
+  "flags": [],
+  "serving_anchor": {
+   "what": "s per 8192-token chunk per 1,000 tokens of prefix, 16 layers: bench against RAD-10's server fit",
+   "bench": 0.0439,
+   "serving": 0.0438,
+   "ratio": 1.002,
+   "within": true
+  },
+  "vendor_anchor": {
+   "what": "vendor-exact at the shape of radiance's stated time, ms",
+   "stated": 22.7,
+   "measured": 30.796,
+   "ratio": 1.357
+  },
+  "projected_197k": {
+   "what": "prefill attention seconds per rank on the 197K cold prompt from the two fits",
+   "ours-fp8qk": 102.49,
+   "vendor-qk8": 28.86,
+   "saving_s": 73.63
+  },
+  "port": {
+   "rows": [
+    {
+     "q": 2048,
+     "ctx": 100000,
+     "arm": "port-exact",
+     "like": "vendor-exact",
+     "valid": true,
+     "error": null,
+     "cos_min": 0.9999978,
+     "ms": 33.0054,
+     "like_ms": 30.7957,
+     "over_like": 1.0718,
+     "agree_cos_min": 1.0,
+     "bit_identical": true,
+     "served_over": 1.979
+    },
+    {
+     "q": 2048,
+     "ctx": 100000,
+     "arm": "port-qk8",
+     "like": "vendor-qk8",
+     "valid": true,
+     "error": null,
+     "cos_min": 0.9981232,
+     "ms": 20.2609,
+     "like_ms": 19.0388,
+     "over_like": 1.0642,
+     "agree_cos_min": 1.0,
+     "bit_identical": true,
+     "served_over": 3.224
+    },
+    {
+     "q": 2048,
+     "ctx": 100000,
+     "arm": "port-pv8",
+     "like": "vendor-pv8",
+     "valid": true,
+     "error": null,
+     "cos_min": 0.9969339,
+     "ms": 29.2618,
+     "like_ms": 29.1879,
+     "over_like": 1.0025,
+     "agree_cos_min": 1.0,
+     "bit_identical": true,
+     "served_over": 2.232
+    },
+    {
+     "q": 2048,
+     "ctx": 100000,
+     "arm": "port-qk8pv8",
+     "like": "vendor-qk8pv8",
+     "valid": true,
+     "error": null,
+     "cos_min": 0.9962251,
+     "ms": 14.8843,
+     "like_ms": 14.8977,
+     "over_like": 0.9991,
+     "agree_cos_min": 1.0,
+     "bit_identical": true,
+     "served_over": 4.388
+    },
+    {
+     "q": 2048,
+     "ctx": 100000,
+     "arm": "port-qk8-scatter",
+     "like": "port-qk8",
+     "valid": true,
+     "error": null,
+     "cos_min": 0.9981232,
+     "ms": 20.3258,
+     "like_ms": 20.2609,
+     "over_like": 1.0032,
+     "agree_cos_min": 1.0,
+     "bit_identical": true,
+     "served_over": 3.213
+    },
+    {
+     "q": 4096,
+     "ctx": 65536,
+     "arm": "port-exact",
+     "like": "vendor-exact",
+     "valid": true,
+     "error": null,
+     "cos_min": 0.9999979,
+     "ms": 42.2845,
+     "like_ms": 39.8452,
+     "over_like": 1.0612,
+     "agree_cos_min": 1.0,
+     "bit_identical": true,
+     "served_over": 2.016
+    },
+    {
+     "q": 4096,
+     "ctx": 65536,
+     "arm": "port-qk8",
+     "like": "vendor-qk8",
+     "valid": true,
+     "error": null,
+     "cos_min": 0.9981267,
+     "ms": 26.0476,
+     "like_ms": 24.5419,
+     "over_like": 1.0614,
+     "agree_cos_min": 1.0,
+     "bit_identical": true,
+     "served_over": 3.273
+    },
+    {
+     "q": 4096,
+     "ctx": 65536,
+     "arm": "port-pv8",
+     "like": "vendor-pv8",
+     "valid": true,
+     "error": null,
+     "cos_min": 0.9983553,
+     "ms": 37.4613,
+     "like_ms": 37.6083,
+     "over_like": 0.9961,
+     "agree_cos_min": 1.0,
+     "bit_identical": true,
+     "served_over": 2.276
+    },
+    {
+     "q": 4096,
+     "ctx": 65536,
+     "arm": "port-qk8pv8",
+     "like": "vendor-qk8pv8",
+     "valid": true,
+     "error": null,
+     "cos_min": 0.9975465,
+     "ms": 19.0972,
+     "like_ms": 19.2773,
+     "over_like": 0.9907,
+     "agree_cos_min": 1.0,
+     "bit_identical": true,
+     "served_over": 4.464
+    },
+    {
+     "q": 4096,
+     "ctx": 65536,
+     "arm": "port-qk8-scatter",
+     "like": "port-qk8",
+     "valid": true,
+     "error": null,
+     "cos_min": 0.9981267,
+     "ms": 26.0617,
+     "like_ms": 26.0476,
+     "over_like": 1.0005,
+     "agree_cos_min": 1.0,
+     "bit_identical": true,
+     "served_over": 3.271
+    },
+    {
+     "q": 4096,
+     "ctx": 196608,
+     "arm": "port-exact",
+     "like": "vendor-exact",
+     "valid": true,
+     "error": null,
+     "cos_min": 0.9999978,
+     "ms": 127.9737,
+     "like_ms": 121.1886,
+     "over_like": 1.056,
+     "agree_cos_min": 1.0,
+     "bit_identical": true,
+     "served_over": 2.05
+    },
+    {
+     "q": 4096,
+     "ctx": 196608,
+     "arm": "port-qk8",
+     "like": "vendor-qk8",
+     "valid": true,
+     "error": null,
+     "cos_min": 0.9980641,
+     "ms": 78.8636,
+     "like_ms": 74.1194,
+     "over_like": 1.064,
+     "agree_cos_min": 1.0,
+     "bit_identical": true,
+     "served_over": 3.327
+    },
+    {
+     "q": 4096,
+     "ctx": 196608,
+     "arm": "port-pv8",
+     "like": "vendor-pv8",
+     "valid": true,
+     "error": null,
+     "cos_min": 0.9949242,
+     "ms": 113.9025,
+     "like_ms": 114.3351,
+     "over_like": 0.9962,
+     "agree_cos_min": 1.0,
+     "bit_identical": true,
+     "served_over": 2.303
+    },
+    {
+     "q": 4096,
+     "ctx": 196608,
+     "arm": "port-qk8pv8",
+     "like": "vendor-qk8pv8",
+     "valid": true,
+     "error": null,
+     "cos_min": 0.9941946,
+     "ms": 57.8687,
+     "like_ms": 57.8924,
+     "over_like": 0.9996,
+     "agree_cos_min": 1.0,
+     "bit_identical": true,
+     "served_over": 4.534
+    },
+    {
+     "q": 4096,
+     "ctx": 196608,
+     "arm": "port-qk8-scatter",
+     "like": "port-qk8",
+     "valid": true,
+     "error": null,
+     "cos_min": 0.9980641,
+     "ms": 78.9055,
+     "like_ms": 78.8636,
+     "over_like": 1.0005,
+     "agree_cos_min": 1.0,
+     "bit_identical": true,
+     "served_over": 3.325
+    },
+    {
+     "q": 8192,
+     "ctx": 8192,
+     "arm": "port-exact",
+     "like": "vendor-exact",
+     "valid": true,
+     "error": null,
+     "cos_min": 0.999998,
+     "ms": 6.1574,
+     "like_ms": 5.8508,
+     "over_like": 1.0524,
+     "agree_cos_min": 1.0,
+     "bit_identical": true,
+     "served_over": 1.467
+    },
+    {
+     "q": 8192,
+     "ctx": 8192,
+     "arm": "port-qk8",
+     "like": "vendor-qk8",
+     "valid": true,
+     "error": null,
+     "cos_min": 0.9980064,
+     "ms": 3.9923,
+     "like_ms": 3.7702,
+     "over_like": 1.0589,
+     "agree_cos_min": 1.0,
+     "bit_identical": true,
+     "served_over": 2.262
+    },
+    {
+     "q": 8192,
+     "ctx": 8192,
+     "arm": "port-pv8",
+     "like": "vendor-pv8",
+     "valid": true,
+     "error": null,
+     "cos_min": 0.9993289,
+     "ms": 5.4895,
+     "like_ms": 5.4726,
+     "over_like": 1.0031,
+     "agree_cos_min": 1.0,
+     "bit_identical": true,
+     "served_over": 1.645
+    },
+    {
+     "q": 8192,
+     "ctx": 8192,
+     "arm": "port-qk8pv8",
+     "like": "vendor-qk8pv8",
+     "valid": true,
+     "error": null,
+     "cos_min": 0.996787,
+     "ms": 2.9879,
+     "like_ms": 2.9584,
+     "over_like": 1.01,
+     "agree_cos_min": 1.0,
+     "bit_identical": true,
+     "served_over": 3.022
+    },
+    {
+     "q": 8192,
+     "ctx": 8192,
+     "arm": "port-qk8-scatter",
+     "like": "port-qk8",
+     "valid": true,
+     "error": null,
+     "cos_min": 0.9980064,
+     "ms": 4.0108,
+     "like_ms": 3.9923,
+     "over_like": 1.0046,
+     "agree_cos_min": 1.0,
+     "bit_identical": true,
+     "served_over": 2.251
+    },
+    {
+     "q": 8192,
+     "ctx": 65536,
+     "arm": "port-exact",
+     "like": "vendor-exact",
+     "valid": true,
+     "error": null,
+     "cos_min": 0.9999979,
+     "ms": 81.814,
+     "like_ms": 77.0482,
+     "over_like": 1.0619,
+     "agree_cos_min": 1.0,
+     "bit_identical": true,
+     "served_over": 2.018
+    },
+    {
+     "q": 8192,
+     "ctx": 65536,
+     "arm": "port-qk8",
+     "like": "vendor-qk8",
+     "valid": true,
+     "error": null,
+     "cos_min": 0.9979195,
+     "ms": 50.2318,
+     "like_ms": 47.292,
+     "over_like": 1.0622,
+     "agree_cos_min": 1.0,
+     "bit_identical": true,
+     "served_over": 3.287
+    },
+    {
+     "q": 8192,
+     "ctx": 65536,
+     "arm": "port-pv8",
+     "like": "vendor-pv8",
+     "valid": true,
+     "error": null,
+     "cos_min": 0.9964851,
+     "ms": 72.4431,
+     "like_ms": 73.1205,
+     "over_like": 0.9907,
+     "agree_cos_min": 1.0,
+     "bit_identical": true,
+     "served_over": 2.279
+    },
+    {
+     "q": 8192,
+     "ctx": 65536,
+     "arm": "port-qk8pv8",
+     "like": "vendor-qk8pv8",
+     "valid": true,
+     "error": null,
+     "cos_min": 0.9958454,
+     "ms": 36.736,
+     "like_ms": 37.0816,
+     "over_like": 0.9907,
+     "agree_cos_min": 1.0,
+     "bit_identical": true,
+     "served_over": 4.495
+    },
+    {
+     "q": 8192,
+     "ctx": 65536,
+     "arm": "port-qk8-scatter",
+     "like": "port-qk8",
+     "valid": true,
+     "error": null,
+     "cos_min": 0.9979195,
+     "ms": 50.2692,
+     "like_ms": 50.2318,
+     "over_like": 1.0007,
+     "agree_cos_min": 1.0,
+     "bit_identical": true,
+     "served_over": 3.285
+    },
+    {
+     "q": 8192,
+     "ctx": 131072,
+     "arm": "port-exact",
+     "like": "vendor-exact",
+     "valid": true,
+     "error": null,
+     "cos_min": 0.999998,
+     "ms": 167.6446,
+     "like_ms": 158.762,
+     "over_like": 1.0559,
+     "agree_cos_min": 1.0,
+     "bit_identical": true,
+     "served_over": 2.058
+    },
+    {
+     "q": 8192,
+     "ctx": 131072,
+     "arm": "port-qk8",
+     "like": "vendor-qk8",
+     "valid": true,
+     "error": null,
+     "cos_min": 0.998542,
+     "ms": 102.9653,
+     "like_ms": 96.8756,
+     "over_like": 1.0629,
+     "agree_cos_min": 1.0,
+     "bit_identical": true,
+     "served_over": 3.35
+    },
+    {
+     "q": 8192,
+     "ctx": 131072,
+     "arm": "port-pv8",
+     "like": "vendor-pv8",
+     "valid": true,
+     "error": null,
+     "cos_min": 0.993595,
+     "ms": 149.5549,
+     "like_ms": 149.5485,
+     "over_like": 1.0,
+     "agree_cos_min": 1.0,
+     "bit_identical": true,
+     "served_over": 2.307
+    },
+    {
+     "q": 8192,
+     "ctx": 131072,
+     "arm": "port-qk8pv8",
+     "like": "vendor-qk8pv8",
+     "valid": true,
+     "error": null,
+     "cos_min": 0.9923242,
+     "ms": 75.5372,
+     "like_ms": 75.9133,
+     "over_like": 0.995,
+     "agree_cos_min": 1.0,
+     "bit_identical": true,
+     "served_over": 4.567
+    },
+    {
+     "q": 8192,
+     "ctx": 131072,
+     "arm": "port-qk8-scatter",
+     "like": "port-qk8",
+     "valid": true,
+     "error": null,
+     "cos_min": 0.998542,
+     "ms": 102.965,
+     "like_ms": 102.9653,
+     "over_like": 1.0,
+     "agree_cos_min": 1.0,
+     "bit_identical": true,
+     "served_over": 3.35
+    },
+    {
+     "q": 8192,
+     "ctx": 196608,
+     "arm": "port-exact",
+     "like": "vendor-exact",
+     "valid": true,
+     "error": null,
+     "cos_min": 0.9999978,
+     "ms": 253.1279,
+     "like_ms": 241.2369,
+     "over_like": 1.0493,
+     "agree_cos_min": 1.0,
+     "bit_identical": true,
+     "served_over": 2.078
+    },
+    {
+     "q": 8192,
+     "ctx": 196608,
+     "arm": "port-qk8",
+     "like": "vendor-qk8",
+     "valid": true,
+     "error": null,
+     "cos_min": 0.9985383,
+     "ms": 155.8706,
+     "like_ms": 146.4489,
+     "over_like": 1.0643,
+     "agree_cos_min": 1.0,
+     "bit_identical": true,
+     "served_over": 3.374
+    },
+    {
+     "q": 8192,
+     "ctx": 196608,
+     "arm": "port-pv8",
+     "like": "vendor-pv8",
+     "valid": true,
+     "error": null,
+     "cos_min": 0.9918897,
+     "ms": 225.8805,
+     "like_ms": 227.2728,
+     "over_like": 0.9939,
+     "agree_cos_min": 1.0,
+     "bit_identical": true,
+     "served_over": 2.329
+    },
+    {
+     "q": 8192,
+     "ctx": 196608,
+     "arm": "port-qk8pv8",
+     "like": "vendor-qk8pv8",
+     "valid": true,
+     "error": null,
+     "cos_min": 0.9911448,
+     "ms": 114.4888,
+     "like_ms": 114.4407,
+     "over_like": 1.0004,
+     "agree_cos_min": 1.0,
+     "bit_identical": true,
+     "served_over": 4.594
+    },
+    {
+     "q": 8192,
+     "ctx": 196608,
+     "arm": "port-qk8-scatter",
+     "like": "port-qk8",
+     "valid": true,
+     "error": null,
+     "cos_min": 0.9985383,
+     "ms": 155.8687,
+     "like_ms": 155.8706,
+     "over_like": 1.0,
+     "agree_cos_min": 1.0,
+     "bit_identical": true,
+     "served_over": 3.374
+    }
+   ],
+   "case": [
+    8192,
+    196608
+   ],
+   "cos": 0.9995,
+   "time": 1.1,
+   "gate": "pass"
+  },
+  "served_over_like_deep": [
+   3.561,
+   3.592
+  ],
+  "verdict": "port",
+  "gate": "port"
+ }
+}

@@ -1,0 +1,48 @@
+{
+ "label": "car1-sampled",
+ "note": "flint FP8 preset, live tree, 97 patches, --random-seed 7",
+ "log": "/data/logs/flint-custom-ar-v3-2026-11-11/server-car1.log",
+ "from_line": 253,
+ "to_line": 397,
+ "line_numbering": "newline",
+ "decode_lines_dropped_after_prefill": 12,
+ "decode_lines_dropped_no_depth": 1,
+ "depths": {
+  "24": {
+   "decode_batches": {
+    "lines": 22,
+    "accept_len": 2.26,
+    "tok_s": 62.03,
+    "cycles_s": 26.93,
+    "cycle_ms": 37.13
+   }
+  },
+  "7.3K": {
+   "decode_batches": {
+    "lines": 13,
+    "accept_len": 3.8,
+    "tok_s": 95.85,
+    "cycles_s": 25.36,
+    "cycle_ms": 39.43
+   }
+  },
+  "58K": {
+   "decode_batches": {
+    "lines": 16,
+    "accept_len": 2.96,
+    "tok_s": 68.73,
+    "cycles_s": 22.66,
+    "cycle_ms": 44.14
+   }
+  },
+  "197K": {
+   "decode_batches": {
+    "lines": 6,
+    "accept_len": 8.0,
+    "tok_s": 134.87,
+    "cycles_s": 16.92,
+    "cycle_ms": 59.1
+   }
+  }
+ }
+}

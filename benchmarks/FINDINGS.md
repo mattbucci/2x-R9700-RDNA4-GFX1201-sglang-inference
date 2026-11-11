@@ -2342,6 +2342,66 @@ Disposition, by the gate fixed before the run (`identical`): phase 1, a serving 
 attention-TP sum in BF16 on a two-rank group, from a development tree; greedy output is required to be equal to
 the token, since no bit changes.
 
+### RAD-10c kernel — radiance's prefill attention kernel, built from source against this tree's two fp8 pools, returns the bits of the library's rows at ×1.05–1.07 of their time; the served kernel takes ×2.1 (exact) and ×3.4 (fp8 QK) of it at depth (2026-11-11)
+
+RAD-10b's verdict was `port`. The kernel source is in the Apache-2.0 tree (`libr4d/r4d_attn_prefill_h256_gqa6.hip`,
+revision 451b1368, "Copyright 2026 Deadcode and the radiance contributors"). It reads one interleaved K/V buffer
+through a table of 16-token blocks; this tree keeps K and V in two fp8 buffers `[slot, kv head, 256]` with one slot
+per token. The copy compiled here carries six source edits (V read from its own pool, the context length as an
+argument, one static assert), its own argument header and its own launcher with block size 1, so every key is
+found through one int32 table entry. `scripts/bench/bench_prefill_attention.py --port-ext` runs it beside the
+library's rows and the served Triton extend kernel on the same operands in the libr4d sandbox
+([receipts](profiling/rad10c-kernel-bench-2026-11-11/), 29 CPU checks before the run).
+
+| 8192 queries behind 188K of prefix, card 0 | ms | over the library's row | served kernel over it | lowest cosine against fp64 |
+|---|---|---|---|---|
+| `port-exact` | 253.1 | ×1.049 | ×2.08 | 0.9999978 |
+| `port-qk8` (fp8 QK product) | 155.9 | ×1.064 | ×3.37 | 0.99854 |
+| `port-pv8` | 225.9 | ×0.994 | ×2.33 | 0.99189 |
+| `port-qk8pv8` | 114.5 | ×1.000 | ×4.59 | 0.99114 |
+| `port-qk8-scatter` (shuffled table) | 155.9 | ×1.000 of `port-qk8` | ×3.37 | 0.99854 |
+
+All 35 ported rows on card 0 (seven shapes) and all 10 on card 1 (the two deep shapes) are bit-identical to the row
+they reproduce; card 1 reads 253.6 and 156.8 ms for the two gated rows (×1.061, ×1.065). The per-token table costs
+5–7 % on the exact and fp8-QK rows against the library's 16-token blocks and nothing on the rows with the fp8 PV
+product. A shuffled table costs nothing more, so pool fragmentation is not a term. `port-exact` is as exact as the
+served kernel's exact row and takes half its time; `port-qk8` is more exact than the served fp8-QK kernel (0.9917
+lowest cosine in RAD-10b) at 0.30 of its time. With RAD-10b's slopes, the 197K cold prompt's prefix attention
+projects to about 31 s (`qk8`) or 48 s (`exact`) against 101.6 s served, of a 184.4 s prefill.
+
+Disposition, by the gate fixed before the run (`pass` on both cards): serving route behind
+`SGLANG_HIP_PREFILL_ATTN=exact|qk8` from a development tree, then the serving A/B of RAD-10c. The one-pass kernel
+reads the chunk's own keys and values from the pool as fp8 where the served path uses the BF16 tensors of the
+chunk, so the serving quality gates decide; nothing is patched before them.
+
+### FLINT-4b — the in-graph custom all-reduce on Flint: no-spec decode +2.6 % at every depth, DFlash2 cycle unchanged, texts equal wherever the controls repeat themselves (2026-11-11)
+
+Third start, the whole matrix under one method: eight boots of the `flint` preset at `--random-seed 7`, RCCL and
+the custom all-reduce in both orders for DFlash2 (`rccl1 / car1 / car2 / rccl2`) and for no-spec
+([receipts](profiling/flint-custom-ar-v3-2026-11-11/)).
+
+| no-spec canonical decode, tok/s | 14 | 7,321 | 58,473 | 197,315 input tokens |
+|---|---|---|---|---|
+| RCCL, two boots | 44.25 / 44.20 | 43.58 / 43.41 | 42.20 / 42.12 | 38.31 / 38.30 |
+| custom all-reduce, two boots | 45.28 / 45.49 | 44.51 / 44.71 | 43.27 / 43.31 | 39.29 / 39.33 |
+| ratio of the means | ×1.026 | ×1.026 | ×1.027 | ×1.026 |
+
+Every custom boot is above every RCCL boot at every depth. The DFlash2 sampled-ladder cycle is 37.03 / 39.30 /
+44.06 / 59.19 ms on RCCL and 37.04 / 39.36 / 44.12 / 59.11 ms on the custom path (×1.000 / ×1.002 / ×1.001 /
+×0.999), with the accept length equal to the digit at every depth; the canonical DFlash2 rows repeat within 0.5 %
+on all five boots. Cold prefill is ×1.004 / ×1.000 / ×0.999 at 7.3K / 58K / 197K (full chunks exceed the staging
+buffer and stay on RCCL). The paired greedy accept probe reads 2.803 against 2.804 over 48 documents: `car1`,
+`car2` and `rccl2` return the same 48 texts and verify counts, and `rccl1` differs from all three on one document,
+so the lone difference is the control's own repeat. Of six no-spec greedy prompts the two RCCL boots agree on five
+and the custom boots return those five texts; the two custom boots agree on all six. The request matrix passes
+10/10 on all eight boots and is byte-identical across sides, the needle grid finds 11 of 12 cells on both sides
+(deepest prompt 189,815 tokens), and VRAM growth per card is within 1 MiB of the controls.
+
+Disposition, by the rule fixed before the run (one side passes, the other is not slower, prefill, quality and
+memory hold): the custom all-reduce becomes the `flint` preset default with `ENABLE_CUSTOM_ALL_REDUCE=0` as the
+restore knob. The gain is on the no-spec path, which is the path a true 256K request takes; the DFlash2 path
+neither gains nor loses.
+
 ## Evaluation methodology
 
 ### SWE-bench answer leakage through git history and the web (found 2026-09-18)

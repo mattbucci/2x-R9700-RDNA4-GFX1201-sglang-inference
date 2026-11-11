@@ -672,14 +672,14 @@
   {
    "id": "FLINT-4b",
    "spec": "https://github.com/mattbucci/2x-R9700-RDNA4-GFX1201-sglang-inference/issues/27",
-   "status": "queued",
+   "status": "in_progress",
    "resource": "gpu",
    "depends_on": [
     "RAD-25 adopted as patch 129 (in-graph custom all-reduce on an uncached staging buffer, qwen38 FP8 preset default)",
     "tail queue jobs 84-z (RAD-10a), 84-zz (RAD-10b) and 85 (RAD-29d) finished: one GPU job at a time",
     "FLINT-5: the Flint-DFlash2 drafter arguments of the paused SWE-bench cell"
    ],
-   "next_action": "Tail queue job 86 (scratchpad flint_car3/flint_custom_ar_ab.v3.sh, live tree, bare launcher, every boot with --random-seed 7, about 2 h 10 min): the third start, the whole matrix under one method. The first start (job 84) passed the kernel bench and lost its boots to the driver's own tree-import check. The second (job 84-y) measured one DFlash2 pair, rccl1 then car1 (sampled-ladder cycle 36.89 / 39.25 / 44.0 / 59.08 ms on RCCL against 36.97 / 39.31 / 44.08 / 59.2 ms on the custom path at 24 / 7.3K / 58K / 197K, x1.0015 to x1.0022; accept probe 14,400 tokens over 5,137 verifies on both, the verify count equal on 48 of 48 documents), and stopped at the request matrix: Flint's template has no thinking switch, so the matrix's 16- to 220-token budgets ended in reasoning, its text cases read an empty content on the control as on the custom arm (2 of 10 on both, the two logs equal), and the stop rule read the custom arm's concurrent case alone. The accept probe's 48 of 48 equal texts were 48 empty contents. That start's receipts (benchmarks/profiling/flint-custom-ar-2026-11-10/) are one order of one lane and carry no gate. The third start changes the instruments, not the treatment: scripts/eval/greedy_route_probe.py --extra-tokens 1024, scripts/bench/spec_accept_probe.py hashes reasoning plus content and counts pairs of empty texts as blank, and a custom arm fails on the concurrent case only when a control boot of its kind passes it. FLINT-4 item 2 with the mechanism of patch 129. Treatment = ENABLE_CUSTOM_ALL_REDUCE=1 SGLANG_USE_1STAGE_ALLREDUCE=1 in the launcher environment of the flint preset; control = the preset as shipped (RCCL). First a two-rank kernel bench at Flint's payload (hidden size and 2 x layers reductions per step read from the checkpoint config, rows 1 / 8 / 9 / 16 / 32, eager 1-15 MB): no serving arm unless every custom-path output is the exact sum and the class declines an input of the staging-buffer size. Then nine boots: warm0 (DFlash2, RCCL, one canonical sweep that no gate reads), DFlash2 rccl1 / car1 / car2 / rccl2 (text capabilities, canonical sweep, seeded sampled ladder of three 800-token runs per depth, 48-document greedy accept probe, greedy request matrix with 1,024 extra tokens per budget), no-spec nospec-rccl1 / nospec-car1 / nospec-car2 / nospec-rccl2 (text capabilities, canonical sweep, cold prefill at 7.3K / 58K / 197K, greedy identity probe, greedy request matrix; the first pair ends with the natural-haystack needle grid at 1K / 32K / 131K / 197K). Identity per boot from the server log and /proc/<pid>/environ: custom arms need the custom call path, the uncached staging line and a non-zero graph address registration; RCCL arms need none of the three. Then FINDINGS, receipts, and on adoption the flint preset default with ENABLE_CUSTOM_ALL_REDUCE=0 as the restore knob plus the DFlash2 cell wrapper.",
+   "next_action": "Adopt by the rule: custom all-reduce as the flint preset default in scripts/launch.sh with ENABLE_CUSTOM_ALL_REDUCE=0 as the restore knob, once the RAD-30 serving job (which boots through the launcher) has finished; then README preset text and a canonical Flint sweep before headline numbers move.",
    "test_gate": [
     "fixed before the run; every speed number is the mean of the two boots per side, both arm orders",
     "DFlash2 pass: sampled-ladder cycle time (server log, accept length / token rate) at least 1 % shorter in all four depth bins (24 / 7.3K / 58K / 197K) with every custom boot shorter than every RCCL boot; neutral: all four within 1 %; slower: a bin 1 % longer and none shorter; otherwise partial",
@@ -688,7 +688,8 @@
     "quality: text capabilities pass on every arm (one repeat allowed, recorded); the three-request concurrent case of the request matrix passes on every custom arm whose kind has a control boot that passes it (batches above one decode outside the graph) and no case that both controls of a kind pass is lost, with a case no control passes reported as unread on this model; no-spec greedy identity (content, reasoning, completion tokens) equals the controls' on every prompt where the two RCCL boots agree; needle cells found on nospec-car1 not fewer than on nospec-rccl1; pooled accept length custom / RCCL at least 0.95 in both orders with the texts not blank, read against the rccl1 / rccl2 and car1 / car2 repeat pairs",
     "memory: VRAM growth from boot to end of arm on a custom arm at most 512 MiB per card above its control's",
     "adopt as the flint preset default when one side passes, the other is not slower, and prefill, quality and memory hold; otherwise the preset stays on RCCL and the result is recorded as measured"
-   ]
+   ],
+   "result": "FLINT CAR DONE gate=dflash2-neutral:nospec-pass:prefill-ok:accept-pass:identity-control-differs:route-ok:needle-ok:memory-ok (FINDINGS FLINT-4b, benchmarks/profiling/flint-custom-ar-v3-2026-11-11/). No-spec decode x1.026 at all four depths with every custom boot above every RCCL boot; DFlash2 cycle x0.999-1.002; cold prefill x0.999-1.004; accept 2.803 / 2.804; the one differing text is rccl1 against the other three boots; request matrix 10/10 on eight boots; needle 11/12 both sides; VRAM within 1 MiB."
   },
   {
    "id": "RAD-10",
@@ -753,7 +754,7 @@
   {
    "id": "RAD-10c",
    "spec": "19-vllm-radiance-parity.md",
-   "status": "queued",
+   "status": "in_progress",
    "resource": "gpu",
    "depends_on": [
     "RAD-10b (done, port): at 8192 queries behind 197K keys the served extend kernel takes 521 ms, radiance's exact row 238 ms and its fp8-QK row 147 ms; the fp8-QK row is more exact than the served kernel at every deep case",
@@ -761,8 +762,9 @@
     "patch 128 pattern for a native HIP extension: source under kernels/aot/csrc, .so under build/, hooked behind one switch with an active log line",
     "live tree and patches/ are frozen while a queued job reads them: the port is developed in a PYTHONPATH dev tree"
    ],
-   "next_action": "Kernel bench queued (tail queue 86-z, tag rad10c-kernel-bench-2026-11-11, no server boot): radiance's prefill attention kernel (libr4d/r4d_attn_prefill_h256_gqa6.hip at revision 451b1368, Apache-2.0) compiled against this tree's pools (K and V in two fp8 buffers, one int32 table entry per token, six asserted source edits, own argument header and launcher), run by scripts/bench/bench_prefill_attention.py --port-ext beside the library's rows and the served Triton kernel on the same operands. After a pass: serving hook behind SGLANG_HIP_PREFILL_ATTN=exact|qk8 in a PYTHONPATH dev tree, then the serving A/B.",
-   "test_gate": "Kernel (PORT KERNEL GATE pass): every ported row within 0.9995 lowest cosine of the row it reproduces, port-exact also 0.9999 against the fp64 reference, port-exact and port-qk8 at most x1.10 of their rows' time at 8192 x 196608 on card 0, card 1 repeats the deep cases. Serving: 197K cold prefill median at least 25 % shorter (exact) or 33 % (qk8), 7.3K at most x1.01, needle 9/9, capabilities 5/5, cache-hit consistency no worse than the control arm, DSpark accept at least x0.99 and cycle at most x1.005, zero Triton fallbacks on the routed shape, VRAM within 64 MiB; then a numbered patch with the NOTICE attribution and the replay gate."
+   "next_action": "Serving route in a PYTHONPATH dev tree: TritonAttnBackend.forward_extend calls the extension behind SGLANG_HIP_PREFILL_ATTN=exact|qk8 (single-sequence extend, fp8 pool, head_dim 256, head ratio 6, no descale, no mask or window; Triton for every other shape; one active log line), slot table = prefix slots + the chunk's slots as int32. Then the serving A/B: control, exact and qk8 arms in both orders on the qwen38 FP8 preset, after RAD-30 phase 1 has left the cards.",
+   "test_gate": "Kernel (PORT KERNEL GATE pass): every ported row within 0.9995 lowest cosine of the row it reproduces, port-exact also 0.9999 against the fp64 reference, port-exact and port-qk8 at most x1.10 of their rows' time at 8192 x 196608 on card 0, card 1 repeats the deep cases. Serving: 197K cold prefill median at least 25 % shorter (exact) or 33 % (qk8), 7.3K at most x1.01, needle 9/9, capabilities 5/5, cache-hit consistency no worse than the control arm, DSpark accept at least x0.99 and cycle at most x1.005, zero Triton fallbacks on the routed shape, VRAM within 64 MiB; then a numbered patch with the NOTICE attribution and the replay gate.",
+   "result": "Kernel bench: PORT KERNEL GATE pass on card 0 and card 1 (FINDINGS RAD-10c kernel, benchmarks/profiling/rad10c-kernel-bench-2026-11-11/). All 45 ported rows bit-identical to the library's rows; at 8192 x 196608 port-exact 253.1 ms (x1.049 of vendor-exact), port-qk8 155.9 ms (x1.064 of vendor-qk8), a shuffled slot table x1.000; the served kernel takes x2.08 / x3.37 of them."
   },
   {
    "id": "RAD-11",

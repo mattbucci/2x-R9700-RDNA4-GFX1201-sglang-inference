@@ -230,6 +230,14 @@ on the slope; the served kernel's e4m3 softmax weights read 0.9917 lowest cosine
 prefix attention on the 197K cold prompt 101.6 s against 28.9 s
 ([receipts](profiling/rad10b-prefill-attention-v2-2026-11-11/), [first run](profiling/rad10b-prefill-attention-2026-11-11/),
 [FINDINGS → RAD-10b](FINDINGS.md)).
+radiance's prefill attention kernel built from source against this tree's two fp8 pools (`bench_prefill_attention.py --port-ext`,
+RAD-10c): every ported row bit-identical to the library's row on both cards; at 8192 queries behind 188K of prefix `port-exact`
+253 ms and `port-qk8` 156 ms (×1.05 / ×1.06 of the library's rows, the served kernel ×2.08 / ×3.37 of them), a shuffled slot
+table costs nothing ([receipts](profiling/rad10c-kernel-bench-2026-11-11/), [FINDINGS → RAD-10c kernel](FINDINGS.md)).
+In-graph custom all-reduce on the `flint` preset, eight boots in both orders (FLINT-4b): no-spec decode 44.2 / 43.5 / 42.2 /
+38.3 → 45.4 / 44.6 / 43.3 / 39.3 tok/s at 14 / 7.3K / 58K / 197K input tokens (×1.026), DFlash2 cycle ×1.000–1.002, cold
+prefill ×0.999–1.004, accept 2.803 against 2.804 over 48 greedy documents
+([receipts](profiling/flint-custom-ar-v3-2026-11-11/), [FINDINGS → FLINT-4b](FINDINGS.md)).
 TP-split DeltaNet projections on the FP8 preset (patch 121), replicated → split → replicated in one session: decode
 23.3 / 22.9 / 22.2 / 20.5 → 26.9 / 26.3 / 25.3 / 23.2 tok/s, cold prefill 1,798 / 1,460 / 945 → 2,125 / 1,658 / 1,024 tok/s,
 pool 525,548 → 735,510 tokens; with DSpark +4.5 % at 24 tokens, +10.0 % on copy-heavy decode at equal accept length and

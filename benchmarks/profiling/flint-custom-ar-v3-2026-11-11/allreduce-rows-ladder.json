@@ -1,0 +1,1523 @@
+{
+ "world": 2,
+ "hidden": 2048,
+ "rows": [
+  1,
+  8,
+  9,
+  16,
+  32
+ ],
+ "eager_mb": [
+  1,
+  4,
+  8,
+  15
+ ],
+ "graph_len": 98,
+ "device": "AMD Radeon AI PRO R9700",
+ "tree": "/data/sgl-v0522/python/sglang/srt/distributed/device_communicators/custom_all_reduce.py",
+ "env": {
+  "HSA_FORCE_FINE_GRAIN_PCIE": "1",
+  "HIP_VISIBLE_DEVICES": "0,1",
+  "CUDA_VISIBLE_DEVICES": "0,1",
+  "NCCL_P2P_DISABLE": "0",
+  "PYTORCH_HIP_ALLOC_CONF": "expandable_segments:True"
+ },
+ "timestamp": "2026-11-11 01:28",
+ "stages": {
+  "rccl-eager": {
+   "rank0": {
+    "bf16x1rows": {
+     "calls": 8,
+     "matches": {
+      "sum": 8
+     },
+     "non_sum_distinct_residuals": 0,
+     "non_sum_residual_example": null,
+     "exact_sum": 8,
+     "all_finite": true,
+     "worst_frac_equal_sum": 1.0,
+     "bytes": 4096,
+     "us_per_call": 34.17
+    },
+    "fp32x1rows": {
+     "calls": 8,
+     "matches": {
+      "sum": 8
+     },
+     "non_sum_distinct_residuals": 0,
+     "non_sum_residual_example": null,
+     "exact_sum": 8,
+     "all_finite": true,
+     "worst_frac_equal_sum": 1.0,
+     "bytes": 8192,
+     "us_per_call": 31.68
+    },
+    "bf16x8rows": {
+     "calls": 8,
+     "matches": {
+      "sum": 8
+     },
+     "non_sum_distinct_residuals": 0,
+     "non_sum_residual_example": null,
+     "exact_sum": 8,
+     "all_finite": true,
+     "worst_frac_equal_sum": 1.0,
+     "bytes": 32768,
+     "us_per_call": 32.55
+    },
+    "fp32x8rows": {
+     "calls": 8,
+     "matches": {
+      "sum": 8
+     },
+     "non_sum_distinct_residuals": 0,
+     "non_sum_residual_example": null,
+     "exact_sum": 8,
+     "all_finite": true,
+     "worst_frac_equal_sum": 1.0,
+     "bytes": 65536,
+     "us_per_call": 33.5
+    },
+    "bf16x9rows": {
+     "calls": 8,
+     "matches": {
+      "sum": 8
+     },
+     "non_sum_distinct_residuals": 0,
+     "non_sum_residual_example": null,
+     "exact_sum": 8,
+     "all_finite": true,
+     "worst_frac_equal_sum": 1.0,
+     "bytes": 36864,
+     "us_per_call": 32.89
+    },
+    "fp32x9rows": {
+     "calls": 8,
+     "matches": {
+      "sum": 8
+     },
+     "non_sum_distinct_residuals": 0,
+     "non_sum_residual_example": null,
+     "exact_sum": 8,
+     "all_finite": true,
+     "worst_frac_equal_sum": 1.0,
+     "bytes": 73728,
+     "us_per_call": 34.23
+    },
+    "bf16x16rows": {
+     "calls": 8,
+     "matches": {
+      "sum": 8
+     },
+     "non_sum_distinct_residuals": 0,
+     "non_sum_residual_example": null,
+     "exact_sum": 8,
+     "all_finite": true,
+     "worst_frac_equal_sum": 1.0,
+     "bytes": 65536,
+     "us_per_call": 35.48
+    },
+    "fp32x16rows": {
+     "calls": 8,
+     "matches": {
+      "sum": 8
+     },
+     "non_sum_distinct_residuals": 0,
+     "non_sum_residual_example": null,
+     "exact_sum": 8,
+     "all_finite": true,
+     "worst_frac_equal_sum": 1.0,
+     "bytes": 131072,
+     "us_per_call": 42.2
+    },
+    "bf16x32rows": {
+     "calls": 8,
+     "matches": {
+      "sum": 8
+     },
+     "non_sum_distinct_residuals": 0,
+     "non_sum_residual_example": null,
+     "exact_sum": 8,
+     "all_finite": true,
+     "worst_frac_equal_sum": 1.0,
+     "bytes": 131072,
+     "us_per_call": 52.54
+    },
+    "fp32x32rows": {
+     "calls": 8,
+     "matches": {
+      "sum": 8
+     },
+     "non_sum_distinct_residuals": 0,
+     "non_sum_residual_example": null,
+     "exact_sum": 8,
+     "all_finite": true,
+     "worst_frac_equal_sum": 1.0,
+     "bytes": 262144,
+     "us_per_call": 54.49
+    },
+    "fp32x1MB": {
+     "calls": 8,
+     "matches": {
+      "sum": 8
+     },
+     "non_sum_distinct_residuals": 0,
+     "non_sum_residual_example": null,
+     "exact_sum": 8,
+     "all_finite": true,
+     "worst_frac_equal_sum": 1.0,
+     "bytes": 1048576,
+     "us_per_call": 128.29
+    },
+    "fp32x4MB": {
+     "calls": 8,
+     "matches": {
+      "sum": 8
+     },
+     "non_sum_distinct_residuals": 0,
+     "non_sum_residual_example": null,
+     "exact_sum": 8,
+     "all_finite": true,
+     "worst_frac_equal_sum": 1.0,
+     "bytes": 4194304,
+     "us_per_call": 413.31
+    },
+    "fp32x8MB": {
+     "calls": 8,
+     "matches": {
+      "sum": 8
+     },
+     "non_sum_distinct_residuals": 0,
+     "non_sum_residual_example": null,
+     "exact_sum": 8,
+     "all_finite": true,
+     "worst_frac_equal_sum": 1.0,
+     "bytes": 8388608,
+     "us_per_call": 801.09
+    },
+    "fp32x15MB": {
+     "calls": 8,
+     "matches": {
+      "sum": 8
+     },
+     "non_sum_distinct_residuals": 0,
+     "non_sum_residual_example": null,
+     "exact_sum": 8,
+     "all_finite": true,
+     "worst_frac_equal_sum": 1.0,
+     "bytes": 15728640,
+     "us_per_call": 1509.75
+    }
+   },
+   "rank1": {
+    "bf16x1rows": {
+     "calls": 8,
+     "matches": {
+      "sum": 8
+     },
+     "non_sum_distinct_residuals": 0,
+     "non_sum_residual_example": null,
+     "exact_sum": 8,
+     "all_finite": true,
+     "worst_frac_equal_sum": 1.0,
+     "bytes": 4096,
+     "us_per_call": 34.17
+    },
+    "fp32x1rows": {
+     "calls": 8,
+     "matches": {
+      "sum": 8
+     },
+     "non_sum_distinct_residuals": 0,
+     "non_sum_residual_example": null,
+     "exact_sum": 8,
+     "all_finite": true,
+     "worst_frac_equal_sum": 1.0,
+     "bytes": 8192,
+     "us_per_call": 31.68
+    },
+    "bf16x8rows": {
+     "calls": 8,
+     "matches": {
+      "sum": 8
+     },
+     "non_sum_distinct_residuals": 0,
+     "non_sum_residual_example": null,
+     "exact_sum": 8,
+     "all_finite": true,
+     "worst_frac_equal_sum": 1.0,
+     "bytes": 32768,
+     "us_per_call": 32.55
+    },
+    "fp32x8rows": {
+     "calls": 8,
+     "matches": {
+      "sum": 8
+     },
+     "non_sum_distinct_residuals": 0,
+     "non_sum_residual_example": null,
+     "exact_sum": 8,
+     "all_finite": true,
+     "worst_frac_equal_sum": 1.0,
+     "bytes": 65536,
+     "us_per_call": 33.5
+    },
+    "bf16x9rows": {
+     "calls": 8,
+     "matches": {
+      "sum": 8
+     },
+     "non_sum_distinct_residuals": 0,
+     "non_sum_residual_example": null,
+     "exact_sum": 8,
+     "all_finite": true,
+     "worst_frac_equal_sum": 1.0,
+     "bytes": 36864,
+     "us_per_call": 32.9
+    },
+    "fp32x9rows": {
+     "calls": 8,
+     "matches": {
+      "sum": 8
+     },
+     "non_sum_distinct_residuals": 0,
+     "non_sum_residual_example": null,
+     "exact_sum": 8,
+     "all_finite": true,
+     "worst_frac_equal_sum": 1.0,
+     "bytes": 73728,
+     "us_per_call": 34.23
+    },
+    "bf16x16rows": {
+     "calls": 8,
+     "matches": {
+      "sum": 8
+     },
+     "non_sum_distinct_residuals": 0,
+     "non_sum_residual_example": null,
+     "exact_sum": 8,
+     "all_finite": true,
+     "worst_frac_equal_sum": 1.0,
+     "bytes": 65536,
+     "us_per_call": 35.48
+    },
+    "fp32x16rows": {
+     "calls": 8,
+     "matches": {
+      "sum": 8
+     },
+     "non_sum_distinct_residuals": 0,
+     "non_sum_residual_example": null,
+     "exact_sum": 8,
+     "all_finite": true,
+     "worst_frac_equal_sum": 1.0,
+     "bytes": 131072,
+     "us_per_call": 42.2
+    },
+    "bf16x32rows": {
+     "calls": 8,
+     "matches": {
+      "sum": 8
+     },
+     "non_sum_distinct_residuals": 0,
+     "non_sum_residual_example": null,
+     "exact_sum": 8,
+     "all_finite": true,
+     "worst_frac_equal_sum": 1.0,
+     "bytes": 131072,
+     "us_per_call": 52.54
+    },
+    "fp32x32rows": {
+     "calls": 8,
+     "matches": {
+      "sum": 8
+     },
+     "non_sum_distinct_residuals": 0,
+     "non_sum_residual_example": null,
+     "exact_sum": 8,
+     "all_finite": true,
+     "worst_frac_equal_sum": 1.0,
+     "bytes": 262144,
+     "us_per_call": 54.5
+    },
+    "fp32x1MB": {
+     "calls": 8,
+     "matches": {
+      "sum": 8
+     },
+     "non_sum_distinct_residuals": 0,
+     "non_sum_residual_example": null,
+     "exact_sum": 8,
+     "all_finite": true,
+     "worst_frac_equal_sum": 1.0,
+     "bytes": 1048576,
+     "us_per_call": 128.29
+    },
+    "fp32x4MB": {
+     "calls": 8,
+     "matches": {
+      "sum": 8
+     },
+     "non_sum_distinct_residuals": 0,
+     "non_sum_residual_example": null,
+     "exact_sum": 8,
+     "all_finite": true,
+     "worst_frac_equal_sum": 1.0,
+     "bytes": 4194304,
+     "us_per_call": 413.29
+    },
+    "fp32x8MB": {
+     "calls": 8,
+     "matches": {
+      "sum": 8
+     },
+     "non_sum_distinct_residuals": 0,
+     "non_sum_residual_example": null,
+     "exact_sum": 8,
+     "all_finite": true,
+     "worst_frac_equal_sum": 1.0,
+     "bytes": 8388608,
+     "us_per_call": 801.09
+    },
+    "fp32x15MB": {
+     "calls": 8,
+     "matches": {
+      "sum": 8
+     },
+     "non_sum_distinct_residuals": 0,
+     "non_sum_residual_example": null,
+     "exact_sum": 8,
+     "all_finite": true,
+     "worst_frac_equal_sum": 1.0,
+     "bytes": 15728640,
+     "us_per_call": 1509.75
+    }
+   }
+  },
+  "car-eager": {
+   "rank0": {
+    "bf16x1rows": {
+     "calls": 8,
+     "matches": {
+      "sum": 8
+     },
+     "non_sum_distinct_residuals": 0,
+     "non_sum_residual_example": null,
+     "exact_sum": 8,
+     "all_finite": true,
+     "worst_frac_equal_sum": 1.0,
+     "bytes": 4096,
+     "us_per_call": 10.8
+    },
+    "fp32x1rows": {
+     "calls": 8,
+     "matches": {
+      "sum": 8
+     },
+     "non_sum_distinct_residuals": 0,
+     "non_sum_residual_example": null,
+     "exact_sum": 8,
+     "all_finite": true,
+     "worst_frac_equal_sum": 1.0,
+     "bytes": 8192,
+     "us_per_call": 10.6
+    },
+    "bf16x8rows": {
+     "calls": 8,
+     "matches": {
+      "sum": 8
+     },
+     "non_sum_distinct_residuals": 0,
+     "non_sum_residual_example": null,
+     "exact_sum": 8,
+     "all_finite": true,
+     "worst_frac_equal_sum": 1.0,
+     "bytes": 32768,
+     "us_per_call": 13.16
+    },
+    "fp32x8rows": {
+     "calls": 8,
+     "matches": {
+      "sum": 8
+     },
+     "non_sum_distinct_residuals": 0,
+     "non_sum_residual_example": null,
+     "exact_sum": 8,
+     "all_finite": true,
+     "worst_frac_equal_sum": 1.0,
+     "bytes": 65536,
+     "us_per_call": 16.55
+    },
+    "bf16x9rows": {
+     "calls": 8,
+     "matches": {
+      "sum": 8
+     },
+     "non_sum_distinct_residuals": 0,
+     "non_sum_residual_example": null,
+     "exact_sum": 8,
+     "all_finite": true,
+     "worst_frac_equal_sum": 1.0,
+     "bytes": 36864,
+     "us_per_call": 13.47
+    },
+    "fp32x9rows": {
+     "calls": 8,
+     "matches": {
+      "sum": 8
+     },
+     "non_sum_distinct_residuals": 0,
+     "non_sum_residual_example": null,
+     "exact_sum": 8,
+     "all_finite": true,
+     "worst_frac_equal_sum": 1.0,
+     "bytes": 73728,
+     "us_per_call": 17.56
+    },
+    "bf16x16rows": {
+     "calls": 8,
+     "matches": {
+      "sum": 8
+     },
+     "non_sum_distinct_residuals": 0,
+     "non_sum_residual_example": null,
+     "exact_sum": 8,
+     "all_finite": true,
+     "worst_frac_equal_sum": 1.0,
+     "bytes": 65536,
+     "us_per_call": 16.62
+    },
+    "fp32x16rows": {
+     "calls": 8,
+     "matches": {
+      "sum": 8
+     },
+     "non_sum_distinct_residuals": 0,
+     "non_sum_residual_example": null,
+     "exact_sum": 8,
+     "all_finite": true,
+     "worst_frac_equal_sum": 1.0,
+     "bytes": 131072,
+     "us_per_call": 24.08
+    },
+    "bf16x32rows": {
+     "calls": 8,
+     "matches": {
+      "sum": 8
+     },
+     "non_sum_distinct_residuals": 0,
+     "non_sum_residual_example": null,
+     "exact_sum": 8,
+     "all_finite": true,
+     "worst_frac_equal_sum": 1.0,
+     "bytes": 131072,
+     "us_per_call": 24.13
+    },
+    "fp32x32rows": {
+     "calls": 8,
+     "matches": {
+      "sum": 8
+     },
+     "non_sum_distinct_residuals": 0,
+     "non_sum_residual_example": null,
+     "exact_sum": 8,
+     "all_finite": true,
+     "worst_frac_equal_sum": 1.0,
+     "bytes": 262144,
+     "us_per_call": 35.94
+    },
+    "fp32x1MB": {
+     "calls": 8,
+     "matches": {
+      "sum": 8
+     },
+     "non_sum_distinct_residuals": 0,
+     "non_sum_residual_example": null,
+     "exact_sum": 8,
+     "all_finite": true,
+     "worst_frac_equal_sum": 1.0,
+     "bytes": 1048576,
+     "us_per_call": 108.5
+    },
+    "fp32x4MB": {
+     "calls": 8,
+     "matches": {
+      "sum": 8
+     },
+     "non_sum_distinct_residuals": 0,
+     "non_sum_residual_example": null,
+     "exact_sum": 8,
+     "all_finite": true,
+     "worst_frac_equal_sum": 1.0,
+     "bytes": 4194304,
+     "us_per_call": 398.56
+    },
+    "fp32x8MB": {
+     "calls": 8,
+     "matches": {
+      "sum": 8
+     },
+     "non_sum_distinct_residuals": 0,
+     "non_sum_residual_example": null,
+     "exact_sum": 8,
+     "all_finite": true,
+     "worst_frac_equal_sum": 1.0,
+     "bytes": 8388608,
+     "us_per_call": 778.86
+    },
+    "fp32x15MB": {
+     "calls": 8,
+     "matches": {
+      "sum": 8
+     },
+     "non_sum_distinct_residuals": 0,
+     "non_sum_residual_example": null,
+     "exact_sum": 8,
+     "all_finite": true,
+     "worst_frac_equal_sum": 1.0,
+     "bytes": 15728640,
+     "us_per_call": 1440.65
+    }
+   },
+   "rank1": {
+    "bf16x1rows": {
+     "calls": 8,
+     "matches": {
+      "sum": 8
+     },
+     "non_sum_distinct_residuals": 0,
+     "non_sum_residual_example": null,
+     "exact_sum": 8,
+     "all_finite": true,
+     "worst_frac_equal_sum": 1.0,
+     "bytes": 4096,
+     "us_per_call": 10.8
+    },
+    "fp32x1rows": {
+     "calls": 8,
+     "matches": {
+      "sum": 8
+     },
+     "non_sum_distinct_residuals": 0,
+     "non_sum_residual_example": null,
+     "exact_sum": 8,
+     "all_finite": true,
+     "worst_frac_equal_sum": 1.0,
+     "bytes": 8192,
+     "us_per_call": 10.6
+    },
+    "bf16x8rows": {
+     "calls": 8,
+     "matches": {
+      "sum": 8
+     },
+     "non_sum_distinct_residuals": 0,
+     "non_sum_residual_example": null,
+     "exact_sum": 8,
+     "all_finite": true,
+     "worst_frac_equal_sum": 1.0,
+     "bytes": 32768,
+     "us_per_call": 13.16
+    },
+    "fp32x8rows": {
+     "calls": 8,
+     "matches": {
+      "sum": 8
+     },
+     "non_sum_distinct_residuals": 0,
+     "non_sum_residual_example": null,
+     "exact_sum": 8,
+     "all_finite": true,
+     "worst_frac_equal_sum": 1.0,
+     "bytes": 65536,
+     "us_per_call": 16.55
+    },
+    "bf16x9rows": {
+     "calls": 8,
+     "matches": {
+      "sum": 8
+     },
+     "non_sum_distinct_residuals": 0,
+     "non_sum_residual_example": null,
+     "exact_sum": 8,
+     "all_finite": true,
+     "worst_frac_equal_sum": 1.0,
+     "bytes": 36864,
+     "us_per_call": 13.47
+    },
+    "fp32x9rows": {
+     "calls": 8,
+     "matches": {
+      "sum": 8
+     },
+     "non_sum_distinct_residuals": 0,
+     "non_sum_residual_example": null,
+     "exact_sum": 8,
+     "all_finite": true,
+     "worst_frac_equal_sum": 1.0,
+     "bytes": 73728,
+     "us_per_call": 17.56
+    },
+    "bf16x16rows": {
+     "calls": 8,
+     "matches": {
+      "sum": 8
+     },
+     "non_sum_distinct_residuals": 0,
+     "non_sum_residual_example": null,
+     "exact_sum": 8,
+     "all_finite": true,
+     "worst_frac_equal_sum": 1.0,
+     "bytes": 65536,
+     "us_per_call": 16.62
+    },
+    "fp32x16rows": {
+     "calls": 8,
+     "matches": {
+      "sum": 8
+     },
+     "non_sum_distinct_residuals": 0,
+     "non_sum_residual_example": null,
+     "exact_sum": 8,
+     "all_finite": true,
+     "worst_frac_equal_sum": 1.0,
+     "bytes": 131072,
+     "us_per_call": 24.08
+    },
+    "bf16x32rows": {
+     "calls": 8,
+     "matches": {
+      "sum": 8
+     },
+     "non_sum_distinct_residuals": 0,
+     "non_sum_residual_example": null,
+     "exact_sum": 8,
+     "all_finite": true,
+     "worst_frac_equal_sum": 1.0,
+     "bytes": 131072,
+     "us_per_call": 24.13
+    },
+    "fp32x32rows": {
+     "calls": 8,
+     "matches": {
+      "sum": 8
+     },
+     "non_sum_distinct_residuals": 0,
+     "non_sum_residual_example": null,
+     "exact_sum": 8,
+     "all_finite": true,
+     "worst_frac_equal_sum": 1.0,
+     "bytes": 262144,
+     "us_per_call": 35.94
+    },
+    "fp32x1MB": {
+     "calls": 8,
+     "matches": {
+      "sum": 8
+     },
+     "non_sum_distinct_residuals": 0,
+     "non_sum_residual_example": null,
+     "exact_sum": 8,
+     "all_finite": true,
+     "worst_frac_equal_sum": 1.0,
+     "bytes": 1048576,
+     "us_per_call": 108.5
+    },
+    "fp32x4MB": {
+     "calls": 8,
+     "matches": {
+      "sum": 8
+     },
+     "non_sum_distinct_residuals": 0,
+     "non_sum_residual_example": null,
+     "exact_sum": 8,
+     "all_finite": true,
+     "worst_frac_equal_sum": 1.0,
+     "bytes": 4194304,
+     "us_per_call": 398.56
+    },
+    "fp32x8MB": {
+     "calls": 8,
+     "matches": {
+      "sum": 8
+     },
+     "non_sum_distinct_residuals": 0,
+     "non_sum_residual_example": null,
+     "exact_sum": 8,
+     "all_finite": true,
+     "worst_frac_equal_sum": 1.0,
+     "bytes": 8388608,
+     "us_per_call": 778.81
+    },
+    "fp32x15MB": {
+     "calls": 8,
+     "matches": {
+      "sum": 8
+     },
+     "non_sum_distinct_residuals": 0,
+     "non_sum_residual_example": null,
+     "exact_sum": 8,
+     "all_finite": true,
+     "worst_frac_equal_sum": 1.0,
+     "bytes": 15728640,
+     "us_per_call": 1440.65
+    }
+   }
+  },
+  "car-graph-1": {
+   "rank0": {
+    "rows": 1,
+    "bytes_fp32": 8192,
+    "bytes_bf16": 4096,
+    "fp32": {
+     "calls": 196,
+     "matches": {
+      "sum": 196
+     },
+     "non_sum_distinct_residuals": 0,
+     "non_sum_residual_example": null,
+     "exact_sum": 196,
+     "all_finite": true,
+     "worst_frac_equal_sum": 1.0
+    },
+    "bf16": {
+     "calls": 196,
+     "matches": {
+      "sum": 196
+     },
+     "non_sum_distinct_residuals": 0,
+     "non_sum_residual_example": null,
+     "exact_sum": 196,
+     "all_finite": true,
+     "worst_frac_equal_sum": 1.0
+    },
+    "first_non_sum": null,
+    "us_per_replay": 966.3,
+    "us_per_reduce": 9.86
+   },
+   "rank1": {
+    "rows": 1,
+    "bytes_fp32": 8192,
+    "bytes_bf16": 4096,
+    "fp32": {
+     "calls": 196,
+     "matches": {
+      "sum": 196
+     },
+     "non_sum_distinct_residuals": 0,
+     "non_sum_residual_example": null,
+     "exact_sum": 196,
+     "all_finite": true,
+     "worst_frac_equal_sum": 1.0
+    },
+    "bf16": {
+     "calls": 196,
+     "matches": {
+      "sum": 196
+     },
+     "non_sum_distinct_residuals": 0,
+     "non_sum_residual_example": null,
+     "exact_sum": 196,
+     "all_finite": true,
+     "worst_frac_equal_sum": 1.0
+    },
+    "first_non_sum": null,
+    "us_per_replay": 966.3,
+    "us_per_reduce": 9.86
+   }
+  },
+  "car-graph-8": {
+   "rank0": {
+    "rows": 8,
+    "bytes_fp32": 65536,
+    "bytes_bf16": 32768,
+    "fp32": {
+     "calls": 196,
+     "matches": {
+      "sum": 196
+     },
+     "non_sum_distinct_residuals": 0,
+     "non_sum_residual_example": null,
+     "exact_sum": 196,
+     "all_finite": true,
+     "worst_frac_equal_sum": 1.0
+    },
+    "bf16": {
+     "calls": 196,
+     "matches": {
+      "sum": 196
+     },
+     "non_sum_distinct_residuals": 0,
+     "non_sum_residual_example": null,
+     "exact_sum": 196,
+     "all_finite": true,
+     "worst_frac_equal_sum": 1.0
+    },
+    "first_non_sum": null,
+    "us_per_replay": 1349.1,
+    "us_per_reduce": 13.77
+   },
+   "rank1": {
+    "rows": 8,
+    "bytes_fp32": 65536,
+    "bytes_bf16": 32768,
+    "fp32": {
+     "calls": 196,
+     "matches": {
+      "sum": 196
+     },
+     "non_sum_distinct_residuals": 0,
+     "non_sum_residual_example": null,
+     "exact_sum": 196,
+     "all_finite": true,
+     "worst_frac_equal_sum": 1.0
+    },
+    "bf16": {
+     "calls": 196,
+     "matches": {
+      "sum": 196
+     },
+     "non_sum_distinct_residuals": 0,
+     "non_sum_residual_example": null,
+     "exact_sum": 196,
+     "all_finite": true,
+     "worst_frac_equal_sum": 1.0
+    },
+    "first_non_sum": null,
+    "us_per_replay": 1349.1,
+    "us_per_reduce": 13.77
+   }
+  },
+  "car-graph-9": {
+   "rank0": {
+    "rows": 9,
+    "bytes_fp32": 73728,
+    "bytes_bf16": 36864,
+    "fp32": {
+     "calls": 196,
+     "matches": {
+      "sum": 196
+     },
+     "non_sum_distinct_residuals": 0,
+     "non_sum_residual_example": null,
+     "exact_sum": 196,
+     "all_finite": true,
+     "worst_frac_equal_sum": 1.0
+    },
+    "bf16": {
+     "calls": 196,
+     "matches": {
+      "sum": 196
+     },
+     "non_sum_distinct_residuals": 0,
+     "non_sum_residual_example": null,
+     "exact_sum": 196,
+     "all_finite": true,
+     "worst_frac_equal_sum": 1.0
+    },
+    "first_non_sum": null,
+    "us_per_replay": 1395.8,
+    "us_per_reduce": 14.24
+   },
+   "rank1": {
+    "rows": 9,
+    "bytes_fp32": 73728,
+    "bytes_bf16": 36864,
+    "fp32": {
+     "calls": 196,
+     "matches": {
+      "sum": 196
+     },
+     "non_sum_distinct_residuals": 0,
+     "non_sum_residual_example": null,
+     "exact_sum": 196,
+     "all_finite": true,
+     "worst_frac_equal_sum": 1.0
+    },
+    "bf16": {
+     "calls": 196,
+     "matches": {
+      "sum": 196
+     },
+     "non_sum_distinct_residuals": 0,
+     "non_sum_residual_example": null,
+     "exact_sum": 196,
+     "all_finite": true,
+     "worst_frac_equal_sum": 1.0
+    },
+    "first_non_sum": null,
+    "us_per_replay": 1395.8,
+    "us_per_reduce": 14.24
+   }
+  },
+  "car-graph-16": {
+   "rank0": {
+    "rows": 16,
+    "bytes_fp32": 131072,
+    "bytes_bf16": 65536,
+    "fp32": {
+     "calls": 196,
+     "matches": {
+      "sum": 196
+     },
+     "non_sum_distinct_residuals": 0,
+     "non_sum_residual_example": null,
+     "exact_sum": 196,
+     "all_finite": true,
+     "worst_frac_equal_sum": 1.0
+    },
+    "bf16": {
+     "calls": 196,
+     "matches": {
+      "sum": 196
+     },
+     "non_sum_distinct_residuals": 0,
+     "non_sum_residual_example": null,
+     "exact_sum": 196,
+     "all_finite": true,
+     "worst_frac_equal_sum": 1.0
+    },
+    "first_non_sum": null,
+    "us_per_replay": 1876.6,
+    "us_per_reduce": 19.15
+   },
+   "rank1": {
+    "rows": 16,
+    "bytes_fp32": 131072,
+    "bytes_bf16": 65536,
+    "fp32": {
+     "calls": 196,
+     "matches": {
+      "sum": 196
+     },
+     "non_sum_distinct_residuals": 0,
+     "non_sum_residual_example": null,
+     "exact_sum": 196,
+     "all_finite": true,
+     "worst_frac_equal_sum": 1.0
+    },
+    "bf16": {
+     "calls": 196,
+     "matches": {
+      "sum": 196
+     },
+     "non_sum_distinct_residuals": 0,
+     "non_sum_residual_example": null,
+     "exact_sum": 196,
+     "all_finite": true,
+     "worst_frac_equal_sum": 1.0
+    },
+    "first_non_sum": null,
+    "us_per_replay": 1876.6,
+    "us_per_reduce": 19.15
+   }
+  },
+  "car-graph-32": {
+   "rank0": {
+    "rows": 32,
+    "bytes_fp32": 262144,
+    "bytes_bf16": 131072,
+    "fp32": {
+     "calls": 196,
+     "matches": {
+      "sum": 196
+     },
+     "non_sum_distinct_residuals": 0,
+     "non_sum_residual_example": null,
+     "exact_sum": 196,
+     "all_finite": true,
+     "worst_frac_equal_sum": 1.0
+    },
+    "bf16": {
+     "calls": 196,
+     "matches": {
+      "sum": 196
+     },
+     "non_sum_distinct_residuals": 0,
+     "non_sum_residual_example": null,
+     "exact_sum": 196,
+     "all_finite": true,
+     "worst_frac_equal_sum": 1.0
+    },
+    "first_non_sum": null,
+    "us_per_replay": 2825.0,
+    "us_per_reduce": 28.83
+   },
+   "rank1": {
+    "rows": 32,
+    "bytes_fp32": 262144,
+    "bytes_bf16": 131072,
+    "fp32": {
+     "calls": 196,
+     "matches": {
+      "sum": 196
+     },
+     "non_sum_distinct_residuals": 0,
+     "non_sum_residual_example": null,
+     "exact_sum": 196,
+     "all_finite": true,
+     "worst_frac_equal_sum": 1.0
+    },
+    "bf16": {
+     "calls": 196,
+     "matches": {
+      "sum": 196
+     },
+     "non_sum_distinct_residuals": 0,
+     "non_sum_residual_example": null,
+     "exact_sum": 196,
+     "all_finite": true,
+     "worst_frac_equal_sum": 1.0
+    },
+    "first_non_sum": null,
+    "us_per_replay": 2825.0,
+    "us_per_reduce": 28.83
+   }
+  },
+  "class-facts": {
+   "rank0": {
+    "full_nvlink": false,
+    "deterministic": true,
+    "max_size": 16777216,
+    "staging_uncached": true,
+    "pcie_max_bytes": 16777215,
+    "accepts_max_size_input": false,
+    "accepts_one_row": true,
+    "cap_env": {
+     "set": 73728,
+     "pcie_max_bytes": 73728,
+     "accepts_at_cap": true,
+     "accepts_above_cap": false
+    }
+   },
+   "rank1": {
+    "full_nvlink": false,
+    "deterministic": true,
+    "max_size": 16777216,
+    "staging_uncached": true,
+    "pcie_max_bytes": 16777215,
+    "accepts_max_size_input": false,
+    "accepts_one_row": true,
+    "cap_env": {
+     "set": 73728,
+     "pcie_max_bytes": 73728,
+     "accepts_at_cap": true,
+     "accepts_above_cap": false
+    }
+   }
+  },
+  "rccl-graph-communicator": {
+   "rank0": {
+    "available": true
+   },
+   "rank1": {
+    "available": true
+   }
+  },
+  "rccl-graph-1": {
+   "rank0": {
+    "rows": 1,
+    "bytes_fp32": 8192,
+    "bytes_bf16": 4096,
+    "fp32": {
+     "calls": 196,
+     "matches": {
+      "sum": 196
+     },
+     "non_sum_distinct_residuals": 0,
+     "non_sum_residual_example": null,
+     "exact_sum": 196,
+     "all_finite": true,
+     "worst_frac_equal_sum": 1.0
+    },
+    "bf16": {
+     "calls": 196,
+     "matches": {
+      "sum": 196
+     },
+     "non_sum_distinct_residuals": 0,
+     "non_sum_residual_example": null,
+     "exact_sum": 196,
+     "all_finite": true,
+     "worst_frac_equal_sum": 1.0
+    },
+    "first_non_sum": null,
+    "us_per_replay": 1814.3,
+    "us_per_reduce": 18.51
+   },
+   "rank1": {
+    "rows": 1,
+    "bytes_fp32": 8192,
+    "bytes_bf16": 4096,
+    "fp32": {
+     "calls": 196,
+     "matches": {
+      "sum": 196
+     },
+     "non_sum_distinct_residuals": 0,
+     "non_sum_residual_example": null,
+     "exact_sum": 196,
+     "all_finite": true,
+     "worst_frac_equal_sum": 1.0
+    },
+    "bf16": {
+     "calls": 196,
+     "matches": {
+      "sum": 196
+     },
+     "non_sum_distinct_residuals": 0,
+     "non_sum_residual_example": null,
+     "exact_sum": 196,
+     "all_finite": true,
+     "worst_frac_equal_sum": 1.0
+    },
+    "first_non_sum": null,
+    "us_per_replay": 1814.2,
+    "us_per_reduce": 18.51
+   }
+  },
+  "rccl-graph-8": {
+   "rank0": {
+    "rows": 8,
+    "bytes_fp32": 65536,
+    "bytes_bf16": 32768,
+    "fp32": {
+     "calls": 196,
+     "matches": {
+      "sum": 196
+     },
+     "non_sum_distinct_residuals": 0,
+     "non_sum_residual_example": null,
+     "exact_sum": 196,
+     "all_finite": true,
+     "worst_frac_equal_sum": 1.0
+    },
+    "bf16": {
+     "calls": 196,
+     "matches": {
+      "sum": 196
+     },
+     "non_sum_distinct_residuals": 0,
+     "non_sum_residual_example": null,
+     "exact_sum": 196,
+     "all_finite": true,
+     "worst_frac_equal_sum": 1.0
+    },
+    "first_non_sum": null,
+    "us_per_replay": 2002.8,
+    "us_per_reduce": 20.44
+   },
+   "rank1": {
+    "rows": 8,
+    "bytes_fp32": 65536,
+    "bytes_bf16": 32768,
+    "fp32": {
+     "calls": 196,
+     "matches": {
+      "sum": 196
+     },
+     "non_sum_distinct_residuals": 0,
+     "non_sum_residual_example": null,
+     "exact_sum": 196,
+     "all_finite": true,
+     "worst_frac_equal_sum": 1.0
+    },
+    "bf16": {
+     "calls": 196,
+     "matches": {
+      "sum": 196
+     },
+     "non_sum_distinct_residuals": 0,
+     "non_sum_residual_example": null,
+     "exact_sum": 196,
+     "all_finite": true,
+     "worst_frac_equal_sum": 1.0
+    },
+    "first_non_sum": null,
+    "us_per_replay": 2002.8,
+    "us_per_reduce": 20.44
+   }
+  },
+  "rccl-graph-9": {
+   "rank0": {
+    "rows": 9,
+    "bytes_fp32": 73728,
+    "bytes_bf16": 36864,
+    "fp32": {
+     "calls": 196,
+     "matches": {
+      "sum": 196
+     },
+     "non_sum_distinct_residuals": 0,
+     "non_sum_residual_example": null,
+     "exact_sum": 196,
+     "all_finite": true,
+     "worst_frac_equal_sum": 1.0
+    },
+    "bf16": {
+     "calls": 196,
+     "matches": {
+      "sum": 196
+     },
+     "non_sum_distinct_residuals": 0,
+     "non_sum_residual_example": null,
+     "exact_sum": 196,
+     "all_finite": true,
+     "worst_frac_equal_sum": 1.0
+    },
+    "first_non_sum": null,
+    "us_per_replay": 2050.4,
+    "us_per_reduce": 20.92
+   },
+   "rank1": {
+    "rows": 9,
+    "bytes_fp32": 73728,
+    "bytes_bf16": 36864,
+    "fp32": {
+     "calls": 196,
+     "matches": {
+      "sum": 196
+     },
+     "non_sum_distinct_residuals": 0,
+     "non_sum_residual_example": null,
+     "exact_sum": 196,
+     "all_finite": true,
+     "worst_frac_equal_sum": 1.0
+    },
+    "bf16": {
+     "calls": 196,
+     "matches": {
+      "sum": 196
+     },
+     "non_sum_distinct_residuals": 0,
+     "non_sum_residual_example": null,
+     "exact_sum": 196,
+     "all_finite": true,
+     "worst_frac_equal_sum": 1.0
+    },
+    "first_non_sum": null,
+    "us_per_replay": 2050.4,
+    "us_per_reduce": 20.92
+   }
+  },
+  "rccl-graph-16": {
+   "rank0": {
+    "rows": 16,
+    "bytes_fp32": 131072,
+    "bytes_bf16": 65536,
+    "fp32": {
+     "calls": 196,
+     "matches": {
+      "sum": 196
+     },
+     "non_sum_distinct_residuals": 0,
+     "non_sum_residual_example": null,
+     "exact_sum": 196,
+     "all_finite": true,
+     "worst_frac_equal_sum": 1.0
+    },
+    "bf16": {
+     "calls": 196,
+     "matches": {
+      "sum": 196
+     },
+     "non_sum_distinct_residuals": 0,
+     "non_sum_residual_example": null,
+     "exact_sum": 196,
+     "all_finite": true,
+     "worst_frac_equal_sum": 1.0
+    },
+    "first_non_sum": null,
+    "us_per_replay": 2452.3,
+    "us_per_reduce": 25.02
+   },
+   "rank1": {
+    "rows": 16,
+    "bytes_fp32": 131072,
+    "bytes_bf16": 65536,
+    "fp32": {
+     "calls": 196,
+     "matches": {
+      "sum": 196
+     },
+     "non_sum_distinct_residuals": 0,
+     "non_sum_residual_example": null,
+     "exact_sum": 196,
+     "all_finite": true,
+     "worst_frac_equal_sum": 1.0
+    },
+    "bf16": {
+     "calls": 196,
+     "matches": {
+      "sum": 196
+     },
+     "non_sum_distinct_residuals": 0,
+     "non_sum_residual_example": null,
+     "exact_sum": 196,
+     "all_finite": true,
+     "worst_frac_equal_sum": 1.0
+    },
+    "first_non_sum": null,
+    "us_per_replay": 2452.3,
+    "us_per_reduce": 25.02
+   }
+  },
+  "rccl-graph-32": {
+   "rank0": {
+    "rows": 32,
+    "bytes_fp32": 262144,
+    "bytes_bf16": 131072,
+    "fp32": {
+     "calls": 196,
+     "matches": {
+      "sum": 196
+     },
+     "non_sum_distinct_residuals": 0,
+     "non_sum_residual_example": null,
+     "exact_sum": 196,
+     "all_finite": true,
+     "worst_frac_equal_sum": 1.0
+    },
+    "bf16": {
+     "calls": 196,
+     "matches": {
+      "sum": 196
+     },
+     "non_sum_distinct_residuals": 0,
+     "non_sum_residual_example": null,
+     "exact_sum": 196,
+     "all_finite": true,
+     "worst_frac_equal_sum": 1.0
+    },
+    "first_non_sum": null,
+    "us_per_replay": 3745.8,
+    "us_per_reduce": 38.22
+   },
+   "rank1": {
+    "rows": 32,
+    "bytes_fp32": 262144,
+    "bytes_bf16": 131072,
+    "fp32": {
+     "calls": 196,
+     "matches": {
+      "sum": 196
+     },
+     "non_sum_distinct_residuals": 0,
+     "non_sum_residual_example": null,
+     "exact_sum": 196,
+     "all_finite": true,
+     "worst_frac_equal_sum": 1.0
+    },
+    "bf16": {
+     "calls": 196,
+     "matches": {
+      "sum": 196
+     },
+     "non_sum_distinct_residuals": 0,
+     "non_sum_residual_example": null,
+     "exact_sum": 196,
+     "all_finite": true,
+     "worst_frac_equal_sum": 1.0
+    },
+    "first_non_sum": null,
+    "us_per_replay": 3745.8,
+    "us_per_reduce": 38.22
+   }
+  },
+  "free-mb": {
+   "rank0": {
+    "start": 32558,
+    "after_car": 31692,
+    "after_car_stages": 31962,
+    "end": 31828
+   },
+   "rank1": {
+    "start": 32558,
+    "after_car": 31692,
+    "after_car_stages": 31962,
+    "end": 31826
+   }
+  }
+ },
+ "verdict": {
+  "rccl-eager": true,
+  "car-eager": true,
+  "car-graph-1": true,
+  "car-graph-8": true,
+  "car-graph-9": true,
+  "car-graph-16": true,
+  "car-graph-32": true,
+  "rccl-graph-1": true,
+  "rccl-graph-8": true,
+  "rccl-graph-9": true,
+  "rccl-graph-16": true,
+  "rccl-graph-32": true
+ },
+ "ladder": [
+  {
+   "mode": "graph",
+   "rows": 1,
+   "bytes": 8192,
+   "car_us": 9.86,
+   "rccl_us": 18.51
+  },
+  {
+   "mode": "graph",
+   "rows": 8,
+   "bytes": 65536,
+   "car_us": 13.77,
+   "rccl_us": 20.44
+  },
+  {
+   "mode": "graph",
+   "rows": 9,
+   "bytes": 73728,
+   "car_us": 14.24,
+   "rccl_us": 20.92
+  },
+  {
+   "mode": "graph",
+   "rows": 16,
+   "bytes": 131072,
+   "car_us": 19.15,
+   "rccl_us": 25.02
+  },
+  {
+   "mode": "graph",
+   "rows": 32,
+   "bytes": 262144,
+   "car_us": 28.83,
+   "rccl_us": 38.22
+  },
+  {
+   "mode": "eager",
+   "bytes": 1048576,
+   "car_us": 108.5,
+   "rccl_us": 128.29
+  },
+  {
+   "mode": "eager",
+   "bytes": 4194304,
+   "car_us": 398.56,
+   "rccl_us": 413.3
+  },
+  {
+   "mode": "eager",
+   "bytes": 8388608,
+   "car_us": 778.84,
+   "rccl_us": 801.09
+  },
+  {
+   "mode": "eager",
+   "bytes": 15728640,
+   "car_us": 1440.65,
+   "rccl_us": 1509.75
+  }
+ ],
+ "cap": {
+  "bytes": null,
+  "why": "custom path no slower in every cell"
+ }
+}

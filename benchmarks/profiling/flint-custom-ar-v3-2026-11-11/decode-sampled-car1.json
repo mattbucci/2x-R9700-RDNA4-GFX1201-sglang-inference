@@ -1,0 +1,97 @@
+{
+  "label": "car1-sampled",
+  "tag": "",
+  "note": "flint FP8 preset, live tree, 97 patches, --random-seed 7",
+  "port": 23334,
+  "maxtok": 800,
+  "runs": 3,
+  "sampling": {
+    "temperature": 1.0,
+    "top_p": 0.95,
+    "top_k": 20,
+    "seed": 7
+  },
+  "ignore_eos": true,
+  "points": [
+    {
+      "context": 128,
+      "input_len": 14,
+      "runs_tps": [
+        63.0,
+        61.59,
+        61.96
+      ],
+      "median_tps": 61.962,
+      "min_tps": 61.595,
+      "max_tps": 62.999,
+      "runs_completion_tokens": [
+        800,
+        800,
+        800
+      ],
+      "median_tpot_ms": 16.14,
+      "sample": "Okay, the user asked for a long, detailed essay about GPU me",
+      "median_ttft_ms": 75.3
+    },
+    {
+      "context": 8192,
+      "input_len": 7321,
+      "runs_tps": [
+        93.12,
+        92.35,
+        93.87
+      ],
+      "median_tps": 93.116,
+      "min_tps": 92.351,
+      "max_tps": 93.875,
+      "runs_completion_tokens": [
+        800,
+        800,
+        800
+      ],
+      "median_tpot_ms": 10.74,
+      "sample": "We need answer user. Need parse. They provided huge repeated",
+      "median_ttft_ms": 85.7
+    },
+    {
+      "context": 65536,
+      "input_len": 58473,
+      "runs_tps": [
+        70.56,
+        73.97,
+        71.56
+      ],
+      "median_tps": 71.563,
+      "min_tps": 70.559,
+      "max_tps": 73.967,
+      "runs_completion_tokens": [
+        800,
+        800,
+        800
+      ],
+      "median_tpot_ms": 13.97,
+      "sample": "We need answer user. Need summarize repeated sentence above.",
+      "median_ttft_ms": 137.4
+    },
+    {
+      "context": 221184,
+      "input_len": 197315,
+      "runs_tps": [
+        126.57,
+        101.28,
+        106.63
+      ],
+      "median_tps": 106.634,
+      "min_tps": 101.283,
+      "max_tps": 126.566,
+      "runs_completion_tokens": [
+        800,
+        800,
+        800
+      ],
+      "median_tpot_ms": 9.38,
+      "sample": "We need answer user. We need answer likely. We need solve. U",
+      "median_ttft_ms": 291.8
+    }
+  ]
+}

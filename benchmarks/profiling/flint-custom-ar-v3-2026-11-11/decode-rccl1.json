@@ -1,0 +1,108 @@
+{
+  "label": "rccl1",
+  "tag": "",
+  "note": "flint FP8 preset, live tree, 97 patches, --random-seed 7",
+  "port": 23334,
+  "maxtok": 80,
+  "runs": 5,
+  "sampling": null,
+  "ignore_eos": false,
+  "points": [
+    {
+      "context": 128,
+      "input_len": 14,
+      "runs_tps": [
+        105.08,
+        104.04,
+        104.22,
+        104.57,
+        104.07
+      ],
+      "median_tps": 104.217,
+      "min_tps": 104.042,
+      "max_tps": 105.081,
+      "runs_completion_tokens": [
+        80,
+        80,
+        80,
+        80,
+        80
+      ],
+      "median_tpot_ms": 9.6,
+      "sample": "Okay, the user has asked for a long, detailed essay about GP",
+      "median_ttft_ms": 80.2
+    },
+    {
+      "context": 8192,
+      "input_len": 7321,
+      "runs_tps": [
+        74.77,
+        74.5,
+        74.24,
+        74.47,
+        74.43
+      ],
+      "median_tps": 74.473,
+      "min_tps": 74.239,
+      "max_tps": 74.771,
+      "runs_completion_tokens": [
+        80,
+        80,
+        80,
+        80,
+        80
+      ],
+      "median_tpot_ms": 13.43,
+      "sample": "We need answer user. Need summarize repeated sentence in one",
+      "median_ttft_ms": 87.7
+    },
+    {
+      "context": 65536,
+      "input_len": 58473,
+      "runs_tps": [
+        66.45,
+        66.6,
+        66.59,
+        66.45,
+        66.58
+      ],
+      "median_tps": 66.578,
+      "min_tps": 66.447,
+      "max_tps": 66.598,
+      "runs_completion_tokens": [
+        80,
+        80,
+        80,
+        80,
+        80
+      ],
+      "median_tpot_ms": 15.02,
+      "sample": "We need answer user. Need parse. They provided huge repeated",
+      "median_ttft_ms": 136.6
+    },
+    {
+      "context": 221184,
+      "input_len": 197315,
+      "runs_tps": [
+        50.57,
+        51.06,
+        51.26,
+        51.27,
+        51.27
+      ],
+      "median_tps": 51.26,
+      "min_tps": 50.565,
+      "max_tps": 51.272,
+      "runs_completion_tokens": [
+        80,
+        80,
+        80,
+        80,
+        80
+      ],
+      "median_tpot_ms": 19.51,
+      "sample": "We need answer user. Need parse. We need answer likely. We n",
+      "median_ttft_ms": 282.0
+    }
+  ]
+}

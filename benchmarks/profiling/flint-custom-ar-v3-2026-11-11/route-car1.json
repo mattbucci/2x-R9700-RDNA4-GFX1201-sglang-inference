@@ -1,0 +1,67 @@
+{
+ "model": "/data/models/Flint-FP8",
+ "extra_tokens": 1024,
+ "passed": 10,
+ "cases": [
+  {
+   "name": "plain",
+   "ok": true,
+   "detail": "Paris",
+   "identity": "Paris"
+  },
+  {
+   "name": "code",
+   "ok": true,
+   "detail": "```python\ndef merge_sorted_lists(list1, list2):\n    \"\"\"\n    Merge two sorted lis",
+   "identity": "```python\ndef merge_sorted_lists(list1, list2):\n    \"\"\"\n    Merge two sorted lists into one sorted list.\n    \"\"\"\n    merged = []\n    i = j = 0\n    \n    # Traverse both lists and append the smaller element\n    while i < len(list1) and j < len(list2):\n        if list1[i] < list2[j]:\n            merged.append(list1[i])\n            i += 1\n        else:\n            merged.append(list2[j])\n            j += 1\n    \n    # Append any remaining elements from either list\n    merged.extend(list1[i:])\n    merged.extend(list2[j:])\n    \n    return merged\n```"
+  },
+  {
+   "name": "tool-call",
+   "ok": true,
+   "detail": "get_weather {'city': 'Osaka', 'unit': 'celsius'}",
+   "identity": "[\"get_weather\", {\"city\": \"Osaka\", \"unit\": \"celsius\"}]"
+  },
+  {
+   "name": "think-tool",
+   "ok": true,
+   "detail": "reasoning 154 chars, get_weather {'city': 'Lima', 'unit': 'celsius'}",
+   "identity": "[\"The user wants the current weather in Lima in Celsius and explicitly asked to use the tool. I should call get_weather with city 'Lima' and unit 'celsius'.\", \"get_weather\", {\"city\": \"Lima\", \"unit\": \"celsius\"}]"
+  },
+  {
+   "name": "json-schema",
+   "ok": true,
+   "detail": "{ \"capital\": \"Nairobi\", \"continent\": \"Africa\" }",
+   "identity": "{ \"capital\": \"Nairobi\", \"continent\": \"Africa\" }"
+  },
+  {
+   "name": "logprobs",
+   "ok": true,
+   "detail": "59 tokens, lowest alternative -25.73",
+   "identity": "[[\"<think>\", [[\"<think>\", 0.0], [\"UMP\", -17.037], [\"</think>\", -17.313], [\"</arg_value>\", -18.082], [\"<tool_call>\", -18.423]]], [\"User\", [[\"User\", -0.506], [\"The\", -1.596], [\"We\", -2.363], [\"1\", -2.373], [\"Hmm\", -5.04]]], [\" wants\", [[\" wants\", -0.268], [\" asks\", -1.483], [\":\", -4.936], [\" says\", -6.661], [\" goes\", -11.743]]], [\":\", [[\":\", -0.419], [\" reply\", -1.19], [\" one\", -4.233], [\" a\", -4.608], [\" answer\", -4.959]]], [\" \\\"\", [[\" \\\"\", -0.018], [\" Reply\", -4.019], [\" reply\", -11.182], [\" Respond\", -13.526], [\" Response\", -14.541]]], [\"Reply\", [[\"Reply\", -0.0], [\"Answer\", -15.524], [\"Response\", -15.857], [\"Respond\", -16.724], [\"Rep\", -18.494]]], [\" with\", [[\" with\", -0.0], [\"\\n\", -15.095], [\" to\", -16.74], [\" avec\", -16.773], [\" ...\", -16.78]]], [\" one\", [[\" one\", -0.0], [\" two\", -13.754], [\" with\", -13.981], [\" the\", -13.983], [\" on\", -14.388]]], [\" word\", [[\" word\", -0.0], [\" one\", -14.441], [\" line\", -14.739], [\" Word\", -15.063], [\" a\", -15.133]]], [\" and\", [[\" and\", -0.0], [\"and\", -15.667], [\" And\", -17.792], [\",\", -18.172], [\" \\u0438\", -18.24]]], [\" nothing\", [[\" nothing\", -0.0], [\" not\", -11.899], [\" no\", -12.38], [\" the\", -12.617], [\" something\", -12.665]]], [\" else\", [[\" else\", -0.0], [\" el\", -12.06], [\" only\", -12.22], [\"...\", -12.505], [\" elif\", -13.185]]], [\":\", [[\":\", 0.0], [\",\", -19.091], [\":\\\"\", -20.37], [\" :\", -20.732], [\" the\", -21.627]]], [\" the\", [[\" the\", 0.0], [\" ...\", -17.812], [\" maybe\", -18.217], [\" capital\", -18.694], [\" ..\", -19.009]]], [\" capital\", [[\" capital\", -0.0], [\" the\", -14.37], [\" cap\", -14.821], [\" city\", -15.258], [\" captain\", -16.035]]], [\" of\", [[\" of\", -0.0], [\" ...\", -12.227], [\"...\\\"\", -12.953], [\" ..\", -13.644], [\" ...\\\"\\n\\n\", -13.713]]], [\" Italy\", [[\" Italy\", -0.0], [\" Spain\", -10.62], [\" India\", -10.669], [\" Ireland\", -11.019], [\" Germany\", -11.61]]], [\".\\\"\", [[\".\\\"\", -0.681], [\".\\\"\\n\\n\", -0.706], [\".\\\"\\n\", -9.863], [\".\\n\\n\", -9.865], [\".\\\"\\\"\", -11.525]]], [\" So\", [[\" So\", -0.03], [\" The\", -3.621], [\" Must\", -5.871], [\" They\", -9.293], [\" Should\", -10.165]]], [\" answer\", [[\" answer\", -0.012], [\" we\", -4.731], [\" respond\", -6.205], [\" they\", -7.885], [\" just\", -7.936]]], [\" should\", [[\" should\", -0.005], [\":\", -5.565], [\" must\", -7.235], [\" is\", -8.03], [\" likely\", -11.33]]], [\" be\", [[\" be\", 0.0], [\" just\", -16.986], [\"be\", -17.179], [\" beep\", -19.025], [\" are\", -19.408]]], [\" a\", [[\" a\", -0.355], [\" just\", -1.458], [\" one\", -3.1], [\" \\\"\", -4.015], [\" single\", -5.879]]], [\" single\", [[\" single\", -0.0], [\" one\", -13.366], [\" singular\", -23.704], [\" solitary\", -24.408], [\" sole\", -24.931]]], [\" word\", [[\" word\", 0.0], [\" Word\", -19.629], [\" one\", -20.127], [\" line\", -21.966], [\"-word\", -22.357]]], [\",\", [[\",\", -0.015], [\":\", -4.228], [\" \\\"\", -11.239], [\".\", -11.748], [\" code\", -12.739]]], [\" no\", [[\" no\", -0.565], [\" presumably\", -0.923], [\" likely\", -3.7], [\" nothing\", -4.969], [\" which\", -6.69]]], [\" extra\", [[\" extra\", -0.051], [\" punctuation\", -3.004], [\" other\", -11.587], [\" extras\", -12.276], [\" additional\", -14.544]]], [\" characters\", [[\" characters\", -0.378], [\" text\", -1.657], [\" punctuation\", -2.099], [\" chars\", -6.486], [\" content\", -9.445]]], [\",\", [[\",\", -0.326], [\".\", -1.36], [\"?\", -3.979], [\" maybe\", -6.343], [\" or\", -7.508]]], [\" no\", [[\" no\", -0.105], [\" presumably\", -3.108], [\" probably\", -3.38], [\" likely\", -4.19], [\" nothing\", -5.801]]], [\" punctuation\", [[\" punctuation\", -0.001], [\" explanation\", -7.797], [\" newline\", -7.95], [\" extra\", -7.954], [\" quotes\", -10.758]]], [\"?\", [[\"?\", -0.014], [\" maybe\", -4.321], [\" perhaps\", -9.425], [\" likely\", -9.578], [\",\", -10.938]]], [\" Probably\", [[\" Probably\", -0.049], [\" Likely\", -3.088], [\" One\", -6.015], [\" Usually\", -8.984], [\" \\\"\", -9.686]]], [\" just\", [[\" just\", -0.098], [\" \\\"\", -2.37], [\" one\", -9.616], [\" a\", -12.311], [\" the\", -13.667]]], [\" \\\"\", [[\" \\\"\", -0.0], [\" the\", -11.293], [\" one\", -18.878], [\" a\", -19.534], [\" city\", -19.675]]], [\"Rome\", [[\"Rome\", -0.0], [\"R\", -16.279], [\"ROME\", -20.079], [\" Rome\", -21.71], [\"Rom\", -21.771]]], [\"\\\".\", [[\"\\\".\", -0.0], [\".\\\"\", -15.291], [\".\", -19.33], [\"\\\"\", -20.181], [\" \\\".\", -21.283]]], [\" Must\", [[\" Must\", -0.073], [\" One\", -3.413], [\" Should\", -3.631], [\" Ensure\", -4.793], [\" That's\", -6.878]]], [\" be\", [[\" be\", -0.003], [\" ensure\", -6.1], [\" not\", -6.888], [\" obey\", -9.318], [\" comply\", -11.872]]], [\" one\", [[\" one\", -0.001], [\" exactly\", -6.786], [\" only\", -12.01], [\" nothing\", -13.858], [\" careful\", -15.233]]], [\" word\", [[\" word\", 0.0], [\" Word\", -21.985], [\" line\", -23.065], [\" token\", -25.287], [\" world\", -25.725]]], [\" and\", [[\" and\", -0.33], [\",\", -1.298], [\".\", -4.835], [\" only\", -13.033], [\" alone\", -14.274]]], [\" nothing\", [[\" nothing\", 0.0], [\" no\", -21.469], [\" nothingness\", -21.877], [\" NOTHING\", -22.964], [\" not\", -23.899]]], [\" else\", [[\" else\", 0.0], [\" el\", -22.178], [\" else's\", -23.099], [\".\", -23.125], [\" only\", -24.879]]], [\".\", [[\".\", -0.0], [\",\", -11.601], [\".\\n\\n\", -14.661], [\" (\", -17.928], [\".\\n\", -17.953]]], [\" Should\", [[\" Should\", -0.786], [\" So\", -1.052], [\" Ensure\", -2.209], [\" No\", -2.492], [\" Provide\", -6.24]]], [\" not\", [[\" not\", -0.009], [\" we\", -4.702], [\" I\", -8.115], [\" be\", -11.877], [\" avoid\", -14.069]]], [\" include\", [[\" include\", -0.0], [\" add\", -8.307], [\" even\", -20.732], [\" includes\", -22.243], [\"include\", -24.348]]], [\" period\", [[\" period\", -0.132], [\" newline\", -2.79], [\" quotes\", -2.991], [\" extra\", -5.244], [\" explanation\", -5.82]]], [\".\", [[\".\", -0.01], [\"?\", -4.83], [\" or\", -6.352], [\" maybe\", -8.174], [\",\", -10.979]]], [\" So\", [[\" So\", -0.218], [\" Should\", -1.741], [\" Just\", -4.587], [\" Provide\", -4.626], [\" Probably\", -7.847]]], [\" output\", [[\" output\", -0.26], [\" just\", -2.274], [\" final\", -2.689], [\" reply\", -3.326], [\" respond\", -3.927]]], [\":\", [[\":\", -0.064], [\" just\", -3.572], [\" exactly\", -3.666], [\" \\\"\", -4.774], [\":\\n\\n\", -11.278]]], [\" Rome\", [[\" Rome\", -0.005], [\" \\\"\", -5.403], [\" Romeo\", -9.454], [\" Roma\", -10.768], [\" rome\", -11.313]]], [\".\", [[\".\", -0.06], [\"</think>\", -2.853], [\"\\n\\n\", -8.088], [\".\\n\\n\", -10.041], [\" (\", -13.608]]], [\"</think>\", [[\"</think>\", -0.0], [\" Ensure\", -7.795], [\" Probably\", -15.308], [\"</arg_value>\", -15.378], [\" No\", -15.527]]], [\"Rome\", [[\"Rome\", -0.0], [\"Italy\", -9.067], [\"R\", -11.06], [\"Paris\", -11.097], [\"Tokyo\", -13.676]]], [\"<|user|>\", [[\"<|user|>\", 0.0], [\")\", -17.848], [\"</arg_value>\", -18.386], [\"<tool_call>\", -18.905], [\"</\", -19.104]]]]"
+  },
+  {
+   "name": "logit-bias",
+   "ok": true,
+   "detail": "banned ids [842, 12834, 13709, 51574, 123366]: 'Par...'",
+   "identity": "Par..."
+  },
+  {
+   "name": "penalty",
+   "ok": true,
+   "detail": "```python\ndef merge_sorted_lists(list1, list2):\n    \"\"\"\n    Merge two sorted lis",
+   "identity": "```python\ndef merge_sorted_lists(list1, list2):\n    \"\"\"\n    Merge two sorted lists into one sorted list.\n    \"\"\"\n    merged = []\n    i = j = 0\n    \n    # Traverse both lists and append the smaller element\n    while i < len(list1) and j < len(list2):\n        if list1[i] < list2[j]:\n            merged.append(list1[i])\n            i += 1\n        else:\n            merged.append(list2[j])\n            j += 1\n    \n    # Append any remaining elements from either list\n    merged.extend(list1[i:])\n    merged.extend(list2[j:])\n    \n    return merged\n```"
+  },
+  {
+   "name": "concurrent",
+   "ok": true,
+   "detail": "{'Japan': 'Tokyo', 'Egypt': 'Cairo', 'Peru': 'Lima'}",
+   "identity": null
+  },
+  {
+   "name": "sampled",
+   "ok": true,
+   "detail": "Ottawa",
+   "identity": null
+  }
+ ]
+}
