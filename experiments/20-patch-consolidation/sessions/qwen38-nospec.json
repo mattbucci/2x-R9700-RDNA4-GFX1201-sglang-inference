@@ -53,7 +53,8 @@
   "routefp8": {
    "re": "extend split-KV route active: [^\\n]{0,60}\\(upcast_k=False\\)",
    "late": true
-  }
+  },
+  "gemmcfg106": "Using configuration from [^\\n]{0,120}gemm/configs/N=17408,K=5120,"
  },
  "arms": [
   {
@@ -233,6 +234,48 @@
    ],
    "on": {
     "kvsplits16": "'triton_attention_num_kv_splits': 16\\b"
+   }
+  },
+  {
+   "name": "p042",
+   "patches": [
+    "042",
+    "127"
+   ],
+   "tree": "/data/sgl-v0522-consol/s{series}/p042"
+  },
+  {
+   "name": "p087",
+   "patches": [
+    "087"
+   ],
+   "tree": "/data/sgl-v0522-consol/s{series}/p087"
+  },
+  {
+   "name": "p106",
+   "patches": [
+    "106"
+   ],
+   "tree": "/data/sgl-v0522-consol/s{series}/p106",
+   "off": [
+    "gemmcfg106"
+   ]
+  },
+  {
+   "name": "p110",
+   "patches": [
+    "110",
+    "112"
+   ],
+   "tree": "/data/sgl-v0522-consol/s{series}/p110",
+   "off": [
+    "routefp8"
+   ],
+   "on": {
+    "routepadded": {
+     "re": "extend split-KV route active: \\d+ new tokens \\(padded \\d+\\)",
+     "late": true
+    }
    }
   }
  ]

@@ -92,7 +92,9 @@ caps_once(){ "$PY" scripts/eval/validate_capabilities.py --port 23334 --save "$R
   grep -q "$C_CAPS/$C_CAPS passed" "$OUT/caps-$1-$2.log"; }
 caps(){ log "caps $1 (all probes)"; caps_once "$1" 1 && return 0
   log "caps $1: a probe failed, one repeat"; echo "$1" >> "$OUT/caps-repeated.txt"; caps_once "$1" 2; }
-prefill(){ log "cold prefill $1: $C_PREFILL_CTX, $C_PREFILL_RUNS runs, cache flushed before each"
+prefill(){ log "untimed prefill $1 at $C_PREFILL_WARM: first-use kernel compiles stay out of the timed runs"
+  "$PY" -u scripts/bench/prefill_ttft.py --port 23334 --contexts "$C_PREFILL_WARM" --runs 1 --label "$1-untimed" > "$OUT/prefill-untimed-$1.log" 2>&1 || { log "$1 untimed prefill FAIL"; return 1; }
+  log "cold prefill $1: $C_PREFILL_CTX, $C_PREFILL_RUNS runs, cache flushed before each"
   "$PY" -u scripts/bench/prefill_ttft.py --port 23334 --contexts "$C_PREFILL_CTX" --runs "$C_PREFILL_RUNS" --label "$1" --out "$RCPT/prefill-$1.json" > "$OUT/prefill-$1.log" 2>&1 || { log "$1 prefill rc=$?"; FAIL="$FAIL $1:prefill"; }
   grep -a -E 'prefill [0-9.]+ s' "$OUT/prefill-$1.log" | cut -c1-110 | tee -a "$OUT/driver.log"; return 0; }
 sweep(){ log "canonical rows $1: five runs, 80 tokens, EOS"; local x=(); [ -n "$C_DECODE_ARGS" ] && read -r -a x <<< "$C_DECODE_ARGS"

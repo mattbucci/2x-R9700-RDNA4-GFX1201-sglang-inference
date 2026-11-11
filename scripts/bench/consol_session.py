@@ -20,14 +20,19 @@ are checked on every boot.
 
 Session file:
   session, preset, env {K: V}, spec (bool), seed, caps (number of capability probes), block
-  decode {contexts, args [..]}, prefill {contexts, runs}, poke {chat_template_kwargs}
+  decode {contexts, args [..]}, prefill {contexts, runs, warm}, poke {chat_template_kwargs}
+      warm: depth of one untimed prefill before the timed ones (default 20000, more than one chunk), so a
+      kernel an arm compiles for the first time is not inside a timed run
   spec_probe {sampling, contexts, doc_chars, docs_per_size, offsets [a, b]}      speculative sessions only
   server_env {K: V|"unset"}        expected in every server process unless the arm overrides it
   markers {name: regex | {re, late}}   log lines every boot shows; late ones are read after the measurements
   arms [{name, patches [..], env, server_env, off [marker names], on {name: regex | {re, late}},
-         tree, tree_check {file, absent}, reads {file, pattern}}]
+         tree, tree_check {file, absent | missing}, reviewed, reads {file, pattern}}]
+  A tree is built by scripts/test/consol_dev_tree.py; {series} in its path is the number of patches, so a
+  tree built before a patch landed is not found afterwards. tree_check defaults to the tree's receipt.
 """
 import argparse
+import filecmp
 import hashlib
 import json
 import os
@@ -36,6 +41,7 @@ import re
 import shlex
 import sys
 
+REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 FIXED_UNSET = ["PYTHONPATH", "EXTRA_ARGS", "MODEL", "CTX", "MEM", "PORT", "QUANT_OVERRIDE", "LAUNCH_DRY_RUN"]
 TTFT_MS = 20.0  # a warm first-token difference below this is not read as an effect
 EMPTY_SHA = hashlib.sha256(b"").hexdigest()[:16]  # spec_accept_probe.py keeps 16 hex digits of the text hash
@@ -61,6 +67,40 @@ def marker(spec):
     return (spec, False) if isinstance(spec, str) else (spec["re"], bool(spec.get("late")))
 
 
+def series():
+    """Number of patches in the series: a development tree is built for one series and named after it."""
+    return sum(1 for n in os.listdir(os.path.join(REPO, "patches")) if re.match(r"\d{3}-.*\.patch$", n))
+
+
+def tree_files(root):
+    out = set()
+    for d, dirs, files in os.walk(root):
+        dirs[:] = [x for x in dirs if x != "__pycache__"]
+        out.update(os.path.relpath(os.path.join(d, f), root) for f in files)
+    return out
+
+
+def tree_problems(arm, live):
+    """A development tree must be the live tree without the arm's patches and nothing else (consol_dev_tree.py)."""
+    root, out = arm["tree"], []
+    rec = load(os.path.join(root, "consol-tree.json"))
+    if not os.path.isdir(os.path.join(root, "python", "sglang")) or not rec:
+        return [f"no tree with a receipt at {root} (scripts/test/consol_dev_tree.py --session builds it)"], None
+    if os.path.realpath(os.path.join(root, "rust")) != os.path.realpath(os.path.join(os.path.dirname(live), "rust")):
+        out.append(f"{root}/rust does not point at the live tree's rust directory")
+    if sorted(rec.get("dropped", [])) != sorted(arm.get("patches", [])):
+        out.append(f"the tree drops {rec.get('dropped')}, the arm names {arm.get('patches')}")
+    if rec.get("verdict") != "ok" and not (rec.get("verdict") == "review" and arm.get("reviewed")):
+        out.append(f"the tree's receipt reads {rec.get('verdict')}: {(rec.get('problems', []) + rec.get('review', []))[:2]}")
+    own = {x[len("python/"):] for x in rec.get("changed_files", []) + rec.get("removed_files", []) if x.startswith("python/")}
+    mine, theirs = tree_files(os.path.join(root, "python")), tree_files(live)
+    drift = [r for r in sorted((mine | theirs) - own)
+             if r not in mine or r not in theirs or not filecmp.cmp(os.path.join(root, "python", r), os.path.join(live, r), shallow=False)]
+    if drift:
+        out.append(f"the tree differs from the live tree outside its patches, rebuild it: {drift[:3]}")
+    return out, rec
+
+
 def session(path):
     with open(path) as f:
         s = json.load(f)
@@ -75,8 +115,12 @@ def session(path):
         if unknown:
             problems.append(f"{a['name']}: off names unknown markers {unknown}")
         if a.get("tree"):
-            if not a.get("tree_check"):
-                problems.append(f"{a['name']}: a tree arm needs tree_check")
+            a["tree"] = a["tree"].replace("{series}", str(series()))
+            c = a.get("tree_check")
+            if c is not None and (not c.get("file") or not (c.get("absent") or c.get("missing"))):
+                problems.append(f"{a['name']}: tree_check needs a file and absent or missing")
+            if not a.get("patches"):
+                problems.append(f"{a['name']}: a tree arm names the patches its tree drops")
         elif not a.get("env"):
             problems.append(f"{a['name']}: neither env nor tree")
         elif not (a.get("off") or a.get("on") or a.get("reads")):
@@ -113,7 +157,7 @@ def cmd_shell(s):
     out = {"C_NAME": s["session"], "C_PRESET": s["preset"], "C_SPEC": "1" if s.get("spec") else "0",
            "C_SEED": str(s.get("seed", 7)), "C_CAPS": str(s["caps"]), "C_DECODE_CTX": s["decode"]["contexts"],
            "C_DECODE_ARGS": " ".join(s["decode"].get("args", [])), "C_PREFILL_CTX": s["prefill"]["contexts"],
-           "C_PREFILL_RUNS": str(s["prefill"].get("runs", 2)), "C_UNSET": " ".join(sorted(names)),
+           "C_PREFILL_RUNS": str(s["prefill"].get("runs", 2)), "C_PREFILL_WARM": str(s["prefill"].get("warm", 20000)), "C_UNSET": " ".join(sorted(names)),
            "C_SAMPLING": sp.get("sampling", ""), "C_LADDER_CTX": sp.get("contexts", s["decode"]["contexts"]),
            "C_DOCS": sp.get("doc_chars", ""), "C_PER": str(sp.get("docs_per_size", 0)),
            "C_OFF_A": str((sp.get("offsets") or [0, 0])[0]), "C_OFF_B": str((sp.get("offsets") or [0, 0])[1]),
@@ -137,15 +181,22 @@ def cmd_check(s, live):
         n = a["name"]
         if a.get("tree"):
             root = a["tree"]
-            if not os.path.isdir(os.path.join(root, "python", "sglang")):
-                problems.append(f"{n}: no {root}/python/sglang")
-            if os.path.realpath(os.path.join(root, "rust")) != os.path.realpath(os.path.join(os.path.dirname(live), "rust")):
-                problems.append(f"{n}: {root}/rust does not point at the live tree's rust directory")
-            c = a["tree_check"]
-            if re.search(c["absent"], text(os.path.join(root, "python", c["file"]))):
-                problems.append(f"{n}: {c['file']} in the tree still matches {c['absent']!r}")
-            if not re.search(c["absent"], text(os.path.join(live, c["file"]))):
-                problems.append(f"{n}: {c['file']} in the live tree does not match {c['absent']!r}")
+            found, rec = tree_problems(a, live)
+            problems.extend(f"{n}: {x}" for x in found)
+            c = a.get("tree_check") or (rec or {}).get("tree_check")
+            if not c:
+                continue
+            mine, theirs = os.path.join(root, "python", c["file"]), os.path.join(live, c["file"])
+            if c.get("missing"):  # a file only the dropped patches add
+                if os.path.lexists(mine):
+                    problems.append(f"{n}: {c['file']} is still in the tree")
+                if not os.path.isfile(theirs):
+                    problems.append(f"{n}: {c['file']} is not in the live tree")
+            else:
+                if re.search(c["absent"], text(mine)):
+                    problems.append(f"{n}: {c['file']} in the tree still matches {c['absent']!r}")
+                if not re.search(c["absent"], text(theirs)):
+                    problems.append(f"{n}: {c['file']} in the live tree does not match {c['absent']!r}")
         if a.get("reads"):
             r = a["reads"]
             if not re.search(r["pattern"], text(os.path.join(live, r["file"]))):

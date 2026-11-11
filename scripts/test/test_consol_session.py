@@ -75,7 +75,8 @@ class Plan(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             for arm in ({"name": "x", "env": {"K": "0"}, "server_env": {"K": "0"}},
                         {"name": "x", "env": {"K": "0"}, "off": ["layout"]},
-                        {"name": "x", "tree": "/nowhere"},
+                        {"name": "x", "tree": "/nowhere"},                                      # no patches named
+                        {"name": "x", "tree": "/nowhere", "patches": ["087"], "tree_check": {"file": "a.py"}},
                         {"name": "ctl", "env": {"K": "0"}, "server_env": {"K": "0"}, "off": ["layout"]}):
                 write(d, "s.json", session([arm]))
                 with self.assertRaises(SystemExit):

@@ -176,9 +176,21 @@ stops after the static checks. The summary reports, per arm and row, the shipped
 of both orders, the two orders separately and the control-to-control spread of the block; an arm with an
 unreadable receipt is reported as incomplete, never as a verdict. The keep and drop thresholds are parameters of
 the summary. `qwen38-nospec.json` holds the eleven switch arms of the no-speculation session and
-`qwen38-dspark.json` the four switch arms of the DSpark session; the replay arms join them with their development
-trees. On the DSpark session the tok/s rows are reported but not judged: a speculative server's tok/s follows the
-continuation it writes, so cycle time and accept length carry the verdict.
+`qwen38-dspark.json` the four switch arms of the DSpark session. On the DSpark session the tok/s rows are reported
+but not judged: a speculative server's tok/s follows the continuation it writes, so cycle time and accept length
+carry the verdict.
+
+A replay arm boots a development tree: the serving tree without the arm's patch group.
+`scripts/test/consol_dev_tree.py --session <file>` builds every tree a session names. It replays the series without
+the group on the marked scratch clone, copies the live `python/` (built extension modules included, bytecode not),
+swaps in the replayed files and links the live `rust` directory. It never writes to the serving tree and only builds
+under a new name. Each tree carries a receipt with the CPU checks: the tracked files equal the replay, the tree
+differs from the live tree only in the group's files, the changed Python files compile, pyflakes reports no new
+undefined name, and no name the group defines is still referenced. The tree path holds `{series}`, the number of
+patches, and the session's static check compares every file of a tree with the live tree again, so a tree built
+before a patch landed is refused. `qwen38-nospec.json` holds four replay arms (042 with 127, 087, 106, 110 with
+112) next to its eleven switch arms: 37 boots. Each boot runs one untimed prefill before the timed ones, so a kernel
+an arm compiles for the first time is not inside a timed run.
 
 ## CONSOL-2 — correctness ablation (GPU)
 
