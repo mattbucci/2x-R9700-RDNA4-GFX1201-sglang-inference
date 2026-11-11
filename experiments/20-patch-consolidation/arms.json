@@ -1,0 +1,867 @@
+{
+ "source": "experiments/20-patch-consolidation/review.json",
+ "minutes_per_boot": {
+  "qwen38": 17,
+  "qwen38-dspark": 27,
+  "default": 15
+ },
+ "block": 5,
+ "priority": [
+  "qwen38",
+  "flint",
+  "laguna",
+  "north-mini",
+  "qwen36-moe",
+  "qwen35-moe",
+  "qwen36-27b",
+  "qwen35",
+  "coder-reap-25b",
+  "coder-30b",
+  "devstral2",
+  "devstral",
+  "gemma4-31b",
+  "gemma4-12b",
+  "nemotron-omni"
+ ],
+ "spec_only": [
+  "100",
+  "109",
+  "125",
+  "126",
+  "128"
+ ],
+ "same_arm": {
+  "006": "041",
+  "119": "129"
+ },
+ "first": {
+  "041": "qwen36-27b"
+ },
+ "counts": {
+  "performance": 33,
+  "switch_arms": 18,
+  "replay_arms": 11,
+  "shared_arm": [
+   "006",
+   "119"
+  ],
+  "no_gpu_arm": [
+   "075",
+   "085"
+  ]
+ },
+ "stage_a": {
+  "sessions": {
+   "qwen38": {
+    "arms": [
+     "042",
+     "082",
+     "086",
+     "087",
+     "106",
+     "107",
+     "108",
+     "110",
+     "111",
+     "121",
+     "122",
+     "123",
+     "124",
+     "129",
+     "130"
+    ],
+    "blocks": 3,
+    "boots": 37,
+    "hours": 10.5
+   },
+   "qwen38-dspark": {
+    "arms": [
+     "100",
+     "109",
+     "125",
+     "126",
+     "128"
+    ],
+    "blocks": 1,
+    "boots": 13,
+    "hours": 5.8
+   },
+   "flint": {
+    "arms": [
+     "079",
+     "112",
+     "118"
+    ],
+    "blocks": 1,
+    "boots": 9,
+    "hours": 2.2
+   },
+   "laguna": {
+    "arms": [
+     "078",
+     "080",
+     "081"
+    ],
+    "blocks": 1,
+    "boots": 9,
+    "hours": 2.2
+   },
+   "coder-reap-25b": {
+    "arms": [
+     "084"
+    ],
+    "blocks": 1,
+    "boots": 5,
+    "hours": 1.2
+   },
+   "nemotron-omni": {
+    "arms": [
+     "114"
+    ],
+    "blocks": 1,
+    "boots": 5,
+    "hours": 1.2
+   },
+   "qwen36-27b": {
+    "arms": [
+     "041"
+    ],
+    "blocks": 1,
+    "boots": 5,
+    "hours": 1.2
+   }
+  },
+  "hours": 24.6
+ },
+ "stage_b_upper_bound": {
+  "sessions": {
+   "qwen38-dspark": {
+    "arms": [
+     "042",
+     "082",
+     "086",
+     "087",
+     "106",
+     "107",
+     "108",
+     "110",
+     "111",
+     "121",
+     "122",
+     "123",
+     "124",
+     "129",
+     "130"
+    ],
+    "blocks": 3,
+    "boots": 37,
+    "hours": 16.6
+   },
+   "laguna": {
+    "arms": [
+     "079",
+     "082",
+     "086",
+     "087",
+     "107",
+     "109",
+     "110",
+     "111"
+    ],
+    "blocks": 2,
+    "boots": 21,
+    "hours": 5.2
+   },
+   "flint": {
+    "arms": [
+     "087",
+     "107",
+     "108",
+     "109",
+     "110",
+     "111",
+     "129"
+    ],
+    "blocks": 2,
+    "boots": 19,
+    "hours": 4.8
+   },
+   "qwen35": {
+    "arms": [
+     "041",
+     "087",
+     "107",
+     "108",
+     "109",
+     "110",
+     "111"
+    ],
+    "blocks": 2,
+    "boots": 19,
+    "hours": 4.8
+   },
+   "qwen36-moe": {
+    "arms": [
+     "041",
+     "087",
+     "107",
+     "108",
+     "109",
+     "110",
+     "111"
+    ],
+    "blocks": 2,
+    "boots": 19,
+    "hours": 4.8
+   },
+   "north-mini": {
+    "arms": [
+     "078",
+     "079",
+     "081",
+     "082",
+     "086",
+     "087"
+    ],
+    "blocks": 2,
+    "boots": 17,
+    "hours": 4.2
+   },
+   "qwen35-moe": {
+    "arms": [
+     "041",
+     "087",
+     "107",
+     "109",
+     "110",
+     "111"
+    ],
+    "blocks": 2,
+    "boots": 17,
+    "hours": 4.2
+   },
+   "qwen36-27b": {
+    "arms": [
+     "087",
+     "107",
+     "108",
+     "109",
+     "110",
+     "111"
+    ],
+    "blocks": 2,
+    "boots": 17,
+    "hours": 4.2
+   },
+   "coder-reap-25b": {
+    "arms": [
+     "041",
+     "081",
+     "086",
+     "087"
+    ],
+    "blocks": 1,
+    "boots": 11,
+    "hours": 2.8
+   },
+   "coder-30b": {
+    "arms": [
+     "041",
+     "084",
+     "087"
+    ],
+    "blocks": 1,
+    "boots": 9,
+    "hours": 2.2
+   },
+   "devstral2": {
+    "arms": [
+     "041",
+     "087",
+     "108"
+    ],
+    "blocks": 1,
+    "boots": 9,
+    "hours": 2.2
+   },
+   "coder-next": {
+    "arms": [
+     "041",
+     "087"
+    ],
+    "blocks": 1,
+    "boots": 7,
+    "hours": 1.8
+   },
+   "coder-next-ream": {
+    "arms": [
+     "041",
+     "087"
+    ],
+    "blocks": 1,
+    "boots": 7,
+    "hours": 1.8
+   },
+   "devstral": {
+    "arms": [
+     "041",
+     "087"
+    ],
+    "blocks": 1,
+    "boots": 7,
+    "hours": 1.8
+   },
+   "gemma4": {
+    "arms": [
+     "041",
+     "087"
+    ],
+    "blocks": 1,
+    "boots": 7,
+    "hours": 1.8
+   },
+   "gemma4-12b": {
+    "arms": [
+     "041",
+     "087"
+    ],
+    "blocks": 1,
+    "boots": 7,
+    "hours": 1.8
+   },
+   "gemma4-31b": {
+    "arms": [
+     "041",
+     "087"
+    ],
+    "blocks": 1,
+    "boots": 7,
+    "hours": 1.8
+   },
+   "nemotron-omni": {
+    "arms": [
+     "087",
+     "108"
+    ],
+    "blocks": 1,
+    "boots": 7,
+    "hours": 1.8
+   },
+   "qwen3vl-32b": {
+    "arms": [
+     "041",
+     "087"
+    ],
+    "blocks": 1,
+    "boots": 7,
+    "hours": 1.8
+   },
+   "gemma4-31b-autoround": {
+    "arms": [
+     "041"
+    ],
+    "blocks": 1,
+    "boots": 5,
+    "hours": 1.2
+   },
+   "gemma4-31b-ct": {
+    "arms": [
+     "087"
+    ],
+    "blocks": 1,
+    "boots": 5,
+    "hours": 1.2
+   }
+  },
+  "hours": 72.7
+ },
+ "arms": [
+  {
+   "patch": "006",
+   "kind": "replay",
+   "switch": "",
+   "dropped_together": [],
+   "confidence": "high",
+   "measured_by": "041",
+   "stage_a": null,
+   "stage_b": [],
+   "note": "no arm of its own: one mechanism with patch 041"
+  },
+  {
+   "patch": "041",
+   "kind": "replay",
+   "switch": "",
+   "dropped_together": [],
+   "confidence": "high",
+   "measured_by": "",
+   "stage_a": "qwen36-27b",
+   "stage_b": [
+    "qwen36-moe",
+    "qwen35-moe",
+    "qwen35",
+    "coder-reap-25b",
+    "coder-30b",
+    "devstral2",
+    "devstral",
+    "gemma4-31b",
+    "gemma4-12b",
+    "coder-next",
+    "coder-next-ream",
+    "gemma4",
+    "gemma4-31b-autoround",
+    "qwen3vl-32b"
+   ],
+   "note": ""
+  },
+  {
+   "patch": "042",
+   "kind": "replay",
+   "switch": "",
+   "dropped_together": [
+    "127"
+   ],
+   "confidence": "medium",
+   "measured_by": "",
+   "stage_a": "qwen38",
+   "stage_b": [
+    "qwen38-dspark"
+   ],
+   "note": "KV pool capacity (max_total_num_tokens at boot), not a throughput row"
+  },
+  {
+   "patch": "075",
+   "kind": "replay",
+   "switch": "",
+   "dropped_together": [
+    "116"
+   ],
+   "confidence": "low",
+   "measured_by": "",
+   "stage_a": null,
+   "stage_b": [],
+   "note": "no launcher preset turns it on: no GPU arm, the disposition is a review decision"
+  },
+  {
+   "patch": "078",
+   "kind": "replay",
+   "switch": "",
+   "dropped_together": [],
+   "confidence": "high",
+   "measured_by": "",
+   "stage_a": "laguna",
+   "stage_b": [
+    "north-mini"
+   ],
+   "note": ""
+  },
+  {
+   "patch": "079",
+   "kind": "switch",
+   "switch": "SGLANG_OPT_USE_JIT_KERNEL_FUSED_TOPK=false",
+   "dropped_together": [],
+   "confidence": "high",
+   "measured_by": "",
+   "stage_a": "flint",
+   "stage_b": [
+    "laguna",
+    "north-mini"
+   ],
+   "note": ""
+  },
+  {
+   "patch": "080",
+   "kind": "replay",
+   "switch": "",
+   "dropped_together": [
+    "084",
+    "085",
+    "130"
+   ],
+   "confidence": "medium",
+   "measured_by": "",
+   "stage_a": "laguna",
+   "stage_b": [],
+   "note": ""
+  },
+  {
+   "patch": "081",
+   "kind": "switch",
+   "switch": "SGLANG_RDNA4_TRITON_RMSNORM=0 SGLANG_LAGUNA_FUSED_QK_RMSNORM=0",
+   "dropped_together": [],
+   "confidence": "medium",
+   "measured_by": "",
+   "stage_a": "laguna",
+   "stage_b": [
+    "north-mini",
+    "coder-reap-25b"
+   ],
+   "note": ""
+  },
+  {
+   "patch": "082",
+   "kind": "switch",
+   "switch": "SGLANG_RDNA4_FUSED_FP8_KV_STORE=0",
+   "dropped_together": [],
+   "confidence": "high",
+   "measured_by": "",
+   "stage_a": "qwen38",
+   "stage_b": [
+    "qwen38-dspark",
+    "laguna",
+    "north-mini"
+   ],
+   "note": ""
+  },
+  {
+   "patch": "084",
+   "kind": "replay",
+   "switch": "",
+   "dropped_together": [],
+   "confidence": "medium",
+   "measured_by": "",
+   "stage_a": "coder-reap-25b",
+   "stage_b": [
+    "coder-30b"
+   ],
+   "note": ""
+  },
+  {
+   "patch": "085",
+   "kind": "replay",
+   "switch": "",
+   "dropped_together": [],
+   "confidence": "low",
+   "measured_by": "",
+   "stage_a": null,
+   "stage_b": [],
+   "note": "no launcher preset turns it on: no GPU arm, the disposition is a review decision"
+  },
+  {
+   "patch": "086",
+   "kind": "switch",
+   "switch": "SGLANG_KV_SPLITS_OVERRIDE=16",
+   "dropped_together": [],
+   "confidence": "high",
+   "measured_by": "",
+   "stage_a": "qwen38",
+   "stage_b": [
+    "qwen38-dspark",
+    "laguna",
+    "north-mini",
+    "coder-reap-25b"
+   ],
+   "note": ""
+  },
+  {
+   "patch": "087",
+   "kind": "replay",
+   "switch": "",
+   "dropped_together": [],
+   "confidence": "high",
+   "measured_by": "",
+   "stage_a": "qwen38",
+   "stage_b": [
+    "qwen38-dspark",
+    "flint",
+    "laguna",
+    "north-mini",
+    "qwen36-moe",
+    "qwen35-moe",
+    "qwen36-27b",
+    "qwen35",
+    "coder-reap-25b",
+    "coder-30b",
+    "devstral2",
+    "devstral",
+    "gemma4-31b",
+    "gemma4-12b",
+    "nemotron-omni",
+    "coder-next",
+    "coder-next-ream",
+    "gemma4",
+    "gemma4-31b-ct",
+    "qwen3vl-32b"
+   ],
+   "note": ""
+  },
+  {
+   "patch": "100",
+   "kind": "switch",
+   "switch": "SGLANG_ENABLE_SPLITKV_VERIFY=0",
+   "dropped_together": [],
+   "confidence": "high",
+   "measured_by": "",
+   "stage_a": "qwen38-dspark",
+   "stage_b": [],
+   "note": ""
+  },
+  {
+   "patch": "106",
+   "kind": "replay",
+   "switch": "",
+   "dropped_together": [],
+   "confidence": "high",
+   "measured_by": "",
+   "stage_a": "qwen38",
+   "stage_b": [
+    "qwen38-dspark"
+   ],
+   "note": ""
+  },
+  {
+   "patch": "107",
+   "kind": "switch",
+   "switch": "SGLANG_EXTEND_SPLITKV_MAX_TOKENS=0",
+   "dropped_together": [],
+   "confidence": "high",
+   "measured_by": "",
+   "stage_a": "qwen38",
+   "stage_b": [
+    "qwen38-dspark",
+    "flint",
+    "laguna",
+    "qwen36-moe",
+    "qwen35-moe",
+    "qwen36-27b",
+    "qwen35"
+   ],
+   "note": ""
+  },
+  {
+   "patch": "108",
+   "kind": "switch",
+   "switch": "SGLANG_EXTEND_FP8_QK=0",
+   "dropped_together": [],
+   "confidence": "high",
+   "measured_by": "",
+   "stage_a": "qwen38",
+   "stage_b": [
+    "qwen38-dspark",
+    "flint",
+    "qwen36-moe",
+    "qwen36-27b",
+    "qwen35",
+    "devstral2",
+    "nemotron-omni"
+   ],
+   "note": ""
+  },
+  {
+   "patch": "109",
+   "kind": "replay",
+   "switch": "",
+   "dropped_together": [
+    "111",
+    "126"
+   ],
+   "confidence": "high",
+   "measured_by": "",
+   "stage_a": "qwen38-dspark",
+   "stage_b": [
+    "flint",
+    "laguna",
+    "qwen36-moe",
+    "qwen35-moe",
+    "qwen36-27b",
+    "qwen35"
+   ],
+   "note": ""
+  },
+  {
+   "patch": "110",
+   "kind": "replay",
+   "switch": "",
+   "dropped_together": [
+    "112"
+   ],
+   "confidence": "high",
+   "measured_by": "",
+   "stage_a": "qwen38",
+   "stage_b": [
+    "qwen38-dspark",
+    "flint",
+    "laguna",
+    "qwen36-moe",
+    "qwen35-moe",
+    "qwen36-27b",
+    "qwen35"
+   ],
+   "note": ""
+  },
+  {
+   "patch": "111",
+   "kind": "switch",
+   "switch": "SGLANG_SPLITKV_COMBINE_WARPS=4",
+   "dropped_together": [],
+   "confidence": "medium",
+   "measured_by": "",
+   "stage_a": "qwen38",
+   "stage_b": [
+    "qwen38-dspark",
+    "flint",
+    "laguna",
+    "qwen36-moe",
+    "qwen35-moe",
+    "qwen36-27b",
+    "qwen35"
+   ],
+   "note": ""
+  },
+  {
+   "patch": "112",
+   "kind": "switch",
+   "switch": "SGLANG_EXTEND_SPLITKV_MAX_TOKENS=0",
+   "dropped_together": [],
+   "confidence": "high",
+   "measured_by": "",
+   "stage_a": "flint",
+   "stage_b": [],
+   "note": ""
+  },
+  {
+   "patch": "114",
+   "kind": "replay",
+   "switch": "",
+   "dropped_together": [],
+   "confidence": "low",
+   "measured_by": "",
+   "stage_a": "nemotron-omni",
+   "stage_b": [],
+   "note": ""
+  },
+  {
+   "patch": "118",
+   "kind": "replay",
+   "switch": "",
+   "dropped_together": [],
+   "confidence": "high",
+   "measured_by": "",
+   "stage_a": "flint",
+   "stage_b": [],
+   "note": ""
+  },
+  {
+   "patch": "119",
+   "kind": "replay",
+   "switch": "",
+   "dropped_together": [],
+   "confidence": "medium",
+   "measured_by": "129",
+   "stage_a": null,
+   "stage_b": [],
+   "note": "no arm of its own: one mechanism with patch 129"
+  },
+  {
+   "patch": "121",
+   "kind": "switch",
+   "switch": "SGLANG_RDNA4_DELTANET_TP_SPLIT=0",
+   "dropped_together": [],
+   "confidence": "high",
+   "measured_by": "",
+   "stage_a": "qwen38",
+   "stage_b": [
+    "qwen38-dspark"
+   ],
+   "note": ""
+  },
+  {
+   "patch": "122",
+   "kind": "switch",
+   "switch": "FP8_GEMV=0",
+   "dropped_together": [],
+   "confidence": "high",
+   "measured_by": "",
+   "stage_a": "qwen38",
+   "stage_b": [
+    "qwen38-dspark"
+   ],
+   "note": ""
+  },
+  {
+   "patch": "123",
+   "kind": "switch",
+   "switch": "TRITON_GEMMA_RMSNORM=0",
+   "dropped_together": [],
+   "confidence": "high",
+   "measured_by": "",
+   "stage_a": "qwen38",
+   "stage_b": [
+    "qwen38-dspark"
+   ],
+   "note": ""
+  },
+  {
+   "patch": "124",
+   "kind": "switch",
+   "switch": "SKINNY_BA_GEMV=0",
+   "dropped_together": [],
+   "confidence": "high",
+   "measured_by": "",
+   "stage_a": "qwen38",
+   "stage_b": [
+    "qwen38-dspark"
+   ],
+   "note": ""
+  },
+  {
+   "patch": "125",
+   "kind": "switch",
+   "switch": "VERIFY_GQA=0",
+   "dropped_together": [],
+   "confidence": "high",
+   "measured_by": "",
+   "stage_a": "qwen38-dspark",
+   "stage_b": [],
+   "note": ""
+  },
+  {
+   "patch": "126",
+   "kind": "switch",
+   "switch": "SPLITKV_WINDOW=0",
+   "dropped_together": [],
+   "confidence": "high",
+   "measured_by": "",
+   "stage_a": "qwen38-dspark",
+   "stage_b": [],
+   "note": ""
+  },
+  {
+   "patch": "128",
+   "kind": "switch",
+   "switch": "FP8_GEMM_BF16=0",
+   "dropped_together": [],
+   "confidence": "high",
+   "measured_by": "",
+   "stage_a": "qwen38-dspark",
+   "stage_b": [],
+   "note": ""
+  },
+  {
+   "patch": "129",
+   "kind": "switch",
+   "switch": "ENABLE_CUSTOM_ALL_REDUCE=0",
+   "dropped_together": [],
+   "confidence": "medium",
+   "measured_by": "",
+   "stage_a": "qwen38",
+   "stage_b": [
+    "qwen38-dspark",
+    "flint"
+   ],
+   "note": ""
+  },
+  {
+   "patch": "130",
+   "kind": "switch",
+   "switch": "SGLANG_HIP_BF16_ATTN_SUM=0",
+   "dropped_together": [],
+   "confidence": "high",
+   "measured_by": "",
+   "stage_a": "qwen38",
+   "stage_b": [
+    "qwen38-dspark"
+   ],
+   "note": ""
+  }
+ ]
+}
