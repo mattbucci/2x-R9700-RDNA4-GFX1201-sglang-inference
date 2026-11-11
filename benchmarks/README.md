@@ -207,6 +207,10 @@ no-spec canonical sweep 34.3 / 33.7 / 32.1 / 28.7 → 35.0 / 34.4 / 32.7 / 29.2 
 greedy text, DSpark cycle 46.9 / 47.6 / 49.8 / 56.0 → 46.4 / 47.1 / 49.3 / 55.5 ms, greedy accept length unchanged over 24
 paired prompts, needle 9/9, capabilities 5/5, VRAM growth within 2 MiB per card
 ([receipts](profiling/rad25-custom-ar-serving-2026-11-10/), [FINDINGS → RAD-25](FINDINGS.md)).
+`scripts/bench/allreduce_wire_equality.py` sends every pair of BF16 bit patterns through RCCL and the custom path on two bare
+ranks and compares the BF16 sum with the FP32 detour of the attention-TP sum bit for bit: no unequal pattern in 9.28 G + 4.71 G
+pairs per rank; the detour costs 16.40 against 7.83 ms per reduction at 8192 rows and 16.4 against 9.6 µs at one row in a graph
+([receipt](profiling/rad30-wire-equality-2026-11-11/allreduce-wire-equality.json), [FINDINGS → RAD-30 phase 0](FINDINGS.md)).
 Cold prefill split by depth from the server's own chunk reports (`scripts/bench/prefill_chunk_curve.py`: chunk seconds against
 prefix depth per chunked prompt of a server log, no profiler): 3.48 s per 8192-token chunk plus 0.0438 s per 1K of prefix, so
 the 197K cold prompt is 83.8 s depth-free and 99.7 s depth-bound and the 58K one 25.0 + 7.8 s; the prefix attention runs

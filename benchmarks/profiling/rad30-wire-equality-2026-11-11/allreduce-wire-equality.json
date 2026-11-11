@@ -1,0 +1,692 @@
+{
+ "hidden": 5120,
+ "prefill_rows": 8192,
+ "rows": "1,9,16,32",
+ "slots": 65,
+ "mult": "0x9e3779b1",
+ "device": "AMD Radeon AI PRO R9700",
+ "tree": "/data/sgl-v0522/python/sglang/srt/distributed/device_communicators/custom_all_reduce.py",
+ "env": {
+  "HSA_FORCE_FINE_GRAIN_PCIE": "1",
+  "HIP_VISIBLE_DEVICES": "0,1",
+  "CUDA_VISIBLE_DEVICES": "0,1",
+  "NCCL_P2P_DISABLE": "0",
+  "PYTORCH_HIP_ALLOC_CONF": "expandable_segments:True",
+  "SGLANG_USE_1STAGE_ALLREDUCE": "1",
+  "SGLANG_RDNA4_CUSTOM_AR_MAX_BYTES": null
+ },
+ "timestamp": "2026-11-11 01:25",
+ "stages": {
+  "local-sum-device": {
+   "rank0": {
+    "pairs": 0,
+    "wire_vs_detour": 0,
+    "detour_vs_local": 0,
+    "wire_vs_local": 0,
+    "wire_vs_local_normal": 0,
+    "nan_payload_only": 0,
+    "examples": [],
+    "checked": 16777216,
+    "seconds": 0.38
+   },
+   "rank1": {
+    "pairs": 0,
+    "wire_vs_detour": 0,
+    "detour_vs_local": 0,
+    "wire_vs_local": 0,
+    "wire_vs_local_normal": 0,
+    "nan_payload_only": 0,
+    "examples": [],
+    "checked": 16777216,
+    "seconds": 0.38
+   }
+  },
+  "rccl-eager-8192": {
+   "rank0": {
+    "pairs": 4320133120,
+    "wire_vs_detour": 0,
+    "detour_vs_local": 0,
+    "wire_vs_local": 0,
+    "wire_vs_local_normal": 0,
+    "nan_payload_only": 33290896,
+    "examples": [],
+    "seconds": 7.93
+   },
+   "rank1": {
+    "pairs": 4320133120,
+    "wire_vs_detour": 0,
+    "detour_vs_local": 0,
+    "wire_vs_local": 0,
+    "wire_vs_local_normal": 0,
+    "nan_payload_only": 33290896,
+    "examples": [],
+    "seconds": 7.93
+   }
+  },
+  "rccl-eager-1": {
+   "rank0": {
+    "pairs": 122880,
+    "wire_vs_detour": 0,
+    "detour_vs_local": 0,
+    "wire_vs_local": 0,
+    "wire_vs_local_normal": 0,
+    "nan_payload_only": 948,
+    "examples": [],
+    "seconds": 0.01
+   },
+   "rank1": {
+    "pairs": 122880,
+    "wire_vs_detour": 0,
+    "detour_vs_local": 0,
+    "wire_vs_local": 0,
+    "wire_vs_local_normal": 0,
+    "nan_payload_only": 948,
+    "examples": [],
+    "seconds": 0.01
+   }
+  },
+  "rccl-eager-9": {
+   "rank0": {
+    "pairs": 1105920,
+    "wire_vs_detour": 0,
+    "detour_vs_local": 0,
+    "wire_vs_local": 0,
+    "wire_vs_local_normal": 0,
+    "nan_payload_only": 8517,
+    "examples": [],
+    "seconds": 0.01
+   },
+   "rank1": {
+    "pairs": 1105920,
+    "wire_vs_detour": 0,
+    "detour_vs_local": 0,
+    "wire_vs_local": 0,
+    "wire_vs_local_normal": 0,
+    "nan_payload_only": 8517,
+    "examples": [],
+    "seconds": 0.01
+   }
+  },
+  "rccl-eager-16": {
+   "rank0": {
+    "pairs": 1966080,
+    "wire_vs_detour": 0,
+    "detour_vs_local": 0,
+    "wire_vs_local": 0,
+    "wire_vs_local_normal": 0,
+    "nan_payload_only": 15151,
+    "examples": [],
+    "seconds": 0.01
+   },
+   "rank1": {
+    "pairs": 1966080,
+    "wire_vs_detour": 0,
+    "detour_vs_local": 0,
+    "wire_vs_local": 0,
+    "wire_vs_local_normal": 0,
+    "nan_payload_only": 15151,
+    "examples": [],
+    "seconds": 0.01
+   }
+  },
+  "rccl-eager-32": {
+   "rank0": {
+    "pairs": 3932160,
+    "wire_vs_detour": 0,
+    "detour_vs_local": 0,
+    "wire_vs_local": 0,
+    "wire_vs_local_normal": 0,
+    "nan_payload_only": 30308,
+    "examples": [],
+    "seconds": 0.01
+   },
+   "rank1": {
+    "pairs": 3932160,
+    "wire_vs_detour": 0,
+    "detour_vs_local": 0,
+    "wire_vs_local": 0,
+    "wire_vs_local_normal": 0,
+    "nan_payload_only": 30308,
+    "examples": [],
+    "seconds": 0.01
+   }
+  },
+  "rccl-eager-512": {
+   "rank0": {
+    "pairs": 62914560,
+    "wire_vs_detour": 0,
+    "detour_vs_local": 0,
+    "wire_vs_local": 0,
+    "wire_vs_local_normal": 0,
+    "nan_payload_only": 484815,
+    "examples": [],
+    "seconds": 0.07
+   },
+   "rank1": {
+    "pairs": 62914560,
+    "wire_vs_detour": 0,
+    "detour_vs_local": 0,
+    "wire_vs_local": 0,
+    "wire_vs_local_normal": 0,
+    "nan_payload_only": 484815,
+    "examples": [],
+    "seconds": 0.07
+   }
+  },
+  "rccl-eager-1024": {
+   "rank0": {
+    "pairs": 125829120,
+    "wire_vs_detour": 0,
+    "detour_vs_local": 0,
+    "wire_vs_local": 0,
+    "wire_vs_local_normal": 0,
+    "nan_payload_only": 969657,
+    "examples": [],
+    "seconds": 0.17
+   },
+   "rank1": {
+    "pairs": 125829120,
+    "wire_vs_detour": 0,
+    "detour_vs_local": 0,
+    "wire_vs_local": 0,
+    "wire_vs_local_normal": 0,
+    "nan_payload_only": 969657,
+    "examples": [],
+    "seconds": 0.17
+   }
+  },
+  "rccl-eager-2048": {
+   "rank0": {
+    "pairs": 251658240,
+    "wire_vs_detour": 0,
+    "detour_vs_local": 0,
+    "wire_vs_local": 0,
+    "wire_vs_local_normal": 0,
+    "nan_payload_only": 1939270,
+    "examples": [],
+    "seconds": 0.35
+   },
+   "rank1": {
+    "pairs": 251658240,
+    "wire_vs_detour": 0,
+    "detour_vs_local": 0,
+    "wire_vs_local": 0,
+    "wire_vs_local_normal": 0,
+    "nan_payload_only": 1939270,
+    "examples": [],
+    "seconds": 0.35
+   }
+  },
+  "car-eager-1": {
+   "rank0": {
+    "pairs": 122880,
+    "wire_vs_detour": 0,
+    "detour_vs_local": 0,
+    "wire_vs_local": 0,
+    "wire_vs_local_normal": 0,
+    "nan_payload_only": 938,
+    "examples": [],
+    "seconds": 0.01
+   },
+   "rank1": {
+    "pairs": 122880,
+    "wire_vs_detour": 0,
+    "detour_vs_local": 0,
+    "wire_vs_local": 0,
+    "wire_vs_local_normal": 0,
+    "nan_payload_only": 938,
+    "examples": [],
+    "seconds": 0.01
+   }
+  },
+  "car-eager-9": {
+   "rank0": {
+    "pairs": 1105920,
+    "wire_vs_detour": 0,
+    "detour_vs_local": 0,
+    "wire_vs_local": 0,
+    "wire_vs_local_normal": 0,
+    "nan_payload_only": 8529,
+    "examples": [],
+    "seconds": 0.01
+   },
+   "rank1": {
+    "pairs": 1105920,
+    "wire_vs_detour": 0,
+    "detour_vs_local": 0,
+    "wire_vs_local": 0,
+    "wire_vs_local_normal": 0,
+    "nan_payload_only": 8529,
+    "examples": [],
+    "seconds": 0.01
+   }
+  },
+  "car-eager-16": {
+   "rank0": {
+    "pairs": 1966080,
+    "wire_vs_detour": 0,
+    "detour_vs_local": 0,
+    "wire_vs_local": 0,
+    "wire_vs_local_normal": 0,
+    "nan_payload_only": 15153,
+    "examples": [],
+    "seconds": 0.01
+   },
+   "rank1": {
+    "pairs": 1966080,
+    "wire_vs_detour": 0,
+    "detour_vs_local": 0,
+    "wire_vs_local": 0,
+    "wire_vs_local_normal": 0,
+    "nan_payload_only": 15153,
+    "examples": [],
+    "seconds": 0.01
+   }
+  },
+  "car-eager-32": {
+   "rank0": {
+    "pairs": 3932160,
+    "wire_vs_detour": 0,
+    "detour_vs_local": 0,
+    "wire_vs_local": 0,
+    "wire_vs_local_normal": 0,
+    "nan_payload_only": 30293,
+    "examples": [],
+    "seconds": 0.01
+   },
+   "rank1": {
+    "pairs": 3932160,
+    "wire_vs_detour": 0,
+    "detour_vs_local": 0,
+    "wire_vs_local": 0,
+    "wire_vs_local_normal": 0,
+    "nan_payload_only": 30293,
+    "examples": [],
+    "seconds": 0.01
+   }
+  },
+  "car-eager-512": {
+   "rank0": {
+    "pairs": 62914560,
+    "wire_vs_detour": 0,
+    "detour_vs_local": 0,
+    "wire_vs_local": 0,
+    "wire_vs_local_normal": 0,
+    "nan_payload_only": 484825,
+    "examples": [],
+    "seconds": 0.07
+   },
+   "rank1": {
+    "pairs": 62914560,
+    "wire_vs_detour": 0,
+    "detour_vs_local": 0,
+    "wire_vs_local": 0,
+    "wire_vs_local_normal": 0,
+    "nan_payload_only": 484825,
+    "examples": [],
+    "seconds": 0.07
+   }
+  },
+  "car-eager-1024": {
+   "rank0": {
+    "pairs": 125829120,
+    "wire_vs_detour": 0,
+    "detour_vs_local": 0,
+    "wire_vs_local": 0,
+    "wire_vs_local_normal": 0,
+    "nan_payload_only": 969625,
+    "examples": [],
+    "detour_declined": true,
+    "seconds": 0.1
+   },
+   "rank1": {
+    "pairs": 125829120,
+    "wire_vs_detour": 0,
+    "detour_vs_local": 0,
+    "wire_vs_local": 0,
+    "wire_vs_local_normal": 0,
+    "nan_payload_only": 969625,
+    "examples": [],
+    "detour_declined": true,
+    "seconds": 0.1
+   }
+  },
+  "car-eager-2048": {
+   "rank0": {
+    "pairs": 0,
+    "wire_vs_detour": 0,
+    "detour_vs_local": 0,
+    "wire_vs_local": 0,
+    "wire_vs_local_normal": 0,
+    "nan_payload_only": 0,
+    "examples": [],
+    "declined": true,
+    "seconds": 0.0
+   },
+   "rank1": {
+    "pairs": 0,
+    "wire_vs_detour": 0,
+    "detour_vs_local": 0,
+    "wire_vs_local": 0,
+    "wire_vs_local_normal": 0,
+    "nan_payload_only": 0,
+    "examples": [],
+    "declined": true,
+    "seconds": 0.0
+   }
+  },
+  "car-graph-1": {
+   "rank0": {
+    "pairs": 7987200,
+    "wire_vs_detour": 0,
+    "detour_vs_local": 0,
+    "wire_vs_local": 0,
+    "wire_vs_local_normal": 0,
+    "nan_payload_only": 61556,
+    "examples": [],
+    "seconds": 0.1
+   },
+   "rank1": {
+    "pairs": 7987200,
+    "wire_vs_detour": 0,
+    "detour_vs_local": 0,
+    "wire_vs_local": 0,
+    "wire_vs_local_normal": 0,
+    "nan_payload_only": 61556,
+    "examples": [],
+    "seconds": 0.1
+   }
+  },
+  "car-graph-9": {
+   "rank0": {
+    "pairs": 71884800,
+    "wire_vs_detour": 0,
+    "detour_vs_local": 0,
+    "wire_vs_local": 0,
+    "wire_vs_local_normal": 0,
+    "nan_payload_only": 553927,
+    "examples": [],
+    "seconds": 0.14
+   },
+   "rank1": {
+    "pairs": 71884800,
+    "wire_vs_detour": 0,
+    "detour_vs_local": 0,
+    "wire_vs_local": 0,
+    "wire_vs_local_normal": 0,
+    "nan_payload_only": 553927,
+    "examples": [],
+    "seconds": 0.14
+   }
+  },
+  "car-graph-16": {
+   "rank0": {
+    "pairs": 127795200,
+    "wire_vs_detour": 0,
+    "detour_vs_local": 0,
+    "wire_vs_local": 0,
+    "wire_vs_local_normal": 0,
+    "nan_payload_only": 984796,
+    "examples": [],
+    "seconds": 0.23
+   },
+   "rank1": {
+    "pairs": 127795200,
+    "wire_vs_detour": 0,
+    "detour_vs_local": 0,
+    "wire_vs_local": 0,
+    "wire_vs_local_normal": 0,
+    "nan_payload_only": 984796,
+    "examples": [],
+    "seconds": 0.23
+   }
+  },
+  "car-graph-32": {
+   "rank0": {
+    "pairs": 4302438400,
+    "wire_vs_detour": 0,
+    "detour_vs_local": 0,
+    "wire_vs_local": 0,
+    "wire_vs_local_normal": 0,
+    "nan_payload_only": 33154530,
+    "examples": [],
+    "seconds": 6.81
+   },
+   "rank1": {
+    "pairs": 4302438400,
+    "wire_vs_detour": 0,
+    "detour_vs_local": 0,
+    "wire_vs_local": 0,
+    "wire_vs_local_normal": 0,
+    "nan_payload_only": 33154530,
+    "examples": [],
+    "seconds": 6.81
+   }
+  },
+  "rccl-graph-1": {
+   "rank0": {
+    "pairs": 7987200,
+    "wire_vs_detour": 0,
+    "detour_vs_local": 0,
+    "wire_vs_local": 0,
+    "wire_vs_local_normal": 0,
+    "nan_payload_only": 61553,
+    "examples": [],
+    "seconds": 0.29
+   },
+   "rank1": {
+    "pairs": 7987200,
+    "wire_vs_detour": 0,
+    "detour_vs_local": 0,
+    "wire_vs_local": 0,
+    "wire_vs_local_normal": 0,
+    "nan_payload_only": 61553,
+    "examples": [],
+    "seconds": 0.3
+   }
+  },
+  "rccl-graph-9": {
+   "rank0": {
+    "pairs": 71884800,
+    "wire_vs_detour": 0,
+    "detour_vs_local": 0,
+    "wire_vs_local": 0,
+    "wire_vs_local_normal": 0,
+    "nan_payload_only": 553935,
+    "examples": [],
+    "seconds": 0.35
+   },
+   "rank1": {
+    "pairs": 71884800,
+    "wire_vs_detour": 0,
+    "detour_vs_local": 0,
+    "wire_vs_local": 0,
+    "wire_vs_local_normal": 0,
+    "nan_payload_only": 553935,
+    "examples": [],
+    "seconds": 0.35
+   }
+  },
+  "rccl-graph-16": {
+   "rank0": {
+    "pairs": 127795200,
+    "wire_vs_detour": 0,
+    "detour_vs_local": 0,
+    "wire_vs_local": 0,
+    "wire_vs_local_normal": 0,
+    "nan_payload_only": 984797,
+    "examples": [],
+    "seconds": 0.45
+   },
+   "rank1": {
+    "pairs": 127795200,
+    "wire_vs_detour": 0,
+    "detour_vs_local": 0,
+    "wire_vs_local": 0,
+    "wire_vs_local_normal": 0,
+    "nan_payload_only": 984797,
+    "examples": [],
+    "seconds": 0.45
+   }
+  },
+  "rccl-graph-32": {
+   "rank0": {
+    "pairs": 4302438400,
+    "wire_vs_detour": 0,
+    "detour_vs_local": 0,
+    "wire_vs_local": 0,
+    "wire_vs_local_normal": 0,
+    "nan_payload_only": 33154503,
+    "examples": [],
+    "seconds": 7.41
+   },
+   "rank1": {
+    "pairs": 4302438400,
+    "wire_vs_detour": 0,
+    "detour_vs_local": 0,
+    "wire_vs_local": 0,
+    "wire_vs_local_normal": 0,
+    "nan_payload_only": 33154503,
+    "examples": [],
+    "seconds": 7.41
+   }
+  }
+ },
+ "times": {
+  "custom-path": {
+   "rank0": {
+    "disabled": false,
+    "full_nvlink": false,
+    "max_size": 16777216,
+    "staging_uncached": true,
+    "pcie_max_bytes": 16777215
+   },
+   "rank1": {
+    "disabled": false,
+    "full_nvlink": false,
+    "max_size": 16777216,
+    "staging_uncached": true,
+    "pcie_max_bytes": 16777215
+   }
+  },
+  "rccl-graph-communicator": {
+   "rank0": {
+    "available": true
+   },
+   "rank1": {
+    "available": true
+   }
+  },
+  "rccl-eager-8192": {
+   "rank0": {
+    "bf16_ms": 7.833,
+    "detour_ms": 16.396,
+    "bf16_ms_again": 7.833
+   },
+   "rank1": {
+    "bf16_ms": 7.834,
+    "detour_ms": 16.396,
+    "bf16_ms_again": 7.833
+   }
+  },
+  "car-graph-1": {
+   "rank0": {
+    "rows": 1,
+    "reductions": 64,
+    "bf16_us_per_reduction": 9.6,
+    "detour_us_per_reduction": 16.39
+   },
+   "rank1": {
+    "rows": 1,
+    "reductions": 64,
+    "bf16_us_per_reduction": 9.6,
+    "detour_us_per_reduction": 16.39
+   }
+  },
+  "rccl-graph-1": {
+   "rank0": {
+    "rows": 1,
+    "reductions": 64,
+    "bf16_us_per_reduction": 18.04,
+    "detour_us_per_reduction": 23.7
+   },
+   "rank1": {
+    "rows": 1,
+    "reductions": 64,
+    "bf16_us_per_reduction": 18.04,
+    "detour_us_per_reduction": 23.7
+   }
+  },
+  "car-graph-9": {
+   "rank0": {
+    "rows": 9,
+    "reductions": 64,
+    "bf16_us_per_reduction": 18.38,
+    "detour_us_per_reduction": 31.92
+   },
+   "rank1": {
+    "rows": 9,
+    "reductions": 64,
+    "bf16_us_per_reduction": 18.38,
+    "detour_us_per_reduction": 31.92
+   }
+  },
+  "rccl-graph-9": {
+   "rank0": {
+    "rows": 9,
+    "reductions": 64,
+    "bf16_us_per_reduction": 25.15,
+    "detour_us_per_reduction": 39.19
+   },
+   "rank1": {
+    "rows": 9,
+    "reductions": 64,
+    "bf16_us_per_reduction": 25.15,
+    "detour_us_per_reduction": 39.19
+   }
+  },
+  "car-graph-16": {
+   "rank0": {
+    "rows": 16,
+    "reductions": 64,
+    "bf16_us_per_reduction": 24.26,
+    "detour_us_per_reduction": 44.3
+   },
+   "rank1": {
+    "rows": 16,
+    "reductions": 64,
+    "bf16_us_per_reduction": 24.26,
+    "detour_us_per_reduction": 44.3
+   }
+  },
+  "rccl-graph-16": {
+   "rank0": {
+    "rows": 16,
+    "reductions": 64,
+    "bf16_us_per_reduction": 32.67,
+    "detour_us_per_reduction": 52.05
+   },
+   "rank1": {
+    "rows": 16,
+    "reductions": 64,
+    "bf16_us_per_reduction": 32.67,
+    "detour_us_per_reduction": 52.05
+   }
+  }
+ },
+ "summary": {
+  "verdict": "identical",
+  "flags": [
+   "local-only-car-eager-1024",
+   "declined-car-eager-2048"
+  ],
+  "gate": "identical:local-only-car-eager-1024:declined-car-eager-2048",
+  "unequal": 0,
+  "unequal_normal_operands": 0,
+  "nan_payload_only": 215517044,
+  "pairs": {
+   "rccl": 9277767680,
+   "car": 4705976320
+  }
+ }
+}

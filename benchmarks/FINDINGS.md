@@ -2302,6 +2302,46 @@ a native HIP prefix-attention stage ported from the Apache-2.0 radiance tree (`l
 as a numbered patch with attribution, behind a switch, kernel bench on this bench's operands first, then a serving
 A/B (RAD-10c). No tile sweep of the Triton kernel: the gap is 3.5×, not a tile choice.
 
+### RAD-30 phase 0 — on two ranks the BF16 wire returns the bits of the FP32 detour for every pair of BF16 values, through RCCL and the custom path; the detour costs 8.6 ms per reduction at prefill size (2026-11-11)
+
+On HIP the attention and DeltaNet-mixer sums of the `qwen38` preset cast to FP32, reduce and cast back
+(`layer_boundary/ops.attn_tp_all_reduce`). With two addends the FP32 sum rounded back to BF16 is the correctly
+rounded BF16 sum, so on two ranks a BF16 adder that rounds to nearest even returns the same bits.
+`scripts/bench/allreduce_wire_equality.py` tests that on two bare ranks, no server: each rank holds one operand
+of a pair of BF16 bit patterns and compares the BF16 all-reduce, the detour through the same transport and the
+FP32 sum formed on the rank ([receipt](profiling/rad30-wire-equality-2026-11-11/allreduce-wire-equality.json),
+gate `identical`, preflight 24 checks).
+
+| Transport, call | Rows | Pairs per rank | Unequal |
+|---|---:|---:|---:|
+| RCCL outside a graph (the prefill call) | 8,192 | 4.32 G, every pair of bit patterns | 0 |
+| RCCL inside a graph | 32 | 4.30 G, every pair | 0 |
+| Custom path inside a graph | 32 | 4.30 G, every pair | 0 |
+| Both, inside a graph | 1 / 9 / 16 | 8.0 M / 71.9 M / 127.8 M | 0 |
+| Both, outside a graph | 1 to 1,024; RCCL also 2,048 | 0.12 M to 251.7 M | 0 |
+
+9.28 G pairs through RCCL and 4.71 G through the custom path per rank, no unequal pattern on either rank, the FP32
+wire equal to the local FP32 sum everywhere. 215.5 M results are NaN in both forms with different payload bits
+(a NaN operand, or infinities of opposite sign), counted aside. The custom path takes BF16 up to 1,638 rows and
+FP32 up to 819, so at 1,024 rows its BF16 sum was compared with the local sum alone, and at 2,048 rows it
+declines both forms and serving uses RCCL.
+
+Time of the two forms, both ranks alike:
+
+| Call | BF16 wire | FP32 detour |
+|---|---:|---:|
+| RCCL, 8,192 × 5,120 | 7.83 ms | 16.40 ms |
+| Custom path in a graph, 1 / 9 / 16 rows | 9.6 / 18.4 / 24.3 µs | 16.4 / 31.9 / 44.3 µs |
+| RCCL in a graph, 1 / 9 / 16 rows | 18.0 / 25.2 / 32.7 µs | 23.7 / 39.2 / 52.1 µs |
+
+A layer has one such sum, 64 per chunk or step. At 8.56 ms each the detour is 13.2 s of the 184.4 s cold prefill
+at 197K, 3.9 s of the 32.8 s at 58K and about 0.5 s of the 3.1 s at 7.3K; in decode it is 0.43 ms of a plain step
+and 0.87 ms of a 9-row verify.
+
+Disposition, by the gate fixed before the run (`identical`): phase 1, a serving A/B of one switch that keeps the
+attention-TP sum in BF16 on a two-rank group, from a development tree; greedy output is required to be equal to
+the token, since no bit changes.
+
 ## Evaluation methodology
 
 ### SWE-bench answer leakage through git history and the web (found 2026-09-18)
