@@ -672,6 +672,19 @@ PYEOF
                 CUSTOM_AR=""
                 export SGLANG_USE_1STAGE_ALLREDUCE="${SGLANG_USE_1STAGE_ALLREDUCE:-1}"
             fi
+            # RAD-30 (patch 130): the attention-TP sum of a two-rank group stays in BF16 on the wire instead of
+            # the FP32 detour (cast up, reduce, cast down). With two addends the FP32 sum rounded back to BF16
+            # is the correctly rounded BF16 sum, so no bit changes: greedy output equal to the token on every
+            # comparison of eight boots (canonical sweep, forced ladder, six texts at short depth and at 196K,
+            # 48 accept-probe documents). Same session, two boots per side in both orders: cold prefill at 7.3K /
+            # 58K / 197K input 3.13 / 32.8 / 184.1 -> 2.64 / 28.7 / 171.0 s; no-spec canonical sweep at 24 /
+            # 7.3K / 58K / 197K 35.0 / 34.3 / 32.8 / 29.3 -> 35.6 / 34.9 / 33.3 / 29.6 tok/s; DSpark cycle on the
+            # sampled 400-token ladder 46.42 / 47.10 / 49.24 / 55.56 -> 45.49 / 46.15 / 48.13 / 54.60 ms at equal
+            # accept length; capabilities 5/5, needle 9/9, VRAM 27-158 MiB per card lower. Measured on the FP8
+            # checkpoint. SGLANG_HIP_BF16_ATTN_SUM=0 restores the FP32 detour.
+            if [[ -z "${QUANT_OVERRIDE:-}" ]]; then
+                export SGLANG_HIP_BF16_ATTN_SUM="${SGLANG_HIP_BF16_ATTN_SUM:-1}"
+            fi
             # RAD-15 (patch 127), opt-in: INT8_LM_HEAD=1 ends the one-row decode graph at the hidden state and
             # serves greedy requests with no logit processing from an int8 copy of the LM head with a proven
             # arg-max window; every other step and every step the filter cannot prove runs the bf16 head.

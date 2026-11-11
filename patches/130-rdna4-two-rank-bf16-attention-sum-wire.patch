@@ -1,0 +1,50 @@
+diff --git a/python/sglang/srt/layers/layer_boundary/ops.py b/python/sglang/srt/layers/layer_boundary/ops.py
+index 4fd23cc..55c98e5 100644
+--- a/python/sglang/srt/layers/layer_boundary/ops.py
++++ b/python/sglang/srt/layers/layer_boundary/ops.py
+@@ -14,6 +14,8 @@
+ """The communication a boundary runs: the attention input, the FFN input and the
+ FFN output's way back, over attention TP, DP and CP."""
+ 
++import logging
++import os
+ from typing import Callable, List, Optional, Tuple, Union
+ 
+ import torch
+@@ -63,6 +65,14 @@ from sglang.srt.utils import is_hip
+ 
+ _is_hip = is_hip()
+ 
++logger = logging.getLogger(__name__)
++
++# RDNA4: on a two-rank attention-TP group the BF16 wire returns the bits of the
++# FP32 detour (two addends: the FP32 sum rounded back to BF16 is the correctly
++# rounded BF16 sum), at half the payload and without the two casts.
++_HIP_BF16_ATTN_SUM = os.environ.get("SGLANG_HIP_BF16_ATTN_SUM", "0") == "1"
++_hip_bf16_attn_sum_logged = False
++
+ 
+ def tp_reduce_scatter(
+     hidden_states: torch.Tensor,
+@@ -188,6 +198,21 @@ def attn_tp_all_reduce(
+     may_quantize: bool = True,
+     fp32_on_hip: bool = True,
+ ) -> torch.Tensor:
++    if (
++        _is_hip
++        and fp32_on_hip
++        and _HIP_BF16_ATTN_SUM
++        and hidden_states.dtype == torch.bfloat16
++        and get_parallel().attn_tp_size == 2
++    ):
++        global _hip_bf16_attn_sum_logged
++        if not _hip_bf16_attn_sum_logged:
++            _hip_bf16_attn_sum_logged = True
++            logger.info(
++                "[RDNA4] attention-TP sum: BF16 wire on a two-rank group active "
++                "(SGLANG_HIP_BF16_ATTN_SUM=1; FP32 detour off)"
++            )
++        return attention_tensor_model_parallel_all_reduce(hidden_states)
+     if _is_hip and fp32_on_hip:
+         # Float32 all-reduce for TP precision on HIP (prevents FP16 rounding
+         # accumulation through DeltaNet/Mamba recurrence). Conventional

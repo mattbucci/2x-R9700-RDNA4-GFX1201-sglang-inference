@@ -2381,8 +2381,10 @@ capabilities 5/5 on all eight boots, VRAM at the end of an arm 137–158 MiB per
 against 1.77 / 2.03 / 2.35×; the headline rows move only with a canonical sweep on the shipped preset.
 
 Disposition, by the rule fixed before the run (identity identical, prefill pass, neither decode side slower,
-needle 9/9, capabilities 5/5 on every boot, memory ok): adopt on two-rank groups behind the switch; groups of
-three ranks and more keep the FP32 detour, where the argument of phase 0 does not hold.
+needle 9/9, capabilities 5/5 on every boot, memory ok): adopted as patch 130, on by default in the `qwen38` FP8
+preset (`SGLANG_HIP_BF16_ATTN_SUM=0` restores the detour); groups of three ranks and more keep the FP32 detour,
+where the argument of phase 0 does not hold. The other two-rank presets take the default after the same identity
+check on their own boots.
 
 ### RAD-10c kernel — radiance's prefill attention kernel, built from source against this tree's two fp8 pools, returns the bits of the library's rows at ×1.05–1.07 of their time; the served kernel takes ×2.1 (exact) and ×3.4 (fp8 QK) of it at depth (2026-11-11)
 
