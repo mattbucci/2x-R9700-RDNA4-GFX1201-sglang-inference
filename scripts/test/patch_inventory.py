@@ -24,9 +24,13 @@ import sys
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 BASE = "baa9bef"  # the peeled v0.5.22 commit the replay gate resets to
 MARKER = os.path.join(".git", "patch-inventory-scratch")
-SWITCH = re.compile(r"\bSGLANG_[A-Z0-9_]+\b")
+SWITCH = re.compile(r"\b(?:SGLANG|RDNA4)_[A-Z0-9_]+\b")  # patch 004 reads one unprefixed RDNA4_* name
 OFF = {"", "0", "false", "off", "none"}
-DEFAULT = re.compile(r"""(?:environ\.get|getenv|get_bool_env_var|get_int_env_var)\(\s*["'](SGLANG_[A-Z0-9_]+)["']\s*(?:,\s*([^,)]*))?""")
+DEFAULT = re.compile(r"""(?:environ\.get|getenv|get_bool_env_var|get_int_env_var)\(\s*["']((?:SGLANG|RDNA4)_[A-Z0-9_]+)["']\s*(?:,\s*([^,)]*))?""")
+# forms that leave a feature on unless the switch turns it off: a default of None then still means "on"
+OPT_OUT = (r"""not\s+(?:\w+\.)*(?:get_bool_env_var|environ\.get|getenv)\(\s*["']%s["']""",
+           r"""["']%s["'][^)]*\)(?:\.\w+\(\))*\s*(?:!=|not\s+in)""",
+           r"""["']%s["'][^)]*\)(?:\.\w+\(\))*\s*(?:==|in)\s*\(?\s*["'](?:0|false|off|no)["']""")
 REF = re.compile(r"[Pp]atch(?:es)?\s+((?:\d{3}(?:\s*[–-]\s*\d{3})?(?:\s*,\s*|\s+and\s+|\s*\+\s*|\s*/\s*)?)+)")
 LABEL = re.compile(r"        ([a-z0-9][a-z0-9._|-]*)\)$")
 SPEED = re.compile(r"tok/s|faster|speed|latency|throughput|\bms\b|fus(?:ed|ion)|GEM[MV]|split-?KV|tuned|"
@@ -119,8 +123,7 @@ def findings_mentions():
     out, head = {}, None
     for line in open(os.path.join(REPO, "benchmarks", "FINDINGS.md")):
         if line.startswith("#"):
-            head = line.lstrip("#").strip()
-            continue
+            head = line.lstrip("#").strip()  # a heading can be the only line that names its patches
         for num in patch_numbers(line):
             hs = out.setdefault(num, [])
             if head and head not in hs:
@@ -193,12 +196,22 @@ def leave_one_out(clone, plist):
     return out
 
 
+def code_part(line):
+    """The line without a whole-line or trailing comment: a switch named only in a comment switches nothing."""
+    t = line.strip()
+    if t.startswith(("#", "//", "/*", "*")):
+        return ""
+    return re.split(r"\s#\s|\s//\s", line, maxsplit=1)[0]
+
+
 def guess(rec):
     """First guess for the review, with its reason."""
     if rec["switches_introduced"] and not rec["default_on"] and not rec["presets_on"] and not rec["launcher_presets_naming"]:
-        if not rec["unswitched_existing_files"]:
-            return "opt-in", "its switches are off by default and no preset turns them on"
-        return "opt-in?", "switches off everywhere, but it also edits upstream files without naming a switch"
+        if rec["unswitched_existing_files"]:
+            return "opt-in?", "switches off everywhere, but it also edits upstream files without naming a switch"
+        if rec["deleted"]:
+            return "opt-in?", "switches off everywhere, but it replaces upstream lines: the switch may only override a changed default"
+        return "opt-in", "its switches are off by default and no preset turns them on"
     if rec["default_on"] or rec["presets_on"]:
         return "performance", "switchable and on (by default or in a preset): the ablation arm is the switch"
     if SPEED.search(rec["name"] + " " + rec["index"].get("purpose", "")):
@@ -257,7 +270,9 @@ def main():
             elif cur and l.startswith("+") and not l.startswith("+++"):
                 per_file.setdefault(cur, []).append(l[1:])
         added = [l for ls in per_file.values() for l in ls]
-        sw = sorted({m for l in added for m in SWITCH.findall(l)})
+        code = {f: [code_part(l) for l in ls] for f, ls in per_file.items()}
+        sw = sorted({m for ls in code.values() for l in ls for m in SWITCH.findall(l)})
+        comment_only = sorted({m for l in added for m in SWITCH.findall(l)} - set(sw))
         intro = [s for s in sw if s not in first_seen]
         for s in intro:
             first_seen[s] = num
@@ -265,15 +280,19 @@ def main():
         for l in added:
             for sname, dflt in DEFAULT.findall(l):
                 defaults.setdefault(sname, dflt.strip().strip("\"'") if dflt.strip() else None)
-        default_on = sorted(s for s in intro if defaults.get(s) is not None and defaults[s].lower() not in OFF)
+        opt_out = sorted(s for s in intro if any(re.search(pat % re.escape(s), l) for pat in OPT_OUT
+                                                 for ls in code.values() for l in ls))
+        default_on = sorted(set(opt_out) | {s for s in intro
+                                            if defaults.get(s) is not None and defaults[s].lower() not in OFF})
         on = sorted({p for p, exp in preset_exports.items() for s in intro
                      if any(v.lower() not in OFF for v in exp.get(s, []))})
         files = [f for f, _, _ in stat]
-        unswitched = files if not sw else sorted(f for f in files if not any(s in x for x in per_file.get(f, []) for s in sw))
+        unswitched = files if not sw else sorted(f for f in files if not any(s in x for x in code.get(f, []) for s in sw))
         rec = {"patch": num, "name": name[4:-6], "added": sum(a for _, a, _ in stat),
                "deleted": sum(d for _, _, d in stat), "files": files, "new_files": sorted(new_files),
                "switches_introduced": intro, "switches_touched": [s for s in sw if s not in intro],
-               "switch_defaults": {s: defaults.get(s) for s in intro}, "default_on": default_on, "presets_on": on,
+               "switch_defaults": {s: defaults.get(s) for s in intro}, "switches_opt_out": opt_out,
+               "switches_in_comments_only": comment_only, "default_on": default_on, "presets_on": on,
                "launcher_presets_naming": naming.get(num, []),
                "unswitched_existing_files": [f for f in unswitched if f not in new_files],
                "born": (rgit("log", "--diff-filter=A", "--follow", "--format=%ad", "--date=short", "--",
@@ -298,7 +317,9 @@ def main():
             rec["breaks_without"] = loo[rec["patch"]]
         rec["class_guess"], rec["class_guess_reason"] = guess(rec)
         rec["ablation_arm"], rec["class"], rec["disposition"] = ablation(rec), None, None
-        rec.update(review.get(rec["patch"], {}))
+        if rec["patch"] in review:  # the reviewed arm replaces the mechanical one, which stays readable
+            rec["ablation_arm_guess"] = rec["ablation_arm"]
+            rec.update(review[rec["patch"]])
     kinds = sorted({r["class_guess"] for r in records})
     totals = {"patches": len(records), "added": sum(r["added"] for r in records),
               "deleted": sum(r["deleted"] for r in records), "upstream_files_touched": len(by_file),
@@ -307,6 +328,10 @@ def main():
               "class_guess": {c: sum(1 for r in records if r["class_guess"] == c) for c in kinds},
               "class_guess_added_lines": {c: sum(r["added"] for r in records if r["class_guess"] == c) for c in kinds},
               "reviewed": sum(1 for r in records if r["class"])}
+    classes = sorted({r["class"] for r in records if r["class"]})
+    totals["class"] = {c: sum(1 for r in records if r["class"] == c) for c in classes}
+    totals["class_added_lines"] = {c: sum(r["added"] for r in records if r["class"] == c) for c in classes}
+    totals["class_low_confidence"] = [r["patch"] for r in records if r.get("class_confidence") == "low"]
     totals["rebase"] = {
         "added_lines_changed_in_a_bump": [r["patch"] for r in records if "added lines changed" in r["rebase_history"].values()],
         "next_bump": {k: [r["patch"] for r in records if r["next_bump_dry_run"][DRYRUN[0]] == k]
