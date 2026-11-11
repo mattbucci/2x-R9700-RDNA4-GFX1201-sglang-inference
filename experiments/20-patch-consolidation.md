@@ -17,8 +17,8 @@ a shipped preset. Everything else is dropped, and what stays is merged to one pa
 
 ## Starting point
 
-Measured from `patches/` with `git apply --numstat`: 97 numeric patches, 14,570 added and 598 deleted lines over
-219 file touches, 50 patches under 30 added lines, 41 distinct `SGLANG_*` switches introduced.
+Measured from `patches/` with `git apply --numstat`: 98 numeric patches, 14,595 added and 598 deleted lines over
+220 file touches, 51 patches under 30 added lines, 42 distinct `SGLANG_*` switches introduced.
 
 ## Classes
 
@@ -40,10 +40,10 @@ names the ablation arm for CONSOL-1 or CONSOL-2: a switch, or a tree replayed wi
 The mechanical pass is `scripts/test/patch_inventory.py` (the launcher in print-only mode, a leave-one-out replay
 on a scratch clone, the history of `patches/`). It reads:
 
-- 76 of the 97 patches can be left out alone and the rest still replays; 21 carry dependents (001, 065 and 107
-  carry five to seven each).
-- Ablation arms: 13 patches have a switch that is on by default or in a preset (the arm is the switch), 63 need a
-  tree replayed without them, 15 a tree without them and their dependents.
+- 76 of the 98 patches can be left out alone and the rest still replays; 22 carry dependents (001, 065 and 107
+  carry five to eight each).
+- Ablation arms: 14 patches have a switch that is on by default or in a preset (the arm is the switch), 62 need a
+  tree replayed without them, 16 a tree without them and their dependents.
 - 6 patches (2,273 added lines; 032 alone is 1,796 and 065 is 406) sit behind switches that are off by default
   and in every preset; 3 more (653 lines) look the same but also edit upstream files without naming a switch.
 - Rebase cost: 37 patches had their own added lines edited in at least one of the four base bumps (15 to 17 per

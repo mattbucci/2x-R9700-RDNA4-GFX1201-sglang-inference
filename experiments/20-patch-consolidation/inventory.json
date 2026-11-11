@@ -1,11 +1,11 @@
 {
  "totals": {
-  "patches": 97,
-  "added": 14570,
+  "patches": 98,
+  "added": 14595,
   "deleted": 598,
   "upstream_files_touched": 159,
   "new_files": 50,
-  "switches": 41,
+  "switches": 42,
   "presets": [
    "devstral",
    "devstral2",
@@ -33,13 +33,13 @@
   "class_guess": {
    "opt-in": 6,
    "opt-in?": 3,
-   "performance": 49,
+   "performance": 50,
    "required": 39
   },
   "class_guess_added_lines": {
    "opt-in": 2273,
    "opt-in?": 653,
-   "performance": 8645,
+   "performance": 8670,
    "required": 2999
   },
   "reviewed": 0,
@@ -316,6 +316,9 @@
    "SGLANG_USE_1STAGE_ALLREDUCE": [
     "1"
    ],
+   "SGLANG_HIP_BF16_ATTN_SUM": [
+    "1"
+   ],
    "SGLANG_EXTEND_SPLITKV_MAX_TOKENS": [
     "256"
    ],
@@ -401,6 +404,9 @@
     "256"
    ],
    "SGLANG_EXTEND_FP8_QK": [
+    "1"
+   ],
+   "SGLANG_USE_1STAGE_ALLREDUCE": [
     "1"
    ],
    "SGLANG_USE_AITER": [
@@ -492,7 +498,8 @@
     "121",
     "123",
     "124",
-    "125"
+    "125",
+    "130"
    ],
    "breaks_without": [
     "045",
@@ -501,11 +508,12 @@
     "082",
     "117",
     "120",
-    "121"
+    "121",
+    "130"
    ],
    "class_guess": "required",
    "class_guess_reason": "no switch; the index purpose reads as enablement or correctness",
-   "ablation_arm": "drop-with:045,077,080,082,117,120,121",
+   "ablation_arm": "drop-with:045,077,080,082,117,120,121,130",
    "class": null,
    "disposition": null
   },
@@ -2957,12 +2965,15 @@
     "001",
     "074",
     "079",
-    "081"
+    "081",
+    "130"
    ],
-   "breaks_without": [],
+   "breaks_without": [
+    "130"
+   ],
    "class_guess": "performance",
    "class_guess_reason": "no switch; the index purpose reads as speed",
-   "ablation_arm": "drop-alone",
+   "ablation_arm": "drop-with:130",
    "class": null,
    "disposition": null
   },
@@ -5366,7 +5377,8 @@
    "default_on": [],
    "presets_on": [],
    "launcher_presets_naming": [
-    "qwen38"
+    "qwen38",
+    "flint"
    ],
    "unswitched_existing_files": [],
    "born": "2026-11-10",
@@ -5396,6 +5408,55 @@
    "class_guess": "performance",
    "class_guess_reason": "no switch; the index purpose reads as speed",
    "ablation_arm": "drop-alone",
+   "class": null,
+   "disposition": null
+  },
+  {
+   "patch": "130",
+   "name": "rdna4-two-rank-bf16-attention-sum-wire",
+   "added": 25,
+   "deleted": 0,
+   "files": [
+    "python/sglang/srt/layers/layer_boundary/ops.py"
+   ],
+   "new_files": [],
+   "switches_introduced": [
+    "SGLANG_HIP_BF16_ATTN_SUM"
+   ],
+   "switches_touched": [],
+   "switch_defaults": {
+    "SGLANG_HIP_BF16_ATTN_SUM": "0"
+   },
+   "default_on": [],
+   "presets_on": [
+    "qwen38"
+   ],
+   "launcher_presets_naming": [
+    "qwen38"
+   ],
+   "unswitched_existing_files": [],
+   "born": "2026-11-11",
+   "rebase_history": {},
+   "next_bump_dry_run": {
+    "v0.5.23": "not covered: newer than the dry run"
+   },
+   "index": {
+    "collection": "Core RDNA4 enablement",
+    "upstream": "Carry",
+    "purpose": "On HIP the attention-TP sum takes an FP32 detour (cast up, all-reduce, cast down) unless the model's update policy opts out (080). With two ranks the sum is one addition, and the FP32 sum of two BF16 values rounded back to BF16 is the correctly rounded BF16 sum, so the BF16 wire returns the same bits at half the payload and without the two casts. `SGLANG_HIP_BF16_ATTN_SUM=1` (default in the qwen38 FP8 preset; `0` restores the detour) takes the BF16 wire in `layer_boundary/ops.attn_tp_all_reduce` when the hidden state is BF16 and `attn_tp_size == 2`; groups of three ranks and more and other dtypes keep the detour. Logged once (`[RDNA4] attention-TP sum: BF16 wire on a two-rank group active`). RAD-30: no differing bit on the wire in phase 0; in serving the same greedy tokens on every comparison of eight boots, cold prefill ×0.84 / ×0.88 / ×0.93 at 7.3K / 58K / 197K, no-spec decode +1.2–1.7 %, DSpark cycle ×0.98, VRAM lower."
+   },
+   "findings": [
+    "RAD-30 phase 1 — the BF16 wire in serving: greedy output equal to the token on every comparison, cold prefill ×0.84 / ×0.88 / ×0.93 at 7.3K / 58K / 197K, no-spec decode +1.2–1.7 %, DSpark cycle ×0.98 (2026-11-11)"
+   ],
+   "mentioned_in": {},
+   "shares_files_with": [
+    "001",
+    "080"
+   ],
+   "breaks_without": [],
+   "class_guess": "performance",
+   "class_guess_reason": "switchable and on (by default or in a preset): the ablation arm is the switch",
+   "ablation_arm": "switch",
    "class": null,
    "disposition": null
   }
