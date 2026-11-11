@@ -191,7 +191,10 @@ lost or a function whose parameters changed. The tree path holds `{series}`, the
 patches, and the session's static check compares every file of a tree with the live tree again, so a tree built
 before a patch landed is refused. `qwen38-nospec.json` holds four replay arms (042 with 127, 087, 106, 110 with
 112) next to its eleven switch arms: 37 boots. `qwen38-dspark.json` holds one (109 with 111 and 126) next to its
-four switch arms: 13 boots. Each boot runs one untimed prefill before the timed ones, so a kernel
+four switch arms: 13 boots. `flint-nospec.json` holds two switch arms (079, the fused sigmoid router; 112, the
+split-KV route that reaches Flint's layers with learned sinks) and one replay arm (118, the tuned MoE config):
+9 boots. Its identity rules were read against real Flint boot logs of the shipped preset and of a boot on the
+default MoE config. Each boot runs one untimed prefill before the timed ones, so a kernel
 an arm compiles for the first time is not inside a timed run.
 
 ## CONSOL-2 — correctness ablation (GPU)

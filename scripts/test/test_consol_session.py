@@ -213,5 +213,26 @@ class Summary(unittest.TestCase):
         self.assertIn("empty text", out)
 
 
+class Committed(unittest.TestCase):
+    def test_every_committed_session_file_loads_and_plans(self):
+        root = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "experiments",
+                            "20-patch-consolidation", "sessions")
+        files = sorted(f for f in os.listdir(root) if f.endswith(".json"))
+        self.assertGreaterEqual(len(files), 3)
+        for f in files:
+            with self.subTest(session=f):
+                s = cs.session(os.path.join(root, f))  # exits on a malformed arm
+                self.assertEqual(s["session"], f[:-len(".json")])
+                arms, size = len(s["arms"]), int(s.get("block", 5))
+                blocks = -(-arms // size)
+                self.assertEqual(len(cs.plan(s)), 1 + 2 * blocks + 2 * arms)
+                specs = list(s["markers"].values()) + [m for a in s["arms"] for m in a.get("on", {}).values()]
+                for spec in specs:
+                    cs.re.compile(cs.marker(spec)[0])
+                for a in s["arms"]:
+                    for k, v in a.get("server_env", {}).items():
+                        self.assertNotEqual(s["server_env"].get(k, "unset"), v, f"{a['name']}: {k} equals the control")
+
+
 if __name__ == "__main__":
     unittest.main()

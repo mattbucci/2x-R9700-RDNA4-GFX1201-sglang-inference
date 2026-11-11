@@ -1,0 +1,92 @@
+{
+ "session": "flint-nospec",
+ "preset": "flint",
+ "env": {},
+ "spec": false,
+ "seed": 7,
+ "caps": 3,
+ "block": 5,
+ "decode": {
+  "contexts": "128,8192,65536,221184",
+  "args": [
+   "--think-off"
+  ]
+ },
+ "prefill": {
+  "contexts": "8192,65536,221184",
+  "runs": 2
+ },
+ "poke": {},
+ "server_env": {
+  "SGLANG_USE_1STAGE_ALLREDUCE": "1",
+  "SGLANG_EXTEND_FP8_QK": "1",
+  "SGLANG_EXTEND_SPLITKV_MAX_TOKENS": "256",
+  "SGLANG_USE_AITER": "0",
+  "SGLANG_OPT_USE_JIT_KERNEL_FUSED_TOPK": "unset",
+  "SGLANG_SPLITKV_COMBINE_WARPS": "unset",
+  "SGLANG_KV_SPLITS_OVERRIDE": "unset"
+ },
+ "markers": {
+  "nospec": "'speculative_algorithm': None\\b",
+  "kvfp8": "'kv_cache_dtype': 'fp8_e4m3'",
+  "kvpool": "Full KV Cache is allocated\\. dtype: torch\\.float8_e4m3fn,",
+  "moe105": "Using CompressedTensorsW8A8Fp8MoE",
+  "ar129": "All-reduce call path: custom all-reduce \\(CustomAllreduce, group tp\\)",
+  "moecfg118": "Using MoE kernel config from [^\\n]{0,200}/E=256,N=256,device_name=AMD_Radeon_AI_PRO_R9700,dtype=fp8_w8a8,per_channel_quant=True\\.json",
+  "route112": {
+   "re": "extend split-KV route active: \\d+ new tokens",
+   "late": true
+  },
+  "routefp8": {
+   "re": "extend split-KV route active: [^\\n]{0,60}\\(upcast_k=False\\)",
+   "late": true
+  }
+ },
+ "arms": [
+  {
+   "name": "p079",
+   "patches": [
+    "079"
+   ],
+   "env": {
+    "SGLANG_OPT_USE_JIT_KERNEL_FUSED_TOPK": "false"
+   },
+   "server_env": {
+    "SGLANG_OPT_USE_JIT_KERNEL_FUSED_TOPK": "false"
+   },
+   "reads": {
+    "file": "sglang/srt/layers/moe/topk.py",
+    "pattern": "_is_hip and get_bool_env_var\\(\\\"SGLANG_OPT_USE_JIT_KERNEL_FUSED_TOPK\\\", \\\"true\\\"\\)"
+   }
+  },
+  {
+   "name": "p112",
+   "patches": [
+    "112"
+   ],
+   "env": {
+    "EXTEND_SPLITKV_MAX": "0"
+   },
+   "server_env": {
+    "SGLANG_EXTEND_SPLITKV_MAX_TOKENS": "0"
+   },
+   "off": [
+    "route112",
+    "routefp8"
+   ]
+  },
+  {
+   "name": "p118",
+   "patches": [
+    "118"
+   ],
+   "tree": "/data/sgl-v0522-consol/s{series}/p118",
+   "off": [
+    "moecfg118"
+   ],
+   "on": {
+    "moedefault118": "Using default MoE kernel config\\. Performance might be sub-optimal! Config file not found at [^\\n]{0,200}/E=256,N=256,"
+   }
+  }
+ ]
+}
