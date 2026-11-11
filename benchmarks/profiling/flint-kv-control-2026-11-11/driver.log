@@ -1,0 +1,79 @@
+[2026-11-11 14:18:19] arm preset: knobs '' -> --kv-cache-dtype fp8_e4m3, SGLANG_EXTEND_FP8_QK=1
+[2026-11-11 14:18:23] arm qk-upcast: knobs 'EXTEND_FP8_QK=0' -> --kv-cache-dtype fp8_e4m3, SGLANG_EXTEND_FP8_QK=0
+[2026-11-11 14:18:27] arm bf16-kv: knobs 'KV_DTYPE=auto' -> --kv-cache-dtype auto, SGLANG_EXTEND_FP8_QK=1
+[2026-11-11 14:18:27] diag sha 77028b61d7189adc, summary sha 8e243afd601ccabf; receipts /home/letsrtfm/AI/2x-R9700-RDNA4-GFX1201-sglang-inference/benchmarks/profiling/flint-kv-control-2026-11-11
+[2026-11-11 14:18:27] == boot preset (knobs '')
+[2026-11-11 14:20:00] server up preset: 'random_seed': 761437560, pool torch.float8_e4m3fn x2, fp8 QK 1, max_total_num_tokens=1044688
+preset STATE cold | plain: prefill ['15/0'] finish=stop stop=150003 tokens 15+62 of 1040 reasoning 258 chars answer 'Paris'
+preset STATE cold | banned: prefill ['1/14'] finish=length stop=None tokens 15+1040 of 1040 reasoning 3606 chars answer ''
+preset STATE cold | plain+logprobs: prefill ['1/14'] finish=stop stop=150003 tokens 15+62 of 1040 reasoning 258 chars answer 'Paris'
+preset STATE cold | banned+logprobs: prefill ['1/14'] finish=length stop=None tokens 15+1040 of 1040 reasoning 3606 chars answer ''
+preset STATE health | health 200 prefill ['1/0']
+preset STATE health | plain: prefill ['15/0'] finish=stop stop=150003 tokens 15+62 of 1040 reasoning 258 chars answer 'Paris'
+preset STATE health | banned: prefill ['1/14'] finish=length stop=None tokens 15+1040 of 1040 reasoning 3606 chars answer ''
+preset STATE health | plain+logprobs: prefill ['1/14'] finish=stop stop=150003 tokens 15+62 of 1040 reasoning 258 chars answer 'Paris'
+preset STATE health | banned+logprobs: prefill ['1/14'] finish=length stop=None tokens 15+1040 of 1040 reasoning 3606 chars answer ''
+preset STATE chat | lead-in chat: prefill ['6/0'] finish=length stop=None tokens 6+8 of 8 reasoning 24 chars answer ''
+preset STATE chat | plain: prefill ['14/1'] finish=stop stop=150003 tokens 15+47 of 1040 reasoning 196 chars answer 'Paris'
+preset STATE chat | banned: prefill ['1/14'] finish=stop stop=150003 tokens 15+311 of 1040 reasoning 1141 chars answer 'Par...'
+preset STATE chat | plain+logprobs: prefill ['1/14'] finish=stop stop=150003 tokens 15+47 of 1040 reasoning 196 chars answer 'Paris'
+preset STATE chat | banned+logprobs: prefill ['1/14'] finish=stop stop=150003 tokens 15+311 of 1040 reasoning 1141 chars answer 'Par...'
+preset STATE cold-2 | plain: prefill ['15/0'] finish=stop stop=150003 tokens 15+62 of 1040 reasoning 258 chars answer 'Paris'
+preset STATE cold-2 | banned: prefill ['1/14'] finish=length stop=None tokens 15+1040 of 1040 reasoning 3606 chars answer ''
+preset STATE cold-2 | plain+logprobs: prefill ['1/14'] finish=stop stop=150003 tokens 15+62 of 1040 reasoning 258 chars answer 'Paris'
+preset STATE cold-2 | banned+logprobs: prefill ['1/14'] finish=length stop=None tokens 15+1040 of 1040 reasoning 3606 chars answer ''
+preset BIAS DIAG DONE states=4 banned-token-emitted=0
+[2026-11-11 14:23:07] fixed request matrix cold (every budget + 1024 tokens)
+[route] logit-bias: PASS "banned ids [842, 12834, 13709, 51574, 123366]: '', finish=length, 3606 reasoning chars";ROUTE PROBE DONE passed=10/10;
+lead-in chat usage {'prompt_tokens': 6, 'total_tokens': 14, 'completion_tokens': 8, 'prompt_tokens_details': None, 'reasoning_tokens': 0}
+[2026-11-11 14:24:08] fixed request matrix chat (every budget + 1024 tokens)
+[route] logit-bias: PASS "banned ids [842, 12834, 13709, 51574, 123366]: 'Par...', finish=stop, 1141 reasoning chars";ROUTE PROBE DONE passed=10/10;
+[2026-11-11 14:24:47] ROUTE FIXED cold=10/10 chat=10/10 (probe sha b75e99a0ab281064)
+[2026-11-11 14:25:30] == boot qk-upcast (knobs 'EXTEND_FP8_QK=0')
+[2026-11-11 14:26:53] server up qk-upcast: 'random_seed': 1031924202, pool torch.float8_e4m3fn x2, fp8 QK 0, max_total_num_tokens=1044688
+qk-upcast STATE cold | plain: prefill ['15/0'] finish=stop stop=150003 tokens 15+62 of 1040 reasoning 258 chars answer 'Paris'
+qk-upcast STATE cold | banned: prefill ['1/14'] finish=length stop=None tokens 15+1040 of 1040 reasoning 3606 chars answer ''
+qk-upcast STATE cold | plain+logprobs: prefill ['1/14'] finish=stop stop=150003 tokens 15+62 of 1040 reasoning 258 chars answer 'Paris'
+qk-upcast STATE cold | banned+logprobs: prefill ['1/14'] finish=length stop=None tokens 15+1040 of 1040 reasoning 3606 chars answer ''
+qk-upcast STATE health | health 200 prefill ['1/0']
+qk-upcast STATE health | plain: prefill ['15/0'] finish=stop stop=150003 tokens 15+62 of 1040 reasoning 258 chars answer 'Paris'
+qk-upcast STATE health | banned: prefill ['1/14'] finish=length stop=None tokens 15+1040 of 1040 reasoning 3606 chars answer ''
+qk-upcast STATE health | plain+logprobs: prefill ['1/14'] finish=stop stop=150003 tokens 15+62 of 1040 reasoning 258 chars answer 'Paris'
+qk-upcast STATE health | banned+logprobs: prefill ['1/14'] finish=length stop=None tokens 15+1040 of 1040 reasoning 3606 chars answer ''
+qk-upcast STATE chat | lead-in chat: prefill ['6/0'] finish=length stop=None tokens 6+8 of 8 reasoning 24 chars answer ''
+qk-upcast STATE chat | plain: prefill ['14/1'] finish=stop stop=150003 tokens 15+43 of 1040 reasoning 163 chars answer 'Paris'
+qk-upcast STATE chat | banned: prefill ['1/14'] finish=length stop=None tokens 15+1040 of 1040 reasoning 3703 chars answer ''
+qk-upcast STATE chat | plain+logprobs: prefill ['1/14'] finish=stop stop=150003 tokens 15+43 of 1040 reasoning 163 chars answer 'Paris'
+qk-upcast STATE chat | banned+logprobs: prefill ['1/14'] finish=length stop=None tokens 15+1040 of 1040 reasoning 3703 chars answer ''
+qk-upcast STATE cold-2 | plain: prefill ['15/0'] finish=stop stop=150003 tokens 15+62 of 1040 reasoning 258 chars answer 'Paris'
+qk-upcast STATE cold-2 | banned: prefill ['1/14'] finish=length stop=None tokens 15+1040 of 1040 reasoning 3606 chars answer ''
+qk-upcast STATE cold-2 | plain+logprobs: prefill ['1/14'] finish=stop stop=150003 tokens 15+62 of 1040 reasoning 258 chars answer 'Paris'
+qk-upcast STATE cold-2 | banned+logprobs: prefill ['1/14'] finish=length stop=None tokens 15+1040 of 1040 reasoning 3606 chars answer ''
+qk-upcast BIAS DIAG DONE states=4 banned-token-emitted=0
+[2026-11-11 14:31:15] == boot bf16-kv (knobs 'KV_DTYPE=auto')
+[2026-11-11 14:32:28] server up bf16-kv: 'random_seed': 608677379, pool torch.bfloat16 x2, fp8 QK 1, max_total_num_tokens=522344
+bf16-kv STATE cold | plain: prefill ['15/0'] finish=stop stop=150003 tokens 15+61 of 1040 reasoning 258 chars answer 'Paris'
+bf16-kv STATE cold | banned: prefill ['1/14'] finish=length stop=None tokens 15+1040 of 1040 reasoning 3626 chars answer ''
+bf16-kv STATE cold | plain+logprobs: prefill ['1/14'] finish=stop stop=150003 tokens 15+61 of 1040 reasoning 258 chars answer 'Paris'
+bf16-kv STATE cold | banned+logprobs: prefill ['1/14'] finish=length stop=None tokens 15+1040 of 1040 reasoning 3626 chars answer ''
+bf16-kv STATE health | health 200 prefill ['1/0']
+bf16-kv STATE health | plain: prefill ['15/0'] finish=stop stop=150003 tokens 15+61 of 1040 reasoning 258 chars answer 'Paris'
+bf16-kv STATE health | banned: prefill ['1/14'] finish=length stop=None tokens 15+1040 of 1040 reasoning 3626 chars answer ''
+bf16-kv STATE health | plain+logprobs: prefill ['1/14'] finish=stop stop=150003 tokens 15+61 of 1040 reasoning 258 chars answer 'Paris'
+bf16-kv STATE health | banned+logprobs: prefill ['1/14'] finish=length stop=None tokens 15+1040 of 1040 reasoning 3626 chars answer ''
+bf16-kv STATE chat | lead-in chat: prefill ['6/0'] finish=length stop=None tokens 6+8 of 8 reasoning 24 chars answer ''
+bf16-kv STATE chat | plain: prefill ['14/1'] finish=stop stop=150003 tokens 15+55 of 1040 reasoning 222 chars answer 'Paris'
+bf16-kv STATE chat | banned: prefill ['1/14'] finish=length stop=None tokens 15+1040 of 1040 reasoning 3770 chars answer ''
+bf16-kv STATE chat | plain+logprobs: prefill ['1/14'] finish=stop stop=150003 tokens 15+55 of 1040 reasoning 222 chars answer 'Paris'
+bf16-kv STATE chat | banned+logprobs: prefill ['1/14'] finish=length stop=None tokens 15+1040 of 1040 reasoning 3770 chars answer ''
+bf16-kv STATE cold-2 | plain: prefill ['15/0'] finish=stop stop=150003 tokens 15+61 of 1040 reasoning 258 chars answer 'Paris'
+bf16-kv STATE cold-2 | banned: prefill ['1/14'] finish=length stop=None tokens 15+1040 of 1040 reasoning 3626 chars answer ''
+bf16-kv STATE cold-2 | plain+logprobs: prefill ['1/14'] finish=stop stop=150003 tokens 15+61 of 1040 reasoning 258 chars answer 'Paris'
+bf16-kv STATE cold-2 | banned+logprobs: prefill ['1/14'] finish=length stop=None tokens 15+1040 of 1040 reasoning 3626 chars answer ''
+bf16-kv BIAS DIAG DONE states=4 banned-token-emitted=0
+KV CONTROL arm=preset prefill cold=['15/0'] chat=['14/1'] plain-equal=False common-prefix=22 of [62, 47] max-shift=0.203 nats over 22 | repeat floor equal=True max-shift=0.0 | banned {'cold': ['length', 1040, ''], 'chat': ['stop', 311, 'Par...'], 'cold-2': ['length', 1040, '']} word-seen=0
+KV CONTROL arm=qk-upcast prefill cold=['15/0'] chat=['14/1'] plain-equal=False common-prefix=22 of [62, 43] max-shift=0.23 nats over 22 | repeat floor equal=True max-shift=0.0 | banned {'cold': ['length', 1040, ''], 'chat': ['length', 1040, ''], 'cold-2': ['length', 1040, '']} word-seen=0
+KV CONTROL arm=bf16-kv prefill cold=['15/0'] chat=['14/1'] plain-equal=False common-prefix=41 of [61, 55] max-shift=0.234 nats over 24 | repeat floor equal=True max-shift=0.0 | banned {'cold': ['length', 1040, ''], 'chat': ['length', 1040, ''], 'cold-2': ['length', 1040, '']} word-seen=0
+KV CONTROL judged qk-upcast: {'positions': 22, 'arm': 0.23, 'preset': 0.203}
+KV CONTROL judged bf16-kv: {'positions': 22, 'arm': 0.234, 'preset': 0.203}
+KV CONTROL VERDICT unexplained

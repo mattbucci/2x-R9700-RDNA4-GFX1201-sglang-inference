@@ -2648,8 +2648,17 @@ FLINT-4b boots, which is why that matrix read 10/10.
 
 Disposition: the ban works; the failing case is the probe's, which demands a non-empty answer from a model that
 reasons under the ban. The case is to be judged on the ban itself (the unbiased answer starts with the word, the
-biased generation is non-empty and never contains it). Whether the log-probability shift with one cached token
-comes from the fp8 KV store or the fp8 QK dot is measured by three control boots (queue item FLINT-6).
+biased generation is non-empty and never contains it).
+
+Three control boots measure where the shift with one cached token comes from
+([receipts](profiling/flint-kv-control-2026-11-11/)), under a rule fixed before the run: an arm removes the shift
+when its largest top-1 move is at most one fifth of the preset's over the positions both share. Neither lossy
+path is the source. The preset reads 0.203 nats over 22 positions, `EXTEND_FP8_QK=0` 0.230 and a BF16 KV pool
+(`KV_DTYPE=auto`) 0.234, at the same uncertain positions in all three arms, and every arm repeats itself to the
+token from a flushed cache (0.000 nats). Verdict `unexplained`: a request whose first prompt token comes from
+the cache computes different numbers from a fully fresh one for a reason other than fp8 storage or the fp8 QK
+dot. A per-layer search for the first diverging stage runs before any Flint preset change (queue item FLINT-7).
+The fixed request matrix passes 10/10 on the preset boot from a flushed cache and 10/10 after one chat.
 
 Receipts: `flint-fp8/{decode,capabilities,route}-canonical-<arm>-2026-11-11-98p.json` for `nospec`, `nospec-rccl`
 and `dflash2`, `prefill-canonical-nospec-2026-11-11-98p.json`. These are the README and results.json rows.

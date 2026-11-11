@@ -700,7 +700,7 @@
    "depends_on": [
     "tail queue job 96 (RAD-10c serving A/B) finished: scripts/eval/greedy_route_probe.py is frozen while it runs"
    ],
-   "next_action": "(1) Control boots, queued as tail job 96-b (flint_kv_control.sh, about 12 min): the flint preset, EXTEND_FP8_QK=0 and KV_DTYPE=auto, bias_diag.py on each (flushed cache against one cached first token, greedy, log-probabilities). (2) Request-matrix logit-bias case judged on the ban itself for models that always reason (unbiased answer starts with the word; the biased generation is non-empty and never contains it; finish reason and token counts recorded), then the matrix re-run on Flint.",
+   "next_action": "Control boots done (tail job 96-b): verdict unexplained. Largest top-1 shift between a flushed cache (15 new / 0 cached) and one cached token (14 / 1): preset 0.203 nats, EXTEND_FP8_QK=0 0.230, KV_DTYPE=auto 0.234 over 22 shared positions; every arm repeats itself to the token from a flushed cache. Neither fp8 storage nor the fp8 QK dot is the source; the search for the diverging stage is FLINT-7. The fixed request matrix read 10/10 from a flushed cache and 10/10 after one chat on the preset boot. Remaining here: install the fixed probe (scripts/eval/greedy_route_probe.py + its test) once no queued job reads the probe, then re-run the qwen38 matrix as the unchanged check.",
    "test_gate": [
     "fixed before the run (kv_control_summary.py): an arm removes the cache-state shift when its largest top-1 log-probability shift is at most one fifth of the preset arm's over the positions both share (at least 8)",
     "verdict fp8-qk when EXTEND_FP8_QK=0 removes it, fp8-kv when only KV_DTYPE=auto does, unexplained otherwise; unexplained opens a cache-state defect search (SWA pool, sinks) before any preset change",
@@ -708,6 +708,24 @@
     "probe fix: 10/10 on Flint from a flushed cache and after one chat; qwen38 matrix unchanged at 10/10"
    ],
    "result": "2026-11-11 diagnostic (one bare boot, benchmarks/profiling/flint-logit-bias-diag-2026-11-11): the ban holds in nine biased generations; the reasoning Flint always emits loops under the ban and ends without an answer from a flushed cache (1,040 and 4,112 tokens) or with 'Par...' after 311 tokens when the first prompt token comes from the cache; the paths part at token 22 (three candidates within 0.28 nats), top-1 log-probabilities move by up to 0.20 nats between the two states; a health check adds no cached token."
+  },
+  {
+   "depends_on": [
+    "FLINT-6 control boots: verdict unexplained (0.203 / 0.230 / 0.234 nats; receipts benchmarks/profiling/flint-kv-control-2026-11-11/)",
+    "the live tree is frozen while tail jobs read it: the dump hook lives in a PYTHONPATH dev tree and is off unless its switch names a directory"
+   ],
+   "id": "FLINT-7",
+   "next_action": "Per-layer stage dump on bare flint boots, BF16 KV pool first (stored keys equal the computed ones), then the preset: the 15-token probe prompt from a flushed cache (15 new / 0 cached), again from a flushed cache, and after one chat (14 / 1). For the 14 rows both states compute: attention output, attention sum, MoE output and layer output at every layer; the first stage that differs, its size, and the growth by layer. Runs ahead of RAD-30b so that a defect in the cache-hit path is known before that A/B spends its boots.",
+   "resource": "gpu",
+   "spec": "https://github.com/mattbucci/2x-R9700-RDNA4-GFX1201-sglang-inference/issues/27",
+   "status": "in_progress",
+   "test_gate": [
+    "fixed before the run, judged on the BF16-KV boot: the first stage (layer, sub-stage) at which the 14 shared rows differ between 15 / 0 and 14 / 1 is named with its relative L2 difference and the share of differing elements; the two flushed-cache runs must be bit-equal at every stage, else the verdict is not-deterministic",
+    "verdict rounding when that first difference is at most 1e-3 relative L2 (a reordered FP32 sum rounded to BF16), defect:<stage> at 1e-2 or more, unclear between",
+    "rounding: the shift is an amplified rounding difference, no preset change, FLINT-6's question closes with the growth profile; defect or unclear: a direct test of the named kernel with the real shapes against an fp64 PyTorch reference before anything else changes on Flint",
+    "the preset boot is reported, not judged: there the cached key of the first token is the fp8-stored one, a known lossy difference",
+    "identity per boot: pool dtype line, prefill counts 15/0 and 14/1 in the server log, the dump switch's active line, dev tree = live tree + the hook"
+   ]
   },
   {
    "id": "RAD-10",
