@@ -1,0 +1,89 @@
+{
+  "label": "dctl2-sampled",
+  "tag": "",
+  "note": "qwen38 FP8, dev tree rad30 (97 patches + the BF16-wire switch), --random-seed 7",
+  "port": 23334,
+  "maxtok": 400,
+  "runs": 2,
+  "sampling": {
+    "temperature": 1.0,
+    "top_p": 0.95,
+    "top_k": 20,
+    "seed": 7
+  },
+  "ignore_eos": true,
+  "points": [
+    {
+      "context": 128,
+      "input_len": 24,
+      "runs_tps": [
+        54.7,
+        60.59
+      ],
+      "median_tps": 57.495,
+      "min_tps": 54.697,
+      "max_tps": 60.594,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "median_tpot_ms": 17.39,
+      "sample": "# The Memory Wall: A Deep Dive into GPU Memory Hierarchy and",
+      "median_ttft_ms": 113.4
+    },
+    {
+      "context": 8192,
+      "input_len": 7331,
+      "runs_tps": [
+        52.92,
+        50.78
+      ],
+      "median_tps": 51.832,
+      "min_tps": 50.785,
+      "max_tps": 52.923,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "median_tpot_ms": 19.29,
+      "sample": "The provided text consists of the pangram \"The quick brown f",
+      "median_ttft_ms": 1668.3
+    },
+    {
+      "context": 65536,
+      "input_len": 58483,
+      "runs_tps": [
+        50.97,
+        50.08
+      ],
+      "median_tps": 50.52,
+      "min_tps": 50.082,
+      "max_tps": 50.966,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "median_tpot_ms": 19.79,
+      "sample": "The text consists entirely of the pangram \"The quick brown f",
+      "median_ttft_ms": 15206.7
+    },
+    {
+      "context": 221184,
+      "input_len": 197326,
+      "runs_tps": [
+        49.21,
+        42.03
+      ],
+      "median_tps": 45.337,
+      "min_tps": 42.027,
+      "max_tps": 49.212,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "median_tpot_ms": 22.06,
+      "sample": "The provided text consists of a massive, repetitive block wh",
+      "median_ttft_ms": 77223.6
+    }
+  ]
+}

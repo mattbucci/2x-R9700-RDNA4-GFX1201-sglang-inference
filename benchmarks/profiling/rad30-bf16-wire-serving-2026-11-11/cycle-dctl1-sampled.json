@@ -1,0 +1,48 @@
+{
+ "label": "dctl1-sampled",
+ "note": "qwen38 FP8, dev tree rad30 (97 patches + the BF16-wire switch), --random-seed 7",
+ "log": "/data/logs/rad30-bf16-wire-serving-2026-11-11/server-dctl1.log",
+ "from_line": 905,
+ "to_line": 1002,
+ "line_numbering": "newline",
+ "decode_lines_dropped_after_prefill": 8,
+ "decode_lines_dropped_no_depth": 1,
+ "depths": {
+  "24": {
+   "decode_batches": {
+    "lines": 4,
+    "accept_len": 2.66,
+    "tok_s": 57.38,
+    "cycles_s": 21.54,
+    "cycle_ms": 46.42
+   }
+  },
+  "7.3K": {
+   "decode_batches": {
+    "lines": 6,
+    "accept_len": 2.44,
+    "tok_s": 51.77,
+    "cycles_s": 21.23,
+    "cycle_ms": 47.11
+   }
+  },
+  "58K": {
+   "decode_batches": {
+    "lines": 6,
+    "accept_len": 2.44,
+    "tok_s": 49.48,
+    "cycles_s": 20.3,
+    "cycle_ms": 49.27
+   }
+  },
+  "197K": {
+   "decode_batches": {
+    "lines": 6,
+    "accept_len": 2.37,
+    "tok_s": 42.56,
+    "cycles_s": 17.99,
+    "cycle_ms": 55.59
+   }
+  }
+ }
+}

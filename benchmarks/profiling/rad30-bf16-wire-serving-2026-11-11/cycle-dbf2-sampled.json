@@ -1,0 +1,48 @@
+{
+ "label": "dbf2-sampled",
+ "note": "qwen38 FP8, dev tree rad30 (97 patches + the BF16-wire switch), --random-seed 7",
+ "log": "/data/logs/rad30-bf16-wire-serving-2026-11-11/server-dbf2.log",
+ "from_line": 907,
+ "to_line": 1004,
+ "line_numbering": "newline",
+ "decode_lines_dropped_after_prefill": 8,
+ "decode_lines_dropped_no_depth": 1,
+ "depths": {
+  "24": {
+   "decode_batches": {
+    "lines": 4,
+    "accept_len": 2.66,
+    "tok_s": 58.56,
+    "cycles_s": 21.98,
+    "cycle_ms": 45.5
+   }
+  },
+  "7.3K": {
+   "decode_batches": {
+    "lines": 6,
+    "accept_len": 2.44,
+    "tok_s": 52.83,
+    "cycles_s": 21.67,
+    "cycle_ms": 46.14
+   }
+  },
+  "58K": {
+   "decode_batches": {
+    "lines": 6,
+    "accept_len": 2.44,
+    "tok_s": 50.69,
+    "cycles_s": 20.78,
+    "cycle_ms": 48.13
+   }
+  },
+  "197K": {
+   "decode_batches": {
+    "lines": 6,
+    "accept_len": 2.37,
+    "tok_s": 43.34,
+    "cycles_s": 18.32,
+    "cycle_ms": 54.59
+   }
+  }
+ }
+}

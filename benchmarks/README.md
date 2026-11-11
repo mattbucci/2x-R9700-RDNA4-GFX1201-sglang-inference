@@ -211,6 +211,9 @@ paired prompts, needle 9/9, capabilities 5/5, VRAM growth within 2 MiB per card
 ranks and compares the BF16 sum with the FP32 detour of the attention-TP sum bit for bit: no unequal pattern in 9.28 G + 4.71 G
 pairs per rank; the detour costs 16.40 against 7.83 ms per reduction at 8192 rows and 16.4 against 9.6 µs at one row in a graph
 ([receipt](profiling/rad30-wire-equality-2026-11-11/allreduce-wire-equality.json), [FINDINGS → RAD-30 phase 0](FINDINGS.md)).
+In serving the BF16 wire returns the same greedy tokens on every comparison of eight boots and takes 0.49 / 4.05 / 13.1 s off
+the cold prefill at 7.3K / 58K / 197K (×0.84 / ×0.88 / ×0.93), with no-spec decode +1.2–1.7 % and the DSpark cycle ×0.98
+([receipts](profiling/rad30-bf16-wire-serving-2026-11-11/), [FINDINGS → RAD-30 phase 1](FINDINGS.md)).
 Cold prefill split by depth from the server's own chunk reports (`scripts/bench/prefill_chunk_curve.py`: chunk seconds against
 prefix depth per chunked prompt of a server log, no profiler): 3.48 s per 8192-token chunk plus 0.0438 s per 1K of prefix, so
 the 197K cold prompt is 83.8 s depth-free and 99.7 s depth-bound and the 58K one 25.0 + 7.8 s; the prefix attention runs

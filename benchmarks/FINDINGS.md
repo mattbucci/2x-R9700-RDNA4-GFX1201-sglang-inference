@@ -2342,6 +2342,48 @@ Disposition, by the gate fixed before the run (`identical`): phase 1, a serving 
 attention-TP sum in BF16 on a two-rank group, from a development tree; greedy output is required to be equal to
 the token, since no bit changes.
 
+### RAD-30 phase 1 — the BF16 wire in serving: greedy output equal to the token on every comparison, cold prefill ×0.84 / ×0.88 / ×0.93 at 7.3K / 58K / 197K, no-spec decode +1.2–1.7 %, DSpark cycle ×0.98 (2026-11-11)
+
+Eight boots of the `qwen38` FP8 preset from a development tree (the live tree plus one edit in
+`layer_boundary/ops.py`), every boot `--random-seed 7`: no-spec control / wire / wire / control, then DSpark in the
+same order. The switch `SGLANG_HIP_BF16_ATTN_SUM=1` keeps the attention-TP sum in BF16 when the group has two
+ranks; the server logs the route once and the driver checks that line on every boot
+([receipts](profiling/rad30-bf16-wire-serving-2026-11-11/), final line
+`identity-identical:prefill-pass:nospec-faster:dspark-faster:needle-9of9:memory-ok`).
+
+Identity, greedy, wire against control in both boot pairs, and the two controls and the two wire boots against
+each other: canonical sweep 4/4 texts, forced 400-token ladder 4/4, six prompts at short depth 6/6, six at 196K
+6/6, the 48 documents of the paired accept probe 48/48 with 14,303 tokens over 3,680 verifies on all four DSpark
+boots. No token differs anywhere, as phase 0 requires.
+
+| Cold prefill, mean of two boots | 7,331 tokens | 58,483 tokens | 197,326 tokens |
+|---|---:|---:|---:|
+| No-spec, FP32 detour | 3.128 s | 32.795 s | 184.088 s |
+| No-spec, BF16 wire | 2.639 s (×0.844) | 28.747 s (×0.877) | 170.981 s (×0.929) |
+| DSpark boots, FP32 detour | 3.314 s | 33.443 s | 186.674 s |
+| DSpark boots, BF16 wire | 2.823 s (×0.852) | 29.420 s (×0.880) | 173.506 s (×0.930) |
+
+The wire takes 0.49 / 4.05 / 13.1 s off the prefill; phase 0 put the detour at 0.5 / 3.9 / 13.2 s. Every wire boot
+is faster than every control boot at every depth.
+
+| Decode, mean of two boots | 24 | 7.3K | 58K | 197K |
+|---|---:|---:|---:|---:|
+| No-spec canonical, FP32 detour, tok/s | 34.99 | 34.34 | 32.76 | 29.29 |
+| No-spec canonical, BF16 wire, tok/s | 35.57 (×1.017) | 34.87 (×1.016) | 33.29 (×1.016) | 29.63 (×1.012) |
+| No-spec forced 400 tokens, wire over detour | ×1.012 | ×1.012 | ×1.015 | ×1.014 |
+| DSpark cycle, FP32 detour, ms | 46.42 | 47.10 | 49.24 | 55.56 |
+| DSpark cycle, BF16 wire, ms | 45.49 (×0.980) | 46.15 (×0.980) | 48.13 (×0.978) | 54.60 (×0.983) |
+
+Accept length is equal on the four DSpark boots at every depth (2.66 / 2.44 / 2.44 / 2.37 on the sampled ladder,
+3.887 on the greedy probe), so the cycle time carries the whole DSpark gain. Needle 9/9 on a wire boot,
+capabilities 5/5 on all eight boots, VRAM at the end of an arm 137–158 MiB per card lower without speculation and
+27–28 MiB lower with DSpark. By these ratios the cold-prefill distance to radiance reads 1.49 / 1.78 / 2.18×
+against 1.77 / 2.03 / 2.35×; the headline rows move only with a canonical sweep on the shipped preset.
+
+Disposition, by the rule fixed before the run (identity identical, prefill pass, neither decode side slower,
+needle 9/9, capabilities 5/5 on every boot, memory ok): adopt on two-rank groups behind the switch; groups of
+three ranks and more keep the FP32 detour, where the argument of phase 0 does not hold.
+
 ### RAD-10c kernel — radiance's prefill attention kernel, built from source against this tree's two fp8 pools, returns the bits of the library's rows at ×1.05–1.07 of their time; the served kernel takes ×2.1 (exact) and ×3.4 (fp8 QK) of it at depth (2026-11-11)
 
 RAD-10b's verdict was `port`. The kernel source is in the Apache-2.0 tree (`libr4d/r4d_attn_prefill_h256_gqa6.hip`,

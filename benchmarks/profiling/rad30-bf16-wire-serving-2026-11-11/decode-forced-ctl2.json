@@ -1,0 +1,84 @@
+{
+  "label": "ctl2-forced",
+  "tag": "",
+  "note": "qwen38 FP8, dev tree rad30 (97 patches + the BF16-wire switch), --random-seed 7",
+  "port": 23334,
+  "maxtok": 400,
+  "runs": 2,
+  "sampling": null,
+  "ignore_eos": true,
+  "points": [
+    {
+      "context": 128,
+      "input_len": 24,
+      "runs_tps": [
+        35.25,
+        35.26
+      ],
+      "median_tps": 35.256,
+      "min_tps": 35.253,
+      "max_tps": 35.259,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "median_tpot_ms": 28.36,
+      "sample": "# The Memory Wall: A Deep Dive into GPU Memory Hierarchy and",
+      "median_ttft_ms": 58.9
+    },
+    {
+      "context": 8192,
+      "input_len": 7331,
+      "runs_tps": [
+        34.61,
+        34.63
+      ],
+      "median_tps": 34.62,
+      "min_tps": 34.611,
+      "max_tps": 34.628,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "median_tpot_ms": 28.89,
+      "sample": "The provided text consists of the pangram \"The quick brown f",
+      "median_ttft_ms": 1615.4
+    },
+    {
+      "context": 65536,
+      "input_len": 58483,
+      "runs_tps": [
+        32.77,
+        32.79
+      ],
+      "median_tps": 32.781,
+      "min_tps": 32.773,
+      "max_tps": 32.789,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "median_tpot_ms": 30.51,
+      "sample": "The provided text consists of the pangram \"The quick brown f",
+      "median_ttft_ms": 14930.3
+    },
+    {
+      "context": 221184,
+      "input_len": 197326,
+      "runs_tps": [
+        29.22,
+        29.23
+      ],
+      "median_tps": 29.224,
+      "min_tps": 29.221,
+      "max_tps": 29.227,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "median_tpot_ms": 34.22,
+      "sample": "The provided text consists of the pangram \"The quick brown f",
+      "median_ttft_ms": 76256.0
+    }
+  ]
+}
