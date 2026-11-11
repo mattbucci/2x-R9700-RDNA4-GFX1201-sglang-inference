@@ -1,19 +1,19 @@
 {
  "title": "Spec-decode coverage  (qwen38 DSpark holds to 197K; the older drafts collapse at true 256K)",
- "subtitle": "Green = short-depth tok/s. Red @depth = measured at true depth: qwen38 DSpark (split-KV verify, patch 100) keeps 50.7 tok/s at 197K, the EAGLE3/DFlash lanes collapse at 244K. 2x R9700 TP=2.",
+ "subtitle": "Green = short-depth tok/s. Red @depth = measured at true depth: qwen38 DSpark (split-KV verify, patch 100) keeps 59.5 tok/s at 197K, the EAGLE3/DFlash lanes collapse at 244K. 2x R9700 TP=2.",
  "note": "2026-09-27 UPDATE: Qwen3.8-27B FP8 + DSpark (RedHatAI speculator, gamma 8, sliding-window draft) through the split-KV verify kernel is the first spec lane that HOLDS at depth on this hardware: 35.5 / 44.5 / 31.6 / 31.9 tok/s at 24 / 7.3K / 58K / 197K vs 22.5 / 22.2 / 21.4 / 20.0 no-spec (canonical decode_ab, 3-run). It is the qwen38 preset default (QWEN38_SPEC=0 for the no-spec 256K server; the draft pool caps the server at 239K tokens). ⚠ DEPTH CAVEAT (2026-06-15): every spec_toks below is SHORT-DEPTH on a 256K-CAPABLE server, NOT decode at 256K depth. At TRUE 256K depth on real content, spec COLLAPSES: Coder-30B EAGLE3 AWQ 107 (short) -> 0.8 @244K (accept 6.12->1.75) = ~15x slower than no-spec @244K (12.3); Qwen3.6-35B DFlash AWQ ~1.2 @240K (accept ~1.4) vs the '80' here. Universal across arch+draft (draft accept craters at depth + draft attends the full KV every micro-step). These bars measure server CAPABILITY, not 256K-depth throughput; for the 256K mandate no-spec is the path, spec is <=~32-64K only. See benchmarks/spec-at-depth-collapse-2026-06-15.md. --- Single-bar = best production spec-decode decode tok/s (target + draft + --speculative-attention-mode decode @ TP2). speedup x is over the family's ~22 tok/s no-spec baseline. 'untested' = a viable draft path exists but unbenched; 'blocked' = no working draft yet, with the blocker. As blocked/untested models get fixed, flip status->working + fill spec_toks and regenerate — no model should sit at a bare N/A. Data sourced from the README spec-decode summary + coverage map. FP8-TARGET note (2026-05-31, post-iommu=pt): these bars are AWQ-target production numbers (short-ctx spec works without iommu=pt, so they stand). FP8 targets differ: Coder-30B-FP8+EAGLE3 = ~86 tok/s coherent (256K served, tiny 361MB draft); Qwen3.6-35B-FP8+DFlash = ~45 tok/s coherent AT 256K (accept ~3.9) via --chunked-prefill 2048 — the prior 'OOMs@256K' was a prefill-transient, not a draft wall (KV pool 782K was never the limit). So BOTH A3B-MoE FP8 models do FP8+draft@256K (Coder-30B EAGLE3 ~86, Qwen3.6-35B DFlash ~45). The 80 here is the AWQ ship (faster — Marlin-class int4 verify); FP8 trails AWQ on absolute tok/s but both reach 256K.",
  "models": [
   {
    "name": "Qwen3.8-27B FP8",
    "kind": "dense DeltaNet-VL",
    "status": "working",
-   "spec_toks": 72.5,
-   "speedup": 2.2,
-   "no_spec": 33.6,
-   "at_depth": 50.7,
+   "spec_toks": 79.8,
+   "speedup": 2.3,
+   "no_spec": 34.3,
+   "at_depth": 59.5,
    "draft": "DSpark (RedHatAI speculator, γ8) + split-KV verify",
-   "ctx": "197K measured (431K pool @mem0.88; QWEN38_SPEC=0 → 735K-pool no-spec server)",
-   "note": "canonical decode_ab 2026-11-10 (patches 121-126 in the preset, 5-run): 50.8/72.5/66.8/50.7 tok/s @24/7.3K/58K/197K vs 34.3/33.6/32.1/28.7 no-spec; the bar is the 7.3K point. Previous canonical rows: 2026-11-10 with patches 121-124 51.1/63.7/55.9/35.7 vs 34.3/33.6/32.1/28.7; 2026-11-09 47.2/57.9/38.7/33.3 vs 26.7/26.3/25.4/23.2; canonical decode_ab 2026-09-27: 35.5/44.5/31.6/31.9 tok/s @24/7.3K/58K/197K vs 22.5/22.2/21.4/20.0 no-spec; thinking on 34.5 @64tok, 45.6 @58K; accept len ~2.9-3.5 on synthetic text, 2.6-3.4 on code/summaries; validate_capabilities 5/5; patches 099+100. RadixArk/Qwen3.8-27B-DSpark (full-attention draft) only reaches parity at 49K and loses at 150K. Supersedes the June 'DeltaNet recurrent-verify wall' entry for the 3.8 checkpoint: the gamma+1 linear verify through the split-KV kernel is not the 8-serial-state-update EAGLE3 tree verify measured then.",
+   "ctx": "197K measured (429K pool @mem0.88; QWEN38_SPEC=0 → 733K-pool no-spec server)",
+   "note": "canonical decode_ab 2026-11-10 (patches 121-126, 128 and 129 in the preset, 5-run): 59.6/79.8/73.1/59.5 tok/s @24/7.3K/58K/197K vs 35.0/34.3/32.7/29.2 no-spec; the bar is the 7.3K point. Previous canonical rows: 2026-11-10 with patches 121-126 50.8/72.5/66.8/50.7 vs 34.3/33.6/32.1/28.7; 2026-11-10 with patches 121-124 51.1/63.7/55.9/35.7 vs 34.3/33.6/32.1/28.7; 2026-11-09 47.2/57.9/38.7/33.3 vs 26.7/26.3/25.4/23.2; canonical decode_ab 2026-09-27: 35.5/44.5/31.6/31.9 tok/s @24/7.3K/58K/197K vs 22.5/22.2/21.4/20.0 no-spec; thinking on 34.5 @64tok, 45.6 @58K; accept len ~2.9-3.5 on synthetic text, 2.6-3.4 on code/summaries; validate_capabilities 5/5; patches 099+100. RadixArk/Qwen3.8-27B-DSpark (full-attention draft) only reaches parity at 49K and loses at 150K. Supersedes the June 'DeltaNet recurrent-verify wall' entry for the 3.8 checkpoint: the gamma+1 linear verify through the split-KV kernel is not the 8-serial-state-update EAGLE3 tree verify measured then.",
    "depth_label": "@197K (holds)",
    "holds": true
   },

@@ -165,6 +165,30 @@ stage and combine +0.7 / +1.9 ms, 222 extra copies and compares +0.8 ms, the LM 
 all-reduce at nine-row payloads between +1.2 / +1.7 ms (per-launch minimum) and +7.2 / +8.5 ms (traced, with the
 wait for the peer rank). RAD-29 writes the kernel for the first family; the all-reduce is sized on two cards next.
 
+## Measured gap with patches 121–129 in the preset (2026-11-10)
+
+Canonical sweep on the shipped `qwen38` preset after the verify-row GEMM (patch 128) and the in-graph all-reduce
+(patch 129), five runs per depth
+([no-spec](../benchmarks/qwen38-27b-fp8/decode-canonical-nospec-2026-11-10-97p.json),
+[DSpark](../benchmarks/qwen38-27b-fp8/decode-canonical-dspark-2026-11-10-97p.json): 59.6 / 79.8 / 73.1 / 59.5,
+[DFlash2](../benchmarks/qwen38-27b-fp8/decode-canonical-dflash2-2026-11-10-97p.json),
+[DFlash2 on RCCL](../benchmarks/qwen38-27b-fp8/decode-canonical-dflash2-rccl-2026-11-10-97p.json)). The DFlash2 cells
+are the cold first run, which decodes radiance's completion tokens at every depth (80 / 38 / 47 / 37); the repeats
+read 79.1 / 77.0 / 70.0 / 57.4, the 58K ones on a 46-token continuation.
+
+| Lane | vllm-radiance | SGLang, this tree | Gap | What the gap is made of |
+|---|---|---|---|---|
+| FP8, no speculation | 35.4 / 35.0 / 33.7 / 30.4 | 35.0 / 34.3 / 32.7 / 29.2 | 1.01–1.04× | the bf16 LM head (RAD-15; patch 127 serves greedy requests from an int8 copy, +1.2–2.5 %, opt-in) and the small launches; the all-reduce is in the graph (patch 129) |
+| FP8 + DFlash2 | 99.9 / 99.7 / 87.9 / 91.0 | 79.3 / 76.8 / 58.7 / 56.8 | 1.3–1.6× | the DSpark cycle is 46.4 / 47.1 / 49.3 / 55.5 ms (RAD-25), 1.61–1.63× a plain step of 28.6 / 29.1 / 30.5 / 34.3 ms against radiance's 1.3×; the DFlash2 cycle of this tree is not measured (RAD-29d) |
+| Cold prefill | 4,137 / 3,631 / 2,520 | 2,334 / 1,785 / 1,072 | 1.8–2.4× | not profiled (RAD-10): GDN conv and chunk scan, extend attention, block-FP8 GEMM tiles at M ≥ 64 |
+
+The DSpark cycle is 17.9 / 17.9 / 18.7 / 21.2 ms over a plain step: the drafter's propose step and what is left of
+the verify's excess. Of the RAD-22b census, the nine-row GEMM and its quantiser are served (patch 128: 20.8 ms per
+forward per rank at nine rows against the one-row GEMV's 20.3) and the all-reduce runs in the graph (22.3 µs per
+reduction at nine rows against 10.8 at one). Not yet touched: the snapshotting DeltaNet recurrence +1.3 ms, the
+grouped prefix stage and combine +0.7 / +1.9 ms, 222 extra copies and compares +0.8 ms, the LM head at nine rows
++0.3 ms. The no-spec target of step 5 (≥ 33 tok/s at 24 tokens, step ≤ 30 ms) is met: 35.0 tok/s, 28.6 ms.
+
 ## Experiments on SGLang (ranked by expected tok/s per engineering day on the qwen38 no-spec step)
 
 Each one is a same-tree A/B with `scripts/bench/decode_ab.py --ignore-eos` at 24 / 7.3K / 58K / 197K in both orders,
@@ -255,7 +279,7 @@ Measurement first, so port order follows measured worth instead of the estimated
    about 4 ms to at most 0.8, so about 3 ms of the gap have no owner until the graphed step can be traced.
    Target: 37 → ≤ 30 ms, 27 → ≥ 33 tok/s at 24 tokens with needle 9/9 and capabilities unchanged.
 6. Speculative lane on the new base: RAD-16 (done: the target verify is 79–86 % of the DFlash2 cycle) → RAD-27 (done,
-   patch 125: cycle −21–24 % at 197K) → RAD-28 (done, patch 126: DSpark cycle −11–12.5 % from 7.3K on) → RAD-22b (census done: the nine-row GEMM is about half of the verify's excess) → RAD-29 (W8A16 WMMA GEMM for verify rows) → RAD-18 → RAD-7; RAD-17 is closed, `torch.topk` stays. Target: ≥ 90 tok/s at 24 tokens and ≥ 80 at
+   patch 125: cycle −21–24 % at 197K) → RAD-28 (done, patch 126: DSpark cycle −11–12.5 % from 7.3K on) → RAD-22b (census done: the nine-row GEMM is about half of the verify's excess) → RAD-29 (done, patch 128: DSpark cycle −6.5–7.9 %) → RAD-25 (done, patch 129: cycle −1 %) → RAD-29d (DFlash2 lane on the shipped tree) → the verify's recurrence launch config and copies → RAD-18 → RAD-7; RAD-17 is closed, `torch.topk` stays. Target: ≥ 90 tok/s at 24 tokens and ≥ 80 at
    197K; DFlash2 replaces DSpark as the qwen38 default only if it is faster at every depth.
 7. Prefill: RAD-10 ports chosen by share (RAD-19, RAD-20, GDN chunk scan, prefill attention). Target: ≥ 3,500 tok/s at
    7.3K and ≥ 2,000 at 197K.

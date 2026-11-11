@@ -1961,6 +1961,55 @@ control's, or the estimated decode rate not below the control's; a size group mo
 rate named): pooled ×1.003, every group's estimated rate above the control's, no group named. The README rows
 change from the shipped-preset canonical sweep that follows patch 129.
 
+### Canonical sweep with patches 121–129 in the preset: DSpark 59.6 / 79.8 / 73.1 / 59.5 tok/s, no speculation 35.0 / 34.3 / 32.7 / 29.2; the in-graph all-reduce holds behind DFlash2 (2026-11-10)
+
+Shipped `qwen38` preset from the live tree (97 patches, launcher defaults), `decode_ab.py` with five runs of 80
+tokens, EOS on, thinking off, four boots: DSpark (the preset), the DFlash2 comparison drafter on the preset's
+in-graph all-reduce, the same on RCCL (`ENABLE_CUSTOM_ALL_REDUCE=0`), and `QWEN38_SPEC=0`.
+
+| arm | 24 | 7,331 | 58,483 | 197,326 |
+|---|---:|---:|---:|---:|
+| DSpark (preset), median | 59.628 | 79.822 | 73.089 | 59.471 |
+| DSpark, previous canonical row (patches 121–126) | 50.844 | 72.459 | 66.800 | 50.720 |
+| no speculation, median | 35.022 | 34.320 | 32.744 | 29.181 |
+| no speculation, previous canonical row | 34.264 | 33.560 | 32.115 | 28.681 |
+| DSpark / no speculation | 1.70× | 2.33× | 2.23× | 2.04× |
+| DFlash2 drafter, in-graph all-reduce, median | 79.059 | 76.986 | 69.983 | 57.359 |
+| DFlash2 drafter, RCCL, median | 78.103 | 76.050 | 69.460 | 56.871 |
+| DFlash2 drafter, in-graph all-reduce, cold first run | 79.32 | 76.76 | 58.65 | 56.77 |
+| completion tokens, DSpark | 80 | 38 | 33 | 37 |
+| completion tokens, no speculation and both DFlash2 boots | 80 | 38 | 47, then 46 | 37 |
+
+The DSpark row sits on the continuations of the previous one, so the two compare kernels: +17.3 % / +10.2 % /
++9.4 % / +17.3 % from the verify-row GEMM (patch 128) and the in-graph all-reduce (patch 129). The no-spec row gains
++2.2 % / +2.3 % / +2.0 % / +1.7 % from the all-reduce, inside what RAD-25's A/B read. Cold prefill at 7.3K / 58K /
+197K is 2,334 / 1,785 / 1,072 tok/s without speculation and 2,279 / 1,748 / 1,056 on the DSpark server (186.8 s for
+the 197K prompt), within 0.4 % of the previous sweep: neither patch is on the prefill path. Pools: 428,579 tokens
+with DSpark, 732,790 without speculation.
+
+The two DFlash2 boots are RAD-25's open control. They decode the same token counts on every run, and the in-graph
+path reads ×1.012 / ×1.012 / ×1.008 / ×1.009 on the medians and ×1.010 / ×1.010 / ×1.013 / ×1.012 on the cold first
+runs: the preset default holds behind either drafter. The route probe passes 10 of 10 on all four servers with
+three concurrent requests among its cases, the second RAD-25 follow-up; the capability probe passes 5 of 5 on the
+three speculative servers.
+
+The DFlash2 rows do not size the two patches. Both boots decode the no-spec arm's token counts on every run, where
+the previous sweep's repeats took 33 tokens at 58K and 46 at 197K, so only three cells have equal tokens across the
+sweeps: +20.7 % at 24 tokens (65.5 → 79.1), +1.2 % at 7.3K (76.1 → 77.0) and +9.1 % on the 197K cold run (52.0 →
+56.8). The sweep records no verify counts, so a cell cannot be split into cycle time and accept pattern; the DFlash2
+lane gets its own A/B against `FP8_GEMM_BF16=0` with the sampled ladder and the paired accept probe (RAD-29d). A
+cold first run that lands on the repeats' text is no slower than they are (76.76 against 76.99 at 7.3K, 56.77
+against 57.36 at 197K); the 58K one decodes 47 tokens at 58.7 where the repeats decode 46 at 70.0.
+
+Against vllm-radiance: no speculation 1.01 / 1.02 / 1.03 / 1.04× behind (from 1.03–1.06×). DFlash2 on the cold
+first runs, which carry radiance's completion tokens (80 / 38 / 47 / 37): 1.26 / 1.30 / 1.50 / 1.60× behind. The
+previous sweep read 1.52 / 1.32 / 1.30 / 1.75×, its 58K cell on a 46-token cold run against radiance's 47. Cold
+prefill is 1.77 / 2.03 / 2.35× behind, unchanged.
+
+Receipts: `qwen38-27b-fp8/{decode,capabilities,route}-canonical-<arm>-2026-11-10-97p.json` for `dspark`, `dflash2`,
+`dflash2-rccl` and (decode, route) `nospec`, `prefill-canonical-{dspark,nospec}-2026-11-10-97p.json`. These are the
+README and results.json rows.
+
 ## Evaluation methodology
 
 ### SWE-bench answer leakage through git history and the web (found 2026-09-18)
