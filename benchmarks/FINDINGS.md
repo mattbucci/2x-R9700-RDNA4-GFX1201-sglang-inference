@@ -2485,6 +2485,32 @@ neither mode is adopted as measured. The cold-prefill gain and the unchanged dec
 minimum row count (`SGLANG_HIP_PREFILL_ATTN_MIN_ROWS`, already in the development tree), set per mode from a
 kernel bench by row count, and the same six-boot protocol is repeated with it before the DSpark phase.
 
+### RAD-10c rows — the ported kernel is at or below ×0.72 of the served extend kernel at every row count from 257 up, so the route starts at 257 rows on both modes (2026-11-11)
+
+Kernel bench by row count in the sandbox, no server: the served extend kernel (Triton, fp8 QK) against the ported
+kernel in both modes, behind prefixes of 8,192 / 65,536 / 196,608 tokens on card 0 and the 196,608 column again
+on card 1 ([receipts](profiling/rad10c-rows-bench-2026-11-11/)). Rule fixed before the run: per mode, the
+smallest tested row count from 257 up from which the ported row is at most the served row plus 0.5 ms in every
+measured cell, at that and every larger row count.
+
+| ms per call, 196,608-token prefix, card 0 | 257 | 512 | 1024 | 2048 | 4096 | 8192 |
+|---|---:|---:|---:|---:|---:|---:|
+| Served | 38.61 | 41.50 | 83.07 | 128.02 | 260.49 | 522.39 |
+| Exact | 26.60 (×0.689) | 26.94 (×0.649) | 31.51 (×0.379) | 63.56 (×0.496) | 126.88 (×0.487) | 252.71 (×0.484) |
+| fp8 QK | 17.22 (×0.446) | 17.55 (×0.423) | 20.12 (×0.242) | 39.77 (×0.311) | 78.97 (×0.303) | 155.87 (×0.298) |
+
+Behind 65,536 tokens the exact mode reads ×0.396 to ×0.675 and fp8 QK ×0.254 to ×0.439; behind 8,192 tokens
+(257, 1024 and 8192 rows) ×0.450 to ×0.719 and ×0.262 to ×0.447. Card 1 repeats the deep column at ×0.406 to
+×0.681 and ×0.245 to ×0.443. All 21 gated cells hold on both modes and no larger row count breaks a smaller one.
+
+Reported only, 1 / 64 / 256 rows behind 196,608 tokens: 27.5 / 27.4 / 26.4 ms exact and 17.3 / 17.2 / 17.2 ms
+fp8 QK against 37.3 / 37.2 / 37.9 ms. Neither kernel gets cheaper below 512 rows at this prefix. In serving
+these row counts belong to the extend split-KV route, which the bench does not time and which answered the
+cache-hit turn in 115 ms where the ported route took 508 ms.
+
+Disposition: `SGLANG_HIP_PREFILL_ATTN_MIN_ROWS=257` on both modes, so the ported route starts where the split-KV
+route ends. The six-boot serving A/B is repeated with it.
+
 ### FLINT-4b — the in-graph custom all-reduce on Flint: no-spec decode +2.6 % at every depth, DFlash2 cycle unchanged, texts equal wherever the controls repeat themselves (2026-11-11)
 
 Third start, the whole matrix under one method: eight boots of the `flint` preset at `--random-seed 7`, RCCL and

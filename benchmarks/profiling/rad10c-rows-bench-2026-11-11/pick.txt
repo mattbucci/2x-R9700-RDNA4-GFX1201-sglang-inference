@@ -1,0 +1,25 @@
+CELL card 0 rows 1 ctx 196608: served 37.265 ms; exact 27.5307 ms x0.739 qk8 17.3141 ms x0.465
+CELL card 0 rows 64 ctx 196608: served 37.2417 ms; exact 27.4205 ms x0.736 qk8 17.2106 ms x0.462
+CELL card 0 rows 256 ctx 196608: served 37.8853 ms; exact 26.4224 ms x0.697 qk8 17.2043 ms x0.454
+CELL card 0 rows 257 ctx 196608: served 38.6141 ms; exact 26.5988 ms x0.689 qk8 17.2166 ms x0.446
+CELL card 0 rows 512 ctx 196608: served 41.4976 ms; exact 26.9441 ms x0.649 qk8 17.5499 ms x0.423
+CELL card 0 rows 1024 ctx 196608: served 83.0684 ms; exact 31.5118 ms x0.379 qk8 20.1226 ms x0.242
+CELL card 0 rows 2048 ctx 196608: served 128.0169 ms; exact 63.5592 ms x0.496 qk8 39.7672 ms x0.311
+CELL card 0 rows 4096 ctx 196608: served 260.4921 ms; exact 126.8834 ms x0.487 qk8 78.9677 ms x0.303
+CELL card 0 rows 8192 ctx 196608: served 522.3929 ms; exact 252.7101 ms x0.484 qk8 155.8748 ms x0.298
+CELL card 0 rows 257 ctx 65536: served 13.297 ms; exact 8.9786 ms x0.675 qk8 5.8316 ms x0.439
+CELL card 0 rows 512 ctx 65536: served 14.0809 ms; exact 8.9973 ms x0.639 qk8 5.8496 ms x0.415
+CELL card 0 rows 1024 ctx 65536: served 26.8293 ms; exact 10.6151 ms x0.396 qk8 6.8237 ms x0.254
+CELL card 0 rows 2048 ctx 65536: served 42.5819 ms; exact 21.1869 ms x0.498 qk8 13.3459 ms x0.313
+CELL card 0 rows 4096 ctx 65536: served 85.1598 ms; exact 41.8329 ms x0.491 qk8 26.0686 ms x0.306
+CELL card 0 rows 8192 ctx 65536: served 165.3041 ms; exact 80.9223 ms x0.490 qk8 50.33 ms x0.304
+CELL card 0 rows 257 ctx 8192: served 1.7836 ms; exact 1.2819 ms x0.719 qk8 0.6803 ms x0.381
+CELL card 0 rows 1024 ctx 8192: served 3.2272 ms; exact 1.4521 ms x0.450 qk8 0.846 ms x0.262
+CELL card 0 rows 8192 ctx 8192: served 9.1856 ms; exact 6.2797 ms x0.684 qk8 4.1104 ms x0.447
+CELL card 1 rows 257 ctx 196608: served 38.2938 ms; exact 26.0603 ms x0.681 qk8 16.9588 ms x0.443
+CELL card 1 rows 512 ctx 196608: served 41.2156 ms; exact 26.2169 ms x0.636 qk8 17.1068 ms x0.415
+CELL card 1 rows 1024 ctx 196608: served 82.1252 ms; exact 33.3597 ms x0.406 qk8 20.1537 ms x0.245
+CELL card 1 rows 2048 ctx 196608: served 128.9572 ms; exact 66.5951 ms x0.516 qk8 39.8855 ms x0.309
+CELL card 1 rows 4096 ctx 196608: served 266.6454 ms; exact 133.7105 ms x0.501 qk8 79.2927 ms x0.297
+CELL card 1 rows 8192 ctx 196608: served 533.4087 ms; exact 264.1649 ms x0.495 qk8 156.8703 ms x0.294
+MINROWS exact=257 qk8=257
