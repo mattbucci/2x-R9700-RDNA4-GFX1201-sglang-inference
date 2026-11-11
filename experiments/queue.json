@@ -1202,6 +1202,32 @@
    "result": "Phase 1: RAD30 SERVING DONE gate=identity-identical:prefill-pass:nospec-faster:dspark-faster:needle-9of9:memory-ok (FINDINGS RAD-30 phase 1, benchmarks/profiling/rad30-bf16-wire-serving-2026-11-11/). Greedy output equal to the token on every comparison of eight boots; cold prefill x0.844 / x0.877 / x0.929 at 7.3K / 58K / 197K (0.49 / 4.05 / 13.1 s), no-spec decode x1.012-1.017, DSpark cycle x0.978-0.983 at equal accept length, capabilities 5/5 on every boot, VRAM lower. Adopted: patch 130 (replay gate 98 patches / 159 paths / 0 mismatches / second apply rejected), qwen38 FP8 preset default in scripts/launch.sh, SGLANG_HIP_BF16_ATTN_SUM=0 restores the detour. Canonical sweep at 98 patches (2026-11-11, FINDINGS 'Canonical sweep with patches 121–130 in the preset'): every arm on the previous sweep's token counts, DSpark 60.675 / 80.951 / 74.495 / 60.555 (+1.4–1.9 %), no speculation 35.594 / 34.876 / 33.291 / 29.854 (+1.6–2.3 %), DFlash2 +1.4–2.0 %, cold prefill time x0.84 / x0.88 / x0.93 on both servers (197K in 170.9 s without speculation, 173.3 s with DSpark), capabilities 5/5, route 10/10 on four servers. README, results.json and charts moved."
   },
   {
+   "id": "RAD-30b",
+   "spec": "19-vllm-radiance-parity.md",
+   "status": "queued",
+   "resource": "gpu",
+   "depends_on": [
+    "RAD-30 (done): patch 130, the BF16 wire for the attention-TP sum on a two-rank group, qwen38 preset default; phase 0 found no unequal bit pattern against the FP32 detour on either transport",
+    "FLINT-4b (done): the flint preset reduces on the custom path; its boots repeat to 0.1-0.3 % (cold prefill, no-spec decode, DFlash2 cycle), so a 3 % prefill threshold is readable",
+    "tail queue jobs 96 (RAD-10c serving) and 96-b (Flint KV control) finished: one GPU job at a time"
+   ],
+   "next_action": "Tail queue job 96-c (scratchpad flint_bf16/flint_bf16_wire_ab.sh, live tree, bare launcher, every boot with --random-seed 7): flint.py declares the default attention update, so the preset still sums through FP32. Treatment = SGLANG_HIP_BF16_ATTN_SUM=1 in the launcher's environment (the flint block does not name the switch; the driver proves that from the launcher's trace and from the server's environment), control = unset. Boots ctl1 / bf1 / bf2 / ctl2 without speculation (capabilities, cold prefill at 7.3K / 58K / 197K three runs, canonical rows, forced 400-token ladder, six greedy texts short and at 620,000 characters with the deep pass repeated behind a cache flush, needle grid on bf1 and ctl2), then dctl1 / dbf1 / dbf2 / dctl2 with the Flint-DFlash2 drafter when the first phase qualifies (cold prefill two runs, canonical rows, sampled 800-token ladder, 48-document accept probe). This re-measures the earlier Flint result (PLAIN_ADD_BF16_SUM opt-out null within 2 %, FINDINGS 'Flint A/Bs', commit 66798f6): that triple was decode-only on RCCL with a BF16 KV cache and had no cold-prefill row, where the wire gave qwen38 x0.84-0.93.",
+   "test_gate": [
+    "fixed before the run; every speed number is the mean of the two boots per side, both arm orders, equal request order on every boot of a kind",
+    "identity (no-spec arms; canonical rows, forced rows, six texts on each identity probe; no empty text): identical = the four boots agree on every cell; matched = on every cell at least one BF16 boot repeats a control boot to the token (the rest is single-boot drift: in FLINT-4b one of two control boots left the other three on the 29K-token text at equal request history); differs = a cell on which no BF16 boot repeats a control boot",
+    "prefill: pass = every BF16 boot faster than every control boot at 58K and 197K cold (median of three) and the 197K mean at least 3 % shorter; slower = a mean above x1.005 at 58K or 197K; otherwise below",
+    "nospec: ok = canonical rows of the BF16 boots at least x0.995 of the control's at every depth; faster = the forced ladder at least 1 % higher at every depth with every BF16 boot above every control boot; otherwise slower",
+    "needle (1K / 32K / 131K / 197K x three depths, natural haystack, temperature 0, flushed): same = bf1 finds the cells ctl2 finds; more / fewer / differs otherwise",
+    "DFlash2 phase only when identity is identical or matched, prefill passes, nospec is ok or faster, needle is same or more and no arm failed",
+    "dflash: ok = sampled-ladder cycle (server log) at most x1.005 of the control's in all four depth bins; faster = at least 1 % shorter in every bin with every BF16 boot shorter; otherwise slower",
+    "accept: identical = 48 of 48 documents with equal text sha and verify count in both pairs; within = pooled accept length BF16 / control at least 0.98 in both pairs; otherwise below",
+    "quality: text capabilities pass on every arm (one repeat allowed, recorded)",
+    "memory: VRAM in use after the last timed phase of a BF16 arm at most 64 MiB per card above its control's",
+    "adopt (flint launcher default SGLANG_HIP_BF16_ATTN_SUM=1, restore knob 0) when identity is identical or matched, prefill passes, nospec is ok or faster, needle is same or more, dflash is ok or faster, accept is identical or within, and quality and memory hold; otherwise the preset keeps the FP32 detour and the result is recorded as measured",
+    "recorded, not gated: the deep identity probe repeated on one boot behind a cache flush (run-to-run against boot-to-boot repeatability of Flint's greedy text)"
+   ]
+  },
+  {
    "id": "RAD-31",
    "spec": "19-vllm-radiance-parity.md",
    "status": "ready",
