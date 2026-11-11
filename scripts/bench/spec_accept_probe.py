@@ -9,7 +9,8 @@ many texts match. The text of a case is its reasoning followed by its content: a
 thinking switch spends a short budget on reasoning alone, and a hash of the content would then compare empty
 strings. Cases: short tasks of different kinds, plus document prompts cut from a haystack at different
 offsets for each `--doc-chars` size (characters) or `--doc-tokens` size (cut with the model's tokenizer, for a
-fixed depth: characters per token vary by a factor of two across this haystack).
+fixed depth: characters per token vary by a factor of two across this haystack). `--doc-offset` moves every start
+by that many characters: a second document set, with its own case ids, for a second pair of boots.
 
     python scripts/bench/spec_accept_probe.py --port 23334 --haystack benchmarks/quality/haystack-platypus.txt \
         --doc-chars 24000,190000 --out arm.json
@@ -67,18 +68,19 @@ def cut_tokens(tok, text, start, n):
         span *= 2
 
 
-def cases(haystack, doc_chars, docs_per_size, short=True, doc_tokens=(), tokenizer=""):
+def cases(haystack, doc_chars, docs_per_size, short=True, doc_tokens=(), tokenizer="", offset=0):
     out = [{"id": f"short-{i:02d}", "prompt": p} for i, p in enumerate(SHORT)] if short else []
     if not haystack or not (doc_chars or doc_tokens):
         return out
     text = open(haystack, encoding="utf-8", errors="replace").read()
+    tag = f"o{offset}-" if offset else ""  # another offset is another document set: its ids never pair with this one's
     for k, size in enumerate(doc_chars):
         stride = max(size, (len(text) - size) // max(1, docs_per_size))
         shift = k * stride // (len(doc_chars) + 1)  # each size reads its own regions of the haystack
         for j in range(docs_per_size):
-            start = min(j * stride + shift, max(0, len(text) - size))
+            start = min(j * stride + shift + offset, max(0, len(text) - size))
             body = text[start:start + size]
-            out.append({"id": f"doc-{size}-{j}", "prompt": body + "\n\n" + DOC_TASKS[j % len(DOC_TASKS)]})
+            out.append({"id": f"doc-{size}-{tag}{j}", "prompt": body + "\n\n" + DOC_TASKS[j % len(DOC_TASKS)]})
     if doc_tokens:
         from transformers import AutoTokenizer  # only this mode needs it
 
@@ -88,9 +90,9 @@ def cases(haystack, doc_chars, docs_per_size, short=True, doc_tokens=(), tokeniz
             stride = max(1, (len(text) - room) // max(1, docs_per_size))
             shift = k * stride // (len(doc_tokens) + 1)
             for j in range(docs_per_size):
-                start = max(0, min(j * stride + shift, len(text) - room))
+                start = max(0, min(j * stride + shift + offset, len(text) - room))
                 body = cut_tokens(tok, text, start, n)
-                out.append({"id": f"doctok-{n}-{j}", "prompt": body + "\n\n" + DOC_TASKS[j % len(DOC_TASKS)]})
+                out.append({"id": f"doctok-{n}-{tag}{j}", "prompt": body + "\n\n" + DOC_TASKS[j % len(DOC_TASKS)]})
     return out
 
 
@@ -125,7 +127,7 @@ def run(a):
     doc_tokens = [int(x) for x in a.doc_tokens.split(",") if x.strip()]
     rows = []
     for case in cases(a.haystack, doc_chars, a.docs_per_size, short=not a.no_short, doc_tokens=doc_tokens,
-                      tokenizer=a.tokenizer or model):
+                      tokenizer=a.tokenizer or model, offset=a.doc_offset):
         body = {"model": model, "messages": [{"role": "user", "content": case["prompt"]}],
                 "max_tokens": a.max_tokens, "temperature": 0, "return_spec_tokens_details": True,
                 "chat_template_kwargs": {"enable_thinking": False}}
@@ -220,6 +222,7 @@ def main():
     ap.add_argument("--tokenizer", default="", help="tokenizer path for --doc-tokens (default: the served model id)")
     ap.add_argument("--no-short", action="store_true", help="document prompts only")
     ap.add_argument("--docs-per-size", type=int, default=4)
+    ap.add_argument("--doc-offset", type=int, default=0, help="characters added to every document start")
     ap.add_argument("--max-tokens", type=int, default=300)
     ap.add_argument("--label", default="")
     ap.add_argument("--note", default="")

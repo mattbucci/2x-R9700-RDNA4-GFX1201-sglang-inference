@@ -51,7 +51,7 @@ class FakeServer:
 
 def args(**kw):
     base = dict(port=1, haystack="", doc_chars="", doc_tokens="", tokenizer="", no_short=False, docs_per_size=4,
-                max_tokens=300, label="arm", note="", out="", compare=None, floor=0.95)
+                doc_offset=0, max_tokens=300, label="arm", note="", out="", compare=None, floor=0.95)
     base.update(kw)
     return types.SimpleNamespace(**base)
 
@@ -174,6 +174,47 @@ class Compare(unittest.TestCase):
         rc, got, _ = self.compare([row(0, "")], [row(0, "text")])
         g = got["groups"]["all"]
         self.assertEqual((g["same_text"], g["blank_text"]), (0, 0))
+
+
+class DocOffset(unittest.TestCase):
+    """`--doc-offset` gives a second document set: other ids, other text, and the default set unchanged."""
+
+    def haystack(self, d):
+        path = os.path.join(d, "haystack.txt")
+        with open(path, "w") as fh:
+            fh.write("".join(f"line {i:06d} of the haystack\n" for i in range(4000)))
+        return path
+
+    def bodies(self, cases):
+        return [c["prompt"].rsplit("\n\n", 1)[0] for c in cases]
+
+    def test_offset_zero_keeps_ids_and_text(self):
+        with tempfile.TemporaryDirectory() as d:
+            h = self.haystack(d)
+            a, b = sap.cases(h, [1000, 2000], 4, short=False), sap.cases(h, [1000, 2000], 4, short=False, offset=0)
+        self.assertEqual(a, b)
+        self.assertEqual(a[0]["id"], "doc-1000-0")
+
+    def test_offset_set_is_disjoint_and_named(self):
+        with tempfile.TemporaryDirectory() as d:
+            h = self.haystack(d)
+            text = open(h).read()
+            a = sap.cases(h, [1000, 2000], 4, short=False)
+            b = sap.cases(h, [1000, 2000], 4, short=False, offset=len(text) // 8)
+        self.assertEqual(len(a), len(b))
+        self.assertFalse({c["id"] for c in a} & {c["id"] for c in b})
+        self.assertEqual(sap.group_of(b[0]["id"]), f"doc-1000-o{len(text) // 8}")
+        sa, sb = ([(text.index(x), text.index(x) + len(x)) for x in self.bodies(cs)] for cs in (a, b))
+        self.assertFalse([1 for x in sa for y in sb if x[0] < y[1] and y[0] < x[1]])
+
+    def test_offset_past_the_end_stays_inside_the_haystack(self):
+        with tempfile.TemporaryDirectory() as d:
+            h = self.haystack(d)
+            text = open(h).read()
+            b = sap.cases(h, [1000], 4, short=False, offset=len(text))
+        for body in self.bodies(b):
+            self.assertEqual(len(body), 1000)
+            self.assertIn(body, text)
 
 
 if __name__ == "__main__":
