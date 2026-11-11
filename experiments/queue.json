@@ -753,7 +753,7 @@
   {
    "id": "RAD-10c",
    "spec": "19-vllm-radiance-parity.md",
-   "status": "ready",
+   "status": "queued",
    "resource": "gpu",
    "depends_on": [
     "RAD-10b (done, port): at 8192 queries behind 197K keys the served extend kernel takes 521 ms, radiance's exact row 238 ms and its fp8-QK row 147 ms; the fp8-QK row is more exact than the served kernel at every deep case",
@@ -761,16 +761,8 @@
     "patch 128 pattern for a native HIP extension: source under kernels/aot/csrc, .so under build/, hooked behind one switch with an active log line",
     "live tree and patches/ are frozen while a queued job reads them: the port is developed in a PYTHONPATH dev tree"
    ],
-   "next_action": "Port radiance's prefill attention kernel for head size 256 and six query heads per KV head as a native HIP extension with attribution. Layout: radiance reads a paged cache (block table, 16 tokens per block, K and V in one row); this tree holds K and V in two token-major pools addressed by a per-token index list, so the fetch stage is rewritten for two bases, with one instance for runs of 16 consecutive pool slots (a block table built once per batch) and a general instance with a per-token index. Scope: radiance reads the chunk's own keys from the cache too, in one causal pass; the served kernel reads them from the BF16 projections in a second stage. The port takes the one-pass form (the chunk's fp8 keys are in the pool before the call), which changes the numerics of the in-chunk part to what every later chunk and every decode step already reads. Rows: exact legs and fp8 QK with exact PV, chosen by one switch (SGLANG_HIP_PREFILL_ATTN=exact | qk8, off by default, logged when active); shapes outside the instance fall back to the Triton kernel. Step 1, kernel level, no server: scripts/bench/bench_prefill_attention.py gains an arm per ported row on its own operands (accuracy against the fp64 reference, time against the served kernel and the vendor row on both cards, both index forms). Step 2, serving from the dev tree: boots ctl1 / exact / qk8 / ctl2 without speculation plus a DSpark pair for the chosen row, --random-seed 7, one request order: capabilities, prefill_ttft.py cold at 7.3K / 58K / 197K, the one-token turn at 197K, needle grid at natural depth and at 197K, the cache-hit consistency probe on both arms with the same arguments, the 8-prompt greedy diff, the fallback count from the server log; on the DSpark pair the sampled ladder cycle and the 48-document paired greedy accept probe. Adoption: numbered patch, qwen38 FP8 preset default with the switch as restore knob, canonical sweep re-queued before README numbers move.",
-   "test_gate": [
-    "kernel: each ported row within 0.0005 lowest and mean cosine of the vendor row of the same legs against the fp64 reference at every case, 0.9999 lowest for the exact row; time at most x1.10 of the vendor row at 8192 x 196608 on both cards for the block-table instance, the general instance's cost stated",
-    "serving prefill: every ported boot faster than every control boot at 58K and 197K cold; the 197K median at least 25 % shorter for the exact row and 33 % for qk8 (projected 30 % and 39 %); the 7.3K cold time not longer than x1.01",
-    "quality not lower: needle 9/9 at natural depth and at 197K, capabilities 5/5, cache-hit consistency probe no worse than the control arm's count beyond the floor; greedy texts are expected to differ and are read for coherence",
-    "DSpark: paired greedy accept length at least x0.99 of the control's on equal request history, sampled-ladder cycle at most x1.005",
-    "zero fallbacks to the Triton kernel on the bench's prompts; a fallback is logged once per cause",
-    "non-PyTorch VRAM growth within 64 MiB per card of the control's across the 197K prefill",
-    "numbered patch + replay gate; other presets keep the Triton kernel until an instance for their head geometry is measured"
-   ]
+   "next_action": "Kernel bench queued (tail queue 86-z, tag rad10c-kernel-bench-2026-11-11, no server boot): radiance's prefill attention kernel (libr4d/r4d_attn_prefill_h256_gqa6.hip at revision 451b1368, Apache-2.0) compiled against this tree's pools (K and V in two fp8 buffers, one int32 table entry per token, six asserted source edits, own argument header and launcher), run by scripts/bench/bench_prefill_attention.py --port-ext beside the library's rows and the served Triton kernel on the same operands. After a pass: serving hook behind SGLANG_HIP_PREFILL_ATTN=exact|qk8 in a PYTHONPATH dev tree, then the serving A/B.",
+   "test_gate": "Kernel (PORT KERNEL GATE pass): every ported row within 0.9995 lowest cosine of the row it reproduces, port-exact also 0.9999 against the fp64 reference, port-exact and port-qk8 at most x1.10 of their rows' time at 8192 x 196608 on card 0, card 1 repeats the deep cases. Serving: 197K cold prefill median at least 25 % shorter (exact) or 33 % (qk8), 7.3K at most x1.01, needle 9/9, capabilities 5/5, cache-hit consistency no worse than the control arm, DSpark accept at least x0.99 and cycle at most x1.005, zero Triton fallbacks on the routed shape, VRAM within 64 MiB; then a numbered patch with the NOTICE attribution and the replay gate."
   },
   {
    "id": "RAD-11",

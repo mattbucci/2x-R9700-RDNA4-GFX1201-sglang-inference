@@ -22,6 +22,11 @@ Arms, named by the products they really form over the fp8 prefix (the chunk's ow
     vendor-qk8     ..._fp8kv_qk8 (QK as e4m3 WMMA, exact PV)
     vendor-pv8     ..._fp8kv_pv8 (exact QK, e4m3 PV): the class of ours-exact
     vendor-qk8pv8  ..._fp8kv_qk8pv8: the class of ours-fp8qk
+    port-*         with --port-ext (RAD-10c): radiance's kernel source compiled against this tree's pools, K and V
+                   in two buffers and one table entry per token. port-exact / -qk8 / -pv8 / -qk8pv8 stand beside
+                   the vendor row of the same legs, port-qk8-scatter reads through a shuffled table. Their own gate
+                   (PORT KERNEL GATE) holds every row to the output of the row it reproduces (0.9995 lowest cosine)
+                   and port-exact / port-qk8 to x1.10 of that row's time at 8192 x 196608
 
 Every arm's output is compared with an fp64 reference on sampled query rows before it is timed. vendor-exact, and
 this tree's arms where there is no prefix, are held to the exact floor; a lossy row is held to floors that only a
@@ -84,6 +89,20 @@ VENDOR = {
 EXACT = ("vendor-exact",)  # exact at every depth; this tree's arms are exact only without a prefix
 PAIRINGS = {"same_class": ("ours-fp8qk", "vendor-qk8pv8"), "pv8_class": ("ours-exact", "vendor-pv8")}
 LIKE = ("vendor-qk8", "vendor-exact")  # exact PV: the verdict's rows, where they measure as exact as the served one
+# RAD-10c: the vendor kernel's source built against this tree's pools (K and V in two buffers, one table entry per
+# token; --port-ext). An arm is (the extension's legs value, the row it must reproduce). -scatter reads the same
+# values through a shuffled table: the cost bound of a fragmented pool, and the check that the table is followed
+PORT = {
+    "port-exact": (0, "vendor-exact"),
+    "port-qk8": (1, "vendor-qk8"),
+    "port-pv8": (2, "vendor-pv8"),
+    "port-qk8pv8": (3, "vendor-qk8pv8"),
+    "port-qk8-scatter": (1, "port-qk8"),
+}
+PORT_GATED = ("port-exact", "port-qk8")  # the rows a serving route would call
+PORT_CASE = (8192, 196608)
+PORT_COS = 0.9995  # a ported row against the row it reproduces: lowest cosine over every output row
+PORT_TIME = 1.10  # and its time over that row's at PORT_CASE
 HOST_BOUND_MS = 5.0  # below this a launch that keeps Python busy measures the launcher, not the kernel
 FLOOR_EXACT = 0.9999  # lowest cosine per (row, head) against the fp64 reference, exact products
 # a lossy row: lowest and mean cosine. The first run read 0.991 / 0.998 at 197K for a correct e4m3-PV row and the
@@ -101,7 +120,7 @@ def say(msg):
 
 def floors_of(arm, q_len, ctx):
     """(lowest cosine, mean cosine) an arm must reach against the reference to have its time counted."""
-    if arm in EXACT or (arm in OURS and q_len == ctx):
+    if arm in EXACT or arm == "port-exact" or (arm in OURS and q_len == ctx):
         return FLOOR_EXACT, FLOOR_EXACT
     return FLOOR_LOSSY_MIN, FLOOR_LOSSY_MEAN
 
@@ -189,6 +208,7 @@ def vendor_shared(torch, dev, ctx):
     blocks = (ctx + BLOCK - 1) // BLOCK
     return {
         "bt": torch.arange(blocks, dtype=torch.int32, device=dev).view(1, blocks).contiguous(),
+        "slots": torch.arange(ctx, dtype=torch.int32, device=dev),  # the ported rows' table: token j in slot j
         "seq": torch.tensor([ctx], dtype=torch.int32, device=dev),
         "kds": torch.ones((1, H_KV), dtype=torch.float32, device=dev),
         "vds": torch.ones((1, H_KV), dtype=torch.float32, device=dev),
@@ -484,6 +504,11 @@ def summarize(receipt):
     failed = [f"{s.get('q')}:{s.get('ctx')}" for s in receipt.get("shapes", []) if "arms" not in s]
     if failed:
         out["flags"].append("case-error-" + ",".join(failed))
+    port = port_summary(shapes)
+    if port is None and any(n in PORT for n in receipt.get("arm_errors") or {}):
+        port = {"rows": [], "gate": "unreadable:not-loaded"}
+    if port:
+        out["port"] = port
     out["served_over_like_deep"] = deep
     out["verdict"] = verdict
     out["gate"] = ":".join([verdict] + out["flags"])
@@ -571,6 +596,11 @@ def run_shape(env, q_len, ctx, sample, repeats, target_s, seed):
             c = compare(torch, outputs[ours], outputs[theirs].double())
             c["bit_identical"] = bool(torch.equal(outputs[ours], outputs[theirs]))
             out["agreement"][label] = c
+    for name, (_legs, like) in PORT.items():
+        if name in outputs and like in outputs:
+            c = compare(torch, outputs[name], outputs[like].double())
+            c["bit_identical"] = bool(torch.equal(outputs[name], outputs[like]))
+            out["agreement"][name] = c
     if q_len < ctx and "ours" in out["agreement"] and out["agreement"]["ours"]["bit_identical"]:
         # with a prefix the two settings of the switch must read different products
         for name in OURS:
@@ -616,6 +646,19 @@ class Env:
                     self.arms.append(name)
                 else:
                     self.errors[name] = f"row {row} is not in the library"
+        self.port = None
+        if getattr(a, "port_ext", None):
+            try:
+                sys.path.insert(0, a.port_ext)
+                import prefill_attn_fp8_hip_ext as port
+
+                if not os.path.abspath(port.__file__).startswith(os.path.abspath(a.port_ext) + os.sep):
+                    raise ImportError(f"prefill_attn_fp8_hip_ext loaded from {port.__file__}, not from {a.port_ext}")
+                self.port = port
+                self.arms += list(PORT)
+            except Exception as e:
+                self.errors.update({name: repr(e) for name in PORT})
+                say(f"the ported kernel is not available: {traceback.format_exc()}")
         self.hip_maps = r4d.hip_runtime_maps()
         if len(self.hip_maps) != 1 and not a.allow_two_hip_runtimes:
             raise SystemExit(f"expected one libamdhip64 image, found {self.hip_maps}")
@@ -648,6 +691,30 @@ class Env:
                 )
 
             return launch, {"o": o}
+        if name in PORT:
+            port, legs = self.port, PORT[name][0]
+            if name.endswith("-scatter"):
+                pools = []
+                for c, cp in enumerate(copies):
+                    gen = torch.Generator(device=self.dev).manual_seed(77 + c)
+                    table = torch.randperm(ctx, generator=gen, device=self.dev)
+                    kp, vp = torch.empty_like(cp["k8"]), torch.empty_like(cp["v8"])
+                    kp.view(torch.uint8)[table] = cp["k8"].view(torch.uint8)  # token j lives in slot table[j]
+                    vp.view(torch.uint8)[table] = cp["v8"].view(torch.uint8)
+                    pools.append((kp, vp, table.to(torch.int32).contiguous()))
+
+                def launch(i, _stream):
+                    kp, vp, table = pools[i]
+                    port.prefill_attn_fp8_hip(copies[i]["q"], kp, vp, table, o, SM_SCALE, legs)
+
+                return launch, {"o": o, "pools": pools}
+            slots = shared["slots"]
+
+            def launch(i, _stream):
+                cp = copies[i]
+                port.prefill_attn_fp8_hip(cp["q"], cp["k8"], cp["v8"], slots, o, SM_SCALE, legs)
+
+            return launch, {"o": o, "slots": slots}
         row, legs = VENDOR[name]
         info = self.rows[row]
         fn = r4d.LAUNCH_FN(info.launch)
@@ -676,6 +743,56 @@ def write(path, receipt):
         f.write("\n")
 
 
+def port_summary(shapes):
+    """RAD-10c: every ported row beside the row it reproduces (output agreement, time) and beside the served kernel,
+    and the kernel gate. unreadable: a gated row at PORT_CASE is missing, failed, or has no row to stand beside;
+    inexact: a ported row is outside its floor, moved while timed, or under PORT_COS against the row it reproduces;
+    slow: a gated row takes more than PORT_TIME of that row's time at PORT_CASE; pass otherwise."""
+    rows = []
+    for (q_len, ctx), s in sorted(shapes.items()):
+        served = s["arms"].get("ours-fp8qk") or {}
+        for name, (_legs, like) in PORT.items():
+            a = s["arms"].get(name)
+            if a is None:
+                continue
+            b = s["arms"].get(like) or {}
+            agree = (s.get("agreement") or {}).get(name) or {}
+            ok = bool(a.get("valid") and a.get("ms") and not a.get("clobbered") and not a.get("host_bound"))
+            rows.append({
+                "q": q_len, "ctx": ctx, "arm": name, "like": like, "valid": ok, "error": a.get("error"),
+                "cos_min": (a.get("accuracy") or {}).get("cos_min"), "ms": a.get("ms"), "like_ms": b.get("ms"),
+                "over_like": round(a["ms"] / b["ms"], 4) if ok and b.get("ms") else None,
+                "agree_cos_min": agree.get("cos_min"), "bit_identical": agree.get("bit_identical"),
+                "served_over": round(served["ms"] / a["ms"], 3) if ok and served.get("ms") else None,
+            })
+    if not rows:
+        return None
+    by = {(r["q"], r["ctx"], r["arm"]): r for r in rows}
+    unreadable, inexact, slow = [], [], []
+    for name in PORT_GATED:
+        r = by.get(PORT_CASE + (name,))
+        if r is None:
+            unreadable.append("missing-" + name)
+        elif r["error"]:
+            unreadable.append("error-" + name)
+        elif r["valid"] and (r["over_like"] is None or r["agree_cos_min"] is None):
+            unreadable.append("no-like-" + name)
+        elif r["valid"] and r["over_like"] > PORT_TIME:
+            slow.append("slow-" + name)
+    for r in rows:
+        at = f"{r['arm']}@{r['q']}:{r['ctx']}"
+        if r["error"]:
+            if "error-" + r["arm"] not in unreadable:
+                inexact.append("error-" + at)
+        elif not r["valid"]:
+            inexact.append("invalid-" + at)
+        elif r["agree_cos_min"] is not None and r["agree_cos_min"] < PORT_COS:
+            inexact.append("off-" + at)
+    verdict = "unreadable" if unreadable else "inexact" if inexact else "slow" if slow else "pass"
+    return {"rows": rows, "case": list(PORT_CASE), "cos": PORT_COS, "time": PORT_TIME,
+            "gate": ":".join([verdict] + unreadable + inexact + slow)}
+
+
 def bench(a):
     busy = r4d.vram_used_gb()
     if any(v > a.max_busy_vram_gb for v in busy.values()) and not a.force_busy:
@@ -699,6 +816,9 @@ def bench(a):
         receipt["lib"] = {"path": os.path.abspath(a.lib), "sha256": sha, "version": (info.version or b"").decode(),
                           "build_target": (info.build_target or b"").decode(),
                           "abi_version": env.lib.rad_plugin_abi_version()}
+    if env.port is not None:
+        with open(env.port.__file__, "rb") as f:
+            receipt["port_ext"] = {"file": env.port.__file__, "sha256": hashlib.sha256(f.read()).hexdigest()}
     if env.ea is not None:
         with open(env.ea.__file__, "rb") as f:
             receipt["extend_attention"] = {"file": env.ea.__file__, "sha256": hashlib.sha256(f.read()).hexdigest(),
@@ -728,7 +848,13 @@ def report(summary):
     for key in ("serving_anchor", "vendor_anchor", "projected_197k"):
         if key in summary:
             say(f"{key.upper()} {json.dumps(summary[key])}")
+    for r in (summary.get("port") or {}).get("rows", []):
+        say(f"PORT Q {r['q']} CTX {r['ctx']} {r['arm']}: {r['ms']} ms, x{r['over_like']} of {r['like']} "
+            f"({r['like_ms']} ms), agreement {r['agree_cos_min']} bit-identical {r['bit_identical']}, "
+            f"reference cos_min {r['cos_min']}, the served kernel takes x{r['served_over']} of it")
     print(f"PREFILL ATTENTION GATE {summary['gate']}", flush=True)
+    if "port" in summary:
+        print(f"PORT KERNEL GATE {summary['port']['gate']}", flush=True)
 
 
 # --------------------------------------------------------------------------- CPU dry mode
@@ -1042,6 +1168,62 @@ def dry_cpu(tree=None):
           and summarize(worse)["verdict"] == "unreadable",
           "a verdict row counts only where it measures as exact as the served row; every vendor row keeps its ratio")
 
+    # RAD-10c: what the ported rows are launched with, the shuffled table, and the kernel gate
+    calls = []
+    fake.port = type("P", (), {"prefill_attn_fp8_hip": staticmethod(lambda *args: calls.append(args))})()
+    port_held = []
+    for n in PORT:
+        launch, h = Env.build(fake, n, [cp], index, shared, o_buf, q_len, ctx)
+        launch(0, 0)
+        port_held.append(h)
+    plain = [c for n, c in zip(PORT, calls) if not n.endswith("-scatter")]
+    check(len(calls) == len(PORT) and all(h.get("o") is o_buf for h in port_held)
+          and all(c[0] is cp["q"] and c[1] is cp["k8"] and c[2] is cp["v8"] and c[4] is o_buf and c[5] == SM_SCALE
+                  and c[3].dtype == torch.int32 and c[3].tolist() == list(range(ctx)) for c in plain)
+          and [c[6] for c in calls] == [legs for legs, _ in PORT.values()]
+          and tuple(cp["k8"].shape) == (ctx, H_KV, HEAD_DIM) and cp["k8"].dtype == torch.float8_e4m3fn
+          and tuple(cp["q"].shape) == (q_len, H_Q, HEAD_DIM) and cp["q"].dtype == torch.bfloat16,
+          "a ported row is launched with this tree's pools [slot, kv head, 256], one int32 table entry per token, "
+          "the bf16 query and the output buffer it keeps alive")
+    sc = calls[list(PORT).index("port-qk8-scatter")]
+    table = sc[3].long()
+    check(sc[3].dtype == torch.int32 and sorted(table.tolist()) == list(range(ctx)) and table.tolist() != list(range(ctx))
+          and bool(torch.equal(sc[1].view(torch.uint8)[table], cp["k8"].view(torch.uint8)))
+          and bool(torch.equal(sc[2].view(torch.uint8)[table], cp["v8"].view(torch.uint8))),
+          "the shuffled arm's table is a permutation and slot table[j] of its pools holds token j's K and V")
+
+    def with_port(time_of=None, agree_of=None, drop=(), error=(), invalid=()):
+        rc = synthetic_receipt(slope, slope / 3.0)
+        for shape in rc["shapes"]:
+            shape["agreement"] = {}
+            for name, (_legs, like) in PORT.items():
+                if name in drop:
+                    continue
+                base = shape["arms"][like].get("ms") or shape["arms"]["vendor-qk8"]["ms"]
+                shape["arms"][name] = {"ms": base * (time_of or {}).get(name, 1.02), "valid": name not in invalid,
+                                       "host_bound": False, "accuracy": {"cos_min": 0.9999}, "passes": [{}]}
+                if name in error:
+                    shape["arms"][name] = {"error": "x", "valid": False}
+                shape["agreement"][name] = {"cos_min": (agree_of or {}).get(name, 1.0), "bit_identical": True}
+        return summarize(rc)
+
+    good = with_port()
+    check(good["port"]["gate"] == "pass" and len(good["port"]["rows"]) == len(PORT) * len(parse_shapes(SHAPES))
+          and good["gate"] == "port" and "port" not in summarize(synthetic_receipt(slope, slope / 3.0))
+          and abs(good["port"]["rows"][0]["over_like"] - 1.02) < 1e-3,
+          "ported rows at x1.02 of their rows read pass and leave the first gate alone; a receipt without them has "
+          "no port block")
+    check(with_port(time_of={"port-qk8": 1.2})["port"]["gate"] == "slow:slow-port-qk8"
+          and with_port(time_of={"port-pv8": 1.2})["port"]["gate"] == "pass"
+          and with_port(agree_of={"port-pv8": 0.99})["port"]["gate"].startswith("inexact:off-port-pv8@")
+          and with_port(invalid=("port-exact",))["port"]["gate"].startswith("inexact:invalid-port-exact@")
+          and with_port(drop=("port-exact",))["port"]["gate"] == "unreadable:missing-port-exact"
+          and with_port(error=("port-qk8",))["port"]["gate"].startswith("unreadable:error-port-qk8")
+          and summarize(dict(synthetic_receipt(slope, slope / 3.0), arm_errors={"port-exact": "x"}))["port"]["gate"]
+          == "unreadable:not-loaded",
+          "the kernel gate: a gated row over x1.10 reads slow, a row off the one it reproduces or outside its floor "
+          "reads inexact, a missing or failed gated row or an extension that did not load reads unreadable")
+
     if tree:
         check_call_against_tree(check, torch, tree, cp, index, shared, q_len, ctx)
     print("DRY " + ("FAIL: " + "; ".join(bad) if bad else "OK"), flush=True)
@@ -1060,6 +1242,7 @@ def main(argv=None):
     ap.add_argument("--target-s", type=float, default=1.5, help="timed seconds per repeat (sets the launch count)")
     ap.add_argument("--no-vendor", action="store_true", help="this tree's arms only (no library is loaded)")
     ap.add_argument("--no-ours", action="store_true", help="the library's rows only")
+    ap.add_argument("--port-ext", help="directory of prefill_attn_fp8_hip_ext.so: adds the RAD-10c port-* arms")
     ap.add_argument("--allow-two-hip-runtimes", action="store_true")
     ap.add_argument("--max-busy-vram-gb", type=float, default=2.0)
     ap.add_argument("--force-busy", action="store_true")
