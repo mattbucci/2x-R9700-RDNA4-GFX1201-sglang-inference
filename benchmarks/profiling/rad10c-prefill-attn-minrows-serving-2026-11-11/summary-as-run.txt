@@ -1,0 +1,21 @@
+NEEDLE ctl1 9/9, ex1 9/9, qk1 9/9
+CONSISTENCY ctl1 7 of 8 worse than the floor, ex1 3 of 8 worse than the floor, qk1 6 of 8 worse than the floor
+CAPS ctl1 5/5, ex1 5/5, qk1 5/5, qk2 5/5, ex2 5/5, ctl2 5/5
+ROUTE ctl1 active 0 declined 0, ex1 active 2 declined 0, qk1 active 2 declined 0, qk2 active 2 declined 0, ex2 active 2 declined 0, ctl2 active 0 declined 0
+VRAM end MiB ctl1 30316 30083, ex1 30312 30079, qk1 30312 30079, qk2 30137 29903, ex2 30137 29904, ctl2 30135 29901
+PREFILL exact ctx 8192 (7331 tokens): 2.601 s (ex1 2.601, ex2 2.602) x0.984 of 2.644 s (ctl1 2.645, ctl2 2.643)
+PREFILL exact ctx 65536 (58483 tokens): 24.105 s (ex1 24.104, ex2 24.107) x0.838 of 28.770 s (ctl1 28.74, ctl2 28.801)
+PREFILL exact ctx 221184 (197326 tokens): 116.184 s (ex1 116.059, ex2 116.31) x0.678 of 171.433 s (ctl1 171.235, ctl2 171.63)
+DECODE exact ctx 128 (24 tokens): 35.526 tok/s x0.9986 of 35.575; warm first token 58.6 ms against 58.2 ms
+DECODE exact ctx 8192 (7331 tokens): 34.861 tok/s x1.0001 of 34.858; warm first token 111.4 ms against 111.1 ms
+DECODE exact ctx 65536 (58483 tokens): 33.272 tok/s x1.0003 of 33.262; warm first token 115.5 ms against 115.5 ms
+DECODE exact ctx 221184 (197326 tokens): 29.574 tok/s x0.9995 of 29.587; warm first token 108.1 ms against 110.1 ms
+EXACT GATE fail:memory
+PREFILL qk8 ctx 8192 (7331 tokens): 2.576 s (qk1 2.576, qk2 2.576) x0.974 of 2.644 s (ctl1 2.645, ctl2 2.643)
+PREFILL qk8 ctx 65536 (58483 tokens): 22.395 s (qk1 22.395, qk2 22.395) x0.778 of 28.770 s (ctl1 28.74, ctl2 28.801)
+PREFILL qk8 ctx 221184 (197326 tokens): 97.005 s (qk1 96.997, qk2 97.013) x0.566 of 171.433 s (ctl1 171.235, ctl2 171.63)
+DECODE qk8 ctx 128 (24 tokens): 35.730 tok/s x1.0043 of 35.575; warm first token 58.8 ms against 58.2 ms
+DECODE qk8 ctx 8192 (7331 tokens): 35.036 tok/s x1.0051 of 34.858; warm first token 111.2 ms against 111.1 ms
+DECODE qk8 ctx 65536 (58483 tokens): 33.268 tok/s x1.0002 of 33.262; warm first token 115.5 ms against 115.5 ms
+DECODE qk8 ctx 221184 (197326 tokens): 29.616 tok/s x1.0010 of 29.587; warm first token 115.3 ms against 110.1 ms
+QK8 GATE fail:memory

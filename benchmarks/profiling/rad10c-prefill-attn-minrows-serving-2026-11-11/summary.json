@@ -1,0 +1,146 @@
+{
+ "arms": "ctl1:0:off:1 ex1:0:exact:1 qk1:0:qk8:1 qk2:0:qk8:0 ex2:0:exact:0 ctl2:0:off:0",
+ "tokens": {
+  "8192": 7331,
+  "65536": 58483,
+  "221184": 197326,
+  "128": 24
+ },
+ "modes": {
+  "exact": {
+   "prefill": {
+    "8192": {
+     "treatment_s": 2.601,
+     "control_s": 2.644,
+     "ratio": 0.9839
+    },
+    "65536": {
+     "treatment_s": 24.105,
+     "control_s": 28.77,
+     "ratio": 0.8379
+    },
+    "221184": {
+     "treatment_s": 116.184,
+     "control_s": 171.433,
+     "ratio": 0.6777
+    }
+   },
+   "decode": {
+    "128": {
+     "treatment_tps": 35.526,
+     "control_tps": 35.575,
+     "ratio": 0.9986,
+     "treatment_warm_ms": 58.6,
+     "control_warm_ms": 58.25
+    },
+    "8192": {
+     "treatment_tps": 34.861,
+     "control_tps": 34.858,
+     "ratio": 1.0001,
+     "treatment_warm_ms": 111.4,
+     "control_warm_ms": 111.1
+    },
+    "65536": {
+     "treatment_tps": 33.272,
+     "control_tps": 33.262,
+     "ratio": 1.0003,
+     "treatment_warm_ms": 115.55,
+     "control_warm_ms": 115.45
+    },
+    "221184": {
+     "treatment_tps": 29.574,
+     "control_tps": 29.587,
+     "ratio": 0.9995,
+     "treatment_warm_ms": 108.1,
+     "control_warm_ms": 110.1
+    }
+   },
+   "boots": [
+    "ex1",
+    "ex2"
+   ],
+   "gate": "pass"
+  },
+  "qk8": {
+   "prefill": {
+    "8192": {
+     "treatment_s": 2.576,
+     "control_s": 2.644,
+     "ratio": 0.9743
+    },
+    "65536": {
+     "treatment_s": 22.395,
+     "control_s": 28.77,
+     "ratio": 0.7784
+    },
+    "221184": {
+     "treatment_s": 97.005,
+     "control_s": 171.433,
+     "ratio": 0.5658
+    }
+   },
+   "decode": {
+    "128": {
+     "treatment_tps": 35.73,
+     "control_tps": 35.575,
+     "ratio": 1.0043,
+     "treatment_warm_ms": 58.8,
+     "control_warm_ms": 58.25
+    },
+    "8192": {
+     "treatment_tps": 35.036,
+     "control_tps": 34.858,
+     "ratio": 1.0051,
+     "treatment_warm_ms": 111.2,
+     "control_warm_ms": 111.1
+    },
+    "65536": {
+     "treatment_tps": 33.268,
+     "control_tps": 33.262,
+     "ratio": 1.0002,
+     "treatment_warm_ms": 115.45,
+     "control_warm_ms": 115.45
+    },
+    "221184": {
+     "treatment_tps": 29.616,
+     "control_tps": 29.587,
+     "ratio": 1.001,
+     "treatment_warm_ms": 115.30000000000001,
+     "control_warm_ms": 110.1
+    }
+   },
+   "boots": [
+    "qk1",
+    "qk2"
+   ],
+   "gate": "pass"
+  }
+ },
+ "memory_rule": "a treatment boot against the mean of the control boots with the same quality flag, per card",
+ "vram_end_mib": {
+  "ctl1": [
+   30316,
+   30083
+  ],
+  "ex1": [
+   30312,
+   30079
+  ],
+  "qk1": [
+   30312,
+   30079
+  ],
+  "qk2": [
+   30137,
+   29903
+  ],
+  "ex2": [
+   30137,
+   29904
+  ],
+  "ctl2": [
+   30135,
+   29901
+  ]
+ }
+}

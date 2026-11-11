@@ -1,0 +1,6 @@
+ROUTE ctl1 mode=off active=0 declined=0
+ROUTE ex1 mode=exact active=2 declined=0
+ROUTE qk1 mode=qk8 active=2 declined=0
+ROUTE qk2 mode=qk8 active=2 declined=0
+ROUTE ex2 mode=exact active=2 declined=0
+ROUTE ctl2 mode=off active=0 declined=0

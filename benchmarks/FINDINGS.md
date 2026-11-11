@@ -2511,6 +2511,39 @@ cache-hit turn in 115 ms where the ported route took 508 ms.
 Disposition: `SGLANG_HIP_PREFILL_ATTN_MIN_ROWS=257` on both modes, so the ported route starts where the split-KV
 route ends. The six-boot serving A/B is repeated with it.
 
+### RAD-10c serving with the 257-row minimum — cold prefill ×0.68 (exact) / ×0.57 (fp8 QK) at 197K with the cache-hit turn back at the control's 115 ms; both modes pass once the memory line pairs boots of equal request history (2026-11-11)
+
+The six-boot no-speculation A/B again, qwen38 at `--random-seed 7` from the dev tree with
+`SGLANG_HIP_PREFILL_ATTN_MIN_ROWS=257`: `ctl1 / ex1 / qk1` with the quality probes, then `qk2 / ex2 / ctl2`
+([receipts](profiling/rad10c-prefill-attn-minrows-serving-2026-11-11/)).
+
+| cold prefill, s (mean of two boots) | 7,331 | 58,483 | 197,326 input tokens |
+|---|---:|---:|---:|
+| Served extend kernel | 2.644 | 28.770 | 171.433 |
+| Ported kernel, exact | 2.601 (×0.984) | 24.105 (×0.838) | 116.184 (×0.678) |
+| Ported kernel, fp8 QK | 2.576 (×0.974) | 22.395 (×0.778) | 97.005 (×0.566) |
+
+The two boots of a side agree within 0.3 % in every cell. The first token on a cache hit, the row that failed
+the previous run at 508 ms, reads 58.6 / 111.4 / 115.5 / 108.1 ms (exact) and 58.8 / 111.2 / 115.5 / 115.3 ms
+(fp8 QK) against 58.2 / 111.1 / 115.5 / 110.1 ms at 24 / 7,331 / 58,483 / 197,326 tokens: every boot logs the
+extend split-KV route after the sweep, the ported route is active on every treatment boot, absent on both
+controls, and never declines. Canonical decode is ×0.999 to ×1.000 (exact) and ×1.000 to ×1.005 (fp8 QK).
+Capabilities pass 5/5 on all six boots, the needle grid finds 9/9 on `ctl1`, `ex1` and `qk1` (deepest prompt
+208,296 tokens), and the cache-hit consistency probe counts 3 (exact) and 6 (fp8 QK) of 8 comparisons beyond the
+fresh-fresh floor against the control's 7.
+
+The gate line as run reads `fail:memory` on both modes, and the cause is the summary, not the route. It compared
+each treatment boot with the mean of the two control boots, but a boot that served the consistency and needle
+requests ends about 180 MiB higher than a short boot on the control too (`ctl1` 30,316 / 30,083 MiB, `ctl2`
+30,135 / 29,901 MiB per card), so the control's own quality boot sits 91 MiB above that mean and fails the 64 MiB
+bar. Paired by request history the treatment reads −4 / −4 MiB on both quality boots and +2 / +3 MiB at most on
+the short boots. The receipts keep the as-run summary beside the re-read; every row other than the two gate
+values is equal between them.
+
+Disposition: both modes pass the no-speculation phase from 257 rows. The DSpark phase runs fp8 QK, the faster
+mode and the QK arithmetic the preset's extend kernel already uses, with the same memory pairing fixed in its
+summary before the run. The preset does not change until that phase passes.
+
 ### FLINT-4b — the in-graph custom all-reduce on Flint: no-spec decode +2.6 % at every depth, DFlash2 cycle unchanged, texts equal wherever the controls repeat themselves (2026-11-11)
 
 Third start, the whole matrix under one method: eight boots of the `flint` preset at `--random-seed 7`, RCCL and

@@ -1,0 +1,1 @@
+rad10c-minrows-qk1: 6 hit comparisons worse than the fresh-vs-fresh noise floor, of 8 -> /home/letsrtfm/AI/2x-R9700-RDNA4-GFX1201-sglang-inference/benchmarks/profiling/rad10c-prefill-attn-minrows-serv
