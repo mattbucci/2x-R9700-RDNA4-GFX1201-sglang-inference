@@ -1025,16 +1025,16 @@
   {
    "id": "RAD-29b",
    "spec": "19-vllm-radiance-parity.md",
-   "status": "ready",
+   "status": "in_progress",
    "resource": "gpu",
    "depends_on": [
     "RAD-29 (done, patch 128): the W8A16 GEMM is the qwen38 FP8 preset default; the A/B served it from a development tree",
     "RAD-29 accept probe: four 24,000-character documents read x0.925 (all four lower) while 16 short prompts and four 190,000-character documents read x1.008 / x1.011"
    ],
-   "next_action": "On the shipped preset from the live tree (extension rebuilt by scripts/build_fp8_gemm_bf16.sh, launcher defaults): canonical DSpark and no-spec sweeps for the README headline; paired greedy accept probe with 12 documents each at 24,000 and 96,000 characters against a FP8_GEMM_BF16=0 boot (also the restore knob's receipt). Then the DFlash2 lane on the same preset, and an A/B per other FP8 preset before any of them exports the switch.",
+   "next_action": "On the shipped preset from the live tree (extension rebuilt by scripts/build_fp8_gemm_bf16.sh, launcher defaults): canonical DSpark and no-spec sweeps for the README headline; paired greedy accept probe with 12 documents each at 12,000 / 24,000 / 48,000 / 96,000 characters and the sampled 400-token ladder against a FP8_GEMM_BF16=0 boot (also the restore knob's receipt), a second shipped boot for the boot-to-boot floor. Then the DFlash2 lane on the same preset, and an A/B per other FP8 preset before any of them exports the switch.",
    "test_gate": [
     "the shipped boot logs the GEMM's active line and serves from /data/sgl-v0522; the FP8_GEMM_BF16=0 boot logs none",
-    "mid-depth accept: pooled ratio over the 24 documents not below 0.95x, or tok/s on those documents not below the control's; otherwise the preset default is reverted for DSpark",
+    "mid-depth accept: pooled ratio over the 48 documents not below 0.95x, or the estimated decode rate on those documents (tokens over verify count x the arm's cycle of the request's depth) not below the control's; otherwise the preset default is reverted for DSpark; a size group more than 3 % below the control's rate is named in the disposition",
     "README headline rows change only from this sweep"
    ]
   }
