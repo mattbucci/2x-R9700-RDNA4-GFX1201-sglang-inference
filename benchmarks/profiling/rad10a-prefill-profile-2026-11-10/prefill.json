@@ -1,0 +1,43 @@
+{
+ "label": "rad10a plain; qwen38 FP8, QWEN38_SPEC=0, live tree, 97 patches, --random-seed 7",
+ "model": "/data/models/Qwen3.8-27B-FP8",
+ "port": 23334,
+ "runs": 3,
+ "method": "flush_cache + non-stream max_tokens=1 wall time",
+ "timestamp": "2026-11-10 23:07",
+ "rows": [
+  {
+   "context": 8192,
+   "input_len": 7331,
+   "runs_s": [
+    3.345,
+    3.128,
+    3.129
+   ],
+   "median_s": 3.129,
+   "prefill_tok_per_s": 2343.1
+  },
+  {
+   "context": 65536,
+   "input_len": 58483,
+   "runs_s": [
+    32.745,
+    32.793,
+    32.814
+   ],
+   "median_s": 32.793,
+   "prefill_tok_per_s": 1783.4
+  },
+  {
+   "context": 221184,
+   "input_len": 197326,
+   "runs_s": [
+    184.436,
+    184.057,
+    184.71
+   ],
+   "median_s": 184.436,
+   "prefill_tok_per_s": 1069.9
+  }
+ ]
+}

@@ -1,0 +1,166 @@
+{
+ "schema_version": 1,
+ "traces": [
+  {
+   "events": 58703,
+   "span_s": 184.069,
+   "recorded_sum_s": 536.785,
+   "union_s": 184.041,
+   "recorded_over_span": 2.916,
+   "union_over_span": 1.0,
+   "open_events_share_of_union": {
+    "1": 0.0086,
+    "2": 0.0662,
+    "3": 0.9252,
+    "4": 0.0
+   },
+   "families": {
+    "extend attention": {
+     "calls": 400,
+     "recorded_s": 104.381,
+     "serial_s": 104.381
+    },
+    "all-reduce": {
+     "calls": 3250,
+     "recorded_s": 39.922,
+     "serial_s": 36.526
+    },
+    "block-FP8 GEMM": {
+     "calls": 6400,
+     "recorded_s": 31.502,
+     "serial_s": 31.502
+    },
+    "DeltaNet chunk": {
+     "calls": 12000,
+     "recorded_s": 4.362,
+     "serial_s": 4.362
+    },
+    "norm / quantiser": {
+     "calls": 11225,
+     "recorded_s": 3.612,
+     "serial_s": 3.612
+    },
+    "copies / casts / elementwise": {
+     "calls": 19854,
+     "recorded_s": 351.568,
+     "serial_s": 2.22
+    },
+    "MLP activation": {
+     "calls": 1600,
+     "recorded_s": 1.067,
+     "serial_s": 1.067
+    },
+    "rocBLAS GEMM": {
+     "calls": 1225,
+     "recorded_s": 0.231,
+     "serial_s": 0.231
+    },
+    "other": {
+     "calls": 1949,
+     "recorded_s": 0.104,
+     "serial_s": 0.104
+    },
+    "KV store / RoPE": {
+     "calls": 800,
+     "recorded_s": 0.037,
+     "serial_s": 0.037
+    }
+   },
+   "all_reduce_ms_histogram": {
+    "0": 25,
+    "1": 129,
+    "8": 1559,
+    "9": 1,
+    "15": 6,
+    "16": 1452,
+    "17": 48,
+    "18": 17,
+    "19": 9,
+    "20": 2,
+    "21": 1,
+    "3342": 1
+   },
+   "path": "/data/tmp/profile-rad10a-prefill-profile-2026-11-10/d221184/1794380912.934602-TP-0.trace.json.gz"
+  },
+  {
+   "events": 58703,
+   "span_s": 184.069,
+   "recorded_sum_s": 536.841,
+   "union_s": 184.055,
+   "recorded_over_span": 2.917,
+   "union_over_span": 1.0,
+   "open_events_share_of_union": {
+    "1": 0.0101,
+    "2": 0.063,
+    "3": 0.9268,
+    "4": 0.0
+   },
+   "families": {
+    "extend attention": {
+     "calls": 400,
+     "recorded_s": 104.483,
+     "serial_s": 104.483
+    },
+    "all-reduce": {
+     "calls": 3250,
+     "recorded_s": 39.995,
+     "serial_s": 36.638
+    },
+    "block-FP8 GEMM": {
+     "calls": 6400,
+     "recorded_s": 31.336,
+     "serial_s": 31.328
+    },
+    "DeltaNet chunk": {
+     "calls": 12000,
+     "recorded_s": 4.397,
+     "serial_s": 4.397
+    },
+    "norm / quantiser": {
+     "calls": 11225,
+     "recorded_s": 3.613,
+     "serial_s": 3.613
+    },
+    "copies / casts / elementwise": {
+     "calls": 19854,
+     "recorded_s": 351.579,
+     "serial_s": 2.157
+    },
+    "MLP activation": {
+     "calls": 1600,
+     "recorded_s": 1.067,
+     "serial_s": 1.067
+    },
+    "rocBLAS GEMM": {
+     "calls": 1225,
+     "recorded_s": 0.232,
+     "serial_s": 0.232
+    },
+    "other": {
+     "calls": 1949,
+     "recorded_s": 0.103,
+     "serial_s": 0.103
+    },
+    "KV store / RoPE": {
+     "calls": 800,
+     "recorded_s": 0.037,
+     "serial_s": 0.037
+    }
+   },
+   "all_reduce_ms_histogram": {
+    "0": 25,
+    "1": 115,
+    "2": 10,
+    "3": 4,
+    "8": 1559,
+    "10": 1,
+    "16": 1474,
+    "17": 40,
+    "18": 13,
+    "19": 8,
+    "3343": 1
+   },
+   "path": "/data/tmp/profile-rad10a-prefill-profile-2026-11-10/d221184/1794380912.934602-TP-1.trace.json.gz"
+  }
+ ]
+}

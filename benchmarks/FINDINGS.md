@@ -2010,7 +2010,7 @@ Receipts: `qwen38-27b-fp8/{decode,capabilities,route}-canonical-<arm>-2026-11-10
 `dflash2-rccl` and (decode, route) `nospec`, `prefill-canonical-{dspark,nospec}-2026-11-10-97p.json`. These are the
 README and results.json rows.
 
-### RAD-10 — cold prefill split from the server's chunk reports: the 197K prompt is 84 s depth-free and 100 s depth-bound, and the prefix attention runs 3× behind the rate radiance states for its kernel; no patch, kernel profile queued as RAD-10a (2026-11-10)
+### RAD-10 — cold prefill split from the server's chunk reports: the 197K prompt is 84 s depth-free and 100 s depth-bound, and the prefix attention runs 3× behind the rate radiance states for its kernel; no patch, kernel profile in RAD-10a (2026-11-10)
 
 The scheduler logs one `Prefill batch` line per chunk whose `input throughput` is that batch's tokens over the
 time since the previous report, so chunk *i* of a prompt took `new tokens / throughput` seconds on a prefix of
@@ -2055,9 +2055,8 @@ chunk kernels, the block-FP8 GEMM at chunk rows, norms, all-reduce). Radiance's 
 prefill from 184.1 to 113.7 s (1,072 → 1,736 tok/s) and the 58K one from 32.8 to 26.6 s (1,785 → 2,199).
 
 No patch. The curve cannot split the depth-free part by kernel and rests on the reading that the slope is
-attention: RAD-10a (tail queue job, one no-spec boot) profiles a cold prefill at 7.3K / 58K / 197K with the
-profiler's Python stacks off and a memory guard, and `scripts/bench/prefill_profile_summary.py` sizes the kernel
-families per depth; the ports are ordered from its receipts. The DFlash2 boot's log holds two chunked prompts
+attention: RAD-10a (below) profiles a cold prefill at 7.3K / 58K / 197K with the profiler's Python stacks off
+and a memory guard, confirms the reading and orders the ports. The DFlash2 boot's log holds two chunked prompts
 whose last fitted chunk reads short (rms 1.27 s on one), so that boot has no receipt.
 
 Receipts: `profiling/prefill-chunk-curve-2026-11-10/{nospec,dspark}.json`; unit test
@@ -2117,6 +2116,70 @@ temperature-0 ladder ahead) against `car2` (neither) commits 24 of 24 equal text
 3.7666, and its `rccl1` against `rccl2`, which differ in the temperature-0 ladder alone, repeat exactly.
 RAD-29d and FLINT-4b run every drafter boot through one request order; RAD-29d's fixed boot seed is not needed
 for the greedy probe.
+
+### RAD-10a — cold prefill by kernel, serially attributed: at 197K the attention over the prefix is 57 %, the all-reduce 20 % and the block-FP8 GEMM 17 %; at 7.3K the all-reduce leads with 43 %; the summed-duration table names copies, an artifact (2026-11-10)
+
+One no-speculation boot of the shipped qwen38 preset (97 patches, seed 7, capabilities 5/5, gate `ok`). Unprofiled
+cold prefill first (`prefill_ttft.py`, three cold runs per depth), then one profiler window per depth around a
+cold `max_tokens=1` request (Python stacks off, one trace per rank).
+
+| prompt tokens | cold prefill, s | tok/s | profiled wall, s | over unprofiled |
+|---:|---:|---:|---:|---:|
+| 7,331 | 3.129 | 2,343 | 3.155 | ×1.01 |
+| 58,483 | 32.793 | 1,783 | 32.771 | ×1.00 |
+| 197,326 | 184.436 | 1,070 | 184.087 | ×1.00 |
+
+The chunk curve of this boot repeats RAD-10 on three 197K runs: 3.477 / 3.477 / 3.511 s per 8192-token chunk
+plus 0.04384 / 0.04380 / 0.04375 s per 1K of prefix, 83.8 s depth-free and 99.9 s depth-bound (54.4 %).
+
+**The summed table is an artifact.** `prefill_profile_summary.py` sums recorded kernel durations per family and
+reads "copies / casts / elementwise" at 46 to 51 % with the cards "busy 197 %". Per rank the recorded durations
+sum to ×2.10 / ×2.79 / ×2.92 of the trace span at 7.3K / 58K / 197K, while the union of the recorded intervals
+equals the span (×1.000): the device queue is busy for the whole wall and never twice at once. The excess sits in
+a few events recorded as open across the kernels that follow them; at 197K, 225 `Memcpy HtoD` events record 173 s
+and 1,600 FP32→BF16 cast events record 177 s per rank, and three events are open for 92.5 % of the span.
+`scripts/bench/trace_serial_attribution.py` charges every instant of the union to the open event that ends
+first, the one the queue is running. The attention, the GEMM and the DeltaNet kernels keep their recorded time
+under that rule (the attention reads 104.38 s both ways); the copies fall from 351.6 to 2.2 s and the all-reduce
+from 39.9 to 36.5 s, one of its events being recorded at 3.3 s. Rank 0, rank 1 within 0.1 s:
+
+| prompt (span) | extend attention | all-reduce | block-FP8 GEMM | DeltaNet chunk | norm / quantiser | copies / casts | MLP activation |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| 7,331 (3.155 s) | 0.12 s, 3.8 % | 1.35 s, 42.9 % | 1.19 s, 37.7 % | 0.16 s, 5.1 % | 0.13 s, 4.2 % | 0.14 s, 4.5 % | 0.04 s, 1.3 % |
+| 58,483 (32.76 s) | 9.08 s, 27.7 % | 10.79 s, 32.9 % | 9.43 s, 28.8 % | 1.28 s, 3.9 % | 1.07 s, 3.3 % | 0.68 s, 2.1 % | 0.32 s, 1.0 % |
+| 197,326 (184.07 s) | 104.38 s, 56.7 % | 36.53 s, 19.8 % | 31.50 s, 17.1 % | 4.36 s, 2.4 % | 3.61 s, 2.0 % | 2.22 s, 1.2 % | 1.07 s, 0.6 % |
+
+Launches per rank at 197K: 400 attention (one per full-attention layer per chunk, 0.26 s each), 3,250 all-reduce
+(3,121 RCCL, 129 small ones on the custom path), 6,400 GEMM (4.9 ms each), 12,000 DeltaNet chunk kernels.
+
+**Depth split.** RAD-10's reading holds: the slope is the attention. Its 104.4 s are the 99.9 s depth-bound part
+plus about 4 s over the chunk's own keys (0.119 s at 7.3K scales to 0.15 s per full chunk). The depth-free 83.8 s
+are all-reduce 36.5, GEMM 31.5, attention inside the chunk 4, DeltaNet kernels 4.4, norms and quantisers 3.6,
+copies 2.2 and the activation 1.1 s. RAD-10 listed the DeltaNet chunk kernels first among the depth-free stages;
+they are 2.4 to 5.1 %, and the all-reduce and the GEMM carry four fifths of that part.
+
+**The all-reduce is bound by the link and half of its calls carry FP32.** A full chunk shows two call sizes:
+1,559 calls near 7.95 ms and 1,535 between 15 and 21 ms (64 near 7.05 ms and 64 near 13.98 ms at 7,331 rows).
+The MLP sum of 8,192 rows × 5,120 is 83.9 MB in BF16; the attention and DeltaNet-mixer sums take the HIP FP32
+path of `layer_boundary/ops.attn_tp_all_reduce` (cast to FP32, sum, cast back) and are 167.8 MB. Both sizes move
+at 10.6 to 10.8 GB/s per direction, the 10.68 GB/s RCCL sustains on this box from 4 to 512 MB (PCIe peer-to-peer
+transport, above). By bytes: 197,326 rows × 5,120 × (2 + 4) B × 64 layers = 388 GB, 36.3 s at that rate against
+36.5 s measured. BF16 on both sums would be 259 GB, 24.2 s. On two ranks the FP32 sum of two BF16 values rounded
+back to BF16 is the correctly rounded BF16 sum, so the wider wire should buy nothing there; that is an argument,
+not a measurement, and RAD-30 measures it (equality on a two-rank kernel bench, then a serving A/B). Radiance
+serves this model on the exact BF16 wire and overlaps the trunk's reductions with the other slice's compute
+(`docs/ARCHITECTURES.md`, "Prefill overlap").
+
+**Order of the prefill ports.** (1) The prefix attention, 57 % at 197K and 28 % at 58K: RAD-10b times radiance's
+kernel on equal operands. (2) The all-reduce bytes, 20 to 43 %: RAD-30, expected −12.1 s at 197K (−6.6 %),
+−3.6 s at 58K (−11 %) and −0.45 s at 7.3K (−14 %) if the sum is unchanged. (3) The block-FP8 GEMM at chunk rows,
+17 to 38 %: RAD-20 (libr4d's tiled prefill GEMM read 1.45× in the sandbox, RAD-13). (4) Reductions beside
+compute, after (2). The DeltaNet chunk kernels (RAD-19's conv block among them) and the norms are 2 to 5 % each
+and are not targets. Against radiance's 78.3 s at 197K the 106 s gap is of the size of the attention alone.
+
+No patch. Receipts: `profiling/rad10a-prefill-profile-2026-11-10/` (`prefill.json`, `curve.json`,
+`profile-d*.json`, `summary.json` with the summed table, `serial-d*.json` with the serial one); reader
+`scripts/bench/trace_serial_attribution.py`, unit test `scripts/test/test_trace_serial_attribution.py`.
 
 ## Evaluation methodology
 

@@ -208,7 +208,11 @@ the 197K cold prompt is 83.8 s depth-free and 99.7 s depth-bound and the 58K one
 2.99 G (query, key) pairs/s per card
 ([receipts](profiling/prefill-chunk-curve-2026-11-10/), [FINDINGS → RAD-10](FINDINGS.md)). `scripts/bench/profile_prefill_depth.sh`
 and `prefill_profile_summary.py` profile a cold prefill per depth with the profiler's Python stacks off and size the kernel
-families.
+families; `scripts/bench/trace_serial_attribution.py` attributes each instant of a trace to the open event that ends first,
+which is the reading to use when the summed kernel time exceeds the span. Cold prefill by kernel at 7.3K / 58K / 197K, serially
+attributed: extend attention 3.8 / 27.7 / 56.7 %, all-reduce 42.9 / 32.9 / 19.8 %, block-FP8 GEMM 37.7 / 28.8 / 17.1 %, DeltaNet
+chunk kernels 5.1 / 3.9 / 2.4 %; half of the all-reduce calls carry the FP32 attention sum at the link's 10.7 GB/s
+([receipts](profiling/rad10a-prefill-profile-2026-11-10/), [FINDINGS → RAD-10a](FINDINGS.md)).
 TP-split DeltaNet projections on the FP8 preset (patch 121), replicated → split → replicated in one session: decode
 23.3 / 22.9 / 22.2 / 20.5 → 26.9 / 26.3 / 25.3 / 23.2 tok/s, cold prefill 1,798 / 1,460 / 945 → 2,125 / 1,658 / 1,024 tok/s,
 pool 525,548 → 735,510 tokens; with DSpark +4.5 % at 24 tokens, +10.0 % on copy-heavy decode at equal accept length and

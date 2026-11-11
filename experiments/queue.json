@@ -698,10 +698,10 @@
    "depends_on": [
     "RAD-0 (done): prefill gap 2.2-2.7x measured",
     "chunk curve from the canonical sweep's server logs (FINDINGS RAD-10): 197K cold = 83.8 s depth-free + 99.7 s depth-bound, 58K = 25.0 + 7.8 s; prefix attention 2.99 G pairs/s per card against the 8.93 radiance states for r4d_attn_prefill_h256_gqa6",
-    "RAD-10a: kernel families per depth",
+    "RAD-10a (done): serial kernel shares at 7.3K / 58K / 197K: extend attention 3.8 / 27.7 / 56.7 %, all-reduce 42.9 / 32.9 / 19.8 %, block-FP8 GEMM 37.7 / 28.8 / 17.1 %, DeltaNet chunk kernels 5.1 / 3.9 / 2.4 %",
     "RAD-10b: same-data kernel bench of the prefix attention, this tree against libr4d"
    ],
-   "next_action": "After RAD-10a: order the ports from its receipts. Candidate 1, the prefix attention (two thirds of the 197K gap by the two-term model): RAD-10b times radiance's paged prefill rows against the Triton extend kernel on equal operands and sets the order (port, tile sweep first, or look elsewhere). Candidate 2, the depth-free stages by share (GDN chunk kernels, RAD-19 conv block, RAD-20 GEMM tiles). prefill_ttft.py A/B at 7.3K/58K/197K both orders.",
+   "next_action": "Port order from RAD-10a's receipts. (1) Prefix attention, 104 s of the 184 s at 197K: RAD-10b sizes radiance's kernel on equal operands and sets port / tile sweep / look elsewhere. (2) All-reduce bytes, 36.5 s at 197K and 43 % at 7.3K: RAD-30 (BF16 wire for the attention and DeltaNet-mixer sums on two ranks, expected -12.1 / -3.6 / -0.45 s at 197K / 58K / 7.3K). (3) Block-FP8 GEMM at chunk rows, 31.5 s at 197K: RAD-20. (4) Reductions beside compute (radiance's prefill overlap), after (2). The DeltaNet chunk kernels and the norms are 2-5 % each and are not targets. Each port: prefill_ttft.py A/B at 7.3K / 58K / 197K in both orders.",
    "test_gate": [
     "kernel microbench vs the FLA reference",
     "prefill_ttft.py both orders",
@@ -712,21 +712,22 @@
   {
    "id": "RAD-10a",
    "spec": "19-vllm-radiance-parity.md",
-   "status": "queued",
+   "status": "completed",
    "resource": "gpu",
    "depends_on": [
     "RAD-10 chunk curve: 197K cold prefill = 83.8 s depth-free + 99.7 s depth-bound, read from server logs without a profiler; the curve cannot split the depth-free part by kernel",
     "RAD-11: a profiler window with the default Python stacks ended both scheduler processes; the window runs with with_stack false and a 10 GiB memory guard",
     "tail queue job 83 (RAD-29c) finished: one GPU job at a time"
    ],
-   "next_action": "Tail queue job 84-z (scratchpad rad10/rad10a_prefill_profile.sh, live tree, one boot without speculation and with --random-seed 7, about 30 min; the first start as job 83-z ended fail:identity before any measurement: a boot without a drafter logs the M=2..N GEMM active line at its first 2..32-row forward, not at graph capture, so the driver now sends one 17-token request ahead of that check): capabilities, prefill_ttft.py at 8192 / 65536 / 221184 with three cold runs (the unprofiled rate of this boot), prefill_chunk_curve.py on this boot's log before any profiler window, then per depth /flush_cache, /start_profile (activities CPU and GPU, with_stack false, record_shapes false), one cold max_tokens=1 request, /stop_profile, one trace per rank; profile_decode_kernels.py --phase prefill_extend --top 80 per depth and prefill_profile_summary.py after the server stopped (kernel families per depth; depth-free = the shallow profile scaled by tokens, depth-bound = the rest). Receipts benchmarks/profiling/rad10a-prefill-profile-2026-11-10/. Then RAD-10's port order.",
+   "next_action": "Done as tail queue job 84-z (gate ok). The receipts order RAD-10's ports: prefix attention (RAD-10b), all-reduce bytes (RAD-30), block-FP8 GEMM at chunk rows (RAD-20), reductions beside compute.",
    "test_gate": [
     "no rate gate: the receipts order RAD-10's ports",
     "identity before any measurement: no speculative worker, live tree, TP-split DeltaNet projections, the preset's kernel switches in the server's environment, custom all-reduce and GEMM active lines, seed 7; capabilities 5/5",
     "ok: prefill and curve receipts present, a profile for every depth with traces from both ranks, listed kernels covering at least 90 % of the traced GPU time, wall receipts present",
     "incomplete:<what> names the missing receipt, depth, rank or coverage; fail:<phase> names the phase that failed",
     "every profile is read with its profiled wall over the unprofiled run of the same depth as the inflation caveat"
-   ]
+   ],
+   "result": "2026-11-10. One no-speculation boot of the shipped qwen38 preset (97 patches, seed 7), capabilities 5/5, gate ok. Cold prefill 3.129 / 32.793 / 184.436 s at 7,331 / 58,483 / 197,326 tokens (2,343 / 1,783 / 1,070 tok/s); profiled walls x1.00-1.01 of those. Chunk curve on three 197K runs: 3.477-3.511 s per 8192-token chunk + 0.04375-0.04384 s per 1K of prefix, 83.8 s depth-free + 99.9 s depth-bound. The summed-duration family table (summary.json: copies / casts 46-51 %, cards busy 197 %) is an artifact: recorded kernel time is x2.10 / x2.79 / x2.92 of the span per rank while the union of intervals equals the span; a few Memcpy HtoD and FP32-to-BF16 cast events are recorded as open across the kernels behind them. Serial attribution (scripts/bench/trace_serial_attribution.py, each instant to the open event that ends first), rank 0 at 7.3K / 58K / 197K: extend attention 3.8 / 27.7 / 56.7 % (0.12 / 9.08 / 104.38 s), all-reduce 42.9 / 32.9 / 19.8 % (1.35 / 10.79 / 36.53 s), block-FP8 GEMM 37.7 / 28.8 / 17.1 % (1.19 / 9.43 / 31.50 s), DeltaNet chunk kernels 5.1 / 3.9 / 2.4 %, norms and quantisers 4.2 / 3.3 / 2.0 %, copies and casts 4.5 / 2.1 / 1.2 %. The slope is the attention (104.4 s = 99.9 depth-bound + about 4 s inside the chunk). The all-reduce is link-bound: half of its calls carry the FP32 attention / DeltaNet-mixer sum (167.8 MB per 8192-row chunk, 15.6 ms) and half the BF16 MLP sum (83.9 MB, 7.95 ms), both at RCCL's sustained 10.6-10.8 GB/s; 388 GB over the 197K prompt = 36.3 s by bytes against 36.5 s measured. FINDINGS RAD-10a; receipts benchmarks/profiling/rad10a-prefill-profile-2026-11-10/."
   },
   {
    "id": "RAD-10b",
@@ -893,10 +894,10 @@
   {
    "id": "RAD-19",
    "spec": "19-vllm-radiance-parity.md",
-   "status": "ready",
+   "status": "deferred",
    "resource": "gpu",
    "depends_on": [
-    "RAD-10 prefill profile (conv share)"
+    "RAD-10a (done): the DeltaNet chunk kernels, the conv among them, are 2.4 % of the 197K cold prefill, 3.9 % at 58K and 5.1 % at 7.3K: the whole family is worth less than the run-to-run gate of a prefill A/B at depth"
    ],
    "next_action": "GDN prefill conv channel block: BLOCK_N 256 -> 1024 in kernels/ops/mamba/causal_conv1d_triton.py:584,1224; conv microbench at the 197K-prefill shape then prefill_ttft both orders.",
    "test_gate": [
@@ -1138,6 +1139,26 @@
     "keep for the lane: cycle shorter on every shipped boot than on every knob-off boot at every depth, and pooled accept not below 0.95x of the control's or the estimated decode rate on the documents not below the control's",
     "otherwise the launcher exports the switch for DSpark only and the disposition names the depth or size group",
     "capabilities 5/5 on every boot before any timing phase"
+   ]
+  },
+  {
+   "id": "RAD-30",
+   "spec": "19-vllm-radiance-parity.md",
+   "status": "ready",
+   "resource": "gpu",
+   "depends_on": [
+    "RAD-10a (done): the prefill all-reduce is link-bound at 10.6-10.8 GB/s and two thirds of its bytes are the FP32 attention / DeltaNet-mixer sums of layer_boundary/ops.attn_tp_all_reduce (cast to FP32, sum, cast back); qwen3_5.py declares the default update policy, so both sums of every layer take that path",
+    "patches 080 / 084 / 085: glm4_moe, laguna and qwen3_moe already declare PLAIN_ADD_BF16_SUM (BF16 wire), +1-4 % decode there",
+    "radiance serves this model on the exact BF16 wire (README flags table; no --tp-wire)"
+   ],
+   "next_action": "BF16 wire for the attention-TP sum on two ranks, qwen38 FP8 preset. The argument: for two addends the FP32 sum rounded back to BF16 is the correctly rounded BF16 sum, so on two ranks the detour changes no bit if the BF16 adders round to nearest even. Phase 0, two bare ranks, no server (scripts/bench/allreduce_wire_equality.py): the BF16 all-reduce against cast-to-FP32 / all-reduce / cast-back on the same operands through RCCL at the prefill payload (8192 x 5120) and through the in-graph custom path at decode rows (1 / 9 / 16 / 32 x 5120); operands = activation-scale normals, exponent spreads of 2^-24..2^24 between the ranks, sums on the BF16 rounding midpoint, cancelling signs, subnormals, signed zeros and values at the BF16 maximum; count of unequal bit patterns over at least 1e9 element pairs per transport, and the time of both forms at 8192 x 5120. Phase 1 only on identical: serving A/B from a PYTHONPATH dev tree with one switch (SGLANG_HIP_BF16_ATTN_SUM=1: attn_tp_all_reduce keeps the tensor's dtype when the TP group has two ranks), control = shipped, boots ctl1 / bf1 / bf2 / ctl2 without speculation plus one DSpark pair, every boot with --random-seed 7 and one request order: capabilities, prefill_ttft.py cold at 8192 / 65536 / 221184 (three runs), decode_ab.py rows with greedy texts, needle grid, then on the DSpark pair the sampled ladder cycle and the 48-document greedy accept probe. Adoption = numbered patch (two-rank BF16 wire behind the switch, the FP32 path kept for three ranks and more), qwen38 preset default in the launcher with the switch as restore knob, canonical sweep re-queued before README numbers move.",
+   "test_gate": [
+    "phase 0: identical = 0 unequal bit patterns on both ranks for both transports (NaN payloads aside); differs:<count> stops the item before any serving arm and the difference is characterised instead",
+    "phase 1 identity: greedy texts equal on every decode_ab probe in both pairs and the DSpark accept probe equal on 48 of 48 documents (texts not empty) with equal verify counts; any difference fails the arm, since phase 0 said no bit changes",
+    "prefill pass: every BF16-wire boot faster than every control boot at 58K and 197K cold, and the 197K median at least 3 % shorter (expected 6.6 %); neutral below that = no patch",
+    "decode not slower: no-spec canonical rows at least x0.995 of the control's at every depth; DSpark sampled-ladder cycle not longer than x1.005",
+    "needle 9/9, capabilities 5/5, non-PyTorch VRAM growth within 64 MiB per card of the control's across the 197K prefill",
+    "numbered patch + replay gate; other presets keep their current policy until their own A/B"
    ]
   }
  ]

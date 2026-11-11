@@ -1,0 +1,517 @@
+{
+ "profiles": {
+  "8192": {
+   "prompt_tokens": 7331,
+   "profiled_wall_s": 3.155,
+   "unprofiled_s": 3.129,
+   "traced_gpu_s": 12.457,
+   "ranks": 2,
+   "listed_kernels_cover_pct": 100.0,
+   "families_gpu_s": {
+    "copies / casts / elementwise": 6.384,
+    "all-reduce": 2.767,
+    "block-FP8 GEMM": 2.367,
+    "extend attention": 0.24,
+    "norm / quantiser": 0.269,
+    "DeltaNet chunk": 0.323,
+    "MLP activation": 0.079,
+    "rocBLAS GEMM": 0.018,
+    "other": 0.009,
+    "KV store / RoPE": 0.003
+   },
+   "families_pct": {
+    "copies / casts / elementwise": 51.25,
+    "all-reduce": 22.21,
+    "block-FP8 GEMM": 19.0,
+    "extend attention": 1.92,
+    "norm / quantiser": 2.16,
+    "DeltaNet chunk": 2.59,
+    "MLP activation": 0.63,
+    "rocBLAS GEMM": 0.14,
+    "other": 0.07,
+    "KV store / RoPE": 0.02
+   }
+  },
+  "65536": {
+   "prompt_tokens": 58483,
+   "profiled_wall_s": 32.771,
+   "unprofiled_s": 32.793,
+   "traced_gpu_s": 120.215,
+   "ranks": 2,
+   "listed_kernels_cover_pct": 100.0,
+   "families_gpu_s": {
+    "copies / casts / elementwise": 56.004,
+    "all-reduce": 21.696,
+    "block-FP8 GEMM": 18.783,
+    "extend attention": 18.168,
+    "norm / quantiser": 2.132,
+    "DeltaNet chunk": 2.576,
+    "MLP activation": 0.632,
+    "rocBLAS GEMM": 0.141,
+    "other": 0.062,
+    "KV store / RoPE": 0.022
+   },
+   "families_pct": {
+    "copies / casts / elementwise": 46.59,
+    "all-reduce": 18.05,
+    "block-FP8 GEMM": 15.62,
+    "extend attention": 15.11,
+    "norm / quantiser": 1.77,
+    "DeltaNet chunk": 2.14,
+    "MLP activation": 0.53,
+    "rocBLAS GEMM": 0.12,
+    "other": 0.05,
+    "KV store / RoPE": 0.02
+   }
+  },
+  "221184": {
+   "prompt_tokens": 197326,
+   "profiled_wall_s": 184.087,
+   "unprofiled_s": 184.436,
+   "traced_gpu_s": 727.678,
+   "ranks": 2,
+   "listed_kernels_cover_pct": 100.0,
+   "families_gpu_s": {
+    "copies / casts / elementwise": 357.199,
+    "extend attention": 208.864,
+    "all-reduce": 79.917,
+    "block-FP8 GEMM": 62.838,
+    "norm / quantiser": 7.225,
+    "DeltaNet chunk": 8.759,
+    "MLP activation": 2.133,
+    "rocBLAS GEMM": 0.463,
+    "other": 0.207,
+    "KV store / RoPE": 0.074
+   },
+   "families_pct": {
+    "copies / casts / elementwise": 49.09,
+    "extend attention": 28.7,
+    "all-reduce": 10.98,
+    "block-FP8 GEMM": 8.64,
+    "norm / quantiser": 0.99,
+    "DeltaNet chunk": 1.2,
+    "MLP activation": 0.29,
+    "rocBLAS GEMM": 0.06,
+    "other": 0.03,
+    "KV store / RoPE": 0.01
+   }
+  }
+ },
+ "prefill": [
+  {
+   "context": 8192,
+   "input_len": 7331,
+   "runs_s": [
+    3.345,
+    3.128,
+    3.129
+   ],
+   "median_s": 3.129,
+   "prefill_tok_per_s": 2343.1
+  },
+  {
+   "context": 65536,
+   "input_len": 58483,
+   "runs_s": [
+    32.745,
+    32.793,
+    32.814
+   ],
+   "median_s": 32.793,
+   "prefill_tok_per_s": 1783.4
+  },
+  {
+   "context": 221184,
+   "input_len": 197326,
+   "runs_s": [
+    184.436,
+    184.057,
+    184.71
+   ],
+   "median_s": 184.436,
+   "prefill_tok_per_s": 1069.9
+  }
+ ],
+ "curve": [
+  {
+   "chunk_tokens": 8192,
+   "cached_tokens": 0,
+   "new_tokens": 197326,
+   "chunks": 25,
+   "fitted_chunks": 23,
+   "intercept_s": 3.4769,
+   "slope_s_per_1k_depth": 0.04384,
+   "fit_rms_s": 0.0162,
+   "depth_free_s": 83.75,
+   "depth_bound_s": 99.88,
+   "depth_bound_share": 0.5439,
+   "measured_s_behind_first_chunk": 180.59,
+   "first_chunk_s_with_idle_gap": 4.85,
+   "points": [
+    [
+     8192,
+     3.842
+    ],
+    [
+     16384,
+     4.207
+    ],
+    [
+     24576,
+     4.568
+    ],
+    [
+     32768,
+     4.926
+    ],
+    [
+     40960,
+     5.279
+    ],
+    [
+     49152,
+     5.634
+    ],
+    [
+     57344,
+     5.99
+    ],
+    [
+     65536,
+     6.336
+    ],
+    [
+     73728,
+     6.688
+    ],
+    [
+     81920,
+     7.048
+    ],
+    [
+     90112,
+     7.408
+    ],
+    [
+     98304,
+     7.778
+    ],
+    [
+     106496,
+     8.127
+    ],
+    [
+     114688,
+     8.486
+    ],
+    [
+     122880,
+     8.908
+    ],
+    [
+     131072,
+     9.218
+    ],
+    [
+     139264,
+     9.577
+    ],
+    [
+     147456,
+     9.941
+    ],
+    [
+     155648,
+     10.334
+    ],
+    [
+     163840,
+     10.667
+    ],
+    [
+     172032,
+     11.022
+    ],
+    [
+     180224,
+     11.384
+    ],
+    [
+     188416,
+     11.728
+    ]
+   ]
+  },
+  {
+   "chunk_tokens": 8192,
+   "cached_tokens": 0,
+   "new_tokens": 197326,
+   "chunks": 25,
+   "fitted_chunks": 23,
+   "intercept_s": 3.4772,
+   "slope_s_per_1k_depth": 0.0438,
+   "fit_rms_s": 0.0111,
+   "depth_free_s": 83.76,
+   "depth_bound_s": 99.79,
+   "depth_bound_share": 0.5437,
+   "measured_s_behind_first_chunk": 180.51,
+   "first_chunk_s_with_idle_gap": 4.56,
+   "points": [
+    [
+     8192,
+     3.844
+    ],
+    [
+     16384,
+     4.211
+    ],
+    [
+     24576,
+     4.568
+    ],
+    [
+     32768,
+     4.923
+    ],
+    [
+     40960,
+     5.282
+    ],
+    [
+     49152,
+     5.632
+    ],
+    [
+     57344,
+     5.985
+    ],
+    [
+     65536,
+     6.34
+    ],
+    [
+     73728,
+     6.691
+    ],
+    [
+     81920,
+     7.047
+    ],
+    [
+     90112,
+     7.405
+    ],
+    [
+     98304,
+     7.767
+    ],
+    [
+     106496,
+     8.133
+    ],
+    [
+     114688,
+     8.492
+    ],
+    [
+     122880,
+     8.856
+    ],
+    [
+     131072,
+     9.211
+    ],
+    [
+     139264,
+     9.581
+    ],
+    [
+     147456,
+     9.937
+    ],
+    [
+     155648,
+     10.295
+    ],
+    [
+     163840,
+     10.669
+    ],
+    [
+     172032,
+     11.024
+    ],
+    [
+     180224,
+     11.386
+    ],
+    [
+     188416,
+     11.736
+    ]
+   ]
+  },
+  {
+   "chunk_tokens": 8192,
+   "cached_tokens": 0,
+   "new_tokens": 197326,
+   "chunks": 25,
+   "fitted_chunks": 23,
+   "intercept_s": 3.511,
+   "slope_s_per_1k_depth": 0.04375,
+   "fit_rms_s": 0.1139,
+   "depth_free_s": 84.57,
+   "depth_bound_s": 99.67,
+   "depth_bound_share": 0.541,
+   "measured_s_behind_first_chunk": 181.16,
+   "first_chunk_s_with_idle_gap": 4.56,
+   "points": [
+    [
+     8192,
+     3.843
+    ],
+    [
+     16384,
+     4.209
+    ],
+    [
+     24576,
+     4.567
+    ],
+    [
+     32768,
+     4.929
+    ],
+    [
+     40960,
+     5.287
+    ],
+    [
+     49152,
+     5.63
+    ],
+    [
+     57344,
+     5.983
+    ],
+    [
+     65536,
+     6.344
+    ],
+    [
+     73728,
+     6.689
+    ],
+    [
+     81920,
+     7.072
+    ],
+    [
+     90112,
+     7.985
+    ],
+    [
+     98304,
+     7.773
+    ],
+    [
+     106496,
+     8.135
+    ],
+    [
+     114688,
+     8.495
+    ],
+    [
+     122880,
+     8.86
+    ],
+    [
+     131072,
+     9.216
+    ],
+    [
+     139264,
+     9.581
+    ],
+    [
+     147456,
+     9.945
+    ],
+    [
+     155648,
+     10.303
+    ],
+    [
+     163840,
+     10.667
+    ],
+    [
+     172032,
+     11.026
+    ],
+    [
+     180224,
+     11.395
+    ],
+    [
+     188416,
+     11.736
+    ]
+   ]
+  }
+ ],
+ "split": {
+  "copies / casts / elementwise": {
+   "total_gpu_s": 357.2,
+   "depth_free_gpu_s": 171.84,
+   "depth_bound_gpu_s": 185.36
+  },
+  "extend attention": {
+   "total_gpu_s": 208.86,
+   "depth_free_gpu_s": 6.45,
+   "depth_bound_gpu_s": 202.41
+  },
+  "all-reduce": {
+   "total_gpu_s": 79.92,
+   "depth_free_gpu_s": 74.47,
+   "depth_bound_gpu_s": 5.45
+  },
+  "block-FP8 GEMM": {
+   "total_gpu_s": 62.84,
+   "depth_free_gpu_s": 63.7,
+   "depth_bound_gpu_s": -0.86
+  },
+  "DeltaNet chunk": {
+   "total_gpu_s": 8.76,
+   "depth_free_gpu_s": 8.69,
+   "depth_bound_gpu_s": 0.06
+  },
+  "norm / quantiser": {
+   "total_gpu_s": 7.22,
+   "depth_free_gpu_s": 7.23,
+   "depth_bound_gpu_s": -0.01
+  },
+  "MLP activation": {
+   "total_gpu_s": 2.13,
+   "depth_free_gpu_s": 2.13,
+   "depth_bound_gpu_s": 0.0
+  },
+  "rocBLAS GEMM": {
+   "total_gpu_s": 0.46,
+   "depth_free_gpu_s": 0.47,
+   "depth_bound_gpu_s": -0.01
+  },
+  "other": {
+   "total_gpu_s": 0.21,
+   "depth_free_gpu_s": 0.24,
+   "depth_bound_gpu_s": -0.03
+  },
+  "KV store / RoPE": {
+   "total_gpu_s": 0.07,
+   "depth_free_gpu_s": 0.07,
+   "depth_bound_gpu_s": 0.0
+  }
+ },
+ "gate": "ok"
+}

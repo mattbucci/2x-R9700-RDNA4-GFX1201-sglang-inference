@@ -1,0 +1,462 @@
+{
+ "label": "rad10a plain",
+ "note": "qwen38 FP8, QWEN38_SPEC=0, live tree, 97 patches, --random-seed 7; prefill_ttft.py runs, before any profiler window",
+ "logs": [
+  {
+   "log": "/data/logs/rad10a-prefill-profile-2026-11-10/server.log",
+   "prefill_reports": 115,
+   "prompts": [
+    {
+     "chunk_tokens": 8192,
+     "cached_tokens": 0,
+     "new_tokens": 58483,
+     "chunks": 8,
+     "fitted_chunks": 6,
+     "intercept_s": 3.4938,
+     "slope_s_per_1k_depth": 0.0431,
+     "fit_rms_s": 0.0109,
+     "depth_free_s": 24.94,
+     "depth_bound_s": 7.76,
+     "depth_bound_share": 0.2372,
+     "measured_s_behind_first_chunk": 29.15,
+     "first_chunk_s_with_idle_gap": 4.6,
+     "points": [
+      [
+       8192,
+       3.832
+      ],
+      [
+       16384,
+       4.22
+      ],
+      [
+       24576,
+       4.55
+      ],
+      [
+       32768,
+       4.906
+      ],
+      [
+       40960,
+       5.264
+      ],
+      [
+       49152,
+       5.605
+      ]
+     ]
+    },
+    {
+     "chunk_tokens": 8192,
+     "cached_tokens": 0,
+     "new_tokens": 58483,
+     "chunks": 8,
+     "fitted_chunks": 6,
+     "intercept_s": 3.5088,
+     "slope_s_per_1k_depth": 0.04307,
+     "fit_rms_s": 0.0076,
+     "depth_free_s": 25.05,
+     "depth_bound_s": 7.75,
+     "depth_bound_share": 0.2364,
+     "measured_s_behind_first_chunk": 29.24,
+     "first_chunk_s_with_idle_gap": 4.56,
+     "points": [
+      [
+       8192,
+       3.853
+      ],
+      [
+       16384,
+       4.219
+      ],
+      [
+       24576,
+       4.57
+      ],
+      [
+       32768,
+       4.926
+      ],
+      [
+       40960,
+       5.282
+      ],
+      [
+       49152,
+       5.614
+      ]
+     ]
+    },
+    {
+     "chunk_tokens": 8192,
+     "cached_tokens": 0,
+     "new_tokens": 58483,
+     "chunks": 8,
+     "fitted_chunks": 6,
+     "intercept_s": 3.5252,
+     "slope_s_per_1k_depth": 0.0427,
+     "fit_rms_s": 0.0087,
+     "depth_free_s": 25.17,
+     "depth_bound_s": 7.69,
+     "depth_bound_share": 0.234,
+     "measured_s_behind_first_chunk": 29.27,
+     "first_chunk_s_with_idle_gap": 4.55,
+     "points": [
+      [
+       8192,
+       3.889
+      ],
+      [
+       16384,
+       4.213
+      ],
+      [
+       24576,
+       4.566
+      ],
+      [
+       32768,
+       4.926
+      ],
+      [
+       40960,
+       5.28
+      ],
+      [
+       49152,
+       5.625
+      ]
+     ]
+    },
+    {
+     "chunk_tokens": 8192,
+     "cached_tokens": 0,
+     "new_tokens": 197326,
+     "chunks": 25,
+     "fitted_chunks": 23,
+     "intercept_s": 3.4769,
+     "slope_s_per_1k_depth": 0.04384,
+     "fit_rms_s": 0.0162,
+     "depth_free_s": 83.75,
+     "depth_bound_s": 99.88,
+     "depth_bound_share": 0.5439,
+     "measured_s_behind_first_chunk": 180.59,
+     "first_chunk_s_with_idle_gap": 4.85,
+     "points": [
+      [
+       8192,
+       3.842
+      ],
+      [
+       16384,
+       4.207
+      ],
+      [
+       24576,
+       4.568
+      ],
+      [
+       32768,
+       4.926
+      ],
+      [
+       40960,
+       5.279
+      ],
+      [
+       49152,
+       5.634
+      ],
+      [
+       57344,
+       5.99
+      ],
+      [
+       65536,
+       6.336
+      ],
+      [
+       73728,
+       6.688
+      ],
+      [
+       81920,
+       7.048
+      ],
+      [
+       90112,
+       7.408
+      ],
+      [
+       98304,
+       7.778
+      ],
+      [
+       106496,
+       8.127
+      ],
+      [
+       114688,
+       8.486
+      ],
+      [
+       122880,
+       8.908
+      ],
+      [
+       131072,
+       9.218
+      ],
+      [
+       139264,
+       9.577
+      ],
+      [
+       147456,
+       9.941
+      ],
+      [
+       155648,
+       10.334
+      ],
+      [
+       163840,
+       10.667
+      ],
+      [
+       172032,
+       11.022
+      ],
+      [
+       180224,
+       11.384
+      ],
+      [
+       188416,
+       11.728
+      ]
+     ]
+    },
+    {
+     "chunk_tokens": 8192,
+     "cached_tokens": 0,
+     "new_tokens": 197326,
+     "chunks": 25,
+     "fitted_chunks": 23,
+     "intercept_s": 3.4772,
+     "slope_s_per_1k_depth": 0.0438,
+     "fit_rms_s": 0.0111,
+     "depth_free_s": 83.76,
+     "depth_bound_s": 99.79,
+     "depth_bound_share": 0.5437,
+     "measured_s_behind_first_chunk": 180.51,
+     "first_chunk_s_with_idle_gap": 4.56,
+     "points": [
+      [
+       8192,
+       3.844
+      ],
+      [
+       16384,
+       4.211
+      ],
+      [
+       24576,
+       4.568
+      ],
+      [
+       32768,
+       4.923
+      ],
+      [
+       40960,
+       5.282
+      ],
+      [
+       49152,
+       5.632
+      ],
+      [
+       57344,
+       5.985
+      ],
+      [
+       65536,
+       6.34
+      ],
+      [
+       73728,
+       6.691
+      ],
+      [
+       81920,
+       7.047
+      ],
+      [
+       90112,
+       7.405
+      ],
+      [
+       98304,
+       7.767
+      ],
+      [
+       106496,
+       8.133
+      ],
+      [
+       114688,
+       8.492
+      ],
+      [
+       122880,
+       8.856
+      ],
+      [
+       131072,
+       9.211
+      ],
+      [
+       139264,
+       9.581
+      ],
+      [
+       147456,
+       9.937
+      ],
+      [
+       155648,
+       10.295
+      ],
+      [
+       163840,
+       10.669
+      ],
+      [
+       172032,
+       11.024
+      ],
+      [
+       180224,
+       11.386
+      ],
+      [
+       188416,
+       11.736
+      ]
+     ]
+    },
+    {
+     "chunk_tokens": 8192,
+     "cached_tokens": 0,
+     "new_tokens": 197326,
+     "chunks": 25,
+     "fitted_chunks": 23,
+     "intercept_s": 3.511,
+     "slope_s_per_1k_depth": 0.04375,
+     "fit_rms_s": 0.1139,
+     "depth_free_s": 84.57,
+     "depth_bound_s": 99.67,
+     "depth_bound_share": 0.541,
+     "measured_s_behind_first_chunk": 181.16,
+     "first_chunk_s_with_idle_gap": 4.56,
+     "points": [
+      [
+       8192,
+       3.843
+      ],
+      [
+       16384,
+       4.209
+      ],
+      [
+       24576,
+       4.567
+      ],
+      [
+       32768,
+       4.929
+      ],
+      [
+       40960,
+       5.287
+      ],
+      [
+       49152,
+       5.63
+      ],
+      [
+       57344,
+       5.983
+      ],
+      [
+       65536,
+       6.344
+      ],
+      [
+       73728,
+       6.689
+      ],
+      [
+       81920,
+       7.072
+      ],
+      [
+       90112,
+       7.985
+      ],
+      [
+       98304,
+       7.773
+      ],
+      [
+       106496,
+       8.135
+      ],
+      [
+       114688,
+       8.495
+      ],
+      [
+       122880,
+       8.86
+      ],
+      [
+       131072,
+       9.216
+      ],
+      [
+       139264,
+       9.581
+      ],
+      [
+       147456,
+       9.945
+      ],
+      [
+       155648,
+       10.303
+      ],
+      [
+       163840,
+       10.667
+      ],
+      [
+       172032,
+       11.026
+      ],
+      [
+       180224,
+       11.395
+      ],
+      [
+       188416,
+       11.736
+      ]
+     ]
+    }
+   ]
+  }
+ ]
+}
