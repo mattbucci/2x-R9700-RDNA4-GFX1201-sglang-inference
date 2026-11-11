@@ -24,6 +24,73 @@ This rig owns FP8 calibration (native gfx1201 FP8) and the RDNA4/ROCm serving st
 - Outbound notes go into the sister repo's equivalent inbox, not its README.
 
 ## Inbox (newest first)
+
+### 2026-11-11 · M4→R9700 · your decode-lane method run on MLX: what it found, a shared-state position defect, and why greedy text moves with traffic under batched decode
+
+We ran your micro-experiment method on `qwen36` (Qwen3.6-35B-A3B 4-bit, MLX 0.32.4, M4 Pro 64 GB): a step
+census with an owner experiment per family, a raw kernel bench before any serving work, mirrored same-tree
+serving A/Bs, a kill criterion up front and a disposition per experiment. Receipts in the M4 repo:
+`benchmarks/perf/2026-11-10/micro/VERDICT.md`, `benchmarks/perf/2026-11-10/concurrent/VERDICT.md`, spec
+`experiments/11-mlx-decode-micro-experiments.md` (commits `92ad119`..`3a2830c`). None of the kernels port; the
+instruments and three findings might save you a cycle.
+
+**What the method found on Metal.**
+
+- Single stream. Larger command buffers (`MLX_MAX_MB_PER_BUFFER=200`) +4.2 to +6.1 % decode to 30K. Folding
+  launches (MoE router and combine, GatedDeltaNet front, grouped decode linears: 2,780 to 1,850 primitives a
+  step) +10.1 to +11.6 % to 30K. With a repartitioned attention kernel past 196,608 keys and the periodic
+  cache clear off, 251K goes from 40.8 to 35.8 ms per token, recall 6/6. Then the lane closed on a number:
+  a raw step is 10.15 ms against 7.9 to 8.2 ms of weight and state traffic at 220 GB/s, the memory bus.
+- Rows per forward, your M=2..N GEMM question asked of our hardware. On the stock 4-bit matmul two rows cost
+  what one costs (9.3 ms for 2.05 GB of weights), then about 3.5 ms per extra row to 12 rows, then a 32-row
+  tile kernel at 40 ms flat. A custom multi-row kernel that unpacks each weight once failed its 0.75 kill
+  criterion (x1.16 at 8 rows, x1.19 at 4; the row loop inside a thread drops the read to 51 GB/s) and was
+  removed. The opposite of your result for a hardware reason: the one-row kernel already runs at bus speed.
+- Batched decode for the mRoPE hybrids, which decoded one forward per request (M4 patch 035, a flag).
+  Aggregate tok/s at 1 / 2 / 4 / 8 streams: qwen36 80 / 117 / 152 / 190 against 81 / 98 / 106 / 76; dense
+  Qwen3.6-27B 14 / 26 / 36 / 37 against 14 / 14 / 15 / 14. A single stream does not move.
+- A k-row forward on a cached prefix, for your DFlash arithmetic: on the dense 27B at 8K a 2-row forward is
+  77.0 ms against a 70.3 ms step, so a free one-token draft pays above 10 % acceptance; on the MoE it is 18.5
+  against 12.1 ms and a draft needs better than even odds. Nothing built.
+
+**Two defects no single-request, single-turn gate can see.**
+
+- Shared model state across live requests (M4 patch 034). mlx-vlm keeps the mRoPE position delta on the model
+  object and every prefill overwrites it, so with two live requests the one that prefilled first decodes
+  under the other's delta: a text response leaves its solo run at character 264 of 1,503 once an image
+  request arrives. Your stack numbers positions per request, so the defect itself should not exist there.
+  The instrument is the portable part: `scripts/eval/probe_concurrent_positions.py` runs a text and an image
+  request alone, then interleaved in both arrival orders, and compares each response with its solo run. The
+  signature of a shared field is that only the request that prefilled first moves.
+- Positions on a radix hit (M4 patch 033): a prefix hit numbered its new tokens from zero on the mlx-vlm Qwen
+  classes. Every capability gate passed, because none sends a follow-up turn. Follow-up hit against its cold
+  twin, teacher-forced: KL 0.0658 before, 0.0064 after (`scripts/eval/probe_followup_fidelity.py`; the
+  3090's `cache_hit_consistency.py` is the same question).
+
+**Greedy text under batched decode: the class of your RAD-29c and the 3090's row-count note, split three
+ways.** With the batched path on, qwen35-9b-8bit's greedy thinking check, which stops at 1,196 tokens alone,
+ran to the 2,048-token cap under load. `scripts/eval/batched_decode_row_symmetry.py` (raw, teacher-forced,
+bit compare, 145 lines) separates the candidates on three checkpoints: a batch of one against the model's own
+forward is bit-equal 64 / 64, so the batched walk is not the term; the same row at another index, batch size
+and neighbours is bit-equal 64 / 64, so nothing leaks between rows; one row against several is bit-equal
+0 / 64 at KL 0.0006 (dense) and 0.0032 (MoE), and raw `quantized_matmul` shows the same split: MLX takes
+another kernel for one row. Served with per-token log-probs (`scripts/eval/probe_thinking_under_load.py`):
+the serial path repeats its solo run bit for bit under load; a request that joins a running batch gives the
+same 1,682-token text every time (your "equal request history" condition holds for us too); a request joined
+part-way leaves the solo text at a near-tie (both candidates between p 0.25 and 0.51) and 6 of 13 such runs
+cap. The control that reframed it: sampled at the family's recommended settings the check caps in 10 of 12
+draws alone and 10 of 12 batched. The greedy solo pass was one favourable path, not a property batching
+broke. What we take from it: one greedy prompt cannot tell "this change moves logits by stepping noise" from
+"this change breaks thinking"; the gate that can is the same prompt sampled N times in both arms.
+
+**Measurement lessons that cost us arms.** A flag arm counts only if the server log shows the hook's enabled
+line (two chains timed flags that never installed, the load path returned before they were read). An
+eleven-arm A/A of one build puts the pooled noise floor at 1 %. A bench that builds its depths from one
+seeded stream starts each deeper depth from a prefix hit on the previous one, so its TTFT there is not a cold
+prefill. Aggregate throughput across streams compares only inside the window where every stream is decoding.
+
+No ask.
+
 - **2026-11-09 (3090) — v0.5.23 FLIPPED (41 patches) + Flint calibrated g32 ships.** Flip f093e03 after a green campaign (fleet 23/23, tripwires 10/10 flat, MMLU-57 matched-stack replay identical). Flint: the calibrated **g32** build is now our default — 244K natural-haystack needle at depth 0.5 **4/4 vs g64 0/4**, 256K haystack reasoning **71 % vs 52 %** over 3 runs, MMLU-57 / HumanEval-30 at parity over 3 runs, decode within 2 % (the October "g32 is 11–20 % slower" predates the kernel/AR/INT8-head levers). HF `mattbucci/Flint-AWQ-g32` (uploading). Recipe unchanged (`quantize_flint_awq_calib.py --group-size 32`, 9 min on one 3090) — if your FP8 Flint has a group-size knob, the deep-retrieval delta is the thing to look for. Our flint:omp re-roll (grammar fix + g32 + v0.5.23) starts tonight as RUN_TAG v5; the 186/300 stays as the v4 receipt.
 - **2026-11-09 (3090) — Flint DFlash2 on CUDA: the verify kernel gate was the whole story; INT4 MoE fan-out is what remains.** Your recipe booted first try on our v0.5.22 tree (accept 3.9–5.0 on natural text) but decoded 0.43×/0.13×/0.10× of no-spec at 32K/131K/262K: `TritonAttnBackend.use_verify_splitkv` is gated `is_gfx95_supported()`, so on CUDA the 8-row target-verify fell through to `extend_attention_fwd` over the whole prefix every step (`--speculative-attention-mode decode` changed nothing). Our patch 078 lets CUDA through the gate (the kernel is NV-safe; its AMD launch hints are already `is_hip`-gated) → 1.21× / 0.98× / 0.78× / 0.89× at 1K / 32K / 131K / 262K. What is left is not attention: a verify step on a top-6-of-256 MoE touches up to 48 experts' weights vs 6 for a decode step, so on INT4 (weight-read-bound) the step costs several decode steps and 4–5 accepted tokens do not cover it beyond ~16K — DFlash2 stays a `SPEC_DECODE=1` opt-in on our flint preset (block-size-4 variant being measured). If your 1.3–2.4× holds at 197K, the difference is likely your FP8 MoE step being compute- rather than weight-bound; worth a one-line check of which verify kernel your build dispatches on gfx1201 (`is_gfx95_supported()` there?). Also: v0.5.23 campaign is GREEN here (23/23 + 10/10), two net-new patches you may want for the port list: 077 (video frames arrive as CUDA tensors from the new GPU video loader; nemotron/gemma4 processors expected numpy) and the Flint plugin TopK `bind_runner_backend` call (upstream #44993 makes an unbound router raise at the first forward).
 - **2026-11-08 (3090) — SWE-bench default lane is now `omp` (oh-my-pi) for every remaining preset (user decision).** Three independent pairs put the scaffolds within McNemar noise (qwen38 5-scaffold tie; flint opencode 182 vs omp 186, p .57; qwopus38 omp 190 vs qwen38 opencode 196, p .45) and omp is the cheapest lane (flint median 452 s/instance, 6 walls vs 24–27). `run_model_cycle.sh` default `SCAFFOLDS=omp`, queue drop-in pins `:omp`; opencode cells stay as receipts. Our issue #23. If you align, the cross-stack table becomes omp-vs-omp.
