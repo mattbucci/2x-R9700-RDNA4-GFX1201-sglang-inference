@@ -28,13 +28,12 @@ next release tag at a bake-off lane boundary).
 |---|---|---:|
 | Core RDNA4 enablement | 001 002 003 008 060 063 094 119 129 | 9 |
 | MoE serving and routing | 004 028 031 033 037 066 075 076 078 079 097 104 116 118 | 14 |
-| Attention and numerics | 011 027 065 077 080 081 084 085 086 087 088 107 108 109 110 111 112 123 125 126 127 | 21 |
+| Attention and numerics | 011 027 065 077 080 081 084 085 086 087 088 107 108 109 110 111 112 123 125 126 127 130 | 22 |
 | AWQ int4 | 006 030 032 041 | 4 |
 | FP8 | 005 039 042 044 045 074 082 106 121 122 128 | 11 |
 | Mamba2 hybrids | 043 046 047 049 073 114 124 | 7 |
 | Gemma 4 | 023 024 025 026 061 098 | 6 |
-| Model, parser, and speculative-decode plumbing | 007 015 016 036 040 048 055 056 057 058 062 083 089 090 091 092 093 095 100 105 115 117 120 | 23 |
-| API and network hardening | 096 103 | 2 |
+| Model, parser, and speculative-decode plumbing | 007 015 016 036 040 048 055 056 057 058 062 083 089 090 091 092 093 095 096 100 103 105 115 117 120 | 25 |
 
 The detailed active index and replay procedure are in [`patches/README.md`](patches/README.md). The
 v0.5.22 rebase is validated in [`patches/v0522-rebase-2026-10-19.md`](patches/v0522-rebase-2026-10-19.md), the

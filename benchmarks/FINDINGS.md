@@ -1199,7 +1199,7 @@ Disposition: the `qwen38` preset exports the split for `QUANT_OVERRIDE=quark` as
 the replicated layout and every other override keeps it. MXFP4 without speculation is 1.28× this stack's FP8
 canonical row at 24 tokens and 1.4–1.5× behind radiance's 51.6 / 50.8 / 47.4 / 41.0, from 1.6–1.7×.
 
-### RAD-22 — native HIP W8A16 GEMV for the one-row block-FP8 linears: decode +7–8 %; patch 122, opt-in (2026-11-10)
+### RAD-22 — native HIP W8A16 GEMV for the one-row block-FP8 linears: decode +7–8 %; patch 122, in the qwen38 FP8 preset (2026-11-10)
 
 One no-spec decode step of the FP8 Qwen3.8 runs 256 block-FP8 linears per rank at one row. The Triton path quantises
 the bf16 activation per token group and feeds a W8A8 GEMM whose tile is laid out for 16 rows.
@@ -1247,7 +1247,7 @@ kernel; a W8A16 kernel for the verify's row count is the open follow-up (RAD-22b
 Disposition: patch 122, code default off. `scripts/setup.sh` builds the extension; without it or without the switch
 the Triton path serves unchanged. The FP8 qwen38 preset exports the switch since the stack confirmation below.
 
-### RAD-5a — GemmaRMSNorm on the one-launch Triton kernels: decode +10–13 %, prefill +5–9 %; patch 123, opt-in (2026-11-10)
+### RAD-5a — GemmaRMSNorm on the one-launch Triton kernels: decode +10–13 %, prefill +5–9 %; patch 123, in the qwen38 FP8 preset (2026-11-10)
 
 Qwen3.5/3.8 normalise with `GemmaRMSNorm`, 129 calls per decode step per rank. Upstream gates its one-launch Triton
 Gemma kernels (plain, and residual add + norm in one read) behind aiter, so `forward_hip` fell to the native chain
@@ -1292,7 +1292,7 @@ Capabilities 4/4 and needle 9/9 on both DSpark arms.
 Disposition: patch 123, code default off. The FP8 qwen38 preset exports the switch since the stack confirmation
 below; other presets whose model normalises with `GemmaRMSNorm` opt in after their own capability pass.
 
-### RAD-23 — one-launch bf16 GEMV for the DeltaNet `in_proj_ba`: decode +2–4 %; patch 124, opt-in (2026-11-10)
+### RAD-23 — one-launch bf16 GEMV for the DeltaNet `in_proj_ba`: decode +2–4 %; patch 124, in the qwen38 FP8 preset (2026-11-10)
 
 The DeltaNet `in_proj_ba` is the one projection the FP8 checkpoint leaves unquantised: 96 × 5120 bf16 (48 × 5120 per
 rank on the TP-split layout), 1 MB. rocBLAS serves it with a tiled GEMM whose launch costs 30 µs, 48 times per decode
