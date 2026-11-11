@@ -2234,6 +2234,74 @@ above the control's in every size group. The preset default stays for the DFlash
 unchanged. The DFlash2 cycle of this tree is 1.46–1.52× the plain step of the same session against 1.60–1.64×
 without the kernel and the 1.3× radiance states: 4.7 / 5.6 / 6.1 / 7.5 ms per cycle remain at the four depths.
 
+### RAD-10b — the prefix attention on equal operands: the served extend kernel takes 3.5× the time of radiance's fp8-QK row at depth and is less exact than it; verdict `port` on both cards (2026-11-11)
+
+RAD-10a put 104 s of the 184 s cold prefill at 197K into the attention over the prefix. `scripts/bench/bench_prefill_attention.py`
+times that launch alone, inside the libr4d sandbox, on the operands of one full-attention layer of the `qwen38`
+preset per rank (12 query heads over 2 KV heads, head size 256, fp8 e4m3 KV cache, causal, the last 8192 / 4096 /
+2048 queries of a prompt of 8K to 197K tokens), the same data for every arm. This tree's arms call
+`extend_attention_fwd` with the argument list of `TritonAttnBackend.forward_extend`: the served preset (fp8 QK,
+patch 108) and the QK switch off. The vendor arms are the four paged rows of `attn_prefill_h256_gqa6_fp8kv`: exact
+legs, fp8 QK (`qk8`), fp8 PV (`pv8`) and both. Each arm is compared with an fp64 reference on 48 sampled rows
+before its time counts; times are medians over forward and reverse order on rotated copies of the cache. Card 0
+ran every case and card 1 the two deep ones ([receipts](profiling/rad10b-prefill-attention-v2-2026-11-11/); the
+[first run](profiling/rad10b-prefill-attention-2026-11-11/) measured the same times within 1.6 % and was
+unreadable on three defects of the bench, listed below). No flag, every row valid.
+
+8192 queries, card 0, ms per launch:
+
+| Keys | Served (fp8 QK) | QK switch off | Vendor exact | Vendor qk8 | Vendor pv8 | Vendor qk8pv8 | Served over qk8 | over exact |
+|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| 8,192 | 9.04 | 7.68 | 5.85 | 3.78 | 5.48 | 2.97 | ×2.39 | ×1.54 |
+| 65,536 | 163.3 | 334.1 | 76.5 | 47.2 | 71.6 | 37.1 | ×3.46 | ×2.13 |
+| 131,072 | 342.7 | 733.1 | 157.8 | 96.9 | 147.9 | 76.1 | ×3.53 | ×2.17 |
+| 196,608 | 521.1 | 1,143.6 | 238.4 | 146.6 | 224.0 | 114.6 | ×3.56 | ×2.19 |
+
+Card 1 reads ×3.52 and ×3.55 over qk8 at 131,072 and 196,608 keys; 4096 queries read ×3.48 / ×3.59 at 65,536 /
+196,608 keys and 2048 queries ×3.47 at 100,000. Linear fits at 8192 queries: served 8.35 ms + 2.720 ms per 1K
+of prefix (3.01 G query-key pairs/s on the slope), vendor exact 5.85 + 1.235 (6.6 G), vendor qk8 3.78 + 0.758
+(10.8 G), vendor qk8pv8 3.05 + 0.593 (13.8 G). The bench's slope times 16 layers is 0.0435 s per chunk per 1K of
+prefix against the 0.0438 the server reports (×0.994), so the launch is the serving cost. The vendor's exact row
+takes 30.7 ms at the shape for which its source states 22.7 ms (×1.35): the stated rate is not reached on this
+rig, and every ratio here uses measured times.
+
+Accuracy against the fp64 reference at 196,608 keys, lowest / mean cosine over the sampled rows:
+
+| Arm | Lowest | Mean |
+|---|---:|---:|
+| Served (fp8 QK, e4m3 softmax weights) | 0.9917 | 0.9980 |
+| QK switch off (e4m3 softmax weights) | 0.9917 | 0.9988 |
+| Vendor exact | 0.999998 | 0.999998 |
+| Vendor qk8 | 0.9985 | 0.9992 |
+| Vendor pv8 | 0.9919 | 0.9995 |
+| Vendor qk8pv8 | 0.9911 | 0.9988 |
+
+On gfx1201 the prefix stage of the served kernel casts the softmax weights to e4m3 for the PV product without a
+lift (the lifted branch is gated to another card), so with the QK switch off it is the class of the vendor's
+`pv8` row and as served the class of `qk8pv8`. An fp64 model of that arithmetic (tile-wise running maximum, e4m3
+weights in the numerator, exact weights in the denominator) agrees with the kernel to 0.999996 lowest cosine in
+every deep case, so the loss is the arithmetic and not a defect. The synthetic logits are flat, which is the
+worst case for a weight cast; the needle grid passes 9/9 on real prompts. Against the row of its own class the
+served kernel takes ×4.4 to ×4.6, and the vendor's `qk8` row is both ×3.5 faster and more exact (RAD-31 holds the
+lift for the verify stage).
+
+Projected on the 197K cold prompt (24 chunks, 16 full-attention layers): 101.6 s of prefix attention per rank
+with the served kernel, 46.9 s with the vendor's exact legs, 28.9 s with `qk8`, 22.6 s with `qk8pv8`. A port at
+the `qk8` time takes 72.7 s off the 184.4 s cold prefill (1,070 → about 1,770 tok/s) and the 2.35× gap to
+radiance at that depth to about 1.4×.
+
+The first run's defects, fixed before this one: the floors (0.9999 / 0.995) were set for bf16 PV and failed the
+e4m3-weight class at depth; the pairing called the served kernel `qk8`-class and the switch-off kernel exact;
+the vendor arms did not hold their output buffer, so a later arm's stored output was overwritten by an earlier
+arm's timed launches (cross-arm agreement near zero cosine in four of seven cases). The bench now carries a class
+model per arm, holds every buffer it hands out and checksums stored outputs around the timed passes.
+
+Disposition, by the gate fixed before the run (`port` on both cards: served time at least 1.5× the faster valid
+row of `qk8` / exact at 8192 queries behind 123K and 188K of prefix, the row at least as exact as the served one):
+a native HIP prefix-attention stage ported from the Apache-2.0 radiance tree (`libr4d/r4d_attn_prefill_h256_gqa6.hip`)
+as a numbered patch with attribution, behind a switch, kernel bench on this bench's operands first, then a serving
+A/B (RAD-10c). No tile sweep of the Triton kernel: the gap is 3.5×, not a tile choice.
+
 ## Evaluation methodology
 
 ### SWE-bench answer leakage through git history and the web (found 2026-09-18)
