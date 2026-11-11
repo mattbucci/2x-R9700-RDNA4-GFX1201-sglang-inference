@@ -18,11 +18,14 @@ Safety: the scratch clone must carry the marker file .git/patch-inventory-scratc
 
 The tree is then checked without a GPU: every tracked file equals the replay, files differ from the live tree only
 where the group's patches touch them, the changed Python files compile, pyflakes reports no new undefined name,
-and no name the group defines is still referenced without a definition. A patch that touches native sources or
+no name the group defines is still referenced without a definition, and no other file uses a name a changed
+module lost or calls a function whose parameters changed (a patch outside the group can depend on the group's
+code without touching its lines). A patch that touches native sources or
 paths outside python/ needs a build the copy does not have (a source file that leaves the tree does not). One line is printed, TREE ok|review|fail, and the
 details go to <out>/consol-tree.json together with a tree_check entry for the session file.
 """
 import argparse
+import ast
 import io
 import json
 import os
@@ -113,6 +116,91 @@ def dangling(root, names):
             if re.search(rf"(?:^|\s)(?:def|class)\s+{name}\b|(?:^|[\s.,(]){name}\s*(?::[^=\n]+)?=[^=]", src, re.M):
                 have.add(name)
     return {n: sorted(v)[:5] for n, v in sorted(refs.items()) if n not in have}
+
+
+def interface(src):
+    """Module-level names of a source file and the parameter lists of its module-level functions."""
+    try:
+        tree = ast.parse(src)
+    except SyntaxError:
+        return set(), {}
+    names, params = set(), {}
+    for node in tree.body:
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+            names.add(node.name)
+            if not isinstance(node, ast.ClassDef):
+                params[node.name] = ast.dump(node.args)
+        elif isinstance(node, (ast.Assign, ast.AnnAssign)):
+            targets = node.targets if isinstance(node, ast.Assign) else [node.target]
+            names.update(t.id for t in targets if isinstance(t, ast.Name))
+        elif isinstance(node, (ast.Import, ast.ImportFrom)):
+            names.update((a.asname or a.name).split(".")[0] for a in node.names)
+    return names, params
+
+
+def uses(src, module):
+    """Names a file takes from a module: imported from it, or read as an attribute of it ('*' = all of them)."""
+    try:
+        tree = ast.parse(src)
+    except SyntaxError:
+        return {"*"}
+    aliases, out = {module}, set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.ImportFrom):
+            for a in node.names:
+                if (node.module or "").split(".")[-1] == module:
+                    out.add(a.name)
+                elif a.name == module:
+                    aliases.add(a.asname or a.name)
+        elif isinstance(node, ast.Import):
+            aliases.update(a.asname for a in node.names if a.asname and a.name.split(".")[-1] == module)
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Attribute) and isinstance(node.value, (ast.Name, ast.Attribute)):
+            if (node.value.id if isinstance(node.value, ast.Name) else node.value.attr) in aliases:
+                out.add(node.attr)
+    return out
+
+
+def broken_users(live_py, out_py, changed, base=lambda path: None):
+    """Other files of the tree that take a name the changed module lost, or a function whose parameters changed.
+
+    A patch group can apply and replay cleanly while a patch outside it still calls into the group's code: the
+    leave-one-out replay only sees text. A user that is the upstream file, of a name or parameter list the tree
+    has as upstream has it, is consistent and only listed (base(path) returns the upstream bytes)."""
+    lost, moved, upstream = {}, {}, []
+    sources = None
+    for path in changed:
+        rel = path[len("python/"):]
+        live, mine = read(os.path.join(live_py, rel)), read(os.path.join(out_py, rel))
+        if live is None or mine is None or not rel.endswith(".py"):
+            continue
+        (ln, lp), (mn, mp) = interface(live.decode("utf-8", "replace")), interface(mine.decode("utf-8", "replace"))
+        gone = ln - mn
+        resigned = {n for n in lp if n in mp and lp[n] != mp[n]}
+        if not gone and not resigned:
+            continue
+        bn, bp = interface((base(path) or b"").decode("utf-8", "replace"))
+        module = os.path.basename(rel)[:-3]
+        if module == "__init__":
+            module = os.path.basename(os.path.dirname(rel))
+        if sources is None:
+            sources = {os.path.relpath(f, out_py): (read(f) or b"") for f in python_sources(out_py)}
+        for other, raw in sorted(sources.items()):
+            if other == rel or module.encode() not in raw:
+                continue
+            used = uses(raw.decode("utf-8", "replace"), module)
+            same = base("python/" + other) == raw
+            for name in sorted(gone if "*" in used else gone & used):
+                if same and name not in bn:
+                    upstream.append(f"{other}: {module}.{name}")
+                else:
+                    lost.setdefault(f"{module}.{name}", []).append(other)
+            for name in sorted(resigned if "*" in used else resigned & used):
+                if same and bp.get(name) == mp[name]:
+                    upstream.append(f"{other}: {module}.{name}()")
+                else:
+                    moved.setdefault(f"{module}.{name}", []).append(other)
+    return lost, moved, upstream
 
 
 def flakes(binary, paths):
@@ -245,6 +333,19 @@ def build(args):
         rec["dangling"] = dangling(out_py, defined_names(pdir, group))
         if rec["dangling"]:
             review.append(f"names the group defines are still referenced: {sorted(rec['dangling'])[:6]}")
+        upstream = {}
+
+        def base_bytes(path):  # the file as the base commit has it; the clone is at the partial replay here
+            if path not in upstream:
+                r = subprocess.run(["git", "-C", scratch, "show", f"{args.base}:{path}"], capture_output=True)
+                upstream[path] = r.stdout if r.returncode == 0 else None
+            return upstream[path]
+
+        rec["lost_names"], rec["changed_parameters"], rec["upstream_users"] = broken_users(live_py, out_py, changed, base_bytes)
+        if rec["lost_names"]:
+            review.append(f"other files use names the tree's modules no longer define: {rec['lost_names']}")
+        if rec["changed_parameters"]:
+            review.append(f"other files call functions whose parameters differ in the tree: {rec['changed_parameters']}")
         rec["tree_check"] = tree_check(pdir, group, live_py, out_py)
         if rec["tree_check"] is None:
             problems.append("no file or added line tells the tree from the live tree")

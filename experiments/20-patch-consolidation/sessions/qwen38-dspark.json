@@ -121,6 +121,18 @@
    "off": [
     "gemm128"
    ]
+  },
+  {
+   "name": "p109",
+   "patches": [
+    "109",
+    "111",
+    "126"
+   ],
+   "tree": "/data/sgl-v0522-consol/s{series}/p109",
+   "off": [
+    "window126"
+   ]
   }
  ]
 }

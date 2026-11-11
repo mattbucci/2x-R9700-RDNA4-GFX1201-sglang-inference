@@ -186,10 +186,12 @@ the group on the marked scratch clone, copies the live `python/` (built extensio
 swaps in the replayed files and links the live `rust` directory. It never writes to the serving tree and only builds
 under a new name. Each tree carries a receipt with the CPU checks: the tracked files equal the replay, the tree
 differs from the live tree only in the group's files, the changed Python files compile, pyflakes reports no new
-undefined name, and no name the group defines is still referenced. The tree path holds `{series}`, the number of
+undefined name, no name the group defines is still referenced, and no other file imports a name a changed module
+lost or a function whose parameters changed. The tree path holds `{series}`, the number of
 patches, and the session's static check compares every file of a tree with the live tree again, so a tree built
 before a patch landed is refused. `qwen38-nospec.json` holds four replay arms (042 with 127, 087, 106, 110 with
-112) next to its eleven switch arms: 37 boots. Each boot runs one untimed prefill before the timed ones, so a kernel
+112) next to its eleven switch arms: 37 boots. `qwen38-dspark.json` holds one (109 with 111 and 126) next to its
+four switch arms: 13 boots. Each boot runs one untimed prefill before the timed ones, so a kernel
 an arm compiles for the first time is not inside a timed run.
 
 ## CONSOL-2 — correctness ablation (GPU)

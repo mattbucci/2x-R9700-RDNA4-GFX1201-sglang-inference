@@ -107,6 +107,7 @@ class Tree(unittest.TestCase):
         rc, text, out, rec = self.build("001", "001,004")
         self.assertEqual((rc, rec["verdict"]), (0, "review"), text)
         self.assertEqual(rec["dangling"], {"helper_alpha_one": ["sglang/b.py"]})
+        self.assertEqual(rec["lost_names"], {"a.helper_alpha_one": ["sglang/b.py"]})
         self.assertEqual(rec["changed_files"], ["python/sglang/a.py"])
         self.assertEqual(rec["tree_check"]["file"], "sglang/a.py")
         with open(os.path.join(out, "python/sglang/a.py")) as f:
@@ -118,6 +119,22 @@ class Tree(unittest.TestCase):
         self.assertIn("helper_alpha_one", rec["tree_check"]["absent"])
         with open(os.path.join(out, "python/sglang/b.py")) as f:
             self.assertEqual(f.read(), B0)
+
+    def test_a_caller_outside_the_group_of_a_function_with_other_parameters_asks_for_review(self):
+        src = os.path.join(self.d, "src")
+        self.write(src, "python/sglang/a.py", A4.replace("def second():", "def second(scale=1):"))
+        self.write(src, "python/sglang/b.py", B3 + "\n\ndef twice():\n    return a.second(scale=2)\n")
+        sh(src, "git", "add", "-A")
+        with open(os.path.join(self.patches, "005-step.patch"), "w") as f:
+            f.write(sh(src, "git", "diff", "--cached", "--", "python/sglang/a.py"))
+        with open(os.path.join(self.patches, "006-step.patch"), "w") as f:
+            f.write(sh(src, "git", "diff", "--cached", "--", "python/sglang/b.py"))
+        for rel in ("python/sglang/a.py", "python/sglang/b.py"):
+            shutil.copyfile(os.path.join(src, rel), os.path.join(self.live, rel))
+        rc, text, out, rec = self.build("005", "005")
+        self.assertEqual((rc, rec["verdict"]), (0, "review"), text)
+        self.assertEqual(rec["changed_parameters"], {"a.second": ["sglang/b.py"]})
+        self.assertEqual((rec["lost_names"], rec["dangling"]), ({}, {}))
 
     def check(self, arm):
         buf = io.StringIO()
