@@ -1,0 +1,57 @@
+{
+  "label": "fast2-sampled",
+  "tag": "",
+  "note": "",
+  "port": 23334,
+  "maxtok": 200,
+  "runs": 3,
+  "sampling": {
+    "temperature": 1.0,
+    "top_p": 0.95,
+    "top_k": 20,
+    "seed": 7
+  },
+  "ignore_eos": true,
+  "points": [
+    {
+      "context": 128,
+      "input_len": 24,
+      "runs_tps": [
+        33.74,
+        33.77,
+        33.76
+      ],
+      "median_tps": 33.765,
+      "min_tps": 33.743,
+      "max_tps": 33.766,
+      "runs_completion_tokens": [
+        200,
+        200,
+        200
+      ],
+      "median_tpot_ms": 29.62,
+      "sample": "# The Architecture of Speed: A Deep Dive into GPU Memory Hie",
+      "median_ttft_ms": 84.7
+    },
+    {
+      "context": 65536,
+      "input_len": 58483,
+      "runs_tps": [
+        31.7,
+        31.67,
+        31.67
+      ],
+      "median_tps": 31.674,
+      "min_tps": 31.669,
+      "max_tps": 31.697,
+      "runs_completion_tokens": [
+        200,
+        200,
+        200
+      ],
+      "median_tpot_ms": 31.57,
+      "sample": "The provided text consists of the pangram \"The quick brown f",
+      "median_ttft_ms": 97.1
+    }
+  ]
+}

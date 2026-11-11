@@ -1,0 +1,20 @@
+{
+ "compared": 56,
+ "diverging": [],
+ "lost": [],
+ "control_pair_disagrees": [],
+ "filter_share_steps_fast_unproven_share": {
+  "fast1": [
+   4096,
+   2469,
+   135,
+   0.9482
+  ],
+  "fast2": [
+   4096,
+   2741,
+   161,
+   0.9445
+  ]
+ }
+}

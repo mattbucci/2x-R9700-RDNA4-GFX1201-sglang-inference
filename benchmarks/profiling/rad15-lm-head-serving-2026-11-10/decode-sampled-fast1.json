@@ -1,0 +1,57 @@
+{
+  "label": "fast1-sampled",
+  "tag": "",
+  "note": "",
+  "port": 23334,
+  "maxtok": 200,
+  "runs": 3,
+  "sampling": {
+    "temperature": 1.0,
+    "top_p": 0.95,
+    "top_k": 20,
+    "seed": 7
+  },
+  "ignore_eos": true,
+  "points": [
+    {
+      "context": 128,
+      "input_len": 24,
+      "runs_tps": [
+        33.71,
+        33.74,
+        33.74
+      ],
+      "median_tps": 33.74,
+      "min_tps": 33.709,
+      "max_tps": 33.742,
+      "runs_completion_tokens": [
+        200,
+        200,
+        200
+      ],
+      "median_tpot_ms": 29.64,
+      "sample": "# The Memory Bottleneck: A Deep Dive into GPU Memory Hierarc",
+      "median_ttft_ms": 84.7
+    },
+    {
+      "context": 65536,
+      "input_len": 58483,
+      "runs_tps": [
+        31.67,
+        31.68,
+        31.6
+      ],
+      "median_tps": 31.67,
+      "min_tps": 31.601,
+      "max_tps": 31.679,
+      "runs_completion_tokens": [
+        200,
+        200,
+        200
+      ],
+      "median_tpot_ms": 31.58,
+      "sample": "The provided text consists of a single sentence, \"The quick ",
+      "median_ttft_ms": 100.0
+    }
+  ]
+}

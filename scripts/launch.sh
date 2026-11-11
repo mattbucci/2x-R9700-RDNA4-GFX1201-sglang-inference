@@ -645,6 +645,18 @@ PYEOF
                 export SGLANG_RDNA4_SPLITKV_WINDOW="${SPLITKV_WINDOW:-1}"
                 export SGLANG_RDNA4_SPLITKV_WINDOW_SPLITS="${SPLITKV_WINDOW_SPLITS:-16}"
             fi
+            # RAD-15 (patch 127), opt-in: INT8_LM_HEAD=1 ends the one-row decode graph at the hidden state and
+            # serves greedy requests with no logit processing from an int8 copy of the LM head with a proven
+            # arg-max window; every other step and every step the filter cannot prove runs the bf16 head.
+            # No-spec server only (the filter stays off under a speculative worker and logs why). Same session,
+            # both boot orders, canonical no-spec sweep at temperature 0: 34.4 / 33.6 / 32.1 / 28.8 -> 35.3 /
+            # 34.4 / 32.7 / 29.2 tok/s at 24 / 7.3K / 58K / 197K input, greedy text identical on every probe,
+            # sampled requests unchanged. Costs 0.63 GiB per card (KV pool 735,510 -> 692,246 tokens). Off by
+            # default until the sampling path has its own window; needs scripts/build_lm_head_int8.sh. The FP8
+            # checkpoint only.
+            if [[ -z "${QUANT_OVERRIDE:-}" && "${INT8_LM_HEAD:-0}" == "1" ]]; then
+                export SGLANG_RDNA4_INT8_LM_HEAD=1
+            fi
             # R97-R (2026-11-01): hybrid radix cache on the extra_buffer strategy (64-token Mamba state grid,
             # overlap scheduling on). Under the HIP default no_buffer (patch 073) a state exists only at chunk
             # ends / prompt end, and the chat template's history `<think>\n` -> `\n\n` merge makes every

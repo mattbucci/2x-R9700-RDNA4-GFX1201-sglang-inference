@@ -1,0 +1,57 @@
+{
+  "label": "base2-sampled",
+  "tag": "",
+  "note": "",
+  "port": 23334,
+  "maxtok": 200,
+  "runs": 3,
+  "sampling": {
+    "temperature": 1.0,
+    "top_p": 0.95,
+    "top_k": 20,
+    "seed": 7
+  },
+  "ignore_eos": true,
+  "points": [
+    {
+      "context": 128,
+      "input_len": 24,
+      "runs_tps": [
+        33.68,
+        33.86,
+        33.86
+      ],
+      "median_tps": 33.858,
+      "min_tps": 33.679,
+      "max_tps": 33.858,
+      "runs_completion_tokens": [
+        200,
+        200,
+        200
+      ],
+      "median_tpot_ms": 29.53,
+      "sample": "# The Bottleneck and the Bridge: A Deep Dive into GPU Memory",
+      "median_ttft_ms": 83.1
+    },
+    {
+      "context": 65536,
+      "input_len": 58483,
+      "runs_tps": [
+        31.77,
+        31.77,
+        31.72
+      ],
+      "median_tps": 31.768,
+      "min_tps": 31.724,
+      "max_tps": 31.775,
+      "runs_completion_tokens": [
+        200,
+        200,
+        200
+      ],
+      "median_tpot_ms": 31.48,
+      "sample": "The provided text consists of the classic English pangram \"T",
+      "median_ttft_ms": 98.2
+    }
+  ]
+}

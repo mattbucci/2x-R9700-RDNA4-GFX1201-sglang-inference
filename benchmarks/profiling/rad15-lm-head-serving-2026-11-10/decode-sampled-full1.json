@@ -1,0 +1,57 @@
+{
+  "label": "full1-sampled",
+  "tag": "",
+  "note": "",
+  "port": 23334,
+  "maxtok": 200,
+  "runs": 3,
+  "sampling": {
+    "temperature": 1.0,
+    "top_p": 0.95,
+    "top_k": 20,
+    "seed": 7
+  },
+  "ignore_eos": true,
+  "points": [
+    {
+      "context": 128,
+      "input_len": 24,
+      "runs_tps": [
+        33.78,
+        33.79,
+        33.79
+      ],
+      "median_tps": 33.789,
+      "min_tps": 33.782,
+      "max_tps": 33.789,
+      "runs_completion_tokens": [
+        200,
+        200,
+        200
+      ],
+      "median_tpot_ms": 29.6,
+      "sample": "# The Bottleneck of Modern Computing: An In-Depth Analysis o",
+      "median_ttft_ms": 86.2
+    },
+    {
+      "context": 65536,
+      "input_len": 58483,
+      "runs_tps": [
+        31.72,
+        31.71,
+        31.6
+      ],
+      "median_tps": 31.711,
+      "min_tps": 31.604,
+      "max_tps": 31.721,
+      "runs_completion_tokens": [
+        200,
+        200,
+        200
+      ],
+      "median_tpot_ms": 31.53,
+      "sample": "The provided text consists of the classic pangram \"The quick",
+      "median_ttft_ms": 97.4
+    }
+  ]
+}

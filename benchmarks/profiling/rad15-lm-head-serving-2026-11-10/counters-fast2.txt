@@ -1,0 +1,1 @@
+[RDNA4] LM head: 4096 deferred steps, 2741 served by the int8 filter, 161 unproven, 1194 by the bf16 head on request

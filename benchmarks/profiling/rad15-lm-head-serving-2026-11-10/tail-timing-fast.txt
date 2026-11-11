@@ -1,0 +1,2 @@
+[RDNA4] LM head timing (device waits after every stage, diagnostic): replay wait 26440 us x 512, int8 filter 1133 us x 512, pack all-gather 97 us x 512, readback and decision 67 us x 512, logit write 60 us x 468, outside the tail 45647 us x 511, bf16 head 2670 us x 44
+[RDNA4] LM head timing (device waits after every stage, diagnostic): replay wait 26359 us x 512, int8 filter 1130 us x 512, pack all-gather 101 us x 512, readback and decision 64 us x 512, logit write 57 us x 468, outside the tail 45734 us x 511, bf16 head 2665 us x 44

@@ -1,0 +1,57 @@
+{
+  "label": "base1-sampled",
+  "tag": "",
+  "note": "",
+  "port": 23334,
+  "maxtok": 200,
+  "runs": 3,
+  "sampling": {
+    "temperature": 1.0,
+    "top_p": 0.95,
+    "top_k": 20,
+    "seed": 7
+  },
+  "ignore_eos": true,
+  "points": [
+    {
+      "context": 128,
+      "input_len": 24,
+      "runs_tps": [
+        33.79,
+        33.78,
+        33.78
+      ],
+      "median_tps": 33.781,
+      "min_tps": 33.781,
+      "max_tps": 33.79,
+      "runs_completion_tokens": [
+        200,
+        200,
+        200
+      ],
+      "median_tpot_ms": 29.6,
+      "sample": "# The Bottleneck of Speed: A Deep Dive into GPU Memory Hiera",
+      "median_ttft_ms": 85.0
+    },
+    {
+      "context": 65536,
+      "input_len": 58483,
+      "runs_tps": [
+        31.74,
+        31.74,
+        31.74
+      ],
+      "median_tps": 31.738,
+      "min_tps": 31.736,
+      "max_tps": 31.744,
+      "runs_completion_tokens": [
+        200,
+        200,
+        200
+      ],
+      "median_tpot_ms": 31.51,
+      "sample": "The provided text consists of the pangram \"The quick brown f",
+      "median_ttft_ms": 97.0
+    }
+  ]
+}

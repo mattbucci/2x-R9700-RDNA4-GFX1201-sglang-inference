@@ -1,0 +1,101 @@
+{
+ "tree": "/data/sgl-v0522-rad15/python",
+ "kernel": true,
+ "rows": 32768,
+ "cols": 5120,
+ "steps": 128,
+ "world1": {
+  "wrong_tokens": 0,
+  "fast_steps": 127,
+  "fallback_steps": 1,
+  "counters": [
+   [
+    128,
+    127,
+    1
+   ]
+  ],
+  "timing_us": {
+   "replay wait": [
+    573.8,
+    128
+   ],
+   "int8 filter": [
+    342.8,
+    128
+   ],
+   "readback and decision": [
+    57.3,
+    128
+   ],
+   "logit write": [
+    53.0,
+    127
+   ],
+   "outside the tail": [
+    237.4,
+    127
+   ],
+   "bf16 head": [
+    609.0,
+    1
+   ]
+  },
+  "full_head_calls": [
+   16
+  ]
+ },
+ "world2": {
+  "wrong_tokens": 0,
+  "fast_steps": 127,
+  "fallback_steps": 1,
+  "counters": [
+   [
+    128,
+    127,
+    1
+   ],
+   [
+    128,
+    127,
+    1
+   ]
+  ],
+  "timing_us": {
+   "replay wait": [
+    575.1,
+    128
+   ],
+   "int8 filter": [
+    194.8,
+    128
+   ],
+   "pack all-gather": [
+    203.3,
+    128
+   ],
+   "readback and decision": [
+    56.8,
+    128
+   ],
+   "logit write": [
+    51.7,
+    127
+   ],
+   "outside the tail": [
+    809.4,
+    127
+   ],
+   "bf16 head": [
+    598.1,
+    1
+   ]
+  },
+  "full_head_calls": [
+   15,
+   14
+  ]
+ },
+ "failures": [],
+ "gate": "PASS"
+}

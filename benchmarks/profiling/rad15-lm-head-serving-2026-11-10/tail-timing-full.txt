@@ -1,0 +1,2 @@
+[RDNA4] LM head timing (device waits after every stage, diagnostic): replay wait 26341 us x 512, bf16 head 2682 us x 512, outside the tail 31506 us x 511
+[RDNA4] LM head timing (device waits after every stage, diagnostic): replay wait 26445 us x 512, bf16 head 2661 us x 512, outside the tail 31427 us x 511

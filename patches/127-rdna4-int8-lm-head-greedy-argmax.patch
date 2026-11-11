@@ -1,0 +1,1015 @@
+diff --git a/python/sglang/kernels/aot/csrc/quantization/int8/lm_head_int8_hip.cu b/python/sglang/kernels/aot/csrc/quantization/int8/lm_head_int8_hip.cu
+new file mode 100644
+index 0000000..28645dc
+--- /dev/null
++++ b/python/sglang/kernels/aot/csrc/quantization/int8/lm_head_int8_hip.cu
+@@ -0,0 +1,453 @@
++// SPDX-License-Identifier: Apache-2.0
++//
++// Exact arg-max of the LM head from an int8 copy, for gfx1201 (RDNA4), one decode row.
++//
++// The bf16 head reads N x K x 2 bytes per token. This reads an int8 copy (one scale per row per
++// 128 columns) for every row, bounds each row's distance to the bf16 logit, and rescores in bf16
++// only the rows that the bound cannot rule out:
++//
++//   approx[i] = sum_g scale[i][g] * sum_{k in g} code[i][k] * x[k]
++//   hw[i]     = sum_g err[i][g] * ||x_g|| + arith * ||x|| * ||w_i||
++//               err[i][g] = ||w_i - code_i * scale_i|| over group g, so Cauchy-Schwarz per group
++//               bounds |approx[i] - w_i . x|; the second term covers the fp32 lane sums
++//   m         = max_i (approx[i] - hw[i])
++//   window    = rows with approx[i] + hw[i] >= m - ulp_bf16(m)
++//
++// A row outside the window is more than one bf16 step below the best row, so it is not the
++// largest bf16 logit and does not tie with it. The window rows are rescored against the bf16
++// weight and reduced to (best, second best, row of best, window size). The caller serves the
++// best row only when the window fits the slot buffer and best - second exceeds two bf16 steps;
++// otherwise it runs the bf16 head.
++//
++// One call launches five kernels on the current stream: activation norms, the int8 pass with the
++// bound, window compaction, bf16 rescoring, reduction. Nothing is read back on the host.
++//
++// The wave layout of the int8 pass (32 lanes x 16 contiguous weight bytes per pass, one scale
++// per lane per pass, a DPP wave sum, RB rows per wave) is the one of fp8_gemv_hip.cu, which
++// follows radiance's libr4d/r4d_gemm_fp8a16_nt_m1.hip (Apache-2.0, Copyright 2026 Deadcode and
++// the radiance contributors, https://codeberg.org/StillDeadcode/radiance, revision 451b1368).
++
++#ifdef USE_ROCM
++
++#include <torch/all.h>
++#include <ATen/hip/HIPContext.h>
++#include <c10/hip/HIPStream.h>
++#include <hip/hip_runtime.h>
++#include <algorithm>
++#include <climits>
++#include <cstdint>
++
++namespace {
++
++constexpr int kWave = 32;
++constexpr int kWaves = 8;  // waves per workgroup
++constexpr int kThreads = kWaves * kWave;
++constexpr uint32_t kGroup = 128;  // columns per scale and per error norm
++constexpr uint32_t kMaxGroups = 256;
++constexpr uint32_t kMaxBlocks = 2048;
++constexpr uint32_t kNegInf = 0xFF800000u;
++// Norms are rounded up: a lane-parallel sum of squares, its square root and the product stay
++// within 5e-7 relative of the real value.
++constexpr float kUp = 1.0f + 1e-6f;
++constexpr float kUpTotal = 1.0f + 4e-6f;  // the row total adds one sequential sum over the groups
++
++__device__ __forceinline__ float bf16_to_f32(uint16_t h) {
++  return __uint_as_float((uint32_t)h << 16);
++}
++
++// Round to nearest even, as a bf16 cast does for finite values, returned as fp32.
++__device__ __forceinline__ float round_bf16(float f) {
++  const uint32_t u = __float_as_uint(f);
++  return __uint_as_float(((u + 0x7fffu + ((u >> 16) & 1u)) >> 16) << 16);
++}
++
++// Spacing of bf16 numbers in the binade of v.
++__device__ __forceinline__ float bf16_ulp(float v) {
++  const uint32_t e = (__float_as_uint(v) >> 23) & 0xFFu;
++  return __uint_as_float((e > 8u ? e - 7u : 1u) << 23);
++}
++
++// fp32 -> int32 that keeps the order, and back (the bit map is its own inverse).
++__device__ __forceinline__ int32_t f32_ord(float f) {
++  const int32_t i = (int32_t)__float_as_uint(f);
++  return i >= 0 ? i : i ^ 0x7FFFFFFF;
++}
++
++__device__ __forceinline__ float ord_f32(int32_t i) {
++  return __uint_as_float((uint32_t)(i >= 0 ? i : i ^ 0x7FFFFFFF));
++}
++
++template <int CTRL>
++__device__ __forceinline__ float dpp_xor_add(float v) {
++  return v + __uint_as_float((uint32_t)__builtin_amdgcn_update_dpp(
++                 0, (int)__float_as_uint(v), CTRL, 0xF, 0xF, true));
++}
++
++// Wave32 sum without the LDS crossbar; every lane ends with the total (see fp8_gemv_hip.cu).
++__device__ __forceinline__ float wave_sum(float v) {
++  const int vi = (int)__float_as_uint(v);
++  v += __uint_as_float((uint32_t)__builtin_amdgcn_permlanex16(
++      vi, vi, 0x76543210u, 0xFEDCBA98u, false, false));
++  v = dpp_xor_add<0x168>(v);
++  v = dpp_xor_add<0x164>(v);
++  v = dpp_xor_add<0x162>(v);
++  v = dpp_xor_add<0x161>(v);
++  return v;
++}
++
++// xs[g] = ||x_g|| rounded up for each 128-column group, xs[groups] = arith * ||x|| rounded up.
++// Also resets the running maximum, the window counter and the slot buffer.
++__global__ __launch_bounds__(kThreads) void lmh_stats_kernel(
++    const uint16_t* __restrict__ x, float* __restrict__ xs, int32_t* __restrict__ ctl,
++    int32_t* __restrict__ idx, uint32_t cols, uint32_t slots, float arith) {
++  __shared__ float sq[kMaxGroups];
++  const uint32_t lane = threadIdx.x & (kWave - 1);
++  const uint32_t wave = threadIdx.x / kWave;
++  const uint32_t groups = cols / kGroup;
++  for (uint32_t g = wave; g < groups; g += kWaves) {
++    const uint16_t* p = x + g * kGroup + lane * 4u;
++    float s = 0.0f;
++#pragma unroll
++    for (int k = 0; k < 4; ++k) {
++      const float v = bf16_to_f32(p[k]);
++      s = fmaf(v, v, s);
++    }
++    s = wave_sum(s);
++    if (lane == 0) {
++      sq[g] = s;
++      xs[g] = sqrtf(s) * kUp;
++    }
++  }
++  for (uint32_t i = threadIdx.x; i < slots; i += kThreads) idx[i] = 0;
++  __syncthreads();
++  if (threadIdx.x == 0) {
++    float t = 0.0f;
++    for (uint32_t g = 0; g < groups; ++g) t += sq[g];
++    xs[groups] = sqrtf(t) * kUpTotal * arith;
++    ctl[0] = INT_MIN;
++    ctl[1] = 0;
++  }
++}
++
++// RB rows per wave. A pass reads 512 contiguous code bytes of each row (four groups: lanes 0-7
++// the first, 8-15 the second, ...), so a lane's sixteen columns share one scale. The bound is a
++// second, short dot product over the row's error norms.
++template <uint32_t RB>
++__global__ __launch_bounds__(kThreads) void lmh_filter_kernel(
++    const uint8_t* __restrict__ Q, const float* __restrict__ S,
++    const float* __restrict__ E, const float* __restrict__ RN,
++    const uint16_t* __restrict__ x, const float* __restrict__ xs,
++    float* __restrict__ approx, float* __restrict__ hw, int32_t* ctl, uint32_t rows,
++    uint32_t cols) {
++  const uint32_t lane = threadIdx.x & (kWave - 1);
++  const uint32_t wave = threadIdx.x / kWave;
++  const uint32_t stride = kWave * 16u;
++  const uint32_t full = (cols / stride) * stride;
++  const uint32_t groups = cols / kGroup;
++  const uint32_t step = gridDim.x * kWaves * RB;
++  const float slack = xs[groups];
++  float best = __uint_as_float(kNegInf);
++  for (uint32_t r0 = (blockIdx.x * kWaves + wave) * RB; r0 < rows; r0 += step) {
++    const uint32_t nr = std::min(RB, rows - r0);
++    const uint8_t* w[RB];
++    const float* s[RB];
++    const float* e[RB];
++    float acc[RB];
++    // Rows past N re-read the first row instead of branching; they are not stored.
++#pragma unroll
++    for (uint32_t r = 0; r < RB; ++r) {
++      const size_t row = r0 + (r < nr ? r : 0);
++      w[r] = Q + row * cols;
++      s[r] = S + row * groups;
++      e[r] = E + row * groups;
++      acc[r] = 0.0f;
++    }
++
++    for (uint32_t c = lane * 16u; c < full; c += stride) {
++      uint32_t p[RB][4];
++#pragma unroll
++      for (uint32_t r = 0; r < RB; ++r) __builtin_memcpy(p[r], w[r] + c, 16);
++      uint32_t xp[8];
++      __builtin_memcpy(xp, x + c, 32);
++      // bf16 -> f32 is a shift: every bf16 is exactly a float.
++      float xr[16];
++#pragma unroll
++      for (int k = 0; k < 8; ++k) {
++        xr[2 * k] = __uint_as_float(xp[k] << 16);
++        xr[2 * k + 1] = __uint_as_float(xp[k] & 0xFFFF0000u);
++      }
++      const uint32_t g = c / kGroup;
++#pragma unroll
++      for (uint32_t r = 0; r < RB; ++r) {
++        float a0 = 0.0f, a1 = 0.0f;
++#pragma unroll
++        for (int k = 0; k < 4; ++k) {
++          const uint32_t q = p[r][k];
++          a0 = fmaf((float)(int8_t)q, xr[k * 4 + 0], a0);
++          a1 = fmaf((float)(int8_t)(q >> 8), xr[k * 4 + 1], a1);
++          a0 = fmaf((float)(int8_t)(q >> 16), xr[k * 4 + 2], a0);
++          a1 = fmaf((float)(int8_t)(q >> 24), xr[k * 4 + 3], a1);
++        }
++        acc[r] = fmaf(a0 + a1, s[r][g], acc[r]);
++      }
++    }
++    // K not a multiple of 512: one column per lane per pass, same per-lane scale rule.
++    for (uint32_t c = full + lane; c < cols; c += kWave) {
++      const float xc = bf16_to_f32(x[c]);
++#pragma unroll
++      for (uint32_t r = 0; r < RB; ++r)
++        acc[r] = fmaf((float)(int8_t)w[r][c] * xc, s[r][c / kGroup], acc[r]);
++    }
++    float bnd[RB];
++#pragma unroll
++    for (uint32_t r = 0; r < RB; ++r) {
++      float b = 0.0f;
++      for (uint32_t g = lane; g < groups; g += kWave) b = fmaf(e[r][g], xs[g], b);
++      bnd[r] = wave_sum(b);
++      acc[r] = wave_sum(acc[r]);
++    }
++    if (lane == 0) {
++#pragma unroll
++      for (uint32_t r = 0; r < RB; ++r) {
++        if (r < nr) {
++          const float h = fmaf(slack, RN[r0 + r], bnd[r]);
++          approx[r0 + r] = acc[r];
++          hw[r0 + r] = h;
++          best = fmaxf(best, acc[r] - h);
++        }
++      }
++    }
++  }
++  if (lane == 0) atomicMax(&ctl[0], f32_ord(best));
++}
++
++// idx[0 .. min(count, slots)) = the rows whose upper bound reaches the best lower bound less one
++// bf16 step, in no particular order; ctl[1] = count.
++__global__ void lmh_compact_kernel(const float* __restrict__ approx,
++                                   const float* __restrict__ hw, int32_t* ctl,
++                                   int32_t* idx, uint32_t rows, uint32_t slots) {
++  const float best = ord_f32(ctl[0]);
++  const float thr = best - bf16_ulp(best);
++  const uint32_t step = gridDim.x * blockDim.x;
++  for (uint32_t i = blockIdx.x * blockDim.x + threadIdx.x; i < rows; i += step) {
++    if (approx[i] + hw[i] >= thr) {
++      const int32_t slot = atomicAdd(&ctl[1], 1);
++      if ((uint32_t)slot < slots) idx[slot] = (int32_t)i;
++    }
++  }
++}
++
++// One wave per slot: vals[slot] = bf16(w_row . x) for the window rows, -inf for unused slots.
++__global__ __launch_bounds__(kThreads) void lmh_rerank_kernel(
++    const uint16_t* __restrict__ W, const uint16_t* __restrict__ x,
++    const int32_t* __restrict__ ctl, const int32_t* __restrict__ idx,
++    float* __restrict__ vals, uint32_t cols, uint32_t slots) {
++  const uint32_t lane = threadIdx.x & (kWave - 1);
++  const uint32_t slot = blockIdx.x * kWaves + threadIdx.x / kWave;
++  if (slot >= slots) return;
++  const uint32_t n = std::min((uint32_t)ctl[1], slots);
++  if (slot >= n) {
++    if (lane == 0) vals[slot] = __uint_as_float(kNegInf);
++    return;
++  }
++  const uint16_t* w = W + (size_t)idx[slot] * cols;
++  const uint32_t stride = kWave * 16u;
++  const uint32_t full = (cols / stride) * stride;
++  float a0 = 0.0f, a1 = 0.0f;
++  for (uint32_t c = lane * 16u; c < full; c += stride) {
++    uint32_t wp[8], xp[8];
++    __builtin_memcpy(wp, w + c, 32);
++    __builtin_memcpy(xp, x + c, 32);
++#pragma unroll
++    for (int k = 0; k < 8; ++k) {
++      a0 = fmaf(__uint_as_float(wp[k] << 16), __uint_as_float(xp[k] << 16), a0);
++      a1 = fmaf(__uint_as_float(wp[k] & 0xFFFF0000u), __uint_as_float(xp[k] & 0xFFFF0000u),
++                a1);
++    }
++  }
++  for (uint32_t c = full + lane; c < cols; c += kWave)
++    a0 = fmaf(bf16_to_f32(w[c]), bf16_to_f32(x[c]), a0);
++  const float acc = wave_sum(a0 + a1);
++  if (lane == 0) vals[slot] = round_bf16(acc);
++}
++
++// pack = (best value, second best value, row of best + row_offset, window size).
++__global__ void lmh_reduce_kernel(const float* __restrict__ vals,
++                                  const int32_t* __restrict__ idx,
++                                  const int32_t* __restrict__ ctl, float* __restrict__ pack,
++                                  uint32_t slots, int32_t row_offset) {
++  __shared__ float s1[kWave];
++  __shared__ float s2[kWave];
++  __shared__ int32_t si[kWave];
++  const uint32_t n = std::min((uint32_t)ctl[1], slots);
++  float v1 = __uint_as_float(kNegInf), v2 = __uint_as_float(kNegInf);
++  int32_t i1 = -1;
++  for (uint32_t s = threadIdx.x; s < n; s += kWave) {
++    const float v = vals[s];
++    if (v > v1) {
++      v2 = v1;
++      v1 = v;
++      i1 = idx[s];
++    } else if (v > v2) {
++      v2 = v;  // an equal value lands here, so a tie shows as v1 == v2
++    }
++  }
++  s1[threadIdx.x] = v1;
++  s2[threadIdx.x] = v2;
++  si[threadIdx.x] = i1;
++  __syncthreads();
++  if (threadIdx.x == 0) {
++    float b1 = __uint_as_float(kNegInf), b2 = __uint_as_float(kNegInf);
++    int32_t bi = -1;
++    for (int l = 0; l < kWave; ++l) {
++      if (s1[l] > b1) {
++        b2 = fmaxf(b1, s2[l]);
++        b1 = s1[l];
++        bi = si[l];
++      } else {
++        b2 = fmaxf(b2, s1[l]);
++      }
++    }
++    pack[0] = b1;
++    pack[1] = b2;
++    pack[2] = (float)(bi + row_offset);
++    pack[3] = (float)ctl[1];
++  }
++}
++
++void check_f32(const torch::Tensor& t, int64_t n, const char* name) {
++  TORCH_CHECK(t.is_cuda() && t.scalar_type() == at::ScalarType::Float && t.is_contiguous() &&
++                  t.numel() >= n,
++              "lm_head_int8_argmax_hip: ", name, " must be a contiguous float32 HIP tensor of ",
++              n, " elements");
++}
++
++}  // namespace
++
++// Writes pack[0..4) = (best bf16 logit, second best, global row of best, window size) for one
++// activation row; see the header for the rule the caller applies to it.
++//   activation   bf16, K elements, contiguous
++//   codes        int8 [N][K]
++//   scale, err   float32 [N][K / 128]: code scale, and the L2 norm of (weight - code * scale)
++//                over each 128-column group, rounded up
++//   rownorm      float32 [N]: ||w_i||, rounded up
++//   weight       bf16 [N][K], the served head
++//   approx, hw   float32 [N] work buffers (the int8 logit and its half width stay readable)
++//   xs           float32 [K / 128 + 1] work buffer
++//   ctl          int32 [2] work buffer: order-mapped best lower bound, window size
++//   idx          int32 [slots], vals float32 [slots], pack float32 [4]
++//   row_offset   added to the row of the best logit (the rank's first vocabulary row)
++//   arith        slack per unit of ||x|| ||w_i||
++//   rb           rows per wave: 0 picks 1; 1, 2 and 4 pin it
++//   max_blocks   workgroup cap of the int8 pass (0 = 2048)
++//   stages       run only the first `stages` kernels (timing breakdowns); 5 = all
++void lm_head_int8_argmax_hip(torch::Tensor activation, torch::Tensor codes,
++                             torch::Tensor scale, torch::Tensor err, torch::Tensor rownorm,
++                             torch::Tensor weight, torch::Tensor approx, torch::Tensor hw,
++                             torch::Tensor xs, torch::Tensor ctl, torch::Tensor idx,
++                             torch::Tensor vals, torch::Tensor pack, int64_t row_offset,
++                             double arith, int64_t rb, int64_t max_blocks, int64_t stages) {
++  TORCH_CHECK(activation.is_cuda() && activation.scalar_type() == at::ScalarType::BFloat16 &&
++                  activation.is_contiguous(),
++              "lm_head_int8_argmax_hip: activation must be a contiguous bf16 HIP tensor");
++  TORCH_CHECK(codes.is_cuda() && codes.scalar_type() == at::ScalarType::Char &&
++                  codes.dim() == 2 && codes.is_contiguous(),
++              "lm_head_int8_argmax_hip: codes must be a contiguous int8 [N][K] HIP tensor");
++  TORCH_CHECK(weight.is_cuda() && weight.scalar_type() == at::ScalarType::BFloat16 &&
++                  weight.dim() == 2 && weight.is_contiguous(),
++              "lm_head_int8_argmax_hip: weight must be a contiguous bf16 [N][K] HIP tensor");
++  const int64_t N = codes.size(0), K = codes.size(1);
++  TORCH_CHECK(N > 0 && K > 0 && N <= INT32_MAX && K <= INT32_MAX);
++  TORCH_CHECK(K % kGroup == 0 && K / kGroup <= kMaxGroups,
++              "lm_head_int8_argmax_hip: K must be a multiple of 128, at most 32768");
++  TORCH_CHECK(weight.size(0) == N && weight.size(1) == K,
++              "lm_head_int8_argmax_hip: weight and codes must have the same shape");
++  TORCH_CHECK(activation.numel() == K,
++              "lm_head_int8_argmax_hip: activation must hold exactly K elements (M = 1)");
++  const int64_t G = K / kGroup;
++  TORCH_CHECK(scale.dim() == 2 && scale.size(0) == N && scale.size(1) == G && err.dim() == 2 &&
++                  err.size(0) == N && err.size(1) == G,
++              "lm_head_int8_argmax_hip: scale and err must be [N][K / 128]");
++  check_f32(scale, N * G, "scale");
++  check_f32(err, N * G, "err");
++  check_f32(rownorm, N, "rownorm");
++  check_f32(approx, N, "approx");
++  check_f32(hw, N, "hw");
++  check_f32(xs, G + 1, "xs");
++  check_f32(pack, 4, "pack");
++  const int64_t slots = idx.numel();
++  TORCH_CHECK(slots >= 1 && slots <= 65536, "lm_head_int8_argmax_hip: 1 to 65536 slots");
++  check_f32(vals, slots, "vals");
++  TORCH_CHECK(idx.is_cuda() && idx.scalar_type() == at::ScalarType::Int && idx.is_contiguous() &&
++                  ctl.is_cuda() && ctl.scalar_type() == at::ScalarType::Int &&
++                  ctl.is_contiguous() && ctl.numel() >= 2,
++              "lm_head_int8_argmax_hip: idx and ctl must be contiguous int32 HIP tensors");
++  TORCH_CHECK(row_offset >= 0 && row_offset + N <= (1 << 24),
++              "lm_head_int8_argmax_hip: the global row must be exact in float32");
++  TORCH_CHECK(rb == 0 || rb == 1 || rb == 2 || rb == 4,
++              "lm_head_int8_argmax_hip: rb must be 0, 1, 2 or 4");
++  TORCH_CHECK(max_blocks >= 0 && stages >= 1 && stages <= 5);
++
++  const auto stream = at::hip::getCurrentHIPStream();
++  const uint32_t rows = (uint32_t)N, cols = (uint32_t)K, nslots = (uint32_t)slots;
++  const uint16_t* x = (const uint16_t*)activation.data_ptr();
++  float* xsp = (float*)xs.data_ptr();
++  int32_t* ctlp = (int32_t*)ctl.data_ptr();
++  int32_t* idxp = (int32_t*)idx.data_ptr();
++  float* approxp = (float*)approx.data_ptr();
++  float* hwp = (float*)hw.data_ptr();
++  float* valsp = (float*)vals.data_ptr();
++
++  hipLaunchKernelGGL(lmh_stats_kernel, dim3(1), dim3(kThreads), 0, stream, x, xsp, ctlp, idxp,
++                     cols, nslots, (float)arith);
++  if (stages < 2) return;
++
++  const uint32_t r = rb ? (uint32_t)rb : 1u;
++  const uint32_t per = kWaves * r;
++  const uint32_t cap = max_blocks ? (uint32_t)max_blocks : kMaxBlocks;
++  const uint32_t blocks = std::min<uint32_t>(cap, (rows + per - 1) / per);
++#define LMH_FILTER_LAUNCH(NB)                                                        \
++  hipLaunchKernelGGL((lmh_filter_kernel<NB>), dim3(blocks), dim3(kThreads), 0, stream, \
++                     (const uint8_t*)codes.data_ptr(), (const float*)scale.data_ptr(), \
++                     (const float*)err.data_ptr(), (const float*)rownorm.data_ptr(), x, \
++                     (const float*)xsp, approxp, hwp, ctlp, rows, cols)
++  if (r == 1u) {
++    LMH_FILTER_LAUNCH(1);
++  } else if (r == 2u) {
++    LMH_FILTER_LAUNCH(2);
++  } else {
++    LMH_FILTER_LAUNCH(4);
++  }
++#undef LMH_FILTER_LAUNCH
++  if (stages < 3) return;
++
++  hipLaunchKernelGGL(lmh_compact_kernel, dim3((rows + kThreads - 1) / kThreads),
++                     dim3(kThreads), 0, stream, (const float*)approxp, (const float*)hwp, ctlp,
++                     idxp, rows, nslots);
++  if (stages < 4) return;
++
++  hipLaunchKernelGGL(lmh_rerank_kernel, dim3((nslots + kWaves - 1) / kWaves), dim3(kThreads),
++                     0, stream, (const uint16_t*)weight.data_ptr(), x, (const int32_t*)ctlp,
++                     (const int32_t*)idxp, valsp, cols, nslots);
++  if (stages < 5) return;
++
++  hipLaunchKernelGGL(lmh_reduce_kernel, dim3(1), dim3(kWave), 0, stream, (const float*)valsp,
++                     (const int32_t*)idxp, (const int32_t*)ctlp, (float*)pack.data_ptr(),
++                     nslots, (int32_t)row_offset);
++}
++
++#endif  // USE_ROCM
++
++#ifdef USE_ROCM
++#include <torch/extension.h>
++
++PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
++  m.def("lm_head_int8_argmax_hip", &lm_head_int8_argmax_hip,
++        "Exact LM-head arg-max candidates from an int8 copy for M=1 decode (HIP/ROCm)",
++        py::arg("activation"), py::arg("codes"), py::arg("scale"), py::arg("err"),
++        py::arg("rownorm"), py::arg("weight"), py::arg("approx"), py::arg("hw"),
++        py::arg("xs"), py::arg("ctl"), py::arg("idx"), py::arg("vals"), py::arg("pack"),
++        py::arg("row_offset") = 0, py::arg("arith") = 4e-6, py::arg("rb") = 0,
++        py::arg("max_blocks") = 0, py::arg("stages") = 5);
++}
++#endif
+diff --git a/python/sglang/srt/layers/lm_head_int8_filter.py b/python/sglang/srt/layers/lm_head_int8_filter.py
+new file mode 100644
+index 0000000..588173f
+--- /dev/null
++++ b/python/sglang/srt/layers/lm_head_int8_filter.py
+@@ -0,0 +1,139 @@
++"""Exact arg-max of the LM head from an int8 copy (RDNA4, one decode row).
++
++The bf16 head reads rows x hidden x 2 bytes per token. An int8 copy with one scale per row per
++128 columns gives every row an approximate logit and a proven half width (Cauchy-Schwarz per
++128-column group on the quantisation error, plus a slack for fp32 arithmetic). Rows whose upper
++bound reaches the best lower bound less one bf16 step are rescored on the bf16 weight. The best
++row is served only when the window fits the slot buffer and best - second exceeds two bf16
++steps over all ranks; every other step runs the bf16 head, so the served token is the bf16
++head's arg-max in both cases.
++
++The kernels are in kernels/aot/csrc/quantization/int8/lm_head_int8_hip.cu
++(scripts/build_lm_head_int8.sh in the RDNA4 repository builds lm_head_int8_hip_ext).
++"""
++
++import math
++
++import torch
++
++try:
++    from lm_head_int8_hip_ext import lm_head_int8_argmax_hip
++except ImportError:
++    lm_head_int8_argmax_hip = None
++
++GROUP = 128  # columns per scale and per error norm
++QMAX = 127.0
++ARITH = 4e-6  # slack per unit of ||x|| ||w_i||: fp32 lane sums in the int8 pass and in the rescoring
++UP = 1.0 + 1e-6  # norms are rounded up
++DEFAULT_SLOTS = 256
++NEAR_TIE_ULPS = 2.0
++
++
++def quantize_head(weight, chunk=4096):
++    """int8 codes [N, K]; per (row, 128-column group) the bf16-valued scale and the rounded-up L2
++    norm of weight - code * scale; the rounded-up L2 norm of every row."""
++    n, k = weight.shape
++    if k % GROUP:
++        raise ValueError(f"hidden size {k} is not a multiple of {GROUP}")
++    g = k // GROUP
++    dev = weight.device
++    codes = torch.empty(n, k, dtype=torch.int8, device=dev)
++    scale = torch.empty(n, g, dtype=torch.float32, device=dev)
++    err = torch.empty(n, g, dtype=torch.float32, device=dev)
++    rownorm = torch.empty(n, dtype=torch.float32, device=dev)
++    for r0 in range(0, n, chunk):
++        w = weight[r0:r0 + chunk].float().reshape(-1, g, GROUP)
++        amax = w.abs().amax(-1, keepdim=True).clamp_min(1e-30)
++        s = (amax * (1.0 / QMAX)).to(torch.bfloat16).float().clamp_min(1e-30)
++        q = torch.round(w / s).clamp_(-QMAX, QMAX)
++        # code * scale and the difference are exact in fp32 (7 + 8 mantissa bits)
++        d = (w - q * s).double()
++        codes[r0:r0 + chunk] = q.reshape(-1, k).to(torch.int8)
++        scale[r0:r0 + chunk] = s.squeeze(-1)
++        err[r0:r0 + chunk] = (d.square().sum(-1).sqrt() * UP).float()
++        rownorm[r0:r0 + chunk] = (w.double().square().sum((-1, -2)).sqrt() * UP).float()
++    return codes, scale, err, rownorm
++
++
++def bf16_ulp(v):
++    """Spacing of bf16 numbers in the binade of v."""
++    return math.ldexp(1.0, math.frexp(abs(v))[1] - 8) if v else 0.0
++
++
++def decide(packs, slots, near_tie_ulps=NEAR_TIE_ULPS):
++    """packs: one (best, second, row, window size) per rank. Returns (logit, token) when the
++    bf16 arg-max is proven, None when the bf16 head has to run."""
++    values = []
++    top = None
++    for best, second, row, count in packs:
++        if not 1 <= count <= slots or not math.isfinite(best):
++            return None
++        values += [best, second]
++        if top is None or best > top[0]:
++            top = (best, int(row))
++    values.sort(reverse=True)
++    if not top[0] - values[1] > near_tie_ulps * bf16_ulp(top[0]):
++        return None
++    return top
++
++
++class Int8HeadFilter:
++    """The int8 copy of one rank's head rows and the work buffers of the kernel call."""
++
++    def __init__(self, weight, row_offset=0, slots=DEFAULT_SLOTS, chunk=4096):
++        if weight.dtype != torch.bfloat16 or weight.dim() != 2 or not weight.is_contiguous():
++            raise ValueError("the head weight must be a contiguous bf16 matrix")
++        n, k = weight.shape
++        dev = weight.device
++        self.weight = weight
++        self.rows, self.cols = n, k
++        self.row_offset = int(row_offset)
++        self.slots = int(slots)
++        self.codes, self.scale, self.err, self.rownorm = quantize_head(weight, chunk)
++        self.approx = torch.empty(n, dtype=torch.float32, device=dev)
++        self.hw = torch.empty(n, dtype=torch.float32, device=dev)
++        self.xs = torch.empty(k // GROUP + 1, dtype=torch.float32, device=dev)
++        self.ctl = torch.zeros(2, dtype=torch.int32, device=dev)
++        self.idx = torch.zeros(self.slots, dtype=torch.int32, device=dev)
++        self.vals = torch.empty(self.slots, dtype=torch.float32, device=dev)
++        self.pack = torch.empty(4, dtype=torch.float32, device=dev)
++
++    def extra_bytes(self):
++        return sum(
++            t.numel() * t.element_size()
++            for t in (self.codes, self.scale, self.err, self.rownorm, self.approx, self.hw)
++        )
++
++    def run(self, x, rb=0, max_blocks=0, stages=5):
++        """x: bf16, hidden elements. Fills and returns pack = (best, second, row, window size)."""
++        lm_head_int8_argmax_hip(
++            x, self.codes, self.scale, self.err, self.rownorm, self.weight, self.approx,
++            self.hw, self.xs, self.ctl, self.idx, self.vals, self.pack, self.row_offset,
++            ARITH, rb, max_blocks, stages,
++        )
++        return self.pack
++
++    def run_reference(self, x, chunk=8192):
++        """The same result with torch operators on any device; fills approx, hw and pack."""
++        n, k = self.rows, self.cols
++        g = k // GROUP
++        x32 = x.reshape(-1).float()
++        xg = (x32.double().reshape(g, GROUP).square().sum(-1).sqrt() * UP).float()
++        slack = float(x32.double().square().sum().sqrt() * UP) * ARITH
++        xgrp = x32.reshape(g, GROUP)
++        for r0 in range(0, n, chunk):
++            part = torch.einsum(
++                "rgk,gk->rg", self.codes[r0:r0 + chunk].float().reshape(-1, g, GROUP), xgrp)
++            self.approx[r0:r0 + chunk] = (part * self.scale[r0:r0 + chunk]).sum(-1)
++        self.hw.copy_(self.err @ xg + slack * self.rownorm)
++        best = float((self.approx - self.hw).max())
++        rows = torch.nonzero(self.approx + self.hw >= best - bf16_ulp(best))[:, 0]
++        count = int(rows.numel())
++        rows = rows[: self.slots]
++        vals = (self.weight[rows].float() @ x32).to(torch.bfloat16).float()
++        order = torch.argsort(vals, descending=True, stable=True)
++        second = float(vals[order[1]]) if rows.numel() > 1 else float("-inf")
++        self.pack.copy_(torch.tensor(
++            [float(vals[order[0]]), second, float(int(rows[order[0]]) + self.row_offset),
++             float(count)], dtype=torch.float32))
++        return self.pack
+diff --git a/python/sglang/srt/layers/lm_head_int8_tail.py b/python/sglang/srt/layers/lm_head_int8_tail.py
+new file mode 100644
+index 0000000..cecdf2d
+--- /dev/null
++++ b/python/sglang/srt/layers/lm_head_int8_tail.py
+@@ -0,0 +1,326 @@
++"""Deferred LM head for one-row greedy decode on RDNA4.
++
++When this is active the decode graph ends at the last hidden state: the capture stores the
++hidden row in a persistent buffer, fills the logits buffer with -inf and skips the head. After
++every replay the head runs eagerly on the stored row:
++
++  * a greedy request with no logit processing runs the int8 arg-max filter
++    (lm_head_int8_filter). When the filter proves the bf16 arg-max on every rank, the logits
++    buffer keeps -inf everywhere except that token's bf16 logit, so the unchanged sampler picks
++    the token the bf16 head would have picked;
++  * every other step, and every step the filter cannot prove, runs the unchanged bf16 head
++    (LogitsProcessor._get_logits) on the stored row and fills the buffer as the graph used to.
++
++Opt-in: SGLANG_RDNA4_INT8_LM_HEAD=1. SGLANG_RDNA4_INT8_LM_HEAD_FULL=1 keeps the deferral and
++runs the bf16 head on every step (the plumbing-only arm of an A/B). The int8 copy is built
++after the weights are loaded and before the KV pool is sized.
++
++SGLANG_RDNA4_INT8_LM_HEAD_TIMING=1 is a diagnostic: it waits for the device after every stage of
++the eager tail and logs the mean stage times with the counters. The waits slow the step, so a
++server with the switch set is not a timing arm.
++"""
++
++import logging
++import time
++
++import torch
++
++from sglang.srt.utils import get_bool_env_var
++
++logger = logging.getLogger(__name__)
++
++_ENABLED = get_bool_env_var("SGLANG_RDNA4_INT8_LM_HEAD", "false")
++_FORCE_FULL = get_bool_env_var("SGLANG_RDNA4_INT8_LM_HEAD_FULL", "false")
++_TIMING = get_bool_env_var("SGLANG_RDNA4_INT8_LM_HEAD_TIMING", "false")
++_LOG_FIRST = 256  # counters are logged at 256 deferred steps and at every doubling
++
++# The process's deferred head (one target model runner per TP rank process), or None.
++ACTIVE = None
++
++
++class DeferredLmHead:
++    def __init__(self, model_runner, processor, lm_head, flt, decide, tp_group, capture_mode):
++        self.model_runner = model_runner
++        self.processor = processor
++        self.lm_head = lm_head
++        self.filter = flt
++        self.decide = decide
++        self.capture_mode = capture_mode
++        self.force_full = _FORCE_FULL
++        weight = flt.weight
++        self.weight_version = weight._version
++        # Allocated here, not during capture: the graph must write to memory that outlives it.
++        self.hidden = torch.zeros(1, weight.shape[1], dtype=weight.dtype, device=weight.device)
++        self.tp_group = tp_group if tp_group.world_size > 1 else None
++        self.gathered = (
++            torch.zeros(4 * tp_group.world_size, dtype=torch.float32, device=weight.device)
++            if self.tp_group is not None
++            else None
++        )
++        self._pending = None  # metadata of a capture forward that stored its hidden row
++        self._deferred = {}  # id(graph output) -> (graph output, metadata)
++        self._in_full_head = False
++        self.steps = self.fast = self.unproven = 0
++        self.laps = {} if _TIMING else None  # stage -> [seconds, calls]
++        self._left = None  # when the previous tail returned (timing diagnostic)
++
++    # -- capture ---------------------------------------------------------------------------
++
++    def stash(self, processor, hidden_states, lm_head, logits_metadata, embedding_bias,
++              use_logits_buffer):
++        """Called at the top of LogitsProcessor._get_logits. Returns the logits buffer when this
++        decode-graph capture defers the head, None when the head has to run in place."""
++        if self._in_full_head or not self.capture_mode.is_capture_mode:
++            return None
++        if processor is not self.processor or lm_head is not self.lm_head:
++            return None
++        if embedding_bias is not None or not use_logits_buffer:
++            return None
++        if not logits_metadata.forward_mode.is_decode():
++            return None
++        if hidden_states.shape != self.hidden.shape or hidden_states.dtype != self.hidden.dtype:
++            return None
++        buf = logits_metadata.next_token_logits_buffer
++        if (
++            buf is None
++            or buf.dtype != torch.float32
++            or tuple(buf.shape) != (1, processor.vocab_size)
++        ):
++            return None
++        from sglang.srt.model_executor.cuda_graph_config import (
++            Backend,
++            Phase,
++            check_cuda_graph_backend,
++        )
++
++        if not check_cuda_graph_backend(Phase.DECODE, Backend.FULL):
++            return None
++        self.hidden.copy_(hidden_states)
++        # Recorded in the graph: a replay whose eager head did not run has no finite logit.
++        buf.fill_(float("-inf"))
++        self._pending = logits_metadata
++        return buf
++
++    def capture_hook(self, runner, out, forward_batch, num_tokens):
++        """Decode-graph capture tail hook: remembers the outputs of the forwards that deferred."""
++        metadata, self._pending = self._pending, None
++        if metadata is None:
++            return
++        buf = metadata.next_token_logits_buffer
++        logits = getattr(out, "next_token_logits", None)
++        if (
++            type(runner.backend).__name__ != "FullCudaGraphBackend"
++            or logits is None
++            or logits.data_ptr() != buf.data_ptr()
++            or tuple(logits.shape) != tuple(buf.shape)
++        ):
++            raise RuntimeError(
++                "[RDNA4] LM head: the deferred head needs a 'full' decode graph whose output is "
++                "the logits buffer; unset SGLANG_RDNA4_INT8_LM_HEAD"
++            )
++        self._deferred[id(out)] = (out, metadata)
++
++    # -- replay ----------------------------------------------------------------------------
++
++    def _fast_ok(self, forward_batch):
++        if self.force_full:
++            return False
++        si = forward_batch.sampling_info
++        if si is None or not si.is_all_greedy:
++            return False
++        if (
++            forward_batch.return_logprob
++            or forward_batch.batch_size != 1
++            or not forward_batch.forward_mode.is_decode()
++        ):
++            return False
++        if (
++            si.grammars
++            or si.logit_bias is not None
++            or si.acc_additive_penalties is not None
++            or si.acc_scaling_penalties is not None
++            or si.has_custom_logit_processor
++            or si.has_watermark_candidates
++            or si.sampling_mask_batch_indices is not None
++            or si.sampling_support_logprobs_capture_indices is not None
++        ):
++            return False
++        orchestrator = si.penalizer_orchestrator
++        if orchestrator is not None and orchestrator.is_required:
++            return False
++        runner = self.model_runner
++        if runner.sampling_observer is not None or runner.watermark_state is not None:
++            return False
++        weight = self.filter.weight
++        return self.lm_head.weight is weight and weight._version == self.weight_version
++
++    def _lap(self, stage, start, wait=True):
++        """Timing diagnostic: adds the time since `start` to `stage`, after the device is idle."""
++        if wait:
++            torch.cuda.synchronize()
++        now = time.perf_counter()
++        lap = self.laps.setdefault(stage, [0.0, 0])
++        lap[0] += now - start
++        lap[1] += 1
++        return now
++
++    def after_replay(self, output, forward_batch):
++        """Called by DecodeCudaGraphRunner after each replay, inside its timer."""
++        entry = self._deferred.get(id(output))
++        if entry is None:
++            return
++        metadata = entry[1]
++        self.steps += 1
++        timed = self.laps is not None
++        if timed:
++            t = time.perf_counter()
++            if self._left is not None:
++                self._lap("outside the tail", self._left, wait=False)
++            t = self._lap("replay wait", t)
++        if self._fast_ok(forward_batch):
++            pack = self.filter.run(self.hidden)
++            if timed:
++                t = self._lap("int8 filter", t)
++            if self.tp_group is not None:
++                self.tp_group.all_gather_into_tensor(self.gathered, pack)
++                pack = self.gathered
++                if timed:
++                    t = self._lap("pack all-gather", t)
++            p = pack.tolist()
++            hit = self.decide([p[i:i + 4] for i in range(0, len(p), 4)], self.filter.slots)
++            if timed:
++                t = self._lap("readback and decision", t)
++            if hit is not None:
++                metadata.next_token_logits_buffer[0, hit[1]] = hit[0]
++                self.fast += 1
++                if timed:
++                    t = self._lap("logit write", t)
++            else:
++                self.unproven += 1
++                self._full_head(metadata)
++                if timed:
++                    t = self._lap("bf16 head", t)
++        else:
++            self._full_head(metadata)
++            if timed:
++                t = self._lap("bf16 head", t)
++        if self.steps >= _LOG_FIRST and self.steps & (self.steps - 1) == 0:
++            logger.info(
++                "[RDNA4] LM head: %d deferred steps, %d served by the int8 filter, %d unproven, "
++                "%d by the bf16 head on request",
++                self.steps, self.fast, self.unproven, self.steps - self.fast - self.unproven,
++            )
++            if timed:
++                logger.info(
++                    "[RDNA4] LM head timing (device waits after every stage, diagnostic): %s",
++                    ", ".join(
++                        f"{stage} {1e6 * seconds / calls:.0f} us x {calls}"
++                        for stage, (seconds, calls) in self.laps.items()
++                    ),
++                )
++        if timed:
++            self._left = time.perf_counter()
++
++    def _full_head(self, metadata):
++        buf = metadata.next_token_logits_buffer
++        self._in_full_head = True
++        try:
++            logits = self.processor._get_logits(self.hidden, self.lm_head, metadata)
++        finally:
++            self._in_full_head = False
++        if logits.data_ptr() != buf.data_ptr():
++            buf.copy_(logits)
++
++
++def _unsupported(model_runner, processor, lm_head):
++    if getattr(torch.version, "hip", None) is None:
++        return "not a HIP build"
++    if model_runner.is_draft_worker:
++        return "draft worker"
++    if not model_runner.spec_algorithm.is_none():
++        return "speculative decoding is on"
++    args = model_runner.server_args
++    if getattr(args, "enable_dp_attention", False) or getattr(args, "pp_size", 1) != 1:
++        return "DP attention or pipeline parallelism"
++    if processor is None or lm_head is None:
++        return "the model has no lm_head / logits_processor pair"
++    from sglang.srt.batch_invariant_ops import is_batch_invariant_mode_enabled
++
++    if is_batch_invariant_mode_enabled():
++        return "batch-invariant mode"
++    if (
++        processor.use_attn_tp_group
++        or processor.do_tensor_parallel_all_gather_dp_attn
++        or processor.use_fp32_lm_head
++        or processor.use_tp_lm_head_all_to_all
++        or processor.logit_scale is not None
++        or processor.final_logit_softcapping
++        or processor.rl_on_policy_target is not None
++    ):
++        return "the logits processor post-processes or regroups the head"
++    from sglang.srt.layers.logits_processor import should_apply_lm_head_quant_method
++
++    if hasattr(lm_head, "set_lora") or should_apply_lm_head_quant_method(
++        lm_head, getattr(lm_head, "quant_method", None)
++    ):
++        return "LoRA-wrapped or quantised head"
++    weight = getattr(lm_head, "weight", None)
++    if (
++        not torch.is_tensor(weight)
++        or weight.dim() != 2
++        or weight.dtype != torch.bfloat16
++        or not weight.is_cuda
++        or not weight.is_contiguous()
++    ):
++        return "the head weight is not a contiguous bf16 matrix on the GPU"
++    if weight.shape[1] % 128 or weight.shape[1] // 128 > 256:
++        return "hidden size is not a multiple of 128 up to 32768"
++    shard = getattr(lm_head, "shard_indices", None)
++    if (
++        shard is None
++        or shard.num_added_elements != 0
++        or shard.num_org_elements != weight.shape[0]
++        or shard.num_org_elements_padded != weight.shape[0]
++        or lm_head.org_vocab_size != processor.vocab_size
++    ):
++        return "padded or extended vocabulary shard"
++    return None
++
++
++def maybe_build(model_runner):
++    """Called by ModelRunner.load_model after the weights are in place."""
++    global ACTIVE
++    if not _ENABLED:
++        return
++    model = model_runner.model
++    processor = getattr(model, "logits_processor", None)
++    lm_head = getattr(model, "lm_head", None)
++    reason = _unsupported(model_runner, processor, lm_head)
++    if reason is None:
++        from sglang.srt.layers import lm_head_int8_filter as flt
++
++        if flt.lm_head_int8_argmax_hip is None:
++            reason = "lm_head_int8_hip_ext is not installed"
++    if reason is not None:
++        logger.info("[RDNA4] LM head: int8 arg-max filter off (%s)", reason)
++        return
++    from sglang.srt.distributed import get_tp_group
++    from sglang.srt.model_executor.runner_utils import capture_mode
++
++    weight = lm_head.weight
++    row_offset = lm_head.shard_indices.org_vocab_start_index
++    head_filter = flt.Int8HeadFilter(weight, row_offset=row_offset)
++    tail = DeferredLmHead(
++        model_runner, processor, lm_head, head_filter, flt.decide, get_tp_group(), capture_mode
++    )
++    model_runner.capture_tail_hooks.append(tail.capture_hook)
++    ACTIVE = tail
++    logger.info(
++        "[RDNA4] LM head: int8 arg-max filter active (rows %d-%d of %d, %d slots, %.2f GiB "
++        "copy%s)",
++        row_offset, row_offset + weight.shape[0], processor.vocab_size, head_filter.slots,
++        head_filter.extra_bytes() / 2**30,
++        ", bf16 head on every step" if _FORCE_FULL else "",
++    )
++    if _TIMING:
++        logger.info("[RDNA4] LM head timing diagnostic on: every stage waits for the device")
+diff --git a/python/sglang/srt/layers/logits_processor.py b/python/sglang/srt/layers/logits_processor.py
+index f35efc4..7cdb20f 100644
+--- a/python/sglang/srt/layers/logits_processor.py
++++ b/python/sglang/srt/layers/logits_processor.py
+@@ -32,7 +32,7 @@ from sglang.kernels.ops.activation.softcap import (
+ from sglang.srt.beam_search.logits_capture import BeamLogitsCapture
+ from sglang.srt.distributed.device_communicators import triton_symm_mem_ag
+ from sglang.srt.environ import envs
+-from sglang.srt.layers import layernorm_sp
++from sglang.srt.layers import layernorm_sp, lm_head_int8_tail
+ from sglang.srt.layers.aux_hidden_states import AuxHiddenStates, pack_aux_hidden_states
+ from sglang.srt.layers.dp_attention import (
+     DpPaddingMode,
+@@ -879,6 +879,19 @@ class LogitsProcessor(nn.Module):
+         last position (e.g., extend without input logprobs). The caller should
+         guarantee the given hidden_states follow this constraint.
+         """
++        if lm_head_int8_tail.ACTIVE is not None:
++            # RDNA4: a decode-graph capture can end at the hidden state; the head then runs
++            # eagerly after each replay (see lm_head_int8_tail).
++            deferred = lm_head_int8_tail.ACTIVE.stash(
++                self,
++                hidden_states,
++                lm_head,
++                logits_metadata,
++                embedding_bias,
++                use_logits_buffer,
++            )
++            if deferred is not None:
++                return deferred
+         _trace_e2e_logits(
+             "get_logits_enter",
+             hidden_shape=tuple(hidden_states.shape),
+diff --git a/python/sglang/srt/model_executor/model_runner.py b/python/sglang/srt/model_executor/model_runner.py
+index e69ae20..becb781 100644
+--- a/python/sglang/srt/model_executor/model_runner.py
++++ b/python/sglang/srt/model_executor/model_runner.py
+@@ -73,7 +73,7 @@ from sglang.srt.eplb.expert_location_updater import ExpertLocationUpdater
+ from sglang.srt.kv_canary.api import install_canary
+ from sglang.srt.kv_canary.runner.canary_manager import context_tuple
+ from sglang.srt.kv_canary.token_oracle.install import install_token_oracle_from_env
+-from sglang.srt.layers import deep_gemm_wrapper, model_parallel
++from sglang.srt.layers import deep_gemm_wrapper, lm_head_int8_tail, model_parallel
+ from sglang.srt.layers.attention.dsa.utils import is_dsa_enable_prefill_cp
+ from sglang.srt.layers.cp.utils import (
+     get_cp_strategy,
+@@ -1347,6 +1347,10 @@ class ModelRunner:
+ 
+         self.dtype = self.model_config.dtype
+ 
++        # RDNA4: the opt-in int8 copy of the LM head (SGLANG_RDNA4_INT8_LM_HEAD) is built
++        # here so that it counts as weight memory when the KV pool is sized.
++        lm_head_int8_tail.maybe_build(self)
++
+         # R9700 FIX (2026-05-31): reclaim weight-loading transients BEFORE measuring
+         # available memory. Some quant load paths (notably per-tensor FP8 requantize,
+         # e.g. devstral2 / Mistral3) leave ~11 GB/card of intermediate GPU tensors held
+diff --git a/python/sglang/srt/model_executor/runner/decode_cuda_graph_runner.py b/python/sglang/srt/model_executor/runner/decode_cuda_graph_runner.py
+index 321379c..427802d 100644
+--- a/python/sglang/srt/model_executor/runner/decode_cuda_graph_runner.py
++++ b/python/sglang/srt/model_executor/runner/decode_cuda_graph_runner.py
+@@ -42,6 +42,7 @@ from sglang.srt.compilation.torch_compile_decoration import set_torch_compile_co
+ from sglang.srt.distributed.parallel_state import graph_capture
+ from sglang.srt.dllm.config import DllmConfig
+ from sglang.srt.environ import envs
++from sglang.srt.layers import lm_head_int8_tail
+ from sglang.srt.layers.attention.base_attn_backend import (
+     AttentionBackend,
+     SharedReadEnds,
+@@ -1676,6 +1677,9 @@ class DecodeCudaGraphRunner(BaseCudaGraphRunner):
+ 
+     def _process_output_after_replay(self, output, forward_batch: ForwardBatch):
+         """Optional eager tail executed after graph replay and inside its timer."""
++        if lm_head_int8_tail.ACTIVE is not None:
++            # RDNA4: the LM head of a capture that deferred it (a no-op for other graphs).
++            lm_head_int8_tail.ACTIVE.after_replay(output, forward_batch)
+         return output
+ 
+     def get_spec_info(self, num_tokens: int):

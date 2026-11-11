@@ -1,0 +1,57 @@
+{
+  "label": "full2-sampled",
+  "tag": "",
+  "note": "",
+  "port": 23334,
+  "maxtok": 200,
+  "runs": 3,
+  "sampling": {
+    "temperature": 1.0,
+    "top_p": 0.95,
+    "top_k": 20,
+    "seed": 7
+  },
+  "ignore_eos": true,
+  "points": [
+    {
+      "context": 128,
+      "input_len": 24,
+      "runs_tps": [
+        33.52,
+        33.74,
+        33.74
+      ],
+      "median_tps": 33.743,
+      "min_tps": 33.518,
+      "max_tps": 33.744,
+      "runs_completion_tokens": [
+        200,
+        200,
+        200
+      ],
+      "median_tpot_ms": 29.64,
+      "sample": "# The Architectural Bottleneck: A Deep Dive into GPU Memory ",
+      "median_ttft_ms": 86.7
+    },
+    {
+      "context": 65536,
+      "input_len": 58483,
+      "runs_tps": [
+        31.66,
+        31.64,
+        31.59
+      ],
+      "median_tps": 31.643,
+      "min_tps": 31.585,
+      "max_tps": 31.663,
+      "runs_completion_tokens": [
+        200,
+        200,
+        200
+      ],
+      "median_tpot_ms": 31.6,
+      "sample": "The provided text consists of the classic English pangram \"T",
+      "median_ttft_ms": 97.3
+    }
+  ]
+}

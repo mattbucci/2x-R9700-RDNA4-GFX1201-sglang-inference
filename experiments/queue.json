@@ -752,18 +752,36 @@
   {
    "id": "RAD-15",
    "spec": "19-vllm-radiance-parity.md",
-   "status": "in_progress",
+   "status": "completed",
    "resource": "gpu",
    "depends_on": [
     "RAD-14 (done): LM head = one rocBLAS launch of 2.25-2.36 ms per step"
    ],
-   "next_action": "Study done (benchmarks/profiling/rad15-lm-head-study-2026-11-10/study.json): build the int8 head, one scale per row per 128 columns (8.13 bits per weight, 0.60 GiB per rank), first pass + proven bound + exact rerank of the top rows by upper bound, certificate (the best exact value clears the best upper bound outside the reranked rows by more than one bf16 ULP), bf16 head as the fallback. Per-batch gate on sampler needs: greedy first; top-k <= 20 sampling second (the reranked rows cover the proven top-20 window at 1,024 rows); full head for logprobs, grammar masks, logit_bias, penalties. int4 / int2 stay out: their proven window is the whole shard and the 6-sigma window is a rate. Site srt/layers/logits_processor.py (TP all-gather + rocBLAS GEMM).",
+   "next_action": "Greedy path adopted as patch 127, code default off, in no preset (SGLANG_RDNA4_INT8_LM_HEAD=1; INT8_LM_HEAD=1 on the launcher for the no-spec FP8 qwen38 server). The sampling path, the route-probe logit-bias case and the video capability check are RAD-15b; a preset default waits for it.",
    "test_gate": [
     "byte-identical greedy output on the 8-prompt set and the needle grid",
     "tool-call + structured-output probes unchanged; gate fails closed",
     "about -1.1 ms/step net in a both-orders A/B (head 2.3 ms today; radiance 0.47)"
    ],
-   "study": "2026-11-10, 4,873 captured head inputs from 20 served generations, recomputed bf16 arg-max = served token on 3,737/3,737 greedy steps. Proven arg-max window over both ranks p50/p99/max: int8 per row 2/66/710, int8 per row per 128 columns 1/19/164, per 32 columns 1/13/86, E4M3 128x128 blocks 7/7,605/36,609, int4 and int2 the whole shard; proven top-20 window for int8 per 128 columns 55/421/870. 0 misses on every window. Per rank: bf16 head 2,549 us, 8-bit first pass 1,002, bound 38, topk 122, rerank 38 (256 rows) / 68 (1,024), scatter 7-8: fast path 1,135-1,167 us, saving 1.38-1.41 ms per step. int4 with a 6-sigma window 598 us, no proof (error reaches 11 isotropic sigma)."
+   "study": "2026-11-10, 4,873 captured head inputs from 20 served generations, recomputed bf16 arg-max = served token on 3,737/3,737 greedy steps. Proven arg-max window over both ranks p50/p99/max: int8 per row 2/66/710, int8 per row per 128 columns 1/19/164, per 32 columns 1/13/86, E4M3 128x128 blocks 7/7,605/36,609, int4 and int2 the whole shard; proven top-20 window for int8 per 128 columns 55/421/870. 0 misses on every window. Per rank: bf16 head 2,549 us, 8-bit first pass 1,002, bound 38, topk 122, rerank 38 (256 rows) / 68 (1,024), scatter 7-8: fast path 1,135-1,167 us, saving 1.38-1.41 ms per step. int4 with a 6-sigma window 598 us, no proof (error reaches 11 isotropic sigma).",
+   "result": "2026-11-10. Kernel (benchmarks/profiling/rad15-lm-head-kernel-2026-11-10/kernel-bench.json), one rank's shard 124,160 x 5,120, 4,873 captured steps: bf16 head 2,549 us, filter 1,095 us (int8 pass + bound 1,072), 0 bound violations, 0 window misses (max 164 rows, 256 slots), near-tie rule of two bf16 steps: 95.4 % served, 0 wrong tokens. Serving (benchmarks/profiling/rad15-lm-head-serving-2026-11-10/summary.json), qwen38 FP8 no-spec, boots base / plumbing / int8 / int8 / plumbing / base, canonical sweep at temperature 0, tok/s at 24 / 7,331 / 58,483 / 197,326: control 34.54|34.26 / 33.66|33.61 / 32.10|32.18 / 28.93|28.72, int8 35.34|35.21 / 34.39|34.36 / 32.69|32.75 / 29.21|29.17 (x1.025 / 1.022 / 1.018 / 1.012), plumbing arm x0.993 / 0.998 / 0.997 / 0.993. Forced greedy ms/token at 24 / 58K: 29.20 / 31.01 -> 28.55 / 30.33; sampled (T 1.0, top-p 0.95, top-k 20) 29.57 / 31.50 -> 29.63 / 31.58. Counters per int8 boot: 4,096 deferred steps, 2,469 | 2,741 served by the filter, 135 | 161 unproven. 56 greedy outputs identical to the control's, needle 9/9 to 197K, capabilities 4/4 (video not run), route probe 9/10 on every arm including the control (logit-bias case). KV pool 735,510 -> 692,246 tokens (0.63 GiB int8 copy per card). The test gate's -1.1 ms/step was not reached: -0.66 / -0.69 ms per greedy token."
+  },
+  {
+   "id": "RAD-15b",
+   "spec": "19-vllm-radiance-parity.md",
+   "status": "queued",
+   "resource": "gpu",
+   "depends_on": [
+    "RAD-15 (done, patch 127): greedy requests are served from the int8 copy with a proven arg-max window, sampled requests run the bf16 head",
+    "RAD-15 study: the proven top-20 window for int8 per 128 columns is 55 / 421 / 870 rows (p50 / p99 / max), 1,024 rescored rows cover it"
+   ],
+   "next_action": "Sampling path for the int8 head: top-k <= 20 requests rescored on the bf16 rows of the proven top-k window (1,024 slots), temperature and top-p applied to the rescored rows, bf16 head for everything else and for every unproven step. Before the A/B: give the logit-bias case of scripts/eval/greedy_route_probe.py a positive-bias sub-case (the ban of the answer's first tokens returns an empty answer on every arm, the control included) and run the capability check with video. Preset decision for the no-spec qwen38 server after the A/B: the int8 copy costs 43K KV-pool tokens.",
+   "test_gate": [
+    "kernel: the proven top-20 window holds on the captured sampled steps, 0 rows of the bf16 top-20 outside the rescored set",
+    "serving: sampled rows at the model's recommended settings at least 1 % faster at 24 tokens and 58K in both orders, the plumbing arm sized next to them",
+    "distribution check: token frequencies of a fixed-seed sampled set equal the control's; greedy outputs stay identical",
+    "capabilities 5/5 with video, route probe 10/10 including the control, needle 9/9"
+   ]
   },
   {
    "id": "RAD-16",
@@ -989,7 +1007,7 @@
   {
    "id": "RAD-29",
    "spec": "19-vllm-radiance-parity.md",
-   "status": "ready",
+   "status": "in_progress",
    "resource": "gpu",
    "depends_on": [
     "RAD-22b (done): the nine-row block-FP8 GEMM and its quantiser are 5.4 of 10.8 ms of the verify's excess at 24 tokens and 6.8 of 11.8 at 58K",

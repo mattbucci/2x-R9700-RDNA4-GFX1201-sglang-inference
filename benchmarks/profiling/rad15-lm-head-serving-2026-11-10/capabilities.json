@@ -1,0 +1,90 @@
+{
+  "base1": {
+    "tag": "base1",
+    "model": "/data/models/Qwen3.8-27B-FP8",
+    "timestamp": "2026-11-10 14:13",
+    "elapsed_sec": 6.3,
+    "checks": {
+      "basic": {
+        "passed": true,
+        "message": "finish=stop answer='paris'"
+      },
+      "tool_call": {
+        "passed": true,
+        "message": "finish=tool_calls name='get_weather' args='{\"location\": \"Paris\"}'"
+      },
+      "thinking": {
+        "passed": true,
+        "message": "reasoning_seen terminated answer_ok (151 tok, finish=stop)"
+      },
+      "vision": {
+        "passed": true,
+        "message": "saw=['red', 'circle']  response='the image is a red circle with a black outline.'"
+      }
+    },
+    "summary": {
+      "passed": 4,
+      "total": 4
+    }
+  },
+  "full1": {
+    "tag": "full1",
+    "model": "/data/models/Qwen3.8-27B-FP8",
+    "timestamp": "2026-11-10 14:21",
+    "elapsed_sec": 6.3,
+    "checks": {
+      "basic": {
+        "passed": true,
+        "message": "finish=stop answer='paris'"
+      },
+      "tool_call": {
+        "passed": true,
+        "message": "finish=tool_calls name='get_weather' args='{\"location\": \"Paris\"}'"
+      },
+      "thinking": {
+        "passed": true,
+        "message": "reasoning_seen terminated answer_ok (140 tok, finish=stop)"
+      },
+      "vision": {
+        "passed": true,
+        "message": "saw=['red', 'circle', 'round']  response='the image displays a solid red circle with a thin black outline, centered on a plain white background.'"
+      }
+    },
+    "summary": {
+      "passed": 4,
+      "total": 4
+    }
+  },
+  "fast1": {
+    "tag": "fast1",
+    "model": "/data/models/Qwen3.8-27B-FP8",
+    "timestamp": "2026-11-10 14:30",
+    "elapsed_sec": 10.3,
+    "checks": {
+      "basic": {
+        "passed": true,
+        "message": "finish=stop answer='paris'"
+      },
+      "tool_call": {
+        "passed": true,
+        "message": "finish=tool_calls name='get_weather' args='{\"location\": \"Paris\"}'"
+      },
+      "thinking": {
+        "passed": true,
+        "message": "reasoning_seen terminated answer_ok (116 tok, finish=stop)"
+      },
+      "vision": {
+        "passed": true,
+        "message": "saw=['red', 'circle', 'round']  response=' a red circle on a white background.'"
+      },
+      "video": {
+        "passed": true,
+        "message": "saw=['move', 'right', 'across', 'ball', 'circle', 'red']  response='\\n\\na red circle moves horizontally from the left side of the screen to the right.'"
+      }
+    },
+    "summary": {
+      "passed": 5,
+      "total": 5
+    }
+  }
+}

@@ -1,0 +1,52 @@
+{
+  "label": "full2-forced",
+  "tag": "",
+  "note": "",
+  "port": 23334,
+  "maxtok": 200,
+  "runs": 3,
+  "sampling": null,
+  "ignore_eos": true,
+  "points": [
+    {
+      "context": 128,
+      "input_len": 24,
+      "runs_tps": [
+        34.15,
+        34.12,
+        34.15
+      ],
+      "median_tps": 34.147,
+      "min_tps": 34.124,
+      "max_tps": 34.149,
+      "runs_completion_tokens": [
+        200,
+        200,
+        200
+      ],
+      "median_tpot_ms": 29.29,
+      "sample": "# The Memory Wall: A Deep Dive into GPU Memory Hierarchy and",
+      "median_ttft_ms": 85.0
+    },
+    {
+      "context": 65536,
+      "input_len": 58483,
+      "runs_tps": [
+        32.01,
+        32.04,
+        32.02
+      ],
+      "median_tps": 32.022,
+      "min_tps": 32.013,
+      "max_tps": 32.041,
+      "runs_completion_tokens": [
+        200,
+        200,
+        200
+      ],
+      "median_tpot_ms": 31.23,
+      "sample": "The provided text consists of the pangram \"The quick brown f",
+      "median_ttft_ms": 97.3
+    }
+  ]
+}

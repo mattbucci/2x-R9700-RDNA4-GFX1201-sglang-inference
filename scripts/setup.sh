@@ -419,6 +419,17 @@ if [ -f "$SCRIPT_DIR/build_fp8_gemv.sh" ]; then
 fi
 
 # -------------------------------------------------------------------
+# Step 5d: Build int8 LM-head arg-max filter kernel (patches/127)
+# -------------------------------------------------------------------
+echo ""
+echo "[5d/6] Building int8 LM-head HIP kernel for gfx1201..."
+echo "  Opt-in greedy decode head (SGLANG_RDNA4_INT8_LM_HEAD=1)."
+if [ -f "$SCRIPT_DIR/build_lm_head_int8.sh" ]; then
+    SGL_KERNEL_DIR="$SGL_KERNEL_DIR" "$SCRIPT_DIR/build_lm_head_int8.sh" --env "$ENV_NAME" || \
+      echo "  WARNING: int8 LM-head kernel build failed (non-fatal — the bf16 head serves every step)"
+fi
+
+# -------------------------------------------------------------------
 # Step 6: Verify installation
 # -------------------------------------------------------------------
 echo ""

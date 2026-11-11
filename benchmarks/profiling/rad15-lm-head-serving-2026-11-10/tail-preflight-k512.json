@@ -1,0 +1,46 @@
+{
+ "tree": "/data/sgl-v0522-rad15/python",
+ "kernel": true,
+ "rows": 4096,
+ "cols": 512,
+ "steps": 96,
+ "world1": {
+  "wrong_tokens": 0,
+  "fast_steps": 95,
+  "fallback_steps": 1,
+  "counters": [
+   [
+    96,
+    95,
+    1
+   ]
+  ],
+  "full_head_calls": [
+   16
+  ]
+ },
+ "world2": {
+  "wrong_tokens": 0,
+  "fast_steps": 95,
+  "fallback_steps": 1,
+  "counters": [
+   [
+    96,
+    95,
+    1
+   ],
+   [
+    96,
+    95,
+    1
+   ]
+  ],
+  "full_head_calls": [
+   15,
+   14
+  ]
+ },
+ "import_check": "imported",
+ "failures": [],
+ "gate": "PASS"
+}

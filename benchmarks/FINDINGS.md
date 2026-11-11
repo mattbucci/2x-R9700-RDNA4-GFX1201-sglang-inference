@@ -1704,6 +1704,66 @@ VALU cycles per 2 KiB of weights per wave, about 410 GB/s, below the Triton tile
 payloads is ranked after a two-card kernel bench at that payload, the snapshotting recurrence (1.3 ms) and the
 copies (0.8 ms) after that.
 
+### RAD-15 — int8 LM head with a proven arg-max window: greedy no-spec decode +1.2–2.5 % with the control's text; patch 127, opt-in (2026-11-10)
+
+Mechanism (patch 127, `SGLANG_RDNA4_INT8_LM_HEAD=1`). The one-row decode graph ends at the last hidden state and
+the head runs eagerly after every replay. A greedy request with no logit processing (no logprobs, grammar, logit
+bias, penalties or custom processors) goes through an int8 copy of the head, one scale per row per 128 columns: one
+pass gives every vocabulary row an approximate logit and a proven half width, the rows that can still be the
+arg-max are rescored on the bf16 weight, and the token is served only when the window fits 256 slots and best minus
+second exceeds two bf16 steps over both ranks. Every other step, and every step the filter cannot prove, runs the
+unchanged bf16 head on the stored hidden row. The served token is the bf16 head's arg-max either way. The filter
+stays off under speculative decoding, batch-invariant mode, DP attention and a LoRA-wrapped or quantised head, and
+logs the reason.
+
+Kernel (`scripts/bench/bench_lm_head_int8_hip.py`,
+[receipt](profiling/rad15-lm-head-kernel-2026-11-10/kernel-bench.json)), one card, one rank's shard of 124,160 ×
+5,120, replayed over the 4,873 captured head inputs of the study: bf16 head 2,549 µs; filter 1,095 µs (int8 pass
+and bound 1,072, norms 5.4, compaction 5.4, rescoring 8.0, reduction 3.5). 0 bound violations (largest use of the
+bound 0.095), 0 window misses, window p50 1 / p99 18.5 / max 164 rows. With the two-step near-tie rule 95.4 % of
+the steps are served by the filter, 223 fall back as near ties, 0 wrong tokens.
+
+Serving A/B (`qwen38` FP8, no speculation, one session, boot order base → plumbing → int8 → int8 → plumbing →
+base; the plumbing arm, `SGLANG_RDNA4_INT8_LM_HEAD_FULL=1`, keeps the deferral and runs the bf16 head on every
+step; [receipts](profiling/rad15-lm-head-serving-2026-11-10/)). Canonical sweep at temperature 0, tok/s:
+
+| arm | 24 | 7,331 | 58,483 | 197,326 input tokens |
+|---|---:|---:|---:|---:|
+| control, boots 1 / 6 | 34.54 / 34.26 | 33.66 / 33.61 | 32.10 / 32.18 | 28.93 / 28.72 |
+| plumbing, boots 2 / 5 | 34.20 / 34.10 | 33.58 / 33.55 | 32.05 / 32.05 | 28.63 / 28.63 |
+| int8 filter, boots 3 / 4 | 35.34 / 35.21 | 34.39 / 34.36 | 32.69 / 32.75 | 29.21 / 29.17 |
+| int8 over control | ×1.025 | ×1.022 | ×1.018 | ×1.012 |
+| plumbing over control | ×0.993 | ×0.998 | ×0.997 | ×0.993 |
+
+Forced 200-token rows at 24 / 58,483 tokens, ms per token, mean of two boots: greedy 29.20 / 31.01 on the control,
+29.29 / 31.20 on the plumbing arm, 28.55 / 30.33 with the filter (−0.66 / −0.69 ms); sampled at the model's
+recommended settings (temperature 1.0, top-p 0.95, top-k 20) 29.57 / 31.50, 29.62 / 31.57 and 29.63 / 31.58, so a
+sampled request pays the deferral (+0.06–0.08 ms) and gains nothing. The kernel saves 1.45 ms per step and the served step gains half of that: the
+eager tail adds an all-gather of the per-rank result, a readback for the decision and a logit write (97 + 67 + 60
+µs in the stage diagnostic, which waits for the device after every stage and is not a timing arm), the deferral
+itself costs 0.09–0.19 ms, and one step in twenty runs both heads.
+
+Counters over the two int8 boots: 4,096 deferred steps each; 2,469 and 2,741 served by the filter, 135 and 161
+unproven (94.8 and 94.5 % of the eligible steps proven, the kernel bench's 95.4 % on other text), the rest
+requested the bf16 head (sampling, logprobs, bias, schema). Identity: 56 greedy outputs of the four deferred-head
+boots (six identity prompts and eight route cases per boot) against the control's, 0 diverge; the two controls
+agree with each other. Greedy needle 9/9 at 32K / 131K / 197K on the int8 arm
+([receipt](quality/rad15-fast1-natural-greedy.json)); capabilities 4/4 on control, plumbing and int8 (basic, tool
+call, thinking, image; the video check was not run). Route probe (`scripts/eval/greedy_route_probe.py`: plain,
+code, tool call, thinking + tool call, JSON schema, logprobs, logit bias, penalty, concurrent requests, sampled)
+9/10 on every arm, the control included: the logit-bias case bans the five first tokens of the expected answer and
+gets an empty answer from every server, so it cannot gate until it carries a positive-bias sub-case. Offline
+preflight of the tail (`scripts/test/preflight_lm_head_int8_tail.py`) on one and two ranks at hidden sizes 512,
+640 and 5,120: 0 wrong tokens, the fallback step counted on every rank.
+
+Memory: the int8 copy is 0.63 GiB per card and counts as weight memory, so the KV pool shrinks from 735,510 to
+692,246 tokens at the same `MEM`.
+
+Disposition: adopted as patch 127, code default off, not in a preset. `INT8_LM_HEAD=1` on the launcher opts the
+no-spec FP8 `qwen38` server in; it speeds up greedy requests only, and the model's recommended sampling runs the
+bf16 head. A preset default waits for a sampling path (the study's proven top-20 window fits 1,024 rescored rows).
+Radiance's head (0.47 ms) stays about 0.6 ms per step ahead of the filter kernel.
+
 ## Evaluation methodology
 
 ### SWE-bench answer leakage through git history and the web (found 2026-09-18)

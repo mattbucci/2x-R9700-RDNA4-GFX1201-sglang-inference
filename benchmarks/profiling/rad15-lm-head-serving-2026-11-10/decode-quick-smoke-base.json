@@ -1,0 +1,32 @@
+{
+  "label": "smoke-base-quick",
+  "tag": "",
+  "note": "",
+  "port": 23334,
+  "maxtok": 200,
+  "runs": 3,
+  "sampling": null,
+  "ignore_eos": true,
+  "points": [
+    {
+      "context": 128,
+      "input_len": 24,
+      "runs_tps": [
+        34.33,
+        34.28,
+        34.28
+      ],
+      "median_tps": 34.282,
+      "min_tps": 34.28,
+      "max_tps": 34.334,
+      "runs_completion_tokens": [
+        200,
+        200,
+        200
+      ],
+      "median_tpot_ms": 29.17,
+      "sample": "# The Memory Wall: A Deep Dive into GPU Memory Hierarchy and",
+      "median_ttft_ms": 88.0
+    }
+  ]
+}
