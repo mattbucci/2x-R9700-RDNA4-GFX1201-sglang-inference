@@ -1,58 +1,66 @@
 {
   "model": "flint fp8kv default",
-  "engine": "SGLang",
+  "engine": "SGLang v0.5.22 + 98 patches",
   "hardware": "2x R9700 TP=2",
-  "method": "completion-token-counted streaming TPOT median (decode_ab, 3-run)",
+  "method": "completion-token-counted streaming TPOT median (decode_ab, 5-run)",
   "output_tokens": 80,
-  "timestamp": "2026-11-01 flint FP8 KV preset default",
-  "note": "fleet-table re-measure under the new preset default",
+  "timestamp": "2026-11-11 v0.5.22+98p flint preset (FP8 KV, in-graph custom all-reduce), no speculation",
+  "note": "canonical sweep at 98 patches, bare preset; DFlash2 and RCCL arms in decode-canonical-*-2026-11-11-98p.json",
   "context_sweep": [
     {
       "context": 128,
       "input_len": 14,
-      "tpot_ms": 22.6,
-      "tok_per_sec": 44.242,
+      "tpot_ms": 22.06,
+      "tok_per_sec": 45.321,
       "actual_input_tokens": 14,
-      "ttft_ms": null
+      "ttft_ms": 73.9
     },
     {
       "context": 8192,
       "input_len": 7321,
-      "tpot_ms": 22.96,
-      "tok_per_sec": 43.553,
+      "tpot_ms": 22.47,
+      "tok_per_sec": 44.502,
       "actual_input_tokens": 7321,
-      "ttft_ms": null
+      "ttft_ms": 84.8
     },
     {
       "context": 65536,
       "input_len": 58473,
-      "tpot_ms": 24.59,
-      "tok_per_sec": 40.675,
+      "tpot_ms": 23.19,
+      "tok_per_sec": 43.127,
       "actual_input_tokens": 58473,
-      "ttft_ms": null
+      "ttft_ms": 134.2
     },
     {
       "context": 131072,
       "input_len": 116934,
-      "tpot_ms": 26.35,
-      "tok_per_sec": 37.947,
+      "tpot_ms": 24.16,
+      "tok_per_sec": 41.393,
       "actual_input_tokens": 116934,
-      "ttft_ms": null
+      "ttft_ms": 204.7
+    },
+    {
+      "context": 221184,
+      "input_len": 197315,
+      "tpot_ms": 25.51,
+      "tok_per_sec": 39.196,
+      "actual_input_tokens": 197315,
+      "ttft_ms": 303.7
     },
     {
       "context": 245760,
       "input_len": 219238,
-      "tpot_ms": 26.67,
-      "tok_per_sec": 37.492,
+      "tpot_ms": 25.93,
+      "tok_per_sec": 38.57,
       "actual_input_tokens": 219238,
-      "ttft_ms": null
+      "ttft_ms": 362.5
     }
   ],
   "throughput_sweep": [
     {
       "concurrency": 1,
-      "throughput": 44.242,
-      "tpot_ms": 22.6,
+      "throughput": 45.321,
+      "tpot_ms": 22.06,
       "ttft_ms": 0
     }
   ]

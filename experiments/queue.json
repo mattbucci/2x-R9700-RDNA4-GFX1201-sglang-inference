@@ -610,7 +610,7 @@
   {
    "id": "FLINT-2",
    "spec": "https://github.com/mattbucci/2x-R9700-RDNA4-GFX1201-sglang-inference/issues/27",
-   "status": "ready",
+   "status": "completed",
    "resource": "gpu",
    "depends_on": [
     "FLINT-1 (one GPU job at a time)"
@@ -620,7 +620,8 @@
     "decode_ab 3-run medians both orders",
     "validate_capabilities 5/5, needle natural 6/6",
     "results.json schema fields present"
-   ]
+   ],
+   "result": "Covered by the canonical Flint sweep at 98 patches (FLINT-4b result; benchmarks/flint-fp8/*-canonical-*-2026-11-11-98p.json): the fleet-table row is 45.3 tok/s at 14 and 38.6 tok/s at 219,238 input tokens under the FP8 KV preset default, results.json and the charts are regenerated."
   },
   {
    "id": "FLINT-3",
@@ -672,14 +673,14 @@
   {
    "id": "FLINT-4b",
    "spec": "https://github.com/mattbucci/2x-R9700-RDNA4-GFX1201-sglang-inference/issues/27",
-   "status": "in_progress",
+   "status": "completed",
    "resource": "gpu",
    "depends_on": [
     "RAD-25 adopted as patch 129 (in-graph custom all-reduce on an uncached staging buffer, qwen38 FP8 preset default)",
     "tail queue jobs 84-z (RAD-10a), 84-zz (RAD-10b) and 85 (RAD-29d) finished: one GPU job at a time",
     "FLINT-5: the Flint-DFlash2 drafter arguments of the paused SWE-bench cell"
    ],
-   "next_action": "The flint preset default is in scripts/launch.sh (custom all-reduce on, ENABLE_CUSTOM_ALL_REDUCE=0 restores RCCL). Canonical Flint sweep on the shipped preset, then the README preset text and headline rows.",
+   "next_action": "None: the preset default is shipped and the canonical rows are published. The request-matrix case and the cache-state shift continue as FLINT-6.",
    "test_gate": [
     "fixed before the run; every speed number is the mean of the two boots per side, both arm orders",
     "DFlash2 pass: sampled-ladder cycle time (server log, accept length / token rate) at least 1 % shorter in all four depth bins (24 / 7.3K / 58K / 197K) with every custom boot shorter than every RCCL boot; neutral: all four within 1 %; slower: a bin 1 % longer and none shorter; otherwise partial",
@@ -689,7 +690,24 @@
     "memory: VRAM growth from boot to end of arm on a custom arm at most 512 MiB per card above its control's",
     "adopt as the flint preset default when one side passes, the other is not slower, and prefill, quality and memory hold; otherwise the preset stays on RCCL and the result is recorded as measured"
    ],
-   "result": "FLINT CAR DONE gate=dflash2-neutral:nospec-pass:prefill-ok:accept-pass:identity-control-differs:route-ok:needle-ok:memory-ok (FINDINGS FLINT-4b, benchmarks/profiling/flint-custom-ar-v3-2026-11-11/). No-spec decode x1.026 at all four depths with every custom boot above every RCCL boot; DFlash2 cycle x0.999-1.002; cold prefill x0.999-1.004; accept 2.803 / 2.804; the one differing text is rccl1 against the other three boots; request matrix 10/10 on eight boots; needle 11/12 both sides; VRAM within 1 MiB."
+   "result": "FLINT CAR DONE gate=dflash2-neutral:nospec-pass:prefill-ok:accept-pass:identity-control-differs:route-ok:needle-ok:memory-ok (FINDINGS FLINT-4b, benchmarks/profiling/flint-custom-ar-v3-2026-11-11/). No-spec decode x1.026 at all four depths with every custom boot above every RCCL boot; DFlash2 cycle x0.999-1.002; cold prefill x0.999-1.004; accept 2.803 / 2.804; the one differing text is rccl1 against the other three boots; request matrix 10/10 on eight boots; needle 11/12 both sides; VRAM within 1 MiB. Canonical sweep on the shipped preset (98 patches, FLINT CANONICAL DONE gate=measured; FINDINGS \"Flint canonical sweep at 98 patches\"): no speculation 45.3 / 44.5 / 43.1 / 41.4 / 39.2 / 38.6 tok/s at 14 / 7,321 / 58,473 / 116,934 / 197,315 / 219,238 input tokens, the same on RCCL 44.2 / 43.6 / 41.7 / 40.5 / 38.2 / 37.8, DFlash2 104.2 / 74.2 / 66.4 / 63.7 / 51.2 / 49.2, cold prefill 0.93 / 10.52 / 64.57 s, capability probe 3/3 on three boots, request matrix 9/10 (logit-bias case, see FLINT-6). README, results.json and charts carry these rows."
+  },
+  {
+   "id": "FLINT-6",
+   "spec": "https://github.com/mattbucci/2x-R9700-RDNA4-GFX1201-sglang-inference/issues/27",
+   "status": "in_progress",
+   "resource": "gpu",
+   "depends_on": [
+    "tail queue job 96 (RAD-10c serving A/B) finished: scripts/eval/greedy_route_probe.py is frozen while it runs"
+   ],
+   "next_action": "(1) Control boots, queued as tail job 96-b (flint_kv_control.sh, about 12 min): the flint preset, EXTEND_FP8_QK=0 and KV_DTYPE=auto, bias_diag.py on each (flushed cache against one cached first token, greedy, log-probabilities). (2) Request-matrix logit-bias case judged on the ban itself for models that always reason (unbiased answer starts with the word; the biased generation is non-empty and never contains it; finish reason and token counts recorded), then the matrix re-run on Flint.",
+   "test_gate": [
+    "fixed before the run (kv_control_summary.py): an arm removes the cache-state shift when its largest top-1 log-probability shift is at most one fifth of the preset arm's over the positions both share (at least 8)",
+    "verdict fp8-qk when EXTEND_FP8_QK=0 removes it, fp8-kv when only KV_DTYPE=auto does, unexplained otherwise; unexplained opens a cache-state defect search (SWA pool, sinks) before any preset change",
+    "identity per boot: kv_cache_dtype and the pool dtype line twice, SGLANG_EXTEND_FP8_QK from the server environ, no drafter, live tree",
+    "probe fix: 10/10 on Flint from a flushed cache and after one chat; qwen38 matrix unchanged at 10/10"
+   ],
+   "result": "2026-11-11 diagnostic (one bare boot, benchmarks/profiling/flint-logit-bias-diag-2026-11-11): the ban holds in nine biased generations; the reasoning Flint always emits loops under the ban and ends without an answer from a flushed cache (1,040 and 4,112 tokens) or with 'Par...' after 311 tokens when the first prompt token comes from the cache; the paths part at token 22 (three candidates within 0.28 nats), top-1 log-probabilities move by up to 0.20 nats between the two states; a health check adds no cached token."
   },
   {
    "id": "RAD-10",

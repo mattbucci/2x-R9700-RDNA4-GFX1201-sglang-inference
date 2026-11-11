@@ -251,6 +251,15 @@ In-graph custom all-reduce on the `flint` preset, eight boots in both orders (FL
 38.3 → 45.4 / 44.6 / 43.3 / 39.3 tok/s at 14 / 7.3K / 58K / 197K input tokens (×1.026), DFlash2 cycle ×1.000–1.002, cold
 prefill ×0.999–1.004, accept 2.803 against 2.804 over 48 greedy documents
 ([receipts](profiling/flint-custom-ar-v3-2026-11-11/), [FINDINGS → FLINT-4b](FINDINGS.md)).
+Canonical sweep of the `flint` preset at 98 patches (five runs, EOS; 14 / 7,321 / 58,473 / 116,934 / 197,315 / 219,238 input
+tokens): no speculation 45.3 / 44.5 / 43.1 / 41.4 / 39.2 / 38.6 tok/s, the same on RCCL 44.2 / 43.6 / 41.7 / 40.5 / 38.2 / 37.8,
+DFlash2 104.2 / 74.2 / 66.4 / 63.7 / 51.2 / 49.2; cold prefill 0.93 / 10.52 / 64.57 s at 7.3K / 58K / 197K; capability probe
+3/3 on the three boots; the request matrix reads 9/10 because the logit-bias case loops inside the reasoning Flint always
+emits, the ban itself holds ([decode](flint-fp8/decode-canonical-nospec-2026-11-11-98p.json),
+[RCCL](flint-fp8/decode-canonical-nospec-rccl-2026-11-11-98p.json),
+[DFlash2](flint-fp8/decode-canonical-dflash2-2026-11-11-98p.json),
+[prefill](flint-fp8/prefill-canonical-nospec-2026-11-11-98p.json),
+[bias diagnostic](profiling/flint-logit-bias-diag-2026-11-11/), [FINDINGS → Flint canonical sweep](FINDINGS.md)).
 TP-split DeltaNet projections on the FP8 preset (patch 121), replicated → split → replicated in one session: decode
 23.3 / 22.9 / 22.2 / 20.5 → 26.9 / 26.3 / 25.3 / 23.2 tok/s, cold prefill 1,798 / 1,460 / 945 → 2,125 / 1,658 / 1,024 tok/s,
 pool 525,548 → 735,510 tokens; with DSpark +4.5 % at 24 tokens, +10.0 % on copy-heavy decode at equal accept length and

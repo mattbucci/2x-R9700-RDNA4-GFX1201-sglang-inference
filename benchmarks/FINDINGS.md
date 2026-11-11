@@ -2583,6 +2583,44 @@ Receipts: `qwen38-27b-fp8/{decode,capabilities,route}-canonical-<arm>-2026-11-11
 `dflash2-rccl` and (decode, route) `nospec`, `prefill-canonical-{dspark,nospec}-2026-11-11-98p.json`. These are the
 README and results.json rows.
 
+### Flint canonical sweep at 98 patches: no speculation 45.3 → 38.6 tok/s from 14 to 219K input tokens, DFlash2 104.2 → 49.2, the 197K cold prefill in 64.6 s; the request matrix reads 9/10 because the logit-bias case loops inside Flint's reasoning (2026-11-11)
+
+Shipped `flint` preset from the live tree (98 patches, launcher defaults), `decode_ab.py` with five runs of 80
+tokens and EOS, three boots in one session: the preset, the preset with `ENABLE_CUSTOM_ALL_REDUCE=0`, and the
+preset with the Flint-DFlash2 drafter.
+
+| decode tok/s (TTFT ms) | 14 | 7,321 | 58,473 | 116,934 | 197,315 | 219,238 input tokens |
+|---|---|---|---|---|---|---|
+| no speculation (preset) | 45.3 (74) | 44.5 (85) | 43.1 (134) | 41.4 (205) | 39.2 (304) | 38.6 (363) |
+| no speculation, RCCL | 44.2 (78) | 43.6 (87) | 41.7 (153) | 40.5 (208) | 38.2 (305) | 37.8 (344) |
+| DFlash2 | 104.2 (74) | 74.2 (84) | 66.4 (136) | 63.7 (202) | 51.2 (308) | 49.2 (336) |
+
+The custom all-reduce reads +2.1 to +3.4 % over RCCL in this single-order pair (FLINT-4b measured ×1.026 in both
+orders). Cold prefill without speculation is 0.93 / 10.52 / 64.57 s at 7,321 / 58,473 / 197,315 tokens (7,902 /
+5,559 / 3,056 tok/s). The pool holds 1,044,688 full-attention tokens (571,159 with the drafter loaded). The
+capability probe passes basic, tool call and thinking on all three boots. The DFlash2 rows depend on the
+continuation and are a single order; the preset stays without a drafter.
+
+The request matrix passes 9 of 10 cases on all three boots: the `logit-bias` case returns an empty answer. One
+bare boot isolates it ([receipts](profiling/flint-logit-bias-diag-2026-11-11/)): the unbiased request answers
+`Paris` in every prefix-cache state, and across nine biased generations no banned id is emitted and the word never
+appears in the reasoning or the answer. Flint has no thinking switch, so the ban also applies inside the reasoning
+it always emits, and the greedy reasoning circles around the word it cannot write. From a flushed cache (15 new /
+0 cached prompt tokens) it runs out of budget with no answer, at 1,040 and at 4,112 tokens; after one short chat
+(14 new / 1 cached) it stops after 311 tokens and answers `Par...`. The two paths part at reasoning token 22,
+where three candidates sit within 0.28 nats; over the 22 shared tokens the top-1 log-probability moves by up to
+0.20 nats and a second candidate by up to 0.70 nats between the two states. A health check does not add a cached
+token. The first request with this prompt read 15 / 0 on the three canonical boots and 14 / 1 on the eight
+FLINT-4b boots, which is why that matrix read 10/10.
+
+Disposition: the ban works; the failing case is the probe's, which demands a non-empty answer from a model that
+reasons under the ban. The case is to be judged on the ban itself (the unbiased answer starts with the word, the
+biased generation is non-empty and never contains it). Whether the log-probability shift with one cached token
+comes from the fp8 KV store or the fp8 QK dot is measured by three control boots (queue item FLINT-6).
+
+Receipts: `flint-fp8/{decode,capabilities,route}-canonical-<arm>-2026-11-11-98p.json` for `nospec`, `nospec-rccl`
+and `dflash2`, `prefill-canonical-nospec-2026-11-11-98p.json`. These are the README and results.json rows.
+
 ### SWE-bench answer leakage through git history and the web (found 2026-09-18)
 
 The v2 qwen38 bakeoff gave every scaffold a work tree cloned from the full upstream mirror and

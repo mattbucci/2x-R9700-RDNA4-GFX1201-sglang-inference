@@ -1,0 +1,156 @@
+{
+  "label": "Flint FP8 (MoE + hybrid SWA + learned sinks, FP8 KV) + Flint-DFlash2 drafter (SWE-bench cell arguments)",
+  "tag": "2026-11-11 v0.5.22+98p shipped flint preset",
+  "note": "canonical 6-point sweep, 5 runs, EOS",
+  "port": 23334,
+  "maxtok": 80,
+  "runs": 5,
+  "sampling": null,
+  "ignore_eos": false,
+  "points": [
+    {
+      "context": 128,
+      "input_len": 14,
+      "runs_tps": [
+        103.96,
+        103.64,
+        104.16,
+        104.4,
+        104.27
+      ],
+      "median_tps": 104.163,
+      "min_tps": 103.644,
+      "max_tps": 104.399,
+      "runs_completion_tokens": [
+        80,
+        80,
+        80,
+        80,
+        80
+      ],
+      "median_tpot_ms": 9.6,
+      "sample": "Okay, the user has asked for a long, detailed essay about GP",
+      "median_ttft_ms": 74.4
+    },
+    {
+      "context": 8192,
+      "input_len": 7321,
+      "runs_tps": [
+        74.72,
+        74.2,
+        74.1,
+        74.21,
+        74.3
+      ],
+      "median_tps": 74.208,
+      "min_tps": 74.097,
+      "max_tps": 74.719,
+      "runs_completion_tokens": [
+        80,
+        80,
+        80,
+        80,
+        80
+      ],
+      "median_tpot_ms": 13.48,
+      "sample": "We need answer user. Need summarize repeated sentence in one",
+      "median_ttft_ms": 83.6
+    },
+    {
+      "context": 65536,
+      "input_len": 58473,
+      "runs_tps": [
+        66.33,
+        66.31,
+        66.35,
+        66.35,
+        66.43
+      ],
+      "median_tps": 66.35,
+      "min_tps": 66.31,
+      "max_tps": 66.427,
+      "runs_completion_tokens": [
+        80,
+        80,
+        80,
+        80,
+        80
+      ],
+      "median_tpot_ms": 15.07,
+      "sample": "We need answer user. Need parse. They provided huge repeated",
+      "median_ttft_ms": 135.7
+    },
+    {
+      "context": 131072,
+      "input_len": 116934,
+      "runs_tps": [
+        63.26,
+        63.63,
+        63.78,
+        63.84,
+        63.73
+      ],
+      "median_tps": 63.734,
+      "min_tps": 63.261,
+      "max_tps": 63.843,
+      "runs_completion_tokens": [
+        80,
+        80,
+        80,
+        80,
+        80
+      ],
+      "median_tpot_ms": 15.69,
+      "sample": "We need answer user. Need parse. We need respond to user. Th",
+      "median_ttft_ms": 201.5
+    },
+    {
+      "context": 221184,
+      "input_len": 197315,
+      "runs_tps": [
+        50.52,
+        51.02,
+        51.26,
+        51.21,
+        51.29
+      ],
+      "median_tps": 51.212,
+      "min_tps": 50.515,
+      "max_tps": 51.289,
+      "runs_completion_tokens": [
+        80,
+        80,
+        80,
+        80,
+        80
+      ],
+      "median_tpot_ms": 19.53,
+      "sample": "We need answer user. Need parse. We need answer likely. We n",
+      "median_ttft_ms": 307.8
+    },
+    {
+      "context": 245760,
+      "input_len": 219238,
+      "runs_tps": [
+        48.7,
+        49.2,
+        48.3,
+        49.52,
+        49.45
+      ],
+      "median_tps": 49.203,
+      "min_tps": 48.301,
+      "max_tps": 49.521,
+      "runs_completion_tokens": [
+        80,
+        80,
+        80,
+        80,
+        80
+      ],
+      "median_tpot_ms": 20.32,
+      "sample": "We need answer user. We need answer. We need likely final. W",
+      "median_ttft_ms": 335.8
+    }
+  ]
+}

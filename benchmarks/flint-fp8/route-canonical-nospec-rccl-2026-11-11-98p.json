@@ -1,0 +1,67 @@
+{
+ "model": "/data/models/Flint-FP8",
+ "extra_tokens": 1024,
+ "passed": 9,
+ "cases": [
+  {
+   "name": "plain",
+   "ok": true,
+   "detail": "Paris",
+   "identity": "Paris"
+  },
+  {
+   "name": "code",
+   "ok": true,
+   "detail": "Here's a Python function that merges two sorted lists into one sorted list, usin",
+   "identity": "Here's a Python function that merges two sorted lists into one sorted list, using a classic two-pointer approach:\n\n```python\ndef merge_sorted_lists(list1, list2):\n    \"\"\"\n    Merge two sorted lists into a single sorted list.\n\n    Args:\n        list1 (list): A sorted list (ascending order).\n        list2 (list): Another sorted list (ascending order).\n\n    Returns:\n        list: A new sorted list containing all elements from both input lists.\n    \"\"\"\n    merged = []\n    i, j = 0, 0\n\n    # Traverse both lists, comparing elements and adding the smaller one\n    while i < len(list1) and j < len(list2):\n        if list1[i] <= list2[j]:\n            merged.append(list1[i])\n            i += 1\n        else:\n            merged.append(list2[j])\n            j += 1\n\n    # Append any remaining elements from list1 or list2\n    merged.extend(list1[i:])\n    merged.extend(list2[j:])\n\n    return merged\n```\n\nThis function runs in O(n + m) time, where n and m are the lengths of the input lists, and uses O(n + m) extra space for the result. It handles empty lists gracefully and preserves the sorted order."
+  },
+  {
+   "name": "tool-call",
+   "ok": true,
+   "detail": "get_weather {'city': 'Osaka', 'unit': 'celsius'}",
+   "identity": "[\"get_weather\", {\"city\": \"Osaka\", \"unit\": \"celsius\"}]"
+  },
+  {
+   "name": "think-tool",
+   "ok": true,
+   "detail": "reasoning 154 chars, get_weather {'city': 'Lima', 'unit': 'celsius'}",
+   "identity": "[\"The user wants the current weather in Lima in Celsius and explicitly asked to use the tool. I should call get_weather with city 'Lima' and unit 'celsius'.\", \"get_weather\", {\"city\": \"Lima\", \"unit\": \"celsius\"}]"
+  },
+  {
+   "name": "json-schema",
+   "ok": true,
+   "detail": "{ \"capital\": \"Nairobi\", \"continent\": \"Africa\" }",
+   "identity": "{ \"capital\": \"Nairobi\", \"continent\": \"Africa\" }"
+  },
+  {
+   "name": "logprobs",
+   "ok": true,
+   "detail": "55 tokens, lowest alternative -29.18",
+   "identity": "[[\"<think>\", [[\"<think>\", 0.0], [\"</think>\", -17.168], [\"UMP\", -17.315], [\"AIN\", -18.087], [\"</arg_value>\", -18.174]]], [\"User\", [[\"User\", -0.433], [\"The\", -1.822], [\"We\", -1.85], [\"1\", -3.476], [\"Hmm\", -6.39]]], [\" wants\", [[\" wants\", -0.18], [\" asks\", -1.823], [\":\", -6.124], [\" says\", -6.805], [\" goes\", -11.896]]], [\":\", [[\":\", -0.421], [\" reply\", -1.208], [\" one\", -3.962], [\" a\", -4.488], [\" answer\", -4.835]]], [\" \\\"\", [[\" \\\"\", -0.014], [\" Reply\", -4.309], [\" reply\", -12.225], [\" Respond\", -14.301], [\" Response\", -14.687]]], [\"Reply\", [[\"Reply\", -0.0], [\"Answer\", -15.413], [\"Response\", -16.208], [\"Respond\", -16.953], [\"Repeat\", -19.012]]], [\" with\", [[\" with\", -0.0], [\"\\n\", -14.985], [\"...\", -16.993], [\" ...\", -17.129], [\" to\", -17.24]]], [\" one\", [[\" one\", -0.0], [\"\\n\", -14.209], [\" two\", -14.306], [\" the\", -14.389], [\" with\", -14.497]]], [\" word\", [[\" word\", -0.0], [\" line\", -14.124], [\" one\", -14.518], [\" a\", -14.793], [\" Word\", -14.887]]], [\" and\", [[\" and\", -0.0], [\"and\", -16.521], [\" And\", -17.363], [\" \\u0438\", -18.072], [\",\", -18.382]]], [\" nothing\", [[\" nothing\", -0.0], [\" not\", -11.763], [\" the\", -12.101], [\" no\", -12.286], [\" something\", -12.634]]], [\" else\", [[\" else\", -0.0], [\"...\", -12.012], [\" el\", -12.255], [\" only\", -12.45], [\" ...\", -13.046]]], [\":\", [[\":\", 0.0], [\",\", -17.897], [\":\\\"\", -19.991], [\" :\", -20.555], [\" the\", -21.309]]], [\" the\", [[\" the\", 0.0], [\" ...\", -18.056], [\" maybe\", -18.593], [\" capital\", -18.959], [\" ..\", -19.961]]], [\" capital\", [[\" capital\", -0.0], [\" the\", -14.404], [\" city\", -14.747], [\" cap\", -14.855], [\" final\", -15.35]]], [\" of\", [[\" of\", -0.0], [\" ...\", -10.362], [\" ..\", -11.275], [\"...\\\"\", -11.553], [\"...\", -11.728]]], [\" Italy\", [[\" Italy\", -0.0], [\" India\", -10.661], [\" Ireland\", -10.99], [\" Spain\", -11.033], [\" Germany\", -11.51]]], [\".\\\"\\n\\n\", [[\".\\\"\\n\\n\", -0.38], [\".\\\"\", -1.153], [\".\\n\\n\", -9.664], [\".\\\"\\n\", -10.986], [\".\\\"\\\"\", -11.803]]], [\"We\", [[\"We\", -0.003], [\"The\", -6.206], [\"Capital\", -7.332], [\"They\", -8.967], [\"So\", -9.216]]], [\" must\", [[\" must\", -0.02], [\" should\", -4.341], [\" need\", -4.992], [\" just\", -15.534], [\" Must\", -17.617]]], [\" comply\", [[\" comply\", -0.204], [\" respond\", -2.482], [\" obey\", -2.734], [\" output\", -3.338], [\" reply\", -8.43]]], [\".\", [[\".\", -0.085], [\":\", -2.841], [\",\", -4.103], [\" with\", -5.155], [\" exactly\", -8.765]]], [\" One\", [[\" One\", -0.728], [\" The\", -0.982], [\" Provide\", -1.956], [\" Capital\", -7.572], [\" Must\", -8.381]]], [\" word\", [[\" word\", 0.0], [\" Word\", -20.721], [\" single\", -20.937], [\" line\", -23.413], [\"-word\", -23.705]]], [\",\", [[\",\", -0.056], [\":\", -3.684], [\" only\", -3.828], [\" answer\", -4.857], [\".\", -9.636]]], [\" nothing\", [[\" nothing\", -0.013], [\" no\", -4.373], [\" likely\", -9.223], [\" presumably\", -9.321], [\" the\", -12.469]]], [\" else\", [[\" else\", 0.0], [\" el\", -25.638], [\" else's\", -27.194], [\" els\", -28.93], [\" only\", -29.179]]], [\".\", [[\".\", -0.0], [\",\", -8.924], [\".\\n\\n\", -14.831], [\":\", -17.349], [\" (\", -17.672]]], [\" The\", [[\" The\", -0.135], [\" Likely\", -2.304], [\" Should\", -3.915], [\" So\", -5.925], [\" Capital\", -6.15]]], [\" capital\", [[\" capital\", -0.076], [\" answer\", -2.809], [\" correct\", -4.621], [\" word\", -5.937], [\" one\", -8.403]]], [\" is\", [[\" is\", -0.135], [\" of\", -2.067], [\" name\", -9.872], [\":\", -10.831], [\" was\", -11.269]]], [\" Rome\", [[\" Rome\", -0.002], [\" \\\"\", -6.35], [\" Roma\", -12.583], [\" R\", -21.072], [\" '\", -21.108]]], [\".\", [[\".\", -0.0], [\" (\", -9.72], [\",\", -10.262], [\".\\n\\n\", -10.954], [\":\", -16.298]]], [\" So\", [[\" So\", -0.308], [\" Must\", -1.763], [\" Should\", -2.405], [\" That's\", -6.14], [\" One\", -6.728]]], [\" reply\", [[\" reply\", -0.622], [\" answer\", -0.97], [\" respond\", -2.52], [\" output\", -6.239], [\" just\", -6.447]]], [\" \\\"\", [[\" \\\"\", -0.046], [\" with\", -3.689], [\" just\", -3.99], [\" exactly\", -6.733], [\":\", -8.818]]], [\"Rome\", [[\"Rome\", -0.0], [\"R\", -15.729], [\"Paris\", -15.741], [\"Rom\", -15.924], [\" Rome\", -16.929]]], [\"\\\".\", [[\"\\\".\", -0.0], [\"\\\"\", -8.905], [\"\\\\n\", -15.809], [\"\\\".\\n\\n\", -17.106], [\"\\\"?\", -17.359]]], [\" Ensure\", [[\" Ensure\", -0.022], [\" No\", -3.924], [\" Must\", -6.444], [\"</think>\", -11.376], [\" Should\", -12.196]]], [\" no\", [[\" no\", 0.0], [\" nothing\", -16.776], [\" only\", -20.053], [\" exactly\", -21.435], [\" it's\", -21.516]]], [\" extra\", [[\" extra\", -0.224], [\" punctuation\", -1.607], [\" additional\", -18.997], [\" extras\", -19.048], [\" formatting\", -21.711]]], [\" punctuation\", [[\" punctuation\", -0.335], [\" characters\", -1.258], [\" whitespace\", -9.779], [\" text\", -9.883], [\" chars\", -10.046]]], [\"?\", [[\"?\", -0.002], [\" or\", -6.49], [\" maybe\", -11.31], [\",\", -13.533], [\" perhaps\", -17.798]]], [\" Probably\", [[\" Probably\", -0.04], [\" One\", -3.248], [\" They\", -9.654], [\" Likely\", -9.795], [\" Might\", -9.889]]], [\" just\", [[\" just\", -0.049], [\" okay\", -3.06], [\" one\", -8.151], [\" \\\"\", -8.384], [\" a\", -10.656]]], [\" \\\"\", [[\" \\\"\", -0.09], [\" the\", -2.469], [\" word\", -7.212], [\" one\", -7.75], [\" Rome\", -11.809]]], [\"Rome\", [[\"Rome\", -0.0], [\"rome\", -16.468], [\"R\", -17.174], [\" Rome\", -17.506], [\"Roman\", -18.272]]], [\"\\\".\", [[\"\\\".\", 0.0], [\"\\\\n\", -17.697], [\" \\\".\", -19.489], [\"\\\"\", -19.517], [\".\\\"\", -19.923]]], [\" No\", [[\" No\", -0.283], [\" One\", -1.893], [\"</think>\", -2.918], [\" That's\", -3.872], [\" Should\", -4.341]]], [\" extra\", [[\" extra\", -0.067], [\" newline\", -3.188], [\" period\", -3.757], [\" quotes\", -8.281], [\" explanation\", -11.241]]], [\" text\", [[\" text\", -0.097], [\" words\", -2.831], [\" characters\", -4.12], [\" spaces\", -4.444], [\" whitespace\", -5.287]]], [\".\", [[\".\", -0.0], [\",\", -12.316], [\".\\n\\n\", -13.15], [\".\\n\", -16.857], [\".\\\"\", -18.133]]], [\"</think>\", [[\"</think>\", -0.0], [\" One\", -11.341], [\" Should\", -11.778], [\"</arg_value>\", -13.865], [\" That's\", -14.696]]], [\"Rome\", [[\"Rome\", -0.0], [\"Paris\", -11.2], [\"Italy\", -11.629], [\"Tokyo\", -14.156], [\"R\", -14.398]]], [\"<|user|>\", [[\"<|user|>\", -0.0], [\".\", -16.916], [\"<tool_call>\", -17.708], [\"</\", -18.061], [\"\\n\\n\", -18.156]]]]"
+  },
+  {
+   "name": "logit-bias",
+   "ok": false,
+   "detail": "banned ids [842, 12834, 13709, 51574, 123366]: ''",
+   "identity": ""
+  },
+  {
+   "name": "penalty",
+   "ok": true,
+   "detail": "Here's a Python function that merges two sorted lists into one sorted list:\n\n```",
+   "identity": "Here's a Python function that merges two sorted lists into one sorted list:\n\n```python\ndef merge_sorted_lists(list1, list2):\n    \"\"\"\n    Merge two sorted lists into one sorted list.\n    \n    Args:\n        list1 (list): First sorted list.\n        list2 (list): Second sorted list.\n    \n    Returns:\n        list: Merged sorted list.\n    \"\"\"\n    merged = []\n    i = j = 0\n    \n    # Traverse both lists and append the smaller element\n    while i < len(list1) and j < len(list2):\n        if list1[i] <= list2[j]:\n            merged.append(list1[i])\n            i += 1\n        else:\n            merged.append(list2[j])\n            j += 1\n    \n    # Append remaining elements (if any) from either list\n    merged.extend(list1[i:])\n    merged.extend(list2[j:])\n    \n    return merged\n```\n\nThis implementation uses two pointers to efficiently merge the lists in linear time without extra sorting overhead. It handles empty lists gracefully and preserves the sorted order."
+  },
+  {
+   "name": "concurrent",
+   "ok": true,
+   "detail": "{'Japan': 'Tokyo', 'Egypt': 'Cairo', 'Peru': 'Lima'}",
+   "identity": null
+  },
+  {
+   "name": "sampled",
+   "ok": true,
+   "detail": "Ottawa",
+   "identity": null
+  }
+ ]
+}
