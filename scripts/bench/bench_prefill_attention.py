@@ -12,19 +12,27 @@ layouts with equal values: radiance's paged cache [blocks, kv head, 16 slots, K 
 tree's K and V pools [slot, kv head, 256] with the chunk's own K/V as bf16 (the fp8 values, widened). Copies rotate
 so the K/V read per timed pass is larger than the 64 MB MALL cache where one copy is not.
 
-Arms:
-    ours-fp8qk     extend_attention_fwd as the qwen38 preset serves it (SGLANG_EXTEND_FP8_QK=1: fp8 QK, bf16 PV)
-    ours-exact     the same kernel with the fp8 K upcast to bf16
-    vendor-exact   attn_prefill_h256_gqa6_fp8kv (f16 operand legs)
-    vendor-qk8     ..._fp8kv_qk8 (QK as e4m3 WMMA): the pairing of ours-fp8qk
-    vendor-pv8, vendor-qk8pv8   the other lossy legs, for information
+Arms, named by the products they really form over the fp8 prefix (the chunk's own keys are bf16 in this tree):
+    ours-fp8qk     extend_attention_fwd as the qwen38 preset serves it (SGLANG_EXTEND_FP8_QK=1): QK with the query
+                   cast to e4m3, PV with the softmax weights cast to e4m3 as they are (`p.to(v.dtype)`, no lift:
+                   a weight below 2^-10 of the running maximum is zero)
+    ours-exact     the switch off: QK with the fp8 K widened to bf16, the same e4m3 PV. The name is the switch's,
+                   not the arithmetic's
+    vendor-exact   attn_prefill_h256_gqa6_fp8kv (f16 operand legs for both products)
+    vendor-qk8     ..._fp8kv_qk8 (QK as e4m3 WMMA, exact PV)
+    vendor-pv8     ..._fp8kv_pv8 (exact QK, e4m3 PV): the class of ours-exact
+    vendor-qk8pv8  ..._fp8kv_qk8pv8: the class of ours-fp8qk
 
-Every arm's output is compared with an fp64 reference on sampled query rows before it is timed; an arm outside its
-floor is timed but not used. Each arm is timed in two passes, the second in reverse order. The summary fits
-ms = a + b x prefix at the serving chunk, compares this tree's slope with the one RAD-10 read from the server
-(the bench's claim to represent serving) and radiance's row with its stated 22.7 ms, and gives the verdict at the
-two deep cases from the served kernel over the faster valid row of vendor-qk8 and vendor-exact: the rows whose
-products are at least as exact as the served ones.
+Every arm's output is compared with an fp64 reference on sampled query rows before it is timed. vendor-exact, and
+this tree's arms where there is no prefix, are held to the exact floor; a lossy row is held to floors that only a
+wrong operand misses, because what a correct lossy row reads depends on the depth (flat synthetic logits spread the
+softmax over the whole prefix, where e4m3 weights lose the tail). For this tree's arms an fp64 model of the kernel's
+own arithmetic (tile-wise running maximum, weights through e4m3) is evaluated on the same operands, and the kernel's
+agreement with it is recorded: that is the evidence the row computes its class. Each arm is timed in two passes, the
+second in reverse order. The summary fits ms = a + b x prefix at the serving chunk, compares this tree's slope with
+the one RAD-10 read from the server (the bench's claim to represent serving) and radiance's row with its stated
+22.7 ms, and gives the verdict at the two deep cases from the served kernel over the faster valid row of vendor-qk8
+and vendor-exact that measures at least as exact as the served row on the case's operands.
 
 libr4d.so is third-party code: the bench mode runs only inside scripts/bench/libr4d_sandbox.sh.
 
@@ -73,11 +81,16 @@ VENDOR = {
     "vendor-pv8": ("attn_prefill_h256_gqa6_fp8kv_pv8", 2),
     "vendor-qk8pv8": ("attn_prefill_h256_gqa6_fp8kv_qk8pv8", 3),
 }
-EXACT = ("ours-exact", "vendor-exact")
-PAIRINGS = {"served": ("ours-fp8qk", "vendor-qk8"), "exact": ("ours-exact", "vendor-exact")}
-LIKE = ("vendor-qk8", "vendor-exact")  # rows at least as exact as the served kernel: the verdict's candidates
+EXACT = ("vendor-exact",)  # exact at every depth; this tree's arms are exact only without a prefix
+PAIRINGS = {"same_class": ("ours-fp8qk", "vendor-qk8pv8"), "pv8_class": ("ours-exact", "vendor-pv8")}
+LIKE = ("vendor-qk8", "vendor-exact")  # exact PV: the verdict's rows, where they measure as exact as the served one
 HOST_BOUND_MS = 5.0  # below this a launch that keeps Python busy measures the launcher, not the kernel
-FLOOR_EXACT, FLOOR_LOSSY = 0.9999, 0.995  # lowest cosine per (row, head) against the fp64 reference
+FLOOR_EXACT = 0.9999  # lowest cosine per (row, head) against the fp64 reference, exact products
+# a lossy row: lowest and mean cosine. The first run read 0.991 / 0.998 at 197K for a correct e4m3-PV row and the
+# model of that arithmetic gives the same; a wrong operand (head map, K for V, a stale buffer) reads near zero
+FLOOR_LOSSY_MIN, FLOOR_LOSSY_MEAN = 0.98, 0.995
+AS_EXACT_TOL = 0.001  # a verdict row may sit this far under the served row's cosines and still count as as exact
+MODEL_AGREE = 0.999  # this tree's kernel against the fp64 model of its arithmetic, lowest cosine
 PORT_RATIO, MARGINAL_RATIO, MODEL_TOL = 1.5, 1.15, 0.20
 COPIES_MIN, COPIES_MAX = 2, 16
 
@@ -86,8 +99,11 @@ def say(msg):
     print(f"[bench] {msg}", flush=True)
 
 
-def floor_of(arm):
-    return FLOOR_EXACT if arm in EXACT else FLOOR_LOSSY
+def floors_of(arm, q_len, ctx):
+    """(lowest cosine, mean cosine) an arm must reach against the reference to have its time counted."""
+    if arm in EXACT or (arm in OURS and q_len == ctx):
+        return FLOOR_EXACT, FLOOR_EXACT
+    return FLOOR_LOSSY_MIN, FLOOR_LOSSY_MEAN
 
 
 def pairs(q_len, ctx):
@@ -252,6 +268,47 @@ def two_stage(torch, cp, index, rows):
     return out
 
 
+def class_model(torch, cp, ctx, rows, qk8, tile):
+    """This tree's extend kernel in fp64, product by product, for the sampled rows.
+
+    The kernel walks the prefix and then the chunk's own keys in tiles of ``tile`` keys with one online softmax:
+    a tile's weights are exp(logit - m), m the running maximum up to and including that tile, and the accumulator
+    is rescaled when m grows. Over the fp8 prefix the PV product is tl.dot(p.to(fp8), v): the weights go through
+    e4m3 as they are, so one below 2^-10 of the running maximum is zero and the rest keep three mantissa bits; the
+    denominator sums the uncast weights. With the FP8_QK switch the query goes through e4m3 for the prefix keys.
+    The chunk's own keys are bf16 operands and are taken as exact here."""
+    q = cp["q"]
+    q_len = q.shape[0]
+    prefix = ctx - q_len
+    dev = q.device
+    idx = torch.as_tensor(rows, device=dev, dtype=torch.long)
+    pos = torch.arange(ctx, device=dev)
+    hidden = pos[None, :] > (prefix + idx)[:, None]
+    tile_id = torch.where(pos < prefix, pos // tile, (prefix + tile - 1) // tile + (pos - prefix) // tile)
+    ntiles = int(tile_id.max()) + 1
+    in_prefix = (pos < prefix)[None, :]
+    out = torch.empty((len(rows), H_Q, HEAD_DIM), dtype=torch.float64, device=dev)
+    for g in range(H_KV):
+        kd = fp8_to_float(cp["k8"][:ctx, g]).double()
+        vd = fp8_to_float(cp["v8"][:ctx, g]).double()
+        for h in range(g * GROUP, (g + 1) * GROUP):
+            qh = q[idx, h].float()
+            logit = (qh.double() @ kd.T) * SM_SCALE
+            if qk8:
+                q8 = fp8_to_float(to_fp8(torch, qh)).double()
+                logit = torch.where(in_prefix, (q8 @ kd.T) * SM_SCALE, logit)
+            logit = logit.masked_fill(hidden, float("-inf"))
+            final = logit.max(dim=1, keepdim=True).values
+            tmax = torch.full((len(rows), ntiles), float("-inf"), dtype=torch.float64, device=dev)
+            tmax.scatter_reduce_(1, tile_id[None, :].expand(len(rows), -1), logit, "amax", include_self=True)
+            run = torch.cummax(tmax, dim=1).values[:, tile_id]
+            p = torch.exp(logit - run).masked_fill(hidden, 0.0)
+            w = torch.exp(run - final).masked_fill(hidden, 0.0)
+            p8 = fp8_to_float(to_fp8(torch, p.float())).double()
+            out[:, h] = ((torch.where(in_prefix, p8, p) * w) @ vd) / (p * w).sum(dim=1, keepdim=True)
+    return out
+
+
 def e4m3(byte):
     """One e4m3 code as a float: sign, 4 exponent bits (bias 7), 3 mantissa bits; 0x7F and 0xFF are NaN."""
     sign = -1.0 if byte & 0x80 else 1.0
@@ -285,6 +342,11 @@ def vendor_oracle(cache_bytes, block_table, q_row, ctx, q_len, i, head, *, k_fir
     logit = keys @ np.asarray(q_row, dtype=np.float64) * SM_SCALE
     p = np.exp(logit - logit.max())
     return (p / p.sum()) @ vals
+
+
+def checksum(torch, t):
+    """The bit pattern of a bf16 tensor as one integer."""
+    return int(t.contiguous().view(torch.int16).long().sum().item())
 
 
 def compare(torch, got, ref):
@@ -335,6 +397,13 @@ def summarize(receipt):
         a = arm(q_len, ctx, name)
         return a.get("ms") if a.get("valid") and not a.get("host_bound") else None
 
+    def as_exact(q_len, ctx, name):
+        """A verdict row counts in a case where it measures at least as exact as the served row on the case's
+        operands (a receipt without accuracies, a synthetic one, holds nothing against it)."""
+        mine = arm(q_len, ctx, "ours-fp8qk").get("accuracy") or {}
+        theirs = arm(q_len, ctx, name).get("accuracy") or {}
+        return all(theirs[k] >= mine[k] - AS_EXACT_TOL for k in ("cos_min", "cos_mean") if k in mine and k in theirs)
+
     out = {"ratios": [], "fits": {}, "flags": []}
     for (q_len, ctx) in shapes:
         row = {"q": q_len, "ctx": ctx}
@@ -342,7 +411,8 @@ def summarize(receipt):
             x, y = ms(q_len, ctx, ours), ms(q_len, ctx, theirs)
             row[label] = round(x / y, 3) if x and y else None
         served = ms(q_len, ctx, "ours-fp8qk")
-        like = {n: ms(q_len, ctx, n) for n in LIKE if ms(q_len, ctx, n)}
+        row["served_over"] = {n: round(served / ms(q_len, ctx, n), 3) for n in VENDOR if served and ms(q_len, ctx, n)}
+        like = {n: ms(q_len, ctx, n) for n in LIKE if ms(q_len, ctx, n) and as_exact(q_len, ctx, n)}
         row["like_row"] = min(like, key=like.get) if like else None
         row["served_over_like"] = round(served / like[row["like_row"]], 3) if served and like else None
         vend = {n: ms(q_len, ctx, n) for n in VENDOR if ms(q_len, ctx, n)}
@@ -401,8 +471,15 @@ def summarize(receipt):
                 continue
             flag = ("error-" if "error" in a else "invalid-" if not a.get("valid") else
                     "host-bound-" if a.get("host_bound") else "") + name
-            if flag != name and flag not in out["flags"]:
-                out["flags"].append(flag)
+            more = [flag] if flag != name else []
+            agree = ((a.get("class_model") or {}).get("kernel_against_model") or {}).get("cos_min")
+            if agree is not None and agree < MODEL_AGREE:
+                more.append("class-model-off-" + name)  # the kernel does not form the products the model states
+            if "error" in (a.get("class_model") or {}):
+                more.append("class-model-error-" + name)
+            if a.get("clobbered"):
+                more.append("clobbered-" + name)  # the stored output changed during the timed passes
+            out["flags"] += [f for f in more if f not in out["flags"]]
     out["flags"] += ["missing-" + name for name in receipt.get("arm_errors") or {}]
     failed = [f"{s.get('q')}:{s.get('ctx')}" for s in receipt.get("shapes", []) if "arms" not in s]
     if failed:
@@ -426,7 +503,7 @@ def run_shape(env, q_len, ctx, sample, repeats, target_s, seed):
     ref = reference(torch, copies[0]["q"], copies[0]["k8"], copies[0]["v8"], ctx, rows)
     out = {"q": q_len, "ctx": ctx, "pairs": pairs(q_len, ctx), "copies": ncopies,
            "kv_bytes_per_copy": ctx * H_KV * ROW_BYTES, "sampled_rows": len(rows), "arms": {}}
-    launches, outputs, keep = {}, {}, []
+    launches, outputs, keep, sums = {}, {}, [], {}
     for name in env.arms:
         try:
             o = torch.zeros((q_len, H_Q, HEAD_DIM), dtype=torch.bfloat16, device=dev)
@@ -441,16 +518,28 @@ def run_shape(env, q_len, ctx, sample, repeats, target_s, seed):
             got = o.clone()
             acc = compare(torch, got[rows_t], ref)
             acc["finite"] = bool(torch.isfinite(got.float()).all().item())
-            arm = {"single_launch_ms": round(single * 1e3, 3), "accuracy": acc, "floor": floor_of(name),
-                   "valid": acc["finite"] and acc["cos_min"] >= floor_of(name), "passes": []}
+            lo_min, lo_mean = floors_of(name, q_len, ctx)
+            arm = {"single_launch_ms": round(single * 1e3, 3), "accuracy": acc, "floor": [lo_min, lo_mean],
+                   "valid": acc["finite"] and acc["cos_min"] >= lo_min and acc["cos_mean"] >= lo_mean, "passes": []}
+            if name in OURS and q_len < ctx:
+                try:  # information beside the floors: a model that fails must not lose the arm
+                    model = class_model(torch, copies[0], ctx, rows, OURS[name], env.tile)
+                    arm["class_model"] = {"tile": env.tile, "against_reference": compare(torch, model, ref),
+                                          "kernel_against_model": compare(torch, got[rows_t], model)}
+                    del model
+                except Exception as e:
+                    arm["class_model"] = {"tile": env.tile, "error": repr(e)}
             arm.update(held.get("info", {}))
             launches[name] = (launch, max(2, min(40, round(target_s / max(single, 1e-4)))))
             outputs[name] = got
+            sums[name] = checksum(torch, got)
         except Exception as e:  # one arm's failure must not lose the others
             arm = {"error": repr(e), "traceback": traceback.format_exc(), "valid": False}
         out["arms"][name] = arm
+        agree = arm.get("class_model", {}).get("kernel_against_model", {}).get("cos_min")
         say(f"Q {q_len} CTX {ctx} {name}: " + (arm.get("error") or
-            f"cos_min {arm['accuracy']['cos_min']} valid {arm['valid']} single {arm['single_launch_ms']} ms"))
+            f"cos_min {arm['accuracy']['cos_min']} cos_mean {arm['accuracy']['cos_mean']} valid {arm['valid']} "
+            f"single {arm['single_launch_ms']} ms" + ("" if agree is None else f" kernel against its model {agree}")))
     for order in ("forward", "reverse"):
         for name in (list(launches) if order == "forward" else list(reversed(list(launches)))):
             launch, iters = launches[name]
@@ -472,6 +561,10 @@ def run_shape(env, q_len, ctx, sample, repeats, target_s, seed):
             arm["host_blocked"] = any(p.get("host_bound") for p in arm["passes"])
             arm["host_bound"] = arm["host_blocked"] and arm["ms"] < HOST_BOUND_MS
             say(f"Q {q_len} CTX {ctx} {name}: {arm['ms']} ms, {arm['gpairs_per_s']} G pairs/s")
+    for name, was in sums.items():
+        # a library that was handed a raw pointer keeps writing there: a stored output that moved during the timed
+        # passes means an arm's output buffer was freed and reused
+        out["arms"][name]["clobbered"] = checksum(torch, outputs[name]) != was
     out["agreement"] = {}
     for label, (ours, theirs) in list(PAIRINGS.items()) + [("ours", ("ours-fp8qk", "ours-exact"))]:
         if ours in outputs and theirs in outputs:
@@ -497,7 +590,7 @@ class Env:
         self.torch = torch
         self.dev = torch.device("cuda:0")
         torch.zeros(1, device=self.dev)  # HIP is up through torch before libr4d loads
-        self.arms, self.rows, self.lib, self.ea = [], {}, None, None
+        self.arms, self.rows, self.lib, self.ea, self.tile = [], {}, None, None, 0
         self.errors = {}
         if not a.no_ours:
             sys.path.insert(0, a.tree)
@@ -507,6 +600,7 @@ class Env:
                 if not os.path.abspath(ea.__file__).startswith(os.path.abspath(a.tree) + os.sep):
                     raise ImportError(f"extend_attention loaded from {ea.__file__}, not from {a.tree}")
                 self.ea = ea
+                self.tile = int(ea._get_block_sizes_for_extend_attention(HEAD_DIM, HEAD_DIM)[4])  # BLOCK_N
                 self.arms += list(OURS)
             except Exception as e:  # the library's rows are still worth their numbers
                 self.errors.update({name: repr(e) for name in OURS})
@@ -553,12 +647,14 @@ class Env:
                     extend_seq_lens_cpu=[q_len],
                 )
 
-            return launch, {}
+            return launch, {"o": o}
         row, legs = VENDOR[name]
         info = self.rows[row]
         fn = r4d.LAUNCH_FN(info.launch)
         packed = [vendor_args(cp, shared, o, q_len, ctx, legs) for cp in copies]
-        held = {"packed": packed, "fn": fn, "info": {"row": row, "scratch_bytes": 0}}
+        # the pack carries o's address, not a reference: without it here the buffer is freed when the caller's
+        # name moves on, the next arm's stored output lands on it and this row's timed launches write into that
+        held = {"packed": packed, "fn": fn, "o": o, "info": {"row": row, "scratch_bytes": 0}}
         if info.scratch:
             need = int(r4d.SCRATCH_FN(info.scratch)(packed[0].ref()))
             if need > 0:  # the split form's f32 partials, one region for every copy
@@ -623,9 +719,9 @@ def bench(a):
 
 def report(summary):
     for r in summary["ratios"]:
-        say(f"RATIO Q {r['q']} CTX {r['ctx']}: served {r.get('served')} exact {r.get('exact')} "
-            f"verdict row {r.get('like_row')} {r.get('served_over_like')} "
-            f"fastest vendor row {r.get('fastest_vendor_row')} {r.get('served_over_fastest')}")
+        say(f"RATIO Q {r['q']} CTX {r['ctx']}: verdict row {r.get('like_row')} {r.get('served_over_like')} "
+            f"same class {r.get('same_class')} pv8 class {r.get('pv8_class')} "
+            f"served over {json.dumps(r.get('served_over'))}")
     for name, f in summary["fits"].items():
         say(f"FIT {name}: {f['ms_at_depth_0']} ms + {f['ms_per_1k_prefix']} ms per 1K of prefix (rms {f['rms_ms']}), "
             f"{f['gpairs_per_s_on_the_slope']} G pairs/s, 197K prompt {f['prompt_197k']['total_s']} s")
@@ -637,9 +733,12 @@ def report(summary):
 
 # --------------------------------------------------------------------------- CPU dry mode
 class DryEnv:
-    """The run loop on the CPU: both layouts read by fp64 emulations, wall-clock timing."""
+    """The run loop on the CPU: both layouts read by fp64 emulations, wall-clock timing. This tree's arms and the
+    library's rows of the same class are emulated by the class model, vendor-qk8 by the reference with the query
+    through e4m3."""
 
-    arms = ["ours-fp8qk", "ours-exact", "vendor-exact", "vendor-qk8"]
+    arms = list(OURS) + list(VENDOR)
+    tile = 8  # several tiles inside the dry prefix
 
     def __init__(self):
         import torch
@@ -665,14 +764,14 @@ class DryEnv:
     def build(self, name, copies, index, shared, o, q_len, ctx):
         torch = self.torch
         every = list(range(q_len))
-        lossy = name in ("ours-fp8qk", "vendor-qk8")
+        same_class = {"ours-fp8qk": True, "vendor-qk8pv8": True, "ours-exact": False, "vendor-pv8": False}
 
         def launch(i, _stream):
             cp = dict(copies[i])
-            if lossy:  # the query through e4m3, as the fp8 QK leg reads it
+            if name == "vendor-qk8":  # the query through e4m3, as the fp8 QK leg reads it
                 cp["q"] = fp8_to_float(to_fp8(torch, cp["q"].float())).to(torch.bfloat16)
-            if name in OURS:
-                got = two_stage(torch, cp, index, every)
+            if name in same_class:
+                got = class_model(torch, cp, ctx, every, same_class[name], self.tile)
             else:
                 packed = vendor_args(copies[i], shared, o, q_len, ctx, VENDOR[name][1])
                 kv = packed.t[1]
@@ -806,14 +905,88 @@ def dry_cpu(tree=None):
           and [p.key.decode() for p in packed.p[:packed.args.n_p]][-1] == "prefill_fp8",
           "the vendor operand pack: 8 tensors, cache strides in bytes, cu_seqlens absent, used length, leg parameter")
 
+    # the class model against the kernel's recurrence written out per tile for single (row, head) pairs
+    tile = 8
+    prefix = ctx - q_len
+    worst = 0.0
+    for qk8 in (True, False):
+        got = class_model(torch, cp, ctx, rows, qk8, tile)
+        for ri, i in enumerate(rows):
+            for h in heads:
+                g = h // GROUP
+                qf = cp["q"][i, h].float()
+                q8 = fp8_to_float(to_fp8(torch, qf)).double()
+                e_max, deno, acc = float("-inf"), 0.0, torch.zeros(HEAD_DIM, dtype=torch.float64)
+                spans = [(a, min(a + tile, prefix), True) for a in range(0, prefix, tile)]
+                spans += [(a, min(a + tile, prefix + i + 1), False) for a in range(prefix, prefix + i + 1, tile)]
+                for a, z, fp8_stage in spans:
+                    k = fp8_to_float(cp["k8"][a:z, g]).double()
+                    v = fp8_to_float(cp["v8"][a:z, g]).double()
+                    qk = (k @ (q8 if (qk8 and fp8_stage) else qf.double())) * SM_SCALE
+                    n_e_max = max(float(qk.max()), e_max)
+                    re_scale = math.exp(e_max - n_e_max)
+                    pw = torch.exp(qk - n_e_max)
+                    deno = deno * re_scale + float(pw.sum())
+                    p_dot = fp8_to_float(to_fp8(torch, pw.float())).double() if fp8_stage else pw
+                    acc = acc * re_scale + p_dot @ v
+                    e_max = n_e_max
+                worst = max(worst, float((acc / deno - got[ri, h]).abs().max()))
+    lossy_gap = float((class_model(torch, cp, ctx, rows, False, tile) - ref).abs().max())
+    none = make_copy(torch, torch.device("cpu"), 16, 16, 5)
+    none_rows = sample_rows(16, 4)
+    exact_gap = float((class_model(torch, none, 16, none_rows, True, tile)
+                       - reference(torch, none["q"], none["k8"], none["v8"], 16, none_rows)).abs().max())
+    check(worst < 1e-9 and lossy_gap > 1e-4 and exact_gap < 1e-9,
+          f"the class model is the kernel's per-tile recurrence (gap {worst:.1e}), moves the output over a prefix "
+          f"({lossy_gap:.1e}) and is the reference without one ({exact_gap:.1e})")
+    # one weight far above the rest: e4m3 weights without a lift lose everything below 2^-10 of the running maximum
+    tail = make_copy(torch, torch.device("cpu"), 1, 65, 9)
+    peak = tail["q"][0, 0].float() * (math.log(4096.0) / SM_SCALE / float(tail["q"][0, 0].float().pow(2).sum()))
+    k_tail = torch.zeros((65, H_KV, HEAD_DIM))
+    k_tail[0, 0] = peak  # logit ln(4096) on the first prefix key, 0 on the 63 others and on the query's own key
+    tail["k8"] = to_fp8(torch, k_tail)
+    logit0 = float(fp8_to_float(tail["k8"][0, 0]).double() @ tail["q"][0, 0].double()) * SM_SCALE
+    out_tail = class_model(torch, tail, 65, [0], False, 64)[0, 0]
+    v_tail = fp8_to_float(tail["v8"][:, 0]).double()
+    kept = (math.exp(logit0) * v_tail[0] + v_tail[64]) / (math.exp(logit0) + 64.0)  # the 63 tail keys' PV is zero
+    check(abs(math.exp(logit0) / 4096.0 - 1.0) < 0.2 and float((out_tail - kept).abs().max()) < 1e-9,
+          f"a prefix weight {math.exp(-logit0):.1e} of the maximum is dropped from the PV sum and kept in the "
+          "denominator")
+    check(floors_of("ours-exact", 8192, 196608) == (FLOOR_LOSSY_MIN, FLOOR_LOSSY_MEAN)
+          and floors_of("ours-fp8qk", 8192, 8192) == (FLOOR_EXACT, FLOOR_EXACT)
+          and floors_of("vendor-exact", 8192, 196608) == (FLOOR_EXACT, FLOOR_EXACT)
+          and floors_of("vendor-qk8", 8192, 8192) == (FLOOR_LOSSY_MIN, FLOOR_LOSSY_MEAN),
+          "floors: exact for vendor-exact and for this tree's arms without a prefix, the lossy pair elsewhere")
+
     env = DryEnv()
     row = run_shape(env, q_len, ctx, 6, 2, 0.01, 11)
     first = run_shape(env, 16, 16, 4, 2, 0.01, 12)  # no prefix: the switch has nothing to change
-    ok = all(a.get("valid") and len(a.get("passes", [])) == 2 and "ms" in a for a in row["arms"].values())
-    check(ok and row["agreement"]["exact"]["bit_identical"] and not row["agreement"]["ours"]["bit_identical"]
-          and row["agreement"]["served"]["cos_min"] > 0.999999,
-          "the run loop on the CPU: every arm valid and timed twice, the pairings agree, the switch moves the output")
-    check(all(a.get("valid") for a in first["arms"].values()), "a case without a prefix keeps both of this tree's arms")
+    ok = all(a.get("valid") and len(a.get("passes", [])) == 2 and "ms" in a and a.get("clobbered") is False
+             for a in row["arms"].values())
+    agree = [row["arms"][n]["class_model"]["kernel_against_model"]["cos_min"] for n in OURS]
+    check(ok and row["agreement"]["same_class"]["bit_identical"] and row["agreement"]["pv8_class"]["bit_identical"]
+          and not row["agreement"]["ours"]["bit_identical"] and min(agree) > 0.99999
+          and "class_model" not in row["arms"]["vendor-qk8"],
+          "the run loop on the CPU: every arm valid and timed twice, the class pairings agree, the switch moves the "
+          "output, this tree's arms agree with their model")
+    check(all(a.get("valid") for a in first["arms"].values()) and "class_model" not in first["arms"]["ours-fp8qk"],
+          "a case without a prefix keeps both of this tree's arms, held to the exact floor")
+    # every vendor arm keeps its output buffer alive: the pack holds an address, not a reference
+    fake_rows = {r: type("Row", (), {"launch": 0, "scratch": 0})() for r, _ in VENDOR.values()}
+    fake = type("E", (), {"rows": fake_rows, "torch": torch, "dev": torch.device("cpu"), "ea": None})()
+    o_buf = torch.zeros((q_len, H_Q, HEAD_DIM), dtype=torch.bfloat16)
+    held = [Env.build(fake, n, [cp], index, shared, o_buf, q_len, ctx)[1] for n in VENDOR]
+    fake.ea = type("EA", (), {"_EXTEND_FP8_QK": None, "extend_attention_fwd": None})()
+    held += [Env.build(fake, n, [cp], index, shared, o_buf, q_len, ctx)[1] for n in OURS]
+    check(all(h.get("o") is o_buf for h in held), "every arm's held set keeps the output buffer the launch writes")
+    moved = run_shape(env, q_len, ctx, 6, 2, 0.01, 11)
+    moved["arms"]["vendor-qk8"]["clobbered"] = True
+    low = run_shape(env, q_len, ctx, 6, 2, 0.01, 11)
+    low["arms"]["ours-fp8qk"]["class_model"]["kernel_against_model"]["cos_min"] = 0.99
+    check("clobbered-vendor-qk8" in summarize({"shapes": [moved]})["flags"]
+          and "class-model-off-ours-fp8qk" in summarize({"shapes": [low]})["flags"]
+          and not summarize({"shapes": [row]})["flags"],
+          "a stored output that moved and a kernel off its class model are flagged; the clean dry case has no flag")
 
     slope = SERVING_SLOPE_S_PER_1K / LAYERS  # ms per token whose 16-layer slope is the serving one
     s = summarize(synthetic_receipt(slope, slope / 3.0))
@@ -843,10 +1016,31 @@ def dry_cpu(tree=None):
     one = summarize(synthetic_receipt(slope, slope / 3.0, invalid=("vendor-qk8",)))
     lossy = summarize(synthetic_receipt(slope, slope / 3.0, invalid=LIKE))
     check(one["gate"] == "port:invalid-vendor-qk8" and one["ratios"][0]["like_row"] == "vendor-exact"
-          and one["ratios"][0]["served"] is None and "vendor-exact" in one["projected_197k"]
+          and "vendor-qk8" not in one["ratios"][0]["served_over"] and "vendor-exact" in one["projected_197k"]
           and lossy["verdict"] == "unreadable" and lossy["ratios"][0]["fastest_vendor_row"] in ("vendor-pv8",
                                                                                                 "vendor-qk8pv8"),
           "an invalid qk8 row leaves the verdict to the exact row; the PV-lossy rows never carry it")
+
+    # the verdict rows count where they measure as exact as the served row: without a prefix the served kernel is
+    # exact and vendor-qk8 is not, at depth the served kernel's e4m3 weights put it under both
+    graded = synthetic_receipt(slope, slope / 3.0)
+    for shape in graded["shapes"]:
+        deep_case = shape["ctx"] > shape["q"]
+        for name, a in shape["arms"].items():
+            a["accuracy"] = {"cos_min": 0.99999, "cos_mean": 0.99999}
+        shape["arms"]["vendor-qk8"]["accuracy"] = {"cos_min": 0.998, "cos_mean": 0.9992}
+        if deep_case:
+            shape["arms"]["ours-fp8qk"]["accuracy"] = {"cos_min": 0.992, "cos_mean": 0.998}
+    g = summarize(graded)
+    by_case = {(r["q"], r["ctx"]): r for r in g["ratios"]}
+    worse = synthetic_receipt(slope, slope / 3.0)
+    for shape in worse["shapes"]:
+        for name, a in shape["arms"].items():
+            a["accuracy"] = {"cos_min": 0.992 if name in LIKE else 0.999, "cos_mean": 0.998}
+    check(g["verdict"] == "port" and by_case[(8192, 8192)]["like_row"] == "vendor-exact"
+          and by_case[(8192, 196608)]["like_row"] in LIKE and set(by_case[(8192, 196608)]["served_over"]) == set(VENDOR)
+          and summarize(worse)["verdict"] == "unreadable",
+          "a verdict row counts only where it measures as exact as the served row; every vendor row keeps its ratio")
 
     if tree:
         check_call_against_tree(check, torch, tree, cp, index, shared, q_len, ctx)

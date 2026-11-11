@@ -74,6 +74,55 @@ class Layouts(unittest.TestCase):
                 self.assertEqual(got, want, byte)
 
 
+class ClassModel(unittest.TestCase):
+    """The fp64 model of this tree's fp8-KV arithmetic: e4m3 softmax weights against the tile-wise running maximum."""
+
+    def setUp(self):
+        import torch
+
+        self.torch = torch
+
+    def case(self, q_len, ctx, seed=5):
+        cp = bpa.make_copy(self.torch, self.torch.device("cpu"), q_len, ctx, seed)
+        rows = list(range(q_len))
+        return cp, rows, bpa.reference(self.torch, cp["q"], cp["k8"], cp["v8"], ctx, rows)
+
+    def test_without_a_prefix_the_model_is_the_reference(self):
+        cp, rows, ref = self.case(16, 16)
+        for qk8 in (True, False):
+            got = bpa.class_model(self.torch, cp, 16, rows, qk8, 8)
+            self.assertLess(float((got - ref).abs().max()), 1e-9)
+
+    def test_over_a_prefix_both_classes_leave_the_reference_and_each_other(self):
+        cp, rows, ref = self.case(9, 77)
+        pv8 = bpa.class_model(self.torch, cp, 77, rows, False, 8)
+        both = bpa.class_model(self.torch, cp, 77, rows, True, 8)
+        self.assertGreater(float((pv8 - ref).abs().max()), 1e-4)
+        self.assertGreater(float((both - pv8).abs().max()), 1e-4)
+        self.assertGreater(bpa.compare(self.torch, pv8, ref)["cos_min"], 0.99)
+
+    def test_the_tile_changes_the_running_maximum_and_the_output(self):
+        cp, rows, _ = self.case(9, 77)
+        a = bpa.class_model(self.torch, cp, 77, rows, False, 4)
+        b = bpa.class_model(self.torch, cp, 77, rows, False, 64)
+        self.assertGreater(float((a - b).abs().max()), 1e-6)
+
+    def test_floors(self):
+        lossy = (bpa.FLOOR_LOSSY_MIN, bpa.FLOOR_LOSSY_MEAN)
+        exact = (bpa.FLOOR_EXACT, bpa.FLOOR_EXACT)
+        self.assertEqual(bpa.floors_of("vendor-exact", 8192, 196608), exact)
+        self.assertEqual(bpa.floors_of("ours-fp8qk", 8192, 8192), exact)
+        self.assertEqual(bpa.floors_of("ours-exact", 8192, 8192), exact)
+        for arm in ("ours-fp8qk", "ours-exact", "vendor-qk8", "vendor-pv8", "vendor-qk8pv8"):
+            self.assertEqual(bpa.floors_of(arm, 8192, 196608), lossy, arm)
+        self.assertEqual(bpa.floors_of("vendor-qk8", 8192, 8192), lossy)
+
+    def test_the_pairings_name_the_classes(self):
+        self.assertEqual(bpa.PAIRINGS["same_class"], ("ours-fp8qk", "vendor-qk8pv8"))
+        self.assertEqual(bpa.PAIRINGS["pv8_class"], ("ours-exact", "vendor-pv8"))
+        self.assertEqual(bpa.LIKE, ("vendor-qk8", "vendor-exact"))
+
+
 class Counts(unittest.TestCase):
     def test_pairs_are_the_causal_count(self):
         for q_len, ctx in ((1, 1), (5, 5), (5, 12), (64, 1000)):
@@ -140,6 +189,44 @@ class Verdict(unittest.TestCase):
         self.assertEqual(self.gate(SLOPE, SLOPE / 3.0, host_bound=True)["verdict"], "unreadable")
         s = bpa.summarize({"shapes": [{"q": 8192, "ctx": 8192, "error": "x"}]})
         self.assertEqual(s["gate"], "unreadable:case-error-8192:8192")
+
+    def graded(self, accuracies):
+        r = bpa.synthetic_receipt(SLOPE, SLOPE / 3.0)
+        for shape in r["shapes"]:
+            for name, a in shape["arms"].items():
+                lo, mean = accuracies.get(name, (0.99999, 0.99999))
+                a["accuracy"] = {"cos_min": lo, "cos_mean": mean}
+        return r
+
+    def test_a_verdict_row_less_exact_than_the_served_one_does_not_count(self):
+        s = bpa.summarize(self.graded({"ours-fp8qk": (0.9990, 0.9995), "vendor-qk8": (0.9950, 0.9990)}))
+        self.assertEqual(s["verdict"], "port")  # vendor-exact still carries it
+        self.assertEqual({r["like_row"] for r in s["ratios"]}, {"vendor-exact"})
+        s = bpa.summarize(self.graded({"ours-fp8qk": (0.9990, 0.9995), "vendor-qk8": (0.9950, 0.9990),
+                                       "vendor-exact": (0.9950, 0.9990)}))
+        self.assertEqual(s["verdict"], "unreadable")
+
+    def test_a_verdict_row_within_the_slack_counts(self):
+        slack = bpa.AS_EXACT_TOL
+        s = bpa.summarize(self.graded({"ours-fp8qk": (0.9920, 0.9980),
+                                       "vendor-qk8": (0.9920 - slack / 2, 0.9980 - slack / 2)}))
+        self.assertEqual(s["verdict"], "port")
+        self.assertIn("vendor-qk8", {r["like_row"] for r in s["ratios"]})
+
+    def test_every_vendor_row_keeps_its_ratio(self):
+        s = bpa.summarize(self.graded({}))
+        for r in s["ratios"]:
+            self.assertEqual(set(r["served_over"]), set(bpa.VENDOR))
+
+    def test_a_moved_output_and_a_kernel_off_its_model_are_flagged(self):
+        r = bpa.synthetic_receipt(SLOPE, SLOPE / 3.0)
+        r["shapes"][1]["arms"]["vendor-qk8"]["clobbered"] = True
+        r["shapes"][2]["arms"]["ours-fp8qk"]["class_model"] = {"kernel_against_model": {"cos_min": 0.99}}
+        r["shapes"][3]["arms"]["ours-exact"]["class_model"] = {"error": "x"}
+        flags = bpa.summarize(r)["flags"]
+        for want in ("clobbered-vendor-qk8", "class-model-off-ours-fp8qk", "class-model-error-ours-exact"):
+            self.assertIn(want, flags)
+        self.assertEqual(bpa.summarize(bpa.synthetic_receipt(SLOPE, SLOPE / 3.0))["flags"], [])
 
     def test_a_missing_deep_case_is_unreadable(self):
         r = bpa.synthetic_receipt(SLOPE, SLOPE / 3.0)
