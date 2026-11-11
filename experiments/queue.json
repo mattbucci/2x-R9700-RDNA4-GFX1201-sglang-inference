@@ -679,7 +679,7 @@
     "tail queue jobs 84-z (RAD-10a), 84-zz (RAD-10b) and 85 (RAD-29d) finished: one GPU job at a time",
     "FLINT-5: the Flint-DFlash2 drafter arguments of the paused SWE-bench cell"
    ],
-   "next_action": "Adopt by the rule: custom all-reduce as the flint preset default in scripts/launch.sh with ENABLE_CUSTOM_ALL_REDUCE=0 as the restore knob, once the RAD-30 serving job (which boots through the launcher) has finished; then README preset text and a canonical Flint sweep before headline numbers move.",
+   "next_action": "The flint preset default is in scripts/launch.sh (custom all-reduce on, ENABLE_CUSTOM_ALL_REDUCE=0 restores RCCL). Canonical Flint sweep on the shipped preset, then the README preset text and headline rows.",
    "test_gate": [
     "fixed before the run; every speed number is the mean of the two boots per side, both arm orders",
     "DFlash2 pass: sampled-ladder cycle time (server log, accept length / token rate) at least 1 % shorter in all four depth bins (24 / 7.3K / 58K / 197K) with every custom boot shorter than every RCCL boot; neutral: all four within 1 %; slower: a bin 1 % longer and none shorter; otherwise partial",

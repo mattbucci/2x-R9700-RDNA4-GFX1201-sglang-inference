@@ -991,6 +991,16 @@ PYEOF
             # (routed); natural needle 5/6 on both arms (same cell runs to the thinking cap), 256K reasoning probe equal on
             # both arms (cell by cell), text probes 3/3. EXTEND_FP8_QK=0 restores the bf16-upcast QK.
             export SGLANG_EXTEND_FP8_QK="${EXTEND_FP8_QK:-1}"
+            # FLINT-4b (patch 129): decode-sized tensor-parallel all-reduces run the in-graph one-stage custom
+            # all-reduce instead of RCCL; inputs that do not fit its buffer (prefill chunks) stay on RCCL. Same
+            # session, two boots per side in both orders: no-spec canonical sweep at 14 / 7.3K / 58K / 197K input
+            # 44.2 / 43.5 / 42.2 / 38.3 -> 45.4 / 44.6 / 43.3 / 39.3 tok/s; DFlash2 cycle x0.999-1.002, cold
+            # prefill, capabilities, needle and VRAM hold. Measured on the FP8 build.
+            # ENABLE_CUSTOM_ALL_REDUCE=0 restores RCCL.
+            if [[ "${ENABLE_CUSTOM_ALL_REDUCE:-1}" == "1" ]]; then
+                CUSTOM_AR=""
+                export SGLANG_USE_1STAGE_ALLREDUCE="${SGLANG_USE_1STAGE_ALLREDUCE:-1}"
+            fi
             CUDA_GRAPH=""   # dispatch-bound MoE decode: graphs on
             REASONING="--reasoning-parser flint"
             TOOL_CALL_PARSER="flint"
