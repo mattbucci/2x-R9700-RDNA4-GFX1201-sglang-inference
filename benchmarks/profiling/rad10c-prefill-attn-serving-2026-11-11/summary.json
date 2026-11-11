@@ -1,0 +1,119 @@
+{
+ "arms": "ctl1:0:off:1 ex1:0:exact:1 qk1:0:qk8:1 qk2:0:qk8:0 ex2:0:exact:0 ctl2:0:off:0",
+ "tokens": {
+  "8192": 7331,
+  "65536": 58483,
+  "221184": 197326,
+  "128": 24
+ },
+ "modes": {
+  "exact": {
+   "prefill": {
+    "8192": {
+     "treatment_s": 2.601,
+     "control_s": 2.639,
+     "ratio": 0.9858
+    },
+    "65536": {
+     "treatment_s": 24.172,
+     "control_s": 28.788,
+     "ratio": 0.8397
+    },
+    "221184": {
+     "treatment_s": 116.33,
+     "control_s": 170.964,
+     "ratio": 0.6804
+    }
+   },
+   "decode": {
+    "128": {
+     "treatment_tps": 35.552,
+     "control_tps": 35.591,
+     "ratio": 0.9989,
+     "treatment_warm_ms": 57.1,
+     "control_warm_ms": 58.15
+    },
+    "8192": {
+     "treatment_tps": 34.857,
+     "control_tps": 34.873,
+     "ratio": 0.9996,
+     "treatment_warm_ms": 114.35,
+     "control_warm_ms": 110.8
+    },
+    "65536": {
+     "treatment_tps": 33.26,
+     "control_tps": 33.266,
+     "ratio": 0.9998,
+     "treatment_warm_ms": 215.10000000000002,
+     "control_warm_ms": 114.4
+    },
+    "221184": {
+     "treatment_tps": 29.589,
+     "control_tps": 29.605,
+     "ratio": 0.9994,
+     "treatment_warm_ms": 507.95,
+     "control_warm_ms": 115.0
+    }
+   },
+   "boots": [
+    "ex1",
+    "ex2"
+   ],
+   "gate": "fail:warm-slower"
+  },
+  "qk8": {
+   "prefill": {
+    "8192": {
+     "treatment_s": 2.572,
+     "control_s": 2.639,
+     "ratio": 0.9748
+    },
+    "65536": {
+     "treatment_s": 22.481,
+     "control_s": 28.788,
+     "ratio": 0.7809
+    },
+    "221184": {
+     "treatment_s": 96.949,
+     "control_s": 170.964,
+     "ratio": 0.5671
+    }
+   },
+   "decode": {
+    "128": {
+     "treatment_tps": 35.57,
+     "control_tps": 35.591,
+     "ratio": 0.9994,
+     "treatment_warm_ms": 57.6,
+     "control_warm_ms": 58.15
+    },
+    "8192": {
+     "treatment_tps": 34.898,
+     "control_tps": 34.873,
+     "ratio": 1.0007,
+     "treatment_warm_ms": 108.65,
+     "control_warm_ms": 110.8
+    },
+    "65536": {
+     "treatment_tps": 33.281,
+     "control_tps": 33.266,
+     "ratio": 1.0005,
+     "treatment_warm_ms": 166.9,
+     "control_warm_ms": 114.4
+    },
+    "221184": {
+     "treatment_tps": 29.593,
+     "control_tps": 29.605,
+     "ratio": 0.9996,
+     "treatment_warm_ms": 352.55,
+     "control_warm_ms": 115.0
+    }
+   },
+   "boots": [
+    "qk1",
+    "qk2"
+   ],
+   "gate": "fail:warm-slower"
+  }
+ }
+}

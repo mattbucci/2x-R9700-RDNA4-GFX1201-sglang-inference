@@ -2447,6 +2447,44 @@ depend on that.
 Disposition: gate `pass/pass` on the guarded build; the serving A/B boots only on a build whose hash the shape
 log names.
 
+### RAD-10c serving, no speculation — the ported kernel cuts cold prefill at 197K to ×0.68 (exact) and ×0.57 (fp8 QK) and fails the gate on the cache-hit turn, because it also takes the short extend (2026-11-11)
+
+The ported kernel served every single-sequence extend of the `qwen38` no-speculation preset from a development
+tree (`SGLANG_HIP_PREFILL_ATTN=exact|qk8`; a draft, not in the patch series). Six boots in the order control,
+exact, fp8 QK, fp8 QK, exact, control: three cold prefills per depth, the canonical five-run decode sweep and the
+capability probes on every boot, the needle grid and the cache-hit consistency probe on the first boot of each side
+([receipts](profiling/rad10c-prefill-attn-serving-2026-11-11/)). Input tokens 7,331 / 58,483 / 197,326.
+
+| Cold prefill, s (mean of two boots) | 7.3K | 58K | 197K |
+|---|---:|---:|---:|
+| Control | 2.639 | 28.788 | 170.964 |
+| Exact | 2.601 (×0.986) | 24.172 (×0.840) | 116.330 (×0.680) |
+| fp8 QK | 2.572 (×0.975) | 22.481 (×0.781) | 96.949 (×0.567) |
+
+| First token on a cache hit, ms | 24 | 7.3K | 58K | 197K |
+|---|---:|---:|---:|---:|
+| Control | 58.1 | 110.8 | 114.4 | 115.0 |
+| Exact | 57.1 | 114.3 | 215.1 | 507.9 |
+| fp8 QK | 57.6 | 108.7 | 166.9 | 352.6 |
+
+The two boots of a side agree within 0.2 s at 197K (116.245 and 116.415 s exact, 96.947 and 96.951 s fp8 QK,
+170.916 and 171.012 s control). Decode is ×0.999 to ×1.001 of the control at every depth on both modes (29.59
+against 29.61 tok/s at 197K). Capabilities are 5/5 on all six boots, the needle grid is 9/9 on all three sides,
+every treatment boot logs the route on both ranks with no declined shape, and end-of-run VRAM per card sits inside
+the controls' range. The consistency probe reads 7 of 8 hit comparisons beyond the noise floor on the control, 3
+of 8 on exact and 6 of 8 on fp8 QK: it fails on this preset at baseline and the treatment is not worse.
+
+The cache-hit turn is a short extend (35 new tokens behind a 7,296-token prefix at the 7.3K point). The control
+serves it on the extend split-KV route, which takes up to 256 new tokens; its log carries that route's line and
+no treatment boot does, because the ported route sits in front of it and takes every single-sequence extend. The
+ported kernel's first token grows with the prefix (57 ms at 24 tokens, 508 ms at 197K on exact) and the split-KV
+route's does not (115 ms).
+
+Disposition, by the rule fixed before the run (first token on a hit at most ×1.10 or 20 ms above the control):
+neither mode is adopted as measured. The cold-prefill gain and the unchanged decode stand, so the route gets a
+minimum row count (`SGLANG_HIP_PREFILL_ATTN_MIN_ROWS`, already in the development tree), set per mode from a
+kernel bench by row count, and the same six-boot protocol is repeated with it before the DSpark phase.
+
 ### FLINT-4b — the in-graph custom all-reduce on Flint: no-spec decode +2.6 % at every depth, DFlash2 cycle unchanged, texts equal wherever the controls repeat themselves (2026-11-11)
 
 Third start, the whole matrix under one method: eight boots of the `flint` preset at `--random-seed 7`, RCCL and

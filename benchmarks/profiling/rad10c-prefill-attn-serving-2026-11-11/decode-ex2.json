@@ -1,0 +1,108 @@
+{
+  "label": "ex2",
+  "tag": "",
+  "note": "qwen38 FP8, dev tree rad10c (98 patches with the two-rank BF16 attention-sum wire default + the HIP prefill attention route), --random-seed 7; canonical 4-point sweep, 5 runs, EOS, behind the cold prefill probe",
+  "port": 23334,
+  "maxtok": 80,
+  "runs": 5,
+  "sampling": null,
+  "ignore_eos": false,
+  "points": [
+    {
+      "context": 128,
+      "input_len": 24,
+      "runs_tps": [
+        35.54,
+        35.57,
+        35.56,
+        35.56,
+        35.55
+      ],
+      "median_tps": 35.558,
+      "min_tps": 35.537,
+      "max_tps": 35.575,
+      "runs_completion_tokens": [
+        80,
+        80,
+        80,
+        80,
+        80
+      ],
+      "median_tpot_ms": 28.12,
+      "sample": "# The Memory Wall: A Deep Dive into GPU Memory Hierarchy and",
+      "median_ttft_ms": 57.7
+    },
+    {
+      "context": 8192,
+      "input_len": 7331,
+      "runs_tps": [
+        34.78,
+        34.86,
+        34.84,
+        34.85,
+        34.82
+      ],
+      "median_tps": 34.836,
+      "min_tps": 34.783,
+      "max_tps": 34.856,
+      "runs_completion_tokens": [
+        38,
+        38,
+        38,
+        38,
+        38
+      ],
+      "median_tpot_ms": 28.71,
+      "sample": "The provided text consists of the pangram \"The quick brown f",
+      "median_ttft_ms": 114.9
+    },
+    {
+      "context": 65536,
+      "input_len": 58483,
+      "runs_tps": [
+        33.14,
+        33.24,
+        33.22,
+        33.25,
+        33.25
+      ],
+      "median_tps": 33.239,
+      "min_tps": 33.14,
+      "max_tps": 33.255,
+      "runs_completion_tokens": [
+        46,
+        33,
+        33,
+        33,
+        33
+      ],
+      "median_tpot_ms": 30.09,
+      "sample": "The provided text consists of the pangram \"The quick brown f",
+      "median_ttft_ms": 216.8
+    },
+    {
+      "context": 221184,
+      "input_len": 197326,
+      "runs_tps": [
+        29.59,
+        29.59,
+        29.6,
+        29.67,
+        29.65
+      ],
+      "median_tps": 29.603,
+      "min_tps": 29.587,
+      "max_tps": 29.672,
+      "runs_completion_tokens": [
+        37,
+        37,
+        37,
+        37,
+        37
+      ],
+      "median_tpot_ms": 33.78,
+      "sample": "The provided text consists of the pangram \"The quick brown f",
+      "median_ttft_ms": 511.0
+    }
+  ]
+}

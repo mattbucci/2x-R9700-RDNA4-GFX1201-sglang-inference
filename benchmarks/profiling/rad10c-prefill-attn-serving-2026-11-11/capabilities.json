@@ -1,0 +1,194 @@
+{
+  "ctl1": {
+    "tag": "ctl1",
+    "model": "/data/models/Qwen3.8-27B-FP8",
+    "timestamp": "2026-11-11 07:52",
+    "elapsed_sec": 9.6,
+    "checks": {
+      "basic": {
+        "passed": true,
+        "message": "finish=stop answer='paris'"
+      },
+      "tool_call": {
+        "passed": true,
+        "message": "finish=tool_calls name='get_weather' args='{\"location\": \"Paris\"}'"
+      },
+      "thinking": {
+        "passed": true,
+        "message": "reasoning_seen terminated answer_ok (147 tok, finish=stop)"
+      },
+      "vision": {
+        "passed": true,
+        "message": "saw=['red', 'circle']  response=' a red circle with a black border.'"
+      },
+      "video": {
+        "passed": true,
+        "message": "saw=['move', 'right', 'across', 'circle', 'red']  response='\\n\\na red circle moves from the left side of the screen to the right.'"
+      }
+    },
+    "summary": {
+      "passed": 5,
+      "total": 5
+    }
+  },
+  "ex1": {
+    "tag": "ex1",
+    "model": "/data/models/Qwen3.8-27B-FP8",
+    "timestamp": "2026-11-11 08:40",
+    "elapsed_sec": 11.1,
+    "checks": {
+      "basic": {
+        "passed": true,
+        "message": "finish=stop answer='paris'"
+      },
+      "tool_call": {
+        "passed": true,
+        "message": "finish=tool_calls name='get_weather' args='{\"location\": \"Paris\"}'"
+      },
+      "thinking": {
+        "passed": true,
+        "message": "reasoning_seen terminated answer_ok (224 tok, finish=stop)"
+      },
+      "vision": {
+        "passed": true,
+        "message": "saw=['red', 'circle', 'round']  response='a red circle with a black outline on a white background.'"
+      },
+      "video": {
+        "passed": true,
+        "message": "saw=['move', 'right', 'circle', 'red']  response='\\n\\na red circle moves from the left side of the screen to the right side.'"
+      }
+    },
+    "summary": {
+      "passed": 5,
+      "total": 5
+    }
+  },
+  "qk1": {
+    "tag": "qk1",
+    "model": "/data/models/Qwen3.8-27B-FP8",
+    "timestamp": "2026-11-11 09:15",
+    "elapsed_sec": 9.0,
+    "checks": {
+      "basic": {
+        "passed": true,
+        "message": "finish=stop answer='paris'"
+      },
+      "tool_call": {
+        "passed": true,
+        "message": "finish=tool_calls name='get_weather' args='{\"location\": \"Paris\"}'"
+      },
+      "thinking": {
+        "passed": true,
+        "message": "reasoning_seen terminated answer_ok (140 tok, finish=stop)"
+      },
+      "vision": {
+        "passed": true,
+        "message": "saw=['red', 'circle', 'round']  response=' a red circle is shown on a white background.'"
+      },
+      "video": {
+        "passed": true,
+        "message": "saw=['move', 'right', 'across', 'circle', 'red']  response='\\n\\na red circle moves from the left side of the screen to the right side.'"
+      }
+    },
+    "summary": {
+      "passed": 5,
+      "total": 5
+    }
+  },
+  "qk2": {
+    "tag": "qk2",
+    "model": "/data/models/Qwen3.8-27B-FP8",
+    "timestamp": "2026-11-11 09:46",
+    "elapsed_sec": 9.5,
+    "checks": {
+      "basic": {
+        "passed": true,
+        "message": "finish=stop answer='paris'"
+      },
+      "tool_call": {
+        "passed": true,
+        "message": "finish=tool_calls name='get_weather' args='{\"location\": \"Paris\"}'"
+      },
+      "thinking": {
+        "passed": true,
+        "message": "reasoning_seen terminated answer_ok (140 tok, finish=stop)"
+      },
+      "vision": {
+        "passed": true,
+        "message": "saw=['red', 'circle', 'round']  response=' a red circle is shown on a white background.'"
+      },
+      "video": {
+        "passed": true,
+        "message": "saw=['move', 'right', 'across', 'circle', 'red']  response='\\n\\na red circle moves from the left side of the screen to the right side.'"
+      }
+    },
+    "summary": {
+      "passed": 5,
+      "total": 5
+    }
+  },
+  "ex2": {
+    "tag": "ex2",
+    "model": "/data/models/Qwen3.8-27B-FP8",
+    "timestamp": "2026-11-11 09:56",
+    "elapsed_sec": 11.1,
+    "checks": {
+      "basic": {
+        "passed": true,
+        "message": "finish=stop answer='paris'"
+      },
+      "tool_call": {
+        "passed": true,
+        "message": "finish=tool_calls name='get_weather' args='{\"location\": \"Paris\"}'"
+      },
+      "thinking": {
+        "passed": true,
+        "message": "reasoning_seen terminated answer_ok (224 tok, finish=stop)"
+      },
+      "vision": {
+        "passed": true,
+        "message": "saw=['red', 'circle', 'round']  response='a red circle with a black outline on a white background.'"
+      },
+      "video": {
+        "passed": true,
+        "message": "saw=['move', 'right', 'circle', 'red']  response='\\n\\na red circle moves from the left side of the screen to the right side.'"
+      }
+    },
+    "summary": {
+      "passed": 5,
+      "total": 5
+    }
+  },
+  "ctl2": {
+    "tag": "ctl2",
+    "model": "/data/models/Qwen3.8-27B-FP8",
+    "timestamp": "2026-11-11 10:08",
+    "elapsed_sec": 9.6,
+    "checks": {
+      "basic": {
+        "passed": true,
+        "message": "finish=stop answer='paris'"
+      },
+      "tool_call": {
+        "passed": true,
+        "message": "finish=tool_calls name='get_weather' args='{\"location\": \"Paris\"}'"
+      },
+      "thinking": {
+        "passed": true,
+        "message": "reasoning_seen terminated answer_ok (147 tok, finish=stop)"
+      },
+      "vision": {
+        "passed": true,
+        "message": "saw=['red', 'circle']  response=' a red circle with a black border.'"
+      },
+      "video": {
+        "passed": true,
+        "message": "saw=['move', 'right', 'across', 'circle', 'red']  response='\\n\\na red circle moves from the left side of the screen to the right.'"
+      }
+    },
+    "summary": {
+      "passed": 5,
+      "total": 5
+    }
+  }
+}
