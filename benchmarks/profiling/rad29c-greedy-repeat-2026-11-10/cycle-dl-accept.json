@@ -1,0 +1,30 @@
+{
+ "label": "dl-accept",
+ "note": "qwen38 FP8 DSpark preset, live tree, 97 patches",
+ "log": "/data/logs/rad29c-greedy-repeat-2026-11-10/server-dl.log",
+ "from_line": 820,
+ "to_line": 1150,
+ "line_numbering": "newline",
+ "decode_lines_dropped_after_prefill": 48,
+ "decode_lines_dropped_no_depth": 1,
+ "depths": {
+  "7.3K": {
+   "decode_batches": {
+    "lines": 35,
+    "accept_len": 3.45,
+    "tok_s": 73.72,
+    "cycles_s": 21.49,
+    "cycle_ms": 46.53
+   }
+  },
+  "58K": {
+   "decode_batches": {
+    "lines": 11,
+    "accept_len": 4.5,
+    "tok_s": 94.83,
+    "cycles_s": 21.07,
+    "cycle_ms": 47.45
+   }
+  }
+ }
+}

@@ -2063,6 +2063,61 @@ whose last fitted chunk reads short (rms 1.27 s on one), so that boot has no rec
 Receipts: `profiling/prefill-chunk-curve-2026-11-10/{nospec,dspark}.json`; unit test
 `scripts/test/test_prefill_chunk_curve.py`.
 
+### RAD-29c — greedy speculative output repeats to the token across boots on equal request history; the sampled ladder ahead of the probe moves it, the boot seed does not (2026-11-10)
+
+RAD-29b's two shipped boots repeated 9 of 48 greedy texts. They differed in request history (one ran the seeded
+sampled ladder ahead of the probe) and in boot seed (every boot draws its own `--random-seed`). Six boots of the
+live tree (97 patches, `qwen38` DSpark preset, launcher defaults) run RAD-29b's probe with its arguments: 48
+documents at temperature 0, 300 tokens each, 12 each cut at 12,000 / 24,000 / 48,000 / 96,000 characters
+(2,448–41,394 prompt tokens, `scripts/bench/spec_accept_probe.py`;
+[receipts](profiling/rad29c-greedy-repeat-2026-11-10/)). `rl` boots with `ENABLE_CUSTOM_ALL_REDUCE=0` and runs the
+ladder, then the probe: the engine and the request order of RAD-29b's first shipped boot (`ship1`). `dl` is the
+shipped default in the same order. `d1` / `d2` run the probe alone on drawn boot seeds, `s1` / `s2` the probe
+alone with `--random-seed 7`. Every boot answers one fixed 17-token request first. A pair repeats when all 48
+texts and all 48 verify counts are equal.
+
+| Pair | What differs between the two boots | Same text | Same verify count | Accept length | Ratio (95 % over documents) |
+|---|---|---|---|---|---|
+| RAD-29b `ship1` / `rl` | boot seed | 48 / 48 | 48 / 48 | 3.813 → 3.813 | ×1.000 |
+| `d1` / `d2` | boot seed | 48 / 48 | 48 / 48 | 3.887 → 3.887 | ×1.000 |
+| `s1` / `s2` | nothing | 48 / 48 | 48 / 48 | 3.887 → 3.887 | ×1.000 |
+| `d1` / `s1` | drawn boot seed against 7 | 48 / 48 | 48 / 48 | 3.887 → 3.887 | ×1.000 |
+| `rl` / `dl` | RCCL against the in-graph all-reduce (patch 129), boot seed | 48 / 48 | 48 / 48 | 3.813 → 3.813 | ×1.000 |
+| RAD-29b `ship2` / `d1` | the same, without the ladder | 48 / 48 | 48 / 48 | 3.887 → 3.887 | ×1.000 |
+| `d1` / `dl` | the sampled ladder ahead of the probe, boot seed | 9 / 48 | 10 / 48 | 3.887 → 3.813 | ×0.981 (0.958–1.002) |
+
+Every pair on equal request history repeats to the token: on drawn boot seeds, on a fixed one, and across the two
+all-reduce paths. The boot seed does not reach a temperature-0 request. The one pair that mixes histories is the
+one that differs: 9 of 48 texts, 10 of 48 verify counts, pooled accept ×0.981, by size group ×0.998 / 0.962 /
+0.962 / 1.001. Prompt tokens are equal on all 48 documents and completion tokens on 47. Six documents commit the
+same text on both boots with different verify counts (84 against 86 on one), so the drafts differ where the text
+does not.
+
+The ladder's own sampled text is not what carries over. Its first answer at 24 input tokens opens "# The
+Bottleneck of Silicon" on `ship1`, "# The Engine of Compute" on `rl` and "# The Engine of Modern Computing" on
+`dl`, at equal prompts and forced completion lengths (two 400-token runs at each of four depths), and the probe
+behind it is the same to the token on all three boots. The state the ladder leaves therefore follows its prompts
+and token counts. Which state it is (pool layout, cached prompts, drafter buffers) is not measured; the gate asked
+for it only on the outcomes where boots do not repeat.
+
+Patch 129 at equal history (`rl` / `dl`): 48 of 48 texts and verify counts, accept ×1.000 against a floor of 0.95,
+cycle on the sampled ladder 46.95 / 47.73 / 49.81 / 56.00 → 46.51 / 47.10 / 49.29 / 55.54 ms at 24 / 7.3K / 58K /
+197K input (×0.991 / 0.987 / 0.990 / 0.992, one boot per side). The in-graph all-reduce leaves greedy speculative
+output unchanged.
+
+Disposition, by the gate fixed before the run (`ladder-repeat:bare-repeat:seed-repeat`): a boot repeats given its
+history, so a paired greedy accept probe runs the same requests in the same order on both sides, and one boot per
+side is then enough: two boots of one engine differ by nothing. A pair that mixes histories reads ×0.981 pooled and
+×0.962 in a size group with no engine change; RAD-29b's ×1.019 between its two shipped boots is this pair read the
+other way. RAD-28's and RAD-29b's compares ran both sides in one request order. RAD-29's and RAD-25's first
+pairs ran capabilities ahead of the treatment boot only; their second pairs ran one order on both sides and read
+the same (RAD-29 ×0.995 on both pairs; RAD-25 ×1.0005 and ×1.000, 24 of 24 texts on both), so those
+dispositions stand. Those receipts size two smaller history differences: RAD-25's `car1` (capabilities and the
+temperature-0 ladder ahead) against `car2` (neither) commits 24 of 24 equal texts at accept 3.7685 against
+3.7666, and its `rccl1` against `rccl2`, which differ in the temperature-0 ladder alone, repeat exactly.
+RAD-29d and FLINT-4b run every drafter boot through one request order; RAD-29d's fixed boot seed is not needed
+for the greedy probe.
+
 ## Evaluation methodology
 
 ### SWE-bench answer leakage through git history and the web (found 2026-09-18)

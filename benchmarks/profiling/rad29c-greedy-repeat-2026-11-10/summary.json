@@ -1,0 +1,175 @@
+{
+ "cases": 48,
+ "boot_seeds": {
+  "d1": "30564949",
+  "d2": "646261256",
+  "dl": "431109577",
+  "rl": "812116507",
+  "s1": "7",
+  "s2": "7"
+ },
+ "pooled": {
+  "rl": {
+   "tokens": 14349,
+   "verifies": 3763,
+   "accept": 3.8132
+  },
+  "dl": {
+   "tokens": 14349,
+   "verifies": 3763,
+   "accept": 3.8132
+  },
+  "d1": {
+   "tokens": 14303,
+   "verifies": 3680,
+   "accept": 3.8867
+  },
+  "d2": {
+   "tokens": 14303,
+   "verifies": 3680,
+   "accept": 3.8867
+  },
+  "s1": {
+   "tokens": 14303,
+   "verifies": 3680,
+   "accept": 3.8867
+  },
+  "s2": {
+   "tokens": 14303,
+   "verifies": 3680,
+   "accept": 3.8867
+  },
+  "ship1": {
+   "tokens": 14349,
+   "verifies": 3763,
+   "accept": 3.8132
+  },
+  "ship2": {
+   "tokens": 14303,
+   "verifies": 3680,
+   "accept": 3.8867
+  }
+ },
+ "pairs": {
+  "ladder": {
+   "cases": 48,
+   "same_text": 48,
+   "same_verify_count": 48,
+   "same_completion_tokens": 48,
+   "first_different_text": null,
+   "control_accept": 3.8132,
+   "treatment_accept": 3.8132,
+   "ratio": 1.0,
+   "ratio_ci95": [
+    1.0,
+    1.0
+   ],
+   "control": "ship1",
+   "treatment": "rl",
+   "repeats": true
+  },
+  "bare": {
+   "cases": 48,
+   "same_text": 48,
+   "same_verify_count": 48,
+   "same_completion_tokens": 48,
+   "first_different_text": null,
+   "control_accept": 3.8867,
+   "treatment_accept": 3.8867,
+   "ratio": 1.0,
+   "ratio_ci95": [
+    1.0,
+    1.0
+   ],
+   "control": "d1",
+   "treatment": "d2",
+   "repeats": true
+  },
+  "seed": {
+   "cases": 48,
+   "same_text": 48,
+   "same_verify_count": 48,
+   "same_completion_tokens": 48,
+   "first_different_text": null,
+   "control_accept": 3.8867,
+   "treatment_accept": 3.8867,
+   "ratio": 1.0,
+   "ratio_ci95": [
+    1.0,
+    1.0
+   ],
+   "control": "s1",
+   "treatment": "s2",
+   "repeats": true
+  },
+  "allred": {
+   "cases": 48,
+   "same_text": 48,
+   "same_verify_count": 48,
+   "same_completion_tokens": 48,
+   "first_different_text": null,
+   "control_accept": 3.8132,
+   "treatment_accept": 3.8132,
+   "ratio": 1.0,
+   "ratio_ci95": [
+    1.0,
+    1.0
+   ],
+   "control": "rl",
+   "treatment": "dl",
+   "repeats": true
+  },
+  "history": {
+   "cases": 48,
+   "same_text": 9,
+   "same_verify_count": 10,
+   "same_completion_tokens": 47,
+   "first_different_text": "doc-12000-1",
+   "control_accept": 3.8867,
+   "treatment_accept": 3.8132,
+   "ratio": 0.9811,
+   "ratio_ci95": [
+    0.9575,
+    1.002
+   ],
+   "control": "d1",
+   "treatment": "dl",
+   "repeats": false
+  },
+  "seedval": {
+   "cases": 48,
+   "same_text": 48,
+   "same_verify_count": 48,
+   "same_completion_tokens": 48,
+   "first_different_text": null,
+   "control_accept": 3.8867,
+   "treatment_accept": 3.8867,
+   "ratio": 1.0,
+   "ratio_ci95": [
+    1.0,
+    1.0
+   ],
+   "control": "d1",
+   "treatment": "s1",
+   "repeats": true
+  },
+  "old-bare": {
+   "cases": 48,
+   "same_text": 48,
+   "same_verify_count": 48,
+   "same_completion_tokens": 48,
+   "first_different_text": null,
+   "control_accept": 3.8867,
+   "treatment_accept": 3.8867,
+   "ratio": 1.0,
+   "ratio_ci95": [
+    1.0,
+    1.0
+   ],
+   "control": "ship2",
+   "treatment": "d1",
+   "repeats": true
+  }
+ },
+ "gate": "ladder-repeat:bare-repeat:seed-repeat"
+}

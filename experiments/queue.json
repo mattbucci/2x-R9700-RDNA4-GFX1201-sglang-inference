@@ -1084,14 +1084,14 @@
   {
    "id": "RAD-29c",
    "spec": "19-vllm-radiance-parity.md",
-   "status": "in_progress",
+   "status": "completed",
    "resource": "gpu",
    "depends_on": [
     "RAD-29b: two shipped boots repeated 9 of 48 greedy texts; the first ran the seeded sampled ladder ahead of the probe, the second did not, and every boot draws its own --random-seed",
     "RAD-29 and RAD-25: control boots with the seeded ladder ahead of the probe repeated 24 of 24 texts",
     "patch 129 installed (the restore knob ENABLE_CUSTOM_ALL_REDUCE=0 is the engine of the RAD-29b boots)"
    ],
-   "next_action": "Running as tail queue job 83 (scratchpad rad29c/rad29c_greedy_repeat.sh, six boots, a seventh on one outcome): the 48-document greedy accept probe with the RAD-29b arguments on rl (ENABLE_CUSTOM_ALL_REDUCE=0, sampled ladder then probe, against the RAD-29b ship1 receipt), dl (shipped default, ladder then probe), d1 / d2 (shipped default, probe only, random boot seeds), s1 / s2 (probe only, --random-seed 7); rl2 only when rl does not repeat ship1. Then a FINDINGS methodology note and the pairing rule for accept gates.",
+   "next_action": "Done: paired greedy accept probes run the same requests in the same order on both sides; one boot per side is enough at equal history. Which state the sampled ladder leaves (pool layout, cached prompts, drafter buffers) is not measured and is not needed for the pairing rule.",
    "test_gate": [
     "a pair repeats when all 48 texts and all 48 verify counts are equal; ladder = RAD-29b ship1 / rl (rl / rl2 when that differs), bare = d1 / d2, seed = s1 / s2",
     "ladder-repeat and bare-repeat: a boot repeats given its history, so paired greedy probes run on equal histories",
@@ -1099,7 +1099,8 @@
     "ladder-repeat, bare-differs, seed-differs: the seeded ladder pins the state and the boot seed does not; the state is found before the next accept-gated adoption",
     "ladder-differs: boots do not repeat at mid depth; the pooled accept ratio of that pair is the floor of every accept gate and the source is found first",
     "rl / dl (patch 129 at equal history): accept ratio not below 0.95, read with the repeat pairs as its noise scale"
-   ]
+   ],
+   "result": "FINDINGS RAD-29c, benchmarks/profiling/rad29c-greedy-repeat-2026-11-10/ (gate ladder-repeat:bare-repeat:seed-repeat). Six boots of the live tree (97 patches), 48 greedy documents each. Equal request history repeats 48 of 48 texts and verify counts: RAD-29b ship1 / rl (ladder then probe, accept 3.813), d1 / d2 (probe only, drawn boot seeds, 3.887), s1 / s2 (--random-seed 7, 3.887), d1 / s1, RAD-29b ship2 / d1. Mixed history d1 / dl: 9 of 48 texts, 10 of 48 verify counts, accept 3.887 -> 3.813 (x0.981, 95 % 0.958-1.002; size groups x0.998 / 0.962 / 0.962 / 1.001), six documents with equal text and different verify counts. The ladder's sampled text differs between ship1, rl and dl while the probe behind it repeats, so the carried state follows the ladder's prompts and token counts, not its text. Patch 129 at equal history (rl / dl): 48 of 48, accept x1.000, sampled-ladder cycle 46.95 / 47.73 / 49.81 / 56.00 -> 46.51 / 47.10 / 49.29 / 55.54 ms."
   },
   {
    "id": "RAD-29d",
@@ -1108,7 +1109,7 @@
    "resource": "gpu",
    "depends_on": [
     "canonical sweep with patches 121-129: the DFlash2 rows moved +20.7 % at 24 tokens, +1.2 % at 7.3K and +9.1 % on the 197K cold run against the patches 121-126 sweep on equal completion tokens, and the sweep records no verify counts",
-    "RAD-29c: what pins greedy speculative output across boots decides how the two sides are paired",
+    "RAD-29c (done): equal request history pins greedy speculative output across boots, the boot seed does not; every drafter boot of this job runs one request order",
     "tail queue jobs 83 (RAD-29c) and 84 (FLINT-4b) finished: one GPU job at a time"
    ],
    "next_action": "Tail queue job 85 (scratchpad rad29d/rad29d_dflash2_lane.sh, live tree, five boots, every boot with --random-seed 7): the DFlash2 lane of patch 128 on the shipped tree. Boots in the order ship1 (QWEN38_SPEC=0 plus the DFlash2 drafter, the canonical driver's boot), off1 (the same with FP8_GEMM_BF16=0), plain (QWEN38_SPEC=0, no drafter), off2, ship2: both orders, and two boots per arm as the boot-to-boot scale. Equal request history on every drafter boot: one fixed short request, capabilities, the seeded sampled ladder (two 400-token runs at 24 / 7.3K / 58K / 197K, cycle per depth from the server's decode-batch lines), the 48-document greedy accept probe, the canonical five-run rows with completion tokens, then the same prompts through scripts/bench/spec_decode_rows.py (verify count per run, so a canonical cell splits into accept length and cycle). The plain boot runs capabilities, the ladder and the canonical rows. Output: the DFlash2 cycle of this tree over the plain step of the same session, the number radiance's 1.3x compares with.",

@@ -1,0 +1,89 @@
+{
+  "label": "rl-sampled",
+  "tag": "",
+  "note": "",
+  "port": 23334,
+  "maxtok": 400,
+  "runs": 2,
+  "sampling": {
+    "temperature": 1.0,
+    "top_p": 0.95,
+    "top_k": 20,
+    "seed": 7
+  },
+  "ignore_eos": true,
+  "points": [
+    {
+      "context": 128,
+      "input_len": 24,
+      "runs_tps": [
+        60.29,
+        56.63
+      ],
+      "median_tps": 58.401,
+      "min_tps": 56.625,
+      "max_tps": 60.292,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "median_tpot_ms": 17.12,
+      "sample": "# The Engine of Compute: A Deep Dive into GPU Memory Hierarc",
+      "median_ttft_ms": 374.3
+    },
+    {
+      "context": 8192,
+      "input_len": 7331,
+      "runs_tps": [
+        63.32,
+        56.89
+      ],
+      "median_tps": 59.931,
+      "min_tps": 56.888,
+      "max_tps": 63.317,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "median_tpot_ms": 16.69,
+      "sample": "The provided text consists of the pangram \"The quick brown f",
+      "median_ttft_ms": 1797.5
+    },
+    {
+      "context": 65536,
+      "input_len": 58483,
+      "runs_tps": [
+        50.11,
+        49.54
+      ],
+      "median_tps": 49.82,
+      "min_tps": 49.537,
+      "max_tps": 50.106,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "median_tpot_ms": 20.07,
+      "sample": "The provided text consists of the pangram \"The quick brown f",
+      "median_ttft_ms": 15249.4
+    },
+    {
+      "context": 221184,
+      "input_len": 197326,
+      "runs_tps": [
+        43.35,
+        40.96
+      ],
+      "median_tps": 42.123,
+      "min_tps": 40.96,
+      "max_tps": 43.354,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "median_tpot_ms": 23.74,
+      "sample": "The provided text consists of the pangram \"The quick brown f",
+      "median_ttft_ms": 76605.5
+    }
+  ]
+}

@@ -1,0 +1,89 @@
+{
+  "label": "dl-sampled",
+  "tag": "",
+  "note": "",
+  "port": 23334,
+  "maxtok": 400,
+  "runs": 2,
+  "sampling": {
+    "temperature": 1.0,
+    "top_p": 0.95,
+    "top_k": 20,
+    "seed": 7
+  },
+  "ignore_eos": true,
+  "points": [
+    {
+      "context": 128,
+      "input_len": 24,
+      "runs_tps": [
+        53.97,
+        58.11
+      ],
+      "median_tps": 55.963,
+      "min_tps": 53.972,
+      "max_tps": 58.108,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "median_tpot_ms": 17.87,
+      "sample": "# The Engine of Modern Computing: A Deep Dive into GPU Memor",
+      "median_ttft_ms": 305.7
+    },
+    {
+      "context": 8192,
+      "input_len": 7331,
+      "runs_tps": [
+        68.2,
+        55.74
+      ],
+      "median_tps": 61.345,
+      "min_tps": 55.739,
+      "max_tps": 68.205,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "median_tpot_ms": 16.3,
+      "sample": "The provided text consists of the pangram \"The quick brown f",
+      "median_ttft_ms": 1785.9
+    },
+    {
+      "context": 65536,
+      "input_len": 58483,
+      "runs_tps": [
+        59.06,
+        47.65
+      ],
+      "median_tps": 52.746,
+      "min_tps": 47.653,
+      "max_tps": 59.059,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "median_tpot_ms": 18.96,
+      "sample": "The provided text consists entirely of the pangram \"The quic",
+      "median_ttft_ms": 15267.2
+    },
+    {
+      "context": 221184,
+      "input_len": 197326,
+      "runs_tps": [
+        40.75,
+        42.1
+      ],
+      "median_tps": 41.416,
+      "min_tps": 40.749,
+      "max_tps": 42.105,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "median_tpot_ms": 24.15,
+      "sample": "The provided text consists of the pangram \"The quick brown f",
+      "median_ttft_ms": 76855.0
+    }
+  ]
+}

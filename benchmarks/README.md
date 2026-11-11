@@ -186,7 +186,11 @@ canonical sweep 50.8 / 72.3 / 66.7 / 50.7 → 58.9 / 78.8 / 72.3 / 59.0 tok/s, g
 9/9 and capabilities 5/5 ([kernel](profiling/rad29-gemm-bf16-kernel-2026-11-10/), [serving](profiling/rad29-gemm-bf16-serving-2026-11-10/),
 [FINDINGS → RAD-29](FINDINGS.md)). `scripts/bench/dspark_cycle_times.py`
 reads DSpark cycle time and accept length from a server log; `scripts/bench/copyheavy_multi_bench.py` is the five-target
-copy-heavy probe with decode-only timing.
+copy-heavy probe with decode-only timing. Accept controls on the shipped preset: the verify-row GEMM against its restore knob
+over 48 mid-depth greedy documents, accept length ×1.003 ([receipts](profiling/rad29b-shipped-accept-2026-11-10/),
+[FINDINGS → RAD-29b](FINDINGS.md)), and six boots of one probe: greedy speculative output repeats to the token on equal request
+history, 9 of 48 texts when one boot runs the sampled ladder first, patch 129 against RCCL 48 of 48
+([receipts](profiling/rad29c-greedy-repeat-2026-11-10/), [FINDINGS → RAD-29c](FINDINGS.md)).
 Upstream's one-stage HIP all-reduce against RCCL on the FP8 preset: +1.8 % at 24 tokens with wrong sums, so RCCL stays
 ([receipts](profiling/rad2-onestage-ar-2026-11-09/), [FINDINGS → RAD-2](FINDINGS.md)); `scripts/bench/custom_allreduce_isolation.py`
 drives the same class from two bare ranks and names what each output is: wrong with the PyTorch-pool staging buffer, exact
