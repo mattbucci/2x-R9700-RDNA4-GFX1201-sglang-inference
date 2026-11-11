@@ -1032,11 +1032,32 @@
     "RAD-29 (done, patch 128): the W8A16 GEMM is the qwen38 FP8 preset default; the A/B served it from a development tree",
     "RAD-29 accept probe: four 24,000-character documents read x0.925 (all four lower) while 16 short prompts and four 190,000-character documents read x1.008 / x1.011"
    ],
-   "next_action": "On the shipped preset from the live tree (extension rebuilt by scripts/build_fp8_gemm_bf16.sh, launcher defaults): canonical DSpark and no-spec sweeps for the README headline; paired greedy accept probe with 12 documents each at 12,000 / 24,000 / 48,000 / 96,000 characters and the sampled 400-token ladder against a FP8_GEMM_BF16=0 boot (also the restore knob's receipt), a second shipped boot for the boot-to-boot floor. Then the DFlash2 lane on the same preset, and an A/B per other FP8 preset before any of them exports the switch.",
+   "next_action": "Accept control done (the preset default stays). Open: the canonical DSpark, DFlash2 and no-spec sweeps on the shipped preset with patch 129 (tail queue job 82) for the README rows; then an A/B per other FP8 preset before any of them exports the switch.",
    "test_gate": [
     "the shipped boot logs the GEMM's active line and serves from /data/sgl-v0522; the FP8_GEMM_BF16=0 boot logs none",
     "mid-depth accept: pooled ratio over the 48 documents not below 0.95x, or the estimated decode rate on those documents (tokens over verify count x the arm's cycle of the request's depth) not below the control's; otherwise the preset default is reverted for DSpark; a size group more than 3 % below the control's rate is named in the disposition",
     "README headline rows change only from this sweep"
+   ],
+   "result": "Accept control (FINDINGS RAD-29b, benchmarks/profiling/rad29b-shipped-accept-2026-11-10/): shipped preset from the live tree against FP8_GEMM_BF16=0, equal request histories, 48 greedy documents. Accept length 3.803 -> 3.813 (x1.003, 95 % 0.978-1.025); by size 12,000 / 24,000 / 48,000 / 96,000 characters x1.025 / x0.987 / x1.012 / x0.986; estimated decode rate 74.2 -> 80.8 tok/s (x1.088, groups x1.067-1.113); cycle on the sampled ladder 50.90 / 51.92 / 53.86 / 59.98 -> 46.91 / 47.71 / 49.73 / 55.99 ms. Gate: keep, no group named. A second shipped boot without the sampled ladder ahead of the probe repeated 9 of 48 texts (accept x1.019): RAD-29c."
+  },
+  {
+   "id": "RAD-29c",
+   "spec": "19-vllm-radiance-parity.md",
+   "status": "queued",
+   "resource": "gpu",
+   "depends_on": [
+    "RAD-29b: two shipped boots repeated 9 of 48 greedy texts; the first ran the seeded sampled ladder ahead of the probe, the second did not, and every boot draws its own --random-seed",
+    "RAD-29 and RAD-25: control boots with the seeded ladder ahead of the probe repeated 24 of 24 texts",
+    "patch 129 installed (the restore knob ENABLE_CUSTOM_ALL_REDUCE=0 is the engine of the RAD-29b boots)"
+   ],
+   "next_action": "Tail queue job 83 (scratchpad rad29c/rad29c_greedy_repeat.sh, six boots, a seventh on one outcome): the 48-document greedy accept probe with the RAD-29b arguments on rl (ENABLE_CUSTOM_ALL_REDUCE=0, sampled ladder then probe, against the RAD-29b ship1 receipt), dl (shipped default, ladder then probe), d1 / d2 (shipped default, probe only, random boot seeds), s1 / s2 (probe only, --random-seed 7); rl2 only when rl does not repeat ship1. Then a FINDINGS methodology note and the pairing rule for accept gates.",
+   "test_gate": [
+    "a pair repeats when all 48 texts and all 48 verify counts are equal; ladder = RAD-29b ship1 / rl (rl / rl2 when that differs), bare = d1 / d2, seed = s1 / s2",
+    "ladder-repeat and bare-repeat: a boot repeats given its history, so paired greedy probes run on equal histories",
+    "ladder-repeat, bare-differs, seed-repeat: the boot seed reaches greedy requests unless a seeded request ran first, so paired probes fix --random-seed or run behind the seeded ladder",
+    "ladder-repeat, bare-differs, seed-differs: the seeded ladder pins the state and the boot seed does not; the state is found before the next accept-gated adoption",
+    "ladder-differs: boots do not repeat at mid depth; the pooled accept ratio of that pair is the floor of every accept gate and the source is found first",
+    "rl / dl (patch 129 at equal history): accept ratio not below 0.95, read with the repeat pairs as its noise scale"
    ]
   }
  ]

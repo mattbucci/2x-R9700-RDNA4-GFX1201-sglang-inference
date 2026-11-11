@@ -1,0 +1,89 @@
+{
+  "label": "off1-sampled",
+  "tag": "",
+  "note": "",
+  "port": 23334,
+  "maxtok": 400,
+  "runs": 2,
+  "sampling": {
+    "temperature": 1.0,
+    "top_p": 0.95,
+    "top_k": 20,
+    "seed": 7
+  },
+  "ignore_eos": true,
+  "points": [
+    {
+      "context": 128,
+      "input_len": 24,
+      "runs_tps": [
+        55.77,
+        54.19
+      ],
+      "median_tps": 54.967,
+      "min_tps": 54.185,
+      "max_tps": 55.772,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "median_tpot_ms": 18.19,
+      "sample": "# The Engine of Modern Compute: A Deep Dive into GPU Memory ",
+      "median_ttft_ms": 333.0
+    },
+    {
+      "context": 8192,
+      "input_len": 7331,
+      "runs_tps": [
+        51.23,
+        49.91
+      ],
+      "median_tps": 50.564,
+      "min_tps": 49.912,
+      "max_tps": 51.232,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "median_tpot_ms": 19.78,
+      "sample": "The provided text consists of a massive repetition of the cl",
+      "median_ttft_ms": 1793.1
+    },
+    {
+      "context": 65536,
+      "input_len": 58483,
+      "runs_tps": [
+        48.95,
+        41.42
+      ],
+      "median_tps": 44.872,
+      "min_tps": 41.417,
+      "max_tps": 48.954,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "median_tpot_ms": 22.29,
+      "sample": "The text consists of the pangram \"The quick brown fox jumps ",
+      "median_ttft_ms": 15279.6
+    },
+    {
+      "context": 221184,
+      "input_len": 197326,
+      "runs_tps": [
+        41.29,
+        38.94
+      ],
+      "median_tps": 40.081,
+      "min_tps": 38.938,
+      "max_tps": 41.292,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "median_tpot_ms": 24.95,
+      "sample": "The provided text consists of the famous pangram \"The quick ",
+      "median_ttft_ms": 76694.6
+    }
+  ]
+}

@@ -1,0 +1,48 @@
+{
+ "label": "ship1-sampled",
+ "note": "qwen38 FP8 DSpark preset, live tree, 96 patches",
+ "log": "/data/logs/rad29b-shipped-accept-2026-11-10/server-ship1.log",
+ "from_line": 718,
+ "to_line": 816,
+ "line_numbering": "newline",
+ "decode_lines_dropped_after_prefill": 8,
+ "decode_lines_dropped_no_depth": 1,
+ "depths": {
+  "24": {
+   "decode_batches": {
+    "lines": 5,
+    "accept_len": 2.4,
+    "tok_s": 50.91,
+    "cycles_s": 21.32,
+    "cycle_ms": 46.91
+   }
+  },
+  "7.3K": {
+   "decode_batches": {
+    "lines": 5,
+    "accept_len": 2.7,
+    "tok_s": 56.59,
+    "cycles_s": 20.96,
+    "cycle_ms": 47.71
+   }
+  },
+  "58K": {
+   "decode_batches": {
+    "lines": 5,
+    "accept_len": 2.8,
+    "tok_s": 56.32,
+    "cycles_s": 20.11,
+    "cycle_ms": 49.73
+   }
+  },
+  "197K": {
+   "decode_batches": {
+    "lines": 7,
+    "accept_len": 2.3,
+    "tok_s": 41.08,
+    "cycles_s": 17.86,
+    "cycle_ms": 55.99
+   }
+  }
+ }
+}

@@ -1,0 +1,30 @@
+{
+ "label": "ship1-accept",
+ "note": "qwen38 FP8 DSpark preset, live tree, 96 patches",
+ "log": "/data/logs/rad29b-shipped-accept-2026-11-10/server-ship1.log",
+ "from_line": 817,
+ "to_line": 1149,
+ "line_numbering": "newline",
+ "decode_lines_dropped_after_prefill": 48,
+ "decode_lines_dropped_no_depth": 1,
+ "depths": {
+  "7.3K": {
+   "decode_batches": {
+    "lines": 36,
+    "accept_len": 3.58,
+    "tok_s": 75.85,
+    "cycles_s": 21.29,
+    "cycle_ms": 46.97
+   }
+  },
+  "58K": {
+   "decode_batches": {
+    "lines": 10,
+    "accept_len": 4.34,
+    "tok_s": 90.48,
+    "cycles_s": 20.85,
+    "cycle_ms": 47.97
+   }
+  }
+ }
+}

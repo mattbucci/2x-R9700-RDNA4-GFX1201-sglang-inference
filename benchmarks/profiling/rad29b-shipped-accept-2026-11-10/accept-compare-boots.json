@@ -1,0 +1,73 @@
+{
+ "control": "/home/letsrtfm/AI/2x-R9700-RDNA4-GFX1201-sglang-inference/benchmarks/profiling/rad29b-shipped-accept-2026-11-10/accept-ship1.json",
+ "treatment": "/home/letsrtfm/AI/2x-R9700-RDNA4-GFX1201-sglang-inference/benchmarks/profiling/rad29b-shipped-accept-2026-11-10/accept-ship2.json",
+ "cases": 48,
+ "groups": {
+  "doc-12000": {
+   "cases": 12,
+   "same_text": 2,
+   "control_accept": 3.7037,
+   "treatment_accept": 3.7113,
+   "ratio": 1.0021,
+   "ratio_ci95": [
+    0.9814,
+    1.0209
+   ],
+   "treatment_lower": 4,
+   "treatment_higher": 6
+  },
+  "doc-24000": {
+   "cases": 12,
+   "same_text": 2,
+   "control_accept": 3.7815,
+   "treatment_accept": 3.9301,
+   "ratio": 1.0393,
+   "ratio_ci95": [
+    0.9816,
+    1.1092
+   ],
+   "treatment_lower": 3,
+   "treatment_higher": 6
+  },
+  "doc-48000": {
+   "cases": 12,
+   "same_text": 4,
+   "control_accept": 3.9474,
+   "treatment_accept": 4.1039,
+   "ratio": 1.0397,
+   "ratio_ci95": [
+    1.0037,
+    1.1
+   ],
+   "treatment_lower": 2,
+   "treatment_higher": 8
+  },
+  "doc-96000": {
+   "cases": 12,
+   "same_text": 1,
+   "control_accept": 3.8285,
+   "treatment_accept": 3.8244,
+   "ratio": 0.9989,
+   "ratio_ci95": [
+    0.9587,
+    1.0353
+   ],
+   "treatment_lower": 3,
+   "treatment_higher": 6
+  },
+  "all": {
+   "cases": 48,
+   "same_text": 9,
+   "control_accept": 3.8132,
+   "treatment_accept": 3.8867,
+   "ratio": 1.0193,
+   "ratio_ci95": [
+    0.9962,
+    1.0451
+   ],
+   "treatment_lower": 12,
+   "treatment_higher": 26
+  }
+ },
+ "verdict": "pass"
+}

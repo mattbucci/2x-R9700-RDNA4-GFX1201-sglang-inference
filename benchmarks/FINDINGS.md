@@ -1917,6 +1917,50 @@ canonical sweep on the shipped preset boots a DFlash2 RCCL control and runs the 
 three-concurrent-request case on every arm. In this session's rows no-spec decode is 1.01–1.04× below radiance's
 35.4 / 35.0 / 33.7 / 30.4 tok/s.
 
+### RAD-29b — verify-row GEMM on the shipped preset: accept length ×1.003 over 48 mid-depth documents against the restore knob, cycle −7–8 %; the preset default stays (2026-11-10)
+
+RAD-29's A/B served the kernel from a development tree, and its four documents of 24,000 characters read ×0.925
+on accept length: below the floor on their own, and too few to read. This control boots the shipped `qwen38`
+preset from the live tree (96 patches, extension rebuilt and installed by `scripts/build_fp8_gemm_bf16.sh`, no
+`PYTHONPATH`, launcher defaults) against `FP8_GEMM_BF16=0`. Both boots have the same request history: the sampled
+400-token ladder, then 48 greedy documents of 300 tokens, 12 each cut at 12,000 / 24,000 / 48,000 / 96,000
+characters ([receipts](profiling/rad29b-shipped-accept-2026-11-10/)). The knob-off boot logs no GEMM line and
+reads `SGLANG_RDNA4_FP8_GEMM_BF16=0` in the server environment; the shipped boots log the kernel's active line
+and import from `/data/sgl-v0522`; the hook preflight passes on the live tree with the installed extension.
+
+| Documents | Prompt tokens | Accept length, knob off → shipped | Ratio (95 % over documents) | Lower / higher | Estimated decode tok/s | End-to-end s |
+|---|---|---|---|---|---|---|
+| 12 × 12,000 characters | 2,448–4,791 | 3.614 → 3.704 | ×1.025 (0.992–1.058) | 3 / 8 | 70.8 → 78.9 (×1.113) | 70.0 → 68.8 |
+| 12 × 24,000 | 4,733–11,281 | 3.830 → 3.782 | ×0.987 (0.918–1.046) | 8 / 4 | 75.1 → 80.5 (×1.073) | 88.5 → 85.2 |
+| 12 × 48,000 | 9,574–21,402 | 3.901 → 3.947 | ×1.012 (0.974–1.046) | 5 / 7 | 76.2 → 83.7 (×1.098) | 129.9 → 126.2 |
+| 12 × 96,000 | 19,218–41,394 | 3.885 → 3.828 | ×0.986 (0.941–1.025) | 6 / 5 | 75.1 → 80.2 (×1.067) | 218.8 → 216.3 |
+| all 48 | 2,448–41,394 | 3.803 → 3.813 | ×1.003 (0.978–1.025) | 22 / 24 | 74.2 → 80.8 (×1.088) | 507.4 → 496.6 |
+
+The estimated decode rate is tokens over verify count times the arm's cycle at the request's depth; end-to-end
+seconds include the prefill. Cycle on the sampled ladder at 24 / 7.3K / 58K / 197K input: 50.90 / 51.92 / 53.86 /
+59.98 → 46.91 / 47.71 / 49.73 / 55.99 ms (×0.922 / 0.919 / 0.923 / 0.933), within 0.2 ms of the
+development-tree A/B on both sides; on the probe's own decode batches 51.02 → 46.97 ms at 7.3K and 51.90 → 47.97
+at 58K. The committed text equals the control's on 4 of 48 documents, so the two sides are paired by prompt, not
+by continuation.
+
+The 24,000-character group that read ×0.925 on four documents reads ×0.987 on twelve, with an interval that
+spans 1; no size group is below the control's estimated rate (lowest ratio ×1.067).
+
+A second shipped boot ran the probe without the sampled ladder ahead of it: 9 of 48 texts and 10 of 48 verify
+counts repeat the first shipped boot's, pooled accept 3.813 → 3.887 (×1.019, 95 % 0.996–1.045). Both boots
+prefill every document from token 0 in the same chunks with no cached tokens. One document has the same text on
+both shipped boots with 86 and 84 verifies (87 on the knob-off boot, same text), so the accept pattern differs
+between two boots of one engine even where the text does not. The control boots of RAD-29 and RAD-25, each
+with the seeded sampled ladder ahead of the probe, repeated 24 of 24 texts. This pair differs in request
+history and in boot seed (every boot draws its own `--random-seed`), so it does not say which one moved the
+text, and it is not a noise floor for the compare above, whose two sides ran the same requests in the same
+order. RAD-29c separates the two.
+
+Disposition: the preset default stays. The gate was fixed before the run (pooled accept not below 0.95× of the
+control's, or the estimated decode rate not below the control's; a size group more than 3 % below the control's
+rate named): pooled ×1.003, every group's estimated rate above the control's, no group named. The README rows
+change from the shipped-preset canonical sweep that follows patch 129.
+
 ## Evaluation methodology
 
 ### SWE-bench answer leakage through git history and the web (found 2026-09-18)

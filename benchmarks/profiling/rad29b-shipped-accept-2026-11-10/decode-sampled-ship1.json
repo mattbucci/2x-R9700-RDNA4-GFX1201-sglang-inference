@@ -1,0 +1,89 @@
+{
+  "label": "ship1-sampled",
+  "tag": "",
+  "note": "",
+  "port": 23334,
+  "maxtok": 400,
+  "runs": 2,
+  "sampling": {
+    "temperature": 1.0,
+    "top_p": 0.95,
+    "top_k": 20,
+    "seed": 7
+  },
+  "ignore_eos": true,
+  "points": [
+    {
+      "context": 128,
+      "input_len": 24,
+      "runs_tps": [
+        51.14,
+        55.62
+      ],
+      "median_tps": 53.286,
+      "min_tps": 51.136,
+      "max_tps": 55.625,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "median_tpot_ms": 18.77,
+      "sample": "# The Bottleneck of Silicon: A Deep Dive into GPU Memory Hie",
+      "median_ttft_ms": 421.8
+    },
+    {
+      "context": 8192,
+      "input_len": 7331,
+      "runs_tps": [
+        55.71,
+        54.68
+      ],
+      "median_tps": 55.19,
+      "min_tps": 54.676,
+      "max_tps": 55.714,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "median_tpot_ms": 18.12,
+      "sample": "The provided text consists of the classic pangram \"The quick",
+      "median_ttft_ms": 1787.4
+    },
+    {
+      "context": 65536,
+      "input_len": 58483,
+      "runs_tps": [
+        53.4,
+        61.35
+      ],
+      "median_tps": 57.1,
+      "min_tps": 53.402,
+      "max_tps": 61.348,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "median_tpot_ms": 17.51,
+      "sample": "The provided text consists of the pangram \"The quick brown f",
+      "median_ttft_ms": 15288.2
+    },
+    {
+      "context": 221184,
+      "input_len": 197326,
+      "runs_tps": [
+        38.66,
+        46.59
+      ],
+      "median_tps": 42.258,
+      "min_tps": 38.662,
+      "max_tps": 46.593,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "median_tpot_ms": 23.66,
+      "sample": "The provided text consists of the pangram \"The quick brown f",
+      "median_ttft_ms": 76696.6
+    }
+  ]
+}

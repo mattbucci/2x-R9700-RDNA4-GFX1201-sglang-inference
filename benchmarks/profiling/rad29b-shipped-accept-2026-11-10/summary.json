@@ -1,0 +1,135 @@
+{
+ "cases": 48,
+ "cycle_ms_accept_span": {
+  "off1": {
+   "7.3K": 51.02,
+   "58K": 51.9
+  },
+  "ship1": {
+   "7.3K": 46.97,
+   "58K": 47.97
+  }
+ },
+ "cycle_ms_sampled_ladder": {
+  "off1": {
+   "24": 50.9,
+   "7.3K": 51.92,
+   "58K": 53.86,
+   "197K": 59.98
+  },
+  "ship1": {
+   "24": 46.91,
+   "7.3K": 47.71,
+   "58K": 49.73,
+   "197K": 55.99
+  }
+ },
+ "groups": {
+  "doc-12000": {
+   "cases": 12,
+   "prompt_tokens": [
+    2448,
+    3465,
+    4791
+   ],
+   "accept_off": 3.6145,
+   "accept_ship": 3.7037,
+   "accept_ratio": 1.0247,
+   "ship_lower": 3,
+   "ship_higher": 8,
+   "same_text": 2,
+   "est_rate_off": 70.84,
+   "est_rate_ship": 78.85,
+   "est_rate_ratio": 1.113,
+   "seconds_off": 70.0,
+   "seconds_ship": 68.8,
+   "seconds_ratio": 0.9826
+  },
+  "doc-24000": {
+   "cases": 12,
+   "prompt_tokens": [
+    4733,
+    7805,
+    11281
+   ],
+   "accept_off": 3.8298,
+   "accept_ship": 3.7815,
+   "accept_ratio": 0.9874,
+   "ship_lower": 8,
+   "ship_higher": 4,
+   "same_text": 1,
+   "est_rate_off": 75.06,
+   "est_rate_ship": 80.51,
+   "est_rate_ratio": 1.0725,
+   "seconds_off": 88.5,
+   "seconds_ship": 85.2,
+   "seconds_ratio": 0.9628
+  },
+  "doc-48000": {
+   "cases": 12,
+   "prompt_tokens": [
+    9574,
+    13582,
+    21402
+   ],
+   "accept_off": 3.9012,
+   "accept_ship": 3.9474,
+   "accept_ratio": 1.0118,
+   "ship_lower": 5,
+   "ship_higher": 7,
+   "same_text": 1,
+   "est_rate_off": 76.17,
+   "est_rate_ship": 83.67,
+   "est_rate_ratio": 1.0985,
+   "seconds_off": 129.9,
+   "seconds_ship": 126.2,
+   "seconds_ratio": 0.9708
+  },
+  "doc-96000": {
+   "cases": 12,
+   "prompt_tokens": [
+    19218,
+    32091,
+    41394
+   ],
+   "accept_off": 3.8846,
+   "accept_ship": 3.8285,
+   "accept_ratio": 0.9856,
+   "ship_lower": 6,
+   "ship_higher": 5,
+   "same_text": 0,
+   "est_rate_off": 75.13,
+   "est_rate_ship": 80.17,
+   "est_rate_ratio": 1.067,
+   "seconds_off": 218.8,
+   "seconds_ship": 216.3,
+   "seconds_ratio": 0.9885
+  },
+  "all": {
+   "cases": 48,
+   "prompt_tokens": [
+    2448,
+    9755,
+    41394
+   ],
+   "accept_off": 3.8031,
+   "accept_ship": 3.8132,
+   "accept_ratio": 1.0027,
+   "ship_lower": 22,
+   "ship_higher": 24,
+   "same_text": 4,
+   "est_rate_off": 74.23,
+   "est_rate_ship": 80.77,
+   "est_rate_ratio": 1.088,
+   "seconds_off": 507.4,
+   "seconds_ship": 496.6,
+   "seconds_ratio": 0.9787
+  }
+ },
+ "shipped_boots": {
+  "cases": 48,
+  "same_text": 9,
+  "same_verify_count": 10
+ },
+ "gate": "keep"
+}
