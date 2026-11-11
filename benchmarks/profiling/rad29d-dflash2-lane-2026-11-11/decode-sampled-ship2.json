@@ -1,0 +1,89 @@
+{
+  "label": "ship2-sampled",
+  "tag": "",
+  "note": "qwen38 FP8, DFlash2 drafter, live tree, 97 patches, --random-seed 7",
+  "port": 23334,
+  "maxtok": 400,
+  "runs": 2,
+  "sampling": {
+    "temperature": 1.0,
+    "top_p": 0.95,
+    "top_k": 20,
+    "seed": 7
+  },
+  "ignore_eos": true,
+  "points": [
+    {
+      "context": 128,
+      "input_len": 24,
+      "runs_tps": [
+        65.88,
+        62.04
+      ],
+      "median_tps": 63.902,
+      "min_tps": 62.039,
+      "max_tps": 65.88,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "median_tpot_ms": 15.65,
+      "sample": "# The Data Highway: A Deep Dive into GPU Memory Hierarchy an",
+      "median_ttft_ms": 84.4
+    },
+    {
+      "context": 8192,
+      "input_len": 7331,
+      "runs_tps": [
+        36.74,
+        39.24
+      ],
+      "median_tps": 37.947,
+      "min_tps": 36.74,
+      "max_tps": 39.237,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "median_tpot_ms": 26.35,
+      "sample": "The provided text consists of the pangram \"The quick brown f",
+      "median_ttft_ms": 1749.1
+    },
+    {
+      "context": 65536,
+      "input_len": 58483,
+      "runs_tps": [
+        36.21,
+        101.62
+      ],
+      "median_tps": 53.397,
+      "min_tps": 36.212,
+      "max_tps": 101.618,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "median_tpot_ms": 18.73,
+      "sample": "The provided text consists of the classic pangram sentence \"",
+      "median_ttft_ms": 15222.2
+    },
+    {
+      "context": 221184,
+      "input_len": 197326,
+      "runs_tps": [
+        31.62,
+        35.02
+      ],
+      "median_tps": 33.234,
+      "min_tps": 31.619,
+      "max_tps": 35.023,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "median_tpot_ms": 30.09,
+      "sample": "The provided text consists of a single pangram, \"The quick b",
+      "median_ttft_ms": 76453.7
+    }
+  ]
+}

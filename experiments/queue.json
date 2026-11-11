@@ -1127,20 +1127,21 @@
   {
    "id": "RAD-29d",
    "spec": "19-vllm-radiance-parity.md",
-   "status": "queued",
+   "status": "completed",
    "resource": "gpu",
    "depends_on": [
     "canonical sweep with patches 121-129: the DFlash2 rows moved +20.7 % at 24 tokens, +1.2 % at 7.3K and +9.1 % on the 197K cold run against the patches 121-126 sweep on equal completion tokens, and the sweep records no verify counts",
     "RAD-29c (done): equal request history pins greedy speculative output across boots, the boot seed does not; every drafter boot of this job runs one request order",
     "tail queue jobs 83 (RAD-29c) and 84 (FLINT-4b) finished: one GPU job at a time"
    ],
-   "next_action": "Tail queue job 85 (scratchpad rad29d/rad29d_dflash2_lane.sh, live tree, five boots, every boot with --random-seed 7): the DFlash2 lane of patch 128 on the shipped tree. Boots in the order ship1 (QWEN38_SPEC=0 plus the DFlash2 drafter, the canonical driver's boot), off1 (the same with FP8_GEMM_BF16=0), plain (QWEN38_SPEC=0, no drafter), off2, ship2: both orders, and two boots per arm as the boot-to-boot scale. Equal request history on every drafter boot: one fixed short request, capabilities, the seeded sampled ladder (two 400-token runs at 24 / 7.3K / 58K / 197K, cycle per depth from the server's decode-batch lines), the 48-document greedy accept probe, the canonical five-run rows with completion tokens, then the same prompts through scripts/bench/spec_decode_rows.py (verify count per run, so a canonical cell splits into accept length and cycle). The plain boot runs capabilities, the ladder and the canonical rows. Output: the DFlash2 cycle of this tree over the plain step of the same session, the number radiance's 1.3x compares with.",
+   "next_action": "Done: the preset default stays for the DFlash2 lane, launcher unchanged. What remains of the lane's gap is 4.7-7.5 ms per cycle over radiance's 1.3x of a plain step (RAD-16's verify share; RAD-10b / RAD-31 for the prefix read).",
    "test_gate": [
     "both shipped boots log the GEMM's active line, both knob-off boots log none; every boot logs the DFlash2 drafter",
     "keep for the lane: cycle shorter on every shipped boot than on every knob-off boot at every depth, and pooled accept not below 0.95x of the control's or the estimated decode rate on the documents not below the control's",
     "otherwise the launcher exports the switch for DSpark only and the disposition names the depth or size group",
     "capabilities 5/5 on every boot before any timing phase"
-   ]
+   ],
+   "result": "FINDINGS RAD-29d, benchmarks/profiling/rad29d-dflash2-lane-2026-11-11/ (gate keep). Five boots of the live tree (97 patches, --random-seed 7): shipped, FP8_GEMM_BF16=0, no drafter, FP8_GEMM_BF16=0, shipped; GEMM active line on the shipped boots only, capabilities 5/5 on all five. Sampled-ladder cycle at 24 / 7.3K / 58K / 197K: 46.52 / 48.53 / 50.66 / 56.79 -> 42.34 / 44.05 / 46.31 / 52.45 ms (x0.910 / 0.908 / 0.914 / 0.924, every shipped boot shorter than every knob-off boot, boots of a side within 0.08 ms). Paired greedy accept over 48 documents 3.636 -> 3.634 (x0.999, 95 % 0.975-1.023; size groups x0.989 / 1.010 / 0.985 / 1.014), each side's two boots repeat 48 of 48, estimated decode rate on the documents 75.2 -> 82.7 tok/s (x1.100). Cycle over the plain step of the same session x1.461 / 1.490 / 1.497 / 1.516 (knob off x1.605 / 1.642 / 1.637 / 1.641). Canonical rows with verify counts: 24 tokens 66.0 -> 79.0 tok/s on equal token counts (26 -> 24 verifies), 7.3K 77.0 -> 77.1 (10 -> 11 verifies), 58K and 197K commit different answers (197K: 46 tokens over 11 verifies at 72.6 tok/s with the knob off, 37 over 12 at 57.4 shipped), so those cells are not kernel comparisons."
   },
   {
    "id": "RAD-30",

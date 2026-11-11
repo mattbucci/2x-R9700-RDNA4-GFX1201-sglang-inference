@@ -191,6 +191,11 @@ over 48 mid-depth greedy documents, accept length ×1.003 ([receipts](profiling/
 [FINDINGS → RAD-29b](FINDINGS.md)), and six boots of one probe: greedy speculative output repeats to the token on equal request
 history, 9 of 48 texts when one boot runs the sampled ladder first, patch 129 against RCCL 48 of 48
 ([receipts](profiling/rad29c-greedy-repeat-2026-11-10/), [FINDINGS → RAD-29c](FINDINGS.md)).
+The same GEMM behind the DFlash2 drafter, five boots in both orders: cycle 46.5 / 48.5 / 50.7 / 56.8 → 42.3 / 44.1 / 46.3 / 52.5 ms
+at 24 / 7.3K / 58K / 197K, greedy accept length ×0.999 over 48 documents, the cycle is 1.46–1.52× the plain step of the same
+session; `scripts/bench/spec_decode_rows.py` pairs each canonical row's streamed rate with the verify count of an unstreamed
+repeat, which splits a speculative cell into accept length and cycle
+([receipts](profiling/rad29d-dflash2-lane-2026-11-11/), [FINDINGS → RAD-29d](FINDINGS.md)).
 Upstream's one-stage HIP all-reduce against RCCL on the FP8 preset: +1.8 % at 24 tokens with wrong sums, so RCCL stays
 ([receipts](profiling/rad2-onestage-ar-2026-11-09/), [FINDINGS → RAD-2](FINDINGS.md)); `scripts/bench/custom_allreduce_isolation.py`
 drives the same class from two bare ranks and names what each output is: wrong with the PyTorch-pool staging buffer, exact

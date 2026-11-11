@@ -1,0 +1,48 @@
+{
+ "label": "ship1-sampled",
+ "note": "qwen38 FP8, DFlash2 drafter, live tree, 97 patches, --random-seed 7",
+ "log": "/data/logs/rad29d-dflash2-lane-2026-11-11/server-ship1.log",
+ "from_line": 745,
+ "to_line": 835,
+ "line_numbering": "newline",
+ "decode_lines_dropped_after_prefill": 8,
+ "decode_lines_dropped_no_depth": 2,
+ "depths": {
+  "24": {
+   "decode_batches": {
+    "lines": 4,
+    "accept_len": 2.67,
+    "tok_s": 62.88,
+    "cycles_s": 23.62,
+    "cycle_ms": 42.33
+   }
+  },
+  "7.3K": {
+   "decode_batches": {
+    "lines": 9,
+    "accept_len": 1.57,
+    "tok_s": 35.73,
+    "cycles_s": 22.69,
+    "cycle_ms": 44.06
+   }
+  },
+  "58K": {
+   "decode_batches": {
+    "lines": 6,
+    "accept_len": 1.67,
+    "tok_s": 36.0,
+    "cycles_s": 21.6,
+    "cycle_ms": 46.29
+   }
+  },
+  "197K": {
+   "decode_batches": {
+    "lines": 10,
+    "accept_len": 1.75,
+    "tok_s": 33.41,
+    "cycles_s": 19.08,
+    "cycle_ms": 52.42
+   }
+  }
+ }
+}

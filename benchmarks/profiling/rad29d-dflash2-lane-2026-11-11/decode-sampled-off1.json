@@ -1,0 +1,89 @@
+{
+  "label": "off1-sampled",
+  "tag": "",
+  "note": "qwen38 FP8, DFlash2 drafter, live tree, 97 patches, --random-seed 7",
+  "port": 23334,
+  "maxtok": 400,
+  "runs": 2,
+  "sampling": {
+    "temperature": 1.0,
+    "top_p": 0.95,
+    "top_k": 20,
+    "seed": 7
+  },
+  "ignore_eos": true,
+  "points": [
+    {
+      "context": 128,
+      "input_len": 24,
+      "runs_tps": [
+        54.23,
+        58.29
+      ],
+      "median_tps": 56.19,
+      "min_tps": 54.234,
+      "max_tps": 58.293,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "median_tpot_ms": 17.8,
+      "sample": "# The Silicon Bottleneck: A Deep Dive into GPU Memory Hierar",
+      "median_ttft_ms": 111.7
+    },
+    {
+      "context": 8192,
+      "input_len": 7331,
+      "runs_tps": [
+        34.72,
+        44.87
+      ],
+      "median_tps": 39.15,
+      "min_tps": 34.724,
+      "max_tps": 44.87,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "median_tpot_ms": 25.54,
+      "sample": "The provided text consists exclusively of the pangram \"The q",
+      "median_ttft_ms": 1735.8
+    },
+    {
+      "context": 65536,
+      "input_len": 58483,
+      "runs_tps": [
+        37.82,
+        35.17
+      ],
+      "median_tps": 36.448,
+      "min_tps": 35.169,
+      "max_tps": 37.825,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "median_tpot_ms": 27.44,
+      "sample": "The provided text consists of the pangram \"The quick brown f",
+      "median_ttft_ms": 15243.9
+    },
+    {
+      "context": 221184,
+      "input_len": 197326,
+      "runs_tps": [
+        32.64,
+        30.83
+      ],
+      "median_tps": 31.709,
+      "min_tps": 30.831,
+      "max_tps": 32.639,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "median_tpot_ms": 31.54,
+      "sample": "The provided text consists of the pangram \"The quick brown f",
+      "median_ttft_ms": 76631.5
+    }
+  ]
+}

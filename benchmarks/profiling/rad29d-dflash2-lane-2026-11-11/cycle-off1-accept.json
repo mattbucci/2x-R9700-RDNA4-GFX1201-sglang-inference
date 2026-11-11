@@ -1,0 +1,30 @@
+{
+ "label": "off1-accept",
+ "note": "qwen38 FP8, DFlash2 drafter, live tree, 97 patches, --random-seed 7",
+ "log": "/data/logs/rad29d-dflash2-lane-2026-11-11/server-off1.log",
+ "from_line": 839,
+ "to_line": 1104,
+ "line_numbering": "newline",
+ "decode_lines_dropped_after_prefill": 48,
+ "decode_lines_dropped_no_depth": 2,
+ "depths": {
+  "7.3K": {
+   "decode_batches": {
+    "lines": 36,
+    "accept_len": 3.33,
+    "tok_s": 69.08,
+    "cycles_s": 20.78,
+    "cycle_ms": 48.13
+   }
+  },
+  "58K": {
+   "decode_batches": {
+    "lines": 13,
+    "accept_len": 3.83,
+    "tok_s": 78.53,
+    "cycles_s": 20.35,
+    "cycle_ms": 49.14
+   }
+  }
+ }
+}

@@ -1,0 +1,30 @@
+{
+ "label": "ship2-accept",
+ "note": "qwen38 FP8, DFlash2 drafter, live tree, 97 patches, --random-seed 7",
+ "log": "/data/logs/rad29d-dflash2-lane-2026-11-11/server-ship2.log",
+ "from_line": 838,
+ "to_line": 1095,
+ "line_numbering": "newline",
+ "decode_lines_dropped_after_prefill": 48,
+ "decode_lines_dropped_no_depth": 1,
+ "depths": {
+  "7.3K": {
+   "decode_batches": {
+    "lines": 40,
+    "accept_len": 3.16,
+    "tok_s": 72.31,
+    "cycles_s": 22.91,
+    "cycle_ms": 43.65
+   }
+  },
+  "58K": {
+   "decode_batches": {
+    "lines": 10,
+    "accept_len": 4.33,
+    "tok_s": 96.94,
+    "cycles_s": 22.34,
+    "cycle_ms": 44.76
+   }
+  }
+ }
+}

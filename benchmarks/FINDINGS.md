@@ -2181,6 +2181,59 @@ No patch. Receipts: `profiling/rad10a-prefill-profile-2026-11-10/` (`prefill.jso
 `profile-d*.json`, `summary.json` with the summed table, `serial-d*.json` with the serial one); reader
 `scripts/bench/trace_serial_attribution.py`, unit test `scripts/test/test_trace_serial_attribution.py`.
 
+### RAD-29d — the verify-row GEMM behind DFlash2: cycle −7.6–9.2 % at every depth, greedy accept length ×0.999 over 48 documents, the cycle is 1.46–1.52× a plain step; the preset default stays for the lane (2026-11-11)
+
+Patch 128 was adopted on DSpark readings (RAD-29, RAD-29b). The canonical sweep with patches 121–129 moved the
+DFlash2 rows by +20.7 % at 24 tokens and +1.2 % at 7.3K and records no verify counts, so the lane had neither a
+cycle nor an accept reading of its own. Five boots of the live tree (97 patches, `qwen38` FP8, `QWEN38_SPEC=0`,
+every boot `--random-seed 7`) in the order shipped, `FP8_GEMM_BF16=0`, no drafter, `FP8_GEMM_BF16=0`, shipped;
+the four drafter boots load DFlash2. Every drafter boot runs one request order: a fixed short request,
+capabilities, the seeded sampled ladder (two forced 400-token runs at 24 / 7,331 / 58,483 / 197,326 input
+tokens), RAD-29c's 48-document greedy accept probe, the canonical five-run rows, then the canonical prompts
+through `scripts/bench/spec_decode_rows.py`, which pairs a streamed rate with the verify count of an unstreamed
+repeat ([receipts](profiling/rad29d-dflash2-lane-2026-11-11/)). Both shipped boots log the GEMM's active line and
+the knob-off boots none; capabilities 5/5 on all five boots.
+
+| Input tokens | Cycle, knob off (two boots), ms | Cycle, shipped (two boots), ms | Ratio | Plain step, ms | Shipped cycle over a plain step | Knob off |
+|---|---|---|---|---|---|---|
+| 24 | 46.56 / 46.48 | 42.33 / 42.34 | ×0.910 | 28.98 | ×1.461 | ×1.605 |
+| 7,331 | 48.54 / 48.52 | 44.06 / 44.03 | ×0.908 | 29.56 | ×1.490 | ×1.642 |
+| 58,483 | 50.65 / 50.67 | 46.29 / 46.34 | ×0.914 | 30.94 | ×1.497 | ×1.637 |
+| 197,326 | 56.79 / 56.79 | 52.42 / 52.49 | ×0.924 | 34.61 | ×1.516 | ×1.641 |
+
+The cycle is read from the server's decode-batch lines on the sampled ladder; the plain step is the no-drafter
+boot's rate on the same ladder. Two boots of a side agree within 0.08 ms. On the accept probe's own decode
+batches the cycle reads 48.13 → 43.66 ms at 7.3K and 49.14 → 44.78 at 58K.
+
+Accept length over the 48 greedy documents (2,448–41,394 prompt tokens, 300 tokens each, no empty text): 3.636
+with the knob off, 3.634 shipped, ×0.999 (95 % over documents 0.975–1.023), by size group ×0.989 / 1.010 /
+0.985 / 1.014. Each side's two boots repeat 48 of 48 texts and verify counts, so both pairs read the same
+numbers; between the sides 6 of 48 texts and 4 of 48 verify counts repeat, which pairs them by prompt and not by
+continuation. Estimated decode rate on the documents (tokens over verifies times the side's cycle at depth)
+75.2 → 82.7 tok/s (×1.100, groups ×1.091 / 1.114 / 1.085 / 1.113).
+
+The canonical rows are one prompt per depth and 9 to 26 verifies per answer:
+
+| Input tokens | Knob off: tokens / verifies / tok/s | Shipped: tokens / verifies / tok/s | Reading |
+|---|---|---|---|
+| 24 | 80 / 26 / 66.0 | 80 / 24 / 79.0 | equal token counts, ×1.196: the cycle (×0.906) and two verifies fewer |
+| 7,331 | 38 / 10 / 77.0 | 38 / 11 / 77.1 | equal token counts, ×1.001: the shorter cycle pays for one more verify |
+| 58,483 | 33 / 9 / 70.8 | 46 / 14 / 70.2 | different answers |
+| 197,326 | 46 / 11 / 72.6 | 37 / 12 / 57.4 | different answers |
+
+So the sweep's +20.7 % at 24 tokens is 10 points of cycle and the rest one answer's verify count, and its +1.2 %
+at 7.3K hides the same cycle gain behind one more verify. At 197K the knob-off side commits a nine-token-longer
+answer at 4.18 tokens per verify against 3.08, and its cell reads 72.6 tok/s against 57.4 with a cycle that is
+3.9 ms longer. The no-drafter boot's answer has the shipped side's token count at 197K (37) and the knob-off
+side's at 58K (33): neither side is the reference continuation. A speculative canonical cell moves by a quarter
+on one answer's accept pattern, which is why the lane is sized by cycle and by the 48-document probe.
+
+Disposition, by the gate fixed before the run (`keep`): the cycle is shorter on every shipped boot than on every
+knob-off boot at every depth, pooled accept is ×0.999 against a floor of 0.95, and the estimated decode rate is
+above the control's in every size group. The preset default stays for the DFlash2 lane and the launcher is
+unchanged. The DFlash2 cycle of this tree is 1.46–1.52× the plain step of the same session against 1.60–1.64×
+without the kernel and the 1.3× radiance states: 4.7 / 5.6 / 6.1 / 7.5 ms per cycle remain at the four depths.
+
 ## Evaluation methodology
 
 ### SWE-bench answer leakage through git history and the web (found 2026-09-18)
