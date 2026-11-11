@@ -180,7 +180,7 @@ read 79.1 / 77.0 / 70.0 / 57.4, the 58K ones on a 46-token continuation.
 |---|---|---|---|---|
 | FP8, no speculation | 35.4 / 35.0 / 33.7 / 30.4 | 35.0 / 34.3 / 32.7 / 29.2 | 1.01–1.04× | the bf16 LM head (RAD-15; patch 127 serves greedy requests from an int8 copy, +1.2–2.5 %, opt-in) and the small launches; the all-reduce is in the graph (patch 129) |
 | FP8 + DFlash2 | 99.9 / 99.7 / 87.9 / 91.0 | 79.3 / 76.8 / 58.7 / 56.8 | 1.3–1.6× | the DSpark cycle is 46.4 / 47.1 / 49.3 / 55.5 ms (RAD-25), 1.61–1.63× a plain step of 28.6 / 29.1 / 30.5 / 34.3 ms against radiance's 1.3×; the DFlash2 cycle of this tree is not measured (RAD-29d) |
-| Cold prefill | 4,137 / 3,631 / 2,520 | 2,334 / 1,785 / 1,072 | 1.8–2.4× | not profiled (RAD-10): GDN conv and chunk scan, extend attention, block-FP8 GEMM tiles at M ≥ 64 |
+| Cold prefill | 4,137 / 3,631 / 2,520 | 2,334 / 1,785 / 1,072 | 1.8–2.4× | 197K is 84 s depth-free and 100 s depth-bound by the server's chunk reports (RAD-10); the prefix attention runs 3.0 G pairs/s per card against the 8.9 radiance states for its kernel; the depth-free stages (GDN conv and chunk scan, block-FP8 GEMM tiles at M ≥ 64) are not profiled (RAD-10a) |
 
 The DSpark cycle is 17.9 / 17.9 / 18.7 / 21.2 ms over a plain step: the drafter's propose step and what is left of
 the verify's excess. Of the RAD-22b census, the nine-row GEMM and its quantiser are served (patch 128: 20.8 ms per

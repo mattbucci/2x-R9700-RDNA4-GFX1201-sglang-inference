@@ -2010,6 +2010,59 @@ Receipts: `qwen38-27b-fp8/{decode,capabilities,route}-canonical-<arm>-2026-11-10
 `dflash2-rccl` and (decode, route) `nospec`, `prefill-canonical-{dspark,nospec}-2026-11-10-97p.json`. These are the
 README and results.json rows.
 
+### RAD-10 — cold prefill split from the server's chunk reports: the 197K prompt is 84 s depth-free and 100 s depth-bound, and the prefix attention runs 3× behind the rate radiance states for its kernel; no patch, kernel profile queued as RAD-10a (2026-11-10)
+
+The scheduler logs one `Prefill batch` line per chunk whose `input throughput` is that batch's tokens over the
+time since the previous report, so chunk *i* of a prompt took `new tokens / throughput` seconds on a prefix of
+`cached + i × chunk` tokens. `scripts/bench/prefill_chunk_curve.py` reads those lines and fits chunk seconds =
+intercept + slope × prefix depth per chunked prompt, without the first chunk (its interval holds the idle time
+before the request) and the short last one. Input: the server logs of the canonical sweep above, so no profiler
+and no GPU time.
+
+| boot, chunk | prompt | s per chunk at depth 0 | + s per 1K of prefix | fit rms, s | depth-free, s | depth-bound, s | depth-bound share |
+|---|---|---:|---:|---:|---:|---:|---:|
+| no speculation, 8192 | 58,483 cold | 3.499 | 0.0433 | 0.006 | 25.0 | 7.8 | 23.8 % |
+| | 197,326 cold | 3.481 | 0.0438 | 0.011 | 83.8 | 99.7 | 54.3 % |
+| | 138,894 behind 58,432 cached | 3.419 | 0.0442 | 0.004 | 58.0 | 92.8 | 61.6 % |
+| DSpark, 4096 | 58,483 cold | 1.746 | 0.0219 | 0.005 | 24.9 | 8.5 | 25.4 % |
+| | 197,326 cold | 1.738 | 0.0220 | 0.008 | 83.7 | 102.6 | 55.1 % |
+| | 138,894 behind 58,432 cached | 1.713 | 0.0222 | 0.008 | 58.1 | 94.7 | 62.0 % |
+
+Each cold prompt ran twice and the second fit repeats the first within 0.6 %. The two parts sum to 183.6 s on the
+197K no-spec prompt against the 184.1 s median of `prefill_ttft.py`. The depth-free cost is 0.425 ms per token at
+either chunk size and the slope halves with the chunk, so 4096 against 8192 does not move the prefill rate: one
+arm of RAD-20's chunk sweep is answered.
+
+The slope is read as the 16 full-attention layers' loop over the prefix, the one stage whose work grows with
+depth (DeltaNet carries a fixed-size state, the linears see the chunk's rows): 0.0438 s per 1K of prefix per
+8192-token chunk is 2.74 ms per layer per 8.19 M (query, key) pairs, 2.99 G pairs/s per card at the rank's 12
+query heads over 2 KV heads of dimension 256, with the fp8 QK dot of patch 108. The comment in radiance's
+`r4d_attn_prefill_h256_gqa6.hip` states 22.7 ms with an fp8 cache for 2,048 queries at the end of 100K tokens
+at the same per-rank geometry (`r4d_selftest --perfpaged`, not run here): 8.93 G pairs/s, 2.98× this tree's.
+
+A second route to the same number uses totals only. T(N) = αN + γN² through the 58K and 197K medians gives
+α = 0.4035 ms per token and γ = 2.68e-9 s per token² here (the 7.3K run sits 1.3 % above the model), and
+α = 0.2243, γ = 8.75e-10 through radiance's 16.1 s and 78.3 s (RAD-0; its 7.3K run sits 4.8 % above). The
+radiance pair is a model through two of its totals, not a measurement of its stages. γ is 3.07× apart, α 1.80×.
+
+| cold prompt | gap to radiance, s | in the N² term | in the N term |
+|---|---:|---:|---:|
+| 58,483 | 16.7 | 6.2 | 10.5 |
+| 197,326 | 105.8 | 70.4 | 35.4 |
+
+Two thirds of the 197K gap is attention over the prefix; at 58K and below the depth-free stages lead (DeltaNet
+chunk kernels, the block-FP8 GEMM at chunk rows, norms, all-reduce). Radiance's γ alone would take the 197K cold
+prefill from 184.1 to 113.7 s (1,072 → 1,736 tok/s) and the 58K one from 32.8 to 26.6 s (1,785 → 2,199).
+
+No patch. The curve cannot split the depth-free part by kernel and rests on the reading that the slope is
+attention: RAD-10a (tail queue job, one no-spec boot) profiles a cold prefill at 7.3K / 58K / 197K with the
+profiler's Python stacks off and a memory guard, and `scripts/bench/prefill_profile_summary.py` sizes the kernel
+families per depth; the ports are ordered from its receipts. The DFlash2 boot's log holds two chunked prompts
+whose last fitted chunk reads short (rms 1.27 s on one), so that boot has no receipt.
+
+Receipts: `profiling/prefill-chunk-curve-2026-11-10/{nospec,dspark}.json`; unit test
+`scripts/test/test_prefill_chunk_curve.py`.
+
 ## Evaluation methodology
 
 ### SWE-bench answer leakage through git history and the web (found 2026-09-18)

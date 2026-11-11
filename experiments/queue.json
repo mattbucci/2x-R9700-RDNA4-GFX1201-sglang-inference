@@ -697,14 +697,34 @@
    "resource": "gpu",
    "depends_on": [
     "RAD-0 (done): prefill gap 2.2-2.7x measured",
-    "one GPU slot (~2 h) between Flint cells"
+    "chunk curve from the canonical sweep's server logs (FINDINGS RAD-10): 197K cold = 83.8 s depth-free + 99.7 s depth-bound, 58K = 25.0 + 7.8 s; prefix attention 2.99 G pairs/s per card against the 8.93 radiance states for r4d_attn_prefill_h256_gqa6",
+    "RAD-10a: kernel families per depth"
    ],
-   "next_action": "rocprof the 197K prefill (FLA GDN chunk_scan/conv, extend attention, block-FP8 GEMM shares); port libr4d chunk_scan/conv_prep or R4D prefill attention where the share is largest; prefill_ttft.py A/B at 7.3K/58K/197K both orders.",
+   "next_action": "After RAD-10a: order the ports from its receipts. Candidate 1, the prefix attention (two thirds of the 197K gap by the two-term model): time radiance's r4d_attn_prefill_h256_gqa6 in the libr4d sandbox against the Triton extend kernel at the serving shape (8192 queries, 12 query heads over 2 KV heads per rank, prefix to 197K), then a native HIP prefix stage as a numbered patch with attribution. Candidate 2, the depth-free stages by share (GDN chunk kernels, RAD-19 conv block, RAD-20 GEMM tiles). prefill_ttft.py A/B at 7.3K/58K/197K both orders.",
    "test_gate": [
     "kernel microbench vs the FLA reference",
     "prefill_ttft.py both orders",
     "needle 9/9 + 8-prompt greedy diff",
     "numbered patch + replay gate"
+   ]
+  },
+  {
+   "id": "RAD-10a",
+   "spec": "19-vllm-radiance-parity.md",
+   "status": "queued",
+   "resource": "gpu",
+   "depends_on": [
+    "RAD-10 chunk curve: 197K cold prefill = 83.8 s depth-free + 99.7 s depth-bound, read from server logs without a profiler; the curve cannot split the depth-free part by kernel",
+    "RAD-11: a profiler window with the default Python stacks ended both scheduler processes; the window runs with with_stack false and a 10 GiB memory guard",
+    "tail queue job 83 (RAD-29c) finished: one GPU job at a time"
+   ],
+   "next_action": "Tail queue job 83-z (scratchpad rad10/rad10a_prefill_profile.sh, live tree, one boot without speculation and with --random-seed 7, about 30 min): capabilities, prefill_ttft.py at 8192 / 65536 / 221184 with three cold runs (the unprofiled rate of this boot), prefill_chunk_curve.py on this boot's log before any profiler window, then per depth /flush_cache, /start_profile (activities CPU and GPU, with_stack false, record_shapes false), one cold max_tokens=1 request, /stop_profile, one trace per rank; profile_decode_kernels.py --phase prefill_extend --top 80 per depth and prefill_profile_summary.py after the server stopped (kernel families per depth; depth-free = the shallow profile scaled by tokens, depth-bound = the rest). Receipts benchmarks/profiling/rad10a-prefill-profile-2026-11-10/. Then RAD-10's port order.",
+   "test_gate": [
+    "no rate gate: the receipts order RAD-10's ports",
+    "identity before any measurement: no speculative worker, live tree, TP-split DeltaNet projections, the preset's kernel switches in the server's environment, custom all-reduce and GEMM active lines, seed 7; capabilities 5/5",
+    "ok: prefill and curve receipts present, a profile for every depth with traces from both ranks, listed kernels covering at least 90 % of the traced GPU time, wall receipts present",
+    "incomplete:<what> names the missing receipt, depth, rank or coverage; fail:<phase> names the phase that failed",
+    "every profile is read with its profiled wall over the unprofiled run of the same depth as the inflation caveat"
    ]
   },
   {

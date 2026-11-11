@@ -1,0 +1,426 @@
+{
+ "label": "qwen38 canonical sweep, nospec boot",
+ "note": "qwen38 FP8, live tree, 97 patches; server log of the canonical sweep (commit 813dc75), no profiler",
+ "logs": [
+  {
+   "log": "/data/logs/qwen38-canonical-2026-11-10-97p/server-nospec.log",
+   "prefill_reports": 129,
+   "prompts": [
+    {
+     "chunk_tokens": 8192,
+     "cached_tokens": 7296,
+     "new_tokens": 51187,
+     "chunks": 7,
+     "fitted_chunks": 5,
+     "intercept_s": 3.477,
+     "slope_s_per_1k_depth": 0.04379,
+     "fit_rms_s": 0.0201,
+     "depth_free_s": 21.73,
+     "depth_bound_s": 7.91,
+     "depth_bound_share": 0.267,
+     "measured_s_behind_first_chunk": 25.76,
+     "first_chunk_s_with_idle_gap": 5.03,
+     "points": [
+      [
+       15488,
+       4.153
+      ],
+      [
+       23680,
+       4.511
+      ],
+      [
+       31872,
+       4.862
+      ],
+      [
+       40064,
+       5.269
+      ],
+      [
+       48256,
+       5.568
+      ]
+     ]
+    },
+    {
+     "chunk_tokens": 8192,
+     "cached_tokens": 58432,
+     "new_tokens": 138894,
+     "chunks": 17,
+     "fitted_chunks": 15,
+     "intercept_s": 3.4188,
+     "slope_s_per_1k_depth": 0.04423,
+     "fit_rms_s": 0.0044,
+     "depth_free_s": 57.96,
+     "depth_bound_s": 92.84,
+     "depth_bound_share": 0.6156,
+     "measured_s_behind_first_chunk": 144.81,
+     "first_chunk_s_with_idle_gap": 7.78,
+     "points": [
+      [
+       66624,
+       6.374
+      ],
+      [
+       74816,
+       6.73
+      ],
+      [
+       83008,
+       7.094
+      ],
+      [
+       91200,
+       7.453
+      ],
+      [
+       99392,
+       7.817
+      ],
+      [
+       107584,
+       8.171
+      ],
+      [
+       115776,
+       8.53
+      ],
+      [
+       123968,
+       8.9
+      ],
+      [
+       132160,
+       9.263
+      ],
+      [
+       140352,
+       9.624
+      ],
+      [
+       148544,
+       9.988
+      ],
+      [
+       156736,
+       10.351
+      ],
+      [
+       164928,
+       10.716
+      ],
+      [
+       173120,
+       11.082
+      ],
+      [
+       181312,
+       11.445
+      ]
+     ]
+    },
+    {
+     "chunk_tokens": 8192,
+     "cached_tokens": 0,
+     "new_tokens": 58483,
+     "chunks": 8,
+     "fitted_chunks": 6,
+     "intercept_s": 3.4988,
+     "slope_s_per_1k_depth": 0.04333,
+     "fit_rms_s": 0.0059,
+     "depth_free_s": 24.98,
+     "depth_bound_s": 7.8,
+     "depth_bound_share": 0.238,
+     "measured_s_behind_first_chunk": 29.22,
+     "first_chunk_s_with_idle_gap": 4.56,
+     "points": [
+      [
+       8192,
+       3.848
+      ],
+      [
+       16384,
+       4.212
+      ],
+      [
+       24576,
+       4.566
+      ],
+      [
+       32768,
+       4.921
+      ],
+      [
+       40960,
+       5.282
+      ],
+      [
+       49152,
+       5.619
+      ]
+     ]
+    },
+    {
+     "chunk_tokens": 8192,
+     "cached_tokens": 0,
+     "new_tokens": 58483,
+     "chunks": 8,
+     "fitted_chunks": 6,
+     "intercept_s": 3.4925,
+     "slope_s_per_1k_depth": 0.04357,
+     "fit_rms_s": 0.0073,
+     "depth_free_s": 24.93,
+     "depth_bound_s": 7.84,
+     "depth_bound_share": 0.2393,
+     "measured_s_behind_first_chunk": 29.23,
+     "first_chunk_s_with_idle_gap": 4.55,
+     "points": [
+      [
+       8192,
+       3.841
+      ],
+      [
+       16384,
+       4.208
+      ],
+      [
+       24576,
+       4.573
+      ],
+      [
+       32768,
+       4.92
+      ],
+      [
+       40960,
+       5.284
+      ],
+      [
+       49152,
+       5.625
+      ]
+     ]
+    },
+    {
+     "chunk_tokens": 8192,
+     "cached_tokens": 0,
+     "new_tokens": 197326,
+     "chunks": 25,
+     "fitted_chunks": 23,
+     "intercept_s": 3.4808,
+     "slope_s_per_1k_depth": 0.04377,
+     "fit_rms_s": 0.0112,
+     "depth_free_s": 83.84,
+     "depth_bound_s": 99.71,
+     "depth_bound_share": 0.5432,
+     "measured_s_behind_first_chunk": 180.51,
+     "first_chunk_s_with_idle_gap": 4.55,
+     "points": [
+      [
+       8192,
+       3.841
+      ],
+      [
+       16384,
+       4.208
+      ],
+      [
+       24576,
+       4.57
+      ],
+      [
+       32768,
+       4.926
+      ],
+      [
+       40960,
+       5.283
+      ],
+      [
+       49152,
+       5.641
+      ],
+      [
+       57344,
+       5.993
+      ],
+      [
+       65536,
+       6.337
+      ],
+      [
+       73728,
+       6.694
+      ],
+      [
+       81920,
+       7.05
+      ],
+      [
+       90112,
+       7.405
+      ],
+      [
+       98304,
+       7.772
+      ],
+      [
+       106496,
+       8.132
+      ],
+      [
+       114688,
+       8.486
+      ],
+      [
+       122880,
+       8.86
+      ],
+      [
+       131072,
+       9.217
+      ],
+      [
+       139264,
+       9.573
+      ],
+      [
+       147456,
+       9.935
+      ],
+      [
+       155648,
+       10.288
+      ],
+      [
+       163840,
+       10.663
+      ],
+      [
+       172032,
+       11.011
+      ],
+      [
+       180224,
+       11.395
+      ],
+      [
+       188416,
+       11.731
+      ]
+     ]
+    },
+    {
+     "chunk_tokens": 8192,
+     "cached_tokens": 0,
+     "new_tokens": 197326,
+     "chunks": 25,
+     "fitted_chunks": 23,
+     "intercept_s": 3.4768,
+     "slope_s_per_1k_depth": 0.04381,
+     "fit_rms_s": 0.0108,
+     "depth_free_s": 83.75,
+     "depth_bound_s": 99.8,
+     "depth_bound_share": 0.5437,
+     "measured_s_behind_first_chunk": 180.51,
+     "first_chunk_s_with_idle_gap": 4.55,
+     "points": [
+      [
+       8192,
+       3.841
+      ],
+      [
+       16384,
+       4.21
+      ],
+      [
+       24576,
+       4.567
+      ],
+      [
+       32768,
+       4.922
+      ],
+      [
+       40960,
+       5.278
+      ],
+      [
+       49152,
+       5.631
+      ],
+      [
+       57344,
+       5.989
+      ],
+      [
+       65536,
+       6.34
+      ],
+      [
+       73728,
+       6.697
+      ],
+      [
+       81920,
+       7.052
+      ],
+      [
+       90112,
+       7.404
+      ],
+      [
+       98304,
+       7.766
+      ],
+      [
+       106496,
+       8.131
+      ],
+      [
+       114688,
+       8.493
+      ],
+      [
+       122880,
+       8.857
+      ],
+      [
+       131072,
+       9.214
+      ],
+      [
+       139264,
+       9.579
+      ],
+      [
+       147456,
+       9.929
+      ],
+      [
+       155648,
+       10.298
+      ],
+      [
+       163840,
+       10.67
+      ],
+      [
+       172032,
+       11.033
+      ],
+      [
+       180224,
+       11.378
+      ],
+      [
+       188416,
+       11.737
+      ]
+     ]
+    }
+   ]
+  }
+ ]
+}

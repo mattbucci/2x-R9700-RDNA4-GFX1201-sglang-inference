@@ -198,6 +198,13 @@ no-spec canonical sweep 34.3 / 33.7 / 32.1 / 28.7 → 35.0 / 34.4 / 32.7 / 29.2 
 greedy text, DSpark cycle 46.9 / 47.6 / 49.8 / 56.0 → 46.4 / 47.1 / 49.3 / 55.5 ms, greedy accept length unchanged over 24
 paired prompts, needle 9/9, capabilities 5/5, VRAM growth within 2 MiB per card
 ([receipts](profiling/rad25-custom-ar-serving-2026-11-10/), [FINDINGS → RAD-25](FINDINGS.md)).
+Cold prefill split by depth from the server's own chunk reports (`scripts/bench/prefill_chunk_curve.py`: chunk seconds against
+prefix depth per chunked prompt of a server log, no profiler): 3.48 s per 8192-token chunk plus 0.0438 s per 1K of prefix, so
+the 197K cold prompt is 83.8 s depth-free and 99.7 s depth-bound and the 58K one 25.0 + 7.8 s; the prefix attention runs
+2.99 G (query, key) pairs/s per card
+([receipts](profiling/prefill-chunk-curve-2026-11-10/), [FINDINGS → RAD-10](FINDINGS.md)). `scripts/bench/profile_prefill_depth.sh`
+and `prefill_profile_summary.py` profile a cold prefill per depth with the profiler's Python stacks off and size the kernel
+families.
 TP-split DeltaNet projections on the FP8 preset (patch 121), replicated → split → replicated in one session: decode
 23.3 / 22.9 / 22.2 / 20.5 → 26.9 / 26.3 / 25.3 / 23.2 tok/s, cold prefill 1,798 / 1,460 / 945 → 2,125 / 1,658 / 1,024 tok/s,
 pool 525,548 → 735,510 tokens; with DSpark +4.5 % at 24 tokens, +10.0 % on copy-heavy decode at equal accept length and
