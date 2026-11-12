@@ -3087,6 +3087,38 @@ kept as run (`run1/`) and still reported by the checker.
 Disposition: gate 1 of R97-T passed; no preset change, the serving tree is unpatched. The kernel test does not
 judge served rows: the three-arm repeat of the R97-S dump and the serving A/B decide ship or kill.
 
+### R97-T dump job — under the switch the served rows sit on the scaled reference in 12 of 12 cells; a cached turn's distance to exact weights falls to 0.2–0.5 %, a prefill tail's from up to 9.8 % to under 0.5 %
+
+The R97-S dump job repeated from the tree the kernel test ran, three Flint boots
+(`benchmarks/profiling/r97t-pv-scale-2026-11-11/dump/`): the preset under `SGLANG_RDNA4_FP8_PV_SCALE=1` (judged),
+the preset with the switch unset, and a BF16 pool under the switch. The same nine requests per boot (6,064 /
+58,064 / 197,064 ids: cold, cached turn of 64 rows, flushed repeat), the same layers (0, 1, 25, 48) and the same
+fp64 emulation; F and the BF16 distance of each cell stay at their R97-S values, and the rule was in the judge
+before the run. Identity per boot: the switch in the server environment and the backend's weight-scale line on
+both ranks for the judged arm, no such line on the other two.
+
+| Line | Result |
+|---|---|
+| switch off, R97-S rule (kernel-cast reference within 2 F, exact weights 5 F or more away) | confirmed in 12 of 12 cells; every dumped tensor equals the R97-S dump in 280 of 280 forward files |
+| BF16 pool under the switch, distance to its own emulation | 2.7e-5 to 2.5e-4, the R97-S value in 12 of 12; every tensor equals the R97-S BF16 dump in 280 of 280 |
+| switch on, cached turn, distance to the scaled reference | 6.2e-6 to 1.6e-4 = 0.07 to 0.67 F, within 2 F in 12 of 12 |
+| switch on, cached turn, distance to the kernel-cast reference | 2.6e-3 to 1.9e-2 = 43 to 111 F |
+| scaled reference closer to exact weights than the kernel-cast one, both ranks | 12 of 12 |
+| cached turn, served rows to exact weights, off and on | 0.36–2.2 % and 0.23–0.46 % (×0.33–0.77 at 6K, ×0.23–0.35 at 58K, ×0.14–0.20 at 197K) |
+| extend tails (64 rows over 4,096 / 57,344 / 196,608 keys, cold and flushed), distance to the scaled reference | 3.0e-5 to 2.3e-4, within 2 F in 24 of 24; largest 1.90 F at 6K layer 0, where the BF16 pool's own tail reads 1.87 F |
+| extend tails, served rows to exact weights, off and on | 0.49–9.8 % and 0.14–0.45 % |
+| switch on against off, same job | layer 0 inputs equal in 280 of 280 forward files, the attention output differs in 258 |
+| first token of the nine requests | equal across the three arms and to R97-S |
+
+What is left under the switch is e4m3's three-bit rounding of the weights: the scaled reference itself sits
+1.4e-3 to 4.6e-3 from exact weights, where the BF16 pool's turn sits 3.0e-4 to 9.7e-4 from its own. Spec 21
+keeps a BF16 value product out of scope unless the serving A/B shows a measurable tail.
+
+Disposition: gates 2 and 3 of R97-T passed (dump identity, fix valid). No preset change, the serving tree is
+unpatched and the switch is off by default. The dump job reads attention rows on Flint, not speed and not served
+quality (the hook is on, timings are not read), and the grouped verify stage of qwen38 is covered by the kernel
+test only: the serving A/B in both orders on Flint and qwen38 decides ship or kill.
+
 ## Evaluation methodology
 
 ### SWE-bench answer leakage through git history and the web (found 2026-09-18)

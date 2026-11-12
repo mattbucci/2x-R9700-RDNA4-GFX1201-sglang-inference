@@ -1,0 +1,155 @@
+{
+ "prompts_sha": {
+  "6000": "efd8fe77bffc1754bd775dd11d20e7b9c11a7d47013d25ce06c6cd467af52b6f",
+  "58000": "f2f8a98847a1994f80a614db4f97824ecf59a47adff61a6d26cc2e4be61b3766",
+  "197000": "64dcea2b5a6cf355eb3edd2a0a33946680481634e6b2d112e5756e8ddad4db61"
+ },
+ "commit": "479762d273ed96b71f3a26c5d17e05edc3666bf2",
+ "tail": 64,
+ "requests": [
+  {
+   "depth": 6000,
+   "state": "cold",
+   "rid": "r97s-6000-cold",
+   "status": 200,
+   "seconds": 1.007,
+   "sent_ids": 6000,
+   "prompt_tokens": 6000,
+   "cached_tokens": 0,
+   "completion_tokens": 1,
+   "output_ids": [
+    379
+   ],
+   "text": "           ",
+   "server_id": "r97s-6000-cold"
+  },
+  {
+   "depth": 6000,
+   "state": "turn",
+   "rid": "r97s-6000-turn",
+   "status": 200,
+   "seconds": 0.105,
+   "sent_ids": 6064,
+   "prompt_tokens": 6064,
+   "cached_tokens": 6000,
+   "completion_tokens": 1,
+   "output_ids": [
+    150006
+   ],
+   "text": "<think>",
+   "server_id": "r97s-6000-turn"
+  },
+  {
+   "depth": 6000,
+   "state": "flushed",
+   "rid": "r97s-6000-flushed",
+   "status": 200,
+   "seconds": 0.947,
+   "sent_ids": 6064,
+   "prompt_tokens": 6064,
+   "cached_tokens": 0,
+   "completion_tokens": 1,
+   "output_ids": [
+    150006
+   ],
+   "text": "<think>",
+   "server_id": "r97s-6000-flushed"
+  },
+  {
+   "depth": 58000,
+   "state": "cold",
+   "rid": "r97s-58000-cold",
+   "status": 200,
+   "seconds": 10.439,
+   "sent_ids": 58000,
+   "prompt_tokens": 58000,
+   "cached_tokens": 0,
+   "completion_tokens": 1,
+   "output_ids": [
+    511
+   ],
+   "text": " int",
+   "server_id": "r97s-58000-cold"
+  },
+  {
+   "depth": 58000,
+   "state": "turn",
+   "rid": "r97s-58000-turn",
+   "status": 200,
+   "seconds": 0.103,
+   "sent_ids": 58064,
+   "prompt_tokens": 58064,
+   "cached_tokens": 58000,
+   "completion_tokens": 1,
+   "output_ids": [
+    150006
+   ],
+   "text": "<think>",
+   "server_id": "r97s-58000-turn"
+  },
+  {
+   "depth": 58000,
+   "state": "flushed",
+   "rid": "r97s-58000-flushed",
+   "status": 200,
+   "seconds": 10.12,
+   "sent_ids": 58064,
+   "prompt_tokens": 58064,
+   "cached_tokens": 0,
+   "completion_tokens": 1,
+   "output_ids": [
+    150006
+   ],
+   "text": "<think>",
+   "server_id": "r97s-58000-flushed"
+  },
+  {
+   "depth": 197000,
+   "state": "cold",
+   "rid": "r97s-197000-cold",
+   "status": 200,
+   "seconds": 60.674,
+   "sent_ids": 197000,
+   "prompt_tokens": 197000,
+   "cached_tokens": 0,
+   "completion_tokens": 1,
+   "output_ids": [
+    105246
+   ],
+   "text": "centroid",
+   "server_id": "r97s-197000-cold"
+  },
+  {
+   "depth": 197000,
+   "state": "turn",
+   "rid": "r97s-197000-turn",
+   "status": 200,
+   "seconds": 0.126,
+   "sent_ids": 197064,
+   "prompt_tokens": 197064,
+   "cached_tokens": 197000,
+   "completion_tokens": 1,
+   "output_ids": [
+    150006
+   ],
+   "text": "<think>",
+   "server_id": "r97s-197000-turn"
+  },
+  {
+   "depth": 197000,
+   "state": "flushed",
+   "rid": "r97s-197000-flushed",
+   "status": 200,
+   "seconds": 60.985,
+   "sent_ids": 197064,
+   "prompt_tokens": 197064,
+   "cached_tokens": 0,
+   "completion_tokens": 1,
+   "output_ids": [
+    150006
+   ],
+   "text": "<think>",
+   "server_id": "r97s-197000-flushed"
+  }
+ ]
+}

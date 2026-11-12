@@ -1,0 +1,14 @@
+# cmp_tensors.py <dump a> <dump b> 0 on the three pairs, after the job (CPU): every tensor leaf of every forward file, bit for bit.
+# The non-tensor leaves that differ are the server pid and the request id.
+TENSORS r97s-dump-2026-11-11/dump-203407/preset vs r97t-pv-scale-2026-11-11/dump-job/dump-220107/off: files 280, all tensors equal in 280, differ in 0
+per leaf name [equal, differ]: {'L00-attn': [280, 0], 'L00-k': [280, 0], 'L00-q': [280, 0], 'L00-v': [280, 0], 'L01-attn': [280, 0], 'L01-k': [280, 0], 'L01-q': [280, 0], 'L01-v': [280, 0], 'L25-attn': [280, 0], 'L25-k': [280, 0], 'L25-q': [280, 0], 'L25-v': [280, 0], 'L48-attn': [280, 0], 'L48-k': [280, 0], 'L48-q': [280, 0], 'L48-v': [280, 0]}
+non-tensor leaves that differ (count by name): {'pid': 280, '0': 10}
+TENSORS r97s-dump-2026-11-11/dump-203407/bf16-kv vs r97t-pv-scale-2026-11-11/dump-job/dump-220107/bf16-kv-scaled: files 280, all tensors equal in 280, differ in 0
+per leaf name [equal, differ]: {'L00-attn': [280, 0], 'L00-k': [280, 0], 'L00-q': [280, 0], 'L00-v': [280, 0], 'L01-attn': [280, 0], 'L01-k': [280, 0], 'L01-q': [280, 0], 'L01-v': [280, 0], 'L25-attn': [280, 0], 'L25-k': [280, 0], 'L25-q': [280, 0], 'L25-v': [280, 0], 'L48-attn': [280, 0], 'L48-k': [280, 0], 'L48-q': [280, 0], 'L48-v': [280, 0]}
+non-tensor leaves that differ (count by name): {'pid': 280, '0': 10}
+TENSORS r97t-pv-scale-2026-11-11/dump-job/dump-220107/off vs r97t-pv-scale-2026-11-11/dump-job/dump-220107/scaled: files 280, all tensors equal in 22, differ in 258
+per leaf name [equal, differ]: {'L00-attn': [22, 258], 'L00-k': [280, 0], 'L00-q': [280, 0], 'L00-v': [280, 0], 'L01-attn': [22, 258], 'L01-k': [22, 258], 'L01-q': [22, 258], 'L01-v': [22, 258], 'L25-attn': [22, 258], 'L25-k': [22, 258], 'L25-q': [22, 258], 'L25-v': [22, 258], 'L48-attn': [22, 258], 'L48-k': [22, 258], 'L48-q': [22, 258], 'L48-v': [22, 258]}
+non-tensor leaves that differ (count by name): {'pid': 280, '0': 10}
+first differing: ('rank0/fwd0006.pt', ['stages/L00-attn', 'stages/L01-attn', 'stages/L01-k', 'stages/L01-q', 'stages/L01-v', 'stages/L25-attn'], True)
+first differing: ('rank0/fwd0007.pt', ['stages/L00-attn', 'stages/L01-attn', 'stages/L01-k', 'stages/L01-q', 'stages/L01-v', 'stages/L25-attn'], True)
+first differing: ('rank0/fwd0009.pt', ['stages/L00-attn', 'stages/L01-attn', 'stages/L01-k', 'stages/L01-q', 'stages/L01-v', 'stages/L25-attn'], True)

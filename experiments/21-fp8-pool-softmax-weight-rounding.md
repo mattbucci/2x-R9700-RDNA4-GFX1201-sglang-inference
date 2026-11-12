@@ -102,6 +102,8 @@ The dump confirmed the cast in 12 of 12 cells (FINDINGS → R97-S), so method 3 
   emulation, never under 6.1e-5). If either identity arm fails the job decides nothing.
 - Fix valid is judged on the cached turn in every one of the 12 cells with F per cell fixed at its R97-S value; the
   extend tails are reported against the same bar.
+- Read: kernel test pass, dump job `fix-valid` in 12 of 12 cells with both identity arms equal to R97-S tensor for
+  tensor (FINDINGS → R97-T kernel test, R97-T dump job). The serving A/B is the remaining step.
 
 ## Success / kill
 
