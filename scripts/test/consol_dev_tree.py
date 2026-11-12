@@ -61,12 +61,19 @@ def reset(clone, base):
         sys.exit(f"cannot reset {clone} to {base}")
 
 
-def replay(clone, base, pdir, names):
+def replay(clone, base, pdir, names, rebased=None):
     """Reset the scratch clone and apply the named patches; the numbers that fail and the tracked python/ files."""
     reset(clone, base)
-    failed = [n[:3] for n in names if git(clone, "apply", "--index", os.path.join(pdir, n)).returncode]
+    paths = [(rebased or {}).get(n[:3]) or os.path.join(pdir, n) for n in names]
+    failed = [n[:3] for n, path in zip(names, paths) if git(clone, "apply", "--index", path).returncode]
     files = [f for f in git(clone, "ls-files", "-z", "python").stdout.split("\0") if f]
     return failed, files
+
+
+def changed_lines(path):
+    """The added and the removed lines of a patch text, sorted: what it does, apart from where."""
+    lines = read(path).decode("utf-8", "replace").split("\n")
+    return sorted(l for l in lines if l[:1] in "+-" and not l.startswith(("+++ ", "--- ")))
 
 
 def touched(pdir, name):
@@ -272,9 +279,19 @@ def build(args):
     failed, full = replay(scratch, args.base, pdir, plist)
     if failed:
         sys.exit(f"the complete series does not replay on {scratch}: {failed}")
-    failed, part = replay(scratch, args.base, pdir, [n for n in plist if n not in group])
+    # a later patch whose hunk only leans on the group's lines as context is replayed from a rebased text: the same
+    # added and removed lines at the place the tree without the group has
+    rebased = {k: os.path.realpath(v) for k, v in (getattr(args, "rebased", None) or {}).items()}
+    names = {n[:3]: n for n in plist}
+    for num, path in rebased.items():
+        if num not in names or num in drop:
+            sys.exit(f"a rebased text is for a patch of the series outside the group: {num}")
+        if changed_lines(path) != changed_lines(os.path.join(pdir, names[num])):
+            sys.exit(f"{path} does not add and remove the lines of patch {num}")
+    failed, part = replay(scratch, args.base, pdir, [n for n in plist if n not in group], rebased)
     rec = {"arm": args.arm, "dropped": drop, "base": args.base, "series": len(plist), "applied": len(plist) - len(group),
-           "live": live, "tree": out, "apply_failures": failed}
+           "live": live, "tree": out, "apply_failures": failed,
+           "rebased": {k: os.path.relpath(v, inv.REPO) for k, v in sorted(rebased.items())}}
     problems, review = [], []
     if failed:
         problems.append(f"without {drop} these patches no longer apply: {failed}")
@@ -370,7 +387,8 @@ def build_session(args):
         if os.path.lexists(out):
             print(f"TREE exists: {out}")
             continue
-        one = argparse.Namespace(**{**vars(args), "arm": a["patches"][0], "drop": ",".join(a["patches"]), "out": out})
+        one = argparse.Namespace(**{**vars(args), "arm": a["patches"][0], "drop": ",".join(a["patches"]), "out": out,
+                                    "rebased": {k: os.path.join(inv.REPO, v) for k, v in a.get("rebased", {}).items()}})
         rc |= build(one)
     return rc
 
@@ -387,7 +405,10 @@ def main():
     ap.add_argument("--base", default=inv.BASE)
     ap.add_argument("--patches", help="patch directory; default: the repository's")
     ap.add_argument("--pyflakes", default=PYFLAKES)
+    ap.add_argument("--rebased", action="append", default=[], metavar="NNN=PATCH",
+                    help="replay patch NNN from this text in the tree without the group")
     args = ap.parse_args()
+    args.rebased = dict(x.split("=", 1) for x in args.rebased)
     if args.session:
         sys.exit(build_session(args))
     if not args.arm or not args.out:

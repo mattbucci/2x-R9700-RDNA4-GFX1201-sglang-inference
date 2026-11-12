@@ -207,8 +207,10 @@ update policy (084, 085, 130); none of them is on Laguna's path. 084, 114 and 04
 so their arms are identified by the tree on the server's path and the tree's source check. A session names the
 capability probes its preset does not have (`caps_args`), and the count it expects follows from them.
 
-At 99 patches the tree for 110 with 112 does not build: 131 no longer applies without them. That arm is not
-measured until its tree exists.
+At 99 patches 131 no longer applies without 110 and 112: one of its hunks uses their lines as context. The arm
+names a rebased text for 131 (`rebased/131-without-110-112.patch`), which the tree builder accepts only when it
+adds and removes the lines of the patch it replaces, so the tree still differs from the serving tree by 110 and
+112 alone.
 
 `scripts/bench/consol_capture_boot_logs.sh <preset> ..` takes one live-tree boot per preset with the session
 seed, sends a short request and decode requests at about 128 and 20,000 input tokens for the lazily logged

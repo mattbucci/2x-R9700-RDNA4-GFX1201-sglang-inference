@@ -10,3 +10,4 @@ patches/**       -whitespace
 llmcompressor-patches/**  -whitespace
 ream-patches/**  -whitespace
 benchmarks/profiling/**/*.patch.txt  -whitespace
+experiments/20-patch-consolidation/rebased/*.patch -whitespace

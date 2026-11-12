@@ -70,10 +70,10 @@ class Tree(unittest.TestCase):
         with open(os.path.join(root, rel), "w") as f:
             f.write(body)
 
-    def build(self, arm, drop, name="tree", scratch=None):
+    def build(self, arm, drop, name="tree", scratch=None, rebased=None):
         out = os.path.join(self.d, "trees", name)
         args = types.SimpleNamespace(arm=arm, drop=drop, arms=None, out=out, live=self.live, scratch=scratch or self.scratch,
-                                     base=self.base, patches=self.patches, pyflakes=dev.PYFLAKES)
+                                     base=self.base, patches=self.patches, pyflakes=dev.PYFLAKES, rebased=rebased)
         buf = io.StringIO()
         with contextlib.redirect_stdout(buf):
             rc = dev.build(args)
@@ -102,6 +102,23 @@ class Tree(unittest.TestCase):
         self.assertEqual(rc, 1)
         self.assertIn("['004']", text)
         self.assertFalse(os.path.exists(out))
+
+    def test_a_rebased_text_replaces_a_later_patch_only_with_the_same_added_and_removed_lines(self):
+        with open(os.path.join(self.patches, "004-step.patch")) as f:
+            text = f.read()
+        same, other = os.path.join(self.d, "004-same.patch"), os.path.join(self.d, "004-other.patch")
+        with open(same, "w") as f:
+            f.write(text.replace("index ", "index 0", 1))  # another header, the same lines
+        with open(other, "w") as f:
+            f.write(text.replace("edited by the fourth patch", "edited by someone else"))
+        rc, text, out, rec = self.build("003", "003", rebased={"004": same})
+        self.assertEqual((rc, list(rec["rebased"])), (0, ["004"]), text)
+        with self.assertRaises(SystemExit) as e:
+            self.build("003", "003", name="other", rebased={"004": other})
+        self.assertIn("does not add and remove the lines of patch 004", str(e.exception))
+        with self.assertRaises(SystemExit) as e:
+            self.build("003", "003", name="group", rebased={"003": same})
+        self.assertIn("outside the group", str(e.exception))
 
     def test_a_reference_left_without_its_definition_asks_for_review(self):
         rc, text, out, rec = self.build("001", "001,004")
