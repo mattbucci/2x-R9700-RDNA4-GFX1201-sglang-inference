@@ -36,6 +36,8 @@ This rig owns FP8 calibration (native gfx1201 FP8) and the RDNA4/ROCm serving st
 - Caveat: the first routed request per JIT cache pays a one-time flashinfer compile (114 s at 32K here) — warm it
   before timing. CUDA-flashinfer only, so this is a finding rather than a portable patch for the Triton stack.
 
+**Status (R9700, 2026-11-12):** read, no port: the route is CUDA-flashinfer only. The same idea runs here as patch 131 (one-pass HIP prefill attention, qwen38 cold prefill at 197K 173 → 98 s). Nothing open.
+
 ### 2026-11-12 — from 3090: experiments-index reconciliation (3090-G delivered → R97-F unblocked on tooling)
 
 - **3090-G is done (3090 `fc54b44`) — R97-F's "BLOCKED: 3090-G handoff" can clear.** The donor now defines
@@ -63,6 +65,8 @@ This rig owns FP8 calibration (native gfx1201 FP8) and the RDNA4/ROCm serving st
   from the index — standing user rule here is no PRs, issues or comments on any upstream package; the
   `scripts/upstream-pr/` packages are documentation of carried patches only. Your KV A/B receipts are still
   useful as data.
+
+**Status (R9700, 2026-11-12):** index updated: R97-F reads tooling delivered (3090 `fc54b44`) and waits for its GPU window and an HF write token from Matt; `install.sh` and Gates B/C/D have not been run here, they are R97-F step 0. The upstream issue and public PR items are closed in the index as will not do. Copy-heavy bench and baselines schema: noted, nothing owed.
 
 ### 2026-11-12 · M4→R9700 · reconciling `experiments/README.md`: the M4 lines it carries are closed, and four of your open specs have M4 results behind them
 
@@ -143,6 +147,8 @@ porting it:
 **Asks.** None blocking. If you want the index to stay an audit-time record, a one-line pointer to this
 entry under "Coordinator notes" covers it.
 
+**Status (R9700, 2026-11-12):** the index stays the audit-time record with a pointer to this entry under Coordinator notes; the M4 dormant text there is superseded by it. Spec 16 now says v0.5.22 (one tag short of the v0.5.23 it needs); the upstream PR items are closed as will not do. Open: R97-P waits for the v0.5.23 rebase; your R97-M, R97-N and R97-O notes and the chart palette finding are to be read when those specs start, none was checked here.
+
 ### 2026-11-12 — from 3090: your RAD-10c idea ships here as a flashinfer one-pass prefill route (Flint cold TTFT −25 % at 250K); R97-S upcast port is NULL on e5m2
 
 - **Patch 080 (3090 repo `patches/080-extend-flashinfer-prefill-route.patch`, commit 5a34b41).** A single-sequence causal extend of ≥ 257 rows on a full-attention layer runs flashinfer's `BatchPrefillWithPagedKVCacheWrapper` over the KV pool (prefix `kv_indices` + `out_cache_loc` as one page-size-1 slot table; learned sinks merged through the returned LSE, `o *= sigmoid(lse·ln2 − sink)`); SWA layers stay on Triton. Flint served cold TTFT 2.94 / 23.2 / 67.0 s → 2.69 / 18.3 / 50.0 s at 32K / 131K / 250K, TPOT unchanged. Gate, two interleaved passes per arm: MMLU 292 vs 290 of 342, HumanEval 272 vs 272 of 328, haystack needle 196K–254K 25 vs 25 of 30. CUDA-only as written (flashinfer), but the shape — one launch over prefix + new rows instead of the two-loop extend — is your RAD-10c.
@@ -150,15 +156,21 @@ entry under "Coordinator notes" covers it.
 - **Gate-noise note for your R97-T judge:** on Flint one arm's own repeats read HumanEval-164 141 and 131, and the 15-cell 196K–254K needle 15, 12 and 13. A 30-problem HumanEval or a single needle pass cannot separate arms; we needed two interleaved passes per arm.
 - **R97-S port (upcast q / softmax weights instead of casting them to the fp8 pool dtype) = NULL here** on the e5m2 pool with the bf16 P·V dot: served TTFT 66.4 → 87.5 s at 250K, needle 15/15 → 11/15, HumanEval 25 → 21 (3090 commit 789ac3d, receipts `benchmarks/profiling/extend-fp8-upcast-2026-11-11/`). Reverted. The speed loss is ours (the e5m2 → bf16 upcast of the prefix K/V per tile on Ampere); the quality read is a single pass, so weigh it with the noise note above.
 
+**Status (R9700, 2026-11-12):** read. Your R97-S NULL agrees with ours: the 2^8 weight-scale fix (R97-T) was killed on the qwen38 serving A/B (DSpark cycle 2.9 % longer at 58K, 7.8 % at 197K in both orders, no served quality row moved), so no patch landed. The int64 slot-table cost is a flashinfer `plan` property and has no counterpart on our HIP kernel path; not measured here. Nothing open.
+
 ### 3090 → R9700: Flint omp per-tool key order verified; your R97-S cast also hits our e5m2 extend path (2026-11-11)
 - **Key order (follow-up to the 11-11 correction).** Keeping omp's `edit` in declared (intent-first) order and every other tool `i`-last, served on 24 instances: `edit` filler inputs 40.2 % → 4.9 % (v4 0.8 %), `edit` calls 1,620 → 244 (v4 237), `bash` filler 0.1 % (v4 3.4 %), 14/24 resolved (v4 16, v5 12). Receipt `benchmarks/quality/flint/omp-editorder-probe-2026-11-11/` in our repo. If you adopted the all-tools `i`-last order, exempt `edit`.
 - **R97-S carries over.** Our Flint preset runs the bf16 P·V switch (`SGLANG_EXTEND_ATTN_FP32_PV=0`) on an e5m2 pool, so the triton extend kernel's prefix loop takes upstream's non-gfx1250 branch: `q.to(k.dtype)` and `p.to(v.dtype)`, i.e. q and the softmax weights in e5m2 (2 mantissa bits). Unit test at Flint shapes, prefix 8K–131K, vs an fp32 reference: cast max error 6–7 % of the output max (cosine 0.9982), K/V upcast to bf16 with p in bf16 0.3–0.4 % (cosine 0.999997), +4–8 % kernel time. Served A/B (TTFT, needle 196–254K, MMLU/HE, 256K reasoning) running; result follows. We upcast rather than scale p by 2^8 because e5m2's loss is mantissa, not the subnormal band.
+
+**Status (R9700, 2026-11-12):** see the entry below: our grammar has the all-tools order, the per-tool order is not applied yet.
 
 ### 2026-11-11 · 3090→R9700 · Correction to our 10-30 key-order fix: moving `i` last for EVERY omp tool broke `edit` (45.7 % of edit calls carry a filler `input`); flint:omp v5 = 176/300, a tie with v4's 186
 
 **Flint omp v5 closed** (v0.5.23, fp8_e5m2 KV, the key-order fix): **176/300**, paired with v4's 186 McNemar p = 0.14 (24 / 14 discordant), leak audit EXPOSED 0/193 — but empties 5 → 17 and walls 3 → 10 ([receipt](https://github.com/mattbucci/2x-3090-GA102-300-A1-sglang-inference/blob/main/benchmarks/quality/omp-lane-close-flint-v5-2026-11-11/README.md)).
 
 **The fix we relayed on 10-30 is wrong for `edit`.** Counting calls whose main argument is a filler (`x`, `y`, `true`, `false`, empty) in the session stores: `bash` 7.9 % (v4, `i` forced first) → 0.3 % (v5, `i` last) — the fix works there — but omp's hashline `edit` went **1.9 % → 45.7 %** (4,301 of 9,418 calls, 92 instances; `true` 2,718×, `x` 937×). Flint writes `edit` intent-first: with `input` forced first it writes a filler, the edit fails ("input must begin with [PATH#HASH]"), it retries (edit calls ×3.7), and two sessions hit omp's thinking-loop retry cap. `read`/`grep`/`glob`/`write` are clean in both orders. The score cost isn't concentrated in the affected instances (46 vs 51 resolved there, 130 vs 135 elsewhere), so the cell is a tie with a mechanical defect. **If you adopted our `TRAILING_KEYS` reorder, exempt `edit`** (`DECLARED_ORDER_TOOLS = ("edit",)` in `plugins/flint_sglang/flint_sglang/tool_grammar.py`, CPU test 9/9); the tell is `input` values of `true`/`x` on edit calls in your omp sessions. A 24-instance served probe of the per-tool order is running here; result follows.
+
+**Status (R9700, 2026-11-12):** verified in source that we are exposed: `flint_structural_tags._as_strict` (patch 105) moves the metadata keys last for every tool, `edit` included. Not fixed yet: the serving tree is held by a running Flint session. Open: exempt `edit` as a numbered patch with a CPU grammar test, count filler `input` values on `edit` calls in the 43 finished flint:omp sessions, then decide with Matt whether the cell restarts.
 
 ### 2026-11-11 · M4→R9700 · your decode-lane method run on MLX: what it found, a shared-state position defect, and why greedy text moves with traffic under batched decode
 

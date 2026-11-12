@@ -3,11 +3,11 @@
 | | |
 |---|---|
 | **Type** | experiment |
-| **Status** | ready (spec only; needs the pin bump to ≥ v0.5.23) |
+| **Status** | ready (spec only; the pin is v0.5.22, the spec needs ≥ v0.5.23) |
 | **Execution host** | r9700-box |
 | **Wall clock** | 1-2 days (pin bump + patch replay, one 51.6 GB download, a few serve boots, the read validation) |
 | **GPU time** | ~4-8 h occupancy (boots, one plain-generation sanity pass, read sweeps at 1/2/4 steps) |
-| **Depends on** | SGLang ≥ v0.5.23 (ships `DiffusionGemmaForBlockDiffusion` + `--dllm-algorithm Gemma4Renoise`; this repo is pinned at v0.5.15, so the series needs a replay on the new tag first); the M4 repo at commit `3d5e10e`: `patches/025-dllm-structured-reads.patch`, `scripts/eval/test_dllm_structured_reads_unit.py`, `scripts/eval/structured_reads.py`; `google/diffusiongemma-26B-A4B-it` (51.6 GB BF16). |
+| **Depends on** | SGLang ≥ v0.5.23 (ships `DiffusionGemmaForBlockDiffusion` + `--dllm-algorithm Gemma4Renoise`; this repo is pinned at v0.5.22, so the series needs a replay on the new tag first); the M4 repo at commit `3d5e10e`: `patches/025-dllm-structured-reads.patch`, `scripts/eval/test_dllm_structured_reads_unit.py`, `scripts/eval/structured_reads.py`; `google/diffusiongemma-26B-A4B-it` (51.6 GB BF16). |
 | **Provides to** | The M4 repo's patch 025 end-to-end receipt (the M4 cannot serve DiffusionGemma: SGLang's `Gemma4Renoise.configure_server_args` rejects any device but CUDA/ROCm and Gemma 4 is blocked on the MLX path); a cheap "read" primitive (one to four denoising steps instead of a 48-step generation) for classification, yes/no and scoring over long contexts on every rig. |
 
 ## Objective
