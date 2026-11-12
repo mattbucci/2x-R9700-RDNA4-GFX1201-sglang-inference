@@ -2087,5 +2087,26 @@
   ],
   "superseded_evidence": null,
   "notes": "Does not apply or work without 080: its hunk context is the fp32_on_hip signature and the 'if _is_hip and fp32_on_hip:' line that 080 wrote and its branch reads that parameter; 080 is the unconditional per-model opt-out of 001's detour (Laguna, PLAIN_ADD_BF16_SUM), 130 the env-switched two-rank bypass of the same detour for models that did not opt out. On this two-rank rig both end on a BF16 collective, so 001's detour hunk + 080 + 130 could collapse into one two-rank rule, but 130 is measured only on the qwen38 FP8 preset and the other presets keep the detour until their own identity check."
+ },
+ "131": {
+  "class": "performance",
+  "class_confidence": "high",
+  "mechanism": "In the Triton attention backend's extend path, a route ahead of the extend split-KV route (patch 110) and the Triton extend kernel to a HIP kernel built ahead of time (extension prefill_attn_fp8_hip_ext, scripts/build_prefill_attn_hip.sh, setup step 5f): one tiled pass over the cached prefix and the chunk with an online softmax, per layer. Taken for a single-request causal extend of at least SGLANG_HIP_PREFILL_ATTN_MIN_ROWS new rows on an fp8 KV pool with head dimension 256 and six query heads per KV head, with no sinks, sliding window, soft cap, score modifier, auxiliary tensors or custom mask; everything else, and every decline, keeps the existing routes. The kernel source is a port of radiance's Apache-2.0 prefill attention kernel (revision 451b1368, NOTICE carried in the patch). Mode exact forms QK in BF16, mode qk8 forms it from the fp8 cache keys as the extend kernel does under patch 108.",
+  "presets": [
+   "qwen38"
+  ],
+  "switch": "SGLANG_HIP_PREFILL_ATTN (code default unset = off; values exact, qk8) and SGLANG_HIP_PREFILL_ATTN_MIN_ROWS (code default 1). The qwen38 block exports qk8 when EXTEND_FP8_QK is 1 and off when it is 0, and 257 rows, all overridable from the environment, only when QUANT_OVERRIDE is unset; off restores the Triton extend kernel on every prefill chunk.",
+  "last_effect": "RAD-10c, qwen38 FP8, development tree, same session, two boots per side in both orders, qk8 from 257 rows. No speculation: cold prefill 2.644 -> 2.575 s (x0.974) at 7.3K, 28.770 -> 22.383 s (x0.778) at 58K, 171.433 -> 97.005 s (x0.566) at 197K input tokens; first token on a cache hit at the control's value (115 ms at 197K); canonical decode x0.999-1.005. DSpark: cold prefill x0.951 / x0.773 / x0.564 (173.934 -> 98.045 s at 197K), verify cycle x1.000-1.003, greedy accept length 3.804 -> 3.806 over 96 paired documents. Mode exact, no speculation: x0.984 / x0.838 / x0.678.",
+  "receipt": "benchmarks/profiling/rad10c-prefill-attn-minrows-dspark-2026-11-11",
+  "findings_heading": "RAD-10c under DSpark — fp8 QK from 257 rows: cold prefill ×0.56 at 197K, verify cycle and accept length unchanged, gate pass (2026-11-11)",
+  "patch_state": "98 patches, SGLang v0.5.22, development tree = the live tree plus the route hunk and the built extension; the canonical sweep at 99 patches from the live tree is the first measurement of the landed patch",
+  "ablation_arm": "switch: SGLANG_HIP_PREFILL_ATTN=off on presets qwen38",
+  "reproducer": "scripts/bench/bench_prefill_attention.py",
+  "merge_candidates": [
+   "108",
+   "110"
+  ],
+  "superseded_evidence": null,
+  "notes": "Shares the extend path with 108 (fp8 QK in the Triton extend kernel) and 110 (extend split-KV route for up to 256 new rows behind a long prefix): with 131 on, 110 serves the short extends and the Triton extend kernel only the shapes 131 declines, so an arm that isolates 108 on qwen38 needs EXTEND_FP8_QK=0 with SGLANG_HIP_PREFILL_ATTN=qk8 set explicitly. The leave-one-out replay at 99 patches: the series applies without 108; without 110, patches 112 and 131 do not apply (the hunk of 131 sits on the route body 110 rewrote), so 131 follows the 107 + 110 + 112 group in any fold and is not droppable-in-isolation evidence for 110. The second measurement at 257 rows (no speculation) is under benchmarks/profiling/rad10c-prefill-attn-minrows-serving-2026-11-11; the row-count choice under benchmarks/profiling/rad10c-rows-bench-2026-11-11. The kernel is specialised to head dimension 256 and a 6:1 head ratio: other presets decline by shape and keep their routes until a kernel variant exists."
  }
 }

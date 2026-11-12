@@ -1,0 +1,1492 @@
+diff --git a/python/sglang/kernels/aot/csrc/attention/prefill_attn_fp8_hip/NOTICE b/python/sglang/kernels/aot/csrc/attention/prefill_attn_fp8_hip/NOTICE
+new file mode 100644
+index 0000000..1511899
+--- /dev/null
++++ b/python/sglang/kernels/aot/csrc/attention/prefill_attn_fp8_hip/NOTICE
+@@ -0,0 +1,13 @@
++This directory holds source text from radiance, licensed under the Apache License, Version 2.0
++(https://codeberg.org/StillDeadcode/radiance, revision 451b1368).
++
++radiance
++Copyright 2026 Deadcode and the radiance contributors
++
++Written by Deadcode, with the contributions listed in that tree's NOTICE file.
++
++r4d_common.h                     libr4d/r4d_common.h, unchanged (sha256 e61f4a74fcb9433f...)
++r4d_dt16.h                       libr4d/r4d_dt16.h, unchanged (sha256 237bcde7608ddf25...)
++r4d_attn_prefill_h256_gqa6.inc   libr4d/r4d_attn_prefill_h256_gqa6.hip with the edits listed at its top
++prefill_attn_args.h              this repository's; field names follow libr4d/r4d.h
++prefill_attn_fp8_hip.cu          this repository's (option word, launch, torch binding)
+diff --git a/python/sglang/kernels/aot/csrc/attention/prefill_attn_fp8_hip/prefill_attn_args.h b/python/sglang/kernels/aot/csrc/attention/prefill_attn_fp8_hip/prefill_attn_args.h
+new file mode 100644
+index 0000000..45e0205
+--- /dev/null
++++ b/python/sglang/kernels/aot/csrc/attention/prefill_attn_fp8_hip/prefill_attn_args.h
+@@ -0,0 +1,30 @@
++// SPDX-License-Identifier: Apache-2.0
++//
++// Launch arguments of the prefill attention kernel in r4d_attn_prefill_h256_gqa6.inc. The struct keeps the name
++// and the field names of radiance's R4DArgs (libr4d/r4d.h) for the fields the kernel reads, so the kernel text
++// stays close to its origin; v and ctx are added, everything the kernel does not read is left out.
++#pragma once
++#include <hip/hip_runtime.h>
++#include <cstdint>
++
++struct R4DArgs {
++    const void* q;           // bf16 [query rows][q_heads][head_dim]
++    const void* kv;          // K pool: e4m3 bytes, token slot s and KV head h at s * kv_block_stride + h * kv_head_stride
++    const void* v;           // V pool, the layout of the K pool
++    const int* block_table;  // [ctx] pool slot of every token of the sequence (block size 1)
++    void* out;               // bf16, the layout of q
++    const float* k_descale;  // per (sequence, KV head) or null for 1.0
++    const float* v_descale;  // per (sequence, KV head) or null for 1.0
++    void* scratch;           // the split form's partials (not instantiated here)
++    const int* cu_q;         // per-sequence query offsets or null: every sequence has q_len rows
++    long kv_block_stride;
++    long kv_head_stride;
++    int num_seqs, q_len, q_heads, kv_heads, max_blocks;
++    int ctx;                 // tokens of the sequence; the queries are its last q_len
++    int splits, window, total_q;
++    float scale;
++};
++
++__host__ __device__ __forceinline__ int r4d_q_total(const R4DArgs& a) {
++    return a.cu_q ? a.total_q : a.num_seqs * a.q_len;
++}
+diff --git a/python/sglang/kernels/aot/csrc/attention/prefill_attn_fp8_hip/prefill_attn_fp8_hip.cu b/python/sglang/kernels/aot/csrc/attention/prefill_attn_fp8_hip/prefill_attn_fp8_hip.cu
+new file mode 100644
+index 0000000..aab9a70
+--- /dev/null
++++ b/python/sglang/kernels/aot/csrc/attention/prefill_attn_fp8_hip/prefill_attn_fp8_hip.cu
+@@ -0,0 +1,117 @@
++// SPDX-License-Identifier: Apache-2.0
++//
++// Prefill (extend) attention over an fp8 e4m3 KV cache on gfx1201 (RDNA4), head dimension 256 with six
++// query heads per KV head: one launch computes the chunk's rows over the whole sequence (prefix and the
++// chunk's own keys, causal), reading K and V bytes straight from SGLang's two pools through a per-token
++// slot table.
++//
++// The kernel is radiance (Apache-2.0, Copyright 2026 Deadcode and the radiance contributors, https://codeberg.org/StillDeadcode/radiance, revision 451b1368)
++// libr4d/r4d_attn_prefill_h256_gqa6.hip with the edits listed at the top of
++// r4d_attn_prefill_h256_gqa6.inc; r4d_common.h and r4d_dt16.h are that tree's files unchanged. This file
++// (the option word without block-table staging, the launch and the torch binding) is this repository's.
++//
++// legs: 0 = both products with f16 operands (exact over e4m3 K/V), 1 = QK as e4m3 x e4m3 (the query is
++// rounded to e4m3 once), 2 = PV as e4m3 x e4m3 (the softmax weights are rounded), 3 = both.
++
++#ifdef USE_ROCM
++
++#include <torch/all.h>
++#include <ATen/hip/HIPContext.h>
++#include <c10/hip/HIPGuard.h>
++#include <c10/hip/HIPStream.h>
++#include <hip/hip_runtime.h>
++#include <cmath>
++#include <cstdint>
++
++#include "r4d_attn_prefill_h256_gqa6.inc"
++
++namespace {
++
++constexpr int kWarps = 24;
++constexpr int kTile = 48;
++constexpr int kHeadDim = 256;
++constexpr int kGqa = 6;
++constexpr int kQueryRows = kWarps * 16 / kGqa;  // query positions per workgroup
++// radiance launches this kernel with 3954187 | O_KLATE over 16-token blocks. Here a block is one token
++// (the pools are indexed per token), so O_BTS, which stages a tile's TILE / BS table entries in scalar
++// registers, is left out and every fetch reads its own table entry.
++constexpr int kOpt = (3954187 | O_KLATE) & ~O_BTS;
++
++template <int XOPT>
++void launch(const R4DArgs& a, hipStream_t stream) {
++  const dim3 grid((a.q_len + kQueryRows - 1) / kQueryRows, a.kv_heads, 1);
++  hipLaunchKernelGGL((r4d_attn_prefill_kernel<kWarps, kTile, kHeadDim, kGqa, 1, 0, kOpt | XOPT>), grid,
++                     dim3(kWarps * 32), 0, stream, a);
++}
++
++}  // namespace
++
++void prefill_attn_fp8_hip(at::Tensor q, at::Tensor k_pool, at::Tensor v_pool, at::Tensor slots,
++                          at::Tensor out, double scale, int64_t legs) {
++  TORCH_CHECK(q.is_cuda() && k_pool.is_cuda() && v_pool.is_cuda() && slots.is_cuda() && out.is_cuda(),
++              "prefill_attn_fp8_hip: every tensor must be on the GPU");
++  TORCH_CHECK(q.get_device() == k_pool.get_device() && q.get_device() == v_pool.get_device() &&
++                  q.get_device() == slots.get_device() && q.get_device() == out.get_device(),
++              "prefill_attn_fp8_hip: every tensor must be on one device");
++  TORCH_CHECK(q.scalar_type() == at::ScalarType::BFloat16 && out.scalar_type() == at::ScalarType::BFloat16,
++              "prefill_attn_fp8_hip: q and out must be bf16");
++  TORCH_CHECK(k_pool.scalar_type() == at::ScalarType::Float8_e4m3fn &&
++                  v_pool.scalar_type() == at::ScalarType::Float8_e4m3fn,
++              "prefill_attn_fp8_hip: the pools must be float8_e4m3fn");
++  TORCH_CHECK(slots.scalar_type() == at::ScalarType::Int, "prefill_attn_fp8_hip: slots must be int32");
++  TORCH_CHECK(q.dim() == 3 && out.dim() == 3 && k_pool.dim() == 3 && v_pool.dim() == 3 && slots.dim() == 1,
++              "prefill_attn_fp8_hip: q/out [rows][q heads][256], pools [slots][kv heads][256], slots [ctx]");
++  TORCH_CHECK(q.is_contiguous() && out.is_contiguous() && k_pool.is_contiguous() && v_pool.is_contiguous() &&
++                  slots.is_contiguous(),
++              "prefill_attn_fp8_hip: every tensor must be contiguous");
++  TORCH_CHECK(q.sizes() == out.sizes(), "prefill_attn_fp8_hip: out must have the shape of q");
++  TORCH_CHECK(k_pool.sizes() == v_pool.sizes(), "prefill_attn_fp8_hip: the pools must have one shape");
++  const int64_t rows = q.size(0), q_heads = q.size(1), kv_heads = k_pool.size(1), ctx = slots.size(0);
++  TORCH_CHECK(q.size(2) == kHeadDim && k_pool.size(2) == kHeadDim, "prefill_attn_fp8_hip: head dimension 256");
++  TORCH_CHECK(kv_heads >= 1 && q_heads == kGqa * kv_heads, "prefill_attn_fp8_hip: six query heads per KV head");
++  TORCH_CHECK(rows <= ctx && ctx <= INT32_MAX, "prefill_attn_fp8_hip: the queries are the last rows of ctx tokens");
++  TORCH_CHECK(legs >= 0 && legs <= 3, "prefill_attn_fp8_hip: legs must be 0..3");
++  TORCH_CHECK(std::isfinite(scale), "prefill_attn_fp8_hip: scale must be finite");
++  if (rows == 0) return;
++
++  R4DArgs a{};
++  a.q = q.data_ptr();
++  a.kv = k_pool.data_ptr();
++  a.v = v_pool.data_ptr();
++  a.block_table = slots.data_ptr<int>();
++  a.out = out.data_ptr();
++  a.kv_block_stride = static_cast<long>(kv_heads) * kHeadDim;
++  a.kv_head_stride = kHeadDim;
++  a.num_seqs = 1;
++  a.q_len = static_cast<int>(rows);
++  a.q_heads = static_cast<int>(q_heads);
++  a.kv_heads = static_cast<int>(kv_heads);
++  a.max_blocks = static_cast<int>(ctx);
++  a.ctx = static_cast<int>(ctx);
++  a.splits = 1;
++  a.total_q = static_cast<int>(rows);
++  a.scale = static_cast<float>(scale);
++
++  // The launch goes to the tensors' card, whichever card the calling thread has current.
++  const c10::cuda::CUDAGuard device_guard(q.device());
++  const auto stream = at::hip::getCurrentHIPStream(static_cast<c10::DeviceIndex>(q.get_device()));
++  switch (legs) {
++    case 0: launch<0>(a, stream); break;
++    case 1: launch<O_QK8>(a, stream); break;
++    case 2: launch<O_PV8>(a, stream); break;
++    default: launch<O_QK8 | O_PV8>(a, stream); break;
++  }
++}
++
++#endif  // USE_ROCM
++
++#ifdef USE_ROCM
++#include <torch/extension.h>
++
++PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
++  m.def("prefill_attn_fp8_hip", &prefill_attn_fp8_hip,
++        "Causal prefill attention of the last rows of a sequence over fp8 K/V pools (gfx1201)",
++        py::arg("q"), py::arg("k_pool"), py::arg("v_pool"), py::arg("slots"), py::arg("out"),
++        py::arg("scale"), py::arg("legs") = 0);
++}
++#endif
+diff --git a/python/sglang/kernels/aot/csrc/attention/prefill_attn_fp8_hip/r4d_attn_prefill_h256_gqa6.inc b/python/sglang/kernels/aot/csrc/attention/prefill_attn_fp8_hip/r4d_attn_prefill_h256_gqa6.inc
+new file mode 100644
+index 0000000..f213535
+--- /dev/null
++++ b/python/sglang/kernels/aot/csrc/attention/prefill_attn_fp8_hip/r4d_attn_prefill_h256_gqa6.inc
+@@ -0,0 +1,719 @@
++// SPDX-License-Identifier: Apache-2.0
++//
++// From radiance (Apache-2.0, Copyright 2026 Deadcode and the radiance contributors, https://codeberg.org/StillDeadcode/radiance, revision 451b1368),
++// libr4d/r4d_attn_prefill_h256_gqa6.hip (sha256 c06d5c7c7c85794c...).
++// Changed here:
++//   1. the launch arguments come from prefill_attn_args.h (the fields this kernel reads, plus v and ctx)
++//   2. the sequence length is a launch argument (a.ctx) instead of a device read of seqused_k
++//   3. V is read from its own pool (a.v) at the K layout's offsets, not HEAD_DIM bytes behind K in one row
++//   4. a static_assert keeps the forms that were not ported (bf16 KV, fp8_v4, k6_v4, split, window) from instantiating
++// Everything below this banner is the original text apart from those edits.
++
++// R4D prefill. Transposed core: S^T = K.Q^T, one lane owns one query row, ROWS = 16*NWARPS,
++// 128-VGPR accumulator. The query is bf16 and the KV cache is fp8 or bf16; the 16-bit operand
++// format for both matmuls is f16 (see r4d_dt16.h for why).
++//
++// Two families: all-16-bit (bf16 KV) and 16/8 mixed (bf16 query, fp8, fp8_v4 or k6_v4 KV). The
++// mixed family also has lossy e4m3 legs (QK8, PV8), launched only by the rows a caller's
++// `prefill_fp8` selects.
++//
++// Each option below can be turned off on its own after a geometry change:
++//
++//   LAZY  (always on) Softmax against a reference max instead of a running one:
++//         p = 2^(s - m_ref + SHIFT), with m_ref updated and the 128-VGPR accumulator rescaled only
++//         when a row max exceeds m_ref by more than the P format absorbs (DT16::GROW octaves),
++//         instead of on every m-tile. Same relative weighting in an f32 accumulator.
++//   F16   f16 as the 16-bit operand format. gfx1201 has no bf16 convert (software RTNE is ~6 VALU);
++//         v_cvt_pkrtz_f16_f32 converts two values in one. Exact for these operands (fp8 has 3
++//         mantissa bits, bf16 7, f16 10).
++//   MSKIP Causal masking only on m-tiles that straddle the limit.
++//   FOLDQ scale * k_descale * log2(e) folded into the query once at load.
++//   CONTIG The WMMA k axis is only contracted, so relabelling it on both operands is free. Reading
++//         eight contiguous elements at 8*h gives one aligned ds_read_b128 per fragment, removes 16
++//         address adds and makes the P fragment lane-local.
++//   PF/SGB Load PF fragments before the matching PF WMMAs, with a scheduling barrier between the
++//         groups. Without the barrier PF has no effect.
++//   DOT2  v_dot2_f32_f16 row sum from the packed f16 P: 4 instructions instead of 8, and the
++//         denominator uses the p values the PV matmul used.
++//   BTS/KWIDE/GPREV/KLATE  tile staging; see each define.
++//   QK8   Lossy. Q rounded to e4m3 once at load, after the folded scale; K as e4m3 bytes in LDS
++//         (half the tile) and Q.K^T runs as fp8 WMMA at twice the f16 rate.
++//   PV8   Lossy. P rounded to e4m3 and V as e4m3 bytes in LDS, P.V as fp8 WMMA. GROW is 8
++//         octaves (e4m3's largest value is 448 = 2^8.8), and DOT2 is off: the denominator sums the
++//         p values before rounding.
++//         The LDS bytes are the cache's own for the fp8 cache and fp8_v4's K. k6_v4's K and the
++//         int4 V of fp8_v4/k6_v4 are widened to value * group scale, as for the f16 legs, and
++//         rounded once to e4m3 at staging. QK8 and PV8 need an 8-bit cache and CONTIG; a
++//         static_assert holds both.
++#include "prefill_attn_args.h"
++#include "r4d_common.h"
++#include "r4d_dt16.h"
++
++#define O_F16     1
++#define O_MSKIP   2
++#define O_QK8    32
++#define O_PV8    64
++#define O_FOLDQ   8
++#define O_CONTIG  512
++#define O_PF2    1024
++#define O_PF4    2048
++#define O_PF8    3072
++#define O_SGB    4096
++#define O_DOT2  16384
++// BTS: a tile's TILE/BS block-table entries are at a wave-uniform index, so load them into SGPRs
++// once per tile. Otherwise each staging pass does two serialised memory round trips (block table,
++// then KV) inside a barrier-bounded phase with nothing else to run.
++#define O_BTS   262144
++// KWIDE: one 16-byte K fetch per thread instead of two 8-byte ones. 768 threads x 16 B is exactly
++// a 48-key fp8 tile, so staging is straight-line with half the loads and block-table lookups.
++// key = tid/16 would make a warp write one row at a 32-byte stride (4-way LDS bank conflict, since
++// 8*ch mod 32 takes four values). key = 2*warp + (lane&1), ch = (lane&31)>>1 interleaves two keys
++// so the writes cover all 32 banks, while global reads stay two contiguous 256-byte runs.
++#define O_KWIDE 524288
++// GPREV: fetch tile ti+1's V into registers right after the second barrier, so its latency is
++// hidden by tile ti's 96 WMMAs and only the LDS stores remain between barriers. V only: at
++// 240 VGPRs a K prefetch would be spilled, and a spilled prefetch is waited on immediately.
++#define O_GPREV 1048576
++// LDSB: an LDS-scoped barrier instead of __syncthreads() (lds_barrier() in r4d_common.h). The
++// default fence invalidates the vector cache twice per tile, though only LDS needs ordering.
++#define O_LDSB  2097152
++// KLATE: on the fp8 and k6_v4 caches (the wide K fetch), tile ti+1's K is fetched once tile ti's
++// last m-tile has its scores (its K fragments are dead there, so kreg adds no live range across the
++// WMMAs), and the staging between the barriers only widens and stores. Otherwise every wave of the
++// workgroup (the only one on its WGP) waits out a global round trip each tile. With the branch-free
++// K fetch and the V scales packed at the store, k6_v4 over 100k keys runs 25.96 -> 21.48 ms (2048
++// queries, r4d_selftest --perfpaged) and fp8 24.6 -> 22.7; the gain is largest once the KV no
++// longer fits the 64 MB Infinity Cache.
++#define O_KLATE 4194304
++// O_V4: the fp8_v4 cache, O_V4 | O_K6 the k6_v4 cache (see r4d_attn_decode_h256_gqa6.hip).
++#define O_V4    33554432
++#define O_K6    67108864
++// O_PSPLIT: a KV split for launches with too few workgroups to fill the card (r4d_prefill_splits
++// in r4d_attn_prefill_split.h). blockIdx.x is qtile * a.splits + split, and the workgroup walks
++// only its segment of the sequence's tiles, cut as r4d_attn_tps cuts them (the partition the
++// split-KV merge recomputes from ctx), clipped at its causal end. Instead of bf16 out it stores the
++// unnormalised f32 O, m_ref and l in the decode kernel's partial layout (r4d_attn_decode_body,
++// !PF16); r4d_attn_splitkv_combine* finishes the rows, so only the summation order changes.
++#define O_PSPLIT 536870912
++
++typedef int v2i32_r4d __attribute__((ext_vector_type(2)));   // one fp8 WMMA operand (8 e4m3)
++// pack 4 floats -> 4 e4m3 bytes in element order (RNE, saturating), 2 instructions
++__device__ __forceinline__ uint32_t pk_fp8x4(float a, float b, float c, float d) {
++    const uint32_t w = __builtin_amdgcn_cvt_pk_fp8_f32(a, b, 0u, false);
++    return __builtin_amdgcn_cvt_pk_fp8_f32(c, d, w, true);
++}
++// two f16 dwords (four values in element order) -> four e4m3 bytes
++__device__ __forceinline__ uint32_t pk_fp8x4_h(uint32_t lo, uint32_t hi) {
++    typedef _Float16 h2 __attribute__((ext_vector_type(2)));
++    const h2 a = __builtin_bit_cast(h2, lo), b = __builtin_bit_cast(h2, hi);
++    return pk_fp8x4((float)a[0], (float)a[1], (float)b[0], (float)b[1]);
++}
++// one f16 dword -> two e4m3 bytes in the low half
++__device__ __forceinline__ uint32_t pk_fp8x2_h(uint32_t w) {
++    typedef _Float16 h2 __attribute__((ext_vector_type(2)));
++    const h2 a = __builtin_bit_cast(h2, w);
++    return (uint32_t)__builtin_amdgcn_cvt_pk_fp8_f32((float)a[0], (float)a[1], 0u, false) & 0xffffu;
++}
++
++// bf16 dword -> 16-bit dword in the target format, optionally scaled. Used once per kernel on Q.
++template<class D, int FOLDQ, int F16>
++__device__ __forceinline__ uint32_t r4d_qcvt(uint32_t w, float s) {
++    if (!FOLDQ) return F16 ? D::from_bf16w(w) : w;
++    return D::pk(__builtin_bit_cast(float, w << 16) * s,
++                 __builtin_bit_cast(float, w & 0xffff0000u) * s);
++}
++
++// O_PSPLIT's store: segment `sp` of row (tok, qhead) in the decode kernel's f32 partial layout,
++// O at [idx][HEAD_DIM] then m[nrow] and l[nrow], idx = (tok * q_heads + qhead) * splits + sp. Lane
++// (c, h) holds dims 16 dt + 8 h .. + 7 of its row, as at the bf16 store. An empty segment stores
++// O = 0, m = -3e38 (at the merge's zero-weight cut) and l = 0.
++template<int NKS, int HEAD_DIM>
++__device__ __forceinline__ void r4d_prefill_store_partial(const R4DArgs& a, int tok, int qhead,
++                                                          int sp, const v8f* acc, float m, float l,
++                                                          int h) {
++    const size_t idx  = (size_t)(tok * a.q_heads + qhead) * a.splits + sp;
++    const size_t nrow = (size_t)r4d_q_total(a) * a.q_heads * a.splits;
++    float* so = (float*)a.scratch;
++    float* op = so + idx * HEAD_DIM;
++    #pragma unroll
++    for (int dt = 0; dt < NKS; ++dt)
++        *(v8f*)(op + dt * 16 + 8 * h) = acc[dt];
++    if (h == 0) { so[nrow * HEAD_DIM + idx] = m; so[nrow * HEAD_DIM + nrow + idx] = l; }
++}
++
++// WIN enables a sliding window (a.window positions ending at each row's causal limit), as in the
++// decode kernel. Keys below the window are masked, and the KV walk starts at the tile holding the
++// workgroup's earliest window token. window <= 0 (or WIN off) is full attention.
++template<int NWARPS, int TILE, int HEAD_DIM, int GQA, int BS, int KVP, int OPT, int WIN = 0>
++__global__ __launch_bounds__(NWARPS * 32)
++void r4d_attn_prefill_kernel(const R4DArgs a)
++{
++    constexpr int F16   = (OPT & O_F16)   ? 1 : 0;
++    constexpr int MSKIP = (OPT & O_MSKIP) ? 1 : 0;
++    constexpr int FOLDQ = (OPT & O_FOLDQ) ? 1 : 0;
++    constexpr int CTG   = (OPT & O_CONTIG) ? 1 : 0;
++    constexpr int PF    = 1 << ((OPT >> 10) & 3);
++    constexpr int SGB   = (OPT & O_SGB) ? 1 : 0;
++    constexpr int DOT2  = ((OPT & O_DOT2) && (OPT & O_F16) && !(OPT & O_PV8)) ? 1 : 0;
++    constexpr int BTS   = (OPT & O_BTS)   ? 1 : 0;
++    constexpr int V4    = ((OPT & O_V4) && !KVP) ? 1 : 0;
++    constexpr int K6    = ((OPT & O_K6) && V4) ? 1 : 0;
++    // A token's row in a page, and where in it V's codes, V's scales and K's scales start.
++    constexpr int ROWB  = K6 ? HEAD_DIM * 22 / 16 : V4 ? HEAD_DIM * 25 / 16 : 2 * HEAD_DIM;
++    constexpr int VOFF  = K6 ? HEAD_DIM * 3 / 4 : HEAD_DIM;
++    constexpr int VSOFF = K6 ? HEAD_DIM * 21 / 16 : HEAD_DIM * 3 / 2;
++    constexpr int KSOFF = HEAD_DIM * 5 / 4;
++    constexpr int GPREV = ((OPT & O_GPREV) && !V4) ? 1 : 0;
++    constexpr int LDSB  = (OPT & O_LDSB)  ? 1 : 0;
++    constexpr int KWIDE = (OPT & O_KWIDE) ? 1 : 0;
++    // fp8_v4 takes none of the three (KLATE, the assume, the scale pack): they gain at 100k but lose
++    // 3-7 % at 25k and 50k.
++    constexpr int OLDV4 = V4 && !K6;
++    constexpr int KLATE = ((OPT & O_KLATE) && KWIDE && !KVP && !OLDV4) ? 1 : 0;
++    constexpr int QK8   = ((OPT & O_QK8) && !KVP) ? 1 : 0;
++    constexpr int PV8   = ((OPT & O_PV8) && !KVP) ? 1 : 0;
++    static_assert(!(OPT & (O_QK8 | O_PV8)) || !KVP,
++                  "the e4m3 legs need an 8-bit cache, or they compile to the exact form");
++    constexpr int SPLIT = (OPT & O_PSPLIT) ? 1 : 0;
++    static_assert(!SPLIT || !WIN, "the split partition has no window floor (the merge's WIN has)");
++    static_assert(!QK8 || KWIDE, "QK8 raw-byte staging is written for the wide K fetch");
++    typedef DT16<F16> D;
++    typedef typename D::frag frag16;
++
++    constexpr int ROWS    = NWARPS * 16;
++    constexpr int BLOCK_Q = ROWS / GQA;
++    constexpr int NKS     = HEAD_DIM / 16;
++    constexpr int MT      = TILE / 16;
++    constexpr int KSTR    = HEAD_DIM + (CTG ? 8 : 4);
++    constexpr int VSTR    = TILE + (CTG ? 8 : 4);
++    constexpr int NTHR    = NWARPS * 32;
++    constexpr int NB      = TILE / BS;                       // block-table entries per tile
++    constexpr int KEL     = KWIDE ? 16 : 8;                  // K elements fetched per thread-pass
++    constexpr int KITEMS  = TILE * (HEAD_DIM / KEL);          // K passes needed for one tile
++    constexpr int KPASS   = (KITEMS + NTHR - 1) / NTHR;        // passes per thread
++    constexpr int KREGS   = KPASS * (KVP ? 2 : 1);             // uint4 of raw K per thread
++    constexpr int NTR     = (TILE / 8) * (HEAD_DIM / (KVP ? 32 : 64));
++    constexpr int VREGS   = (NTR + NWARPS - 1) / NWARPS;        // uint4 of raw V per thread
++    constexpr float PSHIFT = D::SHIFT;
++    constexpr float PGROW  = PV8 ? 8.0f : D::GROW;   // e4m3 max is 448 = 2^8.8
++    static_assert(!KWIDE || KPASS == 1, "the wide K fetch is one straight-line pass");
++    static_assert(!K6 || KWIDE, "k6_v4 K is staged sixteen dims a thread");
++    static_assert((!QK8 && !PV8) || CTG, "the 8-bit fragment maps are written for CONTIG");
++    static_assert(!KVP && !V4 && !K6 && !SPLIT && !WIN,
++                  "this copy reads fp8 K and V from two pools: the bf16, packed, split and windowed forms are not ported");
++
++    constexpr int KSTR8 = HEAD_DIM + 8, VSTR8 = TILE + 8;
++    __shared__ uint16_t sK[QK8 ? (TILE * KSTR8 + 1) / 2 : TILE * KSTR];
++    __shared__ uint16_t sV16[PV8 ? (HEAD_DIM * VSTR8 + 1) / 2 : HEAD_DIM * VSTR];
++    uint8_t* const sK8 = (uint8_t*)sK;
++    uint8_t* const sV8 = (uint8_t*)sV16;
++
++    const int tid = threadIdx.x, lane = tid & 31, warp = tid >> 5;
++    // The launch is NTHR threads. Stated, so the wide K fetch's `key >= TILE` test (never true:
++    // KITEMS == NTHR) folds: as a branch its join made the compiler wait on every load in flight right
++    // after the K fetch, the V stores' cover included.
++    if constexpr (!OLDV4) __builtin_assume(tid < NTHR);
++    const int c = lane & 15, h = lane >> 4;
++
++    // SPLIT: blockIdx.x = qtile * splits + segment; wave-uniform, so the divide is scalar.
++    const int qb = SPLIT ? (int)blockIdx.x / a.splits : (int)blockIdx.x;
++    const int sp = SPLIT ? (int)blockIdx.x - qb * a.splits : 0;
++    const int kvh = blockIdx.y, seq = blockIdx.z;
++    const int ctx = a.ctx;
++    if (ctx <= 0) return;
++
++    // Ragged batches: this sequence owns rows [qoff, qoff+qlen) of q and out. grid.x is sized from
++    // the batch maximum q_len, so blocks past a shorter sequence's end exit here.
++    const int qoff = r4d_q_off(a.cu_q, seq, a.q_len);
++    const int qlen = r4d_q_len(a.cu_q, seq, a.q_len);
++    if (qb * BLOCK_Q >= qlen) return;
++
++    const int row = warp * 16 + c;
++    const int qi = row / GQA, hi = row - qi * GQA;
++    const int qpos = qb * BLOCK_Q + qi;
++    const bool live = (qpos < qlen);
++    const int qrow = live ? qpos : (qlen - 1);
++    const int qhead = kvh * GQA + hi;
++
++    const int* __restrict__ bt = a.block_table + (size_t)seq * a.max_blocks;
++
++    // SPLIT: tps tiles a segment, as r4d_attn_tps cuts tiles(ctx). A segment at or past the merge's
++    // segment count u = ceil(tiles / tps) is never read: exit. One wholly past this workgroup's
++    // causal end must still be written, since the merge reads all u segments of every row: its walk
++    // is empty, so the epilogue stores the empty partial (O = 0, m_ref = -3e38, l = 0), and the
++    // prologue's prefetch of tile tstart stays inside the sequence. (A separate early store spills
++    // k6_v4's next-tile fetch addresses inside the tile loop.)
++    const int sp_tps = SPLIT ? ((ctx + TILE - 1) / TILE + a.splits - 1) / a.splits : 0;
++    if constexpr (SPLIT) {
++        if (sp * sp_tps >= (ctx + TILE - 1) / TILE) return;
++    }
++
++    const float kdesc = a.k_descale ? a.k_descale[seq * a.kv_heads + kvh] : 1.0f;
++    const float vdesc = a.v_descale ? a.v_descale[seq * a.kv_heads + kvh] : 1.0f;
++    const float mul   = a.scale * kdesc * 1.44269504089f;
++
++    frag16 qf[NKS];
++    v2i32_r4d qf8[QK8 ? NKS : 1];
++    {
++        const uint16_t* qp = (const uint16_t*)a.q
++                           + ((size_t)(qoff + qrow) * a.q_heads + qhead) * HEAD_DIM;
++        #pragma unroll
++        for (int t = 0; t < NKS; ++t) {
++            // CONTIG reads the 8 dims as one run; the split map takes them 4+4.
++            const uint2 l0 = *(const uint2*)(qp + 16 * t + (CTG ? 8 * h : 4 * h));
++            const uint2 h0 = *(const uint2*)(qp + 16 * t + (CTG ? 8 * h + 4 : 8 + 4 * h));
++            if constexpr (QK8) {
++                const float m_ = FOLDQ ? mul : 1.0f;
++                #define R4D_QB(w) __builtin_bit_cast(float, (w) << 16) * m_, \
++                                  __builtin_bit_cast(float, (w) & 0xffff0000u) * m_
++                qf8[t] = (v2i32_r4d){(int)pk_fp8x4(R4D_QB(l0.x), R4D_QB(l0.y)),
++                                     (int)pk_fp8x4(R4D_QB(h0.x), R4D_QB(h0.y))};
++                #undef R4D_QB
++            } else {
++                qf[t] = D::mk(make_uint2(r4d_qcvt<D, FOLDQ, F16>(l0.x, mul),
++                                         r4d_qcvt<D, FOLDQ, F16>(l0.y, mul)),
++                              make_uint2(r4d_qcvt<D, FOLDQ, F16>(h0.x, mul),
++                                         r4d_qcvt<D, FOLDQ, F16>(h0.y, mul)));
++            }
++        }
++    }
++
++    const int klimit = ctx - qlen + qpos;
++    // First key in this row's window, floored at zero. Same formula as r4d_attn_wlo, which is
++    // defined in the decode unit, included after this one.
++    int wlo = (WIN && a.window > 0) ? (ctx - qlen + qpos - a.window + 1) : 0;
++    if (WIN && a.window > 0 && wlo < 0) wlo = 0;
++
++    float m_ref = -3.0e38f;
++    float off   = PSHIFT + 3.0e38f;
++    float l_i   = 0.0f;
++    v8f acc[NKS];
++    #pragma unroll
++    for (int t = 0; t < NKS; ++t) acc[t] = (v8f){0,0,0,0,0,0,0,0};
++
++    const int qmax_cta   = min(qb * BLOCK_Q + BLOCK_Q - 1, qlen - 1);
++    const int klimit_cta = ctx - qlen + qmax_cta;
++    const int ctiles = (min(klimit_cta + 1, ctx) + TILE - 1) / TILE;
++    // SPLIT: the segment's tiles, clipped at the causal end (empty when it starts past it).
++    const int ntiles = SPLIT ? min((sp + 1) * sp_tps, ctiles) : ctiles;
++    // First window tile, taken at this workgroup's first query row (the one reaching furthest
++    // back), not the chunk's row 0, so fully masked tiles are never walked. Starts at 0 without a
++    // window.
++    const int wlo0 = (WIN && a.window > 0) ? (ctx - qlen + qb * BLOCK_Q - a.window + 1) : 0;
++    const int tstart = SPLIT ? sp * sp_tps
++                     : (WIN && a.window > 0 && wlo0 > 0) ? (wlo0 / TILE) : 0;
++
++    // ---- staging, split into a global fetch (registers) and an LDS store ------------------------
++    // The split lets GPREV move the fetch out from between the barriers.
++    const int vg = lane >> 3, vj = lane & 7;
++    uint4 kreg[KREGS], vreg[VREGS];
++
++    // ---- fp8_v4 / k6_v4: V is int4 in groups of 32 with an f16 scale (absmax / 7): 16 bytes of
++    // codes a group at VOFF (dim d at bits 4*(d%8) of word d/8), the group scales at VSOFF. A thread stages one key pair's 8 dims: two code words and the pair's scale,
++    // fetched a tile ahead like GPREV's V, so the loads are in flight across the m-tile loop. They
++    // widen into sV16 ([dim][key]) as a dword per dim holding both keys: with u = code ^ 8 (offset
++    // binary), 0x6400 | u is the f16 1024 + u, so (x - 1032) * s is the value times s, rounded
++    // once. Key pairs run fastest across lanes,
++    // which keeps the dword stores of one dim row in distinct banks.
++    static_assert(!V4 || F16, "fp8_v4 widens V to f16");
++    constexpr int NP4 = (TILE / 2) * (HEAD_DIM / 8);
++    constexpr int U4  = V4 ? (NP4 + NTHR - 1) / NTHR : 1;
++    // The pair's two scales stay apart until storeV4 packs them: packed here, the prefetch a tile
++    // ahead would be waited on right after it is issued (fp8_v4 packs here, see KLATE).
++    uint32_t v4c[U4][2], v4s[U4][2];
++    auto fetchV4 = [&](int k0, const int* blks) {
++        #pragma unroll
++        for (int r = 0; r < U4; ++r) {
++            const int u = tid + r * NTHR;
++            if (NP4 % NTHR == 0 || u < NP4) {
++                const int kp = u % (TILE / 2), o = u / (TILE / 2);
++                uint32_t sc[2];
++                #pragma unroll
++                for (int j = 0; j < 2; ++j) {
++                    const int kk = min(k0 + 2 * kp + j, ctx - 1);
++                    const int bk = BTS ? blks[(kk - k0) / BS] : bt[kk / BS];
++                    const uint8_t* base = (const uint8_t*)a.kv + (size_t)bk * a.kv_block_stride
++                                        + (size_t)kvh * a.kv_head_stride + (size_t)(kk % BS) * ROWB;
++                    v4c[r][j] = *(const uint32_t*)(base + VOFF + o * 4);
++                    sc[j]     = *(const uint16_t*)(base + VSOFF + (o >> 2) * 2);
++                }
++                if constexpr (OLDV4) { v4s[r][0] = sc[0] | (sc[1] << 16); v4s[r][1] = 0; }
++                else                 { v4s[r][0] = sc[0]; v4s[r][1] = sc[1]; }
++            }
++        }
++    };
++    auto storeV4 = [&]() {
++        typedef _Float16 h2 __attribute__((ext_vector_type(2)));
++        #pragma unroll
++        for (int r = 0; r < U4; ++r) {
++            const int u = tid + r * NTHR;
++            if (NP4 % NTHR == 0 || u < NP4) {
++                const int kp = u % (TILE / 2), o = u / (TILE / 2);
++                // Codes are two's complement nibbles; ^ 8 makes them offset binary (value + 8).
++                const uint32_t n0 = (v4c[r][0] & 0x0F0F0F0Fu) ^ 0x08080808u;
++                const uint32_t m0 = ((v4c[r][0] >> 4) & 0x0F0F0F0Fu) ^ 0x08080808u;
++                const uint32_t n1 = (v4c[r][1] & 0x0F0F0F0Fu) ^ 0x08080808u;
++                const uint32_t m1 = ((v4c[r][1] >> 4) & 0x0F0F0F0Fu) ^ 0x08080808u;
++                const h2 s2 = __builtin_bit_cast(h2, OLDV4 ? v4s[r][0] : (v4s[r][0] | (v4s[r][1] << 16)));
++                const h2 bias = { (_Float16)1032.0f, (_Float16)1032.0f };
++                uint16_t* dst = &sV16[(o * 8) * VSTR + 2 * kp];
++                uint8_t* dst8 = &sV8[(o * 8) * VSTR8 + 2 * kp];
++                #pragma unroll
++                for (int b = 0; b < 4; ++b) {
++                    // Byte b of the first key's word low, of the second key's word in the high half:
++                    // perm selects source bytes 0-3 from its second operand, 4-7 from its first,
++                    // and 0x0c is a zero byte.
++                    const uint32_t sel = (uint32_t)b | 0x0c00u | ((uint32_t)(4 + b) << 16) | 0x0c000000u;
++                    const uint32_t lo = __builtin_amdgcn_perm(n1, n0, sel) | 0x64006400u;   // dim 2b
++                    const uint32_t hi = __builtin_amdgcn_perm(m1, m0, sel) | 0x64006400u;   // dim 2b+1
++                    const h2 vl = (__builtin_bit_cast(h2, lo) - bias) * s2;
++                    const h2 vh = (__builtin_bit_cast(h2, hi) - bias) * s2;
++                    if constexpr (PV8) {
++                        // [dim][key] bytes: the pair's two keys as one 16-bit store a dim
++                        *(uint16_t*)(dst8 + (2 * b) * VSTR8)     = (uint16_t)pk_fp8x2_h(__builtin_bit_cast(uint32_t, vl));
++                        *(uint16_t*)(dst8 + (2 * b + 1) * VSTR8) = (uint16_t)pk_fp8x2_h(__builtin_bit_cast(uint32_t, vh));
++                        continue;
++                    }
++                    *(uint32_t*)(dst + (2 * b) * VSTR)     = __builtin_bit_cast(uint32_t, vl);
++                    *(uint32_t*)(dst + (2 * b + 1) * VSTR) = __builtin_bit_cast(uint32_t, vh);
++                }
++            }
++        }
++    };
++
++    auto fetchK = [&](int k0, const int* blks) {
++        #pragma unroll
++        for (int p = 0; p < KPASS; ++p) {
++            const int i = tid + p * NTHR;
++            if (KITEMS % NTHR == 0 || i < KITEMS) {
++                const int key = KWIDE ? (2 * (i >> 5) + (i & 1)) : (i / (HEAD_DIM / KEL));
++                const int ch  = KWIDE ? ((i & 31) >> 1) : (i - key * (HEAD_DIM / KEL));
++                if (KWIDE && key >= TILE) continue;
++                const int kk  = min(k0 + key, ctx - 1);
++                const int blk = BTS ? blks[(kk - k0) / BS] : bt[kk / BS];
++                const size_t o = (size_t)blk * a.kv_block_stride
++                               + (size_t)kvh * a.kv_head_stride + (size_t)(kk % BS) * ROWB;
++                if (KVP) {
++                    const uint16_t* g = (const uint16_t*)a.kv + o + ch * KEL;
++                    #pragma unroll
++                    for (int q = 0; q < (KVP ? (KEL / 8) : 1); ++q)
++                        kreg[p * (KEL / 8) + q] = *(const uint4*)(g + 8 * q);
++                } else if (K6) {
++                    // k6_v4: the chunk's sixteen low nibbles, its high-bit word, its group's scale.
++                    const uint8_t* rp = (const uint8_t*)a.kv + o;
++                    const uint2 lo = *(const uint2*)(rp + ch * 8);
++                    kreg[p] = make_uint4(lo.x, lo.y, *(const uint32_t*)(rp + HEAD_DIM / 2 + ch * 4),
++                                         *(const uint16_t*)(rp + KSOFF + (ch >> 1) * 2));
++                } else if (KWIDE) {
++                    kreg[p] = *(const uint4*)((const uint8_t*)a.kv + o + ch * 16);
++                } else {
++                    const uint2 r = *(const uint2*)((const uint8_t*)a.kv + o + ch * 8);
++                    kreg[p] = make_uint4(r.x, r.y, 0, 0);
++                }
++            }
++        }
++    };
++
++    auto fetchV = [&](int k0, const int* blks) {
++        #pragma unroll
++        for (int r = 0; r < VREGS; ++r) {
++            const int idx = warp + r * NWARPS;
++            if (NTR % NWARPS == 0 || idx < NTR) {
++                constexpr int DG = HEAD_DIM / (KVP ? 32 : 64);
++                const int kg = idx / DG, dg = idx - kg * DG;
++                const int kk = min(k0 + kg * 8 + vj, ctx - 1);
++                const int d0 = dg * (KVP ? 32 : 64) + vg * (KVP ? 8 : 16);
++                const int blk = BTS ? blks[(kk - k0) / BS] : bt[kk / BS];
++                const size_t o = (size_t)blk * a.kv_block_stride
++                               + (size_t)kvh * a.kv_head_stride
++                               + (size_t)(kk % BS) * ROWB + d0;
++                const void* p = KVP ? (const void*)((const uint16_t*)a.v + o)
++                                    : (const void*)((const uint8_t*)a.v + o);
++                vreg[r] = __builtin_bit_cast(uint4, load_tr_b128(p));
++            }
++        }
++    };
++
++    auto storeK = [&]() {
++        #pragma unroll
++        for (int p = 0; p < KPASS; ++p) {
++            const int i = tid + p * NTHR;
++            if (KITEMS % NTHR == 0 || i < KITEMS) {
++                const int key = KWIDE ? (2 * (i >> 5) + (i & 1)) : (i / (HEAD_DIM / KEL));
++                const int ch  = KWIDE ? ((i & 31) >> 1) : (i - key * (HEAD_DIM / KEL));
++                if (KWIDE && key >= TILE) continue;
++                if constexpr (QK8 && K6) {
++                    // k6_v4: widen to f16 as below, then round each value once to e4m3
++                    const uint4 r = kreg[p];
++                    #pragma unroll
++                    for (int q = 0; q < 2; ++q) {
++                        uint32_t w4[4];
++                        k6x8_to_f16x4w(q ? r.y : r.x, r.z, q, r.w | (r.w << 16), w4);
++                        *(uint2*)(&sK8[key * KSTR8 + ch * KEL + 8 * q]) =
++                            make_uint2(pk_fp8x4_h(w4[0], w4[1]), pk_fp8x4_h(w4[2], w4[3]));
++                    }
++                    continue;
++                } else if constexpr (QK8) {
++                    *(uint4*)(&sK8[key * KSTR8 + ch * KEL]) = kreg[p];
++                    continue;
++                }
++                uint16_t* kd = &sK[key * KSTR + ch * KEL];
++                #pragma unroll
++                for (int q = 0; q < KEL / 8; ++q) {
++                    uint32_t w4[4];
++                    if (KVP) {
++                        const uint4 r = kreg[p * (KEL / 8) + q];
++                        w4[0] = D::from_bf16w(r.x); w4[1] = D::from_bf16w(r.y);
++                        w4[2] = D::from_bf16w(r.z); w4[3] = D::from_bf16w(r.w);
++                    } else {
++                        const uint4 r = kreg[p];
++                        if constexpr (K6) k6x8_to_f16x4w(q ? r.y : r.x, r.z, q, r.w | (r.w << 16), w4);
++                        else fp8x8_to_16x4w<D>(q ? make_uint2(r.z, r.w) : make_uint2(r.x, r.y), w4);
++                    }
++                    *(uint2*)(kd + 8 * q)     = make_uint2(w4[0], w4[1]);
++                    *(uint2*)(kd + 8 * q + 4) = make_uint2(w4[2], w4[3]);
++                }
++            }
++        }
++    };
++
++    auto storeV = [&]() {
++        #pragma unroll
++        for (int r = 0; r < VREGS; ++r) {
++            const int idx = warp + r * NWARPS;
++            if (NTR % NWARPS == 0 || idx < NTR) {
++                constexpr int DG = HEAD_DIM / (KVP ? 32 : 64);
++                const int kg = idx / DG, dg = idx - kg * DG;
++                const int d0 = dg * (KVP ? 32 : 64) + vg * (KVP ? 8 : 16);
++                const uint4 v = vreg[r];
++                if (KVP) {
++                    uint16_t* dst = &sV16[(d0 + vj) * VSTR + kg * 8];
++                    *(uint2*)(dst)     = make_uint2(D::from_bf16w(v.x), D::from_bf16w(v.y));
++                    *(uint2*)(dst + 4) = make_uint2(D::from_bf16w(v.z), D::from_bf16w(v.w));
++                } else {
++                    // tr_b128 transposes 16-bit lanes, so each short holds two fp8 from adjacent
++                    // dims; v_perm_b32 splits them into two dim rows.
++                    const uint32_t lo0 = byte_gather(v.x, v.y, 0), lo1 = byte_gather(v.z, v.w, 0);
++                    const uint32_t hi0 = byte_gather(v.x, v.y, 1), hi1 = byte_gather(v.z, v.w, 1);
++                    if constexpr (PV8) {
++                        *(uint2*)(&sV8[(d0 + 2 * vj)     * VSTR8 + kg * 8]) = make_uint2(lo0, lo1);
++                        *(uint2*)(&sV8[(d0 + 2 * vj + 1) * VSTR8 + kg * 8]) = make_uint2(hi0, hi1);
++                        continue;
++                    }
++                    uint32_t wl[4], wh[4];
++                    fp8x8_to_16x4w<D>(make_uint2(lo0, lo1), wl);
++                    fp8x8_to_16x4w<D>(make_uint2(hi0, hi1), wh);
++                    uint16_t* a0 = &sV16[(d0 + 2 * vj)     * VSTR + kg * 8];
++                    uint16_t* a1 = &sV16[(d0 + 2 * vj + 1) * VSTR + kg * 8];
++                    *(uint2*)(a0)     = make_uint2(wl[0], wl[1]);
++                    *(uint2*)(a0 + 4) = make_uint2(wl[2], wl[3]);
++                    *(uint2*)(a1)     = make_uint2(wh[0], wh[1]);
++                    *(uint2*)(a1 + 4) = make_uint2(wh[2], wh[3]);
++                }
++            }
++        }
++    };
++
++    // Tile ti's block-table entries are loaded during tile ti-1, off the KV address chain.
++    // A multi-block tile can run past the sequence's last block (on the last row, past the end of
++    // the table). Keys are clamped to ctx - 1, so entries past lastb are never used; only tiles
++    // reaching past lastb take the clamped load. With NB == 1 the test folds away.
++    const int lastb = (ctx - 1) / BS;
++    auto load_bt = [&](int t0, int* out) {
++        if (NB > 1 && t0 + NB - 1 > lastb) {
++            #pragma unroll
++            for (int i = 0; i < NB; ++i) out[i] = bt[min(t0 + i, lastb)];
++        } else {
++            #pragma unroll
++            for (int i = 0; i < NB; ++i) out[i] = bt[t0 + i];
++        }
++    };
++    int blk[NB];
++    if (BTS) load_bt(tstart * NB, blk);
++    if (GPREV) fetchV(tstart * TILE, blk);
++    if (V4) fetchV4(tstart * TILE, blk);
++    if (KLATE) fetchK(tstart * TILE, blk);
++
++    for (int ti = tstart; ti < ntiles; ++ti) {
++        const int k0 = ti * TILE;
++        int blkn[NB];
++        if (BTS && ti + 1 < ntiles) {
++            load_bt((ti + 1) * NB, blkn);
++        }
++        if (LDSB) lds_barrier(); else __syncthreads();
++        if (!KLATE) fetchK(k0, blk);
++        // V first: already in registers.
++        if constexpr (V4) { storeV4(); } else { if (!GPREV) fetchV(k0, blk); storeV(); }
++        storeK();
++        if (LDSB) lds_barrier(); else __syncthreads();
++        // Issue the next tile's V loads before the WMMAs below; they are consumed after the next
++        // barrier.
++        if (GPREV && ti + 1 < ntiles) fetchV(k0 + TILE, blkn);
++        if (V4 && ti + 1 < ntiles) fetchV4(k0 + TILE, blkn);
++
++        #pragma unroll 1
++        for (int mt = 0; mt < MT; ++mt) {
++            v8f s = (v8f){0,0,0,0,0,0,0,0};
++            if constexpr (QK8) {
++                const uint8_t* krow8 = &sK8[(mt * 16 + c) * KSTR8] + 8 * h;
++                #pragma unroll
++                for (int g = 0; g < NKS; g += PF) {
++                    v2i32_r4d kb8[PF];
++                    #pragma unroll
++                    for (int j = 0; j < PF; ++j)
++                        kb8[j] = *(const v2i32_r4d*)(krow8 + 16 * (g + j));
++                    if (SGB) sched_barrier();
++                    #pragma unroll
++                    for (int j = 0; j < PF; ++j)
++                        s = __builtin_amdgcn_wmma_f32_16x16x16_fp8_fp8_w32_gfx12(kb8[j], qf8[g + j], s);
++                }
++            } else {
++                const uint16_t* krow = &sK[(mt * 16 + c) * KSTR] + (CTG ? 8 * h : 0);
++                // Load PF fragments before issuing their WMMAs, so each WMMA waits on
++                // s_wait_dscnt PF-1 instead of a full drain.
++                #pragma unroll
++                for (int g = 0; g < NKS; g += PF) {
++                    frag16 kb[PF];
++                    #pragma unroll
++                    for (int j = 0; j < PF; ++j) {
++                        const uint16_t* kp = krow + 16 * (g + j);
++                        if (CTG) {
++                            const uint4 u = *(const uint4*)kp;
++                            kb[j] = D::mk(make_uint2(u.x, u.y), make_uint2(u.z, u.w));
++                        } else {
++                            kb[j] = D::mk(*(const uint2*)(kp + 4 * h),
++                                          *(const uint2*)(kp + 8 + 4 * h));
++                        }
++                    }
++                    if (SGB) sched_barrier();
++                    #pragma unroll
++                    for (int j = 0; j < PF; ++j) s = D::wmma(kb[j], qf[g + j], s);
++                }
++            }
++            if (KLATE && mt == MT - 1 && ti + 1 < ntiles) fetchK(k0 + TILE, blkn);
++            float sc[8];
++            #pragma unroll
++            for (int e = 0; e < 8; ++e) sc[e] = FOLDQ ? s[e] : s[e] * mul;
++
++            const int kbase = k0 + mt * 16 + 8 * h;
++            // Mask keys past klimit and, with WIN, before wlo. MSKIP skips tiles straddling neither.
++            if (!MSKIP || wave_any(kbase + 7 > klimit) || (WIN && wave_any(kbase < wlo))) {
++                #pragma unroll
++                for (int e = 0; e < 8; ++e) sc[e] = ((kbase + e <= klimit) && (!WIN || kbase + e >= wlo))
++                                                    ? sc[e] : -INFINITY;
++            }
++
++            float smax = sc[0];
++            #pragma unroll
++            for (int e = 1; e < 8; ++e) smax = fmaxf(smax, sc[e]);
++            // Both half-waves hold the same query and different keys. The branch must be
++            // wave-uniform, but each query may change scale only on its own growth threshold;
++            // otherwise other live query rows change its rounding when the chunk length changes.
++            const float rmax = fmaxf(smax, swap16(smax));
++            const bool row_grow = live && rmax > m_ref + PGROW;
++            if (wave_any(row_grow)) {
++                const float mnew = row_grow ? fmaxf(fmaxf(m_ref, rmax), -3.0e38f) : m_ref;
++                const float alpha = ex2(m_ref - mnew);
++                #pragma unroll
++                for (int dt = 0; dt < NKS; ++dt)
++                    #pragma unroll
++                    for (int e = 0; e < 8; ++e) acc[dt][e] *= alpha;
++                l_i *= alpha;
++                m_ref = mnew;
++                off   = PSHIFT - mnew;
++            }
++
++            float pf[8], lsum = 0.0f;
++            #pragma unroll
++            for (int e = 0; e < 8; ++e) {
++                const float p = ex2(sc[e] + off);
++                pf[e] = p;
++                if (!DOT2) lsum += p;
++            }
++            if (!DOT2) l_i += lsum;
++
++            if constexpr (PV8) {
++                const v2i32_r4d p8 = (v2i32_r4d){(int)pk_fp8x4(pf[0], pf[1], pf[2], pf[3]),
++                                                 (int)pk_fp8x4(pf[4], pf[5], pf[6], pf[7])};
++                const uint8_t* vbase8 = &sV8[c * VSTR8 + mt * 16 + 8 * h];
++                #pragma unroll
++                for (int g = 0; g < NKS; g += PF) {
++                    v2i32_r4d vb8[PF];
++                    #pragma unroll
++                    for (int j = 0; j < PF; ++j)
++                        vb8[j] = *(const v2i32_r4d*)(vbase8 + (size_t)(g + j) * 16 * VSTR8);
++                    if (SGB) sched_barrier();
++                    #pragma unroll
++                    for (int j = 0; j < PF; ++j)
++                        acc[g + j] = __builtin_amdgcn_wmma_f32_16x16x16_fp8_fp8_w32_gfx12(vb8[j], p8, acc[g + j]);
++                }
++            } else {
++                uint32_t pw[4];
++                #pragma unroll
++                for (int e = 0; e < 8; e += 2) pw[e >> 1] = D::pk(pf[e], pf[e + 1]);
++                if (DOT2) {
++                    const v2hf one = {(__fp16)1.0f, (__fp16)1.0f};
++                    #pragma unroll
++                    for (int e = 0; e < 4; ++e)
++                        l_i = __builtin_amdgcn_fdot2(__builtin_bit_cast(v2hf, pw[e]), one, l_i, false);
++                }
++                const uint2 lo  = make_uint2(pw[0], pw[1]);
++                const uint2 hi2 = make_uint2(pw[2], pw[3]);
++                // QK leaves lane (c,h) holding keys 8h+e. Under CONTIG that is already the B
++                // fragment; the split map needs a cross-half exchange.
++                frag16 p16;
++                if (CTG) {
++                    p16 = D::mk(lo, hi2);
++                } else {
++                    const uint2 y = swap16_u2p((h == 0) ? hi2 : lo);
++                    p16 = (h == 0) ? D::mk(lo, y) : D::mk(y, hi2);
++                }
++                const uint16_t* vbase = &sV16[c * VSTR + mt * 16] + (CTG ? 8 * h : 0);
++                #pragma unroll
++                for (int g = 0; g < NKS; g += PF) {
++                    frag16 vb[PF];
++                    #pragma unroll
++                    for (int j = 0; j < PF; ++j) {
++                        const uint16_t* vp = vbase + (g + j) * 16 * VSTR;
++                        if (CTG) {
++                            const uint4 u = *(const uint4*)vp;
++                            vb[j] = D::mk(make_uint2(u.x, u.y), make_uint2(u.z, u.w));
++                        } else {
++                            vb[j] = D::mk(*(const uint2*)(vp + 4 * h),
++                                          *(const uint2*)(vp + 8 + 4 * h));
++                        }
++                    }
++                    if (SGB) sched_barrier();
++                    #pragma unroll
++                    for (int j = 0; j < PF; ++j) acc[g + j] = D::wmma(vb[j], p16, acc[g + j]);
++                }
++            }
++        }
++        if (BTS) {
++            #pragma unroll
++            for (int i = 0; i < NB; ++i) blk[i] = blkn[i];
++        }
++    }
++
++    if (!live) return;
++    // fetch-inactive: the split store reads l_i under `if (h == 0)` only, so the exchange may be sunk
++    // into that half; swap16_fi still reads the partner's half of the row sum.
++    l_i += swap16_fi(l_i);
++    if constexpr (SPLIT) {
++        // Unnormalised: the merge weighs segments by 2^(m - max m) and applies v_descale itself.
++        r4d_prefill_store_partial<NKS, HEAD_DIM>(a, qoff + qpos, qhead, sp, acc, m_ref, l_i, h);
++        return;
++    }
++    const float inv = (l_i > 0.0f) ? (vdesc / l_i) : 0.0f;
++    uint16_t* op = (uint16_t*)a.out
++                 + ((size_t)(qoff + qpos) * a.q_heads + qhead) * HEAD_DIM;
++    #pragma unroll
++    for (int dt = 0; dt < NKS; ++dt) {
++        uint32_t tw[4];
++        #pragma unroll
++        for (int e = 0; e < 8; e += 2)
++            tw[e >> 1] = (uint32_t)f32_to_bf16(acc[dt][e] * inv)
++                       | ((uint32_t)f32_to_bf16(acc[dt][e + 1] * inv) << 16);
++        *(uint4*)(op + dt * 16 + 8 * h) = make_uint4(tw[0], tw[1], tw[2], tw[3]);
++    }
++}
+diff --git a/python/sglang/kernels/aot/csrc/attention/prefill_attn_fp8_hip/r4d_common.h b/python/sglang/kernels/aot/csrc/attention/prefill_attn_fp8_hip/r4d_common.h
+new file mode 100644
+index 0000000..221ac16
+--- /dev/null
++++ b/python/sglang/kernels/aot/csrc/attention/prefill_attn_fp8_hip/r4d_common.h
+@@ -0,0 +1,350 @@
++// Shared device-side machinery for R4D. The layout algebra here was verified on hardware with
++// targeted probes; do not "fix" it from a vendor doc.
++#pragma once
++#include <hip/hip_runtime.h>
++#include <cstdint>
++
++// The W4A8 scale group lives here, not in either GEMM, because both read the same packed weight and
++// a disagreement would be silently wrong, not a link error. r4d_gemm_args.h restates it and checks
++// it against the layout constant.
++#define R4D_GEMM_W4A8_GROUP 128      // K per scale
++
++// ---- ragged query batches ----------------------------------------------------------------------
++// A paged-attention batch may have a different query length per sequence (R4DArgs::cu_q in r4d.h).
++// These are the two lookups every kernel indexing the dense q or out block needs, plus the inverse
++// for the split-KV combine, which walks output rows rather than sequences. With cu_q null they
++// compile to one multiply and no load; the branch is wave-uniform (cu_q is a kernel argument).
++__device__ __forceinline__ int r4d_q_off(const int* cu_q, int seq, int q_len) {
++    return cu_q ? cu_q[seq] : seq * q_len;
++}
++__device__ __forceinline__ int r4d_q_len(const int* cu_q, int seq, int q_len) {
++    return cu_q ? (cu_q[seq + 1] - cu_q[seq]) : q_len;
++}
++// num_seqs is at most a few tens, so the search is a few scalar loads, once per block.
++__device__ __forceinline__ int r4d_q_seq(const int* cu_q, int num_seqs, int q_len, int tok) {
++    if (!cu_q) return tok / q_len;
++    int lo = 0, hi = num_seqs;                       // invariant: cu_q[lo] <= tok < cu_q[hi]
++    while (hi - lo > 1) {
++        const int mid = (lo + hi) >> 1;
++        if (cu_q[mid] <= tok) lo = mid; else hi = mid;
++    }
++    return lo;
++}
++
++// ---- the occupancy a kernel is built for ---------------------------------------------------------
++// R4D_WAVES(n) fixes the waves per SIMD the compiler schedules a kernel for. Otherwise the
++// scheduler picks that target itself and the choice moves between compiler releases (LLVM 24
++// serialises a GEMM's loads to win one more wave, paying a load round trip per WMMA). A kernel
++// whose speed rests on a register budget states it here. `n` may depend on template arguments.
++#define R4D_WAVES(n) __attribute__((amdgpu_waves_per_eu((n), (n))))
++
++typedef short    v8s __attribute__((ext_vector_type(8)));
++typedef float    v8f __attribute__((ext_vector_type(8)));
++typedef float    v2f __attribute__((ext_vector_type(2)));   // what cvt_pk_f32_fp8 actually returns
++
++/* A 16-byte staging register as a native vector. HIP's uint4 is a class template wrapping a
++ * union, and an array of them carried across a K loop (the next tile's chunks) is kept in scratch
++ * by LLVM 22 and 24, adding a scratch store and load per chunk; an ext_vector_type array is
++ * promoted to registers. Loaded and stored whole only. r4d_dflash_conv_body.h declares the same
++ * type for a source also compiled without this header. */
++typedef unsigned int r4d_u32x4 __attribute__((ext_vector_type(4)));
++
++// exp2 with the hardware transcendental.
++
++__device__ __forceinline__ float ex2(float x) {
++#if __has_builtin(__builtin_amdgcn_exp2f)
++    return __builtin_amdgcn_exp2f(x);
++#else
++    return exp2f(x);
++#endif
++}
++
++// f32 -> bf16, round-to-nearest-even, in software: gfx1201 has no v_cvt_pk_bf16_f32.
++__device__ __forceinline__ uint16_t f32_to_bf16(float f) {
++    uint32_t u = __builtin_bit_cast(uint32_t, f);
++    return (uint16_t)((u + 0x7fffu + ((u >> 16) & 1u)) >> 16);
++}
++
++// And back: a shift, since every bf16 is exactly a float.
++__device__ __forceinline__ float bf16_to_f32(uint16_t h) {
++    return __builtin_bit_cast(float, (uint32_t)h << 16);
++}
++
++// ---- 16-bit values held in whole registers -------------------------------------------------------
++// LLVM 24 gives gfx12 real 16-bit registers: a 16-bit value lives in one half of a VGPR. Packing
++// two bf16 then costs a shift and a half move per pair instead of one v_perm_b32, widening costs a
++// half move and a shift, and a 16-bit load into a half (global_load_d16_b16) depends on the
++// register's earlier contents, so the waitcnt pass waits for them. The helpers below keep bf16 data
++// in whole 32-bit registers from load to store, which compiles the same under LLVM 22 and 24 and
++// gives the same bits as the 16-bit forms.
++
++// f32 -> bf16 rounded to nearest even, as the high half of a word whose low half is not zero
++// (f32_to_bf16 before its final shift). A NaN can round to infinity, as there.
++__device__ __forceinline__ uint32_t bf16_hi_rne(float f) {
++    const uint32_t u = __float_as_uint(f);
++    return u + 0x7fffu + ((u >> 16) & 1u);
++}
++// Rounds as (__hip_bfloat16)f does (LLVM's expansion): a NaN stays NaN, quieted; everything else
++// rounds to nearest even. Both results are formed before the select so it compiles to one
++// v_cndmask; `nan ? u | 0x400000 : u + ...` makes each element an exec-masked branch.
++__device__ __forceinline__ uint32_t bf16_hi_rne_nan(float f) {
++    const uint32_t u = __float_as_uint(f);
++    const uint32_t r = u + 0x7fffu + ((u >> 16) & 1u), q = u | 0x400000u;
++    return f != f ? q : r;
++}
++// Two such words as one bf16 pair, `lo`'s high half in the low half: one byte permute.
++__device__ __forceinline__ uint32_t bf16_pack_hi(uint32_t lo, uint32_t hi) {
++    return __builtin_amdgcn_perm(hi, lo, 0x07060302u);
++}
++// Two floats as a bf16 pair (`lo` in the low half), rounded as f32_to_bf16 rounds.
++__device__ __forceinline__ uint32_t bf16x2_rne(float lo, float hi) {
++    return bf16_pack_hi(bf16_hi_rne(lo), bf16_hi_rne(hi));
++}
++// Two floats as a bf16 pair, rounded as (__hip_bfloat16) rounds.
++__device__ __forceinline__ uint32_t bf16x2_rne_nan(float lo, float hi) {
++    return bf16_pack_hi(bf16_hi_rne_nan(lo), bf16_hi_rne_nan(hi));
++}
++// A bf16 pair word's two values as floats: a shift and a mask, no conversion.
++__device__ __forceinline__ float bf16w_lo(uint32_t w) { return __uint_as_float(w << 16); }
++__device__ __forceinline__ float bf16w_hi(uint32_t w) { return __uint_as_float(w & 0xffff0000u); }
++
++// One 16-bit element of global memory, zero-extended into a whole register (global_load_u16).
++// Loaded as uint16_t it would go into a register half (global_load_d16_b16 or d16_hi_b16) and wait
++// for the other half; through a generic pointer it would also be a flat load. The pointer must
++// address global memory.
++typedef __attribute__((address_space(1))) const uint16_t* r4d_gu16;
++__device__ __forceinline__ uint32_t ldg_u16(const uint16_t* p) { return *(r4d_gu16)p; }
++
++// `lane ^ N` without the LDS pipe. `__shfl_xor` lowers to `ds_bpermute_b32` plus `s_wait_dscnt`,
++// an LDS round trip that dominates a dependency chain (e.g. a dot product closed in a token loop).
++// gfx10+ DPP16 has ROW_XMASK (0x160 | N), so for N < 16 the partner read is a modifier on the
++// consuming VALU op (`v_add_f32_dpp ... row_xmask:2`). N = 16 crosses the two 16-lane rows of a
++// wave32 and uses v_permlanex16, still one VALU op. Same lane mapping and value as the shuffle,
++// provided all lanes are active, which every caller's whole-wave butterfly guarantees.
++template <int N>
++__device__ __forceinline__ uint32_t r4d_xor_lane_u32(uint32_t v) {
++    static_assert(N >= 1 && N <= 16 && (N & (N - 1)) == 0, "a lane xor within the wave");
++    if constexpr (N < 16)
++        return (uint32_t)__builtin_amdgcn_update_dpp(0, (int)v, 0x160 | N, 0xf, 0xf, true);
++    else
++        return (uint32_t)__builtin_amdgcn_permlanex16((int)v, (int)v, 0x76543210u, 0xFEDCBA98u,
++                                                      false, false);
++}
++
++template <int N>
++__device__ __forceinline__ float r4d_xor_lane(float v) {
++    return __uint_as_float(r4d_xor_lane_u32<N>(__float_as_uint(v)));
++}
++
++// A 64-bit value's partner: the halves exchanged separately, as a 64-bit `__shfl_xor` does.
++template <int N>
++__device__ __forceinline__ unsigned long long r4d_xor_lane_u64(unsigned long long v) {
++    const uint32_t lo = r4d_xor_lane_u32<N>((uint32_t)v);
++    const uint32_t hi = r4d_xor_lane_u32<N>((uint32_t)(v >> 32));
++    return ((unsigned long long)hi << 32) | lo;
++}
++
++// Exchange between lane L and lane L^16 (the two halves a wave32 WMMA fragment splits a row
++// across). v_permlanex16_b32 swaps only with identity selectors (each 4-bit field names the source
++// lane in the other half; sel0 covers lanes 0-7, sel1 lanes 8-15); zero selectors would silently
++// broadcast lane 0.
++__device__ __forceinline__ float swap16(float x) { return r4d_xor_lane<16>(x); }
++
++// The same exchange with fetch-inactive set. swap16 assumes every lane is active; where only one half
++// consumes the result (a store under `if (h == 0)`), a compiler may sink the exchange into that half,
++// and with fi = 0 a lane then reads its own value for the inactive partner's. fi = 1 reads the
++// partner's register whatever exec says, so a pair sum stays a pair sum. Identical to swap16 with
++// every lane active.
++__device__ __forceinline__ float swap16_fi(float x) {
++    return __uint_as_float((uint32_t)__builtin_amdgcn_permlanex16(
++        (int)__float_as_uint(x), (int)__float_as_uint(x), 0x76543210u, 0xFEDCBA98u, true, false));
++}
++
++// A wave32 sum on DPP instead of the LDS crossbar. `__shfl_xor` is a `ds_bpermute_b32` on gfx1201
++// at any offset, queued behind other LDS traffic; where little arithmetic separates reductions, a
++// five-stage shuffle butterfly dominates the run. Offsets 8..1 use row_xmask (dpp_ctrl 0x160 | N)
++// as a modifier on the add; 16 uses v_permlanex16_b32 (see swap16).
++//
++// The lanes exchanged and the order of the adds match the shuffle loop, so this is bit-identical
++// and a kernel can move onto it without its output changing. Row and bank masks are all-ones since
++// every lane participates; `bound_ctrl` is moot because every lane has a partner.
++template <int CTRL>
++__device__ __forceinline__ float r4d_dpp_xor_add(float v) {
++    return v + __builtin_bit_cast(float,
++        __builtin_amdgcn_update_dpp(0, __builtin_bit_cast(int, v), CTRL, 0xF, 0xF, true));
++}
++
++__device__ __forceinline__ float r4d_wave_sum(float v) {
++    v += swap16(v);                        /* xor 16 -- crosses the two rows of sixteen */
++    v = r4d_dpp_xor_add<0x168>(v);         /* xor  8 -- row_xmask from here down */
++    v = r4d_dpp_xor_add<0x164>(v);         /* xor  4 */
++    v = r4d_dpp_xor_add<0x162>(v);         /* xor  2 */
++    v = r4d_dpp_xor_add<0x161>(v);         /* xor  1 */
++    return v;
++}
++
++// The same butterfly over a group of W lanes (W a power of two up to the wave): the exchanges of
++// `for (o = W / 2; o; o >>= 1) v = op(v, __shfl_xor(v, o))`, in its order, so bit-identical to
++// that loop.
++template <int W>
++__device__ __forceinline__ float r4d_xor_sum(float v) {
++    static_assert(W >= 1 && W <= 32 && (W & (W - 1)) == 0, "a power-of-two group within the wave");
++    if constexpr (W >= 32) v += r4d_xor_lane<16>(v);
++    if constexpr (W >= 16) v += r4d_xor_lane<8>(v);
++    if constexpr (W >= 8)  v += r4d_xor_lane<4>(v);
++    if constexpr (W >= 4)  v += r4d_xor_lane<2>(v);
++    if constexpr (W >= 2)  v += r4d_xor_lane<1>(v);
++    return v;
++}
++
++template <int W>
++__device__ __forceinline__ float r4d_xor_max(float v) {
++    static_assert(W >= 1 && W <= 32 && (W & (W - 1)) == 0, "a power-of-two group within the wave");
++    if constexpr (W >= 32) v = fmaxf(v, r4d_xor_lane<16>(v));
++    if constexpr (W >= 16) v = fmaxf(v, r4d_xor_lane<8>(v));
++    if constexpr (W >= 8)  v = fmaxf(v, r4d_xor_lane<4>(v));
++    if constexpr (W >= 4)  v = fmaxf(v, r4d_xor_lane<2>(v));
++    if constexpr (W >= 2)  v = fmaxf(v, r4d_xor_lane<1>(v));
++    return v;
++}
++
++__device__ __forceinline__ float r4d_wave_max(float v) { return r4d_xor_max<32>(v); }
++
++/* A wave's inclusive prefix and suffix sums in registers: row_shr (or row_shl) 1, 2, 4 and 8
++ * within each row of sixteen, then the other row's total from one readlane. Lane L ends with the
++ * sum over lanes 0..L (prefix) or L..31 (suffix). Replaces LDS step-doubling scans (two barriers a
++ * round); integer sums, so combine order does not matter. Every lane must be active. */
++__device__ __forceinline__ uint32_t r4d_wave_prefix_u32(uint32_t x, int lane) {
++    x += (uint32_t)__builtin_amdgcn_update_dpp(0, (int)x, 0x111, 0xF, 0xF, true);   /* row_shr:1 */
++    x += (uint32_t)__builtin_amdgcn_update_dpp(0, (int)x, 0x112, 0xF, 0xF, true);   /* row_shr:2 */
++    x += (uint32_t)__builtin_amdgcn_update_dpp(0, (int)x, 0x114, 0xF, 0xF, true);   /* row_shr:4 */
++    x += (uint32_t)__builtin_amdgcn_update_dpp(0, (int)x, 0x118, 0xF, 0xF, true);   /* row_shr:8 */
++    const uint32_t lo = (uint32_t)__builtin_amdgcn_readlane((int)x, 15);
++    return lane >= 16 ? x + lo : x;
++}
++
++__device__ __forceinline__ uint32_t r4d_wave_suffix_u32(uint32_t x, int lane) {
++    x += (uint32_t)__builtin_amdgcn_update_dpp(0, (int)x, 0x101, 0xF, 0xF, true);   /* row_shl:1 */
++    x += (uint32_t)__builtin_amdgcn_update_dpp(0, (int)x, 0x102, 0xF, 0xF, true);   /* row_shl:2 */
++    x += (uint32_t)__builtin_amdgcn_update_dpp(0, (int)x, 0x104, 0xF, 0xF, true);   /* row_shl:4 */
++    x += (uint32_t)__builtin_amdgcn_update_dpp(0, (int)x, 0x108, 0xF, 0xF, true);   /* row_shl:8 */
++    const uint32_t hi = (uint32_t)__builtin_amdgcn_readlane((int)x, 16);
++    return lane < 16 ? x + hi : x;
++}
++
++// 8x8 transpose of 16-bit elements across each group of 8 lanes. Lane j receives element j from
++// each of the 8 lanes in its group; the 8 addresses may be arbitrarily strided.
++__device__ __forceinline__ v8s load_tr_b128(const void* p) {
++    // This builtin requires a global (address_space(1)) pointer from ROCm 7.2 / LLVM 22 on; a
++    // generic pointer does not convert implicitly. Every caller passes a global address.
++    return __builtin_amdgcn_global_load_tr_b128_v8i16(
++        (__attribute__((address_space(1))) v8s*)const_cast<void*>(p));
++}
++
++// Gather the low (sel=0) or high (sel=1) byte of each of four 16-bit lanes of {w0,w1} into one
++// dword. Written so the compiler can contract each to a single v_perm_b32.
++__device__ __forceinline__ uint32_t byte_gather(uint32_t w0, uint32_t w1, int sel) {
++    uint32_t s = (uint32_t)sel * 8u;
++    return ((w0 >> s) & 0xffu)
++         | (((w0 >> (16 + s)) & 0xffu) << 8)
++         | (((w1 >> s) & 0xffu) << 16)
++         | (((w1 >> (16 + s)) & 0xffu) << 24);
++}
++
++__device__ __forceinline__ void sched_barrier() { __builtin_amdgcn_sched_barrier(0); }
++
++// __syncthreads() is a workgroup-scope acquire-release fence over all address spaces, so on gfx12
++// it emits `global_inv scope:SCOPE_SE` on both sides, discarding the L0/L1 lines the next tile's
++// KV loads would hit. These barriers only order LDS traffic, so the fence is scoped to the local
++// address space and the invalidate disappears.
++__device__ __forceinline__ void lds_barrier() {
++    __builtin_amdgcn_fence(__ATOMIC_RELEASE, "workgroup", "local");
++    __builtin_amdgcn_s_barrier();
++    __builtin_amdgcn_fence(__ATOMIC_ACQUIRE, "workgroup", "local");
++}
++
++// Two-dword form of swap16.
++__device__ __forceinline__ uint2 swap16_u2p(uint2 v) {
++    return make_uint2(__builtin_bit_cast(uint32_t, swap16(__builtin_bit_cast(float, v.x))),
++                      __builtin_bit_cast(uint32_t, swap16(__builtin_bit_cast(float, v.y))));
++}
++
++// ---------------------------------------------------------------------------------------------
++// Workgroup width for the activation-path kernels
++//
++// had_quant_act_i8, rmsnorm_had_quant_i8, gated_had_quant_i8 and gdn_gated_norm_had_quant_i8 launch
++// one workgroup per row, so at decode batch sizes the grid is a few tens of workgroups on a 64-CU
++// part and they are latency bound. Widening the workgroup is the only knob that adds parallelism,
++// and it is the large win at small M.
++//
++// It reverses once the grid alone fills the machine. At 1024 threads there is a residency cliff
++// just past M=32 where the wider workgroup stops fitting and the cost roughly doubles, so 1024 is
++// used only with clearance below it.
++//
++// Where 512 stops paying depends on K, because the K floats of LDS a row needs cap how many
++// workgroups a CU holds. At K=8704 only one fits at either width, so wider wins out to large M; at
++// K=3072 five fit, the grid fills the part, and past M~72 the narrow width is even. The thresholds
++// below are those crossovers.
++__host__ __device__ __forceinline__ int r4d_act_threads(int M, int K) {
++    if (M <= 32) return 1024;
++    const int lim = K >= 8192 ? (1 << 24) : (K >= 4096 ? 120 : 72);
++    return M <= lim ? 512 : 256;
++}
++
++// The partition a row's sum is folded over, whatever the workgroup width: lane v < kR4dSumLanes
++// adds columns v, v + kR4dSumLanes, ... in order, the lanes past it add nothing, and block_sum adds
++// the wave sums from the first. Folding over the width instead would round a row's norm by how many
++// rows its launch carries, since r4d_act_threads widens the workgroup at small M: the same token in
++// a 64-token prefill chunk and in a 2048-token one would get different bits. 256 is the narrowest
++// width, so a launch at it keeps the order it always had.
++constexpr uint32_t kR4dSumLanes = 256;
++
++// A row's sum of squares in kR4dSumLanes' partition: lane v < kR4dSumLanes adds f(row[v])^2,
++// f(row[v + 256])^2, ... in column order; the lanes past it return 0. The reads go out eight at a
++// time before their adds: one at a time, a row the block has just written and now reads back costs
++// a memory latency a column (21 in a row for a 5376-wide Gemma 3 hidden state, twice a sandwich
++// norm). The adds keep their order, so the bits are the one-at-a-time loop's.
++template <typename T, typename F>
++__device__ __forceinline__ float r4d_lanes_sumsq(const T* row, uint32_t n, F f) {
++    float ss = 0.0f;
++    if (threadIdx.x >= kR4dSumLanes) return ss;
++    uint32_t i = threadIdx.x;
++    for (; i + 7 * kR4dSumLanes < n; i += 8 * kR4dSumLanes) {
++        float v[8];
++#pragma unroll
++        for (int k = 0; k < 8; ++k) v[k] = f(row[i + k * kR4dSumLanes]);
++#pragma unroll
++        for (int k = 0; k < 8; ++k) ss += v[k] * v[k];
++    }
++    for (; i < n; i += kR4dSumLanes) { const float v = f(row[i]); ss += v * v; }
++    return ss;
++}
++
++// The full-card cliff of the R9700 (gfx1201, 64 CUs). A launch whose wavefront count falls in
++// the last 32 before a multiple of 2048 runs about five times slower than the same work one
++// workgroup wider, whatever the kernel does: 256-thread workgroups take 27.6 us at 253 to 256 of
++// them and 5.2 us at 252 or 257, for a norm, an LDS-only kernel and a copy alike.
++//
++// 2048 is every wave slot of the R9700 (64 CUs x 2 SIMDs x 16). Both numbers are that card's and
++// apply on every target libr4d builds for. They are not derived from the device: no other card has
++// been measured, and HIP's multiProcessorCount counts WGPs, not CUs, on RDNA. On an RDNA4 part with
++// fewer CUs a launch padded here costs one idle row and gives the same bytes; a cliff at that
++// part's own full-card size, if it has one, is not stepped past.
++//
++// r4d_cliff_rows() is the row count to launch for a grid of `rows` x `per_row` workgroups of
++// `waves` wavefronts each: `rows` where that is clear of the window, else the first count past it.
++// A row of `per_row * waves` wavefronts that is a multiple of 2048 lands every count on the cliff,
++// so it is launched as it is. The kernel returns at once in a row at or past `rows`, so the result
++// is unchanged.
++constexpr uint32_t kR4dCliffWaves  = 2048;   // the R9700's wave slots: 64 CUs x 2 SIMDs x 16
++constexpr uint32_t kR4dCliffWindow = 32;     // the slow window, below each multiple of it
++__host__ __device__ __forceinline__ uint32_t r4d_cliff_rows(uint32_t rows, uint32_t per_row,
++                                                            uint32_t waves) {
++    if ((uint64_t)per_row * waves % kR4dCliffWaves == 0) return rows;
++    uint32_t r = rows;
++    for (int i = 0; i < 64; ++i, ++r) {
++        const uint64_t w = (uint64_t)r * per_row * waves % kR4dCliffWaves;
++        if (w != 0 && w <= kR4dCliffWaves - kR4dCliffWindow) return r;
++    }
++    return rows;
++}
+diff --git a/python/sglang/kernels/aot/csrc/attention/prefill_attn_fp8_hip/r4d_dt16.h b/python/sglang/kernels/aot/csrc/attention/prefill_attn_fp8_hip/r4d_dt16.h
+new file mode 100644
+index 0000000..9148307
+--- /dev/null
++++ b/python/sglang/kernels/aot/csrc/attention/prefill_attn_fp8_hip/r4d_dt16.h
+@@ -0,0 +1,107 @@
++// 16-bit operand traits. The QK and PV matmuls take a 16-bit A/B pair, and both sources are exact
++// in either format: an fp8 e4m3 K/V has 3 mantissa bits (bf16 has 7, f16 10), and a bf16 query's
++// 7 bits are exact in f16 for |q| in [6.1e-5, 65504].
++// The costs differ. gfx1201 has no bf16 convert, so each f32->bf16 is ~6 VALU of software RTNE,
++// while v_cvt_pkrtz_f16_f32 converts two f32 in one; on the softmax path that is 24 VALU per
++// 8-element P fragment against 4. f16 also has 3 more mantissa bits; it gives up exponent range,
++// which GROW below accounts for.
++#pragma once
++#include "r4d_common.h"
++
++typedef __bf16   v8bf __attribute__((ext_vector_type(8)));
++typedef __fp16   v8hf __attribute__((ext_vector_type(8)));  // what the f16 WMMA builtin takes
++typedef __fp16   v2hf __attribute__((ext_vector_type(2)));  // what cvt_pkrtz returns
++
++// GROW = how many octaves the running row max may exceed the reference max before the accumulator
++// must be rescaled. p = 2^(s - m_ref) must stay inside the format, so GROW is log2(format max) with
++// margin. Eager online softmax pays 128 multiplies every m-tile; with a reference max they are paid
++// only when the max moves by more than GROW, which at long context is rare.
++template<int F16> struct DT16;
++
++template<> struct DT16<0> {                       // bf16: exponent range of f32
++    typedef v8bf frag;
++    static constexpr float SHIFT = 0.0f;
++    static constexpr float GROW  = 60.0f;         // 2^60 * |v| * n stays far under f32 max
++    __device__ __forceinline__ static frag mk(uint2 lo, uint2 hi) {
++        union { uint32_t w[4]; frag f; } u;       // union, never a pointer cast
++        u.w[0] = lo.x; u.w[1] = lo.y; u.w[2] = hi.x; u.w[3] = hi.y; return u.f;
++    }
++    __device__ __forceinline__ static v8f wmma(frag a, frag b, v8f c) {
++        return __builtin_amdgcn_wmma_f32_16x16x16_bf16_w32_gfx12(a, b, c);
++    }
++    __device__ __forceinline__ static uint32_t pk(float x, float y) {
++        return (uint32_t)f32_to_bf16(x) | ((uint32_t)f32_to_bf16(y) << 16);
++    }
++    __device__ __forceinline__ static uint32_t pkv(v2f x) {   // what cvt_pk_f32_fp8 returns
++        union { v2f f; uint32_t u[2]; } q; q.f = x;
++        return __builtin_amdgcn_perm(q.u[1], q.u[0], 0x07060302u);
++    }
++    __device__ __forceinline__ static uint32_t from_bf16w(uint32_t w) { return w; }  // identity
++};
++
++template<> struct DT16<1> {                       // f16: 3 more mantissa bits, 1 convert instead of 6
++    typedef v8hf frag;
++    static constexpr float SHIFT = 0.0f;
++    static constexpr float GROW  = 14.0f;         // p <= 2^14 = 16384 < 65504
++    __device__ __forceinline__ static frag mk(uint2 lo, uint2 hi) {
++        union { uint32_t w[4]; frag f; } u;
++        u.w[0] = lo.x; u.w[1] = lo.y; u.w[2] = hi.x; u.w[3] = hi.y; return u.f;
++    }
++    __device__ __forceinline__ static v8f wmma(frag a, frag b, v8f c) {
++        return __builtin_amdgcn_wmma_f32_16x16x16_f16_w32_gfx12(a, b, c);
++    }
++    __device__ __forceinline__ static uint32_t pk(float x, float y) {
++        union { v2hf h; uint32_t u; } q; q.h = __builtin_amdgcn_cvt_pkrtz(x, y); return q.u;
++    }
++    __device__ __forceinline__ static uint32_t pkv(v2f x) {
++        union { v2f f; float e[2]; } s; s.f = x;
++        union { v2hf h; uint32_t u; } q; q.h = __builtin_amdgcn_cvt_pkrtz(s.e[0], s.e[1]); return q.u;
++    }
++    // two bf16 in a dword -> two f16 in a dword. bf16->f32 is a shift, so this is 3 VALU.
++    __device__ __forceinline__ static uint32_t from_bf16w(uint32_t w) {
++        union { v2hf h; uint32_t u; } q;
++        q.h = __builtin_amdgcn_cvt_pkrtz(__builtin_bit_cast(float, w << 16),
++                                         __builtin_bit_cast(float, w & 0xffff0000u));
++        return q.u;
++    }
++};
++
++// Widen 8 fp8 (2 dwords) to 8 16-bit values (4 dwords) in element order.
++// Eight K dims of the k6_v4 cache as four f16 dwords, dims (2i, 2i+1) in dword i. `lo` holds
++// their low nibbles (dim 2i in bits 8i..8i+3, 2i+1 in 8i+4..8i+7) and `hb` their 16-dim chunk's
++// high-bit word (byte j: bits 0-1 dim 2j, 2-3 dim 2j+1, 4-5 dim 8+2j, 6-7 dim 9+2j); `half` says
++// which eight of the sixteen these are. One mask and shift put the high bits beside the low
++// nibbles, a byte a dim. Codes are 6-bit two's complement: ^ 32 makes them offset binary u,
++// 0x6400 | u is the f16 1024 + u, and (x - 1056) * s is the value times the group scale `s2` (the
++// f16 in both halves), rounded once.
++__device__ __forceinline__ void k6x8_to_f16x4w(uint32_t lo, uint32_t hb, int half, uint32_t s2,
++                                               uint32_t* w4) {
++    typedef _Float16 h2 __attribute__((ext_vector_type(2)));
++    const uint32_t ev = ((lo & 0x0F0F0F0Fu) | ((half ? hb : hb << 4) & 0x30303030u)) ^ 0x20202020u;
++    const uint32_t od = (((lo >> 4) & 0x0F0F0F0Fu) | ((half ? hb >> 2 : hb << 2) & 0x30303030u))
++                      ^ 0x20202020u;
++    const h2 s = __builtin_bit_cast(h2, s2);
++    const h2 bias = { (_Float16)1056.0f, (_Float16)1056.0f };
++#pragma unroll
++    for (int b = 0; b < 4; ++b) {
++        // Byte b of the even dims low, of the odd dims high; perm takes bytes 0-3 from its second
++        // operand, 4-7 from its first, and 0x0c is a zero byte.
++        const uint32_t sel = (uint32_t)b | 0x0c00u | ((uint32_t)(4 + b) << 16) | 0x0c000000u;
++        const uint32_t x = __builtin_amdgcn_perm(od, ev, sel) | 0x64006400u;
++        w4[b] = __builtin_bit_cast(uint32_t, (__builtin_bit_cast(h2, x) - bias) * s);
++    }
++}
++
++template<class D>
++__device__ __forceinline__ void fp8x8_to_16x4w(uint2 raw, uint32_t* w4) {
++    #pragma unroll
++    for (int q = 0; q < 2; ++q) {
++        const int wv = (q == 0) ? (int)raw.x : (int)raw.y;
++        w4[q * 2 + 0] = D::pkv(__builtin_amdgcn_cvt_pk_f32_fp8(wv, false));
++        w4[q * 2 + 1] = D::pkv(__builtin_amdgcn_cvt_pk_f32_fp8(wv, true));
++    }
++}
++
++__device__ __forceinline__ int wave_any(bool c) {
++    return (int)__builtin_amdgcn_ballot_w32(c);
++}
+diff --git a/python/sglang/srt/layers/attention/triton_backend.py b/python/sglang/srt/layers/attention/triton_backend.py
+index 28875d2..5b2d836 100644
+--- a/python/sglang/srt/layers/attention/triton_backend.py
++++ b/python/sglang/srt/layers/attention/triton_backend.py
+@@ -64,6 +64,35 @@ _EXTEND_SPLITKV_MAX = int(os.environ.get("SGLANG_EXTEND_SPLITKV_MAX_TOKENS", "0"
+ # Triton 3.6 at head_dim 256 (128 stalls); 16 is the WMMA floor.
+ _EXTEND_SPLITKV_TILE = int(os.environ.get("SGLANG_EXTEND_SPLITKV_TILE", "64") or 64)
+ _EXTEND_SPLITKV_MIN_PREFIX = int(os.environ.get("SGLANG_EXTEND_SPLITKV_MIN_PREFIX", "4096") or 0)
++# RDNA4 RAD-10c: single-sequence extends on the fp8 KV pool run the one-pass HIP prefill attention kernel
++# (prefill_attn_fp8_hip_ext, built by scripts/build_prefill_attn_hip.sh from radiance's Apache-2.0 kernel source in
++# kernels/aot/csrc/attention/prefill_attn_fp8_hip) instead of the Triton extend kernel. "exact" keeps the BF16 QK
++# product, "qk8" forms it from the fp8 cache keys. Off unless SGLANG_HIP_PREFILL_ATTN is set; every other shape
++# stays on Triton.
++_HIP_PREFILL_ATTN = os.environ.get("SGLANG_HIP_PREFILL_ATTN", "").strip().lower()
++_HIP_PREFILL_ATTN_LEGS = {"exact": 0, "qk8": 1}.get(_HIP_PREFILL_ATTN)
++_HIP_PREFILL_ATTN_MIN_ROWS = int(os.environ.get("SGLANG_HIP_PREFILL_ATTN_MIN_ROWS", "1") or 1)
++_HIP_PREFILL_ATTN_STATE = {"ext": None, "tried": False, "active": False, "declined": set()}
++
++
++def _hip_prefill_attn_ext():
++    st = _HIP_PREFILL_ATTN_STATE
++    if not st["tried"]:
++        st["tried"] = True
++        try:
++            import prefill_attn_fp8_hip_ext as ext
++
++            st["ext"] = ext
++        except Exception as e:  # the Triton kernel serves when the extension is not installed
++            logger.warning("RAD-10c HIP prefill attention declined: extension not loaded (%r)", e)
++    return st["ext"]
++
++
++def _hip_prefill_attn_declined(reason):
++    st = _HIP_PREFILL_ATTN_STATE
++    if reason not in st["declined"]:
++        st["declined"].add(reason)
++        logger.warning("RAD-10c HIP prefill attention declined: %s", reason)
+ from sglang.srt.runtime_context import get_exec, get_parallel, get_schedule, get_spec
+ from sglang.srt.speculative.spec_utils import (
+     draft_kv_indices_buffer_width,
+@@ -1891,6 +1920,79 @@ class TritonAttnBackend(AttentionBackend):
+         ):
+             return o
+ 
++        # RDNA4 RAD-10c (opt-in): one launch per layer for a single-sequence extend on the fp8 pool. The chunk's K/V
++        # are already in the pool (set_kv_buffer ran above), so the kernel reads prefix and chunk through one slot
++        # table, causally (row i of the chunk sees context positions 0 .. n_prefix + i).
++        if (
++            _HIP_PREFILL_ATTN_LEGS is not None
++            and not self.use_mla
++            and not self.use_sliding_window_kv_pool
++            and forward_batch.forward_mode == ForwardMode.EXTEND
++            and forward_batch.batch_size == 1
++            and sinks is None
++            and score_mod is None
++            and aux_tensors is None
++            and causal
++            and sliding_window_size == -1
++            and logits_soft_cap <= 0
++            and layer.xai_temperature_len <= 0
++            and layer.qk_head_dim == 256
++            and layer.v_head_dim == 256
++            and layer.tp_q_head_num == 6 * layer.tp_k_head_num
++            and k_descale == 1.0
++            and v_descale == 1.0
++            and self.forward_metadata.custom_mask is None
++            and forward_batch.extend_seq_lens_cpu is not None
++            and forward_batch.extend_prefix_lens_cpu is not None
++            and forward_batch.extend_seq_lens_cpu[0] >= _HIP_PREFILL_ATTN_MIN_ROWS
++            and _kv_cache_uses_fp8(self.token_to_kv_pool)
++        ):
++            n_new = int(forward_batch.extend_seq_lens_cpu[0])
++            n_prefix = int(forward_batch.extend_prefix_lens_cpu[0])
++            hip_ext = _hip_prefill_attn_ext()
++            k_buf = self.token_to_kv_pool.get_key_buffer(layer.layer_id)
++            v_buf = self.token_to_kv_pool.get_value_buffer(layer.layer_id)
++            pool_shape = (layer.tp_k_head_num, 256)
++            if hip_ext is None:
++                pass
++            elif q.dtype != torch.bfloat16 or o.dtype != torch.bfloat16 or q.shape[0] != n_new:
++                _hip_prefill_attn_declined(f"q {q.dtype} {tuple(q.shape)} out {o.dtype} for {n_new} rows")
++            elif (
++                k_buf.dim() != 3
++                or tuple(k_buf.shape[1:]) != pool_shape
++                or k_buf.shape != v_buf.shape
++                or not (k_buf.is_contiguous() and v_buf.is_contiguous() and o.is_contiguous())
++            ):
++                _hip_prefill_attn_declined(f"pool layout {tuple(k_buf.shape)} / {tuple(v_buf.shape)}")
++            elif kv_indices.shape[0] < n_prefix or forward_batch.out_cache_loc.shape[0] != n_new:
++                _hip_prefill_attn_declined(
++                    f"slot table {kv_indices.shape[0]} prefix slots for {n_prefix}, "
++                    f"{forward_batch.out_cache_loc.shape[0]} new slots for {n_new}"
++                )
++            else:
++                slots = getattr(forward_batch, "_hip_prefill_attn_slots", None)
++                if slots is None or slots.shape[0] != n_prefix + n_new:
++                    slots = torch.cat(
++                        [kv_indices[:n_prefix].to(torch.int32), forward_batch.out_cache_loc.to(torch.int32)]
++                    ).contiguous()
++                    forward_batch._hip_prefill_attn_slots = slots
++                hip_ext.prefill_attn_fp8_hip(
++                    q.contiguous().view(n_new, layer.tp_q_head_num, 256),
++                    k_buf,
++                    v_buf,
++                    slots,
++                    o.view(n_new, layer.tp_q_head_num, 256),
++                    float(layer.scaling),
++                    _HIP_PREFILL_ATTN_LEGS,
++                )
++                if not _HIP_PREFILL_ATTN_STATE["active"]:
++                    _HIP_PREFILL_ATTN_STATE["active"] = True
++                    logger.info(
++                        "RAD-10c HIP prefill attention active: mode=%s rows=%d prefix=%d q_heads=%d kv_heads=%d",
++                        _HIP_PREFILL_ATTN, n_new, n_prefix, layer.tp_q_head_num, layer.tp_k_head_num,
++                    )
++                return o
++
+         # RDNA4 R97-J (opt-in): a short cache-hit extend — the agentic tool-result turn, K new tokens on a
+         # long cached prefix — walks the whole prefix serially per (seq, head) in extend_attention_fwd
+         # (one q block, ~24 programs per rank). The patch-100 split-KV verify kernel is the same problem

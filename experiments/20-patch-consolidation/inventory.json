@@ -1,11 +1,11 @@
 {
  "totals": {
-  "patches": 98,
-  "added": 14595,
+  "patches": 99,
+  "added": 16033,
   "deleted": 598,
-  "upstream_files_touched": 159,
-  "new_files": 50,
-  "switches": 41,
+  "upstream_files_touched": 165,
+  "new_files": 56,
+  "switches": 43,
   "presets": [
    "devstral",
    "devstral2",
@@ -33,25 +33,25 @@
   "class_guess": {
    "opt-in": 2,
    "opt-in?": 5,
-   "performance": 52,
-   "required": 39
+   "performance": 51,
+   "required": 41
   },
   "class_guess_added_lines": {
    "opt-in": 2202,
    "opt-in?": 1625,
-   "performance": 8721,
-   "required": 2047
+   "performance": 10142,
+   "required": 2064
   },
-  "reviewed": 98,
+  "reviewed": 99,
   "class": {
    "opt-in": 10,
-   "performance": 33,
+   "performance": 34,
    "required": 50,
    "superseded": 5
   },
   "class_added_lines": {
    "opt-in": 3923,
-   "performance": 6392,
+   "performance": 7830,
    "required": 4212,
    "superseded": 68
   },
@@ -145,7 +145,7 @@
     ]
    }
   },
-  "drop_alone": 76
+  "drop_alone": 77
  },
  "preset_exports": {
   "devstral": {
@@ -354,6 +354,12 @@
    "SGLANG_HIP_BF16_ATTN_SUM": [
     "1"
    ],
+   "SGLANG_HIP_PREFILL_ATTN": [
+    "qk8"
+   ],
+   "SGLANG_HIP_PREFILL_ATTN_MIN_ROWS": [
+    "257"
+   ],
    "SGLANG_EXTEND_SPLITKV_MAX_TOKENS": [
     "256"
    ],
@@ -536,7 +542,8 @@
     "123",
     "124",
     "125",
-    "130"
+    "130",
+    "131"
    ],
    "breaks_without": [
     "045",
@@ -771,7 +778,7 @@
    "index": {
     "collection": "MoE serving and routing",
     "upstream": "Carry",
-    "purpose": "Adds HIP-safe routing, alignment fallbacks, and gfx1201 Triton MoE configuration support."
+    "purpose": "MoE on HIP: a PyTorch fused top-k in place of `sgl_kernel.topk_softmax`, no `torch.compile` on six MoE helpers, `BLOCK_SIZE_K` clamped to the quant block for block-FP8 and INT8 fused MoE, masked loads and gfx1201 launch defaults in the Triton fused-MoE kernel, guarded FlashInfer and `sgl_kernel` imports, and eight E=128 block-FP8 config files. Also carries a torch per-expert FP8 fallback (`RDNA4_TORCH_FP8_MOE=1`) and a BF16-dequant kernel that only tests reference."
    },
    "findings": [],
    "mentioned_in": {
@@ -1002,7 +1009,7 @@
    "index": {
     "collection": "Model, parser, and speculative-decode plumbing",
     "upstream": "Carry",
-    "purpose": "Collects small model-loader fixes for Gemma, Qwen, Devstral, and Llama checkpoints used on this stack."
+    "purpose": "Makes `q`, `k` and `v` contiguous after the qkv split in the Llama and Ministral3 attention forward (Devstral and Mistral family)."
    },
    "findings": [],
    "mentioned_in": {
@@ -1010,8 +1017,8 @@
    },
    "shares_files_with": [],
    "breaks_without": [],
-   "class_guess": "performance",
-   "class_guess_reason": "no switch; the index purpose reads as speed",
+   "class_guess": "required",
+   "class_guess_reason": "no switch; the index purpose reads as enablement or correctness",
    "ablation_arm": "drop-alone",
    "class": "required",
    "disposition": null,
@@ -1125,7 +1132,7 @@
    "index": {
     "collection": "Attention and numerics",
     "upstream": "Carry",
-    "purpose": "Uses FP32 value accumulation in Triton attention to limit long-context BF16 error."
+    "purpose": "Extend kernels on the non-gfx1250 branch: the prefix QK dot upcasts the cached K to q's dtype instead of downcasting q to the cache dtype (the arm that `SGLANG_EXTEND_FP8_QK=1` of patch 108 bypasses). The decode hunk (FP32 P·V accumulation) is rewritten to BF16 by patch 087."
    },
    "findings": [],
    "mentioned_in": {
@@ -1471,7 +1478,7 @@
    "index": {
     "collection": "Gemma 4",
     "upstream": "Carry",
-    "purpose": "Performs vision-pooler padding in FP32 to avoid overflow."
+    "purpose": "Gemma 4 vision pooler: the pooling matmul runs in FP32 and padding patch positions are zeroed before pooling, matching the HF reference."
    },
    "findings": [],
    "mentioned_in": {
@@ -1677,7 +1684,7 @@
    "index": {
     "collection": "MoE serving and routing",
     "upstream": "Carry",
-    "purpose": "Prevents CUDA-only MoE runner imports from breaking ROCm startup."
+    "purpose": "Adds four imports to the Triton MoE runner module; no code in the current file uses them (drop candidate in the consolidation review)."
    },
    "findings": [],
    "mentioned_in": {
@@ -1732,7 +1739,7 @@
    "index": {
     "collection": "AWQ int4",
     "upstream": "Carry",
-    "purpose": "Makes AWQ dequantization honor BF16 activation dtype."
+    "purpose": "Lists BF16 among the AWQ activation dtypes on HIP, so `--quantization awq --dtype bfloat16` passes the loader's supported-dtype check."
    },
    "findings": [],
    "mentioned_in": {
@@ -1882,7 +1889,7 @@
    "index": {
     "collection": "AWQ int4",
     "upstream": "Carry",
-    "purpose": "Adds the gfx1201 skinny W4A16 MoE kernel and load-time layout conversion."
+    "purpose": "Adds the HIP skinny W4A16 GEMM source and a standalone hybrid W4A16 MoE module with load-time layout conversion (`SGLANG_MOE_HYBRID_W4A16`). No serving path calls the module; `scripts/setup.sh` still builds the kernel."
    },
    "findings": [],
    "mentioned_in": {
@@ -2681,7 +2688,8 @@
     "107",
     "110",
     "112",
-    "125"
+    "125",
+    "131"
    ],
    "breaks_without": [],
    "class_guess": "required",
@@ -2865,7 +2873,7 @@
    "index": {
     "collection": "Model, parser, and speculative-decode plumbing",
     "upstream": "Carry",
-    "purpose": "Captures the correct hidden layers for EAGLE3 across dense and DeltaNet Qwen VL wrappers."
+    "purpose": "Removes `validate_architecture` from `LlamaConfig`'s class validators so an EAGLE3 draft whose `head_dim` is decoupled from `hidden_size / num_heads` loads under transformers 5.x. The hidden-layer capture this patch once carried is upstream since v0.5.22."
    },
    "findings": [],
    "mentioned_in": {
@@ -3388,7 +3396,8 @@
     "107",
     "110",
     "112",
-    "125"
+    "125",
+    "131"
    ],
    "breaks_without": [
     "107",
@@ -3396,14 +3405,15 @@
     "111",
     "112",
     "125",
-    "126"
+    "126",
+    "131"
    ],
    "class_guess": "opt-in",
    "class_guess_reason": "its switches are off by default and no preset turns them on",
    "ablation_arm": "switch: SGLANG_TREE_VERIFY_SPLITKV=0 on presets coder-30b, coder-reap-25b (already the default; only --spec sets 1). Removing the file is drop-with: 107, 110, 111, 112, 125, 126.",
    "class": "opt-in",
    "disposition": null,
-   "ablation_arm_guess": "off-everywhere: no speed arm; drop needs only the replay and the capability gates; dependents 107,110,111,112,125,126",
+   "ablation_arm_guess": "off-everywhere: no speed arm; drop needs only the replay and the capability gates; dependents 107,110,111,112,125,126,131",
    "class_confidence": "medium",
    "mechanism": "Adds a Triton split-KV kernel for speculative TREE verify (new kernels/ops/attention/tree_verify_attention.py: two prefix stages + a suffix kernel) and a gated branch in TritonAttnBackend.forward_extend, taken only for a target-verify batch that carries spec_info.custom_mask (EAGLE-style trees, topk > 1), no sliding window, no MLA, equal QK/V head dims.",
    "presets": [],
@@ -3512,7 +3522,7 @@
    "index": {
     "collection": "Mamba2 hybrids",
     "upstream": "Carry",
-    "purpose": "Resolves automatic Mamba radix-cache selection to the validated `no_buffer` strategy on HIP. v0.5.22 lists HIP among the `extra_buffer` platforms, so without this `auto` would flip every gfx1201 hybrid (and the qwen38 bake-off) to `extra_buffer` + overlap scheduling on untested state-snapshot kernels; opt in explicitly with `--mamba-radix-cache-strategy extra_buffer` after an A/B. `qwen38` opted in 2026-11-01 ([R97-R](../experiments/18-hybrid-cache-checkpoint-granularity.md): agentic turns 7–33× faster, needle 12/12); the gate stays for the other hybrid presets."
+    "purpose": "Restricts the `extra_buffer` arm of `--mamba-radix-cache-strategy auto` to CUDA, MUSA and NPU, so a bare `auto` on HIP resolves `no_buffer` without overlap scheduling (v0.5.22 lists HIP among the `extra_buffer` platforms). The launcher passes the strategy explicitly on every hybrid preset: `extra_buffer` on qwen35, qwen35-moe, qwen36-moe, qwen36-27b and qwen38 ([R97-R](../experiments/18-hybrid-cache-checkpoint-granularity.md)), `no_buffer` on nemotron-omni. The patch decides only what a bare `auto` gets, on a manual launch or a new hybrid preset."
    },
    "findings": [],
    "mentioned_in": {
@@ -3522,8 +3532,8 @@
     "114"
    ],
    "breaks_without": [],
-   "class_guess": "performance",
-   "class_guess_reason": "no switch; the index purpose reads as speed",
+   "class_guess": "required",
+   "class_guess_reason": "no switch; the index purpose reads as enablement or correctness",
    "ablation_arm": "drop-alone",
    "class": "required",
    "disposition": null,
@@ -3578,7 +3588,7 @@
    "index": {
     "collection": "FP8",
     "upstream": "Candidate",
-    "purpose": "Carries compressed-tensors FP8 KV metadata through SGLang configuration and loading."
+    "purpose": "Laguna model half of the compressed-tensors FP8 KV cache: keeps `quant_config` on `LagunaForCausalLM` so `--kv-cache-dtype auto` resolves the checkpoint's FP8 KV scheme, and remaps the checkpoint's `k_scale` / `v_scale` names so the static scales bind. The config half is upstream."
    },
    "findings": [],
    "mentioned_in": {
@@ -3813,7 +3823,8 @@
     "107",
     "110",
     "112",
-    "125"
+    "125",
+    "131"
    ],
    "breaks_without": [
     "082"
@@ -5334,7 +5345,7 @@
    "index": {
     "collection": "Gemma 4",
     "upstream": "Candidate",
-    "purpose": "Registers transformers' native `Gemma4UnifiedConfig` for `model_type=gemma4_unified` (alias onto `Gemma4Config` only as the fallback for older transformers), so the encoder-free 12B gets `vision_config.model_patch_size`; also sets `lm_head_is_tied` in the unified `__init__`, which the shared v0.5.18 `Gemma4ForConditionalGeneration.forward` reads."
+    "purpose": "Registers transformers' native `Gemma4UnifiedConfig` for `model_type=gemma4_unified` (alias onto `Gemma4Config` only as the fallback for older transformers), so the encoder-free 12B gets `vision_config.model_patch_size`."
    },
    "findings": [],
    "mentioned_in": {},
@@ -5420,7 +5431,8 @@
     "111",
     "112",
     "125",
-    "126"
+    "126",
+    "131"
    ],
    "breaks_without": [],
    "class_guess": "performance",
@@ -5530,7 +5542,7 @@
     "v0.5.23": "hand-ported"
    },
    "index": {
-    "collection": "Model, parser, and speculative-decode plumbing",
+    "collection": "MoE serving and routing",
     "upstream": "Candidate",
     "purpose": "v0.5.22's `moe_wna16._local_expert_ids` (#41807) resolves a checkpoint expert id through the EPLB logical map before mapping it to this rank's slot, but a model that fuses its shared experts into the MoE (GLM-4.5 via `iter_weights_with_fused_shared_experts`) appends them as id `n_routed_experts + k`, past the map: `IndexError: index 96 is out of bounds for dimension 1 with size 96` in `Glm4MoeForCausalLM.load_weights` on the 96-expert REAP AWQ. A shared-expert id now stays its own physical id (EPLB never relocates it), exactly as `FusedMoE._map_global_expert_id_to_local_expert_id` already handles it. glm45-air boots and passes its usual 2/3 on 2026-10-19."
    },
@@ -5616,7 +5628,7 @@
    "index": {
     "collection": "Model, parser, and speculative-decode plumbing",
     "upstream": "Candidate",
-    "purpose": "Adds RecursiveSI Flint (`FlintForCausalLM`, `model_type: flint`): a 40B-total / 2.5B-active MoE coder with 35 sliding-window (513) + 14 full-attention layers, learned per-head sinks (`softmax_offset`), no RoPE on the full layers, sigmoid + expert-bias top-6 routing and an ungated shared expert. Port of the vendor's `flint_sglang` 0.1.4 kit (SGLang 0.5.16, `LayerCommunicator`) onto the `layer_boundary` stages: `configs/flint.py` (registered with AutoConfig, so no `--trust-remote-code`), `models/flint.py` (Qwen3-MoE attention/MoE subclasses; sinks ride `RadixAttention(sinks=)`, which the Triton extend and flash-decode kernels already implement), `FlintForCausalLM` in `SWA_SINK_ARCHS`, the `flint` tool-call parser (GLM-4.7 wire format + Flint's turn grammar), the `flint` reasoning parser (never assumes a turn starts in reasoning) and the `flint` grammar backend (XGrammar with an optional `<think>` block before every constraint). Offline receipts on the local FP8 build: config/hybrid-SWA classification 35/14, every protocol marker a single token, chat-template round trip, 20-case grammar accept/reject matrix (tools auto/required/named, strict schema, parallel off, json/regex/ebnf with and without reasoning), registry import preflight 0 broken. GPU validation (sink numerics, FP8 MoE load, decode A/Bs) waits for the qwen38 v5 chain to release the cards. Since 2026-10-31 `FLINT_STRICT_TOOLS` (default 1) forces `function.strict` on every tool before the structural tag is built, so the real parameter schema (`required` keys) is compiled — SGLang's `Function.strict` defaults False and xgrammar then emits schema-free arguments, which Flint exploits (3090: 23/24 opencode calls missing a required key); the strict schema is compiled in declaration order, so `_as_strict` also moves metadata keys (`i`, `description`, `intent`, `explanation`, `reason`, `summary`) after the payload keys (3090 2026-10-28: omp's `i`-first schema forced the intent key onto the wire in 7.4 % of bash calls). CPU test: `scripts/eval/test_flint_tool_grammar_key_order.py`."
+    "purpose": "Adds RecursiveSI Flint (`FlintForCausalLM`, `model_type: flint`): a 40B-total / 2.5B-active MoE coder with 35 sliding-window (513) + 14 full-attention layers, learned per-head sinks (`softmax_offset`), no RoPE on the full layers, sigmoid + expert-bias top-6 routing and an ungated shared expert. Port of the vendor's `flint_sglang` 0.1.4 kit (SGLang 0.5.16, `LayerCommunicator`) onto the `layer_boundary` stages: `configs/flint.py` (registered with AutoConfig, so no `--trust-remote-code`), `models/flint.py` (Qwen3-MoE attention/MoE subclasses; sinks ride `RadixAttention(sinks=)`, which the Triton extend and flash-decode kernels already implement), `FlintForCausalLM` in `SWA_SINK_ARCHS`, the `flint` tool-call parser (GLM-4.7 wire format + Flint's turn grammar), the `flint` reasoning parser (never assumes a turn starts in reasoning) and the `flint` grammar backend (XGrammar with an optional `<think>` block before every constraint). Offline receipts on the local FP8 build: config/hybrid-SWA classification 35/14, every protocol marker a single token, chat-template round trip, 20-case grammar accept/reject matrix (tools auto/required/named, strict schema, parallel off, json/regex/ebnf with and without reasoning), registry import preflight 0 broken. First boot, sink numerics and the decode A/Bs are in [FINDINGS](../benchmarks/FINDINGS.md). Since 2026-10-31 `FLINT_STRICT_TOOLS` (default 1) forces `function.strict` on every tool before the structural tag is built, so the real parameter schema (`required` keys) is compiled — SGLang's `Function.strict` defaults False and xgrammar then emits schema-free arguments, which Flint exploits (3090: 23/24 opencode calls missing a required key); the strict schema is compiled in declaration order, so `_as_strict` also moves metadata keys (`i`, `description`, `intent`, `explanation`, `reason`, `summary`) after the payload keys (3090 2026-10-28: omp's `i`-first schema forced the intent key onto the wire in 7.4 % of bash calls). CPU test: `scripts/eval/test_flint_tool_grammar_key_order.py`."
    },
    "findings": [],
    "mentioned_in": {
@@ -5688,7 +5700,7 @@
     "v0.5.23": "clean"
    },
    "index": {
-    "collection": "Model, parser, and speculative-decode plumbing",
+    "collection": "FP8",
     "upstream": "Carry",
     "purpose": "Installs correctness-gated gfx1201 configs for the Triton W8A8 block-FP8 GEMM (`kernels/ops/gemm/configs/N=*,K=*,device_name=AMD_Radeon_AI_PRO_R9700,…`) at the six per-rank shapes Qwen3.8-27B-FP8 runs under TP=2 (`17408×5120`, `5120×8704`, `16384×5120` and `5120×6144` — the DeltaNet projections patch 045 replicates per rank — `7168×5120`, `5120×3072`), keyed at M = 1 / 8 / 64 / 256 / 1024 / 4096. Swept by `scripts/bench/tune_fp8_block_gemm.py` (not the stock tuner: it times the unrolled-x4 kernel the HIP selector never returns and has no numerical gate) through the serving entry point with cold-cache HIP-graph timing; every retained config matched an fp32 reference (cosine ≥ 0.9999) and the default kernel within 2 bf16 ulps, and replays bit-identically under graph capture. At M=1 the files take the per-step GEMM time from 30.2 to 28.0 ms (83 % of the 640 GB/s roofline, decode +2–4 %); from M=256 up the winners are `BM128_BN64_w4` / `BM64_BN128_w4` (3–6× the RDNA4 default tile — the `BLOCK_SIZE_M=64` hang recorded in 005 was an older Triton's; 2,088 wide-tile candidates ran clean on Triton 3.6), so cold prefill is 2.5× / 2.1× / 1.5× at 7.3K / 58K / 197K on both qwen38 presets. Receipt `benchmarks/profiling/fp8-block-gemm-tune-qwen38-2026-10-31.{json,md}`."
    },
@@ -5769,9 +5781,9 @@
     "v0.5.23": "regenerated"
    },
    "index": {
-    "collection": "Model, parser, and speculative-decode plumbing",
+    "collection": "Attention and numerics",
     "upstream": "Candidate",
-    "purpose": "R97-J arm A. `verify_splitkv.py` gains `upcast_k` (per-instance constexpr `UPCAST_K`, `SGLANG_SPLITKV_UPCAST_K` default): the prefix QK runs as `dot(q, k.to(q.dtype))` like `extend_attention_fwd`'s gfx1201 branch instead of downcasting q to fp8, which makes the kernel numerically no worse than the extend path against an fp32 reference (both carry the FP8-cache softmax-weight cast, cos ≈ 0.99965). `TritonAttnBackend.forward_extend` then routes a plain `EXTEND` batch of one request with `0 < K <= SGLANG_EXTEND_SPLITKV_MAX_TOKENS` new tokens on a prefix ≥ `SGLANG_EXTEND_SPLITKV_MIN_PREFIX` (4096) — causal, no sinks / sliding window / logit cap / custom mask / MLA — through `verify_splitkv_fwd(..., upcast_k=True)` with q/k/v zero-padded to the 16-row tile; off by default (MAX=0), `launch.sh` enables MAX=16 for `laguna`. Laguna 1-token cache-hit turn 371 → 163 ms at 105K and 523 → 241 ms at 158K cached tokens, decode unchanged, text capabilities 3/3. K > 16 is not served (the kernel's 32-row tile does not compile on Triton 3.6) and hybrid-cache models see chunk-aligned tail recomputes, so qwen38 turns stay on the stock path. Receipt `benchmarks/profiling/extend-splitkv-route-2026-10-31.md`."
+    "purpose": "R97-J arm A. `verify_splitkv.py` gains `upcast_k` (per-instance constexpr `UPCAST_K`, `SGLANG_SPLITKV_UPCAST_K` default): the prefix QK runs as `dot(q, k.to(q.dtype))` like `extend_attention_fwd`'s gfx1201 branch instead of downcasting q to fp8, which makes the kernel numerically no worse than the extend path against an fp32 reference (both carry the FP8-cache softmax-weight cast, cos ≈ 0.99965). `TritonAttnBackend.forward_extend` then routes a plain `EXTEND` batch of one request with `0 < K <= SGLANG_EXTEND_SPLITKV_MAX_TOKENS` new tokens on a prefix ≥ `SGLANG_EXTEND_SPLITKV_MIN_PREFIX` (4096) — causal, no sinks / sliding window / logit cap / custom mask / MLA — through `verify_splitkv_fwd(..., upcast_k=True)` with q/k/v zero-padded to the 16-row tile; off by default (MAX=0), `launch.sh` exports MAX=256 on laguna, flint, qwen35, qwen35-moe, qwen36-moe, qwen36-27b and qwen38. Laguna 1-token cache-hit turn 371 → 163 ms at 105K and 523 → 241 ms at 158K cached tokens, decode unchanged, text capabilities 3/3. One kernel call serves at most 16 rows (the 32-row tile does not compile on Triton 3.6); patch 110 walks longer turns in 16-row chunks and patch 112 admits sinks. Receipt `benchmarks/profiling/extend-splitkv-route-2026-10-31.md`."
    },
    "findings": [
     "Short cache-hit extends through the split-KV verify kernel — patch 107, Laguna only (2026-10-31)",
@@ -5794,18 +5806,20 @@
     "111",
     "112",
     "125",
-    "126"
+    "126",
+    "131"
    ],
    "breaks_without": [
     "110",
     "111",
     "112",
     "125",
-    "126"
+    "126",
+    "131"
    ],
    "class_guess": "performance",
    "class_guess_reason": "switchable and on (by default or in a preset): the ablation arm is the switch",
-   "ablation_arm": "switch: SGLANG_EXTEND_SPLITKV_MAX_TOKENS=0 on presets qwen35-moe, qwen36-moe, qwen35, qwen38, qwen36-27b, laguna, flint",
+   "ablation_arm": "switch: EXTEND_SPLITKV_MAX=0 on presets qwen35-moe, qwen36-moe, qwen35, qwen38, qwen36-27b, laguna, flint",
    "class": "performance",
    "disposition": null,
    "ablation_arm_guess": "switch",
@@ -5831,7 +5845,7 @@
     "112"
    ],
    "superseded_evidence": null,
-   "notes": "110 rewrites this patch's route body and 112 is a one-line gate change on it, so 107 + 110 + 112 are one mechanism; 110, 111, 112, 125 and 126 do not apply without 107. The index row is stale (MAX=16 for laguna only, qwen38 on the stock path), _detect_rdna/_IS_RDNA is defined and never read, and SGLANG_SPLITKV_UPCAST_K is set by no preset (its A/B kept the default)."
+   "notes": "110 rewrites this patch's route body and 112 is a one-line gate change on it, so 107 + 110 + 112 are one mechanism; 110, 111, 112, 125 and 126 do not apply without 107. The index row is stale (MAX=16 for laguna only, qwen38 on the stock path), _detect_rdna/_IS_RDNA is defined and never read, and SGLANG_SPLITKV_UPCAST_K is set by no preset (its A/B kept the default). The arm uses the launcher knob: the preset exports the server variable from it, so a value passed under the server's name is overwritten."
   },
   {
    "patch": "108",
@@ -5879,9 +5893,9 @@
     "v0.5.23": "clean"
    },
    "index": {
-    "collection": "Model, parser, and speculative-decode plumbing",
+    "collection": "Attention and numerics",
     "upstream": "Candidate",
-    "purpose": "R97-Q. `extend_attention.py`: the gfx1201 prefix QK in `_fwd_kernel` and `_fwd_kernel_unified` gains an `FP8_QK` constexpr — `dot(q.to(k.dtype), k)` (the fp8 WMMA form every non-RDNA platform runs) instead of the bf16 upcast `dot(q, k.to(q.dtype))` — selected by `SGLANG_EXTEND_FP8_QK=1`; plus a `SGLANG_EXTEND_TILE=\"BM,BN,WARPS\"` override of the HIP tile for sweeps. Measured first: the kernel is compute-bound (~18 % MFU; a 128-row tile saved 3 %, GQA packing dropped), the fp8 QK is 1.6–1.9× faster per layer at K = 512–4096 over 49K–172K at cos 0.99959 vs 0.99965 against fp32 (both arms already cast the softmax weights to fp8 for PV). Same-session qwen38 A/B: cold prefill 47.2 → 40.8 s at 58K and 332 → 211 s at 197K, 1-token cache-hit turn 10.1 → 5.7 s at 176K, decode untouched, needle grid 9/9 on both arms, capabilities 5/5; DSpark preset, arms reversed: 320 → 213 s at 197K, needle 6/6 both arms. Default-on for `qwen38` in `launch.sh` (`EXTEND_FP8_QK=0` restores the upcast), off elsewhere. Receipt `benchmarks/profiling/extend-attention-fp8qk-qwen38-2026-10-31.md`."
+    "purpose": "R97-Q. `extend_attention.py`: the gfx1201 prefix QK in `_fwd_kernel` and `_fwd_kernel_unified` gains an `FP8_QK` constexpr — `dot(q.to(k.dtype), k)` (the fp8 WMMA form every non-RDNA platform runs) instead of the bf16 upcast `dot(q, k.to(q.dtype))` — selected by `SGLANG_EXTEND_FP8_QK=1`; plus a `SGLANG_EXTEND_TILE=\"BM,BN,WARPS\"` override of the HIP tile for sweeps. Measured first: the kernel is compute-bound (~18 % MFU; a 128-row tile saved 3 %, GQA packing dropped), the fp8 QK is 1.6–1.9× faster per layer at K = 512–4096 over 49K–172K at cos 0.99959 vs 0.99965 against fp32 (both arms already cast the softmax weights to fp8 for PV). Same-session qwen38 A/B: cold prefill 47.2 → 40.8 s at 58K and 332 → 211 s at 197K, 1-token cache-hit turn 10.1 → 5.7 s at 176K, decode untouched, needle grid 9/9 on both arms, capabilities 5/5; DSpark preset, arms reversed: 320 → 213 s at 197K, needle 6/6 both arms. `launch.sh` exports it on qwen38, qwen35, qwen36-moe, qwen36-27b, devstral2, nemotron-omni and flint (`EXTEND_FP8_QK=0` restores the upcast); off elsewhere. Receipt `benchmarks/profiling/extend-attention-fp8qk-qwen38-2026-10-31.md`."
    },
    "findings": [
     "fp8 QK dot in gfx1201 extend attention — patch 108, qwen38 default (2026-11-01)",
@@ -5902,7 +5916,7 @@
    "breaks_without": [],
    "class_guess": "performance",
    "class_guess_reason": "switchable and on (by default or in a preset): the ablation arm is the switch",
-   "ablation_arm": "switch: SGLANG_EXTEND_FP8_QK=0 on presets devstral2, qwen36-moe, qwen35, qwen38, qwen36-27b, nemotron-omni, flint",
+   "ablation_arm": "switch: EXTEND_FP8_QK=0 on presets devstral2, qwen36-moe, qwen35, qwen38, qwen36-27b, nemotron-omni, flint",
    "class": "performance",
    "disposition": null,
    "ablation_arm_guess": "switch",
@@ -5925,7 +5939,7 @@
    "reproducer": null,
    "merge_candidates": [],
    "superseded_evidence": null,
-   "notes": "Index row and heading still say 'qwen38 default, off elsewhere' while launch.sh exports it on seven presets (north-mini #36 and qwen35-moe #38 are held for the user). SGLANG_EXTEND_TILE is a sweep hook no preset sets, and RAD-10b's verdict for this kernel at depth is `port` (it takes 3.5× the time of radiance's fp8-QK row)."
+   "notes": "Index row and heading still say 'qwen38 default, off elsewhere' while launch.sh exports it on seven presets (north-mini #36 and qwen35-moe #38 are held for the user). SGLANG_EXTEND_TILE is a sweep hook no preset sets, and RAD-10b's verdict for this kernel at depth is `port` (it takes 3.5× the time of radiance's fp8-QK row). The arm uses the launcher knob: the preset exports the server variable from it, so a value passed under the server's name is overwritten."
   },
   {
    "patch": "109",
@@ -5953,9 +5967,9 @@
     "v0.5.23": "clean"
    },
    "index": {
-    "collection": "Model, parser, and speculative-decode plumbing",
+    "collection": "Attention and numerics",
     "upstream": "Candidate",
-    "purpose": "Port of the 3090's 070 v2 (CROSS-TEAM 2026-11-01) for the shared split-KV verify kernel. `_verify_combine_stage2` streamed the prefix splits one `[L_EXT, Dv]` tile at a time instead of a `[N_SPLITS, L_EXT, Dv]` fp32 register tile, uses fp32-exact `tl.dot(..., input_precision=\"ieee\")` for the draft-draft block at the 16-row tile (the 4-row verify tile keeps the broadcast form), launches with 4 warps instead of 1, and gains `HAS_SINKS` (a `[H_Q]` learned-sink logit joins the final LSE merge); `VerifySplitKV.__call__` now forwards `sinks` (it was dropped, so `HAS_SINKS` could never fire) and `can_handle` admits a `[H_Q]` sink tensor. gfx1201: numerics identical to the previous kernel to 7 digits in every cell, spills 1,989 → 346 (qwen38, head_dim 256) and 903 → 56 (Laguna), split-KV path 2.1–3.7× faster per layer at an 8K prefix and +3–27 % at 58K–197K; sinks cells pass the route gate 4/4 with `upcast_k`. Serving (same session): DSpark qwen38 decode 36.7 / 51.3 / 41.0 / 29.9 → 44.3 / 51.0 / 45.2 / 33.1 tok/s at 24 / 7.3K / 58K / 197K (accept length unchanged, capabilities 5/5). Patch 107's dispatch gate still excludes sinks pending a Flint serving measurement. Receipt `benchmarks/profiling/verify-splitkv-combine-v2-2026-11-01.md`."
+    "purpose": "Port of the 3090's 070 v2 (CROSS-TEAM 2026-11-01) for the shared split-KV verify kernel. `_verify_combine_stage2` streamed the prefix splits one `[L_EXT, Dv]` tile at a time instead of a `[N_SPLITS, L_EXT, Dv]` fp32 register tile, uses fp32-exact `tl.dot(..., input_precision=\"ieee\")` for the draft-draft block at the 16-row tile (the 4-row verify tile keeps the broadcast form), launches with 4 warps instead of 1, and gains `HAS_SINKS` (a `[H_Q]` learned-sink logit joins the final LSE merge); `VerifySplitKV.__call__` now forwards `sinks` (it was dropped, so `HAS_SINKS` could never fire) and `can_handle` admits a `[H_Q]` sink tensor. gfx1201: numerics identical to the previous kernel to 7 digits in every cell, spills 1,989 → 346 (qwen38, head_dim 256) and 903 → 56 (Laguna), split-KV path 2.1–3.7× faster per layer at an 8K prefix and +3–27 % at 58K–197K; sinks cells pass the route gate 4/4 with `upcast_k`. Serving (same session): DSpark qwen38 decode 36.7 / 51.3 / 41.0 / 29.9 → 44.3 / 51.0 / 45.2 / 33.1 tok/s at 24 / 7.3K / 58K / 197K (accept length unchanged, capabilities 5/5). Patch 112 admits sinks on the patch-107 route. Receipt `benchmarks/profiling/verify-splitkv-combine-v2-2026-11-01.md`."
    },
    "findings": [
     "Split-KV verify combine stage: 8 warps — patch 111 (2026-11-02)",
@@ -6042,7 +6056,7 @@
     "v0.5.23": "regenerated"
    },
    "index": {
-    "collection": "Model, parser, and speculative-decode plumbing",
+    "collection": "Attention and numerics",
     "upstream": "Candidate",
     "purpose": "Widens patch 107. `TritonAttnBackend.forward_extend` serves a cache-hit extend of `0 < K <= SGLANG_EXTEND_SPLITKV_MAX_TOKENS` new tokens in consecutive `SGLANG_EXTEND_SPLITKV_TILE` (default 64) row chunks: chunk *c* attends to the prefix plus the new tokens before it through `kv_indices` + `out_cache_loc` (already in the KV pool after `set_kv_buffer`) and causally within itself through its own k/v rows; the last chunk pads to a power of two ≥ 16. `upcast_k` follows `extend_attention._EXTEND_FP8_QK`, so the route stays in the extend kernel's QK numerics class (fp8 QK on qwen38, bf16 upcast on Laguna). The 32- and 64-row verify tiles compile in seconds since patch 109 (128 still stalls on Triton 3.6). Kernel level 22/22 cells within the extend kernel's fp32 error; qwen38 113-token tail 45.0 → 23.9 ms/layer at 197K, Laguna 128 new tokens 30.0 → 8.7 ms/layer at 158K. Serving (warmed, same session): qwen38 agentic turns 1 / 64 / 256 new tokens 231 / 265 / 307 → 109 / 165 / 255 ms at 52K and 600 / 625 / 643 → 168 / 275 / 363 ms at 176K (neutral at 6.5K, decode unchanged, needle across a turn boundary 6/6, caps 5/5); Laguna 16 / 64 / 128-token turns 307 / 307 / 335 → 146 / 158 / 187 ms at 94K, 471 / 473 / 496 → 215 / 229 / 272 ms at 142K. `launch.sh`: MAX 256 for `laguna`, `qwen38`, `qwen36-27b` (gated the same day: 1-token turn 668 → 273 ms at 52K, 1,223 → 259 ms at 104K) and `qwen36-moe` (412 → 79 ms at 52K, 755 → 72 ms at 104K), needle 6/6 and caps 5/5 on both. Receipt `benchmarks/profiling/extend-splitkv-route-wide-2026-11-01.md`."
    },
@@ -6061,10 +6075,12 @@
     "100",
     "107",
     "112",
-    "125"
+    "125",
+    "131"
    ],
    "breaks_without": [
-    "112"
+    "112",
+    "131"
    ],
    "class_guess": "performance",
    "class_guess_reason": "switchable and on (by default or in a preset): the ablation arm is the switch",
@@ -6126,7 +6142,7 @@
     "v0.5.23": "clean"
    },
    "index": {
-    "collection": "Model, parser, and speculative-decode plumbing",
+    "collection": "Attention and numerics",
     "upstream": "Candidate",
     "purpose": "Launches the split-KV verify combine stage (`_verify_combine_stage2`, patch 109 v2) with 8 warps instead of 4 on every platform (`SGLANG_SPLITKV_COMBINE_WARPS` overrides). gfx1201 sweep at 4 / 8 / 16 warps, L_EXT 16 / 64: spills 346 / 2,156 → 56 / 952 on qwen38 (head_dim 256) and 56 / 990 → 0 / 374 on Laguna, numerics identical to every digit against the fp32 reference, the 64-row route chunk 2× cheaper per layer on Laguna (407 → 188 µs at 8K) and −12 % on qwen38, the 16-row tile neutral, the qwen38 first-launch scratch reserve 52 → 4 MB; 16 warps gains nothing more and costs 8–15 % at 16 rows. Serving turns on Laguna neutral within ±5 % (the combine stage is µs of a 100–200 ms turn). Receipt `benchmarks/profiling/verify-combine-warps-2026-11-02.md`."
    },
@@ -6200,7 +6216,7 @@
     "v0.5.23": "clean"
    },
    "index": {
-    "collection": "Model, parser, and speculative-decode plumbing",
+    "collection": "Attention and numerics",
     "upstream": "Candidate",
     "purpose": "Lets the patch 107/110 split-KV turn route serve layers with learned attention sinks (Flint's 14 full-attention layers): the dispatch gate no longer requires `sinks is None` and the per-head sink tensor is forwarded into `verify_splitkv_fwd`, where patch 109's combine stage adds `exp(sink − m)` to the softmax denominator and `can_handle` rejects anything but a `[H_Q]` tensor. Flint, order-controlled pair, warmed: 1-token agentic turn 237 → 128 ms at 52K and 443 → 201 ms at 104K cached, natural needle 6/6 with identical outputs on both arms, text probes 3/3; kernel gate 8/9 cells inside the fp32 gate (the ninth 1e-6 under the cosine floor). Receipt `benchmarks/profiling/flint-sinks-route-2026-11-02.md`."
    },
@@ -6216,12 +6232,13 @@
     "100",
     "107",
     "110",
-    "125"
+    "125",
+    "131"
    ],
    "breaks_without": [],
    "class_guess": "performance",
    "class_guess_reason": "no switch; the index purpose reads as speed",
-   "ablation_arm": "switch: SGLANG_EXTEND_SPLITKV_MAX_TOKENS=0 on presets flint",
+   "ablation_arm": "switch: EXTEND_SPLITKV_MAX=0 on presets flint",
    "class": "performance",
    "disposition": null,
    "ablation_arm_guess": "drop-alone",
@@ -6241,7 +6258,7 @@
     "110"
    ],
    "superseded_evidence": null,
-   "notes": "Two changed lines on top of 107/110 (the gate condition removed, sinks=sinks added; needs 109's sink term in the combine stage), and nothing fails to apply without it, so drop-alone also replays. On Flint the route-off arm equals dropping this patch, because only the 14 sink layers are full attention and the 35 sliding-window layers never take the route."
+   "notes": "Two changed lines on top of 107/110 (the gate condition removed, sinks=sinks added; needs 109's sink term in the combine stage), and nothing fails to apply without it, so drop-alone also replays. On Flint the route-off arm equals dropping this patch, because only the 14 sink layers are full attention and the 35 sliding-window layers never take the route. The arm uses the launcher knob: the preset exports the server variable from it, so a value passed under the server's name is overwritten."
   },
   {
    "patch": "114",
@@ -6271,9 +6288,9 @@
     "v0.5.23": "clean"
    },
    "index": {
-    "collection": "Model, parser, and speculative-decode plumbing",
+    "collection": "Mamba2 hybrids",
     "upstream": "Candidate",
-    "purpose": "Adds `NemotronH_Nano_Omni_Reasoning_V3` (the architecture Nemotron-3-Nano-Omni-30B-A3B-Reasoning declares) to `_MAMBA_RADIX_CACHE_ARCHS` and `_MAMBA_EXTRA_BUFFER_ARCHS` in `arg_groups/overrides.py`, which listed only the non-Nano Omni name, so `uses_mamba_radix_cache` resolved False and the radix tree kept Mamba states only at chunked-prefill ends (every agentic turn recomputed up to a 4,096-token tail: 800–1,441 ms at 53K–132K). With it the strategy knob works; the `nemotron-omni` preset moves to `extra_buffer` (1-token turn 666 / 1,015 → 144 / 256 ms at 52K / 105K). Port of the 3090's patch 074 (root cause found there, 2026-11-02). Receipt `benchmarks/profiling/hybrid-cache-extra-buffer-nemotron-*-2026-11-02.json`."
+    "purpose": "Adds `NemotronH_Nano_Omni_Reasoning_V3` (the architecture Nemotron-3-Nano-Omni-30B-A3B-Reasoning declares) to `_MAMBA_RADIX_CACHE_ARCHS`, `_MAMBA_EXTRA_BUFFER_ARCHS` and `_FLASHINFER_ALLREDUCE_FUSION_ARCHS` in `arg_groups/overrides.py`, which listed only the non-Nano Omni name, so `uses_mamba_radix_cache` resolved False and the radix tree kept Mamba states only at chunked-prefill ends (every agentic turn recomputed up to a 4,096-token tail: 800–1,441 ms at 53K–132K). With it the strategy knob works; the `nemotron-omni` preset stays on `no_buffer` (the `extra_buffer` move, 1-token turn 666 / 1,015 → 144 / 256 ms at 52K / 105K, was withdrawn until a determinism probe on both strategies decides it; see FINDINGS). Port of the 3090's patch 074 (root cause found there, 2026-11-02). Receipt `benchmarks/profiling/hybrid-cache-extra-buffer-nemotron-*-2026-11-02.json`."
    },
    "findings": [
     "Hybrid-cache checkpoint granularity: qwen38 turns recomputed the 8K chunk tail — `extra_buffer` (2026-11-01)"
@@ -6387,7 +6404,7 @@
     "v0.5.23": "not covered: newer than the dry run"
    },
    "index": {
-    "collection": "Model, parser, and speculative-decode plumbing",
+    "collection": "MoE serving and routing",
     "upstream": "Carry",
     "purpose": "Adds `FlintForCausalLM` to the fused-MoE tuner’s Qwen3Moe-layout architecture list (E=256, moe_intermediate 512, top-6 from the compressed-tensors checkpoint) and repoints its `fp8_dtype` import at `sglang.kernels.ops` (the module moved in v0.5.18; upstream’s benchmark script still imports the old path)."
    },
@@ -6535,7 +6552,7 @@
     "v0.5.23": "not covered: newer than the dry run"
    },
    "index": {
-    "collection": "Model, parser, and speculative-decode plumbing",
+    "collection": "MoE serving and routing",
     "upstream": "Candidate",
     "purpose": "Tuned fused-MoE Triton config for Flint's expert shapes (E=256, N=256 per rank, fp8_w8a8 per-channel) on R9700, from the stock tuner over a 576-config RDNA4 search space at 13 batch sizes; the gate-up GEMM only (the down GEMM keeps the default until the separate tuner runs on captured router outputs). Serving: decode +1.2–1.5 % at 14 tokens to 197K on both tuned arms of a tuned→default→tuned triple, prefill unchanged, text capabilities 3/3."
    },
@@ -6598,7 +6615,7 @@
    "index": {
     "collection": "Core RDNA4 enablement",
     "upstream": "Candidate",
-    "purpose": "Lets HIP custom all-reduce setup run without the `amdsmi` Python binding: the XGMI query answers \"not fully linked\" instead of dying on an undefined name (`Setup Custom allreduce failed with name 'amdsmi_shut_down' is not defined`), which kept `SGLANG_USE_1STAGE_ALLREDUCE=1` off every two-card host without the binding. Also logs the path a group really reduces on (`[AR] All-reduce call path: custom all-reduce (...)`), the identity line for an all-reduce A/B. No change under `--disable-custom-all-reduce`, the launcher default. Serving A/B: RAD-2."
+    "purpose": "Lets HIP custom all-reduce setup run without the `amdsmi` Python binding: the XGMI query answers \"not fully linked\" instead of dying on an undefined name (`Setup Custom allreduce failed with name 'amdsmi_shut_down' is not defined`), which kept `SGLANG_USE_1STAGE_ALLREDUCE=1` off every two-card host without the binding. Also logs the path a group really reduces on (`[AR] All-reduce call path: custom all-reduce (...)`), the identity line for an all-reduce A/B. No change under `--disable-custom-all-reduce`, which the launcher passes on every preset except qwen38 FP8 and flint (patch 129). Serving A/B: RAD-2 (`benchmarks/profiling/rad2-onestage-ar-2026-11-09`)."
    },
    "findings": [
     "RAD-2 — upstream's one-stage HIP all-reduce on two PCIe cards: +1.8 % and garbage output, RCCL stays (2026-11-09)",
@@ -6772,7 +6789,7 @@
    "breaks_without": [],
    "class_guess": "performance",
    "class_guess_reason": "switchable and on (by default or in a preset): the ablation arm is the switch",
-   "ablation_arm": "switch: SGLANG_RDNA4_DELTANET_TP_SPLIT=0 on presets qwen38",
+   "ablation_arm": "switch: DELTANET_TP_SPLIT=0 on presets qwen38",
    "class": "performance",
    "disposition": null,
    "ablation_arm_guess": "switch",
@@ -6792,7 +6809,7 @@
     "120"
    ],
    "superseded_evidence": null,
-   "notes": "It switches off, for qwen38 only, the DeltaNet replication that patch 045 adds, so 045 + 120 + 121 are one replication policy spread over three patches; other DeltaNet presets keep the replicated layout and only gain the log line. Greedy text is not byte-identical between layouts (1 of 6 probes match on FP8), and the shipped GEMM config is the same kind of file as patch 106's."
+   "notes": "It switches off, for qwen38 only, the DeltaNet replication that patch 045 adds, so 045 + 120 + 121 are one replication policy spread over three patches; other DeltaNet presets keep the replicated layout and only gain the log line. Greedy text is not byte-identical between layouts (1 of 6 probes match on FP8), and the shipped GEMM config is the same kind of file as patch 106's. The arm uses the launcher knob: the preset exports the server variable from it, so a value passed under the server's name is overwritten."
   },
   {
    "patch": "122",
@@ -6834,7 +6851,7 @@
     "purpose": "Native HIP W8A16 GEMV for the one-row form of the dense block-FP8 linears (`fp8_gemv_hip.cu`, built by `scripts/build_fp8_gemv.sh`; loop design after radiance's `r4d_gemm_fp8a16_nt_m1`, Apache-2.0, attribution in the source header). With `SGLANG_RDNA4_FP8_GEMV=1` a dense 128 × 128 block-FP8 linear called with one bf16 row reads the activation directly: no activation-quantiser launch, no 16-row GEMM tile. Every other shape, a missing extension or the switch off keeps the Triton W8A8 path. Logged once (`[RDNA4] block-FP8 M=1 decode: native HIP W8A16 GEMV active`). Code default off; the FP8 `qwen38` preset exports it. Within 2 ULP of the fp64 product; 0.16 % from the unquantised-activation product against 2.5 % on the W8A8 path. Same-session A/B off → on → off on the FP8 `qwen38` preset without speculation: decode 26.68 / 26.24 / 25.33 / 23.21 → 28.93 / 28.39 / 27.36 / 24.91 tok/s at 24 / 7.3K / 58K / 197K input tokens (+7–8 %, second off arm within 0.2 %), prefill unchanged, capabilities 4/4, greedy needle 9/9 to 208K tokens; DSpark decode unchanged and byte-identical (its verify pass is multi-row). Receipts: `benchmarks/profiling/rad22-fp8-gemv-2026-11-09/`; preflight `scripts/test/preflight_fp8_gemv_hook.py`."
    },
    "findings": [
-    "RAD-22 — native HIP W8A16 GEMV for the one-row block-FP8 linears: decode +7–8 %; patch 122, opt-in (2026-11-10)",
+    "RAD-22 — native HIP W8A16 GEMV for the one-row block-FP8 linears: decode +7–8 %; patch 122, in the qwen38 FP8 preset (2026-11-10)",
     "Patches 122–124 together — decode +24–28 %, DSpark cycle 7–11 % shorter; qwen38 FP8 preset default (2026-11-10)",
     "RAD-16 — the target verify is 79–86 % of the DFlash2 cycle and 67–77 % of DSpark's; its growth with depth is the prefix read (2026-11-10)",
     "RAD-27 — GQA-grouped verify prefix stage: speculative cycle −21–24 % at 197K, −5–6 % at 58K, +1–2 % below 8K; patch 125, qwen38 FP8 preset default (2026-11-10)",
@@ -6917,7 +6934,7 @@
     "purpose": "`GemmaRMSNorm.forward_hip` takes upstream's one-launch Triton Gemma kernels (plain, and residual add + norm in one read) on HIP without aiter (`SGLANG_RDNA4_TRITON_GEMMA_RMSNORM=1`); the native fallback is ten torch launches per call, 129 calls per Qwen3.5/3.8 decode step. An empty batch keeps the native path. Logged once (`[RDNA4] Gemma RMSNorm: one-launch Triton kernel active`). Code default off; the FP8 `qwen38` preset exports it. Plain norm bit-identical to native; the fused read within 2 ULP (it normalises the fp32 sum, native the bf16-rounded one), residual bit-identical; 129 norms in a HIP graph 4.22 → 0.45 ms per step per rank. Same-session A/B off → on → off on the FP8 `qwen38` preset without speculation: decode 26.70 / 26.26 / 25.19 / 23.19 → 30.18 / 29.66 / 28.36 / 25.61 tok/s at 24 / 7.3K / 58K / 197K input tokens (+10–13 %), cold prefill 2,123 / 1,658 / 1,025 → 2,316 / 1,783 / 1,072 tok/s, capabilities 4/4, greedy needle 9/9 to 208K tokens; with DSpark +17.7 % at 24 tokens (47.10 → 55.46). Receipts: `benchmarks/profiling/rad5a-gemma-rmsnorm-2026-11-09/`; preflight `scripts/test/preflight_gemma_rmsnorm.py`."
    },
    "findings": [
-    "RAD-5a — GemmaRMSNorm on the one-launch Triton kernels: decode +10–13 %, prefill +5–9 %; patch 123, opt-in (2026-11-10)",
+    "RAD-5a — GemmaRMSNorm on the one-launch Triton kernels: decode +10–13 %, prefill +5–9 %; patch 123, in the qwen38 FP8 preset (2026-11-10)",
     "Patches 122–124 together — decode +24–28 %, DSpark cycle 7–11 % shorter; qwen38 FP8 preset default (2026-11-10)",
     "RAD-16 — the target verify is 79–86 % of the DFlash2 cycle and 67–77 % of DSpark's; its growth with depth is the prefix read (2026-11-10)",
     "RAD-27 — GQA-grouped verify prefix stage: speculative cycle −21–24 % at 197K, −5–6 % at 58K, +1–2 % below 8K; patch 125, qwen38 FP8 preset default (2026-11-10)",
@@ -7001,7 +7018,7 @@
     "purpose": "One-launch Triton bf16 GEMV for the DeltaNet `in_proj_ba` (`kernels/ops/gemm/skinny_bf16_gemv_hip.py`, `SGLANG_RDNA4_SKINNY_BA_GEMV=1`). The projection is an unquantised 96 × 5120 linear (48 × 5120 per rank on the TP-split layout) that rocBLAS serves with a tiled GEMM: 48 launches of 30 µs per decode step per rank for a 1 MB weight. The kernel takes 2-D bf16 inputs of at most 16 rows without a bias (decode and the DSpark verify rows) and accumulates in fp32 in a fixed order; every other call keeps the torch linear. Logged once (`[RDNA4] DeltaNet in_proj_ba: one-launch Triton GEMV active`). Code default off; the FP8 `qwen38` preset exports it. Preflight: same fp64 error as torch on every shape, each row independent of the row count, 48 launches in a HIP graph over a weight rotation larger than the cache 29.7 → 7.5 µs each (1.07 ms per step per rank), replay equal to eager; on recorded hidden states 0.044 % of the outputs differ from the torch linear, the kernel the closer side to fp64 on nine in ten (`scripts/test/skinny_ba_gemv_recorded.py`). Same-session A/B off → on → off on the FP8 `qwen38` preset without speculation: decode 26.73 / 26.28 / 25.34 / 23.14 → 27.52 / 26.86 / 26.26 / 23.81 tok/s at 24 / 7.3K / 58K / 197K input tokens (+2–4 %), cold prefill unchanged, capabilities 4/4, greedy needle 9/9 to 208K tokens; the DSpark cycle is 1.1 ms shorter (58.5 against 59.6 ms). Receipts: `benchmarks/profiling/rad23-ba-gemv-2026-11-09/`; preflight `scripts/test/preflight_skinny_ba_gemv.py`."
    },
    "findings": [
-    "RAD-23 — one-launch bf16 GEMV for the DeltaNet `in_proj_ba`: decode +2–4 %; patch 124, opt-in (2026-11-10)",
+    "RAD-23 — one-launch bf16 GEMV for the DeltaNet `in_proj_ba`: decode +2–4 %; patch 124, in the qwen38 FP8 preset (2026-11-10)",
     "Patches 122–124 together — decode +24–28 %, DSpark cycle 7–11 % shorter; qwen38 FP8 preset default (2026-11-10)",
     "RAD-16 — the target verify is 79–86 % of the DFlash2 cycle and 67–77 % of DSpark's; its growth with depth is the prefix read (2026-11-10)",
     "RAD-27 — GQA-grouped verify prefix stage: speculative cycle −21–24 % at 197K, −5–6 % at 58K, +1–2 % below 8K; patch 125, qwen38 FP8 preset default (2026-11-10)",
@@ -7107,7 +7124,8 @@
     "100",
     "107",
     "110",
-    "112"
+    "112",
+    "131"
    ],
    "breaks_without": [],
    "class_guess": "performance",
@@ -7487,7 +7505,7 @@
     "v0.5.23": "not covered: newer than the dry run"
    },
    "index": {
-    "collection": "Core RDNA4 enablement",
+    "collection": "Attention and numerics",
     "upstream": "Carry",
     "purpose": "On HIP the attention-TP sum takes an FP32 detour (cast up, all-reduce, cast down) unless the model's update policy opts out (080). With two ranks the sum is one addition, and the FP32 sum of two BF16 values rounded back to BF16 is the correctly rounded BF16 sum, so the BF16 wire returns the same bits at half the payload and without the two casts. `SGLANG_HIP_BF16_ATTN_SUM=1` (default in the qwen38 FP8 preset; `0` restores the detour) takes the BF16 wire in `layer_boundary/ops.attn_tp_all_reduce` when the hidden state is BF16 and `attn_tp_size == 2`; groups of three ranks and more and other dtypes keep the detour. Logged once (`[RDNA4] attention-TP sum: BF16 wire on a two-rank group active`). RAD-30: no differing bit on the wire in phase 0; in serving the same greedy tokens on every comparison of eight boots, cold prefill ×0.84 / ×0.88 / ×0.93 at 7.3K / 58K / 197K, no-spec decode +1.2–1.7 %, DSpark cycle ×0.98, VRAM lower."
    },
@@ -7526,6 +7544,97 @@
    ],
    "superseded_evidence": null,
    "notes": "Does not apply or work without 080: its hunk context is the fp32_on_hip signature and the 'if _is_hip and fp32_on_hip:' line that 080 wrote and its branch reads that parameter; 080 is the unconditional per-model opt-out of 001's detour (Laguna, PLAIN_ADD_BF16_SUM), 130 the env-switched two-rank bypass of the same detour for models that did not opt out. On this two-rank rig both end on a BF16 collective, so 001's detour hunk + 080 + 130 could collapse into one two-rank rule, but 130 is measured only on the qwen38 FP8 preset and the other presets keep the detour until their own identity check."
+  },
+  {
+   "patch": "131",
+   "name": "rdna4-hip-prefill-attention",
+   "added": 1438,
+   "deleted": 0,
+   "files": [
+    "python/sglang/kernels/aot/csrc/attention/prefill_attn_fp8_hip/NOTICE",
+    "python/sglang/kernels/aot/csrc/attention/prefill_attn_fp8_hip/prefill_attn_args.h",
+    "python/sglang/kernels/aot/csrc/attention/prefill_attn_fp8_hip/prefill_attn_fp8_hip.cu",
+    "python/sglang/kernels/aot/csrc/attention/prefill_attn_fp8_hip/r4d_attn_prefill_h256_gqa6.inc",
+    "python/sglang/kernels/aot/csrc/attention/prefill_attn_fp8_hip/r4d_common.h",
+    "python/sglang/kernels/aot/csrc/attention/prefill_attn_fp8_hip/r4d_dt16.h",
+    "python/sglang/srt/layers/attention/triton_backend.py"
+   ],
+   "new_files": [
+    "python/sglang/kernels/aot/csrc/attention/prefill_attn_fp8_hip/NOTICE",
+    "python/sglang/kernels/aot/csrc/attention/prefill_attn_fp8_hip/prefill_attn_args.h",
+    "python/sglang/kernels/aot/csrc/attention/prefill_attn_fp8_hip/prefill_attn_fp8_hip.cu",
+    "python/sglang/kernels/aot/csrc/attention/prefill_attn_fp8_hip/r4d_attn_prefill_h256_gqa6.inc",
+    "python/sglang/kernels/aot/csrc/attention/prefill_attn_fp8_hip/r4d_common.h",
+    "python/sglang/kernels/aot/csrc/attention/prefill_attn_fp8_hip/r4d_dt16.h"
+   ],
+   "switches_introduced": [
+    "SGLANG_HIP_PREFILL_ATTN",
+    "SGLANG_HIP_PREFILL_ATTN_MIN_ROWS"
+   ],
+   "switches_touched": [],
+   "switch_defaults": {
+    "SGLANG_HIP_PREFILL_ATTN": "",
+    "SGLANG_HIP_PREFILL_ATTN_MIN_ROWS": "1"
+   },
+   "switches_opt_out": [],
+   "switches_in_comments_only": [],
+   "default_on": [
+    "SGLANG_HIP_PREFILL_ATTN_MIN_ROWS"
+   ],
+   "presets_on": [
+    "qwen38"
+   ],
+   "launcher_presets_naming": [
+    "qwen38"
+   ],
+   "unswitched_existing_files": [],
+   "born": null,
+   "rebase_history": {},
+   "next_bump_dry_run": {
+    "v0.5.23": "not covered: newer than the dry run"
+   },
+   "index": {
+    "collection": "Attention and numerics",
+    "upstream": "Carry",
+    "purpose": "One-pass HIP prefill attention kernel for single-sequence extends on the fp8 KV pool (head dim 256, 6:1 GQA: qwen38): one launch per layer reads prefix and chunk through one slot table with a tiled online softmax, instead of the Triton extend kernel. Kernel source ported from radiance (Apache-2.0, revision 451b1368, `NOTICE` beside the source in `kernels/aot/csrc/attention/prefill_attn_fp8_hip/`), built by `scripts/build_prefill_attn_hip.sh` (setup step 5f). `SGLANG_HIP_PREFILL_ATTN=qk8` (default in the qwen38 FP8 preset; `exact` keeps the BF16 QK product, `off` restores the Triton kernel) from `SGLANG_HIP_PREFILL_ATTN_MIN_ROWS` rows (preset 257: shorter extends stay on the extend split-KV route, 110). Every other shape stays on Triton; a missing extension or an unexpected pool layout declines with one warning. Logged once per rank (`RAD-10c HIP prefill attention active`). RAD-10c: cold prefill ×0.97 / ×0.78 / ×0.57 at 7.3K / 58K / 197K without speculation and ×0.95 / ×0.77 / ×0.56 under DSpark, first token on a cache hit unchanged, decode and verify cycle within 0.5 %, accept length ×1.001 over 96 paired documents, needle 9/9, capabilities 5/5."
+   },
+   "findings": [],
+   "mentioned_in": {},
+   "shares_files_with": [
+    "001",
+    "047",
+    "065",
+    "077",
+    "100",
+    "107",
+    "110",
+    "112",
+    "125"
+   ],
+   "breaks_without": [],
+   "class_guess": "performance",
+   "class_guess_reason": "switchable and on (by default or in a preset): the ablation arm is the switch",
+   "ablation_arm": "switch: SGLANG_HIP_PREFILL_ATTN=off on presets qwen38",
+   "class": "performance",
+   "disposition": null,
+   "ablation_arm_guess": "switch",
+   "class_confidence": "high",
+   "mechanism": "In the Triton attention backend's extend path, a route ahead of the extend split-KV route (patch 110) and the Triton extend kernel to a HIP kernel built ahead of time (extension prefill_attn_fp8_hip_ext, scripts/build_prefill_attn_hip.sh, setup step 5f): one tiled pass over the cached prefix and the chunk with an online softmax, per layer. Taken for a single-request causal extend of at least SGLANG_HIP_PREFILL_ATTN_MIN_ROWS new rows on an fp8 KV pool with head dimension 256 and six query heads per KV head, with no sinks, sliding window, soft cap, score modifier, auxiliary tensors or custom mask; everything else, and every decline, keeps the existing routes. The kernel source is a port of radiance's Apache-2.0 prefill attention kernel (revision 451b1368, NOTICE carried in the patch). Mode exact forms QK in BF16, mode qk8 forms it from the fp8 cache keys as the extend kernel does under patch 108.",
+   "presets": [
+    "qwen38"
+   ],
+   "switch": "SGLANG_HIP_PREFILL_ATTN (code default unset = off; values exact, qk8) and SGLANG_HIP_PREFILL_ATTN_MIN_ROWS (code default 1). The qwen38 block exports qk8 when EXTEND_FP8_QK is 1 and off when it is 0, and 257 rows, all overridable from the environment, only when QUANT_OVERRIDE is unset; off restores the Triton extend kernel on every prefill chunk.",
+   "last_effect": "RAD-10c, qwen38 FP8, development tree, same session, two boots per side in both orders, qk8 from 257 rows. No speculation: cold prefill 2.644 -> 2.575 s (x0.974) at 7.3K, 28.770 -> 22.383 s (x0.778) at 58K, 171.433 -> 97.005 s (x0.566) at 197K input tokens; first token on a cache hit at the control's value (115 ms at 197K); canonical decode x0.999-1.005. DSpark: cold prefill x0.951 / x0.773 / x0.564 (173.934 -> 98.045 s at 197K), verify cycle x1.000-1.003, greedy accept length 3.804 -> 3.806 over 96 paired documents. Mode exact, no speculation: x0.984 / x0.838 / x0.678.",
+   "receipt": "benchmarks/profiling/rad10c-prefill-attn-minrows-dspark-2026-11-11",
+   "findings_heading": "RAD-10c under DSpark — fp8 QK from 257 rows: cold prefill ×0.56 at 197K, verify cycle and accept length unchanged, gate pass (2026-11-11)",
+   "patch_state": "98 patches, SGLang v0.5.22, development tree = the live tree plus the route hunk and the built extension; the canonical sweep at 99 patches from the live tree is the first measurement of the landed patch",
+   "reproducer": "scripts/bench/bench_prefill_attention.py",
+   "merge_candidates": [
+    "108",
+    "110"
+   ],
+   "superseded_evidence": null,
+   "notes": "Shares the extend path with 108 (fp8 QK in the Triton extend kernel) and 110 (extend split-KV route for up to 256 new rows behind a long prefix): with 131 on, 110 serves the short extends and the Triton extend kernel only the shapes 131 declines, so an arm that isolates 108 on qwen38 needs EXTEND_FP8_QK=0 with SGLANG_HIP_PREFILL_ATTN=qk8 set explicitly. Whether 131 applies without either is read from the leave-one-out replay, not stated here. The second measurement at 257 rows (no speculation) is under benchmarks/profiling/rad10c-prefill-attn-minrows-serving-2026-11-11; the row-count choice under benchmarks/profiling/rad10c-rows-bench-2026-11-11. The kernel is specialised to head dimension 256 and a 6:1 head ratio: other presets decline by shape and keep their routes until a kernel variant exists."
   }
  ]
 }

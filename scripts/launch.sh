@@ -685,6 +685,25 @@ PYEOF
             if [[ -z "${QUANT_OVERRIDE:-}" ]]; then
                 export SGLANG_HIP_BF16_ATTN_SUM="${SGLANG_HIP_BF16_ATTN_SUM:-1}"
             fi
+            # RAD-10c (patch 131): prefill chunks of 257 rows or more run one HIP prefill attention kernel per
+            # layer (tiled one-pass softmax over prefix and chunk, ported from radiance's Apache-2.0 source)
+            # instead of the Triton extend kernel; shorter extends keep the extend split-KV route. "qk8" forms
+            # QK from the fp8 cache keys like the extend kernel under EXTEND_FP8_QK=1, "exact" keeps the BF16
+            # product. Same session, two boots per side in both orders, qk8: no-spec cold prefill at 7.3K / 58K /
+            # 197K input 2.64 / 28.8 / 171.4 -> 2.58 / 22.4 / 97.0 s, first token on a cache hit unchanged
+            # (115 ms at 197K), canonical decode within 0.5 %; DSpark cold prefill 2.75 / 29.4 / 173.9 -> 2.62 /
+            # 22.7 / 98.0 s, verify cycle within 0.3 %, greedy accept length over 96 paired documents 3.804 ->
+            # 3.806; capabilities 5/5 and needle 9/9 on both. Needs scripts/build_prefill_attn_hip.sh; the FP8
+            # checkpoint only. With EXTEND_FP8_QK=0 the default is off, so that knob still restores the upcast on
+            # every prefill path; SGLANG_HIP_PREFILL_ATTN=off restores the Triton extend kernel.
+            if [[ -z "${QUANT_OVERRIDE:-}" ]]; then
+                if [[ "${EXTEND_FP8_QK:-1}" == "1" ]]; then
+                    export SGLANG_HIP_PREFILL_ATTN="${SGLANG_HIP_PREFILL_ATTN:-qk8}"
+                else
+                    export SGLANG_HIP_PREFILL_ATTN="${SGLANG_HIP_PREFILL_ATTN:-off}"
+                fi
+                export SGLANG_HIP_PREFILL_ATTN_MIN_ROWS="${SGLANG_HIP_PREFILL_ATTN_MIN_ROWS:-257}"
+            fi
             # RAD-15 (patch 127), opt-in: INT8_LM_HEAD=1 ends the one-row decode graph at the hidden state and
             # serves greedy requests with no logit processing from an int8 copy of the LM head with a proven
             # arg-max window; every other step and every step the filter cannot prove runs the bf16 head.

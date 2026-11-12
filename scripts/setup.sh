@@ -441,6 +441,17 @@ if [ -f "$SCRIPT_DIR/build_fp8_gemm_bf16.sh" ]; then
 fi
 
 # -------------------------------------------------------------------
+# Step 5f: Build one-pass HIP prefill attention kernel (patches/131)
+# -------------------------------------------------------------------
+echo ""
+echo "[5f/6] Building HIP prefill attention kernel for gfx1201..."
+echo "  Single-sequence extends on the fp8 KV pool (head 256, GQA 6), qwen38 FP8 preset."
+if [ -f "$SCRIPT_DIR/build_prefill_attn_hip.sh" ]; then
+    SGL_KERNEL_DIR="$SGL_KERNEL_DIR" "$SCRIPT_DIR/build_prefill_attn_hip.sh" --env "$ENV_NAME" || \
+      echo "  WARNING: HIP prefill attention kernel build failed (non-fatal — the Triton extend kernel serves prefill)"
+fi
+
+# -------------------------------------------------------------------
 # Step 6: Verify installation
 # -------------------------------------------------------------------
 echo ""

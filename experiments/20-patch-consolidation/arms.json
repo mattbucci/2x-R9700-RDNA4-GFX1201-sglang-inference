@@ -38,8 +38,8 @@
   "041": "qwen36-27b"
  },
  "counts": {
-  "performance": 33,
-  "switch_arms": 18,
+  "performance": 34,
+  "switch_arms": 19,
   "replay_arms": 11,
   "shared_arm": [
    "006",
@@ -68,11 +68,12 @@
      "123",
      "124",
      "129",
-     "130"
+     "130",
+     "131"
     ],
-    "blocks": 3,
-    "boots": 37,
-    "hours": 10.5
+    "blocks": 4,
+    "boots": 41,
+    "hours": 11.6
    },
    "qwen38-dspark": {
     "arms": [
@@ -131,7 +132,7 @@
     "hours": 1.2
    }
   },
-  "hours": 24.6
+  "hours": 25.7
  },
  "stage_b_upper_bound": {
   "sessions": {
@@ -151,11 +152,12 @@
      "123",
      "124",
      "129",
-     "130"
+     "130",
+     "131"
     ],
-    "blocks": 3,
-    "boots": 37,
-    "hours": 16.6
+    "blocks": 4,
+    "boots": 41,
+    "hours": 18.4
    },
    "laguna": {
     "arms": [
@@ -373,7 +375,7 @@
     "hours": 1.2
    }
   },
-  "hours": 72.7
+  "hours": 74.5
  },
  "arms": [
   {
@@ -854,6 +856,19 @@
    "patch": "130",
    "kind": "switch",
    "switch": "SGLANG_HIP_BF16_ATTN_SUM=0",
+   "dropped_together": [],
+   "confidence": "high",
+   "measured_by": "",
+   "stage_a": "qwen38",
+   "stage_b": [
+    "qwen38-dspark"
+   ],
+   "note": ""
+  },
+  {
+   "patch": "131",
+   "kind": "switch",
+   "switch": "SGLANG_HIP_PREFILL_ATTN=off",
    "dropped_together": [],
    "confidence": "high",
    "measured_by": "",
