@@ -1,0 +1,2 @@
+rank 0 no prefix, rows 1..14 vs cold: walk 0.00e+00 (equal 1.0000) plain softmax 5.78e-04 | turn vs chat: exact 6.09e-05 kernel 6.09e-05 x256 6.09e-05 equal 0.9986 | prefix share 0.0673
+rank 1 no prefix, rows 1..14 vs cold: walk 7.33e-07 (equal 1.0000) plain softmax 9.29e-04 | turn vs chat: exact 4.69e-05 kernel 4.69e-05 x256 4.69e-05 equal 1.0000 | prefix share 0.0976

@@ -52,11 +52,40 @@ removes about two thirds of the loss there; the rest is the three-bit rounding. 
    return two texts (the 51-row cache-hit tail is under the HIP kernel's minimum and runs this Triton kernel),
    without it one (CANON-VC); whether the scaled cast changes that is recorded, not gated.
 
+## Dump job, as fixed before the run
+
+The CPU work changed how method 2 has to be read. The rule below is what `analyze_dump.py` computes
+([scripts and tests](../benchmarks/profiling/r97s-dump-2026-11-11/)); it replaces "the floor the flushed run sets".
+
+- Route. A 64-token cached turn on a prefix of 4,096 tokens or more runs the split-KV kernel (stage 1 casts the
+  weights), not the extend kernel; the cold and flushed requests run the extend kernel in 4,096-row chunks. The extend
+  kernel casts prefix weights to the pool dtype and in-chunk weights to BF16. The fp64 emulation of both walks equals
+  literal transcriptions of the kernel loops and reproduces the FLINT-7 dump bit for bit without a prefix (7e-7 on
+  rank 1) and at 6.1e-5 / 4.7e-5 on its one-key turn. FLINT-7b's fidelity floor of 5.8e-4 / 9.3e-4 was the in-chunk
+  BF16 cast.
+- The flushed run cannot set the floor: without a pool read the emulation is exact, so the floor would be zero, and
+  every row the split-KV kernel computes reads the pool.
+- Control arm. A second boot on a BF16 pool (`KV_DTYPE=auto`) runs the same kernels, walks and requests with every
+  cast in BF16. The distance between its dumped turn and its kernel-faithful emulation is the floor F of that depth
+  and layer, never below 6.1e-5.
+- Requests. 6,000 / 58,000 / 197,000 tokens of repository code text (id hashes `efd8fe77bffc1754`,
+  `f2f8a98847a1994f`, `64dcea2b5a6cf355`); per depth: flush, cold request, the same ids plus 64 as a cached turn,
+  flush, all ids again. Greedy, one new token, raw ids. Layers 0, 1, 25, 48 carry no RoPE, so the dumped q and k are
+  the kernel's operands.
+- Cells. One per depth and layer, both ranks pooled: relative L2 of the turn's 64 rows against the BF16-rounded
+  reference. Confirmed: kernel-cast reference within 2 F and exact-weight reference off by 5 F or more. Not present:
+  exact weights within 5 F. Unexplained: neither. The item is confirmed when any cell is, not present when every cell
+  is, unexplained otherwise. A dump whose forwards cannot be matched to the requests decides nothing.
+- Reported, not gated: the no-pool rows, the extend-walk tails of the cold and flushed runs, the turn against the
+  flushed run's rows, the share of prefix mass in e4m3's normal, subnormal and zero bands, and the size of the kernel
+  cast and of the 2^8-scaled cast against exact weights.
+
 ## Success / kill
 
-- Confirmed: on the cached turn the kernel-cast reference matches the dump within twice the floor the flushed run
-  sets, and the exact-weight reference misses it by five times that floor or more, on at least one dumped layer.
-  Otherwise the item closes as not present at this depth, with the measured sizes recorded.
+- Confirmed: on the cached turn the kernel-cast reference matches the dump within twice the floor (F of the control
+  arm, see the dump job), and the exact-weight reference misses it by five times that floor or more, in at least one
+  depth-and-layer cell. Not present at this depth: exact weights within five floors in every cell. Anything else is
+  unexplained and closes nothing. The measured sizes are recorded in each case.
 - Fix valid: under the switch the dump matches the scaled reference within twice the floor, and the scaled reference
   is closer to exact weights than the unscaled one on every dumped layer.
 - Ship as the default of the measured fp8-pool presets: fix valid, every speed row at 0.99× or better in both orders,
