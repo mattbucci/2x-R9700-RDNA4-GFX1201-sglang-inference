@@ -1,0 +1,48 @@
+{
+ "label": "dctl2-sampled",
+ "note": "flint FP8 preset, live tree, 98 patches, --random-seed 7",
+ "log": "/data/logs/flint-bf16-wire-2026-11-11/server-dctl2.log",
+ "from_line": 407,
+ "to_line": 557,
+ "line_numbering": "newline",
+ "decode_lines_dropped_after_prefill": 12,
+ "decode_lines_dropped_no_depth": 0,
+ "depths": {
+  "24": {
+   "decode_batches": {
+    "lines": 23,
+    "accept_len": 2.12,
+    "tok_s": 57.44,
+    "cycles_s": 27.02,
+    "cycle_ms": 37.02
+   }
+  },
+  "7.3K": {
+   "decode_batches": {
+    "lines": 17,
+    "accept_len": 2.92,
+    "tok_s": 74.32,
+    "cycles_s": 25.39,
+    "cycle_ms": 39.39
+   }
+  },
+  "58K": {
+   "decode_batches": {
+    "lines": 15,
+    "accept_len": 3.1,
+    "tok_s": 70.2,
+    "cycles_s": 22.64,
+    "cycle_ms": 44.16
+   }
+  },
+  "197K": {
+   "decode_batches": {
+    "lines": 9,
+    "accept_len": 4.92,
+    "tok_s": 82.14,
+    "cycles_s": 16.59,
+    "cycle_ms": 60.28
+   }
+  }
+ }
+}

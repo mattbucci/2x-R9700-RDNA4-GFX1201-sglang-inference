@@ -1,0 +1,84 @@
+{
+  "label": "ctl2-forced",
+  "tag": "",
+  "note": "flint FP8 preset, live tree, 98 patches, --random-seed 7",
+  "port": 23334,
+  "maxtok": 400,
+  "runs": 2,
+  "sampling": null,
+  "ignore_eos": true,
+  "points": [
+    {
+      "context": 128,
+      "input_len": 14,
+      "runs_tps": [
+        45.33,
+        45.38
+      ],
+      "median_tps": 45.353,
+      "min_tps": 45.327,
+      "max_tps": 45.378,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "median_tpot_ms": 22.05,
+      "sample": "Okay, the user has asked for a long, detailed essay about GP",
+      "median_ttft_ms": 75.0
+    },
+    {
+      "context": 8192,
+      "input_len": 7321,
+      "runs_tps": [
+        44.64,
+        44.67
+      ],
+      "median_tps": 44.655,
+      "min_tps": 44.642,
+      "max_tps": 44.668,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "median_tpot_ms": 22.39,
+      "sample": "We need answer user. Need summarize repeated sentence in one",
+      "median_ttft_ms": 85.1
+    },
+    {
+      "context": 65536,
+      "input_len": 58473,
+      "runs_tps": [
+        43.42,
+        43.4
+      ],
+      "median_tps": 43.407,
+      "min_tps": 43.398,
+      "max_tps": 43.416,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "median_tpot_ms": 23.04,
+      "sample": "We need answer user. Need parse. We need respond to final. W",
+      "median_ttft_ms": 135.9
+    },
+    {
+      "context": 221184,
+      "input_len": 197315,
+      "runs_tps": [
+        39.5,
+        39.47
+      ],
+      "median_tps": 39.488,
+      "min_tps": 39.471,
+      "max_tps": 39.504,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "median_tpot_ms": 25.32,
+      "sample": "We need answer user. Need parse request. We need answer like",
+      "median_ttft_ms": 299.6
+    }
+  ]
+}

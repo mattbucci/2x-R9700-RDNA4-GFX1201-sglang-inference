@@ -159,6 +159,21 @@
     "boots": 41,
     "hours": 18.4
    },
+   "flint": {
+    "arms": [
+     "087",
+     "107",
+     "108",
+     "109",
+     "110",
+     "111",
+     "129",
+     "130"
+    ],
+    "blocks": 2,
+    "boots": 21,
+    "hours": 5.2
+   },
    "laguna": {
     "arms": [
      "079",
@@ -173,20 +188,6 @@
     "blocks": 2,
     "boots": 21,
     "hours": 5.2
-   },
-   "flint": {
-    "arms": [
-     "087",
-     "107",
-     "108",
-     "109",
-     "110",
-     "111",
-     "129"
-    ],
-    "blocks": 2,
-    "boots": 19,
-    "hours": 4.8
    },
    "qwen35": {
     "arms": [
@@ -375,7 +376,7 @@
     "hours": 1.2
    }
   },
-  "hours": 74.5
+  "hours": 75.0
  },
  "arms": [
   {
@@ -861,7 +862,8 @@
    "measured_by": "",
    "stage_a": "qwen38",
    "stage_b": [
-    "qwen38-dspark"
+    "qwen38-dspark",
+    "flint"
    ],
    "note": ""
   },

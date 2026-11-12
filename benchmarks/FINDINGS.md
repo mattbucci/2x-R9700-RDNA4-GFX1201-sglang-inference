@@ -2573,6 +2573,105 @@ Disposition: fp8 QK from 257 rows passes the no-speculation and the DSpark phase
 default with the numbered port patch once the queued Flint jobs, which read the live tree, have ended; the
 canonical sweep is re-measured before the README rows change. The exact mode stays behind the same switch.
 
+### RAD-30b — the BF16 attention-sum wire on Flint: greedy output equal to the token on eight boots, cold prefill ×0.84 / ×0.89 / ×0.93 at 7.3K / 58K / 197K, no-spec decode +1.1–1.3 %, DFlash2 cycle and accept length unchanged (2026-11-11)
+
+Eight boots of the `flint` FP8 preset from the live tree at 98 patches, every boot `--random-seed 7`: no-spec
+control / wire / wire / control, then the same order with the Flint-DFlash2 drafter. `flint.py` declares the
+default attention update, so the control sums the two ranks' attention outputs through FP32; the treatment sets
+patch 130's switch `SGLANG_HIP_BF16_ATTN_SUM=1` in the launcher's environment, and the driver reads the switch
+and the route's log lines on every boot ([receipts](profiling/flint-bf16-wire-2026-11-11/), final line
+`identity-identical:prefill-pass:nospec-ok:needle-same:dflash-ok:accept-identical:memory-ok`). This re-measures
+the earlier Flint result (the model-level opt-out, null within 2 %, "Flint A/Bs"): that comparison was
+decode-only on RCCL with a BF16 KV cache and had no cold-prefill row.
+
+Identity, greedy, across the four no-spec boots: canonical sweep 4/4 texts, forced 400-token ladder 4/4, six
+prompts at short depth 6/6, six with a 182,466-token document 6/6, and the deep pass repeated on each boot behind
+a cache flush 6/6. No boot stands alone on any cell (FLINT-4b had one control boot apart on one text). With the
+drafter the canonical texts agree 4/4 and the 48 documents of the paired accept probe agree 48/48 in text and
+verify count, 14,400 tokens over 5,137 verifies on all four boots.
+
+| Cold prefill, mean of two boots | 7,321 tokens | 58,473 tokens | 197,315 tokens |
+|---|---:|---:|---:|
+| No-spec, FP32 detour | 0.924 s | 10.483 s | 64.700 s |
+| No-spec, BF16 wire | 0.777 s (×0.841) | 9.316 s (×0.889) | 60.409 s (×0.934) |
+| DFlash2 boots, FP32 detour | 0.987 s | 10.550 s | 64.753 s |
+| DFlash2 boots, BF16 wire | 0.843 s (×0.854) | 9.309 s (×0.882) | 60.440 s (×0.933) |
+
+The wire takes 0.15 / 1.17 / 4.29 s off the no-spec prefill (median of three runs per boot; the DFlash2 rows are
+means of two runs). Every wire boot is faster than every control boot at every depth.
+
+| Decode, mean of two boots | 14 (cycle: 24) | 7.3K | 58K | 197K |
+|---|---:|---:|---:|---:|
+| No-spec canonical, FP32 detour, tok/s | 45.22 | 44.51 | 43.14 | 39.34 |
+| No-spec canonical, BF16 wire, tok/s | 45.73 (×1.011) | 45.06 (×1.012) | 43.71 (×1.013) | 39.79 (×1.011) |
+| No-spec forced 400 tokens, wire over detour | ×1.010 | ×1.011 | ×1.013 | ×1.017 |
+| DFlash2 cycle, FP32 detour, ms | 36.92 | 39.35 | 44.13 | 60.21 |
+| DFlash2 cycle, BF16 wire, ms | 36.83 (×0.998) | 39.36 (×1.000) | 44.18 (×1.001) | 60.18 (×1.000) |
+| DFlash2 canonical, wire over detour | ×0.999 | ×1.002 | ×1.000 | ×0.999 |
+
+Every no-spec wire boot is above every control boot on both ladders at every depth; the gate reads `ok` and not
+`faster` because the forced ladder gains 0.97 % at 14 tokens, under its 1 % bar. With DFlash2 the accept length
+is 2.12 / 2.92 / 3.10 / 4.92 on all four boots and the cycle does not move, where qwen38's DSpark cycle read
+×0.98. Needle 11/12 on a wire boot and on a control boot with the same cell missed on both (32,768 tokens at
+depth 0.9), text capabilities 3/3 on all eight boots without a repeat, VRAM at the end of an arm equal to its
+control's (29,420 MiB per card without speculation, 29,645 with DFlash2, 1 MiB apart at most).
+
+Disposition, by the rule fixed before the run (identity identical or matched, prefill pass, no-spec ok or faster,
+needle same or more, DFlash2 ok or faster, accept identical or within, quality and memory hold): adopted as the
+`flint` launcher default (`SGLANG_HIP_BF16_ATTN_SUM=0` restores the detour) once FLINT-7 read `rounding`, the
+verdict a Flint preset change waited for. The earlier decode reading (+1–2 %, inside that triple's noise) agrees
+with the +1.1–1.3 % of these four boots; the prefill gain is new. README rows move only with a Flint canonical
+sweep on the shipped preset. The other two-rank presets whose models keep the default update, nemotron-omni
+first, take the default only after their own identity check.
+
+### FLINT-7 — where Flint's cache-state shift starts: the first attention output differs by rounding (0.02–0.03 % relative L2 on 2.7 % of elements), two layers later the difference is 12 %; verdict rounding (2026-11-11)
+
+Two bare `flint` boots from a development tree (the live tree plus a dump hook that is off without its switch):
+a BF16 KV pool (`KV_DTYPE=auto`, the judged arm: stored keys and values equal the computed ones) and the preset
+(fp8 pool, reported). On each boot the 15-token probe prompt runs from a flushed cache (15 new / 0 cached), again
+from a flushed cache, and after one chat (14 / 1). Both ranks dump the attention input, q, k, v, the attention
+output, the output projection, the MLP input and the MLP output of every layer and the model output, 393 stages
+([receipts](profiling/flint-stage-dump-2026-11-11/), final line `measured:rounding`; the dumps stay under
+`/data/logs/flint-stage-dump-2026-11-11/`). The rule was fixed before the run: the first stage at which the 14
+rows both states compute differ reads `rounding` at 1e-3 relative L2 or less and `defect` at 1e-2 or more, on
+the BF16 arm; the two flushed-cache runs must be bit-equal at every stage.
+
+| 14 shared rows, 14 / 1 against 15 / 0, relative L2 (rank 0 / rank 1) | BF16 KV pool | Preset (fp8 pool) |
+|---|---:|---:|
+| Flushed-cache repeat, stages unequal | 0 / 0 | 0 / 0 |
+| Layer 0 attention input, q, k, v | equal | equal |
+| Layer 0 attention output | 0.00018 / 0.00030 | 0.0102 / 0.0089 |
+| Layer 0 attention output, share of elements differing | 2.6 % / 2.7 % | 69 % / 66 % |
+| Layer 0 output projection | 0.0006 / 0.0009 | 0.0057 / 0.0060 |
+| Layer 0 MLP output (dense) | 0.010 / 0.012 | 0.029 / 0.030 |
+| Layer 1 attention output | 0.023 / 0.022 | 0.047 / 0.045 |
+| Layer 2 MLP output (first MoE layer) | 0.12 / 0.12 | 0.14 / 0.15 |
+| MLP output at layers 4, 8, 16, 24, 32, 40 | 0.08–0.23 | 0.08–0.23 |
+| Model output | 0.119 / 0.119 | 0.159 / 0.159 |
+| Largest top-1 shift, nats (positions) | 0.234 (24) | 0.203 (22) |
+
+On the BF16 arm the two states feed layer 0's attention bit-equal inputs, queries, keys and values, and its
+output differs on 2.7 % of the elements, on 0.5 % by more than one BF16 step (largest element difference 0.0078),
+under the 1e-3 bar on both ranks. A different summation order between fifteen new rows and fourteen new rows
+over one cached token would produce a difference of this kind; the dump does not record which attention route
+served each state, so that cause is not measured. Token 0's row, computed in the cold run and in the request
+that left it in the cache, and the two flushed-cache runs are equal at all 393 stages. The dense MLP of layer 0
+turns the difference into 1 %, layer 2 (the first MoE layer) into 12 %, and it stays between 8 and 23 % through
+the stack to 12 % at the model output; the same request moves the top-1 log-probability by up to 0.234 nats. The
+routed expert sets are not in the dump either, so the cause of the jump at the first MoE layer is not measured.
+
+On the preset the first difference is larger, 0.9–1.0 % on two thirds of the elements, the label `defect:L00-attn`
+by the bars. The rule placed this arm outside the judgment before the run: there the cached token's key and value
+are read back from the fp8 pool while the flushed run computes them in BF16, a known lossy difference of the
+fp8 KV preset. From layer 2 on, both arms sit in the same band and the shift at the output has the same size, as
+the KV control boots found. Whether e4m3 storage of one token's key and value accounts for the whole 1 % is not
+measured; an offline fp64 reference from the dumped q, k, v is queue item FLINT-7b.
+
+Disposition: verdict `rounding`. The cache-state shift on Flint is a rounding difference at the first attention
+output amplified by the model, not a kernel defect: no preset change for it, FLINT-6's question closes with this
+profile, and Flint preset changes are open again (RAD-30b). Greedy Flint text is sensitive to rounding-level
+changes in general, which is why its identity gates read four boots per cell.
+
 ### FLINT-4b — the in-graph custom all-reduce on Flint: no-spec decode +2.6 % at every depth, DFlash2 cycle unchanged, texts equal wherever the controls repeat themselves (2026-11-11)
 
 Third start, the whole matrix under one method: eight boots of the `flint` preset at `--random-seed 7`, RCCL and
@@ -2686,7 +2785,8 @@ path is the source. The preset reads 0.203 nats over 22 positions, `EXTEND_FP8_Q
 (`KV_DTYPE=auto`) 0.234, at the same uncertain positions in all three arms, and every arm repeats itself to the
 token from a flushed cache (0.000 nats). Verdict `unexplained`: a request whose first prompt token comes from
 the cache computes different numbers from a fully fresh one for a reason other than fp8 storage or the fp8 QK
-dot. A per-layer search for the first diverging stage runs before any Flint preset change (queue item FLINT-7).
+dot. The per-layer search for the first diverging stage is FLINT-7 above: a rounding difference at the first
+attention output, amplified by the model.
 The fixed request matrix passes 10/10 on the preset boot from a flushed cache and 10/10 after one chat.
 
 Receipts: `flint-fp8/{decode,capabilities,route}-canonical-<arm>-2026-11-11-98p.json` for `nospec`, `nospec-rccl`

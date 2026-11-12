@@ -1,0 +1,30 @@
+{
+ "label": "dctl1-accept",
+ "note": "flint FP8 preset, live tree, 98 patches, --random-seed 7",
+ "log": "/data/logs/flint-bf16-wire-2026-11-11/server-dctl1.log",
+ "from_line": 560,
+ "to_line": 906,
+ "line_numbering": "newline",
+ "decode_lines_dropped_after_prefill": 48,
+ "decode_lines_dropped_no_depth": 4,
+ "depths": {
+  "7.3K": {
+   "decode_batches": {
+    "lines": 63,
+    "accept_len": 2.48,
+    "tok_s": 65.35,
+    "cycles_s": 25.97,
+    "cycle_ms": 38.5
+   }
+  },
+  "58K": {
+   "decode_batches": {
+    "lines": 13,
+    "accept_len": 2.65,
+    "tok_s": 65.03,
+    "cycles_s": 24.6,
+    "cycle_ms": 40.65
+   }
+  }
+ }
+}

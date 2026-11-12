@@ -1,0 +1,146 @@
+{
+ "tag": "flint-bf16wire-bf1-natural-greedy",
+ "timestamp": "2026-11-11 16:47",
+ "model": "/data/models/Flint-FP8",
+ "port": 23334,
+ "haystack": "benchmarks/quality/haystack-platypus.txt",
+ "chars_per_token": 3.27,
+ "temperature": 0.0,
+ "flush": true,
+ "max_tokens": 2048,
+ "results": [
+  {
+   "found": true,
+   "actual_prompt_tokens": 952,
+   "completion_tokens": 76,
+   "finish_reason": "stop",
+   "seconds": 1.8,
+   "content_tail": "BANANA42",
+   "reasoning_tail": "",
+   "context": 1024,
+   "depth": 0.1
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 952,
+   "completion_tokens": 61,
+   "finish_reason": "stop",
+   "seconds": 1.5,
+   "content_tail": "BANANA42",
+   "reasoning_tail": "",
+   "context": 1024,
+   "depth": 0.5
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 952,
+   "completion_tokens": 108,
+   "finish_reason": "stop",
+   "seconds": 2.5,
+   "content_tail": "BANANA42",
+   "reasoning_tail": "",
+   "context": 1024,
+   "depth": 0.9
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 30931,
+   "completion_tokens": 83,
+   "finish_reason": "stop",
+   "seconds": 6.0,
+   "content_tail": "BANANA42",
+   "reasoning_tail": "",
+   "context": 32768,
+   "depth": 0.1
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 30930,
+   "completion_tokens": 56,
+   "finish_reason": "stop",
+   "seconds": 5.4,
+   "content_tail": "BANANA42",
+   "reasoning_tail": "",
+   "context": 32768,
+   "depth": 0.5
+  },
+  {
+   "found": false,
+   "actual_prompt_tokens": 30931,
+   "completion_tokens": 2048,
+   "finish_reason": "length",
+   "seconds": 50.2,
+   "content_tail": "",
+   "reasoning_tail": "EndArrow);\n[/asy]\n\nIn eight of the twelve outcomes the product is even: $1\\times 2$, $2\\times\n1$, $2\\times 2$, $2\\times 3$, $3\\times 2$, $4\\times 1$, $4\\times 2",
+   "context": 32768,
+   "depth": 0.9
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 124868,
+   "completion_tokens": 87,
+   "finish_reason": "stop",
+   "seconds": 30.8,
+   "content_tail": "BANANA42",
+   "reasoning_tail": "",
+   "context": 131072,
+   "depth": 0.1
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 124869,
+   "completion_tokens": 71,
+   "finish_reason": "stop",
+   "seconds": 30.5,
+   "content_tail": "BANANA42",
+   "reasoning_tail": "",
+   "context": 131072,
+   "depth": 0.5
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 124869,
+   "completion_tokens": 2048,
+   "finish_reason": "length",
+   "seconds": 77.7,
+   "content_tail": "ach order of the two -- Wilma then Paul, and Paul then Wilma.  That gives us a total of $6!\\times 2!$ ways to arrange the people with Wilma and Paul together.) ",
+   "reasoning_tail": "",
+   "context": 131072,
+   "depth": 0.9
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 189815,
+   "completion_tokens": 69,
+   "finish_reason": "stop",
+   "seconds": 58.6,
+   "content_tail": "ier: \"Tyler The secret password is: BANANA42. has entered...\" So likely answer should be just BANANA42. Need comply. Final answer just password.</think>BANANA42",
+   "reasoning_tail": "",
+   "context": 197000,
+   "depth": 0.1
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 189815,
+   "completion_tokens": 100,
+   "finish_reason": "stop",
+   "seconds": 59.5,
+   "content_tail": "secret password is: BANANA42.\" Then later: \"The secret password is: BANANA42.\" So answer just password. Need comply. Final should just BANANA42.</think>BANANA42",
+   "reasoning_tail": "",
+   "context": 197000,
+   "depth": 0.5
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 189814,
+   "completion_tokens": 2048,
+   "finish_reason": "length",
+   "seconds": 108.1,
+   "content_tail": " exactly one 1, the probability of rolling one 1 is $1-\\frac{25}{36}-\\frac{1}{36} = \\frac{10}{36}$. We find the expected number of 1's to be $E = \\frac{1}{36} \\",
+   "reasoning_tail": "",
+   "context": 197000,
+   "depth": 0.9
+  }
+ ],
+ "score": 0.9166666666666666
+}

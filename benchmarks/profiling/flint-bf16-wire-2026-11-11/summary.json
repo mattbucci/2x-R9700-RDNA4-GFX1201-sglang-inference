@@ -1,0 +1,944 @@
+{
+ "phase": "all",
+ "identity": {
+  "sweep": {
+   "pair1": {
+    "cells": 4,
+    "same": 4,
+    "empty": 0
+   },
+   "pair2": {
+    "cells": 4,
+    "same": 4,
+    "empty": 0
+   },
+   "controls": {
+    "cells": 4,
+    "same": 4,
+    "empty": 0
+   },
+   "treatments": {
+    "cells": 4,
+    "same": 4,
+    "empty": 0
+   },
+   "four_way": {
+    "cells": 4,
+    "equal": 4,
+    "matched": [],
+    "differs": [],
+    "empty": [],
+    "lone": {
+     "ctl1": [],
+     "ctl2": [],
+     "bf1": [],
+     "bf2": []
+    }
+   }
+  },
+  "forced": {
+   "pair1": {
+    "cells": 4,
+    "same": 4,
+    "empty": 0
+   },
+   "pair2": {
+    "cells": 4,
+    "same": 4,
+    "empty": 0
+   },
+   "controls": {
+    "cells": 4,
+    "same": 4,
+    "empty": 0
+   },
+   "treatments": {
+    "cells": 4,
+    "same": 4,
+    "empty": 0
+   },
+   "four_way": {
+    "cells": 4,
+    "equal": 4,
+    "matched": [],
+    "differs": [],
+    "empty": [],
+    "lone": {
+     "ctl1": [],
+     "ctl2": [],
+     "bf1": [],
+     "bf2": []
+    }
+   }
+  },
+  "texts": {
+   "pair1": {
+    "cells": 6,
+    "same": 6,
+    "empty": 0
+   },
+   "pair2": {
+    "cells": 6,
+    "same": 6,
+    "empty": 0
+   },
+   "controls": {
+    "cells": 6,
+    "same": 6,
+    "empty": 0
+   },
+   "treatments": {
+    "cells": 6,
+    "same": 6,
+    "empty": 0
+   },
+   "four_way": {
+    "cells": 6,
+    "equal": 6,
+    "matched": [],
+    "differs": [],
+    "empty": [],
+    "lone": {
+     "ctl1": [],
+     "ctl2": [],
+     "bf1": [],
+     "bf2": []
+    }
+   }
+  },
+  "texts-deep": {
+   "pair1": {
+    "cells": 6,
+    "same": 6,
+    "empty": 0
+   },
+   "pair2": {
+    "cells": 6,
+    "same": 6,
+    "empty": 0
+   },
+   "controls": {
+    "cells": 6,
+    "same": 6,
+    "empty": 0
+   },
+   "treatments": {
+    "cells": 6,
+    "same": 6,
+    "empty": 0
+   },
+   "four_way": {
+    "cells": 6,
+    "equal": 6,
+    "matched": [],
+    "differs": [],
+    "empty": [],
+    "lone": {
+     "ctl1": [],
+     "ctl2": [],
+     "bf1": [],
+     "bf2": []
+    }
+   }
+  }
+ },
+ "repeat_within_boot": {
+  "ctl1": {
+   "cells": 6,
+   "same": 6,
+   "empty": 0
+  },
+  "ctl2": {
+   "cells": 6,
+   "same": 6,
+   "empty": 0
+  },
+  "bf1": {
+   "cells": 6,
+   "same": 6,
+   "empty": 0
+  },
+  "bf2": {
+   "cells": 6,
+   "same": 6,
+   "empty": 0
+  }
+ },
+ "prefill_nospec": {
+  "7.3K": {
+   "control_s": [
+    0.923,
+    0.925
+   ],
+   "treatment_s": [
+    0.778,
+    0.776
+   ],
+   "ratio": 0.8409,
+   "saved_s": 0.147,
+   "every_boot_faster": true,
+   "input_tokens": [
+    7321
+   ],
+   "runs_s": {
+    "ctl1": [
+     1.09,
+     0.923,
+     0.923
+    ],
+    "ctl2": [
+     1.039,
+     0.922,
+     0.925
+    ],
+    "bf1": [
+     0.909,
+     0.778,
+     0.777
+    ],
+    "bf2": [
+     0.897,
+     0.776,
+     0.776
+    ]
+   }
+  },
+  "58K": {
+   "control_s": [
+    10.486,
+    10.48
+   ],
+   "treatment_s": [
+    9.313,
+    9.318
+   ],
+   "ratio": 0.8886,
+   "saved_s": 1.168,
+   "every_boot_faster": true,
+   "input_tokens": [
+    58473
+   ],
+   "runs_s": {
+    "ctl1": [
+     10.475,
+     10.486,
+     10.494
+    ],
+    "ctl2": [
+     10.457,
+     10.48,
+     10.501
+    ],
+    "bf1": [
+     9.286,
+     9.313,
+     9.326
+    ],
+    "bf2": [
+     9.264,
+     9.329,
+     9.318
+    ]
+   }
+  },
+  "197K": {
+   "control_s": [
+    64.722,
+    64.678
+   ],
+   "treatment_s": [
+    60.431,
+    60.387
+   ],
+   "ratio": 0.9337,
+   "saved_s": 4.291,
+   "every_boot_faster": true,
+   "input_tokens": [
+    197315
+   ],
+   "runs_s": {
+    "ctl1": [
+     64.635,
+     64.722,
+     65.142
+    ],
+    "ctl2": [
+     64.616,
+     64.678,
+     64.738
+    ],
+    "bf1": [
+     60.407,
+     60.442,
+     60.431
+    ],
+    "bf2": [
+     60.387,
+     60.384,
+     60.403
+    ]
+   }
+  }
+ },
+ "prefill_dflash": {
+  "7.3K": {
+   "control_s": [
+    0.988,
+    0.986
+   ],
+   "treatment_s": [
+    0.838,
+    0.848
+   ],
+   "ratio": 0.8541,
+   "saved_s": 0.144,
+   "every_boot_faster": true,
+   "input_tokens": [
+    7321
+   ],
+   "runs_s": {
+    "dctl1": [
+     1.047,
+     0.93
+    ],
+    "dctl2": [
+     1.041,
+     0.931
+    ],
+    "dbf1": [
+     0.894,
+     0.782
+    ],
+    "dbf2": [
+     0.914,
+     0.782
+    ]
+   }
+  },
+  "58K": {
+   "control_s": [
+    10.488,
+    10.612
+   ],
+   "treatment_s": [
+    9.321,
+    9.297
+   ],
+   "ratio": 0.8824,
+   "saved_s": 1.241,
+   "every_boot_faster": true,
+   "input_tokens": [
+    58473
+   ],
+   "runs_s": {
+    "dctl1": [
+     10.479,
+     10.496
+    ],
+    "dctl2": [
+     10.712,
+     10.511
+    ],
+    "dbf1": [
+     9.309,
+     9.332
+    ],
+    "dbf2": [
+     9.287,
+     9.307
+    ]
+   }
+  },
+  "197K": {
+   "control_s": [
+    64.74,
+    64.765
+   ],
+   "treatment_s": [
+    60.469,
+    60.411
+   ],
+   "ratio": 0.9334,
+   "saved_s": 4.312,
+   "every_boot_faster": true,
+   "input_tokens": [
+    197315
+   ],
+   "runs_s": {
+    "dctl1": [
+     64.682,
+     64.798
+    ],
+    "dctl2": [
+     64.722,
+     64.809
+    ],
+    "dbf1": [
+     60.411,
+     60.526
+    ],
+    "dbf2": [
+     60.334,
+     60.489
+    ]
+   }
+  }
+ },
+ "nospec_canonical": {
+  "tok_s": {
+   "ctl1": [
+    45.109,
+    44.416,
+    42.971,
+    39.314
+   ],
+   "ctl2": [
+    45.333,
+    44.602,
+    43.305,
+    39.368
+   ],
+   "bf1": [
+    45.692,
+    45.079,
+    43.721,
+    39.748
+   ],
+   "bf2": [
+    45.758,
+    45.038,
+    43.707,
+    39.827
+   ]
+  },
+  "completion_tokens": {
+   "ctl1": [
+    [
+     80
+    ],
+    [
+     80
+    ],
+    [
+     80
+    ],
+    [
+     80
+    ]
+   ],
+   "ctl2": [
+    [
+     80
+    ],
+    [
+     80
+    ],
+    [
+     80
+    ],
+    [
+     80
+    ]
+   ],
+   "bf1": [
+    [
+     80
+    ],
+    [
+     80
+    ],
+    [
+     80
+    ],
+    [
+     80
+    ]
+   ],
+   "bf2": [
+    [
+     80
+    ],
+    [
+     80
+    ],
+    [
+     80
+    ],
+    [
+     80
+    ]
+   ]
+  },
+  "ratio": [
+   1.0111,
+   1.0123,
+   1.0134,
+   1.0113
+  ],
+  "every_boot_faster": [
+   true,
+   true,
+   true,
+   true
+  ],
+  "input_tokens": [
+   14,
+   7321,
+   58473,
+   197315
+  ]
+ },
+ "nospec_forced": {
+  "tok_s": {
+   "ctl1": [
+    45.233,
+    44.645,
+    43.126,
+    38.896
+   ],
+   "ctl2": [
+    45.353,
+    44.655,
+    43.407,
+    39.488
+   ],
+   "bf1": [
+    45.703,
+    45.128,
+    43.794,
+    39.834
+   ],
+   "bf2": [
+    45.762,
+    45.17,
+    43.822,
+    39.916
+   ]
+  },
+  "completion_tokens": {
+   "ctl1": [
+    [
+     400
+    ],
+    [
+     400
+    ],
+    [
+     400
+    ],
+    [
+     400
+    ]
+   ],
+   "ctl2": [
+    [
+     400
+    ],
+    [
+     400
+    ],
+    [
+     400
+    ],
+    [
+     400
+    ]
+   ],
+   "bf1": [
+    [
+     400
+    ],
+    [
+     400
+    ],
+    [
+     400
+    ],
+    [
+     400
+    ]
+   ],
+   "bf2": [
+    [
+     400
+    ],
+    [
+     400
+    ],
+    [
+     400
+    ],
+    [
+     400
+    ]
+   ]
+  },
+  "ratio": [
+   1.0097,
+   1.0112,
+   1.0125,
+   1.0174
+  ],
+  "every_boot_faster": [
+   true,
+   true,
+   true,
+   true
+  ],
+  "input_tokens": [
+   14,
+   7321,
+   58473,
+   197315
+  ]
+ },
+ "needle": {
+  "bf1_found": 11,
+  "ctl2_found": 11,
+  "lost": [],
+  "gained": [],
+  "missed_on_both": [
+   [
+    32768,
+    0.9
+   ]
+  ]
+ },
+ "dflash_cycle": {
+  "24": {
+   "control_ms": [
+    36.81,
+    37.02
+   ],
+   "treatment_ms": [
+    36.81,
+    36.84
+   ],
+   "accept_len": {
+    "dctl1": 2.12,
+    "dctl2": 2.12,
+    "dbf1": 2.12,
+    "dbf2": 2.12
+   },
+   "ratio": 0.9976,
+   "every_boot_shorter": false
+  },
+  "7.3K": {
+   "control_ms": [
+    39.31,
+    39.39
+   ],
+   "treatment_ms": [
+    39.33,
+    39.38
+   ],
+   "accept_len": {
+    "dctl1": 2.92,
+    "dctl2": 2.92,
+    "dbf1": 2.92,
+    "dbf2": 2.92
+   },
+   "ratio": 1.0001,
+   "every_boot_shorter": false
+  },
+  "58K": {
+   "control_ms": [
+    44.09,
+    44.16
+   ],
+   "treatment_ms": [
+    44.15,
+    44.2
+   ],
+   "accept_len": {
+    "dctl1": 3.1,
+    "dctl2": 3.1,
+    "dbf1": 3.1,
+    "dbf2": 3.1
+   },
+   "ratio": 1.0011,
+   "every_boot_shorter": false
+  },
+  "197K": {
+   "control_ms": [
+    60.14,
+    60.28
+   ],
+   "treatment_ms": [
+    60.14,
+    60.22
+   ],
+   "accept_len": {
+    "dctl1": 4.92,
+    "dctl2": 4.92,
+    "dbf1": 4.92,
+    "dbf2": 4.92
+   },
+   "ratio": 0.9995,
+   "every_boot_shorter": false
+  }
+ },
+ "dflash_canonical": {
+  "tok_s": {
+   "dctl1": [
+    103.902,
+    65.545,
+    85.588,
+    51.142
+   ],
+   "dctl2": [
+    104.198,
+    65.418,
+    85.425,
+    51.049
+   ],
+   "dbf1": [
+    104.064,
+    65.622,
+    85.376,
+    51.075
+   ],
+   "dbf2": [
+    103.797,
+    65.593,
+    85.562,
+    51.023
+   ]
+  },
+  "completion_tokens": {
+   "dctl1": [
+    [
+     80
+    ],
+    [
+     80
+    ],
+    [
+     80
+    ],
+    [
+     80
+    ]
+   ],
+   "dctl2": [
+    [
+     80
+    ],
+    [
+     80
+    ],
+    [
+     80
+    ],
+    [
+     80
+    ]
+   ],
+   "dbf1": [
+    [
+     80
+    ],
+    [
+     80
+    ],
+    [
+     80
+    ],
+    [
+     80
+    ]
+   ],
+   "dbf2": [
+    [
+     80
+    ],
+    [
+     80
+    ],
+    [
+     80
+    ],
+    [
+     80
+    ]
+   ]
+  },
+  "ratio": [
+   0.9989,
+   1.0019,
+   0.9996,
+   0.9991
+  ],
+  "every_boot_faster": [
+   false,
+   true,
+   false,
+   false
+  ],
+  "input_tokens": [
+   14,
+   7321,
+   58473,
+   197315
+  ]
+ },
+ "dflash_sweep_identity": {
+  "pair1": {
+   "cells": 4,
+   "same": 4,
+   "empty": 0
+  },
+  "pair2": {
+   "cells": 4,
+   "same": 4,
+   "empty": 0
+  },
+  "controls": {
+   "cells": 4,
+   "same": 4,
+   "empty": 0
+  },
+  "treatments": {
+   "cells": 4,
+   "same": 4,
+   "empty": 0
+  }
+ },
+ "accept_identity": {
+  "pair1": {
+   "cells": 48,
+   "same": 48,
+   "empty": 0
+  },
+  "pair2": {
+   "cells": 48,
+   "same": 48,
+   "empty": 0
+  },
+  "controls": {
+   "cells": 48,
+   "same": 48,
+   "empty": 0
+  },
+  "treatments": {
+   "cells": 48,
+   "same": 48,
+   "empty": 0
+  }
+ },
+ "accept_ratio": [
+  1.0,
+  1.0
+ ],
+ "vram_mib": {
+  "used": {
+   "ctl1": {
+    "boot": [
+     28702,
+     28702
+    ],
+    "end": [
+     29420,
+     29420
+    ]
+   },
+   "bf1": {
+    "boot": [
+     28702,
+     28702
+    ],
+    "end": [
+     29420,
+     29420
+    ]
+   },
+   "bf2": {
+    "boot": [
+     28702,
+     28702
+    ],
+    "end": [
+     29420,
+     29420
+    ]
+   },
+   "ctl2": {
+    "boot": [
+     28702,
+     28702
+    ],
+    "end": [
+     29420,
+     29420
+    ]
+   },
+   "dctl1": {
+    "boot": [
+     28784,
+     28784
+    ],
+    "end": [
+     29645,
+     29645
+    ]
+   },
+   "dbf1": {
+    "boot": [
+     28784,
+     28784
+    ],
+    "end": [
+     29645,
+     29645
+    ]
+   },
+   "dbf2": {
+    "boot": [
+     28785,
+     28785
+    ],
+    "end": [
+     29646,
+     29646
+    ]
+   },
+   "dctl2": {
+    "boot": [
+     28784,
+     28784
+    ],
+    "end": [
+     29645,
+     29645
+    ]
+   }
+  },
+  "treatment_minus_control_end": {
+   "bf1-minus-ctl1": [
+    0,
+    0
+   ],
+   "bf2-minus-ctl2": [
+    0,
+    0
+   ],
+   "dbf1-minus-dctl1": [
+    0,
+    0
+   ],
+   "dbf2-minus-dctl2": [
+    1,
+    1
+   ]
+  }
+ },
+ "gates": {
+  "identity": "identical",
+  "prefill": "pass",
+  "nospec": "ok",
+  "needle": "same",
+  "dflash": "ok",
+  "accept": "identical",
+  "memory": "ok"
+ }
+}

@@ -1,0 +1,11 @@
+{
+ "label": "dctl2-sweep",
+ "note": "flint FP8 preset, live tree, 98 patches, --random-seed 7",
+ "log": "/data/logs/flint-bf16-wire-2026-11-11/server-dctl2.log",
+ "from_line": 302,
+ "to_line": 404,
+ "line_numbering": "newline",
+ "decode_lines_dropped_after_prefill": 12,
+ "decode_lines_dropped_no_depth": 0,
+ "depths": {}
+}

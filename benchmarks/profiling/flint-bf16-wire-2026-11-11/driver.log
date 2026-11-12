@@ -1,0 +1,448 @@
+[2026-11-11 16:14:53] tree: 98 patches; ops.py sha 8d94814fca54d084; flint.py sha c7384a69621221dc; summary sha 5d9a8ba8ae759a48; prefill probe sha 3b46818cbe5b3d50; accept probe sha 6140a4327cbac4c7
+[2026-11-11 16:14:53] required server arguments: 'model_path': '/data/models/Flint-FP8' 'kv_cache_dtype': 'fp8_e4m3' 'context_length': 262144 'chunked_prefill_size': 4096 'mem_fraction_static': 0.85 'swa_full_tokens_ratio': 0.02 'cuda_graph_max_bs_decode': 1
+[2026-11-11 16:14:53] required switches on every arm: SGLANG_EXTEND_SPLITKV_MAX_TOKENS=256 SGLANG_EXTEND_FP8_QK=1 SGLANG_USE_1STAGE_ALLREDUCE=1 ; SGLANG_HIP_BF16_ATTN_SUM: 1 on bf arms, unset on controls
+[2026-11-11 16:14:53] == boot ctl1 (scripts/launch.sh flint, no-spec, FP32 detour, --random-seed 7)
+[2026-11-11 16:16:27] ctl1: spec=0 bf=0 seed 7; BF16-wire lines 0; custom all-reduce path lines 2; max_total_num_tokens=1044688 ; vram MiB 28702 28702
+[2026-11-11 16:16:27] caps ctl1 (text probes)
+  [PASS] basic     finish=stop answer='paris';  [PASS] tool_call finish=tool_calls name='get_weather' args;  [PASS] thinking  reasoning_seen terminated answer_ok (286 ;[2026-11-11 16:16:38] cold prefill ctl1: 8192 / 65536 / 221184, 3 runs, cache flushed before each
+  ctx~8192: prompt_tokens=7321 prefill 1.09 s = 6,718 tok/s
+  ctx~8192: prompt_tokens=7321 prefill 0.92 s = 7,928 tok/s
+  ctx~8192: prompt_tokens=7321 prefill 0.92 s = 7,934 tok/s
+  ctx~65536: prompt_tokens=58473 prefill 10.47 s = 5,582 tok/s
+  ctx~65536: prompt_tokens=58473 prefill 10.49 s = 5,576 tok/s
+  ctx~65536: prompt_tokens=58473 prefill 10.49 s = 5,572 tok/s
+  ctx~221184: prompt_tokens=197315 prefill 64.63 s = 3,053 tok/s
+  ctx~221184: prompt_tokens=197315 prefill 64.72 s = 3,049 tok/s
+  ctx~221184: prompt_tokens=197315 prefill 65.14 s = 3,029 tok/s
+[2026-11-11 16:20:37] canonical rows ctl1: five runs, 80 tokens, think-off, EOS
+  ctx~128: MEDIAN 45.109 tok/s  input_len~14  [44.66..45.24]  sample='Okay, the user has a
+  ctx~8192: MEDIAN 44.416 tok/s  input_len~7321  [44.14..44.50]  sample='We need answer us
+  ctx~65536: MEDIAN 42.971 tok/s  input_len~58473  [42.66..43.08]  sample='We need answer
+  ctx~221184: MEDIAN 39.314 tok/s  input_len~197315  [38.91..39.32]  sample='We need answe
+[2026-11-11 16:21:29] forced 400-token ladder, two runs per depth, temperature 0, ctl1
+  ctx~128: MEDIAN 45.233 tok/s  input_len~14  [45.22..45.25]  sample='Okay, the user has a
+  ctx~8192: MEDIAN 44.645 tok/s  input_len~7321  [44.64..44.65]  sample='We need answer us
+  ctx~65536: MEDIAN 43.126 tok/s  input_len~58473  [42.99..43.26]  sample='We need answer
+  ctx~221184: MEDIAN 38.896 tok/s  input_len~197315  [38.68..39.11]  sample='We need answe
+[2026-11-11 16:22:46] identity probe ctl1: five short prompts and a 100,000-character document, 400 greedy tokens each
+[probe] refactor: in=62 out=400 8.93s tok/s=44.8
+[probe] ctx-long: in=28929 out=400 13.55s tok/s=29.5
+[2026-11-11 16:23:45] deep identity probe ctl1: the same prompts with a 620,000-character document, cache flushed
+[probe] ctx-long: in=182466 out=400 67.45s tok/s=5.9
+[2026-11-11 16:25:38] deep2 identity probe ctl1: the same prompts with a 620,000-character document, cache flushed
+[probe] ctx-long: in=182466 out=400 67.2s tok/s=6.0
+[2026-11-11 16:28:15] == boot bf1 (scripts/launch.sh flint, no-spec, SGLANG_HIP_BF16_ATTN_SUM=1, --random-seed 7)
+[2026-11-11 16:29:39] bf1: spec=0 bf=1 seed 7; BF16-wire lines 2; custom all-reduce path lines 2; max_total_num_tokens=1044688 ; vram MiB 28702 28702
+[2026-11-11 16:29:39] caps bf1 (text probes)
+  [PASS] basic     finish=stop answer='paris';  [PASS] tool_call finish=tool_calls name='get_weather' args;  [PASS] thinking  reasoning_seen terminated answer_ok (286 ;[2026-11-11 16:29:50] cold prefill bf1: 8192 / 65536 / 221184, 3 runs, cache flushed before each
+  ctx~8192: prompt_tokens=7321 prefill 0.91 s = 8,057 tok/s
+  ctx~8192: prompt_tokens=7321 prefill 0.78 s = 9,412 tok/s
+  ctx~8192: prompt_tokens=7321 prefill 0.78 s = 9,418 tok/s
+  ctx~65536: prompt_tokens=58473 prefill 9.29 s = 6,297 tok/s
+  ctx~65536: prompt_tokens=58473 prefill 9.31 s = 6,279 tok/s
+  ctx~65536: prompt_tokens=58473 prefill 9.33 s = 6,270 tok/s
+  ctx~221184: prompt_tokens=197315 prefill 60.41 s = 3,266 tok/s
+  ctx~221184: prompt_tokens=197315 prefill 60.44 s = 3,265 tok/s
+  ctx~221184: prompt_tokens=197315 prefill 60.43 s = 3,265 tok/s
+[2026-11-11 16:33:32] canonical rows bf1: five runs, 80 tokens, think-off, EOS
+  ctx~128: MEDIAN 45.692 tok/s  input_len~14  [44.74..45.82]  sample='Okay, the user has a
+  ctx~8192: MEDIAN 45.079 tok/s  input_len~7321  [45.00..45.16]  sample='We need answer us
+  ctx~65536: MEDIAN 43.721 tok/s  input_len~58473  [43.22..43.74]  sample='We need answer
+  ctx~221184: MEDIAN 39.748 tok/s  input_len~197315  [39.62..39.81]  sample='We need answe
+[2026-11-11 16:34:22] forced 400-token ladder, two runs per depth, temperature 0, bf1
+  ctx~128: MEDIAN 45.703 tok/s  input_len~14  [45.65..45.76]  sample='Okay, the user has a
+  ctx~8192: MEDIAN 45.128 tok/s  input_len~7321  [45.12..45.13]  sample='We need answer us
+  ctx~65536: MEDIAN 43.794 tok/s  input_len~58473  [43.77..43.82]  sample='We need answer
+  ctx~221184: MEDIAN 39.834 tok/s  input_len~197315  [39.82..39.85]  sample='We need answe
+[2026-11-11 16:35:38] identity probe bf1: five short prompts and a 100,000-character document, 400 greedy tokens each
+[probe] refactor: in=62 out=400 8.82s tok/s=45.4
+[probe] ctx-long: in=28929 out=400 12.84s tok/s=31.2
+[2026-11-11 16:36:36] deep identity probe bf1: the same prompts with a 620,000-character document, cache flushed
+[probe] ctx-long: in=182466 out=400 63.38s tok/s=6.3
+[2026-11-11 16:38:24] deep2 identity probe bf1: the same prompts with a 620,000-character document, cache flushed
+[probe] ctx-long: in=182466 out=400 63.13s tok/s=6.3
+[2026-11-11 16:40:14] needle bf1
+     1024 @ 0.1  found actual=952 finish=stop out=76 1.8s
+     1024 @ 0.5  found actual=952 finish=stop out=61 1.5s
+     1024 @ 0.9  found actual=952 finish=stop out=108 2.5s
+    32768 @ 0.1  found actual=30931 finish=stop out=83 6.0s
+    32768 @ 0.5  found actual=30930 finish=stop out=56 5.4s
+    32768 @ 0.9  MISS  actual=30931 finish=length out=2048 50.2s  tail='EndArrow);\n[/asy]\n\nIn eight of the twelve out
+   131072 @ 0.1  found actual=124868 finish=stop out=87 30.8s
+   131072 @ 0.5  found actual=124869 finish=stop out=71 30.5s
+   131072 @ 0.9  found actual=124869 finish=length out=2048 77.7s
+   197000 @ 0.1  found actual=189815 finish=stop out=69 58.6s
+   197000 @ 0.5  found actual=189815 finish=stop out=100 59.5s
+   197000 @ 0.9  found actual=189814 finish=length out=2048 108.1s
+score 0.92 -> /home/letsrtfm/AI/2x-R9700-RDNA4-GFX1201-sglang-inference/benchmarks/quality/flint-bf16wire-bf1-natural-gr
+[2026-11-11 16:48:14] == boot bf2 (scripts/launch.sh flint, no-spec, SGLANG_HIP_BF16_ATTN_SUM=1, --random-seed 7)
+[2026-11-11 16:49:48] bf2: spec=0 bf=1 seed 7; BF16-wire lines 2; custom all-reduce path lines 2; max_total_num_tokens=1044688 ; vram MiB 28702 28702
+[2026-11-11 16:49:48] caps bf2 (text probes)
+  [PASS] basic     finish=stop answer='paris';  [PASS] tool_call finish=tool_calls name='get_weather' args;  [PASS] thinking  reasoning_seen terminated answer_ok (286 ;[2026-11-11 16:49:59] cold prefill bf2: 8192 / 65536 / 221184, 3 runs, cache flushed before each
+  ctx~8192: prompt_tokens=7321 prefill 0.90 s = 8,158 tok/s
+  ctx~8192: prompt_tokens=7321 prefill 0.78 s = 9,436 tok/s
+  ctx~8192: prompt_tokens=7321 prefill 0.78 s = 9,430 tok/s
+  ctx~65536: prompt_tokens=58473 prefill 9.26 s = 6,312 tok/s
+  ctx~65536: prompt_tokens=58473 prefill 9.33 s = 6,268 tok/s
+  ctx~65536: prompt_tokens=58473 prefill 9.32 s = 6,275 tok/s
+  ctx~221184: prompt_tokens=197315 prefill 60.39 s = 3,267 tok/s
+  ctx~221184: prompt_tokens=197315 prefill 60.38 s = 3,268 tok/s
+  ctx~221184: prompt_tokens=197315 prefill 60.40 s = 3,267 tok/s
+[2026-11-11 16:53:41] canonical rows bf2: five runs, 80 tokens, think-off, EOS
+  ctx~128: MEDIAN 45.758 tok/s  input_len~14  [45.12..45.79]  sample='Okay, the user has a
+  ctx~8192: MEDIAN 45.038 tok/s  input_len~7321  [45.00..45.12]  sample='We need answer us
+  ctx~65536: MEDIAN 43.707 tok/s  input_len~58473  [42.42..43.72]  sample='We need answer
+  ctx~221184: MEDIAN 39.827 tok/s  input_len~197315  [39.79..39.84]  sample='We need answe
+[2026-11-11 16:54:31] forced 400-token ladder, two runs per depth, temperature 0, bf2
+  ctx~128: MEDIAN 45.762 tok/s  input_len~14  [45.76..45.77]  sample='Okay, the user has a
+  ctx~8192: MEDIAN 45.170 tok/s  input_len~7321  [45.11..45.23]  sample='We need answer us
+  ctx~65536: MEDIAN 43.822 tok/s  input_len~58473  [43.80..43.84]  sample='We need answer
+  ctx~221184: MEDIAN 39.916 tok/s  input_len~197315  [39.89..39.94]  sample='We need answe
+[2026-11-11 16:55:47] identity probe bf2: five short prompts and a 100,000-character document, 400 greedy tokens each
+[probe] refactor: in=62 out=400 8.78s tok/s=45.6
+[probe] ctx-long: in=28929 out=400 12.82s tok/s=31.2
+[2026-11-11 16:56:44] deep identity probe bf2: the same prompts with a 620,000-character document, cache flushed
+[probe] ctx-long: in=182466 out=400 63.38s tok/s=6.3
+[2026-11-11 16:58:33] deep2 identity probe bf2: the same prompts with a 620,000-character document, cache flushed
+[probe] ctx-long: in=182466 out=400 63.11s tok/s=6.3
+[2026-11-11 17:01:05] == boot ctl2 (scripts/launch.sh flint, no-spec, FP32 detour, --random-seed 7)
+[2026-11-11 17:02:39] ctl2: spec=0 bf=0 seed 7; BF16-wire lines 0; custom all-reduce path lines 2; max_total_num_tokens=1044688 ; vram MiB 28702 28702
+[2026-11-11 17:02:39] caps ctl2 (text probes)
+  [PASS] basic     finish=stop answer='paris';  [PASS] tool_call finish=tool_calls name='get_weather' args;  [PASS] thinking  reasoning_seen terminated answer_ok (286 ;[2026-11-11 17:02:50] cold prefill ctl2: 8192 / 65536 / 221184, 3 runs, cache flushed before each
+  ctx~8192: prompt_tokens=7321 prefill 1.04 s = 7,046 tok/s
+  ctx~8192: prompt_tokens=7321 prefill 0.92 s = 7,944 tok/s
+  ctx~8192: prompt_tokens=7321 prefill 0.92 s = 7,917 tok/s
+  ctx~65536: prompt_tokens=58473 prefill 10.46 s = 5,592 tok/s
+  ctx~65536: prompt_tokens=58473 prefill 10.48 s = 5,579 tok/s
+  ctx~65536: prompt_tokens=58473 prefill 10.50 s = 5,569 tok/s
+  ctx~221184: prompt_tokens=197315 prefill 64.62 s = 3,054 tok/s
+  ctx~221184: prompt_tokens=197315 prefill 64.68 s = 3,051 tok/s
+  ctx~221184: prompt_tokens=197315 prefill 64.74 s = 3,048 tok/s
+[2026-11-11 17:06:49] canonical rows ctl2: five runs, 80 tokens, think-off, EOS
+  ctx~128: MEDIAN 45.333 tok/s  input_len~14  [44.76..45.41]  sample='Okay, the user has a
+  ctx~8192: MEDIAN 44.602 tok/s  input_len~7321  [44.55..44.67]  sample='We need answer us
+  ctx~65536: MEDIAN 43.305 tok/s  input_len~58473  [42.79..43.42]  sample='We need answer
+  ctx~221184: MEDIAN 39.368 tok/s  input_len~197315  [39.35..39.40]  sample='We need answe
+[2026-11-11 17:07:40] forced 400-token ladder, two runs per depth, temperature 0, ctl2
+  ctx~128: MEDIAN 45.353 tok/s  input_len~14  [45.33..45.38]  sample='Okay, the user has a
+  ctx~8192: MEDIAN 44.655 tok/s  input_len~7321  [44.64..44.67]  sample='We need answer us
+  ctx~65536: MEDIAN 43.407 tok/s  input_len~58473  [43.40..43.42]  sample='We need answer
+  ctx~221184: MEDIAN 39.488 tok/s  input_len~197315  [39.47..39.50]  sample='We need answe
+[2026-11-11 17:08:57] identity probe ctl2: five short prompts and a 100,000-character document, 400 greedy tokens each
+[probe] refactor: in=62 out=400 8.87s tok/s=45.1
+[probe] ctx-long: in=28929 out=400 13.49s tok/s=29.7
+[2026-11-11 17:09:56] deep identity probe ctl2: the same prompts with a 620,000-character document, cache flushed
+[probe] ctx-long: in=182466 out=400 67.41s tok/s=5.9
+[2026-11-11 17:11:49] deep2 identity probe ctl2: the same prompts with a 620,000-character document, cache flushed
+[probe] ctx-long: in=182466 out=400 67.15s tok/s=6.0
+[2026-11-11 17:13:42] needle ctl2
+     1024 @ 0.1  found actual=952 finish=stop out=76 1.9s
+     1024 @ 0.5  found actual=952 finish=stop out=61 1.5s
+     1024 @ 0.9  found actual=952 finish=stop out=108 2.6s
+    32768 @ 0.1  found actual=30931 finish=stop out=83 6.6s
+    32768 @ 0.5  found actual=30930 finish=stop out=56 6.0s
+    32768 @ 0.9  MISS  actual=30931 finish=length out=2048 51.2s  tail='EndArrow);\n[/asy]\n\nIn eight of the twelve out
+   131072 @ 0.1  found actual=124868 finish=stop out=87 33.5s
+   131072 @ 0.5  found actual=124869 finish=stop out=71 33.2s
+   131072 @ 0.9  found actual=124869 finish=length out=2048 81.0s
+   197000 @ 0.1  found actual=189815 finish=stop out=69 62.7s
+   197000 @ 0.5  found actual=189815 finish=stop out=100 63.6s
+   197000 @ 0.9  found actual=189814 finish=length out=2048 112.7s
+score 0.92 -> /home/letsrtfm/AI/2x-R9700-RDNA4-GFX1201-sglang-inference/benchmarks/quality/flint-bf16wire-ctl2-natural-g
+[2026-11-11 17:22:03] == no-spec greedy texts, first pair (ctl1 against bf1)
+code: IDENTICAL (400 tokens)
+prose: IDENTICAL (400 tokens)
+json: IDENTICAL (400 tokens)
+numbers: IDENTICAL (400 tokens)
+refactor: IDENTICAL (400 tokens)
+ctx-long: IDENTICAL (400 tokens)
+identical 6/6
+[2026-11-11 17:22:03] == no-spec greedy texts, second pair (ctl2 against bf2)
+code: IDENTICAL (400 tokens)
+prose: IDENTICAL (400 tokens)
+json: IDENTICAL (400 tokens)
+numbers: IDENTICAL (400 tokens)
+refactor: IDENTICAL (400 tokens)
+ctx-long: IDENTICAL (400 tokens)
+identical 6/6
+[2026-11-11 17:22:03] == no-spec greedy texts, the two controls
+code: IDENTICAL (400 tokens)
+prose: IDENTICAL (400 tokens)
+json: IDENTICAL (400 tokens)
+numbers: IDENTICAL (400 tokens)
+refactor: IDENTICAL (400 tokens)
+ctx-long: IDENTICAL (400 tokens)
+identical 6/6
+[2026-11-11 17:22:04] == no-spec greedy texts at depth, first pair
+code: IDENTICAL (400 tokens)
+prose: IDENTICAL (400 tokens)
+json: IDENTICAL (400 tokens)
+numbers: IDENTICAL (400 tokens)
+refactor: IDENTICAL (400 tokens)
+ctx-long: IDENTICAL (400 tokens)
+identical 6/6
+[2026-11-11 17:22:04] == no-spec greedy texts at depth, second pair
+code: IDENTICAL (400 tokens)
+prose: IDENTICAL (400 tokens)
+json: IDENTICAL (400 tokens)
+numbers: IDENTICAL (400 tokens)
+refactor: IDENTICAL (400 tokens)
+ctx-long: IDENTICAL (400 tokens)
+identical 6/6
+[2026-11-11 17:22:04] == no-spec greedy texts at depth, the two controls
+code: IDENTICAL (400 tokens)
+prose: IDENTICAL (400 tokens)
+json: IDENTICAL (400 tokens)
+numbers: IDENTICAL (400 tokens)
+refactor: IDENTICAL (400 tokens)
+ctx-long: IDENTICAL (400 tokens)
+identical 6/6
+[2026-11-11 17:22:04] == no-spec greedy texts at depth, the two BF16 boots
+code: IDENTICAL (400 tokens)
+prose: IDENTICAL (400 tokens)
+json: IDENTICAL (400 tokens)
+numbers: IDENTICAL (400 tokens)
+refactor: IDENTICAL (400 tokens)
+ctx-long: IDENTICAL (400 tokens)
+identical 6/6
+[2026-11-11 17:22:04] == summary (nospec): BF16 wire against the FP32 detour, mean of the two boots per side
+IDENTITY sweep: ctl1/bf1 4/4, ctl2/bf2 4/4; controls ctl1/ctl2 4/4; treatments bf1/bf2 4/4
+IDENTITY sweep four boots: 4/4 cells equal on all four; a BF16 boot repeats a control on []; no BF16 boot repeats a control on []; lone boots {}
+IDENTITY forced: ctl1/bf1 4/4, ctl2/bf2 4/4; controls ctl1/ctl2 4/4; treatments bf1/bf2 4/4
+IDENTITY forced four boots: 4/4 cells equal on all four; a BF16 boot repeats a control on []; no BF16 boot repeats a control on []; lone boots {}
+IDENTITY texts: ctl1/bf1 6/6, ctl2/bf2 6/6; controls ctl1/ctl2 6/6; treatments bf1/bf2 6/6
+IDENTITY texts four boots: 6/6 cells equal on all four; a BF16 boot repeats a control on []; no BF16 boot repeats a control on []; lone boots {}
+IDENTITY texts-deep: ctl1/bf1 6/6, ctl2/bf2 6/6; controls ctl1/ctl2 6/6; treatments bf1/bf2 6/6
+IDENTITY texts-deep four boots: 6/6 cells equal on all four; a BF16 boot repeats a control on []; no BF16 boot repeats a control on []; lone boots {}
+REPEAT deep texts on one boot, cache flushed before each pass: ctl1 6/6, ctl2 6/6, bf1 6/6, bf2 6/6
+PREFILL no-spec 7.3K (7321 tokens): control 0.923 / 0.925 s, BF16 wire 0.778 / 0.776 s, x0.8409 on the means (0.147 s), faster on every boot
+PREFILL no-spec 58K (58473 tokens): control 10.486 / 10.48 s, BF16 wire 9.313 / 9.318 s, x0.8886 on the means (1.168 s), faster on every boot
+PREFILL no-spec 197K (197315 tokens): control 64.722 / 64.678 s, BF16 wire 60.431 / 60.387 s, x0.9337 on the means (4.291 s), faster on every boot
+NOSPEC canonical tok/s ctl1: 45.109 / 44.416 / 42.971 / 39.314  completion tokens [[80], [80], [80], [80]]
+NOSPEC canonical tok/s ctl2: 45.333 / 44.602 / 43.305 / 39.368  completion tokens [[80], [80], [80], [80]]
+NOSPEC canonical tok/s bf1: 45.692 / 45.079 / 43.721 / 39.748  completion tokens [[80], [80], [80], [80]]
+NOSPEC canonical tok/s bf2: 45.758 / 45.038 / 43.707 / 39.827  completion tokens [[80], [80], [80], [80]]
+NOSPEC canonical BF16 wire over control (mean of two boots): [1.0111, 1.0123, 1.0134, 1.0113]; every BF16 boot above every control boot: [True, True, True, True]
+NOSPEC forced tok/s ctl1: 45.233 / 44.645 / 43.126 / 38.896  completion tokens [[400], [400], [400], [400]]
+NOSPEC forced tok/s ctl2: 45.353 / 44.655 / 43.407 / 39.488  completion tokens [[400], [400], [400], [400]]
+NOSPEC forced tok/s bf1: 45.703 / 45.128 / 43.794 / 39.834  completion tokens [[400], [400], [400], [400]]
+NOSPEC forced tok/s bf2: 45.762 / 45.17 / 43.822 / 39.916  completion tokens [[400], [400], [400], [400]]
+NOSPEC forced BF16 wire over control (mean of two boots): [1.0097, 1.0112, 1.0125, 1.0174]; every BF16 boot above every control boot: [True, True, True, True]
+NEEDLE found: bf1 11/12, ctl2 11/12; lost on bf1 []; gained on bf1 []
+VRAM MiB ctl1: boot [28702, 28702] end [29420, 29420]
+VRAM MiB bf1: boot [28702, 28702] end [29420, 29420]
+VRAM MiB bf2: boot [28702, 28702] end [29420, 29420]
+VRAM MiB ctl2: boot [28702, 28702] end [29420, 29420]
+VRAM end of arm, BF16 wire minus control, MiB per card: {'bf1-minus-ctl1': [0, 0], 'bf2-minus-ctl2': [0, 0]} (worst 0)
+IDENTITY GATE identical
+PREFILL GATE pass
+NOSPEC GATE ok
+NEEDLE GATE same
+MEMORY GATE ok
+[2026-11-11 17:22:04] the no-spec phase qualifies (identity identical, prefill pass, nospec ok, needle same): DFlash2 phase
+[2026-11-11 17:22:04] == boot dctl1 (scripts/launch.sh flint, DFlash2, FP32 detour, --random-seed 7)
+[2026-11-11 17:23:37] dctl1: spec=1 bf=0 seed 7; BF16-wire lines 0; custom all-reduce path lines 2; max_total_num_tokens=571159 ; vram MiB 28784 28784
+[2026-11-11 17:23:37] caps dctl1 (text probes)
+  [PASS] basic     finish=stop answer='paris';  [PASS] tool_call finish=tool_calls name='get_weather' args;  [PASS] thinking  reasoning_seen terminated answer_ok (242 ;[2026-11-11 17:23:44] cold prefill dctl1: 8192 / 65536 / 221184, 2 runs, cache flushed before each
+  ctx~8192: prompt_tokens=7321 prefill 1.05 s = 6,995 tok/s
+  ctx~8192: prompt_tokens=7321 prefill 0.93 s = 7,875 tok/s
+  ctx~65536: prompt_tokens=58473 prefill 10.48 s = 5,580 tok/s
+  ctx~65536: prompt_tokens=58473 prefill 10.50 s = 5,571 tok/s
+  ctx~221184: prompt_tokens=197315 prefill 64.68 s = 3,051 tok/s
+  ctx~221184: prompt_tokens=197315 prefill 64.80 s = 3,045 tok/s
+[2026-11-11 17:26:24] canonical rows dctl1: five runs, 80 tokens, think-off, EOS
+  ctx~128: MEDIAN 103.902 tok/s  input_len~14  [102.46..104.41]  sample='Okay, the user ha
+  ctx~8192: MEDIAN 65.545 tok/s  input_len~7321  [65.25..66.05]  sample='We need answer us
+  ctx~65536: MEDIAN 85.588 tok/s  input_len~58473  [85.04..85.73]  sample='We need answer
+  ctx~221184: MEDIAN 51.142 tok/s  input_len~197315  [50.31..51.17]  sample='We need answe
+SPEC CYCLE REPORT dctl1-sweep: decode_lines=0 timing_windows=0
+[2026-11-11 17:27:54] forced 800-token ladder, three runs per depth, T 1.0 / top-p 0.95 / top-k 20 / seed 7, dctl1
+  ctx~128: MEDIAN 59.744 tok/s  input_len~14  [59.12..74.28]  sample='1.  **Deconstruct th
+  ctx~8192: MEDIAN 76.654 tok/s  input_len~7321  [70.99..81.89]  sample='We need answer us
+  ctx~65536: MEDIAN 72.338 tok/s  input_len~58473  [67.74..80.61]  sample='We need answer
+  ctx~221184: MEDIAN 89.236 tok/s  input_len~197315  [72.27..105.05]  sample='We need answ
+[cycle] dctl1-sampled 24: 36.81 ms per cycle (27.17 cycles/s), accept len 2.12, 57.65 tok/s over 23 decode lines
+[cycle] dctl1-sampled 7.3K: 39.31 ms per cycle (25.44 cycles/s), accept len 2.92, 74.41 tok/s over 17 decode lines
+[cycle] dctl1-sampled 58K: 44.09 ms per cycle (22.68 cycles/s), accept len 3.1, 70.39 tok/s over 15 decode lines
+[cycle] dctl1-sampled 197K: 60.14 ms per cycle (16.63 cycles/s), accept len 4.92, 82.15 tok/s over 9 decode lines
+SPEC CYCLE REPORT dctl1-sampled: decode_lines=64 timing_windows=0
+[2026-11-11 17:31:12] accept probe dctl1: 48 greedy documents (12 each at 12000,24000,48000,96000 characters), 300 tokens each
+POOLED dctl1: 14400 tokens over 5137 verifies, accept length 2.803 (48 cases)
+[cycle] dctl1-accept 7.3K: 38.5 ms per cycle (25.97 cycles/s), accept len 2.48, 65.35 tok/s over 63 decode lines
+[cycle] dctl1-accept 58K: 40.65 ms per cycle (24.6 cycles/s), accept len 2.65, 65.03 tok/s over 13 decode lines
+SPEC CYCLE REPORT dctl1-accept: decode_lines=76 timing_windows=0
+[2026-11-11 17:36:48] == boot dbf1 (scripts/launch.sh flint, DFlash2, SGLANG_HIP_BF16_ATTN_SUM=1, --random-seed 7)
+[2026-11-11 17:38:21] dbf1: spec=1 bf=1 seed 7; BF16-wire lines 2; custom all-reduce path lines 2; max_total_num_tokens=571159 ; vram MiB 28784 28784
+[2026-11-11 17:38:21] caps dbf1 (text probes)
+  [PASS] basic     finish=stop answer='paris';  [PASS] tool_call finish=tool_calls name='get_weather' args;  [PASS] thinking  reasoning_seen terminated answer_ok (242 ;[2026-11-11 17:38:28] cold prefill dbf1: 8192 / 65536 / 221184, 2 runs, cache flushed before each
+  ctx~8192: prompt_tokens=7321 prefill 0.89 s = 8,187 tok/s
+  ctx~8192: prompt_tokens=7321 prefill 0.78 s = 9,359 tok/s
+  ctx~65536: prompt_tokens=58473 prefill 9.31 s = 6,281 tok/s
+  ctx~65536: prompt_tokens=58473 prefill 9.33 s = 6,266 tok/s
+  ctx~221184: prompt_tokens=197315 prefill 60.41 s = 3,266 tok/s
+  ctx~221184: prompt_tokens=197315 prefill 60.53 s = 3,260 tok/s
+[2026-11-11 17:40:56] canonical rows dbf1: five runs, 80 tokens, think-off, EOS
+  ctx~128: MEDIAN 104.064 tok/s  input_len~14  [102.48..104.59]  sample='Okay, the user ha
+  ctx~8192: MEDIAN 65.622 tok/s  input_len~7321  [64.02..66.15]  sample='We need answer us
+  ctx~65536: MEDIAN 85.376 tok/s  input_len~58473  [84.85..85.67]  sample='We need answer
+  ctx~221184: MEDIAN 51.075 tok/s  input_len~197315  [50.37..51.16]  sample='We need answe
+SPEC CYCLE REPORT dbf1-sweep: decode_lines=0 timing_windows=0
+[2026-11-11 17:42:23] forced 800-token ladder, three runs per depth, T 1.0 / top-p 0.95 / top-k 20 / seed 7, dbf1
+  ctx~128: MEDIAN 59.675 tok/s  input_len~14  [59.25..74.37]  sample='1.  **Deconstruct th
+  ctx~8192: MEDIAN 76.739 tok/s  input_len~7321  [70.94..81.80]  sample='We need answer us
+  ctx~65536: MEDIAN 72.505 tok/s  input_len~58473  [67.71..80.45]  sample='We need answer
+  ctx~221184: MEDIAN 89.238 tok/s  input_len~197315  [72.20..105.01]  sample='We need answ
+[cycle] dbf1-sampled 24: 36.81 ms per cycle (27.16 cycles/s), accept len 2.12, 57.66 tok/s over 23 decode lines
+[cycle] dbf1-sampled 7.3K: 39.33 ms per cycle (25.42 cycles/s), accept len 2.92, 74.39 tok/s over 17 decode lines
+[cycle] dbf1-sampled 58K: 44.15 ms per cycle (22.65 cycles/s), accept len 3.1, 70.35 tok/s over 15 decode lines
+[cycle] dbf1-sampled 197K: 60.14 ms per cycle (16.63 cycles/s), accept len 4.92, 82.0 tok/s over 9 decode lines
+SPEC CYCLE REPORT dbf1-sampled: decode_lines=64 timing_windows=0
+[2026-11-11 17:45:36] accept probe dbf1: 48 greedy documents (12 each at 12000,24000,48000,96000 characters), 300 tokens each
+POOLED dbf1: 14400 tokens over 5137 verifies, accept length 2.803 (48 cases)
+[cycle] dbf1-accept 7.3K: 38.47 ms per cycle (25.99 cycles/s), accept len 2.48, 64.82 tok/s over 63 decode lines
+[cycle] dbf1-accept 58K: 40.67 ms per cycle (24.59 cycles/s), accept len 2.65, 65.07 tok/s over 13 decode lines
+SPEC CYCLE REPORT dbf1-accept: decode_lines=76 timing_windows=0
+[2026-11-11 17:51:00] == boot dbf2 (scripts/launch.sh flint, DFlash2, SGLANG_HIP_BF16_ATTN_SUM=1, --random-seed 7)
+[2026-11-11 17:52:33] dbf2: spec=1 bf=1 seed 7; BF16-wire lines 2; custom all-reduce path lines 2; max_total_num_tokens=571159 ; vram MiB 28785 28785
+[2026-11-11 17:52:33] caps dbf2 (text probes)
+  [PASS] basic     finish=stop answer='paris';  [PASS] tool_call finish=tool_calls name='get_weather' args;  [PASS] thinking  reasoning_seen terminated answer_ok (242 ;[2026-11-11 17:52:40] cold prefill dbf2: 8192 / 65536 / 221184, 2 runs, cache flushed before each
+  ctx~8192: prompt_tokens=7321 prefill 0.91 s = 8,014 tok/s
+  ctx~8192: prompt_tokens=7321 prefill 0.78 s = 9,368 tok/s
+  ctx~65536: prompt_tokens=58473 prefill 9.29 s = 6,296 tok/s
+  ctx~65536: prompt_tokens=58473 prefill 9.31 s = 6,282 tok/s
+  ctx~221184: prompt_tokens=197315 prefill 60.33 s = 3,270 tok/s
+  ctx~221184: prompt_tokens=197315 prefill 60.49 s = 3,262 tok/s
+[2026-11-11 17:55:08] canonical rows dbf2: five runs, 80 tokens, think-off, EOS
+  ctx~128: MEDIAN 103.797 tok/s  input_len~14  [102.37..104.58]  sample='Okay, the user ha
+  ctx~8192: MEDIAN 65.593 tok/s  input_len~7321  [65.43..66.06]  sample='We need answer us
+  ctx~65536: MEDIAN 85.562 tok/s  input_len~58473  [84.86..85.66]  sample='We need answer
+  ctx~221184: MEDIAN 51.023 tok/s  input_len~197315  [50.32..51.07]  sample='We need answe
+SPEC CYCLE REPORT dbf2-sweep: decode_lines=0 timing_windows=0
+[2026-11-11 17:56:34] forced 800-token ladder, three runs per depth, T 1.0 / top-p 0.95 / top-k 20 / seed 7, dbf2
+  ctx~128: MEDIAN 59.724 tok/s  input_len~14  [59.28..74.23]  sample='1.  **Deconstruct th
+  ctx~8192: MEDIAN 76.647 tok/s  input_len~7321  [70.82..81.75]  sample='We need answer us
+  ctx~65536: MEDIAN 72.342 tok/s  input_len~58473  [67.69..80.38]  sample='We need answer
+  ctx~221184: MEDIAN 89.107 tok/s  input_len~197315  [72.18..105.00]  sample='We need answ
+[cycle] dbf2-sampled 24: 36.84 ms per cycle (27.15 cycles/s), accept len 2.12, 57.58 tok/s over 23 decode lines
+[cycle] dbf2-sampled 7.3K: 39.38 ms per cycle (25.39 cycles/s), accept len 2.92, 74.39 tok/s over 17 decode lines
+[cycle] dbf2-sampled 58K: 44.2 ms per cycle (22.62 cycles/s), accept len 3.1, 70.13 tok/s over 15 decode lines
+[cycle] dbf2-sampled 197K: 60.22 ms per cycle (16.61 cycles/s), accept len 4.92, 81.98 tok/s over 9 decode lines
+SPEC CYCLE REPORT dbf2-sampled: decode_lines=64 timing_windows=0
+[2026-11-11 17:59:47] accept probe dbf2: 48 greedy documents (12 each at 12000,24000,48000,96000 characters), 300 tokens each
+POOLED dbf2: 14400 tokens over 5137 verifies, accept length 2.803 (48 cases)
+[cycle] dbf2-accept 7.3K: 38.47 ms per cycle (26.0 cycles/s), accept len 2.48, 65.24 tok/s over 63 decode lines
+[cycle] dbf2-accept 58K: 40.7 ms per cycle (24.57 cycles/s), accept len 2.65, 65.08 tok/s over 13 decode lines
+SPEC CYCLE REPORT dbf2-accept: decode_lines=76 timing_windows=0
+[2026-11-11 18:05:08] == boot dctl2 (scripts/launch.sh flint, DFlash2, FP32 detour, --random-seed 7)
+[2026-11-11 18:06:41] dctl2: spec=1 bf=0 seed 7; BF16-wire lines 0; custom all-reduce path lines 2; max_total_num_tokens=571159 ; vram MiB 28784 28784
+[2026-11-11 18:06:41] caps dctl2 (text probes)
+  [PASS] basic     finish=stop answer='paris';  [PASS] tool_call finish=tool_calls name='get_weather' args;  [PASS] thinking  reasoning_seen terminated answer_ok (242 ;[2026-11-11 18:06:47] cold prefill dctl2: 8192 / 65536 / 221184, 2 runs, cache flushed before each
+  ctx~8192: prompt_tokens=7321 prefill 1.04 s = 7,036 tok/s
+  ctx~8192: prompt_tokens=7321 prefill 0.93 s = 7,862 tok/s
+  ctx~65536: prompt_tokens=58473 prefill 10.71 s = 5,458 tok/s
+  ctx~65536: prompt_tokens=58473 prefill 10.51 s = 5,563 tok/s
+  ctx~221184: prompt_tokens=197315 prefill 64.72 s = 3,049 tok/s
+  ctx~221184: prompt_tokens=197315 prefill 64.81 s = 3,045 tok/s
+[2026-11-11 18:09:27] canonical rows dctl2: five runs, 80 tokens, think-off, EOS
+  ctx~128: MEDIAN 104.198 tok/s  input_len~14  [102.31..104.30]  sample='Okay, the user ha
+  ctx~8192: MEDIAN 65.418 tok/s  input_len~7321  [63.87..65.93]  sample='We need answer us
+  ctx~65536: MEDIAN 85.425 tok/s  input_len~58473  [84.74..85.56]  sample='We need answer
+  ctx~221184: MEDIAN 51.049 tok/s  input_len~197315  [50.21..51.16]  sample='We need answe
+SPEC CYCLE REPORT dctl2-sweep: decode_lines=0 timing_windows=0
+[2026-11-11 18:10:58] forced 800-token ladder, three runs per depth, T 1.0 / top-p 0.95 / top-k 20 / seed 7, dctl2
+  ctx~128: MEDIAN 59.572 tok/s  input_len~14  [59.04..74.00]  sample='1.  **Deconstruct th
+  ctx~8192: MEDIAN 76.645 tok/s  input_len~7321  [70.85..81.65]  sample='We need answer us
+  ctx~65536: MEDIAN 72.309 tok/s  input_len~58473  [67.41..80.42]  sample='We need answer
+  ctx~221184: MEDIAN 88.990 tok/s  input_len~197315  [71.72..105.02]  sample='We need answ
+[cycle] dctl2-sampled 24: 37.02 ms per cycle (27.02 cycles/s), accept len 2.12, 57.44 tok/s over 23 decode lines
+[cycle] dctl2-sampled 7.3K: 39.39 ms per cycle (25.39 cycles/s), accept len 2.92, 74.32 tok/s over 17 decode lines
+[cycle] dctl2-sampled 58K: 44.16 ms per cycle (22.64 cycles/s), accept len 3.1, 70.2 tok/s over 15 decode lines
+[cycle] dctl2-sampled 197K: 60.28 ms per cycle (16.59 cycles/s), accept len 4.92, 82.14 tok/s over 9 decode lines
+SPEC CYCLE REPORT dctl2-sampled: decode_lines=64 timing_windows=0
+[2026-11-11 18:14:16] accept probe dctl2: 48 greedy documents (12 each at 12000,24000,48000,96000 characters), 300 tokens each
+POOLED dctl2: 14400 tokens over 5137 verifies, accept length 2.803 (48 cases)
+[cycle] dctl2-accept 7.3K: 38.56 ms per cycle (25.93 cycles/s), accept len 2.48, 65.23 tok/s over 63 decode lines
+[cycle] dctl2-accept 58K: 40.77 ms per cycle (24.53 cycles/s), accept len 2.65, 65.16 tok/s over 13 decode lines
+SPEC CYCLE REPORT dctl2-accept: decode_lines=76 timing_windows=0
+[2026-11-11 18:19:50] == accept probe, BF16 wire against the control, first pair
+ACCEPT doc-12000  cases=12 same-text=12 control=2.763 treatment=2.763 ratio=1.000 (95% 1.000..1.000 over cases) lower/higher=0/0
+ACCEPT doc-24000  cases=12 same-text=12 control=2.620 treatment=2.620 ratio=1.000 (95% 1.000..1.000 over cases) lower/higher=0/0
+ACCEPT doc-48000  cases=12 same-text=12 control=2.998 treatment=2.998 ratio=1.000 (95% 1.000..1.000 over cases) lower/higher=0/0
+ACCEPT doc-96000  cases=12 same-text=12 control=2.859 treatment=2.859 ratio=1.000 (95% 1.000..1.000 over cases) lower/higher=0/0
+ACCEPT all        cases=48 same-text=48 control=2.803 treatment=2.803 ratio=1.000 (95% 1.000..1.000 over cases) lower/higher=0/0
+ACCEPT VERDICT pass (pooled ratio 1.000, floor 0.95)
+[2026-11-11 18:19:50] == accept probe, BF16 wire against the control, second pair
+SECOND doc-12000  cases=12 same-text=12 control=2.763 treatment=2.763 ratio=1.000 (95% 1.000..1.000 over cases) lower/higher=0/0
+SECOND doc-24000  cases=12 same-text=12 control=2.620 treatment=2.620 ratio=1.000 (95% 1.000..1.000 over cases) lower/higher=0/0
+SECOND doc-48000  cases=12 same-text=12 control=2.998 treatment=2.998 ratio=1.000 (95% 1.000..1.000 over cases) lower/higher=0/0
+SECOND doc-96000  cases=12 same-text=12 control=2.859 treatment=2.859 ratio=1.000 (95% 1.000..1.000 over cases) lower/higher=0/0
+SECOND all        cases=48 same-text=48 control=2.803 treatment=2.803 ratio=1.000 (95% 1.000..1.000 over cases) lower/higher=0/0
+SECOND VERDICT pass (pooled ratio 1.000, floor 0.95)
+[2026-11-11 18:19:50] == accept probe, the two controls
+CONTROLS doc-12000  cases=12 same-text=12 control=2.763 treatment=2.763 ratio=1.000 (95% 1.000..1.000 over cases) lower/higher=0/0
+CONTROLS doc-24000  cases=12 same-text=12 control=2.620 treatment=2.620 ratio=1.000 (95% 1.000..1.000 over cases) lower/higher=0/0
+CONTROLS doc-48000  cases=12 same-text=12 control=2.998 treatment=2.998 ratio=1.000 (95% 1.000..1.000 over cases) lower/higher=0/0
+CONTROLS doc-96000  cases=12 same-text=12 control=2.859 treatment=2.859 ratio=1.000 (95% 1.000..1.000 over cases) lower/higher=0/0
+CONTROLS all        cases=48 same-text=48 control=2.803 treatment=2.803 ratio=1.000 (95% 1.000..1.000 over cases) lower/higher=0/0
+CONTROLS VERDICT pass (pooled ratio 1.000, floor 0.95)
+[2026-11-11 18:19:50] == summary (all): BF16 wire against the FP32 detour, mean of the two boots per side
+IDENTITY sweep: ctl1/bf1 4/4, ctl2/bf2 4/4; controls ctl1/ctl2 4/4; treatments bf1/bf2 4/4
+IDENTITY sweep four boots: 4/4 cells equal on all four; a BF16 boot repeats a control on []; no BF16 boot repeats a control on []; lone boots {}
+IDENTITY forced: ctl1/bf1 4/4, ctl2/bf2 4/4; controls ctl1/ctl2 4/4; treatments bf1/bf2 4/4
+IDENTITY forced four boots: 4/4 cells equal on all four; a BF16 boot repeats a control on []; no BF16 boot repeats a control on []; lone boots {}
+IDENTITY texts: ctl1/bf1 6/6, ctl2/bf2 6/6; controls ctl1/ctl2 6/6; treatments bf1/bf2 6/6
+IDENTITY texts four boots: 6/6 cells equal on all four; a BF16 boot repeats a control on []; no BF16 boot repeats a control on []; lone boots {}
+IDENTITY texts-deep: ctl1/bf1 6/6, ctl2/bf2 6/6; controls ctl1/ctl2 6/6; treatments bf1/bf2 6/6
+IDENTITY texts-deep four boots: 6/6 cells equal on all four; a BF16 boot repeats a control on []; no BF16 boot repeats a control on []; lone boots {}
+REPEAT deep texts on one boot, cache flushed before each pass: ctl1 6/6, ctl2 6/6, bf1 6/6, bf2 6/6
+PREFILL no-spec 7.3K (7321 tokens): control 0.923 / 0.925 s, BF16 wire 0.778 / 0.776 s, x0.8409 on the means (0.147 s), faster on every boot
+PREFILL no-spec 58K (58473 tokens): control 10.486 / 10.48 s, BF16 wire 9.313 / 9.318 s, x0.8886 on the means (1.168 s), faster on every boot
+PREFILL no-spec 197K (197315 tokens): control 64.722 / 64.678 s, BF16 wire 60.431 / 60.387 s, x0.9337 on the means (4.291 s), faster on every boot
+PREFILL dflash2 7.3K (7321 tokens): control 0.988 / 0.986 s, BF16 wire 0.838 / 0.848 s, x0.8541 on the means (0.144 s), faster on every boot
+PREFILL dflash2 58K (58473 tokens): control 10.488 / 10.612 s, BF16 wire 9.321 / 9.297 s, x0.8824 on the means (1.241 s), faster on every boot
+PREFILL dflash2 197K (197315 tokens): control 64.74 / 64.765 s, BF16 wire 60.469 / 60.411 s, x0.9334 on the means (4.312 s), faster on every boot
+NOSPEC canonical tok/s ctl1: 45.109 / 44.416 / 42.971 / 39.314  completion tokens [[80], [80], [80], [80]]
+NOSPEC canonical tok/s ctl2: 45.333 / 44.602 / 43.305 / 39.368  completion tokens [[80], [80], [80], [80]]
+NOSPEC canonical tok/s bf1: 45.692 / 45.079 / 43.721 / 39.748  completion tokens [[80], [80], [80], [80]]
+NOSPEC canonical tok/s bf2: 45.758 / 45.038 / 43.707 / 39.827  completion tokens [[80], [80], [80], [80]]
+NOSPEC canonical BF16 wire over control (mean of two boots): [1.0111, 1.0123, 1.0134, 1.0113]; every BF16 boot above every control boot: [True, True, True, True]
+NOSPEC forced tok/s ctl1: 45.233 / 44.645 / 43.126 / 38.896  completion tokens [[400], [400], [400], [400]]
+NOSPEC forced tok/s ctl2: 45.353 / 44.655 / 43.407 / 39.488  completion tokens [[400], [400], [400], [400]]
+NOSPEC forced tok/s bf1: 45.703 / 45.128 / 43.794 / 39.834  completion tokens [[400], [400], [400], [400]]
+NOSPEC forced tok/s bf2: 45.762 / 45.17 / 43.822 / 39.916  completion tokens [[400], [400], [400], [400]]
+NOSPEC forced BF16 wire over control (mean of two boots): [1.0097, 1.0112, 1.0125, 1.0174]; every BF16 boot above every control boot: [True, True, True, True]
+NEEDLE found: bf1 11/12, ctl2 11/12; lost on bf1 []; gained on bf1 []
+DFLASH cycle 24: control 36.81 / 37.02 ms, BF16 wire 36.81 / 36.84 ms, x0.9976 on the means, the boots overlap; accept length {'dctl1': 2.12, 'dctl2': 2.12, 'dbf1': 2.12, 'dbf2': 2.12}
+DFLASH cycle 7.3K: control 39.31 / 39.39 ms, BF16 wire 39.33 / 39.38 ms, x1.0001 on the means, the boots overlap; accept length {'dctl1': 2.92, 'dctl2': 2.92, 'dbf1': 2.92, 'dbf2': 2.92}
+DFLASH cycle 58K: control 44.09 / 44.16 ms, BF16 wire 44.15 / 44.2 ms, x1.0011 on the means, the boots overlap; accept length {'dctl1': 3.1, 'dctl2': 3.1, 'dbf1': 3.1, 'dbf2': 3.1}
+DFLASH cycle 197K: control 60.14 / 60.28 ms, BF16 wire 60.14 / 60.22 ms, x0.9995 on the means, the boots overlap; accept length {'dctl1': 4.92, 'dctl2': 4.92, 'dbf1': 4.92, 'dbf2': 4.92}
+DFLASH canonical tok/s dctl1: 103.902 / 65.545 / 85.588 / 51.142  completion tokens [[80], [80], [80], [80]]
+DFLASH canonical tok/s dctl2: 104.198 / 65.418 / 85.425 / 51.049  completion tokens [[80], [80], [80], [80]]
+DFLASH canonical tok/s dbf1: 104.064 / 65.622 / 85.376 / 51.075  completion tokens [[80], [80], [80], [80]]
+DFLASH canonical tok/s dbf2: 103.797 / 65.593 / 85.562 / 51.023  completion tokens [[80], [80], [80], [80]]
+DFLASH canonical BF16 wire over control (mean of two boots): [0.9989, 1.0019, 0.9996, 0.9991]; every BF16 boot above every control boot: [False, True, False, False]
+IDENTITY dflash-sweep (recorded): dctl1/dbf1 4/4, dctl2/dbf2 4/4; controls dctl1/dctl2 4/4; treatments dbf1/dbf2 4/4
+IDENTITY accept: dctl1/dbf1 48/48, dctl2/dbf2 48/48; controls dctl1/dctl2 48/48; treatments dbf1/dbf2 48/48
+DFLASH accept probe dctl1: 14400 tokens over 5137 verifies, accept length 2.8032
+DFLASH accept probe dctl2: 14400 tokens over 5137 verifies, accept length 2.8032
+DFLASH accept probe dbf1: 14400 tokens over 5137 verifies, accept length 2.8032
+DFLASH accept probe dbf2: 14400 tokens over 5137 verifies, accept length 2.8032
+ACCEPT pooled accept length, BF16 wire over control, per pair: [1.0, 1.0]
+VRAM MiB ctl1: boot [28702, 28702] end [29420, 29420]
+VRAM MiB bf1: boot [28702, 28702] end [29420, 29420]
+VRAM MiB bf2: boot [28702, 28702] end [29420, 29420]
+VRAM MiB ctl2: boot [28702, 28702] end [29420, 29420]
+VRAM MiB dctl1: boot [28784, 28784] end [29645, 29645]
+VRAM MiB dbf1: boot [28784, 28784] end [29645, 29645]
+VRAM MiB dbf2: boot [28785, 28785] end [29646, 29646]
+VRAM MiB dctl2: boot [28784, 28784] end [29645, 29645]
+VRAM end of arm, BF16 wire minus control, MiB per card: {'bf1-minus-ctl1': [0, 0], 'bf2-minus-ctl2': [0, 0], 'dbf1-minus-dctl1': [0, 0], 'dbf2-minus-dctl2': [1, 1]} (worst 1)
+IDENTITY GATE identical
+PREFILL GATE pass
+NOSPEC GATE ok
+NEEDLE GATE same
+DFLASH GATE ok
+ACCEPT GATE identical
+MEMORY GATE ok
+[2026-11-11 18:19:50] FLINT BF16 WIRE DONE gate=identity-identical:prefill-pass:nospec-ok:needle-same:dflash-ok:accept-identical:memory-ok
+[2026-11-11 18:19:50] EXIT trap: freeing GPUs

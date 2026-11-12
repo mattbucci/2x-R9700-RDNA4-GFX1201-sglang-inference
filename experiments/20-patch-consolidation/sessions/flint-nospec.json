@@ -19,6 +19,7 @@
  "poke": {},
  "server_env": {
   "SGLANG_USE_1STAGE_ALLREDUCE": "1",
+  "SGLANG_HIP_BF16_ATTN_SUM": "1",
   "SGLANG_EXTEND_FP8_QK": "1",
   "SGLANG_EXTEND_SPLITKV_MAX_TOKENS": "256",
   "SGLANG_USE_AITER": "0",
@@ -32,6 +33,7 @@
   "kvpool": "Full KV Cache is allocated\\. dtype: torch\\.float8_e4m3fn,",
   "moe105": "Using CompressedTensorsW8A8Fp8MoE",
   "ar129": "All-reduce call path: custom all-reduce \\(CustomAllreduce, group tp\\)",
+  "wire130": "\\[RDNA4\\] attention-TP sum: BF16 wire on a two-rank group active",
   "moecfg118": "Using MoE kernel config from [^\\n]{0,200}/E=256,N=256,device_name=AMD_Radeon_AI_PRO_R9700,dtype=fp8_w8a8,per_channel_quant=True\\.json",
   "route112": {
    "re": "extend split-KV route active: \\d+ new tokens",
@@ -87,6 +89,21 @@
    "on": {
     "moedefault118": "Using default MoE kernel config\\. Performance might be sub-optimal! Config file not found at [^\\n]{0,200}/E=256,N=256,"
    }
+  },
+  {
+   "name": "p130",
+   "patches": [
+    "130"
+   ],
+   "env": {
+    "SGLANG_HIP_BF16_ATTN_SUM": "0"
+   },
+   "server_env": {
+    "SGLANG_HIP_BF16_ATTN_SUM": "0"
+   },
+   "off": [
+    "wire130"
+   ]
   }
  ]
 }

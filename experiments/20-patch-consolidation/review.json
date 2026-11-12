@@ -2073,20 +2073,21 @@
   "class_confidence": "high",
   "mechanism": "In layer_boundary/ops.attn_tp_all_reduce, a new branch ahead of the HIP FP32 detour (cast up, all-reduce, cast down; added by patch 001, not in upstream) sends a BF16 hidden state straight to the plain attention-TP all-reduce when the group has exactly two ranks and the caller did not opt out via fp32_on_hip. With two addends the FP32 sum rounded back to BF16 is the correctly rounded BF16 sum, so the result bits are the same at half the payload and without the two casts.",
   "presets": [
-   "qwen38"
+   "qwen38",
+   "flint"
   ],
-  "switch": "SGLANG_HIP_BF16_ATTN_SUM (code default 0). The qwen38 block exports 1 (overridable from the environment) only when QUANT_OVERRIDE is unset; 0 restores the FP32 detour.",
-  "last_effect": "RAD-30 phase 1, qwen38 FP8, same session, two boots per side in both orders, greedy output equal to the token on every comparison of eight boots: no-spec cold prefill 3.128 -> 2.639 s (x0.844) at 7.3K, 32.795 -> 28.747 s (x0.877) at 58K, 184.088 -> 170.981 s (x0.929) at 197K input tokens; no-spec canonical decode x1.017 / x1.016 / x1.016 / x1.012; DSpark cycle x0.980 / x0.980 / x0.978 / x0.983.",
+  "switch": "SGLANG_HIP_BF16_ATTN_SUM (code default 0). The qwen38 block exports 1 (overridable from the environment) only when QUANT_OVERRIDE is unset, the flint block exports 1 (overridable); 0 restores the FP32 detour.",
+  "last_effect": "RAD-30 phase 1, qwen38 FP8, same session, two boots per side in both orders, greedy output equal to the token on every comparison of eight boots: no-spec cold prefill 3.128 -> 2.639 s (x0.844) at 7.3K, 32.795 -> 28.747 s (x0.877) at 58K, 184.088 -> 170.981 s (x0.929) at 197K input tokens; no-spec canonical decode x1.017 / x1.016 / x1.016 / x1.012; DSpark cycle x0.980 / x0.980 / x0.978 / x0.983. RAD-30b, flint FP8, same session, two boots per side in both orders, greedy output equal to the token on every comparison of eight boots: no-spec cold prefill 0.924 -> 0.777 s (x0.841) at 7.3K, 10.483 -> 9.316 s (x0.889) at 58K, 64.700 -> 60.409 s (x0.934) at 197K input tokens; no-spec canonical decode x1.011 / x1.012 / x1.013 / x1.011; DFlash2 cycle x0.998 / x1.000 / x1.001 / x1.000 at equal accept length.",
   "receipt": "benchmarks/profiling/rad30-bf16-wire-serving-2026-11-11",
   "findings_heading": "RAD-30 phase 1 — the BF16 wire in serving: greedy output equal to the token on every comparison, cold prefill ×0.84 / ×0.88 / ×0.93 at 7.3K / 58K / 197K, no-spec decode +1.2–1.7 %, DSpark cycle ×0.98 (2026-11-11)",
   "patch_state": "SGLang v0.5.22, development tree = the live tree plus one edit in layer_boundary/ops.py; series size not stated in the section",
-  "ablation_arm": "switch: SGLANG_HIP_BF16_ATTN_SUM=0 on presets qwen38",
+  "ablation_arm": "switch: SGLANG_HIP_BF16_ATTN_SUM=0 on presets qwen38, flint",
   "reproducer": null,
   "merge_candidates": [
    "080"
   ],
   "superseded_evidence": null,
-  "notes": "Does not apply or work without 080: its hunk context is the fp32_on_hip signature and the 'if _is_hip and fp32_on_hip:' line that 080 wrote and its branch reads that parameter; 080 is the unconditional per-model opt-out of 001's detour (Laguna, PLAIN_ADD_BF16_SUM), 130 the env-switched two-rank bypass of the same detour for models that did not opt out. On this two-rank rig both end on a BF16 collective, so 001's detour hunk + 080 + 130 could collapse into one two-rank rule, but 130 is measured only on the qwen38 FP8 preset and the other presets keep the detour until their own identity check."
+  "notes": "Does not apply or work without 080: its hunk context is the fp32_on_hip signature and the 'if _is_hip and fp32_on_hip:' line that 080 wrote and its branch reads that parameter; 080 is the unconditional per-model opt-out of 001's detour (Laguna, PLAIN_ADD_BF16_SUM), 130 the env-switched two-rank bypass of the same detour for models that did not opt out. On this two-rank rig both end on a BF16 collective, so 001's detour hunk + 080 + 130 could collapse into one two-rank rule, but 130 is measured on the qwen38 and flint FP8 presets only (flint: FINDINGS RAD-30b, receipts benchmarks/profiling/flint-bf16-wire-2026-11-11) and the other presets whose models keep the default update, nemotron-omni first, keep the detour until their own identity check."
  },
  "131": {
   "class": "performance",

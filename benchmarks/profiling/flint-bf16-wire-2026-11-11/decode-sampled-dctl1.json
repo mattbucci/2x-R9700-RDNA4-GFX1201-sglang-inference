@@ -1,0 +1,97 @@
+{
+  "label": "dctl1-sampled",
+  "tag": "",
+  "note": "flint FP8 preset, live tree, 98 patches, --random-seed 7",
+  "port": 23334,
+  "maxtok": 800,
+  "runs": 3,
+  "sampling": {
+    "temperature": 1.0,
+    "top_p": 0.95,
+    "top_k": 20,
+    "seed": 7
+  },
+  "ignore_eos": true,
+  "points": [
+    {
+      "context": 128,
+      "input_len": 14,
+      "runs_tps": [
+        59.12,
+        59.74,
+        74.28
+      ],
+      "median_tps": 59.744,
+      "min_tps": 59.118,
+      "max_tps": 74.284,
+      "runs_completion_tokens": [
+        800,
+        800,
+        800
+      ],
+      "median_tpot_ms": 16.74,
+      "sample": "1.  **Deconstruct the Request**:\n    *   Topic: GPU memory h",
+      "median_ttft_ms": 77.0
+    },
+    {
+      "context": 8192,
+      "input_len": 7321,
+      "runs_tps": [
+        76.65,
+        81.89,
+        70.99
+      ],
+      "median_tps": 76.654,
+      "min_tps": 70.988,
+      "max_tps": 81.885,
+      "runs_completion_tokens": [
+        800,
+        800,
+        800
+      ],
+      "median_tpot_ms": 13.05,
+      "sample": "We need answer user. Need summarize repeated sentence in one",
+      "median_ttft_ms": 87.8
+    },
+    {
+      "context": 65536,
+      "input_len": 58473,
+      "runs_tps": [
+        67.74,
+        72.34,
+        80.61
+      ],
+      "median_tps": 72.338,
+      "min_tps": 67.738,
+      "max_tps": 80.607,
+      "runs_completion_tokens": [
+        800,
+        800,
+        800
+      ],
+      "median_tpot_ms": 13.82,
+      "sample": "We need answer user. Need summarize repeated sentence above.",
+      "median_ttft_ms": 139.9
+    },
+    {
+      "context": 221184,
+      "input_len": 197315,
+      "runs_tps": [
+        89.24,
+        72.27,
+        105.05
+      ],
+      "median_tps": 89.236,
+      "min_tps": 72.266,
+      "max_tps": 105.053,
+      "runs_completion_tokens": [
+        800,
+        800,
+        800
+      ],
+      "median_tpot_ms": 11.21,
+      "sample": "We need answer user. We need solve. User asks: \"In one short",
+      "median_ttft_ms": 315.1
+    }
+  ]
+}

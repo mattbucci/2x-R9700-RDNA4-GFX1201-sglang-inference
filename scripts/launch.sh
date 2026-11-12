@@ -1003,7 +1003,7 @@ PYEOF
             DTYPE="bfloat16"
             # FP8 KV by default (user decision 2026-11-01): +2-8 % decode, 2x pools, natural needle 11/12 vs bf16's
             # 10/12 with one cell swap at the 243K soft edge (benchmarks/profiling/flint-ab-2026-11-01.md).
-            # KV_DTYPE=auto restores bf16 KV. NGRAM speculation and the BF16 attention-sum opt-out are null here.
+            # KV_DTYPE=auto restores bf16 KV. NGRAM speculation is null here.
             KV_DTYPE="${_ENV_KV_DTYPE:-fp8_e4m3}"
             ATTN_BACKEND="${ATTN_BACKEND:-triton}"
             CTX="${_ENV_CTX:-262144}"; MAX_RUNNING="${_ENV_MAX_RUNNING:-8}"
@@ -1033,6 +1033,17 @@ PYEOF
                 CUSTOM_AR=""
                 export SGLANG_USE_1STAGE_ALLREDUCE="${SGLANG_USE_1STAGE_ALLREDUCE:-1}"
             fi
+            # RAD-30b (patch 130): the attention-TP sum of the two-rank group stays in BF16 on the wire instead of
+            # the FP32 detour, as on qwen38 (two addends: the FP32 sum rounded back is the correctly rounded BF16
+            # sum). Greedy output equal to the token on every comparison of eight boots (canonical sweep, forced
+            # ladder, six texts at short depth and at 182K, 48 accept-probe documents). Same session, two boots
+            # per side in both orders: cold prefill at 7.3K / 58K / 197K input 0.92 / 10.5 / 64.7 -> 0.78 / 9.3 /
+            # 60.4 s; no-spec canonical sweep at 14 / 7.3K / 58K / 197K 45.2 / 44.5 / 43.1 / 39.3 -> 45.7 / 45.1 /
+            # 43.7 / 39.8 tok/s; DFlash2 cycle x0.998-1.001 at equal accept length; capabilities 3/3, needle 11/12
+            # on both sides (same cell), VRAM equal. The decode-only A/B of the model-level opt-out on 2026-11-01
+            # read null within its +-2 %: the gain is mostly prefill. SGLANG_HIP_BF16_ATTN_SUM=0 restores the
+            # FP32 detour.
+            export SGLANG_HIP_BF16_ATTN_SUM="${SGLANG_HIP_BF16_ATTN_SUM:-1}"
             CUDA_GRAPH=""   # dispatch-bound MoE decode: graphs on
             REASONING="--reasoning-parser flint"
             TOOL_CALL_PARSER="flint"

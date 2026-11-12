@@ -1,0 +1,48 @@
+{
+ "label": "dbf2-sampled",
+ "note": "flint FP8 preset, live tree, 98 patches, --random-seed 7",
+ "log": "/data/logs/flint-bf16-wire-2026-11-11/server-dbf2.log",
+ "from_line": 409,
+ "to_line": 559,
+ "line_numbering": "newline",
+ "decode_lines_dropped_after_prefill": 12,
+ "decode_lines_dropped_no_depth": 0,
+ "depths": {
+  "24": {
+   "decode_batches": {
+    "lines": 23,
+    "accept_len": 2.12,
+    "tok_s": 57.58,
+    "cycles_s": 27.15,
+    "cycle_ms": 36.84
+   }
+  },
+  "7.3K": {
+   "decode_batches": {
+    "lines": 17,
+    "accept_len": 2.92,
+    "tok_s": 74.39,
+    "cycles_s": 25.39,
+    "cycle_ms": 39.38
+   }
+  },
+  "58K": {
+   "decode_batches": {
+    "lines": 15,
+    "accept_len": 3.1,
+    "tok_s": 70.13,
+    "cycles_s": 22.62,
+    "cycle_ms": 44.2
+   }
+  },
+  "197K": {
+   "decode_batches": {
+    "lines": 9,
+    "accept_len": 4.92,
+    "tok_s": 81.98,
+    "cycles_s": 16.61,
+    "cycle_ms": 60.22
+   }
+  }
+ }
+}
