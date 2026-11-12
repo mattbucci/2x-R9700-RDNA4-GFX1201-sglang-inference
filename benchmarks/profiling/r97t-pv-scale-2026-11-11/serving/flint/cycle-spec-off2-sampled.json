@@ -1,0 +1,48 @@
+{
+ "label": "spec-off2-sampled",
+ "note": "flint FP8 preset from /data/sgl-v0522-r97t/python (99 patches + the R97-T candidate), --random-seed 7",
+ "log": "/data/logs/r97t-pv-scale-2026-11-11/serving-flint/server-spec-off2.log",
+ "from_line": 411,
+ "to_line": 561,
+ "line_numbering": "newline",
+ "decode_lines_dropped_after_prefill": 12,
+ "decode_lines_dropped_no_depth": 0,
+ "depths": {
+  "24": {
+   "decode_batches": {
+    "lines": 23,
+    "accept_len": 2.12,
+    "tok_s": 56.98,
+    "cycles_s": 27.08,
+    "cycle_ms": 36.93
+   }
+  },
+  "7.3K": {
+   "decode_batches": {
+    "lines": 17,
+    "accept_len": 2.92,
+    "tok_s": 74.18,
+    "cycles_s": 25.34,
+    "cycle_ms": 39.46
+   }
+  },
+  "58K": {
+   "decode_batches": {
+    "lines": 15,
+    "accept_len": 3.1,
+    "tok_s": 69.91,
+    "cycles_s": 22.56,
+    "cycle_ms": 44.33
+   }
+  },
+  "197K": {
+   "decode_batches": {
+    "lines": 9,
+    "accept_len": 4.92,
+    "tok_s": 81.9,
+    "cycles_s": 16.61,
+    "cycle_ms": 60.22
+   }
+  }
+ }
+}

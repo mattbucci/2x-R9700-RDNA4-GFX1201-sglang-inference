@@ -1,0 +1,197 @@
+{
+  "label": "spec-on2-sampled",
+  "tag": "",
+  "note": "flint FP8 preset from /data/sgl-v0522-r97t/python (99 patches + the R97-T candidate), --random-seed 7",
+  "port": 23334,
+  "maxtok": 800,
+  "runs": 3,
+  "sampling": {
+    "temperature": 1.0,
+    "top_p": 0.95,
+    "top_k": 20,
+    "seed": 7
+  },
+  "ignore_eos": true,
+  "points": [
+    {
+      "context": 128,
+      "input_len": 14,
+      "runs_tps": [
+        67.53,
+        60.43,
+        65.4
+      ],
+      "median_tps": 65.402,
+      "min_tps": 60.43,
+      "max_tps": 67.533,
+      "runs_completion_tokens": [
+        800,
+        800,
+        800
+      ],
+      "runs_verify_ct": [
+        327,
+        371,
+        337
+      ],
+      "runs_decode_s": [
+        11.8313,
+        13.2219,
+        12.2168
+      ],
+      "runs_text_sha": [
+        "e984540d5723",
+        "15f1ff3817ac",
+        "15779603767d"
+      ],
+      "runs_pieces": [
+        327,
+        371,
+        337
+      ],
+      "runs_median_gap_ms": [
+        36.34,
+        35.8,
+        36.43
+      ],
+      "median_tpot_ms": 15.29,
+      "sample": "1.  **Deconstruct the Request**:\n    *   Topic: GPU memory h",
+      "median_ttft_ms": 76.1
+    },
+    {
+      "context": 8192,
+      "input_len": 7321,
+      "runs_tps": [
+        81.48,
+        92.94,
+        78.01
+      ],
+      "median_tps": 81.484,
+      "min_tps": 78.014,
+      "max_tps": 92.94,
+      "runs_completion_tokens": [
+        800,
+        800,
+        800
+      ],
+      "runs_verify_ct": [
+        252,
+        220,
+        262
+      ],
+      "runs_decode_s": [
+        9.8056,
+        8.597,
+        10.2417
+      ],
+      "runs_text_sha": [
+        "c454a32462e4",
+        "57508bb83069",
+        "dafd3bb539d9"
+      ],
+      "runs_pieces": [
+        252,
+        221,
+        263
+      ],
+      "runs_median_gap_ms": [
+        39.03,
+        39.15,
+        39.18
+      ],
+      "median_tpot_ms": 12.27,
+      "sample": "We need answer user. Need summarize repeated sentence. We ne",
+      "median_ttft_ms": 86.6
+    },
+    {
+      "context": 65536,
+      "input_len": 58473,
+      "runs_tps": [
+        84.57,
+        78.27,
+        68.69
+      ],
+      "median_tps": 78.265,
+      "min_tps": 68.693,
+      "max_tps": 84.568,
+      "runs_completion_tokens": [
+        800,
+        800,
+        800
+      ],
+      "runs_verify_ct": [
+        214,
+        232,
+        264
+      ],
+      "runs_decode_s": [
+        9.448,
+        10.2089,
+        11.6315
+      ],
+      "runs_text_sha": [
+        "dcd0242efd4b",
+        "4280f97e9be2",
+        "b708796f3fc9"
+      ],
+      "runs_pieces": [
+        214,
+        232,
+        265
+      ],
+      "runs_median_gap_ms": [
+        44.16,
+        44.09,
+        44.12
+      ],
+      "median_tpot_ms": 12.78,
+      "sample": "We need answer user. Need parse request. They provided huge ",
+      "median_ttft_ms": 133.9
+    },
+    {
+      "context": 221184,
+      "input_len": 197315,
+      "runs_tps": [
+        83.22,
+        70.74,
+        109.87
+      ],
+      "median_tps": 83.22,
+      "min_tps": 70.737,
+      "max_tps": 109.869,
+      "runs_completion_tokens": [
+        800,
+        800,
+        800
+      ],
+      "runs_verify_ct": [
+        159,
+        187,
+        122
+      ],
+      "runs_decode_s": [
+        9.6011,
+        11.2954,
+        7.2723
+      ],
+      "runs_text_sha": [
+        "72ee61102f43",
+        "b2b5b5b6ae35",
+        "fad4596bc8d0"
+      ],
+      "runs_pieces": [
+        159,
+        188,
+        122
+      ],
+      "runs_median_gap_ms": [
+        60.34,
+        60.42,
+        59.41
+      ],
+      "median_tpot_ms": 12.02,
+      "sample": "We need answer user. The user provided a long string of repe",
+      "median_ttft_ms": 308.7
+    }
+  ]
+}

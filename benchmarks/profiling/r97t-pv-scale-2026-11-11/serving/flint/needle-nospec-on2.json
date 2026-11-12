@@ -1,0 +1,146 @@
+{
+ "tag": "r97t-serving-flint-nospec-on2-natural-greedy",
+ "timestamp": "2026-11-12 01:45",
+ "model": "/data/models/Flint-FP8",
+ "port": 23334,
+ "haystack": "benchmarks/quality/haystack-platypus.txt",
+ "chars_per_token": 3.27,
+ "temperature": 0.0,
+ "flush": true,
+ "max_tokens": 2048,
+ "results": [
+  {
+   "found": true,
+   "actual_prompt_tokens": 952,
+   "completion_tokens": 76,
+   "finish_reason": "stop",
+   "seconds": 1.8,
+   "content_tail": "BANANA42",
+   "reasoning_tail": "",
+   "context": 1024,
+   "depth": 0.1
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 952,
+   "completion_tokens": 61,
+   "finish_reason": "stop",
+   "seconds": 1.5,
+   "content_tail": "BANANA42",
+   "reasoning_tail": "",
+   "context": 1024,
+   "depth": 0.5
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 952,
+   "completion_tokens": 108,
+   "finish_reason": "stop",
+   "seconds": 2.5,
+   "content_tail": "BANANA42",
+   "reasoning_tail": "",
+   "context": 1024,
+   "depth": 0.9
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 30931,
+   "completion_tokens": 60,
+   "finish_reason": "stop",
+   "seconds": 5.4,
+   "content_tail": "BANANA42",
+   "reasoning_tail": "",
+   "context": 32768,
+   "depth": 0.1
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 30930,
+   "completion_tokens": 73,
+   "finish_reason": "stop",
+   "seconds": 5.7,
+   "content_tail": "BANANA42",
+   "reasoning_tail": "",
+   "context": 32768,
+   "depth": 0.5
+  },
+  {
+   "found": false,
+   "actual_prompt_tokens": 30931,
+   "completion_tokens": 2048,
+   "finish_reason": "length",
+   "seconds": 50.2,
+   "content_tail": "",
+   "reasoning_tail": "/asy]\n\nIn eight of the twelve outcomes the product is even: $1\\times 2$, $2\\times\n1$, $2\\times 2$, $2\\times 3$, $3\\times 2$, $4\\times 1$, $4\\times 2$, $4\\times ",
+   "context": 32768,
+   "depth": 0.9
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 124868,
+   "completion_tokens": 131,
+   "finish_reason": "stop",
+   "seconds": 31.8,
+   "content_tail": "BANANA42",
+   "reasoning_tail": "",
+   "context": 131072,
+   "depth": 0.1
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 124869,
+   "completion_tokens": 23,
+   "finish_reason": "stop",
+   "seconds": 29.4,
+   "content_tail": "The user is asking for the secret password. The secret password is: BANANA42.</think>BANANA42",
+   "reasoning_tail": "",
+   "context": 131072,
+   "depth": 0.5
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 124869,
+   "completion_tokens": 2048,
+   "finish_reason": "length",
+   "seconds": 77.6,
+   "content_tail": "to choose a fork, a knife, and a spoon so our final probability is $\\frac{216}{816}=\\frac{9}{34}$.\n\nOur school's girls volleyball team has 14 players, including",
+   "reasoning_tail": "",
+   "context": 131072,
+   "depth": 0.9
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 189815,
+   "completion_tokens": 75,
+   "finish_reason": "stop",
+   "seconds": 58.7,
+   "content_tail": "ation: \"Tyler The secret password is: BANANA42. has entered...\" So likely password is BANANA42. Must answer with just password. Ensure no extra.</think>BANANA42",
+   "reasoning_tail": "",
+   "context": 197000,
+   "depth": 0.1
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 189815,
+   "completion_tokens": 157,
+   "finish_reason": "stop",
+   "seconds": 60.9,
+   "content_tail": "BANANA42",
+   "reasoning_tail": "",
+   "context": 197000,
+   "depth": 0.5
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 189814,
+   "completion_tokens": 100,
+   "finish_reason": "stop",
+   "seconds": 59.5,
+   "content_tail": "ikely expected answer just \"BANANA42\" or maybe \"BANANA42. 480.\" Need answer with just password. We should comply. Final should be just password.</think>BANANA42",
+   "reasoning_tail": "",
+   "context": 197000,
+   "depth": 0.9
+  }
+ ],
+ "score": 0.9166666666666666
+}

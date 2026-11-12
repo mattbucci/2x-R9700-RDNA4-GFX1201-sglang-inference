@@ -140,6 +140,27 @@ the rule; this is its reading of the ship and kill lines below.
 - Verdict per preset: `kill:<components>`, `open:<components>` or `ship-ok`. R97-T ships when both presets read
   `ship-ok` with no recorded probe failure, is killed when either reads kill, and open rows are re-measured.
 
+## Open rows, as fixed before the run (R97-T)
+
+A preset the serving A/B leaves `open` on a soft first-token row gets a measurement of its own: two boots per side do
+not separate the switch from the boot. Driver `r97t_open_rows.sh`, judge `judge_r97t_open_rows.py` (its docstring
+holds the rule) and tests `t_open_rows/`, next to the serving A/B.
+
+- Boots: the preset's speculative config from the same tree under the same identity checks, the two warm-ups, then
+  eight boots in the order off, on, on, off, on, off, off, on (equal position sums per side), `--random-seed 7`.
+- Per boot: 20 canonical 24-token cells (the A/B's cell: five runs, 80 tokens, thinking off), cold prefill ×2, the 20
+  cells again. First four boots: paired greedy accept on documents of 58,000 and 197,000 tokens cut by the served
+  tokenizer (36 and 12 per boot, 300 tokens each). The second pair reads a second document set, offset by half the
+  probe's stride; the sets are checked on the CPU not to overlap for both tokenizers. The A/B's accept probe ends at
+  38K tokens and its canonical speculative rows are one continuation per arm, so neither reads accept at depth.
+- Time rows, four boots against four (first-token time per boot = median over its 40 cells; cold prefill per depth):
+  `ok` at 0.99 or better on the means; `loss` below 0.99 with an exact one-sided permutation probability of 0.05 or
+  less over the 70 splits of the boots; `open` otherwise.
+- Deep accept: pooled over both pairs and both depths under the A/B's accept rule; a drop at one depth is a drop.
+- Verdict: `kill:<rows>` on a loss or a drop (the patch is not kept), `open:<rows>` (measured again with more boots
+  or documents), `resolved-ok`. `resolved-ok` closes a first-token row the A/B left open and nothing else: the preset
+  then counts as `ship-ok` when that row was its only open component and no probe failure is recorded.
+
 ## Success / kill
 
 - Confirmed: on the cached turn the kernel-cast reference matches the dump within twice the floor (F of the control

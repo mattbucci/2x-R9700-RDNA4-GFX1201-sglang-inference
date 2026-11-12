@@ -1,0 +1,197 @@
+{
+  "label": "spec-off1-sampled",
+  "tag": "",
+  "note": "flint FP8 preset from /data/sgl-v0522-r97t/python (99 patches + the R97-T candidate), --random-seed 7",
+  "port": 23334,
+  "maxtok": 800,
+  "runs": 3,
+  "sampling": {
+    "temperature": 1.0,
+    "top_p": 0.95,
+    "top_k": 20,
+    "seed": 7
+  },
+  "ignore_eos": true,
+  "points": [
+    {
+      "context": 128,
+      "input_len": 14,
+      "runs_tps": [
+        59.12,
+        59.74,
+        74.19
+      ],
+      "median_tps": 59.741,
+      "min_tps": 59.115,
+      "max_tps": 74.188,
+      "runs_completion_tokens": [
+        800,
+        800,
+        800
+      ],
+      "runs_verify_ct": [
+        369,
+        366,
+        297
+      ],
+      "runs_decode_s": [
+        13.516,
+        13.3743,
+        10.7699
+      ],
+      "runs_text_sha": [
+        "0badc6d8dbc2",
+        "f249016f7b19",
+        "327da617ba73"
+      ],
+      "runs_pieces": [
+        370,
+        366,
+        297
+      ],
+      "runs_median_gap_ms": [
+        36.8,
+        36.82,
+        36.42
+      ],
+      "median_tpot_ms": 16.74,
+      "sample": "1.  **Deconstruct the Request**:\n    *   Topic: GPU memory h",
+      "median_ttft_ms": 76.2
+    },
+    {
+      "context": 8192,
+      "input_len": 7321,
+      "runs_tps": [
+        76.74,
+        81.81,
+        70.98
+      ],
+      "median_tps": 76.736,
+      "min_tps": 70.975,
+      "max_tps": 81.809,
+      "runs_completion_tokens": [
+        800,
+        800,
+        800
+      ],
+      "runs_verify_ct": [
+        265,
+        249,
+        286
+      ],
+      "runs_decode_s": [
+        10.4124,
+        9.7666,
+        11.2574
+      ],
+      "runs_text_sha": [
+        "83e54d4239c3",
+        "bbbf3b59bf76",
+        "bbb0cab075b8"
+      ],
+      "runs_pieces": [
+        266,
+        249,
+        287
+      ],
+      "runs_median_gap_ms": [
+        39.34,
+        39.25,
+        39.41
+      ],
+      "median_tpot_ms": 13.03,
+      "sample": "We need answer user. Need summarize repeated sentence in one",
+      "median_ttft_ms": 85.0
+    },
+    {
+      "context": 65536,
+      "input_len": 58473,
+      "runs_tps": [
+        67.57,
+        72.36,
+        80.21
+      ],
+      "median_tps": 72.364,
+      "min_tps": 67.572,
+      "max_tps": 80.212,
+      "runs_completion_tokens": [
+        800,
+        800,
+        800
+      ],
+      "runs_verify_ct": [
+        267,
+        250,
+        225
+      ],
+      "runs_decode_s": [
+        11.8244,
+        11.0415,
+        9.9611
+      ],
+      "runs_text_sha": [
+        "2613a6879ed7",
+        "0c2e131c6a35",
+        "e99111ca508e"
+      ],
+      "runs_pieces": [
+        267,
+        251,
+        226
+      ],
+      "runs_median_gap_ms": [
+        44.35,
+        44.26,
+        44.34
+      ],
+      "median_tpot_ms": 13.82,
+      "sample": "We need answer user. Need summarize repeated sentence above.",
+      "median_ttft_ms": 134.0
+    },
+    {
+      "context": 221184,
+      "input_len": 197315,
+      "runs_tps": [
+        89.19,
+        72.18,
+        104.95
+      ],
+      "median_tps": 89.194,
+      "min_tps": 72.178,
+      "max_tps": 104.953,
+      "runs_completion_tokens": [
+        800,
+        800,
+        800
+      ],
+      "runs_verify_ct": [
+        148,
+        184,
+        129
+      ],
+      "runs_decode_s": [
+        8.958,
+        11.0698,
+        7.6129
+      ],
+      "runs_text_sha": [
+        "d3138ea6567d",
+        "9e52e2b1fe58",
+        "fe85b6212aa8"
+      ],
+      "runs_pieces": [
+        149,
+        184,
+        129
+      ],
+      "runs_median_gap_ms": [
+        60.51,
+        60.2,
+        58.51
+      ],
+      "median_tpot_ms": 11.21,
+      "sample": "We need answer user. We need solve. User asks: \"In one short",
+      "median_ttft_ms": 297.8
+    }
+  ]
+}

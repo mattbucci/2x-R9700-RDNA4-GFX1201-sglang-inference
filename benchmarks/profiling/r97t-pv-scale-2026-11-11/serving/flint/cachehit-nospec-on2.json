@@ -1,0 +1,255 @@
+{
+ "tag": "nospec-on2",
+ "model": "/data/models/Flint-FP8",
+ "max_tokens": 1024,
+ "with_reasoning": true,
+ "mismatches": 6,
+ "results": [
+  {
+   "tokens": 32768,
+   "cell": 0,
+   "prompt_tokens": 30965,
+   "A_same": true,
+   "B_same": false,
+   "A_hit_prefix": 4569,
+   "A_fresh_fresh_prefix": 4569,
+   "B_hit_prefix": 220,
+   "B_fresh_fresh_prefix": 4969,
+   "A_worse_than_noise": false,
+   "B_worse_than_noise": true,
+   "A_len": [
+    4569,
+    4569,
+    4569
+   ],
+   "B_len": [
+    4969,
+    5053,
+    4969
+   ],
+   "finish": [
+    "length",
+    "length",
+    "length",
+    "length"
+   ],
+   "secs": [
+    27.9,
+    23.4,
+    23.4,
+    27.5
+   ],
+   "first_token_top5_max_abs_logprob_delta": {
+    "A_hit_vs_fresh": 0.481,
+    "A_fresh_vs_fresh": 0.0,
+    "B_hit_vs_fresh": 0.588,
+    "B_fresh_vs_fresh": 0.0
+   }
+  },
+  {
+   "tokens": 32768,
+   "cell": 1,
+   "prompt_tokens": 30630,
+   "A_same": true,
+   "B_same": false,
+   "A_hit_prefix": 3934,
+   "A_fresh_fresh_prefix": 3934,
+   "B_hit_prefix": 33,
+   "B_fresh_fresh_prefix": 4267,
+   "A_worse_than_noise": false,
+   "B_worse_than_noise": true,
+   "A_len": [
+    3934,
+    3934,
+    3934
+   ],
+   "B_len": [
+    4267,
+    4558,
+    4267
+   ],
+   "finish": [
+    "length",
+    "length",
+    "length",
+    "length"
+   ],
+   "secs": [
+    27.4,
+    23.4,
+    23.5,
+    27.4
+   ],
+   "first_token_top5_max_abs_logprob_delta": {
+    "A_hit_vs_fresh": 1.343,
+    "A_fresh_vs_fresh": 0.0,
+    "B_hit_vs_fresh": 1.466,
+    "B_fresh_vs_fresh": 0.0
+   }
+  },
+  {
+   "tokens": 32768,
+   "cell": 2,
+   "prompt_tokens": 31877,
+   "A_same": true,
+   "B_same": false,
+   "A_hit_prefix": 3730,
+   "A_fresh_fresh_prefix": 3730,
+   "B_hit_prefix": 424,
+   "B_fresh_fresh_prefix": 5256,
+   "A_worse_than_noise": false,
+   "B_worse_than_noise": true,
+   "A_len": [
+    3730,
+    3730,
+    3730
+   ],
+   "B_len": [
+    5256,
+    5234,
+    5256
+   ],
+   "finish": [
+    "stop",
+    "stop",
+    "length",
+    "length"
+   ],
+   "secs": [
+    21.3,
+    17.1,
+    23.5,
+    27.7
+   ],
+   "first_token_top5_max_abs_logprob_delta": {
+    "A_hit_vs_fresh": 0.362,
+    "A_fresh_vs_fresh": 0.0,
+    "B_hit_vs_fresh": 0.565,
+    "B_fresh_vs_fresh": 0.0
+   }
+  },
+  {
+   "tokens": 131072,
+   "cell": 0,
+   "prompt_tokens": 124893,
+   "A_same": true,
+   "B_same": false,
+   "A_hit_prefix": 4570,
+   "A_fresh_fresh_prefix": 4570,
+   "B_hit_prefix": 62,
+   "B_fresh_fresh_prefix": 2204,
+   "A_worse_than_noise": false,
+   "B_worse_than_noise": true,
+   "A_len": [
+    4570,
+    4570,
+    4570
+   ],
+   "B_len": [
+    2204,
+    5233,
+    2204
+   ],
+   "finish": [
+    "length",
+    "length",
+    "length",
+    "stop"
+   ],
+   "secs": [
+    53.7,
+    24.9,
+    24.8,
+    42.3
+   ],
+   "first_token_top5_max_abs_logprob_delta": {
+    "A_hit_vs_fresh": 2.275,
+    "A_fresh_vs_fresh": 0.0,
+    "B_hit_vs_fresh": 2.259,
+    "B_fresh_vs_fresh": 0.0
+   }
+  },
+  {
+   "tokens": 131072,
+   "cell": 1,
+   "prompt_tokens": 126337,
+   "A_same": true,
+   "B_same": false,
+   "A_hit_prefix": 4397,
+   "A_fresh_fresh_prefix": 4397,
+   "B_hit_prefix": 253,
+   "B_fresh_fresh_prefix": 4415,
+   "A_worse_than_noise": false,
+   "B_worse_than_noise": true,
+   "A_len": [
+    4397,
+    4397,
+    4397
+   ],
+   "B_len": [
+    4415,
+    4064,
+    4415
+   ],
+   "finish": [
+    "length",
+    "length",
+    "length",
+    "length"
+   ],
+   "secs": [
+    54.0,
+    24.9,
+    24.9,
+    54.0
+   ],
+   "first_token_top5_max_abs_logprob_delta": {
+    "A_hit_vs_fresh": 3.468,
+    "A_fresh_vs_fresh": 0.0,
+    "B_hit_vs_fresh": 0.237,
+    "B_fresh_vs_fresh": 0.0
+   }
+  },
+  {
+   "tokens": 131072,
+   "cell": 2,
+   "prompt_tokens": 127960,
+   "A_same": true,
+   "B_same": false,
+   "A_hit_prefix": 1493,
+   "A_fresh_fresh_prefix": 1493,
+   "B_hit_prefix": 56,
+   "B_fresh_fresh_prefix": 4565,
+   "A_worse_than_noise": false,
+   "B_worse_than_noise": true,
+   "A_len": [
+    1493,
+    1493,
+    1493
+   ],
+   "B_len": [
+    4565,
+    3758,
+    4565
+   ],
+   "finish": [
+    "stop",
+    "stop",
+    "length",
+    "length"
+   ],
+   "secs": [
+    37.2,
+    7.5,
+    25.0,
+    54.8
+   ],
+   "first_token_top5_max_abs_logprob_delta": {
+    "A_hit_vs_fresh": 0.44,
+    "A_fresh_vs_fresh": 0.0,
+    "B_hit_vs_fresh": 1.097,
+    "B_fresh_vs_fresh": 0.0
+   }
+  }
+ ]
+}

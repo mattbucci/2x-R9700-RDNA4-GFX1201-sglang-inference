@@ -1,0 +1,164 @@
+{
+  "label": "nospec-on1-forced",
+  "tag": "",
+  "note": "flint FP8 preset from /data/sgl-v0522-r97t/python (99 patches + the R97-T candidate), --random-seed 7",
+  "port": 23334,
+  "maxtok": 400,
+  "runs": 2,
+  "sampling": null,
+  "ignore_eos": true,
+  "points": [
+    {
+      "context": 128,
+      "input_len": 14,
+      "runs_tps": [
+        45.73,
+        45.77
+      ],
+      "median_tps": 45.747,
+      "min_tps": 45.728,
+      "max_tps": 45.765,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "runs_verify_ct": [
+        null,
+        null
+      ],
+      "runs_decode_s": [
+        8.7255,
+        8.7184
+      ],
+      "runs_text_sha": [
+        "590c55c97a55",
+        "590c55c97a55"
+      ],
+      "runs_pieces": [
+        398,
+        398
+      ],
+      "runs_median_gap_ms": [
+        21.84,
+        21.83
+      ],
+      "median_tpot_ms": 21.86,
+      "sample": "Okay, the user has asked for a long, detailed essay about GP",
+      "median_ttft_ms": 74.8
+    },
+    {
+      "context": 8192,
+      "input_len": 7321,
+      "runs_tps": [
+        45.12,
+        45.15
+      ],
+      "median_tps": 45.138,
+      "min_tps": 45.121,
+      "max_tps": 45.155,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "runs_verify_ct": [
+        null,
+        null
+      ],
+      "runs_decode_s": [
+        8.8428,
+        8.8363
+      ],
+      "runs_text_sha": [
+        "ecfff7885de2",
+        "ecfff7885de2"
+      ],
+      "runs_pieces": [
+        396,
+        396
+      ],
+      "runs_median_gap_ms": [
+        22.14,
+        22.13
+      ],
+      "median_tpot_ms": 22.15,
+      "sample": "We need answer user. Need summarize repeated sentence in one",
+      "median_ttft_ms": 82.7
+    },
+    {
+      "context": 65536,
+      "input_len": 58473,
+      "runs_tps": [
+        43.74,
+        43.72
+      ],
+      "median_tps": 43.728,
+      "min_tps": 43.718,
+      "max_tps": 43.737,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "runs_verify_ct": [
+        null,
+        null
+      ],
+      "runs_decode_s": [
+        9.1226,
+        9.1267
+      ],
+      "runs_text_sha": [
+        "e48e4ba9d064",
+        "e48e4ba9d064"
+      ],
+      "runs_pieces": [
+        397,
+        397
+      ],
+      "runs_median_gap_ms": [
+        22.83,
+        22.86
+      ],
+      "median_tpot_ms": 22.87,
+      "sample": "We need answer user. Need summarize repeated sentence. We ne",
+      "median_ttft_ms": 136.2
+    },
+    {
+      "context": 221184,
+      "input_len": 197315,
+      "runs_tps": [
+        39.91,
+        39.88
+      ],
+      "median_tps": 39.897,
+      "min_tps": 39.88,
+      "max_tps": 39.914,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "runs_verify_ct": [
+        null,
+        null
+      ],
+      "runs_decode_s": [
+        9.9966,
+        10.0051
+      ],
+      "runs_text_sha": [
+        "df5c027e852d",
+        "df5c027e852d"
+      ],
+      "runs_pieces": [
+        399,
+        399
+      ],
+      "runs_median_gap_ms": [
+        25.03,
+        25.06
+      ],
+      "median_tpot_ms": 25.06,
+      "sample": "We need answer the user. The user asks: \"In one short paragr",
+      "median_ttft_ms": 308.6
+    }
+  ]
+}

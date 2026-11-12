@@ -1,0 +1,26 @@
+{
+  "spec-off2": {
+    "tag": "spec-off2",
+    "model": "/data/models/Flint-FP8",
+    "timestamp": "2026-11-12 03:06",
+    "elapsed_sec": 4.3,
+    "checks": {
+      "basic": {
+        "passed": true,
+        "message": "finish=stop answer='paris'"
+      },
+      "tool_call": {
+        "passed": true,
+        "message": "finish=tool_calls name='get_weather' args='{\"location\": \"Paris\"}'"
+      },
+      "thinking": {
+        "passed": true,
+        "message": "reasoning_seen terminated answer_ok (242 tok, finish=stop)"
+      }
+    },
+    "summary": {
+      "passed": 3,
+      "total": 3
+    }
+  }
+}

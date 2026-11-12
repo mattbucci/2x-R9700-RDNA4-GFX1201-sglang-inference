@@ -1,0 +1,1015 @@
+{
+ "preset": "flint",
+ "floor": 0.99,
+ "configs": {
+  "nospec": {
+   "phases": [
+    "caps",
+    "prefill3",
+    "sweep",
+    "forced",
+    "route",
+    "cachehit",
+    "needle"
+   ],
+   "speed_rows": {
+    "prefill:7.3K": {
+     "verdict": "ok",
+     "control": [
+      0.779,
+      0.776
+     ],
+     "treatment": [
+      0.776,
+      0.775
+     ],
+     "r1": 1.0039,
+     "r2": 1.0013,
+     "rm": 1.0026,
+     "noise": 0.0039,
+     "kind": "gate",
+     "input_tokens": [
+      7321
+     ]
+    },
+    "prefill:58K": {
+     "verdict": "ok",
+     "control": [
+      9.298,
+      9.256
+     ],
+     "treatment": [
+      9.277,
+      9.275
+     ],
+     "r1": 1.0023,
+     "r2": 0.998,
+     "rm": 1.0001,
+     "noise": 0.0045,
+     "kind": "gate",
+     "input_tokens": [
+      58473
+     ]
+    },
+    "prefill:197K": {
+     "verdict": "ok",
+     "control": [
+      60.17,
+      60.141
+     ],
+     "treatment": [
+      60.43,
+      60.494
+     ],
+     "r1": 0.9957,
+     "r2": 0.9942,
+     "rm": 0.9949,
+     "noise": 0.0011,
+     "kind": "gate",
+     "input_tokens": [
+      197315
+     ]
+    },
+    "canon:24": {
+     "verdict": "ok",
+     "control": [
+      45.777,
+      45.664
+     ],
+     "treatment": [
+      45.765,
+      45.631
+     ],
+     "r1": 0.9997,
+     "r2": 0.9993,
+     "rm": 0.9995,
+     "noise": 0.0029,
+     "kind": "gate",
+     "note": "",
+     "input_tokens": [
+      14
+     ],
+     "completion_tokens": {
+      "nospec-off1": [
+       80,
+       80,
+       80,
+       80,
+       80
+      ],
+      "nospec-off2": [
+       80,
+       80,
+       80,
+       80,
+       80
+      ],
+      "nospec-on1": [
+       80,
+       80,
+       80,
+       80,
+       80
+      ],
+      "nospec-on2": [
+       80,
+       80,
+       80,
+       80,
+       80
+      ]
+     }
+    },
+    "ttft:24": {
+     "verdict": "ok",
+     "control": [
+      74.5,
+      75.0
+     ],
+     "treatment": [
+      74.6,
+      75.5
+     ],
+     "r1": 0.9987,
+     "r2": 0.9934,
+     "rm": 0.996,
+     "noise": 0.012,
+     "kind": "soft"
+    },
+    "canon:7.3K": {
+     "verdict": "ok",
+     "control": [
+      45.044,
+      45.074
+     ],
+     "treatment": [
+      45.057,
+      44.968
+     ],
+     "r1": 1.0003,
+     "r2": 0.9976,
+     "rm": 0.999,
+     "noise": 0.002,
+     "kind": "gate",
+     "note": "",
+     "input_tokens": [
+      7321
+     ],
+     "completion_tokens": {
+      "nospec-off1": [
+       80,
+       80,
+       80,
+       80,
+       80
+      ],
+      "nospec-off2": [
+       80,
+       80,
+       80,
+       80,
+       80
+      ],
+      "nospec-on1": [
+       80,
+       80,
+       80,
+       80,
+       80
+      ],
+      "nospec-on2": [
+       80,
+       80,
+       80,
+       80,
+       80
+      ]
+     }
+    },
+    "ttft:7.3K": {
+     "verdict": "noise",
+     "control": [
+      88.2,
+      82.8
+     ],
+     "treatment": [
+      82.6,
+      85.0
+     ],
+     "r1": 1.0678,
+     "r2": 0.9741,
+     "rm": 1.0195,
+     "noise": 0.0632,
+     "kind": "soft"
+    },
+    "canon:58K": {
+     "verdict": "ok",
+     "control": [
+      43.602,
+      43.7
+     ],
+     "treatment": [
+      43.723,
+      43.624
+     ],
+     "r1": 1.0028,
+     "r2": 0.9983,
+     "rm": 1.0005,
+     "noise": 0.0023,
+     "kind": "gate",
+     "note": "",
+     "input_tokens": [
+      58473
+     ],
+     "completion_tokens": {
+      "nospec-off1": [
+       80,
+       80,
+       80,
+       80,
+       80
+      ],
+      "nospec-off2": [
+       80,
+       80,
+       80,
+       80,
+       80
+      ],
+      "nospec-on1": [
+       80,
+       80,
+       80,
+       80,
+       80
+      ],
+      "nospec-on2": [
+       80,
+       80,
+       80,
+       80,
+       80
+      ]
+     }
+    },
+    "ttft:58K": {
+     "verdict": "ok",
+     "control": [
+      136.8,
+      133.9
+     ],
+     "treatment": [
+      134.7,
+      131.2
+     ],
+     "r1": 1.0156,
+     "r2": 1.0206,
+     "rm": 1.0181,
+     "noise": 0.0263,
+     "kind": "soft"
+    },
+    "canon:197K": {
+     "verdict": "ok",
+     "control": [
+      39.884,
+      39.765
+     ],
+     "treatment": [
+      39.807,
+      39.687
+     ],
+     "r1": 0.9981,
+     "r2": 0.998,
+     "rm": 0.9981,
+     "noise": 0.003,
+     "kind": "gate",
+     "note": "",
+     "input_tokens": [
+      197315
+     ],
+     "completion_tokens": {
+      "nospec-off1": [
+       80,
+       80,
+       80,
+       80,
+       80
+      ],
+      "nospec-off2": [
+       80,
+       80,
+       80,
+       80,
+       80
+      ],
+      "nospec-on1": [
+       80,
+       80,
+       80,
+       80,
+       80
+      ],
+      "nospec-on2": [
+       80,
+       80,
+       80,
+       80,
+       80
+      ]
+     }
+    },
+    "ttft:197K": {
+     "verdict": "noise",
+     "control": [
+      290.2,
+      299.1
+     ],
+     "treatment": [
+      298.8,
+      290.9
+     ],
+     "r1": 0.9712,
+     "r2": 1.0282,
+     "rm": 0.9993,
+     "noise": 0.0302,
+     "kind": "soft"
+    },
+    "forced:24": {
+     "verdict": "ok",
+     "control": [
+      45.678,
+      45.671
+     ],
+     "treatment": [
+      45.747,
+      45.539
+     ],
+     "r1": 1.0015,
+     "r2": 0.9971,
+     "rm": 0.9993,
+     "noise": 0.0046,
+     "kind": "gate"
+    },
+    "forced:7.3K": {
+     "verdict": "ok",
+     "control": [
+      45.209,
+      45.088
+     ],
+     "treatment": [
+      45.138,
+      45.002
+     ],
+     "r1": 0.9984,
+     "r2": 0.9981,
+     "rm": 0.9983,
+     "noise": 0.003,
+     "kind": "gate"
+    },
+    "forced:58K": {
+     "verdict": "ok",
+     "control": [
+      43.811,
+      43.764
+     ],
+     "treatment": [
+      43.728,
+      43.641
+     ],
+     "r1": 0.9981,
+     "r2": 0.9972,
+     "rm": 0.9976,
+     "noise": 0.002,
+     "kind": "gate"
+    },
+    "forced:197K": {
+     "verdict": "ok",
+     "control": [
+      39.913,
+      39.882
+     ],
+     "treatment": [
+      39.897,
+      39.748
+     ],
+     "r1": 0.9996,
+     "r2": 0.9966,
+     "rm": 0.9981,
+     "noise": 0.0037,
+     "kind": "gate"
+    }
+   },
+   "caps": {
+    "basic": [
+     2,
+     2
+    ],
+    "tool_call": [
+     2,
+     2
+    ],
+    "thinking": [
+     2,
+     2
+    ]
+   },
+   "route": {
+    "logit-bias": [
+     2,
+     2
+    ],
+    "plain": [
+     2,
+     2
+    ],
+    "think-tool": [
+     2,
+     2
+    ],
+    "sampled": [
+     2,
+     2
+    ],
+    "tool-call": [
+     2,
+     2
+    ],
+    "json-schema": [
+     2,
+     2
+    ],
+    "penalty": [
+     2,
+     2
+    ],
+    "code": [
+     2,
+     2
+    ],
+    "logprobs": [
+     2,
+     2
+    ],
+    "concurrent": [
+     2,
+     2
+    ]
+   },
+   "needle": {
+    "131072@0.5": [
+     2,
+     2
+    ],
+    "197000@0.5": [
+     2,
+     2
+    ],
+    "1024@0.9": [
+     2,
+     2
+    ],
+    "197000@0.1": [
+     2,
+     2
+    ],
+    "1024@0.5": [
+     2,
+     2
+    ],
+    "32768@0.5": [
+     2,
+     2
+    ],
+    "131072@0.1": [
+     2,
+     2
+    ],
+    "32768@0.9": [
+     0,
+     0
+    ],
+    "197000@0.9": [
+     2,
+     2
+    ],
+    "1024@0.1": [
+     2,
+     2
+    ],
+    "32768@0.1": [
+     2,
+     2
+    ],
+    "131072@0.9": [
+     2,
+     2
+    ]
+   },
+   "cachehit": {
+    "per_boot": {
+     "off1": {
+      "mismatches": 6,
+      "comparisons": 12,
+      "blank": 0,
+      "mean_first_token_dlogp_hit_vs_fresh": 1.0194,
+      "mean_first_token_dlogp_fresh_vs_fresh": 0.0,
+      "mean_identical_hit_s": 21.77,
+      "mean_follow_up_hit_s": 22.73
+     },
+     "off2": {
+      "mismatches": 6,
+      "comparisons": 12,
+      "blank": 0,
+      "mean_first_token_dlogp_hit_vs_fresh": 1.0194,
+      "mean_first_token_dlogp_fresh_vs_fresh": 0.0,
+      "mean_identical_hit_s": 21.77,
+      "mean_follow_up_hit_s": 22.57
+     },
+     "on1": {
+      "mismatches": 6,
+      "comparisons": 12,
+      "blank": 0,
+      "mean_first_token_dlogp_hit_vs_fresh": 1.2151,
+      "mean_first_token_dlogp_fresh_vs_fresh": 0.0,
+      "mean_identical_hit_s": 20.17,
+      "mean_follow_up_hit_s": 24.23
+     },
+     "on2": {
+      "mismatches": 6,
+      "comparisons": 12,
+      "blank": 0,
+      "mean_first_token_dlogp_hit_vs_fresh": 1.2151,
+      "mean_first_token_dlogp_fresh_vs_fresh": 0.0,
+      "mean_identical_hit_s": 20.2,
+      "mean_follow_up_hit_s": 24.18
+     }
+    },
+    "control": [
+     12,
+     24
+    ],
+    "treatment": [
+     12,
+     24
+    ],
+    "fisher_p_treatment_more": 0.6134
+   }
+  },
+  "spec": {
+   "phases": [
+    "caps",
+    "prefill2",
+    "sweep",
+    "sampled",
+    "accept"
+   ],
+   "speed_rows": {
+    "prefill:7.3K": {
+     "verdict": "ok",
+     "control": [
+      0.839,
+      0.842
+     ],
+     "treatment": [
+      0.84,
+      0.839
+     ],
+     "r1": 0.9988,
+     "r2": 1.0036,
+     "rm": 1.0012,
+     "noise": 0.0036,
+     "kind": "gate",
+     "input_tokens": [
+      7321
+     ]
+    },
+    "prefill:58K": {
+     "verdict": "ok",
+     "control": [
+      9.28,
+      9.297
+     ],
+     "treatment": [
+      9.31,
+      9.308
+     ],
+     "r1": 0.9968,
+     "r2": 0.9988,
+     "rm": 0.9978,
+     "noise": 0.0018,
+     "kind": "gate",
+     "input_tokens": [
+      58473
+     ]
+    },
+    "prefill:197K": {
+     "verdict": "ok",
+     "control": [
+      60.195,
+      60.25
+     ],
+     "treatment": [
+      60.714,
+      60.774
+     ],
+     "r1": 0.9915,
+     "r2": 0.9914,
+     "rm": 0.9914,
+     "noise": 0.001,
+     "kind": "gate",
+     "input_tokens": [
+      197315
+     ]
+    },
+    "canon:24": {
+     "verdict": "ok",
+     "control": [
+      103.796,
+      103.583
+     ],
+     "treatment": [
+      108.618,
+      108.796
+     ],
+     "r1": 1.0465,
+     "r2": 1.0503,
+     "rm": 1.0484,
+     "noise": 0.0021,
+     "kind": "record",
+     "note": "speculative row",
+     "input_tokens": [
+      14
+     ],
+     "completion_tokens": {
+      "spec-off1": [
+       80,
+       80,
+       80,
+       80,
+       80
+      ],
+      "spec-off2": [
+       80,
+       80,
+       80,
+       80,
+       80
+      ],
+      "spec-on1": [
+       80,
+       80,
+       80,
+       80,
+       80
+      ],
+      "spec-on2": [
+       80,
+       80,
+       80,
+       80,
+       80
+      ]
+     }
+    },
+    "ttft:24": {
+     "verdict": "loss",
+     "control": [
+      74.6,
+      74.3
+     ],
+     "treatment": [
+      76.0,
+      75.9
+     ],
+     "r1": 0.9816,
+     "r2": 0.9789,
+     "rm": 0.9802,
+     "noise": 0.004,
+     "kind": "soft"
+    },
+    "canon:7.3K": {
+     "verdict": "loss",
+     "control": [
+      65.295,
+      65.483
+     ],
+     "treatment": [
+      59.799,
+      59.866
+     ],
+     "r1": 0.9158,
+     "r2": 0.9142,
+     "rm": 0.915,
+     "noise": 0.0029,
+     "kind": "record",
+     "note": "speculative row",
+     "input_tokens": [
+      7321
+     ],
+     "completion_tokens": {
+      "spec-off1": [
+       80,
+       80,
+       80,
+       80,
+       80
+      ],
+      "spec-off2": [
+       80,
+       80,
+       80,
+       80,
+       80
+      ],
+      "spec-on1": [
+       80,
+       80,
+       80,
+       80,
+       80
+      ],
+      "spec-on2": [
+       80,
+       80,
+       80,
+       80,
+       80
+      ]
+     }
+    },
+    "ttft:7.3K": {
+     "verdict": "noise",
+     "control": [
+      88.5,
+      83.0
+     ],
+     "treatment": [
+      83.6,
+      85.4
+     ],
+     "r1": 1.0586,
+     "r2": 0.9719,
+     "rm": 1.0139,
+     "noise": 0.0641,
+     "kind": "soft"
+    },
+    "canon:58K": {
+     "verdict": "loss",
+     "control": [
+      85.294,
+      85.195
+     ],
+     "treatment": [
+      75.179,
+      74.847
+     ],
+     "r1": 0.8814,
+     "r2": 0.8785,
+     "rm": 0.88,
+     "noise": 0.0044,
+     "kind": "record",
+     "note": "speculative row",
+     "input_tokens": [
+      58473
+     ],
+     "completion_tokens": {
+      "spec-off1": [
+       80,
+       80,
+       80,
+       80,
+       80
+      ],
+      "spec-off2": [
+       80,
+       80,
+       80,
+       80,
+       80
+      ],
+      "spec-on1": [
+       80,
+       80,
+       80,
+       80,
+       80
+      ],
+      "spec-on2": [
+       80,
+       80,
+       80,
+       80,
+       80
+      ]
+     }
+    },
+    "ttft:58K": {
+     "verdict": "noise",
+     "control": [
+      134.0,
+      142.3
+     ],
+     "treatment": [
+      140.4,
+      136.2
+     ],
+     "r1": 0.9544,
+     "r2": 1.0448,
+     "rm": 0.9982,
+     "noise": 0.0601,
+     "kind": "soft"
+    },
+    "canon:197K": {
+     "verdict": "loss",
+     "control": [
+      51.053,
+      50.888
+     ],
+     "treatment": [
+      34.469,
+      34.509
+     ],
+     "r1": 0.6752,
+     "r2": 0.6781,
+     "rm": 0.6766,
+     "noise": 0.0032,
+     "kind": "record",
+     "note": "speculative row",
+     "input_tokens": [
+      197315
+     ],
+     "completion_tokens": {
+      "spec-off1": [
+       80,
+       80,
+       80,
+       80,
+       80
+      ],
+      "spec-off2": [
+       80,
+       80,
+       80,
+       80,
+       80
+      ],
+      "spec-on1": [
+       80,
+       80,
+       80,
+       80,
+       80
+      ],
+      "spec-on2": [
+       80,
+       80,
+       80,
+       80,
+       80
+      ]
+     }
+    },
+    "ttft:197K": {
+     "verdict": "noise",
+     "control": [
+      294.0,
+      296.6
+     ],
+     "treatment": [
+      297.8,
+      298.5
+     ],
+     "r1": 0.9872,
+     "r2": 0.9936,
+     "rm": 0.9904,
+     "noise": 0.0088,
+     "kind": "soft"
+    },
+    "cycle:24": {
+     "verdict": "ok",
+     "control": [
+      36.89,
+      36.93
+     ],
+     "treatment": [
+      36.33,
+      36.34
+     ],
+     "r1": 1.0154,
+     "r2": 1.0162,
+     "rm": 1.0158,
+     "noise": 0.0011,
+     "kind": "gate",
+     "accept_len": {
+      "spec-off1": 2.12,
+      "spec-off2": 2.12,
+      "spec-on1": 2.23,
+      "spec-on2": 2.23
+     }
+    },
+    "cycle:7.3K": {
+     "verdict": "ok",
+     "control": [
+      39.36,
+      39.46
+     ],
+     "treatment": [
+      39.06,
+      39.03
+     ],
+     "r1": 1.0077,
+     "r2": 1.011,
+     "rm": 1.0093,
+     "noise": 0.0025,
+     "kind": "gate",
+     "accept_len": {
+      "spec-off1": 2.92,
+      "spec-off2": 2.92,
+      "spec-on1": 3.12,
+      "spec-on2": 3.12
+     }
+    },
+    "cycle:58K": {
+     "verdict": "ok",
+     "control": [
+      44.28,
+      44.33
+     ],
+     "treatment": [
+      44.1,
+      43.99
+     ],
+     "r1": 1.0041,
+     "r2": 1.0077,
+     "rm": 1.0059,
+     "noise": 0.0025,
+     "kind": "gate",
+     "accept_len": {
+      "spec-off1": 3.1,
+      "spec-off2": 3.1,
+      "spec-on1": 2.85,
+      "spec-on2": 2.85
+     }
+    },
+    "cycle:197K": {
+     "verdict": "ok",
+     "control": [
+      60.16,
+      60.22
+     ],
+     "treatment": [
+      60.31,
+      60.25
+     ],
+     "r1": 0.9975,
+     "r2": 0.9995,
+     "rm": 0.9985,
+     "noise": 0.001,
+     "kind": "gate",
+     "accept_len": {
+      "spec-off1": 4.92,
+      "spec-off2": 4.92,
+      "spec-on1": 4.5,
+      "spec-on2": 4.5
+     }
+    }
+   },
+   "caps": {
+    "basic": [
+     2,
+     2
+    ],
+    "tool_call": [
+     2,
+     2
+    ],
+    "thinking": [
+     2,
+     2
+    ]
+   },
+   "accept": {
+    "documents": 96,
+    "same_text": 0,
+    "control": 2.8076,
+    "treatment": 2.8294,
+    "ratio": 1.0078,
+    "ratio_ci95": [
+     0.9853,
+     1.03
+    ]
+   }
+  }
+ },
+ "gates": {
+  "speed": "open:spec-ttft:24",
+  "caps-nospec": "full",
+  "route-nospec": "full",
+  "needle-nospec": "shared-miss:32768@0.9",
+  "cachehit-nospec": "not-worse",
+  "caps-spec": "full",
+  "accept-spec": "ok"
+ },
+ "noise_rows": [],
+ "verdict": "open:speed"
+}

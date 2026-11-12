@@ -1,0 +1,274 @@
+[2026-11-11 23:54:10] nospec: --mem-fraction-static 0.85 --max-running-requests 8 --chunked-prefill-size 4096 --random-seed 7 ; exports SGLANG_ALLOW_OVERWRITE_LONGER_CONTEXT_LEN=1 SGLANG_EXTEND_FP8_QK=1 SGLANG_EXTEND_SPLITKV_MAX_TOKENS=256 SGLANG_HIP_BF16_ATTN_SUM=1 SGLANG_USE_1STAGE_ALLREDUCE=1 SGLANG_USE_AITER=0 SGLANG_USE_AITER_AR=0
+[2026-11-11 23:54:13] nospec phases: caps prefill3 sweep forced route cachehit needle
+[2026-11-11 23:54:17] spec: --mem-fraction-static 0.85 --max-running-requests 8 --chunked-prefill-size 4096 --speculative-algorithm DFLASH --random-seed 7 ; exports SGLANG_ALLOW_OVERWRITE_LONGER_CONTEXT_LEN=1 SGLANG_EXTEND_FP8_QK=1 SGLANG_EXTEND_SPLITKV_MAX_TOKENS=256 SGLANG_HIP_BF16_ATTN_SUM=1 SGLANG_USE_1STAGE_ALLREDUCE=1 SGLANG_USE_AITER=0 SGLANG_USE_AITER_AR=0
+[2026-11-11 23:54:21] spec phases: caps prefill2 sweep sampled accept
+[2026-11-11 23:54:21] tree ok (four pinned files, no other drift); driver sha 0f17689fdf28aeb1, judge sha e67ce5105787431e, cache-hit probe sha 899ef18be5a27b08; /data free 348 GB
+[2026-11-11 23:54:21] == boot warm-off (flint, spec, switch off, --random-seed 7)
+[2026-11-11 23:56:05] warm-off: identified; scale lines 0, fp8 pools 6, max_total_num_tokens=571159
+[2026-11-11 23:56:06] warm-up warm-off: two short runs at 128 / 8192 / 65536 (not read by the judge)
+  ctx~128: MEDIAN 163.154 tok/s  input_len~14  [159.47..167.01]  sample='Okay, the user ha
+  ctx~8192: MEDIAN 58.132 tok/s  input_len~7321  [58.01..58.25]  sample='We need answer us
+  ctx~65536: MEDIAN 79.541 tok/s  input_len~58473  [79.51..79.57]  sample='We need answer
+[2026-11-11 23:57:06] == boot warm-on (flint, spec, switch on, --random-seed 7)
+[2026-11-11 23:58:40] warm-on: identified; scale lines 4, fp8 pools 6, max_total_num_tokens=571159
+[2026-11-11 23:58:41] warm-up warm-on: two short runs at 128 / 8192 / 65536 (not read by the judge)
+  ctx~128: MEDIAN 162.716 tok/s  input_len~14  [158.88..166.74]  sample='Okay, the user ha
+  ctx~8192: MEDIAN 58.344 tok/s  input_len~7321  [58.21..58.48]  sample='We need answer us
+  ctx~65536: MEDIAN 67.562 tok/s  input_len~58473  [67.44..67.68]  sample='We need answer
+[2026-11-11 23:59:38] == boot nospec-off1 (flint, nospec, switch off, --random-seed 7)
+[2026-11-12 00:01:12] nospec-off1: identified; scale lines 0, fp8 pools 4, max_total_num_tokens=1044688
+[2026-11-12 00:01:13] caps nospec-off1
+  [PASS] basic     finish=stop answer='paris';  [PASS] tool_call finish=tool_calls name='get_weather' args;  [PASS] thinking  reasoning_seen terminated answer_ok (286 ;[2026-11-12 00:01:25] cold prefill nospec-off1: 8192 / 65536 / 221184, 3 runs, cache flushed before each
+  ctx~8192: prompt_tokens=7321 prefill 0.90 s = 8,112 tok/s
+  ctx~8192: prompt_tokens=7321 prefill 0.78 s = 9,403 tok/s
+  ctx~8192: prompt_tokens=7321 prefill 0.77 s = 9,448 tok/s
+  ctx~65536: prompt_tokens=58473 prefill 9.25 s = 6,321 tok/s
+  ctx~65536: prompt_tokens=58473 prefill 9.30 s = 6,289 tok/s
+  ctx~65536: prompt_tokens=58473 prefill 9.31 s = 6,280 tok/s
+  ctx~221184: prompt_tokens=197315 prefill 60.10 s = 3,283 tok/s
+  ctx~221184: prompt_tokens=197315 prefill 60.22 s = 3,276 tok/s
+  ctx~221184: prompt_tokens=197315 prefill 60.17 s = 3,279 tok/s
+[2026-11-12 00:05:06] canonical rows nospec-off1: five runs, 80 tokens, think-off, EOS
+  ctx~128: MEDIAN 45.777 tok/s  input_len~14  [45.34..45.90]  sample='Okay, the user has a
+  ctx~8192: MEDIAN 45.044 tok/s  input_len~7321  [45.02..45.17]  sample='We need answer us
+  ctx~65536: MEDIAN 43.602 tok/s  input_len~58473  [42.34..43.71]  sample='We need answer
+  ctx~221184: MEDIAN 39.884 tok/s  input_len~197315  [39.84..39.92]  sample='We need answe
+[2026-11-12 00:05:55] forced 400-token ladder, two runs per depth, temperature 0, nospec-off1
+  ctx~128: MEDIAN 45.678 tok/s  input_len~14  [45.65..45.71]  sample='Okay, the user has a
+  ctx~8192: MEDIAN 45.209 tok/s  input_len~7321  [45.20..45.22]  sample='We need answer us
+  ctx~65536: MEDIAN 43.811 tok/s  input_len~58473  [43.80..43.82]  sample='We need answer
+  ctx~221184: MEDIAN 39.913 tok/s  input_len~197315  [39.88..39.95]  sample='We need answe
+[2026-11-12 00:07:11] route probe nospec-off1 (--extra-tokens 1024)
+ROUTE PROBE DONE passed=10/10
+[2026-11-12 00:07:51] cache-hit consistency nospec-off1: 32768 / 131072 tokens, 3 cells each (the probe's own exit status is not a gate)
+nospec-off1: 6 hit comparisons worse than the fresh-vs-fresh noise floor, of 12 -> /home/letsrtfm/AI/2x-R9700-RDNA4-GFX1201-sglang-inference/benchmarks/profilin
+[2026-11-12 00:28:02] needle nospec-off1
+    32768 @ 0.9  MISS  actual=30931 finish=length out=2048 50.3s  tail='EndArrow);\n[/asy]\n\nIn eight of the twelve out
+score 0.92 -> /home/letsrtfm/AI/2x-R9700-RDNA4-GFX1201-sglang-inference/benchmarks/quality/r97t-serving-flint-nospec-off
+[2026-11-12 00:35:59] == boot nospec-on1 (flint, nospec, switch on, --random-seed 7)
+[2026-11-12 00:37:32] nospec-on1: identified; scale lines 2, fp8 pools 4, max_total_num_tokens=1044688
+[2026-11-12 00:37:33] caps nospec-on1
+  [PASS] basic     finish=stop answer='paris';  [PASS] tool_call finish=tool_calls name='get_weather' args;  [PASS] thinking  reasoning_seen terminated answer_ok (286 ;[2026-11-12 00:37:45] cold prefill nospec-on1: 8192 / 65536 / 221184, 3 runs, cache flushed before each
+  ctx~8192: prompt_tokens=7321 prefill 0.88 s = 8,294 tok/s
+  ctx~8192: prompt_tokens=7321 prefill 0.78 s = 9,434 tok/s
+  ctx~8192: prompt_tokens=7321 prefill 0.78 s = 9,446 tok/s
+  ctx~65536: prompt_tokens=58473 prefill 9.26 s = 6,317 tok/s
+  ctx~65536: prompt_tokens=58473 prefill 9.28 s = 6,303 tok/s
+  ctx~65536: prompt_tokens=58473 prefill 9.29 s = 6,293 tok/s
+  ctx~221184: prompt_tokens=197315 prefill 60.37 s = 3,268 tok/s
+  ctx~221184: prompt_tokens=197315 prefill 60.45 s = 3,264 tok/s
+  ctx~221184: prompt_tokens=197315 prefill 60.43 s = 3,265 tok/s
+[2026-11-12 00:41:27] canonical rows nospec-on1: five runs, 80 tokens, think-off, EOS
+  ctx~128: MEDIAN 45.765 tok/s  input_len~14  [45.22..45.82]  sample='Okay, the user has a
+  ctx~8192: MEDIAN 45.057 tok/s  input_len~7321  [45.02..45.12]  sample='We need answer us
+  ctx~65536: MEDIAN 43.723 tok/s  input_len~58473  [43.20..43.80]  sample='We need answer
+  ctx~221184: MEDIAN 39.807 tok/s  input_len~197315  [39.69..39.84]  sample='We need answe
+[2026-11-12 00:42:16] forced 400-token ladder, two runs per depth, temperature 0, nospec-on1
+  ctx~128: MEDIAN 45.747 tok/s  input_len~14  [45.73..45.77]  sample='Okay, the user has a
+  ctx~8192: MEDIAN 45.138 tok/s  input_len~7321  [45.12..45.16]  sample='We need answer us
+  ctx~65536: MEDIAN 43.728 tok/s  input_len~58473  [43.72..43.74]  sample='We need answer
+  ctx~221184: MEDIAN 39.897 tok/s  input_len~197315  [39.88..39.91]  sample='We need answe
+[2026-11-12 00:43:32] route probe nospec-on1 (--extra-tokens 1024)
+ROUTE PROBE DONE passed=10/10
+[2026-11-12 00:44:13] cache-hit consistency nospec-on1: 32768 / 131072 tokens, 3 cells each (the probe's own exit status is not a gate)
+nospec-on1: 6 hit comparisons worse than the fresh-vs-fresh noise floor, of 12 -> /home/letsrtfm/AI/2x-R9700-RDNA4-GFX1201-sglang-inference/benchmarks/profiling
+[2026-11-12 01:03:51] needle nospec-on1
+    32768 @ 0.9  MISS  actual=30931 finish=length out=2048 50.9s  tail='/asy]\n\nIn eight of the twelve outcomes the pro
+score 0.92 -> /home/letsrtfm/AI/2x-R9700-RDNA4-GFX1201-sglang-inference/benchmarks/quality/r97t-serving-flint-nospec-on1
+[2026-11-12 01:11:05] == boot nospec-on2 (flint, nospec, switch on, --random-seed 7)
+[2026-11-12 01:12:39] nospec-on2: identified; scale lines 2, fp8 pools 4, max_total_num_tokens=1044688
+[2026-11-12 01:12:40] caps nospec-on2
+  [PASS] basic     finish=stop answer='paris';  [PASS] tool_call finish=tool_calls name='get_weather' args;  [PASS] thinking  reasoning_seen terminated answer_ok (286 ;[2026-11-12 01:12:51] cold prefill nospec-on2: 8192 / 65536 / 221184, 3 runs, cache flushed before each
+  ctx~8192: prompt_tokens=7321 prefill 0.89 s = 8,253 tok/s
+  ctx~8192: prompt_tokens=7321 prefill 0.77 s = 9,452 tok/s
+  ctx~8192: prompt_tokens=7321 prefill 0.77 s = 9,451 tok/s
+  ctx~65536: prompt_tokens=58473 prefill 9.24 s = 6,328 tok/s
+  ctx~65536: prompt_tokens=58473 prefill 9.28 s = 6,304 tok/s
+  ctx~65536: prompt_tokens=58473 prefill 9.27 s = 6,305 tok/s
+  ctx~221184: prompt_tokens=197315 prefill 60.36 s = 3,269 tok/s
+  ctx~221184: prompt_tokens=197315 prefill 60.49 s = 3,262 tok/s
+  ctx~221184: prompt_tokens=197315 prefill 60.52 s = 3,261 tok/s
+[2026-11-12 01:16:33] canonical rows nospec-on2: five runs, 80 tokens, think-off, EOS
+  ctx~128: MEDIAN 45.631 tok/s  input_len~14  [45.03..45.79]  sample='Okay, the user has a
+  ctx~8192: MEDIAN 44.968 tok/s  input_len~7321  [44.95..45.04]  sample='We need answer us
+  ctx~65536: MEDIAN 43.624 tok/s  input_len~58473  [43.15..43.63]  sample='We need answer
+  ctx~221184: MEDIAN 39.687 tok/s  input_len~197315  [39.67..39.72]  sample='We need answe
+[2026-11-12 01:17:23] forced 400-token ladder, two runs per depth, temperature 0, nospec-on2
+  ctx~128: MEDIAN 45.539 tok/s  input_len~14  [45.48..45.60]  sample='Okay, the user has a
+  ctx~8192: MEDIAN 45.002 tok/s  input_len~7321  [44.96..45.04]  sample='We need answer us
+  ctx~65536: MEDIAN 43.641 tok/s  input_len~58473  [43.62..43.66]  sample='We need answer
+  ctx~221184: MEDIAN 39.748 tok/s  input_len~197315  [39.74..39.75]  sample='We need answe
+[2026-11-12 01:18:39] route probe nospec-on2 (--extra-tokens 1024)
+ROUTE PROBE DONE passed=10/10
+[2026-11-12 01:19:18] cache-hit consistency nospec-on2: 32768 / 131072 tokens, 3 cells each (the probe's own exit status is not a gate)
+nospec-on2: 6 hit comparisons worse than the fresh-vs-fresh noise floor, of 12 -> /home/letsrtfm/AI/2x-R9700-RDNA4-GFX1201-sglang-inference/benchmarks/profiling
+[2026-11-12 01:38:55] needle nospec-on2
+    32768 @ 0.9  MISS  actual=30931 finish=length out=2048 50.2s  tail='/asy]\n\nIn eight of the twelve outcomes the pro
+score 0.92 -> /home/letsrtfm/AI/2x-R9700-RDNA4-GFX1201-sglang-inference/benchmarks/quality/r97t-serving-flint-nospec-on2
+[2026-11-12 01:46:05] == boot nospec-off2 (flint, nospec, switch off, --random-seed 7)
+[2026-11-12 01:47:38] nospec-off2: identified; scale lines 0, fp8 pools 4, max_total_num_tokens=1044688
+[2026-11-12 01:47:39] caps nospec-off2
+  [PASS] basic     finish=stop answer='paris';  [PASS] tool_call finish=tool_calls name='get_weather' args;  [PASS] thinking  reasoning_seen terminated answer_ok (286 ;[2026-11-12 01:47:51] cold prefill nospec-off2: 8192 / 65536 / 221184, 3 runs, cache flushed before each
+  ctx~8192: prompt_tokens=7321 prefill 0.89 s = 8,256 tok/s
+  ctx~8192: prompt_tokens=7321 prefill 0.78 s = 9,435 tok/s
+  ctx~8192: prompt_tokens=7321 prefill 0.78 s = 9,444 tok/s
+  ctx~65536: prompt_tokens=58473 prefill 9.26 s = 6,317 tok/s
+  ctx~65536: prompt_tokens=58473 prefill 9.25 s = 6,323 tok/s
+  ctx~65536: prompt_tokens=58473 prefill 9.27 s = 6,306 tok/s
+  ctx~221184: prompt_tokens=197315 prefill 60.01 s = 3,288 tok/s
+  ctx~221184: prompt_tokens=197315 prefill 60.16 s = 3,280 tok/s
+  ctx~221184: prompt_tokens=197315 prefill 60.14 s = 3,281 tok/s
+[2026-11-12 01:51:31] canonical rows nospec-off2: five runs, 80 tokens, think-off, EOS
+  ctx~128: MEDIAN 45.664 tok/s  input_len~14  [45.21..45.82]  sample='Okay, the user has a
+  ctx~8192: MEDIAN 45.074 tok/s  input_len~7321  [45.01..45.16]  sample='We need answer us
+  ctx~65536: MEDIAN 43.700 tok/s  input_len~58473  [43.18..43.74]  sample='We need answer
+  ctx~221184: MEDIAN 39.765 tok/s  input_len~197315  [39.74..39.80]  sample='We need answe
+[2026-11-12 01:52:21] forced 400-token ladder, two runs per depth, temperature 0, nospec-off2
+  ctx~128: MEDIAN 45.671 tok/s  input_len~14  [45.67..45.67]  sample='Okay, the user has a
+  ctx~8192: MEDIAN 45.088 tok/s  input_len~7321  [45.09..45.09]  sample='We need answer us
+  ctx~65536: MEDIAN 43.764 tok/s  input_len~58473  [43.75..43.77]  sample='We need answer
+  ctx~221184: MEDIAN 39.882 tok/s  input_len~197315  [39.87..39.89]  sample='We need answe
+[2026-11-12 01:53:37] route probe nospec-off2 (--extra-tokens 1024)
+ROUTE PROBE DONE passed=10/10
+[2026-11-12 01:54:14] cache-hit consistency nospec-off2: 32768 / 131072 tokens, 3 cells each (the probe's own exit status is not a gate)
+nospec-off2: 6 hit comparisons worse than the fresh-vs-fresh noise floor, of 12 -> /home/letsrtfm/AI/2x-R9700-RDNA4-GFX1201-sglang-inference/benchmarks/profilin
+[2026-11-12 02:14:24] needle nospec-off2
+    32768 @ 0.9  MISS  actual=30931 finish=length out=2048 50.2s  tail='EndArrow);\n[/asy]\n\nIn eight of the twelve out
+score 0.92 -> /home/letsrtfm/AI/2x-R9700-RDNA4-GFX1201-sglang-inference/benchmarks/quality/r97t-serving-flint-nospec-off
+[2026-11-12 02:22:21] == boot spec-off1 (flint, spec, switch off, --random-seed 7)
+[2026-11-12 02:23:54] spec-off1: identified; scale lines 0, fp8 pools 6, max_total_num_tokens=571159
+[2026-11-12 02:23:55] caps spec-off1
+  [PASS] basic     finish=stop answer='paris';  [PASS] tool_call finish=tool_calls name='get_weather' args;  [PASS] thinking  reasoning_seen terminated answer_ok (242 ;[2026-11-12 02:24:04] cold prefill spec-off1: 8192 / 65536 / 221184, 2 runs, cache flushed before each
+  ctx~8192: prompt_tokens=7321 prefill 0.90 s = 8,172 tok/s
+  ctx~8192: prompt_tokens=7321 prefill 0.78 s = 9,369 tok/s
+  ctx~65536: prompt_tokens=58473 prefill 9.26 s = 6,312 tok/s
+  ctx~65536: prompt_tokens=58473 prefill 9.30 s = 6,290 tok/s
+  ctx~221184: prompt_tokens=197315 prefill 60.10 s = 3,283 tok/s
+  ctx~221184: prompt_tokens=197315 prefill 60.29 s = 3,273 tok/s
+[2026-11-12 02:26:31] canonical rows spec-off1: five runs, 80 tokens, think-off, EOS
+  ctx~128: MEDIAN 103.796 tok/s  input_len~14  [102.07..104.43]  sample='Okay, the user ha
+  ctx~8192: MEDIAN 65.295 tok/s  input_len~7321  [64.25..65.88]  sample='We need answer us
+  ctx~65536: MEDIAN 85.294 tok/s  input_len~58473  [84.93..85.47]  sample='We need answer
+  ctx~221184: MEDIAN 51.053 tok/s  input_len~197315  [50.32..51.08]  sample='We need answe
+[2026-11-12 02:27:58] forced 800-token ladder, three runs per depth, T 1.0 / top-p 0.95 / top-k 20 / seed 7, spec-off1
+  ctx~128: MEDIAN 59.741 tok/s  input_len~14  [59.12..74.19]  sample='1.  **Deconstruct th
+  ctx~8192: MEDIAN 76.736 tok/s  input_len~7321  [70.97..81.81]  sample='We need answer us
+  ctx~65536: MEDIAN 72.364 tok/s  input_len~58473  [67.57..80.21]  sample='We need answer
+  ctx~221184: MEDIAN 89.194 tok/s  input_len~197315  [72.18..104.95]  sample='We need answ
+[cycle] spec-off1-sampled 24: 36.89 ms per cycle (27.1 cycles/s), accept len 2.12, 57.61 tok/s over 23 decode lines
+[cycle] spec-off1-sampled 7.3K: 39.36 ms per cycle (25.41 cycles/s), accept len 2.92, 74.47 tok/s over 17 decode lines
+[cycle] spec-off1-sampled 58K: 44.28 ms per cycle (22.59 cycles/s), accept len 3.1, 70.13 tok/s over 15 decode lines
+[cycle] spec-off1-sampled 197K: 60.16 ms per cycle (16.62 cycles/s), accept len 4.92, 82.02 tok/s over 9 decode lines
+SPEC CYCLE REPORT spec-off1-sampled: decode_lines=64 timing_windows=0
+[2026-11-12 02:31:11] accept probe spec-off1: 48 greedy documents (12 each at 12000,24000,48000,96000 characters), 300 tokens each
+POOLED spec-off1: 14400 tokens over 5137 verifies, accept length 2.803 (48 cases)
+[2026-11-12 02:36:34] == boot spec-on1 (flint, spec, switch on, --random-seed 7)
+[2026-11-12 02:38:08] spec-on1: identified; scale lines 4, fp8 pools 6, max_total_num_tokens=571159
+[2026-11-12 02:38:09] caps spec-on1
+  [PASS] basic     finish=stop answer='paris';  [PASS] tool_call finish=tool_calls name='get_weather' args;  [PASS] thinking  reasoning_seen terminated answer_ok (313 ;[2026-11-12 02:38:16] cold prefill spec-on1: 8192 / 65536 / 221184, 2 runs, cache flushed before each
+  ctx~8192: prompt_tokens=7321 prefill 0.90 s = 8,143 tok/s
+  ctx~8192: prompt_tokens=7321 prefill 0.78 s = 9,368 tok/s
+  ctx~65536: prompt_tokens=58473 prefill 9.30 s = 6,286 tok/s
+  ctx~65536: prompt_tokens=58473 prefill 9.32 s = 6,276 tok/s
+  ctx~221184: prompt_tokens=197315 prefill 60.68 s = 3,252 tok/s
+  ctx~221184: prompt_tokens=197315 prefill 60.75 s = 3,248 tok/s
+[2026-11-12 02:40:45] canonical rows spec-on1: five runs, 80 tokens, think-off, EOS
+  ctx~128: MEDIAN 108.618 tok/s  input_len~14  [106.87..109.26]  sample='Okay, the user ha
+  ctx~8192: MEDIAN 59.799 tok/s  input_len~7321  [59.16..60.16]  sample='We need answer us
+  ctx~65536: MEDIAN 75.179 tok/s  input_len~58473  [74.27..75.41]  sample='We need answer
+  ctx~221184: MEDIAN 34.469 tok/s  input_len~197315  [34.07..34.50]  sample='We need answe
+[2026-11-12 02:42:17] forced 800-token ladder, three runs per depth, T 1.0 / top-p 0.95 / top-k 20 / seed 7, spec-on1
+  ctx~128: MEDIAN 65.415 tok/s  input_len~14  [59.70..67.50]  sample='1.  **Deconstruct th
+  ctx~8192: MEDIAN 81.333 tok/s  input_len~7321  [77.95..92.75]  sample='We need answer us
+  ctx~65536: MEDIAN 78.073 tok/s  input_len~58473  [68.70..84.32]  sample='We need answer
+  ctx~221184: MEDIAN 83.127 tok/s  input_len~197315  [70.70..109.76]  sample='We need answ
+[cycle] spec-on1-sampled 24: 36.33 ms per cycle (27.53 cycles/s), accept len 2.23, 62.44 tok/s over 23 decode lines
+[cycle] spec-on1-sampled 7.3K: 39.06 ms per cycle (25.6 cycles/s), accept len 3.12, 80.3 tok/s over 15 decode lines
+[cycle] spec-on1-sampled 58K: 44.1 ms per cycle (22.68 cycles/s), accept len 2.85, 64.72 tok/s over 15 decode lines
+[cycle] spec-on1-sampled 197K: 60.31 ms per cycle (16.58 cycles/s), accept len 4.5, 74.47 tok/s over 9 decode lines
+SPEC CYCLE REPORT spec-on1-sampled: decode_lines=62 timing_windows=0
+[2026-11-12 02:45:26] accept probe spec-on1: 48 greedy documents (12 each at 12000,24000,48000,96000 characters), 300 tokens each
+POOLED spec-on1: 14400 tokens over 5066 verifies, accept length 2.842 (48 cases)
+[2026-11-12 02:50:42] == boot spec-on2 (flint, spec, switch on, --random-seed 7)
+[2026-11-12 02:52:16] spec-on2: identified; scale lines 4, fp8 pools 6, max_total_num_tokens=571159
+[2026-11-12 02:52:17] caps spec-on2
+  [PASS] basic     finish=stop answer='paris';  [PASS] tool_call finish=tool_calls name='get_weather' args;  [PASS] thinking  reasoning_seen terminated answer_ok (313 ;[2026-11-12 02:52:24] cold prefill spec-on2: 8192 / 65536 / 221184, 2 runs, cache flushed before each
+  ctx~8192: prompt_tokens=7321 prefill 0.90 s = 8,165 tok/s
+  ctx~8192: prompt_tokens=7321 prefill 0.78 s = 9,372 tok/s
+  ctx~65536: prompt_tokens=58473 prefill 9.30 s = 6,291 tok/s
+  ctx~65536: prompt_tokens=58473 prefill 9.32 s = 6,274 tok/s
+  ctx~221184: prompt_tokens=197315 prefill 60.78 s = 3,246 tok/s
+  ctx~221184: prompt_tokens=197315 prefill 60.77 s = 3,247 tok/s
+[2026-11-12 02:54:53] canonical rows spec-on2: five runs, 80 tokens, think-off, EOS
+  ctx~128: MEDIAN 108.796 tok/s  input_len~14  [107.22..109.40]  sample='Okay, the user ha
+  ctx~8192: MEDIAN 59.866 tok/s  input_len~7321  [58.96..60.20]  sample='We need answer us
+  ctx~65536: MEDIAN 74.847 tok/s  input_len~58473  [74.23..75.14]  sample='We need answer
+  ctx~221184: MEDIAN 34.509 tok/s  input_len~197315  [34.12..34.52]  sample='We need answe
+[2026-11-12 02:56:25] forced 800-token ladder, three runs per depth, T 1.0 / top-p 0.95 / top-k 20 / seed 7, spec-on2
+  ctx~128: MEDIAN 65.402 tok/s  input_len~14  [60.43..67.53]  sample='1.  **Deconstruct th
+  ctx~8192: MEDIAN 81.484 tok/s  input_len~7321  [78.01..92.94]  sample='We need answer us
+  ctx~65536: MEDIAN 78.265 tok/s  input_len~58473  [68.69..84.57]  sample='We need answer
+  ctx~221184: MEDIAN 83.220 tok/s  input_len~197315  [70.74..109.87]  sample='We need answ
+[cycle] spec-on2-sampled 24: 36.34 ms per cycle (27.52 cycles/s), accept len 2.23, 62.44 tok/s over 23 decode lines
+[cycle] spec-on2-sampled 7.3K: 39.03 ms per cycle (25.62 cycles/s), accept len 3.12, 80.46 tok/s over 15 decode lines
+[cycle] spec-on2-sampled 58K: 43.99 ms per cycle (22.73 cycles/s), accept len 2.85, 64.76 tok/s over 15 decode lines
+[cycle] spec-on2-sampled 197K: 60.25 ms per cycle (16.6 cycles/s), accept len 4.5, 74.47 tok/s over 9 decode lines
+SPEC CYCLE REPORT spec-on2-sampled: decode_lines=62 timing_windows=0
+[2026-11-12 02:59:34] accept probe spec-on2: 48 greedy documents (12 each at 12000,24000,48000,96000 characters), 300 tokens each, --doc-offset 1190000
+POOLED spec-on2: 14400 tokens over 5113 verifies, accept length 2.816 (48 cases)
+[2026-11-12 03:04:48] == boot spec-off2 (flint, spec, switch off, --random-seed 7)
+[2026-11-12 03:06:21] spec-off2: identified; scale lines 0, fp8 pools 6, max_total_num_tokens=571159
+[2026-11-12 03:06:22] caps spec-off2
+  [PASS] basic     finish=stop answer='paris';  [PASS] tool_call finish=tool_calls name='get_weather' args;  [PASS] thinking  reasoning_seen terminated answer_ok (242 ;[2026-11-12 03:06:29] cold prefill spec-off2: 8192 / 65536 / 221184, 2 runs, cache flushed before each
+  ctx~8192: prompt_tokens=7321 prefill 0.90 s = 8,120 tok/s
+  ctx~8192: prompt_tokens=7321 prefill 0.78 s = 9,360 tok/s
+  ctx~65536: prompt_tokens=58473 prefill 9.28 s = 6,299 tok/s
+  ctx~65536: prompt_tokens=58473 prefill 9.31 s = 6,280 tok/s
+  ctx~221184: prompt_tokens=197315 prefill 60.18 s = 3,279 tok/s
+  ctx~221184: prompt_tokens=197315 prefill 60.32 s = 3,271 tok/s
+[2026-11-12 03:08:57] canonical rows spec-off2: five runs, 80 tokens, think-off, EOS
+  ctx~128: MEDIAN 103.583 tok/s  input_len~14  [101.78..104.37]  sample='Okay, the user ha
+  ctx~8192: MEDIAN 65.483 tok/s  input_len~7321  [65.27..65.97]  sample='We need answer us
+  ctx~65536: MEDIAN 85.195 tok/s  input_len~58473  [84.60..85.28]  sample='We need answer
+  ctx~221184: MEDIAN 50.888 tok/s  input_len~197315  [50.26..51.03]  sample='We need answe
+[2026-11-12 03:10:23] forced 800-token ladder, three runs per depth, T 1.0 / top-p 0.95 / top-k 20 / seed 7, spec-off2
+  ctx~128: MEDIAN 59.539 tok/s  input_len~14  [59.06..73.84]  sample='1.  **Deconstruct th
+  ctx~8192: MEDIAN 76.409 tok/s  input_len~7321  [70.71..81.59]  sample='We need answer us
+  ctx~65536: MEDIAN 71.972 tok/s  input_len~58473  [67.49..80.10]  sample='We need answer
+  ctx~221184: MEDIAN 89.072 tok/s  input_len~197315  [72.10..104.92]  sample='We need answ
+[cycle] spec-off2-sampled 24: 36.93 ms per cycle (27.08 cycles/s), accept len 2.12, 56.98 tok/s over 23 decode lines
+[cycle] spec-off2-sampled 7.3K: 39.46 ms per cycle (25.34 cycles/s), accept len 2.92, 74.18 tok/s over 17 decode lines
+[cycle] spec-off2-sampled 58K: 44.33 ms per cycle (22.56 cycles/s), accept len 3.1, 69.91 tok/s over 15 decode lines
+[cycle] spec-off2-sampled 197K: 60.22 ms per cycle (16.61 cycles/s), accept len 4.92, 81.9 tok/s over 9 decode lines
+SPEC CYCLE REPORT spec-off2-sampled: decode_lines=64 timing_windows=0
+[2026-11-12 03:13:36] accept probe spec-off2: 48 greedy documents (12 each at 12000,24000,48000,96000 characters), 300 tokens each, --doc-offset 1190000
+POOLED spec-off2: 14400 tokens over 5121 verifies, accept length 2.812 (48 cases)
+[2026-11-12 03:18:50] == judge
+CACHEHIT nospec-off1: 6/12 hit comparisons beyond the fresh-vs-fresh floor (0 blank); first-token dlogp hit 1.0194 against floor 0.0; identical hit 21.77 s, follow-up hit 22.73 s
+CACHEHIT nospec-off2: 6/12 hit comparisons beyond the fresh-vs-fresh floor (0 blank); first-token dlogp hit 1.0194 against floor 0.0; identical hit 21.77 s, follow-up hit 22.57 s
+CACHEHIT nospec-on1: 6/12 hit comparisons beyond the fresh-vs-fresh floor (0 blank); first-token dlogp hit 1.2151 against floor 0.0; identical hit 20.17 s, follow-up hit 24.23 s
+CACHEHIT nospec-on2: 6/12 hit comparisons beyond the fresh-vs-fresh floor (0 blank); first-token dlogp hit 1.2151 against floor 0.0; identical hit 20.2 s, follow-up hit 24.18 s
+CACHEHIT nospec pooled: off 12/24, on 12/24, one-sided Fisher p 0.6134 -> not-worse
+ACCEPT spec pair off1 / on1: 48 documents, 0 with the same text, off 2.8032, on 2.8425, x1.0140
+ACCEPT spec pair off2 / on2: 48 documents, 0 with the same text, off 2.8120, on 2.8164, x1.0016
+ACCEPT spec pooled over 96 paired documents (0 with the same text): off 2.8076, on 2.8294, x1.0078 (95 % 0.9853..1.0300 over the documents) -> ok
+SPEED GATE open:spec-ttft:24
+CAPS GATE nospec full
+ROUTE GATE nospec full
+NEEDLE GATE nospec shared-miss:32768@0.9
+CACHEHIT GATE nospec not-worse
+CAPS GATE spec full
+ACCEPT GATE spec ok
+R97T SERVING VERDICT open:speed
+SPEED nospec ttft:7.3K [soft]: off 88.2 / 82.8, on 82.6 / 85.0, x1.0678 / x0.9741 per order, x1.0195 on the means, spread 0.0632 -> noise
+SPEED nospec ttft:197K [soft]: off 290.2 / 299.1, on 298.8 / 290.9, x0.9712 / x1.0282 per order, x0.9993 on the means, spread 0.0302 -> noise
+SPEED spec canon:24 [record]: off 103.796 / 103.583, on 108.618 / 108.796, x1.0465 / x1.0503 per order, x1.0484 on the means, spread 0.0021 -> ok (speculative row)
+SPEED spec ttft:24 [soft]: off 74.6 / 74.3, on 76.0 / 75.9, x0.9816 / x0.9789 per order, x0.9802 on the means, spread 0.004 -> loss
+SPEED spec canon:7.3K [record]: off 65.295 / 65.483, on 59.799 / 59.866, x0.9158 / x0.9142 per order, x0.915 on the means, spread 0.0029 -> loss (speculative row)
+SPEED spec ttft:7.3K [soft]: off 88.5 / 83.0, on 83.6 / 85.4, x1.0586 / x0.9719 per order, x1.0139 on the means, spread 0.0641 -> noise
+SPEED spec canon:58K [record]: off 85.294 / 85.195, on 75.179 / 74.847, x0.8814 / x0.8785 per order, x0.88 on the means, spread 0.0044 -> loss (speculative row)
+SPEED spec ttft:58K [soft]: off 134.0 / 142.3, on 140.4 / 136.2, x0.9544 / x1.0448 per order, x0.9982 on the means, spread 0.0601 -> noise
+SPEED spec canon:197K [record]: off 51.053 / 50.888, on 34.469 / 34.509, x0.6752 / x0.6781 per order, x0.6766 on the means, spread 0.0032 -> loss (speculative row)
+SPEED spec ttft:197K [soft]: off 294.0 / 296.6, on 297.8 / 298.5, x0.9872 / x0.9936 per order, x0.9904 on the means, spread 0.0088 -> noise
+SPEED GATE open:spec-ttft:24
+[2026-11-12 03:18:51] R97T SERVING DONE gate=flint:open:speed
