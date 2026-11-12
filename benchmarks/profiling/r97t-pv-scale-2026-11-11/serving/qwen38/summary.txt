@@ -1,0 +1,68 @@
+SPEED spec prefill:7.3K [gate]: off 2.627 / 2.621, on 2.615 / 2.617, x1.0046 / x1.0015 per order, x1.0031 on the means, spread 0.0023 -> ok
+SPEED spec prefill:58K [gate]: off 22.694 / 22.727, on 22.711 / 22.743, x0.9993 / x0.9993 per order, x0.9993 on the means, spread 0.0015 -> ok
+SPEED spec prefill:197K [gate]: off 97.931 / 97.808, on 97.803 / 97.905, x1.0013 / x0.999 per order, x1.0002 on the means, spread 0.0013 -> ok
+SPEED spec canon:24 [record]: off 60.714 / 60.793, on 62.836 / 62.841, x1.035 / x1.0337 per order, x1.0343 on the means, spread 0.0013 -> ok (speculative row)
+SPEED spec ttft:24 [soft]: off 104.7 / 102.4, on 103.0 / 102.1, x1.0165 / x1.0029 per order, x1.0096 on the means, spread 0.0222 -> ok
+SPEED spec canon:7.3K [record]: off 80.837 / 81.231, on 80.822 / 80.783, x0.9998 / x0.9945 per order, x0.9971 on the means, spread 0.0049 -> ok (speculative row)
+SPEED spec ttft:7.3K [soft]: off 133.5 / 131.3, on 132.7 / 133.1, x1.006 / x0.9865 per order, x0.9962 on the means, spread 0.0166 -> noise
+SPEED spec canon:58K [record]: off 57.013 / 56.971, on 76.621 / 76.479, x1.3439 / x1.3424 per order, x1.3432 on the means, spread 0.0019 -> ok (speculative row)
+SPEED spec ttft:58K [soft]: off 136.6 / 135.1, on 148.7 / 147.9, x0.9186 / x0.9135 per order, x0.916 on the means, spread 0.011 -> loss
+SPEED spec canon:197K [record]: off 55.784 / 55.69, on 51.278 / 51.51, x0.9192 / x0.9249 per order, x0.9221 on the means, spread 0.0045 -> loss (speculative row)
+SPEED spec ttft:197K [soft]: off 637.7 / 139.0, on 472.2 / 141.9, x1.3505 / x0.9796 per order, x1.0459 on the means, spread 1.2842 -> noise
+CANON-VC spec-off1 24: 1 text(s) over 5 runs, verify counts [29, 29, 29, 29, 29]
+CANON-VC spec-off1 7.3K: 1 text(s) over 5 runs, verify counts [10, 10, 10, 10, 10]
+CANON-VC spec-off1 58K: 2 text(s) over 5 runs, verify counts [9, 17, 17, 17, 17]
+CANON-VC spec-off1 197K: 1 text(s) over 5 runs, verify counts [11, 11, 12, 12, 12]
+CANON-VC spec-off2 24: 1 text(s) over 5 runs, verify counts [29, 29, 29, 29, 29]
+CANON-VC spec-off2 7.3K: 1 text(s) over 5 runs, verify counts [10, 10, 10, 10, 10]
+CANON-VC spec-off2 58K: 2 text(s) over 5 runs, verify counts [9, 17, 17, 17, 17]
+CANON-VC spec-off2 197K: 1 text(s) over 5 runs, verify counts [11, 11, 12, 12, 12]
+CANON-VC spec-on1 24: 1 text(s) over 5 runs, verify counts [28, 28, 28, 28, 28]
+CANON-VC spec-on1 7.3K: 1 text(s) over 5 runs, verify counts [10, 10, 10, 10, 10]
+CANON-VC spec-on1 58K: 2 text(s) over 5 runs, verify counts [9, 12, 12, 12, 12]
+CANON-VC spec-on1 197K: 1 text(s) over 5 runs, verify counts [12, 11, 12, 12, 12]
+CANON-VC spec-on2 24: 1 text(s) over 5 runs, verify counts [28, 28, 28, 28, 28]
+CANON-VC spec-on2 7.3K: 1 text(s) over 5 runs, verify counts [10, 10, 10, 10, 10]
+CANON-VC spec-on2 58K: 2 text(s) over 5 runs, verify counts [9, 12, 12, 12, 12]
+CANON-VC spec-on2 197K: 1 text(s) over 5 runs, verify counts [12, 11, 12, 12, 12]
+SPEED spec cycle:24 [gate]: off 45.51 / 45.52, on 45.67 / 45.66, x0.9965 / x0.9969 per order, x0.9967 on the means, spread 0.0002 -> ok
+SPEED spec cycle:7.3K [gate]: off 46.1 / 46.14, on 46.43 / 46.41, x0.9929 / x0.9942 per order, x0.9935 on the means, spread 0.0009 -> ok
+SPEED spec cycle:58K [gate]: off 48.19 / 48.26, on 49.62 / 49.61, x0.9712 / x0.9728 per order, x0.972 on the means, spread 0.0015 -> loss
+SPEED spec cycle:197K [gate]: off 54.44 / 54.49, on 58.72 / 58.71, x0.9271 / x0.9281 per order, x0.9276 on the means, spread 0.0009 -> loss
+ROUTE spec text identity off1 / on1: 7/8 cases (recorded)
+ROUTE spec text identity off2 / on2: 7/8 cases (recorded)
+ROUTE spec text identity off1 / off2: 8/8 cases (recorded)
+NEEDLE spec-off1: found 9/9
+NEEDLE spec-off2: found 9/9
+NEEDLE spec-on1: found 9/9
+NEEDLE spec-on2: found 9/9
+ACCEPT spec pair off1 / on1: 48 documents, 9 with the same text, off 3.8152, on 3.8882, x1.0191
+ACCEPT spec pair off2 / on2: 48 documents, 13 with the same text, off 3.7971, on 3.8146, x1.0046
+ACCEPT spec pooled over 96 paired documents (22 with the same text): off 3.8062, on 3.8513, x1.0119 (95 % 0.9961..1.0285 over the documents) -> ok
+CACHEHIT spec-off1: 4/12 hit comparisons beyond the fresh-vs-fresh floor (0 blank); first-token dlogp hit 0.5614 against floor 0.0; identical hit 1.12 s, follow-up hit 2.12 s
+CACHEHIT spec-off2: 4/12 hit comparisons beyond the fresh-vs-fresh floor (0 blank); first-token dlogp hit 0.5614 against floor 0.0; identical hit 1.1 s, follow-up hit 1.45 s
+CACHEHIT spec-on1: 4/12 hit comparisons beyond the fresh-vs-fresh floor (0 blank); first-token dlogp hit 0.5651 against floor 0.0; identical hit 1.18 s, follow-up hit 1.7 s
+CACHEHIT spec-on2: 4/12 hit comparisons beyond the fresh-vs-fresh floor (0 blank); first-token dlogp hit 0.5651 against floor 0.0; identical hit 1.2 s, follow-up hit 1.62 s
+CACHEHIT spec pooled: off 8/24, on 8/24, one-sided Fisher p 0.6199 -> not-worse
+SPEED nospec prefill:7.3K [gate]: off 2.7 / 2.668, on 2.679 / 2.68, x1.0078 / x0.9955 per order, x1.0016 on the means, spread 0.0119 -> ok
+SPEED nospec prefill:58K [gate]: off 22.419 / 22.455, on 22.458 / 22.434, x0.9983 / x1.0009 per order, x0.9996 on the means, spread 0.0016 -> ok
+SPEED nospec prefill:197K [gate]: off 97.059 / 97.075, on 97.148 / 97.07, x0.9991 / x1.0001 per order, x0.9996 on the means, spread 0.0008 -> ok
+SPEED nospec canon:24 [gate]: off 35.617 / 35.53, on 35.518 / 35.878, x0.9972 / x1.0098 per order, x1.0035 on the means, spread 0.0101 -> ok
+SPEED nospec ttft:24 [soft]: off 57.3 / 57.9, on 57.8 / 57.2, x0.9913 / x1.0122 per order, x1.0017 on the means, spread 0.0104 -> ok
+SPEED nospec canon:7.3K [gate]: off 34.929 / 34.834, on 34.863 / 35.215, x0.9981 / x1.0109 per order, x1.0045 on the means, spread 0.01 -> ok
+SPEED nospec ttft:7.3K [soft]: off 111.1 / 110.2, on 112.0 / 111.2, x0.992 / x0.991 per order, x0.9915 on the means, spread 0.0081 -> ok
+SPEED nospec canon:58K [gate]: off 33.335 / 33.289, on 33.307 / 33.562, x0.9992 / x1.0082 per order, x1.0037 on the means, spread 0.0076 -> ok
+SPEED nospec ttft:58K [soft]: off 114.7 / 114.5, on 124.0 / 123.3, x0.925 / x0.9286 per order, x0.9268 on the means, spread 0.0057 -> loss
+SPEED nospec canon:197K [gate]: off 29.66 / 29.625, on 29.582 / 29.592, x0.9974 / x0.9989 per order, x0.9981 on the means, spread 0.0012 -> ok
+SPEED nospec ttft:197K [soft]: off 112.6 / 113.4, on 112.9 / 113.2, x0.9973 / x1.0018 per order, x0.9995 on the means, spread 0.0071 -> ok
+SPEED nospec forced:24 [gate]: off 35.542 / 35.498, on 35.424 / 35.481, x0.9967 / x0.9995 per order, x0.9981 on the means, spread 0.0016 -> ok
+SPEED nospec forced:7.3K [gate]: off 34.936 / 34.858, on 34.837 / 34.835, x0.9972 / x0.9993 per order, x0.9983 on the means, spread 0.0022 -> ok
+SPEED nospec forced:58K [gate]: off 33.307 / 33.251, on 33.238 / 33.238, x0.9979 / x0.9996 per order, x0.9988 on the means, spread 0.0017 -> ok
+SPEED nospec forced:197K [gate]: off 29.655 / 29.596, on 29.614 / 29.581, x0.9986 / x0.9995 per order, x0.9991 on the means, spread 0.002 -> ok
+SPEED GATE loss:spec-cycle:58K+spec-cycle:197K
+CAPS GATE spec full
+ROUTE GATE spec full
+NEEDLE GATE spec same
+ACCEPT GATE spec ok
+CACHEHIT GATE spec not-worse
+R97T SERVING VERDICT kill:speed

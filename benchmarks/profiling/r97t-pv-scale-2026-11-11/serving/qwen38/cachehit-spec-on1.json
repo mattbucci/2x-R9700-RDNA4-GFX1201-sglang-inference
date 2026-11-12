@@ -1,0 +1,255 @@
+{
+ "tag": "spec-on1",
+ "model": "/data/models/Qwen3.8-27B-FP8",
+ "max_tokens": 160,
+ "with_reasoning": false,
+ "mismatches": 4,
+ "results": [
+  {
+   "tokens": 32768,
+   "cell": 0,
+   "prompt_tokens": 33902,
+   "A_same": true,
+   "B_same": false,
+   "A_hit_prefix": 498,
+   "A_fresh_fresh_prefix": 498,
+   "B_hit_prefix": 99,
+   "B_fresh_fresh_prefix": 470,
+   "A_worse_than_noise": false,
+   "B_worse_than_noise": true,
+   "A_len": [
+    498,
+    498,
+    498
+   ],
+   "B_len": [
+    470,
+    559,
+    470
+   ],
+   "finish": [
+    "stop",
+    "stop",
+    "stop",
+    "stop"
+   ],
+   "secs": [
+    14.5,
+    2.0,
+    2.2,
+    14.1
+   ],
+   "first_token_top5_max_abs_logprob_delta": {
+    "A_hit_vs_fresh": 0.78,
+    "A_fresh_vs_fresh": 0.0,
+    "B_hit_vs_fresh": 0.197,
+    "B_fresh_vs_fresh": 0.0
+   }
+  },
+  {
+   "tokens": 32768,
+   "cell": 1,
+   "prompt_tokens": 33588,
+   "A_same": true,
+   "B_same": false,
+   "A_hit_prefix": 333,
+   "A_fresh_fresh_prefix": 333,
+   "B_hit_prefix": 55,
+   "B_fresh_fresh_prefix": 703,
+   "A_worse_than_noise": false,
+   "B_worse_than_noise": true,
+   "A_len": [
+    333,
+    333,
+    333
+   ],
+   "B_len": [
+    703,
+    676,
+    703
+   ],
+   "finish": [
+    "stop",
+    "stop",
+    "length",
+    "length"
+   ],
+   "secs": [
+    13.4,
+    1.1,
+    2.8,
+    15.0
+   ],
+   "first_token_top5_max_abs_logprob_delta": {
+    "A_hit_vs_fresh": 0.373,
+    "A_fresh_vs_fresh": 0.0,
+    "B_hit_vs_fresh": 0.359,
+    "B_fresh_vs_fresh": 0.0
+   }
+  },
+  {
+   "tokens": 32768,
+   "cell": 2,
+   "prompt_tokens": 34916,
+   "A_same": true,
+   "B_same": true,
+   "A_hit_prefix": 68,
+   "A_fresh_fresh_prefix": 68,
+   "B_hit_prefix": 71,
+   "B_fresh_fresh_prefix": 71,
+   "A_worse_than_noise": false,
+   "B_worse_than_noise": false,
+   "A_len": [
+    68,
+    68,
+    68
+   ],
+   "B_len": [
+    71,
+    71,
+    71
+   ],
+   "finish": [
+    "stop",
+    "stop",
+    "stop",
+    "stop"
+   ],
+   "secs": [
+    13.1,
+    0.4,
+    0.4,
+    13.1
+   ],
+   "first_token_top5_max_abs_logprob_delta": {
+    "A_hit_vs_fresh": 0.762,
+    "A_fresh_vs_fresh": 0.0,
+    "B_hit_vs_fresh": 0.983,
+    "B_fresh_vs_fresh": 0.0
+   }
+  },
+  {
+   "tokens": 131072,
+   "cell": 0,
+   "prompt_tokens": 137080,
+   "A_same": true,
+   "B_same": false,
+   "A_hit_prefix": 411,
+   "A_fresh_fresh_prefix": 411,
+   "B_hit_prefix": 235,
+   "B_fresh_fresh_prefix": 494,
+   "A_worse_than_noise": false,
+   "B_worse_than_noise": true,
+   "A_len": [
+    411,
+    411,
+    411
+   ],
+   "B_len": [
+    494,
+    534,
+    494
+   ],
+   "finish": [
+    "stop",
+    "stop",
+    "length",
+    "length"
+   ],
+   "secs": [
+    62.9,
+    1.5,
+    2.5,
+    63.6
+   ],
+   "first_token_top5_max_abs_logprob_delta": {
+    "A_hit_vs_fresh": 0.819,
+    "A_fresh_vs_fresh": 0.0,
+    "B_hit_vs_fresh": 0.372,
+    "B_fresh_vs_fresh": 0.0
+   }
+  },
+  {
+   "tokens": 131072,
+   "cell": 1,
+   "prompt_tokens": 138321,
+   "A_same": false,
+   "B_same": true,
+   "A_hit_prefix": 146,
+   "A_fresh_fresh_prefix": 374,
+   "B_hit_prefix": 382,
+   "B_fresh_fresh_prefix": 382,
+   "A_worse_than_noise": true,
+   "B_worse_than_noise": false,
+   "A_len": [
+    374,
+    502,
+    374
+   ],
+   "B_len": [
+    382,
+    382,
+    382
+   ],
+   "finish": [
+    "stop",
+    "stop",
+    "stop",
+    "stop"
+   ],
+   "secs": [
+    63.6,
+    1.8,
+    1.8,
+    63.8
+   ],
+   "first_token_top5_max_abs_logprob_delta": {
+    "A_hit_vs_fresh": 0.474,
+    "A_fresh_vs_fresh": 0.0,
+    "B_hit_vs_fresh": 0.31,
+    "B_fresh_vs_fresh": 0.0
+   }
+  },
+  {
+   "tokens": 131072,
+   "cell": 2,
+   "prompt_tokens": 140446,
+   "A_same": true,
+   "B_same": true,
+   "A_hit_prefix": 57,
+   "A_fresh_fresh_prefix": 57,
+   "B_hit_prefix": 60,
+   "B_fresh_fresh_prefix": 60,
+   "A_worse_than_noise": false,
+   "B_worse_than_noise": false,
+   "A_len": [
+    57,
+    57,
+    57
+   ],
+   "B_len": [
+    60,
+    60,
+    60
+   ],
+   "finish": [
+    "stop",
+    "stop",
+    "stop",
+    "stop"
+   ],
+   "secs": [
+    64.0,
+    0.3,
+    0.5,
+    63.7
+   ],
+   "first_token_top5_max_abs_logprob_delta": {
+    "A_hit_vs_fresh": 0.479,
+    "A_fresh_vs_fresh": 0.0,
+    "B_hit_vs_fresh": 0.873,
+    "B_fresh_vs_fresh": 0.0
+   }
+  }
+ ]
+}

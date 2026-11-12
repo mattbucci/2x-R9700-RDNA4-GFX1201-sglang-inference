@@ -1,0 +1,265 @@
+[2026-11-12 03:19:40] spec: --mem-fraction-static 0.88 --max-running-requests 1 --chunked-prefill-size 4096 --random-seed 7 --speculative-algorithm DSPARK ; exports SGLANG_ALLOW_OVERWRITE_LONGER_CONTEXT_LEN=1 SGLANG_EXTEND_FP8_QK=1 SGLANG_EXTEND_SPLITKV_MAX_TOKENS=256 SGLANG_HIP_BF16_ATTN_SUM=1 SGLANG_HIP_PREFILL_ATTN_MIN_ROWS=257 SGLANG_HIP_PREFILL_ATTN=qk8 SGLANG_RDNA4_DELTANET_TP_SPLIT=1 SGLANG_RDNA4_FP8_GEMM_BF16=1 SGLANG_RDNA4_FP8_GEMV=1 SGLANG_RDNA4_SKINNY_BA_GEMV=1 SGLANG_RDNA4_SPLITKV_WINDOW=1 SGLANG_RDNA4_SPLITKV_WINDOW_SPLITS=16 SGLANG_RDNA4_TRITON_GEMMA_RMSNORM=1 SGLANG_RDNA4_VERIFY_GQA=1 SGLANG_USE_1STAGE_ALLREDUCE=1 SGLANG_USE_AITER=0 SGLANG_USE_AITER_AR=0
+[2026-11-12 03:19:44] spec phases: caps prefill3 sweep sampled accept route cachehit needle
+[2026-11-12 03:19:48] nospec: --mem-fraction-static 0.85 --max-running-requests 1 --chunked-prefill-size 8192 --random-seed 7 ; exports SGLANG_ALLOW_OVERWRITE_LONGER_CONTEXT_LEN=1 SGLANG_EXTEND_FP8_QK=1 SGLANG_EXTEND_SPLITKV_MAX_TOKENS=256 SGLANG_HIP_BF16_ATTN_SUM=1 SGLANG_HIP_PREFILL_ATTN_MIN_ROWS=257 SGLANG_HIP_PREFILL_ATTN=qk8 SGLANG_RDNA4_DELTANET_TP_SPLIT=1 SGLANG_RDNA4_FP8_GEMM_BF16=1 SGLANG_RDNA4_FP8_GEMV=1 SGLANG_RDNA4_SKINNY_BA_GEMV=1 SGLANG_RDNA4_SPLITKV_WINDOW=1 SGLANG_RDNA4_SPLITKV_WINDOW_SPLITS=16 SGLANG_RDNA4_TRITON_GEMMA_RMSNORM=1 SGLANG_RDNA4_VERIFY_GQA=1 SGLANG_USE_1STAGE_ALLREDUCE=1 SGLANG_USE_AITER=0 SGLANG_USE_AITER_AR=0
+[2026-11-12 03:19:51] nospec phases: prefill2 sweep forced
+[2026-11-12 03:19:51] tree ok (four pinned files, no other drift); driver sha 0f17689fdf28aeb1, judge sha e67ce5105787431e, cache-hit probe sha 899ef18be5a27b08; /data free 348 GB
+[2026-11-12 03:19:52] == boot warm-off (qwen38, spec, switch off, --random-seed 7)
+[2026-11-12 03:21:15] warm-off: identified; scale lines 0, fp8 pools 4, max_total_num_tokens=428579
+[2026-11-12 03:21:16] warm-up warm-off: two short runs at 128 / 8192 / 65536 (not read by the judge)
+  ctx~128: MEDIAN 62.826 tok/s  input_len~24  [62.26..63.40]  sample='# The Memory Wall: A
+  ctx~8192: MEDIAN 81.206 tok/s  input_len~7331  [81.20..81.21]  sample='The provided text
+  ctx~65536: MEDIAN 65.248 tok/s  input_len~58483  [58.37..73.96]  sample='The provided te
+[2026-11-12 03:22:49] == boot warm-on (qwen38, spec, switch on, --random-seed 7)
+[2026-11-12 03:23:52] warm-on: identified; scale lines 4, fp8 pools 4, max_total_num_tokens=428579
+[2026-11-12 03:23:53] warm-up warm-on: two short runs at 128 / 8192 / 65536 (not read by the judge)
+  ctx~128: MEDIAN 61.607 tok/s  input_len~24  [61.16..62.06]  sample='# The Memory Wall: A
+  ctx~8192: MEDIAN 80.927 tok/s  input_len~7331  [80.80..81.06]  sample='The provided text
+  ctx~65536: MEDIAN 63.542 tok/s  input_len~58483  [56.76..72.16]  sample='The provided te
+[2026-11-12 03:25:09] == boot spec-off1 (qwen38, spec, switch off, --random-seed 7)
+[2026-11-12 03:26:02] spec-off1: identified; scale lines 0, fp8 pools 4, max_total_num_tokens=428579
+[2026-11-12 03:26:03] caps spec-off1
+  [PASS] basic     finish=stop answer='paris';  [PASS] tool_call finish=tool_calls name='get_weather' args;  [PASS] thinking  reasoning_seen terminated answer_ok (148 ;  [PASS] vision    saw=['red', 'circle', 'round']  response=;  [PASS] video     saw=['move', 'right', 'motion', 'circle',;[2026-11-12 03:26:09] cold prefill spec-off1: 8192 / 65536 / 221184, 3 runs, cache flushed before each
+  ctx~8192: prompt_tokens=7331 prefill 2.82 s = 2,598 tok/s
+  ctx~8192: prompt_tokens=7331 prefill 2.63 s = 2,792 tok/s
+  ctx~8192: prompt_tokens=7331 prefill 2.63 s = 2,790 tok/s
+  ctx~65536: prompt_tokens=58483 prefill 22.79 s = 2,566 tok/s
+  ctx~65536: prompt_tokens=58483 prefill 22.69 s = 2,577 tok/s
+  ctx~65536: prompt_tokens=58483 prefill 22.61 s = 2,587 tok/s
+  ctx~221184: prompt_tokens=197326 prefill 97.93 s = 2,015 tok/s
+  ctx~221184: prompt_tokens=197326 prefill 97.68 s = 2,020 tok/s
+  ctx~221184: prompt_tokens=197326 prefill 98.26 s = 2,008 tok/s
+[2026-11-12 03:32:30] canonical rows spec-off1: five runs, 80 tokens, think-off, EOS
+  ctx~128: MEDIAN 60.714 tok/s  input_len~24  [60.48..60.74]  sample='# The Memory Wall: A
+  ctx~8192: MEDIAN 80.837 tok/s  input_len~7331  [79.98..81.49]  sample='The provided text
+  ctx~65536: MEDIAN 57.013 tok/s  input_len~58483  [56.54..74.00]  sample='The provided te
+  ctx~221184: MEDIAN 55.784 tok/s  input_len~197326  [55.13..60.03]  sample='The provided
+[2026-11-12 03:34:28] forced 800-token ladder, three runs per depth, T 1.0 / top-p 0.95 / top-k 20 / seed 7, spec-off1
+  ctx~128: MEDIAN 60.790 tok/s  input_len~24  [60.57..64.37]  sample='# The Great Throttli
+  ctx~8192: MEDIAN 56.636 tok/s  input_len~7331  [54.13..58.39]  sample='The provided text
+  ctx~65536: MEDIAN 51.966 tok/s  input_len~58483  [47.22..52.48]  sample='The provided te
+  ctx~221184: MEDIAN 44.615 tok/s  input_len~197326  [41.81..47.00]  sample='The provided
+[cycle] spec-off1-sampled 24: 45.51 ms per cycle (21.97 cycles/s), accept len 2.76, 60.67 tok/s over 18 decode lines
+[cycle] spec-off1-sampled 7.3K: 46.1 ms per cycle (21.69 cycles/s), accept len 2.6, 56.37 tok/s over 20 decode lines
+[cycle] spec-off1-sampled 58K: 48.19 ms per cycle (20.75 cycles/s), accept len 2.48, 51.34 tok/s over 22 decode lines
+[cycle] spec-off1-sampled 197K: 54.44 ms per cycle (18.37 cycles/s), accept len 2.4, 44.0 tok/s over 21 decode lines
+SPEC CYCLE REPORT spec-off1-sampled: decode_lines=81 timing_windows=0
+[2026-11-12 03:39:12] accept probe spec-off1: 48 greedy documents (12 each at 12000,24000,48000,96000 characters), 300 tokens each
+POOLED spec-off1: 14326 tokens over 3755 verifies, accept length 3.815 (48 cases)
+[2026-11-12 03:46:07] route probe spec-off1 (--extra-tokens 0)
+ROUTE PROBE DONE passed=10/10
+[2026-11-12 03:46:13] cache-hit consistency spec-off1: 32768 / 131072 tokens, 3 cells each (the probe's own exit status is not a gate)
+spec-off1: 4 hit comparisons worse than the fresh-vs-fresh noise floor, of 12 -> /home/letsrtfm/AI/2x-R9700-RDNA4-GFX1201-sglang-inference/benchmarks/profiling/
+[2026-11-12 04:02:01] needle spec-off1
+score 1.00 -> /home/letsrtfm/AI/2x-R9700-RDNA4-GFX1201-sglang-inference/benchmarks/quality/r97t-serving-qwen38-spec-off1
+[2026-11-12 04:11:55] == boot spec-on1 (qwen38, spec, switch on, --random-seed 7)
+[2026-11-12 04:12:58] spec-on1: identified; scale lines 4, fp8 pools 4, max_total_num_tokens=428579
+[2026-11-12 04:12:59] caps spec-on1
+  [PASS] basic     finish=stop answer='paris';  [PASS] tool_call finish=tool_calls name='get_weather' args;  [PASS] thinking  reasoning_seen terminated answer_ok (120 ;  [PASS] vision    saw=['red', 'circle', 'round']  response=;  [PASS] video     saw=['move', 'right', 'circle', 'red']  r;[2026-11-12 04:13:05] cold prefill spec-on1: 8192 / 65536 / 221184, 3 runs, cache flushed before each
+  ctx~8192: prompt_tokens=7331 prefill 2.81 s = 2,608 tok/s
+  ctx~8192: prompt_tokens=7331 prefill 2.61 s = 2,804 tok/s
+  ctx~8192: prompt_tokens=7331 prefill 2.61 s = 2,804 tok/s
+  ctx~65536: prompt_tokens=58483 prefill 22.75 s = 2,571 tok/s
+  ctx~65536: prompt_tokens=58483 prefill 22.71 s = 2,575 tok/s
+  ctx~65536: prompt_tokens=58483 prefill 22.68 s = 2,578 tok/s
+  ctx~221184: prompt_tokens=197326 prefill 97.80 s = 2,018 tok/s
+  ctx~221184: prompt_tokens=197326 prefill 97.80 s = 2,018 tok/s
+  ctx~221184: prompt_tokens=197326 prefill 97.81 s = 2,017 tok/s
+[2026-11-12 04:19:25] canonical rows spec-on1: five runs, 80 tokens, think-off, EOS
+  ctx~128: MEDIAN 62.836 tok/s  input_len~24  [62.54..62.89]  sample='# The Memory Wall: A
+  ctx~8192: MEDIAN 80.822 tok/s  input_len~7331  [80.36..81.17]  sample='The provided text
+  ctx~65536: MEDIAN 76.621 tok/s  input_len~58483  [71.87..76.78]  sample='The provided te
+  ctx~221184: MEDIAN 51.278 tok/s  input_len~197326  [50.85..55.42]  sample='The provided
+[2026-11-12 04:21:22] forced 800-token ladder, three runs per depth, T 1.0 / top-p 0.95 / top-k 20 / seed 7, spec-on1
+  ctx~128: MEDIAN 60.163 tok/s  input_len~24  [58.37..60.97]  sample='# The Silent Bottlen
+  ctx~8192: MEDIAN 55.234 tok/s  input_len~7331  [50.13..57.60]  sample='The provided text
+  ctx~65536: MEDIAN 49.784 tok/s  input_len~58483  [47.89..51.02]  sample='The provided te
+  ctx~221184: MEDIAN 41.101 tok/s  input_len~197326  [39.74..42.24]  sample='The provided
+[cycle] spec-on1-sampled 24: 45.67 ms per cycle (21.9 cycles/s), accept len 2.75, 60.24 tok/s over 19 decode lines
+[cycle] spec-on1-sampled 7.3K: 46.43 ms per cycle (21.54 cycles/s), accept len 2.58, 55.57 tok/s over 21 decode lines
+[cycle] spec-on1-sampled 58K: 49.62 ms per cycle (20.15 cycles/s), accept len 2.35, 47.43 tok/s over 21 decode lines
+[cycle] spec-on1-sampled 197K: 58.72 ms per cycle (17.03 cycles/s), accept len 2.4, 40.87 tok/s over 22 decode lines
+SPEC CYCLE REPORT spec-on1-sampled: decode_lines=83 timing_windows=0
+[2026-11-12 04:26:14] accept probe spec-on1: 48 greedy documents (12 each at 12000,24000,48000,96000 characters), 300 tokens each
+POOLED spec-on1: 14289 tokens over 3675 verifies, accept length 3.888 (48 cases)
+[2026-11-12 04:33:04] route probe spec-on1 (--extra-tokens 0)
+ROUTE PROBE DONE passed=10/10
+[2026-11-12 04:33:09] cache-hit consistency spec-on1: 32768 / 131072 tokens, 3 cells each (the probe's own exit status is not a gate)
+spec-on1: 4 hit comparisons worse than the fresh-vs-fresh noise floor, of 12 -> /home/letsrtfm/AI/2x-R9700-RDNA4-GFX1201-sglang-inference/benchmarks/profiling/r
+[2026-11-12 04:48:57] needle spec-on1
+score 1.00 -> /home/letsrtfm/AI/2x-R9700-RDNA4-GFX1201-sglang-inference/benchmarks/quality/r97t-serving-qwen38-spec-on1-
+[2026-11-12 04:58:54] == boot spec-on2 (qwen38, spec, switch on, --random-seed 7)
+[2026-11-12 04:59:57] spec-on2: identified; scale lines 4, fp8 pools 4, max_total_num_tokens=428579
+[2026-11-12 04:59:58] caps spec-on2
+  [PASS] basic     finish=stop answer='paris';  [PASS] tool_call finish=tool_calls name='get_weather' args;  [PASS] thinking  reasoning_seen terminated answer_ok (120 ;  [PASS] vision    saw=['red', 'circle', 'round']  response=;  [PASS] video     saw=['move', 'right', 'circle', 'red']  r;[2026-11-12 05:00:04] cold prefill spec-on2: 8192 / 65536 / 221184, 3 runs, cache flushed before each
+  ctx~8192: prompt_tokens=7331 prefill 2.81 s = 2,607 tok/s
+  ctx~8192: prompt_tokens=7331 prefill 2.62 s = 2,803 tok/s
+  ctx~8192: prompt_tokens=7331 prefill 2.62 s = 2,801 tok/s
+  ctx~65536: prompt_tokens=58483 prefill 22.77 s = 2,568 tok/s
+  ctx~65536: prompt_tokens=58483 prefill 22.74 s = 2,571 tok/s
+  ctx~65536: prompt_tokens=58483 prefill 22.69 s = 2,578 tok/s
+  ctx~221184: prompt_tokens=197326 prefill 97.91 s = 2,015 tok/s
+  ctx~221184: prompt_tokens=197326 prefill 97.91 s = 2,015 tok/s
+  ctx~221184: prompt_tokens=197326 prefill 97.79 s = 2,018 tok/s
+[2026-11-12 05:06:24] canonical rows spec-on2: five runs, 80 tokens, think-off, EOS
+  ctx~128: MEDIAN 62.841 tok/s  input_len~24  [62.48..62.86]  sample='# The Memory Wall: A
+  ctx~8192: MEDIAN 80.783 tok/s  input_len~7331  [80.35..81.22]  sample='The provided text
+  ctx~65536: MEDIAN 76.479 tok/s  input_len~58483  [71.83..76.75]  sample='The provided te
+  ctx~221184: MEDIAN 51.510 tok/s  input_len~197326  [50.85..55.45]  sample='The provided
+[2026-11-12 05:08:21] forced 800-token ladder, three runs per depth, T 1.0 / top-p 0.95 / top-k 20 / seed 7, spec-on2
+  ctx~128: MEDIAN 60.155 tok/s  input_len~24  [58.43..61.01]  sample='# The Silent Bottlen
+  ctx~8192: MEDIAN 55.240 tok/s  input_len~7331  [50.16..57.57]  sample='The provided text
+  ctx~65536: MEDIAN 49.830 tok/s  input_len~58483  [47.90..51.03]  sample='The provided te
+  ctx~221184: MEDIAN 41.119 tok/s  input_len~197326  [39.76..42.25]  sample='The provided
+[cycle] spec-on2-sampled 24: 45.66 ms per cycle (21.9 cycles/s), accept len 2.75, 60.23 tok/s over 19 decode lines
+[cycle] spec-on2-sampled 7.3K: 46.41 ms per cycle (21.55 cycles/s), accept len 2.58, 55.56 tok/s over 21 decode lines
+[cycle] spec-on2-sampled 58K: 49.61 ms per cycle (20.16 cycles/s), accept len 2.35, 47.45 tok/s over 21 decode lines
+[cycle] spec-on2-sampled 197K: 58.71 ms per cycle (17.03 cycles/s), accept len 2.4, 40.88 tok/s over 22 decode lines
+SPEC CYCLE REPORT spec-on2-sampled: decode_lines=83 timing_windows=0
+[2026-11-12 05:13:13] accept probe spec-on2: 48 greedy documents (12 each at 12000,24000,48000,96000 characters), 300 tokens each, --doc-offset 1190000
+POOLED spec-on2: 14053 tokens over 3684 verifies, accept length 3.815 (48 cases)
+[2026-11-12 05:19:49] route probe spec-on2 (--extra-tokens 0)
+ROUTE PROBE DONE passed=10/10
+[2026-11-12 05:19:54] cache-hit consistency spec-on2: 32768 / 131072 tokens, 3 cells each (the probe's own exit status is not a gate)
+spec-on2: 4 hit comparisons worse than the fresh-vs-fresh noise floor, of 12 -> /home/letsrtfm/AI/2x-R9700-RDNA4-GFX1201-sglang-inference/benchmarks/profiling/r
+[2026-11-12 05:35:42] needle spec-on2
+score 1.00 -> /home/letsrtfm/AI/2x-R9700-RDNA4-GFX1201-sglang-inference/benchmarks/quality/r97t-serving-qwen38-spec-on2-
+[2026-11-12 05:45:35] == boot spec-off2 (qwen38, spec, switch off, --random-seed 7)
+[2026-11-12 05:46:38] spec-off2: identified; scale lines 0, fp8 pools 4, max_total_num_tokens=428579
+[2026-11-12 05:46:39] caps spec-off2
+  [PASS] basic     finish=stop answer='paris';  [PASS] tool_call finish=tool_calls name='get_weather' args;  [PASS] thinking  reasoning_seen terminated answer_ok (148 ;  [PASS] vision    saw=['red', 'circle', 'round']  response=;  [PASS] video     saw=['move', 'right', 'motion', 'circle',;[2026-11-12 05:46:45] cold prefill spec-off2: 8192 / 65536 / 221184, 3 runs, cache flushed before each
+  ctx~8192: prompt_tokens=7331 prefill 2.80 s = 2,614 tok/s
+  ctx~8192: prompt_tokens=7331 prefill 2.62 s = 2,797 tok/s
+  ctx~8192: prompt_tokens=7331 prefill 2.62 s = 2,799 tok/s
+  ctx~65536: prompt_tokens=58483 prefill 22.79 s = 2,566 tok/s
+  ctx~65536: prompt_tokens=58483 prefill 22.73 s = 2,573 tok/s
+  ctx~65536: prompt_tokens=58483 prefill 22.68 s = 2,578 tok/s
+  ctx~221184: prompt_tokens=197326 prefill 98.07 s = 2,012 tok/s
+  ctx~221184: prompt_tokens=197326 prefill 97.81 s = 2,017 tok/s
+  ctx~221184: prompt_tokens=197326 prefill 97.80 s = 2,018 tok/s
+[2026-11-12 05:53:05] canonical rows spec-off2: five runs, 80 tokens, think-off, EOS
+  ctx~128: MEDIAN 60.793 tok/s  input_len~24  [60.50..60.81]  sample='# The Memory Wall: A
+  ctx~8192: MEDIAN 81.231 tok/s  input_len~7331  [80.87..81.57]  sample='The provided text
+  ctx~65536: MEDIAN 56.971 tok/s  input_len~58483  [56.53..74.07]  sample='The provided te
+  ctx~221184: MEDIAN 55.690 tok/s  input_len~197326  [55.26..59.95]  sample='The provided
+[2026-11-12 05:55:03] forced 800-token ladder, three runs per depth, T 1.0 / top-p 0.95 / top-k 20 / seed 7, spec-off2
+  ctx~128: MEDIAN 60.637 tok/s  input_len~24  [60.58..64.35]  sample='# The Great Throttli
+  ctx~8192: MEDIAN 56.570 tok/s  input_len~7331  [54.10..58.33]  sample='The provided text
+  ctx~65536: MEDIAN 51.891 tok/s  input_len~58483  [47.15..52.40]  sample='The provided te
+  ctx~221184: MEDIAN 44.574 tok/s  input_len~197326  [41.77..46.95]  sample='The provided
+[cycle] spec-off2-sampled 24: 45.52 ms per cycle (21.97 cycles/s), accept len 2.76, 60.67 tok/s over 18 decode lines
+[cycle] spec-off2-sampled 7.3K: 46.14 ms per cycle (21.67 cycles/s), accept len 2.6, 56.34 tok/s over 20 decode lines
+[cycle] spec-off2-sampled 58K: 48.26 ms per cycle (20.72 cycles/s), accept len 2.48, 51.27 tok/s over 22 decode lines
+[cycle] spec-off2-sampled 197K: 54.49 ms per cycle (18.35 cycles/s), accept len 2.4, 44.04 tok/s over 21 decode lines
+SPEC CYCLE REPORT spec-off2-sampled: decode_lines=81 timing_windows=0
+[2026-11-12 05:59:47] accept probe spec-off2: 48 greedy documents (12 each at 12000,24000,48000,96000 characters), 300 tokens each, --doc-offset 1190000
+POOLED spec-off2: 14053 tokens over 3701 verifies, accept length 3.797 (48 cases)
+[2026-11-12 06:06:23] route probe spec-off2 (--extra-tokens 0)
+ROUTE PROBE DONE passed=10/10
+[2026-11-12 06:06:28] cache-hit consistency spec-off2: 32768 / 131072 tokens, 3 cells each (the probe's own exit status is not a gate)
+spec-off2: 4 hit comparisons worse than the fresh-vs-fresh noise floor, of 12 -> /home/letsrtfm/AI/2x-R9700-RDNA4-GFX1201-sglang-inference/benchmarks/profiling/
+[2026-11-12 06:22:11] needle spec-off2
+score 1.00 -> /home/letsrtfm/AI/2x-R9700-RDNA4-GFX1201-sglang-inference/benchmarks/quality/r97t-serving-qwen38-spec-off2
+[2026-11-12 06:32:07] == boot nospec-off1 (qwen38, nospec, switch off, --random-seed 7)
+[2026-11-12 06:33:11] nospec-off1: identified; scale lines 0, fp8 pools 2, max_total_num_tokens=732790
+[2026-11-12 06:33:12] cold prefill nospec-off1: 8192 / 65536 / 221184, 2 runs, cache flushed before each
+  ctx~8192: prompt_tokens=7331 prefill 2.84 s = 2,584 tok/s
+  ctx~8192: prompt_tokens=7331 prefill 2.56 s = 2,861 tok/s
+  ctx~65536: prompt_tokens=58483 prefill 22.40 s = 2,611 tok/s
+  ctx~65536: prompt_tokens=58483 prefill 22.44 s = 2,606 tok/s
+  ctx~221184: prompt_tokens=197326 prefill 97.19 s = 2,030 tok/s
+  ctx~221184: prompt_tokens=197326 prefill 96.93 s = 2,036 tok/s
+[2026-11-12 06:37:23] canonical rows nospec-off1: five runs, 80 tokens, think-off, EOS
+  ctx~128: MEDIAN 35.617 tok/s  input_len~24  [35.02..35.62]  sample='# The Memory Wall: A
+  ctx~8192: MEDIAN 34.929 tok/s  input_len~7331  [34.84..34.94]  sample='The provided text
+  ctx~65536: MEDIAN 33.335 tok/s  input_len~58483  [32.27..33.35]  sample='The provided te
+  ctx~221184: MEDIAN 29.660 tok/s  input_len~197326  [29.65..29.67]  sample='The provided
+[2026-11-12 06:39:34] forced 400-token ladder, two runs per depth, temperature 0, nospec-off1
+  ctx~128: MEDIAN 35.542 tok/s  input_len~24  [35.49..35.60]  sample='# The Memory Wall: A
+  ctx~8192: MEDIAN 34.936 tok/s  input_len~7331  [34.93..34.94]  sample='The provided text
+  ctx~65536: MEDIAN 33.307 tok/s  input_len~58483  [33.29..33.32]  sample='The provided te
+  ctx~221184: MEDIAN 29.655 tok/s  input_len~197326  [29.65..29.66]  sample='The provided
+[2026-11-12 06:43:33] == boot nospec-on1 (qwen38, nospec, switch on, --random-seed 7)
+[2026-11-12 06:44:26] nospec-on1: identified; scale lines 2, fp8 pools 2, max_total_num_tokens=732790
+[2026-11-12 06:44:27] cold prefill nospec-on1: 8192 / 65536 / 221184, 2 runs, cache flushed before each
+  ctx~8192: prompt_tokens=7331 prefill 2.79 s = 2,626 tok/s
+  ctx~8192: prompt_tokens=7331 prefill 2.57 s = 2,857 tok/s
+  ctx~65536: prompt_tokens=58483 prefill 22.45 s = 2,605 tok/s
+  ctx~65536: prompt_tokens=58483 prefill 22.46 s = 2,604 tok/s
+  ctx~221184: prompt_tokens=197326 prefill 97.35 s = 2,027 tok/s
+  ctx~221184: prompt_tokens=197326 prefill 96.95 s = 2,035 tok/s
+[2026-11-12 06:48:39] canonical rows nospec-on1: five runs, 80 tokens, think-off, EOS
+  ctx~128: MEDIAN 35.518 tok/s  input_len~24  [35.48..35.53]  sample='# The Memory Wall: A
+  ctx~8192: MEDIAN 34.863 tok/s  input_len~7331  [34.74..34.88]  sample='The provided text
+  ctx~65536: MEDIAN 33.307 tok/s  input_len~58483  [33.22..33.35]  sample='The provided te
+  ctx~221184: MEDIAN 29.582 tok/s  input_len~197326  [29.53..29.64]  sample='The provided
+[2026-11-12 06:50:49] forced 400-token ladder, two runs per depth, temperature 0, nospec-on1
+  ctx~128: MEDIAN 35.424 tok/s  input_len~24  [35.37..35.47]  sample='# The Memory Wall: A
+  ctx~8192: MEDIAN 34.837 tok/s  input_len~7331  [34.83..34.84]  sample='The provided text
+  ctx~65536: MEDIAN 33.238 tok/s  input_len~58483  [33.23..33.24]  sample='The provided te
+  ctx~221184: MEDIAN 29.614 tok/s  input_len~197326  [29.61..29.62]  sample='The provided
+[2026-11-12 06:54:49] == boot nospec-on2 (qwen38, nospec, switch on, --random-seed 7)
+[2026-11-12 06:55:42] nospec-on2: identified; scale lines 2, fp8 pools 2, max_total_num_tokens=732790
+[2026-11-12 06:55:43] cold prefill nospec-on2: 8192 / 65536 / 221184, 2 runs, cache flushed before each
+  ctx~8192: prompt_tokens=7331 prefill 2.79 s = 2,625 tok/s
+  ctx~8192: prompt_tokens=7331 prefill 2.57 s = 2,855 tok/s
+  ctx~65536: prompt_tokens=58483 prefill 22.41 s = 2,610 tok/s
+  ctx~65536: prompt_tokens=58483 prefill 22.46 s = 2,604 tok/s
+  ctx~221184: prompt_tokens=197326 prefill 97.22 s = 2,030 tok/s
+  ctx~221184: prompt_tokens=197326 prefill 96.92 s = 2,036 tok/s
+[2026-11-12 06:59:54] canonical rows nospec-on2: five runs, 80 tokens, think-off, EOS
+  ctx~128: MEDIAN 35.878 tok/s  input_len~24  [35.84..35.88]  sample='# The Memory Wall: A
+  ctx~8192: MEDIAN 35.215 tok/s  input_len~7331  [35.11..35.23]  sample='The provided text
+  ctx~65536: MEDIAN 33.562 tok/s  input_len~58483  [33.48..33.58]  sample='The provided te
+  ctx~221184: MEDIAN 29.592 tok/s  input_len~197326  [29.32..29.62]  sample='The provided
+[2026-11-12 07:02:05] forced 400-token ladder, two runs per depth, temperature 0, nospec-on2
+  ctx~128: MEDIAN 35.481 tok/s  input_len~24  [35.48..35.48]  sample='# The Memory Wall: A
+  ctx~8192: MEDIAN 34.835 tok/s  input_len~7331  [34.82..34.85]  sample='The provided text
+  ctx~65536: MEDIAN 33.238 tok/s  input_len~58483  [33.23..33.24]  sample='The provided te
+  ctx~221184: MEDIAN 29.581 tok/s  input_len~197326  [29.58..29.58]  sample='The provided
+[2026-11-12 07:06:07] == boot nospec-off2 (qwen38, nospec, switch off, --random-seed 7)
+[2026-11-12 07:07:00] nospec-off2: identified; scale lines 0, fp8 pools 2, max_total_num_tokens=732790
+[2026-11-12 07:07:01] cold prefill nospec-off2: 8192 / 65536 / 221184, 2 runs, cache flushed before each
+  ctx~8192: prompt_tokens=7331 prefill 2.77 s = 2,647 tok/s
+  ctx~8192: prompt_tokens=7331 prefill 2.57 s = 2,856 tok/s
+  ctx~65536: prompt_tokens=58483 prefill 22.46 s = 2,603 tok/s
+  ctx~65536: prompt_tokens=58483 prefill 22.45 s = 2,606 tok/s
+  ctx~221184: prompt_tokens=197326 prefill 97.20 s = 2,030 tok/s
+  ctx~221184: prompt_tokens=197326 prefill 96.95 s = 2,035 tok/s
+[2026-11-12 07:11:13] canonical rows nospec-off2: five runs, 80 tokens, think-off, EOS
+  ctx~128: MEDIAN 35.530 tok/s  input_len~24  [35.48..35.53]  sample='# The Memory Wall: A
+  ctx~8192: MEDIAN 34.834 tok/s  input_len~7331  [33.99..34.94]  sample='The provided text
+  ctx~65536: MEDIAN 33.289 tok/s  input_len~58483  [33.21..33.30]  sample='The provided te
+  ctx~221184: MEDIAN 29.625 tok/s  input_len~197326  [29.58..29.64]  sample='The provided
+[2026-11-12 07:13:23] forced 400-token ladder, two runs per depth, temperature 0, nospec-off2
+  ctx~128: MEDIAN 35.498 tok/s  input_len~24  [35.48..35.52]  sample='# The Memory Wall: A
+  ctx~8192: MEDIAN 34.858 tok/s  input_len~7331  [34.86..34.86]  sample='The provided text
+  ctx~65536: MEDIAN 33.251 tok/s  input_len~58483  [33.24..33.26]  sample='The provided te
+  ctx~221184: MEDIAN 29.596 tok/s  input_len~197326  [29.59..29.60]  sample='The provided
+[2026-11-12 07:17:22] == judge
+ACCEPT spec pair off1 / on1: 48 documents, 9 with the same text, off 3.8152, on 3.8882, x1.0191
+ACCEPT spec pair off2 / on2: 48 documents, 13 with the same text, off 3.7971, on 3.8146, x1.0046
+ACCEPT spec pooled over 96 paired documents (22 with the same text): off 3.8062, on 3.8513, x1.0119 (95 % 0.9961..1.0285 over the documents) -> ok
+CACHEHIT spec-off1: 4/12 hit comparisons beyond the fresh-vs-fresh floor (0 blank); first-token dlogp hit 0.5614 against floor 0.0; identical hit 1.12 s, follow-up hit 2.12 s
+CACHEHIT spec-off2: 4/12 hit comparisons beyond the fresh-vs-fresh floor (0 blank); first-token dlogp hit 0.5614 against floor 0.0; identical hit 1.1 s, follow-up hit 1.45 s
+CACHEHIT spec-on1: 4/12 hit comparisons beyond the fresh-vs-fresh floor (0 blank); first-token dlogp hit 0.5651 against floor 0.0; identical hit 1.18 s, follow-up hit 1.7 s
+CACHEHIT spec-on2: 4/12 hit comparisons beyond the fresh-vs-fresh floor (0 blank); first-token dlogp hit 0.5651 against floor 0.0; identical hit 1.2 s, follow-up hit 1.62 s
+CACHEHIT spec pooled: off 8/24, on 8/24, one-sided Fisher p 0.6199 -> not-worse
+SPEED GATE loss:spec-cycle:58K+spec-cycle:197K
+CAPS GATE spec full
+ROUTE GATE spec full
+NEEDLE GATE spec same
+ACCEPT GATE spec ok
+CACHEHIT GATE spec not-worse
+R97T SERVING VERDICT kill:speed
+SPEED spec canon:24 [record]: off 60.714 / 60.793, on 62.836 / 62.841, x1.035 / x1.0337 per order, x1.0343 on the means, spread 0.0013 -> ok (speculative row)
+SPEED spec canon:7.3K [record]: off 80.837 / 81.231, on 80.822 / 80.783, x0.9998 / x0.9945 per order, x0.9971 on the means, spread 0.0049 -> ok (speculative row)
+SPEED spec ttft:7.3K [soft]: off 133.5 / 131.3, on 132.7 / 133.1, x1.006 / x0.9865 per order, x0.9962 on the means, spread 0.0166 -> noise
+SPEED spec canon:58K [record]: off 57.013 / 56.971, on 76.621 / 76.479, x1.3439 / x1.3424 per order, x1.3432 on the means, spread 0.0019 -> ok (speculative row)
+SPEED spec ttft:58K [soft]: off 136.6 / 135.1, on 148.7 / 147.9, x0.9186 / x0.9135 per order, x0.916 on the means, spread 0.011 -> loss
+SPEED spec canon:197K [record]: off 55.784 / 55.69, on 51.278 / 51.51, x0.9192 / x0.9249 per order, x0.9221 on the means, spread 0.0045 -> loss (speculative row)
+SPEED spec ttft:197K [soft]: off 637.7 / 139.0, on 472.2 / 141.9, x1.3505 / x0.9796 per order, x1.0459 on the means, spread 1.2842 -> noise
+SPEED spec cycle:58K [gate]: off 48.19 / 48.26, on 49.62 / 49.61, x0.9712 / x0.9728 per order, x0.972 on the means, spread 0.0015 -> loss
+SPEED spec cycle:197K [gate]: off 54.44 / 54.49, on 58.72 / 58.71, x0.9271 / x0.9281 per order, x0.9276 on the means, spread 0.0009 -> loss
+SPEED nospec ttft:58K [soft]: off 114.7 / 114.5, on 124.0 / 123.3, x0.925 / x0.9286 per order, x0.9268 on the means, spread 0.0057 -> loss
+SPEED GATE loss:spec-cycle:58K+spec-cycle:197K
+[2026-11-12 07:17:22] R97T SERVING DONE gate=qwen38:kill:speed

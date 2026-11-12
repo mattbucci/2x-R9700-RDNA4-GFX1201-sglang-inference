@@ -103,7 +103,7 @@ The dump confirmed the cast in 12 of 12 cells (FINDINGS → R97-S), so method 3 
 - Fix valid is judged on the cached turn in every one of the 12 cells with F per cell fixed at its R97-S value; the
   extend tails are reported against the same bar.
 - Read: kernel test pass, dump job `fix-valid` in 12 of 12 cells with both identity arms equal to R97-S tensor for
-  tensor (FINDINGS → R97-T kernel test, R97-T dump job). The serving A/B is the remaining step.
+  tensor (FINDINGS → R97-T kernel test, R97-T dump job). The serving A/B then killed the patch.
 
 ## Serving A/B, as fixed before the run (R97-T)
 
@@ -174,6 +174,9 @@ holds the rule) and tests `t_open_rows/`, next to the serving A/B.
   consistency not worse. A confirmed kernel error with a free fix ships on the kernel evidence; the serving probes
   only have to be not worse.
 - Kill: not confirmed, a speed loss over 1 %, or any quality gate lower. The patch is then not kept.
+- Read: killed (FINDINGS → R97-T serving A/B). The fix is not free: on qwen38 a DSpark cycle takes 2.9 % longer at
+  58K and 7.8 % longer at 197K in both orders, and no served quality row moves on either preset. Patch number 132
+  is not used; the open-rows measurement was not run.
 
 ## Not in scope
 

@@ -1,0 +1,197 @@
+{
+  "label": "spec-off2-sampled",
+  "tag": "",
+  "note": "qwen38 FP8 preset from /data/sgl-v0522-r97t/python (99 patches + the R97-T candidate), --random-seed 7",
+  "port": 23334,
+  "maxtok": 800,
+  "runs": 3,
+  "sampling": {
+    "temperature": 1.0,
+    "top_p": 0.95,
+    "top_k": 20,
+    "seed": 7
+  },
+  "ignore_eos": true,
+  "points": [
+    {
+      "context": 128,
+      "input_len": 24,
+      "runs_tps": [
+        60.64,
+        64.35,
+        60.58
+      ],
+      "median_tps": 60.637,
+      "min_tps": 60.576,
+      "max_tps": 64.351,
+      "runs_completion_tokens": [
+        800,
+        800,
+        800
+      ],
+      "runs_verify_ct": [
+        289,
+        273,
+        290
+      ],
+      "runs_decode_s": [
+        13.1768,
+        12.4162,
+        13.1901
+      ],
+      "runs_text_sha": [
+        "ae6688fe62ab",
+        "97c08b3a5d05",
+        "fbb9c24ba833"
+      ],
+      "runs_pieces": [
+        290,
+        274,
+        291
+      ],
+      "runs_median_gap_ms": [
+        45.48,
+        45.49,
+        45.49
+      ],
+      "median_tpot_ms": 16.49,
+      "sample": "# The Great Throttling: An In-Depth Analysis of GPU Memory H",
+      "median_ttft_ms": 103.9
+    },
+    {
+      "context": 8192,
+      "input_len": 7331,
+      "runs_tps": [
+        54.1,
+        58.33,
+        56.57
+      ],
+      "median_tps": 56.57,
+      "min_tps": 54.102,
+      "max_tps": 58.331,
+      "runs_completion_tokens": [
+        800,
+        800,
+        800
+      ],
+      "runs_verify_ct": [
+        320,
+        297,
+        306
+      ],
+      "runs_decode_s": [
+        14.7685,
+        13.6977,
+        14.1241
+      ],
+      "runs_text_sha": [
+        "672dc0e60f7d",
+        "801ba9dfb7ae",
+        "ddfeeaf221f0"
+      ],
+      "runs_pieces": [
+        267,
+        241,
+        262
+      ],
+      "runs_median_gap_ms": [
+        46.16,
+        46.13,
+        46.17
+      ],
+      "median_tpot_ms": 17.68,
+      "sample": "The provided text consists of a single sentence, \"The quick ",
+      "median_ttft_ms": 130.8
+    },
+    {
+      "context": 65536,
+      "input_len": 58483,
+      "runs_tps": [
+        47.15,
+        52.4,
+        51.89
+      ],
+      "median_tps": 51.891,
+      "min_tps": 47.148,
+      "max_tps": 52.399,
+      "runs_completion_tokens": [
+        800,
+        800,
+        800
+      ],
+      "runs_verify_ct": [
+        351,
+        316,
+        319
+      ],
+      "runs_decode_s": [
+        16.9465,
+        15.2485,
+        15.3978
+      ],
+      "runs_text_sha": [
+        "0e50b5629ff6",
+        "5d4e18df68c8",
+        "51bdd6fb0a19"
+      ],
+      "runs_pieces": [
+        259,
+        261,
+        267
+      ],
+      "runs_median_gap_ms": [
+        48.29,
+        48.27,
+        48.3
+      ],
+      "median_tpot_ms": 19.27,
+      "sample": "The provided text consists of the classic English pangram \"T",
+      "median_ttft_ms": 98.0
+    },
+    {
+      "context": 221184,
+      "input_len": 197326,
+      "runs_tps": [
+        46.95,
+        41.77,
+        44.57
+      ],
+      "median_tps": 44.574,
+      "min_tps": 41.768,
+      "max_tps": 46.946,
+      "runs_completion_tokens": [
+        800,
+        800,
+        800
+      ],
+      "runs_verify_ct": [
+        312,
+        351,
+        329
+      ],
+      "runs_decode_s": [
+        17.0194,
+        19.1295,
+        17.9254
+      ],
+      "runs_text_sha": [
+        "ae64e789d49d",
+        "d9d54135fe69",
+        "ae9d6fff6f39"
+      ],
+      "runs_pieces": [
+        259,
+        265,
+        260
+      ],
+      "runs_median_gap_ms": [
+        54.51,
+        54.54,
+        54.51
+      ],
+      "median_tpot_ms": 22.43,
+      "sample": "The provided text consists of the pangram \"The quick brown f",
+      "median_ttft_ms": 601.1
+    }
+  ]
+}

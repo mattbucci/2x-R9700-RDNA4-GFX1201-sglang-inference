@@ -1,0 +1,48 @@
+{
+ "label": "spec-off2-sampled",
+ "note": "qwen38 FP8 preset from /data/sgl-v0522-r97t/python (99 patches + the R97-T candidate), --random-seed 7",
+ "log": "/data/logs/r97t-pv-scale-2026-11-11/serving-qwen38/server-spec-off2.log",
+ "from_line": 1094,
+ "to_line": 1260,
+ "line_numbering": "newline",
+ "decode_lines_dropped_after_prefill": 12,
+ "decode_lines_dropped_no_depth": 1,
+ "depths": {
+  "24": {
+   "decode_batches": {
+    "lines": 18,
+    "accept_len": 2.76,
+    "tok_s": 60.67,
+    "cycles_s": 21.97,
+    "cycle_ms": 45.52
+   }
+  },
+  "7.3K": {
+   "decode_batches": {
+    "lines": 20,
+    "accept_len": 2.6,
+    "tok_s": 56.34,
+    "cycles_s": 21.67,
+    "cycle_ms": 46.14
+   }
+  },
+  "58K": {
+   "decode_batches": {
+    "lines": 22,
+    "accept_len": 2.48,
+    "tok_s": 51.27,
+    "cycles_s": 20.72,
+    "cycle_ms": 48.26
+   }
+  },
+  "197K": {
+   "decode_batches": {
+    "lines": 21,
+    "accept_len": 2.4,
+    "tok_s": 44.04,
+    "cycles_s": 18.35,
+    "cycle_ms": 54.49
+   }
+  }
+ }
+}

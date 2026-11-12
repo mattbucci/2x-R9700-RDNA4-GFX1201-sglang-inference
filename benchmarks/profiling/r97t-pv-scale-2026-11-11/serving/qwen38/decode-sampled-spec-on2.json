@@ -1,0 +1,197 @@
+{
+  "label": "spec-on2-sampled",
+  "tag": "",
+  "note": "qwen38 FP8 preset from /data/sgl-v0522-r97t/python (99 patches + the R97-T candidate), --random-seed 7",
+  "port": 23334,
+  "maxtok": 800,
+  "runs": 3,
+  "sampling": {
+    "temperature": 1.0,
+    "top_p": 0.95,
+    "top_k": 20,
+    "seed": 7
+  },
+  "ignore_eos": true,
+  "points": [
+    {
+      "context": 128,
+      "input_len": 24,
+      "runs_tps": [
+        60.16,
+        58.43,
+        61.01
+      ],
+      "median_tps": 60.155,
+      "min_tps": 58.431,
+      "max_tps": 61.014,
+      "runs_completion_tokens": [
+        800,
+        800,
+        800
+      ],
+      "runs_verify_ct": [
+        291,
+        299,
+        287
+      ],
+      "runs_decode_s": [
+        13.2824,
+        13.6743,
+        13.0953
+      ],
+      "runs_text_sha": [
+        "d989736bda1e",
+        "44b777c55c8f",
+        "9ec9b84539a1"
+      ],
+      "runs_pieces": [
+        292,
+        300,
+        288
+      ],
+      "runs_median_gap_ms": [
+        45.64,
+        45.62,
+        45.62
+      ],
+      "median_tpot_ms": 16.62,
+      "sample": "# The Silent Bottleneck: A Deep Dive into GPU Memory Hierarc",
+      "median_ttft_ms": 103.7
+    },
+    {
+      "context": 8192,
+      "input_len": 7331,
+      "runs_tps": [
+        50.16,
+        55.24,
+        57.57
+      ],
+      "median_tps": 55.24,
+      "min_tps": 50.155,
+      "max_tps": 57.574,
+      "runs_completion_tokens": [
+        800,
+        800,
+        800
+      ],
+      "runs_verify_ct": [
+        343,
+        312,
+        299
+      ],
+      "runs_decode_s": [
+        15.9305,
+        14.464,
+        13.8778
+      ],
+      "runs_text_sha": [
+        "710477d37a39",
+        "59f502a96ebc",
+        "4445410ecec9"
+      ],
+      "runs_pieces": [
+        258,
+        276,
+        272
+      ],
+      "runs_median_gap_ms": [
+        46.5,
+        46.36,
+        46.42
+      ],
+      "median_tpot_ms": 18.1,
+      "sample": "The provided text consists of the famous English pangram, \"T",
+      "median_ttft_ms": 132.4
+    },
+    {
+      "context": 65536,
+      "input_len": 58483,
+      "runs_tps": [
+        49.83,
+        51.03,
+        47.9
+      ],
+      "median_tps": 49.83,
+      "min_tps": 47.9,
+      "max_tps": 51.031,
+      "runs_completion_tokens": [
+        800,
+        800,
+        800
+      ],
+      "runs_verify_ct": [
+        323,
+        316,
+        336
+      ],
+      "runs_decode_s": [
+        16.0344,
+        15.6572,
+        16.6806
+      ],
+      "runs_text_sha": [
+        "8fdff4e31369",
+        "99e0edaf7694",
+        "c9492d6735d8"
+      ],
+      "runs_pieces": [
+        257,
+        274,
+        272
+      ],
+      "runs_median_gap_ms": [
+        49.63,
+        49.54,
+        49.64
+      ],
+      "median_tpot_ms": 20.07,
+      "sample": "The provided text consists of the pangram \"The quick brown f",
+      "median_ttft_ms": 145.2
+    },
+    {
+      "context": 221184,
+      "input_len": 197326,
+      "runs_tps": [
+        39.76,
+        42.25,
+        41.12
+      ],
+      "median_tps": 41.119,
+      "min_tps": 39.761,
+      "max_tps": 42.252,
+      "runs_completion_tokens": [
+        800,
+        800,
+        800
+      ],
+      "runs_verify_ct": [
+        342,
+        322,
+        331
+      ],
+      "runs_decode_s": [
+        20.0952,
+        18.9102,
+        19.4312
+      ],
+      "runs_text_sha": [
+        "17add6ebc307",
+        "21f400399b9f",
+        "abc4e5ad674d"
+      ],
+      "runs_pieces": [
+        263,
+        265,
+        265
+      ],
+      "runs_median_gap_ms": [
+        58.74,
+        58.75,
+        58.73
+      ],
+      "median_tpot_ms": 24.32,
+      "sample": "The provided text consists of the pangram \"The quick brown f",
+      "median_ttft_ms": 641.4
+    }
+  ]
+}

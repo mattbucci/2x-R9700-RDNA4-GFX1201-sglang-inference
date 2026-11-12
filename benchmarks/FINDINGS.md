@@ -3119,6 +3119,55 @@ unpatched and the switch is off by default. The dump job reads attention rows on
 quality (the hook is on, timings are not read), and the grouped verify stage of qwen38 is covered by the kernel
 test only: the serving A/B in both orders on Flint and qwen38 decides ship or kill.
 
+### R97-T serving A/B — killed: under the 2^8 weight scale a DSpark cycle on qwen38 takes 2.9 % longer at 58K and 7.8 % longer at 197K, and no served quality row moves
+
+Both arms booted from the candidate tree `/data/sgl-v0522-r97t` (the three patched kernels and the backend line,
+content-pinned), `SGLANG_RDNA4_FP8_PV_SCALE` unset against `1`, `--random-seed 7`, two warm-up boots, then
+off / on / on / off per config; the scale line was required on the treatment boots and refused on the control
+boots. Judge and rule were fixed before the run (spec 21): floor x0.99 on gate rows in both orders, first-token
+rows soft, speculative canonical rows recorded only. Receipts: `profiling/r97t-pv-scale-2026-11-11/serving/`.
+
+| qwen38 (DSpark boots carry the quality probes) | control | switch on | ratio |
+|---|---|---|---|
+| cold prefill 7.3K / 58K / 197K, DSpark | 2.62 / 22.71 / 97.87 s | 2.62 / 22.73 / 97.85 s | x1.003 / x0.999 / x1.000 |
+| DSpark cycle, 24 / 7.3K | 45.52 / 46.12 ms | 45.67 / 46.42 ms | x0.997 / x0.994 |
+| **DSpark cycle, 58K** | 48.19 / 48.26 ms | 49.62 / 49.61 ms | **x0.972** |
+| **DSpark cycle, 197K** | 54.44 / 54.49 ms | 58.72 / 58.71 ms | **x0.928** |
+| first token of a cached turn at 58K, DSpark | 136.6 / 135.1 ms | 148.7 / 147.9 ms | x0.916 (soft) |
+| first token of a cached turn at 58K, no speculation | 114.7 / 114.5 ms | 124.0 / 123.3 ms | x0.927 (soft) |
+| no speculation, canonical 24 / 7.3K / 58K / 197K | 35.57 / 34.88 / 33.31 / 29.64 tok/s | 35.70 / 35.04 / 33.43 / 29.59 tok/s | x1.004 / x1.004 / x1.004 / x0.998 |
+| no speculation, forced ladder, four depths | | | x0.998-0.999 |
+| accept length, 96 paired greedy documents | 3.806 | 3.851 | x1.012 (95 % 0.996..1.029) |
+| capabilities 5/5, route 10/10, needle 9/9 | all four boots | all four boots | equal |
+| cache-hit consistency beyond the floor | 4/12 on both boots | 4/12 on both boots | equal |
+
+| flint (no-speculation boots carry the quality probes) | control | switch on | ratio |
+|---|---|---|---|
+| cold prefill 7.3K / 58K / 197K, no speculation | 0.78 / 9.28 / 60.16 s | 0.78 / 9.28 / 60.46 s | x1.003 / x1.000 / x0.995 |
+| no speculation, canonical and forced rows | | | x0.998-1.000 |
+| DFlash2 cycle, four depths | | | x1.016 / x1.009 / x1.006 / x0.999 |
+| first token at 24 tokens, DFlash2 | 74.6 / 74.3 ms | 76.0 / 75.9 ms | x0.98 (soft, left open) |
+| accept length, 96 paired greedy documents | 2.808 | 2.829 | x1.008 (95 % 0.985..1.030) |
+| capabilities 3/3, route 10/10, needle 11/12, cache-hit 6/12 | all four boots | all four boots | equal |
+
+The qwen38 loss repeats to three digits in both orders (order spread 0.001) and grows with depth: +1.4 ms per
+cycle at 58K, +4.2 ms at 197K, and +9 to +12 ms on the first token of a cached turn at 58K with or without a
+drafter. One-row decode and cold prefill do not move: the cost shows where a few new rows attend over a deep
+prefix (the cached turn's tail and the verify step). Flint's cycle time does not show it. The cause inside the
+kernels was not isolated.
+
+No served quality row moved on either preset: the accept intervals include 1.0, needle, route, capabilities and
+cache-hit consistency are equal on every boot, and the one needle cell Flint misses (32768 at 0.9) is missed by
+control and treatment alike. A single needle pass does not separate arms on Flint in any case (the 3090 rig
+reads 15, 12 and 13 of 15 on repeats of one arm). The attention-row error the dump job removed (R97-S, gates 1
+to 3) therefore has no measured effect in serving.
+
+Disposition: `killed` by the registered rule (a gate-row speed loss over 1 % on one preset). Patch number 132 is
+not used, the serving tree and the launcher are unchanged, the switch exists in no shipped file. Flint's open
+first-token row is not re-measured: the queued open-rows job refuses to start on a qwen38 kill, and its driver,
+judge and tests stay in the receipts directory as the pattern for a soft-row re-measure. A second attempt needs
+both a quality row that moves under the fix and a kernel form whose multi-row cycle time holds at 197K.
+
 ## Evaluation methodology
 
 ### SWE-bench answer leakage through git history and the web (found 2026-09-18)
