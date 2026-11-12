@@ -122,6 +122,43 @@ class AlwaysThinking(unittest.TestCase):
         self.assertIn("[route] concurrent: PASS", text)
 
 
+class LoopingServer(FakeServer):
+    """Reasons before every answer; under a logit bias the reasoning never reaches one."""
+
+    def __init__(self, reasoning):
+        super().__init__()
+        self.reasoning = reasoning
+
+    def answer(self, body):
+        if body.get("logit_bias"):
+            return {"content": "", "reasoning_content": self.reasoning}
+        return super().answer(body)
+
+
+class BiasCase(unittest.TestCase):
+    def bias_row(self, server):
+        rc, got, _ = run_probe(server, 1024)
+        return rc, got, next(c for c in got["cases"] if c["name"] == "logit-bias")
+
+    def test_a_reasoning_loop_under_the_ban_passes(self):
+        rc, got, row = self.bias_row(LoopingServer('I cannot write it. "Par..." I think I am stuck.'))
+        self.assertEqual((rc, got["passed"]), (0, 10))
+        self.assertIn("stuck", row["identity"])
+        self.assertIn("finish=stop", row["detail"])
+
+    def test_the_banned_word_in_the_reasoning_fails(self):
+        rc, got, row = self.bias_row(LoopingServer("The answer is Paris."))
+        self.assertEqual((rc, row["ok"]), (1, False))
+
+    def test_an_empty_generation_fails(self):
+        rc, got, row = self.bias_row(LoopingServer(""))
+        self.assertEqual((rc, row["ok"]), (1, False))
+
+    def test_another_answer_still_passes(self):
+        rc, got, row = self.bias_row(FakeServer())
+        self.assertEqual((row["ok"], row["identity"]), (True, "Lutetia"))
+
+
 class Compare(unittest.TestCase):
     def compare(self, a, b):
         with tempfile.TemporaryDirectory() as d:

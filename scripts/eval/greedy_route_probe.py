@@ -130,11 +130,19 @@ def case_logprobs(p):
 
 
 def case_bias(p):
+    # The ban covers every generated token, reasoning included, so a model that always reasons can circle the word
+    # until its budget ends and return no answer. The case judges the ban: the unbiased answer starts with the word,
+    # the biased generation (reasoning and answer) is not empty and never contains it.
     ids = sorted({i for s in ("Paris", " Paris", "paris", " paris", "PARIS") for i in p.token_ids(s)[:1]})
     plain = text_of(p.chat(ONE_WORD.format("France"), max_tokens=16))
-    t = text_of(p.chat(ONE_WORD.format("France"), max_tokens=16, logit_bias={str(i): -100 for i in ids}))
-    ok = plain.strip().startswith("Paris") and len(t.strip()) > 0 and not t.strip().startswith("Paris")
-    return ok, f"banned ids {ids}: {t[:40]!r}", t
+    c = p.chat(ONE_WORD.format("France"), max_tokens=16, logit_bias={str(i): -100 for i in ids})
+    t = text_of(c)
+    r = c["message"].get("reasoning_content") or c["message"].get("reasoning") or ""
+    ok = plain.strip().startswith("Paris") and len((r + t).strip()) > 0
+    ok = ok and not any(w in r + t for w in ("Paris", "paris", "PARIS"))
+    detail = f"banned ids {ids}: {t[:40]!r}, finish={c.get('finish_reason')}, {len(r)} reasoning chars"
+    # a passing run with no answer is identified by its reasoning; a failing one keeps the (empty) answer
+    return ok, detail, r if ok and not t.strip() else t
 
 
 def case_penalty(p):
