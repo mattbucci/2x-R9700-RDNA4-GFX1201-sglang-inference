@@ -59,15 +59,22 @@ def main():
     for c in ctxs:
         prompt = mdc.build_prompt(c)
         tpss, tpots, pts, cts, ttfts, sample = [], [], [], [], [], ""
+        vcs, decs, shas, pcs, gaps = [], [], [], [], []
         for r in range(a.runs):
+            det = {}
             ms, tps, pt, ct, s, ttft = mdc.stream_tpot(
-                base, model, prompt, a.maxtok, a.think_off, a.ignore_eos, sampling or None
+                base, model, prompt, a.maxtok, a.think_off, a.ignore_eos, sampling or None, det
             )
             tpss.append(tps); tpots.append(ms); pts.append(pt or c); cts.append(ct); sample = s
+            vcs.append(det.get("spec_verify_ct"))
+            decs.append(round(det["decode_s"], 4) if det.get("decode_s") is not None else None)
+            shas.append((det.get("text_sha256") or "")[:12])
+            pcs.append(det.get("pieces"))
+            gaps.append(round(det["median_gap_ms"], 2) if det.get("median_gap_ms") is not None else None)
             if ttft is not None:
                 ttfts.append(ttft)
             print(
-                f"  ctx~{c} run{r+1}: pt={pt} ct={ct} "
+                f"  ctx~{c} run{r+1}: pt={pt} ct={ct} verify={vcs[-1]} "
                 f"{tps:.2f} tok/s ({ms:.1f}ms)",
                 flush=True,
             )
@@ -79,6 +86,13 @@ def main():
                "runs_tps": [round(x, 2) for x in tpss], "median_tps": round(med, 3),
                "min_tps": round(min(tpss), 3), "max_tps": round(max(tpss), 3),
                "runs_completion_tokens": cts,
+               # Speculative servers: verify cycles per run (None without a drafter), the first-event-to-finish
+               # decode interval the rate is taken over, and a digest of the full text, so a cell splits into
+               # cycle time and tokens per cycle and two runs of one token count can be told apart.
+               "runs_verify_ct": vcs, "runs_decode_s": decs, "runs_text_sha": shas,
+               # Non-empty text events per run and the median gap between them (one event per scheduler step:
+               # the cycle time of a speculative server, the token time without a drafter).
+               "runs_pieces": pcs, "runs_median_gap_ms": gaps,
                "median_tpot_ms": round(median_tpot, 2), "sample": sample,
                # warm-cache first-token time (the prompt is re-sent per run, so runs 2+ hit the radix cache)
                "median_ttft_ms": round(statistics.median(ttfts), 1) if ttfts else None}

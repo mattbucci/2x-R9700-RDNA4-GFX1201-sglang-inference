@@ -1307,11 +1307,11 @@
     "tail job 99 ended (scripts/bench/decode_ab.py and measure_decode_curve.py are frozen while a queued driver reads them)"
    ],
    "id": "CANON-VC",
-   "next_action": "CPU: add return_spec_tokens_details to the streaming request of measure_decode_curve.py and a runs_verify_ct list per point to the receipt (None on a server without speculation), unit test on a recorded stream. GPU, about 5 minutes behind the Flint sweep: one DSpark boot of the qwen38 preset, the canonical sweep with the new field, identity lines as in tail job 98. Then FINDINGS, and the receipts of later canonical sweeps carry the field.",
+   "next_action": "None: measured and published (FINDINGS 'CANON-VC'); later canonical sweeps carry the per-run verify count.",
    "resource": "gpu",
-   "result": "",
+   "result": "Tail job 99-y (2026-11-11), four DSpark boots on / off / off / on with SGLANG_HIP_PREFILL_ATTN=off as the off arm. Bench change valid: one verify count per run on every cell; the on boots repeat tail job 98 at x1.000-1.004 on equal tokens. 58K cell explained: 46 tokens / 12 verifies cold and 47 tokens / 18 verifies on the cache-hit runs with the kernel, 33 tokens / 9 verifies without it; decode interval over verify count 47.46-48.02 ms on the on boots (0.4-1.5 % under 48.2 ms), median gap 47.74 / 47.66 ms on against 47.85 / 47.78 ms off. The other depths return one text on all four boots. Capabilities 5/5 on each boot. No regression item; README rows unchanged.",
    "spec": "19-vllm-radiance-parity.md",
-   "status": "queued",
+   "status": "completed",
    "test_gate": [
     "bench change valid = the receipt carries one verify count per run on the DSpark server, and median rates and completion tokens of the 24 / 7.3K / 197K cells repeat tail job 98 within 1 % on equal token counts",
     "58K cell explained = decode time / verify count on the 58K runs is within 2 % of the RAD-10c gate's 48.2 ms cycle on both continuations, so the 53.6 against 74.5-78.0 tok/s difference is tokens per verify",

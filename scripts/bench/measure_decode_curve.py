@@ -16,7 +16,7 @@ Usage:
     --contexts 128,4096,16384,32768,65536,131072,245760 \
     --note "cuda-graph ON" --tag "2026-06-01 cuda-graph"
 """
-import argparse, json, os, sys, time
+import argparse, hashlib, json, os, sys, time
 import requests
 
 FILLER = "The quick brown fox jumps over the lazy dog. " * 22 + "\n"  # ~ many tokens/line
@@ -31,7 +31,21 @@ def build_prompt(approx_tokens):
     return body + "\n\nIn one short paragraph, summarize the repeated sentence above."
 
 
-def stream_tpot(base, model, prompt, maxtok, think_off, ignore_eos=False, sampling=None):
+def _find_key(obj, key):
+    # First value stored under `key` anywhere in a decoded SSE event.
+    if isinstance(obj, dict):
+        if key in obj:
+            return obj[key]
+        obj = list(obj.values())
+    if isinstance(obj, list):
+        for item in obj:
+            found = _find_key(item, key)
+            if found is not None:
+                return found
+    return None
+
+
+def stream_tpot(base, model, prompt, maxtok, think_off, ignore_eos=False, sampling=None, details=None):
     body = {"model": model, "messages": [{"role": "user", "content": prompt}],
             "max_tokens": maxtok, "temperature": 0, "stream": True,
             "stream_options": {"include_usage": True}}
@@ -48,6 +62,14 @@ def stream_tpot(base, model, prompt, maxtok, think_off, ignore_eos=False, sampli
         # silently measures different work. Pinning the length costs realism
         # and is for kernel isolation only, never for a user-facing rate.
         body["ignore_eos"] = True
+    verify_ct = None
+    if details is not None:
+        # A speculative rate is cycles/s x tokens per cycle, and only the second
+        # factor follows the text. The server's per-request verify count rides on
+        # the final event's sglext; asking for it is response metadata and does
+        # not change what is decoded. `details` is filled in place so the return
+        # tuple keeps its shape for every caller.
+        body["return_spec_tokens_details"] = True
     # `stream_interval=1` usually emits one SSE event per token, but reasoning
     # and tool parsers may buffer or coalesce text. Event rate is therefore not
     # token rate. Use the authoritative completion-token count and retain the
@@ -78,6 +100,10 @@ def stream_tpot(base, model, prompt, maxtok, think_off, ignore_eos=False, sampli
                 continue
             if d.get("usage"):
                 usage = d["usage"]
+            if details is not None:
+                found = _find_key(d, "spec_verify_ct")
+                if found is not None:
+                    verify_ct = found
             ch = d.get("choices") or []
             if ch:
                 now = time.perf_counter()
@@ -111,6 +137,7 @@ def stream_tpot(base, model, prompt, maxtok, think_off, ignore_eos=False, sampli
 
     completion_tokens = int((usage or {}).get("completion_tokens") or 0)
     decode_end = finish_time or last_decode
+    gaps = list(deltas)  # the fallback below trims `deltas`
     if (
         completion_tokens > 1
         and first_decode is not None
@@ -124,6 +151,20 @@ def stream_tpot(base, model, prompt, maxtok, think_off, ignore_eos=False, sampli
         if len(deltas) > 3:
             deltas = sorted(deltas)[1:-1]  # compatibility fallback: trim jitter
         tpot = sum(deltas) / len(deltas) if deltas else 0
+    if details is not None:
+        # None on a server without a speculative worker.
+        details["spec_verify_ct"] = verify_ct
+        details["decode_s"] = (
+            decode_end - first_decode
+            if first_decode is not None and decode_end is not None
+            else None
+        )
+        # An equal token count is not an equal text; the receipt keeps 60 characters.
+        details["text_sha256"] = hashlib.sha256(txt.encode()).hexdigest()
+        # One non-empty text event per scheduler step: on a speculative server the
+        # median gap between them is the draft-and-verify cycle as the client sees it.
+        details["pieces"] = len(gaps) + 1 if last_piece is not None else 0
+        details["median_gap_ms"] = sorted(gaps)[len(gaps) // 2] * 1000.0 if gaps else None
     pt = usage.get("prompt_tokens") if usage else None
     # Time to the first streamed decode event (prefill + scheduling), the shared results-file `ttft_ms` field.
     ttft_ms = (first_decode - t_start) * 1000.0 if first_decode is not None else None

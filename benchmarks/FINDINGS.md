@@ -2857,15 +2857,14 @@ the ratio ×0.72 is not a kernel ratio. The sweep is greedy (temperature 0). The
 rounding, and a greedy continuation that sits at a near-tie can leave it: the same boot's cold and cache-hit runs
 already differ by one token. What is measured for this kernel on the DSpark path is the RAD-10c gate above (four boots): verify cycle
 48.12 → 48.24 ms at 58K (×1.003, ×1.000 at the other depths) and pooled greedy accept length 3.804 → 3.806 tokens per
-verify over 96 paired documents (×1.0007, 95 % interval 0.981–1.020). What is derived, not measured: at that cycle
-the three continuations take about 9, 12 and 18 cycles (3.6, 3.8 and 2.6 tokens per cycle); the canonical receipt
-records no cycle count and keeps 60 characters of text. CANON-VC adds the verify count per run to the receipt and
-repeats the DSpark boot, so the cell's rate can be split into cycle time and acceptance from its own data.
+verify over 96 paired documents (×1.0007, 95 % interval 0.981–1.020). CANON-VC (below) then measured the counts
+with a verify count per run in the receipt: 9, 12 and 18 verifies for the 33-, 46- and 47-token texts (3.67, 3.83
+and 2.61 tokens per verify) at a 47.7–47.9 ms cycle with the kernel on or off.
 
 The DFlash2 medians at 7,331 and 58,483 tokens are +10.0 % and +7.6 % on equal token counts (38 and 46): the decode
 time is 43.0 ms and 44.5 ms shorter, about one draft-and-verify cycle, while the 24-token and 197K cells repeat to
 ×1.002. The verify rows are below the kernel's 257-row minimum, so this reads as one cycle fewer on a state that
-differs by rounding, not as a kernel gain; the same CANON-VC count would show it. The DFlash2 pair reads ×1.014 /
+differs by rounding, not as a kernel gain; CANON-VC covered the DSpark boots only, so this stays a reading. The DFlash2 pair reads ×1.014 /
 ×1.014 / ×1.013 / ×1.012 for the in-graph all-reduce on the medians and ×1.016 / ×1.013 / ×1.013 / ×1.012 on the cold
 first runs, on equal token counts. The route probe passes 10 of 10 on all four servers with three concurrent
 requests among its cases; the capability probe passes 5 of 5 on the three speculative servers.
@@ -2913,6 +2912,48 @@ without a drafter.
 
 Receipts: `flint-fp8/{decode,capabilities,route}-canonical-<arm>-2026-11-11-99p.json` for `nospec`, `nospec-rccl`
 and `dflash2`, `prefill-canonical-nospec-2026-11-11-99p.json`. These are the README and results.json rows.
+
+### CANON-VC: the canonical DSpark sweep with a verify count per run: the 58K cell's 53.7 tok/s is 18 verifies for 47 tokens at an unchanged 47.7 ms cycle, patch 131 off returns the 33-token text at 74.5 tok/s (2026-11-11)
+
+The published DSpark row of the 99-patch sweep reads 53.6 tok/s at 58K against 74.5 before patch 131, on a different
+text, and its receipt could not split a rate into cycle time and acceptance. `decode_ab.py` now sends
+`return_spec_tokens_details` and records per run the server's verify count, the decode interval, the number of text
+events, the median gap between them and a hash of the text. Four DSpark boots of the `qwen38` preset at 99 patches in
+the order on / off / off / on, where off is `SGLANG_HIP_PREFILL_ATTN=off` (patch 131's prefill kernel), five greedy
+runs per depth on an 80-token budget ([on 1](qwen38-27b-fp8/decode-canonical-dspark-on1-2026-11-11-99p-vc.json), [off 1](qwen38-27b-fp8/decode-canonical-dspark-off1-2026-11-11-99p-vc.json), [off 2](qwen38-27b-fp8/decode-canonical-dspark-off2-2026-11-11-99p-vc.json), [on 2](qwen38-27b-fp8/decode-canonical-dspark-on2-2026-11-11-99p-vc.json)).
+
+The 58,483-token cell, both boots of each arm:
+
+| Arm | Runs | Tokens | Verifies | Tokens per verify | Cycle, ms | tok/s |
+|---|---|---|---|---|---|---|
+| Patch 131 on | cold run | 46 | 12 | 3.83 | 48.00 / 47.93 | 78.10 / 78.23 |
+| Patch 131 on | four cache-hit runs | 47 | 18 | 2.61 | 47.53–47.96 | 53.40–53.84 |
+| Patch 131 off | all five | 33 | 9 | 3.67 | 47.55–48.03 | 73.85–75.14, one run 65.05 |
+
+Cycle is the median gap between text events of a run; the boot medians are 47.74 / 47.66 ms on and 47.85 / 47.78 ms
+off (×0.998 / ×0.998). The registered quantity, decode interval over verify count, reads 47.46–48.02 ms on the on
+boots, 0.4–1.5 % under the RAD-10c gate's 48.2 ms on both continuations. So the cell's drop from 74.5 to 53.7 tok/s
+is acceptance on a different text (2.61 against 3.67 tokens per verify), not cycle time, and the published row stands
+for its continuation. Each arm repeats its texts to the hash on its second boot. The one 65.05 run has a single long
+gap (its median gap is 47.91 ms).
+
+The other depths do not depend on the kernel. At 24 / 7,331 / 197,326 input tokens all four boots return one text per
+depth, cold and cache hit alike: 80 / 38 / 37 tokens in 29 / 10 / 11 verifies (2.76 / 3.80 / 3.36 tokens per verify),
+cycle 44.7–44.8 / 45.5–45.6 / 54.1–54.2 ms on both arms (×0.996–×1.001), medians 60.9–61.0 / 81.3–81.5 / 60.5–60.6
+tok/s. The on boots repeat the published sweep at ×1.000–×1.004 in all four cells on equal tokens. A run has one text
+event more than verifies (the prefill's token), except the 33-token text with nine of each.
+
+The 58K prompt has three greedy texts. With the kernel, the cold run and the cache-hit runs differ (46 and 47 tokens);
+without it all five runs agree (33). The server log shows what a cache-hit run prefills: 51 new tokens after 58,432
+cached, under the kernel's 257-row minimum, so those rows run the Triton extend kernel, while the cold run's rows ran
+the HIP kernel; without patch 131 both run the Triton kernel. That the two kernels' rounding is what splits cold from
+cache hit at this prompt is a reading: no arm isolated it (a minimum of one row would). R97-S records the text hashes
+of this cell as one of its observables.
+
+Capabilities pass 5 of 5 on the four boots. The on boots log the kernel's route line on both ranks with zero
+declines, the off boots log none. Disposition: the receipt fields stay in `decode_ab.py` (`runs_verify_ct`,
+`runs_decode_s`, `runs_pieces`, `runs_median_gap_ms`, `runs_text_sha`; a server without speculation records no
+count), no regression item is registered, README rows are unchanged.
 
 ## Evaluation methodology
 

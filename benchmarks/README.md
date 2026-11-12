@@ -97,7 +97,12 @@ tokens. The patches 121–129 row sits on the same four continuations: +17.3 % /
 continuation: 46 tokens at 78.0 tok/s on the cold first run, 47 tokens at 53.4–53.7 on the four cache-hit runs, the
 token counts of the no-spec and DFlash2 servers, so the 53.6 median does not compare with the 74.5 above it; the
 RAD-10c DSpark gate measured the verify cycle at ×1.000–1.003 and the pooled greedy accept length at ×1.0007 for this
-kernel. The no-spec rows compare throughout: +13–16 % from the layout (patch
+kernel. A repeat with a verify count per run (four boots, the kernel on / off / off / on:
+[on](qwen38-27b-fp8/decode-canonical-dspark-on1-2026-11-11-99p-vc.json), [off](qwen38-27b-fp8/decode-canonical-dspark-off1-2026-11-11-99p-vc.json),
+[off](qwen38-27b-fp8/decode-canonical-dspark-off2-2026-11-11-99p-vc.json), [on](qwen38-27b-fp8/decode-canonical-dspark-on2-2026-11-11-99p-vc.json))
+reads 12 verifies on the cold run, 18 on the cache-hit runs and 9 on the 33-token text the off boots return, at a
+47.7–47.9 ms cycle on both arms; the other three depths return one text on every boot
+([FINDINGS → CANON-VC](FINDINGS.md)). The no-spec rows compare throughout: +13–16 % from the layout (patch
 121), then +24–28 % from the one-row decode kernels (patches 122–124), then +1.7–2.3 % from the all-reduce (patch 129),
 then +1.6–2.3 % from the wire (patch 130), then ×0.999–1.000 with patch 131.
 The pool is 428,579 tokens on the DSpark server (430,725 with the all-reduce on RCCL, 206,324 on the replicated

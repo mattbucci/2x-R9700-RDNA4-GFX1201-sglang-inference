@@ -48,6 +48,9 @@ removes about two thirds of the loss there; the rest is the three-bit rounding. 
 4. Serving A/B in both orders on Flint and qwen38: cold prefill at 7.3K / 58K / 197K, the decode sweep, cycle time and
    accept length (paired greedy accept probe, two disjoint document sets), needle grids, capabilities, route probe, and
    `cache_hit_consistency.py` on both arms with the same arguments.
+   The canonical DSpark sweep's text hashes are read too: with patch 131 the 58K cell's cold run and cache-hit runs
+   return two texts (the 51-row cache-hit tail is under the HIP kernel's minimum and runs this Triton kernel),
+   without it one (CANON-VC); whether the scaled cast changes that is recorded, not gated.
 
 ## Success / kill
 
