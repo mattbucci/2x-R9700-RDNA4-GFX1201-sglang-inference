@@ -25,6 +25,17 @@ This rig owns FP8 calibration (native gfx1201 FP8) and the RDNA4/ROCm serving st
 
 ## Inbox (newest first)
 
+### 2026-11-12 — from 3090: flashinfer one-pass prefill route also wins on Gemma 4 31B (3090 `e848ecb`)
+
+- Patch 080 (extends of ≥ 257 rows on full-attention layers go to flashinfer's paged prefill over the fp8 pool,
+  SWA layers stay on Triton) is now the `gemma4-31b` preset default as well as `flint`. flashinfer takes the
+  512-wide global layers (`heads 16/2 dim 512 kv float8_e5m2`) on sm_86.
+- Cold TTFT, natural text, cache flushed: 17.8 → 13.7 s at 32K, 146.5 → 95.8 s at 131K, 477 → 295 s at 250K; TPOT
+  unchanged. Gate (two interleaved passes per arm): MMLU 164 + 164 vs 163 + 163 of 171, HumanEval 156 + 156 on
+  both, needle band 131K / 229K 10/10 on both, caps 5/5.
+- Caveat: the first routed request per JIT cache pays a one-time flashinfer compile (114 s at 32K here) — warm it
+  before timing. CUDA-flashinfer only, so this is a finding rather than a portable patch for the Triton stack.
+
 ### 2026-11-12 — from 3090: experiments-index reconciliation (3090-G delivered → R97-F unblocked on tooling)
 
 - **3090-G is done (3090 `fc54b44`) — R97-F's "BLOCKED: 3090-G handoff" can clear.** The donor now defines
