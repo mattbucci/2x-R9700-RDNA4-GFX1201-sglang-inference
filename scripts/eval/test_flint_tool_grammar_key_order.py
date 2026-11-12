@@ -53,6 +53,22 @@ def main() -> int:
         fails.append("payload-first omp call REJECTED under the strict grammar (key order still forced)")
     if accepts(compiler, tag, tok, missing_required):
         fails.append("call missing the required `i` key ACCEPTED (strict schema not enforced)")
+    # oh-my-pi's hashline edit: Flint writes the intent first, so this tool keeps the declared order
+    omp_edit = {"type": "function", "function": {"name": "edit", "description": "edit a file", "strict": False, "parameters": {
+        "type": "object",
+        "properties": {"i": {"type": "string", "description": "intent"}, "input": {"type": "string"}},
+        "required": ["i", "input"], "additionalProperties": False}}}
+    intent_first = ('<tool_call>edit<arg_key>i</arg_key><arg_value>fix the off-by-one</arg_value>'
+                    '<arg_key>input</arg_key><arg_value>[a.py#1f2e] x = 1</arg_value></tool_call>')
+    input_first = ('<tool_call>edit<arg_key>input</arg_key><arg_value>[a.py#1f2e] x = 1</arg_value>'
+                   '<arg_key>i</arg_key><arg_value>fix the off-by-one</arg_value></tool_call>')
+    tag_both = fst.build_flint_tool_grammar(tools=[omp_bash, omp_edit], tool_choice="required")
+    if not accepts(compiler, tag_both, tok, intent_first):
+        fails.append("intent-first omp edit REJECTED (edit must keep its declared key order)")
+    if accepts(compiler, tag_both, tok, input_first):
+        fails.append("input-first omp edit ACCEPTED (the metadata key was still moved last on edit)")
+    if not accepts(compiler, tag_both, tok, payload_first):
+        fails.append("payload-first omp bash REJECTED next to edit")
     os.environ["FLINT_STRICT_TOOLS"] = "0"
     import importlib
     importlib.reload(fst)
@@ -61,7 +77,7 @@ def main() -> int:
         fails.append("FLINT_STRICT_TOOLS=0 should be schema-free but rejected a call missing `i`")
     for f in fails:
         print("FAIL:", f)
-    print("OK: strict grammar accepts payload-first, rejects missing required, loose mode is schema-free"
+    print("OK: strict grammar accepts payload-first bash and intent-first edit, rejects missing required, loose mode is schema-free"
           if not fails else f"{len(fails)} failure(s)")
     return 1 if fails else 0
 

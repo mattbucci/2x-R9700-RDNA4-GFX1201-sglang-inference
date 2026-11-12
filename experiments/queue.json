@@ -595,18 +595,18 @@
   {
    "id": "FLINT-1",
    "spec": "https://github.com/mattbucci/2x-R9700-RDNA4-GFX1201-sglang-inference/issues/27",
-   "status": "paused",
+   "status": "running",
    "resource": "gpu",
    "depends_on": [
     "performance programme (FLINT-4, RAD-2, RAD-11, RAD-4/5/3) done or the user asks to resume"
    ],
-   "next_action": "Monitor the v5-dflash cell; when done: Docker score, audits, aggregate, compare with qwen38 omp 174 / Qwopus 181 (McNemar) and the 3090 Flint INT4 omp 186/300; pair the 15 no-spec ids against the DFlash2 run.",
+   "next_action": "Monitor the v5-dflash-editorder cell (from 0/300 on the 100-patch tree); first instances: edit calls intent-first with a real input; when done: Docker score, audits, aggregate, compare with qwen38 omp 174 / Qwopus 181 (McNemar) and the 3090 Flint INT4 omp 186/300; pair the 43 v5-dflash ids against it.",
    "test_gate": [
     "300/300 rolled, infra_* = 0",
     "audit_git_peek: 0 history reads, web attempts all blocked",
     "scored cell JSON with the v5 harness line; McNemar pairs vs qwen38 and Qwopus omp"
    ],
-   "result": "2026-11-09 01:00: stopped by the user at 16/300 (15 predictions kept in evals/swebench/runs/flint-omp-v5, logs flint-v5/) to restart under DFlash2 once the FLINT-5 gate passes; restart = RUN_TAG v5-dflash, same harness line, server + drafter only. Restarted 2026-11-09 02:05 under DFlash2 (RUN_TAG v5-dflash, logs run-model-cycle-logs/flint-v5-dflash, run dir evals/swebench/runs/flint-omp-v5-dflash); the 15 no-spec predictions stay as a paired same-id check. 04:22 server death (DFLASH sampler buffers sized by graph bs=1, crashed on a 2-request batch) → patch 115, cycle restarted at an instance boundary on the patched tree; the EMPTY django-11283 row removed for re-roll. PAUSED 2026-11-09 ~09:00 at an instance boundary on the user's call (\"focus on boosting performance before evaling\"): 43 of 300 rolled, predictions kept; resume = setsid bash /data/logs/run-model-cycle-logs/flint-v5-dflash/flint-omp-cycle.sh (skip-existing)."
+   "result": "2026-11-09 01:00: stopped by the user at 16/300 (15 predictions kept in evals/swebench/runs/flint-omp-v5, logs flint-v5/) to restart under DFlash2 once the FLINT-5 gate passes; restart = RUN_TAG v5-dflash, same harness line, server + drafter only. Restarted 2026-11-09 02:05 under DFlash2 (RUN_TAG v5-dflash, logs run-model-cycle-logs/flint-v5-dflash, run dir evals/swebench/runs/flint-omp-v5-dflash); the 15 no-spec predictions stay as a paired same-id check. 04:22 server death (DFLASH sampler buffers sized by graph bs=1, crashed on a 2-request batch) → patch 115, cycle restarted at an instance boundary on the patched tree; the EMPTY django-11283 row removed for re-roll. PAUSED 2026-11-09 ~09:00 at an instance boundary on the user's call (\"focus on boosting performance before evaling\"): 43 of 300 rolled, predictions kept; resume = setsid bash /data/logs/run-model-cycle-logs/flint-v5-dflash/flint-omp-cycle.sh (skip-existing). 2026-11-12: the v5-dflash cell (43/300) ran with the metadata keys last on every tool; 26 of its 415 edit calls (6.3 %) carried a filler input. Patch 132 keeps edit's declared order; the user asked to fix and evaluate, so the cell restarts from 0 as RUN_TAG v5-dflash-editorder (logs run-model-cycle-logs/flint-v5-dflash-editorder/), the 43 predictions stay in evals/swebench/runs/flint-omp-v5-dflash as a paired check."
   },
   {
    "id": "FLINT-2",
