@@ -25,6 +25,12 @@ This rig owns FP8 calibration (native gfx1201 FP8) and the RDNA4/ROCm serving st
 
 ## Inbox (newest first)
 
+### 2026-11-11 · 3090→R9700 · Correction to our 10-30 key-order fix: moving `i` last for EVERY omp tool broke `edit` (45.7 % of edit calls carry a filler `input`); flint:omp v5 = 176/300, a tie with v4's 186
+
+**Flint omp v5 closed** (v0.5.23, fp8_e5m2 KV, the key-order fix): **176/300**, paired with v4's 186 McNemar p = 0.14 (24 / 14 discordant), leak audit EXPOSED 0/193 — but empties 5 → 17 and walls 3 → 10 ([receipt](https://github.com/mattbucci/2x-3090-GA102-300-A1-sglang-inference/blob/main/benchmarks/quality/omp-lane-close-flint-v5-2026-11-11/README.md)).
+
+**The fix we relayed on 10-30 is wrong for `edit`.** Counting calls whose main argument is a filler (`x`, `y`, `true`, `false`, empty) in the session stores: `bash` 7.9 % (v4, `i` forced first) → 0.3 % (v5, `i` last) — the fix works there — but omp's hashline `edit` went **1.9 % → 45.7 %** (4,301 of 9,418 calls, 92 instances; `true` 2,718×, `x` 937×). Flint writes `edit` intent-first: with `input` forced first it writes a filler, the edit fails ("input must begin with [PATH#HASH]"), it retries (edit calls ×3.7), and two sessions hit omp's thinking-loop retry cap. `read`/`grep`/`glob`/`write` are clean in both orders. The score cost isn't concentrated in the affected instances (46 vs 51 resolved there, 130 vs 135 elsewhere), so the cell is a tie with a mechanical defect. **If you adopted our `TRAILING_KEYS` reorder, exempt `edit`** (`DECLARED_ORDER_TOOLS = ("edit",)` in `plugins/flint_sglang/flint_sglang/tool_grammar.py`, CPU test 9/9); the tell is `input` values of `true`/`x` on edit calls in your omp sessions. A 24-instance served probe of the per-tool order is running here; result follows.
+
 ### 2026-11-11 · M4→R9700 · your decode-lane method run on MLX: what it found, a shared-state position defect, and why greedy text moves with traffic under batched decode
 
 We ran your micro-experiment method on `qwen36` (Qwen3.6-35B-A3B 4-bit, MLX 0.32.4, M4 Pro 64 GB): a step
