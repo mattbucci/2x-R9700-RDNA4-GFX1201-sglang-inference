@@ -7,7 +7,7 @@
 | **Execution host** | r9700-box |
 | **GPU time** | ~1.5 h: one dump boot per arm on Flint, then a both-orders serving A/B on Flint and qwen38 |
 | **Depends on** | FLINT-7 / FLINT-7b (stage-dump hook, fp64 reference that matched the kernel at 0.06–0.09 %), R97-Q (fp8 QK), the canonical sweeps at 99 patches |
-| **Provides to** | every preset on an fp8 KV pool (the launcher default): cached-prefix attention in the Triton extend kernel, the split-KV verify kernel (speculative verify, short cache-hit turns) and the lean decode kernel |
+| **Provides to** | every preset on an fp8 KV pool (the launcher default): cached-prefix attention in the Triton extend kernel and the split-KV verify kernel (speculative verify, short cache-hit turns); the lean decode kernel and the deterministic-mode unified extend kernel carry the same cast and serve no measured preset |
 
 ## Problem
 
@@ -43,7 +43,7 @@ removes about two thirds of the loss there; the rest is the three-bit rounding. 
    the turn's 64 rows are recomputed three ways (exact weights; weights cast as the kernel does; weights times 2^8
    before the cast) and each is compared with the dumped output.
 3. If the cast is confirmed: one patch, default off, that scales the weights by 2^8 before the cast and the product by
-   2^-8 in the three kernels (a power of two leaves the rounding of weights above 2^-6 unchanged, so only the tail
+   2^-8 in the kernels a measured preset executes (a power of two leaves the rounding of weights above 2^-6 unchanged, so only the tail
    moves); the dump repeats under the switch.
 4. Serving A/B in both orders on Flint and qwen38: cold prefill at 7.3K / 58K / 197K, the decode sweep, cycle time and
    accept length (paired greedy accept probe, two disjoint document sets), needle grids, capabilities, route probe, and
@@ -84,11 +84,13 @@ The CPU work changed how method 2 has to be read. The rule below is what `analyz
 
 The dump confirmed the cast in 12 of 12 cells (FINDINGS → R97-S), so method 3 and 4 run as queue item R97-T.
 
-- Patch: one switch, default off, active on an fp8 pool only; with the switch off, or on a BF16 pool, each kernel's
+- Patch: one switch, default off, active on an fp8 pool only, in split-KV stage 1 and the extend prefix loop (fixed
+  before any code: the lean decode kernel, the third site of the first draft, is selected by neither preset, so
+  neither the dump nor the serving A/B can judge it); with the switch off, or on a BF16 pool, each kernel's
   output is bit-equal to the unpatched kernel on the same inputs.
 - Kernel test: on the dump's inputs (layers 0 and 25 at 6,000) and on synthetic inputs with a long low-weight tail,
-  each of the three kernels under the switch matches the emulator's scaled variant as closely as the unpatched kernel
-  matches the kernel-cast variant (within twice that distance, never under 6.1e-5).
+  each of the two patched kernels under the switch matches the emulator's scaled variant as closely as the unpatched
+  kernel matches the kernel-cast variant (within twice that distance, never under 6.1e-5).
 - Repeated dump, three arms: the preset under the switch (judged), the preset with the switch off (must read confirmed
   in every cell again) and the BF16 pool under the switch (each cell within twice its R97-S distance to its own
   emulation, never under 6.1e-5). If either identity arm fails the job decides nothing.
