@@ -1357,7 +1357,8 @@
     "the open performance adoptions (RAD-30, RAD-10c, FLINT-4b) landed or closed and their canonical sweeps re-measured"
    ],
    "next_action": "Leave-one-out per performance mechanism on every preset that turns it on, both orders in one session: canonical decode rows, cold prefill, warm first-token time, cycle time and accept length on speculative presets; group arms for mechanisms that only pay together. Owner decision: the consolidation runs before the SWE-bench cells resume.",
-   "test_gate": "Disposition per mechanism: keep at 3 % or more on any headline row of any shipped preset, drop under 1 % everywhere, between only when the patch is small and never needed a manual edit on a rebase; every arm carries its active or inactive log line and a receipt."
+   "test_gate": "Disposition per mechanism: keep at 3 % or more on any headline row of any shipped preset, drop under 1 % everywhere, between only when the patch is small and never needed a manual edit on a rebase; every arm carries its active or inactive log line and a receipt.",
+   "progress": "Session files and driver exist for flint-nospec, qwen38-nospec and qwen38-dspark. For laguna, north-mini, coder-reap-25b, nemotron-omni and qwen36-27b (arms 078, 080, 081, 084, 114, 041) the boot logs on disk predate the present series: scripts/bench/consol_capture_boot_logs.sh takes one live-tree boot log per preset (stub-tested, scripts/test/test_consol_capture_boot_logs.py), queued behind the R97-T serving A/B; the markers of those session files are written against these logs. Development trees are rebuilt once the R97-T verdict fixes the series length."
   },
   {
    "id": "CONSOL-2",

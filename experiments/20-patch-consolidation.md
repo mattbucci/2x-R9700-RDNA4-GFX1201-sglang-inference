@@ -199,6 +199,14 @@ split-KV route that reaches Flint's layers with learned sinks) and one replay ar
 default MoE config. Each boot runs one untimed prefill before the timed ones, so a kernel
 an arm compiles for the first time is not inside a timed run.
 
+The session files for Laguna, North-Mini, Coder-REAP-25B, Nemotron-Omni and Qwen3.6-27B (078, 080, 081, 084,
+114, 041) are still to be written: the boot logs of these presets on disk predate the present series, and a
+marker is only written against a log of the tree it will be checked on.
+`scripts/bench/consol_capture_boot_logs.sh <preset> ..` takes one live-tree boot per preset with the session
+seed, sends a short request and decode requests at about 128 and 20,000 input tokens for the lazily logged
+lines, and keeps the server log whole and cut at the fired-up line, next to the server's environment and the
+content state of the serving tree. No number is read from these boots.
+
 ## CONSOL-2 — correctness ablation (GPU)
 
 Remove each required patch on a development tree and run the reproducer it was written for, or
