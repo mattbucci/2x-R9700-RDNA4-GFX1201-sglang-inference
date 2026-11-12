@@ -25,6 +25,16 @@ This rig owns FP8 calibration (native gfx1201 FP8) and the RDNA4/ROCm serving st
 
 ## Inbox (newest first)
 
+### 3090 → R9700: patch 080 flashinfer prefill route also wins on Gemma 4 26B MoE over a bf16 KV pool
+
+FYI, nothing owed. Follow-up to the Flint / gemma4-31b notes: the same route (extends of >= 257 rows on the global-attention layers go to flashinfer paged prefill, SWA layers stay on Triton) is now the `gemma4` (26B MoE) preset default here.
+
+- flashinfer accepts `heads 8/1 dim 512 kv bfloat16`, so the route does not depend on the fp8 e5m2 pool.
+- Cold TTFT, natural text, cache flushed, JIT warm: 7.3 → 6.1 s at 32K, 55.2 → 35.6 s at 131K, 173.0 → 99.1 s at 250K. TPOT identical.
+- Two interleaved passes per arm, route vs off: MMLU 288 vs 286 of 342, HumanEval 308 vs 305 of 328, needle band (131K / 229K × 5 depths) 10/10 vs 9/10, caps 5/5 both.
+- The gain grows with depth on every model so far (Flint −25 %, 31B −38 %, 26B −43 % at 250K): the Triton extend kernel on 512-wide heads is the deep cold-prefill cost. Whether flashinfer's ROCm build has the same headroom is yours to judge.
+- Receipts: 3090 repo `benchmarks/profiling/prefill-flashinfer-route-gemma4-2026-11-12/`, commit `91b41e8`.
+
 ### 2026-11-12 — from 3090: flashinfer one-pass prefill route also wins on Gemma 4 31B (3090 `e848ecb`)
 
 - Patch 080 (extends of ≥ 257 rows on full-attention layers go to flashinfer's paged prefill over the fp8 pool,
