@@ -23,10 +23,10 @@ in [experiments/](experiments/README.md). The active performance programme is
   same ladder 21/21 to 245,172 actual tokens.
 - **Qwen3.8-27B-FP8 is the quality flagship**: fleet-best LAB-Bench 42.3 % (no-think multiple choice),
   MMLU 84.2 %, HumanEval 93.3 %, 7/7 agentic rungs to 245,150 actual tokens. The preset is DSpark
-  speculative decoding through the split-KV verify kernel: **60.7 / 81.0 / 74.5 / 60.6 tok/s at 24 / 7.3K /
+  speculative decoding through the split-KV verify kernel: **60.7 / 81.3 / 53.6 / 60.5 tok/s at 24 / 7.3K /
   58K / 197K input** (canonical think-off sweep, 5-run medians; the rate follows the text's acceptance) against
   35.6 / 34.9 / 33.3 / 29.9 on the no-spec server (`QWEN38_SPEC=0`; pools 733K no-spec, 429K with DSpark). Cold
-  prefill of a 197K prompt is 173 s; a 1-token agentic turn on a 176K cached prefix is 0.17–0.35 s
+  prefill of a 197K prompt is 98 s; a 1-token agentic turn on a 176K cached prefix is 0.17–0.35 s
   (`extra_buffer` hybrid cache + the 64-row split-KV turn route); capability probe 5/5.
 - **Flint FP8 serves** (patch 105, strict tool schemas) with an FP8 KV cache (1.05M full-attention pool
   tokens, 2× bf16's): 45.3 → 38.6 tok/s from 14 to 219K actual input; basic / tool-call / thinking probes pass, the
@@ -78,7 +78,7 @@ server as 256K-depth throughput.
 ![Spec-decode coverage: short-depth tok/s per draft lane, with the measured at-depth value (red = collapse at true 256K, white = holds)](benchmarks/specdecode_fleet.png)
 
 Only Qwen3.8-27B drafts hold a gain at depth: the preset's DSpark lane (RedHatAI speculator through the split-KV
-verify kernel), 60.6 tok/s at 197K actual input against 29.9 no-spec; a DFlash2 drafter also holds and is not
+verify kernel), 60.5 tok/s at 197K actual input against 29.9 no-spec; a DFlash2 drafter also holds and is not
 adopted (one needle miss). Every other EAGLE3/DFlash draft that wins at short depth collapses at true 256K
 (0.8–1.2 tok/s at 240–244K): green bars are short-depth capability. Data: [`benchmarks/specdecode.json`](benchmarks/specdecode.json).
 
@@ -131,9 +131,9 @@ Qwen3.8-27B files ([receipt](benchmarks/radiance-parity/README.md)). Decode is t
 
 | Lane | vllm-radiance | This stack | Gap | Experiments that close it, in run order |
 |---|---|---|---|---|
-| FP8, no speculation | 35.4 / 35.0 / 33.7 / 30.4 | 35.6 / 34.9 / 33.3 / 29.9 | 0.99–1.02× | RAD-22 decode GEMV, RAD-5a Triton norm, RAD-23 DeltaNet GEMV, RAD-25 in-graph all-reduce and RAD-30 BF16 attention sum are in the preset (patches 122–124, 129, 130); RAD-15 int8 LM head is opt-in for greedy decode (patch 127, +1–2.5 %); its sampling path, RAD-3 GEMM weight layout |
-| FP8 + DFlash2 | 99.9 / 99.7 / 87.9 / 91.0 | 81.2 / 77.9 / 59.6 / 57.7 | 1.2–1.6× | RAD-27 grouped verify prefix stage and RAD-29 verify-row GEMM are in the preset (patches 125, 128; 126 is DSpark's draft stage); RAD-18 content-adaptive block length, RAD-7 low-bit draft head |
-| Cold prefill | 4,137 / 3,631 / 2,520 | 2,779 / 2,035 / 1,155 | 1.5–2.2× | RAD-30 is in the preset (time ×0.84–0.93); RAD-10c prefix-attention kernel port, RAD-20 GEMM tiles at M ≥ 64 and chunk size |
+| FP8, no speculation | 35.4 / 35.0 / 33.7 / 30.4 | 35.6 / 34.9 / 33.3 / 29.9 | 1.00–1.02× | RAD-22 decode GEMV, RAD-5a Triton norm, RAD-23 DeltaNet GEMV, RAD-25 in-graph all-reduce and RAD-30 BF16 attention sum are in the preset (patches 122–124, 129, 130); RAD-15 int8 LM head is opt-in for greedy decode (patch 127, +1–2.5 %); its sampling path, RAD-3 GEMM weight layout |
+| FP8 + DFlash2 | 99.9 / 99.7 / 87.9 / 91.0 | 81.2 / 85.8 / 76.1 / 57.6 | 1.2–1.6× | RAD-27 grouped verify prefix stage and RAD-29 verify-row GEMM are in the preset (patches 125, 128; 126 is DSpark's draft stage); RAD-18 content-adaptive block length, RAD-7 low-bit draft head |
+| Cold prefill | 4,137 / 3,631 / 2,520 | 2,854 / 2,618 / 2,027 | 1.2–1.5× | RAD-30 and the RAD-10c prefill attention kernel are in the preset (patches 130, 131); RAD-20 GEMM tiles at M ≥ 64 and chunk size |
 | MXFP4, no speculation | 51.6 / 50.8 / 47.4 / 41.0 | 34.3 / 33.6 / 31.8 / 28.4 | 1.4–1.5× | RAD-11 split-layout census and the M > 32 repack path, RAD-21 MXFP4 + DFlash2 |
 
 Measurement runs first (RAD-2, 12, 13, 14, 10 and 16 need no tree change) so ports follow measured worth. Targets: 33 tok/s

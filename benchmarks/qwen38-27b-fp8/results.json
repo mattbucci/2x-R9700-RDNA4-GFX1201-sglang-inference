@@ -1,53 +1,53 @@
 {
   "model": "Qwen3.8-27B official FP8 (dense DeltaNet VL+video) + DSpark",
-  "engine": "SGLang v0.5.22 + 98 patches",
+  "engine": "SGLang v0.5.22 + 99 patches",
   "method": "completion-token-counted streaming TPOT median (decode_ab, 5-run)",
   "hardware": "2x R9700 TP=2",
-  "timestamp": "2026-11-11 v0.5.22+98p shipped preset (patches 121-126, 128, 129, patch 130 BF16 wire for the two-rank attention sum) think-off",
+  "timestamp": "2026-11-11 v0.5.22+99p shipped preset (patches 121-126, 128-130, patch 131 one-pass HIP prefill attention with the fp8 QK product from 257 rows) think-off",
   "output_tokens": 80,
   "context_sweep": [
     {
       "context": 128,
       "input_len": 24,
       "actual_input_tokens": 24,
-      "tpot_ms": 16.48,
-      "tok_per_sec": 60.675,
-      "ttft_ms": 104.6
+      "tpot_ms": 16.46,
+      "tok_per_sec": 60.736,
+      "ttft_ms": 101.8
     },
     {
       "context": 8192,
       "input_len": 7331,
       "actual_input_tokens": 7331,
-      "tpot_ms": 12.35,
-      "tok_per_sec": 80.951,
-      "ttft_ms": 131.8
+      "tpot_ms": 12.31,
+      "tok_per_sec": 81.257,
+      "ttft_ms": 130.9
     },
     {
       "context": 65536,
       "input_len": 58483,
       "actual_input_tokens": 58483,
-      "tpot_ms": 13.42,
-      "tok_per_sec": 74.495,
-      "ttft_ms": 138.0
+      "tpot_ms": 18.65,
+      "tok_per_sec": 53.612,
+      "ttft_ms": 134.9
     },
     {
       "context": 221184,
       "input_len": 197326,
       "actual_input_tokens": 197326,
-      "tpot_ms": 16.51,
-      "tok_per_sec": 60.555,
-      "ttft_ms": 124.0
+      "tpot_ms": 16.52,
+      "tok_per_sec": 60.518,
+      "ttft_ms": 125.3
     }
   ],
   "throughput_sweep": [
     {
       "concurrency": 1,
-      "throughput": 60.675,
-      "tpot_ms": 16.48,
+      "throughput": 60.736,
+      "tpot_ms": 16.46,
       "ttft_ms": 0
     }
   ],
-  "note": "canonical 4-point sweep on the shipped qwen38 preset (DSpark, TP-split DeltaNet projections, patches 122-126, 128, 129 and the BF16 attention-sum wire of patch 130 exported by launch.sh), 5 runs, EOS; pool 428,579 tokens. Completion tokens per run: 80 / 38 / 33 / 37, the same on every run, the continuations of previous_context_sweep_2026_11_10_97p, so the two rows compare kernels: patch 130 (the two-rank attention sum crosses the cards in BF16, without the FP32 detour) takes the four points from 59.628 / 79.822 / 73.089 / 59.471 (+1.8 % / +1.4 % / +1.9 % / +1.8 %). Cold prefill on this server (flush_cache, 2 runs): 2,720 / 1,996 / 1,138 tok/s at 7.3K / 58K / 197K, 173.3 s for the 197K prompt (x0.838 / x0.876 / x0.928 of the 97-patch times); capability probe 5/5 (capabilities-canonical-dspark-2026-11-11-98p.json); greedy route probe 10/10 including the concurrent-request case (route-canonical-dspark-2026-11-11-98p.json). Receipts: decode-canonical-dspark-2026-11-11-98p.json, prefill-canonical-dspark-2026-11-11-98p.json; the DFlash2 comparison arms of the same sweep (custom all-reduce and RCCL) are decode-canonical-dflash2-2026-11-11-98p.json and decode-canonical-dflash2-rccl-2026-11-11-98p.json.",
+  "note": "canonical 4-point sweep on the shipped qwen38 preset (DSpark, TP-split DeltaNet projections, patches 122-126 and 128-131 exported by launch.sh), 5 runs, EOS; pool 428,579 tokens. The one change against previous_context_sweep_2026_11_11_98p is patch 131, the one-pass HIP prefill attention kernel (fp8 QK product, extends of 257 rows or more). Completion tokens per run: 80 / 38 / 46 then 47 / 37. At 24, 7,331 and 197,326 input tokens the continuation is the previous sweep's and the rate is equal (x1.001 / x1.004 / x0.999). At 58,483 tokens the continuation changed: the previous sweep decoded 33 tokens at 74.495 tok/s on every run, this one decodes 46 tokens at 77.99 tok/s on the cold first run and 47 tokens at 53.38-53.66 tok/s on the four cache-hit runs, so the 58K median (53.612) is not comparable with the previous row; the rate of a speculative cell follows the acceptance of its one continuation, and the RAD-10c DSpark gate measured the verify cycle at x1.000-1.003 and the pooled greedy accept length at x1.0007 for this kernel. Cold prefill on this server (flush_cache, 2 runs): 2,829 / 2,587 / 2,015 tok/s at 7.3K / 58K / 197K, 97.9 s for the 197K prompt (x0.961 / x0.772 / x0.565 of the 98-patch times); capability probe 5/5 (capabilities-canonical-dspark-2026-11-11-99p.json); greedy route probe 10/10 including the concurrent-request case (route-canonical-dspark-2026-11-11-99p.json). Receipts: decode-canonical-dspark-2026-11-11-99p.json, prefill-canonical-dspark-2026-11-11-99p.json; the DFlash2 comparison arms of the same sweep (custom all-reduce and RCCL) are decode-canonical-dflash2-2026-11-11-99p.json and decode-canonical-dflash2-rccl-2026-11-11-99p.json.",
   "previous_context_sweep_2026_11_09": [
     {
       "context": 128,
@@ -202,6 +202,32 @@
       "input_len": 197326,
       "tpot_ms": 16.81,
       "tok_per_sec": 59.471
+    }
+  ],
+  "previous_context_sweep_2026_11_11_98p": [
+    {
+      "context": 128,
+      "input_len": 24,
+      "tpot_ms": 16.48,
+      "tok_per_sec": 60.675
+    },
+    {
+      "context": 8192,
+      "input_len": 7331,
+      "tpot_ms": 12.35,
+      "tok_per_sec": 80.951
+    },
+    {
+      "context": 65536,
+      "input_len": 58483,
+      "tpot_ms": 13.42,
+      "tok_per_sec": 74.495
+    },
+    {
+      "context": 221184,
+      "input_len": 197326,
+      "tpot_ms": 16.51,
+      "tok_per_sec": 60.555
     }
   ]
 }

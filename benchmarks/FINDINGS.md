@@ -2725,8 +2725,6 @@ memory hold): the custom all-reduce becomes the `flint` preset default with `ENA
 restore knob. The gain is on the no-spec path, which is the path a true 256K request takes; the DFlash2 path
 neither gains nor loses.
 
-## Evaluation methodology
-
 ### Canonical sweep with patches 121–130 in the preset: DSpark 60.7 / 81.0 / 74.5 / 60.6 tok/s, no speculation 35.6 / 34.9 / 33.3 / 29.9, the 197K cold prefill in 171–173 s (2026-11-11)
 
 Shipped `qwen38` preset from the live tree (98 patches, launcher defaults), `decode_ab.py` with five runs of 80
@@ -2816,6 +2814,72 @@ The fixed request matrix passes 10/10 on the preset boot from a flushed cache an
 
 Receipts: `flint-fp8/{decode,capabilities,route}-canonical-<arm>-2026-11-11-98p.json` for `nospec`, `nospec-rccl`
 and `dflash2`, `prefill-canonical-nospec-2026-11-11-98p.json`. These are the README and results.json rows.
+
+### Canonical sweep with patches 121–131 in the preset: the 197K cold prefill in 97–98 s (from 171–173 s), no speculation 35.6 / 34.9 / 33.3 / 29.9 tok/s, DSpark 60.7 / 81.3 / 53.6 / 60.5 with the 58K cell on a new continuation (2026-11-11)
+
+Shipped `qwen38` preset from the live tree (99 patches, launcher defaults), `decode_ab.py` with five runs of 80
+tokens, EOS on, thinking off, four boots: DSpark (the preset), the DFlash2 comparison drafter on the preset's
+in-graph all-reduce, the same on RCCL (`ENABLE_CUSTOM_ALL_REDUCE=0`), and `QWEN38_SPEC=0`. The one change against the
+previous canonical sweep is patch 131, the one-pass HIP prefill attention kernel with the fp8 QK product for extends
+of 257 rows or more (RAD-10c).
+
+| arm | 24 | 7,331 | 58,483 | 197,326 |
+|---|---:|---:|---:|---:|
+| DSpark (preset), median | 60.736 | 81.257 | 53.612 | 60.518 |
+| DSpark, previous canonical row (patches 121–130) | 60.675 | 80.951 | 74.495 | 60.555 |
+| no speculation, median | 35.574 | 34.857 | 33.259 | 29.868 |
+| no speculation, previous canonical row | 35.594 | 34.876 | 33.291 | 29.854 |
+| DSpark / no speculation | 1.71× | 2.33× | 1.61× | 2.03× |
+| DFlash2 drafter, in-graph all-reduce, median | 80.685 | 86.225 | 76.787 | 58.282 |
+| DFlash2 drafter, in-graph all-reduce, previous canonical row | 80.564 | 78.368 | 71.373 | 58.189 |
+| DFlash2 drafter, RCCL, median | 79.596 | 85.024 | 75.769 | 57.576 |
+| DFlash2 drafter, in-graph all-reduce, cold first run | 81.24 | 85.75 | 76.09 | 57.58 |
+| completion tokens, DSpark | 80 | 38 | 46, then 47 (was 33) | 37 |
+| completion tokens, no speculation | 80 | 38 | 46 (was 47, then 46) | 46, then 37 (was 37) |
+| completion tokens, both DFlash2 boots | 80 | 38 | 46 (was 47, then 46) | 37 |
+| cold prefill, DSpark server, s | | 2.591 | 22.611 | 97.918 |
+| cold prefill, DSpark server, previous sweep, s | | 2.695 | 29.297 | 173.329 |
+| cold prefill, no speculation, s | | 2.569 | 22.335 | 97.369 |
+| cold prefill, no speculation, previous sweep, s | | 2.638 | 28.738 | 170.880 |
+
+Cold prefill is the row patch 131 moves: time ×0.961 / ×0.772 / ×0.565 on the DSpark server and ×0.974 / ×0.777 /
+×0.570 without speculation (2,829 / 2,587 / 2,015 and 2,854 / 2,618 / 2,027 tok/s), the ratios of the RAD-10c gates
+(×0.951 / ×0.773 / ×0.564). Decode without speculation is unchanged, ×0.999 / ×0.999 / ×0.999 / ×1.000, and the
+DSpark cells at 24, 7,331 and 197,326 tokens decode the previous sweep's token counts at ×1.001 / ×1.004 / ×0.999.
+Pools are unchanged: 428,579 tokens with DSpark, 732,790 without speculation. Each server logs the kernel's route
+line on both ranks with zero declines after its sweep, next to the decode-kernel and wire lines of the previous
+sweep; the RCCL boot logs four RCCL reductions and no custom one.
+
+The DSpark cell at 58,483 tokens is a different text. The previous sweeps stopped after 33 tokens on all five runs
+(73.8–74.8 tok/s). This sweep stops after 46 tokens on the cold run (78.0 tok/s) and after 47 tokens on the four
+cache-hit runs (53.4 / 53.6 / 53.6 / 53.7), so the 53.6 median and the 74.5 before it measure two continuations and
+the ratio ×0.72 is not a kernel ratio. The sweep is greedy (temperature 0). The fp8 QK product changes the prefix state by
+rounding, and a greedy continuation that sits at a near-tie can leave it: the same boot's cold and cache-hit runs
+already differ by one token. What is measured for this kernel on the DSpark path is the RAD-10c gate above (four boots): verify cycle
+48.12 → 48.24 ms at 58K (×1.003, ×1.000 at the other depths) and pooled greedy accept length 3.804 → 3.806 tokens per
+verify over 96 paired documents (×1.0007, 95 % interval 0.981–1.020). What is derived, not measured: at that cycle
+the three continuations take about 9, 12 and 18 cycles (3.6, 3.8 and 2.6 tokens per cycle); the canonical receipt
+records no cycle count and keeps 60 characters of text. CANON-VC adds the verify count per run to the receipt and
+repeats the DSpark boot, so the cell's rate can be split into cycle time and acceptance from its own data.
+
+The DFlash2 medians at 7,331 and 58,483 tokens are +10.0 % and +7.6 % on equal token counts (38 and 46): the decode
+time is 44 ms and 45 ms shorter, about one draft-and-verify cycle, while the 24-token and 197K cells repeat to
+×1.002. The verify rows are below the kernel's 257-row minimum, so this reads as one cycle fewer on a state that
+differs by rounding, not as a kernel gain; the same CANON-VC count would show it. The DFlash2 pair reads ×1.014 /
+×1.014 / ×1.013 / ×1.012 for the in-graph all-reduce on the medians and ×1.016 / ×1.013 / ×1.013 / ×1.012 on the cold
+first runs, on equal token counts. The route probe passes 10 of 10 on all four servers with three concurrent
+requests among its cases; the capability probe passes 5 of 5 on the three speculative servers.
+
+Against vllm-radiance: no speculation 1.00 / 1.00 / 1.01 / 1.02× (unchanged). DFlash2 on the cold first runs: 1.23 /
+1.16 / 1.16 / 1.58× behind (from 1.23 / 1.28 / 1.47 / 1.58×); the 58K cell decodes 46 tokens against radiance's 47
+on every run of this sweep, so it is not an equal-work cell, and the 7.3K cell moved by the one cycle above. Cold
+prefill is 1.45 / 1.39 / 1.24× behind (from 1.49 / 1.78 / 2.18×).
+
+Receipts: `qwen38-27b-fp8/{decode,capabilities,route}-canonical-<arm>-2026-11-11-99p.json` for `dspark`, `dflash2`,
+`dflash2-rccl` and (decode, route) `nospec`, `prefill-canonical-{dspark,nospec}-2026-11-11-99p.json`. These are the
+README and results.json rows.
+
+## Evaluation methodology
 
 ### SWE-bench answer leakage through git history and the web (found 2026-09-18)
 

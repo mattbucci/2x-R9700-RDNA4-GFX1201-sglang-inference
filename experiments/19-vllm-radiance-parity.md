@@ -206,6 +206,25 @@ are the cold first run (80 / 38 / 47 / 37 completion tokens, radiance's counts);
 | FP8 + DFlash2 | 99.9 / 99.7 / 87.9 / 91.0 | 81.2 / 77.9 / 59.6 / 57.7 | 1.2–1.6× | the cycle's excess over a plain step (the previous section's census); the DFlash2 cycle of this tree is not measured (RAD-29d) |
 | Cold prefill | 4,137 / 3,631 / 2,520 | 2,779 / 2,035 / 1,155 | 1.5–2.2× | the wire removed 0.5 / 4.0 / 13.2 s; the prefix attention is the largest remaining stage (RAD-10c port in serving A/B), then the depth-free stages (RAD-20) |
 
+## Measured gap with patches 121–131 in the preset (2026-11-11)
+
+Canonical sweep on the shipped `qwen38` preset after the one-pass HIP prefill attention kernel (patch 131, RAD-10c:
+radiance's kernel built from its Apache-2.0 source, fp8 QK product, extends of 257 rows or more), five runs per depth
+([no-spec](../benchmarks/qwen38-27b-fp8/decode-canonical-nospec-2026-11-11-99p.json),
+[DSpark](../benchmarks/qwen38-27b-fp8/decode-canonical-dspark-2026-11-11-99p.json): 60.7 / 81.3 / 53.6 / 60.5,
+[DFlash2](../benchmarks/qwen38-27b-fp8/decode-canonical-dflash2-2026-11-11-99p.json),
+[DFlash2 on RCCL](../benchmarks/qwen38-27b-fp8/decode-canonical-dflash2-rccl-2026-11-11-99p.json)). No-spec decode
+repeats the previous sweep to ×0.999–1.000. The DFlash2 cells are the cold first run on 80 / 38 / 46 / 37 completion
+tokens; radiance's counts are 80 / 38 / 47 / 37, so the 58K cell is one token short of radiance's on every run of this
+sweep and is not an equal-work comparison. The repeats read 80.7 / 86.2 / 76.8 / 58.3. The DSpark 58K cell left its
+33-token continuation for a 47-token one (53.6 against 74.5 tok/s, FINDINGS → canonical sweep at 99 patches).
+
+| Lane | vllm-radiance | SGLang, this tree | Gap | What the gap is made of |
+|---|---|---|---|---|
+| FP8, no speculation | 35.4 / 35.0 / 33.7 / 30.4 | 35.6 / 34.9 / 33.3 / 29.9 | 1.00–1.02× | unchanged by a prefill kernel: level at 24 and 7.3K tokens, 1–2 % at 58K and 197K (depth-bound decode attention, not profiled) |
+| FP8 + DFlash2 | 99.9 / 99.7 / 87.9 / 91.0 | 81.2 / 85.8 / 76.1 / 57.6 | 1.2–1.6× | the cycle's excess over a plain step; the 7.3K and 58K cells moved by about one cycle on equal token counts, which the sweep cannot attribute because it records no cycle count per cell (CANON-VC) |
+| Cold prefill | 4,137 / 3,631 / 2,520 | 2,854 / 2,618 / 2,027 | 1.2–1.5× | the kernel removed 0.07 / 6.4 / 73.5 s; 0.8 / 6.2 / 19.1 s remain against radiance and are not profiled since the port (candidates: RAD-20 GEMM tiles at M ≥ 64 and chunk size, RAD-19 DeltaNet conv block width) |
+
 ## Experiments on SGLang (ranked by expected tok/s per engineering day on the qwen38 no-spec step)
 
 Each one is a same-tree A/B with `scripts/bench/decode_ab.py --ignore-eos` at 24 / 7.3K / 58K / 197K in both orders,

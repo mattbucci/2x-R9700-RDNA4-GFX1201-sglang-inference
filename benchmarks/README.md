@@ -18,7 +18,7 @@ Fleet charts regenerated from the same files by `scripts/bench/generate_charts.p
 (SWE-bench Lite resolve rate per preset × scaffold from `quality/bakeoff-*.json`; cells carry a `harness`
 line so matrices run under different harnesses are labelled, never merged).
 
-### Qwen3.8-27B-FP8 (2026-11-11, v0.5.22 + 98 patches, HIP graphs on, DSpark speculative preset)
+### Qwen3.8-27B-FP8 (2026-11-11, v0.5.22 + 99 patches, HIP graphs on, DSpark speculative preset)
 
 Official vendor block-FP8 ship under the `qwen38` preset (TP=2, FP8-e4m3 KV, `MAX_RUNNING=1`,
 `--cuda-graph-max-bs-decode 1`, `--speculative-algorithm DSPARK` with the RedHatAI speculator (γ=8,
@@ -26,7 +26,8 @@ sliding-window draft, converted by `scripts/convert_dspark_speculators_config.py
 verify kernel (patch 100), `mem 0.88`, `chunked-prefill 4096`, TP-split DeltaNet projections (patch 121), one-row
 decode kernels (patches 122–124), GQA-grouped verify prefix stage (patch 125), windowed draft layers through the
 split-KV stage (patch 126), W8A16 GEMM for the verify rows (patch 128), in-graph custom all-reduce (patch 129), BF16 wire for the two-rank
-attention sum (patch 130)).
+attention sum (patch 130), one-pass HIP prefill attention with the fp8 QK product for extends of 257 rows or more
+(patch 131)).
 Canonical decode sweep (`decode_ab`, 5-run streaming-TPOT median, think-off, EOS;
 [qwen38-27b-fp8/results.json](qwen38-27b-fp8/results.json)); the no-spec server (`QWEN38_SPEC=0`, mem 0.85,
 732,790-token pool) is the reference curve in
@@ -34,11 +35,14 @@ Canonical decode sweep (`decode_ab`, 5-run streaming-TPOT median, think-off, EOS
 
 | Actual input tokens | 24 | 7,331 | 58,483 | 197,326 |
 |---|---:|---:|---:|---:|
-| **Decode tok/s, DSpark, patches 121–130 (preset default, 2026-11-11)** | **60.675** | **80.951** | **74.495** | **60.555** |
-| Decode tok/s, no-spec, same tree (2026-11-11, reference) | 35.594 | 34.876 | 33.291 | 29.854 |
-| Speed-up (DSpark vs no-spec, 2026-11-11) | 1.70× | 2.32× | 2.24× | 2.03× |
-| Decode tok/s, DFlash2 comparison drafter, same tree (2026-11-11, not a preset) | 80.564 | 78.368 | 71.373 | 58.189 |
-| Decode tok/s, DFlash2 comparison drafter on RCCL (`ENABLE_CUSTOM_ALL_REDUCE=0`), same tree | 79.520 | 77.599 | 70.615 | 57.748 |
+| **Decode tok/s, DSpark, patches 121–131 (preset default, 2026-11-11)** | **60.736** | **81.257** | **53.612** | **60.518** |
+| Decode tok/s, no-spec, same tree (2026-11-11, reference) | 35.574 | 34.857 | 33.259 | 29.868 |
+| Speed-up (DSpark vs no-spec, 2026-11-11) | 1.71× | 2.33× | 1.61× | 2.03× |
+| Decode tok/s, DFlash2 comparison drafter, same tree (2026-11-11, not a preset) | 80.685 | 86.225 | 76.787 | 58.282 |
+| Decode tok/s, DFlash2 comparison drafter on RCCL (`ENABLE_CUSTOM_ALL_REDUCE=0`), same tree | 79.596 | 85.024 | 75.769 | 57.576 |
+| Decode tok/s, DSpark, patches 121–130 (2026-11-11) | 60.675 | 80.951 | 74.495 | 60.555 |
+| Decode tok/s, no-spec, patches 121–130 (2026-11-11) | 35.594 | 34.876 | 33.291 | 29.854 |
+| Decode tok/s, DFlash2 comparison drafter, patches 121–130 (2026-11-11) | 80.564 | 78.368 | 71.373 | 58.189 |
 | Decode tok/s, DSpark, patches 121–129 (2026-11-10) | 59.628 | 79.822 | 73.089 | 59.471 |
 | Decode tok/s, no-spec, patches 121–129 (2026-11-10) | 35.022 | 34.320 | 32.744 | 29.181 |
 | Decode tok/s, DFlash2 comparison drafter, patches 121–129 (2026-11-10) | 79.059 | 76.986 | 69.983 | 57.359 |
@@ -54,34 +58,48 @@ Canonical decode sweep (`decode_ab`, 5-run streaming-TPOT median, think-off, EOS
 | Decode tok/s, DSpark + split-KV verify, v0.5.20 (2026-09-27) | 35.493 | 44.512 | 31.631 | 31.874 |
 | Decode tok/s, no-spec (2026-09-19 canonical) | 22.543 | 22.227 | 21.438 | 19.955 |
 
-Receipts: [DSpark](qwen38-27b-fp8/decode-canonical-dspark-2026-11-11-98p.json),
-[no-spec](qwen38-27b-fp8/decode-canonical-nospec-2026-11-11-98p.json),
-[DFlash2](qwen38-27b-fp8/decode-canonical-dflash2-2026-11-11-98p.json),
-[DFlash2 on RCCL](qwen38-27b-fp8/decode-canonical-dflash2-rccl-2026-11-11-98p.json); cold prefill at 7.3K / 58K / 197K is
-2,720 / 1,996 / 1,138 tok/s on the DSpark server and 2,779 / 2,035 / 1,155 without speculation (173.3 s and 170.9 s at
-197K; the 97-patch sweep read 2,279 / 1,748 / 1,056 and 2,334 / 1,785 / 1,072)
-([DSpark](qwen38-27b-fp8/prefill-canonical-dspark-2026-11-11-98p.json),
-[no-spec](qwen38-27b-fp8/prefill-canonical-nospec-2026-11-11-98p.json)), capability probe 5/5 on the three speculative
-servers ([DSpark](qwen38-27b-fp8/capabilities-canonical-dspark-2026-11-11-98p.json),
-[DFlash2](qwen38-27b-fp8/capabilities-canonical-dflash2-2026-11-11-98p.json),
-[DFlash2 on RCCL](qwen38-27b-fp8/capabilities-canonical-dflash2-rccl-2026-11-11-98p.json)), greedy route probe 10/10 on
-all four servers, the concurrent-request case included (`route-canonical-<arm>-2026-11-11-98p.json`). The DFlash2 rows
+Receipts: [DSpark](qwen38-27b-fp8/decode-canonical-dspark-2026-11-11-99p.json),
+[no-spec](qwen38-27b-fp8/decode-canonical-nospec-2026-11-11-99p.json),
+[DFlash2](qwen38-27b-fp8/decode-canonical-dflash2-2026-11-11-99p.json),
+[DFlash2 on RCCL](qwen38-27b-fp8/decode-canonical-dflash2-rccl-2026-11-11-99p.json); cold prefill at 7.3K / 58K / 197K is
+2,829 / 2,587 / 2,015 tok/s on the DSpark server and 2,854 / 2,618 / 2,027 without speculation (97.9 s and 97.4 s at
+197K; the 98-patch sweep read 2,720 / 1,996 / 1,138 and 2,779 / 2,035 / 1,155, the 97-patch sweep 2,279 / 1,748 /
+1,056 and 2,334 / 1,785 / 1,072)
+([DSpark](qwen38-27b-fp8/prefill-canonical-dspark-2026-11-11-99p.json),
+[no-spec](qwen38-27b-fp8/prefill-canonical-nospec-2026-11-11-99p.json)), capability probe 5/5 on the three speculative
+servers ([DSpark](qwen38-27b-fp8/capabilities-canonical-dspark-2026-11-11-99p.json),
+[DFlash2](qwen38-27b-fp8/capabilities-canonical-dflash2-2026-11-11-99p.json),
+[DFlash2 on RCCL](qwen38-27b-fp8/capabilities-canonical-dflash2-rccl-2026-11-11-99p.json)), greedy route probe 10/10 on
+all four servers, the concurrent-request case included (`route-canonical-<arm>-2026-11-11-99p.json`). The DFlash2 rows
 are the third-party tcclaviger FP8 drafter radiance serves, a comparison input. Its cold first runs, the cells the
-radiance gap table uses, read 81.2 / 77.9 / 59.6 / 57.7 on 80 / 38 / 47 / 37 completion tokens, radiance's own
-counts; the repeats at 58K decode a 46-token continuation at 71.4 (the patches 121–129 sweep: cold runs 79.3 / 76.8 /
-58.7 / 56.8 on the same token counts; the patches 121–126 sweep: 65.7 / 75.6 / 67.7 / 52.0 with 46 tokens at 58K,
-repeats at 197K on a 46-token continuation). The custom all-reduce and RCCL DFlash2 servers decode the same token
-counts on every run and read ×1.013 / ×1.010 / ×1.011 / ×1.008 for the custom path, so the preset default also holds
+radiance gap table uses, read 81.2 / 85.8 / 76.1 / 57.6 on 80 / 38 / 46 / 37 completion tokens; radiance's own
+counts are 80 / 38 / 47 / 37, so the 58K cell of this sweep is one token short of radiance's on every run and the
+repeats read 76.8 on the same 46 tokens (the patches 121–130 sweep: cold runs 81.2 / 77.9 / 59.6 / 57.7 on radiance's
+counts, repeats at 58K on 46 tokens at 71.4; the patches 121–129 sweep: 79.3 / 76.8 / 58.7 / 56.8; the patches
+121–126 sweep: 65.7 / 75.6 / 67.7 / 52.0 with 46 tokens at 58K, repeats at 197K on a 46-token continuation). The
+DFlash2 medians at 7.3K and 58K are +10.0 % and +7.6 % over the patches 121–130 row on equal token counts: the decode
+time of the 38 and 46 tokens is 44 ms and 45 ms shorter, about one draft-and-verify cycle, while the 24-token and
+197K cells repeat to ×1.002; the sweep does not record cycles per cell, so this is read as acceptance, not as a
+kernel gain. The custom all-reduce and RCCL DFlash2 servers decode the same token
+counts on every run and read ×1.014 / ×1.014 / ×1.013 / ×1.012 for the custom path, so the preset default also holds
 behind this drafter. A DSpark rate is draft-and-verify cycles per
 second times accepted tokens per cycle, and the second factor follows the continuation a run lands on: the
 2026-11-01 deep medians sat on a 45-token continuation, the 2026-11-09 ones on 47 and 37 tokens, the later ones
-on 33 and 37, so the DSpark rows of different days do not compare kernels (FINDINGS → RAD-1). The 2026-11-10
+on 33 and 37, the patches 121–131 row on 47 and 37, so the DSpark rows of different days do not compare kernels
+(FINDINGS → RAD-1). The 2026-11-10
 DSpark rows of patches 121–124 and 121–126 share their 80 / 38 / 33 / 37-token continuations and do: +14 % / +20 % /
 +42 % at 7.3K / 58K / 197K from the verify prefix stage and the windowed draft stage (patches 125–126), −0.4 % at 24
 tokens. The patches 121–129 row sits on the same four continuations: +17.3 % / +10.2 % / +9.4 % / +17.3 % from the verify-row GEMM (patch
 128) and the in-graph all-reduce (patch 129). The patches 121–130 row sits on them too: +1.8 % / +1.4 % / +1.9 % /
-+1.8 % from the BF16 attention-sum wire (patch 130), with cold prefill time ×0.84 / ×0.88 / ×0.93. The no-spec rows compare throughout: +13–16 % from the layout (patch
-121), then +24–28 % from the one-row decode kernels (patches 122–124), then +1.7–2.3 % from the all-reduce (patch 129), then +1.6–2.3 % from the wire (patch 130).
++1.8 % from the BF16 attention-sum wire (patch 130), with cold prefill time ×0.84 / ×0.88 / ×0.93. The patches
+121–131 row keeps three of the four continuations and reads ×1.001 / ×1.004 / ×0.999 at 24 / 7.3K / 197K tokens (patch
+131 is a prefill kernel: cold prefill time ×0.96–0.97 / ×0.77–0.78 / ×0.57). At 58K it leaves the 33-token
+continuation: 46 tokens at 78.0 tok/s on the cold first run, 47 tokens at 53.4–53.7 on the four cache-hit runs, the
+token counts of the no-spec and DFlash2 servers, so the 53.6 median does not compare with the 74.5 above it; the
+RAD-10c DSpark gate measured the verify cycle at ×1.000–1.003 and the pooled greedy accept length at ×1.0007 for this
+kernel. The no-spec rows compare throughout: +13–16 % from the layout (patch
+121), then +24–28 % from the one-row decode kernels (patches 122–124), then +1.7–2.3 % from the all-reduce (patch 129),
+then +1.6–2.3 % from the wire (patch 130), then ×0.999–1.000 with patch 131.
 The pool is 428,579 tokens on the DSpark server (430,725 with the all-reduce on RCCL, 206,324 on the replicated
 layout).
 
