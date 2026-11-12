@@ -715,7 +715,7 @@
     "the live tree is frozen while tail jobs read it: the dump hook lives in a PYTHONPATH dev tree and is off unless its switch names a directory"
    ],
    "id": "FLINT-7",
-   "next_action": "Per-layer stage dump on bare flint boots, BF16 KV pool first (stored keys equal the computed ones), then the preset: the 15-token probe prompt from a flushed cache (15 new / 0 cached), again from a flushed cache, and after one chat (14 / 1). For the 14 rows both states compute: attention output, attention sum, MoE output and layer output at every layer; the first stage that differs, its size, and the growth by layer. Runs ahead of RAD-30b so that a defect in the cache-hit path is known before that A/B spends its boots.",
+   "next_action": "Per-layer stage dump on bare flint boots, BF16 KV pool first (stored keys equal the computed ones), then the preset: the 15-token probe prompt from a flushed cache (15 new / 0 cached), again from a flushed cache, and after one chat (14 / 1). For the 14 rows both states compute, at every layer: attention input, q, k, v, attention output, output projection, MLP input and MLP output, plus the model output; the first stage that differs, its size, and the growth by layer. Queued as tail job 96-d (two boots from a development tree = the live tree plus a dump hook that is off without its switch) behind RAD-30b, which had started when the job was ready: the gate bars a Flint preset change, not that measurement, and a defect found here means RAD-30b is measured again after the fix.",
    "resource": "gpu",
    "spec": "https://github.com/mattbucci/2x-R9700-RDNA4-GFX1201-sglang-inference/issues/27",
    "status": "in_progress",
