@@ -87,10 +87,11 @@ boot(){ # boot arm tree envs -> 0 up, 1 boot failure, 2 identity failure
   log "$name: up as $arm, seed $C_SEED, pool ${got:-unread} tokens, vram MiB $(vram)"
 }
 FAIL=""; STOP=""
-caps_once(){ "$PY" scripts/eval/validate_capabilities.py --port 23334 --save "$RCPT/capabilities.json" --tag "$1" > "$OUT/caps-$1-$2.log" 2>&1 || true
+caps_once(){ local x=(); [ -n "$C_CAPS_ARGS" ] && read -r -a x <<< "$C_CAPS_ARGS"
+  "$PY" scripts/eval/validate_capabilities.py --port 23334 "${x[@]}" --save "$RCPT/capabilities.json" --tag "$1" > "$OUT/caps-$1-$2.log" 2>&1 || true
   grep -E 'PASS|FAIL' "$OUT/caps-$1-$2.log" | cut -c1-70 | tr '\n' ';' | tee -a "$OUT/driver.log"; echo
   grep -q "$C_CAPS/$C_CAPS passed" "$OUT/caps-$1-$2.log"; }
-caps(){ log "caps $1 (all probes)"; caps_once "$1" 1 && return 0
+caps(){ log "caps $1 ($C_CAPS probes${C_CAPS_ARGS:+, $C_CAPS_ARGS})"; caps_once "$1" 1 && return 0
   log "caps $1: a probe failed, one repeat"; echo "$1" >> "$OUT/caps-repeated.txt"; caps_once "$1" 2; }
 prefill(){ log "untimed prefill $1 at $C_PREFILL_WARM: first-use kernel compiles stay out of the timed runs"
   "$PY" -u scripts/bench/prefill_ttft.py --port 23334 --contexts "$C_PREFILL_WARM" --runs 1 --label "$1-untimed" > "$OUT/prefill-untimed-$1.log" 2>&1 || { log "$1 untimed prefill FAIL"; return 1; }

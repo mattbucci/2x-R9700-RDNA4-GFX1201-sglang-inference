@@ -71,6 +71,23 @@ class Plan(unittest.TestCase):
         self.assertEqual(rows["b1-ctl1"][4], {"QWEN38_SPEC": "0"})
         self.assertEqual(rows["b1-p121a"][4], {"QWEN38_SPEC": "0", "SGLANG_A": "0"})
 
+    def test_skipped_capability_probes_reach_the_driver_and_fix_the_count(self):
+        with tempfile.TemporaryDirectory() as d:
+            for caps, flags, ok in ((3, ["--skip-vision", "--skip-video"], True), (3, [], False), (5, [], True),
+                                    (4, ["--skip-audio"], False)):
+                doc = session()
+                doc["caps"] = caps
+                if flags:
+                    doc["caps_args"] = flags
+                write(d, "s.json", doc)
+                if not ok:
+                    with self.assertRaises(SystemExit):
+                        cs.session(os.path.join(d, "s.json"))
+                    continue
+                with contextlib.redirect_stdout(io.StringIO()) as out:
+                    cs.cmd_shell(cs.session(os.path.join(d, "s.json")))
+                self.assertIn("C_CAPS_ARGS=" + (cs.shlex.quote(" ".join(flags)) if flags else "''"), out.getvalue())
+
     def test_an_environment_arm_without_a_marker_or_source_check_is_refused(self):
         with tempfile.TemporaryDirectory() as d:
             for arm in ({"name": "x", "env": {"K": "0"}, "server_env": {"K": "0"}},

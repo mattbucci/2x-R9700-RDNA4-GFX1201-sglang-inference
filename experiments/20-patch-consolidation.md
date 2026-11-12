@@ -199,9 +199,17 @@ split-KV route that reaches Flint's layers with learned sinks) and one replay ar
 default MoE config. Each boot runs one untimed prefill before the timed ones, so a kernel
 an arm compiles for the first time is not inside a timed run.
 
-The session files for Laguna, North-Mini, Coder-REAP-25B, Nemotron-Omni and Qwen3.6-27B (078, 080, 081, 084,
-114, 041) are still to be written: the boot logs of these presets on disk predate the present series, and a
-marker is only written against a log of the tree it will be checked on.
+`laguna-nospec.json` (078 and 080 as replay arms, 081 by its two switches), `north-mini-nospec.json` (078, 081),
+`coder-reap-25b-nospec.json` (084), `nemotron-omni-nospec.json` (114) and `qwen36-27b-nospec.json` (041) were
+written against boot logs of the present series: each control passes its identity rules on the real log at boot
+and at the end, and the same log is refused as every arm. 080 leaves the tree with the three patches that use its
+update policy (084, 085, 130); none of them is on Laguna's path. 084, 114 and 041 have no log line of their own,
+so their arms are identified by the tree on the server's path and the tree's source check. A session names the
+capability probes its preset does not have (`caps_args`), and the count it expects follows from them.
+
+At 99 patches the tree for 110 with 112 does not build: 131 no longer applies without them. That arm is not
+measured until its tree exists.
+
 `scripts/bench/consol_capture_boot_logs.sh <preset> ..` takes one live-tree boot per preset with the session
 seed, sends a short request and decode requests at about 128 and 20,000 input tokens for the lazily logged
 lines, and keeps the server log whole and cut at the fired-up line, next to the server's environment and the

@@ -5,6 +5,10 @@
  "spec": false,
  "seed": 7,
  "caps": 3,
+ "caps_args": [
+  "--skip-vision",
+  "--skip-video"
+ ],
  "block": 5,
  "decode": {
   "contexts": "128,8192,65536,221184",

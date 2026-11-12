@@ -1,0 +1,73 @@
+{
+ "session": "north-mini-nospec",
+ "preset": "north-mini",
+ "env": {},
+ "spec": false,
+ "seed": 7,
+ "block": 5,
+ "decode": {
+  "contexts": "128,8192,65536,221184",
+  "args": []
+ },
+ "prefill": {
+  "contexts": "8192,65536,221184",
+  "runs": 2
+ },
+ "poke": {},
+ "caps": 3,
+ "caps_args": [
+  "--skip-vision",
+  "--skip-video"
+ ],
+ "server_env": {
+  "SGLANG_USE_AITER": "0",
+  "SGLANG_HIP_BF16_ATTN_SUM": "unset",
+  "SGLANG_USE_1STAGE_ALLREDUCE": "unset",
+  "SGLANG_EXTEND_SPLITKV_MAX_TOKENS": "unset",
+  "SGLANG_EXTEND_FP8_QK": "unset",
+  "SGLANG_RDNA4_TRITON_RMSNORM": "unset",
+  "SGLANG_LAGUNA_FUSED_QK_RMSNORM": "unset"
+ },
+ "markers": {
+  "nospec": "'speculative_algorithm': None\\b",
+  "kvfp8": "'kv_cache_dtype': 'fp8_e4m3'",
+  "kvpool": "Full KV Cache is allocated\\. dtype: torch\\.float8_e4m3fn,",
+  "swapool": "SWA KV Cache is allocated\\. dtype: torch\\.float8_e4m3fn,",
+  "swatree": "Tree cache initialized: source=default impl=UnifiedRadixCache hybrid_swa=True hybrid_ssm=False",
+  "ar": "All-reduce call path: NCCL \\(custom AR disabled\\)",
+  "moecfg078": "Using MoE kernel config from [^\\n]{0,200}/E=128,N=384,device_name=AMD_Radeon_AI_PRO_R9700,dtype=fp8_w8a8,per_channel_quant=True\\.json",
+  "moecfg078down": "Using MoE kernel config from [^\\n]{0,200}/E=128,N=384,device_name=AMD_Radeon_AI_PRO_R9700,dtype=fp8_w8a8,per_channel_quant=True_down\\.json"
+ },
+ "arms": [
+  {
+   "name": "p078",
+   "patches": [
+    "078"
+   ],
+   "tree": "/data/sgl-v0522-consol/s{series}/p078",
+   "off": [
+    "moecfg078",
+    "moecfg078down"
+   ],
+   "on": {
+    "moedefault078": "Using default MoE kernel config\\. Performance might be sub-optimal! Config file not found at [^\\n]{0,200}/E=128,N=384,device_name=AMD_Radeon_AI_PRO_R9700,dtype=fp8_w8a8,per_channel_quant=True"
+   }
+  },
+  {
+   "name": "p081",
+   "patches": [
+    "081"
+   ],
+   "env": {
+    "SGLANG_RDNA4_TRITON_RMSNORM": "0"
+   },
+   "server_env": {
+    "SGLANG_RDNA4_TRITON_RMSNORM": "0"
+   },
+   "reads": {
+    "file": "sglang/srt/layers/layernorm.py",
+    "pattern": "_is_hip and get_bool_env_var\\(\\s*\\\"SGLANG_RDNA4_TRITON_RMSNORM\\\", \\\"True\\\"\\s*\\)"
+   }
+  }
+ ]
+}

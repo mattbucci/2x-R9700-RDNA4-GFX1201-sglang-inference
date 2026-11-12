@@ -1,0 +1,55 @@
+{
+ "session": "qwen36-27b-nospec",
+ "preset": "qwen36-27b",
+ "env": {},
+ "spec": false,
+ "seed": 7,
+ "block": 5,
+ "decode": {
+  "contexts": "128,8192,65536,221184",
+  "args": [
+   "--think-off"
+  ]
+ },
+ "prefill": {
+  "contexts": "8192,65536,221184",
+  "runs": 2
+ },
+ "poke": {
+  "chat_template_kwargs": {
+   "enable_thinking": false
+  }
+ },
+ "caps": 5,
+ "server_env": {
+  "SGLANG_USE_AITER": "0",
+  "SGLANG_HIP_BF16_ATTN_SUM": "unset",
+  "SGLANG_USE_1STAGE_ALLREDUCE": "unset",
+  "SGLANG_EXTEND_SPLITKV_MAX_TOKENS": "256",
+  "SGLANG_EXTEND_FP8_QK": "1"
+ },
+ "markers": {
+  "nospec": "'speculative_algorithm': None\\b",
+  "kvfp8": "'kv_cache_dtype': 'fp8_e4m3'",
+  "strategy": "'mamba_radix_cache_strategy': 'extra_buffer'",
+  "kvpool": "(?<![A-Za-z] )KV Cache is allocated\\. dtype: torch\\.float8_e4m3fn,",
+  "model": "Load weight end\\. [^\\n]{0,40}type=Qwen3_5ForConditionalGeneration, quant=awq, bits=4,",
+  "mlp": "\\[RDNA4\\] dense MLP: replicated over 2 ranks",
+  "deltanet": "\\[RDNA4\\] DeltaNet projections: replicated over 2 ranks",
+  "hybridtree": "Tree cache initialized: source=default impl=UnifiedRadixCache hybrid_swa=False hybrid_ssm=True",
+  "ar": "All-reduce call path: NCCL \\(custom AR disabled\\)",
+  "route112": {
+   "re": "extend split-KV route active: \\d+ new tokens in 64-row chunks \\(upcast_k=False\\)",
+   "late": true
+  }
+ },
+ "arms": [
+  {
+   "name": "p041",
+   "patches": [
+    "041"
+   ],
+   "tree": "/data/sgl-v0522-consol/s{series}/p041"
+  }
+ ]
+}

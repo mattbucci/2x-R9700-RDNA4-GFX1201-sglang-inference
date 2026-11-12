@@ -47,6 +47,10 @@ TTFT_MS = 20.0  # a warm first-token difference below this is not read as an eff
 EMPTY_SHA = hashlib.sha256(b"").hexdigest()[:16]  # spec_accept_probe.py keeps 16 hex digits of the text hash
 
 
+# probes of scripts/eval/validate_capabilities.py a session may skip for a preset without that capability
+CAPS_FLAGS = {"--skip-tools", "--skip-thinking", "--skip-vision", "--skip-video"}
+
+
 def load(path):
     try:
         with open(path) as f:
@@ -127,6 +131,11 @@ def session(path):
             problems.append(f"{a['name']}: an environment arm needs a log marker (off / on) or a source check (reads)")
         if a.get("env") and not a.get("server_env"):
             problems.append(f"{a['name']}: env without server_env (what the server process must show)")
+    bad = [x for x in s.get("caps_args", []) if x not in CAPS_FLAGS]
+    if bad:
+        problems.append(f"caps_args {bad}: only {sorted(CAPS_FLAGS)}")
+    if int(s["caps"]) != 5 - len(set(s.get("caps_args", []))):
+        problems.append(f"caps {s['caps']} with {len(set(s.get('caps_args', [])))} skipped probes: the validator runs five probes less the skipped ones")
     if s.get("spec") and not s.get("spec_probe"):
         problems.append("a speculative session needs spec_probe")
     if problems:
@@ -155,7 +164,7 @@ def cmd_shell(s):
         names |= set(a.get("env", {})) | set(a.get("server_env", {}))
     sp = s.get("spec_probe", {})
     out = {"C_NAME": s["session"], "C_PRESET": s["preset"], "C_SPEC": "1" if s.get("spec") else "0",
-           "C_SEED": str(s.get("seed", 7)), "C_CAPS": str(s["caps"]), "C_DECODE_CTX": s["decode"]["contexts"],
+           "C_SEED": str(s.get("seed", 7)), "C_CAPS": str(s["caps"]), "C_CAPS_ARGS": " ".join(s.get("caps_args", [])), "C_DECODE_CTX": s["decode"]["contexts"],
            "C_DECODE_ARGS": " ".join(s["decode"].get("args", [])), "C_PREFILL_CTX": s["prefill"]["contexts"],
            "C_PREFILL_RUNS": str(s["prefill"].get("runs", 2)), "C_PREFILL_WARM": str(s["prefill"].get("warm", 20000)), "C_UNSET": " ".join(sorted(names)),
            "C_SAMPLING": sp.get("sampling", ""), "C_LADDER_CTX": sp.get("contexts", s["decode"]["contexts"]),

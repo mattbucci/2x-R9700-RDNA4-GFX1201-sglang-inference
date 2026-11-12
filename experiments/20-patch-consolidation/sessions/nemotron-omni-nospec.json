@@ -1,0 +1,43 @@
+{
+ "session": "nemotron-omni-nospec",
+ "preset": "nemotron-omni",
+ "env": {},
+ "spec": false,
+ "seed": 7,
+ "block": 5,
+ "decode": {
+  "contexts": "128,8192,65536,221184",
+  "args": []
+ },
+ "prefill": {
+  "contexts": "8192,65536,221184",
+  "runs": 2
+ },
+ "poke": {},
+ "caps": 5,
+ "server_env": {
+  "SGLANG_USE_AITER": "0",
+  "SGLANG_HIP_BF16_ATTN_SUM": "unset",
+  "SGLANG_USE_1STAGE_ALLREDUCE": "unset",
+  "SGLANG_EXTEND_SPLITKV_MAX_TOKENS": "unset",
+  "SGLANG_EXTEND_FP8_QK": "1"
+ },
+ "markers": {
+  "nospec": "'speculative_algorithm': None\\b",
+  "kvfp8": "'kv_cache_dtype': 'fp8_e4m3'",
+  "strategy": "'mamba_radix_cache_strategy': 'no_buffer'",
+  "kvpool": "(?<![A-Za-z] )KV Cache is allocated\\. dtype: torch\\.float8_e4m3fn,",
+  "mambapool": "Mamba Cache is allocated\\. max_mamba_cache_size: \\d+,",
+  "ar": "All-reduce call path: NCCL \\(custom AR disabled\\)",
+  "moedefault": "Using default MoE kernel config\\. Performance might be sub-optimal! Config file not found at [^\\n]{0,200}/E=128,N=928,device_name=AMD_Radeon_AI_PRO_R9700,dtype=fp8_w8a8\\.json"
+ },
+ "arms": [
+  {
+   "name": "p114",
+   "patches": [
+    "114"
+   ],
+   "tree": "/data/sgl-v0522-consol/s{series}/p114"
+  }
+ ]
+}
