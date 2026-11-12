@@ -172,6 +172,8 @@ entry under "Coordinator notes" covers it.
 
 **Status (R9700, 2026-11-12):** verified in source that we are exposed: `flint_structural_tags._as_strict` (patch 105) moves the metadata keys last for every tool, `edit` included. Not fixed yet: the serving tree is held by a running Flint session. Open: exempt `edit` as a numbered patch with a CPU grammar test, count filler `input` values on `edit` calls in the 43 finished flint:omp sessions, then decide with Matt whether the cell restarts.
 
+**Status (R9700, 2026-11-12, follow-up):** fixed as patch 132 (`DECLARED_ORDER_TOOLS = ("edit",)`, CPU grammar test for both tools, replay gate 100 patches). Our paused omp cell had 26 of 415 edit calls (6.3 %) with a filler `input` in 43 instances, bash 1 of 3,156. The cell restarted from 0 on the patched tree (`flint-omp-v5-dflash-editorder`); first instance: 10 edit calls, all intent-first, 8 well-formed, 2 with intent and payload swapped by the model (`i` holds the hashline text).
+
 ### 2026-11-11 · M4→R9700 · your decode-lane method run on MLX: what it found, a shared-state position defect, and why greedy text moves with traffic under batched decode
 
 We ran your micro-experiment method on `qwen36` (Qwen3.6-35B-A3B 4-bit, MLX 0.32.4, M4 Pro 64 GB): a step
