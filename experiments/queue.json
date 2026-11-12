@@ -1345,7 +1345,7 @@
    "depends_on": [],
    "next_action": "Done. CONSOL-1 and CONSOL-2 take their arms from the reviewed records (ablation_arm, presets, reproducer); before them, a docs pass corrects the index rows and the PATCHES.md lanes the review found stale.",
    "test_gate": "97 records, every patch classed required / performance / opt-in / superseded, every performance and required record names its ablation arm (switch or tree without the patch) and the presets it runs on.",
-   "result": "Inventory and review at 98 patches (scripts/test/patch_inventory.py, experiments/20-patch-consolidation/inventory.json and review.json; no GPU). Reviewed classes: required 50 (4,212 added lines), performance 33 (6,392), opt-in 10 (3,923: 032 alone 1,796, 127 941, 065 406, 117 403), superseded 5 (68: 023, 027, 028, 037, 047); 36 differ from the mechanical guess, 21 are low-confidence. 76 patches drop alone in a strict replay, 22 carry dependents (the replay does not see imports: 084 and 085 need 080). No preset reaches 20 patches (the ten opt-in, 028, 037, 008, 045, 066, 073, 075, 085, 104, 115); 066 / 085 / 104 serve only glm4_moe.py, which has no launcher preset (owner's call). Dead code inside kept patches: about 200 lines in 004, a 986-line uncompiled .hip copy in 006, six switch families no preset sets. 38 patches have no receipt; stale or indirect measurements to redo in CONSOL-1: 106, 086, 087, 084, 085, 090-093, the unindexed block-size tune inside 027. One GPU confirm for a drop: nemotron-omni boot without 047. The native bindings of 122, 127 and 128 take no device guard (added at the merge). Merge candidates: 18 mechanism groups in the spec."
+   "result": "Inventory and review at 98 patches (scripts/test/patch_inventory.py, experiments/20-patch-consolidation/inventory.json and review.json; no GPU). Reviewed classes: required 50 (4,212 added lines), performance 33 (6,392), opt-in 10 (3,923: 032 alone 1,796, 127 941, 065 406, 117 403), superseded 5 (68: 023, 027, 028, 037, 047); 36 differ from the mechanical guess, 21 are low-confidence. 76 patches drop alone in a strict replay, 22 carry dependents (the replay does not see imports: 084 and 085 need 080). No preset reaches 20 patches (the ten opt-in, 028, 037, 008, 045, 066, 073, 075, 085, 104, 115); 066 / 085 / 104 serve only glm4_moe.py, which has no launcher preset (owner decision: GLM-4.5-Air stays supported, the three are kept as required). Dead code inside kept patches: about 200 lines in 004, a 986-line uncompiled .hip copy in 006, six switch families no preset sets. 38 patches have no receipt; stale or indirect measurements to redo in CONSOL-1: 106, 086, 087, 084, 085, 090-093, the unindexed block-size tune inside 027. One GPU confirm for a drop: nemotron-omni boot without 047. The native bindings of 122, 127 and 128 take no device guard (added at the merge). Merge candidates: 18 mechanism groups in the spec."
   },
   {
    "id": "CONSOL-1",
@@ -1356,7 +1356,7 @@
     "CONSOL-0",
     "the open performance adoptions (RAD-30, RAD-10c, FLINT-4b) landed or closed and their canonical sweeps re-measured"
    ],
-   "next_action": "Leave-one-out per performance mechanism on every preset that turns it on, both orders in one session: canonical decode rows, cold prefill, warm first-token time, cycle time and accept length on speculative presets; group arms for mechanisms that only pay together.",
+   "next_action": "Leave-one-out per performance mechanism on every preset that turns it on, both orders in one session: canonical decode rows, cold prefill, warm first-token time, cycle time and accept length on speculative presets; group arms for mechanisms that only pay together. Owner decision: the consolidation runs before the SWE-bench cells resume.",
    "test_gate": "Disposition per mechanism: keep at 3 % or more on any headline row of any shipped preset, drop under 1 % everywhere, between only when the patch is small and never needed a manual edit on a rebase; every arm carries its active or inactive log line and a receipt."
   },
   {
@@ -1380,7 +1380,7 @@
     "CONSOL-1",
     "CONSOL-2"
    ],
-   "next_action": "Rewrite the series as one patch per retained mechanism: fold follow-up fixes into the introducing patch, move switch defaults into the presets, remove the code of dropped arms, keep one restore knob per adopted mechanism; install the dropped-patch tree in a safe window.",
+   "next_action": "Rewrite the series as one patch per retained mechanism: fold follow-up fixes into the introducing patch, move switch defaults into the presets, remove the code of dropped arms, keep one restore knob per adopted mechanism; install the dropped-patch tree in a safe window. 066 / 085 / 104 (GLM-4.5-Air) are kept by owner decision and are never a dropped arm; with no checkpoint on disk their check is replay identity plus an import of glm4_moe.py.",
    "test_gate": "The merged series replays strictly onto the pristine base to a tree byte-identical to the live tree after the drops; replay gate with zero fallbacks, zero failures and a rejected second application; pyflakes shows no new line."
   },
   {

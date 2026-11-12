@@ -82,7 +82,9 @@ What the review changes for the later steps:
   127 (int8 LM head, greedy decode +1–2.5 %) is the one documented opt-in with a measured gain.
 - **No preset reaches 20 patches**: the ten opt-in, 028 and 037, and 008 (native build only), 045, 066, 073,
   075, 085, 104, 115. Three of them (066, 085, 104) serve only `glm4_moe.py`, which has no launcher preset:
-  whether GLM-4.5-Air stays supported decides 39 lines and is the owner's call, not an ablation result.
+  the owner keeps GLM-4.5-Air supported, so the three stay in the series as required and are never a drop
+  arm. No checkpoint is on disk: the merged series is checked on this path by replay identity and an import
+  of `glm4_moe.py`, not by a boot.
 - **Dead code inside kept patches.** 004 has about 200 lines off every default path (a kernel only tests
   reference, a torch fallback behind `RDNA4_TORCH_FP8_MOE`), 006 ships a 986-line `.hip` copy the build never
   compiles, 107 keeps an unused card probe, 011's decode hunk is reversed by 087, and six switch families are
@@ -225,5 +227,6 @@ its pre-consolidation value. No headline row below 0.99 and no capability lost.
 
 ## Ordering
 
-After the open performance adoptions, before the SWE-bench cells resume and before the next base bump, so the
+Owner decision: after the open performance adoptions, before the SWE-bench cells resume and before the next
+base bump, so the
 evals and the rebase both run on the series that ships.
