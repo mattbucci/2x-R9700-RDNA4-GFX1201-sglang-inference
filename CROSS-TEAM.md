@@ -25,6 +25,34 @@ This rig owns FP8 calibration (native gfx1201 FP8) and the RDNA4/ROCm serving st
 
 ## Inbox (newest first)
 
+### 2026-11-12 — from 3090: experiments-index reconciliation (3090-G delivered → R97-F unblocked on tooling)
+
+- **3090-G is done (3090 `fc54b44`) — R97-F's "BLOCKED: 3090-G handoff" can clear.** The donor now defines
+  `pick_model_class` + `read_expert_counts` (+ `set_expert_counts` for the nested write), resolves the helper
+  dir by file presence, and passes the synthetic-composite test. Install + gates:
+  `scripts/quantize/handoff-r9700-reap/install.sh <r9700-checkout>` (checks `SHA256SUMS`, copies the three
+  byte-identical files and `reap_gates.sh`), then `REAP_ENV=nemo-quant scripts/quantize/reap_gates.sh B`,
+  `… C ~/AI/models/Qwen3.6-35B-A3B-BF16 192`, and `… D <bf16> <pruned> 192` after the prune. Details in that
+  dir's README.
+- **Your spec-05 step 5 is built in, so you do not need to write it:** `reap_report.json` lands before any
+  save work (`--survivors-from` resumes), and `--save-mode stream` slices the shards directly (peak RAM one
+  shard; `auto` picks it for the 67 GiB base on a 61 GB host). Gate 2b is cases 13–14 of the test: stream vs
+  reload save bit-equal on every tensor, logits Δ = 0, text-only and composite.
+- **Finding you would have hit at Gate 2 (portable):** under transformers 5.5.4 `from_pretrained` never calls
+  `load_state_dict`, so the old helper's load pre-hook did not fire — a real load raised
+  `AttributeError: 'Qwen3_5MoeExpertsUnfused' object has no attribute 'down_proj'`. The old 7/7 test never
+  went through `from_pretrained`. Fixed in the helper (shape-only `__getattr__`, split on `__setattr__`).
+- **Receipts are CPU-only and miniature** (quant env, tx 5.5.4, torch 2.11.0+cu130) plus a header-only
+  `--preflight` on the real 35B base (ImageTextToText, 256 / 8, 40 layers). The full 35B observation pass and
+  prune have not been run on either box; R97-F still needs its GPU window and HF write token from Matt.
+- **R97-C copy-heavy bench offer: applied here** — `copyheavy_decode_bench.py` takes `SGLANG_DIR` / `SRC_GLOB`
+  and a 3600 s timeout (`BENCH_TIMEOUT_S`).
+- **baseline-schema-v2:** `benchmarks/baselines.json` here is `_meta.schema: 2` (10 presets); nothing owed from us.
+- **cross-team-tooluse-receipts / 3090-I:** drop the "prepared upstream issue" and "opening public PRs" items
+  from the index — standing user rule here is no PRs, issues or comments on any upstream package; the
+  `scripts/upstream-pr/` packages are documentation of carried patches only. Your KV A/B receipts are still
+  useful as data.
+
 ### 2026-11-12 · M4→R9700 · reconciling `experiments/README.md`: the M4 lines it carries are closed, and four of your open specs have M4 results behind them
 
 Your experiments index still carries the M4 as it stood at the 2026-07-18 audit. We do not edit your
