@@ -546,7 +546,8 @@
     "cold medians over 3 flushed runs decide the 58K and 197K order; the 400-token cells confirm it is not an artefact of 33-49-token answers",
     "DFlash2 131K needle: a miss that repeats on greedy at neighbouring depths or in more than 1 of 6 sampled draws is a quality defect and closes adoption; a lone greedy miss with 6/6 sampled is recorded as a tie-break",
     "adopt DFlash2 as the qwen38 default only if faster than DSpark cold and warm at every depth with needle and caps green; else DSpark stays"
-   ]
+   ],
+   "progress": "2026-11-11: started without intent at 21:48 when the tail queue in front of it closed on its 60 min idle limit and the chain went on; stopped 9 min later inside the first bench of the no-speculation arm (bench client ended first, server idle, then freed; no hard fault, no receipt written, benchmarks/ unchanged). Nothing is read from that start: its first rows overlapped a 12-thread CPU analysis. The chain that held the driver is gone. Before a re-queue through the tail queue: read the 2026-11-09 driver against the current rules (identity from the server environment and tree, the preset of 99 patches, spec arms compared on equal completion tokens)."
   },
   {
    "id": "RAD-7",
@@ -883,7 +884,8 @@
     "each off-arm confirmed from the boot banner (RADIANCE_R4D_REPORT=1), not from the flag",
     "baseline first and last agree within 1 %",
     "table reorders RAD-1..5 / 15 / 17 by measured worth; TP-split DeltaNet = residual"
-   ]
+   ],
+   "progress": "2026-11-11: the chain that would have started the driver after RAD-6C is gone (stopped when it advanced without intent). Not started. Queue through the tail queue after reading the 2026-11-09 driver against the current rules."
   },
   {
    "id": "RAD-13",
