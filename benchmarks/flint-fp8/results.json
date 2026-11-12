@@ -1,66 +1,66 @@
 {
   "model": "flint fp8kv default",
-  "engine": "SGLang v0.5.22 + 98 patches",
+  "engine": "SGLang v0.5.22 + 99 patches",
   "hardware": "2x R9700 TP=2",
   "method": "completion-token-counted streaming TPOT median (decode_ab, 5-run)",
   "output_tokens": 80,
-  "timestamp": "2026-11-11 v0.5.22+98p flint preset (FP8 KV, in-graph custom all-reduce), no speculation",
-  "note": "canonical sweep at 98 patches, bare preset; DFlash2 and RCCL arms in decode-canonical-*-2026-11-11-98p.json",
+  "timestamp": "2026-11-11 v0.5.22+99p flint preset (FP8 KV, in-graph custom all-reduce, BF16 attention-sum wire), no speculation",
+  "note": "canonical sweep at 99 patches, bare preset; cold prefill 0.78 / 9.34 / 60.49 s at 7,321 / 58,473 / 197,315 input tokens; DFlash2 and RCCL arms in decode-canonical-*-2026-11-11-99p.json; previous row (98 patches, FP32 attention-sum detour): 45.3 / 44.5 / 43.1 / 41.4 / 39.2 / 38.6",
   "context_sweep": [
     {
       "context": 128,
       "input_len": 14,
-      "tpot_ms": 22.06,
-      "tok_per_sec": 45.321,
+      "tpot_ms": 21.8,
+      "tok_per_sec": 45.878,
       "actual_input_tokens": 14,
-      "ttft_ms": 73.9
+      "ttft_ms": 73.8
     },
     {
       "context": 8192,
       "input_len": 7321,
-      "tpot_ms": 22.47,
-      "tok_per_sec": 44.502,
+      "tpot_ms": 22.2,
+      "tok_per_sec": 45.045,
       "actual_input_tokens": 7321,
-      "ttft_ms": 84.8
+      "ttft_ms": 84.6
     },
     {
       "context": 65536,
       "input_len": 58473,
-      "tpot_ms": 23.19,
-      "tok_per_sec": 43.127,
+      "tpot_ms": 22.9,
+      "tok_per_sec": 43.677,
       "actual_input_tokens": 58473,
-      "ttft_ms": 134.2
+      "ttft_ms": 139.1
     },
     {
       "context": 131072,
       "input_len": 116934,
-      "tpot_ms": 24.16,
-      "tok_per_sec": 41.393,
+      "tpot_ms": 23.79,
+      "tok_per_sec": 42.027,
       "actual_input_tokens": 116934,
-      "ttft_ms": 204.7
+      "ttft_ms": 212.4
     },
     {
       "context": 221184,
       "input_len": 197315,
-      "tpot_ms": 25.51,
-      "tok_per_sec": 39.196,
+      "tpot_ms": 25.21,
+      "tok_per_sec": 39.67,
       "actual_input_tokens": 197315,
-      "ttft_ms": 303.7
+      "ttft_ms": 313.4
     },
     {
       "context": 245760,
       "input_len": 219238,
-      "tpot_ms": 25.93,
-      "tok_per_sec": 38.57,
+      "tpot_ms": 25.54,
+      "tok_per_sec": 39.158,
       "actual_input_tokens": 219238,
-      "ttft_ms": 362.5
+      "ttft_ms": 363.2
     }
   ],
   "throughput_sweep": [
     {
       "concurrency": 1,
-      "throughput": 45.321,
-      "tpot_ms": 22.06,
+      "throughput": 45.878,
+      "tpot_ms": 21.8,
       "ttft_ms": 0
     }
   ]

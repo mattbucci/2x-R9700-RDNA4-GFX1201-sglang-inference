@@ -2863,7 +2863,7 @@ records no cycle count and keeps 60 characters of text. CANON-VC adds the verify
 repeats the DSpark boot, so the cell's rate can be split into cycle time and acceptance from its own data.
 
 The DFlash2 medians at 7,331 and 58,483 tokens are +10.0 % and +7.6 % on equal token counts (38 and 46): the decode
-time is 44 ms and 45 ms shorter, about one draft-and-verify cycle, while the 24-token and 197K cells repeat to
+time is 43.0 ms and 44.5 ms shorter, about one draft-and-verify cycle, while the 24-token and 197K cells repeat to
 ×1.002. The verify rows are below the kernel's 257-row minimum, so this reads as one cycle fewer on a state that
 differs by rounding, not as a kernel gain; the same CANON-VC count would show it. The DFlash2 pair reads ×1.014 /
 ×1.014 / ×1.013 / ×1.012 for the in-graph all-reduce on the medians and ×1.016 / ×1.013 / ×1.013 / ×1.012 on the cold
@@ -2878,6 +2878,41 @@ prefill is 1.45 / 1.39 / 1.24× behind (from 1.49 / 1.78 / 2.18×).
 Receipts: `qwen38-27b-fp8/{decode,capabilities,route}-canonical-<arm>-2026-11-11-99p.json` for `dspark`, `dflash2`,
 `dflash2-rccl` and (decode, route) `nospec`, `prefill-canonical-{dspark,nospec}-2026-11-11-99p.json`. These are the
 README and results.json rows.
+
+### Flint canonical sweep at 99 patches with the BF16 attention-sum wire in the preset: no speculation 45.9 → 39.2 tok/s from 14 to 219K input tokens, the 197K cold prefill in 60.5 s (from 64.6 s), DFlash2 unchanged, request matrix 10/10 (2026-11-11)
+
+Shipped `flint` preset from the live tree (99 patches, launcher defaults), `decode_ab.py` with five runs of 80
+tokens and EOS, three boots in one session in the order Flint-DFlash2 drafter, preset, preset with
+`ENABLE_CUSTOM_ALL_REDUCE=0`. New against the 98-patch sweep above: the launcher exports
+`SGLANG_HIP_BF16_ATTN_SUM=1` for this preset (RAD-30b), and every boot logs the wire on both ranks. Patch 131's
+prefill kernel is a qwen38 default; the Flint launcher does not export its switch. Every run of every cell is 80
+tokens here and in the 98-patch receipts, so the rows compare on equal token counts.
+
+| decode tok/s (TTFT ms) | 14 | 7,321 | 58,473 | 116,934 | 197,315 | 219,238 input tokens |
+|---|---|---|---|---|---|---|
+| no speculation (preset) | 45.9 (74) | 45.0 (85) | 43.7 (139) | 42.0 (212) | 39.7 (313) | 39.2 (363) |
+| of the 98-patch row | ×1.012 | ×1.012 | ×1.013 | ×1.015 | ×1.012 | ×1.015 |
+| no speculation, RCCL | 44.5 (80) | 43.7 (90) | 42.3 (139) | 40.6 (206) | 38.5 (309) | 38.0 (341) |
+| of the 98-patch row | ×1.006 | ×1.003 | ×1.015 | ×1.004 | ×1.008 | ×1.007 |
+| DFlash2 | 103.7 (74) | 74.1 (84) | 66.5 (134) | 63.7 (206) | 51.1 (306) | 49.3 (334) |
+| of the 98-patch row | ×0.996 | ×0.998 | ×1.002 | ×1.000 | ×0.998 | ×1.002 |
+
+Cold prefill without speculation is 0.78 / 9.34 / 60.49 s at 7,321 / 58,473 / 197,315 tokens (9,389 / 6,258 / 3,262 tok/s), ×0.842 / ×0.888 / ×0.937 of
+the 98-patch times (0.93 / 10.52 / 64.57 s). The two sweeps are separate sessions of one day; the same-session measurement of
+the wire is RAD-30b (four boots per drafter state in both orders: no speculation ×1.011–1.013, cold prefill ×0.841 /
+×0.889 / ×0.934, DFlash2 cycle ×0.998–1.001), and this sweep repeats it on the shipped preset. The custom
+all-reduce reads +3.0 to +3.5 % over RCCL in this single-order pair (FLINT-4b measured ×1.026 in both orders);
+the RCCL boot carries the wire as well and moves less, ×1.003–1.015, a single order on both sides and recorded only.
+
+The pool holds 1,044,688 full-attention tokens (571,159 with the drafter loaded, 1,050,610 on the RCCL boot). The
+capability probe passes basic, tool call and thinking on all three boots. The request matrix passes 10 of 10 cases
+on all three boots: its logit-bias case now judges the generation (no banned id, a non-empty generation), which is
+the disposition of the 98-patch section. Per-card memory reads 28,702 MiB after boot and 29,311 MiB at the end of
+the preset boot (28,784 and 29,373 MiB with the drafter). The DFlash2 rows are a single order; the preset stays
+without a drafter.
+
+Receipts: `flint-fp8/{decode,capabilities,route}-canonical-<arm>-2026-11-11-99p.json` for `nospec`, `nospec-rccl`
+and `dflash2`, `prefill-canonical-nospec-2026-11-11-99p.json`. These are the README and results.json rows.
 
 ## Evaluation methodology
 
