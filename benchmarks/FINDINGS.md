@@ -2955,6 +2955,94 @@ declines, the off boots log none. Disposition: the receipt fields stay in `decod
 `runs_decode_s`, `runs_pieces`, `runs_median_gap_ms`, `runs_text_sha`; a server without speculation records no
 count), no regression item is registered, README rows are unchanged.
 
+### R97-S — fp8 KV pool: the kernels round the softmax weights to e4m3 unscaled; confirmed on served Flint rows in 12 of 12 cells, 0.35–2.6 % of the attention output on a cached turn and up to 10 % on a prefill tail at 197K (2026-11-11)
+
+Tail job 99-z: two bare Flint boots from a copy of the live tree plus the stage-dump hook, the preset (fp8 e4m3 pool,
+judged) and the same launch with a BF16 pool (control). Per boot and per depth of 6,000 / 58,000 / 197,000 tokens of
+repository code: flush, a cold request, the same ids plus 64 as a cached turn, flush, all ids again; greedy, one new
+token. All 18 requests returned the planned prompt and cached counts, each turn and its flushed repeat return the same
+token, and the two arms return the same four tokens. The 64-row turn took the split-KV route (route line on both ranks
+of both arms); the cold and flushed tails (392–1,968 rows) ran the Triton extend kernel. q, k, v and the attention
+output of the full-attention layers 0, 1, 25 and 48 were dumped for every prefill forward (280 files, 36.7 GiB per
+arm). On the CPU the last 64 rows are recomputed in fp64 from the dumped inputs and the checkpoint's sink logits, in
+the kernel's tile order, with the weights exact, cast to the pool dtype as the kernel casts them, or multiplied by 2^8
+before the cast ([summary](profiling/r97s-dump-2026-11-11/summary.json),
+[rows](profiling/r97s-dump-2026-11-11/summary.txt); driver, emulator and tests in the same directory).
+
+The rule was fixed before the run ([spec](../experiments/21-fp8-pool-softmax-weight-rounding.md)): one cell per depth
+and layer, both ranks pooled, relative L2 of the dumped cached turn against the reference; the floor F is the control
+arm's distance between its dump and its own kernel-faithful emulation, never under 0.0061 %; confirmed when the
+kernel-cast reference is within 2 F and exact weights are 5 F or more away.
+
+| depth | layer | floor F | kernel-cast reference | exact-weight reference | BF16 pool, exact weights |
+|---|---|---|---|---|---|
+| 6,000 | 0 | 0.0061 % | 0.0027 % (0.4 F) | 0.36 % (59 F) | 0.057 % (9.3 F) |
+| 6,000 | 1 | 0.0061 % | 0.0010 % (0.2 F) | 0.39 % (65 F) | 0.064 % (10.4 F) |
+| 6,000 | 25 | 0.012 % | 0.0026 % (0.2 F) | 1.39 % (118 F) | 0.097 % (8.3 F) |
+| 6,000 | 48 | 0.0061 % | 0.0008 % (0.1 F) | 0.39 % (64 F) | 0.037 % (6.0 F) |
+| 58,000 | 0 | 0.011 % | 0.0019 % (0.2 F) | 0.84 % (78 F) | 0.054 % (5.0 F) |
+| 58,000 | 1 | 0.015 % | 0.0018 % (0.1 F) | 0.90 % (60 F) | 0.068 % (4.5 F) |
+| 58,000 | 25 | 0.017 % | 0.020 % (1.2 F) | 1.71 % (99 F) | 0.089 % (5.2 F) |
+| 58,000 | 48 | 0.0087 % | 0.0026 % (0.3 F) | 0.81 % (92 F) | 0.069 % (7.9 F) |
+| 197,000 | 0 | 0.025 % | 0.0029 % (0.1 F) | 1.56 % (62 F) | 0.057 % (2.3 F) |
+| 197,000 | 1 | 0.024 % | 0.0039 % (0.2 F) | 1.80 % (75 F) | 0.057 % (2.4 F) |
+| 197,000 | 25 | 0.023 % | 0.0057 % (0.2 F) | 2.21 % (94 F) | 0.089 % (3.8 F) |
+| 197,000 | 48 | 0.020 % | 0.0008 % (0.0 F) | 1.60 % (80 F) | 0.030 % (1.5 F) |
+
+Verdict `confirmed` in every cell. The kernel-cast reference meets the preset's turn at 0.04–1.2 F; exact weights
+miss it by 59–118 F. The last column is the control's own distance from exact weights, the BF16 cast of the weights
+on a BF16 pool: 0.03–0.10 %, 6–53 times smaller than on the fp8 pool.
+
+What the cast costs is the distance between the kernel-cast and the exact-weight reference on the same dumped inputs
+(larger of the two ranks), "scaled" is the same distance with the weights times 2^8 before the cast. The mass columns
+are the share of a row's attention mass on pool weights under 2^-6 of the running maximum (e4m3 subnormals, one to
+three bits) and under 2^-10 (rounded to zero: out of the numerator, still in the denominator):
+
+| depth | layer | turn: mass in the subnormal band / dropped | turn: kernel cast, scaled | cold tail: mass, kernel cast, scaled | flushed tail: mass, kernel cast, scaled |
+|---|---|---|---|---|---|
+| 6,000 | 0 | 4.6 % / 0.08 % | 0.35 %, 0.22 % | 6.6 % / 0.14 %, 0.52 %, 0.28 % | 6.6 % / 0.17 %, 0.73 %, 0.29 % |
+| 6,000 | 1 | 6.1 % / 0.29 % | 0.36 %, 0.27 % | 10.0 % / 0.67 %, 0.61 %, 0.23 % | 9.9 % / 0.68 %, 0.64 %, 0.23 % |
+| 6,000 | 25 | 9.9 % / 1.70 % | 1.52 %, 0.48 % | 7.4 % / 2.22 %, 1.63 %, 0.096 % | 11.3 % / 4.28 %, 3.43 %, 0.26 % |
+| 6,000 | 48 | 2.8 % / 0.18 % | 0.39 %, 0.25 % | 4.8 % / 0.47 %, 0.88 %, 0.31 % | 4.2 % / 0.40 %, 1.00 %, 0.19 % |
+| 58,000 | 0 | 8.3 % / 0.25 % | 0.99 %, 0.19 % | 19.0 % / 0.92 %, 2.47 %, 0.38 % | 17.2 % / 0.91 %, 4.28 %, 0.40 % |
+| 58,000 | 1 | 11.3 % / 1.24 % | 0.96 %, 0.21 % | 21.9 % / 4.07 %, 3.46 %, 0.30 % | 21.9 % / 4.21 %, 3.78 %, 0.32 % |
+| 58,000 | 25 | 12.5 % / 2.88 % | 1.75 %, 0.36 % | 21.9 % / 7.02 %, 4.94 %, 0.37 % | 26.0 % / 11.75 %, 7.58 %, 0.47 % |
+| 58,000 | 48 | 6.2 % / 0.78 % | 1.35 %, 0.22 % | 12.1 % / 2.72 %, 5.93 %, 0.17 % | 12.3 % / 2.89 %, 5.11 %, 0.28 % |
+| 197,000 | 0 | 11.2 % / 0.38 % | 1.98 %, 0.20 % | 20.3 % / 0.88 %, 4.79 %, 0.37 % | 20.1 % / 1.10 %, 5.45 %, 0.36 % |
+| 197,000 | 1 | 14.8 % / 2.24 % | 1.94 %, 0.16 % | 24.0 % / 5.48 %, 5.37 %, 0.24 % | 24.5 % / 5.84 %, 5.52 %, 0.27 % |
+| 197,000 | 25 | 15.3 % / 3.77 % | 2.18 %, 0.38 % | 23.1 % / 9.36 %, 7.07 %, 0.28 % | 26.9 % / 14.35 %, 10.2 %, 0.34 % |
+| 197,000 | 48 | 9.8 % / 1.89 % | 2.62 %, 0.12 % | 18.0 % / 5.68 %, 7.98 %, 0.25 % | 16.8 % / 5.56 %, 7.65 %, 0.22 % |
+
+- Cached turn (split-KV stage 1): 0.35–1.5 % at 6K, 1.0–1.8 % at 58K, 1.9–2.6 % at 197K. With the 2^8 scale the same
+  rows are 0.12–0.48 % from exact weights at every depth; that remainder is the three-bit rounding of the weights,
+  which a scale does not change.
+- Prefill tails (extend kernel, prefix loop): the emulation of the extend walk meets the dumped tails at
+  0.002–0.017 %, so the same cast is in that kernel; it costs 0.5–3.4 % at 6K, 2.5–7.6 % at 58K and 4.8–10.2 % at
+  197K, and 0.10–0.47 % would remain. On layer 25's flushed tail at 197K, 27 % of the mass is in the subnormal band
+  and 14 % is dropped.
+- The loss grows with depth because the mass moves into the tail: 2.8–9.9 % of the turn's mass is under 2^-6 at 6K,
+  9.8–15.3 % at 197K.
+
+Two readings the job adds without gating on them. Layer 0's output for the same 64 rows differs between the cached
+turn and the flushed repeat by 1.0 / 2.9 / 3.2 % on the preset and by 0.07 % on the BF16 pool at each depth; how much
+of the preset's is this cast and how much the fp8 pool read and the fp8 QK product (FLINT-7b) is not separated here.
+And FLINT-7b's reference floor of 0.058 % / 0.093 % was the in-chunk BF16 cast of the weights: with it the extend
+walk reproduces FLINT-7's cold rows exactly on rank 0 and at 7e-7 on rank 1
+([self-test](profiling/r97s-dump-2026-11-11/selftest_flint7.txt)).
+
+Scope. The cast sits in the value product of the Triton kernels on an fp8 pool: split-KV stage 1 and the extend
+prefix loop (both dumped here) and the decode kernel (read from its source, not dumped). The extend in-chunk loop
+casts to BF16. The HIP prefill kernel of patch 131 (qwen38's cold prefill) is launched on its f16 value-product legs
+only and is not affected; the lossy fp8 leg of that radiance kernel, which the backend never requests, keeps the
+weights grown by eight octaves ahead of the cast, the scaling registered here as the fix. Every published sweep,
+needle grid and capability probe of the fp8-pool presets was measured with the cast in place; what it does to
+generated text is not measured.
+
+Disposition: `confirmed`, no preset change from this job. The fix is queue item R97-T: one default-off patch that
+multiplies the weights by 2^8 before the cast and the product by 2^-8 in the three kernels, a kernel-level test
+against the emulator's scaled variant, this dump repeated under the switch, then the serving A/B in both orders on
+Flint and qwen38 with the spec's ship and kill bars. The dumps stay on disk until that repeat is read.
+
 ## Evaluation methodology
 
 ### SWE-bench answer leakage through git history and the web (found 2026-09-18)

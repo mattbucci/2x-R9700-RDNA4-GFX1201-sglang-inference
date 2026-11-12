@@ -285,6 +285,10 @@ boots, the logit-bias case judged on the generation ([decode](flint-fp8/decode-c
 [prefill](flint-fp8/prefill-canonical-nospec-2026-11-11-99p.json),
 [98-patch rows](flint-fp8/decode-canonical-nospec-2026-11-11-98p.json),
 [bias diagnostic](profiling/flint-logit-bias-diag-2026-11-11/), [FINDINGS → Flint canonical sweep](FINDINGS.md)).
+Softmax-weight rounding on the fp8 pool (R97-S, Flint preset against a BF16-pool control, layers 0 / 1 / 25 / 48 dumped at
+6,000 / 58,000 / 197,000 tokens): the kernels' unscaled e4m3 cast of the weights is confirmed in 12 of 12 cells; it
+moves a cached turn's attention output by 0.35–2.6 % and a prefill tail by up to 10 % against exact weights, a 2^8
+scale would leave 0.1–0.5 % ([receipts](profiling/r97s-dump-2026-11-11/), [FINDINGS → R97-S](FINDINGS.md)).
 TP-split DeltaNet projections on the FP8 preset (patch 121), replicated → split → replicated in one session: decode
 23.3 / 22.9 / 22.2 / 20.5 → 26.9 / 26.3 / 25.3 / 23.2 tok/s, cold prefill 1,798 / 1,460 / 945 → 2,125 / 1,658 / 1,024 tok/s,
 pool 525,548 → 735,510 tokens; with DSpark +4.5 % at 24 tokens, +10.0 % on copy-heavy decode at equal accept length and

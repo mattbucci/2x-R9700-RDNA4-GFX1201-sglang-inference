@@ -751,13 +751,28 @@
     "FLINT-7b"
    ],
    "id": "R97-S",
-   "next_action": "Queued behind nothing (GPUs idle): tail job 99-z-r97s-dump, two bare Flint boots from /data/sgl-v0522-r97s (live tree + the stage-dump hook): preset (judged) and KV_DTYPE=auto (control, sets the floor). Per boot and per depth 6,000 / 58,000 / 197,000 of repository code text: flush, cold request, the same ids plus 64 as a cached turn, flush, all ids again; greedy, one new token; q, k, v, attention output of layers 0, 1, 25, 48 for every prefill forward (about 40 GB per arm under /data/logs/r97s-dump-2026-11-11). analyze_dump.py then writes the verdict. The patch (weights times 2^8 before the cast, default off) and the serving A/B are registered as their own queue entries only if the dump confirms the cast.",
+   "next_action": "None for the dump: verdict confirmed and published. The fix-valid, ship and kill gates registered here before the run moved verbatim to R97-T, which carries the patch and the serving A/B. The dumps under /data/logs/r97s-dump-2026-11-11 stay until R97-T's repeat under the switch is read.",
    "resource": "gpu",
    "spec": "21-fp8-pool-softmax-weight-rounding.md",
-   "status": "queued",
+   "status": "completed",
    "test_gate": [
-    "confirmed = on the cached turn (split-KV route, 64 rows) the kernel-cast reference matches the dump within twice the floor F and the exact-weight reference misses it by five times F or more, in at least one depth-and-layer cell (both ranks pooled, relative L2 against the BF16-rounded fp64 reference); F = the BF16-pool control arm's distance between its dumped turn and its kernel-faithful emulation at that depth and layer, never below 6.1e-5; not present = exact weights within 5 F in every cell; unexplained = anything else, closes nothing; a dump whose forwards cannot be matched to the requests decides nothing (rule fixed before the run, spec section 'Dump job, as fixed before the run')",
-    "fix valid = under the switch the dump matches the scaled reference within twice the floor and the scaled reference is closer to exact weights than the unscaled one on every dumped layer",
+    "confirmed = on the cached turn (split-KV route, 64 rows) the kernel-cast reference matches the dump within twice the floor F and the exact-weight reference misses it by five times F or more, in at least one depth-and-layer cell (both ranks pooled, relative L2 against the BF16-rounded fp64 reference); F = the BF16-pool control arm's distance between its dumped turn and its kernel-faithful emulation at that depth and layer, never below 6.1e-5; not present = exact weights within 5 F in every cell; unexplained = anything else, closes nothing; a dump whose forwards cannot be matched to the requests decides nothing (rule fixed before the run, spec section 'Dump job, as fixed before the run')"
+   ],
+   "result": "R97S DUMP DONE gate=measured:confirmed (tail job 99-z, 2026-11-11, FINDINGS 'R97-S', benchmarks/profiling/r97s-dump-2026-11-11/). Preset and BF16-pool control booted, 9 requests each with the planned prompt and cached counts, split-KV route line on both ranks. All 12 depth-and-layer cells confirmed: the kernel-cast reference meets the dumped cached turn at 0.04-1.2 F (F = 6.1e-5 to 2.5e-4), exact weights miss it by 59-118 F (0.36-2.2 % relative L2; the BF16 pool's own exact-weight distance is 0.03-0.10 %). Cost of the cast against exact weights on the same inputs: 0.35-1.5 % / 1.0-1.8 % / 1.9-2.6 % on the turn at 6K / 58K / 197K, 0.5-3.4 % / 2.5-7.6 % / 4.8-10.2 % on the extend-kernel tails; with the weights times 2^8 before the cast 0.12-0.48 % and 0.10-0.47 % remain. At 197K 9.8-15.3 % of a turn row's attention mass is on weights under 2^-6 and 0.4-3.8 % is dropped (up to 27 % and 14 % on a flushed tail)."
+  },
+  {
+   "id": "R97-T",
+   "spec": "21-fp8-pool-softmax-weight-rounding.md",
+   "status": "ready",
+   "resource": "cpu_then_gpu",
+   "depends_on": [
+    "R97-S"
+   ],
+   "next_action": "Registered before any code. One mechanism, patch 132, default off, active on an fp8 pool only: the softmax weights are multiplied by 2^8 before the cast to the pool dtype and the value product by 2^-8, in split-KV stage 1, the extend kernel's prefix loop and the decode kernel (e4m3's largest value is 448, a weight is at most 1; a power of two leaves the rounding of weights above 2^-6 unchanged). Order: dev tree /data/sgl-v0522-r97s, kernel-level test, the R97-S dump job repeated with three arms (preset under the switch = judged, preset with the switch off = must repeat R97-S, BF16 pool under the switch = scoping and floor identity), then the serving A/B in both orders on Flint and qwen38 with the list of spec 21 method 4, then ship or kill. The live tree changes only on a ship, as patch 132 with the replay gate at 100 patches.",
+   "test_gate": [
+    "kernel test = on the R97-S dump's inputs (layers 0 and 25 at 6,000) and on synthetic inputs with a long low-weight tail, each of the three kernels under the switch matches the emulator's scaled variant as closely as the unpatched kernel matches the kernel-cast variant (within twice that distance, never under 6.1e-5), and with the switch off or on a BF16 pool its output is bit-equal to the unpatched kernel on the same inputs",
+    "dump identity = in the repeated dump job the switch-off preset arm reads confirmed in every cell as in R97-S, and the BF16-pool arm under the switch keeps each cell's distance to its own emulation within twice its R97-S value (never under 6.1e-5); otherwise the job decides nothing",
+    "fix valid = under the switch the dump matches the scaled reference within twice the floor and the scaled reference is closer to exact weights than the unscaled one on every dumped layer (floor F per cell = the R97-S value, fixed; every one of the 12 cells, cached turn; the extend tails are reported against the same bar)",
     "ship as the default of the measured fp8-pool presets = fix valid, every speed row >= 0.99x in both orders, no needle cell lost, capabilities and route probe full, accept length not lower beyond the pooled interval, cache-hit consistency not worse (both arms, same arguments)",
     "kill = not confirmed, a speed loss over 1 %, or any quality gate lower; the patch is then not kept"
    ]

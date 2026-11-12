@@ -80,6 +80,21 @@ The CPU work changed how method 2 has to be read. The rule below is what `analyz
   flushed run's rows, the share of prefix mass in e4m3's normal, subnormal and zero bands, and the size of the kernel
   cast and of the 2^8-scaled cast against exact weights.
 
+## Fix job, as fixed before the code (R97-T)
+
+The dump confirmed the cast in 12 of 12 cells (FINDINGS → R97-S), so method 3 and 4 run as queue item R97-T.
+
+- Patch: one switch, default off, active on an fp8 pool only; with the switch off, or on a BF16 pool, each kernel's
+  output is bit-equal to the unpatched kernel on the same inputs.
+- Kernel test: on the dump's inputs (layers 0 and 25 at 6,000) and on synthetic inputs with a long low-weight tail,
+  each of the three kernels under the switch matches the emulator's scaled variant as closely as the unpatched kernel
+  matches the kernel-cast variant (within twice that distance, never under 6.1e-5).
+- Repeated dump, three arms: the preset under the switch (judged), the preset with the switch off (must read confirmed
+  in every cell again) and the BF16 pool under the switch (each cell within twice its R97-S distance to its own
+  emulation, never under 6.1e-5). If either identity arm fails the job decides nothing.
+- Fix valid is judged on the cached turn in every one of the 12 cells with F per cell fixed at its R97-S value; the
+  extend tails are reported against the same bar.
+
 ## Success / kill
 
 - Confirmed: on the cached turn the kernel-cast reference matches the dump within twice the floor (F of the control
