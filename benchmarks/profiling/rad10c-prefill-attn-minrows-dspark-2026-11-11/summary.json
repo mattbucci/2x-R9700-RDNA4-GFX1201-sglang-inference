@@ -1,0 +1,174 @@
+{
+ "arms": "dctl1:1:off:1:0 dtr1:1:qk8:1:0 dtr2:1:qk8:0:1190000 dctl2:1:off:0:1190000",
+ "mode": "qk8",
+ "prefill": {
+  "8192": {
+   "input_tokens": 7331,
+   "treatment_s": [
+    2.619,
+    2.614
+   ],
+   "control_s": [
+    2.794,
+    2.708
+   ],
+   "ratio": 0.9511,
+   "every_boot_faster": true
+  },
+  "65536": {
+   "input_tokens": 58483,
+   "treatment_s": [
+    22.722,
+    22.718
+   ],
+   "control_s": [
+    29.433,
+    29.368
+   ],
+   "ratio": 0.7728,
+   "every_boot_faster": true
+  },
+  "221184": {
+   "input_tokens": 197326,
+   "treatment_s": [
+    98.206,
+    97.884
+   ],
+   "control_s": [
+    174.235,
+    173.633
+   ],
+   "ratio": 0.5637,
+   "every_boot_faster": true
+  }
+ },
+ "cycle": {
+  "24": {
+   "treatment_ms": [
+    45.42,
+    45.34
+   ],
+   "control_ms": [
+    45.49,
+    45.25
+   ],
+   "ratio": 1.0002,
+   "sampled_accept_len": {
+    "dctl1": 2.77,
+    "dctl2": 2.77,
+    "dtr1": 2.8,
+    "dtr2": 2.8
+   }
+  },
+  "7.3K": {
+   "treatment_ms": [
+    46.1,
+    46.02
+   ],
+   "control_ms": [
+    46.18,
+    45.95
+   ],
+   "ratio": 0.9999,
+   "sampled_accept_len": {
+    "dctl1": 2.7,
+    "dctl2": 2.7,
+    "dtr1": 2.59,
+    "dtr2": 2.59
+   }
+  },
+  "58K": {
+   "treatment_ms": [
+    48.24,
+    48.24
+   ],
+   "control_ms": [
+    48.23,
+    48.01
+   ],
+   "ratio": 1.0025,
+   "sampled_accept_len": {
+    "dctl1": 2.33,
+    "dctl2": 2.33,
+    "dtr1": 2.46,
+    "dtr2": 2.46
+   }
+  },
+  "197K": {
+   "treatment_ms": [
+    54.54,
+    54.47
+   ],
+   "control_ms": [
+    54.58,
+    54.39
+   ],
+   "ratio": 1.0004,
+   "sampled_accept_len": {
+    "dctl1": 2.42,
+    "dctl2": 2.42,
+    "dtr1": 2.35,
+    "dtr2": 2.35
+   }
+  }
+ },
+ "accept": {
+  "documents": 96,
+  "control": 3.8035,
+  "treatment": 3.8062,
+  "ratio": 1.0007,
+  "ratio_ci95": [
+   0.9813,
+   1.02
+  ],
+  "blank_texts": 0
+ },
+ "memory_rule": "a treatment boot against the control boots with the same quality flag and document offset, per card",
+ "caps": {
+  "dctl1": true,
+  "dctl2": true,
+  "dtr1": true,
+  "dtr2": true
+ },
+ "needle": {
+  "dctl1": 9,
+  "dtr1": 9
+ },
+ "route": {
+  "dctl1": [
+   0,
+   0
+  ],
+  "dtr1": [
+   2,
+   0
+  ],
+  "dtr2": [
+   2,
+   0
+  ],
+  "dctl2": [
+   0,
+   0
+  ]
+ },
+ "vram_end_mib": {
+  "dctl1": [
+   30888,
+   30655
+  ],
+  "dtr1": [
+   30888,
+   30655
+  ],
+  "dtr2": [
+   30741,
+   30508
+  ],
+  "dctl2": [
+   30741,
+   30508
+  ]
+ },
+ "gate": "pass"
+}

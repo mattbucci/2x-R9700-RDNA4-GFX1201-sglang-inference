@@ -1,0 +1,23 @@
+[2026-11-11 16:14:01] == summary: DSpark with the HIP prefill attention route (qk8) against DSpark on the Triton extend kernel, mean of the boots per side
+PREFILL qk8 ctx 8192 (7331 tokens): 2.619 / 2.614 s against 2.794 / 2.708 s, x0.951 on the means, faster on every boot
+PREFILL qk8 ctx 65536 (58483 tokens): 22.722 / 22.718 s against 29.433 / 29.368 s, x0.773 on the means, faster on every boot
+PREFILL qk8 ctx 221184 (197326 tokens): 98.206 / 97.884 s against 174.235 / 173.633 s, x0.564 on the means, faster on every boot
+CYCLE 24: qk8 45.42 / 45.34 ms against 45.49 / 45.25 ms, x1.0002 on the means; sampled accept length {'dctl1': 2.77, 'dctl2': 2.77, 'dtr1': 2.8, 'dtr2': 2.8}
+CYCLE 7.3K: qk8 46.1 / 46.02 ms against 46.18 / 45.95 ms, x0.9999 on the means; sampled accept length {'dctl1': 2.7, 'dctl2': 2.7, 'dtr1': 2.59, 'dtr2': 2.59}
+CYCLE 58K: qk8 48.24 / 48.24 ms against 48.23 / 48.01 ms, x1.0025 on the means; sampled accept length {'dctl1': 2.33, 'dctl2': 2.33, 'dtr1': 2.46, 'dtr2': 2.46}
+CYCLE 197K: qk8 54.54 / 54.47 ms against 54.58 / 54.39 ms, x1.0004 on the means; sampled accept length {'dctl1': 2.42, 'dctl2': 2.42, 'dtr1': 2.35, 'dtr2': 2.35}
+ACCEPT dctl1: 14303 tokens over 3680 verifies, accept length 3.8867 (48 documents)
+ACCEPT dctl2: 14216 tokens over 3818 verifies, accept length 3.7234 (48 documents)
+ACCEPT dtr1: 14326 tokens over 3755 verifies, accept length 3.8152 (48 documents)
+ACCEPT dtr2: 14053 tokens over 3701 verifies, accept length 3.7971 (48 documents)
+ACCEPT pair dctl1 / dtr1: 48 documents, 4 with the same text, control 3.887, qk8 3.815, x0.9816
+ACCEPT pair dctl2 / dtr2: 48 documents, 1 with the same text, control 3.723, qk8 3.797, x1.0198
+ACCEPT pooled over 96 paired documents: control 3.804, qk8 3.806, x1.0007 (95 % 0.9813..1.0200 over the documents)
+CAPS dctl1 5/5, dctl2 5/5, dtr1 5/5, dtr2 5/5
+NEEDLE dctl1 9/9, dtr1 9/9
+ROUTE dctl1 active 0 declined 0, dtr1 active 2 declined 0, dtr2 active 2 declined 0, dctl2 active 0 declined 0
+VRAM end MiB dctl1 30888 30655, dtr1 30888 30655, dtr2 30741 30508, dctl2 30741 30508
+VRAM dtr1 minus control of equal request history, MiB per card: +0.0 +0.0
+VRAM dtr2 minus control of equal request history, MiB per card: +0.0 +0.0
+DSPARK GATE pass
+[2026-11-11 16:14:01] RAD10C DSPARK DONE gate=qk8-pass

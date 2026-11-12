@@ -1,0 +1,89 @@
+{
+  "label": "dtr2-sampled",
+  "tag": "",
+  "note": "qwen38 FP8, dev tree rad10c (98 patches with the two-rank BF16 attention-sum wire default + the HIP prefill attention route), --random-seed 7",
+  "port": 23334,
+  "maxtok": 400,
+  "runs": 2,
+  "sampling": {
+    "temperature": 1.0,
+    "top_p": 0.95,
+    "top_k": 20,
+    "seed": 7
+  },
+  "ignore_eos": true,
+  "points": [
+    {
+      "context": 128,
+      "input_len": 24,
+      "runs_tps": [
+        60.63,
+        58.31
+      ],
+      "median_tps": 59.45,
+      "min_tps": 58.313,
+      "max_tps": 60.633,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "median_tpot_ms": 16.82,
+      "sample": "# The Data Highway: A Deep Dive into GPU Memory Hierarchy an",
+      "median_ttft_ms": 103.9
+    },
+    {
+      "context": 8192,
+      "input_len": 7331,
+      "runs_tps": [
+        61.5,
+        52.49
+      ],
+      "median_tps": 56.638,
+      "min_tps": 52.49,
+      "max_tps": 61.498,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "median_tpot_ms": 17.66,
+      "sample": "The provided text consists of the pangram \"The quick brown f",
+      "median_ttft_ms": 1370.5
+    },
+    {
+      "context": 65536,
+      "input_len": 58483,
+      "runs_tps": [
+        50.68,
+        51.62
+      ],
+      "median_tps": 51.144,
+      "min_tps": 50.677,
+      "max_tps": 51.619,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "median_tpot_ms": 19.55,
+      "sample": "The provided text consists of the pangram \"The quick brown f",
+      "median_ttft_ms": 10089.5
+    },
+    {
+      "context": 221184,
+      "input_len": 197326,
+      "runs_tps": [
+        45.98,
+        39.82
+      ],
+      "median_tps": 42.677,
+      "min_tps": 39.821,
+      "max_tps": 45.976,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "median_tpot_ms": 23.43,
+      "sample": "The text consists of a single pangram, \"The quick brown fox ",
+      "median_ttft_ms": 38136.7
+    }
+  ]
+}

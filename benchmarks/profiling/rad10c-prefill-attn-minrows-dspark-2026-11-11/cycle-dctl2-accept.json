@@ -1,0 +1,30 @@
+{
+ "label": "dctl2-accept",
+ "note": "qwen38 FP8, dev tree rad10c (98 patches with the two-rank BF16 attention-sum wire default + the HIP prefill attention route), --random-seed 7",
+ "log": "/data/logs/rad10c-prefill-attn-minrows-dspark-2026-11-11/server-dctl2.log",
+ "from_line": 1012,
+ "to_line": 1334,
+ "line_numbering": "newline",
+ "decode_lines_dropped_after_prefill": 48,
+ "decode_lines_dropped_no_depth": 3,
+ "depths": {
+  "7.3K": {
+   "decode_batches": {
+    "lines": 34,
+    "accept_len": 3.26,
+    "tok_s": 72.33,
+    "cycles_s": 22.03,
+    "cycle_ms": 45.39
+   }
+  },
+  "58K": {
+   "decode_batches": {
+    "lines": 11,
+    "accept_len": 3.95,
+    "tok_s": 85.51,
+    "cycles_s": 21.65,
+    "cycle_ms": 46.19
+   }
+  }
+ }
+}

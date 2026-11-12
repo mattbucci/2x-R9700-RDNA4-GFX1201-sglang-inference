@@ -2544,6 +2544,35 @@ Disposition: both modes pass the no-speculation phase from 257 rows. The DSpark 
 mode and the QK arithmetic the preset's extend kernel already uses, with the same memory pairing fixed in its
 summary before the run. The preset does not change until that phase passes.
 
+### RAD-10c under DSpark — fp8 QK from 257 rows: cold prefill ×0.56 at 197K, verify cycle and accept length unchanged, gate pass (2026-11-11)
+
+Four boots of the qwen38 DSpark preset at `--random-seed 7` from the dev tree, control / treatment /
+treatment / control (`dctl1 / dtr1 / dtr2 / dctl2`), the treatment with the ported kernel in fp8 QK mode and
+`SGLANG_HIP_PREFILL_ATTN_MIN_ROWS=257` ([receipts](profiling/rad10c-prefill-attn-minrows-dspark-2026-11-11/)).
+Gates fixed before the run: pooled accept ratio at least 0.99, cycle at most ×1.005, prefill bars as in the
+no-speculation phase, capabilities, needle, route lines, VRAM within 64 MiB of the control boot of equal request
+history.
+
+| mean of two boots | 24 | 7,331 | 58,483 | 197,326 input tokens |
+|---|---:|---:|---:|---:|
+| Cold prefill, served extend kernel, s | | 2.751 | 29.401 | 173.934 |
+| Cold prefill, ported kernel fp8 QK, s | | 2.617 (×0.951) | 22.720 (×0.773) | 98.045 (×0.564) |
+| Verify cycle, served extend kernel, ms | 45.37 | 46.07 | 48.12 | 54.49 |
+| Verify cycle, ported kernel fp8 QK, ms | 45.38 (×1.000) | 46.06 (×1.000) | 48.24 (×1.003) | 54.51 (×1.000) |
+
+The prefill is faster on every boot at every depth; the 7,331-token ratio carries one slow control run (2.87 s),
+the no-speculation phase read ×0.974 there. The greedy accept probe pools 96 paired documents (two disjoint sets
+of 48, 300 tokens each): 3.804 tokens per verify on the control, 3.806 on the treatment, ×1.0007 with a 95 %
+interval of 0.981 to 1.020 over the documents; the two sets read ×0.982 and ×1.020, opposite signs. The sampled
+ladder's accept length repeats to the digit between the two boots of a side. Capabilities pass 5/5 on four
+boots, the needle grid finds 9/9 on `dctl1` and `dtr1`, the ported route is active on both treatment boots,
+absent on both controls and never declines, and the treatment ends at the control's VRAM to the MiB on both
+cards for both request histories.
+
+Disposition: fp8 QK from 257 rows passes the no-speculation and the DSpark phase. It becomes the qwen38 preset
+default with the numbered port patch once the queued Flint jobs, which read the live tree, have ended; the
+canonical sweep is re-measured before the README rows change. The exact mode stays behind the same switch.
+
 ### FLINT-4b — the in-graph custom all-reduce on Flint: no-spec decode +2.6 % at every depth, DFlash2 cycle unchanged, texts equal wherever the controls repeat themselves (2026-11-11)
 
 Third start, the whole matrix under one method: eight boots of the `flint` preset at `--random-seed 7`, RCCL and

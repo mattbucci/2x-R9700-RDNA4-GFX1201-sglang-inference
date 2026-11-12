@@ -1,0 +1,89 @@
+{
+  "label": "dctl2-sampled",
+  "tag": "",
+  "note": "qwen38 FP8, dev tree rad10c (98 patches with the two-rank BF16 attention-sum wire default + the HIP prefill attention route), --random-seed 7",
+  "port": 23334,
+  "maxtok": 400,
+  "runs": 2,
+  "sampling": {
+    "temperature": 1.0,
+    "top_p": 0.95,
+    "top_k": 20,
+    "seed": 7
+  },
+  "ignore_eos": true,
+  "points": [
+    {
+      "context": 128,
+      "input_len": 24,
+      "runs_tps": [
+        59.85,
+        66.28
+      ],
+      "median_tps": 62.901,
+      "min_tps": 59.851,
+      "max_tps": 66.279,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "median_tpot_ms": 15.9,
+      "sample": "# The Wall of Memory: A Comprehensive Analysis of GPU Memory",
+      "median_ttft_ms": 104.0
+    },
+    {
+      "context": 8192,
+      "input_len": 7331,
+      "runs_tps": [
+        72.86,
+        54.66
+      ],
+      "median_tps": 62.461,
+      "min_tps": 54.659,
+      "max_tps": 72.861,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "median_tpot_ms": 16.01,
+      "sample": "The provided text consists of the pangram \"The quick brown f",
+      "median_ttft_ms": 1435.8
+    },
+    {
+      "context": 65536,
+      "input_len": 58483,
+      "runs_tps": [
+        54.23,
+        48.27
+      ],
+      "median_tps": 51.074,
+      "min_tps": 48.267,
+      "max_tps": 54.227,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "median_tpot_ms": 19.58,
+      "sample": "The provided text consists of the classic English pangram \"T",
+      "median_ttft_ms": 13414.5
+    },
+    {
+      "context": 221184,
+      "input_len": 197326,
+      "runs_tps": [
+        47.91,
+        43.42
+      ],
+      "median_tps": 45.554,
+      "min_tps": 43.42,
+      "max_tps": 47.909,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "median_tpot_ms": 21.95,
+      "sample": "The provided text consists of the pangram \"The quick brown f",
+      "median_ttft_ms": 72757.9
+    }
+  ]
+}

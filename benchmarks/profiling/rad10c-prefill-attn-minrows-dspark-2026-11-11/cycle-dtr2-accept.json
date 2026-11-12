@@ -1,0 +1,30 @@
+{
+ "label": "dtr2-accept",
+ "note": "qwen38 FP8, dev tree rad10c (98 patches with the two-rank BF16 attention-sum wire default + the HIP prefill attention route), --random-seed 7",
+ "log": "/data/logs/rad10c-prefill-attn-minrows-dspark-2026-11-11/server-dtr2.log",
+ "from_line": 1014,
+ "to_line": 1334,
+ "line_numbering": "newline",
+ "decode_lines_dropped_after_prefill": 48,
+ "decode_lines_dropped_no_depth": 2,
+ "depths": {
+  "7.3K": {
+   "decode_batches": {
+    "lines": 34,
+    "accept_len": 3.23,
+    "tok_s": 70.89,
+    "cycles_s": 21.92,
+    "cycle_ms": 45.61
+   }
+  },
+  "58K": {
+   "decode_batches": {
+    "lines": 10,
+    "accept_len": 4.02,
+    "tok_s": 87.0,
+    "cycles_s": 21.58,
+    "cycle_ms": 46.35
+   }
+  }
+ }
+}

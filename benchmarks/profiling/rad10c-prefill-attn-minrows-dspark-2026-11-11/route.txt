@@ -1,0 +1,4 @@
+ROUTE dctl1 mode=off active=0 declined=0
+ROUTE dtr1 mode=qk8 active=2 declined=0
+ROUTE dtr2 mode=qk8 active=2 declined=0
+ROUTE dctl2 mode=off active=0 declined=0
