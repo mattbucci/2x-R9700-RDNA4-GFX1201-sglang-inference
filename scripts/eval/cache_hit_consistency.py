@@ -8,6 +8,8 @@ noise floor rather than as pass/fail: single fresh prefills (needle grids, caps,
 state. The 3090 found hit-vs-fresh first-token logprob deltas up to 2–3 nats on both qwen38 (GDN) and Nemotron (Mamba2)
 under extra_buffer, with the no_buffer single-turn hit exact and the agentic follow-up (longer tail re-prefilled on a
 restored state) still moving — stack behaviour on both hybrids, their issue #10.
+`--with-reasoning` is local: the compared text is the reasoning followed by the answer, for a model that reasons
+before every answer and can leave the answer empty inside the token budget.
 models) produce the same greedy output as a fresh prefill of the identical prompt?
 
 For each (document slice, question) cell:
@@ -47,6 +49,7 @@ def chat(base, model, messages, max_tokens):
     except Exception:
         first = {}
     chat.last_first_top = first
+    chat.last_reasoning = c["message"].get("reasoning_content") or c["message"].get("reasoning") or ""
     return (c["message"].get("content") or ""), c.get("finish_reason"), r.get("usage", {}).get("prompt_tokens"), time.time() - t0
 
 def top_delta(d1, d2):
@@ -67,6 +70,10 @@ def main():
     ap.add_argument("--cells", type=int, default=3)
     ap.add_argument("--chars-per-token", type=float, default=3.9)
     ap.add_argument("--max-tokens", type=int, default=160)
+    ap.add_argument("--with-reasoning", action="store_true",
+                    help="compare the reasoning text followed by the answer; for a model that reasons before every "
+                         "answer (the answer alone can be empty inside the token budget). The follow-up turn still "
+                         "carries the answer only, as a chat client sends it")
     ap.add_argument("--out", default=None)
     a = ap.parse_args()
     base = f"http://127.0.0.1:{a.port}"
@@ -80,6 +87,11 @@ def main():
            "Which of those did you find hardest to locate, and roughly where in the document was it?",
            "Rewrite your previous answer as a numbered list."]
     results, bad = [], 0
+
+    def ask(messages):  # answer, compared text, finish reason, prompt tokens, seconds, first-token top-5
+        t, f, p, s = chat(base, model, messages, a.max_tokens)
+        return t, ((chat.last_reasoning + "\n</think>\n" + t) if a.with_reasoning else t), f, p, s, chat.last_first_top
+
     for tok in [int(x) for x in a.tokens.split(",")]:
         n = int(tok * a.chars_per_token)
         for i in range(a.cells):
@@ -87,17 +99,17 @@ def main():
             doc = text[start:start + n]
             m1 = [{"role": "user", "content": f"Read this document.\n\n{doc}\n\n{q1s[i % 3]}"}]
             flush(base)
-            a_fresh, f1, p1, t1 = chat(base, model, m1, a.max_tokens); lp_a_fresh = chat.last_first_top
-            a_hit, f2, p2, t2 = chat(base, model, m1, a.max_tokens); lp_a_hit = chat.last_first_top
-            m2 = m1 + [{"role": "assistant", "content": a_fresh}, {"role": "user", "content": q2s[i % 3]}]
-            b_hit, f3, p3, t3 = chat(base, model, m2, a.max_tokens); lp_b_hit = chat.last_first_top
+            answer, a_fresh, f1, p1, t1, lp_a_fresh = ask(m1)
+            _, a_hit, f2, p2, t2, lp_a_hit = ask(m1)
+            m2 = m1 + [{"role": "assistant", "content": answer}, {"role": "user", "content": q2s[i % 3]}]
+            _, b_hit, f3, p3, t3, lp_b_hit = ask(m2)
             flush(base)
-            b_fresh, f4, p4, t4 = chat(base, model, m2, a.max_tokens); lp_b_fresh = chat.last_first_top
+            _, b_fresh, f4, p4, t4, lp_b_fresh = ask(m2)
             # noise floor: a second fresh run of each (greedy is not run-to-run exact on this stack)
             flush(base)
-            a_fresh2, _, _, _ = chat(base, model, m1, a.max_tokens); lp_a_fresh2 = chat.last_first_top
+            _, a_fresh2, _, _, _, lp_a_fresh2 = ask(m1)
             flush(base)
-            b_fresh2, _, _, _ = chat(base, model, m2, a.max_tokens); lp_b_fresh2 = chat.last_first_top
+            _, b_fresh2, _, _, _, lp_b_fresh2 = ask(m2)
             lp = {"A_hit_vs_fresh": top_delta(lp_a_fresh, lp_a_hit), "A_fresh_vs_fresh": top_delta(lp_a_fresh, lp_a_fresh2),
                   "B_hit_vs_fresh": top_delta(lp_b_fresh, lp_b_hit), "B_fresh_vs_fresh": top_delta(lp_b_fresh, lp_b_fresh2)}
             def pref(x, y):
@@ -122,7 +134,8 @@ def main():
                   f"B hit-prefix {b_hitp}/{len(b_fresh)} vs fresh-fresh {b_floor} {'WORSE' if worse_b else 'ok'} secs={row['secs']} "
                   f"first-tok dlogp hit/fresh A={lp['A_hit_vs_fresh']} (floor {lp['A_fresh_vs_fresh']}) B={lp['B_hit_vs_fresh']} (floor {lp['B_fresh_vs_fresh']})", flush=True)
     out = a.out or f"benchmarks/quality/cache-hit-consistency-{a.tag}.json"
-    json.dump({"tag": a.tag, "model": model, "mismatches": bad, "results": results}, open(out, "w"), indent=1)
+    json.dump({"tag": a.tag, "model": model, "max_tokens": a.max_tokens, "with_reasoning": a.with_reasoning,
+               "mismatches": bad, "results": results}, open(out, "w"), indent=1)
     print(f"{a.tag}: {bad} hit comparisons worse than the fresh-vs-fresh noise floor, of {2*len(results)} -> {out}")
     sys.exit(1 if bad else 0)
 

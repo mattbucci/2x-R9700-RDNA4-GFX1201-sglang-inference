@@ -105,6 +105,41 @@ The dump confirmed the cast in 12 of 12 cells (FINDINGS → R97-S), so method 3 
 - Read: kernel test pass, dump job `fix-valid` in 12 of 12 cells with both identity arms equal to R97-S tensor for
   tensor (FINDINGS → R97-T kernel test, R97-T dump job). The serving A/B is the remaining step.
 
+## Serving A/B, as fixed before the run (R97-T)
+
+Driver, judge and their tests: `benchmarks/profiling/r97t-pv-scale-2026-11-11/serving/`. The judge's docstring holds
+the rule; this is its reading of the ship and kill lines below.
+
+- Tree: both arms boot from `/data/sgl-v0522-r97t`, the live tree plus the four patched files at the kernel test's
+  hashes. The arms differ in the switch alone; a boot counts when the launcher's exports are in the server's
+  environment, the switch is unset or 1 there, and the backend's scale line is logged by both ranks (treatment) or by
+  none (control).
+- Boots, one preset per job: two warm-ups on the speculative config (switch off, then on, so the switched kernels
+  compile outside the measured boots), then four boots per config in the order off, on, on, off, `--random-seed 7`.
+
+| preset | config | phases per boot |
+|---|---|---|
+| flint | no speculation | capabilities, cold prefill ×3, canonical sweep, forced ladder, route probe, cache-hit consistency (`--with-reasoning`), needle grid to 197K |
+| flint | DFlash2 | capabilities, cold prefill ×2, canonical sweep, sampled ladder with cycle time, accept probe |
+| qwen38 | DSpark | capabilities, cold prefill ×3, canonical sweep, sampled ladder with cycle time, accept probe, route probe, cache-hit consistency, needle grid to 197K |
+| qwen38 | no speculation | cold prefill ×2, canonical sweep, forced ladder |
+
+- Speed rows read per order as speeds, on over off within each pair. `ok`: both orders at 0.99 or better. `loss`: both
+  below and the loss on the means larger than the boot-to-boot spread. `noise`: one order below, the means at 0.99
+  or better and the shortfall inside the spread. Anything else is `open` and re-measured. Gate rows: cold prefill at
+  each depth, the forced ladder without speculation, the canonical rows without speculation when the four boots
+  returned equal token counts, the sampled ladder's cycle time under speculation. Speculative canonical rows follow
+  their continuation and are recorded; first-token times are soft (a loss leaves the preset open).
+- Quality items (capability, route, needle cell) count over the four boots: lower only when both control boots pass
+  and both treatment boots fail; one failing treatment boot leaves the item open; a miss a control shares is shared.
+- Accept length: pooled over the paired greedy documents of both pairs, pair 2 on a disjoint document set, bootstrap
+  interval; a drop needs the ratio under 0.99 with the interval's upper end under 1.
+- Cache-hit consistency: comparisons beyond the fresh-against-fresh floor per boot; worse when the lowest treatment
+  rate is above the highest control rate and a one-sided Fisher test reads p < 0.05. Flint reasons before every
+  answer, so its probe compares the reasoning followed by the answer.
+- Verdict per preset: `kill:<components>`, `open:<components>` or `ship-ok`. R97-T ships when both presets read
+  `ship-ok` with no recorded probe failure, is killed when either reads kill, and open rows are re-measured.
+
 ## Success / kill
 
 - Confirmed: on the cached turn the kernel-cast reference matches the dump within twice the floor (F of the control
