@@ -23,6 +23,17 @@ the weight is exactly 1.
 This is a reading of the source. Whether real attention rows at depth carry enough mass under the floor to matter is
 the first thing to measure.
 
+Kernel-level evidence in the tree: the RAD-10c kernel bench
+([receipts](../benchmarks/profiling/rad10c-kernel-bench-2026-11-11/)) ran the extend kernel on synthetic fp8 operands
+(head dim 256). Its class model states the unscaled cast and matches the kernel at cosine 0.999996 or better per row
+and head. Against fp64 the kernel reads mean cosine 0.99932 / 0.99879 and lowest 0.9967 / 0.9917 at 65K / 197K keys
+without the fp8 QK switch (mean 0.9985 / 0.9980 with it). A CPU fp64 study of the same walk
+([script and receipt](../benchmarks/profiling/r97s-cast-variants-2026-11-11/)) puts 35 % / 46 % of the prefix mass in
+weights between 2^-10 and 2^-6 of the running maximum on those operands and reads mean cosine 0.99933 / 0.99884
+unscaled, 0.99973 / 0.99969 with the weights times 2^8 (0.99973 / 0.99968 times 448), 0.999999 with BF16 weights and
+0.9999998 with the scaled weight as two fp8 products. Gaussian operands are the broad-tail case and the scaled cast
+removes about two thirds of the loss there; the rest is the three-bit rounding. Real rows are what the dump measures.
+
 ## Method
 
 1. CPU: a stage filter for the dump hook (q, k, v, attention output of chosen layers only) and an fp64 emulation of the

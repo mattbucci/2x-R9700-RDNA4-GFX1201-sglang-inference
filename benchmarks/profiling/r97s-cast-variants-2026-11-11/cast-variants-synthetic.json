@@ -1,0 +1,198 @@
+{
+ "geometry": {
+  "q_heads": 12,
+  "kv_heads": 2,
+  "head_dim": 256,
+  "k_std": 1.5,
+  "v_std": 1.0,
+  "kv": "fp8_e4m3, descale 1.0"
+ },
+ "shapes": [
+  {
+   "ctx": 8192,
+   "q_len": 8192,
+   "rows": [
+    0,
+    1638,
+    3276,
+    4914,
+    6552,
+    8191
+   ],
+   "tile": 64,
+   "prefix_mass_share_by_weight_band": {
+    "under_2^-10": 0.0,
+    "in_2^-10..2^-6": 0.0,
+    "above_2^-6": 0.0
+   },
+   "against_reference": {
+    "exact": {
+     "cos_min": 1.0,
+     "cos_mean": 1.0,
+     "max_abs_over_rms": 0.0,
+     "norm_ratio_mean": 1.0
+    },
+    "unscaled": {
+     "cos_min": 1.0,
+     "cos_mean": 1.0,
+     "max_abs_over_rms": 0.0,
+     "norm_ratio_mean": 1.0
+    },
+    "x448": {
+     "cos_min": 1.0,
+     "cos_mean": 1.0,
+     "max_abs_over_rms": 0.0,
+     "norm_ratio_mean": 1.0
+    },
+    "x256": {
+     "cos_min": 1.0,
+     "cos_mean": 1.0,
+     "max_abs_over_rms": 0.0,
+     "norm_ratio_mean": 1.0
+    },
+    "hi+lo": {
+     "cos_min": 1.0,
+     "cos_mean": 1.0,
+     "max_abs_over_rms": 0.0,
+     "norm_ratio_mean": 1.0
+    },
+    "bf16": {
+     "cos_min": 1.0,
+     "cos_mean": 1.0,
+     "max_abs_over_rms": 0.0,
+     "norm_ratio_mean": 1.0
+    },
+    "x448hi+lo": {
+     "cos_min": 1.0,
+     "cos_mean": 1.0,
+     "max_abs_over_rms": 0.0,
+     "norm_ratio_mean": 1.0
+    }
+   }
+  },
+  {
+   "ctx": 65536,
+   "q_len": 8192,
+   "rows": [
+    0,
+    1638,
+    3276,
+    4914,
+    6552,
+    8191
+   ],
+   "tile": 64,
+   "prefix_mass_share_by_weight_band": {
+    "under_2^-10": 0.022336822473540047,
+    "in_2^-10..2^-6": 0.35315534536285137,
+    "above_2^-6": 0.5594647418565322
+   },
+   "against_reference": {
+    "exact": {
+     "cos_min": 1.0,
+     "cos_mean": 1.0,
+     "max_abs_over_rms": 0.0,
+     "norm_ratio_mean": 1.0
+    },
+    "unscaled": {
+     "cos_min": 0.9979593,
+     "cos_mean": 0.9993341,
+     "max_abs_over_rms": 0.293673,
+     "norm_ratio_mean": 1.000388
+    },
+    "x448": {
+     "cos_min": 0.9995976,
+     "cos_mean": 0.9997281,
+     "max_abs_over_rms": 0.098596,
+     "norm_ratio_mean": 0.999759
+    },
+    "x256": {
+     "cos_min": 0.9995892,
+     "cos_mean": 0.9997254,
+     "max_abs_over_rms": 0.105963,
+     "norm_ratio_mean": 0.999783
+    },
+    "hi+lo": {
+     "cos_min": 0.9981417,
+     "cos_mean": 0.9995608,
+     "max_abs_over_rms": 0.280697,
+     "norm_ratio_mean": 1.000547
+    },
+    "bf16": {
+     "cos_min": 0.9999985,
+     "cos_mean": 0.999999,
+     "max_abs_over_rms": 0.008289,
+     "norm_ratio_mean": 1.0
+    },
+    "x448hi+lo": {
+     "cos_min": 0.9999998,
+     "cos_mean": 0.9999998,
+     "max_abs_over_rms": 0.002417,
+     "norm_ratio_mean": 0.999991
+    }
+   }
+  },
+  {
+   "ctx": 196608,
+   "q_len": 8192,
+   "rows": [
+    0,
+    1638,
+    3276,
+    4914,
+    6552,
+    8191
+   ],
+   "tile": 64,
+   "prefix_mass_share_by_weight_band": {
+    "under_2^-10": 0.040558889952569795,
+    "in_2^-10..2^-6": 0.45902465410828897,
+    "above_2^-6": 0.4793508825366779
+   },
+   "against_reference": {
+    "exact": {
+     "cos_min": 1.0,
+     "cos_mean": 1.0,
+     "max_abs_over_rms": 0.0,
+     "norm_ratio_mean": 1.0
+    },
+    "unscaled": {
+     "cos_min": 0.9964926,
+     "cos_mean": 0.9988401,
+     "max_abs_over_rms": 0.357097,
+     "norm_ratio_mean": 1.000635
+    },
+    "x448": {
+     "cos_min": 0.999551,
+     "cos_mean": 0.9996844,
+     "max_abs_over_rms": 0.115087,
+     "norm_ratio_mean": 1.000584
+    },
+    "x256": {
+     "cos_min": 0.9995841,
+     "cos_mean": 0.999688,
+     "max_abs_over_rms": 0.100987,
+     "norm_ratio_mean": 0.999894
+    },
+    "hi+lo": {
+     "cos_min": 0.996743,
+     "cos_mean": 0.9990768,
+     "max_abs_over_rms": 0.331206,
+     "norm_ratio_mean": 1.000839
+    },
+    "bf16": {
+     "cos_min": 0.9999983,
+     "cos_mean": 0.9999988,
+     "max_abs_over_rms": 0.007752,
+     "norm_ratio_mean": 0.999982
+    },
+    "x448hi+lo": {
+     "cos_min": 0.9999997,
+     "cos_mean": 0.9999998,
+     "max_abs_over_rms": 0.002783,
+     "norm_ratio_mean": 0.999994
+    }
+   }
+  }
+ ]
+}
