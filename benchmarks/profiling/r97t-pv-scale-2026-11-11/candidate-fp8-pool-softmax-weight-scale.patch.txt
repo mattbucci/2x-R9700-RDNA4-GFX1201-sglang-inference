@@ -1,0 +1,152 @@
+diff --git a/python/sglang/kernels/ops/attention/extend_attention.py b/python/sglang/kernels/ops/attention/extend_attention.py
+index b5f5b50..cb80019 100644
+--- a/python/sglang/kernels/ops/attention/extend_attention.py
++++ b/python/sglang/kernels/ops/attention/extend_attention.py
+@@ -51,6 +51,12 @@ def _parse_extend_tile():
+ _EXTEND_TILE_OVERRIDE = _parse_extend_tile()
+ # RDNA4 opt-in: fp8 WMMA for the prefix QK (q downcast) instead of upcasting the fp8 cache K to bf16.
+ _EXTEND_FP8_QK = os.environ.get("SGLANG_EXTEND_FP8_QK", "0") == "1"
++# RDNA4 opt-in (R97-T): the value product on an fp8 pool casts the softmax weights to e4m3. Unscaled, a weight
++# under 2^-6 is subnormal and one under 2^-10 becomes zero (0.35-2.6 % of a cached turn's output, up to 10 % of
++# a prefill tail at 197K). Times 2^8 (a weight is at most 1, e4m3 reaches 448) the cast keeps three bits down to
++# 2^-14 and rounds weights above 2^-6 as before; the product is scaled back by 2^-8. Read by the extend prefix
++# loop here, verify_splitkv's stage 1 and verify_gqa_rdna4's grouped stage; inert on a BF16 pool.
++_FP8_PV_SCALE = os.environ.get("SGLANG_RDNA4_FP8_PV_SCALE", "0") == "1"
+ _is_gfx1250 = _is_hip and is_gfx1250_supported()
+ 
+ try:
+@@ -459,6 +465,7 @@ def _fwd_kernel(
+     FP8_MAX: tl.constexpr,
+     IS_GFX1250: tl.constexpr = False,
+     FP8_QK: tl.constexpr = False,
++    FP8_PV_SCALE: tl.constexpr = False,
+     PAGE_SIZE: tl.constexpr = 1,
+     IDENTITY_KV_INDICES: tl.constexpr = False,
+     SCORE_MOD: tl.constexpr = None,
+@@ -733,6 +740,8 @@ def _fwd_kernel(
+                 # TODO: remove this branch once the gfx1250 bf16 P·V issue is resolved.
+                 if IS_GFX1250:
+                     dot = tl.dot(p, v.to(tl.float32), out_dtype=tl.float32)
++                elif FP8_PV_SCALE:
++                    dot = tl.dot((p * 256.0).to(v.dtype), v) * (1.0 / 256.0)
+                 else:
+                     dot = tl.dot(p.to(v.dtype), v)
+                 acc = acc * re_scale[:, None] + dot * v_scale
+@@ -1174,6 +1183,7 @@ def extend_attention_fwd(
+         HAS_SINK=HAS_SINK,
+         IS_GFX1250=_is_gfx1250,
+         FP8_QK=_EXTEND_FP8_QK,
++        FP8_PV_SCALE=_FP8_PV_SCALE and v_buffer.dtype == torch.float8_e4m3fn,
+         STORE_TRANSPOSE=_is_hip,
+         USE_COMPACT_TILE_GRID=use_compact_tile_grid,
+         USE_EXP2=USE_EXP2,
+diff --git a/python/sglang/kernels/ops/attention/verify_gqa_rdna4.py b/python/sglang/kernels/ops/attention/verify_gqa_rdna4.py
+index d4ba123..288d3f1 100644
+--- a/python/sglang/kernels/ops/attention/verify_gqa_rdna4.py
++++ b/python/sglang/kernels/ops/attention/verify_gqa_rdna4.py
+@@ -27,6 +27,7 @@ from sglang.kernels.ops.attention.verify_splitkv import (
+     block_config,
+     can_handle,
+     choose_n_splits,
++    fp8_pv_scale,
+     verify_splitkv_fwd,
+ )
+ 
+@@ -93,6 +94,7 @@ def _verify_gqa_prefix_stage1(
+     BLOCK_N: tl.constexpr,
+     MIN_BLOCK_KV: tl.constexpr,
+     UPCAST_K: tl.constexpr = False,
++    FP8_PV_SCALE: tl.constexpr = False,  # R97-T, as in _verify_prefix_stage1
+ ):
+     cur_batch = tl.program_id(0)
+     head_block = tl.program_id(1)
+@@ -186,7 +188,10 @@ def _verify_gqa_prefix_stage1(
+             re_scale = tl.exp(e_max - n_e_max)
+             p = tl.exp(qk - n_e_max[:, None])
+             acc *= re_scale[:, None]
+-            acc += tl.dot(p.to(v.dtype), v)
++            if FP8_PV_SCALE:
++                acc += tl.dot((p * 256.0).to(v.dtype), v) * (1.0 / 256.0)
++            else:
++                acc += tl.dot(p.to(v.dtype), v)
+             e_sum = e_sum * re_scale + tl.sum(p, 1)
+             e_max = n_e_max
+ 
+@@ -282,6 +287,7 @@ class VerifyGQA(VerifySplitKV):
+             BLOCK_N=self.block_n,
+             MIN_BLOCK_KV=_MIN_BLOCK_KV,
+             UPCAST_K=self.upcast_k,
++            FP8_PV_SCALE=fp8_pv_scale(v_buffer),
+             num_warps=self.num_warps,
+             num_stages=1,
+             **_AMD_LAUNCH_KWARGS,
+diff --git a/python/sglang/kernels/ops/attention/verify_splitkv.py b/python/sglang/kernels/ops/attention/verify_splitkv.py
+index 89d4f10..c402f02 100644
+--- a/python/sglang/kernels/ops/attention/verify_splitkv.py
++++ b/python/sglang/kernels/ops/attention/verify_splitkv.py
+@@ -70,6 +70,8 @@ _IS_RDNA = _detect_rdna()
+ # harness: cos 0.99959 vs 0.99965 for the upcast against fp32 with an fp8 cache). SGLANG_SPLITKV_UPCAST_K=1
+ # switches the verify path too; the short-extend route always passes upcast_k=True.
+ _UPCAST_K = os.environ.get("SGLANG_SPLITKV_UPCAST_K", "0") == "1"
++# RDNA4 opt-in (R97-T): scale the prefix weights by 2^8 ahead of their e4m3 cast (see extend_attention).
++_FP8_PV_SCALE = os.environ.get("SGLANG_RDNA4_FP8_PV_SCALE", "0") == "1"
+ # Combine-stage (stage 2) warps. 4 was the 3090 070 v2 value; on gfx1201 the [L_EXT, 256] fp32 tiles spilled
+ # 346 / 2,156 registers at L_EXT 16 / 64 with 4 warps. 8 warps: 56 / 952 on qwen38 (head_dim 256), 0 / 374 on
+ # Laguna (head_dim 128), numerics identical, the 64-row route chunk 2x cheaper per layer on Laguna, the 16-row
+@@ -100,6 +102,10 @@ _BLOCK_CONFIG = {
+ }
+ 
+ 
++def fp8_pv_scale(v_buffer) -> bool:
++    return _FP8_PV_SCALE and v_buffer.dtype == torch.float8_e4m3fn
++
++
+ def _min_row_tile(device) -> int:
+     """Minimum L_EXT dot tile: 16 on RDNA (WMMA 16x16x16), 1 elsewhere."""
+     if not _IS_HIP:
+@@ -207,6 +213,7 @@ def _verify_prefix_stage1(
+     MIN_BLOCK_KV: tl.constexpr,
+     UPCAST_K: tl.constexpr = False,  # RDNA4: dot(q, k.to(q.dtype)) like extend_attention's gfx1201 branch
+     SLIDING_WINDOW_SIZE: tl.constexpr = -1,  # RDNA4 RAD-28: > 0 when kv_indptr / kv_indices span a causal window
++    FP8_PV_SCALE: tl.constexpr = False,  # RDNA4 R97-T: fp8 pool, weights x 2^8 ahead of the e4m3 cast
+ ):
+     cur_batch = tl.program_id(0)
+     cur_head = tl.program_id(1)
+@@ -306,7 +313,10 @@ def _verify_prefix_stage1(
+             re_scale = tl.exp(e_max - n_e_max)
+             p = tl.exp(qk - n_e_max[:, None])
+             acc *= re_scale[:, None]
+-            acc += tl.dot(p.to(v.dtype), v)
++            if FP8_PV_SCALE:
++                acc += tl.dot((p * 256.0).to(v.dtype), v) * (1.0 / 256.0)
++            else:
++                acc += tl.dot(p.to(v.dtype), v)
+             e_sum = e_sum * re_scale + tl.sum(p, 1)
+             e_max = n_e_max
+ 
+@@ -631,6 +641,7 @@ class VerifySplitKV:
+             MIN_BLOCK_KV=_MIN_BLOCK_KV,
+             UPCAST_K=self.upcast_k,
+             SLIDING_WINDOW_SIZE=self.sliding_window_size,
++            FP8_PV_SCALE=fp8_pv_scale(v_buffer),
+             num_warps=self.num_warps,
+             num_stages=1,
+             **_AMD_LAUNCH_KWARGS,
+diff --git a/python/sglang/srt/layers/attention/triton_backend.py b/python/sglang/srt/layers/attention/triton_backend.py
+index 5b2d836..e0a503f 100644
+--- a/python/sglang/srt/layers/attention/triton_backend.py
++++ b/python/sglang/srt/layers/attention/triton_backend.py
+@@ -336,6 +336,13 @@ class TritonAttnBackend(AttentionBackend):
+             from sglang.kernels.ops.attention.verify_gqa_rdna4 import verify_gqa_fwd
+ 
+             self.verify_gqa_fwd = torch.compiler.disable(verify_gqa_fwd)
++        from sglang.kernels.ops.attention.extend_attention import _FP8_PV_SCALE
++
++        if _FP8_PV_SCALE and model_runner.kv_cache_dtype == torch.float8_e4m3fn:
++            logger.info(
++                "fp8 pool weight scale active: prefix softmax weights x 2^8 ahead of the e4m3 cast "
++                "(extend prefix loop, split-KV stage 1, grouped verify stage)"
++            )
+         # TODO: this logic should be fixed in non-hip platform
+         self.is_hip_dspark_draft = (
+             _is_hip
