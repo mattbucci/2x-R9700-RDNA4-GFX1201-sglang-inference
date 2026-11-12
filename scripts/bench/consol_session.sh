@@ -83,7 +83,7 @@ boot(){ # boot arm tree envs -> 0 up, 1 boot failure, 2 identity failure
   poke "$name" || { log "$name: the first request got no answer: $(head -c 200 "$OUT/poke-$name.json" 2>/dev/null)"; free_gpu; return 1; }
   ident "$name" "$arm" boot || { free_gpu; return 2; }
   got=$(grep -a -oE "max_total_num_tokens=[0-9]+" "$slog" | sort -u | head -1 | grep -oE '[0-9]+$')
-  echo "CAP $name ${got:-0}" >> "$OUT/capacity.txt"; echo "VRAM $name boot $(vram)" >> "$OUT/vram.txt"
+  echo "CAP $name ${got:-0}" >> "$OUT/capacity.txt"; echo "VRAM $name boot $(vram | sed 's/ *$//')" >> "$OUT/vram.txt"
   log "$name: up as $arm, seed $C_SEED, pool ${got:-unread} tokens, vram MiB $(vram)"
 }
 FAIL=""; STOP=""
@@ -131,7 +131,7 @@ run(){ # boot arm role tree envs
   else
     log "$name: capabilities below $C_CAPS/$C_CAPS twice, no timing on this boot"; cp "$OUT/caps-$name-2.log" "$RCPT/caps-$name-fail.txt" 2>/dev/null; FAIL="$FAIL $name:caps"
   fi
-  if [ "$(health)" = 200 ]; then echo "VRAM $name end $(vram)" >> "$OUT/vram.txt"; ident "$name" "$arm" end || FAIL="$FAIL $name:identity-after"
+  if [ "$(health)" = 200 ]; then echo "VRAM $name end $(vram | sed 's/ *$//')" >> "$OUT/vram.txt"; ident "$name" "$arm" end || FAIL="$FAIL $name:identity-after"
   else log "$name: the server is not healthy after the measurements"; tail -80 "$OUT/server-$name.log" | cut -c1-400 > "$RCPT/server-died-$name.txt"; FAIL="$FAIL $name:server-died"; fi
   free_gpu; mark "$name"
 }

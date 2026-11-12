@@ -1,0 +1,248 @@
+{
+  "label": "b1-p130b",
+  "tag": "",
+  "note": "CONSOL-1 session flint-nospec, preset flint, 99 patches, --random-seed 7; canonical sweep, 5 runs, EOS, behind the cold prefill probe",
+  "port": 23334,
+  "maxtok": 80,
+  "runs": 5,
+  "sampling": null,
+  "ignore_eos": false,
+  "points": [
+    {
+      "context": 128,
+      "input_len": 14,
+      "runs_tps": [
+        44.74,
+        45.24,
+        45.19,
+        45.25,
+        45.31
+      ],
+      "median_tps": 45.239,
+      "min_tps": 44.738,
+      "max_tps": 45.307,
+      "runs_completion_tokens": [
+        80,
+        80,
+        80,
+        80,
+        80
+      ],
+      "runs_verify_ct": [
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "runs_decode_s": [
+        1.7658,
+        1.7463,
+        1.7482,
+        1.7458,
+        1.7437
+      ],
+      "runs_text_sha": [
+        "de1996255b87",
+        "de1996255b87",
+        "de1996255b87",
+        "de1996255b87",
+        "de1996255b87"
+      ],
+      "runs_pieces": [
+        79,
+        79,
+        79,
+        79,
+        79
+      ],
+      "runs_median_gap_ms": [
+        22.33,
+        22.1,
+        22.11,
+        22.09,
+        22.06
+      ],
+      "median_tpot_ms": 22.1,
+      "sample": "Okay, the user has asked for a long, detailed essay about GP",
+      "median_ttft_ms": 76.5
+    },
+    {
+      "context": 8192,
+      "input_len": 7321,
+      "runs_tps": [
+        44.62,
+        44.44,
+        44.5,
+        44.58,
+        44.6
+      ],
+      "median_tps": 44.577,
+      "min_tps": 44.441,
+      "max_tps": 44.621,
+      "runs_completion_tokens": [
+        80,
+        80,
+        80,
+        80,
+        80
+      ],
+      "runs_verify_ct": [
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "runs_decode_s": [
+        1.7705,
+        1.7777,
+        1.7751,
+        1.7722,
+        1.7712
+      ],
+      "runs_text_sha": [
+        "ee8d23e904cd",
+        "ee8d23e904cd",
+        "ee8d23e904cd",
+        "ee8d23e904cd",
+        "ee8d23e904cd"
+      ],
+      "runs_pieces": [
+        79,
+        79,
+        79,
+        79,
+        79
+      ],
+      "runs_median_gap_ms": [
+        22.4,
+        22.47,
+        22.45,
+        22.42,
+        22.4
+      ],
+      "median_tpot_ms": 22.43,
+      "sample": "We need answer user. Need summarize repeated sentence in one",
+      "median_ttft_ms": 85.9
+    },
+    {
+      "context": 65536,
+      "input_len": 58473,
+      "runs_tps": [
+        42.62,
+        43.14,
+        43.11,
+        43.15,
+        43.19
+      ],
+      "median_tps": 43.145,
+      "min_tps": 42.621,
+      "max_tps": 43.194,
+      "runs_completion_tokens": [
+        80,
+        80,
+        80,
+        80,
+        80
+      ],
+      "runs_verify_ct": [
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "runs_decode_s": [
+        1.8535,
+        1.831,
+        1.8327,
+        1.8309,
+        1.8289
+      ],
+      "runs_text_sha": [
+        "f309a55d1460",
+        "f309a55d1460",
+        "f309a55d1460",
+        "f309a55d1460",
+        "f309a55d1460"
+      ],
+      "runs_pieces": [
+        79,
+        79,
+        79,
+        79,
+        79
+      ],
+      "runs_median_gap_ms": [
+        23.47,
+        23.15,
+        23.17,
+        23.16,
+        23.13
+      ],
+      "median_tpot_ms": 23.18,
+      "sample": "We need answer user. Need parse. We need respond to final. W",
+      "median_ttft_ms": 133.8
+    },
+    {
+      "context": 221184,
+      "input_len": 197315,
+      "runs_tps": [
+        39.29,
+        39.31,
+        39.32,
+        39.33,
+        39.32
+      ],
+      "median_tps": 39.32,
+      "min_tps": 39.292,
+      "max_tps": 39.33,
+      "runs_completion_tokens": [
+        80,
+        80,
+        80,
+        80,
+        80
+      ],
+      "runs_verify_ct": [
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "runs_decode_s": [
+        2.0106,
+        2.0099,
+        2.0091,
+        2.0087,
+        2.0091
+      ],
+      "runs_text_sha": [
+        "afb5329544aa",
+        "afb5329544aa",
+        "afb5329544aa",
+        "afb5329544aa",
+        "afb5329544aa"
+      ],
+      "runs_pieces": [
+        79,
+        79,
+        79,
+        79,
+        79
+      ],
+      "runs_median_gap_ms": [
+        25.4,
+        25.44,
+        25.39,
+        25.41,
+        25.39
+      ],
+      "median_tpot_ms": 25.43,
+      "sample": "We need answer user. Need parse request. We need answer like",
+      "median_ttft_ms": 300.3
+    }
+  ]
+}

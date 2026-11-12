@@ -1,0 +1,11 @@
+warm	ctl	warm	-	-
+b1-ctl1	ctl	ctl	-	-
+b1-p079a	p079	arm	-	SGLANG_OPT_USE_JIT_KERNEL_FUSED_TOPK=false
+b1-p112a	p112	arm	-	EXTEND_SPLITKV_MAX=0
+b1-p118a	p118	arm	/data/sgl-v0522-consol/s99/p118	-
+b1-p130a	p130	arm	-	SGLANG_HIP_BF16_ATTN_SUM=0
+b1-p130b	p130	arm	-	SGLANG_HIP_BF16_ATTN_SUM=0
+b1-p118b	p118	arm	/data/sgl-v0522-consol/s99/p118	-
+b1-p112b	p112	arm	-	EXTEND_SPLITKV_MAX=0
+b1-p079b	p079	arm	-	SGLANG_OPT_USE_JIT_KERNEL_FUSED_TOPK=false
+b1-ctl2	ctl	ctl	-	-

@@ -1,0 +1,40 @@
+{
+ "label": "b1-p112b",
+ "model": "/data/models/Flint-FP8",
+ "port": 23334,
+ "runs": 2,
+ "method": "flush_cache + non-stream max_tokens=1 wall time",
+ "timestamp": "2026-11-12 08:35",
+ "rows": [
+  {
+   "context": 8192,
+   "input_len": 7321,
+   "runs_s": [
+    0.776,
+    0.777
+   ],
+   "median_s": 0.776,
+   "prefill_tok_per_s": 9428.6
+  },
+  {
+   "context": 65536,
+   "input_len": 58473,
+   "runs_s": [
+    9.218,
+    9.258
+   ],
+   "median_s": 9.238,
+   "prefill_tok_per_s": 6329.6
+  },
+  {
+   "context": 221184,
+   "input_len": 197315,
+   "runs_s": [
+    59.851,
+    60.061
+   ],
+   "median_s": 59.956,
+   "prefill_tok_per_s": 3291.0
+  }
+ ]
+}
