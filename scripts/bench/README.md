@@ -11,7 +11,7 @@ streaming-TPOT harness; receipts must identify the method and actual token count
 | `bench_all_models.sh` | Run bench_all_unified.py across all models (uses launch.sh presets) |
 | `bench_quick.sh` | Fast 3-point check (1/8/16 concurrent) for A/B testing patches |
 | `bench_regression.sh` | Regression detection vs stored baselines |
-| `generate_charts.py` | Generate performance/spec-decode charts and the schema-v2 tool-use ladder |
+| `generate_charts.py` | Generate performance/spec-decode charts and the schema-v2 tool-use ladder; `--group-by {class,quant,none}` sets the panels of the fleet charts (default: MoE / dense) |
 | `measure_decode_curve.py` | Single-user streaming TPOT at controlled context depths |
 | `profile_decode_kernels.py` | Attribute traced GPU kernel time by **phase** (decode vs prefill/extend) *and* category (attention / rocblas_gemm / triton_fp8_gemm / elementwise_norm / rccl / routed_moe / other) from a profiler trace dir |
 | `profile_native_decode.sh` | Boot preset, prime the deep prefix, warm the decode path, profile a request, and emit both a decode and a prefill/extend breakdown |

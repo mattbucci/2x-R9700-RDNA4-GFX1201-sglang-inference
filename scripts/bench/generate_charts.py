@@ -3,6 +3,8 @@
 
 Reads benchmark data from benchmarks/{model}/results.json and produces PNG charts.
 All context charts share a unified 256K x-axis for direct comparison.  The
+fleet charts (all_models_*.png) draw one panel per model class; --group-by
+selects quantization panels or a single panel instead.  The
 tool-use ladder reads schema-v2 receipts from benchmarks/quality/ so the chart
 cannot drift from the recorded agentic-quality results.
 """
@@ -193,30 +195,54 @@ plt.rcParams.update({
     "font.size": 11,
 })
 
+# --- Fleet styling ---
+# A fleet panel holds up to ten curves, so a model is identified by two channels that are both
+# unique inside its class: a FLEET_PALETTE colour and a marker shape. Marker fill carries the
+# class (filled = MoE, hollow = dense) and the dash carries the quantization (solid = FP8,
+# dashed = 4-bit), which keeps an ungrouped chart readable where a colour repeats across classes.
+# The six FP8 models have six colours, and the two models that share a colour never share a
+# marker and are the pairs whose context curves stay furthest apart.
+FLEET_PALETTE = {
+    "blue": "#4ea1ff", "orange": "#ff9a3c", "green": "#3ddc84", "red": "#ff5c5c",
+    "violet": "#b48cff", "yellow": "#ffe45e", "cyan": "#3fd6e0", "pink": "#ff79c6",
+    "white": "#f0f6fc", "tan": "#b89b7a",
+}
+MODEL_CLASSES = {"moe": "MoE", "dense": "Dense"}
+MODEL_QUANTS = {"fp8": "FP8", "4bit": "4-bit (AWQ / GPTQ)"}
+# --group-by choices: the MODELS field with its panel order and titles; None draws one panel.
+FLEET_GROUPINGS = {"class": ("cls", MODEL_CLASSES), "quant": ("quant", MODEL_QUANTS), "none": None}
+FLEET_DEFAULT_GROUPING = "class"
+
+
+def _model(label, cls, quant, color, marker):
+    return {"label": label, "cls": cls, "quant": quant,
+            "color": FLEET_PALETTE[color], "marker": marker}
+
+
 MODELS = {
-    "qwen3.5-27b-awq":          {"label": "Qwen3.5-27B AWQ (DeltaNet)",        "color": "#58a6ff"},
-    "devstral-24b-awq":         {"label": "Devstral-24B AWQ",                  "color": "#79c0ff"},
-    "coder-30b-awq":            {"label": "Coder-30B AWQ (MoE)",               "color": "#3fb950"},
-    "qwen3.5-35b-moe-gptq":     {"label": "Qwen3.5-28B-A3B REAP (MoE+DeltaNet)", "color": "#d2a8ff"},
-    "qwen3.6-35b-moe-awq":      {"label": "Qwen3.6-35B MoE AWQ",               "color": "#bc8cff"},
-    "gemma-4-26b-awq":          {"label": "Gemma 4 26B AWQ (MoE)",             "color": "#e3b341"},
-    "gemma4-31b":               {"label": "Gemma 4 31B AWQ (Dense)",           "color": "#f0883e"},
-    "gemma4-12b":               {"label": "Gemma 4 12B AWQ (omni)",            "color": "#ffdf5d"},
-    "nemotron-omni-30b-fp8":    {"label": "Nemotron-Omni-30B FP8 (Mamba2)",    "color": "#56d4dd"},
-    "qwen3.6-27b-awq-native":   {"label": "Qwen3.6-27B AWQ (Dense)",           "color": "#8957e5"},
-    "qwen3-coder-reap-25b-a3b-awq": {"label": "Coder-REAP-25B AWQ (MoE)",      "color": "#238636"},
-    "coder-next-ream-awq":      {"label": "Coder-Next-REAM-60B AWQ (MoE+DeltaNet)", "color": "#2ea043"},
+    "qwen3.5-27b-awq":          _model("Qwen3.5-27B AWQ (DeltaNet)", "dense", "4bit", "white", "<"),
+    "devstral-24b-awq":         _model("Devstral-24B AWQ", "dense", "4bit", "yellow", "^"),
+    "coder-30b-awq":            _model("Coder-30B AWQ (MoE)", "moe", "4bit", "green", "^"),
+    "qwen3.5-35b-moe-gptq":     _model("Qwen3.5-28B-A3B REAP (MoE+DeltaNet)", "moe", "4bit", "violet", "P"),
+    "qwen3.6-35b-moe-awq":      _model("Qwen3.6-35B MoE AWQ", "moe", "4bit", "white", "X"),
+    "gemma-4-26b-awq":          _model("Gemma 4 26B AWQ (MoE)", "moe", "4bit", "yellow", "D"),
+    "gemma4-31b":               _model("Gemma 4 31B AWQ (Dense)", "dense", "4bit", "tan", "X"),
+    "gemma4-12b":               _model("Gemma 4 12B AWQ (omni)", "dense", "4bit", "cyan", "D"),
+    "nemotron-omni-30b-fp8":    _model("Nemotron-Omni-30B FP8 (Mamba2)", "moe", "fp8", "cyan", "o"),
+    "qwen3.6-27b-awq-native":   _model("Qwen3.6-27B AWQ (Dense)", "dense", "4bit", "orange", "P"),
+    "qwen3-coder-reap-25b-a3b-awq": _model("Coder-REAP-25B AWQ (MoE)", "moe", "4bit", "pink", "s"),
+    "coder-next-ream-awq":      _model("Coder-Next-REAM-60B AWQ (MoE+DeltaNet)", "moe", "4bit", "blue", "<"),
     # qwen3.6-vl-reap-26b-a3b-awq and qwen3.6-ream-a3b-awq: benchmark dirs purged 2026-11-01
     # (sglang.bench_serving-era data, no decode_ab re-measure; R97-H closed).
-    "devstral2-awq":            {"label": "Devstral-2-24B AWQ (Dense)",        "color": "#1f6feb"},
-    "qwen3vl-32b-awq":          {"label": "Qwen3-VL-32B AWQ (Dense VL)",       "color": "#f778ba"},
-    "north-mini":               {"label": "North-Mini-Code FP8 (cohere2_moe)", "color": "#ff7b72"},
-    "laguna-xs2":               {"label": "Laguna XS.2 FP8 (MoE)",            "color": "#ffa657"},
-    "flint-fp8":                {"label": "Flint FP8 (MoE + hybrid SWA + sinks)", "color": "#d29922"},
-    "qwen38-27b-fp8":           {"label": "Qwen3.8-27B FP8 + DSpark (Dense DeltaNet VL)", "color": "#f85149"},
+    "devstral2-awq":            _model("Devstral-2-24B AWQ (Dense)", "dense", "4bit", "red", "s"),
+    "qwen3vl-32b-awq":          _model("Qwen3-VL-32B AWQ (Dense VL)", "dense", "4bit", "violet", "*"),
+    "north-mini":               _model("North-Mini-Code FP8 (cohere2_moe)", "moe", "fp8", "red", "v"),
+    "laguna-xs2":               _model("Laguna XS.2 FP8 (MoE)", "moe", "fp8", "orange", "*"),
+    "flint-fp8":                _model("Flint FP8 (MoE + hybrid SWA + sinks)", "moe", "fp8", "tan", ">"),
+    "qwen38-27b-fp8":           _model("Qwen3.8-27B FP8 + DSpark (Dense DeltaNet VL)", "dense", "fp8", "blue", "o"),
     # The no-spec qwen38 server (QWEN38_SPEC=0; 530K-token pool, true 256K) kept as the
     # reference curve since DSpark became the preset default on 2026-09-27.
-    "qwen38-27b-fp8-nospec":    {"label": "Qwen3.8-27B FP8 no-spec (reference)", "color": "#da3633"},
+    "qwen38-27b-fp8-nospec":    _model("Qwen3.8-27B FP8 no-spec (reference)", "dense", "fp8", "green", "v"),
 }
 
 # (no current models have OOM concurrency levels)
@@ -1077,67 +1103,125 @@ def make_concurrency_chart(model_key, meta, results, out_dir):
     print(f"  {path}")
 
 
-def make_combined_context_chart(all_data):
-    """All models on one context chart, unified 256K x-axis."""
-    # Wide canvas with the legend below the axes: 18 fleet lines do not fit
-    # an in-plot legend without covering the deep-context end of the curves.
-    fig, ax = plt.subplots(figsize=(11, 6.5))
+def fleet_groups(all_data, group_by=FLEET_DEFAULT_GROUPING):
+    """[(title, [(key, meta, results), ...])] in the grouping's own order, empty groups
+    dropped; "none" returns one untitled group."""
+    members = [(key, meta, results) for key, (meta, results) in all_data.items()]
+    grouping = FLEET_GROUPINGS[group_by]
+    if grouping is None:
+        return [(None, members)] if members else []
+    field, titles = grouping
+    groups = [(title, [m for m in members if m[1][field] == value]) for value, title in titles.items()]
+    return [(title, group) for title, group in groups if group]
 
-    for key, (meta, results) in all_data.items():
-        sweep = [p for p in results["context_sweep"]
-                 if "error" not in p and p.get("tok_per_sec", 0) > 0]
-        ctx = [p["context"] for p in sweep]
-        toks = [p["tok_per_sec"] for p in sweep]
-        ax.plot(ctx, toks, "o-", color=meta["color"], linewidth=2, markersize=5,
-                label=meta["label"], zorder=5)
 
+def fleet_line_style(meta):
+    """ax.plot keywords of one fleet curve (see the fleet styling note above MODELS)."""
+    panel = plt.rcParams["axes.facecolor"]
+    dense = meta["cls"] == "dense"
+    return {
+        "color": meta["color"],
+        "linewidth": 2.0,
+        "linestyle": "-" if meta["quant"] == "fp8" else (0, (5, 2)),
+        "marker": meta["marker"],
+        "markersize": 9.5 if meta["marker"] in ("*", "P", "X") else 7.5,
+        "markerfacecolor": panel if dense else meta["color"],
+        "markeredgecolor": meta["color"] if dense else panel,
+        "markeredgewidth": 1.6 if dense else 0.7,
+        "zorder": 5,
+    }
+
+
+def _fleet_style_key(fig):
+    """Figure legend for the two channels that are not a model's identity."""
+    from matplotlib.lines import Line2D
+    panel, ink = plt.rcParams["axes.facecolor"], "#c9d1d9"
+    fig.legend(handles=[
+        Line2D([], [], linestyle="none", marker="o", markersize=7.5, markerfacecolor=ink,
+               markeredgecolor=panel, label="filled marker: MoE"),
+        Line2D([], [], linestyle="none", marker="o", markersize=7.5, markerfacecolor=panel,
+               markeredgecolor=ink, markeredgewidth=1.6, label="hollow marker: dense"),
+        Line2D([], [], color=ink, linewidth=2.0, linestyle="-", label="solid line: FP8"),
+        Line2D([], [], color=ink, linewidth=2.0, linestyle=(0, (5, 2)),
+               label="dashed line: 4-bit (AWQ / GPTQ)"),
+    ], loc="outside lower center", ncol=4, fontsize=9.5, frameon=False, handlelength=3.2)
+
+
+def _fleet_line_chart(all_data, group_by, series, title, xlabel, ylabel, out_path, setup_axis=None):
+    """Fleet curves in one panel per group, stacked on shared axes. A panel's legend lists its
+    curves in the order they leave the left edge, so it reads top to bottom like the panel."""
+    panels = []
+    for group_title, members in fleet_groups(all_data, group_by):
+        curves = [(meta,) + tuple(series(results)) for _, meta, results in members]
+        curves = sorted((c for c in curves if c[1]), key=lambda c: c[2][0], reverse=True)
+        if curves:
+            panels.append((group_title, curves))
+    if not panels:
+        print(f"  SKIP {os.path.basename(out_path)} (no fleet data)")
+        return None
+
+    tallest = max(len(curves) for _, curves in panels)
+    fig, axes = plt.subplots(
+        len(panels), 1, sharex=True, sharey=True, squeeze=False, layout="constrained",
+        figsize=(12, max(3.8, 0.27 * tallest + 1.1) * len(panels) + 1.0))
+    for ax, (group_title, curves) in zip(axes[:, 0], panels):
+        for meta, xs, ys in curves:
+            ax.plot(xs, ys, label=meta["label"], **fleet_line_style(meta))
+        if setup_axis:
+            setup_axis(ax)
+        ax.set_ylabel(ylabel)
+        ax.grid(True, axis="both", linestyle="--")
+        ax.set_ylim(bottom=0)
+        if group_title:
+            ax.set_title(f"{group_title} · {len(curves)} models", loc="left", fontsize=11.5,
+                         fontweight="bold")
+        legend = ax.legend(loc="upper left", bbox_to_anchor=(1.01, 1.0), borderaxespad=0, fontsize=9,
+                           handlelength=3.4, title="fastest at the left edge first", title_fontsize=8,
+                           framealpha=0.5, edgecolor="#30363d", facecolor="#161b22")
+        legend.get_title().set_color("#8b949e")
+    axes[-1, 0].set_xlabel(xlabel)
+    fig.suptitle(title, fontsize=13, fontweight="bold")
+    _fleet_style_key(fig)
+    fig.savefig(out_path, dpi=150, bbox_inches="tight")
+    plt.close(fig)
+    print(f"  {out_path}")
+    return out_path
+
+
+def _context_series(results):
+    sweep = [p for p in results["context_sweep"]
+             if "error" not in p and p.get("tok_per_sec", 0) > 0]
+    return [p["context"] for p in sweep], [p["tok_per_sec"] for p in sweep]
+
+
+def _context_axis(ax):
     ax.set_xscale("log", base=2)
     ax.set_xlim(*UNIFIED_XLIM)
     ax.xaxis.set_major_formatter(ticker.FuncFormatter(fmt_ctx))
     ax.xaxis.set_major_locator(ticker.FixedLocator(UNIFIED_XTICKS))
-    ax.tick_params(axis="x", rotation=45)
-    ax.set_xlabel("Context Length")
-    ax.set_ylabel("tok/s (single user)")
-    ax.set_title("All Models — Context Length vs Decode Speed (single user, TP=2)",
-                 fontsize=13, fontweight="bold", pad=10)
-    ax.grid(True, axis="both", linestyle="--")
-    ax.set_ylim(bottom=0)
-    ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.22), ncol=3, fontsize=9,
-              framealpha=0.5, edgecolor="#30363d", facecolor="#161b22")
-
-    fig.tight_layout()
-    path = os.path.join(BENCH_DIR, "all_models_context.png")
-    fig.savefig(path, dpi=150, bbox_inches="tight")
-    plt.close(fig)
-    print(f"  {path}")
 
 
-def make_combined_concurrency_chart(all_data):
-    """All models on one concurrency chart."""
-    fig, ax = plt.subplots(figsize=(11, 6.5))
+def make_combined_context_chart(all_data, group_by=FLEET_DEFAULT_GROUPING, out_path=None):
+    """All models on one context chart, unified 256K x-axis, one panel per group."""
+    return _fleet_line_chart(
+        all_data, group_by, _context_series,
+        "All Models — Context Length vs Decode Speed (single user, TP=2)",
+        "Context Length", "tok/s (single user)",
+        out_path or os.path.join(BENCH_DIR, "all_models_context.png"), _context_axis)
 
-    for key, (meta, results) in all_data.items():
-        if "throughput_sweep" not in results:
-            continue  # context-only models have no concurrency data
-        sweep = [p for p in results["throughput_sweep"] if "error" not in p]
-        conc = [p["concurrency"] for p in sweep]
-        toks = [point_toks(p) for p in sweep]
-        ax.plot(conc, toks, "o-", color=meta["color"], linewidth=2, markersize=5,
-                label=meta["label"], zorder=5)
 
-    ax.set_xlabel("Concurrent Requests")
-    ax.set_ylabel("Total tok/s")
-    ax.set_title("All Models — Throughput Scaling", fontsize=13, fontweight="bold", pad=10)
-    ax.grid(True, axis="both", linestyle="--")
-    ax.set_ylim(bottom=0)
-    ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.12), ncol=3, fontsize=9,
-              framealpha=0.5, edgecolor="#30363d", facecolor="#161b22")
+def _concurrency_series(results):
+    # context-only models have no concurrency data
+    sweep = [p for p in results.get("throughput_sweep", []) if "error" not in p]
+    return [p["concurrency"] for p in sweep], [point_toks(p) for p in sweep]
 
-    fig.tight_layout()
-    path = os.path.join(BENCH_DIR, "all_models_concurrency.png")
-    fig.savefig(path, dpi=150, bbox_inches="tight")
-    plt.close(fig)
-    print(f"  {path}")
+
+def make_combined_concurrency_chart(all_data, group_by=FLEET_DEFAULT_GROUPING, out_path=None):
+    """All models on one concurrency chart, one panel per group."""
+    return _fleet_line_chart(
+        all_data, group_by, _concurrency_series,
+        "All Models — Throughput Scaling", "Concurrent Requests", "Total tok/s",
+        out_path or os.path.join(BENCH_DIR, "all_models_concurrency.png"))
 
 
 def make_fp8_comparison_chart():
@@ -1275,14 +1359,8 @@ def make_specdecode_chart():
 DEEP_INPUT_TOKENS = 190_000
 
 
-def make_decode_bar_chart(all_data):
-    """Per-model single-user decode tok/s — short input vs the deepest measured
-    input, from the same results.json sweeps as the context curves. The deep
-    bar is hatched for models whose deepest point is below ~197K actual input
-    (their KV/context cap), so Gemma 26B / Coder-30B show their honest shallow
-    limit instead of being read as 256K-depth throughput. Labels carry the
-    actual input-token count (not the requested context)."""
-    from matplotlib.patches import Patch
+def decode_rows(all_data):
+    """Per model: the fastest point of its context sweep and its deepest measured point."""
     rows = []
     for key, (meta, results) in all_data.items():
         sweep = [p for p in results.get("context_sweep", [])
@@ -1292,52 +1370,87 @@ def make_decode_bar_chart(all_data):
         peak = max(sweep, key=lambda p: p["tok_per_sec"])
         deep = max(sweep, key=lambda p: p.get("input_len", p["context"]))
         deep_in = deep.get("input_len", deep["context"])
-        rows.append({"meta": meta, "peak": peak["tok_per_sec"],
+        rows.append({"key": key, "meta": meta, "peak": peak["tok_per_sec"],
                      "peak_in": peak.get("input_len", peak["context"]),
                      "deep": deep["tok_per_sec"], "deep_in": deep_in,
                      "reaches": deep_in >= DEEP_INPUT_TOKENS,
                      "date": str(results.get("timestamp", ""))[:10]})
-    if not rows:
-        print("  SKIP decode bar chart (no fleet data)")
-        return
-    rows.sort(key=lambda r: r["peak"], reverse=True)
+    return rows
 
-    x = np.arange(len(rows)); w = 0.38
-    fig, ax = plt.subplots(figsize=(max(11, 1.05 * len(rows)), 6))
-    for i, r in enumerate(rows):
-        c = r["meta"]["color"]
-        ax.bar(x[i] - w / 2, r["peak"], w, color=c, alpha=0.42, zorder=5)
-        ax.text(x[i] - w / 2, r["peak"] + 1.0, f'{r["peak"]:.0f}', ha="center",
-                fontsize=9, color=c, fontweight="bold")
-        hatch = None if r["reaches"] else "////"
-        ax.bar(x[i] + w / 2, r["deep"], w, color=c, alpha=0.95, zorder=5,
-               hatch=hatch, edgecolor="#0d1117", linewidth=0.6)
-        ax.text(x[i] + w / 2, r["deep"] + 1.0, f'{r["deep"]:.0f}\n@{_fmt_tok(r["deep_in"])}',
-                ha="center", fontsize=8, color=c, fontweight="bold")
-    labels = [r["meta"]["label"].replace(" AWQ ", "\n").replace(" AWQ", "")
-              .replace(" FP8 ", "\n").replace(" FP8", "") for r in rows]
-    ax.set_xticks(x); ax.set_xticklabels(labels, fontsize=7.5, rotation=28, ha="right")
-    ax.set_ylabel("tok/s (single user, M=1)")
+
+def make_decode_bar_chart(all_data, group_by=FLEET_DEFAULT_GROUPING, out_path=None):
+    """Per-model single-user decode tok/s — short input vs the deepest measured
+    input, from the same results.json sweeps as the context curves. The deep
+    bar is hatched for models whose deepest point is below ~197K actual input
+    (their KV/context cap), so Gemma 26B / Coder-30B show their honest shallow
+    limit instead of being read as 256K-depth throughput. Labels carry the
+    actual input-token count (not the requested context). Rows run fastest
+    first inside each group; horizontal bars keep the model names readable at
+    README width."""
+    from matplotlib.patches import Patch
+    rows = {r["key"]: r for r in decode_rows(all_data)}
+    sections = []
+    for title, members in fleet_groups(all_data, group_by):
+        section = sorted((rows[key] for key, _, _ in members if key in rows),
+                         key=lambda r: r["peak"], reverse=True)
+        if section:
+            sections.append((title, section))
+    if not sections:
+        print("  SKIP decode bar chart (no fleet data)")
+        return None
+
+    panel, ink = plt.rcParams["axes.facecolor"], "#c9d1d9"
+    titled = sum(1 for title, _ in sections if title)
+    fig, ax = plt.subplots(figsize=(11, 0.46 * len(rows) + 0.45 * titled + 2.0))
+    top = max(max(r["peak"], r["deep"]) for r in rows.values())
+    h, pad, y, ticks, labels = 0.37, top * 0.008, 0.0, [], []
+    for title, section in sections:
+        if title:
+            ax.axhline(y, color="#484f58", linewidth=1.0, zorder=1)
+            ax.text(-0.012, y, f"{title} ({len(section)})", transform=ax.get_yaxis_transform(),
+                    ha="right", va="center", fontsize=11.5, fontweight="bold", color="#f0f6fc")
+            y += 0.85
+        for r in section:
+            c = r["meta"]["color"]
+            ax.barh(y - h / 2, r["peak"], h, color=c, alpha=0.45, zorder=5)
+            at = f' @{_fmt_tok(r["peak_in"])}' if r["peak_in"] > 256 else ""
+            ax.text(r["peak"] + pad, y - h / 2, f'{r["peak"]:.0f}{at}', va="center",
+                    fontsize=9, color=ink, fontweight="bold")
+            ax.barh(y + h / 2, r["deep"], h, color=c, alpha=0.95, zorder=5,
+                    hatch=None if r["reaches"] else "////", edgecolor=panel, linewidth=0.6)
+            ax.text(r["deep"] + pad, y + h / 2, f'{r["deep"]:.0f} @{_fmt_tok(r["deep_in"])}',
+                    va="center", fontsize=9, color=ink)
+            ticks.append(y)
+            labels.append(r["meta"]["label"])
+            y += 1.0
+    ax.set_yticks(ticks)
+    ax.set_yticklabels(labels, fontsize=9.5, color=ink)
+    ax.set_ylim(y - 0.35, -0.75)   # inverted: the first row is on top
+    ax.set_xlim(0, top * 1.16)
+    ax.tick_params(axis="y", length=0)
+    ax.tick_params(axis="x", top=True, labeltop=True)
+    ax.set_xlabel("tok/s (single user, M=1)")
     ax.set_title("Single-user decode — short input vs deepest measured input (TP=2)",
                  fontsize=13, fontweight="bold", pad=10)
     ax.legend(handles=[
-        Patch(facecolor="#8b949e", alpha=0.42, label="short input (≤128 ctx)"),
+        Patch(facecolor="#8b949e", alpha=0.42, label="fastest point of the sweep (short input unless marked @)"),
         Patch(facecolor="#8b949e", alpha=0.95, label="deep: ≥190K actual input on a 256K server"),
         Patch(facecolor="#8b949e", alpha=0.95, hatch="////", edgecolor="#0d1117",
               label="at the model's own cap (< 190K input)"),
-    ], loc="upper right", framealpha=0.5, edgecolor="#30363d", facecolor="#161b22", fontsize=9)
-    ax.grid(True, axis="y", linestyle="--")
-    ax.set_ylim(bottom=0, top=max(r["peak"] for r in rows) * 1.18)
-    dates = sorted(d for d in {r["date"] for r in rows} if re.match(r"^\d{4}-\d{2}-\d{2}$", d))
-    ax.text(0.0, -0.40, "per-model results.json sweep (streaming TPOT, decode-only, actual input tokens); "
+    ], loc="lower right", framealpha=0.5, edgecolor="#30363d", facecolor="#161b22", fontsize=9)
+    ax.grid(True, axis="x", linestyle="--")
+    dates = sorted(d for d in {r["date"] for r in rows.values()} if re.match(r"^\d{4}-\d{2}-\d{2}$", d))
+    note = ("per-model results.json sweep (streaming TPOT, decode-only, actual input tokens); "
             "Qwen3.8 appears twice: DSpark speculative preset vs the no-spec reference server; "
-            + (f"measured {dates[0]}" + (f" .. {dates[-1]}" if len(dates) > 1 else "") if dates else ""),
-            transform=ax.transAxes, fontsize=7.5, color="#8b949e")
+            + (f"measured {dates[0]}" + (f" .. {dates[-1]}" if len(dates) > 1 else "") if dates else ""))
+    ax.annotate(textwrap.fill(note, 150), xy=(0, 0), xycoords="axes fraction", xytext=(0, -40),
+                textcoords="offset points", va="top", fontsize=7.5, color="#8b949e")
     fig.tight_layout()
-    out = os.path.join(BENCH_DIR, "all_models_decode.png")
+    out = out_path or os.path.join(BENCH_DIR, "all_models_decode.png")
     fig.savefig(out, dpi=150, bbox_inches="tight")
     plt.close(fig)
     print(f"  {out}")
+    return out
 
 
 def _fmt_tok(n):
@@ -1443,6 +1556,13 @@ def main():
         action="store_true",
         help="only regenerate the tool-use ladder and North profile-control charts",
     )
+    parser.add_argument(
+        "--group-by",
+        choices=sorted(FLEET_GROUPINGS),
+        default=FLEET_DEFAULT_GROUPING,
+        help="panels of the fleet charts (all_models_*.png): by model class (MoE / dense, "
+        "the README layout), by quantization (FP8 / 4-bit), or none for one panel",
+    )
     args = parser.parse_args()
 
     print("Generating benchmark charts...\n")
@@ -1478,9 +1598,9 @@ def main():
         print()
 
     print("Combined:")
-    make_combined_context_chart(all_data)
-    make_combined_concurrency_chart(all_data)
-    make_decode_bar_chart(all_data)
+    make_combined_context_chart(all_data, args.group_by)
+    make_combined_concurrency_chart(all_data, args.group_by)
+    make_decode_bar_chart(all_data, args.group_by)
 
     print("SWE-bench Lite bake-off:")
     make_bakeoff_chart()

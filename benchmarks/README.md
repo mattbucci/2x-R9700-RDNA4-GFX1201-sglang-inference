@@ -17,6 +17,10 @@ Fleet charts regenerated from the same files by `scripts/bench/generate_charts.p
 (from [specdecode.json](specdecode.json)), and [bakeoff_swebench_lite.png](bakeoff_swebench_lite.png)
 (SWE-bench Lite resolve rate per preset × scaffold from `quality/bakeoff-*.json`; cells carry a `harness`
 line so matrices run under different harnesses are labelled, never merged).
+The `all_models_*.png` charts draw one panel per model class (MoE, dense); `--group-by quant` draws FP8 and
+4-bit panels and `--group-by none` one panel, written to the same file names. A model keeps one colour and
+one marker shape in every chart, both unique inside its class; a filled marker is a MoE model, a hollow one
+a dense model, a solid line FP8 and a dashed line 4-bit.
 
 ### Qwen3.8-27B-FP8 (2026-11-11, v0.5.22 + 99 patches, HIP graphs on, DSpark speculative preset)
 
