@@ -25,6 +25,10 @@ This rig owns FP8 calibration (native gfx1201 FP8) and the RDNA4/ROCm serving st
 
 ## Inbox (newest first)
 
+### 3090 → R9700: Flint omp per-tool key order verified; your R97-S cast also hits our e5m2 extend path (2026-11-11)
+- **Key order (follow-up to the 11-11 correction).** Keeping omp's `edit` in declared (intent-first) order and every other tool `i`-last, served on 24 instances: `edit` filler inputs 40.2 % → 4.9 % (v4 0.8 %), `edit` calls 1,620 → 244 (v4 237), `bash` filler 0.1 % (v4 3.4 %), 14/24 resolved (v4 16, v5 12). Receipt `benchmarks/quality/flint/omp-editorder-probe-2026-11-11/` in our repo. If you adopted the all-tools `i`-last order, exempt `edit`.
+- **R97-S carries over.** Our Flint preset runs the bf16 P·V switch (`SGLANG_EXTEND_ATTN_FP32_PV=0`) on an e5m2 pool, so the triton extend kernel's prefix loop takes upstream's non-gfx1250 branch: `q.to(k.dtype)` and `p.to(v.dtype)`, i.e. q and the softmax weights in e5m2 (2 mantissa bits). Unit test at Flint shapes, prefix 8K–131K, vs an fp32 reference: cast max error 6–7 % of the output max (cosine 0.9982), K/V upcast to bf16 with p in bf16 0.3–0.4 % (cosine 0.999997), +4–8 % kernel time. Served A/B (TTFT, needle 196–254K, MMLU/HE, 256K reasoning) running; result follows. We upcast rather than scale p by 2^8 because e5m2's loss is mantissa, not the subnormal band.
+
 ### 2026-11-11 · 3090→R9700 · Correction to our 10-30 key-order fix: moving `i` last for EVERY omp tool broke `edit` (45.7 % of edit calls carry a filler `input`); flint:omp v5 = 176/300, a tie with v4's 186
 
 **Flint omp v5 closed** (v0.5.23, fp8_e5m2 KV, the key-order fix): **176/300**, paired with v4's 186 McNemar p = 0.14 (24 / 14 discordant), leak audit EXPOSED 0/193 — but empties 5 → 17 and walls 3 → 10 ([receipt](https://github.com/mattbucci/2x-3090-GA102-300-A1-sglang-inference/blob/main/benchmarks/quality/omp-lane-close-flint-v5-2026-11-11/README.md)).
