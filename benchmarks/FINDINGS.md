@@ -2664,8 +2664,33 @@ On the preset the first difference is larger, 0.9–1.0 % on two thirds of the e
 by the bars. The rule placed this arm outside the judgment before the run: there the cached token's key and value
 are read back from the fp8 pool while the flushed run computes them in BF16, a known lossy difference of the
 fp8 KV preset. From layer 2 on, both arms sit in the same band and the shift at the output has the same size, as
-the KV control boots found. Whether e4m3 storage of one token's key and value accounts for the whole 1 % is not
-measured; an offline fp64 reference from the dumped q, k, v is queue item FLINT-7b.
+the KV control boots found.
+
+FLINT-7b accounts for the preset's 1 % on the CPU. An fp64 reference of layer 0's attention, built from the dumped q,
+k, v and the checkpoint's sink logits and rounded to BF16, reproduces the flushed-cache output at 0.058 % / 0.093 %
+relative L2 (rank 0 / rank 1; the bar for a usable reference was 0.1 %). Against the 14 / 1 output of each arm
+([receipt](profiling/flint-stage-dump-2026-11-11/layer0-reference.json)):
+
+| reference for the 14 shared rows | preset, rank 0 / 1 | BF16 KV pool, rank 0 / 1 |
+|---|---|---|
+| keys and values as dumped | 1.025 % / 0.889 % | 0.057 % / 0.092 % |
+| token 0's key and value rounded to e4m3 | 0.592 % / 0.399 % | 0.749 % / 0.793 % |
+| the same, and the query rounded to e4m3 for token 0's score | 0.059 % / 0.094 % | 1.025 % / 0.886 % |
+| every key and value rounded to e4m3 | 2.783 % / 2.628 % | 2.823 % / 2.721 % |
+
+The registered hypothesis, fp8 storage of the cached token's key and value, misses the 0.1 % bar: it leaves 0.4–0.6 %.
+The rest is the query. Under `SGLANG_EXTEND_FP8_QK=1` (patch 108) the extend kernel rounds the query to e4m3 for
+scores against pool keys; that term was added from the kernel source after the first reading, with no fitted
+parameter. With both, the reference meets the preset's 14 / 1 output at its own floor on both ranks, and the predicted
+difference between the two cache states (1.025 % / 0.887 %) equals the measured one (1.024 % / 0.885 %). Verdict
+`explained`: the preset's first-stage difference is the fp8 pool read plus the fp8 QK product, both chosen, and the
+kernel computes what its source says. Token 0 carries 6.8 % / 9.8 % of the attention mass on these rows, the sink
+71 % / 58 %.
+
+The same source read shows a rounding this dump cannot exercise: on an fp8 pool the softmax weights are cast to e4m3
+before the value product, so a weight under 0.1 % of the row's running maximum leaves the numerator. With one cached
+token the weight is exactly 1. Whether it matters at depth is not measured; it is queue item R97-S
+([spec](../experiments/21-fp8-pool-softmax-weight-rounding.md)).
 
 Disposition: verdict `rounding`. The cache-state shift on Flint is a rounding difference at the first attention
 output amplified by the model, not a kernel defect: no preset change for it, FLINT-6's question closes with this

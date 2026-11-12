@@ -733,14 +733,33 @@
     "FLINT-7 dumps under /data/logs/flint-stage-dump-2026-11-11/dump-182034/ (preset and bf16-kv, both ranks)"
    ],
    "id": "FLINT-7b",
-   "next_action": "CPU only, from the dumped layer-0 q, k, v of the 15 / 0 run: an fp64 PyTorch reference of layer 0's attention for the 14 shared rows (full attention with learned sinks, causal), once with token 0's key and value as dumped and once with them rounded to e4m3 as the fp8 pool stores them; compare the reference's difference with the 0.9-1.0 % the preset arm measured between 14 / 1 and 15 / 0. Light CPU work, allowed while a GPU job measures.",
+   "next_action": "None for this item. The source read found a second rounding the one-token prefix cannot show (softmax weights cast to e4m3 before the value product on an fp8 pool): queue item R97-S.",
    "resource": "cpu",
    "spec": "https://github.com/mattbucci/2x-R9700-RDNA4-GFX1201-sglang-inference/issues/27",
-   "status": "queued",
+   "status": "completed",
    "test_gate": [
-    "explained = the e4m3-rounded reference reproduces the preset arm's first-stage relative L2 within a factor of 1.5 on both ranks and the as-dumped reference matches the 15 / 0 dump within the BF16-KV arm's 3e-4",
+    "bars set before any reference was computed, on references rounded to BF16: an unrounded fp64 reference differs from a BF16 output by about 1.6e-3 relative L2 from the output rounding alone, so the 3e-4 this item first named for an unrounded reference could not be met by a correct kernel",
+    "valid = the as-dumped reference matches the flushed-cache dump at <= 1e-3 relative L2 on both ranks of both arms (the reference models the kernel); otherwise the reference is wrong and nothing is concluded",
+    "explained = on the preset arm the token-0-e4m3 reference matches the 14 / 1 dump at <= 1e-3 on both ranks and the as-dumped reference does not (>= 5e-3); the BF16-KV arm's 14 / 1 dump must match the as-dumped reference at <= 1e-3",
     "otherwise unexplained: a direct GPU test of the first attention with a cached fp8 token against the same reference is registered before any further Flint KV change",
     "no preset change follows from either reading: fp8 KV is the preset by owner decision"
+   ],
+   "result": "explained (2026-11-11, CPU, receipt benchmarks/profiling/flint-stage-dump-2026-11-11/layer0-reference.json). Valid: the as-dumped fp64 reference, rounded to BF16, matches the flushed-cache output at 0.058 % / 0.093 % relative L2 (rank 0 / 1) on both arms, and the BF16-KV arm's 14 / 1 output at 0.057 % / 0.092 %. Preset 14 / 1 output: as-dumped reference 1.025 % / 0.889 %; token 0's key and value rounded to e4m3 0.592 % / 0.399 % (the registered hypothesis misses the 1e-3 bar); with the query also rounded to e4m3 for token 0's score, which is what the extend kernel's prefix loop does under SGLANG_EXTEND_FP8_QK=1 (added from the kernel source after the first reading, no fitted parameter), 0.059 % / 0.094 %, the reference's own floor. Predicted difference between the cache states 1.025 % / 0.887 %, measured 1.024 % / 0.885 %. Token 0 holds 6.8 % / 9.8 % of the attention mass, the sink 71 % / 58 %. No GPU test is registered for layer 0: the kernel computes what its source says."
+  },
+  {
+   "depends_on": [
+    "FLINT-7b"
+   ],
+   "id": "R97-S",
+   "next_action": "CPU first, light, while the canonical sweeps run: a stage filter for the dump hook and the fp64 emulation of the extend kernel's prefix loop (tile order, running maximum, e4m3 cast of the weights), checked against the FLINT-7 dump; the dump driver by copy from the FLINT-7 one. Then one GPU job on the Flint preset behind tail jobs 98 and 99: cold request of about 6K tokens, the same prompt plus 64 tokens as a cached turn, flushed-cache repeat; q, k, v and attention output of layers 0, 1, 25, 48. The patch and the serving A/B are registered as their own queue entries only if the dump confirms the cast.",
+   "resource": "gpu",
+   "spec": "21-fp8-pool-softmax-weight-rounding.md",
+   "status": "queued",
+   "test_gate": [
+    "confirmed = on the cached turn the kernel-cast reference matches the dump within twice the floor the flushed run sets and the exact-weight reference misses it by five times that floor or more, on at least one dumped layer; otherwise closed as not present at this depth with the measured sizes recorded",
+    "fix valid = under the switch the dump matches the scaled reference within twice the floor and the scaled reference is closer to exact weights than the unscaled one on every dumped layer",
+    "ship as the default of the measured fp8-pool presets = fix valid, every speed row >= 0.99x in both orders, no needle cell lost, capabilities and route probe full, accept length not lower beyond the pooled interval, cache-hit consistency not worse (both arms, same arguments)",
+    "kill = not confirmed, a speed loss over 1 %, or any quality gate lower; the patch is then not kept"
    ]
   },
   {
