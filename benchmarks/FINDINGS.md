@@ -3030,25 +3030,26 @@ And FLINT-7b's reference floor of 0.058 % / 0.093 % was the in-chunk BF16 cast o
 walk reproduces FLINT-7's cold rows exactly on rank 0 and at 7e-7 on rank 1
 ([self-test](profiling/r97s-dump-2026-11-11/selftest_flint7.txt)).
 
-Scope. On gfx1201 four value products of the Triton kernels cast the weights to the pool dtype: split-KV stage 1 and
-the extend prefix loop (both dumped here, the two a Flint or qwen38 request executes on the pool), the lean decode
-kernel and the unified extend kernel of deterministic mode (both read from source, not dumped). No preset enables
-deterministic mode. Lean decode is never selected for Flint (attention sinks) or qwen38 (head dim 256); an eager GQA
-decode at head dim 128 or less beyond 65,536 tokens can select it, and whether any preset does is not established.
-The grouped decode kernel that serves both presets' decode forms the value product in BF16 from upcast values (patch
-087) and is not affected, so the cast reaches a decode step only through the cached prefill and verify outputs. The
-extend in-chunk loop casts to BF16. The HIP prefill kernel of patch 131 (qwen38's cold prefill) is launched on its
-f16 value-product legs only and is not affected; the lossy fp8 leg of that radiance kernel, which the backend never
-requests, keeps the weights grown by eight octaves ahead of the cast, the scaling registered here as the fix. Every
-published sweep, needle grid and capability probe of the fp8-pool presets was measured with the cast in place; what
-it does to generated text is not measured.
+Scope. On gfx1201 these value products read the pool and cast the weights to its dtype. On a preset's path: the
+extend prefix loop and split-KV stage 1 (both dumped here) and the grouped verify prefix stage of patch 125, which
+runs the speculative verify pass of the qwen38 presets with stage 1's per-row arithmetic (read from source, not
+dumped). On no preset's path: the tree-verify kernel (the opt-in `--spec` lane), the unified extend kernel
+(deterministic mode) and the MLA verify and decode kernels. The lean decode kernel carries it too: it is never
+selected with attention sinks (Flint) or at head dim 256 (qwen38); an eager GQA decode at head dim 128 or less
+beyond 65,536 tokens can select it, and whether any preset does is not established. The grouped decode kernel that
+serves both presets' decode forms the value product in BF16 from upcast values (patch 087): a plain decode step does
+not carry the cast, a speculative cycle's verify pass does. The extend in-chunk loop casts to BF16. The HIP prefill
+kernel of patch 131 (qwen38's cold prefill) is launched on its f16 value-product legs only and is not affected; the
+lossy fp8 leg of that radiance kernel, which the backend never requests, keeps the weights grown by eight octaves
+ahead of the cast, the scaling registered here as the fix. Every published sweep, needle grid and capability probe
+of the fp8-pool presets was measured with the cast in place; what it does to generated text is not measured.
 
 Disposition: `confirmed`, no preset change from this job. The fix is queue item R97-T: one default-off patch that
-multiplies the weights by 2^8 before the cast and the product by 2^-8 in split-KV stage 1 and the extend prefix
-loop, a kernel-level test against the emulator's scaled variant, this dump repeated under the switch, then the
-serving A/B in both orders on Flint and qwen38 with the spec's ship and kill bars. The lean decode and unified
-extend kernels keep the cast: neither the dump nor that A/B can judge them. The dumps stay on disk until that repeat
-is read.
+multiplies the weights by 2^8 before the cast and the product by 2^-8 in the three kernels on a preset's path, a
+kernel-level test of each against the emulator's scaled variant, this dump repeated under the switch (it judges
+stage 1 and the extend loop), then the serving A/B in both orders on Flint and qwen38 with the spec's ship and kill
+bars (its accept probe is the serving read of the grouped verify stage). The other kernels keep the cast. The dumps
+stay on disk until that repeat is read.
 
 ## Evaluation methodology
 
