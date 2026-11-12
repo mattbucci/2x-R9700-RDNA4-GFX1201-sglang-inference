@@ -1,0 +1,49 @@
+verdict fail:4
+dump-L00-r0      fp8  extend  base~kernel 1.22e-04 base~exact 4.52e-03 | on~x256 1.33e-04 (bound 2.43e-04) on~exact 3.12e-03 | ref kernel 4.22e-03 x256 2.77e-03 | sub 0.067 zero 0.002 | off=base True on=base False | server dump equal 1.0000
+dump-L00-r0      fp8  splitkv base~kernel 3.02e-05 base~exact 3.17e-03 | on~x256 3.68e-05 (bound 6.10e-05) on~exact 2.57e-03 | ref kernel 2.75e-03 x256 2.15e-03 | sub 0.047 zero 0.001 | off=base True on=base False | server dump equal 1.0000
+dump-L00-r0      fp8  gqa16   base~kernel 5.38e-06 base~exact 2.33e-03 | on~x256 2.15e-05 (bound 6.10e-05) on~exact 2.11e-03 | ref kernel 1.75e-03 x256 1.60e-03 | sub 0.027 zero 0.000 | off=base True on=base False
+dump-L00-r0      fp8  gqa8    base~kernel 0.00e+00 base~exact 2.34e-03 | on~x256 0.00e+00 (bound 6.10e-05) on~exact 2.12e-03 | ref kernel 1.74e-03 x256 1.59e-03 | sub 0.027 zero 0.000 | off=base True on=base False
+dump-L00-r0      bf16 extend  base~bf16 1.21e-04 base~exact 6.20e-04 | off=base True on=base True
+dump-L00-r0      bf16 splitkv base~bf16 5.54e-05 base~exact 5.53e-04 | off=base True on=base True
+dump-L00-r0      bf16 gqa16   base~bf16 6.80e-05 base~exact 5.20e-04 | off=base True on=base True
+dump-L00-r0      bf16 gqa8    base~bf16 9.57e-07 base~exact 4.98e-04 | off=base True on=base True
+dump-L25-r0      fp8  extend  base~kernel 1.19e-04 base~exact 9.47e-03 | on~x256 1.15e-04 (bound 2.38e-04) on~exact 1.39e-03 | ref kernel 9.30e-03 x256 8.49e-04 | sub 0.054 zero 0.015 | off=base True on=base False | server dump equal 1.0000
+dump-L25-r0      fp8  splitkv base~kernel 1.79e-05 base~exact 1.54e-02 | on~x256 3.97e-05 (bound 6.10e-05) on~exact 5.33e-03 | ref kernel 1.52e-02 x256 4.84e-03 | sub 0.092 zero 0.016 | off=base True on=base False | server dump equal 1.0000
+dump-L25-r0      fp8  gqa16   base~kernel 5.68e-06 base~exact 5.26e-03 | on~x256 1.37e-04 (bound 6.10e-05) on~exact 4.53e-03 | ref kernel 4.68e-03 x256 3.90e-03 | sub 0.055 zero 0.004 | off=base True on=base False | FAIL no-match
+dump-L25-r0      fp8  gqa8    base~kernel 2.50e-08 base~exact 5.60e-03 | on~x256 1.29e-04 (bound 6.10e-05) on~exact 5.05e-03 | ref kernel 5.04e-03 x256 4.42e-03 | sub 0.052 zero 0.003 | off=base True on=base False | FAIL no-match
+dump-L25-r0      bf16 extend  base~bf16 1.37e-04 base~exact 3.36e-04 | off=base True on=base True
+dump-L25-r0      bf16 splitkv base~bf16 1.04e-04 base~exact 9.99e-04 | off=base True on=base True
+dump-L25-r0      bf16 gqa16   base~bf16 7.89e-05 base~exact 9.76e-04 | off=base True on=base True
+dump-L25-r0      bf16 gqa8    base~bf16 1.12e-04 base~exact 1.04e-03 | off=base True on=base True
+dump-L00-r1      fp8  extend  base~kernel 1.06e-04 base~exact 5.49e-03 | on~x256 9.36e-05 (bound 2.12e-04) on~exact 3.25e-03 | ref kernel 5.18e-03 x256 2.84e-03 | sub 0.064 zero 0.001 | off=base True on=base False | server dump equal 1.0000
+dump-L00-r1      fp8  splitkv base~kernel 2.33e-05 base~exact 3.94e-03 | on~x256 1.12e-05 (bound 6.10e-05) on~exact 2.70e-03 | ref kernel 3.48e-03 x256 2.18e-03 | sub 0.045 zero 0.001 | off=base True on=base False | server dump equal 1.0000
+dump-L00-r1      fp8  gqa16   base~kernel 2.79e-05 base~exact 2.55e-03 | on~x256 5.49e-06 (bound 6.10e-05) on~exact 2.18e-03 | ref kernel 1.87e-03 x256 1.56e-03 | sub 0.025 zero 0.000 | off=base True on=base False
+dump-L00-r1      fp8  gqa8    base~kernel 3.89e-05 base~exact 2.44e-03 | on~x256 0.00e+00 (bound 7.79e-05) on~exact 2.09e-03 | ref kernel 1.78e-03 x256 1.53e-03 | sub 0.026 zero 0.000 | off=base True on=base False
+dump-L00-r1      bf16 extend  base~bf16 6.48e-05 base~exact 6.64e-04 | off=base True on=base True
+dump-L00-r1      bf16 splitkv base~bf16 5.08e-05 base~exact 5.79e-04 | off=base True on=base True
+dump-L00-r1      bf16 gqa16   base~bf16 2.83e-05 base~exact 4.64e-04 | off=base True on=base True
+dump-L00-r1      bf16 gqa8    base~bf16 3.97e-05 base~exact 4.47e-04 | off=base True on=base True
+dump-L25-r1      fp8  extend  base~kernel 1.12e-04 base~exact 1.65e-02 | on~x256 1.15e-04 (bound 2.25e-04) on~exact 1.42e-03 | ref kernel 1.63e-02 x256 9.60e-04 | sub 0.095 zero 0.029 | off=base True on=base False | server dump equal 1.0000
+dump-L25-r1      fp8  splitkv base~kernel 3.04e-05 base~exact 1.30e-02 | on~x256 3.76e-05 (bound 6.10e-05) on~exact 4.29e-03 | ref kernel 1.27e-02 x256 3.59e-03 | sub 0.106 zero 0.018 | off=base True on=base False | server dump equal 1.0000
+dump-L25-r1      fp8  gqa16   base~kernel 1.52e-05 base~exact 4.96e-03 | on~x256 5.29e-05 (bound 6.10e-05) on~exact 4.02e-03 | ref kernel 4.41e-03 x256 3.33e-03 | sub 0.054 zero 0.004 | off=base True on=base False
+dump-L25-r1      fp8  gqa8    base~kernel 1.08e-05 base~exact 4.66e-03 | on~x256 7.71e-05 (bound 6.10e-05) on~exact 3.93e-03 | ref kernel 4.07e-03 x256 3.21e-03 | sub 0.051 zero 0.004 | off=base True on=base False | FAIL no-match
+dump-L25-r1      bf16 extend  base~bf16 9.25e-05 base~exact 3.30e-04 | off=base True on=base True
+dump-L25-r1      bf16 splitkv base~bf16 1.12e-04 base~exact 9.40e-04 | off=base True on=base True
+dump-L25-r1      bf16 gqa16   base~bf16 8.13e-05 base~exact 8.19e-04 | off=base True on=base True
+dump-L25-r1      bf16 gqa8    base~bf16 4.10e-05 base~exact 8.72e-04 | off=base True on=base True
+syn-d256         fp8  extend  base~kernel 4.70e-05 base~exact 2.96e-02 | on~x256 8.09e-05 (bound 9.41e-05) on~exact 1.75e-02 | ref kernel 2.95e-02 x256 1.74e-02 | sub 0.326 zero 0.055 | off=base True on=base False
+syn-d256         fp8  splitkv base~kernel 4.54e-05 base~exact 1.41e-02 | on~x256 6.36e-05 (bound 9.08e-05) on~exact 1.14e-02 | ref kernel 1.39e-02 x256 1.12e-02 | sub 0.154 zero 0.013 | off=base True on=base False
+syn-d256         fp8  gqa16   base~kernel 2.88e-05 base~exact 1.09e-02 | on~x256 6.52e-05 (bound 6.10e-05) on~exact 9.71e-03 | ref kernel 1.06e-02 x256 9.42e-03 | sub 0.089 zero 0.005 | off=base True on=base False | FAIL no-match
+syn-d256         fp8  gqa8    base~kernel 4.11e-05 base~exact 1.11e-02 | on~x256 2.31e-05 (bound 8.23e-05) on~exact 9.90e-03 | ref kernel 1.08e-02 x256 9.61e-03 | sub 0.090 zero 0.006 | off=base True on=base False
+syn-d256         bf16 extend  base~bf16 2.17e-04 base~exact 1.96e-03 | off=base True on=base True
+syn-d256         bf16 splitkv base~bf16 1.76e-04 base~exact 1.52e-03 | off=base True on=base True
+syn-d256         bf16 gqa16   base~bf16 1.97e-04 base~exact 1.45e-03 | off=base True on=base True
+syn-d256         bf16 gqa8    base~bf16 2.59e-04 base~exact 1.50e-03 | off=base True on=base True
+syn-d128-sink    fp8  extend  base~kernel 1.32e-04 base~exact 3.65e-02 | on~x256 1.68e-04 (bound 2.64e-04) on~exact 1.85e-02 | ref kernel 3.64e-02 x256 1.84e-02 | sub 0.381 zero 0.081 | off=base True on=base False
+syn-d128-sink    fp8  splitkv base~kernel 1.21e-04 base~exact 1.81e-02 | on~x256 1.44e-04 (bound 2.41e-04) on~exact 1.36e-02 | ref kernel 1.79e-02 x256 1.34e-02 | sub 0.208 zero 0.022 | off=base True on=base False
+syn-d128-sink    fp8  gqa16   base~kernel 1.12e-04 base~exact 1.33e-02 | on~x256 1.92e-04 (bound 2.24e-04) on~exact 1.12e-02 | ref kernel 1.30e-02 x256 1.10e-02 | sub 0.130 zero 0.010 | off=base True on=base False
+syn-d128-sink    fp8  gqa8    base~kernel 1.47e-04 base~exact 1.30e-02 | on~x256 8.22e-05 (bound 2.93e-04) on~exact 1.10e-02 | ref kernel 1.28e-02 x256 1.07e-02 | sub 0.130 zero 0.010 | off=base True on=base False
+syn-d128-sink    bf16 extend  base~bf16 1.99e-04 base~exact 2.03e-03 | off=base True on=base True
+syn-d128-sink    bf16 splitkv base~bf16 2.16e-04 base~exact 1.70e-03 | off=base True on=base True
+syn-d128-sink    bf16 gqa16   base~bf16 1.71e-04 base~exact 1.56e-03 | off=base True on=base True
+syn-d128-sink    bf16 gqa8    base~bf16 1.71e-04 base~exact 1.51e-03 | off=base True on=base True

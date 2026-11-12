@@ -3051,6 +3051,42 @@ stage 1 and the extend loop), then the serving A/B in both orders on Flint and q
 bars (its accept probe is the serving read of the grouped verify stage). The other kernels keep the cast. The dumps
 stay on disk until that repeat is read.
 
+### R97-T kernel test — the 2^8 weight scale on an fp8 pool: each of the three patched kernels sits on the scaled reference at fp32 precision, switch off and BF16 pool bit-equal to the serving tree
+
+The fix registered by R97-S, in a dev tree only (`/data/sgl-v0522-r97s`, edit script
+`benchmarks/profiling/r97t-pv-scale-2026-11-11/kernel/apply_pv_scale.py`): under `SGLANG_RDNA4_FP8_PV_SCALE=1`
+and on an fp8 pool, the extend prefix loop, split-KV stage 1 and the grouped verify prefix stage multiply the
+softmax weights by 2^8 ahead of the e4m3 cast and the value product by 2^-8. The kernel test calls each kernel
+directly on GPU 0, no server: six inputs (the R97-S dump's layers 0 and 25 on both ranks at 6,000 tokens, two
+synthetic prefixes of 20,000 and 50,000 keys with 9–38 % of the weight mass in the e4m3 subnormal range and
+0.5–8 % under 2^-10), fp8 and BF16 pool,
+extend, split-KV and the grouped stage at 16 and 8 rows: 48 cells, each from the serving tree, from the patched
+tree with the switch off and with it on, into a BF16 and an fp32 output buffer.
+
+| Line | Result |
+|---|---|
+| switch off = serving tree, bit for bit, both buffers | 48 of 48 cells |
+| BF16 pool under the switch = serving tree, bit for bit | 24 of 24 |
+| fp8 pool under the switch moves | 24 of 24 |
+| serving-tree kernels repeat the server's dumped rows bit for bit | 8 of 8 dump cells |
+| serving tree to the kernel-cast reference (fp32 buffer, relative L2) | 1.2e-7 to 7.0e-5 |
+| switch to the scaled reference | 1.2e-7 to 6.8e-5 |
+| switch to the kernel-cast reference | 7.2e-4 to 3.2e-2, 49× or more the line above in every cell |
+| distance to exact weights, switch over serving tree | ×0.06 to ×0.92, lower in 24 of 24 |
+
+The first run applied the registered thresholds (within twice the serving tree's distance, never under 6.1e-5) to
+the BF16 output against the BF16-rounded reference and read fail in 4 of 24 fp8 cells, all grouped-stage cells of
+128 or 256 output vectors: 5 to 22 elements sat one to four BF16 steps off the rounded reference under the
+switch, 1 to 21 in the same cell of the serving tree. The BF16 store turns an fp32-level deviation into single
+steps on a handful of elements in both arms, and a cell that small crosses the floor on five of them. The
+measurement moved to the fp32 buffer against the unrounded reference with the thresholds unchanged, written into
+the checker before the judged run; there those four cells read 7.5e-7 to 6.0e-6 against references 2.4e-3 to
+5.0e-3 apart, and the BF16 buffer equals the rounding of the fp32 buffer on every element. The first reading is
+kept as run (`run1/`) and still reported by the checker.
+
+Disposition: gate 1 of R97-T passed; no preset change, the serving tree is unpatched. The kernel test does not
+judge served rows: the three-arm repeat of the R97-S dump and the serving A/B decide ship or kill.
+
 ## Evaluation methodology
 
 ### SWE-bench answer leakage through git history and the web (found 2026-09-18)

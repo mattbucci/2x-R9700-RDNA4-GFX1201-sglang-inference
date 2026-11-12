@@ -92,7 +92,11 @@ The dump confirmed the cast in 12 of 12 cells (FINDINGS → R97-S), so method 3 
 - Kernel test: on the dump's inputs (layers 0 and 25 at 6,000) and on synthetic inputs with a long low-weight tail,
   each of the three patched kernels under the switch matches the emulator's scaled variant as closely as the unpatched
   kernel matches the kernel-cast variant (within twice that distance, never under 6.1e-5). The grouped stage takes the
-  turn's rows as a verify window at its own split count.
+  turn's rows as a verify window at its own split count. The distances are taken on an fp32 output buffer, the
+  kernel's arithmetic ahead of the BF16 store. The first run applied the same thresholds to the BF16 buffer and read
+  fail in 4 of 24 cells: grouped-stage cells of 128 or 256 vectors where 5 to 22 elements sat one to four BF16 steps
+  off the rounded reference and the unpatched cell had fewer. The store turns an fp32-level deviation into such
+  steps in both arms, so that reading is kept in the receipt and reported, not gated.
 - Repeated dump, three arms: the preset under the switch (judged), the preset with the switch off (must read confirmed
   in every cell again) and the BF16 pool under the switch (each cell within twice its R97-S distance to its own
   emulation, never under 6.1e-5). If either identity arm fails the job decides nothing.

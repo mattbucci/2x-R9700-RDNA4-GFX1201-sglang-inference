@@ -1,0 +1,2292 @@
+{
+ "rule": {
+  "floor": 6.1e-05,
+  "within": 2.0,
+  "resolve": 0.25
+ },
+ "arms": {
+  "base": {
+   "tree": "/data/sgl-v0522/python",
+   "switch_env": null,
+   "switch": {
+    "extend_attention": null,
+    "verify_splitkv": null
+   },
+   "fp8_qk": true,
+   "upcast_k": false,
+   "device": "AMD Radeon AI PRO R9700",
+   "torch": "2.11.0+rocm7.2",
+   "triton": "3.6.0",
+   "triton_cache": "/data/cache/triton/cache"
+  },
+  "off": {
+   "tree": "/data/sgl-v0522-r97s/python",
+   "switch_env": null,
+   "switch": {
+    "extend_attention": false,
+    "verify_splitkv": false
+   },
+   "fp8_qk": true,
+   "upcast_k": false,
+   "device": "AMD Radeon AI PRO R9700",
+   "torch": "2.11.0+rocm7.2",
+   "triton": "3.6.0",
+   "triton_cache": "/data/cache/triton/cache"
+  },
+  "on": {
+   "tree": "/data/sgl-v0522-r97s/python",
+   "switch_env": "1",
+   "switch": {
+    "extend_attention": true,
+    "verify_splitkv": true
+   },
+   "fp8_qk": true,
+   "upcast_k": false,
+   "device": "AMD Radeon AI PRO R9700",
+   "torch": "2.11.0+rocm7.2",
+   "triton": "3.6.0",
+   "triton_cache": "/data/cache/triton/cache"
+  }
+ },
+ "cells": [
+  {
+   "case": "dump-L00-r0",
+   "pool": "fp8",
+   "kernel": "extend",
+   "rows": 64,
+   "launch": {},
+   "prefix_share": 0.598479,
+   "subnormal_share": 0.067398,
+   "zero_share": 0.001583,
+   "off_equal": true,
+   "on_equal": false,
+   "dist": {
+    "base": {
+     "exact": 0.004224119883143868,
+     "kernel": 6.791893874040153e-05,
+     "x256": 0.003319290092636851
+    },
+    "on": {
+     "exact": 0.0027668296976504385,
+     "kernel": 0.0033204895725890975,
+     "x256": 6.790810553121602e-05
+    }
+   },
+   "dist_bf16_store": {
+    "base": {
+     "exact": 0.004523467648974253,
+     "kernel": 0.00012161290964144382,
+     "x256": 0.0035863620785987595
+    },
+    "on": {
+     "exact": 0.0031186842571183935,
+     "kernel": 0.0035868243054883587,
+     "x256": 0.00013329465239861191
+    }
+   },
+   "store_equal": 1.0,
+   "ref_vs_exact": {
+    "kernel": 0.004224359733557971,
+    "x256": 0.0027669954062834166
+   },
+   "bound": 0.00013583787748080306,
+   "fails": [],
+   "first_reading_fails": [],
+   "elements": 131072,
+   "elements_apart": {
+    "base": 167,
+    "on": 166
+   },
+   "server_dump": {
+    "equal_share": 1.0,
+    "rel_l2": 0.0
+   }
+  },
+  {
+   "case": "dump-L00-r0",
+   "pool": "fp8",
+   "kernel": "splitkv",
+   "rows": 64,
+   "launch": {
+    "n_splits": 8,
+    "rows": 64
+   },
+   "prefix_share": 0.886109,
+   "subnormal_share": 0.047172,
+   "zero_share": 0.000972,
+   "off_equal": true,
+   "on_equal": false,
+   "dist": {
+    "base": {
+     "exact": 0.002747153334759446,
+     "kernel": 1.18830733537498e-05,
+     "x256": 0.0017109741680281943
+    },
+    "on": {
+     "exact": 0.002149892399372611,
+     "kernel": 0.001711301280949572,
+     "x256": 1.1882013931794716e-05
+    }
+   },
+   "dist_bf16_store": {
+    "base": {
+     "exact": 0.0031660556382324466,
+     "kernel": 3.0180054640680465e-05,
+     "x256": 0.0021144190021218537
+    },
+    "on": {
+     "exact": 0.0025711261652078565,
+     "kernel": 0.0021139966137307376,
+     "x256": 3.681197763541555e-05
+    }
+   },
+   "store_equal": 1.0,
+   "ref_vs_exact": {
+    "kernel": 0.0027472088295886154,
+    "x256": 0.002149949899876947
+   },
+   "bound": 6.1e-05,
+   "fails": [],
+   "first_reading_fails": [],
+   "elements": 131072,
+   "elements_apart": {
+    "base": 46,
+    "on": 48
+   },
+   "server_dump": {
+    "equal_share": 1.0,
+    "rel_l2": 0.0
+   }
+  },
+  {
+   "case": "dump-L00-r0",
+   "pool": "fp8",
+   "kernel": "gqa16",
+   "rows": 16,
+   "launch": {
+    "n_splits": 32,
+    "heads_per_block": 4
+   },
+   "prefix_share": 0.900439,
+   "subnormal_share": 0.02682,
+   "zero_share": 0.000432,
+   "off_equal": true,
+   "on_equal": false,
+   "dist": {
+    "base": {
+     "exact": 0.001751857951159017,
+     "kernel": 1.0032211670256469e-06,
+     "x256": 0.0007247685556948818
+    },
+    "on": {
+     "exact": 0.0016026817354093626,
+     "kernel": 0.0007248233585578687,
+     "x256": 8.470123587451506e-07
+    }
+   },
+   "dist_bf16_store": {
+    "base": {
+     "exact": 0.0023285338960103846,
+     "kernel": 5.3832287343919685e-06,
+     "x256": 0.0013093729640079185
+    },
+    "on": {
+     "exact": 0.002110545295002774,
+     "kernel": 0.001309416722629795,
+     "x256": 2.152991958129198e-05
+    }
+   },
+   "store_equal": 1.0,
+   "ref_vs_exact": {
+    "kernel": 0.0017518561563771348,
+    "x256": 0.0016026786947282974
+   },
+   "bound": 6.1e-05,
+   "fails": [],
+   "first_reading_fails": [],
+   "elements": 32768,
+   "elements_apart": {
+    "base": 3,
+    "on": 2
+   }
+  },
+  {
+   "case": "dump-L00-r0",
+   "pool": "fp8",
+   "kernel": "gqa8",
+   "rows": 8,
+   "launch": {
+    "n_splits": 32,
+    "heads_per_block": 8
+   },
+   "prefix_share": 0.886502,
+   "subnormal_share": 0.027095,
+   "zero_share": 0.000422,
+   "off_equal": true,
+   "on_equal": false,
+   "dist": {
+    "base": {
+     "exact": 0.0017371037448962964,
+     "kernel": 7.687542311713227e-07,
+     "x256": 0.0007262444311038922
+    },
+    "on": {
+     "exact": 0.001594049442521966,
+     "kernel": 0.0007262851363527204,
+     "x256": 1.157969290022942e-07
+    }
+   },
+   "dist_bf16_store": {
+    "base": {
+     "exact": 0.002344136110011394,
+     "kernel": 0.0,
+     "x256": 0.0013254121199253997
+    },
+    "on": {
+     "exact": 0.0021217645277864707,
+     "kernel": 0.0013252799197340955,
+     "x256": 0.0
+    }
+   },
+   "store_equal": 1.0,
+   "ref_vs_exact": {
+    "kernel": 0.001737096260209614,
+    "x256": 0.0015940428668076215
+   },
+   "bound": 6.1e-05,
+   "fails": [],
+   "first_reading_fails": [],
+   "elements": 16384,
+   "elements_apart": {
+    "base": 0,
+    "on": 0
+   }
+  },
+  {
+   "case": "dump-L00-r0",
+   "pool": "bf16",
+   "kernel": "extend",
+   "rows": 64,
+   "launch": {},
+   "prefix_share": 0.598269,
+   "subnormal_share": 0.067539,
+   "zero_share": 0.001613,
+   "off_equal": true,
+   "on_equal": true,
+   "dist": {
+    "base": {
+     "exact": 0.0001748387018607842,
+     "bf16": 4.038730922780927e-06
+    },
+    "on": {
+     "exact": 0.0001748387018607842,
+     "bf16": 4.038730922780927e-06
+    }
+   },
+   "dist_bf16_store": {
+    "base": {
+     "exact": 0.0006201165105959842,
+     "bf16": 0.00012132645698776136
+    },
+    "on": {
+     "exact": 0.0006201165105959842,
+     "bf16": 0.00012132645698776136
+    }
+   },
+   "store_equal": 1.0,
+   "ref_vs_exact": {
+    "bf16": 0.00017482727210341894
+   },
+   "fails": [],
+   "first_reading_fails": []
+  },
+  {
+   "case": "dump-L00-r0",
+   "pool": "bf16",
+   "kernel": "splitkv",
+   "rows": 64,
+   "launch": {
+    "n_splits": 8,
+    "rows": 64
+   },
+   "prefix_share": 0.88657,
+   "subnormal_share": 0.047355,
+   "zero_share": 0.000986,
+   "off_equal": true,
+   "on_equal": true,
+   "dist": {
+    "base": {
+     "exact": 0.00013552979013289548,
+     "bf16": 2.64241425894084e-06
+    },
+    "on": {
+     "exact": 0.00013552979013289548,
+     "bf16": 2.64241425894084e-06
+    }
+   },
+   "dist_bf16_store": {
+    "base": {
+     "exact": 0.0005529292694877732,
+     "bf16": 5.540317546638451e-05
+    },
+    "on": {
+     "exact": 0.0005529292694877732,
+     "bf16": 5.540317546638451e-05
+    }
+   },
+   "store_equal": 1.0,
+   "ref_vs_exact": {
+    "bf16": 0.00013555212101799816
+   },
+   "fails": [],
+   "first_reading_fails": []
+  },
+  {
+   "case": "dump-L00-r0",
+   "pool": "bf16",
+   "kernel": "gqa16",
+   "rows": 16,
+   "launch": {
+    "n_splits": 32,
+    "heads_per_block": 4
+   },
+   "prefix_share": 0.900575,
+   "subnormal_share": 0.02699,
+   "zero_share": 0.000445,
+   "off_equal": true,
+   "on_equal": true,
+   "dist": {
+    "base": {
+     "exact": 0.00010071129106685773,
+     "bf16": 8.398508300264861e-07
+    },
+    "on": {
+     "exact": 0.00010071129106685773,
+     "bf16": 8.398508300264861e-07
+    }
+   },
+   "dist_bf16_store": {
+    "base": {
+     "exact": 0.0005201074280100077,
+     "bf16": 6.80330273542706e-05
+    },
+    "on": {
+     "exact": 0.0005201074280100077,
+     "bf16": 6.80330273542706e-05
+    }
+   },
+   "store_equal": 1.0,
+   "ref_vs_exact": {
+    "bf16": 0.00010071702918631784
+   },
+   "fails": [],
+   "first_reading_fails": []
+  },
+  {
+   "case": "dump-L00-r0",
+   "pool": "bf16",
+   "kernel": "gqa8",
+   "rows": 8,
+   "launch": {
+    "n_splits": 32,
+    "heads_per_block": 8
+   },
+   "prefix_share": 0.886361,
+   "subnormal_share": 0.027178,
+   "zero_share": 0.000431,
+   "off_equal": true,
+   "on_equal": true,
+   "dist": {
+    "base": {
+     "exact": 0.00010001545081703507,
+     "bf16": 8.535206341089419e-07
+    },
+    "on": {
+     "exact": 0.00010001545081703507,
+     "bf16": 8.535206341089419e-07
+    }
+   },
+   "dist_bf16_store": {
+    "base": {
+     "exact": 0.0004982286926950894,
+     "bf16": 9.570753017523287e-07
+    },
+    "on": {
+     "exact": 0.0004982286926950894,
+     "bf16": 9.570753017523287e-07
+    }
+   },
+   "store_equal": 1.0,
+   "ref_vs_exact": {
+    "bf16": 0.00010002958751787844
+   },
+   "fails": [],
+   "first_reading_fails": []
+  },
+  {
+   "case": "dump-L25-r0",
+   "pool": "fp8",
+   "kernel": "extend",
+   "rows": 64,
+   "launch": {},
+   "prefix_share": 0.219323,
+   "subnormal_share": 0.05398,
+   "zero_share": 0.015005,
+   "off_equal": true,
+   "on_equal": false,
+   "dist": {
+    "base": {
+     "exact": 0.009299430862600959,
+     "kernel": 1.8450901872652234e-05,
+     "x256": 0.009241135020384709
+    },
+    "on": {
+     "exact": 0.0008493709243612266,
+     "kernel": 0.00925490137534885,
+     "x256": 1.8431371686174464e-05
+    }
+   },
+   "dist_bf16_store": {
+    "base": {
+     "exact": 0.009468572348171644,
+     "kernel": 0.00011914250011506489,
+     "x256": 0.009408287189823379
+    },
+    "on": {
+     "exact": 0.001393812671857468,
+     "kernel": 0.009394670292500266,
+     "x256": 0.0001149398841226712
+    }
+   },
+   "store_equal": 1.0,
+   "ref_vs_exact": {
+    "kernel": 0.009299362164500167,
+    "x256": 0.0008492714673291073
+   },
+   "bound": 6.1e-05,
+   "fails": [],
+   "first_reading_fails": [],
+   "elements": 131072,
+   "elements_apart": {
+    "base": 231,
+    "on": 237
+   },
+   "server_dump": {
+    "equal_share": 1.0,
+    "rel_l2": 0.0
+   }
+  },
+  {
+   "case": "dump-L25-r0",
+   "pool": "fp8",
+   "kernel": "splitkv",
+   "rows": 64,
+   "launch": {
+    "n_splits": 8,
+    "rows": 64
+   },
+   "prefix_share": 0.860198,
+   "subnormal_share": 0.092144,
+   "zero_share": 0.016154,
+   "off_equal": true,
+   "on_equal": false,
+   "dist": {
+    "base": {
+     "exact": 0.015157362673359159,
+     "kernel": 1.6658393014189903e-06,
+     "x256": 0.014284204338270995
+    },
+    "on": {
+     "exact": 0.0048444208828265075,
+     "kernel": 0.014322234603820592,
+     "x256": 8.194206299470899e-07
+    }
+   },
+   "dist_bf16_store": {
+    "base": {
+     "exact": 0.015371994488164434,
+     "kernel": 1.786565654222352e-05,
+     "x256": 0.01448959310685814
+    },
+    "on": {
+     "exact": 0.005329311247602661,
+     "kernel": 0.014450939548427532,
+     "x256": 3.971267025290879e-05
+    }
+   },
+   "store_equal": 1.0,
+   "ref_vs_exact": {
+    "kernel": 0.015157356985127613,
+    "x256": 0.00484442288855011
+   },
+   "bound": 6.1e-05,
+   "fails": [],
+   "first_reading_fails": [],
+   "elements": 131072,
+   "elements_apart": {
+    "base": 54,
+    "on": 74
+   },
+   "server_dump": {
+    "equal_share": 1.0,
+    "rel_l2": 0.0
+   }
+  },
+  {
+   "case": "dump-L25-r0",
+   "pool": "fp8",
+   "kernel": "gqa16",
+   "rows": 16,
+   "launch": {
+    "n_splits": 32,
+    "heads_per_block": 4
+   },
+   "prefix_share": 0.861884,
+   "subnormal_share": 0.055159,
+   "zero_share": 0.003738,
+   "off_equal": true,
+   "on_equal": false,
+   "dist": {
+    "base": {
+     "exact": 0.004682895234001692,
+     "kernel": 6.498743551963992e-07,
+     "x256": 0.0025585096334441075
+    },
+    "on": {
+     "exact": 0.003901805019126983,
+     "kernel": 0.0025602213184785583,
+     "x256": 4.208572905340342e-06
+    }
+   },
+   "dist_bf16_store": {
+    "base": {
+     "exact": 0.005258592235960232,
+     "kernel": 5.6823569164767635e-06,
+     "x256": 0.003252763792405665
+    },
+    "on": {
+     "exact": 0.004532556229942264,
+     "kernel": 0.0032505725973071115,
+     "x256": 0.00013658893057342413
+    }
+   },
+   "store_equal": 1.0,
+   "ref_vs_exact": {
+    "kernel": 0.004682895727962329,
+    "x256": 0.003901755160569492
+   },
+   "bound": 6.1e-05,
+   "fails": [],
+   "first_reading_fails": [
+    "no-match"
+   ],
+   "elements": 32768,
+   "elements_apart": {
+    "base": 8,
+    "on": 18
+   }
+  },
+  {
+   "case": "dump-L25-r0",
+   "pool": "fp8",
+   "kernel": "gqa8",
+   "rows": 8,
+   "launch": {
+    "n_splits": 32,
+    "heads_per_block": 8
+   },
+   "prefix_share": 0.917904,
+   "subnormal_share": 0.052272,
+   "zero_share": 0.003427,
+   "off_equal": true,
+   "on_equal": false,
+   "dist": {
+    "base": {
+     "exact": 0.005041278496942903,
+     "kernel": 4.6025550944225176e-07,
+     "x256": 0.0023694540402382923
+    },
+    "on": {
+     "exact": 0.004421304023755503,
+     "kernel": 0.0023710040951662264,
+     "x256": 6.026576495710121e-06
+    }
+   },
+   "dist_bf16_store": {
+    "base": {
+     "exact": 0.00560133021889445,
+     "kernel": 2.504084116435462e-08,
+     "x256": 0.0030949412025689698
+    },
+    "on": {
+     "exact": 0.005047936029133588,
+     "kernel": 0.0030956736591031537,
+     "x256": 0.00012877044440704675
+    }
+   },
+   "store_equal": 1.0,
+   "ref_vs_exact": {
+    "kernel": 0.0050412724826688245,
+    "x256": 0.004421226387447445
+   },
+   "bound": 6.1e-05,
+   "fails": [],
+   "first_reading_fails": [
+    "no-match"
+   ],
+   "elements": 16384,
+   "elements_apart": {
+    "base": 1,
+    "on": 7
+   }
+  },
+  {
+   "case": "dump-L25-r0",
+   "pool": "bf16",
+   "kernel": "extend",
+   "rows": 64,
+   "launch": {},
+   "prefix_share": 0.219443,
+   "subnormal_share": 0.054572,
+   "zero_share": 0.014993,
+   "off_equal": true,
+   "on_equal": true,
+   "dist": {
+    "base": {
+     "exact": 5.861161901785448e-05,
+     "bf16": 1.8627629583688697e-05
+    },
+    "on": {
+     "exact": 5.861161901785448e-05,
+     "bf16": 1.8627629583688697e-05
+    }
+   },
+   "dist_bf16_store": {
+    "base": {
+     "exact": 0.00033612287796005666,
+     "bf16": 0.0001369556687685509
+    },
+    "on": {
+     "exact": 0.00033612287796005666,
+     "bf16": 0.0001369556687685509
+    }
+   },
+   "store_equal": 1.0,
+   "ref_vs_exact": {
+    "bf16": 5.602086273098915e-05
+   },
+   "fails": [],
+   "first_reading_fails": []
+  },
+  {
+   "case": "dump-L25-r0",
+   "pool": "bf16",
+   "kernel": "splitkv",
+   "rows": 64,
+   "launch": {
+    "n_splits": 8,
+    "rows": 64
+   },
+   "prefix_share": 0.862898,
+   "subnormal_share": 0.091662,
+   "zero_share": 0.016167,
+   "off_equal": true,
+   "on_equal": true,
+   "dist": {
+    "base": {
+     "exact": 0.0002810752141829098,
+     "bf16": 8.878712163207963e-06
+    },
+    "on": {
+     "exact": 0.0002810752141829098,
+     "bf16": 8.878712163207963e-06
+    }
+   },
+   "dist_bf16_store": {
+    "base": {
+     "exact": 0.0009986226876576231,
+     "bf16": 0.00010445424353308695
+    },
+    "on": {
+     "exact": 0.0009986226876576231,
+     "bf16": 0.00010445424353308695
+    }
+   },
+   "store_equal": 1.0,
+   "ref_vs_exact": {
+    "bf16": 0.0002810850764330607
+   },
+   "fails": [],
+   "first_reading_fails": []
+  },
+  {
+   "case": "dump-L25-r0",
+   "pool": "bf16",
+   "kernel": "gqa16",
+   "rows": 16,
+   "launch": {
+    "n_splits": 32,
+    "heads_per_block": 4
+   },
+   "prefix_share": 0.863816,
+   "subnormal_share": 0.054568,
+   "zero_share": 0.003739,
+   "off_equal": true,
+   "on_equal": true,
+   "dist": {
+    "base": {
+     "exact": 0.00024705351463619955,
+     "bf16": 7.685729273683483e-06
+    },
+    "on": {
+     "exact": 0.00024705351463619955,
+     "bf16": 7.685729273683483e-06
+    }
+   },
+   "dist_bf16_store": {
+    "base": {
+     "exact": 0.000976342226206909,
+     "bf16": 7.888099950443946e-05
+    },
+    "on": {
+     "exact": 0.000976342226206909,
+     "bf16": 7.888099950443946e-05
+    }
+   },
+   "store_equal": 1.0,
+   "ref_vs_exact": {
+    "bf16": 0.00024708048177993333
+   },
+   "fails": [],
+   "first_reading_fails": []
+  },
+  {
+   "case": "dump-L25-r0",
+   "pool": "bf16",
+   "kernel": "gqa8",
+   "rows": 8,
+   "launch": {
+    "n_splits": 32,
+    "heads_per_block": 8
+   },
+   "prefix_share": 0.918679,
+   "subnormal_share": 0.051659,
+   "zero_share": 0.003421,
+   "off_equal": true,
+   "on_equal": true,
+   "dist": {
+    "base": {
+     "exact": 0.00027762079066064765,
+     "bf16": 1.0871702932610134e-05
+    },
+    "on": {
+     "exact": 0.00027762079066064765,
+     "bf16": 1.0871702932610134e-05
+    }
+   },
+   "dist_bf16_store": {
+    "base": {
+     "exact": 0.0010388974465682845,
+     "bf16": 0.00011220600998761421
+    },
+    "on": {
+     "exact": 0.0010388974465682845,
+     "bf16": 0.00011220600998761421
+    }
+   },
+   "store_equal": 1.0,
+   "ref_vs_exact": {
+    "bf16": 0.0002777227417679332
+   },
+   "fails": [],
+   "first_reading_fails": []
+  },
+  {
+   "case": "dump-L00-r1",
+   "pool": "fp8",
+   "kernel": "extend",
+   "rows": 64,
+   "launch": {},
+   "prefix_share": 0.633403,
+   "subnormal_share": 0.063683,
+   "zero_share": 0.001314,
+   "off_equal": true,
+   "on_equal": false,
+   "dist": {
+    "base": {
+     "exact": 0.0051820239322227695,
+     "kernel": 3.750263104741105e-06,
+     "x256": 0.004354944996753837
+    },
+    "on": {
+     "exact": 0.002840954584713737,
+     "kernel": 0.0043568646591020275,
+     "x256": 3.525559886158908e-06
+    }
+   },
+   "dist_bf16_store": {
+    "base": {
+     "exact": 0.005490887110236241,
+     "kernel": 0.00010598159398933722,
+     "x256": 0.0046061232568434755
+    },
+    "on": {
+     "exact": 0.0032533997065245534,
+     "kernel": 0.0046052418519045785,
+     "x256": 9.363796474059738e-05
+    }
+   },
+   "store_equal": 1.0,
+   "ref_vs_exact": {
+    "kernel": 0.005181978642766098,
+    "x256": 0.002840909772084271
+   },
+   "bound": 6.1e-05,
+   "fails": [],
+   "first_reading_fails": [],
+   "elements": 131072,
+   "elements_apart": {
+    "base": 91,
+    "on": 90
+   },
+   "server_dump": {
+    "equal_share": 1.0,
+    "rel_l2": 0.0
+   }
+  },
+  {
+   "case": "dump-L00-r1",
+   "pool": "fp8",
+   "kernel": "splitkv",
+   "rows": 64,
+   "launch": {
+    "n_splits": 8,
+    "rows": 64
+   },
+   "prefix_share": 0.939623,
+   "subnormal_share": 0.045092,
+   "zero_share": 0.000682,
+   "off_equal": true,
+   "on_equal": false,
+   "dist": {
+    "base": {
+     "exact": 0.003475908053886244,
+     "kernel": 4.1386546480636694e-07,
+     "x256": 0.0027727793773417264
+    },
+    "on": {
+     "exact": 0.0021838800441250457,
+     "kernel": 0.002774119854384615,
+     "x256": 5.710381006772649e-07
+    }
+   },
+   "dist_bf16_store": {
+    "base": {
+     "exact": 0.003935586143582745,
+     "kernel": 2.329637066744791e-05,
+     "x256": 0.0031173749340262214
+    },
+    "on": {
+     "exact": 0.002700213059071781,
+     "kernel": 0.003115782209562578,
+     "x256": 1.1247568149783756e-05
+    }
+   },
+   "store_equal": 1.0,
+   "ref_vs_exact": {
+    "kernel": 0.003475904919634671,
+    "x256": 0.0021838737984477244
+   },
+   "bound": 6.1e-05,
+   "fails": [],
+   "first_reading_fails": [],
+   "elements": 131072,
+   "elements_apart": {
+    "base": 10,
+    "on": 19
+   },
+   "server_dump": {
+    "equal_share": 1.0,
+    "rel_l2": 0.0
+   }
+  },
+  {
+   "case": "dump-L00-r1",
+   "pool": "fp8",
+   "kernel": "gqa16",
+   "rows": 16,
+   "launch": {
+    "n_splits": 32,
+    "heads_per_block": 4
+   },
+   "prefix_share": 0.95093,
+   "subnormal_share": 0.025429,
+   "zero_share": 0.000288,
+   "off_equal": true,
+   "on_equal": false,
+   "dist": {
+    "base": {
+     "exact": 0.001874227684690111,
+     "kernel": 1.2199391357578439e-07,
+     "x256": 0.0009776724847132166
+    },
+    "on": {
+     "exact": 0.001563818008020015,
+     "kernel": 0.0009778036013872015,
+     "x256": 1.236089564311688e-07
+    }
+   },
+   "dist_bf16_store": {
+    "base": {
+     "exact": 0.0025498296230104123,
+     "kernel": 2.787855690287658e-05,
+     "x256": 0.0015745456698892206
+    },
+    "on": {
+     "exact": 0.0021762485344962736,
+     "kernel": 0.0015743111393462727,
+     "x256": 5.4864661502838265e-06
+    }
+   },
+   "store_equal": 1.0,
+   "ref_vs_exact": {
+    "kernel": 0.0018742181237112077,
+    "x256": 0.001563809878318975
+   },
+   "bound": 6.1e-05,
+   "fails": [],
+   "first_reading_fails": [],
+   "elements": 32768,
+   "elements_apart": {
+    "base": 4,
+    "on": 2
+   }
+  },
+  {
+   "case": "dump-L00-r1",
+   "pool": "fp8",
+   "kernel": "gqa8",
+   "rows": 8,
+   "launch": {
+    "n_splits": 32,
+    "heads_per_block": 8
+   },
+   "prefix_share": 0.937605,
+   "subnormal_share": 0.026134,
+   "zero_share": 0.000265,
+   "off_equal": true,
+   "on_equal": false,
+   "dist": {
+    "base": {
+     "exact": 0.0017751508126302824,
+     "kernel": 1.3093693964608758e-07,
+     "x256": 0.0009050220444144901
+    },
+    "on": {
+     "exact": 0.0015299410662512711,
+     "kernel": 0.0009051215251109469,
+     "x256": 1.3394619494576791e-07
+    }
+   },
+   "dist_bf16_store": {
+    "base": {
+     "exact": 0.002435064543610677,
+     "kernel": 3.893678086153154e-05,
+     "x256": 0.0014683462299217218
+    },
+    "on": {
+     "exact": 0.002091401714899487,
+     "kernel": 0.0014681361911463638,
+     "x256": 0.0
+    }
+   },
+   "store_equal": 1.0,
+   "ref_vs_exact": {
+    "kernel": 0.00177514181944381,
+    "x256": 0.0015299349394384024
+   },
+   "bound": 6.1e-05,
+   "fails": [],
+   "first_reading_fails": [],
+   "elements": 16384,
+   "elements_apart": {
+    "base": 2,
+    "on": 0
+   }
+  },
+  {
+   "case": "dump-L00-r1",
+   "pool": "bf16",
+   "kernel": "extend",
+   "rows": 64,
+   "launch": {},
+   "prefix_share": 0.63385,
+   "subnormal_share": 0.064024,
+   "zero_share": 0.001323,
+   "off_equal": true,
+   "on_equal": true,
+   "dist": {
+    "base": {
+     "exact": 0.00017460725271746131,
+     "bf16": 3.0196316563186973e-06
+    },
+    "on": {
+     "exact": 0.00017460725271746131,
+     "bf16": 3.0196316563186973e-06
+    }
+   },
+   "dist_bf16_store": {
+    "base": {
+     "exact": 0.0006642024145170429,
+     "bf16": 6.484639125682526e-05
+    },
+    "on": {
+     "exact": 0.0006642024145170429,
+     "bf16": 6.484639125682526e-05
+    }
+   },
+   "store_equal": 1.0,
+   "ref_vs_exact": {
+    "bf16": 0.00017459804181188548
+   },
+   "fails": [],
+   "first_reading_fails": []
+  },
+  {
+   "case": "dump-L00-r1",
+   "pool": "bf16",
+   "kernel": "splitkv",
+   "rows": 64,
+   "launch": {
+    "n_splits": 8,
+    "rows": 64
+   },
+   "prefix_share": 0.940139,
+   "subnormal_share": 0.045343,
+   "zero_share": 0.000698,
+   "off_equal": true,
+   "on_equal": true,
+   "dist": {
+    "base": {
+     "exact": 0.00013208349864745033,
+     "bf16": 2.751051480073747e-06
+    },
+    "on": {
+     "exact": 0.00013208349864745033,
+     "bf16": 2.751051480073747e-06
+    }
+   },
+   "dist_bf16_store": {
+    "base": {
+     "exact": 0.0005788198753587611,
+     "bf16": 5.081782068695047e-05
+    },
+    "on": {
+     "exact": 0.0005788198753587611,
+     "bf16": 5.081782068695047e-05
+    }
+   },
+   "store_equal": 1.0,
+   "ref_vs_exact": {
+    "bf16": 0.00013215497387665035
+   },
+   "fails": [],
+   "first_reading_fails": []
+  },
+  {
+   "case": "dump-L00-r1",
+   "pool": "bf16",
+   "kernel": "gqa16",
+   "rows": 16,
+   "launch": {
+    "n_splits": 32,
+    "heads_per_block": 4
+   },
+   "prefix_share": 0.951131,
+   "subnormal_share": 0.025601,
+   "zero_share": 0.00031,
+   "off_equal": true,
+   "on_equal": true,
+   "dist": {
+    "base": {
+     "exact": 9.635843313394126e-05,
+     "bf16": 7.670825791496571e-07
+    },
+    "on": {
+     "exact": 9.635843313394126e-05,
+     "bf16": 7.670825791496571e-07
+    }
+   },
+   "dist_bf16_store": {
+    "base": {
+     "exact": 0.0004642783159647675,
+     "bf16": 2.8307638055113768e-05
+    },
+    "on": {
+     "exact": 0.0004642783159647675,
+     "bf16": 2.8307638055113768e-05
+    }
+   },
+   "store_equal": 1.0,
+   "ref_vs_exact": {
+    "bf16": 9.636558749410282e-05
+   },
+   "fails": [],
+   "first_reading_fails": []
+  },
+  {
+   "case": "dump-L00-r1",
+   "pool": "bf16",
+   "kernel": "gqa8",
+   "rows": 8,
+   "launch": {
+    "n_splits": 32,
+    "heads_per_block": 8
+   },
+   "prefix_share": 0.938174,
+   "subnormal_share": 0.026334,
+   "zero_share": 0.000285,
+   "off_equal": true,
+   "on_equal": true,
+   "dist": {
+    "base": {
+     "exact": 9.218480377953551e-05,
+     "bf16": 9.715972280082025e-07
+    },
+    "on": {
+     "exact": 9.218480377953551e-05,
+     "bf16": 9.715972280082025e-07
+    }
+   },
+   "dist_bf16_store": {
+    "base": {
+     "exact": 0.0004470338745743309,
+     "bf16": 3.9713027900159936e-05
+    },
+    "on": {
+     "exact": 0.0004470338745743309,
+     "bf16": 3.9713027900159936e-05
+    }
+   },
+   "store_equal": 1.0,
+   "ref_vs_exact": {
+    "bf16": 9.218823429523997e-05
+   },
+   "fails": [],
+   "first_reading_fails": []
+  },
+  {
+   "case": "dump-L25-r1",
+   "pool": "fp8",
+   "kernel": "extend",
+   "rows": 64,
+   "launch": {},
+   "prefix_share": 0.302205,
+   "subnormal_share": 0.09492,
+   "zero_share": 0.029455,
+   "off_equal": true,
+   "on_equal": false,
+   "dist": {
+    "base": {
+     "exact": 0.016344923822019443,
+     "kernel": 1.1382659749989643e-05,
+     "x256": 0.016247410722423035
+    },
+    "on": {
+     "exact": 0.0009602346972308527,
+     "kernel": 0.016290034416883606,
+     "x256": 1.1370029649236513e-05
+    }
+   },
+   "dist_bf16_store": {
+    "base": {
+     "exact": 0.016457047340202587,
+     "kernel": 0.00011240298592778672,
+     "x256": 0.016357786127796804
+    },
+    "on": {
+     "exact": 0.00141651046790795,
+     "kernel": 0.016315610827117022,
+     "x256": 0.00011522505778507236
+    }
+   },
+   "store_equal": 1.0,
+   "ref_vs_exact": {
+    "kernel": 0.016344905737505314,
+    "x256": 0.000960161990843527
+   },
+   "bound": 6.1e-05,
+   "fails": [],
+   "first_reading_fails": [],
+   "elements": 131072,
+   "elements_apart": {
+    "base": 187,
+    "on": 192
+   },
+   "server_dump": {
+    "equal_share": 1.0,
+    "rel_l2": 0.0
+   }
+  },
+  {
+   "case": "dump-L25-r1",
+   "pool": "fp8",
+   "kernel": "splitkv",
+   "rows": 64,
+   "launch": {
+    "n_splits": 8,
+    "rows": 64
+   },
+   "prefix_share": 0.894933,
+   "subnormal_share": 0.106218,
+   "zero_share": 0.017757,
+   "off_equal": true,
+   "on_equal": false,
+   "dist": {
+    "base": {
+     "exact": 0.012732851454737031,
+     "kernel": 1.0647618962646332e-06,
+     "x256": 0.012016954373434587
+    },
+    "on": {
+     "exact": 0.0035896913088489667,
+     "kernel": 0.012059097524072391,
+     "x256": 3.778653814537822e-06
+    }
+   },
+   "dist_bf16_store": {
+    "base": {
+     "exact": 0.012997027577876605,
+     "kernel": 3.041448324620797e-05,
+     "x256": 0.012264825088615022
+    },
+    "on": {
+     "exact": 0.004285910736151843,
+     "kernel": 0.012222351701406476,
+     "x256": 3.761482316612687e-05
+    }
+   },
+   "store_equal": 1.0,
+   "ref_vs_exact": {
+    "kernel": 0.012732839744665946,
+    "x256": 0.0035896319251107873
+   },
+   "bound": 6.1e-05,
+   "fails": [],
+   "first_reading_fails": [],
+   "elements": 131072,
+   "elements_apart": {
+    "base": 40,
+    "on": 48
+   },
+   "server_dump": {
+    "equal_share": 1.0,
+    "rel_l2": 0.0
+   }
+  },
+  {
+   "case": "dump-L25-r1",
+   "pool": "fp8",
+   "kernel": "gqa16",
+   "rows": 16,
+   "launch": {
+    "n_splits": 32,
+    "heads_per_block": 4
+   },
+   "prefix_share": 0.91068,
+   "subnormal_share": 0.053917,
+   "zero_share": 0.004242,
+   "off_equal": true,
+   "on_equal": false,
+   "dist": {
+    "base": {
+     "exact": 0.004407452599210755,
+     "kernel": 1.8039081360231228e-06,
+     "x256": 0.0027075534850612543
+    },
+    "on": {
+     "exact": 0.0033280543764104987,
+     "kernel": 0.002710511948327441,
+     "x256": 1.8027886496681516e-06
+    }
+   },
+   "dist_bf16_store": {
+    "base": {
+     "exact": 0.004961347380004437,
+     "kernel": 1.5171463953856962e-05,
+     "x256": 0.003383634506438113
+    },
+    "on": {
+     "exact": 0.004017405924957577,
+     "kernel": 0.0033795486894243067,
+     "x256": 5.292188393657847e-05
+    }
+   },
+   "store_equal": 1.0,
+   "ref_vs_exact": {
+    "kernel": 0.004407442222134489,
+    "x256": 0.0033280586256172117
+   },
+   "bound": 6.1e-05,
+   "fails": [],
+   "first_reading_fails": [],
+   "elements": 32768,
+   "elements_apart": {
+    "base": 11,
+    "on": 7
+   }
+  },
+  {
+   "case": "dump-L25-r1",
+   "pool": "fp8",
+   "kernel": "gqa8",
+   "rows": 8,
+   "launch": {
+    "n_splits": 32,
+    "heads_per_block": 8
+   },
+   "prefix_share": 0.949485,
+   "subnormal_share": 0.050727,
+   "zero_share": 0.003933,
+   "off_equal": true,
+   "on_equal": false,
+   "dist": {
+    "base": {
+     "exact": 0.004073770685744683,
+     "kernel": 2.5919639527174657e-06,
+     "x256": 0.002390066442014774
+    },
+    "on": {
+     "exact": 0.0032078154037365144,
+     "kernel": 0.0023920623047401337,
+     "x256": 2.589939535883248e-06
+    }
+   },
+   "dist_bf16_store": {
+    "base": {
+     "exact": 0.004660886062248713,
+     "kernel": 1.0784105498528523e-05,
+     "x256": 0.0030946901314505898
+    },
+    "on": {
+     "exact": 0.0039290303307364695,
+     "kernel": 0.0030909406664904153,
+     "x256": 7.71400749008213e-05
+    }
+   },
+   "store_equal": 1.0,
+   "ref_vs_exact": {
+    "kernel": 0.004073759149873938,
+    "x256": 0.0032078271990182267
+   },
+   "bound": 6.1e-05,
+   "fails": [],
+   "first_reading_fails": [
+    "no-match"
+   ],
+   "elements": 16384,
+   "elements_apart": {
+    "base": 3,
+    "on": 5
+   }
+  },
+  {
+   "case": "dump-L25-r1",
+   "pool": "bf16",
+   "kernel": "extend",
+   "rows": 64,
+   "launch": {},
+   "prefix_share": 0.303248,
+   "subnormal_share": 0.094604,
+   "zero_share": 0.028756,
+   "off_equal": true,
+   "on_equal": true,
+   "dist": {
+    "base": {
+     "exact": 5.779681916244901e-05,
+     "bf16": 1.1347173611475825e-05
+    },
+    "on": {
+     "exact": 5.779681916244901e-05,
+     "bf16": 1.1347173611475825e-05
+    }
+   },
+   "dist_bf16_store": {
+    "base": {
+     "exact": 0.0003299076674530555,
+     "bf16": 9.251745850405823e-05
+    },
+    "on": {
+     "exact": 0.0003299076674530555,
+     "bf16": 9.251745850405823e-05
+    }
+   },
+   "store_equal": 1.0,
+   "ref_vs_exact": {
+    "bf16": 5.668756227445208e-05
+   },
+   "fails": [],
+   "first_reading_fails": []
+  },
+  {
+   "case": "dump-L25-r1",
+   "pool": "bf16",
+   "kernel": "splitkv",
+   "rows": 64,
+   "launch": {
+    "n_splits": 8,
+    "rows": 64
+   },
+   "prefix_share": 0.895863,
+   "subnormal_share": 0.106296,
+   "zero_share": 0.017477,
+   "off_equal": true,
+   "on_equal": true,
+   "dist": {
+    "base": {
+     "exact": 0.00023064680497834317,
+     "bf16": 7.868906502850677e-06
+    },
+    "on": {
+     "exact": 0.00023064680497834317,
+     "bf16": 7.868906502850677e-06
+    }
+   },
+   "dist_bf16_store": {
+    "base": {
+     "exact": 0.0009400893087489039,
+     "bf16": 0.00011233508632513357
+    },
+    "on": {
+     "exact": 0.0009400893087489039,
+     "bf16": 0.00011233508632513357
+    }
+   },
+   "store_equal": 1.0,
+   "ref_vs_exact": {
+    "bf16": 0.00023043705370163423
+   },
+   "fails": [],
+   "first_reading_fails": []
+  },
+  {
+   "case": "dump-L25-r1",
+   "pool": "bf16",
+   "kernel": "gqa16",
+   "rows": 16,
+   "launch": {
+    "n_splits": 32,
+    "heads_per_block": 4
+   },
+   "prefix_share": 0.912056,
+   "subnormal_share": 0.053804,
+   "zero_share": 0.004179,
+   "off_equal": true,
+   "on_equal": true,
+   "dist": {
+    "base": {
+     "exact": 0.00020837118945188696,
+     "bf16": 4.96319967066286e-06
+    },
+    "on": {
+     "exact": 0.00020837118945188696,
+     "bf16": 4.96319967066286e-06
+    }
+   },
+   "dist_bf16_store": {
+    "base": {
+     "exact": 0.0008194942256008349,
+     "bf16": 8.127158312733958e-05
+    },
+    "on": {
+     "exact": 0.0008194942256008349,
+     "bf16": 8.127158312733958e-05
+    }
+   },
+   "store_equal": 1.0,
+   "ref_vs_exact": {
+    "bf16": 0.00020842543699230376
+   },
+   "fails": [],
+   "first_reading_fails": []
+  },
+  {
+   "case": "dump-L25-r1",
+   "pool": "bf16",
+   "kernel": "gqa8",
+   "rows": 8,
+   "launch": {
+    "n_splits": 32,
+    "heads_per_block": 8
+   },
+   "prefix_share": 0.950847,
+   "subnormal_share": 0.050211,
+   "zero_share": 0.00385,
+   "off_equal": true,
+   "on_equal": true,
+   "dist": {
+    "base": {
+     "exact": 0.00020691834078499498,
+     "bf16": 3.6727395003414523e-06
+    },
+    "on": {
+     "exact": 0.00020691834078499498,
+     "bf16": 3.6727395003414523e-06
+    }
+   },
+   "dist_bf16_store": {
+    "base": {
+     "exact": 0.0008717096627356508,
+     "bf16": 4.096178570392392e-05
+    },
+    "on": {
+     "exact": 0.0008717096627356508,
+     "bf16": 4.096178570392392e-05
+    }
+   },
+   "store_equal": 1.0,
+   "ref_vs_exact": {
+    "bf16": 0.000206958026290108
+   },
+   "fails": [],
+   "first_reading_fails": []
+  },
+  {
+   "case": "syn-d256",
+   "pool": "fp8",
+   "kernel": "extend",
+   "rows": 192,
+   "launch": {},
+   "prefix_share": 0.995209,
+   "subnormal_share": 0.326001,
+   "zero_share": 0.055209,
+   "off_equal": true,
+   "on_equal": false,
+   "dist": {
+    "base": {
+     "exact": 0.029465031378123743,
+     "kernel": 1.2836993133341685e-05,
+     "x256": 0.024449021354516178
+    },
+    "on": {
+     "exact": 0.01735674381663263,
+     "kernel": 0.02444379355713135,
+     "x256": 1.584144551399461e-05
+    }
+   },
+   "dist_bf16_store": {
+    "base": {
+     "exact": 0.029564322404040933,
+     "kernel": 4.7049003317255084e-05,
+     "x256": 0.02456207865253934
+    },
+    "on": {
+     "exact": 0.017515197475640357,
+     "kernel": 0.02456756983053389,
+     "x256": 8.094534057061371e-05
+    }
+   },
+   "store_equal": 1.0,
+   "ref_vs_exact": {
+    "kernel": 0.029465017692774542,
+    "x256": 0.01735680991658857
+   },
+   "bound": 6.1e-05,
+   "fails": [],
+   "first_reading_fails": [],
+   "elements": 393216,
+   "elements_apart": {
+    "base": 154,
+    "on": 461
+   }
+  },
+  {
+   "case": "syn-d256",
+   "pool": "fp8",
+   "kernel": "splitkv",
+   "rows": 64,
+   "launch": {
+    "n_splits": 16,
+    "rows": 64
+   },
+   "prefix_share": 0.998326,
+   "subnormal_share": 0.153771,
+   "zero_share": 0.013237,
+   "off_equal": true,
+   "on_equal": false,
+   "dist": {
+    "base": {
+     "exact": 0.013889878154603272,
+     "kernel": 1.0277885108236514e-05,
+     "x256": 0.008577405386825448
+    },
+    "on": {
+     "exact": 0.01118712198758823,
+     "kernel": 0.008576949448925014,
+     "x256": 6.081473833280966e-06
+    }
+   },
+   "dist_bf16_store": {
+    "base": {
+     "exact": 0.014087649638322623,
+     "kernel": 4.540107830056476e-05,
+     "x256": 0.008898415836436193
+    },
+    "on": {
+     "exact": 0.011415616326942626,
+     "kernel": 0.00889877336614314,
+     "x256": 6.358774478015565e-05
+    }
+   },
+   "store_equal": 1.0,
+   "ref_vs_exact": {
+    "kernel": 0.013889846500548262,
+    "x256": 0.011187105561732077
+   },
+   "bound": 6.1e-05,
+   "fails": [],
+   "first_reading_fails": [],
+   "elements": 131072,
+   "elements_apart": {
+    "base": 132,
+    "on": 109
+   }
+  },
+  {
+   "case": "syn-d256",
+   "pool": "fp8",
+   "kernel": "gqa16",
+   "rows": 16,
+   "launch": {
+    "n_splits": 64,
+    "heads_per_block": 4
+   },
+   "prefix_share": 0.999481,
+   "subnormal_share": 0.089185,
+   "zero_share": 0.005394,
+   "off_equal": true,
+   "on_equal": false,
+   "dist": {
+    "base": {
+     "exact": 0.01059342736980082,
+     "kernel": 5.538452960876839e-06,
+     "x256": 0.005033175154064232
+    },
+    "on": {
+     "exact": 0.009422751375590049,
+     "kernel": 0.005033179261115225,
+     "x256": 7.511784437154502e-07
+    }
+   },
+   "dist_bf16_store": {
+    "base": {
+     "exact": 0.010851647708463159,
+     "kernel": 2.8849990309637067e-05,
+     "x256": 0.005550951027901797
+    },
+    "on": {
+     "exact": 0.009706608168765831,
+     "kernel": 0.005551046292673598,
+     "x256": 6.518550969493286e-05
+    }
+   },
+   "store_equal": 1.0,
+   "ref_vs_exact": {
+    "kernel": 0.010593430747638619,
+    "x256": 0.009422747723625231
+   },
+   "bound": 6.1e-05,
+   "fails": [],
+   "first_reading_fails": [
+    "no-match"
+   ],
+   "elements": 32768,
+   "elements_apart": {
+    "base": 21,
+    "on": 22
+   }
+  },
+  {
+   "case": "syn-d256",
+   "pool": "fp8",
+   "kernel": "gqa8",
+   "rows": 8,
+   "launch": {
+    "n_splits": 64,
+    "heads_per_block": 4
+   },
+   "prefix_share": 0.999679,
+   "subnormal_share": 0.089608,
+   "zero_share": 0.005596,
+   "off_equal": true,
+   "on_equal": false,
+   "dist": {
+    "base": {
+     "exact": 0.010825696263211237,
+     "kernel": 7.89031387963774e-06,
+     "x256": 0.0052024925847235295
+    },
+    "on": {
+     "exact": 0.009611987783841277,
+     "kernel": 0.005202489125062348,
+     "x256": 8.920239238608422e-07
+    }
+   },
+   "dist_bf16_store": {
+    "base": {
+     "exact": 0.011086306650902662,
+     "kernel": 4.112676073666225e-05,
+     "x256": 0.005707141091368142
+    },
+    "on": {
+     "exact": 0.00989931969201376,
+     "kernel": 0.005707301451176198,
+     "x256": 2.306503277354524e-05
+    }
+   },
+   "store_equal": 1.0,
+   "ref_vs_exact": {
+    "kernel": 0.01082570825625312,
+    "x256": 0.009611983825196804
+   },
+   "bound": 6.1e-05,
+   "fails": [],
+   "first_reading_fails": [],
+   "elements": 16384,
+   "elements_apart": {
+    "base": 18,
+    "on": 13
+   }
+  },
+  {
+   "case": "syn-d256",
+   "pool": "bf16",
+   "kernel": "extend",
+   "rows": 192,
+   "launch": {},
+   "prefix_share": 0.995233,
+   "subnormal_share": 0.325752,
+   "zero_share": 0.055312,
+   "off_equal": true,
+   "on_equal": true,
+   "dist": {
+    "base": {
+     "exact": 0.0010909332772798157,
+     "bf16": 6.433768195910518e-05
+    },
+    "on": {
+     "exact": 0.0010909332772798157,
+     "bf16": 6.433768195910518e-05
+    }
+   },
+   "dist_bf16_store": {
+    "base": {
+     "exact": 0.0019563313386625654,
+     "bf16": 0.00021704021209823096
+    },
+    "on": {
+     "exact": 0.0019563313386625654,
+     "bf16": 0.00021704021209823096
+    }
+   },
+   "store_equal": 1.0,
+   "ref_vs_exact": {
+    "bf16": 0.0010910161080212822
+   },
+   "fails": [],
+   "first_reading_fails": []
+  },
+  {
+   "case": "syn-d256",
+   "pool": "bf16",
+   "kernel": "splitkv",
+   "rows": 64,
+   "launch": {
+    "n_splits": 16,
+    "rows": 64
+   },
+   "prefix_share": 0.998333,
+   "subnormal_share": 0.153712,
+   "zero_share": 0.013266,
+   "off_equal": true,
+   "on_equal": true,
+   "dist": {
+    "base": {
+     "exact": 0.0007051807619460581,
+     "bf16": 2.0320053628979396e-05
+    },
+    "on": {
+     "exact": 0.0007051807619460581,
+     "bf16": 2.0320053628979396e-05
+    }
+   },
+   "dist_bf16_store": {
+    "base": {
+     "exact": 0.0015172425432098857,
+     "bf16": 0.00017576105298942678
+    },
+    "on": {
+     "exact": 0.0015172425432098857,
+     "bf16": 0.00017576105298942678
+    }
+   },
+   "store_equal": 1.0,
+   "ref_vs_exact": {
+    "bf16": 0.0007051128502664206
+   },
+   "fails": [],
+   "first_reading_fails": []
+  },
+  {
+   "case": "syn-d256",
+   "pool": "bf16",
+   "kernel": "gqa16",
+   "rows": 16,
+   "launch": {
+    "n_splits": 64,
+    "heads_per_block": 4
+   },
+   "prefix_share": 0.999484,
+   "subnormal_share": 0.089345,
+   "zero_share": 0.005429,
+   "off_equal": true,
+   "on_equal": true,
+   "dist": {
+    "base": {
+     "exact": 0.0005899274341971573,
+     "bf16": 1.163629831163494e-05
+    },
+    "on": {
+     "exact": 0.0005899274341971573,
+     "bf16": 1.163629831163494e-05
+    }
+   },
+   "dist_bf16_store": {
+    "base": {
+     "exact": 0.001454930802326381,
+     "bf16": 0.00019738474549050892
+    },
+    "on": {
+     "exact": 0.001454930802326381,
+     "bf16": 0.00019738474549050892
+    }
+   },
+   "store_equal": 1.0,
+   "ref_vs_exact": {
+    "bf16": 0.000589981813273054
+   },
+   "fails": [],
+   "first_reading_fails": []
+  },
+  {
+   "case": "syn-d256",
+   "pool": "bf16",
+   "kernel": "gqa8",
+   "rows": 8,
+   "launch": {
+    "n_splits": 64,
+    "heads_per_block": 4
+   },
+   "prefix_share": 0.99968,
+   "subnormal_share": 0.089733,
+   "zero_share": 0.005618,
+   "off_equal": true,
+   "on_equal": true,
+   "dist": {
+    "base": {
+     "exact": 0.0006072664362378838,
+     "bf16": 1.2735965863000984e-05
+    },
+    "on": {
+     "exact": 0.0006072664362378838,
+     "bf16": 1.2735965863000984e-05
+    }
+   },
+   "dist_bf16_store": {
+    "base": {
+     "exact": 0.0014969433391368086,
+     "bf16": 0.0002586898143424054
+    },
+    "on": {
+     "exact": 0.0014969433391368086,
+     "bf16": 0.0002586898143424054
+    }
+   },
+   "store_equal": 1.0,
+   "ref_vs_exact": {
+    "bf16": 0.0006072507324646352
+   },
+   "fails": [],
+   "first_reading_fails": []
+  },
+  {
+   "case": "syn-d128-sink",
+   "pool": "fp8",
+   "kernel": "extend",
+   "rows": 192,
+   "launch": {},
+   "prefix_share": 0.998093,
+   "subnormal_share": 0.381266,
+   "zero_share": 0.081281,
+   "off_equal": true,
+   "on_equal": false,
+   "dist": {
+    "base": {
+     "exact": 0.036400368188610775,
+     "kernel": 6.956347023641568e-05,
+     "x256": 0.03222062804378386
+    },
+    "on": {
+     "exact": 0.01835109462666971,
+     "kernel": 0.03220960253241106,
+     "x256": 6.841371877970046e-05
+    }
+   },
+   "dist_bf16_store": {
+    "base": {
+     "exact": 0.03647315356452431,
+     "kernel": 0.0001319765627924582,
+     "x256": 0.03229223668884182
+    },
+    "on": {
+     "exact": 0.018508127532106223,
+     "kernel": 0.032303365699419724,
+     "x256": 0.00016800605921242173
+    }
+   },
+   "store_equal": 1.0,
+   "ref_vs_exact": {
+    "kernel": 0.03640040787776187,
+    "x256": 0.018351030330866203
+   },
+   "bound": 0.00013912694047283136,
+   "fails": [],
+   "first_reading_fails": [],
+   "elements": 393216,
+   "elements_apart": {
+    "base": 859,
+    "on": 1878
+   }
+  },
+  {
+   "case": "syn-d128-sink",
+   "pool": "fp8",
+   "kernel": "splitkv",
+   "rows": 64,
+   "launch": {
+    "n_splits": 16,
+    "rows": 64
+   },
+   "prefix_share": 0.999352,
+   "subnormal_share": 0.208476,
+   "zero_share": 0.02232,
+   "off_equal": true,
+   "on_equal": false,
+   "dist": {
+    "base": {
+     "exact": 0.017935905572889016,
+     "kernel": 5.3522262709134286e-05,
+     "x256": 0.012376143988610927
+    },
+    "on": {
+     "exact": 0.013356116131855314,
+     "kernel": 0.012375473265659418,
+     "x256": 1.833866871771358e-05
+    }
+   },
+   "dist_bf16_store": {
+    "base": {
+     "exact": 0.01809096989915461,
+     "kernel": 0.0001205814784934077,
+     "x256": 0.012595990374379713
+    },
+    "on": {
+     "exact": 0.013570527601218338,
+     "kernel": 0.012597570731729688,
+     "x256": 0.00014361814123112175
+    }
+   },
+   "store_equal": 1.0,
+   "ref_vs_exact": {
+    "kernel": 0.01793607235589495,
+    "x256": 0.013356056077236299
+   },
+   "bound": 0.00010704452541826857,
+   "fails": [],
+   "first_reading_fails": [],
+   "elements": 131072,
+   "elements_apart": {
+    "base": 328,
+    "on": 421
+   }
+  },
+  {
+   "case": "syn-d128-sink",
+   "pool": "fp8",
+   "kernel": "gqa16",
+   "rows": 16,
+   "launch": {
+    "n_splits": 64,
+    "heads_per_block": 4
+   },
+   "prefix_share": 0.999841,
+   "subnormal_share": 0.129833,
+   "zero_share": 0.009819,
+   "off_equal": true,
+   "on_equal": false,
+   "dist": {
+    "base": {
+     "exact": 0.013037780006815311,
+     "kernel": 1.5089378265117568e-05,
+     "x256": 0.007428271073749937
+    },
+    "on": {
+     "exact": 0.010992950219575125,
+     "kernel": 0.007428393560970333,
+     "x256": 1.3806526927563194e-05
+    }
+   },
+   "dist_bf16_store": {
+    "base": {
+     "exact": 0.01327789868753315,
+     "kernel": 0.00011188952164695347,
+     "x256": 0.007808980983394817
+    },
+    "on": {
+     "exact": 0.011231066229289592,
+     "kernel": 0.007806411551155077,
+     "x256": 0.0001917000861316656
+    }
+   },
+   "store_equal": 1.0,
+   "ref_vs_exact": {
+    "kernel": 0.013037786048214248,
+    "x256": 0.010992895079741934
+   },
+   "bound": 6.1e-05,
+   "fails": [],
+   "first_reading_fails": [],
+   "elements": 32768,
+   "elements_apart": {
+    "base": 58,
+    "on": 86
+   }
+  },
+  {
+   "case": "syn-d128-sink",
+   "pool": "fp8",
+   "kernel": "gqa8",
+   "rows": 8,
+   "launch": {
+    "n_splits": 64,
+    "heads_per_block": 8
+   },
+   "prefix_share": 0.999888,
+   "subnormal_share": 0.130245,
+   "zero_share": 0.009959,
+   "off_equal": true,
+   "on_equal": false,
+   "dist": {
+    "base": {
+     "exact": 0.012761275914334754,
+     "kernel": 1.5143232041802967e-05,
+     "x256": 0.0074269254206142206
+    },
+    "on": {
+     "exact": 0.010709711006713765,
+     "kernel": 0.0074268946415973,
+     "x256": 9.530116960512476e-06
+    }
+   },
+   "dist_bf16_store": {
+    "base": {
+     "exact": 0.01302328145943861,
+     "kernel": 0.00014658863083292774,
+     "x256": 0.007820966891058014
+    },
+    "on": {
+     "exact": 0.010958160185299147,
+     "kernel": 0.007821275905308801,
+     "x256": 8.217941222716546e-05
+    }
+   },
+   "store_equal": 1.0,
+   "ref_vs_exact": {
+    "kernel": 0.012761363189318172,
+    "x256": 0.010709683001655016
+   },
+   "bound": 6.1e-05,
+   "fails": [],
+   "first_reading_fails": [],
+   "elements": 16384,
+   "elements_apart": {
+    "base": 38,
+    "on": 28
+   }
+  },
+  {
+   "case": "syn-d128-sink",
+   "pool": "bf16",
+   "kernel": "extend",
+   "rows": 192,
+   "launch": {},
+   "prefix_share": 0.998101,
+   "subnormal_share": 0.381044,
+   "zero_share": 0.081542,
+   "off_equal": true,
+   "on_equal": true,
+   "dist": {
+    "base": {
+     "exact": 0.001144729973983657,
+     "bf16": 4.589347641063692e-05
+    },
+    "on": {
+     "exact": 0.001144729973983657,
+     "bf16": 4.589347641063692e-05
+    }
+   },
+   "dist_bf16_store": {
+    "base": {
+     "exact": 0.0020265418950365104,
+     "bf16": 0.0001990163937105893
+    },
+    "on": {
+     "exact": 0.0020265418950365104,
+     "bf16": 0.0001990163937105893
+    }
+   },
+   "store_equal": 1.0,
+   "ref_vs_exact": {
+    "bf16": 0.001144653335263118
+   },
+   "fails": [],
+   "first_reading_fails": []
+  },
+  {
+   "case": "syn-d128-sink",
+   "pool": "bf16",
+   "kernel": "splitkv",
+   "rows": 64,
+   "launch": {
+    "n_splits": 16,
+    "rows": 64
+   },
+   "prefix_share": 0.999356,
+   "subnormal_share": 0.208368,
+   "zero_share": 0.022382,
+   "off_equal": true,
+   "on_equal": true,
+   "dist": {
+    "base": {
+     "exact": 0.0008343860945458022,
+     "bf16": 2.1695576859402183e-05
+    },
+    "on": {
+     "exact": 0.0008343860945458022,
+     "bf16": 2.1695576859402183e-05
+    }
+   },
+   "dist_bf16_store": {
+    "base": {
+     "exact": 0.0017028950440597453,
+     "bf16": 0.0002155541255274344
+    },
+    "on": {
+     "exact": 0.0017028950440597453,
+     "bf16": 0.0002155541255274344
+    }
+   },
+   "store_equal": 1.0,
+   "ref_vs_exact": {
+    "bf16": 0.0008342818908825981
+   },
+   "fails": [],
+   "first_reading_fails": []
+  },
+  {
+   "case": "syn-d128-sink",
+   "pool": "bf16",
+   "kernel": "gqa16",
+   "rows": 16,
+   "launch": {
+    "n_splits": 64,
+    "heads_per_block": 4
+   },
+   "prefix_share": 0.999843,
+   "subnormal_share": 0.129784,
+   "zero_share": 0.009843,
+   "off_equal": true,
+   "on_equal": true,
+   "dist": {
+    "base": {
+     "exact": 0.0006880926270691612,
+     "bf16": 2.3047178644047524e-05
+    },
+    "on": {
+     "exact": 0.0006880926270691612,
+     "bf16": 2.3047178644047524e-05
+    }
+   },
+   "dist_bf16_store": {
+    "base": {
+     "exact": 0.0015586966338201201,
+     "bf16": 0.0001706918614715718
+    },
+    "on": {
+     "exact": 0.0015586966338201201,
+     "bf16": 0.0001706918614715718
+    }
+   },
+   "store_equal": 1.0,
+   "ref_vs_exact": {
+    "bf16": 0.0006879212602507476
+   },
+   "fails": [],
+   "first_reading_fails": []
+  },
+  {
+   "case": "syn-d128-sink",
+   "pool": "bf16",
+   "kernel": "gqa8",
+   "rows": 8,
+   "launch": {
+    "n_splits": 64,
+    "heads_per_block": 8
+   },
+   "prefix_share": 0.99989,
+   "subnormal_share": 0.13026,
+   "zero_share": 0.010009,
+   "off_equal": true,
+   "on_equal": true,
+   "dist": {
+    "base": {
+     "exact": 0.0006837410181473661,
+     "bf16": 2.3724830230258452e-05
+    },
+    "on": {
+     "exact": 0.0006837410181473661,
+     "bf16": 2.3724830230258452e-05
+    }
+   },
+   "dist_bf16_store": {
+    "base": {
+     "exact": 0.001510218572420839,
+     "bf16": 0.00017061178484507045
+    },
+    "on": {
+     "exact": 0.001510218572420839,
+     "bf16": 0.00017061178484507045
+    }
+   },
+   "store_equal": 1.0,
+   "ref_vs_exact": {
+    "bf16": 0.0006835805714526263
+   },
+   "fails": [],
+   "first_reading_fails": []
+  }
+ ],
+ "verdict": "pass",
+ "first_reading": "fail:4",
+ "store_equal_min": 1.0
+}

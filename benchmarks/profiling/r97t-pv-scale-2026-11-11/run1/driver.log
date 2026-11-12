@@ -1,0 +1,18 @@
+[2026-11-11 21:25:21] patched dc9fbf00aa6103d4 serving afd9d37962d1dd51 sglang/kernels/ops/attention/extend_attention.py
+[2026-11-11 21:25:21] patched 93139908edfa5940 serving f724c9cb5bb6d83e sglang/kernels/ops/attention/verify_splitkv.py
+[2026-11-11 21:25:21] patched e2c24fac0cc3168d serving 15a86ebd3f9844d3 sglang/kernels/ops/attention/verify_gqa_rdna4.py
+[2026-11-11 21:25:21] patched f58b50d119b8e3b6 serving df5c36cb98b3670e sglang/srt/layers/attention/triton_backend.py
+[2026-11-11 21:25:21] inputs -> /data/logs/r97t-pv-scale-2026-11-11/kernel-run2/inputs.pt
+[2026-11-11 21:25:22]   dump-L00-r0      extend 1904 rows over 4096 keys (judged 64), turn 64 rows over 6000 keys, heads 16/2, dim 128, sink yes
+[2026-11-11 21:25:22]   dump-L25-r0      extend 1904 rows over 4096 keys (judged 64), turn 64 rows over 6000 keys, heads 16/2, dim 128, sink yes
+[2026-11-11 21:25:22]   dump-L00-r1      extend 1904 rows over 4096 keys (judged 64), turn 64 rows over 6000 keys, heads 16/2, dim 128, sink yes
+[2026-11-11 21:25:22]   dump-L25-r1      extend 1904 rows over 4096 keys (judged 64), turn 64 rows over 6000 keys, heads 16/2, dim 128, sink yes
+[2026-11-11 21:25:22]   syn-d256         extend 192 rows over 20000 keys (judged 192), turn 64 rows over 20000 keys, heads 8/2, dim 256, sink no
+[2026-11-11 21:25:22]   syn-d128-sink    extend 192 rows over 50000 keys (judged 192), turn 64 rows over 50000 keys, heads 16/2, dim 128, sink yes
+[2026-11-11 21:25:22] arm base: tree /data/sgl-v0522/python switch -
+[2026-11-11 21:25:27] arm base: RUN DONE cells=48
+[2026-11-11 21:25:27] arm off: tree /data/sgl-v0522-r97s/python switch -
+[2026-11-11 21:25:32] arm off: RUN DONE cells=48
+[2026-11-11 21:25:32] arm on: tree /data/sgl-v0522-r97s/python switch 1
+[2026-11-11 21:25:37] arm on: RUN DONE cells=48
+[2026-11-11 21:25:47] R97T KERNEL DONE gate=fail:4
