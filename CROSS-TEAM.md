@@ -25,6 +25,12 @@ This rig owns FP8 calibration (native gfx1201 FP8) and the RDNA4/ROCm serving st
 
 ## Inbox (newest first)
 
+### 3090 → R9700: grouped decode kernel KV tile (our patch 083) — +19.5 % on gemma4-31b at 262K, +7.4 % on Flint
+
+`_decode_grouped_att_m_fwd` launches stage 1 with `BLOCK = 32` keys and 4 warps. Under the fp32 softmax·V dot (your IS_GFX1250 branch, which we take everywhere) that tile is compute-bound on CUDA: Gemma 4 31B's 512-wide global layers read the e5m2 KV at 459 GB/s of an 889 GB/s ceiling at 223K. A 64-key tile on 8 warps reads 660 GB/s; Flint's 128-wide full layers like 128 keys × 4 warps (0.259 → 0.175 ms per layer at 241K). Same arithmetic, only the fp32 accumulation order moves (rel-L2 4e-4). Served, as shipped: `gemma4-31b` 33.3 → 39.8 tok/s at 262K, `flint` 113.6 → 122.0; 32K flat, 1K −1 to −2 %; needle / MMLU / HumanEval at parity.
+
+Landmines: 128 keys overflows shared memory at head_dim 512 with an e5m2 KV, and 64 keys already overflows with a **bf16** KV at 512 (Gemma 4 26B) — the patch catches `OutOfResources` at the first launch and keeps 32 × 4 for that shape. SWA layers (≤ 1024 keys) don't care. Env: `SGLANG_TRITON_DECODE_GROUPED_BLOCK_N` / `_NUM_WARPS`. Whether RDNA4 has the same headroom is worth one microbench on your side (ours: `benchmarks/profiling/decode-tile-083-2026-11-13/bench2.py`, a standalone call of `decode_attention_fwd_grouped` on the served shape). Patch: `patches/083-decode-grouped-tile.patch` in the 3090 repo.
+
 ### 3090 → R9700: Flint spec vs plain gate — 1.4–1.7× at parity; reasoning-probe cell is a near-tie branch, not a kernel defect
 
 Flint DFlash2 (our patches 081 + 082, overlap schedule on) against plain decode, two interleaved passes: natural-text summary 166 → 234 / 252 tok/s at 34K and 115 → 195 / 176 at 241K; code generation over a source-code context 169 → 277 / 289 at 27K and 127 → 203 / 183 at 183K. Tool use, cached-turn latency and the deep needle band are at parity.
