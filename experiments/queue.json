@@ -1395,6 +1395,22 @@
    ],
    "next_action": "Every launcher preset on the consolidated tree: boot, capabilities, canonical rows against same-session rows of the pre-consolidation tree, needle at depth on the long-context presets; then PATCHES.md, the patch index and README numbers from the canonical sweeps.",
    "test_gate": "No headline row below 0.99 of its pre-consolidation value, no capability lost on any preset; before and after counts of patches, added lines, upstream files touched and switches recorded."
+  },
+  {
+   "id": "FLINT-EDIT-INTENT",
+   "spec": "https://github.com/mattbucci/2x-R9700-RDNA4-GFX1201-sglang-inference/issues/27",
+   "status": "pending",
+   "resource": "gpu",
+   "depends_on": [
+    "FLINT-1 finished and scored (no grammar change while the cell runs)"
+   ],
+   "next_action": "Constrain oh-my-pi edit's intent field `i` in the Flint strict tool grammar (single line, length cap) so the edit payload cannot be written there; CPU grammar test first (a multi-line `i` rejected, a normal intent plus hashline input accepted), numbered patch, replay gate, then a paired omp run on the instances whose sessions had filler edits.",
+   "test_gate": [
+    "CPU grammar test: payload-shaped `i` rejected, normal edit and bash calls accepted",
+    "filler edit rate (input = x / true / false / empty) below 1 % on the paired instances, against the rate of the same instances in FLINT-1",
+    "no drop in resolved count on the paired instances; capabilities and tool-call parsing unchanged"
+   ],
+   "result": "Motivation, read from the running v5-dflash-editorder cell at 177/300: 52 of 1,211 edit calls (4.3 %) carry filler input in 27 sessions; key order is `i` then `input` in every one (patch 132 holds), the model writes the payload into `i`. Open question for the gate: whether a constrained `i` moves the payload to `input` or makes the model fail another way."
   }
  ]
 }
