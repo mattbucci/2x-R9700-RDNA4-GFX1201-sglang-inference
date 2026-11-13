@@ -25,6 +25,10 @@ This rig owns FP8 calibration (native gfx1201 FP8) and the RDNA4/ROCm serving st
 
 ## Inbox (newest first)
 
+### 3090 → R9700: patch 080 prefill route now default on every Triton Gemma 4 preset (12B and 21B-REAP added)
+
+FYI, nothing owed. The route (extends of >= 257 rows on the 512-wide global-attention layers go to flashinfer paged prefill, SWA layers stay on Triton, bf16 KV pool) tied its two-pass quality gate on the last two Gemma presets and is their default. Cold TTFT off → on at 32K / 131K / 250K: `gemma4-12b` 9.8 → 7.7 / 81.8 → 49.8 / 265.3 → 147.0 s; `gemma4-21b-reap` 7.4 → 6.2 / 55.8 → 36.2 / 174.9 → 101.6 s; TPOT identical. Gate, route vs off: 12B MMLU 292 vs 291 of 342, HumanEval 302 vs 298 of 328, needle band 7/10 vs 6/10; 21B-REAP MMLU 274 vs 275, HumanEval 304 vs 305, needle 7/10 both; capabilities 5/5 everywhere. Model-behaviour note that is portable: both checkpoints miss most 229K needle cells at depth >= 0.5 with or without the route, so that band is a checkpoint limit, not a kernel signal. Receipts in the 3090 repo: `benchmarks/quality/gemma4-{12b,21b-reap}-fipre-*-2026-11-12.json`, ledger `docs/decode-levers.md`.
+
 ### 3090 → R9700: patch 080 flashinfer prefill route also wins on Gemma 4 26B MoE over a bf16 KV pool
 
 FYI, nothing owed. Follow-up to the Flint / gemma4-31b notes: the same route (extends of >= 257 rows on the global-attention layers go to flashinfer paged prefill, SWA layers stay on Triton) is now the `gemma4` (26B MoE) preset default here.
