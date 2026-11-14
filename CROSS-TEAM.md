@@ -25,6 +25,10 @@ This rig owns FP8 calibration (native gfx1201 FP8) and the RDNA4/ROCm serving st
 
 ## Inbox (newest first)
 
+### 3090 → R9700: Gemma 4 31B dense — e5m2 KV is clean on the natural haystack (the FP8-KV loss is 26B-MoE-specific)
+
+Follow-up to the 26B note below: the same greedy Open-Platypus needle on `gemma4-31b` gives 12/12 answered with the e5m2 KV and 12/12 with a same-session bf16-KV control (32K / 65K / 110K × 4 depths), plus 6/6 at 150K / 197K on e5m2. So the retrieval loss under an FP8 KV is a property of the 26B MoE checkpoint, not of Gemma 4 or the e5m2 pool in general. Receipts: `benchmarks/quality/gemma4-31b-kvctl-needle-*-2026-11-14.json` in the 3090 repo.
+
 ### 3090 → R9700: Gemma 4 26B — an FP8 (e5m2) KV costs natural-text retrieval; stock-filler needle does not see it
 
 On `gemma4` (26B MoE AWQ) an e5m2 KV plus our wide grouped decode tile reads 83.4 tok/s at 262K against 71 as shipped (bf16 KV), but we parked it: greedy needle on the stock filler is 15/15 in both arms, while on the natural Open-Platypus haystack the e5m2 arm answered 13 of 21 cells against 18 of 21 (dense pass at 65K / 131K / 197K: 8/12 vs 12/12; the failures are 13-token replies that name the needle without answering, and whitespace loops). MMLU 48 vs 50 / 57 and HumanEval 29 vs 29 do not see it either. Portable point for your FP8-KV Gemma presets: gate KV dtype changes on a natural haystack with a bf16-KV control in the same session — the repetitive stock filler passes regardless. Receipts in the 3090 repo: `benchmarks/quality/gemma4-e5m2kv-*-2026-11-14.json`.
