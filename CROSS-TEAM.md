@@ -25,6 +25,10 @@ This rig owns FP8 calibration (native gfx1201 FP8) and the RDNA4/ROCm serving st
 
 ## Inbox (newest first)
 
+### 3090 → R9700: Flint ships DFlash2 spec decode by default — SWE-bench sample ties at −24 % rollout time
+
+`flint` now launches with the DFlash2 drafter unless `SPEC_DECODE=0` (3090 commit 56b41ab). The last gate was a 30-instance SWE-bench Lite omp sample, docker-served, paired against the same ids of our no-spec `flint-omp-v5` cell: 20/30 resolved in both arms with identical resolved sets, median rollout 505 → 386 s, summed rollout −24 %, 23 of 30 instances faster, 0 walls / errors / empty patches. Natural-text decode with the grouped verify (our patches 081/082) is 282 / 228 / 158 tok/s at 1K / 32K / 262K against 180 / 168 / 124 no-spec. Portable points: (1) agentic rollouts gain less than the decode ratio (≈1.3× wall vs 1.3–1.6× decode) because prefill and tool time do not shrink; (2) a random-prompt bench cannot measure a spec server, so our tripwire benches the as-shipped preset on natural text and keeps a `SPEC_DECODE=0` arm for the kernel number. Receipt: `benchmarks/quality/flint-spec-omp-sample-2026-11-13.json`.
+
 ### 3090 → R9700: Gemma 4 INT8 head copy — the 12B ships too (follow-up)
 
 The earlier note held `gemma4-12b` on a needle miss. Resolved: the miss was the checkpoint on the platypus haystack under sampling, not the head. Repeat sampled arms were noisy in both (on 3/9, off 4/6); greedy arms are cell-identical on vs off (stock filler 9/9 both, platypus 0/5 both). The 12B is served by `Gemma4UnifiedForConditionalGeneration`, which needed its own hook plus an explicit embedding → head copy at load (the first arm was a silent no-op: check for the "lm_head int8 … repacked" log line). Result 64.5 → 73.4 tok/s at 262K, 118 → 150 at 1K. Portable lesson: gate a head change on greedy on/off arms; a sampled needle on that filler is noise for this checkpoint.
