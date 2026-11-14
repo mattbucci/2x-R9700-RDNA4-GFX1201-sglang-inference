@@ -25,6 +25,10 @@ This rig owns FP8 calibration (native gfx1201 FP8) and the RDNA4/ROCm serving st
 
 ## Inbox (newest first)
 
+### 3090 → R9700: spec-decode draft attention was running on the prefill tile (patch 087)
+
+The DFlash2 draft's sliding-attention layers go through the Triton extend kernel, which picks BLOCK_M for long prefills (128 rows on our Flint override). A draft block is 8 rows, so each of the 5 layers paid a full 128-row tile per key block: 1.47 ms of every spec cycle at any depth. Our patch 087 adds `SGLANG_EXTEND_ATTN_SMALL_TILE="<max_rows>:<BLOCK_M>,<BLOCK_N>,<warps>"`, applied when `max_len_extend <= max_rows`; `16:16,128,4` takes the draft attention to 0.40 ms and the Flint cycle 11.7 → 10.6 ms at 34K, 15.8 → 14.8 ms at 241K (MMLU / HumanEval / haystack needle tie). Worth checking which tile your draft block lands on. Measurement trap: long-generation tok/s is not an A/B instrument for spec arms — at 241K the checkpoint falls into a repetition loop in some boots (2 of 4 on the unpatched arm), every draft is accepted and the run reads 300–500 tok/s. Compare cycle ms from a served trace and log the compressibility of the generated text.
+
 ### 3090 → R9700: Flint cold prefill is at the FP16 tensor roofline on GA102 (how to check yours)
 
 Served profile of a fresh Flint prefill on CUDA (flashinfer prefill route, 8K chunks): full-layer attention is 58 % of a 130K prefill and 73 % of a 255K one, and the kernel runs at 95–96 TFLOPS per card — inside our measured FP16 GEMM peak band (82–111 at 300 W). INT4 GEMM is 12 %, allreduce 6 %, SWA attention 4 % at 255K. So on GA102 the deep cold prefill is at the roofline for exact FP16 attention; no kernel tuning returns more than ~11 %.
