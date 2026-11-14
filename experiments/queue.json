@@ -595,18 +595,18 @@
   {
    "id": "FLINT-1",
    "spec": "https://github.com/mattbucci/2x-R9700-RDNA4-GFX1201-sglang-inference/issues/27",
-   "status": "running",
+   "status": "completed",
    "resource": "gpu",
    "depends_on": [
     "performance programme (FLINT-4, RAD-2, RAD-11, RAD-4/5/3) done or the user asks to resume"
    ],
-   "next_action": "Monitor the v5-dflash-editorder cell (from 0/300 on the 100-patch tree); first instances: edit calls intent-first with a real input; when done: Docker score, audits, aggregate, compare with qwen38 omp 174 / Qwopus 181 (McNemar) and the 3090 Flint INT4 omp 186/300; pair the 43 v5-dflash ids against it.",
+   "next_action": "None. Follow-ups: FLINT-EDIT-INTENT, FLINT-PLAIN-STEP, FLINT-CYCLE-COST, FLINT-ADAPTIVE-DRAFT, FLINT-DEEP-VERIFY.",
    "test_gate": [
     "300/300 rolled, infra_* = 0",
     "audit_git_peek: 0 history reads, web attempts all blocked",
     "scored cell JSON with the v5 harness line; McNemar pairs vs qwen38 and Qwopus omp"
    ],
-   "result": "2026-11-09 01:00: stopped by the user at 16/300 (15 predictions kept in evals/swebench/runs/flint-omp-v5, logs flint-v5/) to restart under DFlash2 once the FLINT-5 gate passes; restart = RUN_TAG v5-dflash, same harness line, server + drafter only. Restarted 2026-11-09 02:05 under DFlash2 (RUN_TAG v5-dflash, logs run-model-cycle-logs/flint-v5-dflash, run dir evals/swebench/runs/flint-omp-v5-dflash); the 15 no-spec predictions stay as a paired same-id check. 04:22 server death (DFLASH sampler buffers sized by graph bs=1, crashed on a 2-request batch) → patch 115, cycle restarted at an instance boundary on the patched tree; the EMPTY django-11283 row removed for re-roll. PAUSED 2026-11-09 ~09:00 at an instance boundary on the user's call (\"focus on boosting performance before evaling\"): 43 of 300 rolled, predictions kept; resume = setsid bash /data/logs/run-model-cycle-logs/flint-v5-dflash/flint-omp-cycle.sh (skip-existing). 2026-11-12: the v5-dflash cell (43/300) ran with the metadata keys last on every tool; 26 of its 415 edit calls (6.3 %) carried a filler input. Patch 132 keeps edit's declared order; the user asked to fix and evaluate, so the cell restarts from 0 as RUN_TAG v5-dflash-editorder (logs run-model-cycle-logs/flint-v5-dflash-editorder/), the 43 predictions stay in evals/swebench/runs/flint-omp-v5-dflash as a paired check."
+   "result": "2026-11-09 01:00: stopped by the user at 16/300 (15 predictions kept in evals/swebench/runs/flint-omp-v5, logs flint-v5/) to restart under DFlash2 once the FLINT-5 gate passes; restart = RUN_TAG v5-dflash, same harness line, server + drafter only. Restarted 2026-11-09 02:05 under DFlash2 (RUN_TAG v5-dflash, logs run-model-cycle-logs/flint-v5-dflash, run dir evals/swebench/runs/flint-omp-v5-dflash); the 15 no-spec predictions stay as a paired same-id check. 04:22 server death (DFLASH sampler buffers sized by graph bs=1, crashed on a 2-request batch) → patch 115, cycle restarted at an instance boundary on the patched tree; the EMPTY django-11283 row removed for re-roll. PAUSED 2026-11-09 ~09:00 at an instance boundary on the user's call (\"focus on boosting performance before evaling\"): 43 of 300 rolled, predictions kept; resume = setsid bash /data/logs/run-model-cycle-logs/flint-v5-dflash/flint-omp-cycle.sh (skip-existing). 2026-11-12: the v5-dflash cell (43/300) ran with the metadata keys last on every tool; 26 of its 415 edit calls (6.3 %) carried a filler input. Patch 132 keeps edit's declared order; the user asked to fix and evaluate, so the cell restarts from 0 as RUN_TAG v5-dflash-editorder (logs run-model-cycle-logs/flint-v5-dflash-editorder/), the 43 predictions stay in evals/swebench/runs/flint-omp-v5-dflash as a paired check. FINAL 2026-11-14 (v5-dflash-editorder, 100-patch tree with patch 132, 50 h 3 min, no server death, no GPU fault): resolved 180/300 = 60.0 %, applied 298, empty 2 (both model_timeout), infra 0, 14 wall timeouts; git-peek audit 0 exposed (0 history reads, 194 blocked web attempts). McNemar on the same 300 ids: vs qwen38 omp 174, 27 / 21 discordant, p = 0.47; vs Qwopus omp 181, 18 / 19, p = 1.0. The 43 pre-132 v5-dflash ids scored 28 and the same ids score 28 here (1 / 1 discordant): the key-order fix did not move the resolve rate on that subset. The 3090 Flint INT4 omp cell reads 186/300 (counts only, no per-instance pairing here). Receipts: benchmarks/quality/bakeoff-flint-v5-dflash-editorder-omp.json, benchmarks/flint-fp8/swebench-omp-{pairs,trace,git-peek}-2026-11-14.json. Scoring was delayed 66 min by the rollout flag DOCKER=1 leaking into pull_hub_images.sh (fixed: the script reads DOCKER_BIN)."
   },
   {
    "id": "FLINT-2",
@@ -1411,6 +1411,70 @@
     "no drop in resolved count on the paired instances; capabilities and tool-call parsing unchanged"
    ],
    "result": "Motivation, read from the running v5-dflash-editorder cell at 177/300: 52 of 1,211 edit calls (4.3 %) carry filler input in 27 sessions; key order is `i` then `input` in every one (patch 132 holds), the model writes the payload into `i`. Open question for the gate: whether a constrained `i` moves the payload to `input` or makes the model fail another way."
+  },
+  {
+   "id": "FLINT-PLAIN-STEP",
+   "spec": "https://github.com/mattbucci/2x-R9700-RDNA4-GFX1201-sglang-inference/issues/27",
+   "status": "pending",
+   "resource": "gpu",
+   "depends_on": [
+    "remaining CONSOL-1 sessions (owner order: consolidate first) or the user reorders"
+   ],
+   "next_action": "Decompose the 21.8 ms Flint no-speculation decode step (TP2, fp8 KV) with the profiler for ranking and the sized microbenches (bench_fp8_block_gemm_m1.py, p2p_allreduce_decode_shape.py) for magnitudes: weight read, MoE dispatch, attention, all-reduce, sampler and grammar, host gap; write the per-stage table against the 2-3 ms per-step weight-bandwidth floor.",
+   "test_gate": [
+    "per-stage table sums to the served step within 5 %",
+    "each stage sized by an isolated microbench at the served shape, not by profiler time alone",
+    "a ranked list of stages with headroom and the mechanism for each"
+   ],
+   "result": "Source: benchmarks/flint-fp8/swebench-omp-trace-2026-11-14.json (300 sessions, 20,588 turns, decode 85 % of session time). A plain step is 21.8 ms against an arithmetic bandwidth floor of 2-3 ms; the split of the remaining ~19 ms is not measured."
+  },
+  {
+   "id": "FLINT-CYCLE-COST",
+   "spec": "https://github.com/mattbucci/2x-R9700-RDNA4-GFX1201-sglang-inference/issues/27",
+   "status": "pending",
+   "resource": "gpu",
+   "depends_on": [
+    "remaining CONSOL-1 sessions (owner order: consolidate first) or the user reorders"
+   ],
+   "next_action": "Break the DFlash2 cycle (40.8 ms below 16K, 53.1 ms at 128K and above, 1.85-1.87 plain steps) into draft, verify GEMM at M = draft length, verify attention, accept bookkeeping and host time; compare each with the vendor's ~1.3-step cycle and take the largest stage as the patch candidate.",
+   "test_gate": [
+    "cycle stage table at 16K and 128K sums to the logged cycle within 5 %",
+    "kernel speed row at served shapes before any serving A/B",
+    "paired greedy accept probe unchanged; cycle ms lower in both arm orders"
+   ],
+   "result": "Source: benchmarks/flint-fp8/swebench-omp-trace-2026-11-14.json (300 sessions, 20,588 turns, decode 85 % of session time). At accept length 2.88 a 1.3-step cycle would read about 1.4x the measured 65.9 tok/s decode."
+  },
+  {
+   "id": "FLINT-ADAPTIVE-DRAFT",
+   "spec": "https://github.com/mattbucci/2x-R9700-RDNA4-GFX1201-sglang-inference/issues/27",
+   "status": "pending",
+   "resource": "gpu",
+   "depends_on": [
+    "remaining CONSOL-1 sessions (owner order: consolidate first) or the user reorders"
+   ],
+   "next_action": "Offline first: from the server log's per-cycle accept lengths, simulate draft-length policies (fixed shorter, accept-history adaptive) and score tokens per millisecond with the measured cycle cost per draft length; serve only a policy that wins offline.",
+   "test_gate": [
+    "offline simulation on the lane log shows at least 3 % more tokens per second",
+    "served A/B in both arm orders, cycles/s and accept length from the server log",
+    "paired greedy accept probe: no accept drop beyond the interval"
+   ],
+   "result": "Source: benchmarks/flint-fp8/swebench-omp-trace-2026-11-14.json (300 sessions, 20,588 turns, decode 85 % of session time). Accept length falls from 2.88 below 16K to 2.62 at 128K and above while the cycle grows 30 %."
+  },
+  {
+   "id": "FLINT-DEEP-VERIFY",
+   "spec": "https://github.com/mattbucci/2x-R9700-RDNA4-GFX1201-sglang-inference/issues/27",
+   "status": "pending",
+   "resource": "gpu",
+   "depends_on": [
+    "remaining CONSOL-1 sessions (owner order: consolidate first) or the user reorders"
+   ],
+   "next_action": "Size verify attention over the cached prefix at 128K-219K with the cycle-ms instrument: the cycle grows from 40.8 to 53.1 ms with depth while the GEMM part is depth-independent; test the grouped / sliding-window verify recipes from the 3090 relay (patches 081, 082 there) as HIP ports.",
+   "test_gate": [
+    "depth-dependent share of the cycle measured at 16K / 64K / 128K / 197K",
+    "kernel speed row for the ported verify at served shapes",
+    "needle and deep-probe rows unchanged; cycle ms at 128K and above lower in both arm orders"
+   ],
+   "result": "Source: benchmarks/flint-fp8/swebench-omp-trace-2026-11-14.json (300 sessions, 20,588 turns, decode 85 % of session time). 12 ms of the cycle is depth-dependent at 128K and above; sessions spend their late turns there."
   }
  ]
 }

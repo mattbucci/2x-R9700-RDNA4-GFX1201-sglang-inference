@@ -166,14 +166,19 @@ PIP_CMD_RE = re.compile(r"\bpip3?\s+download\b|python\S*\s+-m\s+pip\s+download\b
 # synthetic "Import source tree" commit. `git log --all` there enumerates nothing.
 SANDBOX_HISTORY_RE = re.compile(r"\A\s*[0-9a-f]{7,40} Import source tree\s*\Z")
 # Echo/timing lines a scaffold appends to a bash result; a result that is only these is empty.
-RESULT_NOISE_RE = re.compile(r"^(EXIT:\s*-?\d+|exit[=:]\s*-?\d+|Wall time:.*|Exit code:\s*-?\d+|\[Command (succeeded|failed) with exit code -?\d+\]|FAILED|---|\s*)$", re.M)
+# Also noise: a model-written failure marker (`|| echo FETCH_FAILED`), a coreutils complaint that the download target
+# was never written, omp's temporary-shell note, and the sandbox's one synthetic commit line (`git log && curl ...`).
+RESULT_NOISE_RE = re.compile(r"^(EXIT:\s*-?\d+|exit[=:]\s*-?\d+|Wall time:.*|Exit code:\s*-?\d+|\[Command (succeeded|failed) with exit code -?\d+\]|\w*FAILED|---|"
+                             r"(wc|grep|ls|head|tail|sed|cat): .*No such file or directory.*|Ran in a temporary shell while the session shell is busy.*|"
+                             r"[0-9a-f]{7,40} Import source tree|\s*)$", re.M)
 # A sandboxed work tree (docker_sandbox.sh, v3+) is imported as ONE synthetic commit, so a history walk can only
 # ever print that commit: a git result with a second commit line is the only way the git channel can expose.
 _SANDBOX = {"on": False}  # set per lane from predictions.jsonl (every row sandbox=true)
 # a commit line is "<hash> <subject>"; object listings ("<hash> blob 123"), packed-refs ("<hash> refs/heads/x")
 # and bare ref-file hashes are the import commit's own objects, not history
 SECOND_COMMIT_RE = re.compile(r"^[0-9a-f]{7,40}[ \t]+(?!(?:blob|tree|commit|tag)\b)(?!refs/)(?!.*Import source tree)\S", re.M)
-NET_BASH_RE = re.compile(r"\b(curl|wget|gh\s+(api|pr|issue)|pip3?\s+(download|install)(?!\s+-e)|python\S*\s+-m\s+pip\s+(download|install)(?!\s+-e)|git\s+clone\s+https?://)\b", re.I)
+# curl/wget are matched case-sensitively: sympy's `Curl` class is not a download
+NET_BASH_RE = re.compile(r"\b((?-i:curl|wget)|gh\s+(api|pr|issue)|pip3?\s+(download|install)(?!\s+-e)|python\S*\s+-m\s+pip\s+(download|install)(?!\s+-e)|git\s+clone\s+https?://)\b", re.I)
 
 # instance prefix -> tokens that identify the project's own sites/repos in a URL
 PROJECT_TOKENS = {

@@ -1,0 +1,29 @@
+{
+ "qwen38_omp_v5": {
+  "paired": 300,
+  "flint_resolved": 180,
+  "other_resolved": 174,
+  "both": 153,
+  "flint_only": 27,
+  "other_only": 21,
+  "mcnemar_exact_p": 0.4709
+ },
+ "qwopus_omp_v5": {
+  "paired": 300,
+  "flint_resolved": 180,
+  "other_resolved": 181,
+  "both": 162,
+  "flint_only": 18,
+  "other_only": 19,
+  "mcnemar_exact_p": 1.0
+ },
+ "flint_pre132_43ids": {
+  "paired": 43,
+  "flint_resolved": 28,
+  "other_resolved": 28,
+  "both": 27,
+  "flint_only": 1,
+  "other_only": 1,
+  "mcnemar_exact_p": 1.0
+ }
+}

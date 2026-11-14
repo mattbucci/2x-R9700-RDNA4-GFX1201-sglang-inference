@@ -6,7 +6,7 @@
 set -uo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SWEBENCH_PY="${SWEBENCH_PY:-/data/swebench-harness-env/bin/python}"
-DOCKER="${DOCKER:-sudo -n docker}"
+DOCKER="${DOCKER_BIN:-sudo -n docker}"  # not $DOCKER: the rollout flag DOCKER=1 is inherited from the cycle
 log() { echo "[hub-pull $(date +%H:%M:%S)] $*"; }
 
 if [ $# -ge 1 ]; then ids=("$@"); else

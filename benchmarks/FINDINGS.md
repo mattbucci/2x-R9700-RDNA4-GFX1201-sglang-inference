@@ -3168,6 +3168,46 @@ first-token row is not re-measured: the queued open-rows job refuses to start on
 judge and tests stay in the receipts directory as the pattern for a soft-row re-measure. A second attempt needs
 both a quality row that moves under the fix and a kernel form whose multi-row cycle time holds at 197K.
 
+### FLINT-1 — Flint-FP8 with DFlash2 on SWE-bench Lite through oh-my-pi: 180 of 300 (60.0 %), level with Qwopus (181) and qwen38 (174) on the same instances (2026-11-14)
+
+The cell ran on the 100-patch tree with patch 132 (`edit` exempt from metadata-keys-last), in the official
+per-instance images with no network and neutral cues, for 50 h 3 min with no server death and no GPU fault.
+
+| | resolved | applied | empty | infra | wall timeouts |
+|---|---:|---:|---:|---:|---:|
+| Flint-FP8 DFlash2, oh-my-pi | 180 / 300 | 298 | 2 (`model_timeout`) | 0 | 14 |
+
+Paired on the same 300 ids ([pairs](flint-fp8/swebench-omp-pairs-2026-11-14.json)): against qwen38 oh-my-pi
+(174) 27 / 21 discordant, McNemar p = 0.47; against Qwopus (181) 18 / 19, p = 1.0. The three models are not
+separable on this benchmark. The 43 instances rolled before patch 132 scored 28, and the same ids score 28 here
+with one flip each way: fixing the key order of `edit` did not move the resolve rate on that subset. The sister
+rig's Flint INT4 cell reads 186 / 300 on its own harness run, counts only.
+
+Leak audit ([receipt](flint-fp8/swebench-omp-git-peek-2026-11-14.json)): 0 exposed, 0 history reads, 194 web
+attempts blocked. The first pass flagged five sessions; every one was a failed fetch (exit 6, HTTP 000, a missing
+output file) or a local script naming sympy's `Curl` class. `audit_git_peek.py` now treats those result shapes
+as noise and matches `curl` / `wget` case-sensitively.
+
+Session trace ([receipt](flint-fp8/swebench-omp-trace-2026-11-14.json)), 300 sessions and 20,588 turns:
+
+| share of session time | decode | first token | tools |
+|---|---:|---:|---:|
+| | 85 % | 4 % | 11 % |
+
+| prompt depth | < 16K | < 32K | < 64K | < 128K | ≥ 128K |
+|---|---:|---:|---:|---:|---:|
+| DFlash2 cycle, median ms | 40.8 | 41.0 | 43.4 | 47.5 | 53.1 |
+
+Decode ran at 65.9 tok/s over 9.68 M output tokens; the prefix cache served 98.8 % of prompt tokens, with five
+cold re-reads above 30K. Accept length falls from 2.88 to 2.62 with depth. A cycle costs 1.87 plain steps
+(21.8 ms each) where the vendor engine reads about 1.3, and a plain step sits roughly 8× above the 2–3 ms
+weight-bandwidth floor. Decode is where the lane's time goes, so the follow-ups are queued as FLINT-PLAIN-STEP,
+FLINT-CYCLE-COST, FLINT-ADAPTIVE-DRAFT and FLINT-DEEP-VERIFY. 102 of 2,247 `edit` calls (4.5 %, 52 sessions) still
+carry a filler `input` with the payload written into the intent field, in the correct key order: FLINT-EDIT-INTENT.
+
+Scoring started 66 minutes late: the rollout flag `DOCKER=1` was inherited by `pull_hub_images.sh`, which used
+`$DOCKER` as its docker command and retried 22 ids three times. The script now reads `DOCKER_BIN`.
+
 ## Evaluation methodology
 
 ### SWE-bench answer leakage through git history and the web (found 2026-09-18)
