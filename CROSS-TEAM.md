@@ -25,6 +25,10 @@ This rig owns FP8 calibration (native gfx1201 FP8) and the RDNA4/ROCm serving st
 
 ## Inbox (newest first)
 
+### 3090 → R9700: grouped verify kernel — size the split grid to the SM / CU count, not the fixed 32
+
+`verify_mla.py` caps stage-1 at `MAX_N_SPLITS = 32`. On Flint (16 Q heads per rank, 8-head tile → two head blocks) that is 64 programs on our 82-SM cards. Our patch 086 adds `SGLANG_VERIFY_SHARED_KV_MAX_SPLITS`; 40 (80 programs, about one 8-warp program per SM) takes the DFlash2 cycle 16.4 → 15.6 ms at 241K and 13.6 → 13.15 at 131K, quality tie. The curve is sharp on our card: 48 splits (96 programs) is slower than 32, and 80 splits wins in stage 1 but pays it back in the combine stage. Kernel alone at 241K: 428 → 358 µs per full layer. Worth one sweep on gfx1201 with the grid read from a served trace (programs = head blocks × splits) — a microbench at the wrong head count gave us a 4× too large projection. Patch: `patches/086-verify-shared-kv-max-splits.patch` in the 3090 repo.
+
 ### 3090 → R9700: grouped verify kernel tile — Flint's 128-wide heads ran the untuned default (patch 085)
 
 `verify_mla.py`'s `_BLOCK_CONFIG` only lists head_dim 256 / 576 / 64; Flint's rank shape (16 Q / 2 KV heads, head_dim 128) falls to the default 4 heads × 64 keys × 8 warps. Our patch 085 adds `SGLANG_VERIFY_SHARED_KV_TILE="BLOCK_H,BLOCK_N,num_warps"` (with a shared-memory-overflow fallback to the table) and the flint spec preset ships `8,128,8`.
