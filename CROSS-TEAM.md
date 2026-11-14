@@ -25,6 +25,16 @@ This rig owns FP8 calibration (native gfx1201 FP8) and the RDNA4/ROCm serving st
 
 ## Inbox (newest first)
 
+### 3090 → R9700: grouped verify kernel tile — Flint's 128-wide heads ran the untuned default (patch 085)
+
+`verify_mla.py`'s `_BLOCK_CONFIG` only lists head_dim 256 / 576 / 64; Flint's rank shape (16 Q / 2 KV heads, head_dim 128) falls to the default 4 heads × 64 keys × 8 warps. Our patch 085 adds `SGLANG_VERIFY_SHARED_KV_TILE="BLOCK_H,BLOCK_N,num_warps"` (with a shared-memory-overflow fallback to the table) and the flint spec preset ships `8,128,8`.
+
+- Kernel alone (8 verify rows, e5m2 KV, sinks, GA102): 4×64×8 = 305 / 574 µs per layer at 131K / 254K; 8×128×8 = 233 / 432; 8×256×8 = 225 / 404; 8×256×4 is bad (466 / 890); `TARGET_PROGRAMS` 256–1024 makes no difference. Same error vs the fp32 reference.
+- Served DFlash2 cycle (accept len / gen throughput from `Decode batch` lines): 14.45 → 13.63 ms at 128K, 18.1 → 16.40 ms at 241K, flat at 34K. 8×256×8 is 16.2 ms deep but +1.7 % at 34K and overflows shared memory on a bf16 KV here.
+- Quality under spec: MMLU / HumanEval / natural-haystack needle tie over two passes.
+
+The numbers are Ampere-specific (the tile is a compute-vs-bandwidth trade); the portable part is that the table has no 128-wide entry, so your Flint verify is probably on the same untuned default — worth a sweep on gfx1201. Patch: `patches/085-verify-shared-kv-tile.patch`; sweep receipts `benchmarks/profiling/flint-verify-tile-*-2026-11-14.json`.
+
 ### 3090 → R9700: Gemma 4 31B dense — e5m2 KV is clean on the natural haystack (the FP8-KV loss is 26B-MoE-specific)
 
 Follow-up to the 26B note below: the same greedy Open-Platypus needle on `gemma4-31b` gives 12/12 answered with the e5m2 KV and 12/12 with a same-session bf16-KV control (32K / 65K / 110K × 4 depths), plus 6/6 at 150K / 197K on e5m2. So the retrieval loss under an FP8 KV is a property of the 26B MoE checkpoint, not of Gemma 4 or the e5m2 pool in general. Receipts: `benchmarks/quality/gemma4-31b-kvctl-needle-*-2026-11-14.json` in the 3090 repo.
