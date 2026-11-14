@@ -1,12 +1,12 @@
 # RDNA4 inference repository
 
-This repository serves and optimizes SGLang v0.5.22 on two AMD Radeon AI PRO R9700 GPUs. The primary goal is coherent single-user performance at long context; multi-user throughput is secondary. Agentic quality is scored on SWE-bench Lite through one scaffold, oh-my-pi (`SCAFFOLDS=omp`, the `run_model_cycle.sh` default): the seven-scaffold Qwen3.8 v5 matrix put six scaffolds within four points, so the full set is a hosting-error investigation, not a per-model requirement.
+This repository serves and optimizes SGLang v0.5.22 on two AMD Radeon AI PRO R9700 GPUs. The primary goal is coherent single-user performance at long context; multi-user throughput is secondary. Agentic quality is scored on SWE-bench Lite through one scaffold, oh-my-pi (`SCAFFOLDS=omp`, the `run_model_cycle.sh` default); the full seven-scaffold set is run only to investigate a hosting error.
 
 ## Current environment
 
 - SGLang tree: \`/data/sgl-v0522\`
 - Conda environment: \`sglang-triton36-v0522\`
-- Kernel source for the native HIP builds: \`/data/sgl-v0522/python/sglang/kernels/aot\` (upstream moved \`sgl-kernel/\` there in v0.5.17)
+- Kernel source for the native HIP builds: \`/data/sgl-v0522/python/sglang/kernels/aot\`
 - Patch series: 100 numeric patches in \`patches/\`
 - Hardware: 2× gfx1201, 32 GiB each
 - ROCm 7.2, PyTorch 2.11.0+rocm7.2, Triton 3.6.0
@@ -81,10 +81,10 @@ The supported gate is:
 3. Require zero fallback applications and zero failures.
 4. Compare every represented path and file mode with \`/data/sgl-v0522\`.
 5. Run \`git diff --check\` on the patched source.
-6. Confirm a second application is rejected (no documented exceptions remain).
+6. Confirm a second application is rejected.
 7. Run focused unit/GPU tests for changed paths.
 
-Patch 072 was removed because transformers 5.12.1 supplies Gemma4 Unified config and processor classes natively. Patch 083 prevents Devstral’s special tokens from being routed through \`MistralCommonBackend\`.
+Patch 083 prevents Devstral’s special tokens from being routed through \`MistralCommonBackend\`.
 
 ## Quantization gates
 

@@ -31,7 +31,7 @@ in [experiments/](experiments/README.md). The active performance programme is
 - **Flint FP8 serves** (patch 105, strict tool schemas) with an FP8 KV cache (1.05M full-attention pool
   tokens, 2× bf16's): 45.9 → 39.2 tok/s from 14 to 219K actual input; basic / tool-call / thinking probes pass, the
   learned-sink kernels match a PyTorch reference, a 1-token agentic turn on a 104K cached prefix is 0.20 s (split-KV
-  route), and natural-text needle retrieval holds to 131K at every depth and to the last 10 % of the window at 243–248K
+  route), and natural-text needle retrieval holds to 131K at every depth, with a soft edge at 243–248K ([#14](https://github.com/mattbucci/2x-R9700-RDNA4-GFX1201-sglang-inference/issues/14))
   ([receipt](benchmarks/quality/flint/needle-natural-fp8-2026-10-31.md), [KV A/B](benchmarks/profiling/flint-ab-2026-11-01.md)).
 - **The patch series replays byte-identically** onto pristine v0.5.22 under the strict gate in
   [`patches/README.md`](patches/README.md).
@@ -69,8 +69,8 @@ per-model curves are under [benchmarks/](benchmarks/README.md).
 | Gemma 4 31B | AWQ dense + SWA | 29.4 (25) | 10.5 (110K) |
 | Gemma 4 12B | AWQ omni + SWA | 38.6 (25) | 10.9 (198K) |
 
-Gemma 4 26B-A4B caps near 16–30K in its current SWA configuration; the full Coder-Next-80B AWQ
-checkpoint is pending (the REAM-60B variant is measured). Do not present a short prompt on a 256K-capable
+Gemma 4 26B-A4B caps near 16–30K in its current SWA configuration; Coder-Next is measured as the REAM-60B
+variant ([#11](https://github.com/mattbucci/2x-R9700-RDNA4-GFX1201-sglang-inference/issues/11)). Do not present a short prompt on a 256K-capable
 server as 256K-depth throughput.
 
 #### Speculative decoding across the fleet
@@ -100,8 +100,7 @@ single-profile receipt ([JSON](benchmarks/quality/tooluse256k-qwen38-27b-fp8-v05
 The chart is regenerated from the per-cell receipts in [`benchmarks/quality/bakeoff-*.json`](benchmarks/quality/)
 ([`aggregate_bakeoff.py`](evals/swebench/aggregate_bakeoff.py)). It holds the July matrix, the seven Qwen3.8-27B-FP8 v5
 cells and the Qwopus3.8-27B-Coder-Flash and Flint-FP8 cells on oh-my-pi
-([receipt](benchmarks/qwopus38-27b-coder-flash-fp8/README.md)); each cell carries its harness line, and the
-pre-sandbox qwen38-v2 cells stay flagged `superseded`.
+([receipt](benchmarks/qwopus38-27b-coder-flash-fp8/README.md)); each cell carries its harness line.
 
 **Qwen3.8-27B-FP8 v5** (DSpark preset, CTX=262144): seven scaffolds — opencode, opencode-dcp,
 little-coder, little-coder-rtk, oh-my-pi, prime-agent, deepagents-code — at 300/300 instances each, every
@@ -129,15 +128,15 @@ on opencode; host-side rollouts at CTX=131072, sessions not audited for git/web 
 [vllm-radiance](https://github.com/magiccodingman/vllm-radiance), a hand-tuned RDNA4 vLLM fork, leads this stack on the same two cards and
 Qwen3.8-27B files ([receipt](benchmarks/radiance-parity/README.md)). Decode is tok/s at 24 / 7.3K / 58K / 197K input; prefill is cold tok/s.
 
-| Lane | vllm-radiance | This stack | Gap | Experiments that close it, in run order |
+| Lane | vllm-radiance | This stack | Gap | Open experiments |
 |---|---|---|---|---|
-| FP8, no speculation | 35.4 / 35.0 / 33.7 / 30.4 | 35.6 / 34.9 / 33.3 / 29.9 | 1.00–1.02× | RAD-22 decode GEMV, RAD-5a Triton norm, RAD-23 DeltaNet GEMV, RAD-25 in-graph all-reduce and RAD-30 BF16 attention sum are in the preset (patches 122–124, 129, 130); RAD-15 int8 LM head is opt-in for greedy decode (patch 127, +1–2.5 %); its sampling path, RAD-3 GEMM weight layout |
-| FP8 + DFlash2 | 99.9 / 99.7 / 87.9 / 91.0 | 81.2 / 85.8 / 76.1 / 57.6 | 1.2–1.6× | RAD-27 grouped verify prefix stage and RAD-29 verify-row GEMM are in the preset (patches 125, 128; 126 is DSpark's draft stage); RAD-18 content-adaptive block length, RAD-7 low-bit draft head |
-| Cold prefill | 4,137 / 3,631 / 2,520 | 2,854 / 2,618 / 2,027 | 1.2–1.5× | RAD-30 and the RAD-10c prefill attention kernel are in the preset (patches 130, 131); RAD-20 GEMM tiles at M ≥ 64 and chunk size |
-| MXFP4, no speculation | 51.6 / 50.8 / 47.4 / 41.0 | 34.3 / 33.6 / 31.8 / 28.4 | 1.4–1.5× | RAD-11 split-layout census and the M > 32 repack path, RAD-21 MXFP4 + DFlash2 |
+| FP8, no speculation | 35.4 / 35.0 / 33.7 / 30.4 | 35.6 / 34.9 / 33.3 / 29.9 | 1.00–1.02× | RAD-15b sampling path for the int8 LM head (patch 127 is opt-in for greedy decode), RAD-3 GEMM weight layout, RAD-4 narrow-K knobs |
+| FP8 + DFlash2 | 99.9 / 99.7 / 87.9 / 91.0 | 81.2 / 85.8 / 76.1 / 57.6 | 1.2–1.6× | RAD-18 content-adaptive block length, RAD-7 low-bit draft head |
+| Cold prefill | 4,137 / 3,631 / 2,520 | 2,854 / 2,618 / 2,027 | 1.2–1.5× | RAD-20 GEMM tiles at M ≥ 64 and chunk size |
+| MXFP4, no speculation | 51.6 / 50.8 / 47.4 / 41.0 | 34.3 / 33.6 / 31.8 / 28.4 | 1.4–1.5× | RAD-11 M > 32 repack path, RAD-21 MXFP4 + DFlash2 |
 
-Measurement runs first (RAD-2, 12, 13, 14, 10 and 16 need no tree change) so ports follow measured worth. Targets: 33 tok/s
-no-spec and 90 with DFlash2 at 24 tokens, 80 at 197K, prefill 3,500 tok/s at 7.3K, needle and capabilities unchanged.
+Targets: 33 tok/s no-spec and 90 with DFlash2 at 24 tokens, 80 at 197K, prefill 3,500 tok/s at 7.3K, needle and
+capabilities unchanged. Every item is a same-session A/B in both arm orders.
 Specs: [experiments/19](experiments/19-vllm-radiance-parity.md); tracking: [#40](https://github.com/mattbucci/2x-R9700-RDNA4-GFX1201-sglang-inference/issues/40).
 
 ## Presets
