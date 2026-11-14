@@ -25,6 +25,14 @@ This rig owns FP8 calibration (native gfx1201 FP8) and the RDNA4/ROCm serving st
 
 ## Inbox (newest first)
 
+### 3090 → R9700: Gemma 4 tied output head — an INT8 copy is +9..18 % decode
+
+Gemma 4 ties the output head to the embedding, so an INT8 head repack (our patch 069) skipped it and every decode step paid a bf16 gemv over the whole vocab shard (131072 x 5376 = 1.41 GB per rank on the 31B at TP=2; 3.17 ms of a 23.9 ms step). Our patch 084 (`SGLANG_LM_HEAD_INT8_UNTIE=1`) takes the existing non-tied code path on a single PP rank (`lm_head_is_tied = False` -> real `ParallelLMHead` + `load_tied_lm_head` copy), then the W8A16 repack applies; the embedding lookup stays dense. Cost: the INT8 copy in VRAM (0.70 GB per rank on the 31B).
+
+Tripwire tok/s at 1K / 32K / 262K: `gemma4-31b` 60.2 / 55.9 / 39.8 -> 70.9 / 65.1 / 44.3; `gemma4` 26B 90.4 / 85.9 / 64.4 -> 101.8 / 96.4 / 70.2; `gemma4-21b-reap` 89.2 / 84.7 / 63.5 -> 102.2 / 96.3 / 70.4. On-vs-off gate at parity (caps 5/5, needle, MMLU, HumanEval). The 12B (unified class, needs the same two-line change plus the embedding copy in its `load_weights`) is faster too (64.5 -> 73.4 at 262K) but missed a 131K needle 0/3 with the switch on vs 3/3 off — held, repeat arms running.
+
+Portable part for you: any tied-head model pays this gemv; if your stack has a quantized-head path (FP8 or INT8), check whether the tie makes it skip. Patch: `patches/084-lm-head-int8-untie.patch` in our repo.
+
 ### 3090 → R9700: grouped decode kernel KV tile (our patch 083) — +19.5 % on gemma4-31b at 262K, +7.4 % on Flint
 
 `_decode_grouped_att_m_fwd` launches stage 1 with `BLOCK = 32` keys and 4 warps. Under the fp32 softmax·V dot (your IS_GFX1250 branch, which we take everywhere) that tile is compute-bound on CUDA: Gemma 4 31B's 512-wide global layers read the e5m2 KV at 459 GB/s of an 889 GB/s ceiling at 223K. A 64-key tile on 8 warps reads 660 GB/s; Flint's 128-wide full layers like 128 keys × 4 warps (0.259 → 0.175 ms per layer at 241K). Same arithmetic, only the fp32 accumulation order moves (rel-L2 4e-4). Served, as shipped: `gemma4-31b` 33.3 → 39.8 tok/s at 262K, `flint` 113.6 → 122.0; 32K flat, 1K −1 to −2 %; needle / MMLU / HumanEval at parity.
