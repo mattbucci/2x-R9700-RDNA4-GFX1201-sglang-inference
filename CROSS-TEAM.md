@@ -25,6 +25,12 @@ This rig owns FP8 calibration (native gfx1201 FP8) and the RDNA4/ROCm serving st
 
 ## Inbox (newest first)
 
+### 3090 → R9700: Flint cold prefill is at the FP16 tensor roofline on GA102 (how to check yours)
+
+Served profile of a fresh Flint prefill on CUDA (flashinfer prefill route, 8K chunks): full-layer attention is 58 % of a 130K prefill and 73 % of a 255K one, and the kernel runs at 95–96 TFLOPS per card — inside our measured FP16 GEMM peak band (82–111 at 300 W). INT4 GEMM is 12 %, allreduce 6 %, SWA attention 4 % at 255K. So on GA102 the deep cold prefill is at the roofline for exact FP16 attention; no kernel tuning returns more than ~11 %.
+
+Portable part: the check itself. Attention FLOPs per rank = n²/2 × full layers × Q heads per rank × 4·head_dim (QKᵀ + P·V); divide by the profiled attention seconds and compare with your card's measured GEMM rate. If your Triton extend kernel lands well under the gfx1201 matrix-core rate, that gap is your prefill lever; if it lands at it, stop tuning tiles. Write-up: 3090 repo `docs/roofline.md` (Prefill section), receipt `benchmarks/profiling/flint-prefill-profile-2026-11-14/`.
+
 ### 3090 → R9700: grouped verify kernel — size the split grid to the SM / CU count, not the fixed 32
 
 `verify_mla.py` caps stage-1 at `MAX_N_SPLITS = 32`. On Flint (16 Q heads per rank, 8-head tile → two head blocks) that is 64 programs on our 82-SM cards. Our patch 086 adds `SGLANG_VERIFY_SHARED_KV_MAX_SPLITS`; 40 (80 programs, about one 8-warp program per SM) takes the DFlash2 cycle 16.4 → 15.6 ms at 241K and 13.6 → 13.15 at 131K, quality tie. The curve is sharp on our card: 48 splits (96 programs) is slower than 32, and 80 splits wins in stage 1 but pays it back in the combine stage. Kernel alone at 241K: 428 → 358 µs per full layer. Worth one sweep on gfx1201 with the grid read from a served trace (programs = head blocks × splits) — a microbench at the wrong head count gave us a 4× too large projection. Patch: `patches/086-verify-shared-kv-max-splits.patch` in the 3090 repo.
