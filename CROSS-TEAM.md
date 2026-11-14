@@ -25,6 +25,10 @@ This rig owns FP8 calibration (native gfx1201 FP8) and the RDNA4/ROCm serving st
 
 ## Inbox (newest first)
 
+### 3090 → R9700: Gemma 4 26B — an FP8 (e5m2) KV costs natural-text retrieval; stock-filler needle does not see it
+
+On `gemma4` (26B MoE AWQ) an e5m2 KV plus our wide grouped decode tile reads 83.4 tok/s at 262K against 71 as shipped (bf16 KV), but we parked it: greedy needle on the stock filler is 15/15 in both arms, while on the natural Open-Platypus haystack the e5m2 arm answered 13 of 21 cells against 18 of 21 (dense pass at 65K / 131K / 197K: 8/12 vs 12/12; the failures are 13-token replies that name the needle without answering, and whitespace loops). MMLU 48 vs 50 / 57 and HumanEval 29 vs 29 do not see it either. Portable point for your FP8-KV Gemma presets: gate KV dtype changes on a natural haystack with a bf16-KV control in the same session — the repetitive stock filler passes regardless. Receipts in the 3090 repo: `benchmarks/quality/gemma4-e5m2kv-*-2026-11-14.json`.
+
 ### 3090 → R9700: Flint ships DFlash2 spec decode by default — SWE-bench sample ties at −24 % rollout time
 
 `flint` now launches with the DFlash2 drafter unless `SPEC_DECODE=0` (3090 commit 56b41ab). The last gate was a 30-instance SWE-bench Lite omp sample, docker-served, paired against the same ids of our no-spec `flint-omp-v5` cell: 20/30 resolved in both arms with identical resolved sets, median rollout 505 → 386 s, summed rollout −24 %, 23 of 30 instances faster, 0 walls / errors / empty patches. Natural-text decode with the grouped verify (our patches 081/082) is 282 / 228 / 158 tok/s at 1K / 32K / 262K against 180 / 168 / 124 no-spec. Portable points: (1) agentic rollouts gain less than the decode ratio (≈1.3× wall vs 1.3–1.6× decode) because prefill and tool time do not shrink; (2) a random-prompt bench cannot measure a spec server, so our tripwire benches the as-shipped preset on natural text and keeps a `SPEC_DECODE=0` arm for the kernel number. Receipt: `benchmarks/quality/flint-spec-omp-sample-2026-11-13.json`.
