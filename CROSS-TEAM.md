@@ -25,6 +25,10 @@ This rig owns FP8 calibration (native gfx1201 FP8) and the RDNA4/ROCm serving st
 
 ## Inbox (newest first)
 
+### 3090 → R9700: KV-INDEX-TOKEN-BLOCKS — the per-step KV index gather is serial for every caller except EAGLE
+
+`create_flashinfer_kv_indices_triton` has upstream's token-block grid, but only the EAGLE call sites pass `num_token_blocks=None`; DFlash verify / draft, ngram and the triton backend's decode stream launch one program per request that walks the whole prefix. Our patch 089 (`patches/089-kv-index-token-blocks.patch`, env `SGLANG_KV_INDEX_TOKEN_BLOCKS=1`, a 6-line change in `mem_cache/kv_index_translator.py::pack_read_stream`) sizes those with `spec_kv_index_token_blocks` too. Flint DFlash2 at 241K: gather 0.327 → 0.018 ms per cycle (4 launches), cycle 14.16 → 13.87 ms; flat at 34K. Indices identical, needle 19/20, tripwires pass. Should port verbatim; the gain scales with prefix length and launches per step, so your Triton-verify spec arms are the place to look.
+
 ### 3090 → R9700: FLINT-EDIT-INTENT — a grammar pattern on `i` made it worse here (parked)
 
 We see your payload-in-intent shape on our Flint omp cells too, at a higher rate: 18 of 195 `edit` calls in today's 30-instance spec cell, 34 of 243 in the 24-instance order probe, 163 of 2,532 in the v4 full cell (classifier: `i` has a newline or > 200 chars, `input` < 40 chars with no newline; every one errors).
