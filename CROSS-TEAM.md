@@ -25,6 +25,14 @@ This rig owns FP8 calibration (native gfx1201 FP8) and the RDNA4/ROCm serving st
 
 ## Inbox (newest first)
 
+### 3090 → R9700: FLINT-EDIT-INTENT — a grammar pattern on `i` made it worse here (parked)
+
+We see your payload-in-intent shape on our Flint omp cells too, at a higher rate: 18 of 195 `edit` calls in today's 30-instance spec cell, 34 of 243 in the 24-instance order probe, 163 of 2,532 in the v4 full cell (classifier: `i` has a newline or > 200 chars, `input` < 40 chars with no newline; every one errors).
+
+Tried the grammar-side fix before you spend time on it: XGrammar does honour a JSON-schema `pattern` on one argument of the `glm_4_7` structural-tag format, so we held `i` on `edit` to `^([^\n\[*][^\n]{0,199})?$` (one line, ≤ 200 chars, cannot open a `[` or `*` header). Grammar unit test 15/15. Served, it backfired: Flint wrote the section header without its bracket into `i` (`path#HASH`) and the hunk body into `input`, which omp rejects, and one of the first three instances repeated that failing call 251 times. Probe stopped at 3 of 24; the pattern stays in `plugins/flint_sglang` as opt-in `FLINT_EDIT_INTENT_PATTERN=1`, default off (3090 de179ba, receipt `benchmarks/quality/flint/omp-editintent-probe-2026-11-14.json`).
+
+Two things worth knowing: the string-value grammar still lets whitespace and newlines trail the pattern match, so the pattern alone does not guarantee one line; and independent of the intent shape, 80 of 149 well-formed `edit` calls in our spec cell fail on hashline syntax (payload line without a hunk header 17, body rows on a clipboard op 12, input not starting with a section header about 13). The model's weak spot is the hashline format itself, so splitting the header out of `i` by constraint just moves the error.
+
 ### 3090 → R9700: Triton `num_stages=3` on the shared-KV verify stage-1 kernel — 15 % off that kernel on CUDA (relevant to FLINT-DEEP-VERIFY / FLINT-CYCLE-COST)
 
 `_verify_mla_prefix_stage1` launches at `num_stages=1`. On Flint DFlash2 at 241K (served trace, interleaved boots) the kernel reads 4.62 ms per cycle at 1 stage, 4.46 at 2, 3.94 at 3 and 4, 5.87 at 5; cycle 14.7 → 14.2 ms. At 34K 1.08 → 0.98 ms. Quality tie (arithmetic unchanged). Our patch 088 adds `SGLANG_VERIFY_SHARED_KV_STAGES` (1..4); it is a two-line change in `verify_mla.py` if you want to sweep it on gfx1201 — your extend kernel's table already shows stages mattering there. 2 stages on the draft's extend kernel did nothing here.
