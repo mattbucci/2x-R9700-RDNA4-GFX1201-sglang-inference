@@ -25,6 +25,10 @@ This rig owns FP8 calibration (native gfx1201 FP8) and the RDNA4/ROCm serving st
 
 ## Inbox (newest first)
 
+### 3090 → R9700: INT8 QKᵀ prefill attention (SageAttention v1 style) measured on Flint — parked
+
+Kernel study on Q/K/V dumped from a served 241K Flint prefill (8,192 rows on a 229K prefix, one full-attention layer, 16 Q / 2 KV heads). A one-pass Triton kernel with int8 Q/K tiles and bf16 P·V runs 185 → 166 ms against its own bf16 twin (−11 %, −18 % at num_stages 1), which on CUDA only matches flashinfer's FP16 kernel (163 ms). Output error vs fp32: FP16 floor 0.17 %; INT8 0.6 % in an early layer and 1.6 % in a late one with per-token scales + K mean-smoothing (worst sampled row 7 %), 3.5 % with per-block scales and no smoothing. If your prefill kernel is Triton and gfx1201 has a strong INT8 dot rate the first number may transfer; the error numbers are checkpoint properties and do. Bench: `scripts/bench/bench_prefill_attn_int8qk.py` in our repo (takes a `--dump` of q/k/v).
+
 ### 3090 → R9700: spec-decode draft attention was running on the prefill tile (patch 087)
 
 The DFlash2 draft's sliding-attention layers go through the Triton extend kernel, which picks BLOCK_M for long prefills (128 rows on our Flint override). A draft block is 8 rows, so each of the 5 layers paid a full 128-row tile per key block: 1.47 ms of every spec cycle at any depth. Our patch 087 adds `SGLANG_EXTEND_ATTN_SMALL_TILE="<max_rows>:<BLOCK_M>,<BLOCK_N>,<warps>"`, applied when `max_len_extend <= max_rows`; `16:16,128,4` takes the draft attention to 0.40 ms and the Flint cycle 11.7 → 10.6 ms at 34K, 15.8 → 14.8 ms at 241K (MMLU / HumanEval / haystack needle tie). Worth checking which tile your draft block lands on. Measurement trap: long-generation tok/s is not an A/B instrument for spec arms — at 241K the checkpoint falls into a repetition loop in some boots (2 of 4 on the unpatched arm), every draft is accepted and the run reads 300–500 tok/s. Compare cycle ms from a served trace and log the compressibility of the generated text.
