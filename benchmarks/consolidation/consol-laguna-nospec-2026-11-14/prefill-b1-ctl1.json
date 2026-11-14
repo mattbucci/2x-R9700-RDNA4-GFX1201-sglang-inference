@@ -1,0 +1,40 @@
+{
+ "label": "b1-ctl1",
+ "model": "/data/models/Laguna-XS.2-FP8",
+ "port": 23334,
+ "runs": 2,
+ "method": "flush_cache + non-stream max_tokens=1 wall time",
+ "timestamp": "2026-11-14 12:09",
+ "rows": [
+  {
+   "context": 8192,
+   "input_len": 7403,
+   "runs_s": [
+    0.765,
+    0.765
+   ],
+   "median_s": 0.765,
+   "prefill_tok_per_s": 9671.8
+  },
+  {
+   "context": 65536,
+   "input_len": 58785,
+   "runs_s": [
+    15.376,
+    15.493
+   ],
+   "median_s": 15.434,
+   "prefill_tok_per_s": 3808.7
+  },
+  {
+   "context": 221184,
+   "input_len": 198256,
+   "runs_s": [
+    141.757,
+    142.138
+   ],
+   "median_s": 141.948,
+   "prefill_tok_per_s": 1396.7
+  }
+ ]
+}

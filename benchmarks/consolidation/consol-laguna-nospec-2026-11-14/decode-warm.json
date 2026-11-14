@@ -1,0 +1,248 @@
+{
+  "label": "warm",
+  "tag": "",
+  "note": "CONSOL-1 session laguna-nospec, preset laguna, 100 patches, --random-seed 7; canonical sweep, 5 runs, EOS, behind the cold prefill probe",
+  "port": 23334,
+  "maxtok": 80,
+  "runs": 5,
+  "sampling": null,
+  "ignore_eos": false,
+  "points": [
+    {
+      "context": 128,
+      "input_len": 62,
+      "runs_tps": [
+        70.0,
+        71.22,
+        71.43,
+        70.66,
+        71.6
+      ],
+      "median_tps": 71.222,
+      "min_tps": 69.998,
+      "max_tps": 71.598,
+      "runs_completion_tokens": [
+        80,
+        80,
+        80,
+        80,
+        80
+      ],
+      "runs_verify_ct": [
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "runs_decode_s": [
+        1.1286,
+        1.1092,
+        1.106,
+        1.1181,
+        1.1034
+      ],
+      "runs_text_sha": [
+        "26d1e45e8540",
+        "26d1e45e8540",
+        "26d1e45e8540",
+        "26d1e45e8540",
+        "26d1e45e8540"
+      ],
+      "runs_pieces": [
+        80,
+        80,
+        80,
+        80,
+        80
+      ],
+      "runs_median_gap_ms": [
+        14.27,
+        14.02,
+        13.99,
+        13.98,
+        13.95
+      ],
+      "median_tpot_ms": 14.04,
+      "sample": "\n# GPU Memory Hierarchy and Bandwidth: A Comprehensive Analy",
+      "median_ttft_ms": 53.6
+    },
+    {
+      "context": 8192,
+      "input_len": 7403,
+      "runs_tps": [
+        69.09,
+        68.46,
+        68.45,
+        68.34,
+        68.54
+      ],
+      "median_tps": 68.457,
+      "min_tps": 68.336,
+      "max_tps": 69.088,
+      "runs_completion_tokens": [
+        38,
+        38,
+        38,
+        38,
+        38
+      ],
+      "runs_verify_ct": [
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "runs_decode_s": [
+        0.5355,
+        0.5405,
+        0.5405,
+        0.5414,
+        0.5398
+      ],
+      "runs_text_sha": [
+        "3594fdaabea6",
+        "3594fdaabea6",
+        "3594fdaabea6",
+        "3594fdaabea6",
+        "3594fdaabea6"
+      ],
+      "runs_pieces": [
+        37,
+        37,
+        37,
+        37,
+        37
+      ],
+      "runs_median_gap_ms": [
+        14.45,
+        14.57,
+        14.57,
+        14.58,
+        14.55
+      ],
+      "median_tpot_ms": 14.61,
+      "sample": "\nThe text consists of the sentence \"The quick brown fox jump",
+      "median_ttft_ms": 64.1
+    },
+    {
+      "context": 65536,
+      "input_len": 58785,
+      "runs_tps": [
+        63.3,
+        63.38,
+        63.39,
+        63.49,
+        63.3
+      ],
+      "median_tps": 63.378,
+      "min_tps": 63.301,
+      "max_tps": 63.486,
+      "runs_completion_tokens": [
+        30,
+        30,
+        30,
+        30,
+        30
+      ],
+      "runs_verify_ct": [
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "runs_decode_s": [
+        0.4581,
+        0.4576,
+        0.4575,
+        0.4568,
+        0.4581
+      ],
+      "runs_text_sha": [
+        "e08d681e2f67",
+        "e08d681e2f67",
+        "e08d681e2f67",
+        "e08d681e2f67",
+        "e08d681e2f67"
+      ],
+      "runs_pieces": [
+        29,
+        29,
+        29,
+        29,
+        29
+      ],
+      "runs_median_gap_ms": [
+        15.77,
+        15.74,
+        15.73,
+        15.71,
+        15.74
+      ],
+      "median_tpot_ms": 15.78,
+      "sample": "\nThe text consists of the sentence \"The quick brown fox jump",
+      "median_ttft_ms": 109.4
+    },
+    {
+      "context": 221184,
+      "input_len": 198256,
+      "runs_tps": [
+        54.22,
+        54.05,
+        54.34,
+        54.29,
+        54.42
+      ],
+      "median_tps": 54.287,
+      "min_tps": 54.053,
+      "max_tps": 54.423,
+      "runs_completion_tokens": [
+        32,
+        32,
+        32,
+        32,
+        32
+      ],
+      "runs_verify_ct": [
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "runs_decode_s": [
+        0.5717,
+        0.5735,
+        0.5705,
+        0.571,
+        0.5696
+      ],
+      "runs_text_sha": [
+        "c4a8ab3ce400",
+        "c4a8ab3ce400",
+        "c4a8ab3ce400",
+        "c4a8ab3ce400",
+        "c4a8ab3ce400"
+      ],
+      "runs_pieces": [
+        31,
+        31,
+        31,
+        31,
+        31
+      ],
+      "runs_median_gap_ms": [
+        18.39,
+        18.46,
+        18.33,
+        18.37,
+        18.38
+      ],
+      "median_tpot_ms": 18.42,
+      "sample": "\n</think>\nThe text consists of the sentence \"The quick brown",
+      "median_ttft_ms": 278.8
+    }
+  ]
+}

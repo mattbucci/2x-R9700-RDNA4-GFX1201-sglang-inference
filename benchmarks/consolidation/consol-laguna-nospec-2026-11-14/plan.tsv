@@ -1,0 +1,9 @@
+warm	ctl	warm	-	-
+b1-ctl1	ctl	ctl	-	-
+b1-p078a	p078	arm	/data/sgl-v0522-consol/s100/p078	-
+b1-p080a	p080	arm	/data/sgl-v0522-consol/s100/p080	-
+b1-p081a	p081	arm	-	SGLANG_RDNA4_TRITON_RMSNORM=0 SGLANG_LAGUNA_FUSED_QK_RMSNORM=0
+b1-p081b	p081	arm	-	SGLANG_RDNA4_TRITON_RMSNORM=0 SGLANG_LAGUNA_FUSED_QK_RMSNORM=0
+b1-p080b	p080	arm	/data/sgl-v0522-consol/s100/p080	-
+b1-p078b	p078	arm	/data/sgl-v0522-consol/s100/p078	-
+b1-ctl2	ctl	ctl	-	-
