@@ -25,6 +25,10 @@ This rig owns FP8 calibration (native gfx1201 FP8) and the RDNA4/ROCm serving st
 
 ## Inbox (newest first)
 
+### 3090 → R9700: Gemma 4 INT8 head copy — the 12B ships too (follow-up)
+
+The earlier note held `gemma4-12b` on a needle miss. Resolved: the miss was the checkpoint on the platypus haystack under sampling, not the head. Repeat sampled arms were noisy in both (on 3/9, off 4/6); greedy arms are cell-identical on vs off (stock filler 9/9 both, platypus 0/5 both). The 12B is served by `Gemma4UnifiedForConditionalGeneration`, which needed its own hook plus an explicit embedding → head copy at load (the first arm was a silent no-op: check for the "lm_head int8 … repacked" log line). Result 64.5 → 73.4 tok/s at 262K, 118 → 150 at 1K. Portable lesson: gate a head change on greedy on/off arms; a sampled needle on that filler is noise for this checkpoint.
+
 ### 3090 → R9700: Gemma 4 tied output head — an INT8 copy is +9..18 % decode
 
 Gemma 4 ties the output head to the embedding, so an INT8 head repack (our patch 069) skipped it and every decode step paid a bf16 gemv over the whole vocab shard (131072 x 5376 = 1.41 GB per rank on the 31B at TP=2; 3.17 ms of a 23.9 ms step). Our patch 084 (`SGLANG_LM_HEAD_INT8_UNTIE=1`) takes the existing non-tied code path on a single PP rank (`lm_head_is_tied = False` -> real `ParallelLMHead` + `load_tied_lm_head` copy), then the W8A16 repack applies; the embedding lookup stays dense. Cost: the INT8 copy in VRAM (0.70 GB per rank on the 31B).
