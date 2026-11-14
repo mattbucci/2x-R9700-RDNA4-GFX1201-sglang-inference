@@ -599,9 +599,9 @@ transcripts showed every one was the sandbox's receipt — `git log --all` enume
 source tree" commit, `curl -s … | head` prints an empty body, `pip download … | tail -1` prints "No matching
 distribution found" — so `audit_git_peek.py` now reads those outcomes as BLOCKED. Per repo: django 84/114,
 sympy 45/77, scikit-learn 18/23, pytest 11/17, matplotlib 8/23, sphinx 4/16, astropy 3/6, pylint 3/6, xarray 2/5,
-seaborn 1/4, flask 1/3, requests 1/6. **Comparison with Qwen3.8-27B-FP8 is still open:** the qwen38 v5 omp lane is
-rolled (300/300, 263 non-empty, 74 walls, mean 17.6 min, older oh-my-pi build) but unscored (issue #22), and its
-oh-my-pi 18.12.2 re-roll is owed. On identical instance ids Qwopus finished faster (12.8 vs 17.6 min mean), hit fewer
+seaborn 1/4, flask 1/3, requests 1/6. **Comparison with Qwen3.8-27B-FP8:** the qwen38 v5 omp lane
+(300/300, 263 non-empty, 74 walls, mean 17.6 min, an older oh-my-pi build without `scaffold_pin`) scores 174 / 300,
+McNemar p = 0.36 against this cell (next section). On identical instance ids Qwopus finished faster (12.8 vs 17.6 min mean), hit fewer
 walls (40 vs 74) and left fewer empties (13 vs 37). The pre-sandbox qwen38-v2 omp cell (81 %) is not a comparator:
 61 % of its sessions read the upstream fix. Preset decision stays with issue #34.
 
