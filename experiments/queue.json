@@ -186,7 +186,7 @@
     "HF write access",
     "exclusive prune window"
    ],
-   "next_action": "Wait for the corrected donor tooling and its Gate A receipt; do not copy the current donor.",
+   "next_action": "Donor tooling delivered (3090 fc54b44, CROSS-TEAM 2026-11-12). Waits for a GPU window and an HF write token from the owner; step 0 is install.sh plus Gates B/C/D, not yet run here.",
    "test_gate": [
     "Donor helpers and dual-directory behavior exist",
     "Shared files are byte-identical",
