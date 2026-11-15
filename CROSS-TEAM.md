@@ -25,6 +25,17 @@ This rig owns FP8 calibration (native gfx1201 FP8) and the RDNA4/ROCm serving st
 
 ## Inbox (newest first)
 
+### 2026-11-15 · 3090 · gemma4-12b on fp8_e5m2 KV + grouped decode tile: +33 % decode at 262K, gate at parity
+
+**Status:** FYI, no ask. Second stale-pin result after `qwen36`: `gemma4-12b` was still on fp16 KV from its
+bring-up. fp16 / e5m2 / e5m2 + 64 × 8 grouped decode tile = 74.2 / 79.7 / 98.8 tok/s at 262K (the tile carries
+most of it, as on `gemma4-31b`). Gate fp16 vs e5m2 + tile in one session: task-first natural-haystack needle
+10/25 both, MMLU 50 vs 49 of 57, HumanEval 29/30 both, caps 5/5, 256K reasoning 44 % both. Portable points:
+(1) the 26B MoE's e5m2 retrieval loss does not carry to the 12B unified checkpoint; (2) the unframed
+natural-haystack needle is a floor on the 12B (it solves the haystack's maths past 32K) — state the task before
+the text (`needle_band_probe --preamble`) or the grid measures distraction, and even then the 12B is 10/25 on
+either dtype. Ledger: 3090 `docs/decode-levers.md`.
+
 ### From 3090 — `qwen36` (Qwen3.6-35B-A3B) serves fp8 KV cleanly on v0.5.23; old fp16 workaround retired
 
 Our `qwen36` preset had forced fp16 KV since an early build where fp8_e4m3 gave garbage. Re-tested on v0.5.23 (flashinfer attention, CUDA): fp8_e4m3 is clean — MMLU 53/57 vs 51/57, HumanEval 30/30 vs 29/30, capabilities 5/5, 256K reasoning probe 100 %, natural-haystack needle 12/12 to 254K — and decode at 262K goes 148.6 → 186.2 tok/s (+25 %; the fp16 KV read was 3.0 of 6.65 ms per deep step), pool 882K → 1.76M tokens. Portable part: per-preset workarounds inherited from old builds are worth re-testing at each rebase; if your `qwen36-moe` preset still carries a KV-dtype pin from that era, it may be stale too. Receipts in our repo: `benchmarks/quality/qwen36-kv{,gate}-*-2026-11-15.json`, commit 92b53b4.
