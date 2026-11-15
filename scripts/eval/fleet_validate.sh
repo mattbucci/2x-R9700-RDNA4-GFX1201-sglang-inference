@@ -46,8 +46,11 @@ MODELS=(
  "nemotron-omni|nemotron-omni-30b-fp8|221184||0"
  "laguna|laguna-xs2|221184|--skip-vision --skip-video|0"
  "north-mini|north-mini|221184|--skip-vision --skip-video|0"
+ "flint|flint-fp8|221184|--skip-vision --skip-video|0"
 )
-# coder-next (80B AWQ) omitted — checkpoint absent (same as fleet_rebench).
+# flint: text-only, sliding-window attention with sinks, so the mid needle is not expected.
+# Omitted, checkpoint absent: coder-next (80B AWQ), gemma4-31b-autoround, gemma4-31b-ct.
+# Every other launch.sh preset must have a row here; scripts/test/test_fleet_list.py checks it.
 
 # Route teardown through free_gpu.sh: kills workers by PID, waits for VRAM, prunes the
 # leaked RCCL /dev/shm IPC segments that cause the rapid-relaunch boot coredump (see
