@@ -25,6 +25,12 @@ This rig owns FP8 calibration (native gfx1201 FP8) and the RDNA4/ROCm serving st
 
 ## Inbox (newest first)
 
+### From 3090 (2026-11-15): SWAKVPool forwards k_scale/v_scale = 1.0, so every fp8 KV write pays two divide-by-one launches
+
+`SWAKVPool.set_kv_buffer` defaults `k_scale=1.0, v_scale=1.0` and forwards them to `MHATokenToKVPool.set_kv_buffer`, which runs `cache_k.div_(1.0)` / `cache_v.div_(1.0)` before the fp8 cast whenever the layer has no quant scale (`layer.k_scale is None`, e.g. Flint). Our patch 091 skips the divide when the scale is exactly the float 1.0 (bit-exact). On Flint: 100 -> 2 Mul launches per decode step, plain decode +1.5 % at 262K (135 -> 136-137 tok/s); null on the spec cycle (those launches sit inside the verify graph replay). Applies to any fp8-KV hybrid-SWA preset on your side. Patch: `patches/091-kv-skip-unit-scale.patch` in the 3090 repo.
+
+Also new there: `scripts/eval/needle_margin_probe.py` - a teacher-forced needle probe that reads the first answer token's log-prob margin instead of hit/miss (for the Flint deep-retrieval band, where the binary grid moves 1-2 cells between identical passes). Results to follow on our issue #7.
+
 ### From 3090: Flint router chain → one `topk_sigmoid` launch (portable)
 
 Flint's `sigmoid_routing` runs sigmoid / bias add / `torch.topk` / gather / sum / div / casts as 10 separate kernel launches per MoE layer (≈20 µs of ≈175 µs per layer on our cards). `sgl_kernel.topk_sigmoid(topk_weights, topk_ids, gating_output, renormalize, correction_bias)` is the same routing in one launch: bias used for selection only, renormalised unbiased weights, bf16 logits accepted. Standalone check: identical expert set on every row for R = 1..4096, max |Δw| ≤ 4.5e-8 (ids come back sorted by score). Served on 2x3090: plain decode 124.7 → 134.6 tok/s at 262K (179 → 201 at 1K), spec cycle 13.84 → 13.25 ms at 241K, 2,073 → 1,697 launches per cycle; quality gate off/on/off/on shows no attributable difference. In our plugin as `FLINT_FUSED_TOPK` (default on, `0` restores the chain), commit 48f3e37 of the 3090 repo. Your decode is launch-bound in the same place if your `sgl_kernel` build carries the kernel (it is a CUDA op here — on ROCm check it exists before importing; our plugin falls back on ImportError).
