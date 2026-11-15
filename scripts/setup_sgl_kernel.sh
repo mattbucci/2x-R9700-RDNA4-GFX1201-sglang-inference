@@ -197,6 +197,16 @@ echo "  Copied common_ops.*.so"
 cp "$SGL_KERNEL_SRC/__init__.py" "$DST/__init__.py"
 echo "  Copied __init__.py (patched — preserves native imports)"
 
+# Copy the tagged tree's top-level wrapper modules over the PyPI skeleton. The
+# wheel can lag the tag (v0.5.23: 0.4.10 on PyPI lacks moe.apply_gguf_moe_weights,
+# which the tag's __init__ imports), so the wrappers must come from the source
+# that built common_ops.
+for py in "$SGL_KERNEL_SRC"/*.py; do
+    [ "$(basename "$py")" = "__init__.py" ] && continue
+    cp "$py" "$DST/"
+done
+echo "  Copied top-level wrapper modules from source"
+
 # Copy elementwise module (contains Python wrappers for native HIP ops)
 if [ -d "$SGL_KERNEL_SRC/elementwise" ]; then
     cp -r "$SGL_KERNEL_SRC/elementwise" "$DST/"

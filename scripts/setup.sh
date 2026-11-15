@@ -49,6 +49,8 @@ LIBROSA_VERSION="${LIBROSA_VERSION:-0.11.0}"
 # v0.5.18 CUDA pyproject pins 0.15.0 for torch 2.13, which we do not run).
 TORCHCODEC_VERSION="${TORCHCODEC_VERSION:-0.11.1}"
 NUMBA_VERSION="${NUMBA_VERSION:-0.65.1}"
+OPENAI_VERSION="${OPENAI_VERSION:-2.8.0}"
+TML_RENDERERS_VERSION="${TML_RENDERERS_VERSION:-0.1.0}"
 
 SGLANG_REPO="https://github.com/sgl-project/sglang.git"
 SGLANG_TAG="${SGLANG_TAG:-v0.5.22}"  # live baseline promoted 2026-10-19; overridable for version rebases
@@ -260,6 +262,11 @@ PYEOF
         # torchcodec: video decode). torchcodec is --no-deps so its torch
         # requirement cannot disturb the ROCm pin.
         pip install "numba==$NUMBA_VERSION" zstandard watchfiles
+        # v0.5.23: pyproject_other still pins openai 2.6.1, but the Responses
+        # tool code (responses_tools/beam.py) imports types that first ship in
+        # 2.8.0, the CUDA pyproject's pin; tml-renderers backs the Inkling
+        # serving tests; python-dateutil<3 is the CUDA pyproject's botocore cap.
+        pip install "openai==$OPENAI_VERSION" "tml-renderers==$TML_RENDERERS_VERSION" "python-dateutil<3"
         pip install --no-deps "torchcodec==$TORCHCODEC_VERSION"
     else
         # v0.5.15/v0.5.16 have no srt_hip optional extra. ROCm selection comes

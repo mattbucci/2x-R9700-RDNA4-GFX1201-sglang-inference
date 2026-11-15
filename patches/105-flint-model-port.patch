@@ -664,7 +664,7 @@ new file mode 100644
 index 00000000..cdd4a0b0
 --- /dev/null
 +++ b/python/sglang/srt/models/flint.py
-@@ -0,0 +1,510 @@
+@@ -0,0 +1,513 @@
 +# Copyright 2023-2026 SGLang Team
 +# Licensed under the Apache License, Version 2.0 (the "License");
 +# you may not use this file except in compliance with the License.
@@ -830,6 +830,9 @@ index 00000000..cdd4a0b0
 +            scoring_func="sigmoid",
 +            correction_bias=self.gate.expert_bias,
 +        )
++        # v0.5.23: a TopK resolves its output format from the experts that own
++        # it; this one replaces the TopK the parent constructor already bound.
++        self.topk.bind_runner_backend(self.experts.runner_backend)
 +
 +        shared_size = getattr(config, "shared_expert_intermediate_size", 0) or 0
 +        self.shared_expert = (
