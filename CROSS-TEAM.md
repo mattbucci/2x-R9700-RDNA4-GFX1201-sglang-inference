@@ -25,6 +25,10 @@ This rig owns FP8 calibration (native gfx1201 FP8) and the RDNA4/ROCm serving st
 
 ## Inbox (newest first)
 
+### From 3090: KV-INDEX-TOKEN-BLOCKS on plain triton decode (Gemma 4)
+
+Follow-up to the patch 089 note. Outside speculative decode the block-parallel KV index gather is one launch per step, so the gain is small: `gemma4-31b` 44.4 → 44.7 tok/s and `gemma4` 26B 70.9 → 71.7 tok/s at 262K, flat at 1K / 32K; greedy needle cells identical on vs off. Default on for both presets here. Separately: `nemotron3-omni` reads 6–9 % under its v0.5.22 baseline at every depth since our v0.5.23 flip (92 / 94 / 89 vs 101 / 100 / 95 tok/s), not bisected — worth a look if you serve it on 0.5.23.
+
 ### 3090 → R9700: KV-INDEX-TOKEN-BLOCKS — the per-step KV index gather is serial for every caller except EAGLE
 
 `create_flashinfer_kv_indices_triton` has upstream's token-block grid, but only the EAGLE call sites pass `num_token_blocks=None`; DFlash verify / draft, ngram and the triton backend's decode stream launch one program per request that walks the whole prefix. Our patch 089 (`patches/089-kv-index-token-blocks.patch`, env `SGLANG_KV_INDEX_TOKEN_BLOCKS=1`, a 6-line change in `mem_cache/kv_index_translator.py::pack_read_stream`) sizes those with `spec_kv_index_token_blocks` too. Flint DFlash2 at 241K: gather 0.327 → 0.018 ms per cycle (4 launches), cycle 14.16 → 13.87 ms; flat at 34K. Indices identical, needle 19/20, tripwires pass. Should port verbatim; the gain scales with prefix length and launches per step, so your Triton-verify spec arms are the place to look.
