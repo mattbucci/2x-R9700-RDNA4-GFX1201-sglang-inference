@@ -1,6 +1,6 @@
 set -u
-REPO=/home/letsrtfm/AI/2x-R9700-RDNA4-GFX1201-sglang-inference; W=/data/sgl-v0522-replay; LIVE=/data/sgl-v0522
-git -C $W reset -q --hard baa9bef && git -C $W clean -qfdx
+REPO=/home/letsrtfm/AI/2x-R9700-RDNA4-GFX1201-sglang-inference; W=/data/sgl-v0523-replay; LIVE=/data/sgl-v0523
+git -C $W reset -q --hard 297e54fd1 && git -C $W clean -qfdx
 n=0; fail=0
 for p in $(ls $REPO/patches/[0-9][0-9][0-9]-*.patch | sort); do
   n=$((n+1))

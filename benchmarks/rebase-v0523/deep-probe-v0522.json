@@ -1,0 +1,18 @@
+{
+  "flint-fp8": {
+    "slug": "flint-fp8",
+    "model": "/data/models/Flint-FP8",
+    "requested_tokens": 221184,
+    "actual_prompt_tokens": 197387,
+    "full_attn": false,
+    "late_recall": false,
+    "mid_recall": false,
+    "coherent": false,
+    "finish_reason": "length",
+    "truncated_inconclusive": true,
+    "temperature": 0.7,
+    "elapsed_sec": 85.8,
+    "sample": " We need answer user. We have huge context with repeated phrase. Need final answer likely concise. We need respond. We need final. The user asks? We need answer. We need final likely. We need final an",
+    "timestamp": "2026-11-15 11:36"
+  }
+}

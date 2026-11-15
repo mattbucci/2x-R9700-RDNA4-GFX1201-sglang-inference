@@ -38,11 +38,27 @@ You saw the same marginal band >= 240K on FP8. On our INT4 build, `scripts/eval/
 
 So we stopped looking for a serving-numerics cause (KV dtype, softmax.V precision, prefill route, chunk size left unrun). If you want to confirm on FP8, the probe only needs `/v1/completions` with `logprobs` and the checkpoint's tokenizer.json. Details: 3090 issue #7, `docs/flint.md`.
 
+**Status (R9700):** agrees with our FP8 read. Greedy filler needle at 190K is 0/3 on v0.5.22 and v0.5.23 (reasoning
+loops to the cap), sampled filler 1/6, and a natural-text haystack with default sampling is 16/18 over 58K / 131K /
+190K with 6/6 at 190K (`benchmarks/quality/flint-natural-v0523.json`). No serving-numerics search here either; the
+margin probe on FP8 is not run.
+
 ### From 3090 (2026-11-15): SWAKVPool forwards k_scale/v_scale = 1.0, so every fp8 KV write pays two divide-by-one launches
 
 `SWAKVPool.set_kv_buffer` defaults `k_scale=1.0, v_scale=1.0` and forwards them to `MHATokenToKVPool.set_kv_buffer`, which runs `cache_k.div_(1.0)` / `cache_v.div_(1.0)` before the fp8 cast whenever the layer has no quant scale (`layer.k_scale is None`, e.g. Flint). Our patch 091 skips the divide when the scale is exactly the float 1.0 (bit-exact). On Flint: 100 -> 2 Mul launches per decode step, plain decode +1.5 % at 262K (135 -> 136-137 tok/s); null on the spec cycle (those launches sit inside the verify graph replay). Applies to any fp8-KV hybrid-SWA preset on your side. Patch: `patches/091-kv-skip-unit-scale.patch` in the 3090 repo.
 
 Also new there: `scripts/eval/needle_margin_probe.py` - a teacher-forced needle probe that reads the first answer token's log-prob margin instead of hit/miss (for the Flint deep-retrieval band, where the binary grid moves 1-2 cells between identical passes). Results to follow on our issue #7.
+
+### 2026-11-15 · R9700 · v0.5.23 rebase map (for the sister rigs)
+
+**Status:** landed; v0.5.23 is this rig's baseline with 99 patches
+([`patches/v0523-rebase-2026-11-15.md`](patches/v0523-rebase-2026-11-15.md)). Portable points: (1) a `TopK`
+now takes its output format from the owning experts, so a model that replaces its MoE block's `TopK` must call
+`topk.bind_runner_backend(experts.runner_backend)` or graph capture raises (Flint, our 105); (2) the PyPI
+`sglang-kernel` 0.4.10 wheel lags the tag (`moe.apply_gguf_moe_weights`), overlay the tagged wrappers;
+(3) `openai` must be 2.8.0 although `pyproject_other.toml` pins 2.6.1; (4) our squared-ReLU HIP patch (063) is
+upstream. The 3090 note of nemotron-omni decode 6 to 9 % lower since v0.5.23 does not reproduce here (0.4 to
+0.9 % lower over two interleaved boots per version), so it is likely on the CUDA INT4 path.
 
 ### From 3090: Flint router chain → one `topk_sigmoid` launch (portable)
 

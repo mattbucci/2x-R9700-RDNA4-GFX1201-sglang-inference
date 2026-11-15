@@ -426,19 +426,19 @@
   {
    "id": "REBASE-0523",
    "spec": "19-vllm-radiance-parity.md",
-   "status": "in_progress",
+   "status": "done",
    "resource": "gpu",
    "depends_on": [
     "CPU half done 2026-11-09 (candidate series staged)",
     "FLINT-1 cell finished (GPUs free); the GPU half is a dedicated slot, not between Flint cells"
    ],
-   "next_action": "GPU half on the staged 81-patch candidate (/data/sgl-v0523-dryrun/patches-v0523, worktree wt-v0523, repo branch rebase-v0523-candidate; plan in benchmarks/radiance-parity/notes/agent-rebase-0523-cpu-half.md): build env sglang-triton36-v0523 (openai 2.8.0), rebuild sglang-kernel 0.4.10 + AWQ/skinny GEMMs, registry preflight + publish smoke, GPU kernel tests (082 fused K/V alloc, 058 JIT op, 005/106 block-FP8), boots per preset, A/Bs both orders: 079 router parity on north-mini (greedy identity + tok/s), decode 7K/58K/197K qwen38 + coder-reap-25b (#41229), qwen38 197K prefill + 1-token turn with 108 and 107/110 (#45099/#45098), DSpark/EAGLE3 accept length (#43640), hybrid no_buffer vs extra_buffer (#44971/#45213), 103 dcode preflight. Then copy the series over patches/, drop 063, update patches/README.md, PATCHES.md, README.md.",
+   "next_action": "Done: v0.5.23 is the live baseline (/data/sgl-v0523, sglang-triton36-v0523, 99 patches); v0.5.22 is the rollback. Open points (129 chunked all-reduce A/B, 117 MXFP4 boot) are a GitHub issue.",
    "test_gate": [
     "replay gate green: strict apply, byte/mode-identical, second apply rejected",
     "validate_capabilities 5/5 on qwen38, flint, laguna, north-mini",
     "decode_ab both orders equal to or better than v0.5.22 at 24/58K/197K on qwen38"
    ],
-   "result": "2026-11-09 CPU half: 82 -> 81 patches on v0.5.23 (64 byte-clean, 12 re-anchored: 004 027 062 065 077 080 082 084 096 105 107 110; 5 hand-ported: 005 058 079 103 104; 063 dropped, upstreamed in #44198). Gates: strict pristine replay 81/81, replay tree == branch tip, 67 touched files differ from /data/sgl-v0522 only where upstream changed them, double apply 81/81 rejected, pyflakes = v0.5.22 residue, import smoke 98/100 touched modules (openai 2.8.0 pin; glm4_moe driver-init) and 0/259 models broken, CPU tests 420 pass / 24 environmental. Open decisions for the GPU day: 079 North-Mini route (fused Triton gate as v0.5.22 vs upstream torch callable; config.json confirms norm_topk_prob=false, sigmoid), 103 merge rule now upstream semantics + function_call fold, 058 torch vs upstream Triton reconstruct."
+   "result": "2026-11-09 CPU half: 82 -> 81 patches on v0.5.23 (64 byte-clean, 12 re-anchored: 004 027 062 065 077 080 082 084 096 105 107 110; 5 hand-ported: 005 058 079 103 104; 063 dropped, upstreamed in #44198). Gates: strict pristine replay 81/81, replay tree == branch tip, 67 touched files differ from /data/sgl-v0522 only where upstream changed them, double apply 81/81 rejected, pyflakes = v0.5.22 residue, import smoke 98/100 touched modules (openai 2.8.0 pin; glm4_moe driver-init) and 0/259 models broken, CPU tests 420 pass / 24 environmental. Open decisions for the GPU day: 079 North-Mini route (fused Triton gate as v0.5.22 vs upstream torch callable; config.json confirms norm_topk_prob=false, sigmoid), 103 merge rule now upstream semantics + function_call fold, 058 torch vs upstream Triton reconstruct. 2026-11-15 GPU half: 99-patch series, replay gate green (99/99 strict, 164 paths identical, second apply rejected); interleaved new/old boots on qwen38 DSpark + no-spec, Flint DFlash2 + no-spec, Laguna, North-Mini, nemotron-omni, coder-reap-25b: decode within 1 % at every depth, accept length identical, qwen38 cold prefill and needle equal; fleet 18 presets boot. One source fix (105: Flint TopK bound to its experts). Receipts: patches/v0523-rebase-2026-11-15.md, benchmarks/rebase-v0523/."
   },
   {
    "id": "RAD-2",

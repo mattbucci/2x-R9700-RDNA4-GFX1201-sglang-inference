@@ -462,3 +462,9 @@ null means unmeasured, never a stand-in. `scripts/bench/migrate_results_schema.p
 - `raw/` contains retained `sglang.bench_serving` JSONL output.
 - Benchmark and diagnostic harnesses live in `scripts/bench/`, `scripts/eval/`, `scripts/debug/`, and
   `scripts/test/`.
+
+## v0.5.23 rebase receipts
+
+[`rebase-v0523/`](rebase-v0523/) holds the fleet capability and deep-probe summaries for v0.5.23 and the
+v0.5.22 control; `quality/qwen38-deep-*` and `quality/flint-deep-*` are the per-boot needle receipts (`N` =
+v0.5.23, `O` = v0.5.22). Tables: [rebase note](../patches/v0523-rebase-2026-11-15.md).

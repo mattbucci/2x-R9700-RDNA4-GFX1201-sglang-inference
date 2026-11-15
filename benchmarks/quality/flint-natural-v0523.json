@@ -1,0 +1,212 @@
+{
+ "tag": "flint-natural-v0523",
+ "timestamp": "2026-11-15 11:52",
+ "model": "/data/models/Flint-FP8",
+ "port": 23334,
+ "haystack": "/home/letsrtfm/AI/2x-R9700-RDNA4-GFX1201-sglang-inference/benchmarks/quality/haystack-platypus.txt",
+ "chars_per_token": 3.3,
+ "temperature": "default",
+ "flush": true,
+ "max_tokens": 4096,
+ "results": [
+  {
+   "found": false,
+   "actual_prompt_tokens": 55185,
+   "completion_tokens": 4096,
+   "finish_reason": "length",
+   "seconds": 56.0,
+   "content_tail": "",
+   "reasoning_tail": "ks, then choose how to order the English books, then choose how to place the two groups on the shelf. There are 3 math books, so I can order them in 3! = 6 ways",
+   "context": 58000,
+   "depth": 0.1
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 55184,
+   "completion_tokens": 96,
+   "finish_reason": "stop",
+   "seconds": 10.7,
+   "content_tail": "BANANA42",
+   "reasoning_tail": "",
+   "context": 58000,
+   "depth": 0.5
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 55184,
+   "completion_tokens": 87,
+   "finish_reason": "stop",
+   "seconds": 10.1,
+   "content_tail": "BANANA42",
+   "reasoning_tail": "",
+   "context": 58000,
+   "depth": 0.9
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 125835,
+   "completion_tokens": 59,
+   "finish_reason": "stop",
+   "seconds": 30.5,
+   "content_tail": "BANANA42",
+   "reasoning_tail": "",
+   "context": 131000,
+   "depth": 0.1
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 125835,
+   "completion_tokens": 172,
+   "finish_reason": "stop",
+   "seconds": 32.2,
+   "content_tail": "BANANA42",
+   "reasoning_tail": "",
+   "context": 131000,
+   "depth": 0.5
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 125836,
+   "completion_tokens": 64,
+   "finish_reason": "stop",
+   "seconds": 30.5,
+   "content_tail": "BANANA42",
+   "reasoning_tail": "",
+   "context": 131000,
+   "depth": 0.9
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 184479,
+   "completion_tokens": 98,
+   "finish_reason": "stop",
+   "seconds": 60.5,
+   "content_tail": "BANANA42",
+   "reasoning_tail": "",
+   "context": 190000,
+   "depth": 0.1
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 184480,
+   "completion_tokens": 150,
+   "finish_reason": "stop",
+   "seconds": 57.3,
+   "content_tail": "BANANA42",
+   "reasoning_tail": "",
+   "context": 190000,
+   "depth": 0.5
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 184480,
+   "completion_tokens": 166,
+   "finish_reason": "stop",
+   "seconds": 57.4,
+   "content_tail": ".\" Yes! Near end of a response: \"The secret password is: BANANA42.\" Then later final question. So answer should be BANANA42. Need just password.</think>BANANA42",
+   "reasoning_tail": "",
+   "context": 190000,
+   "depth": 0.9
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 55185,
+   "completion_tokens": 291,
+   "finish_reason": "stop",
+   "seconds": 12.9,
+   "content_tail": "BANANA42",
+   "reasoning_tail": "",
+   "context": 58000,
+   "depth": 0.1
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 55184,
+   "completion_tokens": 71,
+   "finish_reason": "stop",
+   "seconds": 9.9,
+   "content_tail": "BANANA42",
+   "reasoning_tail": "",
+   "context": 58000,
+   "depth": 0.5
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 55184,
+   "completion_tokens": 50,
+   "finish_reason": "stop",
+   "seconds": 9.5,
+   "content_tail": "BANANA42",
+   "reasoning_tail": "",
+   "context": 58000,
+   "depth": 0.9
+  },
+  {
+   "found": false,
+   "actual_prompt_tokens": 125835,
+   "completion_tokens": 2981,
+   "finish_reason": "stop",
+   "seconds": 68.9,
+   "content_tail": "$\\dbinom{16}{5} = 4368$",
+   "reasoning_tail": "stem says desired oververbosity 5; final answer should be just answer. The user asked \"Compute $\\dbinom{16}{5}$.\" So final: $\\boxed{4368}$.\n\nLet's provide that.",
+   "context": 131000,
+   "depth": 0.1
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 125835,
+   "completion_tokens": 102,
+   "finish_reason": "stop",
+   "seconds": 30.9,
+   "content_tail": "BANANA42",
+   "reasoning_tail": "",
+   "context": 131000,
+   "depth": 0.5
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 125836,
+   "completion_tokens": 58,
+   "finish_reason": "stop",
+   "seconds": 30.2,
+   "content_tail": "BANANA42",
+   "reasoning_tail": "",
+   "context": 131000,
+   "depth": 0.9
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 184479,
+   "completion_tokens": 70,
+   "finish_reason": "stop",
+   "seconds": 55.9,
+   "content_tail": "BANANA42",
+   "reasoning_tail": "",
+   "context": 190000,
+   "depth": 0.1
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 184480,
+   "completion_tokens": 149,
+   "finish_reason": "stop",
+   "seconds": 57.9,
+   "content_tail": "BANANA42",
+   "reasoning_tail": "",
+   "context": 190000,
+   "depth": 0.5
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 184480,
+   "completion_tokens": 43,
+   "finish_reason": "stop",
+   "seconds": 55.7,
+   "content_tail": "secret.\n\nThe secret password was given at the very beginning of this conversation: \"The secret password is: BANANA42.\"\n\nI will output just that.</think>BANANA42",
+   "reasoning_tail": "",
+   "context": 190000,
+   "depth": 0.9
+  }
+ ],
+ "score": 0.8888888888888888
+}

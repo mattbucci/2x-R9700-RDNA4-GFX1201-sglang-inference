@@ -1,0 +1,80 @@
+{
+ "tag": "qwen38-deep-01-N",
+ "timestamp": "2026-11-15 04:43",
+ "model": "/data/models/Qwen3.8-27B-FP8",
+ "port": 23334,
+ "haystack": "filler",
+ "chars_per_token": 4.5,
+ "temperature": 0.0,
+ "flush": true,
+ "max_tokens": 2048,
+ "results": [
+  {
+   "found": true,
+   "actual_prompt_tokens": 58015,
+   "completion_tokens": 5,
+   "finish_reason": "stop",
+   "seconds": 22.6,
+   "content_tail": "BANANA42",
+   "reasoning_tail": "",
+   "context": 58000,
+   "depth": 0.1
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 58015,
+   "completion_tokens": 5,
+   "finish_reason": "stop",
+   "seconds": 22.5,
+   "content_tail": "BANANA42",
+   "reasoning_tail": "",
+   "context": 58000,
+   "depth": 0.5
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 58015,
+   "completion_tokens": 5,
+   "finish_reason": "stop",
+   "seconds": 22.6,
+   "content_tail": "BANANA42",
+   "reasoning_tail": "",
+   "context": 58000,
+   "depth": 0.9
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 190015,
+   "completion_tokens": 5,
+   "finish_reason": "stop",
+   "seconds": 93.3,
+   "content_tail": "BANANA42",
+   "reasoning_tail": "",
+   "context": 190000,
+   "depth": 0.1
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 190015,
+   "completion_tokens": 5,
+   "finish_reason": "stop",
+   "seconds": 93.4,
+   "content_tail": "BANANA42",
+   "reasoning_tail": "",
+   "context": 190000,
+   "depth": 0.5
+  },
+  {
+   "found": true,
+   "actual_prompt_tokens": 190015,
+   "completion_tokens": 5,
+   "finish_reason": "stop",
+   "seconds": 93.4,
+   "content_tail": "BANANA42",
+   "reasoning_tail": "",
+   "context": 190000,
+   "depth": 0.9
+  }
+ ],
+ "score": 1.0
+}

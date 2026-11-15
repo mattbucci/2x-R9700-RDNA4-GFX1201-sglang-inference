@@ -263,7 +263,7 @@ def main(argv=None):
     ap.add_argument("--repeats", type=int, default=5)
     ap.add_argument("--graph-replays", type=int, default=3)
     ap.add_argument("--rotate-mb", type=int, default=320)
-    ap.add_argument("--sglang-python", default="/data/sgl-v0522/python")
+    ap.add_argument("--sglang-python", default="/data/sgl-v0523/python")
     ap.add_argument("--max-busy-vram-gb", type=float, default=2.0)
     a = ap.parse_args(argv)
     a.check = a.check or a.emulate

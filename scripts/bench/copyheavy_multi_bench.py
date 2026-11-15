@@ -101,7 +101,7 @@ def compare(pa, pb):
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--port", type=int, default=23334)
-    ap.add_argument("--src", default="/data/sgl-v0522/python/sglang/srt")
+    ap.add_argument("--src", default="/data/sgl-v0523/python/sglang/srt")
     ap.add_argument("--prompt-tokens", type=int, default=27000)
     ap.add_argument("--output-tokens", type=int, default=600)
     ap.add_argument("--targets", type=int, default=5)

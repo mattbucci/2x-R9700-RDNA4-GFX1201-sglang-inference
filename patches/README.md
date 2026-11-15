@@ -1,8 +1,8 @@
-# SGLang v0.5.22 RDNA4 patches
+# SGLang v0.5.23 RDNA4 patches
 
-This directory contains the **100 active numeric patches** applied to pristine SGLang v0.5.22 for the
-2× Radeon AI PRO R9700 serving stack. The default tree is `/data/sgl-v0522`; the default conda environment
-is `sglang-triton36-v0522`.
+This directory contains the **99 active numeric patches** applied to pristine SGLang v0.5.23 for the
+2× Radeon AI PRO R9700 serving stack. The default tree is `/data/sgl-v0523`; the default conda environment
+is `sglang-triton36-v0523`.
 
 Patch 072 is not part of the series because transformers (5.12.1 and later) supplies the Gemma 4 unified configuration
 and processor. Patch 083 adds the tokenizer-backend correction required for Mistral checkpoints that ship
@@ -11,6 +11,7 @@ optional `infllm_v2` extension reported in [issue #3](https://github.com/mattbuc
 
 Validation receipts:
 
+- [v0.5.23 rebase](v0523-rebase-2026-11-15.md)
 - [v0.5.22 rebase](v0522-rebase-2026-10-19.md)
 - [v0.5.20 rebase](v0520-rebase-2026-09-19.md)
 - [v0.5.18 rebase](v0518-rebase-2026-08-29.md)
@@ -27,11 +28,11 @@ The supported setup path applies the numeric series in filename order:
 scripts/setup.sh
 ```
 
-For an isolated replay, start with a pristine v0.5.22 worktree and fail immediately on any bad patch:
+For an isolated replay, start with a pristine v0.5.23 worktree and fail immediately on any bad patch:
 
 ```bash
-target=/tmp/sglang-v0522-replay
-git clone --branch v0.5.22 --depth 1 https://github.com/sgl-project/sglang.git "$target"
+target=/tmp/sglang-v0523-replay
+git clone --branch v0.5.23 --depth 1 https://github.com/sgl-project/sglang.git "$target"
 for patch in "$PWD"/patches/0*.patch; do
     git -C "$target" apply --check "$patch"
     git -C "$target" apply "$patch"
@@ -41,7 +42,7 @@ done
 Every series change must pass:
 
 1. **Pristine replay:** every numeric patch applies, with no skips or fallback mode.
-2. **Tree equivalence:** the replayed delta matches the intended `/data/sgl-v0522` delta byte-for-byte.
+2. **Tree equivalence:** the replayed delta matches the intended `/data/sgl-v0523` delta byte-for-byte.
 3. **No double apply:** each patch is rejected on the fully patched tree. (Patch 026 was the documented
    non-unique-anchor exception through v0.5.16; since it also covers `get_video_feature` it is rejected too.)
 
@@ -54,8 +55,8 @@ symbol upstream removed (073 on v0.5.20; an `EVSDataItem` import on the 3090's f
 ```bash
 # undefined names in every file the series touches (from an env that has pyflakes; assert it loaded)
 grep -h '^+++ b/.*\.py$' patches/0*.patch | sed 's#^+++ b/##' | sort -u \
-  | (cd /data/sgl-v0522 && xargs ~/miniforge3/envs/sglang-triton36-v0518/bin/python -m pyflakes) | grep 'undefined name'
-# expected residue on v0.5.22: six hits in arg_groups/fields/serving.py -- pyflakes reading the quoted words
+  | (cd /data/sgl-v0523 && xargs ~/miniforge3/envs/sglang-triton36-v0518/bin/python -m pyflakes) | grep 'undefined name'
+# expected residue on v0.5.23: six hits in arg_groups/fields/serving.py -- pyflakes reading the quoted words
 # of upstream `Annotated[..., Arg(help="...")]` strings as forward references; those lines are pristine
 # every model module imports (GPU hidden; "driver-init-only" modules need a real card and are not a verdict)
 HIP_VISIBLE_DEVICES= python scripts/eval/registry_import_preflight.py
@@ -68,7 +69,8 @@ resolver test) before the first GPU boot.
 
 | Path | Role |
 |---|---|
-| `/data/sgl-v0522` | Serving and development tree for v0.5.22 plus this series |
+| `/data/sgl-v0523` | Serving and development tree for v0.5.23 plus this series |
+| `/data/sgl-v0522` | Retained v0.5.22 rollback tree (`sglang-triton36-v0522`), untouched |
 | `/data/sgl-v0520` | Retained v0.5.20 rollback tree (`sglang-triton36-v0520`), untouched |
 | `/data/sgl-v0518` | Retained v0.5.18 rollback tree (`sglang-triton36-v0518`), untouched |
 | `patches/` | Reviewable source of truth for the serving-tree delta |
@@ -88,7 +90,6 @@ can be proposed upstream. `Partial` requires a fresh comparison with upstream be
 | 003 | `rdna4-sgl-kernel-fallbacks` | Carry | Guards CUDA-only `sgl_kernel` and `infllm_v2` imports and provides safe native fallbacks or sentinels. |
 | 008 | `rdna4-sgl-kernel-build-arch` | Carry | Adds gfx12xx to the native `sgl_kernel` ROCm architecture list (`python/sglang/kernels/aot/setup_rocm.py` since v0.5.17). |
 | 060 | `aiter-mxfp4-moe-guard` | Candidate | Guards the optional AITER MXFP4 MoE import when AITER is unavailable. |
-| 063 | `rdna4-relu2-hip-fallback` | Candidate | Provides the squared-ReLU implementation used by Nemotron on HIP. |
 | 094 | `rdna4-batch-invariant-matmul-lds` | Carry | Uses two Triton pipeline stages for HIP batch-invariant MM/BMM so deterministic inference fits gfx1201's 64 KiB LDS limit; non-HIP platforms retain three stages. |
 | 119 | `hip-custom-allreduce-without-amdsmi` | Candidate | Lets HIP custom all-reduce setup run without the `amdsmi` Python binding: the XGMI query answers "not fully linked" instead of dying on an undefined name (`Setup Custom allreduce failed with name 'amdsmi_shut_down' is not defined`), which kept `SGLANG_USE_1STAGE_ALLREDUCE=1` off every two-card host without the binding. Also logs the path a group really reduces on (`[AR] All-reduce call path: custom all-reduce (...)`), the identity line for an all-reduce A/B. No change under `--disable-custom-all-reduce`, which the launcher passes on every preset except qwen38 FP8 and flint (patch 129). Serving A/B: RAD-2 (`benchmarks/profiling/rad2-onestage-ar-2026-11-09`). |
 | 129 | `rdna4-custom-allreduce-pcie-uncached-staging` | Carry | Makes upstream's one-stage HIP custom all-reduce correct on two cards linked over PCIe only. The kernel is a pull design: each rank copies its input into a staging buffer and the peer reads it through an IPC mapping; taken from the PyTorch pool, that buffer showed the peer the previous payload (RAD-2: wrong sums, noise from the first token). When the group is not fully XGMI-linked the HIP constructor allocates the staging buffer with `allocate_meta_buffer` (uncached fine-grained memory, the class of the signal buffer), and `should_custom_ar` declines every input that does not fit it (`max_size − 1` bytes; `SGLANG_RDNA4_CUSTOM_AR_MAX_BYTES` lowers the limit), so prefill chunks stay on RCCL and the in-place IPC path is never taken. Logged once per group (`[RDNA4] custom all-reduce: uncached staging buffer on a PCIe-linked group, inputs above N bytes stay on RCCL`). No change under `--disable-custom-all-reduce` or without `SGLANG_USE_1STAGE_ALLREDUCE=1`; the FP8 `qwen38` preset and the `flint` preset drop the flag and export the switch (`ENABLE_CUSTOM_ALL_REDUCE=0` restores RCCL; flint reads +2.6 % no-spec decode at four depths, FLINT-4b), every other preset stays on RCCL. Two bare ranks (`scripts/bench/allreduce_rows_ladder.py`): exact sums eager and in a 130-reduction graph, 10.8 / 22.3 / 32.2 / 58.9 µs per reduction against RCCL's 17.8 / 29.5 / 38.9 / 61.2 at 1 / 9 / 16 / 32 rows. Same-session A/B, two boots per side in both orders: no-spec canonical sweep 34.3 / 33.7 / 32.1 / 28.7 → 35.0 / 34.4 / 32.7 / 29.2 tok/s at 24 / 7.3K / 58K / 197K input tokens with identical greedy text on 6 of 6 probes; DSpark cycle 46.9 / 47.6 / 49.8 / 56.0 → 46.4 / 47.1 / 49.3 / 55.5 ms, canonical DSpark sweep 59.0 / 78.8 / 72.5 / 59.1 → 59.7 / 79.6 / 73.2 / 59.6 tok/s on equal completion tokens, greedy accept length unchanged over 24 paired prompts with the control's text on 24 of 24, capabilities 5/5, greedy needle 9/9 to 208K tokens, VRAM growth within 2 MiB per card of the control's. Receipts: `benchmarks/profiling/rad25-custom-ar-serving-2026-11-10/`. |
@@ -223,7 +224,7 @@ can be proposed upstream. `Partial` requires a fresh comparison with upstream be
 
 | Component | Version |
 |---|---|
-| SGLang | v0.5.22 plus this 100-patch series |
+| SGLang | v0.5.23 plus this 99-patch series |
 | transformers | 5.19.0 |
 | Triton | 3.6.0 |
 | PyTorch | 2.11.0+rocm7.2 |
@@ -233,13 +234,13 @@ can be proposed upstream. `Partial` requires a fresh comparison with upstream be
 Build the optional native components with:
 
 ```bash
-scripts/setup_sgl_kernel.sh --env sglang-triton36-v0522
-scripts/build_awq_gemv.sh --env sglang-triton36-v0522
-scripts/build_skinny_gemms_int4.sh --env sglang-triton36-v0522
-scripts/build_fp8_gemv.sh --env sglang-triton36-v0522
-scripts/build_lm_head_int8.sh --env sglang-triton36-v0522
-scripts/build_fp8_gemm_bf16.sh --env sglang-triton36-v0522
-scripts/build_prefill_attn_hip.sh --env sglang-triton36-v0522
+scripts/setup_sgl_kernel.sh --env sglang-triton36-v0523
+scripts/build_awq_gemv.sh --env sglang-triton36-v0523
+scripts/build_skinny_gemms_int4.sh --env sglang-triton36-v0523
+scripts/build_fp8_gemv.sh --env sglang-triton36-v0523
+scripts/build_lm_head_int8.sh --env sglang-triton36-v0523
+scripts/build_fp8_gemm_bf16.sh --env sglang-triton36-v0523
+scripts/build_prefill_attn_hip.sh --env sglang-triton36-v0523
 ```
 
 ## Related documentation

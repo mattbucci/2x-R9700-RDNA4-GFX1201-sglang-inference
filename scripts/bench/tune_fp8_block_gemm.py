@@ -37,7 +37,7 @@ import time
 
 import torch
 
-sys.path.insert(0, "/data/sgl-v0522/python")
+sys.path.insert(0, "/data/sgl-v0523/python")
 
 # per-rank (TP=2) shapes: (name, N, K, launches per decode step)
 SHAPES = {

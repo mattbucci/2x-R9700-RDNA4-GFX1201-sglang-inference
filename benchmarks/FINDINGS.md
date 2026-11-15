@@ -3294,3 +3294,25 @@ untracked root `sglang*_0*.jsonl` driver output moved to `benchmarks/raw/`. Opti
 dropped on 2026-11-01 (user decision: AWQ ships are not an optimisation target on this rig; FP8 is):
 `qwen3.6-ream-a3b-awq/` and `qwen3.6-vl-reap-26b-a3b-awq/` were purged without a re-measure, so no
 tracked `results.json` carries the `sglang.bench_serving` method. R97-H is closed.
+
+## SGLang v0.5.23 rebase: parity with v0.5.22 (promoted 2026-11-15)
+
+99 patches (063 upstreamed). Interleaved `new old old new` boots on eight presets: decode within 1 % at
+every depth (qwen38 DSpark 65.3 vs 65.5 tok/s at 176K, no speculation 30.2 vs 30.3; Flint DFlash2 50.6 vs
+50.9; Laguna 55.5 vs 55.3; North-Mini 55.9 vs 56.1; nemotron-omni 80.6 vs 80.9), greedy accept length
+identical (qwen38 3.695, Flint 2.970), qwen38 cold prefill 2,08x tok/s at 176K on both, needle 6/6 on four
+boots. Tables and setup traps: [`patches/v0523-rebase-2026-11-15.md`](../patches/v0523-rebase-2026-11-15.md);
+fleet receipts for both versions: [`rebase-v0523/`](rebase-v0523/).
+
+- **Flint needed a source fix** (folded into 105): v0.5.23 resolves a `TopK`'s output format from the experts
+  that own it, and `FlintSparseMoeBlock` replaces the bound one. CPU gates did not see it; graph capture did.
+- **Flint at 190K loops on filler, not on text.** Greedy think-off filler needle 0/3 at 190K on both versions
+  (3/3 at 58K); sampled filler 1/6; natural-text haystack with default sampling 16/18 over 58K / 131K / 190K
+  and 6/6 at 190K ([natural](quality/flint-natural-v0523.json) ·
+  [filler](quality/flint-filler-sampled-v0523.json)). The fleet deep probe uses filler and reads truncated
+  for Flint on both versions.
+- **gemma4-31b image input fails on both versions** (vision and video probes on v0.5.22, video on v0.5.23
+  with a wrong description behind a keyword pass): a defect that predates the rebase.
+- The thinking probe fails on qwen3vl-32b and coder-reap-25b on both versions.
+- Not measured: patch 129's all-reduce cap against upstream's chunked deterministic all-reduce; a Quark MXFP4
+  boot for 117.

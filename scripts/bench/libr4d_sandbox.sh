@@ -8,7 +8,7 @@
 #       --lib <libr4d.so> --out /data/tmp/rad13-run/out/m1.json --families m1 --device 0
 set -eu
 BENCH="$(cd "$(dirname "$0")" && pwd)"
-E="${ENV_PREFIX:-$HOME/miniforge3/envs/sglang-triton36-v0522}"
+E="${ENV_PREFIX:-$HOME/miniforge3/envs/sglang-triton36-v0523}"
 W="${W:-/data/tmp/rad13-run}"
 mkdir -p "$W/home" "$W/triton-cache" "$W/out"
 exec bwrap --ro-bind / / --dev /dev --dev-bind /dev/kfd /dev/kfd --dev-bind /dev/dri /dev/dri --proc /proc \

@@ -19,7 +19,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"; REPO="$(cd "$SCRIPT_
 PRESET="${PRESET:-qwen38}"; PORT="${PORT:-23334}"; DEPTHS="${DEPTHS:-65536 221184}"
 STAMP=$(date +%Y-%m-%d); TAG="${TAG:-$PRESET-prefill-profile-$STAMP}"
 OUT="$REPO/benchmarks/profiling/$TAG"; PROF_ROOT="${PROF_ROOT:-/data/tmp/profile-$TAG}"
-PY="${PY:-$HOME/miniforge3/envs/sglang-triton36-v0522/bin/python}"
+PY="${PY:-$HOME/miniforge3/envs/sglang-triton36-v0523/bin/python}"
 START_PROFILE_BODY="${START_PROFILE_BODY:-}"; [ -n "$START_PROFILE_BODY" ] || START_PROFILE_BODY='{"activities":["CPU","GPU"],"with_stack":false,"record_shapes":false}'
 MEM_FLOOR_GB="${MEM_FLOOR_GB:-10}"; RANKS="${RANKS:-2}"; FAILED=""
 mkdir -p "$OUT" "$PROF_ROOT"

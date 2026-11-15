@@ -1,0 +1,90 @@
+{
+  "gemma4-31b": {
+    "tag": "gemma4-31b",
+    "model": "/home/letsrtfm/AI/models/gemma-4-31B-AWQ",
+    "timestamp": "2026-11-15 10:52",
+    "elapsed_sec": 22.1,
+    "checks": {
+      "basic": {
+        "passed": true,
+        "message": "finish=stop answer='paris'"
+      },
+      "tool_call": {
+        "passed": true,
+        "message": "finish=tool_calls name='get_weather' args='{\"location\": \"Paris\"}'"
+      },
+      "thinking": {
+        "passed": true,
+        "message": "reasoning_seen terminated answer_ok (444 tok, finish=stop)"
+      },
+      "vision": {
+        "passed": false,
+        "message": "saw=['round']  response='the image consists of a repeating pattern of small, light-gray, crescent-shaped symbols on a white background.'"
+      },
+      "video": {
+        "passed": false,
+        "message": "saw=[]  response='the provided video consists of a series of identical, static images.'"
+      }
+    },
+    "summary": {
+      "passed": 3,
+      "total": 5
+    }
+  },
+  "qwen3vl-32b-awq": {
+    "tag": "qwen3vl-32b-awq",
+    "model": "/home/letsrtfm/AI/models/Qwen3-VL-32B-AWQ-balanced",
+    "timestamp": "2026-11-15 10:53",
+    "elapsed_sec": 6.9,
+    "checks": {
+      "basic": {
+        "passed": true,
+        "message": "finish=stop answer='paris'"
+      },
+      "tool_call": {
+        "passed": true,
+        "message": "finish=tool_calls name='get_weather' args='{\"location\": \"Paris\"}'"
+      },
+      "thinking": {
+        "passed": false,
+        "message": "answer_ok                      (108 tok, finish=stop)"
+      },
+      "vision": {
+        "passed": true,
+        "message": "saw=['red', 'circle', 'round']  response='a solid red circle with a black outline is centered on a white background.'"
+      },
+      "video": {
+        "passed": true,
+        "message": "saw=['move', 'right', 'circle', 'red']  response='a red circle moves from the left side of the screen to the right side.'"
+      }
+    },
+    "summary": {
+      "passed": 4,
+      "total": 5
+    }
+  },
+  "flint-fp8": {
+    "tag": "flint-fp8",
+    "model": "/data/models/Flint-FP8",
+    "timestamp": "2026-11-15 11:35",
+    "elapsed_sec": 14.1,
+    "checks": {
+      "basic": {
+        "passed": true,
+        "message": "finish=stop answer='paris'"
+      },
+      "tool_call": {
+        "passed": true,
+        "message": "finish=tool_calls name='get_weather' args='{\"location\": \"Paris\"}'"
+      },
+      "thinking": {
+        "passed": true,
+        "message": "reasoning_seen terminated answer_ok (508 tok, finish=stop)"
+      }
+    },
+    "summary": {
+      "passed": 3,
+      "total": 3
+    }
+  }
+}

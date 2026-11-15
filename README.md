@@ -1,6 +1,6 @@
 # RDNA4 inference on 2× R9700
 
-SGLang v0.5.22 with 100 RDNA4 patches, tuned for coherent single-user inference at long context
+SGLang v0.5.23 with 99 RDNA4 patches, tuned for coherent single-user inference at long context
 (256K) on two AMD Radeon AI PRO R9700 GPUs (gfx1201, 32 GiB each, TP=2 over PCIe). The repository holds
 the patch series, the preset launcher, the benchmark and evaluation harnesses, the FP8/AWQ quantization
 pipeline, and the receipts behind every number below. Multi-user throughput is secondary.
@@ -33,7 +33,7 @@ in [experiments/](experiments/README.md). The active performance programme is
   learned-sink kernels match a PyTorch reference, a 1-token agentic turn on a 104K cached prefix is 0.20 s (split-KV
   route), and natural-text needle retrieval holds to 131K at every depth, with a soft edge at 243–248K ([#14](https://github.com/mattbucci/2x-R9700-RDNA4-GFX1201-sglang-inference/issues/14))
   ([receipt](benchmarks/quality/flint/needle-natural-fp8-2026-10-31.md), [KV A/B](benchmarks/profiling/flint-ab-2026-11-01.md)).
-- **The patch series replays byte-identically** onto pristine v0.5.22 under the strict gate in
+- **The patch series replays byte-identically** onto pristine v0.5.23 under the strict gate in
   [`patches/README.md`](patches/README.md).
 
 ### Single-user decode across the fleet
@@ -249,7 +249,7 @@ relaunch faults on a stale one.
 | Component | Version |
 |---|---|
 | GPUs | 2× AMD Radeon AI PRO R9700, gfx1201, 32 GiB each |
-| SGLang | v0.5.22 + 100 patches |
+| SGLang | v0.5.23 + 99 patches |
 | Python | 3.12 |
 | PyTorch | 2.11.0+rocm7.2 |
 | ROCm | 7.2 |
@@ -257,9 +257,9 @@ relaunch faults on a stale one.
 | RCCL | 2.27.7 |
 | transformers | 5.19.0 |
 
-Serving tree `/data/sgl-v0522` on the peeled commit `baa9befa3` of v0.5.22, conda environment
-`sglang-triton36-v0522`. Upstream `main` is not tracked: the series and the native HIP kernel builds pin
-to release tags. v0.5.20 is retained at `/data/sgl-v0520` / `sglang-triton36-v0520` as the rollback. Rebase
+Serving tree `/data/sgl-v0523` on the peeled commit `297e54fd1` of v0.5.23, conda environment
+`sglang-triton36-v0523`. Upstream `main` is not tracked: the series and the native HIP kernel builds pin
+to release tags. v0.5.22 is retained at `/data/sgl-v0522` / `sglang-triton36-v0522` as the rollback. Rebase
 procedure and per-version receipts: [`patches/README.md`](patches/README.md).
 
 TP=2 requires both kernel P2P support and IOMMU passthrough:
@@ -277,7 +277,7 @@ operational invariants are in [`rules-for-agents.md`](rules-for-agents.md).
 
 ### OCI image
 
-`Dockerfile` builds the ROCm 7.2/v0.5.22 stack without a GPU; GitHub Actions promotes verified digests
+`Dockerfile` builds the ROCm 7.2/v0.5.23 stack without a GPU; GitHub Actions promotes verified digests
 to `ghcr.io/<owner>/sglang-rdna4`. The image is hardened for untrusted networks (keyed API, fail-closed
 preset launcher, disabled remote code and media by default) and must still sit behind a private network
 and an authenticating TLS proxy. Device selection, secrets, `docker run` recipes, the read-only
@@ -288,7 +288,7 @@ root-filesystem layout, and the full threat model are in [`docker/README.md`](do
 | Path | Purpose |
 |---|---|
 | [scripts/](scripts/README.md) | setup, launch, benchmark, evaluation, quantization, and test entry points |
-| [patches/](patches/README.md) | ordered SGLang v0.5.22 patch series and the replay gate |
+| [patches/](patches/README.md) | ordered SGLang v0.5.23 patch series and the replay gate |
 | [PATCHES.md](PATCHES.md) | cross-environment patch inventory |
 | [benchmarks/](benchmarks/README.md) | current results, raw JSON, charts, and consolidated findings |
 | [evals/swebench/](evals/swebench/FP8_BAKEOFF_SETUP.md) | SWE-bench Lite bakeoff harness, audit, and Docker scoring |
