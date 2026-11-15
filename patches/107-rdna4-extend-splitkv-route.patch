@@ -1,5 +1,5 @@
 diff --git a/python/sglang/kernels/ops/attention/verify_splitkv.py b/python/sglang/kernels/ops/attention/verify_splitkv.py
-index 308742d..dcd27e5 100644
+index 308742de..dcd27e55 100644
 --- a/python/sglang/kernels/ops/attention/verify_splitkv.py
 +++ b/python/sglang/kernels/ops/attention/verify_splitkv.py
 @@ -31,6 +31,8 @@ the caller falls back to ``extend_attention_fwd``. Supported case: causal
@@ -134,17 +134,18 @@ index 308742d..dcd27e5 100644
      vk(
          q_extend,
 diff --git a/python/sglang/srt/layers/attention/triton_backend.py b/python/sglang/srt/layers/attention/triton_backend.py
-index 5771337..409f30f 100644
+index 09b7dbb4..604fd68e 100644
 --- a/python/sglang/srt/layers/attention/triton_backend.py
 +++ b/python/sglang/srt/layers/attention/triton_backend.py
-@@ -1,5 +1,6 @@
+@@ -1,6 +1,7 @@
  from __future__ import annotations
  
+ import contextlib
 +import logging
  import os
  from dataclasses import dataclass
  from typing import TYPE_CHECKING, List, Optional
-@@ -47,7 +48,13 @@ from sglang.srt.model_executor.forward_batch_info import ForwardBatch, ForwardMo
+@@ -48,7 +49,13 @@ from sglang.srt.model_executor.forward_batch_info import ForwardBatch, ForwardMo
  # (is_gfx95_supported()), so it never fires on RDNA4 — this is the gfx1201 path. The default
  # extend verify reads the deep prefix KV unsplit (~2.7s @244K); this splits it across SMs like
  # decode does. Off by default; SGLANG_TREE_VERIFY_SPLITKV=1 enables it (launch.sh --spec sets it).
@@ -156,9 +157,9 @@ index 5771337..409f30f 100644
 +_EXTEND_SPLITKV_MAX = int(os.environ.get("SGLANG_EXTEND_SPLITKV_MAX_TOKENS", "0") or 0)
 +_EXTEND_SPLITKV_MIN_PREFIX = int(os.environ.get("SGLANG_EXTEND_SPLITKV_MIN_PREFIX", "4096") or 0)
  from sglang.srt.runtime_context import get_exec, get_parallel, get_schedule, get_spec
+ from sglang.srt.speculative.eagle_utils import per_step_draft_out_cache_loc
  from sglang.srt.speculative.spec_utils import (
-     draft_kv_indices_buffer_width,
-@@ -1641,6 +1648,16 @@ class TritonAttnBackend(AttentionBackend):
+@@ -1710,6 +1717,16 @@ class TritonAttnBackend(AttentionBackend):
                  layer, loc, k, v, k_scale, v_scale, **kwargs
              )
  
@@ -175,7 +176,7 @@ index 5771337..409f30f 100644
      def forward_extend(
          self,
          q: torch.Tensor,
-@@ -1852,6 +1869,76 @@ class TritonAttnBackend(AttentionBackend):
+@@ -1928,6 +1945,76 @@ class TritonAttnBackend(AttentionBackend):
          ):
              return o
  

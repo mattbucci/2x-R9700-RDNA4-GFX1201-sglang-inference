@@ -365,10 +365,10 @@ index 00000000..77bedb3d
 +    scale = torch.where(w_scale == 255, torch.zeros_like(scale), scale)
 +    return (vals.view(N, K // 32, 32) * scale.view(N, K // 32, 1)).view(N, K)
 diff --git a/python/sglang/srt/layers/linear.py b/python/sglang/srt/layers/linear.py
-index f5d93c1d..f9d2952e 100644
+index feb1be2d..493d9ad3 100644
 --- a/python/sglang/srt/layers/linear.py
 +++ b/python/sglang/srt/layers/linear.py
-@@ -888,7 +888,12 @@ class MergedColumnParallelLinear(ColumnParallelLinear):
+@@ -891,7 +891,12 @@ class MergedColumnParallelLinear(ColumnParallelLinear):
                      "the same for all partitions."
                  )
  
@@ -383,10 +383,10 @@ index f5d93c1d..f9d2952e 100644
  
      def _load_fused_module_from_checkpoint(
 diff --git a/python/sglang/srt/layers/quantization/quark/schemes/quark_w4a4_mxfp4.py b/python/sglang/srt/layers/quantization/quark/schemes/quark_w4a4_mxfp4.py
-index 65ffc16d..1735db59 100644
+index 4ffa925c..5fb5c36b 100644
 --- a/python/sglang/srt/layers/quantization/quark/schemes/quark_w4a4_mxfp4.py
 +++ b/python/sglang/srt/layers/quantization/quark/schemes/quark_w4a4_mxfp4.py
-@@ -231,6 +231,7 @@ if _aiter_mxfp4_available:
+@@ -378,6 +378,7 @@ if _aiter_mxfp4_available:
  
  __all__ = ["QuarkW4A4MXFP4"]
  logger = logging.getLogger(__name__)
@@ -394,7 +394,7 @@ index 65ffc16d..1735db59 100644
  
  OCP_MX_BLOCK_SIZE = 32
  
-@@ -273,6 +274,26 @@ class QuarkW4A4MXFP4(QuarkLinearScheme):
+@@ -420,6 +421,26 @@ class QuarkW4A4MXFP4(QuarkLinearScheme):
              assert layer.weight.dtype == torch.uint8
              assert layer.weight_scale.dtype == torch.uint8
  
@@ -421,7 +421,7 @@ index 65ffc16d..1735db59 100644
          if _dequant_linear_to_bf16:
              w_bf16 = _dequant_mxfp4_to_bf16(layer.weight.data, layer.weight_scale.data)
              layer.weight = torch.nn.Parameter(w_bf16, requires_grad=False)
-@@ -697,6 +718,13 @@ class QuarkW4A4MXFP4(QuarkLinearScheme):
+@@ -879,6 +900,13 @@ class QuarkW4A4MXFP4(QuarkLinearScheme):
              if isinstance(x, tuple):
                  x = x[0]
              return torch.nn.functional.linear(x, layer.weight, bias)
@@ -433,13 +433,13 @@ index 65ffc16d..1735db59 100644
 +                x = x[0]
 +            return mxfp4_w4a8_linear(x, layer.weight, layer.weight_scale, bias, out_dtype=self.out_dtype)
  
-         # Bias will be added after the GEMM if provided
-         three_d = False
+         if getattr(layer, "use_aiter_asm_fp4_gemm", False):
+             output_shape = None
 diff --git a/python/sglang/srt/models/qwen3_5.py b/python/sglang/srt/models/qwen3_5.py
-index 478930cd..683da3f9 100644
+index 8d22fb96..7a823221 100644
 --- a/python/sglang/srt/models/qwen3_5.py
 +++ b/python/sglang/srt/models/qwen3_5.py
-@@ -471,10 +471,18 @@ class Qwen3_5GatedDeltaNet(nn.Module):
+@@ -475,10 +475,18 @@ class Qwen3_5GatedDeltaNet(nn.Module):
          # quant_config=None for in_proj_ba: output dim 48 is not divisible
          # by TP=2 * 16 (hipBLASLt scaled_mm alignment), so FP8 quantization
          # would fail. Keep projections in full precision.

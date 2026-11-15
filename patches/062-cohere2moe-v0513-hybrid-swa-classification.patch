@@ -1,8 +1,8 @@
 diff --git a/python/sglang/srt/configs/model_config.py b/python/sglang/srt/configs/model_config.py
-index 9f5967d..465a943 100644
+index 8d23bddb..0d3cd8aa 100644
 --- a/python/sglang/srt/configs/model_config.py
 +++ b/python/sglang/srt/configs/model_config.py
-@@ -1930,6 +1930,12 @@ def is_hybrid_swa_model(
+@@ -2704,6 +2704,12 @@ def is_hybrid_swa_model(
          "InklingForConditionalGeneration",
          "InklingForConditionalGenerationMTP",
          "UnlimitedOCRForCausalLM",
@@ -14,8 +14,8 @@ index 9f5967d..465a943 100644
 +        "Cohere2MoeForCausalLM",
      }
      if any(arch in hybrid_swa_archs for arch in model_architectures):
-         # Only treat Laguna as hybrid SWA when it actually has a sliding window.
-@@ -2044,6 +2050,19 @@ def get_hybrid_layer_ids(
+         if "BeamForCausalLM" in model_architectures and hf_text_config is not None:
+@@ -2826,6 +2832,19 @@ def get_hybrid_layer_ids(
      elif "UnlimitedOCRForCausalLM" in model_architectures:
          swa_attention_layer_ids = list(range(num_hidden_layers))
          full_attention_layer_ids = []
@@ -32,6 +32,6 @@ index 9f5967d..465a943 100644
 +        full_attention_layer_ids = [
 +            i for i, x in enumerate(layer_types) if x == "full_attention"
 +        ]
-     elif getattr(hf_text_config, "hybrid_layer_pattern", None) is not None:
-         # Generic fallback for custom hybrid SWA models that opt in via
-         # hf_text_config.is_hybrid_swa and expose a hybrid_layer_pattern
+     elif "MuseSparkForConditionalGeneration" in model_architectures:
+         swa_attention_layer_ids = [
+             i

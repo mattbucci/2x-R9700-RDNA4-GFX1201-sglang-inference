@@ -1,8 +1,8 @@
 diff --git a/python/sglang/srt/entrypoints/openai/serving_responses.py b/python/sglang/srt/entrypoints/openai/serving_responses.py
-index 9fdcbe393..83b625bde 100644
+index 18c495a3..2c27814c 100644
 --- a/python/sglang/srt/entrypoints/openai/serving_responses.py
 +++ b/python/sglang/srt/entrypoints/openai/serving_responses.py
-@@ -1376,7 +1376,17 @@ class OpenAIServingResponses(OpenAIServingChat):
+@@ -1663,7 +1663,22 @@ class OpenAIServingResponses(OpenAIServingChat):
      ) -> list:
          """Collapse runs of consecutive ``assistant`` dicts into one entry,
          joining ``content`` and concatenating ``tool_calls`` and
@@ -15,26 +15,26 @@ index 9fdcbe393..83b625bde 100644
 +        openai forwards ``commentary`` on every assistant text block) therefore
 +        used to get the text and its own tool call rendered as two assistant
 +        turns — the model then learns in-context to end a turn after the
-+        announcement text and never emit the call. A missing phase on either
-+        side is compatible with anything; two *message* items with different
++        announcement text and never emit the call. So a phase-less item that
++        is not a bare ``reasoning`` item (a ``function_call``) folds into the
++        phase-tagged message before it unless that message is a
++        ``final_answer``, which closes its turn (upstream's replay contract: the
++        reasoning + function_call after a final answer are the next turn). A
++        bare ``reasoning`` item belongs to the message that FOLLOWS it, which
++        upstream v0.5.23 already folds; two *message* items with different
 +        phases still stay apart."""
          merged: list = []
          for msg in messages:
              if (
-@@ -1385,9 +1395,15 @@ class OpenAIServingResponses(OpenAIServingChat):
-                 and merged
-                 and isinstance(merged[-1], dict)
-                 and merged[-1].get("role") == "assistant"
--                and merged[-1].get("phase") == msg.get("phase")
-+                and (
-+                    merged[-1].get("phase") is None
-+                    or msg.get("phase") is None
-+                    or merged[-1].get("phase") == msg.get("phase")
-+                )
+@@ -1675,6 +1690,11 @@ class OpenAIServingResponses(OpenAIServingChat):
+                 and (
+                     merged[-1].get("phase") == msg.get("phase")
+                     or set(merged[-1]) == {"role", "reasoning_content"}
++                    or (
++                        msg.get("phase") is None
++                        and set(msg) != {"role", "reasoning_content"}
++                        and merged[-1].get("phase") not in (None, "final_answer")
++                    )
+                 )
              ):
                  prev = merged[-1] = dict(merged[-1])
-+                if prev.get("phase") is None and msg.get("phase") is not None:
-+                    prev["phase"] = msg.get("phase")
-                 # Lift mixed str/list content to list parts so non-text parts
-                 # (e.g. image_url) survive when the two sides differ in shape.
-                 new_content = msg.get("content")

@@ -1,6 +1,6 @@
 diff --git a/python/sglang/kernels/aot/csrc/quantization/int8/lm_head_int8_hip.cu b/python/sglang/kernels/aot/csrc/quantization/int8/lm_head_int8_hip.cu
 new file mode 100644
-index 0000000..28645dc
+index 00000000..28645dc3
 --- /dev/null
 +++ b/python/sglang/kernels/aot/csrc/quantization/int8/lm_head_int8_hip.cu
 @@ -0,0 +1,453 @@
@@ -459,7 +459,7 @@ index 0000000..28645dc
 +#endif
 diff --git a/python/sglang/srt/layers/lm_head_int8_filter.py b/python/sglang/srt/layers/lm_head_int8_filter.py
 new file mode 100644
-index 0000000..588173f
+index 00000000..588173f6
 --- /dev/null
 +++ b/python/sglang/srt/layers/lm_head_int8_filter.py
 @@ -0,0 +1,139 @@
@@ -604,10 +604,10 @@ index 0000000..588173f
 +        return self.pack
 diff --git a/python/sglang/srt/layers/lm_head_int8_tail.py b/python/sglang/srt/layers/lm_head_int8_tail.py
 new file mode 100644
-index 0000000..cecdf2d
+index 00000000..a32131b0
 --- /dev/null
 +++ b/python/sglang/srt/layers/lm_head_int8_tail.py
-@@ -0,0 +1,326 @@
+@@ -0,0 +1,327 @@
 +"""Deferred LM head for one-row greedy decode on RDNA4.
 +
 +When this is active the decode graph ends at the last hidden state: the capture stores the
@@ -862,6 +862,7 @@ index 0000000..cecdf2d
 +        processor.use_attn_tp_group
 +        or processor.do_tensor_parallel_all_gather_dp_attn
 +        or processor.use_fp32_lm_head
++        or processor.use_fp32_lm_head_output
 +        or processor.use_tp_lm_head_all_to_all
 +        or processor.logit_scale is not None
 +        or processor.final_logit_softcapping
@@ -935,10 +936,10 @@ index 0000000..cecdf2d
 +    if _TIMING:
 +        logger.info("[RDNA4] LM head timing diagnostic on: every stage waits for the device")
 diff --git a/python/sglang/srt/layers/logits_processor.py b/python/sglang/srt/layers/logits_processor.py
-index f35efc4..7cdb20f 100644
+index 8178ba3e..8c5816b9 100644
 --- a/python/sglang/srt/layers/logits_processor.py
 +++ b/python/sglang/srt/layers/logits_processor.py
-@@ -32,7 +32,7 @@ from sglang.kernels.ops.activation.softcap import (
+@@ -37,7 +37,7 @@ from sglang.kernels.ops.sampling.softcap_row_argmax import softcap_row_argmax
  from sglang.srt.beam_search.logits_capture import BeamLogitsCapture
  from sglang.srt.distributed.device_communicators import triton_symm_mem_ag
  from sglang.srt.environ import envs
@@ -947,7 +948,7 @@ index f35efc4..7cdb20f 100644
  from sglang.srt.layers.aux_hidden_states import AuxHiddenStates, pack_aux_hidden_states
  from sglang.srt.layers.dp_attention import (
      DpPaddingMode,
-@@ -879,6 +879,19 @@ class LogitsProcessor(nn.Module):
+@@ -964,6 +964,19 @@ class LogitsProcessor(nn.Module):
          last position (e.g., extend without input logprobs). The caller should
          guarantee the given hidden_states follow this constraint.
          """
@@ -968,10 +969,10 @@ index f35efc4..7cdb20f 100644
              "get_logits_enter",
              hidden_shape=tuple(hidden_states.shape),
 diff --git a/python/sglang/srt/model_executor/model_runner.py b/python/sglang/srt/model_executor/model_runner.py
-index e69ae20..becb781 100644
+index 41357cdd..5abf2b79 100644
 --- a/python/sglang/srt/model_executor/model_runner.py
 +++ b/python/sglang/srt/model_executor/model_runner.py
-@@ -73,7 +73,7 @@ from sglang.srt.eplb.expert_location_updater import ExpertLocationUpdater
+@@ -84,7 +84,7 @@ from sglang.srt.kernel_plugins.nvidia.binding import install_megakernel
  from sglang.srt.kv_canary.api import install_canary
  from sglang.srt.kv_canary.runner.canary_manager import context_tuple
  from sglang.srt.kv_canary.token_oracle.install import install_token_oracle_from_env
@@ -980,7 +981,7 @@ index e69ae20..becb781 100644
  from sglang.srt.layers.attention.dsa.utils import is_dsa_enable_prefill_cp
  from sglang.srt.layers.cp.utils import (
      get_cp_strategy,
-@@ -1347,6 +1347,10 @@ class ModelRunner:
+@@ -1371,6 +1371,10 @@ class ModelRunner:
  
          self.dtype = self.model_config.dtype
  
@@ -992,7 +993,7 @@ index e69ae20..becb781 100644
          # available memory. Some quant load paths (notably per-tensor FP8 requantize,
          # e.g. devstral2 / Mistral3) leave ~11 GB/card of intermediate GPU tensors held
 diff --git a/python/sglang/srt/model_executor/runner/decode_cuda_graph_runner.py b/python/sglang/srt/model_executor/runner/decode_cuda_graph_runner.py
-index 321379c..427802d 100644
+index dc70e106..9f73ebb3 100644
 --- a/python/sglang/srt/model_executor/runner/decode_cuda_graph_runner.py
 +++ b/python/sglang/srt/model_executor/runner/decode_cuda_graph_runner.py
 @@ -42,6 +42,7 @@ from sglang.srt.compilation.torch_compile_decoration import set_torch_compile_co
@@ -1003,7 +1004,7 @@ index 321379c..427802d 100644
  from sglang.srt.layers.attention.base_attn_backend import (
      AttentionBackend,
      SharedReadEnds,
-@@ -1676,6 +1677,9 @@ class DecodeCudaGraphRunner(BaseCudaGraphRunner):
+@@ -2064,6 +2065,9 @@ class DecodeCudaGraphRunner(BaseCudaGraphRunner):
  
      def _process_output_after_replay(self, output, forward_batch: ForwardBatch):
          """Optional eager tail executed after graph replay and inside its timer."""

@@ -1,5 +1,5 @@
 diff --git a/python/sglang/srt/arg_groups/choices.py b/python/sglang/srt/arg_groups/choices.py
-index 20a6253..4f74245 100644
+index b79f02ee..b33ae3a2 100644
 --- a/python/sglang/srt/arg_groups/choices.py
 +++ b/python/sglang/srt/arg_groups/choices.py
 @@ -128,7 +128,7 @@ DISAGG_TRANSFER_BACKEND_CHOICES = [
@@ -12,10 +12,10 @@ index 20a6253..4f74245 100644
  BUILT_IN_SAMPLING_BACKENDS = frozenset({"flashinfer", "pytorch", "ascend", "intel_xpu"})
  SAMPLING_BACKEND_CHOICES = set(BUILT_IN_SAMPLING_BACKENDS)
 diff --git a/python/sglang/srt/configs/__init__.py b/python/sglang/srt/configs/__init__.py
-index 06239f1..605142b 100644
+index 83004cf1..c7c30d3b 100644
 --- a/python/sglang/srt/configs/__init__.py
 +++ b/python/sglang/srt/configs/__init__.py
-@@ -46,6 +46,7 @@ from sglang.srt.configs.kimi_k25 import KimiK25Config
+@@ -47,6 +47,7 @@ from sglang.srt.configs.kimi_k25 import KimiK25Config
  from sglang.srt.configs.kimi_linear import KimiLinearConfig
  from sglang.srt.configs.kimi_vl import KimiVLConfig
  from sglang.srt.configs.kimi_vl_moonvit import MoonViTConfig
@@ -23,7 +23,7 @@ index 06239f1..605142b 100644
  from sglang.srt.configs.laguna import LagunaConfig
  from sglang.srt.configs.lfm2 import Lfm2Config
  from sglang.srt.configs.lfm2_moe import Lfm2MoeConfig
-@@ -120,6 +121,7 @@ __all__ = [
+@@ -129,6 +130,7 @@ __all__ = [
      "KimiLinearConfig",
      "KimiK3Config",
      "KimiK25Config",
@@ -31,9 +31,9 @@ index 06239f1..605142b 100644
      "LagunaConfig",
      "Qwen3NextConfig",
      "Qwen4ExpConfig",
-diff --git b/python/sglang/srt/configs/flint.py b/python/sglang/srt/configs/flint.py
+diff --git a/python/sglang/srt/configs/flint.py b/python/sglang/srt/configs/flint.py
 new file mode 100644
-index 0000000..d85fc1e
+index 00000000..d85fc1e4
 --- /dev/null
 +++ b/python/sglang/srt/configs/flint.py
 @@ -0,0 +1,159 @@
@@ -197,10 +197,10 @@ index 0000000..d85fc1e
 +
 +__all__ = ["FlintConfig"]
 diff --git a/python/sglang/srt/configs/model_config.py b/python/sglang/srt/configs/model_config.py
-index c6f991e..cc7b94e 100644
+index 0d3cd8aa..7b906f07 100644
 --- a/python/sglang/srt/configs/model_config.py
 +++ b/python/sglang/srt/configs/model_config.py
-@@ -87,6 +87,9 @@ BAILING_MULTI_GATE_MM_ARCHS = frozenset(
+@@ -88,6 +88,9 @@ BAILING_MULTI_GATE_MM_ARCHS = frozenset(
  SWA_SINK_ARCHS = frozenset(
      {
          "GptOssForCausalLM",
@@ -211,10 +211,10 @@ index c6f991e..cc7b94e 100644
          "GraniteMoeSWAForCausalLM",
          "IQuestQ1ForCausalLM",
 diff --git a/python/sglang/srt/constrained/base_grammar_backend.py b/python/sglang/srt/constrained/base_grammar_backend.py
-index 32a9ec2..f47f663 100644
+index 0574e6b5..15071dc1 100644
 --- a/python/sglang/srt/constrained/base_grammar_backend.py
 +++ b/python/sglang/srt/constrained/base_grammar_backend.py
-@@ -402,6 +402,21 @@ def create_grammar_backend(
+@@ -423,6 +423,21 @@ def create_grammar_backend(
              )
              get_context().override("grammar.import_fallback", grammar_backend="none")
              return None
@@ -236,9 +236,9 @@ index 32a9ec2..f47f663 100644
      elif name == "llguidance":
          from sglang.srt.constrained.llguidance_backend import GuidanceBackend
  
-diff --git b/python/sglang/srt/constrained/flint_grammar_backend.py b/python/sglang/srt/constrained/flint_grammar_backend.py
+diff --git a/python/sglang/srt/constrained/flint_grammar_backend.py b/python/sglang/srt/constrained/flint_grammar_backend.py
 new file mode 100644
-index 0000000..a6a99b3
+index 00000000..a6a99b35
 --- /dev/null
 +++ b/python/sglang/srt/constrained/flint_grammar_backend.py
 @@ -0,0 +1,91 @@
@@ -333,9 +333,9 @@ index 0000000..a6a99b3
 +
 +
 +__all__ = ["GRAMMAR_BACKEND_NAME", "FlintGrammarBackend"]
-diff --git b/python/sglang/srt/constrained/flint_structural_tags.py b/python/sglang/srt/constrained/flint_structural_tags.py
+diff --git a/python/sglang/srt/constrained/flint_structural_tags.py b/python/sglang/srt/constrained/flint_structural_tags.py
 new file mode 100644
-index 0000000..4fbb400
+index 00000000..4fbb4001
 --- /dev/null
 +++ b/python/sglang/srt/constrained/flint_structural_tags.py
 @@ -0,0 +1,190 @@
@@ -529,9 +529,9 @@ index 0000000..4fbb400
 +    "dedicated_token_id",
 +    "reasoning_then",
 +]
-diff --git b/python/sglang/srt/function_call/flint_detector.py b/python/sglang/srt/function_call/flint_detector.py
+diff --git a/python/sglang/srt/function_call/flint_detector.py b/python/sglang/srt/function_call/flint_detector.py
 new file mode 100644
-index 0000000..345da2e
+index 00000000..345da2eb
 --- /dev/null
 +++ b/python/sglang/srt/function_call/flint_detector.py
 @@ -0,0 +1,92 @@
@@ -628,10 +628,10 @@ index 0000000..345da2e
 +
 +__all__ = ["TOOL_CALL_PARSER_NAME", "FlintDetector"]
 diff --git a/python/sglang/srt/function_call/function_call_parser.py b/python/sglang/srt/function_call/function_call_parser.py
-index 3184ac7..5165c7c 100644
+index af2f84e1..7013c31b 100644
 --- a/python/sglang/srt/function_call/function_call_parser.py
 +++ b/python/sglang/srt/function_call/function_call_parser.py
-@@ -29,6 +29,7 @@ from sglang.srt.function_call.glm4_moe_detector import (
+@@ -30,6 +30,7 @@ from sglang.srt.function_call.glm4_moe_detector import (
      GlmSpecialTokenConfig,
      generate_glm_grammar,
  )
@@ -639,7 +639,7 @@ index 3184ac7..5165c7c 100644
  from sglang.srt.function_call.glm47_moe_detector import Glm47MoeDetector
  from sglang.srt.function_call.gpt_oss_detector import GptOssDetector
  from sglang.srt.function_call.hermes_detector import HermesDetector
-@@ -83,6 +84,7 @@ class FunctionCallParser:
+@@ -86,6 +87,7 @@ class FunctionCallParser:
          "dots": DotsToolDetector,
          "glm": Glm4MoeDetector,
          "glm45": Glm4MoeDetector,
@@ -648,10 +648,10 @@ index 3184ac7..5165c7c 100644
          "gpt-oss": GptOssDetector,
          "k2_horizon": K2V3Detector,
 diff --git a/python/sglang/srt/function_call/parser_names.py b/python/sglang/srt/function_call/parser_names.py
-index 3da09d6..31fc60e 100644
+index 4da63fbf..1ba11f91 100644
 --- a/python/sglang/srt/function_call/parser_names.py
 +++ b/python/sglang/srt/function_call/parser_names.py
-@@ -16,6 +16,7 @@ TOOL_CALL_PARSER_NAMES = [
+@@ -17,6 +17,7 @@ TOOL_CALL_PARSER_NAMES = [
      "deepseekv4",
      "deepseekv41",
      "dots",
@@ -659,9 +659,9 @@ index 3da09d6..31fc60e 100644
      "glm",
      "glm45",
      "glm47",
-diff --git b/python/sglang/srt/models/flint.py b/python/sglang/srt/models/flint.py
+diff --git a/python/sglang/srt/models/flint.py b/python/sglang/srt/models/flint.py
 new file mode 100644
-index 0000000..cdd4a0b
+index 00000000..cdd4a0b0
 --- /dev/null
 +++ b/python/sglang/srt/models/flint.py
 @@ -0,0 +1,510 @@
@@ -1176,10 +1176,10 @@ index 0000000..cdd4a0b
 +
 +EntryClass = FlintForCausalLM
 diff --git a/python/sglang/srt/parser/reasoning_parser.py b/python/sglang/srt/parser/reasoning_parser.py
-index 4dec025..2099165 100644
+index b85d1563..ca9c8fe3 100644
 --- a/python/sglang/srt/parser/reasoning_parser.py
 +++ b/python/sglang/srt/parser/reasoning_parser.py
-@@ -2239,6 +2239,40 @@ class MuseGlimmerDetector(BaseReasoningFormatDetector):
+@@ -2254,6 +2254,40 @@ class MuseGlimmerDetector(BaseReasoningFormatDetector):
          return StreamingParseResult(normal_text=normal, reasoning_text=reasoning)
  
  
@@ -1220,19 +1220,19 @@ index 4dec025..2099165 100644
  class ReasoningParser:
      """
      Parser that handles both streaming and non-streaming scenarios for extracting
-@@ -2261,6 +2295,7 @@ class ReasoningParser:
+@@ -2277,6 +2311,7 @@ class ReasoningParser:
          "deepseek-v4": DeepSeekV4Detector,
-         "deepseek-v41": DeepSeekV41ReasoningDetector,
+         "deepseek-v41": DeepSeekV4Detector,
          "dots": Qwen3Detector,
 +        "flint": FlintReasoningDetector,
          "glm45": Glm45Detector,
          "ling3": Ling3Detector,
          "hunyuan": HunyuanDetector,
 diff --git a/python/sglang/srt/parser/reasoning_parser_names.py b/python/sglang/srt/parser/reasoning_parser_names.py
-index c061572..c64bb12 100644
+index 6c3a9636..c639ea5c 100644
 --- a/python/sglang/srt/parser/reasoning_parser_names.py
 +++ b/python/sglang/srt/parser/reasoning_parser_names.py
-@@ -10,6 +10,7 @@ REASONING_PARSER_NAMES = [
+@@ -11,6 +11,7 @@ REASONING_PARSER_NAMES = [
      "deepseek-v4",
      "deepseek-v41",
      "dots",
@@ -1241,10 +1241,10 @@ index c061572..c64bb12 100644
      "ling3",
      "hunyuan",
 diff --git a/python/sglang/srt/utils/hf_transformers/common.py b/python/sglang/srt/utils/hf_transformers/common.py
-index 6eb9a91..6c2e390 100644
+index c374dd49..131b8e50 100644
 --- a/python/sglang/srt/utils/hf_transformers/common.py
 +++ b/python/sglang/srt/utils/hf_transformers/common.py
-@@ -61,6 +61,7 @@ from sglang.srt.configs import (
+@@ -62,6 +62,7 @@ from sglang.srt.configs import (
      KimiK25Config,
      KimiLinearConfig,
      KimiVLConfig,
@@ -1252,7 +1252,7 @@ index 6eb9a91..6c2e390 100644
      LagunaConfig,
      LocateAnythingConfig,
      LongcatFlashConfig,
-@@ -128,6 +129,7 @@ _CONFIG_REGISTRY: Dict[str, Type[PretrainedConfig]] = {
+@@ -131,6 +132,7 @@ _CONFIG_REGISTRY: Dict[str, Type[PretrainedConfig]] = {
          K2HorizonConfig,
          LocateAnythingConfig,
          InternVLChatConfig,

@@ -1,5 +1,5 @@
 diff --git a/python/sglang/kernels/ops/kvcache/triton_store_cache.py b/python/sglang/kernels/ops/kvcache/triton_store_cache.py
-index 1261720610..1b0fbc6f11 100644
+index 12617206..1b0fbc6f 100644
 --- a/python/sglang/kernels/ops/kvcache/triton_store_cache.py
 +++ b/python/sglang/kernels/ops/kvcache/triton_store_cache.py
 @@ -259,3 +259,123 @@ def triton_fused_store_cache(
@@ -127,18 +127,18 @@ index 1261720610..1b0fbc6f11 100644
 +        num_warps=8 if block >= 512 else 4,
 +    )
 diff --git a/python/sglang/srt/mem_cache/memory_pool.py b/python/sglang/srt/mem_cache/memory_pool.py
-index 0b49632aa7..94df866649 100644
+index cc2e2dca..bb40442c 100644
 --- a/python/sglang/srt/mem_cache/memory_pool.py
 +++ b/python/sglang/srt/mem_cache/memory_pool.py
-@@ -84,6 +84,7 @@ from sglang.srt.platforms import current_platform
- from sglang.srt.runtime_context import get_parallel
+@@ -85,6 +85,7 @@ from sglang.srt.runtime_context import get_parallel, get_platform
  from sglang.srt.utils import (
+     ceil_align,
      cpu_has_amx_support,
 +    get_bool_env_var,
      is_cpu,
      is_cuda,
      is_gfx95_supported,
-@@ -130,6 +131,9 @@ _FP8_KV_CACHE_DTYPES = (
+@@ -132,6 +133,9 @@ _FP8_KV_CACHE_DTYPES = (
  # the SHUFFLE 5D pool layout has no consumer kernels, so the env var is
  # silently ignored and the legacy NHD layout is used.
  _use_aiter = bool(envs.SGLANG_USE_AITER.get()) and _is_hip
@@ -148,7 +148,7 @@ index 0b49632aa7..94df866649 100644
  
  if _is_xpu:
      from sgl_kernel import store_cache_xpu
-@@ -2862,6 +2866,40 @@ class MHATokenToKVPool(KVCache):
+@@ -2928,6 +2932,40 @@ class MHATokenToKVPool(KVCache):
              )
              return
  
@@ -191,7 +191,7 @@ index 0b49632aa7..94df866649 100644
                  if k_scale is not None:
 diff --git a/test/registered/kernels/test_rdna4_fp8_kv_store.py b/test/registered/kernels/test_rdna4_fp8_kv_store.py
 new file mode 100644
-index 0000000000..2a6282df76
+index 00000000..2a6282df
 --- /dev/null
 +++ b/test/registered/kernels/test_rdna4_fp8_kv_store.py
 @@ -0,0 +1,135 @@

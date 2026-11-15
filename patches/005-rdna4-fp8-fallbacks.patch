@@ -1,5 +1,5 @@
 diff --git a/python/sglang/kernels/ops/gemm/fp8_kernel.py b/python/sglang/kernels/ops/gemm/fp8_kernel.py
-index ff32551d33..ec6a647a02 100644
+index 2e7bdd7a..e5c6912e 100644
 --- a/python/sglang/kernels/ops/gemm/fp8_kernel.py
 +++ b/python/sglang/kernels/ops/gemm/fp8_kernel.py
 @@ -11,6 +11,7 @@ import triton.language as tl
@@ -76,40 +76,14 @@ index ff32551d33..ec6a647a02 100644
 +    return torch.mm(A_bf16, B_bf16.t()).to(output_dtype)
 +
 +
- def w8a8_block_fp8_matmul(
-     A: torch.Tensor,
-     B: torch.Tensor,
-@@ -888,14 +933,21 @@ def w8a8_block_fp8_matmul(
-     block_size: List[int],
-     output_dtype: torch.dtype = torch.float16,
- ) -> torch.Tensor:
-+    # RDNA4: use torch-native path to avoid Triton FP8 matmul ISA crash
-+    if _is_hip and get_device_capability()[0] >= 12:
-+        return _w8a8_block_fp8_matmul_torch(
-+            A, B, As, Bs, block_size, output_dtype=output_dtype
-+        )
-     if output_dtype == torch.bfloat16 and deep_gemm_wrapper.ENABLE_JIT_DEEPGEMM:
--        return w8a8_block_fp8_matmul_deepgemm(
-+        result = w8a8_block_fp8_matmul_deepgemm(
-+            A, B, As, Bs, block_size, output_dtype=output_dtype
-+        )
-+    else:
-+        result = w8a8_block_fp8_matmul_triton(
-             A, B, As, Bs, block_size, output_dtype=output_dtype
-         )
- 
--    return w8a8_block_fp8_matmul_triton(
--        A, B, As, Bs, block_size, output_dtype=output_dtype
--    )
-+    return result
- 
- 
  def is_weak_contiguous(x: torch.Tensor):
+     strides = x.stride()
+     sizes = x.shape
 diff --git a/python/sglang/srt/layers/quantization/fp8_utils.py b/python/sglang/srt/layers/quantization/fp8_utils.py
-index 6fa480b3b8..51bfbfb6a2 100755
+index 9457090f..8ec5744c 100755
 --- a/python/sglang/srt/layers/quantization/fp8_utils.py
 +++ b/python/sglang/srt/layers/quantization/fp8_utils.py
-@@ -201,6 +201,17 @@ def emit_transposed_bpreshuffle_scale(m: int, *, on_bpreshuffle_gfx95: bool) ->
+@@ -316,6 +316,17 @@ def emit_transposed_bpreshuffle_scale(m: int, *, on_bpreshuffle_gfx95: bool) ->
      return on_bpreshuffle_gfx95 and m >= 2
  
  
@@ -127,7 +101,7 @@ index 6fa480b3b8..51bfbfb6a2 100755
  def use_aiter_triton_gemm_w8a8_tuned_gfx950(n: int, k: int) -> bool:
      if _FORCE_CK_W8A8:
          return False
-@@ -296,7 +307,15 @@ def use_rowwise_torch_scaled_mm():
+@@ -383,7 +394,15 @@ def use_rowwise_torch_scaled_mm():
          # torch._scaled_mm rowwise feature.
          # The condition is determined once as the operations
          # are time consuming.
@@ -141,10 +115,10 @@ index 6fa480b3b8..51bfbfb6a2 100755
 +            and cap < (10, 0)
 +            and torch_release >= (2, 7)
 +        )
-     return False
- 
- 
-@@ -1029,9 +1048,10 @@ def _dispatch_auto_backend() -> Callable:
+     if _is_xpu:
+         # XPU's torch._scaled_mm backend supports rowwise scaling.
+         return True
+@@ -1174,9 +1193,10 @@ def _dispatch_auto_backend(act_scale_ue8m0: bool = False) -> Callable:
      # 2. FlashInfer TRTLLM (if Blackwell GPU and FlashInfer available)
      # 3. CUTLASS (if SM120 GPU and CUDA 12.8+)
      # 4. AITER (if AMD GPU with AITER enabled)
@@ -158,7 +132,7 @@ index 6fa480b3b8..51bfbfb6a2 100755
  
      if deep_gemm_wrapper.ENABLE_JIT_DEEPGEMM:
          return deepgemm_w8a8_block_fp8_linear_with_fallback
-@@ -1041,6 +1061,19 @@ def _dispatch_auto_backend() -> Callable:
+@@ -1186,6 +1206,19 @@ def _dispatch_auto_backend(act_scale_ue8m0: bool = False) -> Callable:
          return cutlass_w8a8_block_fp8_linear_with_fallback
      elif _use_aiter:
          return aiter_w8a8_block_fp8_linear
@@ -172,17 +146,17 @@ index 6fa480b3b8..51bfbfb6a2 100755
 +        # path reachable for A/B via SGLANG_RDNA4_TORCH_FP8_LINEAR=1.
 +        if get_bool_env_var("SGLANG_RDNA4_TORCH_FP8_LINEAR"):
 +            import sys; print("[RDNA4] Using torch_w8a8_block_fp8_linear for dense FP8 (env-forced)", file=sys.stderr, flush=True)
-+            return torch_w8a8_block_fp8_linear
++            return rdna4_torch_w8a8_block_fp8_linear
 +        import sys; print("[RDNA4] Using triton_w8a8_block_fp8_linear for dense FP8", file=sys.stderr, flush=True)
 +        return triton_w8a8_block_fp8_linear
-     elif is_npu_arch35():
-         from sglang.srt.hardware_backend.npu.quantization.linear_method_npu import (
-             npu_w8a8_mxfp8_linear,
-@@ -1600,6 +1633,31 @@ def triton_w8a8_block_fp8_linear(
+     elif is_npu_arch35() and (
+         # UE8M0 checkpoints are served in the MXFP8 layout losslessly; plain
+         # block-FP8 ones (fp32 scales) only join them when load-time
+@@ -1839,6 +1872,32 @@ def triton_w8a8_block_fp8_linear(
      return output.to(dtype=output_dtype).view(*output_shape)
  
  
-+def torch_w8a8_block_fp8_linear(
++def rdna4_torch_w8a8_block_fp8_linear(
 +    input: torch.Tensor,
 +    weight: torch.Tensor,
 +    block_size: List[int],
@@ -191,7 +165,8 @@ index 6fa480b3b8..51bfbfb6a2 100755
 +    bias: Optional[torch.Tensor] = None,
 +) -> torch.Tensor:
 +    """RDNA4 torch-native FP8 linear: dequantize to BF16, use torch.mm.
-+    Avoids ALL Triton FP8 kernels that crash on gfx1201."""
++    Avoids ALL Triton FP8 kernels that crash on gfx1201. (Named apart from
++    upstream's XPU ``torch_w8a8_block_fp8_linear`` so the two do not shadow.)"""
 +    assert input_scale is None
 +    input_2d = input.view(-1, input.shape[-1])
 +    output_shape = [*input.shape[:-1], weight.shape[0]]
@@ -211,16 +186,19 @@ index 6fa480b3b8..51bfbfb6a2 100755
  def _get_triton_mxfp8_downcast():
      try:
 diff --git a/python/sglang/srt/layers/quantization/quark/schemes/quark_w4a4_mxfp4.py b/python/sglang/srt/layers/quantization/quark/schemes/quark_w4a4_mxfp4.py
-index f860a3fbe9..65ffc16d2b 100644
+index 91689ca7..4ffa925c 100644
 --- a/python/sglang/srt/layers/quantization/quark/schemes/quark_w4a4_mxfp4.py
 +++ b/python/sglang/srt/layers/quantization/quark/schemes/quark_w4a4_mxfp4.py
-@@ -82,15 +82,24 @@ def _dequant_mxfp4_to_bf16(
+@@ -159,18 +159,27 @@ def _dequant_mxfp4_to_bf16(
      return w.to(torch.bfloat16)
  
  
 +# RDNA4: aiter is not installed (no gfx12 build); the MXFP4 kernels are optional.
 +_aiter_mxfp4_available = False
  if _is_hip:
+-    from aiter import gemm_a4w4 as _gemm_a4w4_orig
+-    from aiter import per_1x32_f4_quant_hip as _per_1x32_f4_quant_hip_orig
+-    from aiter.ops.shuffle import shuffle_weight
 -    from aiter.ops.triton.gemm.fused.fused_gemm_afp4wfp4_split_cat import (
 -        fused_gemm_afp4wfp4_split_cat as _fused_gemm_afp4wfp4_split_cat_orig,
 -    )
@@ -230,6 +208,9 @@ index f860a3fbe9..65ffc16d2b 100644
 -    )
 -    from aiter.ops.triton.quant import dynamic_mxfp4_quant as _dynamic_mxfp4_quant_orig
 +    try:
++        from aiter import gemm_a4w4 as _gemm_a4w4_orig
++        from aiter import per_1x32_f4_quant_hip as _per_1x32_f4_quant_hip_orig
++        from aiter.ops.shuffle import shuffle_weight
 +        from aiter.ops.triton.gemm.fused.fused_gemm_afp4wfp4_split_cat import (
 +            fused_gemm_afp4wfp4_split_cat as _fused_gemm_afp4wfp4_split_cat_orig,
 +        )
@@ -248,7 +229,7 @@ index f860a3fbe9..65ffc16d2b 100644
      def _aiter_gemm_afp4wfp4(
          x: torch.Tensor,
 diff --git a/python/sglang/srt/layers/quantization/quark_int4fp8_moe.py b/python/sglang/srt/layers/quantization/quark_int4fp8_moe.py
-index 8fb1bee61e..adffe00082 100644
+index 8fb1bee6..adffe000 100644
 --- a/python/sglang/srt/layers/quantization/quark_int4fp8_moe.py
 +++ b/python/sglang/srt/layers/quantization/quark_int4fp8_moe.py
 @@ -27,9 +27,13 @@ _is_hip = is_hip()

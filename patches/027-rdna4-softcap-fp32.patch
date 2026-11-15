@@ -1,8 +1,8 @@
 diff --git a/python/sglang/kernels/ops/activation/softcap.py b/python/sglang/kernels/ops/activation/softcap.py
-index 317dfed36c..833fb75007 100644
+index d1025c45..6528c8f3 100644
 --- a/python/sglang/kernels/ops/activation/softcap.py
 +++ b/python/sglang/kernels/ops/activation/softcap.py
-@@ -87,9 +87,11 @@ def softcap_inplace_logits_kernel(
+@@ -24,9 +24,11 @@ def softcap_inplace_logits_kernel(
  
      # Load values
      row_ptr = full_logits_ptr + row * row_stride
@@ -15,9 +15,9 @@ index 317dfed36c..833fb75007 100644
 +    # path casts back to the logits dtype; CAST_TO_FP32 stores the FP32 result as is.
 +    x = x_in.to(tl.float32)
  
-     x = x / softcapping_value
-     x = libdevice.tanh(x)
-@@ -99,7 +101,7 @@ def softcap_inplace_logits_kernel(
+     if APPLY_SOFTCAP:
+         x = x / softcapping_value
+@@ -37,7 +39,7 @@ def softcap_inplace_logits_kernel(
      if CAST_TO_FP32:
          tl.store(output_ptr + row * output_row_stride + offsets, x, mask=mask)
      else:
@@ -26,8 +26,18 @@ index 317dfed36c..833fb75007 100644
  
  
  def _softcap_logits(full_logits, final_logit_softcapping, output=None):
+@@ -113,6 +115,9 @@ def _gathered_softcap_logits_kernel(
+         - shard * shard_width,
+         mask=mask,
+     )
++    # RDNA4 patch 027: softcap the all-gathered logits in FP32 as well (the gathered
++    # tensor keeps the BF16 logits dtype; the output is FP32).
++    x = x.to(tl.float32)
+     x = x / softcapping_value
+     x = libdevice.tanh(x)
+     x = x * softcapping_value
 diff --git a/python/sglang/kernels/ops/attention/decode_attention.py b/python/sglang/kernels/ops/attention/decode_attention.py
-index 6297cdd021..7c6de186f4 100644
+index 72ff0801..5963a7ab 100644
 --- a/python/sglang/kernels/ops/attention/decode_attention.py
 +++ b/python/sglang/kernels/ops/attention/decode_attention.py
 @@ -31,6 +31,7 @@ import triton.language as tl
@@ -46,7 +56,7 @@ index 6297cdd021..7c6de186f4 100644
  _is_gfx1250 = _is_hip and is_gfx1250_supported()
  
  logger = logging.getLogger(__name__)
-@@ -219,7 +221,8 @@ def _extract_kv_strides(buf, page_size: int):
+@@ -228,7 +230,8 @@ def _extract_kv_strides(buf, page_size: int):
  @triton.jit
  def tanh(x):
      # Tanh is just a scaled sigmoid
@@ -56,7 +66,7 @@ index 6297cdd021..7c6de186f4 100644
  
  
  @triton.jit
-@@ -432,7 +435,7 @@ def _decode_att_m_fwd(
+@@ -448,7 +451,7 @@ def _decode_att_m_fwd(
      BLOCK = 64
      # [TODO] work around SGPR limit on MI3xx
      if _is_hip:
@@ -65,7 +75,7 @@ index 6297cdd021..7c6de186f4 100644
      MAX_KV_SPLITS = max_kv_splits
      Lk = k_buffer.shape[-1]
      Lv = v_buffer.shape[-1]
-@@ -448,7 +451,7 @@ def _decode_att_m_fwd(
+@@ -464,7 +467,7 @@ def _decode_att_m_fwd(
          num_warps = 4
      else:
          num_warps = 2
@@ -75,10 +85,10 @@ index 6297cdd021..7c6de186f4 100644
  
      BLOCK_DMODEL = triton.next_power_of_2(Lk)
 diff --git a/python/sglang/kernels/ops/attention/extend_attention.py b/python/sglang/kernels/ops/attention/extend_attention.py
-index c394fab750..821b2fdd49 100644
+index 8001d38f..c25dc203 100644
 --- a/python/sglang/kernels/ops/attention/extend_attention.py
 +++ b/python/sglang/kernels/ops/attention/extend_attention.py
-@@ -209,7 +209,8 @@ def _compact_extend_q_tiles_per_head(
+@@ -207,7 +207,8 @@ def _compact_extend_q_tiles_per_head(
  @triton.jit
  def tanh(x):
      # Tanh is just a scaled sigmoid

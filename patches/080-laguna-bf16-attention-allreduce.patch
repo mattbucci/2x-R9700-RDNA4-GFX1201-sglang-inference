@@ -1,5 +1,5 @@
 diff --git a/python/sglang/srt/layers/layer_boundary/__init__.py b/python/sglang/srt/layers/layer_boundary/__init__.py
-index 06792217c4..9b95bf821b 100644
+index 06792217..9b95bf82 100644
 --- a/python/sglang/srt/layers/layer_boundary/__init__.py
 +++ b/python/sglang/srt/layers/layer_boundary/__init__.py
 @@ -64,6 +64,7 @@ from sglang.srt.layers.layer_boundary.residual.add_norm import (
@@ -19,10 +19,10 @@ index 06792217c4..9b95bf821b 100644
      "StagePath",
      "EdgeContract",
 diff --git a/python/sglang/srt/layers/layer_boundary/exit.py b/python/sglang/srt/layers/layer_boundary/exit.py
-index 0e933f6242..07c069f83d 100644
+index 1ebd9e57..46f76d67 100644
 --- a/python/sglang/srt/layers/layer_boundary/exit.py
 +++ b/python/sglang/srt/layers/layer_boundary/exit.py
-@@ -351,6 +351,7 @@ class ExitPolicy:
+@@ -380,6 +380,7 @@ class ExitPolicy:
                  steps.output.group,
                  forward_batch,
                  may_quantize=steps.output.update.quantized_sum,
@@ -30,7 +30,7 @@ index 0e933f6242..07c069f83d 100644
              )
          if steps.output.transform is not None:
              hidden_states = steps.output.transform.apply(hidden_states)
-@@ -513,6 +514,7 @@ class MixerExit:
+@@ -561,6 +562,7 @@ class MixerExit:
                  self._group,
                  self._forward_batch,
                  may_quantize=self._update.quantized_sum,
@@ -39,10 +39,10 @@ index 0e933f6242..07c069f83d 100644
          return self._stream.record(
              hidden_states, self._update, declared_sum=self._declared_sum
 diff --git a/python/sglang/srt/layers/layer_boundary/ops.py b/python/sglang/srt/layers/layer_boundary/ops.py
-index 5820e7cd4a..4fd23ccd26 100644
+index 383513f9..4fe7fbef 100644
 --- a/python/sglang/srt/layers/layer_boundary/ops.py
 +++ b/python/sglang/srt/layers/layer_boundary/ops.py
-@@ -183,11 +183,16 @@ def moe_cp_gather(
+@@ -210,11 +210,16 @@ def cp_take_back_in_token_order(
  
  
  def attn_tp_all_reduce(
@@ -62,7 +62,7 @@ index 5820e7cd4a..4fd23ccd26 100644
          orig_dtype = hidden_states.dtype
          if orig_dtype != torch.float32:
              hidden_states = hidden_states.float()
-@@ -210,13 +215,16 @@ def sum_output(
+@@ -237,13 +242,16 @@ def sum_output(
      forward_batch: ForwardBatch,
      *,
      may_quantize: bool,
@@ -81,10 +81,10 @@ index 5820e7cd4a..4fd23ccd26 100644
          if parallel.tp_size == 1:
              return hidden_states
 diff --git a/python/sglang/srt/layers/layer_boundary/prepare.py b/python/sglang/srt/layers/layer_boundary/prepare.py
-index b8b8c2de7b..450e094d17 100644
+index 45a3eb53..5cafb476 100644
 --- a/python/sglang/srt/layers/layer_boundary/prepare.py
 +++ b/python/sglang/srt/layers/layer_boundary/prepare.py
-@@ -135,7 +135,10 @@ def _reduce_update_read(
+@@ -161,7 +161,10 @@ def _reduce_update_read(
              return result
      if group is SumGroup.ATTN_TP:
          hidden_states = attn_tp_all_reduce(
@@ -96,7 +96,7 @@ index b8b8c2de7b..450e094d17 100644
          )
      elif group is SumGroup.TP:
          hidden_states = tensor_model_parallel_all_reduce(hidden_states)
-@@ -176,7 +179,12 @@ def _reduce_update_read_dp_gather(
+@@ -202,7 +205,12 @@ def _reduce_update_read_dp_gather(
      if hidden_states.shape[0] != 0:
          if reduces_attention_tp:
              hidden_states = (
@@ -111,7 +111,7 @@ index b8b8c2de7b..450e094d17 100644
                  else _sum_group(group).all_reduce(hidden_states)
              )
 diff --git a/python/sglang/srt/layers/layer_boundary/residual/__init__.py b/python/sglang/srt/layers/layer_boundary/residual/__init__.py
-index adbffd9588..5bc3665d80 100644
+index 23d00cfd..e4273112 100644
 --- a/python/sglang/srt/layers/layer_boundary/residual/__init__.py
 +++ b/python/sglang/srt/layers/layer_boundary/residual/__init__.py
 @@ -38,6 +38,11 @@ class ResidualUpdate(Protocol):
@@ -124,13 +124,13 @@ index adbffd9588..5bc3665d80 100644
 +            conventional attention models may declare False to keep the
 +            activation-dtype collective (no casts, half the payload).
  
-     The shard conversion methods must move any update-associated state together
-     with the residual. Nonlinear updates must not claim is_plain_add.
+     An optional ``bind(forward_batch, context)`` returns an update owning this call's
+     dynamic metadata. The stage binds it once before recording a contribution;
 diff --git a/python/sglang/srt/layers/layer_boundary/residual/add_norm.py b/python/sglang/srt/layers/layer_boundary/residual/add_norm.py
-index 6bfdd74f77..8882f76a94 100644
+index 13314767..b91dc4f4 100644
 --- a/python/sglang/srt/layers/layer_boundary/residual/add_norm.py
 +++ b/python/sglang/srt/layers/layer_boundary/residual/add_norm.py
-@@ -278,6 +278,8 @@ class PlainAdd:
+@@ -279,6 +279,8 @@ class PlainAdd:
      outlives_layer = True
      writes_stream = False
      quantized_sum = True
@@ -139,7 +139,7 @@ index 6bfdd74f77..8882f76a94 100644
  
      def update(self, hidden_states, residual):
          hidden_states += residual
-@@ -435,7 +437,16 @@ class UnfusedNormReadout(NormReadout):
+@@ -445,7 +447,16 @@ class UnfusedNormReadout(NormReadout):
          return self.read(hidden_states, norm, quant_format, post_residual_addition)
  
  
@@ -157,7 +157,7 @@ index 6bfdd74f77..8882f76a94 100644
  NORM_QUANT_READOUT = NormQuantReadout()
  NORM_READOUT = NormReadout()
 diff --git a/python/sglang/srt/models/laguna.py b/python/sglang/srt/models/laguna.py
-index ea8ec60ba7..ed7a4f6e73 100644
+index a84be7e5..0e3e7c40 100644
 --- a/python/sglang/srt/models/laguna.py
 +++ b/python/sglang/srt/models/laguna.py
 @@ -24,6 +24,7 @@ from sglang.srt.layers.dp_attention import (
@@ -168,7 +168,7 @@ index ea8ec60ba7..ed7a4f6e73 100644
      append_stages,
      declare_attn,
      declare_ffn,
-@@ -466,7 +467,10 @@ class LagunaDecoderLayer(nn.Module):
+@@ -467,7 +468,10 @@ class LagunaDecoderLayer(nn.Module):
              and mlp_types[layer_id + 1] == "sparse"
          )
          return (
