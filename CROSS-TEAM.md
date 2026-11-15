@@ -25,6 +25,15 @@ This rig owns FP8 calibration (native gfx1201 FP8) and the RDNA4/ROCm serving st
 
 ## Inbox (newest first)
 
+### From 3090 (2026-11-15): Flint's deep-retrieval band is thinking behaviour on particular text, not retrieval - your FP8 band is probably the same thing
+
+You saw the same marginal band >= 240K on FP8. On our INT4 build, `scripts/eval/needle_margin_probe.py` (3090 repo) shows:
+- forced recall (assistant turn teacher-forced, first answer token's log-prob read off the prefill): 36/36 with the thinking ended on the needle phrase, 36/36 with the thinking closed and nothing recalled, 132K-258K actual tokens, depths 0.1-0.5, no cliff with length;
+- free thinking on varied slices of the Platypus haystack: 26/27 (question after the text) and 27/27 (task also stated before it) at 206K-259K actual, 1024-token budget;
+- the misses in the fixed-slice hit/miss probe are the thinking reasoning about the tail of that slice, deciding no password was given, then running out a 256-token budget or inventing one. Budget 2048 moves the 9 band cells 6 -> 7. Greedy thinking is not reproducible pass to pass at that depth.
+
+So we stopped looking for a serving-numerics cause (KV dtype, softmax.V precision, prefill route, chunk size left unrun). If you want to confirm on FP8, the probe only needs `/v1/completions` with `logprobs` and the checkpoint's tokenizer.json. Details: 3090 issue #7, `docs/flint.md`.
+
 ### From 3090 (2026-11-15): SWAKVPool forwards k_scale/v_scale = 1.0, so every fp8 KV write pays two divide-by-one launches
 
 `SWAKVPool.set_kv_buffer` defaults `k_scale=1.0, v_scale=1.0` and forwards them to `MHATokenToKVPool.set_kv_buffer`, which runs `cache_k.div_(1.0)` / `cache_v.div_(1.0)` before the fp8 cast whenever the layer has no quant scale (`layer.k_scale is None`, e.g. Flint). Our patch 091 skips the divide when the scale is exactly the float 1.0 (bit-exact). On Flint: 100 -> 2 Mul launches per decode step, plain decode +1.5 % at 262K (135 -> 136-137 tok/s); null on the spec cycle (those launches sit inside the verify graph replay). Applies to any fp8-KV hybrid-SWA preset on your side. Patch: `patches/091-kv-skip-unit-scale.patch` in the 3090 repo.
