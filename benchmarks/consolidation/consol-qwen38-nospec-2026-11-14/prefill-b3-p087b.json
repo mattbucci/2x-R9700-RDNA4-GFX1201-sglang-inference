@@ -1,0 +1,40 @@
+{
+ "label": "b3-p087b",
+ "model": "/data/models/Qwen3.8-27B-FP8",
+ "port": 23334,
+ "runs": 2,
+ "method": "flush_cache + non-stream max_tokens=1 wall time",
+ "timestamp": "2026-11-15 00:23",
+ "rows": [
+  {
+   "context": 8192,
+   "input_len": 7331,
+   "runs_s": [
+    2.595,
+    2.578
+   ],
+   "median_s": 2.587,
+   "prefill_tok_per_s": 2834.0
+  },
+  {
+   "context": 65536,
+   "input_len": 58483,
+   "runs_s": [
+    22.505,
+    22.38
+   ],
+   "median_s": 22.443,
+   "prefill_tok_per_s": 2605.9
+  },
+  {
+   "context": 221184,
+   "input_len": 197326,
+   "runs_s": [
+    97.175,
+    96.921
+   ],
+   "median_s": 97.048,
+   "prefill_tok_per_s": 2033.3
+  }
+ ]
+}

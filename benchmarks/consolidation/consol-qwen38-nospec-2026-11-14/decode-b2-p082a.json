@@ -1,0 +1,248 @@
+{
+  "label": "b2-p082a",
+  "tag": "",
+  "note": "CONSOL-1 session qwen38-nospec, preset qwen38, 100 patches, --random-seed 7; canonical sweep, 5 runs, EOS, behind the cold prefill probe",
+  "port": 23334,
+  "maxtok": 80,
+  "runs": 5,
+  "sampling": null,
+  "ignore_eos": false,
+  "points": [
+    {
+      "context": 128,
+      "input_len": 24,
+      "runs_tps": [
+        34.83,
+        34.89,
+        34.89,
+        34.89,
+        34.88
+      ],
+      "median_tps": 34.888,
+      "min_tps": 34.829,
+      "max_tps": 34.894,
+      "runs_completion_tokens": [
+        80,
+        80,
+        80,
+        80,
+        80
+      ],
+      "runs_verify_ct": [
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "runs_decode_s": [
+        2.2682,
+        2.2644,
+        2.2644,
+        2.264,
+        2.2648
+      ],
+      "runs_text_sha": [
+        "835eb9766c70",
+        "835eb9766c70",
+        "835eb9766c70",
+        "835eb9766c70",
+        "835eb9766c70"
+      ],
+      "runs_pieces": [
+        80,
+        80,
+        80,
+        80,
+        80
+      ],
+      "runs_median_gap_ms": [
+        28.74,
+        28.67,
+        28.67,
+        28.67,
+        28.68
+      ],
+      "median_tpot_ms": 28.66,
+      "sample": "# The Memory Wall: A Deep Dive into GPU Memory Hierarchy and",
+      "median_ttft_ms": 58.2
+    },
+    {
+      "context": 8192,
+      "input_len": 7331,
+      "runs_tps": [
+        34.13,
+        34.14,
+        34.22,
+        34.21,
+        34.22
+      ],
+      "median_tps": 34.211,
+      "min_tps": 34.134,
+      "max_tps": 34.221,
+      "runs_completion_tokens": [
+        38,
+        38,
+        38,
+        38,
+        38
+      ],
+      "runs_verify_ct": [
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "runs_decode_s": [
+        1.084,
+        1.0837,
+        1.0812,
+        1.0815,
+        1.0812
+      ],
+      "runs_text_sha": [
+        "1b6116ecc084",
+        "1b6116ecc084",
+        "1b6116ecc084",
+        "1b6116ecc084",
+        "1b6116ecc084"
+      ],
+      "runs_pieces": [
+        37,
+        37,
+        37,
+        37,
+        37
+      ],
+      "runs_median_gap_ms": [
+        29.32,
+        29.3,
+        29.21,
+        29.24,
+        29.27
+      ],
+      "median_tpot_ms": 29.23,
+      "sample": "The provided text consists of the pangram \"The quick brown f",
+      "median_ttft_ms": 112.4
+    },
+    {
+      "context": 65536,
+      "input_len": 58483,
+      "runs_tps": [
+        32.53,
+        32.6,
+        32.61,
+        32.6,
+        32.61
+      ],
+      "median_tps": 32.604,
+      "min_tps": 32.529,
+      "max_tps": 32.61,
+      "runs_completion_tokens": [
+        46,
+        46,
+        46,
+        46,
+        46
+      ],
+      "runs_verify_ct": [
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "runs_decode_s": [
+        1.3834,
+        1.3802,
+        1.38,
+        1.3803,
+        1.3799
+      ],
+      "runs_text_sha": [
+        "2839c2c723c1",
+        "2839c2c723c1",
+        "2839c2c723c1",
+        "2839c2c723c1",
+        "2839c2c723c1"
+      ],
+      "runs_pieces": [
+        45,
+        45,
+        45,
+        45,
+        45
+      ],
+      "runs_median_gap_ms": [
+        30.77,
+        30.71,
+        30.68,
+        30.68,
+        30.67
+      ],
+      "median_tpot_ms": 30.67,
+      "sample": "The provided text consists of the pangram \"The quick brown f",
+      "median_ttft_ms": 116.5
+    },
+    {
+      "context": 221184,
+      "input_len": 197326,
+      "runs_tps": [
+        29.07,
+        29.1,
+        29.14,
+        28.78,
+        29.11
+      ],
+      "median_tps": 29.096,
+      "min_tps": 28.776,
+      "max_tps": 29.136,
+      "runs_completion_tokens": [
+        46,
+        37,
+        37,
+        37,
+        37
+      ],
+      "runs_verify_ct": [
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "runs_decode_s": [
+        1.548,
+        1.2373,
+        1.2356,
+        1.251,
+        1.2365
+      ],
+      "runs_text_sha": [
+        "2839c2c723c1",
+        "56629bc1623f",
+        "56629bc1623f",
+        "56629bc1623f",
+        "56629bc1623f"
+      ],
+      "runs_pieces": [
+        45,
+        36,
+        36,
+        36,
+        36
+      ],
+      "runs_median_gap_ms": [
+        34.48,
+        34.39,
+        34.32,
+        34.37,
+        34.37
+      ],
+      "median_tpot_ms": 34.37,
+      "sample": "The provided text consists of the pangram \"The quick brown f",
+      "median_ttft_ms": 115.0
+    }
+  ]
+}

@@ -1,0 +1,1952 @@
+{
+ "session": "qwen38-nospec",
+ "preset": "qwen38",
+ "keep": 0.03,
+ "drop": 0.01,
+ "arms": {
+  "p122": {
+   "patches": [
+    "122"
+   ],
+   "verdict": "keep",
+   "best_row": "decode@65536",
+   "best_gain": 0.1158,
+   "cost_row": null,
+   "cost": null,
+   "rows": {
+    "decode@128": {
+     "control": 35.614,
+     "arm": 31.95,
+     "gain": 0.1146,
+     "gain_by_order": [
+      0.1151,
+      0.1142
+     ],
+     "beyond_spread": true
+    },
+    "ttft@128": {
+     "control": 57.8,
+     "arm": 58.65,
+     "gain": 0.0,
+     "gain_by_order": [
+      0.0069,
+      0.0225
+     ],
+     "beyond_spread": false
+    },
+    "decode@8192": {
+     "control": 34.876,
+     "arm": 31.394,
+     "gain": 0.1109,
+     "gain_by_order": [
+      0.1095,
+      0.1123
+     ],
+     "beyond_spread": true
+    },
+    "ttft@8192": {
+     "control": 110.25,
+     "arm": 115.3,
+     "gain": 0.0,
+     "gain_by_order": [
+      0.044,
+      0.0476
+     ],
+     "beyond_spread": false
+    },
+    "decode@65536": {
+     "control": 33.573,
+     "arm": 30.088,
+     "gain": 0.1158,
+     "gain_by_order": [
+      0.1161,
+      0.1155
+     ],
+     "beyond_spread": true
+    },
+    "ttft@65536": {
+     "control": 114.05,
+     "arm": 119.5,
+     "gain": 0.0,
+     "gain_by_order": [
+      0.0522,
+      0.0434
+     ],
+     "beyond_spread": false
+    },
+    "decode@221184": {
+     "control": 29.603,
+     "arm": 26.96,
+     "gain": 0.098,
+     "gain_by_order": [
+      0.0969,
+      0.0991
+     ],
+     "beyond_spread": true
+    },
+    "ttft@221184": {
+     "control": 113.0,
+     "arm": 113.65,
+     "gain": 0.0,
+     "gain_by_order": [
+      0.0478,
+      -0.0363
+     ],
+     "beyond_spread": false
+    },
+    "prefill@8192": {
+     "control": 2.578,
+     "arm": 2.58,
+     "gain": 0.001,
+     "gain_by_order": [
+      0.0012,
+      0.0008
+     ],
+     "beyond_spread": true
+    },
+    "prefill@65536": {
+     "control": 22.461,
+     "arm": 22.456,
+     "gain": -0.0002,
+     "gain_by_order": [
+      0.0,
+      -0.0005
+     ],
+     "beyond_spread": false
+    },
+    "prefill@221184": {
+     "control": 97.089,
+     "arm": 97.102,
+     "gain": 0.0001,
+     "gain_by_order": [
+      0.0001,
+      0.0002
+     ],
+     "beyond_spread": true
+    },
+    "capacity": {
+     "control": 732790.0,
+     "arm": 732790.0,
+     "gain": 0.0,
+     "gain_by_order": [
+      0.0,
+      0.0
+     ],
+     "beyond_spread": false
+    }
+   }
+  },
+  "p123": {
+   "patches": [
+    "123"
+   ],
+   "verdict": "keep",
+   "best_row": "decode@65536",
+   "best_gain": 0.1502,
+   "cost_row": null,
+   "cost": null,
+   "rows": {
+    "decode@128": {
+     "control": 35.614,
+     "arm": 30.973,
+     "gain": 0.1498,
+     "gain_by_order": [
+      0.1497,
+      0.1499
+     ],
+     "beyond_spread": true
+    },
+    "ttft@128": {
+     "control": 57.8,
+     "arm": 61.55,
+     "gain": 0.0,
+     "gain_by_order": [
+      0.0606,
+      0.0692
+     ],
+     "beyond_spread": false
+    },
+    "decode@8192": {
+     "control": 34.876,
+     "arm": 30.458,
+     "gain": 0.1451,
+     "gain_by_order": [
+      0.1448,
+      0.1453
+     ],
+     "beyond_spread": true
+    },
+    "ttft@8192": {
+     "control": 110.25,
+     "arm": 121.9,
+     "gain": 0.0,
+     "gain_by_order": [
+      0.102,
+      0.1093
+     ],
+     "beyond_spread": false
+    },
+    "decode@65536": {
+     "control": 33.573,
+     "arm": 29.188,
+     "gain": 0.1502,
+     "gain_by_order": [
+      0.1497,
+      0.1507
+     ],
+     "beyond_spread": true
+    },
+    "ttft@65536": {
+     "control": 114.05,
+     "arm": 129.8,
+     "gain": 0.0,
+     "gain_by_order": [
+      0.1355,
+      0.1407
+     ],
+     "beyond_spread": false
+    },
+    "decode@221184": {
+     "control": 29.603,
+     "arm": 26.352,
+     "gain": 0.1234,
+     "gain_by_order": [
+      0.1228,
+      0.124
+     ],
+     "beyond_spread": true
+    },
+    "ttft@221184": {
+     "control": 113.0,
+     "arm": 119.75,
+     "gain": 0.0,
+     "gain_by_order": [
+      0.0159,
+      0.1035
+     ],
+     "beyond_spread": false
+    },
+    "prefill@8192": {
+     "control": 2.578,
+     "arm": 2.882,
+     "gain": 0.1179,
+     "gain_by_order": [
+      0.1183,
+      0.1175
+     ],
+     "beyond_spread": true
+    },
+    "prefill@65536": {
+     "control": 22.461,
+     "arm": 24.948,
+     "gain": 0.1107,
+     "gain_by_order": [
+      0.1098,
+      0.1116
+     ],
+     "beyond_spread": true
+    },
+    "prefill@221184": {
+     "control": 97.089,
+     "arm": 105.794,
+     "gain": 0.0897,
+     "gain_by_order": [
+      0.0897,
+      0.0896
+     ],
+     "beyond_spread": true
+    },
+    "capacity": {
+     "control": 732790.0,
+     "arm": 732790.0,
+     "gain": 0.0,
+     "gain_by_order": [
+      0.0,
+      0.0
+     ],
+     "beyond_spread": false
+    }
+   }
+  },
+  "p124": {
+   "patches": [
+    "124"
+   ],
+   "verdict": "keep",
+   "best_row": "decode@65536",
+   "best_gain": 0.0439,
+   "cost_row": null,
+   "cost": null,
+   "rows": {
+    "decode@128": {
+     "control": 35.614,
+     "arm": 34.336,
+     "gain": 0.0372,
+     "gain_by_order": [
+      0.0363,
+      0.0381
+     ],
+     "beyond_spread": true
+    },
+    "ttft@128": {
+     "control": 57.8,
+     "arm": 57.85,
+     "gain": 0.0,
+     "gain_by_order": [
+      0.0017,
+      0.0
+     ],
+     "beyond_spread": false
+    },
+    "decode@8192": {
+     "control": 34.876,
+     "arm": 33.667,
+     "gain": 0.0359,
+     "gain_by_order": [
+      0.0354,
+      0.0364
+     ],
+     "beyond_spread": true
+    },
+    "ttft@8192": {
+     "control": 110.25,
+     "arm": 111.3,
+     "gain": 0.0,
+     "gain_by_order": [
+      0.0059,
+      0.0132
+     ],
+     "beyond_spread": false
+    },
+    "decode@65536": {
+     "control": 33.573,
+     "arm": 32.161,
+     "gain": 0.0439,
+     "gain_by_order": [
+      0.0438,
+      0.0439
+     ],
+     "beyond_spread": true
+    },
+    "ttft@65536": {
+     "control": 114.05,
+     "arm": 115.9,
+     "gain": 0.0,
+     "gain_by_order": [
+      0.0153,
+      0.0171
+     ],
+     "beyond_spread": false
+    },
+    "decode@221184": {
+     "control": 29.603,
+     "arm": 28.714,
+     "gain": 0.031,
+     "gain_by_order": [
+      0.03,
+      0.0319
+     ],
+     "beyond_spread": true
+    },
+    "ttft@221184": {
+     "control": 113.0,
+     "arm": 111.75,
+     "gain": 0.0,
+     "gain_by_order": [
+      0.0301,
+      -0.0522
+     ],
+     "beyond_spread": false
+    },
+    "prefill@8192": {
+     "control": 2.578,
+     "arm": 2.577,
+     "gain": -0.0002,
+     "gain_by_order": [
+      -0.0004,
+      0.0
+     ],
+     "beyond_spread": true
+    },
+    "prefill@65536": {
+     "control": 22.461,
+     "arm": 22.469,
+     "gain": 0.0004,
+     "gain_by_order": [
+      -0.0002,
+      0.0009
+     ],
+     "beyond_spread": true
+    },
+    "prefill@221184": {
+     "control": 97.089,
+     "arm": 97.085,
+     "gain": -0.0,
+     "gain_by_order": [
+      -0.0003,
+      0.0002
+     ],
+     "beyond_spread": false
+    },
+    "capacity": {
+     "control": 732790.0,
+     "arm": 732790.0,
+     "gain": 0.0,
+     "gain_by_order": [
+      0.0,
+      0.0
+     ],
+     "beyond_spread": false
+    }
+   }
+  },
+  "p129": {
+   "patches": [
+    "129",
+    "119"
+   ],
+   "verdict": "keep",
+   "best_row": "decode@65536",
+   "best_gain": 0.032,
+   "cost_row": null,
+   "cost": null,
+   "rows": {
+    "decode@128": {
+     "control": 35.614,
+     "arm": 34.787,
+     "gain": 0.0238,
+     "gain_by_order": [
+      0.0237,
+      0.0239
+     ],
+     "beyond_spread": true
+    },
+    "ttft@128": {
+     "control": 57.8,
+     "arm": 62.05,
+     "gain": 0.0,
+     "gain_by_order": [
+      0.0796,
+      0.0675
+     ],
+     "beyond_spread": false
+    },
+    "decode@8192": {
+     "control": 34.876,
+     "arm": 34.086,
+     "gain": 0.0232,
+     "gain_by_order": [
+      0.0232,
+      0.0232
+     ],
+     "beyond_spread": true
+    },
+    "ttft@8192": {
+     "control": 110.25,
+     "arm": 116.5,
+     "gain": 0.0,
+     "gain_by_order": [
+      0.054,
+      0.0594
+     ],
+     "beyond_spread": false
+    },
+    "decode@65536": {
+     "control": 33.573,
+     "arm": 32.531,
+     "gain": 0.032,
+     "gain_by_order": [
+      0.0316,
+      0.0324
+     ],
+     "beyond_spread": true
+    },
+    "ttft@65536": {
+     "control": 114.05,
+     "arm": 118.3,
+     "gain": 0.0,
+     "gain_by_order": [
+      0.0338,
+      0.0408
+     ],
+     "beyond_spread": false
+    },
+    "decode@221184": {
+     "control": 29.603,
+     "arm": 29.017,
+     "gain": 0.0202,
+     "gain_by_order": [
+      0.0203,
+      0.0201
+     ],
+     "beyond_spread": true
+    },
+    "ttft@221184": {
+     "control": 113.0,
+     "arm": 118.15,
+     "gain": 0.0,
+     "gain_by_order": [
+      0.0469,
+      0.0442
+     ],
+     "beyond_spread": false
+    },
+    "prefill@8192": {
+     "control": 2.578,
+     "arm": 2.578,
+     "gain": 0.0,
+     "gain_by_order": [
+      0.0004,
+      -0.0004
+     ],
+     "beyond_spread": true
+    },
+    "prefill@65536": {
+     "control": 22.461,
+     "arm": 22.54,
+     "gain": 0.0035,
+     "gain_by_order": [
+      0.0009,
+      0.0061
+     ],
+     "beyond_spread": true
+    },
+    "prefill@221184": {
+     "control": 97.089,
+     "arm": 97.102,
+     "gain": 0.0001,
+     "gain_by_order": [
+      0.0005,
+      -0.0002
+     ],
+     "beyond_spread": true
+    },
+    "capacity": {
+     "control": 732790.0,
+     "arm": 735510.0,
+     "gain": -0.0037,
+     "gain_by_order": [
+      -0.0037,
+      -0.0037
+     ],
+     "beyond_spread": true
+    }
+   }
+  },
+  "p130": {
+   "patches": [
+    "130"
+   ],
+   "verdict": "keep",
+   "best_row": "prefill@8192",
+   "best_gain": 0.1894,
+   "cost_row": null,
+   "cost": null,
+   "rows": {
+    "decode@128": {
+     "control": 35.571,
+     "arm": 35.043,
+     "gain": 0.0151,
+     "gain_by_order": [
+      0.0161,
+      0.0141
+     ],
+     "beyond_spread": true
+    },
+    "ttft@128": {
+     "control": 58.2,
+     "arm": 58.7,
+     "gain": 0.0,
+     "gain_by_order": [
+      0.0189,
+      -0.0017
+     ],
+     "beyond_spread": false
+    },
+    "decode@8192": {
+     "control": 34.9,
+     "arm": 34.325,
+     "gain": 0.0168,
+     "gain_by_order": [
+      0.0171,
+      0.0164
+     ],
+     "beyond_spread": true
+    },
+    "ttft@8192": {
+     "control": 111.0,
+     "arm": 113.2,
+     "gain": 0.0,
+     "gain_by_order": [
+      0.0198,
+      0.0198
+     ],
+     "beyond_spread": false
+    },
+    "decode@65536": {
+     "control": 33.328,
+     "arm": 32.888,
+     "gain": 0.0134,
+     "gain_by_order": [
+      0.009,
+      0.0178
+     ],
+     "beyond_spread": true
+    },
+    "ttft@65536": {
+     "control": 115.5,
+     "arm": 119.5,
+     "gain": 0.0,
+     "gain_by_order": [
+      0.0303,
+      0.039
+     ],
+     "beyond_spread": false
+    },
+    "decode@221184": {
+     "control": 29.842,
+     "arm": 29.196,
+     "gain": 0.0221,
+     "gain_by_order": [
+      0.0224,
+      0.0218
+     ],
+     "beyond_spread": true
+    },
+    "ttft@221184": {
+     "control": 110.4,
+     "arm": 117.0,
+     "gain": 0.0,
+     "gain_by_order": [
+      0.0525,
+      0.067
+     ],
+     "beyond_spread": false
+    },
+    "prefill@8192": {
+     "control": 2.577,
+     "arm": 3.065,
+     "gain": 0.1894,
+     "gain_by_order": [
+      0.1898,
+      0.189
+     ],
+     "beyond_spread": true
+    },
+    "prefill@65536": {
+     "control": 22.447,
+     "arm": 26.477,
+     "gain": 0.1795,
+     "gain_by_order": [
+      0.1795,
+      0.1795
+     ],
+     "beyond_spread": true
+    },
+    "prefill@221184": {
+     "control": 97.082,
+     "arm": 110.987,
+     "gain": 0.1432,
+     "gain_by_order": [
+      0.1433,
+      0.1431
+     ],
+     "beyond_spread": true
+    },
+    "capacity": {
+     "control": 732790.0,
+     "arm": 732790.0,
+     "gain": 0.0,
+     "gain_by_order": [
+      0.0,
+      0.0
+     ],
+     "beyond_spread": false
+    }
+   }
+  },
+  "p107": {
+   "patches": [
+    "107"
+   ],
+   "verdict": "keep",
+   "best_row": "ttft@221184",
+   "best_gain": 4.6608,
+   "cost_row": null,
+   "cost": null,
+   "rows": {
+    "decode@128": {
+     "control": 35.571,
+     "arm": 35.645,
+     "gain": -0.0021,
+     "gain_by_order": [
+      -0.0017,
+      -0.0024
+     ],
+     "beyond_spread": true
+    },
+    "ttft@128": {
+     "control": 58.2,
+     "arm": 57.5,
+     "gain": 0.0,
+     "gain_by_order": [
+      -0.0155,
+      -0.0086
+     ],
+     "beyond_spread": false
+    },
+    "decode@8192": {
+     "control": 34.9,
+     "arm": 34.93,
+     "gain": -0.0009,
+     "gain_by_order": [
+      -0.0007,
+      -0.0011
+     ],
+     "beyond_spread": false
+    },
+    "ttft@8192": {
+     "control": 111.0,
+     "arm": 120.7,
+     "gain": 0.0,
+     "gain_by_order": [
+      0.0901,
+      0.0847
+     ],
+     "beyond_spread": false
+    },
+    "decode@65536": {
+     "control": 33.328,
+     "arm": 33.487,
+     "gain": -0.0047,
+     "gain_by_order": [
+      -0.0094,
+      0.0
+     ],
+     "beyond_spread": true
+    },
+    "ttft@65536": {
+     "control": 115.5,
+     "arm": 252.5,
+     "gain": 1.1861,
+     "gain_by_order": [
+      1.1861,
+      1.1861
+     ],
+     "beyond_spread": true
+    },
+    "decode@221184": {
+     "control": 29.842,
+     "arm": 29.789,
+     "gain": 0.0018,
+     "gain_by_order": [
+      -0.0021,
+      0.0057
+     ],
+     "beyond_spread": true
+    },
+    "ttft@221184": {
+     "control": 110.4,
+     "arm": 624.95,
+     "gain": 4.6608,
+     "gain_by_order": [
+      4.6585,
+      4.663
+     ],
+     "beyond_spread": true
+    },
+    "prefill@8192": {
+     "control": 2.577,
+     "arm": 2.578,
+     "gain": 0.0004,
+     "gain_by_order": [
+      0.0008,
+      0.0
+     ],
+     "beyond_spread": false
+    },
+    "prefill@65536": {
+     "control": 22.447,
+     "arm": 22.466,
+     "gain": 0.0008,
+     "gain_by_order": [
+      0.0005,
+      0.0012
+     ],
+     "beyond_spread": true
+    },
+    "prefill@221184": {
+     "control": 97.082,
+     "arm": 97.07,
+     "gain": -0.0001,
+     "gain_by_order": [
+      0.0004,
+      -0.0006
+     ],
+     "beyond_spread": false
+    },
+    "capacity": {
+     "control": 732790.0,
+     "arm": 732790.0,
+     "gain": 0.0,
+     "gain_by_order": [
+      0.0,
+      0.0
+     ],
+     "beyond_spread": false
+    }
+   }
+  },
+  "p108": {
+   "patches": [
+    "108"
+   ],
+   "verdict": "keep",
+   "best_row": "ttft@221184",
+   "best_gain": 3.1707,
+   "cost_row": null,
+   "cost": null,
+   "rows": {
+    "decode@128": {
+     "control": 35.571,
+     "arm": 35.598,
+     "gain": -0.0008,
+     "gain_by_order": [
+      -0.0014,
+      -0.0001
+     ],
+     "beyond_spread": false
+    },
+    "ttft@128": {
+     "control": 58.2,
+     "arm": 57.8,
+     "gain": 0.0,
+     "gain_by_order": [
+      -0.0086,
+      -0.0052
+     ],
+     "beyond_spread": false
+    },
+    "decode@8192": {
+     "control": 34.9,
+     "arm": 34.879,
+     "gain": 0.0006,
+     "gain_by_order": [
+      0.0011,
+      0.0001
+     ],
+     "beyond_spread": false
+    },
+    "ttft@8192": {
+     "control": 111.0,
+     "arm": 111.35,
+     "gain": 0.0,
+     "gain_by_order": [
+      0.0,
+      0.0063
+     ],
+     "beyond_spread": false
+    },
+    "decode@65536": {
+     "control": 33.328,
+     "arm": 33.28,
+     "gain": 0.0014,
+     "gain_by_order": [
+      0.0019,
+      0.001
+     ],
+     "beyond_spread": true
+    },
+    "ttft@65536": {
+     "control": 115.5,
+     "arm": 121.0,
+     "gain": 0.0,
+     "gain_by_order": [
+      0.0519,
+      0.0433
+     ],
+     "beyond_spread": false
+    },
+    "decode@221184": {
+     "control": 29.842,
+     "arm": 29.745,
+     "gain": 0.0032,
+     "gain_by_order": [
+      0.0076,
+      -0.001
+     ],
+     "beyond_spread": true
+    },
+    "ttft@221184": {
+     "control": 110.4,
+     "arm": 460.45,
+     "gain": 3.1707,
+     "gain_by_order": [
+      6.1042,
+      0.2373
+     ],
+     "beyond_spread": true
+    },
+    "prefill@8192": {
+     "control": 2.577,
+     "arm": 2.627,
+     "gain": 0.0194,
+     "gain_by_order": [
+      0.0198,
+      0.019
+     ],
+     "beyond_spread": true
+    },
+    "prefill@65536": {
+     "control": 22.447,
+     "arm": 34.693,
+     "gain": 0.5456,
+     "gain_by_order": [
+      0.5448,
+      0.5463
+     ],
+     "beyond_spread": true
+    },
+    "prefill@221184": {
+     "control": 97.082,
+     "arm": 271.81,
+     "gain": 1.7998,
+     "gain_by_order": [
+      1.7967,
+      1.8029
+     ],
+     "beyond_spread": true
+    },
+    "capacity": {
+     "control": 732790.0,
+     "arm": 732790.0,
+     "gain": 0.0,
+     "gain_by_order": [
+      0.0,
+      0.0
+     ],
+     "beyond_spread": false
+    }
+   }
+  },
+  "p111": {
+   "patches": [
+    "111"
+   ],
+   "verdict": "keep",
+   "best_row": "ttft@221184",
+   "best_gain": 2.2862,
+   "cost_row": null,
+   "cost": null,
+   "rows": {
+    "decode@128": {
+     "control": 35.571,
+     "arm": 35.767,
+     "gain": -0.0055,
+     "gain_by_order": [
+      -0.0092,
+      -0.0018
+     ],
+     "beyond_spread": true
+    },
+    "ttft@128": {
+     "control": 58.2,
+     "arm": 58.0,
+     "gain": 0.0,
+     "gain_by_order": [
+      0.0017,
+      -0.0086
+     ],
+     "beyond_spread": false
+    },
+    "decode@8192": {
+     "control": 34.9,
+     "arm": 35.064,
+     "gain": -0.0047,
+     "gain_by_order": [
+      -0.0086,
+      -0.0007
+     ],
+     "beyond_spread": true
+    },
+    "ttft@8192": {
+     "control": 111.0,
+     "arm": 112.8,
+     "gain": 0.0,
+     "gain_by_order": [
+      0.0108,
+      0.0216
+     ],
+     "beyond_spread": false
+    },
+    "decode@65536": {
+     "control": 33.328,
+     "arm": 33.261,
+     "gain": 0.002,
+     "gain_by_order": [
+      0.0022,
+      0.0019
+     ],
+     "beyond_spread": true
+    },
+    "ttft@65536": {
+     "control": 115.5,
+     "arm": 117.3,
+     "gain": 0.0,
+     "gain_by_order": [
+      0.0139,
+      0.0173
+     ],
+     "beyond_spread": false
+    },
+    "decode@221184": {
+     "control": 29.842,
+     "arm": 29.648,
+     "gain": 0.0065,
+     "gain_by_order": [
+      0.007,
+      0.0061
+     ],
+     "beyond_spread": true
+    },
+    "ttft@221184": {
+     "control": 110.4,
+     "arm": 362.8,
+     "gain": 2.2862,
+     "gain_by_order": [
+      4.5326,
+      0.0399
+     ],
+     "beyond_spread": true
+    },
+    "prefill@8192": {
+     "control": 2.577,
+     "arm": 2.579,
+     "gain": 0.0008,
+     "gain_by_order": [
+      0.0008,
+      0.0008
+     ],
+     "beyond_spread": false
+    },
+    "prefill@65536": {
+     "control": 22.447,
+     "arm": 22.477,
+     "gain": 0.0014,
+     "gain_by_order": [
+      0.0008,
+      0.0019
+     ],
+     "beyond_spread": true
+    },
+    "prefill@221184": {
+     "control": 97.082,
+     "arm": 97.077,
+     "gain": -0.0,
+     "gain_by_order": [
+      -0.0006,
+      0.0005
+     ],
+     "beyond_spread": false
+    },
+    "capacity": {
+     "control": 732790.0,
+     "arm": 732790.0,
+     "gain": 0.0,
+     "gain_by_order": [
+      0.0,
+      0.0
+     ],
+     "beyond_spread": false
+    }
+   }
+  },
+  "p082": {
+   "patches": [
+    "082"
+   ],
+   "verdict": "between",
+   "best_row": "decode@221184",
+   "best_gain": 0.026,
+   "cost_row": null,
+   "cost": null,
+   "rows": {
+    "decode@128": {
+     "control": 35.571,
+     "arm": 35.035,
+     "gain": 0.0153,
+     "gain_by_order": [
+      0.0196,
+      0.0111
+     ],
+     "beyond_spread": true
+    },
+    "ttft@128": {
+     "control": 58.2,
+     "arm": 58.4,
+     "gain": 0.0,
+     "gain_by_order": [
+      0.0,
+      0.0069
+     ],
+     "beyond_spread": false
+    },
+    "decode@8192": {
+     "control": 34.9,
+     "arm": 34.344,
+     "gain": 0.0162,
+     "gain_by_order": [
+      0.0201,
+      0.0123
+     ],
+     "beyond_spread": true
+    },
+    "ttft@8192": {
+     "control": 111.0,
+     "arm": 111.6,
+     "gain": 0.0,
+     "gain_by_order": [
+      0.0126,
+      -0.0018
+     ],
+     "beyond_spread": false
+    },
+    "decode@65536": {
+     "control": 33.328,
+     "arm": 32.617,
+     "gain": 0.0218,
+     "gain_by_order": [
+      0.0222,
+      0.0214
+     ],
+     "beyond_spread": true
+    },
+    "ttft@65536": {
+     "control": 115.5,
+     "arm": 118.35,
+     "gain": 0.0,
+     "gain_by_order": [
+      0.0087,
+      0.0407
+     ],
+     "beyond_spread": false
+    },
+    "decode@221184": {
+     "control": 29.842,
+     "arm": 29.085,
+     "gain": 0.026,
+     "gain_by_order": [
+      0.0256,
+      0.0264
+     ],
+     "beyond_spread": true
+    },
+    "ttft@221184": {
+     "control": 110.4,
+     "arm": 114.75,
+     "gain": 0.0,
+     "gain_by_order": [
+      0.0417,
+      0.0371
+     ],
+     "beyond_spread": false
+    },
+    "prefill@8192": {
+     "control": 2.577,
+     "arm": 2.581,
+     "gain": 0.0016,
+     "gain_by_order": [
+      0.0012,
+      0.0019
+     ],
+     "beyond_spread": true
+    },
+    "prefill@65536": {
+     "control": 22.447,
+     "arm": 22.514,
+     "gain": 0.003,
+     "gain_by_order": [
+      0.0045,
+      0.0014
+     ],
+     "beyond_spread": true
+    },
+    "prefill@221184": {
+     "control": 97.082,
+     "arm": 97.167,
+     "gain": 0.0009,
+     "gain_by_order": [
+      0.0015,
+      0.0003
+     ],
+     "beyond_spread": true
+    },
+    "capacity": {
+     "control": 732790.0,
+     "arm": 732790.0,
+     "gain": 0.0,
+     "gain_by_order": [
+      0.0,
+      0.0
+     ],
+     "beyond_spread": false
+    }
+   }
+  },
+  "p086": {
+   "patches": [
+    "086"
+   ],
+   "verdict": "keep",
+   "best_row": "decode@221184",
+   "best_gain": 0.1613,
+   "cost_row": null,
+   "cost": null,
+   "rows": {
+    "decode@128": {
+     "control": 35.599,
+     "arm": 35.629,
+     "gain": -0.0009,
+     "gain_by_order": [
+      -0.0011,
+      -0.0006
+     ],
+     "beyond_spread": true
+    },
+    "ttft@128": {
+     "control": 57.7,
+     "arm": 57.7,
+     "gain": 0.0,
+     "gain_by_order": [
+      -0.0017,
+      0.0017
+     ],
+     "beyond_spread": false
+    },
+    "decode@8192": {
+     "control": 34.893,
+     "arm": 34.968,
+     "gain": -0.0021,
+     "gain_by_order": [
+      -0.0033,
+      -0.0009
+     ],
+     "beyond_spread": true
+    },
+    "ttft@8192": {
+     "control": 110.6,
+     "arm": 110.35,
+     "gain": 0.0,
+     "gain_by_order": [
+      0.0036,
+      -0.0081
+     ],
+     "beyond_spread": false
+    },
+    "decode@65536": {
+     "control": 33.292,
+     "arm": 31.846,
+     "gain": 0.0454,
+     "gain_by_order": [
+      0.0453,
+      0.0455
+     ],
+     "beyond_spread": true
+    },
+    "ttft@65536": {
+     "control": 115.3,
+     "arm": 115.6,
+     "gain": 0.0,
+     "gain_by_order": [
+      0.0026,
+      0.0026
+     ],
+     "beyond_spread": false
+    },
+    "decode@221184": {
+     "control": 29.607,
+     "arm": 25.495,
+     "gain": 0.1613,
+     "gain_by_order": [
+      0.1613,
+      0.1613
+     ],
+     "beyond_spread": true
+    },
+    "ttft@221184": {
+     "control": 114.1,
+     "arm": 119.75,
+     "gain": 0.0,
+     "gain_by_order": [
+      0.0465,
+      0.0526
+     ],
+     "beyond_spread": false
+    },
+    "prefill@8192": {
+     "control": 2.577,
+     "arm": 2.58,
+     "gain": 0.0008,
+     "gain_by_order": [
+      0.0006,
+      0.001
+     ],
+     "beyond_spread": true
+    },
+    "prefill@65536": {
+     "control": 22.489,
+     "arm": 22.465,
+     "gain": -0.0011,
+     "gain_by_order": [
+      -0.0016,
+      -0.0005
+     ],
+     "beyond_spread": false
+    },
+    "prefill@221184": {
+     "control": 97.135,
+     "arm": 97.047,
+     "gain": -0.0009,
+     "gain_by_order": [
+      -0.0011,
+      -0.0006
+     ],
+     "beyond_spread": false
+    },
+    "capacity": {
+     "control": 732790.0,
+     "arm": 732790.0,
+     "gain": 0.0,
+     "gain_by_order": [
+      0.0,
+      0.0
+     ],
+     "beyond_spread": false
+    }
+   }
+  },
+  "p042": {
+   "patches": [
+    "042",
+    "127"
+   ],
+   "verdict": "drop-candidate",
+   "best_row": "decode@8192",
+   "best_gain": -0.0007,
+   "cost_row": null,
+   "cost": null,
+   "rows": {
+    "decode@128": {
+     "control": 35.599,
+     "arm": 35.599,
+     "gain": 0.0,
+     "gain_by_order": [
+      -0.0012,
+      0.0012
+     ],
+     "beyond_spread": false
+    },
+    "ttft@128": {
+     "control": 57.7,
+     "arm": 58.75,
+     "gain": 0.0,
+     "gain_by_order": [
+      0.0225,
+      0.0139
+     ],
+     "beyond_spread": false
+    },
+    "decode@8192": {
+     "control": 34.893,
+     "arm": 34.918,
+     "gain": -0.0007,
+     "gain_by_order": [
+      -0.0007,
+      -0.0007
+     ],
+     "beyond_spread": true
+    },
+    "ttft@8192": {
+     "control": 110.6,
+     "arm": 110.7,
+     "gain": 0.0,
+     "gain_by_order": [
+      -0.0018,
+      0.0036
+     ],
+     "beyond_spread": false
+    },
+    "decode@65536": {
+     "control": 33.292,
+     "arm": 33.275,
+     "gain": 0.0005,
+     "gain_by_order": [
+      -0.0001,
+      0.0012
+     ],
+     "beyond_spread": false
+    },
+    "ttft@65536": {
+     "control": 115.3,
+     "arm": 114.1,
+     "gain": 0.0,
+     "gain_by_order": [
+      -0.0147,
+      -0.0061
+     ],
+     "beyond_spread": false
+    },
+    "decode@221184": {
+     "control": 29.607,
+     "arm": 29.607,
+     "gain": 0.0,
+     "gain_by_order": [
+      0.0002,
+      -0.0002
+     ],
+     "beyond_spread": false
+    },
+    "ttft@221184": {
+     "control": 114.1,
+     "arm": 115.4,
+     "gain": 0.0,
+     "gain_by_order": [
+      0.0096,
+      0.0131
+     ],
+     "beyond_spread": false
+    },
+    "prefill@8192": {
+     "control": 2.577,
+     "arm": 2.578,
+     "gain": 0.0002,
+     "gain_by_order": [
+      -0.0002,
+      0.0006
+     ],
+     "beyond_spread": false
+    },
+    "prefill@65536": {
+     "control": 22.489,
+     "arm": 22.47,
+     "gain": -0.0009,
+     "gain_by_order": [
+      -0.0013,
+      -0.0004
+     ],
+     "beyond_spread": false
+    },
+    "prefill@221184": {
+     "control": 97.135,
+     "arm": 97.072,
+     "gain": -0.0006,
+     "gain_by_order": [
+      -0.0011,
+      -0.0002
+     ],
+     "beyond_spread": false
+    },
+    "capacity": {
+     "control": 732790.0,
+     "arm": 732790.0,
+     "gain": 0.0,
+     "gain_by_order": [
+      0.0,
+      0.0
+     ],
+     "beyond_spread": false
+    }
+   }
+  },
+  "p087": {
+   "patches": [
+    "087"
+   ],
+   "verdict": "keep",
+   "best_row": "decode@221184",
+   "best_gain": 0.4944,
+   "cost_row": null,
+   "cost": null,
+   "rows": {
+    "decode@128": {
+     "control": 35.599,
+     "arm": 35.329,
+     "gain": 0.0076,
+     "gain_by_order": [
+      0.0079,
+      0.0073
+     ],
+     "beyond_spread": true
+    },
+    "ttft@128": {
+     "control": 57.7,
+     "arm": 57.65,
+     "gain": 0.0,
+     "gain_by_order": [
+      -0.0087,
+      0.0069
+     ],
+     "beyond_spread": false
+    },
+    "decode@8192": {
+     "control": 34.893,
+     "arm": 33.857,
+     "gain": 0.0306,
+     "gain_by_order": [
+      0.0305,
+      0.0307
+     ],
+     "beyond_spread": true
+    },
+    "ttft@8192": {
+     "control": 110.6,
+     "arm": 111.9,
+     "gain": 0.0,
+     "gain_by_order": [
+      0.0027,
+      0.0208
+     ],
+     "beyond_spread": false
+    },
+    "decode@65536": {
+     "control": 33.292,
+     "arm": 29.33,
+     "gain": 0.1351,
+     "gain_by_order": [
+      0.1309,
+      0.1393
+     ],
+     "beyond_spread": true
+    },
+    "ttft@65536": {
+     "control": 115.3,
+     "arm": 118.75,
+     "gain": 0.0,
+     "gain_by_order": [
+      0.0347,
+      0.0252
+     ],
+     "beyond_spread": false
+    },
+    "decode@221184": {
+     "control": 29.607,
+     "arm": 19.812,
+     "gain": 0.4944,
+     "gain_by_order": [
+      0.4945,
+      0.4942
+     ],
+     "beyond_spread": true
+    },
+    "ttft@221184": {
+     "control": 114.1,
+     "arm": 132.55,
+     "gain": 0.0,
+     "gain_by_order": [
+      0.1525,
+      0.1709
+     ],
+     "beyond_spread": false
+    },
+    "prefill@8192": {
+     "control": 2.577,
+     "arm": 2.583,
+     "gain": 0.0021,
+     "gain_by_order": [
+      0.0006,
+      0.0037
+     ],
+     "beyond_spread": true
+    },
+    "prefill@65536": {
+     "control": 22.489,
+     "arm": 22.448,
+     "gain": -0.0018,
+     "gain_by_order": [
+      -0.0016,
+      -0.002
+     ],
+     "beyond_spread": false
+    },
+    "prefill@221184": {
+     "control": 97.135,
+     "arm": 97.066,
+     "gain": -0.0007,
+     "gain_by_order": [
+      -0.0005,
+      -0.0009
+     ],
+     "beyond_spread": false
+    },
+    "capacity": {
+     "control": 732790.0,
+     "arm": 732790.0,
+     "gain": 0.0,
+     "gain_by_order": [
+      0.0,
+      0.0
+     ],
+     "beyond_spread": false
+    }
+   }
+  },
+  "p106": {
+   "patches": [
+    "106"
+   ],
+   "verdict": "keep",
+   "best_row": "prefill@8192",
+   "best_gain": 1.5996,
+   "cost_row": null,
+   "cost": null,
+   "rows": {
+    "decode@128": {
+     "control": 35.599,
+     "arm": 35.569,
+     "gain": 0.0008,
+     "gain_by_order": [
+      0.0011,
+      0.0005
+     ],
+     "beyond_spread": true
+    },
+    "ttft@128": {
+     "control": 57.7,
+     "arm": 58.0,
+     "gain": 0.0,
+     "gain_by_order": [
+      0.0017,
+      0.0087
+     ],
+     "beyond_spread": false
+    },
+    "decode@8192": {
+     "control": 34.893,
+     "arm": 34.902,
+     "gain": -0.0003,
+     "gain_by_order": [
+      -0.0007,
+      0.0001
+     ],
+     "beyond_spread": false
+    },
+    "ttft@8192": {
+     "control": 110.6,
+     "arm": 106.95,
+     "gain": 0.0,
+     "gain_by_order": [
+      -0.038,
+      -0.028
+     ],
+     "beyond_spread": false
+    },
+    "decode@65536": {
+     "control": 33.292,
+     "arm": 33.278,
+     "gain": 0.0004,
+     "gain_by_order": [
+      -0.0,
+      0.0009
+     ],
+     "beyond_spread": false
+    },
+    "ttft@65536": {
+     "control": 115.3,
+     "arm": 129.7,
+     "gain": 0.0,
+     "gain_by_order": [
+      0.1214,
+      0.1284
+     ],
+     "beyond_spread": false
+    },
+    "decode@221184": {
+     "control": 29.607,
+     "arm": 29.745,
+     "gain": -0.0047,
+     "gain_by_order": [
+      -0.0093,
+      0.0
+     ],
+     "beyond_spread": true
+    },
+    "ttft@221184": {
+     "control": 114.1,
+     "arm": 116.4,
+     "gain": 0.0,
+     "gain_by_order": [
+      0.007,
+      0.0333
+     ],
+     "beyond_spread": false
+    },
+    "prefill@8192": {
+     "control": 2.577,
+     "arm": 6.7,
+     "gain": 1.5996,
+     "gain_by_order": [
+      1.5967,
+      1.6025
+     ],
+     "beyond_spread": true
+    },
+    "prefill@65536": {
+     "control": 22.489,
+     "arm": 55.228,
+     "gain": 1.4558,
+     "gain_by_order": [
+      1.4557,
+      1.4559
+     ],
+     "beyond_spread": true
+    },
+    "prefill@221184": {
+     "control": 97.135,
+     "arm": 208.094,
+     "gain": 1.1423,
+     "gain_by_order": [
+      1.1424,
+      1.1423
+     ],
+     "beyond_spread": true
+    },
+    "capacity": {
+     "control": 732790.0,
+     "arm": 732790.0,
+     "gain": 0.0,
+     "gain_by_order": [
+      0.0,
+      0.0
+     ],
+     "beyond_spread": false
+    }
+   }
+  },
+  "p110": {
+   "patches": [
+    "110",
+    "112"
+   ],
+   "verdict": "keep",
+   "best_row": "ttft@221184",
+   "best_gain": 0.2287,
+   "cost_row": null,
+   "cost": null,
+   "rows": {
+    "decode@128": {
+     "control": 35.599,
+     "arm": 35.552,
+     "gain": 0.0013,
+     "gain_by_order": [
+      0.0007,
+      0.0019
+     ],
+     "beyond_spread": true
+    },
+    "ttft@128": {
+     "control": 57.7,
+     "arm": 57.75,
+     "gain": 0.0,
+     "gain_by_order": [
+      0.0017,
+      0.0
+     ],
+     "beyond_spread": false
+    },
+    "decode@8192": {
+     "control": 34.893,
+     "arm": 34.89,
+     "gain": 0.0001,
+     "gain_by_order": [
+      -0.001,
+      0.0012
+     ],
+     "beyond_spread": false
+    },
+    "ttft@8192": {
+     "control": 110.6,
+     "arm": 111.05,
+     "gain": 0.0,
+     "gain_by_order": [
+      0.0045,
+      0.0036
+     ],
+     "beyond_spread": false
+    },
+    "decode@65536": {
+     "control": 33.292,
+     "arm": 33.3,
+     "gain": -0.0002,
+     "gain_by_order": [
+      0.0,
+      -0.0005
+     ],
+     "beyond_spread": false
+    },
+    "ttft@65536": {
+     "control": 115.3,
+     "arm": 121.3,
+     "gain": 0.0,
+     "gain_by_order": [
+      0.0477,
+      0.0564
+     ],
+     "beyond_spread": false
+    },
+    "decode@221184": {
+     "control": 29.607,
+     "arm": 29.649,
+     "gain": -0.0014,
+     "gain_by_order": [
+      -0.0013,
+      -0.0015
+     ],
+     "beyond_spread": true
+    },
+    "ttft@221184": {
+     "control": 114.1,
+     "arm": 140.2,
+     "gain": 0.2287,
+     "gain_by_order": [
+      0.2682,
+      0.1893
+     ],
+     "beyond_spread": true
+    },
+    "prefill@8192": {
+     "control": 2.577,
+     "arm": 2.579,
+     "gain": 0.0008,
+     "gain_by_order": [
+      0.0014,
+      0.0002
+     ],
+     "beyond_spread": true
+    },
+    "prefill@65536": {
+     "control": 22.489,
+     "arm": 22.467,
+     "gain": -0.001,
+     "gain_by_order": [
+      -0.0012,
+      -0.0008
+     ],
+     "beyond_spread": false
+    },
+    "prefill@221184": {
+     "control": 97.135,
+     "arm": 97.032,
+     "gain": -0.0011,
+     "gain_by_order": [
+      -0.0011,
+      -0.001
+     ],
+     "beyond_spread": false
+    },
+    "capacity": {
+     "control": 732790.0,
+     "arm": 732790.0,
+     "gain": 0.0,
+     "gain_by_order": [
+      0.0,
+      0.0
+     ],
+     "beyond_spread": false
+    }
+   }
+  }
+ },
+ "blocks": {
+  "1": {
+   "control": {
+    "decode@128": 35.614,
+    "ttft@128": 57.8,
+    "decode@8192": 34.876,
+    "ttft@8192": 110.25,
+    "decode@65536": 33.573,
+    "ttft@65536": 114.05,
+    "decode@221184": 29.603,
+    "ttft@221184": 113.0,
+    "prefill@8192": 2.578,
+    "prefill@65536": 22.461,
+    "prefill@221184": 97.089,
+    "capacity": 732790.0
+   },
+   "control_spread": {
+    "decode@128": 0.0006,
+    "ttft@128": 0.0205,
+    "decode@8192": 0.0002,
+    "ttft@8192": 0.0027,
+    "decode@65536": 0.0004,
+    "ttft@65536": 0.0061,
+    "decode@221184": 0.0019,
+    "ttft@221184": 0.0314,
+    "prefill@8192": 0.0,
+    "prefill@65536": 0.0003,
+    "prefill@221184": 0.0001,
+    "capacity": 0.0
+   }
+  },
+  "2": {
+   "control": {
+    "decode@128": 35.571,
+    "ttft@128": 58.2,
+    "decode@8192": 34.9,
+    "ttft@8192": 111.0,
+    "decode@65536": 33.328,
+    "ttft@65536": 115.5,
+    "decode@221184": 29.842,
+    "ttft@221184": 110.4,
+    "prefill@8192": 2.577,
+    "prefill@65536": 22.447,
+    "prefill@221184": 97.082,
+    "capacity": 732790.0
+   },
+   "control_spread": {
+    "decode@128": 0.0017,
+    "ttft@128": 0.0104,
+    "decode@8192": 0.0018,
+    "ttft@8192": 0.0108,
+    "decode@65536": 0.0001,
+    "ttft@65536": 0.0157,
+    "decode@221184": 0.0013,
+    "ttft@221184": 0.0682,
+    "prefill@8192": 0.0016,
+    "prefill@65536": 0.0004,
+    "prefill@221184": 0.0008,
+    "capacity": 0.0
+   }
+  },
+  "3": {
+   "control": {
+    "decode@128": 35.599,
+    "ttft@128": 57.7,
+    "decode@8192": 34.893,
+    "ttft@8192": 110.6,
+    "decode@65536": 33.292,
+    "ttft@65536": 115.3,
+    "decode@221184": 29.607,
+    "ttft@221184": 114.1,
+    "prefill@8192": 2.577,
+    "prefill@65536": 22.489,
+    "prefill@221184": 97.135,
+    "capacity": 732790.0
+   },
+   "control_spread": {
+    "decode@128": 0.0,
+    "ttft@128": 0.007,
+    "decode@8192": 0.0003,
+    "ttft@8192": 0.0182,
+    "decode@65536": 0.001,
+    "ttft@65536": 0.0105,
+    "decode@221184": 0.0001,
+    "ttft@221184": 0.0105,
+    "prefill@8192": 0.0004,
+    "prefill@65536": 0.002,
+    "prefill@221184": 0.0013,
+    "capacity": 0.0
+   }
+  }
+ },
+ "gate": "incomplete:p121"
+}
