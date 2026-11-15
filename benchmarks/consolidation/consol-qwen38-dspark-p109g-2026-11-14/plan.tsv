@@ -1,0 +1,7 @@
+warm	ctl	warm	-	QWEN38_SPEC=1
+b1-ctl1	ctl	ctl	-	QWEN38_SPEC=1
+b1-p125a	p125	arm	-	QWEN38_SPEC=1 VERIFY_GQA=0
+b1-p109ga	p109g	arm	/data/sgl-v0522-consol/s100/p109	QWEN38_SPEC=1 VERIFY_GQA=0
+b1-p109gb	p109g	arm	/data/sgl-v0522-consol/s100/p109	QWEN38_SPEC=1 VERIFY_GQA=0
+b1-p125b	p125	arm	-	QWEN38_SPEC=1 VERIFY_GQA=0
+b1-ctl2	ctl	ctl	-	QWEN38_SPEC=1

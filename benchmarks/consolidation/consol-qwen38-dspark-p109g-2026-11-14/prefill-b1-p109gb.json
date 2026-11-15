@@ -1,0 +1,40 @@
+{
+ "label": "b1-p109gb",
+ "model": "/data/models/Qwen3.8-27B-FP8",
+ "port": 23334,
+ "runs": 2,
+ "method": "flush_cache + non-stream max_tokens=1 wall time",
+ "timestamp": "2026-11-14 18:30",
+ "rows": [
+  {
+   "context": 8192,
+   "input_len": 7331,
+   "runs_s": [
+    2.635,
+    2.625
+   ],
+   "median_s": 2.63,
+   "prefill_tok_per_s": 2787.3
+  },
+  {
+   "context": 65536,
+   "input_len": 58483,
+   "runs_s": [
+    22.793,
+    22.685
+   ],
+   "median_s": 22.739,
+   "prefill_tok_per_s": 2571.9
+  },
+  {
+   "context": 221184,
+   "input_len": 197326,
+   "runs_s": [
+    98.008,
+    97.821
+   ],
+   "median_s": 97.914,
+   "prefill_tok_per_s": 2015.3
+  }
+ ]
+}

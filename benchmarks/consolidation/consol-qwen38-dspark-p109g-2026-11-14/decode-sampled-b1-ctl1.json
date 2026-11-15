@@ -1,0 +1,169 @@
+{
+  "label": "b1-ctl1-sampled",
+  "tag": "",
+  "note": "CONSOL-1 session qwen38-dspark-p109g, preset qwen38, 100 patches, --random-seed 7",
+  "port": 23334,
+  "maxtok": 400,
+  "runs": 2,
+  "sampling": {
+    "temperature": 1.0,
+    "top_p": 0.95,
+    "top_k": 20,
+    "seed": 7
+  },
+  "ignore_eos": true,
+  "points": [
+    {
+      "context": 128,
+      "input_len": 24,
+      "runs_tps": [
+        59.74,
+        61.48
+      ],
+      "median_tps": 60.596,
+      "min_tps": 59.741,
+      "max_tps": 61.476,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "runs_verify_ct": [
+        147,
+        143
+      ],
+      "runs_decode_s": [
+        6.6789,
+        6.4903
+      ],
+      "runs_text_sha": [
+        "7d34ceff8ce0",
+        "b5331d56b534"
+      ],
+      "runs_pieces": [
+        148,
+        144
+      ],
+      "runs_median_gap_ms": [
+        45.43,
+        45.4
+      ],
+      "median_tpot_ms": 16.5,
+      "sample": "# The Bottleneck of Compute: A Deep Dive into GPU Memory Hie",
+      "median_ttft_ms": 102.9
+    },
+    {
+      "context": 8192,
+      "input_len": 7331,
+      "runs_tps": [
+        58.01,
+        66.72
+      ],
+      "median_tps": 62.056,
+      "min_tps": 58.006,
+      "max_tps": 66.715,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "runs_verify_ct": [
+        149,
+        130
+      ],
+      "runs_decode_s": [
+        6.8786,
+        5.9806
+      ],
+      "runs_text_sha": [
+        "7ea5e427f6e4",
+        "3358c8add7f0"
+      ],
+      "runs_pieces": [
+        132,
+        117
+      ],
+      "runs_median_gap_ms": [
+        46.14,
+        46.02
+      ],
+      "median_tpot_ms": 16.11,
+      "sample": "The provided text consists of the pangram \"The quick brown f",
+      "median_ttft_ms": 1359.9
+    },
+    {
+      "context": 65536,
+      "input_len": 58483,
+      "runs_tps": [
+        51.0,
+        51.12
+      ],
+      "median_tps": 51.06,
+      "min_tps": 51.001,
+      "max_tps": 51.118,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "runs_verify_ct": [
+        162,
+        162
+      ],
+      "runs_decode_s": [
+        7.8234,
+        7.8054
+      ],
+      "runs_text_sha": [
+        "8abc40e830e5",
+        "2ea625c7da0b"
+      ],
+      "runs_pieces": [
+        131,
+        131
+      ],
+      "runs_median_gap_ms": [
+        48.26,
+        48.21
+      ],
+      "median_tpot_ms": 19.58,
+      "sample": "The text consists of the famous pangram \"The quick brown fox",
+      "median_ttft_ms": 10078.6
+    },
+    {
+      "context": 221184,
+      "input_len": 197326,
+      "runs_tps": [
+        43.75,
+        43.84
+      ],
+      "median_tps": 43.793,
+      "min_tps": 43.748,
+      "max_tps": 43.839,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "runs_verify_ct": [
+        167,
+        167
+      ],
+      "runs_decode_s": [
+        9.1205,
+        9.1016
+      ],
+      "runs_text_sha": [
+        "4ccc470076e9",
+        "25f755c28bbc"
+      ],
+      "runs_pieces": [
+        131,
+        133
+      ],
+      "runs_median_gap_ms": [
+        54.56,
+        54.53
+      ],
+      "median_tpot_ms": 22.83,
+      "sample": "The provided text consists of the classic English pangram \"T",
+      "median_ttft_ms": 38103.0
+    }
+  ]
+}

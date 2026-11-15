@@ -1,0 +1,100 @@
+{
+ "session": "qwen38-dspark-p109g",
+ "preset": "qwen38",
+ "env": {
+  "QWEN38_SPEC": "1"
+ },
+ "spec": true,
+ "seed": 7,
+ "caps": 5,
+ "block": 5,
+ "decode": {
+  "contexts": "128,8192,65536,221184",
+  "args": [
+   "--think-off"
+  ]
+ },
+ "prefill": {
+  "contexts": "8192,65536,221184",
+  "runs": 2
+ },
+ "poke": {
+  "chat_template_kwargs": {
+   "enable_thinking": false
+  }
+ },
+ "spec_probe": {
+  "sampling": "temperature=1.0,top_p=0.95,top_k=20,seed=7",
+  "contexts": "128,8192,65536,221184",
+  "doc_chars": "12000,24000,48000,96000",
+  "docs_per_size": 12,
+  "offsets": [
+   0,
+   1190000
+  ]
+ },
+ "server_env": {
+  "SGLANG_RDNA4_DELTANET_TP_SPLIT": "1",
+  "SGLANG_RDNA4_FP8_GEMV": "1",
+  "SGLANG_RDNA4_TRITON_GEMMA_RMSNORM": "1",
+  "SGLANG_RDNA4_SKINNY_BA_GEMV": "1",
+  "SGLANG_USE_1STAGE_ALLREDUCE": "1",
+  "SGLANG_HIP_BF16_ATTN_SUM": "1",
+  "SGLANG_EXTEND_FP8_QK": "1",
+  "SGLANG_EXTEND_SPLITKV_MAX_TOKENS": "256",
+  "SGLANG_RDNA4_FUSED_FP8_KV_STORE": "unset",
+  "SGLANG_KV_SPLITS_OVERRIDE": "unset",
+  "SGLANG_SPLITKV_COMBINE_WARPS": "unset",
+  "SGLANG_RDNA4_VERIFY_GQA": "1",
+  "SGLANG_RDNA4_SPLITKV_WINDOW": "1",
+  "SGLANG_RDNA4_SPLITKV_WINDOW_SPLITS": "16",
+  "SGLANG_RDNA4_FP8_GEMM_BF16": "1",
+  "SGLANG_ENABLE_SPLITKV_VERIFY": "unset"
+ },
+ "markers": {
+  "dspark": "'speculative_algorithm': 'DSPARK'",
+  "gqa125": "\\[RDNA4\\] verify attention: GQA-grouped split-KV prefix stage active",
+  "window126": "\\[RDNA4\\] split-KV verify: causal sliding-window prefix stage active",
+  "gemm128": "\\[RDNA4\\] block-FP8 M=2\\.\\.32 rows: native HIP W8A16 WMMA GEMM active",
+  "gemv122": "\\[RDNA4\\] block-FP8 M=1 decode: native HIP W8A16 GEMV active",
+  "wire130": "\\[RDNA4\\] attention-TP sum: BF16 wire on a two-rank group active",
+  "ar129": "All-reduce call path: custom all-reduce \\(CustomAllreduce, group tp\\)"
+ },
+ "arms": [
+  {
+   "name": "p125",
+   "patches": [
+    "125"
+   ],
+   "env": {
+    "VERIFY_GQA": "0"
+   },
+   "server_env": {
+    "SGLANG_RDNA4_VERIFY_GQA": "0"
+   },
+   "off": [
+    "gqa125"
+   ]
+  },
+  {
+   "name": "p109g",
+   "patches": [
+    "109",
+    "111",
+    "126"
+   ],
+   "tree": "/data/sgl-v0522-consol/s{series}/p109",
+   "off": [
+    "gqa125",
+    "window126"
+   ],
+   "env": {
+    "VERIFY_GQA": "0"
+   },
+   "server_env": {
+    "SGLANG_RDNA4_VERIFY_GQA": "0"
+   },
+   "note": "tree without 109/111/126 booted with the grouped verify of patch 125 switched off: 125's VerifyGQA passes sinks= to the base __call__, a parameter patch 109 adds, so the tree does not boot with 125 on (TypeError in graph capture, session of 2026-11-14). Read this arm against p125, not against the control."
+  }
+ ]
+}
