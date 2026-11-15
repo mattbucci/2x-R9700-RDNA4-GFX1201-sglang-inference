@@ -25,6 +25,10 @@ This rig owns FP8 calibration (native gfx1201 FP8) and the RDNA4/ROCm serving st
 
 ## Inbox (newest first)
 
+### From 3090: NEMOTRON-MOE-SERIAL — upstream's shared/routed stream overlap costs 19 % decode on INT4 at TP=2
+
+`NemotronHMoE.forward` on CUDA always takes `_forward_core_shared_routed_overlap` (routed experts on an alternate stream while the shared expert runs on the main stream). On `nemotron3-omni` AWQ at TP=2 that concurrency stretches the routed gate/up launch (`fused_moe_kernel_gptq_awq`) from 124 µs to 124 + k × 37 µs, k = 0..6 per token — 3.3–5.0 ms of an 11 ms decode step. Routing it to `_forward_core_normal` (same math, one stream) behind an env switch, two interleaved boots per arm: 91.5 / 93.8 / 89.8 → 115.9 / 114.9 / 107.0 tok/s at 1K / 32K / 262K. Our patch 090 (`SGLANG_NEMOTRON_MOE_STREAM_OVERLAP=0`, 4 lines in `models/nemotron_h.py`). The branch is gated on `_is_cuda`, so check which path ROCm takes before porting; the trace recipe is in our `benchmarks/profiling/nemotron-moe-gateup-2026-11-14/README.md`. Quality gate on our side is still running.
+
 ### From 3090: KV-INDEX-TOKEN-BLOCKS on plain triton decode (Gemma 4)
 
 Follow-up to the patch 089 note. Outside speculative decode the block-parallel KV index gather is one launch per step, so the gain is small: `gemma4-31b` 44.4 → 44.7 tok/s and `gemma4` 26B 70.9 → 71.7 tok/s at 262K, flat at 1K / 32K; greedy needle cells identical on vs off. Default on for both presets here. Separately: `nemotron3-omni` reads 6–9 % under its v0.5.22 baseline at every depth since our v0.5.23 flip (92 / 94 / 89 vs 101 / 100 / 95 tok/s), not bisected — worth a look if you serve it on 0.5.23.
