@@ -1,0 +1,793 @@
+{
+ "session": "qwen38-dspark",
+ "preset": "qwen38",
+ "keep": 0.03,
+ "drop": 0.01,
+ "arms": {
+  "p100": {
+   "patches": [
+    "100"
+   ],
+   "verdict": "keep",
+   "best_row": "cycle@197K",
+   "best_gain": 9.9648,
+   "cost_row": null,
+   "cost": null,
+   "rows": {
+    "decode@128": {
+     "control": 60.781,
+     "arm": 59.998,
+     "gain": 0.013,
+     "gain_by_order": [
+      0.013,
+      0.0131
+     ],
+     "beyond_spread": true,
+     "informational": true
+    },
+    "ttft@128": {
+     "control": 102.2,
+     "arm": 103.05,
+     "gain": 0.0,
+     "gain_by_order": [
+      0.0098,
+      0.0068
+     ],
+     "beyond_spread": false
+    },
+    "decode@8192": {
+     "control": 81.311,
+     "arm": 48.528,
+     "gain": 0.6755,
+     "gain_by_order": [
+      0.6761,
+      0.675
+     ],
+     "beyond_spread": true,
+     "informational": true
+    },
+    "ttft@8192": {
+     "control": 131.65,
+     "arm": 161.95,
+     "gain": 0.2302,
+     "gain_by_order": [
+      0.2191,
+      0.2412
+     ],
+     "beyond_spread": true
+    },
+    "decode@65536": {
+     "control": 56.962,
+     "arm": 17.295,
+     "gain": 2.2936,
+     "gain_by_order": [
+      2.2937,
+      2.2934
+     ],
+     "beyond_spread": true,
+     "informational": true
+    },
+    "ttft@65536": {
+     "control": 135.95,
+     "arm": 306.1,
+     "gain": 1.2516,
+     "gain_by_order": [
+      1.2567,
+      1.2464
+     ],
+     "beyond_spread": true
+    },
+    "decode@221184": {
+     "control": 55.799,
+     "arm": 6.119,
+     "gain": 8.119,
+     "gain_by_order": [
+      8.1294,
+      8.1086
+     ],
+     "beyond_spread": true,
+     "informational": true
+    },
+    "ttft@221184": {
+     "control": 138.15,
+     "arm": 683.05,
+     "gain": 3.9443,
+     "gain_by_order": [
+      3.9446,
+      3.9439
+     ],
+     "beyond_spread": true
+    },
+    "prefill@8192": {
+     "control": 2.625,
+     "arm": 2.688,
+     "gain": 0.0244,
+     "gain_by_order": [
+      -0.0013,
+      0.0501
+     ],
+     "beyond_spread": true
+    },
+    "prefill@65536": {
+     "control": 22.749,
+     "arm": 22.726,
+     "gain": -0.001,
+     "gain_by_order": [
+      -0.0007,
+      -0.0013
+     ],
+     "beyond_spread": true
+    },
+    "prefill@221184": {
+     "control": 98.071,
+     "arm": 97.915,
+     "gain": -0.0016,
+     "gain_by_order": [
+      -0.0015,
+      -0.0017
+     ],
+     "beyond_spread": false
+    },
+    "capacity": {
+     "control": 428579.0,
+     "arm": 428579.0,
+     "gain": 0.0,
+     "gain_by_order": [
+      0.0,
+      0.0
+     ],
+     "beyond_spread": false
+    },
+    "cycle@24": {
+     "control": 45.405,
+     "arm": 47.03,
+     "gain": 0.0358,
+     "gain_by_order": [
+      0.0329,
+      0.0387
+     ],
+     "beyond_spread": true
+    },
+    "cycle@7.3K": {
+     "control": 46.055,
+     "arm": 77.04,
+     "gain": 0.6728,
+     "gain_by_order": [
+      0.6728,
+      0.6728
+     ],
+     "beyond_spread": true
+    },
+    "cycle@58K": {
+     "control": 48.285,
+     "arm": 217.69,
+     "gain": 3.5084,
+     "gain_by_order": [
+      3.5064,
+      3.5105
+     ],
+     "beyond_spread": true
+    },
+    "cycle@197K": {
+     "control": 54.52,
+     "arm": 597.8,
+     "gain": 9.9648,
+     "gain_by_order": [
+      9.9648,
+      9.9648
+     ],
+     "beyond_spread": true
+    },
+    "accept": {
+     "gain": -0.005,
+     "ci95": [
+      -0.0209,
+      0.0106
+     ],
+     "documents": 96,
+     "blank_texts": 0,
+     "beyond_spread": false
+    }
+   }
+  },
+  "p125": {
+   "patches": [
+    "125"
+   ],
+   "verdict": "keep",
+   "best_row": "cycle@197K",
+   "best_gain": 0.3265,
+   "cost_row": "cycle@24",
+   "cost": -0.0175,
+   "rows": {
+    "decode@128": {
+     "control": 60.781,
+     "arm": 60.103,
+     "gain": 0.0113,
+     "gain_by_order": [
+      0.0112,
+      0.0113
+     ],
+     "beyond_spread": true,
+     "informational": true
+    },
+    "ttft@128": {
+     "control": 102.2,
+     "arm": 101.85,
+     "gain": 0.0,
+     "gain_by_order": [
+      -0.0078,
+      0.001
+     ],
+     "beyond_spread": false
+    },
+    "decode@8192": {
+     "control": 81.311,
+     "arm": 82.047,
+     "gain": -0.009,
+     "gain_by_order": [
+      -0.0097,
+      -0.0082
+     ],
+     "beyond_spread": true,
+     "informational": true
+    },
+    "ttft@8192": {
+     "control": 131.65,
+     "arm": 130.5,
+     "gain": 0.0,
+     "gain_by_order": [
+      -0.0095,
+      -0.008
+     ],
+     "beyond_spread": false
+    },
+    "decode@65536": {
+     "control": 56.962,
+     "arm": 50.046,
+     "gain": 0.1382,
+     "gain_by_order": [
+      0.1398,
+      0.1365
+     ],
+     "beyond_spread": true,
+     "informational": true
+    },
+    "ttft@65536": {
+     "control": 135.95,
+     "arm": 140.05,
+     "gain": 0.0,
+     "gain_by_order": [
+      0.0268,
+      0.0335
+     ],
+     "beyond_spread": false
+    },
+    "decode@221184": {
+     "control": 55.799,
+     "arm": 45.451,
+     "gain": 0.2277,
+     "gain_by_order": [
+      0.2281,
+      0.2273
+     ],
+     "beyond_spread": true,
+     "informational": true
+    },
+    "ttft@221184": {
+     "control": 138.15,
+     "arm": 155.6,
+     "gain": 0.0,
+     "gain_by_order": [
+      0.1278,
+      0.1249
+     ],
+     "beyond_spread": false
+    },
+    "prefill@8192": {
+     "control": 2.625,
+     "arm": 2.723,
+     "gain": 0.0373,
+     "gain_by_order": [
+      0.0021,
+      0.0726
+     ],
+     "beyond_spread": true
+    },
+    "prefill@65536": {
+     "control": 22.749,
+     "arm": 22.743,
+     "gain": -0.0002,
+     "gain_by_order": [
+      -0.0001,
+      -0.0004
+     ],
+     "beyond_spread": false
+    },
+    "prefill@221184": {
+     "control": 98.071,
+     "arm": 97.895,
+     "gain": -0.0018,
+     "gain_by_order": [
+      -0.0016,
+      -0.002
+     ],
+     "beyond_spread": true
+    },
+    "capacity": {
+     "control": 428579.0,
+     "arm": 428579.0,
+     "gain": 0.0,
+     "gain_by_order": [
+      0.0,
+      0.0
+     ],
+     "beyond_spread": false
+    },
+    "cycle@24": {
+     "control": 45.405,
+     "arm": 44.61,
+     "gain": -0.0175,
+     "gain_by_order": [
+      -0.0171,
+      -0.0179
+     ],
+     "beyond_spread": true
+    },
+    "cycle@7.3K": {
+     "control": 46.055,
+     "arm": 45.77,
+     "gain": -0.0062,
+     "gain_by_order": [
+      -0.0055,
+      -0.0068
+     ],
+     "beyond_spread": true
+    },
+    "cycle@58K": {
+     "control": 48.285,
+     "arm": 51.865,
+     "gain": 0.0741,
+     "gain_by_order": [
+      0.0742,
+      0.074
+     ],
+     "beyond_spread": true
+    },
+    "cycle@197K": {
+     "control": 54.52,
+     "arm": 72.32,
+     "gain": 0.3265,
+     "gain_by_order": [
+      0.3267,
+      0.3263
+     ],
+     "beyond_spread": true
+    },
+    "accept": {
+     "gain": -0.0032,
+     "ci95": [
+      -0.0176,
+      0.0107
+     ],
+     "documents": 96,
+     "blank_texts": 0,
+     "beyond_spread": false
+    }
+   }
+  },
+  "p126": {
+   "patches": [
+    "126"
+   ],
+   "verdict": "keep",
+   "best_row": "cycle@7.3K",
+   "best_gain": 0.1598,
+   "cost_row": null,
+   "cost": null,
+   "rows": {
+    "decode@128": {
+     "control": 60.781,
+     "arm": 58.087,
+     "gain": 0.0464,
+     "gain_by_order": [
+      0.0467,
+      0.046
+     ],
+     "beyond_spread": true,
+     "informational": true
+    },
+    "ttft@128": {
+     "control": 102.2,
+     "arm": 102.95,
+     "gain": 0.0,
+     "gain_by_order": [
+      0.0039,
+      0.0108
+     ],
+     "beyond_spread": false
+    },
+    "decode@8192": {
+     "control": 81.311,
+     "arm": 69.91,
+     "gain": 0.1631,
+     "gain_by_order": [
+      0.1621,
+      0.1641
+     ],
+     "beyond_spread": true,
+     "informational": true
+    },
+    "ttft@8192": {
+     "control": 131.65,
+     "arm": 138.6,
+     "gain": 0.0,
+     "gain_by_order": [
+      0.0536,
+      0.052
+     ],
+     "beyond_spread": false
+    },
+    "decode@65536": {
+     "control": 56.962,
+     "arm": 49.309,
+     "gain": 0.1552,
+     "gain_by_order": [
+      0.1553,
+      0.155
+     ],
+     "beyond_spread": true,
+     "informational": true
+    },
+    "ttft@65536": {
+     "control": 135.95,
+     "arm": 143.75,
+     "gain": 0.0,
+     "gain_by_order": [
+      0.0599,
+      0.0548
+     ],
+     "beyond_spread": false
+    },
+    "decode@221184": {
+     "control": 55.799,
+     "arm": 53.088,
+     "gain": 0.0511,
+     "gain_by_order": [
+      0.051,
+      0.0511
+     ],
+     "beyond_spread": true,
+     "informational": true
+    },
+    "ttft@221184": {
+     "control": 138.15,
+     "arm": 144.65,
+     "gain": 0.0,
+     "gain_by_order": [
+      0.0503,
+      0.0438
+     ],
+     "beyond_spread": false
+    },
+    "prefill@8192": {
+     "control": 2.625,
+     "arm": 2.623,
+     "gain": -0.0006,
+     "gain_by_order": [
+      0.0002,
+      -0.0013
+     ],
+     "beyond_spread": true
+    },
+    "prefill@65536": {
+     "control": 22.749,
+     "arm": 22.779,
+     "gain": 0.0013,
+     "gain_by_order": [
+      0.0015,
+      0.0011
+     ],
+     "beyond_spread": true
+    },
+    "prefill@221184": {
+     "control": 98.071,
+     "arm": 98.414,
+     "gain": 0.0035,
+     "gain_by_order": [
+      -0.0009,
+      0.0079
+     ],
+     "beyond_spread": true
+    },
+    "capacity": {
+     "control": 428579.0,
+     "arm": 428579.0,
+     "gain": 0.0,
+     "gain_by_order": [
+      0.0,
+      0.0
+     ],
+     "beyond_spread": false
+    },
+    "cycle@24": {
+     "control": 45.405,
+     "arm": 46.29,
+     "gain": 0.0195,
+     "gain_by_order": [
+      0.0219,
+      0.0171
+     ],
+     "beyond_spread": true
+    },
+    "cycle@7.3K": {
+     "control": 46.055,
+     "arm": 53.415,
+     "gain": 0.1598,
+     "gain_by_order": [
+      0.1614,
+      0.1582
+     ],
+     "beyond_spread": true
+    },
+    "cycle@58K": {
+     "control": 48.285,
+     "arm": 55.615,
+     "gain": 0.1518,
+     "gain_by_order": [
+      0.1529,
+      0.1507
+     ],
+     "beyond_spread": true
+    },
+    "cycle@197K": {
+     "control": 54.52,
+     "arm": 61.845,
+     "gain": 0.1344,
+     "gain_by_order": [
+      0.1352,
+      0.1335
+     ],
+     "beyond_spread": true
+    },
+    "accept": {
+     "gain": -0.0,
+     "ci95": [
+      -0.0095,
+      0.0097
+     ],
+     "documents": 96,
+     "blank_texts": 0,
+     "beyond_spread": false
+    }
+   }
+  },
+  "p128": {
+   "patches": [
+    "128"
+   ],
+   "verdict": "keep",
+   "best_row": "ttft@128",
+   "best_gain": 0.2436,
+   "cost_row": null,
+   "cost": null,
+   "rows": {
+    "decode@128": {
+     "control": 60.781,
+     "arm": 52.081,
+     "gain": 0.1671,
+     "gain_by_order": [
+      0.1689,
+      0.1652
+     ],
+     "beyond_spread": true,
+     "informational": true
+    },
+    "ttft@128": {
+     "control": 102.2,
+     "arm": 127.1,
+     "gain": 0.2436,
+     "gain_by_order": [
+      0.2485,
+      0.2387
+     ],
+     "beyond_spread": true
+    },
+    "decode@8192": {
+     "control": 81.311,
+     "arm": 74.238,
+     "gain": 0.0953,
+     "gain_by_order": [
+      0.097,
+      0.0936
+     ],
+     "beyond_spread": true,
+     "informational": true
+    },
+    "ttft@8192": {
+     "control": 131.65,
+     "arm": 135.7,
+     "gain": 0.0,
+     "gain_by_order": [
+      0.0346,
+      0.027
+     ],
+     "beyond_spread": false
+    },
+    "decode@65536": {
+     "control": 56.962,
+     "arm": 61.704,
+     "gain": -0.0769,
+     "gain_by_order": [
+      -0.0771,
+      -0.0766
+     ],
+     "beyond_spread": true,
+     "informational": true
+    },
+    "ttft@65536": {
+     "control": 135.95,
+     "arm": 142.05,
+     "gain": 0.0,
+     "gain_by_order": [
+      0.0313,
+      0.0585
+     ],
+     "beyond_spread": false
+    },
+    "decode@221184": {
+     "control": 55.799,
+     "arm": 56.15,
+     "gain": -0.0063,
+     "gain_by_order": [
+      -0.0058,
+      -0.0067
+     ],
+     "beyond_spread": true,
+     "informational": true
+    },
+    "ttft@221184": {
+     "control": 138.15,
+     "arm": 151.2,
+     "gain": 0.0,
+     "gain_by_order": [
+      0.1003,
+      0.0887
+     ],
+     "beyond_spread": false
+    },
+    "prefill@8192": {
+     "control": 2.625,
+     "arm": 2.627,
+     "gain": 0.0008,
+     "gain_by_order": [
+      -0.0002,
+      0.0017
+     ],
+     "beyond_spread": true
+    },
+    "prefill@65536": {
+     "control": 22.749,
+     "arm": 22.752,
+     "gain": 0.0001,
+     "gain_by_order": [
+      0.0006,
+      -0.0004
+     ],
+     "beyond_spread": false
+    },
+    "prefill@221184": {
+     "control": 98.071,
+     "arm": 97.983,
+     "gain": -0.0009,
+     "gain_by_order": [
+      -0.0004,
+      -0.0014
+     ],
+     "beyond_spread": false
+    },
+    "capacity": {
+     "control": 428579.0,
+     "arm": 428579.0,
+     "gain": 0.0,
+     "gain_by_order": [
+      0.0,
+      0.0
+     ],
+     "beyond_spread": false
+    },
+    "cycle@24": {
+     "control": 45.405,
+     "arm": 49.63,
+     "gain": 0.0931,
+     "gain_by_order": [
+      0.0937,
+      0.0924
+     ],
+     "beyond_spread": true
+    },
+    "cycle@7.3K": {
+     "control": 46.055,
+     "arm": 50.515,
+     "gain": 0.0968,
+     "gain_by_order": [
+      0.0974,
+      0.0963
+     ],
+     "beyond_spread": true
+    },
+    "cycle@58K": {
+     "control": 48.285,
+     "arm": 52.605,
+     "gain": 0.0895,
+     "gain_by_order": [
+      0.09,
+      0.089
+     ],
+     "beyond_spread": true
+    },
+    "cycle@197K": {
+     "control": 54.52,
+     "arm": 58.815,
+     "gain": 0.0788,
+     "gain_by_order": [
+      0.0792,
+      0.0783
+     ],
+     "beyond_spread": true
+    },
+    "accept": {
+     "gain": -0.0002,
+     "ci95": [
+      -0.0172,
+      0.0171
+     ],
+     "documents": 96,
+     "blank_texts": 0,
+     "beyond_spread": false
+    }
+   }
+  }
+ },
+ "blocks": {
+  "1": {
+   "control": {
+    "decode@128": 60.781,
+    "ttft@128": 102.2,
+    "decode@8192": 81.311,
+    "ttft@8192": 131.65,
+    "decode@65536": 56.962,
+    "ttft@65536": 135.95,
+    "decode@221184": 55.799,
+    "ttft@221184": 138.15,
+    "prefill@8192": 2.625,
+    "prefill@65536": 22.749,
+    "prefill@221184": 98.071,
+    "capacity": 428579.0,
+    "cycle@24": 45.405,
+    "cycle@7.3K": 46.055,
+    "cycle@58K": 48.285,
+    "cycle@197K": 54.52
+   },
+   "control_spread": {
+    "decode@128": 0.0007,
+    "ttft@128": 0.002,
+    "decode@8192": 0.0004,
+    "ttft@8192": 0.0113,
+    "decode@65536": 0.0004,
+    "ttft@65536": 0.0007,
+    "decode@221184": 0.0017,
+    "ttft@221184": 0.0065,
+    "prefill@8192": 0.0004,
+    "prefill@65536": 0.0006,
+    "prefill@221184": 0.0017,
+    "capacity": 0.0,
+    "cycle@24": 0.0029,
+    "cycle@7.3K": 0.0041,
+    "cycle@58K": 0.0006,
+    "cycle@197K": 0.0007
+   }
+  }
+ },
+ "gate": "incomplete:p109"
+}

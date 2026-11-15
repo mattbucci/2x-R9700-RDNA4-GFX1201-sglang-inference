@@ -1,0 +1,80 @@
+  File "/data/sgl-v0522-consol/s100/p109/python/sglang/srt/model_executor/model_runner_components/cuda_graph_setup.py", line 413, in capture_cuda_graphs
+    decode = capture_decode_graph(model_runner=model_runner)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/data/sgl-v0522-consol/s100/p109/python/sglang/srt/model_executor/model_runner_components/cuda_graph_setup.py", line 737, in capture_decode_graph
+    runner = GraphRunnerCls(model_runner)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/data/sgl-v0522-consol/s100/p109/python/sglang/srt/model_executor/runner/decode_cuda_graph_runner.py", line 516, in __init__
+    self.capture()
+  File "/data/sgl-v0522-consol/s100/p109/python/sglang/srt/model_executor/runner/decode_cuda_graph_runner.py", line 1168, in capture
+    self._capture_one_stream()
+  File "/data/sgl-v0522-consol/s100/p109/python/sglang/srt/model_executor/runner/decode_cuda_graph_runner.py", line 1228, in _capture_one_stream
+    self.capture_one_shape(
+  File "/data/sgl-v0522-consol/s100/p109/python/sglang/srt/model_executor/runner/decode_cuda_graph_runner.py", line 1356, in capture_one_shape
+    self.backend.capture_one(
+  File "/data/sgl-v0522-consol/s100/p109/python/sglang/srt/model_executor/runner_backend/full_cuda_graph_backend.py", line 166, in capture_one
+    output = forward_fn()
+             ^^^^^^^^^^^^
+  File "/data/sgl-v0522-consol/s100/p109/python/sglang/srt/model_executor/runner/decode_cuda_graph_runner.py", line 1320, in run_once
+    out = forward(
+          ^^^^^^^^
+  File "/home/letsrtfm/miniforge3/envs/sglang-triton36-v0522/lib/python3.12/site-packages/torch/utils/_contextlib.py", line 124, in decorate_context
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/data/sgl-v0522-consol/s100/p109/python/sglang/srt/models/qwen3_vl.py", line 1653, in forward
+    hidden_states = general_mm_embed_routine(
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/data/sgl-v0522-consol/s100/p109/python/sglang/srt/managers/mm_utils.py", line 844, in general_mm_embed_routine
+    hidden_states = language_model(
+                    ^^^^^^^^^^^^^^^
+  File "/home/letsrtfm/miniforge3/envs/sglang-triton36-v0522/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1779, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/letsrtfm/miniforge3/envs/sglang-triton36-v0522/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1790, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/letsrtfm/miniforge3/envs/sglang-triton36-v0522/lib/python3.12/site-packages/torch/utils/_contextlib.py", line 124, in decorate_context
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/data/sgl-v0522-consol/s100/p109/python/sglang/srt/models/qwen3_5.py", line 2043, in forward
+    hidden_states = layer(
+                    ^^^^^^
+  File "/home/letsrtfm/miniforge3/envs/sglang-triton36-v0522/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1779, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/letsrtfm/miniforge3/envs/sglang-triton36-v0522/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1790, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/data/sgl-v0522-consol/s100/p109/python/sglang/srt/models/qwen3_5.py", line 1758, in forward
+    hidden_states = self.self_attention(
+                    ^^^^^^^^^^^^^^^^^^^^
+  File "/data/sgl-v0522-consol/s100/p109/python/sglang/srt/models/qwen3_5.py", line 1727, in self_attention
+    attn_output = self.attn(q, k, v, forward_batch)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/letsrtfm/miniforge3/envs/sglang-triton36-v0522/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1779, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/letsrtfm/miniforge3/envs/sglang-triton36-v0522/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1790, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/data/sgl-v0522-consol/s100/p109/python/sglang/srt/layers/radix_attention.py", line 294, in forward
+    return get_attn_backend().forward(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/data/sgl-v0522-consol/s100/p109/python/sglang/srt/layers/attention/hybrid_linear_attn_backend.py", line 1492, in forward
+    return self.forward_extend(
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/data/sgl-v0522-consol/s100/p109/python/sglang/srt/layers/attention/hybrid_linear_attn_backend.py", line 1441, in forward_extend
+    return self.full_attn_backend.forward_extend(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/data/sgl-v0522-consol/s100/p109/python/sglang/srt/layers/attention/triton_backend.py", line 1896, in forward_extend
+    and verify_fwd(
+        ^^^^^^^^^^^
+  File "/home/letsrtfm/miniforge3/envs/sglang-triton36-v0522/lib/python3.12/site-packages/torch/_dynamo/eval_frame.py", line 1263, in _fn
+    return fn(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^
+  File "/data/sgl-v0522-consol/s100/p109/python/sglang/kernels/ops/attention/verify_gqa_rdna4.py", line 475, in verify_gqa_fwd
+    vg(
+TypeError: VerifySplitKV.__call__() got an unexpected keyword argument 'sinks'
+
+[2026-11-14 15:33:46] Received sigquit from a child process. It usually means the child failed.
+[2026-11-14 15:33:46] kill_process_tree called: parent_pid=4173848, include_parent=True, pid=4173848

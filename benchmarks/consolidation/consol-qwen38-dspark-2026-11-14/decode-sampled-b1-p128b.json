@@ -1,0 +1,169 @@
+{
+  "label": "b1-p128b-sampled",
+  "tag": "",
+  "note": "CONSOL-1 session qwen38-dspark, preset qwen38, 100 patches, --random-seed 7",
+  "port": 23334,
+  "maxtok": 400,
+  "runs": 2,
+  "sampling": {
+    "temperature": 1.0,
+    "top_p": 0.95,
+    "top_k": 20,
+    "seed": 7
+  },
+  "ignore_eos": true,
+  "points": [
+    {
+      "context": 128,
+      "input_len": 24,
+      "runs_tps": [
+        50.82,
+        51.26
+      ],
+      "median_tps": 51.04,
+      "min_tps": 50.825,
+      "max_tps": 51.257,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "runs_verify_ct": [
+        158,
+        157
+      ],
+      "runs_decode_s": [
+        7.8505,
+        7.7843
+      ],
+      "runs_text_sha": [
+        "224e2c77b7b5",
+        "c5e0d1cd986b"
+      ],
+      "runs_pieces": [
+        159,
+        158
+      ],
+      "runs_median_gap_ms": [
+        49.56,
+        49.59
+      ],
+      "median_tpot_ms": 19.59,
+      "sample": "# The Silicon Highway: A Deep Dive into GPU Memory Hierarchy",
+      "median_ttft_ms": 127.1
+    },
+    {
+      "context": 8192,
+      "input_len": 7331,
+      "runs_tps": [
+        52.62,
+        67.57
+      ],
+      "median_tps": 59.165,
+      "min_tps": 52.616,
+      "max_tps": 67.575,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "runs_verify_ct": [
+        150,
+        117
+      ],
+      "runs_decode_s": [
+        7.5832,
+        5.9046
+      ],
+      "runs_text_sha": [
+        "d23ff2a08a8d",
+        "b37bf991129d"
+      ],
+      "runs_pieces": [
+        132,
+        99
+      ],
+      "runs_median_gap_ms": [
+        50.55,
+        50.48
+      ],
+      "median_tpot_ms": 16.9,
+      "sample": "The text consists of the pangram \"The quick brown fox jumps ",
+      "median_ttft_ms": 1363.4
+    },
+    {
+      "context": 65536,
+      "input_len": 58483,
+      "runs_tps": [
+        43.33,
+        44.11
+      ],
+      "median_tps": 43.715,
+      "min_tps": 43.331,
+      "max_tps": 44.106,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "runs_verify_ct": [
+        175,
+        172
+      ],
+      "runs_decode_s": [
+        9.2082,
+        9.0464
+      ],
+      "runs_text_sha": [
+        "4bb81aede992",
+        "d52b5c63f51c"
+      ],
+      "runs_pieces": [
+        129,
+        127
+      ],
+      "runs_median_gap_ms": [
+        52.72,
+        52.62
+      ],
+      "median_tpot_ms": 22.88,
+      "sample": "The provided text consists of the English pangram \"The quick",
+      "median_ttft_ms": 10113.3
+    },
+    {
+      "context": 221184,
+      "input_len": 197326,
+      "runs_tps": [
+        32.96,
+        37.76
+      ],
+      "median_tps": 35.198,
+      "min_tps": 32.959,
+      "max_tps": 37.763,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "runs_verify_ct": [
+        206,
+        180
+      ],
+      "runs_decode_s": [
+        12.1058,
+        10.566
+      ],
+      "runs_text_sha": [
+        "25f001c19e25",
+        "a6ac77c52dd1"
+      ],
+      "runs_pieces": [
+        134,
+        135
+      ],
+      "runs_median_gap_ms": [
+        116.42,
+        58.76
+      ],
+      "median_tpot_ms": 28.41,
+      "sample": "The text provided consists of the classic English pangram \"T",
+      "median_ttft_ms": 38082.3
+    }
+  ]
+}

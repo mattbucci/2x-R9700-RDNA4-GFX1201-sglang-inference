@@ -1,0 +1,169 @@
+{
+  "label": "b1-p100b-sampled",
+  "tag": "",
+  "note": "CONSOL-1 session qwen38-dspark, preset qwen38, 100 patches, --random-seed 7",
+  "port": 23334,
+  "maxtok": 400,
+  "runs": 2,
+  "sampling": {
+    "temperature": 1.0,
+    "top_p": 0.95,
+    "top_k": 20,
+    "seed": 7
+  },
+  "ignore_eos": true,
+  "points": [
+    {
+      "context": 128,
+      "input_len": 24,
+      "runs_tps": [
+        51.71,
+        57.49
+      ],
+      "median_tps": 54.446,
+      "min_tps": 51.71,
+      "max_tps": 57.487,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "runs_verify_ct": [
+        164,
+        148
+      ],
+      "runs_decode_s": [
+        7.7161,
+        6.9408
+      ],
+      "runs_text_sha": [
+        "5c5849ab4ac4",
+        "c2b66af4bda7"
+      ],
+      "runs_pieces": [
+        165,
+        149
+      ],
+      "runs_median_gap_ms": [
+        46.97,
+        46.91
+      ],
+      "median_tpot_ms": 18.37,
+      "sample": "# The Data Highway: A Deep Dive into GPU Memory Hierarchy an",
+      "median_ttft_ms": 82.7
+    },
+    {
+      "context": 8192,
+      "input_len": 7331,
+      "runs_tps": [
+        48.22,
+        34.23
+      ],
+      "median_tps": 40.041,
+      "min_tps": 34.234,
+      "max_tps": 48.22,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "runs_verify_ct": [
+        107,
+        151
+      ],
+      "runs_decode_s": [
+        8.2746,
+        11.6552
+      ],
+      "runs_text_sha": [
+        "06eb9a649252",
+        "a20d63d32075"
+      ],
+      "runs_pieces": [
+        88,
+        124
+      ],
+      "runs_median_gap_ms": [
+        77.41,
+        77.27
+      ],
+      "median_tpot_ms": 24.97,
+      "sample": "The provided text consists of the pangram \"The quick brown f",
+      "median_ttft_ms": 1348.5
+    },
+    {
+      "context": 65536,
+      "input_len": 58483,
+      "runs_tps": [
+        10.7,
+        12.39
+      ],
+      "median_tps": 11.482,
+      "min_tps": 10.696,
+      "max_tps": 12.393,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "runs_verify_ct": [
+        171,
+        148
+      ],
+      "runs_decode_s": [
+        37.302,
+        32.1964
+      ],
+      "runs_text_sha": [
+        "ca5abf89aa01",
+        "46b9d093369e"
+      ],
+      "runs_pieces": [
+        135,
+        127
+      ],
+      "runs_median_gap_ms": [
+        218.01,
+        217.52
+      ],
+      "median_tpot_ms": 87.09,
+      "sample": "The provided text consists of the famous English pangram, \"T",
+      "median_ttft_ms": 10188.2
+    },
+    {
+      "context": 221184,
+      "input_len": 197326,
+      "runs_tps": [
+        3.54,
+        3.7
+      ],
+      "median_tps": 3.616,
+      "min_tps": 3.538,
+      "max_tps": 3.698,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "runs_verify_ct": [
+        188,
+        180
+      ],
+      "runs_decode_s": [
+        112.78,
+        107.904
+      ],
+      "runs_text_sha": [
+        "e08b8ca66388",
+        "a27c9ff5d4ce"
+      ],
+      "runs_pieces": [
+        125,
+        133
+      ],
+      "runs_median_gap_ms": [
+        600.95,
+        600.24
+      ],
+      "median_tpot_ms": 276.55,
+      "sample": "The provided text consists of the classic English pangram \"T",
+      "median_ttft_ms": 38360.8
+    }
+  ]
+}

@@ -1,0 +1,48 @@
+{
+ "label": "b1-p100a-sampled",
+ "note": "CONSOL-1 session qwen38-dspark, preset qwen38, 100 patches, --random-seed 7",
+ "log": "/data/logs/consol-qwen38-dspark-2026-11-14/server-b1-p100a.log",
+ "from_line": 1044,
+ "to_line": 1139,
+ "line_numbering": "newline",
+ "decode_lines_dropped_after_prefill": 8,
+ "decode_lines_dropped_no_depth": 1,
+ "depths": {
+  "24": {
+   "decode_batches": {
+    "lines": 6,
+    "accept_len": 2.48,
+    "tok_s": 53.72,
+    "cycles_s": 21.32,
+    "cycle_ms": 46.9
+   }
+  },
+  "7.3K": {
+   "decode_batches": {
+    "lines": 4,
+    "accept_len": 2.67,
+    "tok_s": 34.72,
+    "cycles_s": 12.98,
+    "cycle_ms": 77.04
+   }
+  },
+  "58K": {
+   "decode_batches": {
+    "lines": 5,
+    "accept_len": 2.4,
+    "tok_s": 11.03,
+    "cycles_s": 4.6,
+    "cycle_ms": 217.59
+   }
+  },
+  "197K": {
+   "decode_batches": {
+    "lines": 7,
+    "accept_len": 2.1,
+    "tok_s": 3.51,
+    "cycles_s": 1.67,
+    "cycle_ms": 597.8
+   }
+  }
+ }
+}

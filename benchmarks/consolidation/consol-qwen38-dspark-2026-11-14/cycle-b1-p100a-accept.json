@@ -1,0 +1,30 @@
+{
+ "label": "b1-p100a-accept",
+ "note": "CONSOL-1 session qwen38-dspark, preset qwen38, 100 patches, --random-seed 7",
+ "log": "/data/logs/consol-qwen38-dspark-2026-11-14/server-b1-p100a.log",
+ "from_line": 1142,
+ "to_line": 1471,
+ "line_numbering": "newline",
+ "decode_lines_dropped_after_prefill": 48,
+ "decode_lines_dropped_no_depth": 1,
+ "depths": {
+  "7.3K": {
+   "decode_batches": {
+    "lines": 35,
+    "accept_len": 3.55,
+    "tok_s": 51.4,
+    "cycles_s": 13.18,
+    "cycle_ms": 75.86
+   }
+  },
+  "58K": {
+   "decode_batches": {
+    "lines": 10,
+    "accept_len": 3.76,
+    "tok_s": 30.73,
+    "cycles_s": 7.8,
+    "cycle_ms": 129.78
+   }
+  }
+ }
+}

@@ -1,0 +1,169 @@
+{
+  "label": "b1-p125a-sampled",
+  "tag": "",
+  "note": "CONSOL-1 session qwen38-dspark, preset qwen38, 100 patches, --random-seed 7",
+  "port": 23334,
+  "maxtok": 400,
+  "runs": 2,
+  "sampling": {
+    "temperature": 1.0,
+    "top_p": 0.95,
+    "top_k": 20,
+    "seed": 7
+  },
+  "ignore_eos": true,
+  "points": [
+    {
+      "context": 128,
+      "input_len": 24,
+      "runs_tps": [
+        64.27,
+        63.21
+      ],
+      "median_tps": 63.737,
+      "min_tps": 63.212,
+      "max_tps": 64.27,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "runs_verify_ct": [
+        139,
+        141
+      ],
+      "runs_decode_s": [
+        6.2081,
+        6.3121
+      ],
+      "runs_text_sha": [
+        "527414eb3068",
+        "63cf2c7611a9"
+      ],
+      "runs_pieces": [
+        140,
+        142
+      ],
+      "runs_median_gap_ms": [
+        44.67,
+        44.65
+      ],
+      "median_tpot_ms": 15.69,
+      "sample": "# The Architect of Speed: A Deep Dive into GPU Memory Hierar",
+      "median_ttft_ms": 103.0
+    },
+    {
+      "context": 8192,
+      "input_len": 7331,
+      "runs_tps": [
+        56.82,
+        56.19
+      ],
+      "median_tps": 56.503,
+      "min_tps": 56.19,
+      "max_tps": 56.82,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "runs_verify_ct": [
+        153,
+        155
+      ],
+      "runs_decode_s": [
+        7.0222,
+        7.1009
+      ],
+      "runs_text_sha": [
+        "f7d4bb903337",
+        "49cd9f194aca"
+      ],
+      "runs_pieces": [
+        134,
+        129
+      ],
+      "runs_median_gap_ms": [
+        45.91,
+        45.86
+      ],
+      "median_tpot_ms": 17.7,
+      "sample": "The text consists of the classic pangram \"The quick brown fo",
+      "median_ttft_ms": 1378.5
+    },
+    {
+      "context": 65536,
+      "input_len": 58483,
+      "runs_tps": [
+        45.17,
+        46.62
+      ],
+      "median_tps": 45.884,
+      "min_tps": 45.166,
+      "max_tps": 46.624,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "runs_verify_ct": [
+        170,
+        165
+      ],
+      "runs_decode_s": [
+        8.834,
+        8.5578
+      ],
+      "runs_text_sha": [
+        "1c366c6d82c7",
+        "0e1162d9b7b7"
+      ],
+      "runs_pieces": [
+        134,
+        135
+      ],
+      "runs_median_gap_ms": [
+        51.96,
+        51.9
+      ],
+      "median_tpot_ms": 21.79,
+      "sample": "The provided text consists of the classic English pangram \"T",
+      "median_ttft_ms": 10067.8
+    },
+    {
+      "context": 221184,
+      "input_len": 197326,
+      "runs_tps": [
+        30.61,
+        31.87
+      ],
+      "median_tps": 31.227,
+      "min_tps": 30.606,
+      "max_tps": 31.874,
+      "runs_completion_tokens": [
+        400,
+        400
+      ],
+      "runs_verify_ct": [
+        180,
+        173
+      ],
+      "runs_decode_s": [
+        13.0367,
+        12.518
+      ],
+      "runs_text_sha": [
+        "23e9bd19d76d",
+        "5a6a0c12d730"
+      ],
+      "runs_pieces": [
+        131,
+        137
+      ],
+      "runs_median_gap_ms": [
+        72.57,
+        72.4
+      ],
+      "median_tpot_ms": 32.02,
+      "sample": "The provided text consists of the pangram \"The quick brown f",
+      "median_ttft_ms": 38111.9
+    }
+  ]
+}
