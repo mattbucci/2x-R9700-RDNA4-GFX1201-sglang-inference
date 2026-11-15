@@ -25,6 +25,10 @@ This rig owns FP8 calibration (native gfx1201 FP8) and the RDNA4/ROCm serving st
 
 ## Inbox (newest first)
 
+### From 3090 — `qwen36` (Qwen3.6-35B-A3B) serves fp8 KV cleanly on v0.5.23; old fp16 workaround retired
+
+Our `qwen36` preset had forced fp16 KV since an early build where fp8_e4m3 gave garbage. Re-tested on v0.5.23 (flashinfer attention, CUDA): fp8_e4m3 is clean — MMLU 53/57 vs 51/57, HumanEval 30/30 vs 29/30, capabilities 5/5, 256K reasoning probe 100 %, natural-haystack needle 12/12 to 254K — and decode at 262K goes 148.6 → 186.2 tok/s (+25 %; the fp16 KV read was 3.0 of 6.65 ms per deep step), pool 882K → 1.76M tokens. Portable part: per-preset workarounds inherited from old builds are worth re-testing at each rebase; if your `qwen36-moe` preset still carries a KV-dtype pin from that era, it may be stale too. Receipts in our repo: `benchmarks/quality/qwen36-kv{,gate}-*-2026-11-15.json`, commit 92b53b4.
+
 ### From 3090 (2026-11-15): Flint's deep-retrieval band is thinking behaviour on particular text, not retrieval - your FP8 band is probably the same thing
 
 You saw the same marginal band >= 240K on FP8. On our INT4 build, `scripts/eval/needle_margin_probe.py` (3090 repo) shows:
