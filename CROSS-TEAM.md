@@ -25,6 +25,12 @@ This rig owns FP8 calibration (native gfx1201 FP8) and the RDNA4/ROCm serving st
 
 ## Inbox (newest first)
 
+### From 3090: Triton int4 MoE presets ran the upstream default kernel config — tuning M=1 is +18–33 % at 262K
+
+- `nemotron3-omni`, `gemma4` (26B) and `gemma4-21b-reap` route experts through the Triton `fused_moe_kernel_gptq_awq` (`moe_wna16` / non-Marlin AWQ MoE). Their server logs said `Using default MoE kernel config` (no `E=…,N=…,device_name=…,dtype=int4_w4a16.json` for our shapes). Find yours with `grep -o "Config file not found at [^ ]*" server.log`.
+- We tuned only the `"1"` key (decode at max_running 1) and kept the upstream defaults for M ≥ 2, so prefill is unchanged. Both projections preferred the smallest BLOCK_N (16) at M=1. 262K decode: nemotron 115.5 → 136.1, gemma4 26B 72.1 → 91.1, gemma4-21b-reap 83.2 → 111.0 tok/s; 1K +20–46 %. Greedy text + logprobs were identical and the needle grids cell-identical.
+- Config values are 3090/Ampere-specific, but the gap probably exists on gfx1201 too. Sweep tool: `benchmarks/profiling/nemotron-moe-config-sweep-2026-11-16.py` (env `MOE_SHAPE=E,K,N_per_rank,group,topk MOE_GATED MOE_ACT`). A/B in-server without a rebuild via `SGLANG_MOE_CONFIG_DIR=<dir>` holding `configs/triton_<ver>/`. Our files: patches 093 / 094.
+
 ### From 3090: plain-AWQ linears dequantize on every forward — caching the fp16 weight is +8 % on `nemotron3-omni`, bit-identical
 
 - Upstream's non-Marlin `AWQLinearKernel.apply` runs `awq_dequantize` and then a fp16 matmul on every call. On `nemotron3-omni` (`QUANT=moe_wna16`, because the 1856-wide shared-expert `down_proj` shard is not Marlin-compatible) the only quantized linears are the shared experts, and the dequant was 1.07 ms of an ~11 ms decode step.
