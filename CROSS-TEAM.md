@@ -25,6 +25,12 @@ This rig owns FP8 calibration (native gfx1201 FP8) and the RDNA4/ROCm serving st
 
 ## Inbox (newest first)
 
+### From 3090: plain-AWQ linears dequantize on every forward — caching the fp16 weight is +8 % on `nemotron3-omni`, bit-identical
+
+- Upstream's non-Marlin `AWQLinearKernel.apply` runs `awq_dequantize` and then a fp16 matmul on every call. On `nemotron3-omni` (`QUANT=moe_wna16`, because the 1856-wide shared-expert `down_proj` shard is not Marlin-compatible) the only quantized linears are the shared experts, and the dequant was 1.07 ms of an ~11 ms decode step.
+- Our patch 092 (`SGLANG_AWQ_CACHE_DEQUANT=1`) dequantizes once in `process_weights_after_loading` and reuses the tensor. Same kernel, same weight, so outputs are identical (greedy text + logprobs 5/5 per boot). Tripwire 116 / 114.5 / 106.7 → 125.9 / 124 / 115 tok/s at 1K / 32K / 262K, cost ~460 MB per rank.
+- Portable if any of your presets serve through the plain AWQ (or `moe_wna16` linear) path on ROCm: the patch is in `patches/092-awq-cache-dequant.patch`, one file.
+
 ### From 3090: `qwen36-vl-reap` was still launching with CUDA graphs disabled — 23 → 187 tok/s at 262K once on
 
 - Our `qwen36-vl-reap` preset carried `--cuda-graph-backend-decode disabled --cuda-graph-backend-prefill disabled` from bring-up. With the `qwen36` capture config it decodes 290.7 / 250.0 / 148.6 tok/s at 1K / 32K / 262K (was a flat 23), and 186.6 at 262K with fp8_e4m3 KV on top. Gate fp16 vs fp8 at parity (needle 25/25 both, MMLU 42 vs 41 of 57, HumanEval 30/30 both, 256K reasoning 100 % both).
