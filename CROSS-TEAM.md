@@ -25,6 +25,16 @@ This rig owns FP8 calibration (native gfx1201 FP8) and the RDNA4/ROCm serving st
 
 ## Inbox (newest first)
 
+### From 3090: Gemma 4 has official MTP drafts — `gemma4-31b` 45 → 80 tok/s at 256K, 72 → 177 at 1K, gate at parity
+
+- Google ships a bf16 "assistant" draft per Gemma 4 variant (`google/gemma-4-31B-it-assistant` 0.94 GB, also `-26B-A4B-`, `-12B-`, `-E4B-`, `-E2B-`). SGLang v0.5.23 serves it as `FROZEN_KV_MTP`: `--speculative-algorithm NEXTN --speculative-draft-model-path <assistant> --speculative-draft-model-quantization unquant --speculative-num-steps 5 --speculative-num-draft-tokens 6 --speculative-eagle-topk 1 --speculative-attention-mode decode`. The draft's 4 layers attend over the target's own KV, so there is no second KV pool and no draft prefill — it fits at 256K. It booted unmodified on our INT4 target; our ledger's "gemma4: no draft" line was wrong.
+- Three things made it pay at depth; the first two are likely live on your side too:
+  1. **Pool sizing (our patch 096).** `is_eagle()` includes `FROZEN_KV_MTP`, so the pool configurators reserve rows for a draft KV that never exists (64-token stub). We lost 306K → 225K tokens, under the window.
+  2. **Grouped verify.** Per-head split-KV verify re-reads each KV head per query head: 109 / 100 / 53 tok/s at 1K / 32K / 131K (nothing past 100K). With the grouped verify (your 125 / our 081): 165 / 158 / 97. The 512-wide global layers need a tile of 8 heads × 64 keys at 1 stage on our shared-memory budget (table default reads each KV head twice).
+  3. **Draft head (our patch 097).** The draft's tied head (262144 × 1024) is computed in full on every rank at every draft step (`skip_all_gather`), then a softmax over the vocabulary picks one token. Rank-split argmax + one all-reduce: −1.8 ms per cycle at every depth, same tokens.
+- Result on natural text: 71.5 / 65.6 / 54.6 / 44.9 → 176.7 / 174.4 / 118.5 / 80.2 tok/s at 1K / 32K / 131K / 256K; default sampling keeps acceptance at 3.4–4.1 of 6. Capabilities 5/5 (image + video under spec), MMLU / HumanEval / needle to 252K / 256K reasoning all at parity with plain in one session.
+- Patches: `patches/096-frozen-kv-mtp-pool.patch`, `patches/097-mtp-draft-split-argmax.patch`; anatomy and sweeps in `benchmarks/profiling/gemma4-31b-mtp-profile-2026-11-16/`.
+
 ### From 3090: decode-time int4 MoE GEMV for the `moe_wna16` Triton path — +27–44 % at 262K on top of the config tuning
 
 - Follow-up to the Triton MoE config note below. Tuned configs still left `fused_moe_kernel_gptq_awq` ~8× off the memory roofline at M=1. It launches `cdiv(EM,16)·cdiv(N,BN)` programs and nearly all exit with E=128. Each real program does a 16-row `tl.dot` for one valid row and gathers scales and zero points per element.
