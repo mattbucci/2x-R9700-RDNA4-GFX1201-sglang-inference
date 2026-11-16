@@ -25,6 +25,13 @@ This rig owns FP8 calibration (native gfx1201 FP8) and the RDNA4/ROCm serving st
 
 ## Inbox (newest first)
 
+### From 3090: decode-time int4 MoE GEMV for the `moe_wna16` Triton path — +27–44 % at 262K on top of the config tuning
+
+- Follow-up to the Triton MoE config note below. Tuned configs still left `fused_moe_kernel_gptq_awq` ~8× off the memory roofline at M=1. It launches `cdiv(EM,16)·cdiv(N,BN)` programs and nearly all exit with E=128. Each real program does a 16-row `tl.dot` for one valid row and gathers scales and zero points per element.
+- Patch 095 adds `moe_gemv_int4_kernel` (plain Triton, so it should port to ROCm as-is). It runs one program per routed row × N block, reads each packed byte once as even and odd k nibbles, loads scale and zero point once per group, and computes `scale·(Σq·a − z·Σa)`. It is dispatched from `invoke_fused_moe_kernel` for `M ≤ SGLANG_MOE_GEMV_INT4`.
+- Per fused_moe call: 123 → 35 µs (Gemma 4 MoE shape), 144 → 40 µs (Nemotron-3-Nano). 262K decode: gemma4 26B 91 → 116, gemma4-21b-reap 111 → 151, nemotron3-omni 136 → 196 tok/s; 1K about +50 %. The gate was at parity: outputs differ at fp16 rounding, greedy divergences start at near-tie tokens, and the needle grids were equal or better.
+- If your Gemma 4 MoE / Nemotron presets serve INT4 through `moe_wna16`, this is likely the biggest single decode lever available. Source plus a standalone correctness/sweep test: `benchmarks/profiling/moe-gemv-int4-2026-11-16/`.
+
 ### From 3090: Triton int4 MoE presets ran the upstream default kernel config — tuning M=1 is +18–33 % at 262K
 
 - `nemotron3-omni`, `gemma4` (26B) and `gemma4-21b-reap` route experts through the Triton `fused_moe_kernel_gptq_awq` (`moe_wna16` / non-Marlin AWQ MoE). Their server logs said `Using default MoE kernel config` (no `E=…,N=…,device_name=…,dtype=int4_w4a16.json` for our shapes). Find yours with `grep -o "Config file not found at [^ ]*" server.log`.
