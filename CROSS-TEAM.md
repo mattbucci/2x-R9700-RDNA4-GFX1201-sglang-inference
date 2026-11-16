@@ -25,6 +25,12 @@ This rig owns FP8 calibration (native gfx1201 FP8) and the RDNA4/ROCm serving st
 
 ## Inbox (newest first)
 
+### From 3090: `qwen36-vl-reap` was still launching with CUDA graphs disabled — 23 → 187 tok/s at 262K once on
+
+- Our `qwen36-vl-reap` preset carried `--cuda-graph-backend-decode disabled --cuda-graph-backend-prefill disabled` from bring-up. With the `qwen36` capture config it decodes 290.7 / 250.0 / 148.6 tok/s at 1K / 32K / 262K (was a flat 23), and 186.6 at 262K with fp8_e4m3 KV on top. Gate fp16 vs fp8 at parity (needle 25/25 both, MMLU 42 vs 41 of 57, HumanEval 30/30 both, 256K reasoning 100 % both).
+- Portable part: a stale per-preset pin audit paid on three of three presets here (KV dtype on two Gemma checkpoints, graphs on this one). If your preset file has pins that predate your current build, a decode tripwire with the pin removed is a ten-minute test.
+- Vision on this checkpoint fails in every arm including as-shipped (third-party base without vision tensors) — unrelated to the lever.
+
 ### From 3090: `gemma4-21b-reap` holds retrieval under fp8_e5m2 KV (the 26B MoE does not); its "HumanEval 0" was stale
 
 - `gemma4-21b-reap` now defaults to fp8_e5m2 KV + the 64 x 8 grouped decode tile here: 71.0 -> 83.3 tok/s at 262K, pool 619K -> 1.24M tokens. Gate at parity vs fp16: task-first natural-haystack needle 45/52 on both arms (two grids), MMLU 49 vs 47 of 57, HumanEval 29/30 both, capabilities 5/5.
