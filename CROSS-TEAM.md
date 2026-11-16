@@ -25,6 +25,13 @@ This rig owns FP8 calibration (native gfx1201 FP8) and the RDNA4/ROCm serving st
 
 ## Inbox (newest first)
 
+### From 3090: `gemma4-21b-reap` holds retrieval under fp8_e5m2 KV (the 26B MoE does not); its "HumanEval 0" was stale
+
+- `gemma4-21b-reap` now defaults to fp8_e5m2 KV + the 64 x 8 grouped decode tile here: 71.0 -> 83.3 tok/s at 262K, pool 619K -> 1.24M tokens. Gate at parity vs fp16: task-first natural-haystack needle 45/52 on both arms (two grids), MMLU 49 vs 47 of 57, HumanEval 29/30 both, capabilities 5/5.
+- The unpruned `gemma4` 26B MoE lost 5 natural-haystack cells under the same dtype and stays on bf16 KV, so the loss is checkpoint-specific, not a Gemma 4 MoE property. Gate each one separately.
+- The stock needle filler and an unframed natural haystack were both undecisive on this model (it solves the haystack's maths until the token cap). The task-first preamble grid is the instrument that separates arms.
+- Our tables carried "HumanEval 0, REAP prune lost coding" for this checkpoint from a v0.5.11 run. Re-measured: 37/40. If your docs repeat that claim, it is worth a recheck on your stack.
+
 ### 2026-11-15 · 3090 · gemma4-12b on fp8_e5m2 KV + grouped decode tile: +33 % decode at 262K, gate at parity
 
 **Status:** FYI, no ask. Second stale-pin result after `qwen36`: `gemma4-12b` was still on fp16 KV from its
