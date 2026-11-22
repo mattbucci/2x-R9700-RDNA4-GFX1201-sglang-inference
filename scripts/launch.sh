@@ -1048,6 +1048,37 @@ PYEOF
             REASONING="--reasoning-parser flint"
             TOOL_CALL_PARSER="flint"
             ;;
+        inkling2|inkling2-mini)
+            # thinkingmachines/Inkling-2-Mini — 26.4B-total / 3.4B-active looped MoE (24 layers, the
+            # 6..17 core runs 3 passes = 48 layer visits; 128 experts top-8 sigmoid routing), local
+            # (1024 window) + global attention with a hidden-state relative bias and per-token sinks,
+            # short convolutions, attention residuals, image input, 1M ctx. First-party QAT checkpoint
+            # (experts NVFP4 on layers 0-19, MXFP8 on 20-23, the rest BF16; no BF16 release exists),
+            # served as shipped. Patches 133-135: per-token sinks in the Triton attention kernels, the
+            # RDNA4 Inkling 2 kernels (fused attention residuals, loop message gates, prologue, router,
+            # multi-input GEMV, packed-expert GEMV/GEMM) and the model port (transformers semantics,
+            # expert activations BF16). Checked against the transformers 5.24 reference on the CPU;
+            # natural needle 9/9 to 223K, capabilities 4/4 (no video in the checkpoint).
+            MODEL="${MODEL:-/data/models/Inkling-2-Mini}"
+            QUANT=""            # the model reads hf_quant_config.json itself
+            DTYPE="bfloat16"
+            KV_DTYPE="${_ENV_KV_DTYPE:-auto}"
+            ATTN_BACKEND="${ATTN_BACKEND:-triton}"
+            CTX="${_ENV_CTX:-262144}"; MAX_RUNNING="${_ENV_MAX_RUNNING:-4}"
+            CHUNKED="${_ENV_CHUNKED:-4096}"; DECODE_STEPS=8; MEM="${_ENV_MEM:-0.85}"
+            WATCHDOG=1800
+            EXTRA_ARGS="${EXTRA_ARGS:-} --enable-multimodal"
+            [[ "${EXTRA_ARGS:-}" == *--cuda-graph-max-bs-decode* ]] || EXTRA_ARGS="$EXTRA_ARGS --cuda-graph-max-bs-decode 4"
+            # Decode all-reduces (96 per token) on the in-graph one-stage custom all-reduce (patch 129):
+            # 65.9 -> 67.2 tok/s, same output. ENABLE_CUSTOM_ALL_REDUCE=0 restores RCCL.
+            if [[ "${ENABLE_CUSTOM_ALL_REDUCE:-1}" == "1" ]]; then
+                CUSTOM_AR=""
+                export SGLANG_USE_1STAGE_ALLREDUCE="${SGLANG_USE_1STAGE_ALLREDUCE:-1}"
+            fi
+            CUDA_GRAPH=""   # dispatch-bound looped MoE decode: graphs on
+            REASONING="--reasoning-parser inkling"
+            TOOL_CALL_PARSER="inkling2"
+            ;;
         *)
             echo "Unknown model: $1"
             echo "Run with -h for available models."

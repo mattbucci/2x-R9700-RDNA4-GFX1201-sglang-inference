@@ -1,0 +1,710 @@
+diff --git a/python/sglang/kernels/ops/attention/inkling2_attn_res_rdna4.py b/python/sglang/kernels/ops/attention/inkling2_attn_res_rdna4.py
+new file mode 100644
+index 0000000..cc7247a
+--- /dev/null
++++ b/python/sglang/kernels/ops/attention/inkling2_attn_res_rdna4.py
+@@ -0,0 +1,95 @@
++"""Inkling 2 attention residual in one Triton launch (RDNA4).
++
++out[t, q] = sum_n softmax_n(<query_q, s_n / rms(s_n)> * H^-0.5) * s_n / rms(s_n)
++
++over the block states s_0..s_{n-1} of token t plus the partial state (n <= 8 states,
++1..4 queries). Each program owns one token and one hidden-size slice of the output; it
++recomputes the per-state norms and scores over the full hidden size (a few states of a
++few thousand elements), so no cross-program reduction is needed.
++"""
++
++import torch
++import triton
++import triton.language as tl
++
++MAX_STATES = 8
++
++
++@triton.jit
++def _attn_res_kernel(
++    S0, S1, S2, S3, S4, S5, S6, S7,
++    Query,
++    Out,
++    H,
++    stride_s,
++    stride_o_t,
++    stride_o_q,
++    eps,
++    scale,
++    N_STATES: tl.constexpr,
++    N_QUERIES: tl.constexpr,
++    BLOCK_H: tl.constexpr,
++    BLOCK_RED: tl.constexpr,
++):
++    t = tl.program_id(0).to(tl.int64)
++    hb = tl.program_id(1)
++    offs_n = tl.arange(0, MAX_STATES_C)
++    offs_q = tl.arange(0, 4)
++    sumsq = tl.zeros((MAX_STATES_C,), dtype=tl.float32)
++    dots = tl.zeros((4, MAX_STATES_C), dtype=tl.float32)
++    for h0 in range(0, H, BLOCK_RED):
++        offs_h = h0 + tl.arange(0, BLOCK_RED)
++        hm = offs_h < H
++        qv = tl.load(Query + offs_q[:, None] * H + offs_h[None, :],
++                     mask=(offs_q[:, None] < N_QUERIES) & hm[None, :], other=0.0).to(tl.float32)
++        for i in tl.static_range(N_STATES):
++            ptr = S0 if i == 0 else S1 if i == 1 else S2 if i == 2 else S3 if i == 3 else S4 if i == 4 else S5 if i == 5 else S6 if i == 6 else S7
++            x = tl.load(ptr + t * stride_s + offs_h, mask=hm, other=0.0).to(tl.float32)
++            sumsq = tl.where(offs_n == i, sumsq + tl.sum(x * x, 0), sumsq)
++            d = tl.sum(qv * x[None, :], 1)  # [4]
++            dots = tl.where(offs_n[None, :] == i, dots + d[:, None], dots)
++    inv_rms = tl.where(offs_n < N_STATES, 1.0 / tl.sqrt(sumsq / H + eps), 0.0)
++    scores = tl.where(offs_n[None, :] < N_STATES, dots * inv_rms[None, :] * scale, float("-inf"))
++    m = tl.max(scores, 1)
++    p = tl.exp(scores - m[:, None])
++    p = p / tl.sum(p, 1)[:, None]
++    coef = p * inv_rms[None, :]  # [4, MAX_STATES]
++    offs_h = hb * BLOCK_H + tl.arange(0, BLOCK_H)
++    hm = offs_h < H
++    acc = tl.zeros((4, BLOCK_H), dtype=tl.float32)
++    for i in tl.static_range(N_STATES):
++        ptr = S0 if i == 0 else S1 if i == 1 else S2 if i == 2 else S3 if i == 3 else S4 if i == 4 else S5 if i == 5 else S6 if i == 6 else S7
++        x = tl.load(ptr + t * stride_s + offs_h, mask=hm, other=0.0).to(tl.float32)
++        c = tl.sum(tl.where(offs_n[None, :] == i, coef, 0.0), 1)  # [4]
++        acc += c[:, None] * x[None, :]
++    tl.store(Out + t * stride_o_t + offs_q[:, None] * stride_o_q + offs_h[None, :], acc,
++             mask=(offs_q[:, None] < N_QUERIES) & hm[None, :])
++
++
++MAX_STATES_C: tl.constexpr = tl.constexpr(MAX_STATES)
++
++
++def attn_res(states: list, query: torch.Tensor, eps: float) -> torch.Tensor:
++    """states: n tensors [T, H] (any float dtype, same strides); query [Q, H] or [H].
++    Returns FP32 [T, Q, H]."""
++    n = len(states)
++    assert 1 <= n <= MAX_STATES
++    T, H = states[0].shape
++    q = query.reshape(-1, H).float().contiguous()
++    Q = q.shape[0]
++    assert Q <= 4
++    stride = states[0].stride(0)
++    if any(s.stride(0) != stride or s.stride(1) != 1 for s in states):
++        states = [s.contiguous() for s in states]
++        stride = states[0].stride(0)
++    out = torch.empty((T, Q, H), dtype=torch.float32, device=states[0].device)
++    if T:
++        ptrs = list(states) + [states[0]] * (MAX_STATES - n)
++        # Graph-timed on gfx1201: one reduction pass over the whole hidden size, 1024-wide
++        # output slices, 8 warps (7.3 us at T = 1, five states, three queries).
++        block_h = 1024
++        _attn_res_kernel[(T, triton.cdiv(H, block_h))](
++            *ptrs, q, out, H, stride, out.stride(0), out.stride(1), eps, H**-0.5,
++            N_STATES=n, N_QUERIES=Q, BLOCK_H=block_h, BLOCK_RED=triton.next_power_of_2(H), num_warps=8,
++        )
++    return out
+diff --git a/python/sglang/kernels/ops/attention/inkling2_prologue_rdna4.py b/python/sglang/kernels/ops/attention/inkling2_prologue_rdna4.py
+new file mode 100644
+index 0000000..04e24e0
+--- /dev/null
++++ b/python/sglang/kernels/ops/attention/inkling2_prologue_rdna4.py
+@@ -0,0 +1,128 @@
++"""Inkling 2 attention prologue and router in single Triton launches (RDNA4).
++
++prologue: from the merged projection rows [q | rel | gate | sink] of each token,
++  q   = l2_clip(q * q_scale, qk_threshold)            (global: bf16, then * tau)
++  r   = l2_clip(r * rel_scale, rel_threshold)         (global: bf16, then * tau)
++  rel_logits[t, h, d] = bf16(r[t, h] . rel_proj[:, d])   for d < rel_extent  (FP32 store)
++  sinks[t, h] = sink[t, h]                              (FP32 store)
++  with tau = 1 + alpha * log(max((pos + 1) / n_floor, 1)), matching the transformers
++  rounding order.
++
++router: logits = x . W (FP32 accumulation), scores = sigmoid(logits), top-k of
++  scores + bias, weights = scores[top-k] / sum * route_scale.
++"""
++
++import torch
++import triton
++import triton.language as tl
++
++
++@triton.jit
++def _prologue_kernel(
++    P, stride_p,                 # merged projection output [T, >= q+r+g+s]
++    QScale, RScale, RelProj,     # [h, hd] , [h, dr], [dr, E]
++    Pos,
++    QOut, RelOut, SinkOut,       # [T, h, hd] bf16, [T, h, E] fp32, [T, h] fp32
++    q_off, r_off, s_off,
++    HEADS: tl.constexpr,
++    HEAD_DIM: tl.constexpr,
++    D_REL: tl.constexpr,
++    EXTENT: tl.constexpr,
++    BLOCK_E: tl.constexpr,
++    qk_threshold, rel_threshold, log_alpha, log_floor,
++    IS_GLOBAL: tl.constexpr,
++):
++    t = tl.program_id(0).to(tl.int64)
++    h = tl.program_id(1)
++    row = P + t * stride_p
++    offs_d = tl.arange(0, HEAD_DIM)
++    q = tl.load(row + q_off + h * HEAD_DIM + offs_d).to(tl.float32) * tl.load(QScale + h * HEAD_DIM + offs_d).to(tl.float32)
++    qn = tl.sqrt(tl.sum(q * q, 0))
++    q = q * tl.minimum(qk_threshold / (qn + 1e-6), 1.0)
++    offs_r = tl.arange(0, D_REL)
++    r = tl.load(row + r_off + h * D_REL + offs_r).to(tl.float32) * tl.load(RScale + h * D_REL + offs_r).to(tl.float32)
++    rn = tl.sqrt(tl.sum(r * r, 0))
++    r = r * tl.minimum(rel_threshold / (rn + 1e-6), 1.0)
++    if IS_GLOBAL:
++        pos = tl.load(Pos + t).to(tl.float32)
++        tau = 1.0 + log_alpha * tl.log(tl.maximum((pos + 1.0) / log_floor, 1.0))
++        q = q.to(tl.bfloat16).to(tl.float32) * tau
++        r = r.to(tl.bfloat16).to(tl.float32) * tau
++    tl.store(QOut + (t * HEADS + h) * HEAD_DIM + offs_d, q.to(tl.bfloat16))
++    r = r.to(tl.bfloat16).to(tl.float32)
++    for e0 in tl.static_range(0, EXTENT, BLOCK_E):
++        offs_e = e0 + tl.arange(0, BLOCK_E)
++        proj = tl.load(RelProj + offs_r[:, None] * EXTENT + offs_e[None, :]).to(tl.float32)  # [dr, BLOCK_E]
++        rl = tl.sum(r[:, None] * proj, 0)
++        tl.store(RelOut + (t * HEADS + h) * EXTENT + offs_e, rl.to(tl.bfloat16).to(tl.float32))
++    tl.store(SinkOut + t * HEADS + h, tl.load(row + s_off + h).to(tl.float32))
++
++
++def attention_prologue(proj, q_off, r_off, s_off, heads, head_dim, d_rel, q_scale, rel_scale, rel_proj,
++                       positions, qk_threshold, rel_threshold, log_alpha, log_floor, is_global):
++    T = proj.shape[0]
++    extent = rel_proj.shape[1]
++    dev = proj.device
++    q = torch.empty((T, heads, head_dim), dtype=torch.bfloat16, device=dev)
++    rel = torch.empty((T, heads, extent), dtype=torch.float32, device=dev)
++    sinks = torch.empty((T, heads), dtype=torch.float32, device=dev)
++    if T:
++        assert proj.stride(1) == 1
++        _prologue_kernel[(T, heads)](
++            proj, proj.stride(0), q_scale, rel_scale, rel_proj, positions, q, rel, sinks,
++            q_off, r_off, s_off, HEADS=heads, HEAD_DIM=head_dim, D_REL=d_rel, EXTENT=extent,
++            BLOCK_E=256, qk_threshold=qk_threshold, rel_threshold=rel_threshold,
++            log_alpha=log_alpha, log_floor=log_floor, IS_GLOBAL=is_global, num_warps=4,
++        )
++    return q, rel, sinks
++
++
++@triton.jit
++def _router_logits_kernel(X, stride_x, W, Logits, K, E, BLOCK_E: tl.constexpr, BLOCK_K: tl.constexpr):
++    t = tl.program_id(0).to(tl.int64)
++    offs_e = tl.program_id(1) * BLOCK_E + tl.arange(0, BLOCK_E)
++    acc = tl.zeros((BLOCK_E,), dtype=tl.float32)
++    for k0 in range(0, K, BLOCK_K):
++        offs_k = k0 + tl.arange(0, BLOCK_K)
++        km = offs_k < K
++        x = tl.load(X + t * stride_x + offs_k, mask=km, other=0.0).to(tl.float32)
++        w = tl.load(W + offs_e[:, None] * K + offs_k[None, :], mask=km[None, :], other=0.0).to(tl.float32)
++        acc += tl.sum(w * x[None, :], 1)
++    tl.store(Logits + t * E + offs_e, acc)
++
++
++@triton.jit
++def _router_topk_kernel(Logits, Bias, Ids, Wts, E: tl.constexpr, TOP_K: tl.constexpr, route_scale):
++    t = tl.program_id(0).to(tl.int64)
++    offs_e = tl.arange(0, E)
++    scores = tl.sigmoid(tl.load(Logits + t * E + offs_e))
++    sel = scores + tl.load(Bias + offs_e)
++    total = 0.0
++    out_k = tl.arange(0, TOP_K)
++    ids = tl.zeros((TOP_K,), dtype=tl.int32)
++    vals = tl.zeros((TOP_K,), dtype=tl.float32)
++    for i in tl.static_range(TOP_K):
++        best = tl.max(sel, 0)
++        idx = tl.min(tl.where(sel == best, offs_e, E), 0)
++        sc = tl.sum(tl.where(offs_e == idx, scores, 0.0), 0)
++        ids = tl.where(out_k == i, idx, ids)
++        vals = tl.where(out_k == i, sc, vals)
++        total += sc
++        sel = tl.where(offs_e == idx, float("-inf"), sel)
++    tl.store(Ids + t * TOP_K + out_k, ids)
++    tl.store(Wts + t * TOP_K + out_k, vals / (total + 1e-20) * route_scale)
++
++
++def route(x: torch.Tensor, weight: torch.Tensor, bias: torch.Tensor, top_k: int, route_scale: float):
++    T, K = x.shape
++    E = weight.shape[0]
++    ids = torch.empty((T, top_k), dtype=torch.int32, device=x.device)
++    wts = torch.empty((T, top_k), dtype=torch.float32, device=x.device)
++    if T:
++        assert x.stride(1) == 1 and weight.is_contiguous()
++        logits = torch.empty((T, E), dtype=torch.float32, device=x.device)
++        block_e = 8
++        _router_logits_kernel[(T, E // block_e)](x, x.stride(0), weight, logits, K, E,
++                                                 BLOCK_E=block_e, BLOCK_K=512, num_warps=4)
++        _router_topk_kernel[(T,)](logits, bias, ids, wts, E=E, TOP_K=top_k, route_scale=route_scale, num_warps=2)
++    return ids, wts
+diff --git a/python/sglang/kernels/ops/elementwise/inkling2_message_gate_rdna4.py b/python/sglang/kernels/ops/elementwise/inkling2_message_gate_rdna4.py
+new file mode 100644
+index 0000000..b9590d9
+--- /dev/null
++++ b/python/sglang/kernels/ops/elementwise/inkling2_message_gate_rdna4.py
+@@ -0,0 +1,109 @@
++"""Inkling 2 loop message gates in two Triton launches (RDNA4), for G gates at once.
++
++    g    = bf16( W_down @ bf16(cat(rms(h), rms(m))) )            # [rank]
++    out  = (1 - tanh(W_forget @ g)) * h + tanh(W_gain @ g) * m     # [H], FP32
++
++matching the reference's precision (BF16 down projection, FP32 forget/gain products of
++BF16-valued operands). Kernel 1 computes g for every (gate, token, rank slice),
++recomputing the two row norms per program; kernel 2 combines one hidden slice per
++program.
++"""
++
++import torch
++import triton
++import triton.language as tl
++
++MAX_GATES = 3
++
++
++@triton.jit
++def _gate_down_kernel(
++    Hs, Ms,      # base pointers; gate i, token t at base + i * s_g + t * s_t
++    Wd,          # [G, R, 2H] bf16
++    G_out,       # [G, T, R] fp32 (bf16-rounded values)
++    T, H, R,
++    hs_g, hs_t, ms_g, ms_t,
++    eps,
++    BLOCK_R: tl.constexpr,
++    BLOCK_H: tl.constexpr,
++):
++    gate = tl.program_id(0).to(tl.int64)
++    t = tl.program_id(1).to(tl.int64)
++    rb = tl.program_id(2)
++    offs_h = tl.arange(0, BLOCK_H)
++    hm = offs_h < H
++    h = tl.load(Hs + gate * hs_g + t * hs_t + offs_h, mask=hm, other=0.0).to(tl.float32)
++    m = tl.load(Ms + gate * ms_g + t * ms_t + offs_h, mask=hm, other=0.0).to(tl.float32)
++    hn = (h * (1.0 / tl.sqrt(tl.sum(h * h, 0) / H + eps))).to(tl.bfloat16).to(tl.float32)
++    mn = (m * (1.0 / tl.sqrt(tl.sum(m * m, 0) / H + eps))).to(tl.bfloat16).to(tl.float32)
++    offs_r = rb * BLOCK_R + tl.arange(0, BLOCK_R)
++    rm = offs_r < R
++    wbase = Wd + gate * R * 2 * H + offs_r[:, None] * (2 * H)
++    wh = tl.load(wbase + offs_h[None, :], mask=rm[:, None] & hm[None, :], other=0.0).to(tl.float32)
++    wm = tl.load(wbase + H + offs_h[None, :], mask=rm[:, None] & hm[None, :], other=0.0).to(tl.float32)
++    g = tl.sum(wh * hn[None, :], 1) + tl.sum(wm * mn[None, :], 1)
++    g = g.to(tl.bfloat16).to(tl.float32)
++    tl.store(G_out + (gate * T + t) * R + offs_r, g, mask=rm)
++
++
++@triton.jit
++def _gate_combine_kernel(
++    Hs, Ms, Out,  # Out: [G, T, H] fp32
++    Wfg,          # [G, 2H, R] bf16: forget rows then gain rows
++    G_in,         # [G, T, R] fp32
++    T, H,
++    hs_g, hs_t, ms_g, ms_t,
++    R: tl.constexpr,
++    BLOCK_H: tl.constexpr,
++):
++    gate = tl.program_id(0).to(tl.int64)
++    t = tl.program_id(1).to(tl.int64)
++    hb = tl.program_id(2)
++    offs_h = hb * BLOCK_H + tl.arange(0, BLOCK_H)
++    hm = offs_h < H
++    offs_r = tl.arange(0, R)
++    g = tl.load(G_in + (gate * T + t) * R + offs_r)
++    wbase = Wfg + gate * 2 * H * R
++    wf = tl.load(wbase + offs_h[:, None] * R + offs_r[None, :], mask=hm[:, None], other=0.0).to(tl.float32)
++    wg = tl.load(wbase + (H + offs_h)[:, None] * R + offs_r[None, :], mask=hm[:, None], other=0.0).to(tl.float32)
++    forget = tl.sum(wf * g[None, :], 1)
++    gain = tl.sum(wg * g[None, :], 1)
++    forget = 2.0 * tl.sigmoid(2.0 * forget) - 1.0  # tanh
++    gain = 2.0 * tl.sigmoid(2.0 * gain) - 1.0
++    h = tl.load(Hs + gate * hs_g + t * hs_t + offs_h, mask=hm, other=0.0).to(tl.float32)
++    m = tl.load(Ms + gate * ms_g + t * ms_t + offs_h, mask=hm, other=0.0).to(tl.float32)
++    tl.store(Out + (gate * T + t) * H + offs_h, (1.0 - forget) * h + gain * m, mask=hm)
++
++
++def _gate_view(x: torch.Tensor, G: int):
++    """(tensor, gate stride, token stride) for G gate inputs held as [T, H] (shared by all
++    gates) or [T, >=G, H] (gate i in column i)."""
++    if x.dim() == 2:
++        assert x.stride(1) == 1
++        return x, 0, x.stride(0)
++    assert x.dim() == 3 and x.shape[1] >= G and x.stride(2) == 1
++    return x, x.stride(1), x.stride(0)
++
++
++def message_gates(hidden: torch.Tensor, message: torch.Tensor, w_down: torch.Tensor, w_fg: torch.Tensor, eps: float) -> torch.Tensor:
++    """G = w_down.shape[0] gates. hidden/message: [T, H] (shared) or [T, >=G, H] (per gate).
++    w_down: [G, R, 2H] bf16; w_fg: [G, 2H, R] bf16. Returns FP32 [G, T, H]."""
++    G, R = w_down.shape[0], w_down.shape[1]
++    hs, hs_g, hs_t = _gate_view(hidden, G)
++    ms, ms_g, ms_t = _gate_view(message, G)
++    T, H = hidden.shape[0], hidden.shape[-1]
++    out = torch.empty((G, T, H), dtype=torch.float32, device=hidden.device)
++    if T == 0:
++        return out
++    g = torch.empty((G, T, R), dtype=torch.float32, device=hidden.device)
++    block_r = 8
++    _gate_down_kernel[(G, T, triton.cdiv(R, block_r))](
++        hs, ms, w_down, g, T, H, R, hs_g, hs_t, ms_g, ms_t, eps,
++        BLOCK_R=block_r, BLOCK_H=triton.next_power_of_2(H), num_warps=8,
++    )
++    block_h = 256
++    _gate_combine_kernel[(G, T, triton.cdiv(H, block_h))](
++        hs, ms, out, w_fg, g, T, H, hs_g, hs_t, ms_g, ms_t,
++        R=R, BLOCK_H=block_h, num_warps=4,
++    )
++    return out
+diff --git a/python/sglang/kernels/ops/gemm/inkling2_gemv_rdna4.py b/python/sglang/kernels/ops/gemm/inkling2_gemv_rdna4.py
+new file mode 100644
+index 0000000..7f1df8d
+--- /dev/null
++++ b/python/sglang/kernels/ops/gemm/inkling2_gemv_rdna4.py
+@@ -0,0 +1,59 @@
++"""BF16 GEMV for one to a few tokens over a weight whose row segments read different inputs
++(Inkling 2 attention: rows [q | rel | gate | sink] read the query stream, [k] the key
++stream, [v] the value stream). One launch replaces up to three GEMMs.
++
++out[t, n] = sum_k x_s(n)[t, k] * W[n, k],  s(n) = segment of row n (FP32 accumulation,
++output in the input dtype).
++"""
++
++import torch
++import triton
++import triton.language as tl
++
++
++@triton.jit
++def _seg_gemv_kernel(
++    X, seg_stride, stride_x,
++    W, Out, stride_o,
++    N, K,
++    B1, B2,                     # first rows of segments 1 and 2
++    M: tl.constexpr,
++    BLOCK_N: tl.constexpr,
++    BLOCK_K: tl.constexpr,
++):
++    pid = tl.program_id(0)
++    n0 = pid * BLOCK_N
++    offs_n = n0 + tl.arange(0, BLOCK_N)
++    nm = offs_n < N
++    # a tile never straddles a segment boundary (boundaries are BLOCK_N-aligned by the caller)
++    seg = (n0 >= B1).to(tl.int32) + (n0 >= B2).to(tl.int32)
++    offs_k = tl.arange(0, BLOCK_K)
++    for t in tl.static_range(M):
++        acc = tl.zeros((BLOCK_N,), dtype=tl.float32)
++        for k0 in range(0, K, BLOCK_K):
++            km = (k0 + offs_k) < K
++            x = tl.load(X + seg * seg_stride + t * stride_x + k0 + offs_k, mask=km, other=0.0).to(tl.float32)
++            w = tl.load(W + offs_n[:, None] * K + (k0 + offs_k)[None, :], mask=nm[:, None] & km[None, :], other=0.0).to(tl.float32)
++            acc += tl.sum(w * x[None, :], 1)
++        tl.store(Out + t * stride_o + offs_n, acc.to(Out.dtype.element_ty), mask=nm)
++
++
++def seg_gemv(x: torch.Tensor, weight: torch.Tensor, bounds: list, block_n: int = 16, block_k: int = 512, warps: int = 4) -> torch.Tensor:
++    """x: [S, M, K] stacked inputs (S = 1..3 segments, row-major) or [M, K] shared by all
++    segments; bounds: first row of segments 1, 2 (block_n aligned). Returns [M, N]."""
++    if x.dim() == 2:
++        x, seg_stride = x.unsqueeze(0), 0
++    else:
++        seg_stride = x.stride(0)
++    S, M, K = x.shape
++    N = weight.shape[0]
++    assert weight.is_contiguous() and x.stride(2) == 1
++    b = list(bounds) + [N] * (2 - len(bounds))
++    assert all(v % block_n == 0 for v in b)
++    out = torch.empty((M, N), dtype=x.dtype, device=x.device)
++    if M:
++        _seg_gemv_kernel[(triton.cdiv(N, block_n),)](
++            x, seg_stride, x.stride(1), weight, out, out.stride(0), N, K, b[0], b[1],
++            M=M, BLOCK_N=block_n, BLOCK_K=block_k, num_warps=warps,
++        )
++    return out
+diff --git a/python/sglang/kernels/ops/moe/inkling2_moe_rdna4.py b/python/sglang/kernels/ops/moe/inkling2_moe_rdna4.py
+new file mode 100644
+index 0000000..7f967dc
+--- /dev/null
++++ b/python/sglang/kernels/ops/moe/inkling2_moe_rdna4.py
+@@ -0,0 +1,289 @@
++"""Inkling 2 routed experts for RDNA4: grouped GEMMs over packed NVFP4 or MXFP8 expert
++weights with BF16 activations.
++
++The weights stay packed in VRAM and are dequantized in registers (e2m1 code times its
++e4m3 block scale, or e4m3 value times its ue8m0 block scale; both products are exact in
++BF16), then a BF16 MMA accumulates in FP32. The NVFP4 per-expert factor
++``amax / outer_scale_denominator`` is applied to the accumulator. Rows are routed with
++moe_align_block_size (sorted token ids, one expert per M block), so the whole MoE runs
++without a host sync and can be captured in a graph.
++"""
++
++import torch
++import triton
++import triton.language as tl
++
++from sglang.srt.layers.moe.moe_runner.triton_utils.moe_align_block_size import (
++    moe_align_block_size,
++)
++
++
++@triton.jit
++def _e2m1_to_f32(code):
++    """e2m1 code (int32, 0..15) -> float32 value; built from the bit pattern."""
++    mag = code & 7
++    e = mag >> 1
++    m = mag & 1
++    # mag >= 2: (1 + m/2) * 2^(e-1)  -> fp32 exponent 126 + e, top mantissa bit m.
++    # mag == 1: 0.5 -> 0x3F000000.  mag == 0: 0.
++    bits = tl.where(mag >= 2, ((126 + e) << 23) | (m << 22), tl.where(mag == 1, 0x3F000000, 0))
++    bits = bits | ((code & 8) << 28)
++    return bits.to(tl.float32, bitcast=True)
++
++
++@triton.jit
++def _ink2_expert_gemm(
++    A,
++    B,
++    BS,
++    Factor,
++    C,
++    sorted_token_ids,
++    expert_ids,
++    num_tokens_post_padded,
++    N,
++    K,
++    num_valid_tokens,
++    num_experts,
++    stride_am,
++    stride_be,
++    stride_bn,
++    stride_bse,
++    stride_bsn,
++    stride_cm,
++    top_k: tl.constexpr,
++    A_PER_SLOT: tl.constexpr,
++    NVFP4: tl.constexpr,
++    BLOCK_M: tl.constexpr,
++    BLOCK_N: tl.constexpr,
++    BLOCK_K: tl.constexpr,
++):
++    pid_m = tl.program_id(0)
++    pid_n = tl.program_id(1)
++    if pid_m * BLOCK_M >= tl.load(num_tokens_post_padded):
++        return
++    offs_m = pid_m * BLOCK_M + tl.arange(0, BLOCK_M)
++    slots = tl.load(sorted_token_ids + offs_m).to(tl.int64)
++    slot_mask = slots < num_valid_tokens
++    offs_n = pid_n * BLOCK_N + tl.arange(0, BLOCK_N)
++    n_mask = offs_n < N
++    e = tl.load(expert_ids + pid_m).to(tl.int64)
++    acc = tl.zeros((BLOCK_M, BLOCK_N), dtype=tl.float32)
++    if (e >= 0) & (e < num_experts):
++        rows = slots if A_PER_SLOT else slots // top_k
++        offs_k = tl.arange(0, BLOCK_K)
++        for k0 in range(0, K, BLOCK_K):
++            a = tl.load(
++                A + rows[:, None] * stride_am + (k0 + offs_k)[None, :],
++                mask=slot_mask[:, None] & ((k0 + offs_k)[None, :] < K),
++                other=0.0,
++            )
++            if NVFP4:
++                offs_b = tl.arange(0, BLOCK_K // 2)
++                packed = tl.load(
++                    B + e * stride_be + offs_n[:, None] * stride_bn + (k0 // 2 + offs_b)[None, :],
++                    mask=n_mask[:, None] & ((k0 // 2 + offs_b)[None, :] < K // 2),
++                    other=0,
++                ).to(tl.int32)
++                lo = _e2m1_to_f32(packed & 0xF)
++                hi = _e2m1_to_f32((packed >> 4) & 0xF)
++                w = tl.reshape(tl.join(lo, hi), (BLOCK_N, BLOCK_K))  # even k in the low nibble
++                offs_s = tl.arange(0, BLOCK_K // 16)
++                s = tl.load(
++                    BS + e * stride_bse + offs_n[:, None] * stride_bsn + (k0 // 16 + offs_s)[None, :],
++                    mask=n_mask[:, None] & ((k0 // 16 + offs_s)[None, :] < K // 16),
++                    other=0.0,
++                ).to(tl.float32)
++                w = tl.reshape(tl.reshape(w, (BLOCK_N, BLOCK_K // 16, 16)) * s[:, :, None], (BLOCK_N, BLOCK_K))
++            else:
++                w = tl.load(
++                    B + e * stride_be + offs_n[:, None] * stride_bn + (k0 + offs_k)[None, :],
++                    mask=n_mask[:, None] & ((k0 + offs_k)[None, :] < K),
++                    other=0.0,
++                ).to(tl.float32)
++                offs_s = tl.arange(0, BLOCK_K // 32)
++                s = tl.load(
++                    BS + e * stride_bse + offs_n[:, None] * stride_bsn + (k0 // 32 + offs_s)[None, :],
++                    mask=n_mask[:, None] & ((k0 // 32 + offs_s)[None, :] < K // 32),
++                    other=127,
++                ).to(tl.int32)
++                scale = (s << 23).to(tl.float32, bitcast=True)  # 2^(s - 127)
++                w = tl.reshape(tl.reshape(w, (BLOCK_N, BLOCK_K // 32, 32)) * scale[:, :, None], (BLOCK_N, BLOCK_K))
++            acc = tl.dot(a.to(tl.bfloat16), tl.trans(w.to(tl.bfloat16)), acc=acc)
++        if NVFP4:
++            acc = acc * tl.load(Factor + e)
++    tl.store(
++        C + slots[:, None] * stride_cm + offs_n[None, :],
++        acc,
++        mask=slot_mask[:, None] & n_mask[None, :],
++    )
++
++
++@triton.jit
++def _ink2_expert_gemv(
++    A,
++    B,
++    BS,
++    Factor,
++    C,
++    topk_ids,
++    N,
++    K,
++    stride_am,
++    stride_be,
++    stride_bn,
++    stride_bse,
++    stride_bsn,
++    stride_cm,
++    top_k: tl.constexpr,
++    A_PER_SLOT: tl.constexpr,
++    NVFP4: tl.constexpr,
++    BLOCK_N: tl.constexpr,
++    BLOCK_K: tl.constexpr,
++):
++    """One routed row (slot) times one expert's [BLOCK_N, K] weight slice; small token counts."""
++    slot = tl.program_id(0).to(tl.int64)
++    offs_n = tl.program_id(1) * BLOCK_N + tl.arange(0, BLOCK_N)
++    n_mask = offs_n < N
++    e = tl.load(topk_ids + slot).to(tl.int64)
++    row = slot if A_PER_SLOT else slot // top_k
++    offs_k = tl.arange(0, BLOCK_K)
++    acc = tl.zeros((BLOCK_N,), dtype=tl.float32)
++    for k0 in range(0, K, BLOCK_K):
++        a = tl.load(A + row * stride_am + k0 + offs_k, mask=(k0 + offs_k) < K, other=0.0).to(tl.bfloat16).to(tl.float32)
++        if NVFP4:
++            offs_b = tl.arange(0, BLOCK_K // 2)
++            packed = tl.load(
++                B + e * stride_be + offs_n[:, None] * stride_bn + (k0 // 2 + offs_b)[None, :],
++                mask=n_mask[:, None] & ((k0 // 2 + offs_b)[None, :] < K // 2),
++                other=0,
++            ).to(tl.int32)
++            w = tl.reshape(tl.join(_e2m1_to_f32(packed & 0xF), _e2m1_to_f32((packed >> 4) & 0xF)), (BLOCK_N, BLOCK_K))
++            offs_s = tl.arange(0, BLOCK_K // 16)
++            s = tl.load(
++                BS + e * stride_bse + offs_n[:, None] * stride_bsn + (k0 // 16 + offs_s)[None, :],
++                mask=n_mask[:, None] & ((k0 // 16 + offs_s)[None, :] < K // 16),
++                other=0.0,
++            ).to(tl.float32)
++            prod = tl.reshape(w * a[None, :], (BLOCK_N, BLOCK_K // 16, 16))
++            acc += tl.sum(tl.sum(prod, axis=2) * s, axis=1)
++        else:
++            w = tl.load(
++                B + e * stride_be + offs_n[:, None] * stride_bn + (k0 + offs_k)[None, :],
++                mask=n_mask[:, None] & ((k0 + offs_k)[None, :] < K),
++                other=0.0,
++            ).to(tl.float32)
++            offs_s = tl.arange(0, BLOCK_K // 32)
++            s = tl.load(
++                BS + e * stride_bse + offs_n[:, None] * stride_bsn + (k0 // 32 + offs_s)[None, :],
++                mask=n_mask[:, None] & ((k0 // 32 + offs_s)[None, :] < K // 32),
++                other=127,
++            ).to(tl.int32)
++            scale = (s << 23).to(tl.float32, bitcast=True)
++            prod = tl.reshape(w * a[None, :], (BLOCK_N, BLOCK_K // 32, 32))
++            acc += tl.sum(tl.sum(prod, axis=2) * scale, axis=1)
++    if NVFP4:
++        acc = acc * tl.load(Factor + e)
++    tl.store(C + slot * stride_cm + offs_n, acc, mask=n_mask)
++
++
++GEMV_MAX_SLOTS = int(__import__("os").environ.get("SGLANG_INKLING2_GEMV_MAX_SLOTS", "32"))
++
++
++def _launch_gemv(a, w, s, factor, out, topk_ids_flat, top_k, a_per_slot, nvfp4, block_n=32, block_k=256, warps=4):
++    n, k = w.shape[1], a.shape[1]
++    while k % block_k:
++        block_k //= 2
++    grid = (topk_ids_flat.shape[0], triton.cdiv(n, block_n))
++    _ink2_expert_gemv[grid](
++        a, w, s, factor if factor is not None else s, out, topk_ids_flat, n, k,
++        a.stride(0), w.stride(0), w.stride(1), s.stride(0), s.stride(1), out.stride(0),
++        top_k=top_k, A_PER_SLOT=a_per_slot, NVFP4=nvfp4, BLOCK_N=block_n, BLOCK_K=block_k,
++        num_warps=warps, num_stages=2,
++    )
++
++
++def _launch(a, w, s, factor, out, routing, top_k, a_per_slot, nvfp4, block_m):
++    sorted_ids, expert_ids, num_post = routing
++    n = w.shape[1]
++    k = a.shape[1]
++    block_n = 64
++    block_k = 128 if k % 128 == 0 else 64
++    grid = (triton.cdiv(sorted_ids.shape[0], block_m), triton.cdiv(n, block_n))
++    _ink2_expert_gemm[grid](
++        a,
++        w,
++        s,
++        factor if factor is not None else s,
++        out,
++        sorted_ids,
++        expert_ids,
++        num_post,
++        n,
++        k,
++        out.shape[0],
++        w.shape[0],
++        a.stride(0),
++        w.stride(0),
++        w.stride(1),
++        s.stride(0),
++        s.stride(1),
++        out.stride(0),
++        top_k=top_k,
++        A_PER_SLOT=a_per_slot,
++        NVFP4=nvfp4,
++        BLOCK_M=block_m,
++        BLOCK_N=block_n,
++        BLOCK_K=block_k,
++        num_warps=4,
++        num_stages=2,
++    )
++
++
++@torch.compile(dynamic=True, fullgraph=True)
++def _weighted_sum(down: torch.Tensor, weights: torch.Tensor) -> torch.Tensor:
++    tokens, top_k = weights.shape
++    return (down.view(tokens, top_k, -1) * weights.float()[..., None]).sum(1)
++
++
++@torch.compile(dynamic=True, fullgraph=True)
++def _capped_swiglu_interleaved(gate_up: torch.Tensor, gate_cap: float, up_cap: float) -> torch.Tensor:
++    gate, up = gate_up[:, 0::2], gate_up[:, 1::2]
++    h = torch.tanh(gate / gate_cap) * gate_cap * torch.sigmoid(gate) * (torch.tanh(up / up_cap) * up_cap)
++    return h.to(torch.bfloat16)
++
++
++def inkling2_routed_experts(
++    x: torch.Tensor,
++    topk_ids: torch.Tensor,
++    topk_weights: torch.Tensor,
++    w13: torch.Tensor,
++    w13_scale: torch.Tensor,
++    w2: torch.Tensor,
++    w2_scale: torch.Tensor,
++    w13_factor: torch.Tensor | None,
++    w2_factor: torch.Tensor | None,
++    *,
++    nvfp4: bool,
++    gate_cap: float,
++    up_cap: float,
++) -> torch.Tensor:
++    """FP32 sum over the top-k experts of this rank's intermediate slice."""
++    tokens, top_k = topk_ids.shape
++    num_experts = w13.shape[0]
++    x = x.to(torch.bfloat16).contiguous()
++    gate_up = torch.empty((tokens * top_k, w13.shape[1]), dtype=torch.float32, device=x.device)
++    down = torch.empty((tokens * top_k, w2.shape[1]), dtype=torch.float32, device=x.device)
++    if tokens * top_k <= GEMV_MAX_SLOTS:
++        flat = topk_ids.reshape(-1)
++        # Tiles from a graph-timed sweep on gfx1201 (decode, 8 slots, TP2 slices).
++        _launch_gemv(x, w13, w13_scale, w13_factor, gate_up, flat, top_k, False, nvfp4, 32, 512, 4 if nvfp4 else 8)
++        h = _capped_swiglu_interleaved(gate_up, gate_cap, up_cap)
++        _launch_gemv(h, w2, w2_scale, w2_factor, down, flat, top_k, True, nvfp4, 64, 512, 4 if nvfp4 else 8)
++        return _weighted_sum(down, topk_weights)
++    block_m = 16
++    routing = moe_align_block_size(topk_ids, block_m, num_experts)
++    _launch(x, w13, w13_scale, w13_factor, gate_up, routing, top_k, False, nvfp4, block_m)
++    h = _capped_swiglu_interleaved(gate_up, gate_cap, up_cap)
++    _launch(h, w2, w2_scale, w2_factor, down, routing, top_k, True, nvfp4, block_m)
++    return _weighted_sum(down, topk_weights)

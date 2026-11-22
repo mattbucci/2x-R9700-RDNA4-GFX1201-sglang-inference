@@ -1,0 +1,118 @@
+diff --git a/python/sglang/kernels/ops/attention/decode_attention.py b/python/sglang/kernels/ops/attention/decode_attention.py
+index b85a566..37f6ef2 100644
+--- a/python/sglang/kernels/ops/attention/decode_attention.py
++++ b/python/sglang/kernels/ops/attention/decode_attention.py
+@@ -947,6 +947,7 @@ def _fwd_kernel_stage2(
+     kv_indptr,
+     num_kv_splits,
+     sink_ptr,
++    stride_sink_b,
+     stride_mid_ob,
+     stride_mid_oh,
+     stride_mid_os,
+@@ -1015,7 +1016,8 @@ def _fwd_kernel_stage2(
+             e_max = n_e_max
+ 
+     if HAS_SINK:
+-        cur_sink = tl.load(sink_ptr + cur_head)
++        # stride_sink_b = 0: learned per-head sinks; > 0: per-token sinks [B, H] (Inkling 2)
++        cur_sink = tl.load(sink_ptr + cur_batch * stride_sink_b + cur_head).to(tl.float32)
+         e_sum += tl.exp(cur_sink - e_max)
+ 
+     tl.store(
+@@ -1061,6 +1063,7 @@ def _decode_softmax_reducev_fwd(
+         kv_indptr,
+         num_kv_splits,
+         sinks,
++        sinks.stride(0) if sinks is not None and sinks.dim() == 2 else 0,
+         logits.stride(0),
+         logits.stride(1),
+         logits.stride(2),
+diff --git a/python/sglang/kernels/ops/attention/extend_attention.py b/python/sglang/kernels/ops/attention/extend_attention.py
+index 917641e..8064930 100644
+--- a/python/sglang/kernels/ops/attention/extend_attention.py
++++ b/python/sglang/kernels/ops/attention/extend_attention.py
+@@ -36,6 +36,14 @@ if _is_cuda:
+ _is_hip = is_hip()
+ _is_gfx95 = _is_hip and is_gfx95_supported()
+ 
++def _sink_stride_t(sinks) -> int:
++    """Token stride of per-token sinks [T, H]; 0 for learned per-head sinks [H]."""
++    if sinks is None or sinks.dim() == 1:
++        return 0
++    assert sinks.dim() == 2 and sinks.stride(1) == 1, "per-token sinks must be [T, H] row-major"
++    return sinks.stride(0)
++
++
+ def _parse_extend_tile():
+     v = os.environ.get("SGLANG_EXTEND_TILE", "")
+     if not v:
+@@ -464,6 +472,7 @@ def _fwd_kernel(
+     aux0_stride_t=0,
+     aux0_stride_h=0,
+     aux0_len=0,
++    SINK_STRIDE_T: tl.constexpr = 0,
+ ):
+     if USE_COMPACT_TILE_GRID:
+         output_tile = tl.program_id(0)
+@@ -896,7 +905,17 @@ def _fwd_kernel(
+             e_max = n_e_max
+ 
+     if HAS_SINK:
+-        cur_sink = tl.load(sink_ptr + cur_head)
++        if SINK_STRIDE_T > 0:
++            # Per-token sinks [T, H] (Inkling 2): one extra zero-value logit per query row.
++            cur_sink = tl.load(
++                sink_ptr
++                + (cur_seq_extend_start_idx + cur_block_m * BLOCK_M + offs_m) * SINK_STRIDE_T
++                + cur_head,
++                mask=mask_m,
++                other=0.0,
++            ).to(tl.float32)
++        else:
++            cur_sink = tl.load(sink_ptr + cur_head)
+         if USE_EXP2:
+             deno += tl.exp2(cur_sink * LOG2E - e_max)
+         else:
+@@ -1188,6 +1207,7 @@ def extend_attention_fwd(
+         aux0_stride_t=aux0_stride_t,
+         aux0_stride_h=aux0_stride_h,
+         aux0_len=aux0_len,
++        SINK_STRIDE_T=_sink_stride_t(sinks),
+         num_warps=num_warps,
+         num_stages=num_stages,
+         **extra_kargs,
+@@ -1245,6 +1265,7 @@ def _fwd_kernel_unified(
+     aux0_stride_t=0,
+     aux0_stride_h=0,
+     aux0_len=0,
++    SINK_STRIDE_T: tl.constexpr = 0,
+ ):
+     """
+     Unified 1-stage kernel for deterministic extend attention.
+@@ -1520,7 +1541,16 @@ def _fwd_kernel_unified(
+ 
+     # Handle sink tokens
+     if HAS_SINK:
+-        cur_sink = tl.load(sink_ptr + cur_head)
++        if SINK_STRIDE_T > 0:
++            cur_sink = tl.load(
++                sink_ptr
++                + (cur_seq_q_start_idx + cur_block_m * BLOCK_M + offs_m) * SINK_STRIDE_T
++                + cur_head,
++                mask=mask_m,
++                other=0.0,
++            ).to(tl.float32)
++        else:
++            cur_sink = tl.load(sink_ptr + cur_head)
+         deno += tl.exp(cur_sink - e_max)
+ 
+     # Store output
+@@ -1680,6 +1710,7 @@ def extend_attention_fwd_unified(
+         aux0_stride_t=aux0_stride_t,
+         aux0_stride_h=aux0_stride_h,
+         aux0_len=aux0_len,
++        SINK_STRIDE_T=_sink_stride_t(sinks),
+         num_warps=num_warps,
+         num_stages=num_stages,
+         **extra_kargs,
