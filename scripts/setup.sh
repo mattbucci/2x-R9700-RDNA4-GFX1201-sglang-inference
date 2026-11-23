@@ -459,6 +459,17 @@ if [ -f "$SCRIPT_DIR/build_prefill_attn_hip.sh" ]; then
 fi
 
 # -------------------------------------------------------------------
+# Step 5g: Build Inkling 2 routed-expert kernel (patches/136)
+# -------------------------------------------------------------------
+echo ""
+echo "[5g/6] Building Inkling 2 routed-expert HIP kernel for gfx1201..."
+echo "  Per-expert NVFP4/MXFP8 expert reads and multi-row projections for decode batches, inkling2 preset."
+if [ -f "$SCRIPT_DIR/build_inkling2_moe_hip.sh" ]; then
+    SGL_KERNEL_DIR="$SGL_KERNEL_DIR" "$SCRIPT_DIR/build_inkling2_moe_hip.sh" --env "$ENV_NAME" || \
+      echo "  WARNING: Inkling 2 routed-expert kernel build failed (non-fatal — the Triton kernels serve those batches)"
+fi
+
+# -------------------------------------------------------------------
 # Step 6: Verify installation
 # -------------------------------------------------------------------
 echo ""

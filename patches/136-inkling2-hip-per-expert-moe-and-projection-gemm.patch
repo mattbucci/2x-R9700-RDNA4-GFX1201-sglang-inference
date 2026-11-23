@@ -1,0 +1,713 @@
+diff --git a/python/sglang/kernels/aot/csrc/quantization/nvfp4/inkling2_moe_hip.cu b/python/sglang/kernels/aot/csrc/quantization/nvfp4/inkling2_moe_hip.cu
+new file mode 100644
+index 0000000..acbf88f
+--- /dev/null
++++ b/python/sglang/kernels/aot/csrc/quantization/nvfp4/inkling2_moe_hip.cu
+@@ -0,0 +1,580 @@
++// SPDX-License-Identifier: Apache-2.0
++//
++// Inkling 2 routed experts for a few tokens (decode batches) on gfx1201 (RDNA4): packed NVFP4
++// expert weights (two e2m1 codes per byte, one E4M3 scale per sixteen columns of a row) times
++// bf16 activations, grouped by expert so a step reads each selected expert's weight once
++// however many tokens routed to it.
++//
++// A workgroup is one sixteen-row weight tile of one expert run (the up to sixteen routed rows
++// that picked the expert). A wave runs v_wmma_f32_16x16x16_bf16 with the activations as the A
++// operand and the weight as B: a lane then owns one weight row and eight activation rows, so
++// the row's block scale is one value per lane and a sixteen-column fragment, which is exactly
++// one scale group, accumulates unscaled and folds with one multiply-add per slot. The e2m1
++// codes become bf16 through v_perm_b32 table lookups on the 3-bit magnitude.
++//
++// The four MXFP8 layers run the same kernel with an E4M3 byte decode and a power-of-two scale
++// per 32 columns, and the attention projections a dense bf16 variant that serves up to sixteen
++// tokens in one pass over the weight.
++//
++// Measured on gfx1201 the kernel reads the selected experts at about 550 GB/s, the card's
++// streaming rate, when a wave issues 128 bytes of every row per round of loads; with one
++// fragment's bytes per round it is bound by load latency instead.
++//
++// The WMMA lane map follows radiance's libr4d/r4d_fp8_wmma.h, the table lookup through
++// v_perm_b32 libr4d/r4d_mxfp4.h, and the per-expert run grouping libr4d/r4d_moe.hip
++// (Apache-2.0, Copyright 2026 Deadcode and the radiance contributors,
++// https://codeberg.org/StillDeadcode/radiance, revision 5a80ee2). Changed here: NVFP4 instead
++// of MXFP4 (E4M3 scales per sixteen, folded in f32 per fragment), bf16 activations through the
++// 16-bit WMMA, bf16 table values, row-major weights read straight from the checkpoint layout,
++// the capped SwiGLU of interleaved gate/up rows in the epilogue, the MXFP8 and dense bf16
++// variants, block-issued loads, and a torch extension binding.
++
++#ifdef USE_ROCM
++
++#include <torch/all.h>
++#include <ATen/hip/HIPContext.h>
++#include <c10/hip/HIPGuard.h>
++#include <c10/hip/HIPStream.h>
++#include <hip/hip_runtime.h>
++#include <cmath>
++#include <cstdint>
++
++namespace {
++
++constexpr uint32_t kWave = 32;
++constexpr uint32_t kTile = 16;      // WMMA tile edge, and the NVFP4 scale group
++constexpr uint32_t kRunRows = 16;   // routed rows per run (one activation tile)
++constexpr int64_t kMaxSlots = 128;  // routed rows per call: a token picks an expert once
++
++typedef short s8v __attribute__((ext_vector_type(8)));
++typedef float f8v __attribute__((ext_vector_type(8)));
++
++// bf16 bits of the e2m1 magnitudes {0, .5, 1, 1.5, 2, 3, 4, 6}, high and low bytes.
++constexpr uint32_t kMagHi0 = 0x3F3F3F00u, kMagHi1 = 0x40404040u;
++constexpr uint32_t kMagLo0 = 0xC0800000u, kMagLo1 = 0xC0804000u;
++
++__device__ __forceinline__ uint32_t f32_to_bf16(float f) {
++  const uint32_t u = __float_as_uint(f);
++  return (u + 0x7fffu + ((u >> 16) & 1u)) >> 16;
++}
++
++__device__ __forceinline__ float e4m3(uint32_t q, uint32_t byte) {
++  const uint32_t b = (q >> (8u * byte)) & 0xFFu;
++  const uint32_t sign = (b & 0x80u) << 24;
++  const uint32_t ex = (b >> 3) & 0x0Fu;
++  const uint32_t mn = b & 0x07u;
++  const float nrm = __uint_as_float(((ex + 120u) << 23) | (mn << 20));
++  const float sub = (float)mn * (1.0f / 512.0f);
++  return __uint_as_float(__float_as_uint(ex ? nrm : sub) | sign);
++}
++
++// Four packed bytes (eight codes, element 2j in the low nibble of byte j) to eight bf16 in the
++// order [0, 2, 4, 6, 1, 3, 5, 7].
++__device__ __forceinline__ s8v e2m1x8_bf16(uint32_t wv) {
++  const uint32_t ev = wv & 0x0F0F0F0Fu, od = (wv >> 4) & 0x0F0F0F0Fu;
++  const uint32_t ie = ev & 0x07070707u, io = od & 0x07070707u;
++  const uint32_t he = __builtin_amdgcn_perm(kMagHi1, kMagHi0, ie) | ((ev & 0x08080808u) << 4);
++  const uint32_t le = __builtin_amdgcn_perm(kMagLo1, kMagLo0, ie);
++  const uint32_t ho = __builtin_amdgcn_perm(kMagHi1, kMagHi0, io) | ((od & 0x08080808u) << 4);
++  const uint32_t lo = __builtin_amdgcn_perm(kMagLo1, kMagLo0, io);
++  uint32_t d[4];
++  d[0] = __builtin_amdgcn_perm(he, le, 0x05010400u);
++  d[1] = __builtin_amdgcn_perm(he, le, 0x07030602u);
++  d[2] = __builtin_amdgcn_perm(ho, lo, 0x05010400u);
++  d[3] = __builtin_amdgcn_perm(ho, lo, 0x07030602u);
++  s8v r;
++  __builtin_memcpy(&r, d, 16);
++  return r;
++}
++
++__device__ __forceinline__ float softcap(float x, float cap) { return tanhf(x / cap) * cap; }
++
++// Runs: one per distinct expert in ascending expert order. RunE[r] is the expert (or -1 past
++// the last run), RunS[r][0..15] its routed rows (slots) in ascending order, -1 padded.
++//
++// The same launch writes the activations in the kernel's element order: within each eight
++// columns [0, 2, 4, 6, 1, 3, 5, 7], the order the packed codes decode to.
++__global__ __launch_bounds__(128) void ink2_runs_kernel(
++    const int32_t* __restrict__ ids, int32_t* __restrict__ RunE, int32_t* __restrict__ RunS,
++    uint32_t slots, uint32_t runs, const uint32_t* __restrict__ X, uint32_t* __restrict__ XP,
++    uint32_t x_rows, uint32_t x_cols, uint32_t x_stride) {
++  for (uint32_t i = threadIdx.x; i < x_rows * (x_cols / 8u); i += 128u) {
++    const uint32_t r = i / (x_cols / 8u), q = i % (x_cols / 8u);
++    const uint32_t* x = X + ((size_t)r * x_stride + q * 8u) / 2u;
++    uint32_t* y = XP + ((size_t)r * x_cols + q * 8u) / 2u;
++    const uint32_t x0 = x[0], x1 = x[1], x2 = x[2], x3 = x[3];
++    y[0] = __builtin_amdgcn_perm(x1, x0, 0x05040100u);
++    y[1] = __builtin_amdgcn_perm(x3, x2, 0x05040100u);
++    y[2] = __builtin_amdgcn_perm(x1, x0, 0x07060302u);
++    y[3] = __builtin_amdgcn_perm(x3, x2, 0x07060302u);
++  }
++  __shared__ uint32_t has[128];
++  const uint32_t e = threadIdx.x;
++  uint32_t cnt = 0u;
++  for (uint32_t i = 0; i < slots; ++i) cnt += (uint32_t)ids[i] == e ? 1u : 0u;
++  has[e] = cnt ? 1u : 0u;
++  __syncthreads();
++  uint32_t before = 0u, total = 0u;
++  for (uint32_t i = 0; i < 128u; ++i) {
++    const uint32_t v = has[i];
++    total += v;
++    before += i < e ? v : 0u;
++  }
++  if (cnt) {
++    RunE[before] = (int32_t)e;
++    uint32_t n = 0u;
++    for (uint32_t i = 0; i < slots; ++i)
++      if ((uint32_t)ids[i] == e && n < kRunRows) RunS[before * kRunRows + n++] = (int32_t)i;
++    for (; n < kRunRows; ++n) RunS[before * kRunRows + n] = -1;
++  } else {
++    const uint32_t r = total + (e - before);
++    if (r < runs) RunE[r] = -1;
++  }
++}
++
++// The K loop of one wave over scale groups [g, gend). J is the number of accumulator slots
++// that can be live: a lane's slot j is run row 8 h + j, so a run of J <= 8 rows only needs
++// slots [0, J) (of the h = 0 lanes), and the scale fold is J multiply-adds per fragment.
++template <uint32_t J>
++__device__ __forceinline__ void ink2_accumulate(const uint8_t* wp, const uint8_t* sp,
++                                                const uint16_t* xp, int32_t xs, uint32_t g,
++                                                uint32_t gend, uint32_t groups, bool hi,
++                                                f8v& out) {
++  f8v zero;
++#pragma unroll
++  for (uint32_t j = 0; j < 8u; ++j) zero[j] = 0.0f;
++  // A wave is bound by the latency of its weight loads, so it issues a block of them at once:
++  // sixteen scale groups (128 bytes of every row, eight 16-byte loads) and their scales (one
++  // load), then works through the block. A block that would cross the row end is moved back
++  // and skips what is done.
++  while (g < gend) {
++    const uint32_t base = min(g, groups - 16u);
++    uint32_t sv[4], wv[32];
++    __builtin_memcpy(sv, sp + base, 16);
++#pragma unroll
++    for (uint32_t i = 0; i < 8u; ++i) __builtin_memcpy(wv + 4u * i, wp + (size_t)base * 8u + 16u * i, 16);
++#pragma unroll
++    for (uint32_t q = 0; q < 4u; ++q) {
++      const uint32_t gq = base + 4u * q;
++      if (gq < g || gq >= gend) continue;
++      uint32_t xa[4][4];
++      // Padding rows of the run read nothing: most runs hold one or two rows.
++      if (xs >= 0) {
++#pragma unroll
++        for (uint32_t t = 0; t < 4u; ++t) __builtin_memcpy(xa[t], xp + (size_t)(gq + t) * 16u, 16);
++      } else {
++#pragma unroll
++        for (uint32_t t = 0; t < 4u; ++t)
++#pragma unroll
++          for (uint32_t i = 0; i < 4u; ++i) xa[t][i] = 0u;
++      }
++#pragma unroll
++      for (uint32_t t = 0; t < 4u; ++t) {
++        const uint32_t f = 4u * q + t;
++        const s8v b = e2m1x8_bf16(hi ? wv[2u * f + 1u] : wv[2u * f]);
++        s8v a;
++        __builtin_memcpy(&a, xa[t], 16);
++        const f8v raw = __builtin_amdgcn_wmma_f32_16x16x16_bf16_w32_gfx12(a, b, zero);
++        const float s = e4m3(sv[q], t);
++#pragma unroll
++        for (uint32_t j = 0; j < J; ++j) out[j] = fmaf(raw[j], s, out[j]);
++      }
++    }
++    g = base + 16u;
++  }
++}
++
++// Two zero-extended E4M3 bytes (one per 16-bit half) to two bf16; every E4M3 value is exact.
++__device__ __forceinline__ uint32_t e4m3x2_bf16(uint32_t z) {
++  const uint32_t sign = (z & 0x00800080u) << 8;
++  const uint32_t ex = (z >> 3) & 0x000F000Fu, mn = z & 0x00070007u;
++  const uint32_t nrm = ((ex + 0x00780078u) << 7) | (mn << 4);
++  // Subnormal codes are mn / 512: bf16 bits of {0, 1, 2, 3 | 4, 5, 6, 7} / 512 by table.
++  const uint32_t sel = mn | (mn << 8);
++  const uint32_t sub = (__builtin_amdgcn_perm(0x3C3C3C3Cu, 0x3B3B3B00u, sel) & 0xFF00FF00u) |
++                       (__builtin_amdgcn_perm(0x60402000u, 0xC0800000u, sel) & 0x00FF00FFu);
++  const uint32_t m = (((ex + 0x000F000Fu) >> 4) & 0x00010001u) * 0xFFFFu;
++  return (nrm & m) | (sub & ~m) | sign;
++}
++
++// The MXFP8 K loop: E4M3 bytes, one power-of-two scale (2^(s - 127)) per 32 columns, natural
++// element order. Blocks of eight sixteen-column fragments (128 bytes of every row); groups is
++// even and g starts even, so a block's four scales are one aligned-in-block load.
++template <uint32_t J>
++__device__ __forceinline__ void ink2_accumulate_mx(const uint8_t* wp, const uint8_t* sp,
++                                                   const uint16_t* xp, int32_t xs,
++                                                   uint32_t groups, bool hi, f8v& out) {
++  f8v zero;
++#pragma unroll
++  for (uint32_t j = 0; j < 8u; ++j) zero[j] = 0.0f;
++  uint32_t g = 0u;
++  while (g < groups) {
++    const uint32_t base = min(g, groups - 8u);
++    uint32_t sv, wv[32];
++    __builtin_memcpy(&sv, sp + base / 2u, 4);
++#pragma unroll
++    for (uint32_t i = 0; i < 8u; ++i) __builtin_memcpy(wv + 4u * i, wp + (size_t)(base + i) * 16u, 16);
++#pragma unroll
++    for (uint32_t q = 0; q < 2u; ++q) {
++      const uint32_t gq = base + 4u * q;
++      if (gq < g) continue;
++      uint32_t xa[4][4];
++      if (xs >= 0) {
++#pragma unroll
++        for (uint32_t t = 0; t < 4u; ++t) __builtin_memcpy(xa[t], xp + (size_t)(gq + t) * 16u, 16);
++      } else {
++#pragma unroll
++        for (uint32_t t = 0; t < 4u; ++t)
++#pragma unroll
++          for (uint32_t i = 0; i < 4u; ++i) xa[t][i] = 0u;
++      }
++#pragma unroll
++      for (uint32_t t = 0; t < 4u; ++t) {
++        const uint32_t f = 4u * q + t;
++        const uint32_t d0 = hi ? wv[4u * f + 2u] : wv[4u * f];
++        const uint32_t d1 = hi ? wv[4u * f + 3u] : wv[4u * f + 1u];
++        uint32_t bw[4];
++        bw[0] = e4m3x2_bf16(__builtin_amdgcn_perm(0u, d0, 0x0C010C00u));
++        bw[1] = e4m3x2_bf16(__builtin_amdgcn_perm(0u, d0, 0x0C030C02u));
++        bw[2] = e4m3x2_bf16(__builtin_amdgcn_perm(0u, d1, 0x0C010C00u));
++        bw[3] = e4m3x2_bf16(__builtin_amdgcn_perm(0u, d1, 0x0C030C02u));
++        s8v a, b;
++        __builtin_memcpy(&a, xa[t], 16);
++        __builtin_memcpy(&b, bw, 16);
++        const f8v raw = __builtin_amdgcn_wmma_f32_16x16x16_bf16_w32_gfx12(a, b, zero);
++        const float s = __uint_as_float(((sv >> (8u * (f / 2u))) & 0xFFu) << 23);
++#pragma unroll
++        for (uint32_t j = 0; j < J; ++j) out[j] = fmaf(raw[j], s, out[j]);
++      }
++    }
++    g = base + 8u;
++  }
++}
++
++// out[slot][n] = F[e] * sum_g S[e][n][g] * sum_{k in g} x[row(slot)][k] * code[e][n][k]
++//
++// Lane l with c = l % 16, h = l / 16 holds, for scale group g:
++//   A  activation of run row c,     k = 16 g + 8 h + {0, 2, 4, 6, 1, 3, 5, 7}  (as stored)
++//   B  weight row row0 + c,         the same k
++//   D  slot j = [run row 8 h + j][weight row row0 + c]
++// X is in the element order [0, 2, 4, 6, 1, 3, 5, 7] per eight columns. SWIGLU: rows 2i /
++// 2i + 1 are gate / up; the epilogue stores bf16 h[slot][i] in that same order. Otherwise it
++// stores the fp32 products.
++//
++// MX: the weight is MXFP8 instead (see ink2_accumulate_mx): natural element order for X and
++// h, no expert factor, KS == 1.
++template <uint32_t NT, uint32_t KS, bool SWIGLU, bool MX = false>
++__global__ __launch_bounds__(NT * KS * kWave) void ink2_nvfp4_kernel(
++    const uint8_t* __restrict__ W, const uint8_t* __restrict__ S, const float* __restrict__ F,
++    const uint16_t* __restrict__ X, const int32_t* __restrict__ RunE,
++    const int32_t* __restrict__ RunS, void* __restrict__ Y, uint32_t rows, uint32_t cols,
++    uint32_t x_stride, uint32_t slot_div, float gate_cap, float up_cap) {
++  __shared__ float part[NT * KS * 256u];
++  const uint32_t run = blockIdx.y;
++  const int32_t ei = RunE[run];
++  if (ei < 0) return;
++  const uint32_t e = (uint32_t)ei;
++  const uint32_t lane = threadIdx.x & (kWave - 1u);
++#if __has_builtin(__builtin_amdgcn_readfirstlane)
++  const uint32_t wid = __builtin_amdgcn_readfirstlane(threadIdx.x / kWave);
++#else
++  const uint32_t wid = threadIdx.x / kWave;
++#endif
++  const uint32_t tile = wid / KS, wave = wid % KS;
++  const uint32_t c = lane & 15u, h = lane >> 4;
++  const uint32_t row0 = (blockIdx.x * NT + tile) * kTile;
++  const size_t wrow = (size_t)e * rows + row0 + c;
++  const uint8_t* wp = W + wrow * (MX ? cols : cols / 2u);
++  const uint8_t* sp = S + wrow * (MX ? cols / 32u : cols / kTile);
++  const int32_t xs = RunS[run * kRunRows + c];
++  const uint16_t* xp = X + (size_t)(xs < 0 ? 0 : (uint32_t)xs / slot_div) * x_stride + h * 8u;
++  const uint32_t groups = cols / kTile;
++  uint32_t g = groups * wave / KS;
++  const uint32_t gend = groups * (wave + 1u) / KS;
++
++  f8v out;
++#pragma unroll
++  for (uint32_t j = 0; j < 8u; ++j) out[j] = 0.0f;
++  // Uniform per workgroup: the run's rows are packed first.
++  const int32_t* rs = RunS + run * kRunRows;
++  if (MX) {
++    if (rs[1] < 0) ink2_accumulate_mx<1>(wp, sp, xp, xs, groups, h != 0u, out);
++    else if (rs[2] < 0) ink2_accumulate_mx<2>(wp, sp, xp, xs, groups, h != 0u, out);
++    else if (rs[4] < 0) ink2_accumulate_mx<4>(wp, sp, xp, xs, groups, h != 0u, out);
++    else ink2_accumulate_mx<8>(wp, sp, xp, xs, groups, h != 0u, out);
++  } else {
++    if (rs[1] < 0) ink2_accumulate<1>(wp, sp, xp, xs, g, gend, groups, h != 0u, out);
++    else if (rs[2] < 0) ink2_accumulate<2>(wp, sp, xp, xs, g, gend, groups, h != 0u, out);
++    else if (rs[4] < 0) ink2_accumulate<4>(wp, sp, xp, xs, g, gend, groups, h != 0u, out);
++    else ink2_accumulate<8>(wp, sp, xp, xs, g, gend, groups, h != 0u, out);
++  }
++
++  float* mine = part + (size_t)tile * KS * 256u;
++  if (KS > 1u) {
++    if (wave != 0u) {
++#pragma unroll
++      for (uint32_t j = 0; j < 8u; ++j) mine[wave * 256u + lane * 8u + j] = out[j];
++    }
++    __syncthreads();
++    if (wave != 0u) return;
++    for (uint32_t w = 1u; w < KS; ++w)
++#pragma unroll
++      for (uint32_t j = 0; j < 8u; ++j) out[j] += mine[w * 256u + lane * 8u + j];
++  }
++  if (!MX) {
++    const float f = F[e];
++#pragma unroll
++    for (uint32_t j = 0; j < 8u; ++j) out[j] *= f;
++  }
++
++  if (SWIGLU) {
++    // One wave per tile from here: a wave's lanes run in step, so the neighbour exchange
++    // through its own LDS block needs no barrier.
++    float* ex = mine;
++#pragma unroll
++    for (uint32_t j = 0; j < 8u; ++j) ex[lane * 8u + j] = out[j];
++    if (c & 1u) return;
++    uint16_t* y = (uint16_t*)Y;
++    // h is the next GEMM's activation: store it in that kernel's element order.
++    const uint32_t hi = (row0 + c) / 2u;
++    const uint32_t hpos = MX ? hi : (hi & ~7u) + ((hi & 1u) << 2) + ((hi & 7u) >> 1);
++#pragma unroll
++    for (uint32_t j = 0; j < 8u; ++j) {
++      const int32_t slot = RunS[run * kRunRows + h * 8u + j];
++      if (slot < 0) continue;
++      const float gt = out[j], up = ex[(lane + 1u) * 8u + j];
++      const float hv = softcap(gt, gate_cap) * (1.0f / (1.0f + expf(-gt))) * softcap(up, up_cap);
++      y[(size_t)slot * (rows / 2u) + hpos] = (uint16_t)f32_to_bf16(hv);
++    }
++  } else {
++    float* y = (float*)Y;
++#pragma unroll
++    for (uint32_t j = 0; j < 8u; ++j) {
++      const int32_t slot = RunS[run * kRunRows + h * 8u + j];
++      if (slot < 0) continue;
++      y[(size_t)slot * rows + row0 + c] = out[j];
++    }
++  }
++}
++
++// out[m][n] = sum_k x_s(n)[m][k] * W[n][k] for up to sixteen rows m: the attention projections
++// of a decode batch, whose row segments [0, B1), [B1, B2), [B2, N) read different inputs. One
++// pass over the weight serves every row. Lane map as above with natural element order.
++template <uint32_t NT>
++__global__ __launch_bounds__(NT * kWave) void ink2_seg_gemm_kernel(
++    const uint16_t* __restrict__ W, const uint16_t* __restrict__ X, uint16_t* __restrict__ Y,
++    uint32_t rows, uint32_t cols, uint32_t m, uint32_t x_stride, uint32_t seg_stride,
++    uint32_t y_stride, uint32_t b1, uint32_t b2) {
++  const uint32_t lane = threadIdx.x & (kWave - 1u);
++#if __has_builtin(__builtin_amdgcn_readfirstlane)
++  const uint32_t tile = __builtin_amdgcn_readfirstlane(threadIdx.x / kWave);
++#else
++  const uint32_t tile = threadIdx.x / kWave;
++#endif
++  const uint32_t c = lane & 15u, h = lane >> 4;
++  const uint32_t row0 = (blockIdx.x * NT + tile) * kTile;
++  if (row0 >= rows) return;
++  const uint32_t seg = (row0 >= b1 ? 1u : 0u) + (row0 >= b2 ? 1u : 0u);
++  // A last tile past the weight rereads the last row and stores nothing for it.
++  const uint16_t* wp = W + (size_t)min(row0 + c, rows - 1u) * cols + h * 8u;
++  const uint16_t* xp = X + (size_t)seg * seg_stride + (size_t)(c < m ? c : 0u) * x_stride + h * 8u;
++  const uint32_t groups = cols / kTile;
++  f8v out;
++#pragma unroll
++  for (uint32_t j = 0; j < 8u; ++j) out[j] = 0.0f;
++  uint32_t g = 0u;
++  while (g < groups) {
++    const uint32_t base = min(g, groups - 8u);
++    s8v wv[8], xv[8];
++#pragma unroll
++    for (uint32_t i = 0; i < 8u; ++i) __builtin_memcpy(&wv[i], wp + (size_t)(base + i) * 16u, 16);
++#pragma unroll
++    for (uint32_t i = 0; i < 8u; ++i) {
++      if (c < m) {
++        __builtin_memcpy(&xv[i], xp + (size_t)(base + i) * 16u, 16);
++      } else {
++#pragma unroll
++        for (uint32_t j = 0; j < 8u; ++j) xv[i][j] = 0;
++      }
++    }
++#pragma unroll
++    for (uint32_t i = 0; i < 8u; ++i) {
++      if (base + i < g) continue;
++      out = __builtin_amdgcn_wmma_f32_16x16x16_bf16_w32_gfx12(xv[i], wv[i], out);
++    }
++    g = base + 8u;
++  }
++#pragma unroll
++  for (uint32_t j = 0; j < 8u; ++j) {
++    const uint32_t r = h * 8u + j;
++    if (r < m && row0 + c < rows) Y[(size_t)r * y_stride + row0 + c] = (uint16_t)f32_to_bf16(out[j]);
++  }
++}
++
++void check_weights(const torch::Tensor& w, const torch::Tensor& s, const torch::Tensor& f) {
++  TORCH_CHECK(w.is_cuda() && s.is_cuda() && f.is_cuda(), "inkling2_moe_hip: HIP tensors");
++  TORCH_CHECK(w.dim() == 3 && s.dim() == 3 && w.is_contiguous() && s.is_contiguous(),
++              "inkling2_moe_hip: weight [E][N][K/2] and scale [E][N][K/16], contiguous");
++  TORCH_CHECK(w.element_size() == 1 && s.element_size() == 1, "inkling2_moe_hip: byte tensors");
++  TORCH_CHECK(f.scalar_type() == at::ScalarType::Float && f.is_contiguous() &&
++                  f.numel() == w.size(0), "inkling2_moe_hip: factor float32 [E]");
++  TORCH_CHECK(w.size(1) % kTile == 0 && s.size(0) == w.size(0) && s.size(1) == w.size(1) &&
++                  s.size(2) * 8 == w.size(2), "inkling2_moe_hip: shapes");
++}
++
++}  // namespace
++
++// topk_ids int32 [T][top_k], T * top_k <= 128, at most 128 experts.
++// Returns (run_expert int32 [R], run_slots int32 [R][16], x_ordered) with R = T * top_k.
++// x bf16 [T][K], K % 8 == 0: also returns x in the expert kernel's element order.
++std::tuple<torch::Tensor, torch::Tensor, torch::Tensor> inkling2_runs_hip(torch::Tensor topk_ids,
++                                                                          torch::Tensor x) {
++  TORCH_CHECK(x.is_cuda() && x.scalar_type() == at::ScalarType::BFloat16 && x.dim() == 2 &&
++                  x.stride(1) == 1 && x.size(1) % 8 == 0 && x.stride(0) % 2 == 0 &&
++                  x.get_device() == topk_ids.get_device(), "inkling2_runs_hip: x bf16 [T][K]");
++  TORCH_CHECK(topk_ids.is_cuda() && topk_ids.scalar_type() == at::ScalarType::Int &&
++                  topk_ids.is_contiguous(), "inkling2_runs_hip: contiguous int32 HIP ids");
++  const int64_t slots = topk_ids.numel();
++  TORCH_CHECK(slots >= 1 && slots <= kMaxSlots, "inkling2_runs_hip: 1 <= slots <= 128");
++  const c10::cuda::CUDAGuard device_guard(topk_ids.device());
++  const auto stream =
++      at::hip::getCurrentHIPStream(static_cast<c10::DeviceIndex>(topk_ids.get_device()));
++  auto run_e = torch::empty({slots}, topk_ids.options());
++  auto run_s = torch::empty({slots, (int64_t)kRunRows}, topk_ids.options());
++  auto xp = torch::empty({x.size(0), x.size(1)}, x.options());
++  hipLaunchKernelGGL(ink2_runs_kernel, dim3(1), dim3(128), 0, stream,
++                     (const int32_t*)topk_ids.data_ptr(), (int32_t*)run_e.data_ptr(),
++                     (int32_t*)run_s.data_ptr(), (uint32_t)slots, (uint32_t)slots,
++                     (const uint32_t*)x.data_ptr(), (uint32_t*)xp.data_ptr(),
++                     (uint32_t)x.size(0), (uint32_t)x.size(1), (uint32_t)x.stride(0));
++  return {run_e, run_s, xp};
++}
++
++// x in the kernel's element order (from inkling2_runs_hip or a swiglu call).
++// swiglu != 0: x bf16 [T][K] (slot s reads row s / top_k), returns bf16 h [slots][N / 2] in
++// that order. swiglu == 0: x bf16 [slots][K] (slot s reads row s), returns fp32 [slots][N].
++torch::Tensor inkling2_nvfp4_hip(torch::Tensor x, torch::Tensor weight, torch::Tensor scale,
++                                 torch::Tensor factor, torch::Tensor run_e, torch::Tensor run_s,
++                                 int64_t top_k, bool swiglu, double gate_cap, double up_cap,
++                                 int64_t ks, int64_t nt) {
++  check_weights(weight, scale, factor);
++  TORCH_CHECK(x.is_cuda() && x.scalar_type() == at::ScalarType::BFloat16 && x.dim() == 2 &&
++                  x.stride(1) == 1, "inkling2_nvfp4_hip: x must be bf16 [rows][K]");
++  const int64_t N = weight.size(1), K = weight.size(2) * 2, slots = run_e.numel();
++  TORCH_CHECK(x.size(1) == K && (K / kTile) % 4 == 0 && K >= 256, "inkling2_nvfp4_hip: K");
++  TORCH_CHECK(ks == 1 || ks == 2 || ks == 4, "inkling2_nvfp4_hip: ks must be 1, 2 or 4");
++  TORCH_CHECK((K / kTile) % (4 * ks) == 0, "inkling2_nvfp4_hip: K groups must split over ks");
++  TORCH_CHECK(run_s.numel() == slots * kRunRows, "inkling2_nvfp4_hip: runs");
++  TORCH_CHECK(x.size(0) * (swiglu ? top_k : 1) >= slots, "inkling2_nvfp4_hip: x rows");
++  const c10::cuda::CUDAGuard device_guard(x.device());
++  const auto stream = at::hip::getCurrentHIPStream(static_cast<c10::DeviceIndex>(x.get_device()));
++  auto out = swiglu ? torch::empty({slots, N / 2}, x.options())
++                    : torch::empty({slots, N}, x.options().dtype(torch::kFloat32));
++  TORCH_CHECK((nt == 1 || nt == 2 || nt == 4 || nt == 8 || nt == 16) && nt * ks <= 16 &&
++                  (N / kTile) % nt == 0, "inkling2_nvfp4_hip: nt");
++  const dim3 grid((uint32_t)(N / kTile / nt), (uint32_t)slots);
++#define INK2_LAUNCH(NTV, KSV, SW)                                                             \
++  hipLaunchKernelGGL((ink2_nvfp4_kernel<NTV, KSV, SW>), grid, dim3(NTV * KSV * kWave), 0,     \
++                     stream, (const uint8_t*)weight.data_ptr(),                               \
++                     (const uint8_t*)scale.data_ptr(), (const float*)factor.data_ptr(),       \
++                     (const uint16_t*)x.data_ptr(), (const int32_t*)run_e.data_ptr(),         \
++                     (const int32_t*)run_s.data_ptr(), (void*)out.data_ptr(), (uint32_t)N,    \
++                     (uint32_t)K, (uint32_t)x.stride(0), (uint32_t)(swiglu ? top_k : 1),      \
++                     (float)gate_cap, (float)up_cap)
++#define INK2_CASE(NTV, KSV)                                                                   \
++  if (nt == NTV && ks == KSV) {                                                               \
++    if (swiglu) { INK2_LAUNCH(NTV, KSV, true); } else { INK2_LAUNCH(NTV, KSV, false); }       \
++    return out;                                                                               \
++  }
++  INK2_CASE(1, 1) INK2_CASE(1, 2) INK2_CASE(1, 4) INK2_CASE(2, 1) INK2_CASE(2, 2)
++  INK2_CASE(2, 4) INK2_CASE(4, 1) INK2_CASE(4, 2) INK2_CASE(4, 4) INK2_CASE(8, 1)
++  INK2_CASE(8, 2) INK2_CASE(16, 1)
++#undef INK2_CASE
++#undef INK2_LAUNCH
++  TORCH_CHECK(false, "inkling2_nvfp4_hip: unsupported (nt, ks)");
++  return out;
++}
++
++// x bf16 [M][K] (every row segment reads it) or [S][M][K] (segment s reads x[s]), M <= 16;
++// weight bf16 [N][K], K % 16 == 0, K >= 128; b1 <= b2 the first rows of segments
++// 1 and 2 (multiples of 16; N when absent). Returns bf16 [M][N].
++torch::Tensor inkling2_seg_gemm_hip(torch::Tensor x, torch::Tensor weight, int64_t b1, int64_t b2,
++                                    int64_t nt) {
++  TORCH_CHECK(x.is_cuda() && weight.is_cuda() && x.get_device() == weight.get_device() &&
++                  x.scalar_type() == at::ScalarType::BFloat16 &&
++                  weight.scalar_type() == at::ScalarType::BFloat16,
++              "inkling2_seg_gemm_hip: bf16 HIP tensors on one device");
++  TORCH_CHECK(weight.dim() == 2 && weight.is_contiguous() && (x.dim() == 2 || x.dim() == 3) &&
++                  x.stride(-1) == 1, "inkling2_seg_gemm_hip: weight [N][K], x [M][K] or [S][M][K]");
++  const int64_t N = weight.size(0), K = weight.size(1), M = x.size(-2);
++  const int64_t segs = x.dim() == 3 ? x.size(0) : 1;
++  TORCH_CHECK(x.size(-1) == K && K % kTile == 0 && K >= 128 && N >= 1 && M >= 1 &&
++                  M <= kRunRows, "inkling2_seg_gemm_hip: shapes");
++  TORCH_CHECK((b1 % kTile == 0 || b1 == N) && (b2 % kTile == 0 || b2 == N) && 0 <= b1 &&
++                  b1 <= b2 && b2 <= N &&
++                  (segs >= 3 || b2 == N) && (segs >= 2 || b1 == N),
++              "inkling2_seg_gemm_hip: segment bounds");
++  TORCH_CHECK(x.stride(-2) % 8 == 0 && (x.dim() == 2 || x.stride(0) % 8 == 0),
++              "inkling2_seg_gemm_hip: x strides");
++  const c10::cuda::CUDAGuard device_guard(x.device());
++  const auto stream = at::hip::getCurrentHIPStream(static_cast<c10::DeviceIndex>(x.get_device()));
++  auto out = torch::empty({M, N}, x.options());
++  const dim3 grid((uint32_t)(((N + kTile - 1) / kTile + nt - 1) / nt));
++#define INK2_SEG(NTV)                                                                           if (nt == NTV) {                                                                                hipLaunchKernelGGL((ink2_seg_gemm_kernel<NTV>), grid, dim3(NTV * kWave), 0, stream,                              (const uint16_t*)weight.data_ptr(), (const uint16_t*)x.data_ptr(),                            (uint16_t*)out.data_ptr(), (uint32_t)N, (uint32_t)K, (uint32_t)M,                             (uint32_t)x.stride(-2), (uint32_t)(x.dim() == 3 ? x.stride(0) : 0),                           (uint32_t)N, (uint32_t)b1, (uint32_t)b2);                                  return out;                                                                                 }
++  INK2_SEG(1) INK2_SEG(2) INK2_SEG(4) INK2_SEG(8)
++#undef INK2_SEG
++  TORCH_CHECK(false, "inkling2_seg_gemm_hip: nt must be 1, 2, 4 or 8");
++  return out;
++}
++
++// MXFP8 experts: weight E4M3 bytes [E][N][K], scale uint8 [E][N][K / 32] (2^(s - 127)), x in
++// natural element order (the model's own tensor; h from a swiglu call of this function).
++// Otherwise as inkling2_nvfp4_hip.
++torch::Tensor inkling2_mxfp8_hip(torch::Tensor x, torch::Tensor weight, torch::Tensor scale,
++                                 torch::Tensor run_e, torch::Tensor run_s, int64_t top_k,
++                                 bool swiglu, double gate_cap, double up_cap, int64_t nt) {
++  TORCH_CHECK(weight.is_cuda() && scale.is_cuda() && weight.dim() == 3 && scale.dim() == 3 &&
++                  weight.is_contiguous() && scale.is_contiguous() && weight.element_size() == 1 &&
++                  scale.element_size() == 1, "inkling2_mxfp8_hip: byte weight and scale");
++  const int64_t N = weight.size(1), K = weight.size(2), slots = run_e.numel();
++  TORCH_CHECK(N % kTile == 0 && K % 32 == 0 && K >= 128 && scale.size(0) == weight.size(0) &&
++                  scale.size(1) == N && scale.size(2) * 32 == K, "inkling2_mxfp8_hip: shapes");
++  TORCH_CHECK(x.is_cuda() && x.scalar_type() == at::ScalarType::BFloat16 && x.dim() == 2 &&
++                  x.stride(1) == 1 && x.size(1) == K, "inkling2_mxfp8_hip: x must be bf16 [rows][K]");
++  TORCH_CHECK(run_s.numel() == slots * kRunRows, "inkling2_mxfp8_hip: runs");
++  TORCH_CHECK(x.size(0) * (swiglu ? top_k : 1) >= slots, "inkling2_mxfp8_hip: x rows");
++  TORCH_CHECK((nt == 1 || nt == 2 || nt == 4 || nt == 8) && (N / kTile) % nt == 0,
++              "inkling2_mxfp8_hip: nt");
++  const c10::cuda::CUDAGuard device_guard(x.device());
++  const auto stream = at::hip::getCurrentHIPStream(static_cast<c10::DeviceIndex>(x.get_device()));
++  auto out = swiglu ? torch::empty({slots, N / 2}, x.options())
++                    : torch::empty({slots, N}, x.options().dtype(torch::kFloat32));
++  const dim3 grid((uint32_t)(N / kTile / nt), (uint32_t)slots);
++#define INK2_MX(NTV, SW)                                                                        hipLaunchKernelGGL((ink2_nvfp4_kernel<NTV, 1, SW, true>), grid, dim3(NTV * kWave), 0,                            stream, (const uint8_t*)weight.data_ptr(),                                                    (const uint8_t*)scale.data_ptr(), (const float*)nullptr,                                      (const uint16_t*)x.data_ptr(), (const int32_t*)run_e.data_ptr(),                              (const int32_t*)run_s.data_ptr(), (void*)out.data_ptr(), (uint32_t)N,                         (uint32_t)K, (uint32_t)x.stride(0), (uint32_t)(swiglu ? top_k : 1),                           (float)gate_cap, (float)up_cap)
++#define INK2_MX_CASE(NTV)                                                                       if (nt == NTV) {                                                                                if (swiglu) { INK2_MX(NTV, true); } else { INK2_MX(NTV, false); }                             return out;                                                                                 }
++  INK2_MX_CASE(1) INK2_MX_CASE(2) INK2_MX_CASE(4) INK2_MX_CASE(8)
++#undef INK2_MX_CASE
++#undef INK2_MX
++  return out;
++}
++
++#include <torch/extension.h>
++
++PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
++  m.def("inkling2_runs_hip", &inkling2_runs_hip, "Per-expert runs of routed rows",
++        py::arg("topk_ids"), py::arg("x"));
++  m.def("inkling2_nvfp4_hip", &inkling2_nvfp4_hip,
++        "NVFP4 routed-expert GEMM over per-expert runs, bf16 activations (HIP/ROCm)",
++        py::arg("x"), py::arg("weight"), py::arg("scale"), py::arg("factor"), py::arg("run_e"),
++        py::arg("run_s"), py::arg("top_k"), py::arg("swiglu"), py::arg("gate_cap") = 0.0,
++        py::arg("up_cap") = 0.0, py::arg("ks") = 1, py::arg("nt") = 1);
++  m.def("inkling2_mxfp8_hip", &inkling2_mxfp8_hip,
++        "MXFP8 routed-expert GEMM over per-expert runs, bf16 activations (HIP/ROCm)",
++        py::arg("x"), py::arg("weight"), py::arg("scale"), py::arg("run_e"), py::arg("run_s"),
++        py::arg("top_k"), py::arg("swiglu"), py::arg("gate_cap") = 0.0, py::arg("up_cap") = 0.0,
++        py::arg("nt") = 1);
++  m.def("inkling2_seg_gemm_hip", &inkling2_seg_gemm_hip,
++        "bf16 GEMM for up to sixteen rows over a weight with per-segment inputs (HIP/ROCm)",
++        py::arg("x"), py::arg("weight"), py::arg("b1"), py::arg("b2"), py::arg("nt") = 1);
++}
++#endif  // USE_ROCM
+diff --git a/python/sglang/kernels/ops/moe/inkling2_moe_rdna4.py b/python/sglang/kernels/ops/moe/inkling2_moe_rdna4.py
+index 7f967dc..724efc5 100644
+--- a/python/sglang/kernels/ops/moe/inkling2_moe_rdna4.py
++++ b/python/sglang/kernels/ops/moe/inkling2_moe_rdna4.py
+@@ -7,8 +7,15 @@ BF16), then a BF16 MMA accumulates in FP32. The NVFP4 per-expert factor
+ ``amax / outer_scale_denominator`` is applied to the accumulator. Rows are routed with
+ moe_align_block_size (sorted token ids, one expert per M block), so the whole MoE runs
+ without a host sync and can be captured in a graph.
++
++Decode batches (up to sixteen tokens) run the native HIP kernels of
++inkling2_moe_hip_ext when it is installed: it groups the routed rows by expert, so a
++step reads each selected expert once however many requests chose it.
+ """
+ 
++import logging
++import os
++
+ import torch
+ import triton
+ import triton.language as tl
+@@ -17,6 +24,38 @@ from sglang.srt.layers.moe.moe_runner.triton_utils.moe_align_block_size import (
+     moe_align_block_size,
+ )
+ 
++logger = logging.getLogger(__name__)
++
++# Native per-expert kernels (NVFP4 and MXFP8) (scripts/build_inkling2_moe_hip.sh). A run holds at most
++# sixteen rows and a token picks an expert once, hence the token bound.
++HIP_MAX_TOKENS = min(int(os.environ.get("SGLANG_INKLING2_MOE_HIP_MAX_TOKENS", "16")), 16)
++_hip = None
++if os.environ.get("SGLANG_INKLING2_MOE_HIP", "1") != "0" and HIP_MAX_TOKENS > 0:
++    try:
++        import inkling2_moe_hip_ext as _hip
++    except ImportError:
++        _hip = None
++_hip_logged = False
++_HIP_MXFP8 = os.environ.get("SGLANG_INKLING2_MOE_HIP_MXFP8", "1") != "0"
++
++
++def _routed_experts_hip(x, topk_ids, topk_weights, w13, w13_scale, w2, w2_scale, w13_factor, w2_factor, nvfp4, gate_cap, up_cap):
++    global _hip_logged
++    if not _hip_logged:
++        _hip_logged = True
++        logger.info("Inkling 2 routed experts: HIP per-expert kernel active (up to %d tokens)", HIP_MAX_TOKENS)
++    top_k = topk_ids.shape[1]
++    run_e, run_s, xo = _hip.inkling2_runs_hip(topk_ids.to(torch.int32).contiguous(), x)
++    # Workgroup shapes from a graph-timed sweep on gfx1201 (TP2 slices); the kernel is bound
++    # by the read of the selected experts, so the shape matters little.
++    if not nvfp4:
++        h = _hip.inkling2_mxfp8_hip(x, w13, w13_scale, run_e, run_s, top_k, True, gate_cap, up_cap, 4)
++        down = _hip.inkling2_mxfp8_hip(h, w2, w2_scale, run_e, run_s, top_k, False, 0.0, 0.0, 8)
++        return _weighted_sum(down, topk_weights)
++    h = _hip.inkling2_nvfp4_hip(xo, w13, w13_scale, w13_factor, run_e, run_s, top_k, True, gate_cap, up_cap, 1, 4)
++    down = _hip.inkling2_nvfp4_hip(h, w2, w2_scale, w2_factor, run_e, run_s, top_k, False, 0.0, 0.0, 1, 8)
++    return _weighted_sum(down, topk_weights)
++
+ 
+ @triton.jit
+ def _e2m1_to_f32(code):
+@@ -272,6 +311,8 @@ def inkling2_routed_experts(
+     tokens, top_k = topk_ids.shape
+     num_experts = w13.shape[0]
+     x = x.to(torch.bfloat16).contiguous()
++    if _hip is not None and (nvfp4 or _HIP_MXFP8) and 0 < tokens <= HIP_MAX_TOKENS and tokens * top_k <= 128 and num_experts <= 128:
++        return _routed_experts_hip(x, topk_ids, topk_weights, w13, w13_scale, w2, w2_scale, w13_factor, w2_factor, nvfp4, gate_cap, up_cap)
+     gate_up = torch.empty((tokens * top_k, w13.shape[1]), dtype=torch.float32, device=x.device)
+     down = torch.empty((tokens * top_k, w2.shape[1]), dtype=torch.float32, device=x.device)
+     if tokens * top_k <= GEMV_MAX_SLOTS:
+diff --git a/python/sglang/srt/models/inkling2.py b/python/sglang/srt/models/inkling2.py
+index 00b53ec..3a83a8d 100644
+--- a/python/sglang/srt/models/inkling2.py
++++ b/python/sglang/srt/models/inkling2.py
+@@ -107,6 +107,16 @@ def _rms_norm_stack_fn(x, weights, eps: float):
+ 
+ # Token counts up to this run the projections as GEMVs (one launch for every segment).
+ _GEMV_MAX_TOKENS = int(os.environ.get("SGLANG_INKLING2_GEMV_MAX_TOKENS", "4"))
++# Native projection GEMM for decode batches of 2..16 tokens (scripts/build_inkling2_moe_hip.sh):
++# one pass over the weight serves every token, where the GEMV reads it once per token.
++_seg_gemm_hip = None
++if os.environ.get("SGLANG_INKLING2_PROJ_HIP", "1") != "0":
++    try:
++        from inkling2_moe_hip_ext import inkling2_seg_gemm_hip as _seg_gemm_hip
++    except ImportError:
++        _seg_gemm_hip = None
++_HIP_ROWS = range(2, 17) if _seg_gemm_hip is not None else ()
++_proj_hip_logged = False
+ 
+ 
+ @_compiled
+@@ -318,6 +328,13 @@ class Inkling2Attention(nn.Module):
+         self.w_all = merged
+         self.kv_dim = sizes[0]
+         self.split_qrgs = sizes[2:]
++        wo = self.wo_ud.weight
++        aligned = sizes[0] % 16 == 0 and wo.shape[1] % 16 == 0 and wo.shape[1] >= 128
++        self.hip_rows = _HIP_ROWS if aligned and wo.is_contiguous() else ()
++        global _proj_hip_logged
++        if self.hip_rows and not _proj_hip_logged:
++            _proj_hip_logged = True
++            logger.info("Inkling 2 attention projections: HIP multi-row GEMM active (2..16 tokens)")
+ 
+     def _sconv(self, module: ShortConvolution, x, positions, forward_batch, pass_idx, dynamic_input=None):
+         with module.state_layer_override(self.conv_ids[pass_idx]):
+@@ -328,7 +345,10 @@ class Inkling2Attention(nn.Module):
+         k, v, q order."""
+         kv = self.kv_dim
+         T = x.shape[-2]
+-        if T <= _GEMV_MAX_TOKENS:
++        if T in self.hip_rows and x.dtype == torch.bfloat16:
++            n = self.w_all.shape[0]
++            proj = _seg_gemm_hip(x, self.w_all, kv, 2 * kv, 4) if x.dim() == 3 else _seg_gemm_hip(x, self.w_all, n, n, 4)
++        elif T <= _GEMV_MAX_TOKENS:
+             proj = _seg_gemv(x, self.w_all, [kv, 2 * kv])
+         elif x.dim() == 2:
+             proj = F.linear(x, self.w_all)
+@@ -366,8 +386,9 @@ class Inkling2Attention(nn.Module):
+             aux_tensors=[rel_logits],
+         )
+         out = _gate_out_fn(out.view(T, -1), gate)
+-        if T <= _GEMV_MAX_TOKENS:
+-            out = _seg_gemv(out, self.wo_ud.weight, [])
++        if T in self.hip_rows and out.dtype == torch.bfloat16 or T <= _GEMV_MAX_TOKENS:
++            w = self.wo_ud.weight
++            out = _seg_gemm_hip(out.contiguous(), w, w.shape[0], w.shape[0], 2) if T in self.hip_rows and out.dtype == torch.bfloat16 else _seg_gemv(out, w, [])
+             return tensor_model_parallel_all_reduce(out) if get_tensor_model_parallel_world_size() > 1 else out
+         return self.wo_ud(out)[0]
+ 

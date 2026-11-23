@@ -1,0 +1,37 @@
+=== ARM full1  22:50:49
+up
+n=1:   71.4   71.4  best   71.4 tok/s total,  71.4 per request
+n=2:  126.2  124.5  best  126.2 tok/s total,  63.1 per request
+n=4:  210.0  212.2  best  212.2 tok/s total,  53.1 per request
+n=8:  344.6  345.0  best  345.0 tok/s total,  43.1 per request
+active lines: 4
+ANSWER: '391, Canberra'
+stopped
+=== ARM nomx SGLANG_INKLING2_MOE_HIP_MXFP8=0 22:53:03
+up
+n=1:   71.2   71.2  best   71.2 tok/s total,  71.2 per request
+n=2:  123.4  123.3  best  123.4 tok/s total,  61.7 per request
+n=4:  205.3  207.4  best  207.4 tok/s total,  51.9 per request
+n=8:  326.8  327.1  best  327.1 tok/s total,  40.9 per request
+active lines: 4
+ANSWER: '391, Canberra'
+stopped
+=== ARM off4 SGLANG_INKLING2_PROJ_HIP=0 SGLANG_INKLING2_MOE_HIP=0 22:55:17
+up
+n=1:   69.5   69.6  best   69.6 tok/s total,  69.6 per request
+n=2:  114.0  114.0  best  114.0 tok/s total,  57.0 per request
+n=4:  168.9  171.5  best  171.5 tok/s total,  42.9 per request
+n=8:  242.6  240.7  best  242.6 tok/s total,  30.3 per request
+active lines: 0
+ANSWER: '17*23 = 391; Canberra'
+stopped
+=== ARM full2  22:57:41
+up
+n=1:   71.5   71.6  best   71.6 tok/s total,  71.6 per request
+n=2:  124.7  126.9  best  126.9 tok/s total,  63.5 per request
+n=4:  211.3  211.8  best  211.8 tok/s total,  52.9 per request
+n=8:  346.2  344.8  best  346.2 tok/s total,  43.3 per request
+active lines: 4
+ANSWER: '391, Canberra'
+stopped
+DRIVE4 DONE

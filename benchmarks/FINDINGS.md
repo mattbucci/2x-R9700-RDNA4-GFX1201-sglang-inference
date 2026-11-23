@@ -3316,3 +3316,30 @@ fleet receipts for both versions: [`rebase-v0523/`](rebase-v0523/).
 - The thinking probe fails on qwen3vl-32b and coder-reap-25b on both versions.
 - Not measured: patch 129's all-reduce cap against upstream's chunked deterministic all-reduce; a Quark MXFP4
   boot for 117.
+
+## Inkling-2-Mini: concurrency scaling of the decode step (patch 136, 2026-11-22)
+
+The Triton decode path read every routed expert once per token and ran one projection GEMV per token, so the
+step grew from 14 ms at one request to 33 ms at eight. Patch 136 groups the routed rows by expert in a native
+HIP kernel (each selected expert read once, at about 550 GB/s against a measured 564 GB/s streaming read) and
+serves the attention projections of a batch in one pass over the weight. Fixed 300-token decodes, `inkling2`
+preset, decode graphs up to batch 8, arms booted `new old old new`
+([receipt](inkling2/concurrency-hip-kernels-ab.txt)):
+
+| Concurrent requests | Triton tok/s | Patch 136 tok/s | Ratio | Per request |
+|---|---|---|---|---|
+| 1 | 69.6 | 71.5 | 1.03 | 71.5 |
+| 2 | 114.0 | 126.6 | 1.11 | 63.3 |
+| 4 | 171.5 | 212.0 | 1.24 | 53.0 |
+| 8 | 242.6 | 345.6 | 1.42 | 43.2 |
+
+- Parts at eight requests: NVFP4 experts 242 to 305, MXFP8 experts (4 of 24 layers) 327 to 345 with the
+  projections, projections alone 305 to 327.
+- Per layer visit and rank, distinct experts: 64 / 193 / 470 us (Triton) against 55 / 157 / 236 us at
+  1 / 4 / 8 tokens; with 16 experts shared by 8 tokens 184 against 103 us.
+- The kernel is bandwidth-bound: load latency, not arithmetic, set the first versions (a wave must issue 128
+  bytes of every row per round of loads). The remaining growth with batch size is the read of distinct
+  experts (about 2.2 MB per expert, rank and layer visit).
+- Numerics: within FP32 summation order and BF16 ties of the Triton path (relative 1e-7 to 2e-4 on real
+  layers); capability validator unchanged (video is not a capability of this checkpoint).
+- Thresholds alone did not help: `SGLANG_INKLING2_GEMV_MAX_TOKENS` 2 and 8 were slower at 4 and 8 requests.
