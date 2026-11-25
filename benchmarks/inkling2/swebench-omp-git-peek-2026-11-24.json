@@ -1,0 +1,3150 @@
+{
+ "omp": {
+  "n": 300,
+  "counts": {
+   "git_READ": 0,
+   "git_LIST": 30,
+   "web_UPSTREAM": 1,
+   "web_SEARCH": 0,
+   "web_BLOCKED": 147,
+   "web_OTHER": 26,
+   "web_attempts_blocked": 160,
+   "exposed": 1,
+   "isolated": 299,
+   "no_transcript": 0,
+   "exposed_overlap80": [
+    0,
+    1,
+    0.2
+   ],
+   "isolated_overlap80": [
+    52,
+    294,
+    0.0
+   ]
+  },
+  "instances": {
+   "astropy__astropy-12907": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 1.0,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "astropy__astropy-14182": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 0.5,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "astropy__astropy-14365": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "astropy__astropy-14995": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "astropy__astropy-6938": {
+    "git": "clean",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": null,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "web SEARCH (blocked): web_search: astropy issue 5362 ASCII format D exponent"
+    ]
+   },
+   "astropy__astropy-7746": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "django__django-10914": {
+    "git": "clean",
+    "web": "OTHER",
+    "exposed": false,
+    "overlap": 0.05,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": [
+     "web OTHER (blocked): bash: curl https://gist.github.com/earshinov/0340f741189a14d4fd10e3e902203ad6/revisions#diff-14151589d5408f8b64b7e0e580770f0e"
+    ]
+   },
+   "django__django-10924": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "django__django-11001": {
+    "git": "LIST",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "git LIST: git branch -a",
+     "web SEARCH (blocked): web_search: Django \"multiline RawSQL\" order_by ordering_parts fix"
+    ]
+   },
+   "django__django-11019": {
+    "git": "clean",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.021505376344086023,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "web SEARCH (blocked): web_search: django ticket 30179 MediaOrderConflictWarning fix merge sublists"
+    ]
+   },
+   "django__django-11039": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 1.0,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "django__django-11049": {
+    "git": "clean",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.1,
+    "web_attempts": 2,
+    "web_blocked": 2,
+    "evidence": [
+     "web SEARCH (blocked): web_search: Django DurationField \"[DD] [[HH:]MM:]ss[.uuuuuu]\"",
+     "web SEARCH (blocked): web_search: Django DurationField \"[DD] [[HH:]MM:]ss[.uuuuuu]\""
+    ]
+   },
+   "django__django-11099": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "django__django-11133": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 1.0,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "django__django-11179": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 1.0,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "django__django-11283": {
+    "git": "clean",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "web SEARCH (blocked): web_search: Django 0011_update_proxy_permissions IntegrityError fix site:code.djangoproject.com"
+    ]
+   },
+   "django__django-11422": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 0.16666666666666666,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "django__django-11564": {
+    "git": "clean",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.05263157894736842,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "web SEARCH (blocked): web_search: Django SCRIPT_NAME STATIC_URL MEDIA_URL feature commit"
+    ]
+   },
+   "django__django-11583": {
+    "git": "clean",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "web SEARCH (blocked): web_search: django autoreload \"embedded null byte\" fix"
+    ]
+   },
+   "django__django-11620": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 1.0,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "django__django-11630": {
+    "git": "clean",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.25,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "web SEARCH (blocked): web_search: Django ticket 20098 models.E028 DATABASE_ROUTERS warning"
+    ]
+   },
+   "django__django-11742": {
+    "git": "clean",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.05555555555555555,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "web SEARCH (blocked): web_search: Django check max_length fits longest choice fields error"
+    ]
+   },
+   "django__django-11797": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 0.6666666666666666,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "django__django-11815": {
+    "git": "LIST",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 2,
+    "web_blocked": 2,
+    "evidence": [
+     "git LIST: git log --oneline --all",
+     "web SEARCH (blocked): web_search: Django migrations enum name instead of value EnumSerializer fix commit",
+     "web UPSTREAM (blocked): bash: pip download django==4.2 --no-deps 2>&1 | head -3       "
+    ]
+   },
+   "django__django-11848": {
+    "git": "clean",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "web SEARCH (blocked): web_search: django parse_http_date RFC 850 two-digit year 50 years in the future fix"
+    ]
+   },
+   "django__django-11905": {
+    "git": "clean",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.5,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "web SEARCH (blocked): web_search: django issue isnull non-boolean RemovedInDjango40Warning lookups"
+    ]
+   },
+   "django__django-11910": {
+    "git": "LIST",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "git LIST: git log --oneline --all",
+     "web SEARCH (blocked): web_search: Django dcdd219ee1e062dc6189f382e0298e0adf5d5ddf to_field rename"
+    ]
+   },
+   "django__django-11964": {
+    "git": "clean",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "web SEARCH (blocked): web_search: Django TextChoices created instance getter enum value fix choices"
+    ]
+   },
+   "django__django-11999": {
+    "git": "clean",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "web SEARCH (blocked): web_search: django issue override get_FOO_display() 2.2 contribute_to_class fix site:code.djangoproject.com"
+    ]
+   },
+   "django__django-12113": {
+    "git": "LIST",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "git LIST: git log --oneline --all",
+     "web SEARCH (blocked): web_search: django test_db_signature TEST NAME sqlite issue database is locked"
+    ]
+   },
+   "django__django-12125": {
+    "git": "LIST",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "git LIST: git log --oneline --all",
+     "web SEARCH (blocked): web_search: django PR 12125 serializer TypeSerializer qualname"
+    ]
+   },
+   "django__django-12184": {
+    "git": "clean",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "web SEARCH (blocked): web_search: django 76b993a117b61c41584e95149a67d8a1e9f49dd1"
+    ]
+   },
+   "django__django-12284": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "django__django-12286": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "django__django-12308": {
+    "git": "clean",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "web SEARCH (blocked): web_search: Django \"JSONField\" \"readonly\" admin \"display_for_field\" issue"
+    ]
+   },
+   "django__django-12453": {
+    "git": "LIST",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.25,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "git LIST: git fetch",
+     "git LIST: git tag",
+     "web SEARCH (blocked): web_search: Django issue #31051 deserialize_db_from_string fix"
+    ]
+   },
+   "django__django-12470": {
+    "git": "clean",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "web SEARCH (blocked): web_search: Django issue inherited model \"-pk\" ordering Parent.Meta.ordering multi-table inheritance"
+    ]
+   },
+   "django__django-12497": {
+    "git": "clean",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 1.0,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "web SEARCH (blocked): web_search: django github pull 12497 recursive relationship hint ManyToManyField"
+    ]
+   },
+   "django__django-12589": {
+    "git": "clean",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "web SEARCH (blocked): web_search: django set_group_by alias collision column names alias_map fix"
+    ]
+   },
+   "django__django-12700": {
+    "git": "clean",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "web SEARCH (blocked): web_search: Django cleanse_setting list tuple recurse fix SafeExceptionReporterFilter"
+    ]
+   },
+   "django__django-12708": {
+    "git": "clean",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "web SEARCH (blocked): web_search: Django \"Migration crashes deleting an index_together\" unique_together"
+    ]
+   },
+   "django__django-12747": {
+    "git": "clean",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "web SEARCH (blocked): web_search: Django QuerySet.Delete inconsistent result zero objects deleted fix"
+    ]
+   },
+   "django__django-12856": {
+    "git": "clean",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "web SEARCH (blocked): web_search: django \"Add check for fields of UniqueConstraints\" _check_local_fields constraints"
+    ]
+   },
+   "django__django-12908": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 1.0,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "django__django-12915": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 1.0,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "django__django-12983": {
+    "git": "clean",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.3333333333333333,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "web SEARCH (blocked): web_search: Django slugify strip dashes and underscores issue"
+    ]
+   },
+   "django__django-13028": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "django__django-13033": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "django__django-13158": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 0.2,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "django__django-13220": {
+    "git": "clean",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.19230769230769232,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "web SEARCH (blocked): web_search: django core exceptions ValidationError __eq__ error_dict implementation"
+    ]
+   },
+   "django__django-13230": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 0.14285714285714285,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "django__django-13265": {
+    "git": "clean",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "web SEARCH (blocked): web_search: Django AlterOrderWithRespectTo Index _order crash fix autodetector"
+    ]
+   },
+   "django__django-13315": {
+    "git": "LIST",
+    "web": "none",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": [
+     "git LIST: git log --oneline --all"
+    ]
+   },
+   "django__django-13321": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "django__django-13401": {
+    "git": "clean",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.09090909090909091,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "web SEARCH (blocked): web_search: Django issue \"Abstract model field should not be equal across models\""
+    ]
+   },
+   "django__django-13447": {
+    "git": "clean",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.25,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "web SEARCH (blocked): web_search: Django AdminSite build_app_dict model class app_list context"
+    ]
+   },
+   "django__django-13448": {
+    "git": "LIST",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "git LIST: git log --oneline --all",
+     "git LIST: git branch -a",
+     "git LIST: git log --oneline --all",
+     "web SEARCH (blocked): web_search: Django ticket 25388 TEST MIGRATE False fix"
+    ]
+   },
+   "django__django-13551": {
+    "git": "clean",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "web SEARCH (blocked): web_search: Django password reset token invalidated when email changes _make_hash_value"
+    ]
+   },
+   "django__django-13590": {
+    "git": "clean",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "web SEARCH (blocked): web_search: Django resolve_lookup_value namedtuple TypeError __new__ missing far"
+    ]
+   },
+   "django__django-13658": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 0.3076923076923077,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "django__django-13660": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "django__django-13710": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 0.75,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "django__django-13757": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "django__django-13768": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 0.3333333333333333,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "django__django-13925": {
+    "git": "clean",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "web SEARCH (blocked): web_search: django W042 inherited primary key check fix _check_default_pk"
+    ]
+   },
+   "django__django-13933": {
+    "git": "clean",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "web SEARCH (blocked): web_search: django pull request 13933 ModelChoiceField invalid_choice"
+    ]
+   },
+   "django__django-13964": {
+    "git": "clean",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.5,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "web SEARCH (blocked): web_search: django _prepare_related_fields_for_save empty_values fix"
+    ]
+   },
+   "django__django-14016": {
+    "git": "LIST",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "git LIST: git log --oneline --all",
+     "web SEARCH (blocked): web_search: django Q \"cannot pickle\" dict_keys __deepcopy__ fix"
+    ]
+   },
+   "django__django-14017": {
+    "git": "clean",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "web SEARCH (blocked): web_search: django Q() & Exists TypeError fix __rand__"
+    ]
+   },
+   "django__django-14155": {
+    "git": "clean",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "web SEARCH (blocked): web_search: Django ResolverMatch functools.partial __repr__ fix unwrap"
+    ]
+   },
+   "django__django-14238": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "django__django-14382": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "django__django-14411": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 1.0,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "django__django-14534": {
+    "git": "clean",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "web SEARCH (blocked): web_search: django/django PR 14534 BoundWidget id_for_label"
+    ]
+   },
+   "django__django-14580": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "django__django-14608": {
+    "git": "LIST",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.125,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "git LIST: git log --oneline --all",
+     "web SEARCH (blocked): web_search: django \"nonform\" CSS class formsets"
+    ]
+   },
+   "django__django-14667": {
+    "git": "clean",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "web SEARCH (blocked): web_search: django ticket 32704 defer only chaining fix add_deferred_loading"
+    ]
+   },
+   "django__django-14672": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 1.0,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "django__django-14730": {
+    "git": "LIST",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.5714285714285714,
+    "web_attempts": 2,
+    "web_blocked": 2,
+    "evidence": [
+     "git LIST: git branch -a",
+     "web SEARCH (blocked): web_search: django fields.W342 symmetrical related_name",
+     "web UPSTREAM (blocked): bash: pip download Django==4.0 --no-deps -d /tmp/dj 2>&1 | tail -2       "
+    ]
+   },
+   "django__django-14752": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 1.0,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "django__django-14787": {
+    "git": "clean",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "web SEARCH (blocked): web_search: django method_decorator functools.partial __name__ fix"
+    ]
+   },
+   "django__django-14855": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "django__django-14915": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 1.0,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "django__django-14997": {
+    "git": "clean",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "web SEARCH (blocked): web_search: Django ddl_references Expressions rename_table_references alias fix \"prohibited in index expressions\""
+    ]
+   },
+   "django__django-14999": {
+    "git": "LIST",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "git LIST: git log --oneline --all",
+     "git LIST: git log --all",
+     "web SEARCH (blocked): web_search: Django RenameModel db_table noop issue"
+    ]
+   },
+   "django__django-15061": {
+    "git": "clean",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": null,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "web SEARCH (blocked): web_search: django ticket 32338 MultiWidget label for remove accessibility"
+    ]
+   },
+   "django__django-15202": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 0.3333333333333333,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "django__django-15213": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "django__django-15252": {
+    "git": "LIST",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "git LIST: git branch -a",
+     "git LIST: git log --all",
+     "web SEARCH (blocked): web_search: django ticket 27141 MigrationRecorder allow_migrate fix"
+    ]
+   },
+   "django__django-15320": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "django__django-15347": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 1.0,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "django__django-15388": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 1.0,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "django__django-15400": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "django__django-15498": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 0.5,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "django__django-15695": {
+    "git": "clean",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "web SEARCH (blocked): web_search: django RenameIndex database_backwards old_fields unnamed index fix"
+    ]
+   },
+   "django__django-15738": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "django__django-15781": {
+    "git": "clean",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.14285714285714285,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "web SEARCH (blocked): web_search: django create_parser kwargs.setdefault formatter_class DjangoHelpFormatter"
+    ]
+   },
+   "django__django-15789": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 0.05263157894736842,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "django__django-15790": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "django__django-15814": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 0.16666666666666666,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "django__django-15819": {
+    "git": "LIST",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "git LIST: git branch -a",
+     "web SEARCH (blocked): web_search: inspectdb related_name same relation links django issue"
+    ]
+   },
+   "django__django-15851": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "django__django-15902": {
+    "git": "clean",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 1.0,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "web SEARCH (blocked): web_search: django ManagementForm default.html deprecation warning formsets"
+    ]
+   },
+   "django__django-15996": {
+    "git": "clean",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 2,
+    "web_blocked": 2,
+    "evidence": [
+     "web SEARCH (blocked): web_search: Django EnumSerializer combination of Enum flags _decompose",
+     "web UPSTREAM (blocked): bash: pip download django==5.0 2>&1 | head -3; python -c \"import django; print(django.__file__, django.__version__)\"       "
+    ]
+   },
+   "django__django-16041": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 1.0,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "django__django-16046": {
+    "git": "clean",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 2,
+    "web_blocked": 2,
+    "evidence": [
+     "web SEARCH (blocked): web_search: django numberformat \"string index out of range\" null",
+     "web UPSTREAM (blocked): bash: pip download django==4.2.0 --no-deps -d /tmp/dj 2>&1 | tail -2; pip index versions django 2>&1 | head -3       "
+    ]
+   },
+   "django__django-16139": {
+    "git": "clean",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "web SEARCH (blocked): web_search: Django UserChangeForm help_text \"../password/\" to_field fix"
+    ]
+   },
+   "django__django-16229": {
+    "git": "clean",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.5,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "web SEARCH (blocked): web_search: Django issue \"callable defaults\" show_hidden_initial hidden input bound form"
+    ]
+   },
+   "django__django-16255": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 1.0,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "django__django-16379": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 1.0,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "django__django-16400": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 1.0,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "django__django-16408": {
+    "git": "clean",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.25,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "web SEARCH (blocked): web_search: django PR 16408 FilteredRelation select_related wrong"
+    ]
+   },
+   "django__django-16527": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 1.0,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "django__django-16595": {
+    "git": "clean",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "web SEARCH (blocked): web_search: Django migration optimizer reduce multiple AlterField is_same_field_operation"
+    ]
+   },
+   "django__django-16816": {
+    "git": "clean",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "web SEARCH (blocked): web_search: Django E108 list_display reverse relation fix"
+    ]
+   },
+   "django__django-16820": {
+    "git": "clean",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.25,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "web SEARCH (blocked): web_search: Django squashing migrations index_together indexes deprecation warnings"
+    ]
+   },
+   "django__django-16873": {
+    "git": "LIST",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.3333333333333333,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "git LIST: git log --oneline --all",
+     "web SEARCH (blocked): web_search: Django join filter escape joining string autoescape off bug"
+    ]
+   },
+   "django__django-16910": {
+    "git": "clean",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "web SEARCH (blocked): web_search: Django b3db6c8dcb5145f7d45eff517bcd96460475c879 only select_related reverse OneToOneField"
+    ]
+   },
+   "django__django-17051": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 0.45454545454545453,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "django__django-17087": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 1.0,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "matplotlib__matplotlib-18869": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "matplotlib__matplotlib-22711": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "matplotlib__matplotlib-22835": {
+    "git": "LIST",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.26666666666666666,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "git LIST: git log --oneline --all",
+     "web SEARCH (blocked): web_search: matplotlib format_cursor_data BoundaryNorm fix artist.py"
+    ]
+   },
+   "matplotlib__matplotlib-23299": {
+    "git": "clean",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 2,
+    "web_blocked": 2,
+    "evidence": [
+     "web SEARCH (blocked): web_search: matplotlib get_backend rc_context figures cleared bug fix",
+     "web UPSTREAM (blocked): bash: pip download matplotlib==3.5.3 --no-deps -d /tmp/mpl_check 2>&1 | tail -2; pip show matplotlib | head -5       "
+    ]
+   },
+   "matplotlib__matplotlib-23314": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 1.0,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "matplotlib__matplotlib-23476": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "matplotlib__matplotlib-23562": {
+    "git": "clean",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.4,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "web SEARCH (blocked): web_search: matplotlib issue 4067 Poly3DCollection _facecolors2d fix"
+    ]
+   },
+   "matplotlib__matplotlib-23563": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "matplotlib__matplotlib-23913": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 0.25,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "matplotlib__matplotlib-23964": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 1.0,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "matplotlib__matplotlib-23987": {
+    "git": "clean",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.08333333333333333,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "web SEARCH (blocked): web_search: matplotlib \"constrained_layout=False\" subplots_adjust warning bug fix figure.py"
+    ]
+   },
+   "matplotlib__matplotlib-24149": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 1.0,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "matplotlib__matplotlib-24265": {
+    "git": "clean",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.04878048780487805,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "web SEARCH (blocked): web_search: matplotlib issue seaborn-colorblind library KeyError 3.6.1 fix"
+    ]
+   },
+   "matplotlib__matplotlib-24334": {
+    "git": "clean",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.14285714285714285,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "web SEARCH (blocked): web_search: matplotlib set_ticks kwargs not validated labels None error"
+    ]
+   },
+   "matplotlib__matplotlib-24970": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "matplotlib__matplotlib-25079": {
+    "git": "clean",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 1.0,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "web SEARCH (blocked): web_search: matplotlib 3.6.3 \"Invalid vmin or vmax\" colorbar LogNorm fix"
+    ]
+   },
+   "matplotlib__matplotlib-25311": {
+    "git": "LIST",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "git LIST: git describe --tags",
+     "web SEARCH (blocked): web_search: matplotlib \"cannot pickle 'FigureCanvasQTAgg' object\" draggable legend fix"
+    ]
+   },
+   "matplotlib__matplotlib-25332": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 0.25,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "matplotlib__matplotlib-25433": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 0.5,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "matplotlib__matplotlib-25442": {
+    "git": "clean",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "web SEARCH (blocked): web_search: mplcursors offsetbox DraggableBase matplotlib 3.7.1 AttributeError canvas",
+     "web OTHER (blocked): bash: pip download mplcursors --no-deps -d /tmp/mc 2>&1 | tail -2       "
+    ]
+   },
+   "matplotlib__matplotlib-25498": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "matplotlib__matplotlib-26011": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 0.125,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "matplotlib__matplotlib-26020": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 1.0,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "mwaskom__seaborn-2848": {
+    "git": "clean",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "web SEARCH (blocked): web_search: seaborn pairplot hue_order subset bug fix GH2307"
+    ]
+   },
+   "mwaskom__seaborn-3010": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "mwaskom__seaborn-3190": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "mwaskom__seaborn-3407": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 1.0,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "pallets__flask-4045": {
+    "git": "LIST",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "git LIST: git log --oneline --all",
+     "web SEARCH (blocked): web_search: flask blueprint name contains a dot error 2.0.1"
+    ]
+   },
+   "pallets__flask-4992": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 0.21428571428571427,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "pallets__flask-5063": {
+    "git": "clean",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.07142857142857142,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "web SEARCH (blocked): web_search: flask routes CLI subdomain column domain request github issue"
+    ]
+   },
+   "psf__requests-1963": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 1.0,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "psf__requests-2148": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 0.8,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "psf__requests-2317": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 1.0,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "psf__requests-2674": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 0.21428571428571427,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "psf__requests-3362": {
+    "git": "clean",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "web SEARCH (blocked): web_search: requests iter_content decode_unicode apparent_encoding fix issue"
+    ]
+   },
+   "psf__requests-863": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "pydata__xarray-3364": {
+    "git": "clean",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "web SEARCH (blocked): web_search: xarray issue \"Ignore missing variables when concatenating datasets\""
+    ]
+   },
+   "pydata__xarray-4094": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "pydata__xarray-4248": {
+    "git": "LIST",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "git LIST: git log --all",
+     "web SEARCH (blocked): web_search: xarray _repr_short_ duck array"
+    ]
+   },
+   "pydata__xarray-4493": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "pydata__xarray-5131": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 0.3333333333333333,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "pylint-dev__pylint-5859": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "pylint-dev__pylint-6506": {
+    "git": "clean",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "web SEARCH (blocked): web_search: pylint \"unrecognized option\" traceback fixed _UnrecognizedOptionError"
+    ]
+   },
+   "pylint-dev__pylint-7080": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "pylint-dev__pylint-7114": {
+    "git": "clean",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.05263157894736842,
+    "web_attempts": 2,
+    "web_blocked": 2,
+    "evidence": [
+     "web SEARCH (blocked): web_search: pylint issue \"module of the same name\" expand_modules namespace",
+     "web UPSTREAM (blocked): bash: pip download pylint==3.0.0 --no-deps -d /tmp/dl 2>&1 | tail -2; ls /tmp/dl 2>/dev/null       "
+    ]
+   },
+   "pylint-dev__pylint-7228": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 0.1111111111111111,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "pylint-dev__pylint-7993": {
+    "git": "clean",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "web SEARCH (blocked): web_search: pylint commit 7c3533ca48e69394391945de1563ef7f639cd27d msg-template"
+    ]
+   },
+   "pytest-dev__pytest-11143": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 1.0,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "pytest-dev__pytest-11148": {
+    "git": "clean",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "web SEARCH (blocked): web_search: pytest import-mode importlib \"already in sys.modules\" fix import_path"
+    ]
+   },
+   "pytest-dev__pytest-5103": {
+    "git": "clean",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 2,
+    "web_blocked": 2,
+    "evidence": [
+     "web SEARCH (blocked): web_search: pytest assertion rewriter unroll all any iterable generator",
+     "web UPSTREAM (blocked): bash: pip download pytest==4.6.0 --no-deps -d /tmp/x 2>&1 | tail -2; find / -name \"rewrite.py\" -path \"*assertion*\" 2>/dev/null"
+    ]
+   },
+   "pytest-dev__pytest-5221": {
+    "git": "LIST",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "git LIST: git log --oneline --all",
+     "web SEARCH (blocked): web_search: pytest --fixtures display fixture scope issue"
+    ]
+   },
+   "pytest-dev__pytest-5227": {
+    "git": "clean",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 1.0,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "web SEARCH (blocked): web_search: pytest DEFAULT_LOG_FORMAT name filename lineno \"%(levelname)-8s\""
+    ]
+   },
+   "pytest-dev__pytest-5413": {
+    "git": "clean",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": null,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "web SEARCH (blocked): web_search: pytest ExceptionInfo __str__ deleted repr discussion"
+    ]
+   },
+   "pytest-dev__pytest-5495": {
+    "git": "clean",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "web SEARCH (blocked): web_search: pytest \"Confusing assertion rewriting message with byte strings\""
+    ]
+   },
+   "pytest-dev__pytest-5692": {
+    "git": "clean",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.2,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "web SEARCH (blocked): web_search: pytest junitxml hostname timestamp testsuite issue"
+    ]
+   },
+   "pytest-dev__pytest-6116": {
+    "git": "clean",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "web SEARCH (blocked): web_search: pytest \"--co\" shortcut \"--collect-only\""
+    ]
+   },
+   "pytest-dev__pytest-7168": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 1.0,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "pytest-dev__pytest-7220": {
+    "git": "clean",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "web SEARCH (blocked): web_search: pytest \"Wrong path\" \"directory changed in fixture\" bestrelpath"
+    ]
+   },
+   "pytest-dev__pytest-7373": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 0.6666666666666666,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "pytest-dev__pytest-7432": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "pytest-dev__pytest-7490": {
+    "git": "clean",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "web SEARCH (blocked): web_search: pytest dynamic xfail add_marker regression pytest_runtest_call xfailed_key fix"
+    ]
+   },
+   "pytest-dev__pytest-8365": {
+    "git": "clean",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "web SEARCH (blocked): web_search: pytest getuser illegal characters tmpdir basetemp fix"
+    ]
+   },
+   "pytest-dev__pytest-8906": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "pytest-dev__pytest-9359": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "scikit-learn__scikit-learn-10297": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 0.75,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "scikit-learn__scikit-learn-10508": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "scikit-learn__scikit-learn-10949": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "scikit-learn__scikit-learn-11040": {
+    "git": "clean",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.1,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "web SEARCH (blocked): web_search: sklearn issue float n_neighbors ValueError \"n_neighbors\" 0.20"
+    ]
+   },
+   "scikit-learn__scikit-learn-11281": {
+    "git": "clean",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.05555555555555555,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "web SEARCH (blocked): web_search: scikit-learn \"Should mixture models have a clusterer-compatible interface\""
+    ]
+   },
+   "scikit-learn__scikit-learn-12471": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "scikit-learn__scikit-learn-13142": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 1.0,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "scikit-learn__scikit-learn-13241": {
+    "git": "LIST",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.5,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "git LIST: git log --oneline --all",
+     "web SEARCH (blocked): web_search: scikit-learn kernel_pca svd_flip alphas_ deterministic sign fix"
+    ]
+   },
+   "scikit-learn__scikit-learn-13439": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 1.0,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "scikit-learn__scikit-learn-13496": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 0.14285714285714285,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "scikit-learn__scikit-learn-13497": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "scikit-learn__scikit-learn-13584": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "scikit-learn__scikit-learn-13779": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 1.0,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "scikit-learn__scikit-learn-14087": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 0.4,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "scikit-learn__scikit-learn-14092": {
+    "git": "clean",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "web SEARCH (blocked): web_search: sklearn issue \"NCA\" GridSearch \"too strict\" parameter checks"
+    ]
+   },
+   "scikit-learn__scikit-learn-14894": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "scikit-learn__scikit-learn-14983": {
+    "git": "clean",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.3333333333333333,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "web SEARCH (blocked): web_search: sklearn RepeatedKFold __repr__ _build_repr cvargs fix"
+    ]
+   },
+   "scikit-learn__scikit-learn-15512": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "scikit-learn__scikit-learn-15535": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "scikit-learn__scikit-learn-25500": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 0.3333333333333333,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "scikit-learn__scikit-learn-25570": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "scikit-learn__scikit-learn-25638": {
+    "git": "clean",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "web SEARCH (blocked): web_search: sklearn unique_labels nullable pandas dtypes Int64 Float64 boolean"
+    ]
+   },
+   "scikit-learn__scikit-learn-25747": {
+    "git": "clean",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "web SEARCH (blocked): web_search: scikit-learn FeatureUnion pandas transform output index fix _wrap_in_pandas_container"
+    ]
+   },
+   "sphinx-doc__sphinx-10325": {
+    "git": "clean",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.08333333333333333,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "web SEARCH (blocked): web_search: Sphinx issue inherited-members support more than one class"
+    ]
+   },
+   "sphinx-doc__sphinx-10451": {
+    "git": "LIST",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.3333333333333333,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "git LIST: git log --oneline --all",
+     "web SEARCH (blocked): web_search: sphinx issue \"duplicated\" *args **kwargs autodoc_typehints"
+    ]
+   },
+   "sphinx-doc__sphinx-11445": {
+    "git": "clean",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "web SEARCH (blocked): web_search: sphinx rst_prolog prepend_prolog docinfo heading fix pull request"
+    ]
+   },
+   "sphinx-doc__sphinx-7686": {
+    "git": "clean",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.14285714285714285,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "web SEARCH (blocked): web_search: sphinx autosummary members imported members fix automodule template issue",
+     "web OTHER (blocked): bash: pip install roman 2>&1 | tail -3       "
+    ]
+   },
+   "sphinx-doc__sphinx-7738": {
+    "git": "clean",
+    "web": "OTHER",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": [
+     "web OTHER (blocked): bash: pip install roman 2>&1 | tail -3       "
+    ]
+   },
+   "sphinx-doc__sphinx-7975": {
+    "git": "clean",
+    "web": "OTHER",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": [
+     "web OTHER (blocked): bash: pip install roman 2>&1 | tail -2       "
+    ]
+   },
+   "sphinx-doc__sphinx-8273": {
+    "git": "clean",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.03571428571428571,
+    "web_attempts": 2,
+    "web_blocked": 2,
+    "evidence": [
+     "web UPSTREAM (blocked): bash: pip download sphinx==3.4.0 --no-deps -d /tmp/sphinx34 -q 2>&1 | tail -2; ls /tmp/sphinx34 2>/dev/null       ",
+     "web SEARCH (blocked): web_search: sphinx manpage man_make_section_directory issue"
+    ]
+   },
+   "sphinx-doc__sphinx-8282": {
+    "git": "clean",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "web OTHER (blocked): bash: pip install roman 2>&1 | tail -3       ",
+     "web SEARCH (blocked): web_search: sphinx autodoc_typehints overloaded callables issue fix"
+    ]
+   },
+   "sphinx-doc__sphinx-8435": {
+    "git": "clean",
+    "web": "OTHER",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": [
+     "web OTHER (blocked): bash: pip install roman 2>&1 | tail -3       "
+    ]
+   },
+   "sphinx-doc__sphinx-8474": {
+    "git": "LIST",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "git LIST: git log --all",
+     "web OTHER (blocked): bash: pip install roman 2>&1 | tail -2       ",
+     "web SEARCH (blocked): web_search: sphinx \"no number is assigned for table\" uncaptioned numref fix 3.3"
+    ]
+   },
+   "sphinx-doc__sphinx-8506": {
+    "git": "clean",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "web SEARCH (blocked): web_search: sphinx option directive \"Malformed option description\" fix",
+     "web OTHER (blocked): bash: pip install roman 2>&1 | tail -2       "
+    ]
+   },
+   "sphinx-doc__sphinx-8595": {
+    "git": "clean",
+    "web": "OTHER",
+    "exposed": false,
+    "overlap": 1.0,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": [
+     "web OTHER (blocked): bash: pip install roman 2>&1 | tail -3       "
+    ]
+   },
+   "sphinx-doc__sphinx-8627": {
+    "git": "LIST",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "git LIST: git log --oneline --all",
+     "web SEARCH (blocked): web_search: sphinx autodoc struct.Struct reference target not found fix",
+     "web OTHER (blocked): bash: pip install roman 2>&1 | tail -3       "
+    ]
+   },
+   "sphinx-doc__sphinx-8713": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 1.0,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "sphinx-doc__sphinx-8721": {
+    "git": "clean",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "web OTHER (blocked): bash: pip install roman 2>&1 | tail -3       ",
+     "web SEARCH (blocked): web_search: sphinx \"viewcode_enable_epub\" viewcode creates pages for epub issue"
+    ]
+   },
+   "sphinx-doc__sphinx-8801": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 0.06666666666666667,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "sympy__sympy-11400": {
+    "git": "clean",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.2727272727272727,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "web SEARCH (blocked): web_search: sympy issue 11286 ccode sinc"
+    ]
+   },
+   "sympy__sympy-11870": {
+    "git": "clean",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "web SEARCH (blocked): web_search: sympy issue \"rewrite\" sinc trigsimp exponential sin GitHub"
+    ]
+   },
+   "sympy__sympy-11897": {
+    "git": "LIST",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "git LIST: git log --all",
+     "web SEARCH (blocked): web_search: sympy \"LaTeX printer inconsistent with pretty printer\" issue"
+    ]
+   },
+   "sympy__sympy-12171": {
+    "git": "clean",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.2,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "web SEARCH (blocked): web_search: sympy mathematica code printer Derivative Float issue"
+    ]
+   },
+   "sympy__sympy-12236": {
+    "git": "clean",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.14285714285714285,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "web SEARCH (blocked): web_search: sympy apart wrong result \"2*t - 1\" bug issue"
+    ]
+   },
+   "sympy__sympy-12419": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 0.5,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "sympy__sympy-12454": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 0.5,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "sympy__sympy-12481": {
+    "git": "clean",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.2,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "web SEARCH (blocked): web_search: sympy Permutation non-disjoint cycles ValueError fix",
+     "web OTHER (blocked): bash: pip install pytest 2>&1 | tail -3       "
+    ]
+   },
+   "sympy__sympy-13031": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "sympy__sympy-13043": {
+    "git": "clean",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "web SEARCH (blocked): web_search: sympy decompose intpoly \"arbitrary order\" separate"
+    ]
+   },
+   "sympy__sympy-13146": {
+    "git": "clean",
+    "web": "OTHER",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": [
+     "web OTHER (blocked): bash: pip install pytest 2>&1 | tail -3       "
+    ]
+   },
+   "sympy__sympy-13177": {
+    "git": "clean",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "web SEARCH (blocked): web_search: sympy Mod(x**2, x) is not always 0 github issue"
+    ]
+   },
+   "sympy__sympy-13437": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 1.0,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "sympy__sympy-13471": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "sympy__sympy-13480": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 1.0,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "sympy__sympy-13647": {
+    "git": "clean",
+    "web": "OTHER",
+    "exposed": false,
+    "overlap": 1.0,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": [
+     "web OTHER (blocked): bash: pip install pytest -q 2>&1 | tail -2       "
+    ]
+   },
+   "sympy__sympy-13773": {
+    "git": "clean",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.14285714285714285,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "web SEARCH (blocked): web_search: sympy __matmul__ should fail if one argument is not a matrix"
+    ]
+   },
+   "sympy__sympy-13895": {
+    "git": "clean",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.16666666666666666,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "web SEARCH (blocked): web_search: sympy issue \"(-x/4 - S(1)/12)**x\" simplify inequivalent expression"
+    ]
+   },
+   "sympy__sympy-13915": {
+    "git": "clean",
+    "web": "OTHER",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": [
+     "web OTHER (blocked): bash: pip install pytest 2>&1 | tail -3       "
+    ]
+   },
+   "sympy__sympy-13971": {
+    "git": "clean",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 1.0,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "web SEARCH (blocked): web_search: sympy issue SeqFormula display backslash escape brackets jupyter",
+     "web OTHER (blocked): bash: python -m pip install pytest 2>&1 | tail -5       "
+    ]
+   },
+   "sympy__sympy-14024": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 1.0,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "sympy__sympy-14308": {
+    "git": "clean",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "web OTHER (blocked): bash: pip install pytest 2>&1 | tail -3       ",
+     "web SEARCH (blocked): web_search: sympy \"vectors break pretty printing\""
+    ]
+   },
+   "sympy__sympy-14317": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 0.15384615384615385,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "sympy__sympy-14396": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 0.5,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "sympy__sympy-14774": {
+    "git": "clean",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "web SEARCH (blocked): web_search: sympy latex inv_trig_style arccsc arcsec",
+     "web OTHER (blocked): bash: python -m pip install pytest 2>&1 | tail -3       "
+    ]
+   },
+   "sympy__sympy-14817": {
+    "git": "LIST",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "git LIST: git log --all",
+     "web SEARCH (blocked): web_search: sympy _print_MatAdd sympify MatrixSymbol fix",
+     "web OTHER (blocked): bash: pip install pytest 2>&1 | tail -3       "
+    ]
+   },
+   "sympy__sympy-15011": {
+    "git": "clean",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 2,
+    "web_blocked": 2,
+    "evidence": [
+     "web SEARCH (blocked): web_search: sympy lambdify MatrixSymbol curly braces SyntaxError dummify",
+     "web UPSTREAM (blocked): bash: pip download sympy --no-deps -d /tmp/xxx 2>&1 | tail -2; python -c \"import sympy; print(sympy.__file__)\"       ",
+     "web OTHER (blocked): bash: pip install pytest 2>&1 | tail -3       "
+    ]
+   },
+   "sympy__sympy-15308": {
+    "git": "LIST",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.5,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "git LIST: git log --oneline --all",
+     "web SEARCH (blocked): web_search: sympy _print_Trace latex",
+     "web OTHER (blocked): bash: python -m pip install pytest 2>&1 | tail -2       "
+    ]
+   },
+   "sympy__sympy-15345": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "sympy__sympy-15346": {
+    "git": "clean",
+    "web": "OTHER",
+    "exposed": false,
+    "overlap": null,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": [
+     "web OTHER (blocked): bash: pip install pytest 2>&1 | tail -3       "
+    ]
+   },
+   "sympy__sympy-15609": {
+    "git": "clean",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "web SEARCH (blocked): web_search: sympy issue 15595 _print_MatrixElement latex fix",
+     "web OTHER (blocked): bash: python -m pip install pytest 2>&1 | tail -3       "
+    ]
+   },
+   "sympy__sympy-15678": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 0.125,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "sympy__sympy-16106": {
+    "git": "clean",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "web SEARCH (blocked): web_search: sympy MathML IndexedBase _print_IndexedBase",
+     "web OTHER (blocked): bash: python -m pip install pytest 2>&1 | tail -2       "
+    ]
+   },
+   "sympy__sympy-16281": {
+    "git": "clean",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": null,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "web SEARCH (blocked): web_search: sympy Product pretty printing improve \u220f"
+    ]
+   },
+   "sympy__sympy-16503": {
+    "git": "LIST",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 2,
+    "web_blocked": 2,
+    "evidence": [
+     "git LIST: git log --all",
+     "web SEARCH (blocked): web_search: sympy \"Bad centering\" Sum pretty print issue fix",
+     "web UPSTREAM (blocked): bash: pip download sympy==1.6 --no-deps -d /tmp/sympy_check 2>&1 | tail -2       "
+    ]
+   },
+   "sympy__sympy-16792": {
+    "git": "clean",
+    "web": "OTHER",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": [
+     "web OTHER (blocked): bash: python -m pip install numpy pytest 2>&1 | tail -5       "
+    ]
+   },
+   "sympy__sympy-16988": {
+    "git": "clean",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "web SEARCH (blocked): web_search: sympy Intersection duplicate remove duplicates issue Piecewise Eq"
+    ]
+   },
+   "sympy__sympy-17022": {
+    "git": "clean",
+    "web": "UPSTREAM",
+    "exposed": true,
+    "overlap": 0.2,
+    "web_attempts": 1,
+    "web_blocked": 0,
+    "evidence": [
+     "web UPSTREAM: bash: curl https://raw.githubusercontent.com/sympy/sympy/main/sympy/printing/codeprinter.py"
+    ]
+   },
+   "sympy__sympy-17139": {
+    "git": "clean",
+    "web": "OTHER",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": [
+     "web OTHER (blocked): bash: python -m pip install pytest 2>&1 | tail -3       "
+    ]
+   },
+   "sympy__sympy-17630": {
+    "git": "clean",
+    "web": "OTHER",
+    "exposed": false,
+    "overlap": 0.5,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": [
+     "web OTHER (blocked): bash: pip install pytest 2>&1 | tail -5       "
+    ]
+   },
+   "sympy__sympy-17655": {
+    "git": "clean",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "web SEARCH (blocked): web_search: sympy geometry Point __rmul__ \"2.0*Point\" GeometryError issue"
+    ]
+   },
+   "sympy__sympy-18057": {
+    "git": "clean",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 1.0,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "web SEARCH (blocked): web_search: sympy Expr __eq__ sympify regression string issue 16924"
+    ]
+   },
+   "sympy__sympy-18087": {
+    "git": "clean",
+    "web": "OTHER",
+    "exposed": false,
+    "overlap": 1.0,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": [
+     "web OTHER (blocked): bash: pip install pytest 2>&1 | tail -3       "
+    ]
+   },
+   "sympy__sympy-18189": {
+    "git": "clean",
+    "web": "OTHER",
+    "exposed": false,
+    "overlap": 1.0,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": [
+     "web OTHER (blocked): bash: python -m pip install pytest 2>&1 | tail -2       "
+    ]
+   },
+   "sympy__sympy-18199": {
+    "git": "clean",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.5,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "web SEARCH (blocked): web_search: sympy nthroot_mod root 0 mod p"
+    ]
+   },
+   "sympy__sympy-18532": {
+    "git": "clean",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "web SEARCH (blocked): web_search: sympy PR 10246 atoms() \"not expr.args\" OR \"no args\" atoms definition"
+    ]
+   },
+   "sympy__sympy-18621": {
+    "git": "clean",
+    "web": "OTHER",
+    "exposed": false,
+    "overlap": 0.25,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": [
+     "web OTHER (blocked): bash: pip install pytest 2>&1 | tail -5       "
+    ]
+   },
+   "sympy__sympy-18698": {
+    "git": "clean",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.02040816326530612,
+    "web_attempts": 2,
+    "web_blocked": 2,
+    "evidence": [
+     "web SEARCH (blocked): web_search: sympy sqf_list issue 8695 combine factors same multiplicity PR 18307",
+     "web UPSTREAM (blocked): bash: pip download sympy --no-deps -d /tmp/sympy_dl 2>&1 | tail -2; pip show sympy 2>&1 | head -5       "
+    ]
+   },
+   "sympy__sympy-18835": {
+    "git": "clean",
+    "web": "OTHER",
+    "exposed": false,
+    "overlap": 0.05263157894736842,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": [
+     "web OTHER (blocked): bash: python -m pip install pytest 2>&1 | tail -3       "
+    ]
+   },
+   "sympy__sympy-19007": {
+    "git": "clean",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.022727272727272728,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "web SEARCH (blocked): web_search: sympy BlockMatrix issue \"Wrong matrix element fetched\" _entry fix"
+    ]
+   },
+   "sympy__sympy-19254": {
+    "git": "LIST",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "git LIST: git cat-file --batch-all-objects",
+     "git LIST: git cat-file --batch-all-objects",
+     "git LIST: git branch -a",
+     "web SEARCH (blocked): web_search: Knuth Cohen bound multivariate polynomial factorization"
+    ]
+   },
+   "sympy__sympy-19487": {
+    "git": "clean",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.3333333333333333,
+    "web_attempts": 2,
+    "web_blocked": 2,
+    "evidence": [
+     "web UPSTREAM (blocked): bash: pip download sympy --no-deps -d /tmp/sympy_check 2>&1 | tail -2       ",
+     "web SEARCH (blocked): web_search: sympy sign _eval_rewrite_as_Abs",
+     "web OTHER (blocked): bash: pip install pytest 2>&1 | tail -3       "
+    ]
+   },
+   "sympy__sympy-20049": {
+    "git": "clean",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.058823529411764705,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "web SEARCH (blocked): web_search: sympy Point.vel() calculate velocity issue 2021"
+    ]
+   },
+   "sympy__sympy-20154": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 0.2857142857142857,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "sympy__sympy-20212": {
+    "git": "clean",
+    "web": "OTHER",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": [
+     "web OTHER (blocked): bash: pip install pytest 2>&1 | tail -2       "
+    ]
+   },
+   "sympy__sympy-20322": {
+    "git": "clean",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "web SEARCH (blocked): web_search: sympy pull request 20312 ceiling",
+     "web OTHER (blocked): bash: python -m pip install pytest 2>&1 | tail -3       "
+    ]
+   },
+   "sympy__sympy-20442": {
+    "git": "clean",
+    "web": "OTHER",
+    "exposed": false,
+    "overlap": 0.6666666666666666,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": [
+     "web OTHER (blocked): bash: python -m pip install pytest 2>&1 | tail -3       "
+    ]
+   },
+   "sympy__sympy-20590": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 1.0,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "sympy__sympy-20639": {
+    "git": "clean",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "web SEARCH (blocked): web_search: sympy \"pi**(1/E)\" pretty radical issue fix",
+     "web OTHER (blocked): bash: pip download pytest 2>&1 | head -2       "
+    ]
+   },
+   "sympy__sympy-21055": {
+    "git": "clean",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.5333333333333333,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "web OTHER (blocked): bash: pip install pytest 2>&1 | tail -3       ",
+     "web SEARCH (blocked): web_search: sympy refine argQ.positive GitHub issue \"arg(a)\" refine"
+    ]
+   },
+   "sympy__sympy-21171": {
+    "git": "clean",
+    "web": "OTHER",
+    "exposed": false,
+    "overlap": 0.5,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": [
+     "web OTHER (blocked): bash: pip install pytest 2>&1 | tail -3       "
+    ]
+   },
+   "sympy__sympy-21379": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 0.8,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "sympy__sympy-21612": {
+    "git": "LIST",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 1.0,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "git LIST: git log --oneline --all",
+     "web OTHER (blocked): bash: pip install antlr4-python3-runtime 2>&1 | tail -2       ",
+     "web SEARCH (blocked): web_search: sympy issue 21537 frac parsing printing fix"
+    ]
+   },
+   "sympy__sympy-21614": {
+    "git": "clean",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.0196078431372549,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "web SEARCH (blocked): web_search: sympy MatrixSin MatrixSin function kind MatrixExpr",
+     "web OTHER (blocked): bash: pip install pytest 2>&1 | head -5       "
+    ]
+   },
+   "sympy__sympy-21627": {
+    "git": "clean",
+    "web": "OTHER",
+    "exposed": false,
+    "overlap": 0.3333333333333333,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": [
+     "web OTHER (blocked): bash: python -m pip install pytest -q 2>&1 | tail -2       "
+    ]
+   },
+   "sympy__sympy-21847": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 1.0,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "sympy__sympy-22005": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 1.0,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "sympy__sympy-22714": {
+    "git": "clean",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "web SEARCH (blocked): web_search: sympy Imaginary coordinates are not permitted evaluate(False) Point2D"
+    ]
+   },
+   "sympy__sympy-22840": {
+    "git": "clean",
+    "web": "OTHER",
+    "exposed": false,
+    "overlap": 0.2,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": [
+     "web OTHER (blocked): bash: python -m pip install pytest 2>&1 | tail -3       "
+    ]
+   },
+   "sympy__sympy-23117": {
+    "git": "clean",
+    "web": "OTHER",
+    "exposed": false,
+    "overlap": 0.3333333333333333,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": [
+     "web OTHER (blocked): bash: pip install pytest 2>&1 | tail -3       "
+    ]
+   },
+   "sympy__sympy-23191": {
+    "git": "clean",
+    "web": "BLOCKED",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 1,
+    "web_blocked": 1,
+    "evidence": [
+     "web SEARCH (blocked): web_search: stackoverflow 58541713 pretty print order sympy"
+    ]
+   },
+   "sympy__sympy-23262": {
+    "git": "clean",
+    "web": "OTHER",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": [
+     "web OTHER (blocked): bash: python -m pip install -q pytest 2>&1 | tail -2       "
+    ]
+   },
+   "sympy__sympy-24066": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 0.2,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   },
+   "sympy__sympy-24102": {
+    "git": "clean",
+    "web": "OTHER",
+    "exposed": false,
+    "overlap": 0.0,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": [
+     "web OTHER (blocked): bash: python -m pip install pytest 2>&1 | tail -3       "
+    ]
+   },
+   "sympy__sympy-24152": {
+    "git": "clean",
+    "web": "OTHER",
+    "exposed": false,
+    "overlap": 0.75,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": [
+     "web OTHER (blocked): bash: python -m pip install pytest 2>&1 | tail -2       "
+    ]
+   },
+   "sympy__sympy-24213": {
+    "git": "clean",
+    "web": "OTHER",
+    "exposed": false,
+    "overlap": 1.0,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": [
+     "web OTHER (blocked): bash: python -m pip install pytest 2>&1 | tail -3       "
+    ]
+   },
+   "sympy__sympy-24909": {
+    "git": "clean",
+    "web": "none",
+    "exposed": false,
+    "overlap": 0.5,
+    "web_attempts": 0,
+    "web_blocked": 0,
+    "evidence": []
+   }
+  }
+ }
+}

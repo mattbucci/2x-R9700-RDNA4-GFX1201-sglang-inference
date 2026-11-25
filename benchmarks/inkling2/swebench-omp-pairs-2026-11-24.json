@@ -1,0 +1,29 @@
+{
+ "qwen38_omp_v5": {
+  "paired": 300,
+  "inkling2_resolved": 179,
+  "other_resolved": 174,
+  "both": 157,
+  "inkling2_only": 22,
+  "other_only": 17,
+  "mcnemar_exact_p": 0.5224
+ },
+ "qwopus_omp_v5": {
+  "paired": 300,
+  "inkling2_resolved": 179,
+  "other_resolved": 181,
+  "both": 162,
+  "inkling2_only": 17,
+  "other_only": 19,
+  "mcnemar_exact_p": 0.8679
+ },
+ "flint_dflash_editorder_omp_v5": {
+  "paired": 300,
+  "inkling2_resolved": 179,
+  "other_resolved": 180,
+  "both": 163,
+  "inkling2_only": 16,
+  "other_only": 17,
+  "mcnemar_exact_p": 1.0
+ }
+}

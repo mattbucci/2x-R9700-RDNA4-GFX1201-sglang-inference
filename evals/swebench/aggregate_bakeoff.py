@@ -155,7 +155,13 @@ def write_cell_json(preset: str, scaffold: str, run_dir: Path,
         "run_dir": display_path(run_dir, repo_root),
         "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S"),
     }
-    harness = harness or harness_for_preset(preset)
+    # A re-aggregation keeps a cell's own harness line (hand-written for presets that share a
+    # run tag with another model) and, when nothing else changed, its timestamp.
+    try:
+        prior = json.loads(out.read_text())
+    except (OSError, ValueError):
+        prior = {}
+    harness = harness or prior.get("harness") or harness_for_preset(preset)
     if harness:
         payload["harness"] = harness
     if preset.endswith("-v2"):
@@ -163,6 +169,9 @@ def write_cell_json(preset: str, scaffold: str, run_dir: Path,
         # (git history / web tools; FP8_BAKEOFF_SETUP.md "answer leak"). Kept as receipts, never charted.
         payload["superseded"] = ("answer-leak audit: 45-61 % of v2 sessions exposed; "
                                  "superseded by the sandboxed v3+ lanes")
+    if prior and {k: v for k, v in prior.items() if k != "timestamp"} == \
+            {k: v for k, v in payload.items() if k != "timestamp"}:
+        payload["timestamp"] = prior.get("timestamp", payload["timestamp"])
     out.write_text(json.dumps(payload, indent=2) + "\n")
     return out
 

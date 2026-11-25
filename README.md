@@ -99,7 +99,7 @@ single-profile receipt ([JSON](benchmarks/quality/tooluse256k-qwen38-27b-fp8-v05
 
 The chart is regenerated from the per-cell receipts in [`benchmarks/quality/bakeoff-*.json`](benchmarks/quality/)
 ([`aggregate_bakeoff.py`](evals/swebench/aggregate_bakeoff.py)). It holds the July matrix, the seven Qwen3.8-27B-FP8 v5
-cells and the Qwopus3.8-27B-Coder-Flash and Flint-FP8 cells on oh-my-pi
+cells and the Qwopus, Flint-FP8 and Inkling-2-Mini cells on oh-my-pi
 ([receipt](benchmarks/qwopus38-27b-coder-flash-fp8/README.md)); each cell carries its harness line.
 
 **Qwen3.8-27B-FP8 v5** (DSpark preset, CTX=262144): seven scaffolds — opencode, opencode-dcp,
@@ -114,8 +114,9 @@ prompt on stdin and a 32,000-token output cap, Docker-scored with the official h
 Six scaffolds sit within four points; deepagents-code's gap is its own harness (91 of 300 sessions ran to the wall
 with no diff). All 2,100 sessions are audited: one infrastructure row (a server 5xx), zero git-history reads, and
 every upstream web attempt blocked by the sandbox (`audit_git_peek.py`, sandbox-aware). On oh-my-pi the Qwopus
-fine-tune scores 60.3% and Flint-FP8 with DFlash2 60.0% against this model's 58.0% on the same instances, both
-inside noise (McNemar p = 0.36 and 0.47). Every lane keeps the same 29-minute wall. With six scaffolds inside four
+fine-tune scores 60.3%, Flint-FP8 with DFlash2 60.0% and Inkling-2-Mini 59.7% against this model's 58.0% on the
+same instances, all inside noise (McNemar p = 0.36, 0.47, 0.52); Inkling's mean session is 6.9 min against
+17.6 ([chart](benchmarks/inkling2/swebench_omp_rate_vs_time.png)). Every lane keeps the same 29-minute wall. With six scaffolds inside four
 points, new models and presets are scored on oh-my-pi alone (`SCAFFOLDS=omp`); the full matrix is run only to
 investigate a hosting error. Setup, audits and dispositions: [`evals/swebench/FP8_BAKEOFF_SETUP.md`](evals/swebench/FP8_BAKEOFF_SETUP.md)
 and [`benchmarks/FINDINGS.md`](benchmarks/FINDINGS.md).

@@ -1,0 +1,18 @@
+{
+  "preset": "inkling2-v5",
+  "scaffold": "omp",
+  "model_path": "sglang/inkling2",
+  "total_predictions": 300,
+  "resolve_rate_pct": 59.7,
+  "resolved": 179,
+  "unresolved": 120,
+  "error": 0,
+  "empty_patch": 1,
+  "incomplete": 0,
+  "submitted": 300,
+  "completed": 299,
+  "harness_returncode": null,
+  "run_dir": "evals/swebench/runs/inkling2-omp-v5",
+  "timestamp": "2026-11-24T09:05:57",
+  "harness": "v5 harness: official per-instance SWE-bench Docker image, no network, opaque work tree, prompt on stdin, 32,000-token output cap, 29-min wall, oh-my-pi 18.12.2; Inkling-2-Mini (vendor NVFP4 / MXFP8) through the inkling2 preset, no speculation, 103-patch tree with patch 136 from instance 12; git-peek audit 0 exposed"
+}

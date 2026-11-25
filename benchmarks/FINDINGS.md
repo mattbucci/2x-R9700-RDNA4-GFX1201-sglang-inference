@@ -3343,3 +3343,38 @@ preset, decode graphs up to batch 8, arms booted `new old old new`
 - Numerics: within FP32 summation order and BF16 ties of the Triton path (relative 1e-7 to 2e-4 on real
   layers); capability validator unchanged (video is not a capability of this checkpoint).
 - Thresholds alone did not help: `SGLANG_INKLING2_GEMV_MAX_TOKENS` 2 and 8 were slower at 4 and 8 requests.
+
+## Inkling-2-Mini on SWE-bench Lite through oh-my-pi: 179 of 300 (59.7 %), level with Qwopus, Flint and qwen38 at 0.4 to 0.7 of their session time (2026-11-24)
+
+The cell ran on the `inkling2` preset (vendor NVFP4 / MXFP8 experts, no speculation) in the official per-instance
+images with no network and neutral cues, one request at a time. Instances 1 to 11 ran on patches 133-135, the
+rest on the 103-patch tree with patch 136. One server death: card 03:00.0 stopped answering its scheduler
+(`MES failed to respond`, driver mode-1 reset, VRAM lost) at instance 222; the cycle relaunched the server and
+resumed with no prediction lost and both cards on the bus.
+
+| | resolved | applied | empty | infra | wall timeouts |
+|---|---:|---:|---:|---:|---:|
+| Inkling-2-Mini, oh-my-pi | 179 / 300 | 299 | 1 (`model_silent`) | 0 | 10, all with a patch |
+
+Paired on the same 300 ids ([pairs](inkling2/swebench-omp-pairs-2026-11-24.json)): against qwen38 (174)
+22 / 17 discordant, McNemar p = 0.52; against Qwopus (181) 17 / 19, p = 0.87; against Flint DFlash2 (180)
+16 / 17, p = 1.0. The four models are not separable on this benchmark.
+
+| oh-my-pi lane | resolved | mean session | median | walls | rollout total |
+|---|---:|---:|---:|---:|---:|
+| Inkling-2-Mini | 179 | 6.9 min | 254 s | 10 | 34.7 h |
+| Flint-FP8 DFlash2 | 180 | 9.7 min | 461 s | 16 | 48.6 h |
+| Qwopus3.8-27B | 181 | 12.8 min | 626 s | 43 | 64.1 h |
+| Qwen3.8-27B-FP8 | 174 | 17.6 min | 1,012 s | 78 | 87.8 h |
+
+![Resolve rate and session time of the four oh-my-pi lanes](inkling2/swebench_omp_rate_vs_time.png)
+
+Leak audit ([receipt](inkling2/swebench-omp-git-peek-2026-11-24.json)): 0 history reads, 160 web attempts
+blocked. The one row the audit marks exposed (`sympy__sympy-17022`) is a `curl -s` of upstream
+`codeprinter.py` piped into `grep`; the tool result holds only the local module path, so nothing was fetched.
+`audit_benchmark_recall.py` reads opencode sessions only and was not run. The lane used one of the server's
+eight slots; `run_rollouts.py --shard K/N` exists for a parallel lane and was not used, to keep the wall budget
+per instance equal to the other cells. `aggregate_bakeoff.py` now keeps a cell's own harness line and an
+unchanged cell's timestamp on re-aggregation.
+
+![Decode throughput at 1 to 8 requests, patch 136 against the Triton paths](inkling2/concurrency_hip_kernels.png)
