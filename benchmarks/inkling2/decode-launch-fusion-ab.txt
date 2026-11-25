@@ -1,0 +1,65 @@
+Inkling-2-Mini decode launch fusion (patch 137), inkling2 preset, 8 slots, decode graphs up to batch 8.
+Live tree /data/sgl-v0523, arms booted off on on off. 300-token decodes, 3 repeats per level; greedy = 3 prompts, temperature 0, 400 tokens, sha256 prefix of reasoning|content.
+
+=== ARM off1 SGLANG_INKLING2_FUSE=0 18:13:25
+greedy 3acea6797b16593d 400 'or simplicity.\n\nInitial tree:\nRoot: [20]\nLeft leaf: [5, 10]|'
+greedy 45962074f7b4948e 400 ' the function:\n\n```python\nimport re\nfrom dataclasses import|'
+greedy 7cb9a2253db6f13a 400 'a space, Stable?, In-place?, Notes.\n\nNeed be careful: Quick|'
+n=1:   74.4   74.2   74.6  best   74.6 tok/s total,  74.6 per request
+n=2:  128.8  130.8  130.8  best  130.8 tok/s total,  65.4 per request
+n=4:  219.9  218.5  219.5  best  219.9 tok/s total,  55.0 per request
+n=8:  351.6  354.5  353.0  best  354.5 tok/s total,  44.3 per request
+fusion active lines: 0 tracebacks: 0
+=== ARM on1 SGLANG_INKLING2_FUSE=1 18:16:13
+greedy 3acea6797b16593d 400 'or simplicity.\n\nInitial tree:\nRoot: [20]\nLeft leaf: [5, 10]|'
+greedy 45962074f7b4948e 400 ' the function:\n\n```python\nimport re\nfrom dataclasses import|'
+greedy 7cb9a2253db6f13a 400 'a space, Stable?, In-place?, Notes.\n\nNeed be careful: Quick|'
+n=1:   79.1   79.2   79.2  best   79.2 tok/s total,  79.2 per request
+n=2:  136.0  135.7  134.8  best  136.0 tok/s total,  68.0 per request
+n=4:  228.3  227.5  229.5  best  229.5 tok/s total,  57.4 per request
+n=8:  365.8  365.4  366.8  best  366.8 tok/s total,  45.9 per request
+fusion active lines: 2 tracebacks: 0
+=== ARM on2 SGLANG_INKLING2_FUSE=1 18:18:57
+greedy 3acea6797b16593d 400 'or simplicity.\n\nInitial tree:\nRoot: [20]\nLeft leaf: [5, 10]|'
+greedy 45962074f7b4948e 400 ' the function:\n\n```python\nimport re\nfrom dataclasses import|'
+greedy 7cb9a2253db6f13a 400 'a space, Stable?, In-place?, Notes.\n\nNeed be careful: Quick|'
+n=1:   79.2   79.3   79.2  best   79.3 tok/s total,  79.3 per request
+n=2:  135.8  136.0  135.6  best  136.0 tok/s total,  68.0 per request
+n=4:  227.7  228.9  229.1  best  229.1 tok/s total,  57.3 per request
+n=8:  368.2  365.9  364.9  best  368.2 tok/s total,  46.0 per request
+FAILED: ['video']
+=== Capability validator — http://localhost:23334  model=/data/models/Inkling-2-Mini ===
+  [PASS] basic     finish=stop answer='paris'
+  [PASS] tool_call finish=tool_calls name='get_weather' args='{"location": "Paris"}'
+  [PASS] thinking  reasoning_seen terminated answer_ok (261 tok, finish=stop)
+  [PASS] vision    saw=['red', 'circle', 'round']  response='a red circle with a thin black outline sits centered on a plain white background.'
+  [FAIL] video     request failed: <HTTPError 400: 'Bad Request: {"object":"error","message":"Unsupported content part type: video","type":"BadRequest","param":null,"code":400}'>
+--- 4/5 passed in 6.5s ---
+fusion active lines: 2 tracebacks: 0
+=== ARM off2 SGLANG_INKLING2_FUSE=0 18:21:51
+greedy 3acea6797b16593d 400 'or simplicity.\n\nInitial tree:\nRoot: [20]\nLeft leaf: [5, 10]|'
+greedy 45962074f7b4948e 400 ' the function:\n\n```python\nimport re\nfrom dataclasses import|'
+greedy 7cb9a2253db6f13a 400 'a space, Stable?, In-place?, Notes.\n\nNeed be careful: Quick|'
+n=1:   75.0   74.8   75.0  best   75.0 tok/s total,  75.0 per request
+n=2:  129.3  129.1  129.2  best  129.3 tok/s total,  64.7 per request
+n=4:  218.7  217.2  217.7  best  218.7 tok/s total,  54.7 per request
+n=8:  354.1  355.1  353.6  best  355.1 tok/s total,  44.4 per request
+fusion active lines: 0 tracebacks: 0
+DRIVE13 DONE
+
+Component arms (development tree, same bench): tail only and tail + gate order
+=== ARM f1a SGLANG_INKLING2_FUSE=nokv,nogates 17:18:55
+n=1:   76.2   76.1   76.1  best   76.2 tok/s total,  76.2 per request
+n=2:  132.1  131.7  131.9  best  132.1 tok/s total,  66.0 per request
+n=4:  223.8  223.2  225.3  best  225.3 tok/s total,  56.3 per request
+n=8:  358.7  357.1  358.6  best  358.7 tok/s total,  44.8 per request
+=== ARM gates SGLANG_INKLING2_FUSE=nokv 17:24:21
+n=1:   77.2   77.3   77.4  best   77.4 tok/s total,  77.4 per request
+n=2:  133.3  132.9  133.4  best  133.4 tok/s total,  66.7 per request
+n=4:  224.1  225.5  225.0  best  225.5 tok/s total,  56.4 per request
+n=8:  361.8  359.2  361.3  best  361.8 tok/s total,  45.2 per request
+=== ARM f1b SGLANG_INKLING2_FUSE=nokv,nogates 17:29:49
+n=1:   76.9   76.9   76.9  best   76.9 tok/s total,  76.9 per request
+n=2:  132.6  134.2  132.7  best  134.2 tok/s total,  67.1 per request
+n=4:  223.3  223.2  224.2  best  224.2 tok/s total,  56.0 per request
+n=8:  359.6  361.5  358.1  best  361.5 tok/s total,  45.2 per request

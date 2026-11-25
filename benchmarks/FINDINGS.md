@@ -3344,6 +3344,33 @@ preset, decode graphs up to batch 8, arms booted `new old old new`
   layers); capability validator unchanged (video is not a capability of this checkpoint).
 - Thresholds alone did not help: `SGLANG_INKLING2_GEMV_MAX_TOKENS` 2 and 8 were slower at 4 and 8 requests.
 
+## Inkling-2-Mini: decode launch fusion (patch 137, 2026-11-24)
+
+A profile of the decode step after patch 136 put the weight-reading kernels at the bandwidth floor and the
+rest in kernel launches: about 2.8 us each, over 48 layer visits per token. Patch 137 removes launches in three
+places, each bit-identical to the path it replaces. `inkling2` preset, 300-token decodes, best of three, live
+tree, arms booted `off on on off` ([receipt](inkling2/decode-launch-fusion-ab.txt)):
+
+| Concurrent requests | Off tok/s | Patch 137 tok/s | Ratio |
+|---|---|---|---|
+| 1 | 74.6 / 75.0 | 79.2 / 79.3 | 1.06 |
+| 2 | 130.8 / 129.3 | 136.0 / 136.0 | 1.05 |
+| 4 | 219.9 / 218.7 | 229.5 / 229.1 | 1.05 |
+| 8 | 354.5 / 355.1 | 366.8 / 368.2 | 1.04 |
+
+- Parts at one request: convolution tail (short convolution, cache update, residual add in one launch) 74.6 to
+  76.6; message gates writing k, v, q order without `torch.stack` 77.4; k / v convolutions with the k clamp and
+  v RMS norm in one launch 79.3.
+- Identity: the three greedy 400-token texts hash the same in all four boots; an in-server compare on an eager
+  server found 0 differing elements in 72,000 k / v calls per rank; the capability validator is unchanged
+  (video is not a capability of this checkpoint).
+- The compiled norm helper's summation order follows its tile. A flat `[HEAD]` Triton tile differed by one BF16
+  ulp on 1 to 4 elements in about 0.2 % of calls, which changed the greedy text of all three prompts; a
+  `[1, HEAD]` tile on one warp with `sqrt_rn` and reciprocal-then-threshold reproduces it. An offline compare
+  against a locally compiled helper is not a reference, because its tile depends on the first shape it sees.
+- Dropped: the gate output folded into the output-projection GEMV (bit-identical, 79.25 against 79.55 tok/s at
+  one request, no change at eight); the expert weighted sum was already one launch.
+
 ## Inkling-2-Mini on SWE-bench Lite through oh-my-pi: 179 of 300 (59.7 %), level with Qwopus, Flint and qwen38 at 0.4 to 0.7 of their session time (2026-11-24)
 
 The cell ran on the `inkling2` preset (vendor NVFP4 / MXFP8 experts, no speculation) in the official per-instance

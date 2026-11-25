@@ -1,0 +1,365 @@
+diff --git a/python/sglang/kernels/ops/elementwise/inkling2_message_gate_rdna4.py b/python/sglang/kernels/ops/elementwise/inkling2_message_gate_rdna4.py
+index b9590d9..0eea4b6 100644
+--- a/python/sglang/kernels/ops/elementwise/inkling2_message_gate_rdna4.py
++++ b/python/sglang/kernels/ops/elementwise/inkling2_message_gate_rdna4.py
+@@ -53,6 +53,7 @@ def _gate_combine_kernel(
+     G_in,         # [G, T, R] fp32
+     T, H,
+     hs_g, hs_t, ms_g, ms_t,
++    o0, o1, o2,   # output slot of gates 0, 1, 2
+     R: tl.constexpr,
+     BLOCK_H: tl.constexpr,
+ ):
+@@ -72,7 +73,8 @@ def _gate_combine_kernel(
+     gain = 2.0 * tl.sigmoid(2.0 * gain) - 1.0
+     h = tl.load(Hs + gate * hs_g + t * hs_t + offs_h, mask=hm, other=0.0).to(tl.float32)
+     m = tl.load(Ms + gate * ms_g + t * ms_t + offs_h, mask=hm, other=0.0).to(tl.float32)
+-    tl.store(Out + (gate * T + t) * H + offs_h, (1.0 - forget) * h + gain * m, mask=hm)
++    slot = tl.where(gate == 0, o0, tl.where(gate == 1, o1, o2)).to(tl.int64)
++    tl.store(Out + (slot * T + t) * H + offs_h, (1.0 - forget) * h + gain * m, mask=hm)
+ 
+ 
+ def _gate_view(x: torch.Tensor, G: int):
+@@ -85,9 +87,10 @@ def _gate_view(x: torch.Tensor, G: int):
+     return x, x.stride(1), x.stride(0)
+ 
+ 
+-def message_gates(hidden: torch.Tensor, message: torch.Tensor, w_down: torch.Tensor, w_fg: torch.Tensor, eps: float) -> torch.Tensor:
++def message_gates(hidden: torch.Tensor, message: torch.Tensor, w_down: torch.Tensor, w_fg: torch.Tensor, eps: float, out_order=(0, 1, 2)) -> torch.Tensor:
+     """G = w_down.shape[0] gates. hidden/message: [T, H] (shared) or [T, >=G, H] (per gate).
+-    w_down: [G, R, 2H] bf16; w_fg: [G, 2H, R] bf16. Returns FP32 [G, T, H]."""
++    w_down: [G, R, 2H] bf16; w_fg: [G, 2H, R] bf16. Returns FP32 [G, T, H], gate i in
++    slot out_order[i]."""
+     G, R = w_down.shape[0], w_down.shape[1]
+     hs, hs_g, hs_t = _gate_view(hidden, G)
+     ms, ms_g, ms_t = _gate_view(message, G)
+@@ -103,7 +106,7 @@ def message_gates(hidden: torch.Tensor, message: torch.Tensor, w_down: torch.Ten
+     )
+     block_h = 256
+     _gate_combine_kernel[(G, T, triton.cdiv(H, block_h))](
+-        hs, ms, out, w_fg, g, T, H, hs_g, hs_t, ms_g, ms_t,
++        hs, ms, out, w_fg, g, T, H, hs_g, hs_t, ms_g, ms_t, *out_order,
+         R=R, BLOCK_H=block_h, num_warps=4,
+     )
+     return out
+diff --git a/python/sglang/kernels/ops/mamba/inkling2_sconv_tail_rdna4.py b/python/sglang/kernels/ops/mamba/inkling2_sconv_tail_rdna4.py
+new file mode 100644
+index 0000000..fa7a22e
+--- /dev/null
++++ b/python/sglang/kernels/ops/mamba/inkling2_sconv_tail_rdna4.py
+@@ -0,0 +1,165 @@
++"""Inkling 2 decode launch fusion (RDNA4).
++
++sconv_tail: the short convolution of a sublayer output, its cache update and the residual
++add in one launch. kv_sconv_post: the k and v short convolutions, their cache updates, the
++k norm clamp and the v RMS norm in one launch.
++
++out = [resid +] bf16(scale * (conv(bf16(x)) + bf16(x)))
++
++This is short_convolution (static weights, decode) followed by the residual add, with the
++same operation order and rounding points, so the result equals the three-launch path bit
++for bit. x may be the FP32 all-reduce sum; it is rounded to BF16 on load.
++"""
++
++import torch
++import triton
++import triton.language as tl
++
++
++@triton.jit
++def _sconv_tail_kernel(
++    X, Weight, Cache, Indices, Mask, TrackMask, TrackIndices, Resid, Out,
++    SX: tl.constexpr,
++    SW0: tl.constexpr,
++    SW1: tl.constexpr,
++    SC0: tl.constexpr,
++    SC1: tl.constexpr,
++    SC2: tl.constexpr,
++    D: tl.constexpr,
++    W: tl.constexpr,
++    TRACK: tl.constexpr,
++    HAS_RESID: tl.constexpr,
++    SCALE: tl.constexpr,
++    BLOCK: tl.constexpr,
++):
++    row = tl.program_id(0)
++    col = tl.program_id(1) * BLOCK + tl.arange(0, BLOCK)
++    valid = col < D
++    slot = tl.load(Indices + row).to(tl.int64)
++    # Graph padding rows map to the reserved slot 0 and neither read nor write it.
++    has_cache = (tl.load(Mask + row) != 0) & (slot > 0)
++    current = tl.load(X + row * SX + col, valid, other=0).to(tl.bfloat16).to(tl.float32)
++    acc = tl.full((BLOCK,), 0, tl.float32)
++    for tap in tl.static_range(W):
++        if tap == W - 1:
++            value = current
++        else:
++            value = tl.load(Cache + slot * SC0 + tap * SC1 + col * SC2, valid & has_cache, other=0).to(tl.float32)
++        weight = tl.load(Weight + col * SW0 + tap * SW1, valid, other=0).to(tl.bfloat16).to(tl.float32)
++        acc = tl.fma(value, weight, acc)
++    acc = acc + current
++    acc = acc * SCALE
++    y = acc.to(tl.bfloat16).to(tl.float32)
++    if HAS_RESID:
++        y = tl.load(Resid + row * D + col, valid, other=0).to(tl.float32) + y
++    tl.store(Out + row * D + col, y, valid)
++    for tap in tl.static_range(W - 1):
++        if tap == W - 2:
++            value = current
++        else:
++            value = tl.load(Cache + slot * SC0 + (tap + 1) * SC1 + col * SC2, valid & has_cache, other=0)
++        tl.store(Cache + slot * SC0 + tap * SC1 + col * SC2, value, valid & has_cache)
++        if TRACK:
++            track = tl.load(TrackMask + row)
++            dest = tl.load(TrackIndices + row).to(tl.int64)
++            tl.store(Cache + dest * SC0 + tap * SC1 + col * SC2, value, valid & has_cache & track)
++
++
++def sconv_tail(x, weight, cache, metadata, resid, out_dtype, *, track_mask=None, track_indices=None):
++    """x [T, D] BF16 or FP32, weight [D, W], cache [slots, W - 1, D], resid [T, D] or None.
++    Returns [T, D] in out_dtype and updates the conv cache."""
++    T, D = x.shape
++    W = weight.shape[1]
++    out = torch.empty((T, D), dtype=out_dtype, device=x.device)
++    if T:
++        assert x.stride(1) == 1 and cache.shape[1:] == (W - 1, D)
++        assert resid is None or resid.is_contiguous()
++        assert (track_mask is None) == (track_indices is None)
++        _sconv_tail_kernel[(T, triton.cdiv(D, 256))](
++            x, weight, cache, metadata["safe_idx"], metadata["cache_mask"], track_mask, track_indices,
++            resid, out, x.stride(0), *weight.stride(), *cache.stride(), D, W,
++            track_mask is not None, resid is not None, (W + 1) ** -0.5, 256,
++            enable_fp_fusion=False,
++        )
++    return out
++
++
++@triton.jit
++def _kv_conv(X, Weight, Cache, row, slot, has_cache, col, TrackMask, TrackIndices,
++             SX: tl.constexpr, SW0: tl.constexpr, SW1: tl.constexpr, SC0: tl.constexpr, SC1: tl.constexpr,
++             SC2: tl.constexpr, W: tl.constexpr, TRACK: tl.constexpr, SCALE: tl.constexpr, BLOCK: tl.constexpr):
++    current = tl.load(X + row * SX + col).to(tl.float32)
++    acc = tl.zeros_like(current)
++    for tap in tl.static_range(W):
++        if tap == W - 1:
++            value = current
++        else:
++            value = tl.load(Cache + slot * SC0 + tap * SC1 + col * SC2, has_cache, other=0).to(tl.float32)
++        weight = tl.load(Weight + col * SW0 + tap * SW1).to(tl.bfloat16).to(tl.float32)
++        acc = tl.fma(value, weight, acc)
++    acc = acc + current
++    acc = acc * SCALE
++    for tap in tl.static_range(W - 1):
++        if tap == W - 2:
++            value = current
++        else:
++            value = tl.load(Cache + slot * SC0 + (tap + 1) * SC1 + col * SC2, has_cache, other=0)
++        tl.store(Cache + slot * SC0 + tap * SC1 + col * SC2, value, has_cache)
++        if TRACK:
++            track = tl.load(TrackMask + row)
++            dest = tl.load(TrackIndices + row).to(tl.int64)
++            tl.store(Cache + dest * SC0 + tap * SC1 + col * SC2, value, has_cache & track)
++    return acc.to(tl.bfloat16).to(tl.float32)
++
++
++@triton.jit
++def _kv_tail_kernel(
++    K, V, WK, WV, CK, CV, IK, MK, IV, MV, TrackMask, TKI, TVI, OutK, OutV,
++    qk_threshold, eps,
++    SK: tl.constexpr, SV: tl.constexpr,
++    SWK0: tl.constexpr, SWK1: tl.constexpr, SWV0: tl.constexpr, SWV1: tl.constexpr,
++    SCK0: tl.constexpr, SCK1: tl.constexpr, SCK2: tl.constexpr,
++    SCV0: tl.constexpr, SCV1: tl.constexpr, SCV2: tl.constexpr,
++    D: tl.constexpr, W: tl.constexpr, TRACK: tl.constexpr, SCALE: tl.constexpr, HEAD: tl.constexpr,
++):
++    row = tl.program_id(0)
++    # one head per program and one warp: four elements per thread, the summation order of
++    # the compiled helper this replaces at its usual tile
++    # One head per program as a [1, HEAD] tile on one warp: the summation order of the
++    # compiled norm helper this replaces (a flat [HEAD] tile sums in another order and
++    # moves a BF16 result by one ulp in about 1 call in 500).
++    col = (tl.program_id(1) * HEAD + tl.arange(0, HEAD))[None, :]
++    slot = tl.load(IK + row).to(tl.int64)
++    has_cache = (tl.load(MK + row) != 0) & (slot > 0)
++    k = _kv_conv(K, WK, CK, row, slot, has_cache, col, TrackMask, TKI, SK, SWK0, SWK1, SCK0, SCK1, SCK2, W, TRACK, SCALE, HEAD)
++    norm = tl.sqrt_rn(tl.sum(k * k, 1))[:, None]
++    # reciprocal, then the threshold: the operation order of the compiled helper this replaces
++    k = k * tl.minimum((1.0 / (norm + 1e-6)) * qk_threshold, 1.0)
++    tl.store(OutK + row * D + col, k)
++    slot = tl.load(IV + row).to(tl.int64)
++    has_cache = (tl.load(MV + row) != 0) & (slot > 0)
++    v = _kv_conv(V, WV, CV, row, slot, has_cache, col, TrackMask, TVI, SV, SWV0, SWV1, SCV0, SCV1, SCV2, W, TRACK, SCALE, HEAD)
++    v = v * tl.rsqrt(tl.sum(v * v, 1)[:, None] / HEAD + eps)
++    tl.store(OutV + row * D + col, v)
++
++
++def kv_sconv_post(k, v, wk, wv, ck, cv, meta_k, meta_v, head_dim, qk_threshold, eps, *,
++                  track_mask=None, track_k=None, track_v=None):
++    """Decode, static weights: the k and v short convolutions (with cache updates), the
++    k norm clamp and the v RMS norm in one launch. k, v: BF16 [T, D] (row stride free).
++    Returns BF16 k, v [T, D]."""
++    T, D = k.shape
++    W = wk.shape[1]
++    assert k.dtype == v.dtype == torch.bfloat16 and D % head_dim == 0 and k.stride(1) == v.stride(1) == 1
++    assert ck.shape[1:] == cv.shape[1:] == (W - 1, D)
++    out_k = torch.empty((T, D), dtype=torch.bfloat16, device=k.device)
++    out_v = torch.empty((T, D), dtype=torch.bfloat16, device=k.device)
++    if T:
++        _kv_tail_kernel[(T, D // head_dim)](
++            k, v, wk, wv, ck, cv, meta_k["safe_idx"], meta_k["cache_mask"], meta_v["safe_idx"], meta_v["cache_mask"],
++            track_mask, track_k, track_v, out_k, out_v, qk_threshold, eps,
++            k.stride(0), v.stride(0), *wk.stride(), *wv.stride(), *ck.stride(), *cv.stride(),
++            D, W, track_mask is not None, (W + 1) ** -0.5, head_dim,
++            enable_fp_fusion=False, num_warps=1,
++        )
++    return out_k, out_v
+diff --git a/python/sglang/srt/models/inkling2.py b/python/sglang/srt/models/inkling2.py
+index 3a83a8d..c47a5e7 100644
+--- a/python/sglang/srt/models/inkling2.py
++++ b/python/sglang/srt/models/inkling2.py
+@@ -34,6 +34,8 @@ from sglang.kernels.ops.elementwise.inkling2_message_gate_rdna4 import message_g
+ from sglang.kernels.ops.attention.inkling2_prologue_rdna4 import attention_prologue as _prologue_triton
+ from sglang.kernels.ops.attention.inkling2_prologue_rdna4 import route as _route_triton
+ from sglang.kernels.ops.gemm.inkling2_gemv_rdna4 import seg_gemv as _seg_gemv
++from sglang.kernels.ops.mamba.inkling2_sconv_tail_rdna4 import kv_sconv_post as _kv_sconv_post
++from sglang.kernels.ops.mamba.inkling2_sconv_tail_rdna4 import sconv_tail as _sconv_tail
+ from sglang.kernels.ops.moe.inkling2_moe_rdna4 import inkling2_routed_experts
+ from sglang.srt.configs.inkling2 import Inkling2MMConfig, Inkling2ModelConfig
+ from sglang.srt.distributed.communication_op import tensor_model_parallel_all_reduce
+@@ -116,6 +118,13 @@ if os.environ.get("SGLANG_INKLING2_PROJ_HIP", "1") != "0":
+     except ImportError:
+         _seg_gemm_hip = None
+ _HIP_ROWS = range(2, 17) if _seg_gemm_hip is not None else ()
++# Decode launch fusion: "0" restores the separate launches; "notail", "nokv" and "nogates"
++# (comma separated) switch one fusion off.
++_FUSE = os.environ.get("SGLANG_INKLING2_FUSE", "1").split(",")
++_FUSE_TAIL = "0" not in _FUSE and "notail" not in _FUSE
++_FUSE_KV = "0" not in _FUSE and "nokv" not in _FUSE
++_FUSE_GATES = "0" not in _FUSE and "nogates" not in _FUSE
++_fuse_logged = False
+ _proj_hip_logged = False
+ 
+ 
+@@ -370,11 +379,22 @@ class Inkling2Attention(nn.Module):
+         dyn_k = k_in if not self.is_local else None
+         dyn_v = v_in if not self.is_local else None
+         # short_convolution takes a row stride: the projection slices need no copy.
+-        k = self._sconv(self.k_sconv, k, positions, forward_batch, pass_idx, dyn_k)
+-        v = self._sconv(self.v_sconv, v, positions, forward_batch, pass_idx, dyn_v)
+-        k, v = _kv_post_fn(
+-            k.view(T, self.kv_heads, self.head_dim), v.view(T, self.kv_heads, self.head_dim), self.qk_threshold, self.eps
+-        )
++        if _FUSE_KV and self.is_local and k.dtype == torch.bfloat16 and forward_batch.forward_mode.is_decode():
++            # static weights: both short convolutions and both norms in one launch
++            ks, vs = self.k_sconv, self.v_sconv
++            with ks.state_layer_override(self.conv_ids[pass_idx]), vs.state_layer_override(self.conv_ids[pass_idx]):
++                mk, mv = ks._conv_state(forward_batch), vs._conv_state(forward_batch)
++                k, v = _kv_sconv_post(
++                    k, v, ks._weight_2d(), vs._weight_2d(), ks._sconv_cache(), vs._sconv_cache(),
++                    mk.precomputed, mv.precomputed, self.head_dim, self.qk_threshold, self.eps,
++                    track_mask=forward_batch.mamba_track_mask, track_k=mk.track_cache_indices, track_v=mv.track_cache_indices,
++                )
++        else:
++            k = self._sconv(self.k_sconv, k, positions, forward_batch, pass_idx, dyn_k)
++            v = self._sconv(self.v_sconv, v, positions, forward_batch, pass_idx, dyn_v)
++            k, v = _kv_post_fn(
++                k.view(T, self.kv_heads, self.head_dim), v.view(T, self.kv_heads, self.head_dim), self.qk_threshold, self.eps
++            )
+ 
+         out = self.attn[pass_idx](
+             q.reshape(T, -1),
+@@ -506,12 +526,13 @@ class Inkling2MoE(nn.Module):
+         self.gate_bias = nn.Parameter(torch.zeros(E, dtype=torch.float32), requires_grad=False)
+         self.experts = Inkling2Experts(config, layer_id, nvfp4)
+ 
+-    def forward(self, x: torch.Tensor) -> torch.Tensor:
++    def forward(self, x: torch.Tensor, raw: bool = False) -> torch.Tensor:
++        """raw: return the FP32 sum (the fused decode tail rounds it to BF16 on load)."""
+         ids, weights = _route_triton(x, self.gate_weight, self.gate_bias, self.top_k, self.route_scale)
+         out = self.experts(x, ids, weights)
+         if get_tensor_model_parallel_world_size() > 1:
+             out = tensor_model_parallel_all_reduce(out)
+-        return out.to(torch.bfloat16)
++        return out if raw else out.to(torch.bfloat16)
+ 
+ 
+ # ---------------------------------------------------------------------------
+@@ -552,15 +573,37 @@ class Inkling2DecoderLayer(nn.Module):
+         with module.state_layer_override(self.attn.conv_ids[pass_idx]):
+             return module(x.contiguous(), positions, forward_batch)
+ 
++    def _conv_tail(self, module, x, resid, out_dtype, forward_batch, pass_idx):
++        """_conv and the residual add in one launch (decode)."""
++        global _fuse_logged
++        if not _fuse_logged:
++            _fuse_logged = True
++            logger.info(
++                "Inkling 2 decode launch fusion active: tail%s%s",
++                ", k/v" if _FUSE_KV else "", ", message gate order" if _FUSE_GATES else "",
++            )
++        with module.state_layer_override(self.attn.conv_ids[pass_idx]):
++            meta = module._conv_state(forward_batch)
++            return _sconv_tail(
++                x, module._weight_2d(), module._sconv_cache(), meta.precomputed, resid, out_dtype,
++                track_mask=forward_batch.mamba_track_mask, track_indices=meta.track_cache_indices,
++            )
++
+     def forward(self, hidden, block_states, positions, forward_batch, *, pass_idx=0, messages=None):
+         block_residual = hidden
+         eps = self.mlp_norm.eps
++        kvq = None
+         ar = None if self.attention_input is None else self.attention_input(block_states, hidden)
+         if messages is not None:
+             head = self.controllers["attn"]
+             gate_in = ar[:, 0] if self.is_local else ar
+-            gated = _message_gates_triton(gate_in, messages, head._down_stack, head._fg_stack, eps)
+-            streams = [gated[0], gated[1], gated[2]]
++            if _FUSE_GATES:
++                # the gates write the k, v, q order of the merged projection: no restacking
++                kvq = _message_gates_triton(gate_in, messages, head._down_stack, head._fg_stack, eps, out_order=(2, 0, 1))
++                streams = [kvq[2], kvq[0], kvq[1]]
++            else:
++                gated = _message_gates_triton(gate_in, messages, head._down_stack, head._fg_stack, eps)
++                streams = [gated[0], gated[1], gated[2]]
+         elif ar is None:
+             streams = [hidden] * 3
+         elif self.is_local:
+@@ -571,21 +614,30 @@ class Inkling2DecoderLayer(nn.Module):
+             x = self.attn_norm(streams[0])
+         else:
+             # k, v, q order for the merged projection
+-            x = _rms_norm_stack_fn(torch.stack([streams[1], streams[2], streams[0]]), self._norm_stack, eps)
++            x = _rms_norm_stack_fn(
++                kvq if kvq is not None else torch.stack([streams[1], streams[2], streams[0]]), self._norm_stack, eps
++            )
+ 
+         attn_out = self.attn(x, positions, forward_batch, pass_idx)
+-        attn_out = self._conv(self.attn_sconv, attn_out, positions, forward_batch, pass_idx)
+-
+-        local_blocks = block_states
+-        if self.is_block_boundary:
+-            residual = attn_out.float()
+-            local_blocks = [*block_states, block_residual]
++        fuse = _FUSE_TAIL and forward_batch.forward_mode.is_decode() and attn_out.dtype == torch.bfloat16
++        local_blocks = [*block_states, block_residual] if self.is_block_boundary else block_states
++        if fuse:
++            residual = self._conv_tail(
++                self.attn_sconv, attn_out, None if self.is_block_boundary else block_residual.contiguous(),
++                torch.float32, forward_batch, pass_idx)
+         else:
+-            residual = _add_fn(block_residual, attn_out)
++            attn_out = self._conv(self.attn_sconv, attn_out, positions, forward_batch, pass_idx)
++            if self.is_block_boundary:
++                residual = attn_out.float()
++            else:
++                residual = _add_fn(block_residual, attn_out)
+         mlp_in = self.mlp_input(local_blocks, residual)[:, 0]
+         if messages is not None:
+             g = self.controllers["mlp"]
+             mlp_in = _message_gates_triton(mlp_in, messages[:, 3:], g._down_1, g._fg_1, eps)[0]
++        if fuse:
++            mlp_out = self.mlp(self.mlp_norm(mlp_in), raw=True)
++            return self._conv_tail(self.mlp_sconv, mlp_out, residual, torch.bfloat16, forward_batch, pass_idx)
+         mlp_out = self.mlp(self.mlp_norm(mlp_in))
+         mlp_out = self._conv(self.mlp_sconv, mlp_out, positions, forward_batch, pass_idx)
+         return _add_bf16_fn(residual, mlp_out)
