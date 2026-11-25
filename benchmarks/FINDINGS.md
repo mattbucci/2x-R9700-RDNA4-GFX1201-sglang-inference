@@ -3371,6 +3371,32 @@ tree, arms booted `off on on off` ([receipt](inkling2/decode-launch-fusion-ab.tx
 - Dropped: the gate output folded into the output-projection GEMV (bit-identical, 79.25 against 79.55 tok/s at
   one request, no change at eight); the expert weighted sum was already one launch.
 
+## Inkling-2-Mini: many cached sessions need a larger sliding-window pool (production flags, 2026-11-25)
+
+With the model defaults a session kept its cache only while it ran alone: 16 round-robin sessions of 28K tokens at
+8 concurrent reused the shared 1,984-token system prompt and nothing else (hit rate 0.07 to 0.08, follow-up TTFT
+112 to 123 s). An instrumented run (48 sessions of 7.2K) showed the sliding-window KV pool saturated at 53 to 61K of
+its 65,634 tokens while the full pool sat at 200 to 240K of 656,343: the model override sets
+`swa_full_tokens_ratio` 0.1, a cached session holds about 3,000 window tokens (tree nodes are as large as a
+4,096-token prefill chunk), so about 10 to 20 sessions stay warm whatever their length.
+
+| 8 concurrent, round-robin | default | `--swa-full-tokens-ratio 0.25 --strip-thinking-cache` |
+|---|---|---|
+| 48 sessions of 7.2K, follow-up TTFT | 23.8 to 27.1 s, 1,984 cached | **1.82 s**, full prefix cached (cold 20.7 s) |
+| 12 sessions of 28K, follow-up TTFT | system prompt only at 16 sessions | **5.4 to 5.5 s**, 28.0 to 30.4K cached (cold 106 s) |
+| 8 sessions of 54K, follow-up TTFT | not run | 5.3 to 6.2 s median, 19.1 s worst, full pool at 0.98 (cold 225 s) |
+
+- Pools per rank become 437,562 full and 109,390 window tokens; about 440K warm tokens is the ceiling (16 sessions
+  of 28K oversubscribe it: hit rate 0.61, follow-up TTFT 16.5 to 18.7 s).
+- `--strip-thinking-cache` caches the prompt prefix only. Clients do not echo reasoning, so cached output never
+  matches again; alone it restored serial revisits (16 of 16) and changed nothing under the pool limit.
+- Decode is unchanged (78.9 tok/s at one request, 364.2 at eight); capabilities 4 of 5 (no video in the checkpoint).
+- Dropped: `--mamba-max-states-per-path 16` (same hit rate and TTFT with and without, conv-state pool at 0.03).
+- Left as is: a turn whose output crosses a 256-token track boundary donates no conv-state checkpoint, so the next
+  turn recomputes a few hundred tokens. Cold prefill is shared at about 2,000 tok/s (8 cold 28K sessions wait 106 s).
+- Receipt: [`inkling2/multi-session-cache-2026-11-25.json`](inkling2/multi-session-cache-2026-11-25.json). The
+  flags live in the production start script, not in the single-user `inkling2` preset.
+
 ## Inkling-2-Mini on SWE-bench Lite through oh-my-pi: 179 of 300 (59.7 %), level with Qwopus, Flint and qwen38 at 0.4 to 0.7 of their session time (2026-11-24)
 
 The cell ran on the `inkling2` preset (vendor NVFP4 / MXFP8 experts, no speculation) in the official per-instance

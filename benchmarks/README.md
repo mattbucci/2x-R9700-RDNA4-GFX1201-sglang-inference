@@ -471,6 +471,7 @@ v0.5.23, `O` = v0.5.22). Tables: [rebase note](../patches/v0523-rebase-2026-11-1
 
 - [`inkling2/concurrency-hip-kernels-ab.txt`](inkling2/concurrency-hip-kernels-ab.txt): Inkling-2-Mini decode at 1 / 2 / 4 / 8 concurrent requests, patch 136 kernels against the Triton paths.
 - [`inkling2/decode-launch-fusion-ab.txt`](inkling2/decode-launch-fusion-ab.txt): Inkling-2-Mini decode at 1 / 2 / 4 / 8 concurrent requests, patch 137 launch fusion on and off, with greedy text hashes and the capability validator.
+- [`inkling2/multi-session-cache-2026-11-25.json`](inkling2/multi-session-cache-2026-11-25.json): Inkling-2-Mini round-robin agentic sessions at 8 concurrent, cached tokens and TTFT per turn, default pools against `--swa-full-tokens-ratio 0.25 --strip-thinking-cache`.
 - [`inkling2/swebench-omp-pairs-2026-11-24.json`](inkling2/swebench-omp-pairs-2026-11-24.json),
   [`swebench-omp-git-peek-2026-11-24.json`](inkling2/swebench-omp-git-peek-2026-11-24.json): Inkling-2-Mini SWE-bench Lite
   oh-my-pi cell (179 / 300), paired counts against the qwen38, Qwopus and Flint cells and the leak audit; charts

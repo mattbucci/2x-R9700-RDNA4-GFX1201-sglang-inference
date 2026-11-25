@@ -1,0 +1,29 @@
+{
+  "model": "Inkling-2-Mini", "preset": "inkling2", "sglang": "v0.5.23 + patches 001-137", "date": "2026-11-25",
+  "server": {"max_running_requests": 8, "context": 262144, "chunked_prefill": 4096, "mem_fraction": 0.85},
+  "workload": "round-robin agentic sessions, 8 concurrent: shared 1,984-token system prompt, random-word body, each turn appends the reply (reasoning not echoed) and a tool result; streaming, temperature 0.6",
+  "pools_per_rank_tokens": {
+    "default_ratio_0.1": {"full": 656343, "swa": 65634},
+    "ratio_0.25": {"full": 437562, "swa": 109390}
+  },
+  "diagnosis": {
+    "instrumented_run": "48 sessions x 7.2K, default ratio: SWA evictable saturates at 53-61K of 65,634 while full evictable stays at 200-240K of 656,343",
+    "swa_retained_per_cached_session_tokens": "about 3,000 at 7K (tree nodes are as large as a 4,096-token prefill chunk)",
+    "finish_checkpoint": "a turn whose output crosses a 256-token track boundary donates no conv-state checkpoint (last track > prompt-only key); next turn recomputes a few hundred tokens"
+  },
+  "rows": [
+    {"config": "default (ratio 0.1)", "sessions": 16, "tokens": 28000, "followup_cached": 1984, "hit_rate": 0.08},
+    {"config": "default + strip-thinking-cache", "sessions": 16, "tokens": 28000, "followup_cached": 1984, "followup_ttft_s": [112.2, 117.3, 122.6], "hit_rate": 0.07},
+    {"config": "default + strip-thinking-cache", "sessions": 48, "tokens": 7200, "followup_cached": 1984, "followup_ttft_s": [23.8, 27.1], "hit_rate": 0.25},
+    {"config": "ratio 0.25 + strip-thinking-cache", "sessions": 32, "tokens": 7200, "cold_ttft_s": 20.6, "followup_cached": [7168, 7624], "followup_ttft_s": [1.81, 1.82], "hit_rate": 0.73},
+    {"config": "ratio 0.25 + strip-thinking-cache", "sessions": 48, "tokens": 7200, "cold_ttft_s": 20.7, "followup_cached": [7196, 7623], "followup_ttft_s": [1.82, 1.82], "hit_rate": 0.73},
+    {"config": "ratio 0.25 + strip-thinking-cache", "sessions": 12, "tokens": 28000, "cold_ttft_s": 106.5, "followup_cached": [27987, 30446], "followup_ttft_s": [5.36, 5.46, 5.48], "hit_rate": 0.75},
+    {"config": "ratio 0.25 + strip-thinking-cache", "sessions": 8, "tokens": 54000, "cold_ttft_s": 224.7, "followup_cached": [53934, 56402], "followup_ttft_s": [5.94, 5.26, 6.23], "followup_ttft_max_s": 19.1, "hit_rate": 0.74, "full_pool_usage": 0.98},
+    {"config": "ratio 0.25 + strip-thinking-cache", "sessions": 16, "tokens": 28000, "note": "450K tokens oversubscribes the 437K full pool", "followup_ttft_s": [18.7, 16.5], "hit_rate": 0.61},
+    {"config": "ratio 0.25 + strip-thinking-cache, no per-path state cap", "sessions": 12, "tokens": 28000, "followup_ttft_s": [5.41, 5.43, 5.59], "hit_rate": 0.75}
+  ],
+  "decode_tok_s": {"n1": 78.9, "n8": 364.2},
+  "capabilities": "4/5 (video unsupported by the checkpoint)",
+  "hit_rate_note": "server-side new/cached tokens over the whole run, cold first turns included",
+  "production_flags": "--enable-cache-report --strip-thinking-cache --swa-full-tokens-ratio 0.25"
+}
