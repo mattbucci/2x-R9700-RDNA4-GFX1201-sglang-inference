@@ -1,0 +1,15 @@
+{
+  "file": "src/semver_range.py",
+  "line": 118,
+  "buggy": "        return _cmp(bool(left), bool(right))",
+  "fixed": "        return _cmp(bool(right), bool(left))",
+  "function": "_compare_prerelease",
+  "summary": "When exactly one version has a pre-release the comparison is reversed, ranking the pre-release above the release: compare(1.0.0, 1.0.0-alpha) returns -1 and satisfies('1.0.0', '>=1.0.0-rc.1') is False.",
+  "keywords": [
+    "prerelease",
+    "release",
+    "precedence",
+    "reversed",
+    "order"
+  ]
+}

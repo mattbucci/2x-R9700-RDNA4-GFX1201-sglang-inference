@@ -1,0 +1,15 @@
+{
+  "file": "src/interval_set.py",
+  "line": 113,
+  "buggy": "        return index >= 0 and value <= self._ends[index]",
+  "fixed": "        return index >= 0 and value < self._ends[index]",
+  "function": "IntervalSet.contains",
+  "summary": "contains() treats the exclusive end of a half-open interval as a member (<= instead of <), so IntervalSet([(1, 7)]).contains(7) returns True.",
+  "keywords": [
+    "contains",
+    "end",
+    "half-open",
+    "exclusive",
+    "inclusive"
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "file": "src/cron_schedule.py",
+  "line": 171,
+  "buggy": "                candidate = candidate + timedelta(hours=1)",
+  "fixed": "                candidate = candidate.replace(minute=0) + timedelta(hours=1)",
+  "function": "CronSchedule.next_fire",
+  "summary": "When the hour does not match, the candidate advances one hour without resetting the minute to 0, so fire times early in the next matching hour are skipped: '0 9 * * *' after 08:30 returns 09:00 of the following day instead of the same day.",
+  "keywords": [
+    "minute",
+    "hour",
+    "reset",
+    "skip",
+    "next_fire"
+  ]
+}

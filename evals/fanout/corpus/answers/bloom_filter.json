@@ -1,0 +1,15 @@
+{
+  "file": "src/bloom_filter.py",
+  "line": 145,
+  "buggy": "        empty_fraction = 1 - set_bits // self._num_bits",
+  "fixed": "        empty_fraction = 1 - set_bits / self._num_bits",
+  "function": "BloomFilter.estimated_cardinality",
+  "summary": "The fraction of set bits is computed with integer division, which is 0 for every unsaturated filter, so estimated_cardinality() returns 0 (-0.0) regardless of how many items were added, e.g. after adding 500 items.",
+  "keywords": [
+    "integer",
+    "division",
+    "cardinality",
+    "estimate",
+    "zero"
+  ]
+}

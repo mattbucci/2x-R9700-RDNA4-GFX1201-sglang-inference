@@ -1,0 +1,15 @@
+{
+  "file": "src/ring_buffer.py",
+  "line": 117,
+  "buggy": "        tail = (self._head + self._size) % self._capacity",
+  "fixed": "        tail = (self._head + self._size - 1) % self._capacity",
+  "function": "RingBuffer.pop",
+  "summary": "pop() computes the slot one past the newest item (missing - 1), so after pushing 1, 2, 3 into a buffer of capacity 5 it returns None instead of 3, and on a full buffer it returns the oldest item.",
+  "keywords": [
+    "pop",
+    "newest",
+    "tail",
+    "off-by-one",
+    "index"
+  ]
+}

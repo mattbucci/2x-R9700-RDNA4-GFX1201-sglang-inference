@@ -1,0 +1,15 @@
+{
+  "file": "src/retry_policy.py",
+  "line": 96,
+  "buggy": "        return min(self.max_delay, nominal) * factor",
+  "fixed": "        return min(self.max_delay, nominal * factor)",
+  "function": "RetryPolicy.delay",
+  "summary": "delay() caps the nominal delay before applying the jitter factor instead of after, so with max_delay 4 and jitter 0.5 a late attempt can return up to 6 s (above max_delay) or 2 s (below delay_bounds).",
+  "keywords": [
+    "jitter",
+    "max_delay",
+    "cap",
+    "exceed",
+    "order"
+  ]
+}

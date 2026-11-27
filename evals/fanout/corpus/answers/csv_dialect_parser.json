@@ -1,0 +1,16 @@
+{
+  "file": "src/csv_dialect_parser.py",
+  "line": 126,
+  "buggy": "    if field:",
+  "fixed": "    if started:",
+  "function": "iter_records",
+  "summary": "The end-of-input flush tests the pending field text instead of the record-started flag, so a final record without a line break that ends in an empty field (\"x,y\\n1,\") is dropped entirely.",
+  "keywords": [
+    "end",
+    "input",
+    "trailing",
+    "empty",
+    "field",
+    "dropped"
+  ]
+}

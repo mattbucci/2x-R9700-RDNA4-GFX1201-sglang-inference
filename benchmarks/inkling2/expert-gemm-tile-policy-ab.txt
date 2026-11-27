@@ -1,0 +1,138 @@
+=== ARM live1 [_X=1] 21:20:51
+up
+greedy 3acea6797b16593d 400 'or simplicity.\n\nInitial tree:\nRoot: [20]\nLeft leaf: [5, 10]|'
+greedy 45962074f7b4948e 400 ' the function:\n\n```python\nimport re\nfrom dataclasses import|'
+greedy 7cb9a2253db6f13a 400 'a space, Stable?, In-place?, Notes.\n\nNeed be careful: Quick|'
+glong 2347b187a1f6ea55 160 200 ' through carefully.\n\nLet me list tokens one by||[]'
+glong 0392c9b876364340 442 200 'ueue token range queue state count slice write||[]'
+glong 3d9b3c946bee5c6e 965 200 'e page queue queue prefill decode router limit||[]'
+glong 939006dd995cad6e 2592 200 "ed tables. Let's inspect the text carefully.\n\n||[]"
+glong 9cf6bd4d0ffced63 21322 100 'name": "bash"}, , "index": 0, "type": "function"}]'
+single  new  20630      157 ms  131502 tok/s
+single  new  20837      253 ms   82483 tok/s
+single  new  21092      370 ms   56943 tok/s
+single  new  21611      648 ms   33368 tok/s
+single  new  22646     1166 ms   19425 tok/s
+single  new  24198     1966 ms   12306 tok/s
+single  new  27804     3886 ms    7155 tok/s
+single  new  34981     7852 ms    4455 tok/s
+group  2 x  1000 words  new  43213     1276 ms   33862 tok/s
+group  4 x  1000 words  new  86433     2376 ms   36384 tok/s
+group  8 x  1000 words  new 172880     4554 ms   37964 tok/s
+group  4 x   500 words  new  84373     1323 ms   63782 tok/s
+group  8 x   500 words  new 168735     2422 ms   69677 tok/s
+group 16 x   250 words  new 333392     2646 ms  126013 tok/s
+n=1:   79.0   79.1  best   79.1 tok/s total,  79.1 per request
+n=8:  365.5  365.7  best  365.7 tok/s total,  45.7 per request
+tracebacks 0
+=== ARM dev1 [PYTHONPATH=/data/sgl-v0523-prof/python] 21:25:19
+up
+greedy 3acea6797b16593d 400 'or simplicity.\n\nInitial tree:\nRoot: [20]\nLeft leaf: [5, 10]|'
+greedy 45962074f7b4948e 400 ' the function:\n\n```python\nimport re\nfrom dataclasses import|'
+greedy 7cb9a2253db6f13a 400 'a space, Stable?, In-place?, Notes.\n\nNeed be careful: Quick|'
+glong 2347b187a1f6ea55 160 200 ' through carefully.\n\nLet me list tokens one by||[]'
+glong 0392c9b876364340 442 200 'ueue token range queue state count slice write||[]'
+glong 3d9b3c946bee5c6e 965 200 'e page queue queue prefill decode router limit||[]'
+glong 939006dd995cad6e 2592 200 "ed tables. Let's inspect the text carefully.\n\n||[]"
+glong 9cf6bd4d0ffced63 21322 100 'name": "bash"}, , "index": 0, "type": "function"}]'
+single  new  20630      158 ms  130497 tok/s
+single  new  20838      225 ms   92742 tok/s
+single  new  21098      298 ms   70746 tok/s
+single  new  21609      492 ms   43949 tok/s
+single  new  22628      853 ms   26519 tok/s
+single  new  24171     1381 ms   17502 tok/s
+single  new  27792     2711 ms   10251 tok/s
+single  new  35039     5477 ms    6397 tok/s
+group  2 x  1000 words  new  43209      952 ms   45378 tok/s
+group  4 x  1000 words  new  86434     1700 ms   50830 tok/s
+group  8 x  1000 words  new 172882     3212 ms   53816 tok/s
+group  4 x   500 words  new  84374      994 ms   84849 tok/s
+group  8 x   500 words  new 168752     1737 ms   97162 tok/s
+group 16 x   250 words  new 333370     1931 ms  172663 tok/s
+n=1:   78.9   79.1  best   79.1 tok/s total,  79.1 per request
+n=8:  363.9  366.4  best  366.4 tok/s total,  45.8 per request
+tracebacks 0
+=== ARM dev2 [PYTHONPATH=/data/sgl-v0523-prof/python] 21:29:14
+up
+greedy 3acea6797b16593d 400 'or simplicity.\n\nInitial tree:\nRoot: [20]\nLeft leaf: [5, 10]|'
+greedy 45962074f7b4948e 400 ' the function:\n\n```python\nimport re\nfrom dataclasses import|'
+greedy 7cb9a2253db6f13a 400 'a space, Stable?, In-place?, Notes.\n\nNeed be careful: Quick|'
+glong 2347b187a1f6ea55 160 200 ' through carefully.\n\nLet me list tokens one by||[]'
+glong 0392c9b876364340 442 200 'ueue token range queue state count slice write||[]'
+glong 3d9b3c946bee5c6e 965 200 'e page queue queue prefill decode router limit||[]'
+glong 939006dd995cad6e 2592 200 "ed tables. Let's inspect the text carefully.\n\n||[]"
+glong 9cf6bd4d0ffced63 21322 100 'name": "bash"}, , "index": 0, "type": "function"}]'
+single  new  20631      156 ms  132108 tok/s
+single  new  20837      224 ms   93201 tok/s
+single  new  21092      301 ms   70124 tok/s
+single  new  21615      486 ms   44452 tok/s
+single  new  22636      855 ms   26483 tok/s
+single  new  24180     1379 ms   17539 tok/s
+single  new  27782     2711 ms   10250 tok/s
+single  new  34986     5470 ms    6396 tok/s
+group  2 x  1000 words  new  43206      948 ms   45552 tok/s
+group  4 x  1000 words  new  86438     1703 ms   50759 tok/s
+group  8 x  1000 words  new 172870     3178 ms   54398 tok/s
+group  4 x   500 words  new  84375      991 ms   85126 tok/s
+group  8 x   500 words  new 168744     1728 ms   97630 tok/s
+group 16 x   250 words  new 333390     1930 ms  172766 tok/s
+n=1:   78.7   78.7  best   78.7 tok/s total,  78.7 per request
+n=8:  366.1  365.7  best  366.1 tok/s total,  45.8 per request
+tracebacks 0
+=== ARM live2 [_X=1] 21:33:08
+up
+greedy 3acea6797b16593d 400 'or simplicity.\n\nInitial tree:\nRoot: [20]\nLeft leaf: [5, 10]|'
+greedy 45962074f7b4948e 400 ' the function:\n\n```python\nimport re\nfrom dataclasses import|'
+greedy 7cb9a2253db6f13a 400 'a space, Stable?, In-place?, Notes.\n\nNeed be careful: Quick|'
+glong 2347b187a1f6ea55 160 200 ' through carefully.\n\nLet me list tokens one by||[]'
+glong 0392c9b876364340 442 200 'ueue token range queue state count slice write||[]'
+glong 3d9b3c946bee5c6e 965 200 'e page queue queue prefill decode router limit||[]'
+glong 939006dd995cad6e 2592 200 "ed tables. Let's inspect the text carefully.\n\n||[]"
+glong 9cf6bd4d0ffced63 21322 100 'name": "bash"}, , "index": 0, "type": "function"}]'
+single  new  20632      161 ms  128141 tok/s
+single  new  20832      249 ms   83681 tok/s
+single  new  21099      368 ms   57271 tok/s
+single  new  21621      645 ms   33527 tok/s
+single  new  22640     1170 ms   19349 tok/s
+single  new  24177     1962 ms   12322 tok/s
+single  new  27789     3896 ms    7132 tok/s
+single  new  35018     7869 ms    4450 tok/s
+group  2 x  1000 words  new  43205     1275 ms   33877 tok/s
+group  4 x  1000 words  new  86430     2380 ms   36313 tok/s
+group  8 x  1000 words  new 172857     4551 ms   37986 tok/s
+group  4 x   500 words  new  84371     1316 ms   64105 tok/s
+group  8 x   500 words  new 168757     2437 ms   69242 tok/s
+group 16 x   250 words  new 333382     2645 ms  126059 tok/s
+n=1:   78.9   78.8  best   78.9 tok/s total,  78.9 per request
+n=8:  366.2  365.5  best  366.2 tok/s total,  45.8 per request
+tracebacks 0
+=== ARM devprof [PYTHONPATH=/data/sgl-v0523-prof/python SGLANG_INKLING2_PROF=1] 21:37:33
+up
+greedy 3acea6797b16593d 400 'or simplicity.\n\nInitial tree:\nRoot: [20]\nLeft leaf: [5, 10]|'
+greedy 45962074f7b4948e 400 ' the function:\n\n```python\nimport re\nfrom dataclasses import|'
+greedy 7cb9a2253db6f13a 400 'a space, Stable?, In-place?, Notes.\n\nNeed be careful: Quick|'
+glong 2347b187a1f6ea55 160 200 ' through carefully.\n\nLet me list tokens one by||[]'
+glong 0392c9b876364340 442 200 'ueue token range queue state count slice write||[]'
+glong 3d9b3c946bee5c6e 965 200 'e page queue queue prefill decode router limit||[]'
+glong 939006dd995cad6e 2592 200 "ed tables. Let's inspect the text carefully.\n\n||[]"
+glong 9cf6bd4d0ffced63 21322 100 'name": "bash"}, , "index": 0, "type": "function"}]'
+single  new  20630      228 ms   90512 tok/s
+single  new  20833      288 ms   72441 tok/s
+single  new  21096      368 ms   57353 tok/s
+single  new  21614      561 ms   38511 tok/s
+single  new  22644      927 ms   24428 tok/s
+single  new  24183     1437 ms   16826 tok/s
+single  new  27806     2816 ms    9874 tok/s
+single  new  34988     5683 ms    6156 tok/s
+group  2 x  1000 words  new  43209     1066 ms   40516 tok/s
+group  4 x  1000 words  new  86446     1833 ms   47153 tok/s
+group  8 x  1000 words  new 172890     3374 ms   51237 tok/s
+group  4 x   500 words  new  84382     1117 ms   75533 tok/s
+group  8 x   500 words  new 168755     1862 ms   90621 tok/s
+group 16 x   250 words  new 333396     2131 ms  156471 tok/s
+n=1:   78.8   78.8  best   78.8 tok/s total,  78.8 per request
+n=8:  361.7  360.7  best  361.7 tok/s total,  45.2 per request
+[2026-11-26 21:39:55 TP0] INK2PROF T=4096 total=1495.2ms experts=317.5 attn=289.5 prologue=207.7 in_ar_norm=192.3 moe_ar=179.8 wo_ar=105.9 mlp_in_norm=83.3 proj=44.6 route=32.0 kv_sconv=15.0 mlp_sconv_add=13.9 attn_sconv_add=12.8 final=0.7
+tracebacks 0
+AB DONE
+up ok=3

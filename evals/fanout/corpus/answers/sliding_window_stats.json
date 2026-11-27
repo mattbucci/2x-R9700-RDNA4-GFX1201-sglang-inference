@@ -1,0 +1,16 @@
+{
+  "file": "src/sliding_window_stats.py",
+  "line": 49,
+  "buggy": "        while entries and entries[0][0] <= oldest:",
+  "fixed": "        while entries and entries[0][0] < oldest:",
+  "function": "_MonotonicDeque.expire",
+  "summary": "expire() drops the entry whose sequence number equals the oldest live one, so the oldest value still in the window is ignored by min()/max(): a size-3 window over 9, 1, 2 reports max 2 instead of 9 (and a size-1 window raises IndexError).",
+  "keywords": [
+    "expire",
+    "oldest",
+    "off-by-one",
+    "max",
+    "min",
+    "window"
+  ]
+}

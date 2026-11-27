@@ -1,0 +1,41 @@
+=== ARM n32-strip1 MAX_RUNNING=32 22:23:16
+up ok=3
+[2026-11-26 22:24:12 TP0] Memory pool end. avail mem=4.73 GB
+[2026-11-26 22:24:16 TP0] Capture target decode CUDA graph end. bs=[1, 2, 4, 8, 12, 16, 24, 32], elapsed=3.38 s, mem usage=0.54 GB, avail mem=4.05 GB.
+#tokens: 109390 #tokens: 437562 
+n=8:  360.9  367.7  best  367.7 tok/s total,  46.0 per request
+n=16:  567.5  567.9  best  567.9 tok/s total,  35.5 per request
+n=24:  695.3  697.2  best  697.2 tok/s total,  29.0 per request
+n=32:  809.7  809.0  best  809.7 tok/s total,  25.3 per request
+agents=24 turns=12 echo=1 wall=601s ok=288/288 errors=0  new=351029 cached=7629547 hit=0.96 out=129395 out_tok_s=215.2
+  turn0 ttft p50 15.8 p90 15.8 max 15.8 | follow-up ttft p50 0.7 p90 1.1 max 3.3 | follow-up hits {'full': 179, 'prompt': 82, 'shared': 3} uncached p50 1131 p90 1204  max prompt 35738
+server: new 351029 cached 7629547 hit rate 0.96 max usage full/swa/mamba [0.45, 0.39, 0.09]
+tracebacks 0 min avail: 31748042752 31748067328 
+=== ARM n32-keep1 MAX_RUNNING=32 STRIP_FLAG= 22:35:55
+up ok=3
+[2026-11-26 22:36:58 TP0] Memory pool end. avail mem=4.73 GB
+[2026-11-26 22:37:01 TP0] Capture target decode CUDA graph end. bs=[1, 2, 4, 8, 12, 16, 24, 32], elapsed=3.41 s, mem usage=0.54 GB, avail mem=4.05 GB.
+#tokens: 109390 #tokens: 437562 
+agents=24 turns=12 echo=1 wall=626s ok=288/288 errors=0  new=420991 cached=7590514 hit=0.95 out=129395 out_tok_s=206.6
+  turn0 ttft p50 15.9 p90 15.9 max 15.9 | follow-up ttft p50 0.7 p90 1.4 max 3.7 | follow-up hits {'shared': 64, 'full': 148, 'prompt': 52} uncached p50 1141 p90 2190  max prompt 37894
+server: new 420991 cached 7590514 hit rate 0.95 max usage full/swa/mamba [0.46, 0.42, 0.09]
+tracebacks 0 min avail: 31733129216 31733137408 
+=== ARM n32-keep2 MAX_RUNNING=32 STRIP_FLAG= 22:47:46
+up ok=3
+[2026-11-26 22:48:47 TP0] Memory pool end. avail mem=4.73 GB
+[2026-11-26 22:48:50 TP0] Capture target decode CUDA graph end. bs=[1, 2, 4, 8, 12, 16, 24, 32], elapsed=3.44 s, mem usage=0.54 GB, avail mem=4.05 GB.
+#tokens: 109390 #tokens: 437562 
+agents=24 turns=12 echo=1 wall=622s ok=288/288 errors=0  new=409437 cached=7597312 hit=0.95 out=129395 out_tok_s=207.9
+  turn0 ttft p50 15.8 p90 15.8 max 15.8 | follow-up ttft p50 0.7 p90 1.4 max 6.7 | follow-up hits {'full': 152, 'prompt': 59, 'shared': 53} uncached p50 1120 p90 2179  max prompt 39391
+server: new 409437 cached 7597312 hit rate 0.95 max usage full/swa/mamba [0.46, 0.43, 0.09]
+tracebacks 0 min avail: 31730823168 31730819072 
+=== ARM n32-strip2 MAX_RUNNING=32 22:59:32
+up ok=3
+[2026-11-26 23:00:37 TP0] Memory pool end. avail mem=4.73 GB
+[2026-11-26 23:00:41 TP0] Capture target decode CUDA graph end. bs=[1, 2, 4, 8, 12, 16, 24, 32], elapsed=3.41 s, mem usage=0.54 GB, avail mem=4.05 GB.
+#tokens: 109390 #tokens: 437562 
+agents=24 turns=12 echo=1 wall=603s ok=288/288 errors=0  new=356589 cached=7659501 hit=0.96 out=129395 out_tok_s=214.7
+  turn0 ttft p50 15.8 p90 15.8 max 15.8 | follow-up ttft p50 0.6 p90 1.1 max 3.3 | follow-up hits {'shared': 4, 'full': 180, 'prompt': 80} uncached p50 1120 p90 1225  max prompt 38280
+server: new 356589 cached 7659501 hit rate 0.96 max usage full/swa/mamba [0.45, 0.39, 0.09]
+tracebacks 0 min avail: 31733039104 31733030912 
+CFG1 DONE

@@ -5,7 +5,7 @@
 #   - inkling2_runs_hip: per-expert runs of the routed rows of a decode batch.
 #   - inkling2_nvfp4_hip: packed NVFP4 expert weights times bf16 activations over those
 #     runs, so a step reads each selected expert once however many requests chose it
-#     (up to 16 tokens; larger batches and the MXFP8 layers keep the Triton kernels).
+#     (up to 32 tokens; larger batches keep the Triton kernels).
 #
 # The WMMA lane map, the v_perm_b32 code lookup and the run grouping follow radiance's
 # libr4d (Apache-2.0); the source header carries the attribution. The compile does not

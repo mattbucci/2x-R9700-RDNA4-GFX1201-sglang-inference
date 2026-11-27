@@ -1,0 +1,15 @@
+{
+  "file": "src/bounded_work_queue.py",
+  "line": 200,
+  "buggy": "            self._not_empty.notify()",
+  "fixed": "            self._not_empty.notify_all()",
+  "function": "BoundedWorkQueue.close",
+  "summary": "close() wakes only one thread waiting on the not-empty condition, so with two or more consumers blocked in get() on an empty queue all but one stay blocked after close instead of raising QueueClosed.",
+  "keywords": [
+    "close",
+    "notify_all",
+    "notify",
+    "consumers",
+    "blocked"
+  ]
+}

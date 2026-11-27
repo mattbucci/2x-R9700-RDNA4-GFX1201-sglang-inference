@@ -1,0 +1,15 @@
+{
+  "file": "src/union_find_groups.py",
+  "line": 103,
+  "buggy": "        self._size[root_a] += self._size[b]",
+  "fixed": "        self._size[root_a] += self._size[root_b]",
+  "function": "DisjointSets.union",
+  "summary": "union() adds the stale size of the argument b instead of the size of its root, so component sizes are too small when b is not a representative: union(1,2), union(3,4), union(2,4) gives component_size 3 instead of 4.",
+  "keywords": [
+    "size",
+    "root",
+    "union",
+    "component",
+    "stale"
+  ]
+}

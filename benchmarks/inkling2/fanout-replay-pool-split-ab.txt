@@ -1,0 +1,46 @@
+=== ARM p-r250a MAX_RUNNING=32 23:52:38
+up ok=3
+[2026-11-26 23:53:46 TP0] Memory pool end. avail mem=4.73 GB
+[2026-11-26 23:53:50 TP0] Capture target decode CUDA graph end. bs=[1, 2, 4, 8, 12, 16, 24, 32], elapsed=3.46 s, mem usage=0.54 GB, avail mem=4.05 GB.
+#tokens: 109390 #tokens: 437562 
+agents=24 turns=12 echo=1 wall=803s ok=288/288 errors=0  new=775779 cached=9732942 hit=0.93 out=129395 out_tok_s=161.0
+  turn0 ttft p50 15.9 p90 16.0 max 16.0 | follow-up ttft p50 1.4 p90 2.4 max 7.5 | follow-up hits {'full': 178, 'prompt': 83, 'shared': 3} uncached p50 2687 p90 2913  max prompt 56413
+server: new 775779 cached 9732942 hit rate 0.93 max usage full/swa/mamba [0.91, 0.38, 0.09]
+tracebacks 0 min avail: 31730794496 31730790400 
+=== ARM p-r125a MAX_RUNNING=32 SWA_RATIO=0.125 00:07:33
+up ok=3
+[2026-11-27 00:08:36 TP0] Memory pool end. avail mem=4.74 GB
+[2026-11-27 00:08:40 TP0] Capture target decode CUDA graph end. bs=[1, 2, 4, 8, 12, 16, 24, 32], elapsed=3.47 s, mem usage=0.54 GB, avail mem=4.07 GB.
+#tokens: 605855 #tokens: 75731 
+agents=24 turns=12 echo=1 wall=794s ok=288/288 errors=0  new=764389 cached=9656854 hit=0.93 out=129395 out_tok_s=162.9
+  turn0 ttft p50 15.7 p90 15.7 max 15.7 | follow-up ttft p50 1.3 p90 2.5 max 7.2 | follow-up hits {'shared': 5, 'full': 178, 'prompt': 81} uncached p50 2663 p90 2774  max prompt 53339
+server: new 764389 cached 9656854 hit rate 0.93 max usage full/swa/mamba [0.65, 0.55, 0.09]
+tracebacks 0 min avail: 31713882112 31713890304 
+=== ARM p-r125m MAX_RUNNING=32 SWA_RATIO=0.125 PROD_EXTRA=--mamba-full-memory-ratio 0.05 00:22:12
+up ok=3
+[2026-11-27 00:23:15 TP0] Memory pool end. avail mem=4.71 GB
+[2026-11-27 00:23:18 TP0] Capture target decode CUDA graph end. bs=[1, 2, 4, 8, 12, 16, 24, 32], elapsed=3.42 s, mem usage=0.54 GB, avail mem=4.04 GB.
+#tokens: 634727 #tokens: 79340 
+agents=24 turns=12 echo=1 wall=795s ok=288/288 errors=0  new=763543 cached=9668893 hit=0.93 out=129395 out_tok_s=162.8
+  turn0 ttft p50 15.8 p90 15.8 max 15.8 | follow-up ttft p50 1.3 p90 2.4 max 6.9 | follow-up hits {'shared': 4, 'full': 181, 'prompt': 79} uncached p50 2678 p90 2755  max prompt 52404
+server: new 763543 cached 9668893 hit rate 0.93 max usage full/swa/mamba [0.63, 0.53, 0.16]
+tracebacks 0 min avail: 31751626752 31751618560 
+=== ARM p-r125b MAX_RUNNING=32 SWA_RATIO=0.125 00:36:53
+up ok=3
+[2026-11-27 00:37:54 TP0] Memory pool end. avail mem=4.74 GB
+[2026-11-27 00:37:57 TP0] Capture target decode CUDA graph end. bs=[1, 2, 4, 8, 12, 16, 24, 32], elapsed=3.52 s, mem usage=0.54 GB, avail mem=4.07 GB.
+#tokens: 605855 #tokens: 75731 
+agents=24 turns=12 echo=1 wall=814s ok=288/288 errors=0  new=759161 cached=9663449 hit=0.93 out=129395 out_tok_s=158.9
+  turn0 ttft p50 15.9 p90 16.0 max 16.0 | follow-up ttft p50 1.3 p90 2.4 max 7.2 | follow-up hits {'full': 181, 'prompt': 80, 'shared': 3} uncached p50 2660 p90 2771  max prompt 52392
+server: new 777020 cached 9679897 hit rate 0.93 max usage full/swa/mamba [0.65, 0.56, 0.09]
+tracebacks 0 min avail: 31782649856 31782649856 
+=== ARM p-r250b MAX_RUNNING=32 00:51:50
+up ok=3
+[2026-11-27 00:52:54 TP0] Memory pool end. avail mem=4.73 GB
+[2026-11-27 00:52:58 TP0] Capture target decode CUDA graph end. bs=[1, 2, 4, 8, 12, 16, 24, 32], elapsed=3.49 s, mem usage=0.54 GB, avail mem=4.05 GB.
+#tokens: 109390 #tokens: 437562 
+agents=24 turns=12 echo=1 wall=795s ok=288/288 errors=0  new=759195 cached=9654742 hit=0.93 out=129395 out_tok_s=162.8
+  turn0 ttft p50 15.9 p90 15.9 max 15.9 | follow-up ttft p50 1.3 p90 2.4 max 7.6 | follow-up hits {'shared': 4, 'full': 175, 'prompt': 85} uncached p50 2667 p90 2760  max prompt 53152
+server: new 761141 cached 9654742 hit rate 0.93 max usage full/swa/mamba [0.91, 0.38, 0.09]
+tracebacks 0 min avail: 31730614272 31730634752 
+CFG2 DONE

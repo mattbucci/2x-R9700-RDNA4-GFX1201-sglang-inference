@@ -1,0 +1,157 @@
+diff --git a/python/sglang/kernels/aot/csrc/quantization/nvfp4/inkling2_moe_hip.cu b/python/sglang/kernels/aot/csrc/quantization/nvfp4/inkling2_moe_hip.cu
+index acbf88f..9156a60 100644
+--- a/python/sglang/kernels/aot/csrc/quantization/nvfp4/inkling2_moe_hip.cu
++++ b/python/sglang/kernels/aot/csrc/quantization/nvfp4/inkling2_moe_hip.cu
+@@ -44,7 +44,7 @@ namespace {
+ constexpr uint32_t kWave = 32;
+ constexpr uint32_t kTile = 16;      // WMMA tile edge, and the NVFP4 scale group
+ constexpr uint32_t kRunRows = 16;   // routed rows per run (one activation tile)
+-constexpr int64_t kMaxSlots = 128;  // routed rows per call: a token picks an expert once
++constexpr int64_t kMaxSlots = 256;  // routed rows per call (32 tokens of top-8)
+ 
+ typedef short s8v __attribute__((ext_vector_type(8)));
+ typedef float f8v __attribute__((ext_vector_type(8)));
+@@ -89,8 +89,10 @@ __device__ __forceinline__ s8v e2m1x8_bf16(uint32_t wv) {
+ 
+ __device__ __forceinline__ float softcap(float x, float cap) { return tanhf(x / cap) * cap; }
+ 
+-// Runs: one per distinct expert in ascending expert order. RunE[r] is the expert (or -1 past
+-// the last run), RunS[r][0..15] its routed rows (slots) in ascending order, -1 padded.
++// Runs: one per sixteen routed rows of a distinct expert, in ascending expert order (a token
++// picks an expert once, so an expert has a second run only past sixteen tokens). RunE[r] is
++// the expert (or -1 past the last run), RunS[r][0..15] its routed rows (slots) in ascending
++// order, -1 padded.
+ //
+ // The same launch writes the activations in the kernel's element order: within each eight
+ // columns [0, 2, 4, 6, 1, 3, 5, 7], the order the packed codes decode to.
+@@ -112,7 +114,7 @@ __global__ __launch_bounds__(128) void ink2_runs_kernel(
+   const uint32_t e = threadIdx.x;
+   uint32_t cnt = 0u;
+   for (uint32_t i = 0; i < slots; ++i) cnt += (uint32_t)ids[i] == e ? 1u : 0u;
+-  has[e] = cnt ? 1u : 0u;
++  has[e] = (cnt + kRunRows - 1u) / kRunRows;
+   __syncthreads();
+   uint32_t before = 0u, total = 0u;
+   for (uint32_t i = 0; i < 128u; ++i) {
+@@ -120,15 +122,14 @@ __global__ __launch_bounds__(128) void ink2_runs_kernel(
+     total += v;
+     before += i < e ? v : 0u;
+   }
++  // Runs past the last one: thread e clears total + e and total + e + 128 (runs <= 256).
++  for (uint32_t r = total + e; r < runs; r += 128u) RunE[r] = -1;
+   if (cnt) {
+-    RunE[before] = (int32_t)e;
++    for (uint32_t j = 0; j < (cnt + kRunRows - 1u) / kRunRows; ++j) RunE[before + j] = (int32_t)e;
+     uint32_t n = 0u;
+     for (uint32_t i = 0; i < slots; ++i)
+-      if ((uint32_t)ids[i] == e && n < kRunRows) RunS[before * kRunRows + n++] = (int32_t)i;
+-    for (; n < kRunRows; ++n) RunS[before * kRunRows + n] = -1;
+-  } else {
+-    const uint32_t r = total + (e - before);
+-    if (r < runs) RunE[r] = -1;
++      if ((uint32_t)ids[i] == e) RunS[before * kRunRows + n++] = (int32_t)i;
++    for (; n % kRunRows; ++n) RunS[before * kRunRows + n] = -1;
+   }
+ }
+ 
+@@ -424,7 +425,7 @@ void check_weights(const torch::Tensor& w, const torch::Tensor& s, const torch::
+ 
+ }  // namespace
+ 
+-// topk_ids int32 [T][top_k], T * top_k <= 128, at most 128 experts.
++// topk_ids int32 [T][top_k], T * top_k <= 256, at most 128 experts.
+ // Returns (run_expert int32 [R], run_slots int32 [R][16], x_ordered) with R = T * top_k.
+ // x bf16 [T][K], K % 8 == 0: also returns x in the expert kernel's element order.
+ std::tuple<torch::Tensor, torch::Tensor, torch::Tensor> inkling2_runs_hip(torch::Tensor topk_ids,
+@@ -435,7 +436,7 @@ std::tuple<torch::Tensor, torch::Tensor, torch::Tensor> inkling2_runs_hip(torch:
+   TORCH_CHECK(topk_ids.is_cuda() && topk_ids.scalar_type() == at::ScalarType::Int &&
+                   topk_ids.is_contiguous(), "inkling2_runs_hip: contiguous int32 HIP ids");
+   const int64_t slots = topk_ids.numel();
+-  TORCH_CHECK(slots >= 1 && slots <= kMaxSlots, "inkling2_runs_hip: 1 <= slots <= 128");
++  TORCH_CHECK(slots >= 1 && slots <= kMaxSlots, "inkling2_runs_hip: 1 <= slots <= 256");
+   const c10::cuda::CUDAGuard device_guard(topk_ids.device());
+   const auto stream =
+       at::hip::getCurrentHIPStream(static_cast<c10::DeviceIndex>(topk_ids.get_device()));
+diff --git a/python/sglang/kernels/ops/moe/inkling2_moe_rdna4.py b/python/sglang/kernels/ops/moe/inkling2_moe_rdna4.py
+index a2574c8..dd22a1a 100644
+--- a/python/sglang/kernels/ops/moe/inkling2_moe_rdna4.py
++++ b/python/sglang/kernels/ops/moe/inkling2_moe_rdna4.py
+@@ -27,8 +27,8 @@ from sglang.srt.layers.moe.moe_runner.triton_utils.moe_align_block_size import (
+ logger = logging.getLogger(__name__)
+ 
+ # Native per-expert kernels (NVFP4 and MXFP8) (scripts/build_inkling2_moe_hip.sh). A run holds at most
+-# sixteen rows and a token picks an expert once, hence the token bound.
+-HIP_MAX_TOKENS = min(int(os.environ.get("SGLANG_INKLING2_MOE_HIP_MAX_TOKENS", "16")), 16)
++# sixteen rows of an expert, an expert with more rows gets a second run; 256 routed rows per call.
++HIP_MAX_TOKENS = min(int(os.environ.get("SGLANG_INKLING2_MOE_HIP_MAX_TOKENS", "32")), 32)
+ _hip = None
+ if os.environ.get("SGLANG_INKLING2_MOE_HIP", "1") != "0" and HIP_MAX_TOKENS > 0:
+     try:
+@@ -319,7 +319,7 @@ def inkling2_routed_experts(
+     tokens, top_k = topk_ids.shape
+     num_experts = w13.shape[0]
+     x = x.to(torch.bfloat16).contiguous()
+-    if _hip is not None and (nvfp4 or _HIP_MXFP8) and 0 < tokens <= HIP_MAX_TOKENS and tokens * top_k <= 128 and num_experts <= 128:
++    if _hip is not None and (nvfp4 or _HIP_MXFP8) and 0 < tokens <= HIP_MAX_TOKENS and tokens * top_k <= 256 and num_experts <= 128:
+         return _routed_experts_hip(x, topk_ids, topk_weights, w13, w13_scale, w2, w2_scale, w13_factor, w2_factor, nvfp4, gate_cap, up_cap)
+     gate_up = torch.empty((tokens * top_k, w13.shape[1]), dtype=torch.float32, device=x.device)
+     down = torch.empty((tokens * top_k, w2.shape[1]), dtype=torch.float32, device=x.device)
+diff --git a/python/sglang/srt/models/inkling2.py b/python/sglang/srt/models/inkling2.py
+index c47a5e7..11f0b62 100644
+--- a/python/sglang/srt/models/inkling2.py
++++ b/python/sglang/srt/models/inkling2.py
+@@ -109,15 +109,24 @@ def _rms_norm_stack_fn(x, weights, eps: float):
+ 
+ # Token counts up to this run the projections as GEMVs (one launch for every segment).
+ _GEMV_MAX_TOKENS = int(os.environ.get("SGLANG_INKLING2_GEMV_MAX_TOKENS", "4"))
+-# Native projection GEMM for decode batches of 2..16 tokens (scripts/build_inkling2_moe_hip.sh):
+-# one pass over the weight serves every token, where the GEMV reads it once per token.
++# Native projection GEMM for decode batches of 2..32 tokens (scripts/build_inkling2_moe_hip.sh):
++# one pass over the weight serves sixteen tokens, where the GEMV reads it once per token.
+ _seg_gemm_hip = None
+ if os.environ.get("SGLANG_INKLING2_PROJ_HIP", "1") != "0":
+     try:
+         from inkling2_moe_hip_ext import inkling2_seg_gemm_hip as _seg_gemm_hip
+     except ImportError:
+         _seg_gemm_hip = None
+-_HIP_ROWS = range(2, 17) if _seg_gemm_hip is not None else ()
++_HIP_MAX_ROWS = min(int(os.environ.get("SGLANG_INKLING2_PROJ_HIP_MAX_ROWS", "32")), 32)
++_HIP_ROWS = range(2, _HIP_MAX_ROWS + 1) if _seg_gemm_hip is not None else ()
++
++
++def _seg_gemm_rows(x, w, b1, b2, nt):
++    """The native projection GEMM, one launch per sixteen tokens."""
++    T = x.shape[-2]
++    if T <= 16:
++        return _seg_gemm_hip(x, w, b1, b2, nt)
++    return torch.cat([_seg_gemm_hip(x[..., i : i + 16, :], w, b1, b2, nt) for i in range(0, T, 16)], 0)
+ # Decode launch fusion: "0" restores the separate launches; "notail", "nokv" and "nogates"
+ # (comma separated) switch one fusion off.
+ _FUSE = os.environ.get("SGLANG_INKLING2_FUSE", "1").split(",")
+@@ -343,7 +352,7 @@ class Inkling2Attention(nn.Module):
+         global _proj_hip_logged
+         if self.hip_rows and not _proj_hip_logged:
+             _proj_hip_logged = True
+-            logger.info("Inkling 2 attention projections: HIP multi-row GEMM active (2..16 tokens)")
++            logger.info("Inkling 2 attention projections: HIP multi-row GEMM active (2..%d tokens)", _HIP_ROWS[-1])
+ 
+     def _sconv(self, module: ShortConvolution, x, positions, forward_batch, pass_idx, dynamic_input=None):
+         with module.state_layer_override(self.conv_ids[pass_idx]):
+@@ -356,7 +365,7 @@ class Inkling2Attention(nn.Module):
+         T = x.shape[-2]
+         if T in self.hip_rows and x.dtype == torch.bfloat16:
+             n = self.w_all.shape[0]
+-            proj = _seg_gemm_hip(x, self.w_all, kv, 2 * kv, 4) if x.dim() == 3 else _seg_gemm_hip(x, self.w_all, n, n, 4)
++            proj = _seg_gemm_rows(x, self.w_all, kv, 2 * kv, 4) if x.dim() == 3 else _seg_gemm_rows(x, self.w_all, n, n, 4)
+         elif T <= _GEMV_MAX_TOKENS:
+             proj = _seg_gemv(x, self.w_all, [kv, 2 * kv])
+         elif x.dim() == 2:
+@@ -408,7 +417,7 @@ class Inkling2Attention(nn.Module):
+         out = _gate_out_fn(out.view(T, -1), gate)
+         if T in self.hip_rows and out.dtype == torch.bfloat16 or T <= _GEMV_MAX_TOKENS:
+             w = self.wo_ud.weight
+-            out = _seg_gemm_hip(out.contiguous(), w, w.shape[0], w.shape[0], 2) if T in self.hip_rows and out.dtype == torch.bfloat16 else _seg_gemv(out, w, [])
++            out = _seg_gemm_rows(out.contiguous(), w, w.shape[0], w.shape[0], 2) if T in self.hip_rows and out.dtype == torch.bfloat16 else _seg_gemv(out, w, [])
+             return tensor_model_parallel_all_reduce(out) if get_tensor_model_parallel_world_size() > 1 else out
+         return self.wo_ud(out)[0]
+ 

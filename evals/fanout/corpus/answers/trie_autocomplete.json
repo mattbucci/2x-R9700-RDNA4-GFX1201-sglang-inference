@@ -1,0 +1,15 @@
+{
+  "file": "src/trie_autocomplete.py",
+  "line": 142,
+  "buggy": "            if child.children:",
+  "fixed": "            if child.children or child.is_word:",
+  "function": "Trie.delete",
+  "summary": "Branch pruning after a delete only stops at nodes with children, so it also removes ancestor nodes that are themselves stored words: after inserting 'car' and 'cart', delete('cart') makes 'car' disappear while len() still counts it.",
+  "keywords": [
+    "delete",
+    "prune",
+    "is_word",
+    "prefix",
+    "shorter"
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "file": "src/lru_ttl_cache.py",
+  "line": 142,
+  "buggy": "        if len(self._entries) >= self._capacity:",
+  "fixed": "        if key not in self._entries and len(self._entries) >= self._capacity:",
+  "function": "LruTtlCache.put",
+  "summary": "put() makes room whenever the cache is full, even when the key is already present, so updating an existing key in a full cache (capacity 2: put a, put b, put b again) needlessly evicts the least recently used entry a.",
+  "keywords": [
+    "put",
+    "existing",
+    "update",
+    "evict",
+    "full"
+  ]
+}

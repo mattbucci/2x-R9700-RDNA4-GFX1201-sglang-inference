@@ -1,0 +1,146 @@
+=== ARM base1 [_X=1] 21:45:13
+up
+greedy 3acea6797b16593d 400 'or simplicity.\n\nInitial tree:\nRoot: [20]\nLeft leaf: [5, 10]|'
+greedy 45962074f7b4948e 400 ' the function:\n\n```python\nimport re\nfrom dataclasses import|'
+greedy 7cb9a2253db6f13a 400 'a space, Stable?, In-place?, Notes.\n\nNeed be careful: Quick|'
+gconc n=24 prompt 0: {'8e8ec2f7f2701f79': 1, '7c6b7a53a7f27d75': 1, 'ef6194504f200a1e': 1, '64d22283cc3d6929': 1, '57670e4b3f0d72e7': 1, '894a6f7e18d12953': 1, 'ebe311ab866b68ef': 1, '101e7ae142894ee2': 1}  tail 'le: start empty, insert 10,20,30,40 with t=2? Let|'
+gconc n=24 prompt 1: {'0c9b43f161ed9a07': 1, 'a121a0313c0dcd7b': 1, '65d62ea1a1edab08': 1, '2d8c728828b457e2': 1, '7a161c508b54e9b0': 1, 'bdd57eb4d8e89cdb': 1, 'c945b674d2e18c7a': 1, '3f70c74b7307b1e8': 1}  tail 'PnDTnHnMnS` with time part\n- Also can be `PnDTnHn|'
+gconc n=24 prompt 2: {'e3fede2e907af4d6': 1, 'cea468e9914b9e7a': 1, 'c81c0ee3753664de': 1, 'e2aaae2f1fae3879': 1, '04c53f6f228df47f': 1, '9789c581eaf083f0': 1, '6e6a10fbdfc38199': 1, 'e823c70b4890f883': 1}  tail ' log n) | O(n log n) |\n| Worst-case time | O(n²) |'
+n=1:   78.6   78.6  best   78.6 tok/s total,  78.6 per request
+n=8:  365.0  363.2  best  365.0 tok/s total,  45.6 per request
+n=16:  562.5  563.5  best  563.5 tok/s total,  35.2 per request
+n=20:  376.7  375.8  best  376.7 tok/s total,  18.8 per request
+n=24:  487.1  488.8  best  488.8 tok/s total,  20.4 per request
+n=32:  579.3  578.2  best  579.3 tok/s total,  18.1 per request
+      1  Inkling 2 attention projections: HIP multi-row GEMM active (2..16 tokens)
+      1  Inkling 2 decode launch fusion active: tail, k/v, message gate order
+      1  Inkling 2 routed experts: HIP per-expert kernel active (up to 16 tokens)
+tracebacks 0
+=== ARM tile1 [PYTHONPATH=/data/sgl-v0523-dev/python:SCRATCH/ink2hip32/build SGLANG_INKLING2_MOE_HIP_MAX_TOKENS=16 SGLANG_INKLING2_PROJ_HIP_MAX_ROWS=16] 21:49:53
+up
+greedy 3acea6797b16593d 400 'or simplicity.\n\nInitial tree:\nRoot: [20]\nLeft leaf: [5, 10]|'
+greedy 45962074f7b4948e 400 ' the function:\n\n```python\nimport re\nfrom dataclasses import|'
+greedy 7cb9a2253db6f13a 400 'a space, Stable?, In-place?, Notes.\n\nNeed be careful: Quick|'
+gconc n=24 prompt 0: {'101e7ae142894ee2': 1, 'de483204461eeee8': 1, 'd84c575922fb164f': 1, '05abee0b254f4958': 1, '71697c57149932ca': 1, '894a6f7e18d12953': 1, '7ba1ab61c43ddf1e': 1, '0da16b64ce8283c2': 1}  tail 'le. Start with an empty tree, insert keys in some|'
+gconc n=24 prompt 1: {'b6c50fc710611f8b': 1, '7b88c5036f9e4d0e': 1, '5ecc86af09daa449': 1, '9e78fb8daf09f1ea': 1, '3b0745a16aaf70ff': 1, 'e5f31f71218f8419': 1, '32c9a11b552df159': 1, '0c9b43f161ed9a07': 1}  tail 'nvalid. Also `PT` alone is invalid.\n\nThe format:\n|'
+gconc n=24 prompt 2: {'18fbad2410ce3b35': 1, 'a5afdb797d4a6aa0': 1, 'e1f14d53d74ecce9': 1, '3c1e3bb55539686c': 1, '9e863b661ec22dac': 1, 'de3a63c8eccdf5eb': 1, '2f4e6e057f4b8d6d': 1, 'fec8204d7fd8a82f': 1}  tail 'table?, In-place?, Notes.\n\nNeed be careful: Quick|'
+n=1:   79.1   79.0  best   79.1 tok/s total,  79.1 per request
+n=8:  365.8  365.3  best  365.8 tok/s total,  45.7 per request
+n=16:  564.9  566.2  best  566.2 tok/s total,  35.4 per request
+n=20:  373.1  371.7  best  373.1 tok/s total,  18.7 per request
+n=24:  488.8  490.3  best  490.3 tok/s total,  20.4 per request
+n=32:  573.6  576.8  best  576.8 tok/s total,  18.0 per request
+      1  Inkling 2 attention projections: HIP multi-row GEMM active (2..16 tokens)
+      1  Inkling 2 decode launch fusion active: tail, k/v, message gate order
+      1  Inkling 2 routed experts: HIP per-expert kernel active (up to 16 tokens)
+tracebacks 0
+=== ARM exp32a [PYTHONPATH=/data/sgl-v0523-dev/python:SCRATCH/ink2hip32/build SGLANG_INKLING2_PROJ_HIP_MAX_ROWS=16] 21:54:32
+up
+greedy 6d672fac0e6993d0 400 'keys, show splits.\n\nLet me do a sequence: insert 10, 20, 30|'
+greedy 8aaf73e93ae5220e 400 'rpretations. Let me be careful. The ISO 8601 standard says:|'
+greedy 7cb9a2253db6f13a 400 'a space, Stable?, In-place?, Notes.\n\nNeed be careful: Quick|'
+gconc n=24 prompt 0: {'16df3259d2edada6': 1, '58aab206c84a6165': 1, '16a0fb5a36af45f1': 1, '9a760dc5ac330f52': 1, '81505426f8759425': 1, 'b5dee3c8e9e2ec23': 1, 'f9b7ae8d7ebb6e15': 1, '88b2ed768d3a4945': 1}  tail 'uct a concrete example. Start with an empty tree,|'
+gconc n=24 prompt 1: {'d269e40fd8396a31': 1, '6dbd7473873d5743': 1, '2fdc1b497c8bda89': 1, '9a0aa1830e9e579a': 1, 'ab58cd174066b001': 1, 'c7ae446a53ec40d6': 1, '6f18e4dcd2f5c918': 1, '357865145704f6ae': 1}  tail 'cimal values in some contexts — the standard says|'
+gconc n=24 prompt 2: {'de9f45e9114fae1d': 1, 'cf5ef648222ac91e': 1, '8b35963edf20de21': 1, '655670a599dea813': 1, 'cea468e9914b9e7a': 1, '09e2f5da6cfb705e': 1, '79aa9b6fb71b59f2': 1, '099a3344177e46e2': 1}  tail "can be stable.\n\nLet's craft with steps and table.|"
+n=1:   79.3   79.2  best   79.3 tok/s total,  79.3 per request
+n=8:  363.9  366.2  best  366.2 tok/s total,  45.8 per request
+n=16:  566.8  565.9  best  566.8 tok/s total,  35.4 per request
+n=20:  536.3  537.1  best  537.1 tok/s total,  26.9 per request
+n=24:  687.6  687.6  best  687.6 tok/s total,  28.7 per request
+n=32:  805.6  805.9  best  805.9 tok/s total,  25.2 per request
+      1 Capturing batches (bs=32 avail_mem=4.46 GB):   0%|          | 0/8 [00:00<?, ?it/s][2026-11-26 21:55:01 TP0] Inkling 2 decode launch fusion active: tail
+      1  Inkling 2 attention projections: HIP multi-row GEMM active (2..16 tokens)
+      1  Inkling 2 routed experts: HIP per-expert kernel active (up to 32 tokens)
+tracebacks 0
+=== ARM all32a [PYTHONPATH=/data/sgl-v0523-dev/python:SCRATCH/ink2hip32/build] 21:58:41
+up
+greedy 50569f525fb98858 400 '\n\nStart empty.\nInsert 10: root [10].\nInsert 20: root [10,20|'
+greedy c12e42008dcd8ad3 400 'seconds is ambiguous. Better to keep components and provide|'
+greedy 7cb9a2253db6f13a 400 'a space, Stable?, In-place?, Notes.\n\nNeed be careful: Quick|'
+gconc n=24 prompt 0: {'88b2ed768d3a4945': 1, '16df3259d2edada6': 1, 'a700f9704ed75b5d': 1, '011aab9b4c74f957': 1, '37ccef38686b5fb8': 1, '4068ed3714815bda': 1, '58cfee4e48177cd5': 1, 'e1b29c1cf221af57': 1}  tail '\nOption: Start empty, insert 10,20,30,40,50,60,70|'
+gconc n=24 prompt 1: {'47092fa9aa6591fe': 1, 'a2ffeddcce3638fc': 1, 'c9638a65610ca067': 1, 'e1fb367e0529f683': 1, '1237846b2d268730': 1, '6970c3502e9268df': 1, '693482a1bc7e6071': 1, 'd8a570d2a377ae43': 1}  tail ':\n\n```python\nfrom dataclasses import dataclass\n\n@|'
+gconc n=24 prompt 2: {'e3fede2e907af4d6': 2, 'cea468e9914b9e7a': 1, 'cf5ef648222ac91e': 1, '80b042a36b95695f': 1, '3023b3132db6964e': 1, 'f5f6b498f4d68521': 1, '98aecc68c167efee': 1}  tail ' log n) | O(n log n) |\n| Worst-case time | O(n²) |'
+n=1:   79.3   79.5  best   79.5 tok/s total,  79.5 per request
+n=8:  364.5  366.1  best  366.1 tok/s total,  45.8 per request
+n=16:  566.4  567.5  best  567.5 tok/s total,  35.5 per request
+n=20:  545.9  546.4  best  546.4 tok/s total,  27.3 per request
+n=24:  694.5  692.1  best  694.5 tok/s total,  28.9 per request
+n=32:  811.6  813.8  best  813.8 tok/s total,  25.4 per request
+      1  Inkling 2 attention projections: HIP multi-row GEMM active (2..32 tokens)
+      1  Inkling 2 decode launch fusion active: tail, k/v, message gate order
+      1  Inkling 2 routed experts: HIP per-expert kernel active (up to 32 tokens)
+tracebacks 0
+=== ARM all32b [PYTHONPATH=/data/sgl-v0523-dev/python:SCRATCH/ink2hip32/build] 22:02:45
+up
+greedy 50569f525fb98858 400 '\n\nStart empty.\nInsert 10: root [10].\nInsert 20: root [10,20|'
+greedy c12e42008dcd8ad3 400 'seconds is ambiguous. Better to keep components and provide|'
+greedy 7cb9a2253db6f13a 400 'a space, Stable?, In-place?, Notes.\n\nNeed be careful: Quick|'
+gconc n=24 prompt 0: {'88b2ed768d3a4945': 1, 'fd933bc199fd2f01': 1, 'b5911a310e92c247': 1, '7d1d4c8a95936361': 1, '6be6ee0e5701aa19': 1, 'e41c00c4b6999c29': 1, 'cbcaadbf66453052': 1, '2013d80ce2ef2daf': 1}  tail '\nOption: Start empty, insert 10,20,30,40,50,60,70|'
+gconc n=24 prompt 1: {'102e4d292ad3a4c8': 1, '7c1f327687daa6cf': 1, '6dbd7473873d5743': 1, '169cc7c6e2ef47c5': 1, '9e54c8712773f548': 1, '693482a1bc7e6071': 1, '5ade2e910be7e0e1': 1, 'b9fa5be1815b7bb2': 1}  tail 'm dataclasses import dataclass\n\n@dataclass(frozen|'
+gconc n=24 prompt 2: {'22ff9a966ca5cfe6': 1, '9f8503845846234d': 1, 'e26409d2dd23ac6a': 1, 'fd24ed4b4186baa7': 1, '320fb5cf42e0dc2b': 1, '443dce6db9e606e0': 1, 'a5afdb797d4a6aa0': 1, '179d39a10d7d0793': 1}  tail 'standard. Deterministic worst-case: quicksort O(n|'
+n=1:   79.4   79.2  best   79.4 tok/s total,  79.4 per request
+n=8:  365.3  368.2  best  368.2 tok/s total,  46.0 per request
+n=16:  568.9  563.8  best  568.9 tok/s total,  35.6 per request
+n=20:  544.5  545.2  best  545.2 tok/s total,  27.3 per request
+n=24:  694.8  693.1  best  694.8 tok/s total,  28.9 per request
+n=32:  811.3  813.0  best  813.0 tok/s total,  25.4 per request
+      1  Inkling 2 attention projections: HIP multi-row GEMM active (2..32 tokens)
+      1  Inkling 2 decode launch fusion active: tail, k/v, message gate order
+      1  Inkling 2 routed experts: HIP per-expert kernel active (up to 32 tokens)
+tracebacks 0
+=== ARM exp32b [PYTHONPATH=/data/sgl-v0523-dev/python:SCRATCH/ink2hip32/build SGLANG_INKLING2_PROJ_HIP_MAX_ROWS=16] 22:06:50
+up
+greedy 6d672fac0e6993d0 400 'keys, show splits.\n\nLet me do a sequence: insert 10, 20, 30|'
+greedy 8aaf73e93ae5220e 400 'rpretations. Let me be careful. The ISO 8601 standard says:|'
+greedy 7cb9a2253db6f13a 400 'a space, Stable?, In-place?, Notes.\n\nNeed be careful: Quick|'
+gconc n=24 prompt 0: {'e6a17816dcaa1d83': 1, 'dc18d8a1ce4d9993': 1, 'fb6cee43e9f867a3': 1, '16df3259d2edada6': 1, '9a760dc5ac330f52': 1, '436ffdc5d9f7e29e': 1, '97d333242aa21e2f': 1, 'ba1b811c48274071': 1}  tail 'empty tree, insert keys: 10, 20, 30, 40, 50, 60, |'
+gconc n=24 prompt 1: {'6f18e4dcd2f5c918': 1, '9ac568d3cc2eb1b5': 1, 'ab58cd174066b001': 1, '671294cdf99ee2c3': 1, '9a0aa1830e9e579a': 1, '7c0571a28f2e8a53': 1, 'b1c29833fff40e78': 1, '102e4d292ad3a4c8': 1}  tail ' write a robust parser:\n\n```python\nimport re\nfrom|'
+gconc n=24 prompt 2: {'2f8ae7f6c5e8adfd': 1, '307260325a976eee': 1, 'de9f45e9114fae1d': 1, '552c0a78b74406b4': 1, 'b3d8c924a38c5ba8': 1, '9ebefaed141ab16b': 1, '78948f90870b86ea': 1, 'e454ba388be79884': 1}  tail '40; 17×3=51; sum=391. 391+191=582.\n\nTable columns|'
+n=1:   79.2   79.3  best   79.3 tok/s total,  79.3 per request
+n=8:  365.4  368.0  best  368.0 tok/s total,  46.0 per request
+n=16:  570.3  567.2  best  570.3 tok/s total,  35.6 per request
+n=20:  541.3  540.8  best  541.3 tok/s total,  27.1 per request
+n=24:  687.9  688.9  best  688.9 tok/s total,  28.7 per request
+n=32:  807.2  805.2  best  807.2 tok/s total,  25.2 per request
+      1  Inkling 2 attention projections: HIP multi-row GEMM active (2..16 tokens)
+      1  Inkling 2 decode launch fusion active: tail, k/v, message gate order
+      1  Inkling 2 routed experts: HIP per-expert kernel active (up to 32 tokens)
+tracebacks 0
+=== ARM tile2 [PYTHONPATH=/data/sgl-v0523-dev/python:SCRATCH/ink2hip32/build SGLANG_INKLING2_MOE_HIP_MAX_TOKENS=16 SGLANG_INKLING2_PROJ_HIP_MAX_ROWS=16] 22:10:54
+up
+greedy 3acea6797b16593d 400 'or simplicity.\n\nInitial tree:\nRoot: [20]\nLeft leaf: [5, 10]|'
+greedy 45962074f7b4948e 400 ' the function:\n\n```python\nimport re\nfrom dataclasses import|'
+greedy 7cb9a2253db6f13a 400 'a space, Stable?, In-place?, Notes.\n\nNeed be careful: Quick|'
+gconc n=24 prompt 0: {'af783568cf772984': 1, 'de483204461eeee8': 1, 'ba313d1ee7feb535': 2, 'c9099be20bda3b61': 1, 'fdc1a52f9be88ff0': 1, '3a3e7ecde78b0949': 1, '4a8069d2cadee9dd': 1}  tail 'r insert then split bottom-up. Simpler bottom-up:|'
+gconc n=24 prompt 1: {'fb923a16fc2b9221': 1, '46515f77fc03d38a': 1, 'fbc1a2792a8a025f': 1, '213d858ed7c5e256': 1, 'ed5b5c58fb3bd4dc': 1, '8ebb542d7e479142': 1, '7b88c5036f9e4d0e': 1, '66dd4a66824945e8': 1}  tail 'uration regex:\n```\n^(-)?P(?:(\\d+(?:\\.\\d+)?)Y)?(?:|'
+gconc n=24 prompt 2: {'539a98915dcff93c': 1, '6e6a10fbdfc38199': 1, 'e1f14d53d74ecce9': 1, 'bd13537bc2eb14a5': 1, '017ac2f68c1f5f4d': 1, '724dd026f51c6bcf': 1, '655670a599dea813': 1, '18fbad2410ce3b35': 1}  tail ' Extra space | O(log n) avg recursion stack | O(n)'
+n=1:   78.9   79.0  best   79.0 tok/s total,  79.0 per request
+n=8:  365.2  364.3  best  365.2 tok/s total,  45.6 per request
+n=16:  565.6  568.8  best  568.8 tok/s total,  35.5 per request
+n=20:  374.5  372.1  best  374.5 tok/s total,  18.7 per request
+n=24:  487.1  489.4  best  489.4 tok/s total,  20.4 per request
+n=32:  577.1  572.7  best  577.1 tok/s total,  18.0 per request
+      1  Inkling 2 attention projections: HIP multi-row GEMM active (2..16 tokens)
+      1  Inkling 2 decode launch fusion active: tail, k/v, message gate order
+      1  Inkling 2 routed experts: HIP per-expert kernel active (up to 16 tokens)
+tracebacks 0
+=== ARM base2 [_X=1] 22:15:33
+up
+greedy 3acea6797b16593d 400 'or simplicity.\n\nInitial tree:\nRoot: [20]\nLeft leaf: [5, 10]|'
+greedy 45962074f7b4948e 400 ' the function:\n\n```python\nimport re\nfrom dataclasses import|'
+greedy 7cb9a2253db6f13a 400 'a space, Stable?, In-place?, Notes.\n\nNeed be careful: Quick|'
+gconc n=24 prompt 0: {'0508ffc625fd3fed': 1, '2b098f4ba80dc6d6': 1, 'b2ef89569730f369': 1, '101e7ae142894ee2': 1, 'f0800edca4176ec5': 1, 'e08eb4eee88bf377': 1, '64d22283cc3d6929': 1, '50f5d5c5b6301f3f': 1}  tail 's, min 1 key (except root). Splitting a node with|'
+gconc n=24 prompt 1: {'92b12da21e2ef275': 1, 'a5c195d8413251ac': 1, '0c9b43f161ed9a07': 1, 'a804d5c848aff71c': 1, 'a121a0313c0dcd7b': 1, '2cd7d79c87e6cfb1': 1, '4b42a077bced3690': 1, 'b84e15bdbf30b0f7': 1}  tail ' float or int? Better: years, months, weeks, days|'
+gconc n=24 prompt 2: {'c92e234e81c2611f': 1, 'e2df1eb003437c07': 1, '2a55c0d7cde7eb5c': 1, '539a98915dcff93c': 1, '73d91cafa2ccb2e0': 1, 'c81c0ee3753664de': 1, 'ae9d75dedbbe257f': 1, '04c53f6f228df47f': 1}  tail 'ace: quicksort yes (in-place partitioning), merge|'
+n=1:   79.0   79.1  best   79.1 tok/s total,  79.1 per request
+n=8:  365.2  365.3  best  365.3 tok/s total,  45.7 per request
+n=16:  564.3  565.8  best  565.8 tok/s total,  35.4 per request
+n=20:  385.7  384.1  best  385.7 tok/s total,  19.3 per request
+n=24:  490.8  488.4  best  490.8 tok/s total,  20.5 per request
+n=32:  575.1  574.5  best  575.1 tok/s total,  18.0 per request
+      1  Inkling 2 attention projections: HIP multi-row GEMM active (2..16 tokens)
+      1  Inkling 2 decode launch fusion active: tail, k/v, message gate order
+      1  Inkling 2 routed experts: HIP per-expert kernel active (up to 16 tokens)
+tracebacks 0
+AB DONE
+up ok=3

@@ -1,0 +1,16 @@
+{
+  "file": "src/markdown_table_format.py",
+  "line": 107,
+  "buggy": "        return \"-\" * width + \":\"",
+  "fixed": "        return \"-\" * (width - 1) + \":\"",
+  "function": "_delimiter_cell",
+  "summary": "The delimiter cell of a right-aligned column is built with width dashes plus the colon, one character wider than the column, so the delimiter row of any table with a right-aligned column is misaligned (width 5 renders '-----:' instead of '----:').",
+  "keywords": [
+    "delimiter",
+    "right",
+    "width",
+    "colon",
+    "dashes",
+    "wider"
+  ]
+}

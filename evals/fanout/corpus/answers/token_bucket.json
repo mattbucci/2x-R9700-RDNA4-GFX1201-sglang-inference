@@ -1,0 +1,15 @@
+{
+  "file": "src/token_bucket.py",
+  "line": 119,
+  "buggy": "        return -self._tokens / self._capacity",
+  "fixed": "        return -self._tokens / self._rate",
+  "function": "TokenBucket.reserve",
+  "summary": "reserve() divides the token deficit by the capacity instead of the refill rate, so with rate 2 and capacity 10 a reservation 4 tokens in debt reports a 0.4 s wait instead of 2 s.",
+  "keywords": [
+    "reserve",
+    "wait",
+    "capacity",
+    "rate",
+    "deficit"
+  ]
+}

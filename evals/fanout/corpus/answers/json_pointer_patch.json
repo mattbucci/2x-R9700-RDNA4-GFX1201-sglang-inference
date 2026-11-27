@@ -1,0 +1,15 @@
+{
+  "file": "src/json_pointer_patch.py",
+  "line": 38,
+  "buggy": "    return token.replace(\"~0\", \"~\").replace(\"~1\", \"/\")",
+  "fixed": "    return token.replace(\"~1\", \"/\").replace(\"~0\", \"~\")",
+  "function": "unescape_token",
+  "summary": "Tokens are unescaped in the wrong order (~0 before ~1), so the escaped form of a literal '~1' decodes to '/': unescape_token('~01') returns '/' instead of '~1' and the pointer '/~01' resolves the member '/' rather than '~1'.",
+  "keywords": [
+    "unescape",
+    "order",
+    "tilde",
+    "slash",
+    "escape"
+  ]
+}

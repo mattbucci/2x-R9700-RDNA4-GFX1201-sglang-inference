@@ -1,0 +1,15 @@
+{
+  "file": "src/text_diff_lcs.py",
+  "line": 185,
+  "buggy": "        hi = min(len(ops), last + context)",
+  "fixed": "        hi = min(len(ops), last + context + 1)",
+  "function": "group_hunks",
+  "summary": "The exclusive end of a hunk window is one too small, so each hunk has one trailing context line fewer than requested (and with context=0 the last changed line is dropped), e.g. a one-line change with context=2 shows only one line after it.",
+  "keywords": [
+    "off-by-one",
+    "context",
+    "trailing",
+    "hunk",
+    "hi"
+  ]
+}

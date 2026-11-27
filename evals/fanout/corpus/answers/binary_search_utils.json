@@ -1,0 +1,15 @@
+{
+  "file": "src/binary_search_utils.py",
+  "line": 198,
+  "buggy": "        if items[lo] < items[mid]:",
+  "fixed": "        if items[lo] <= items[mid]:",
+  "function": "search_rotated",
+  "summary": "The sorted-left-half test uses < instead of <=, so when lo == mid the left half is treated as unsorted and the search goes the wrong way, e.g. search_rotated([20, 10], 10) returns -1.",
+  "keywords": [
+    "search_rotated",
+    "comparison",
+    "<=",
+    "lo",
+    "mid"
+  ]
+}

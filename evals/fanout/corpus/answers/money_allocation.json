@@ -1,0 +1,16 @@
+{
+  "file": "src/money_allocation.py",
+  "line": 55,
+  "buggy": "            bump = twice > divisor",
+  "fixed": "            bump = twice >= divisor",
+  "function": "divide_rounded",
+  "summary": "HALF_UP uses a strict comparison, so an exact half is rounded toward zero instead of away from zero: divide_rounded(5, 2, Rounding.HALF_UP) returns 2 instead of 3 and Money.from_string('1.005', 'USD', Rounding.HALF_UP) gives 100 cents instead of 101.",
+  "keywords": [
+    "half_up",
+    "tie",
+    "half",
+    "rounding",
+    "comparison",
+    "strict"
+  ]
+}

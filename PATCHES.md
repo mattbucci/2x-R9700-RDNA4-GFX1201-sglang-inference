@@ -4,7 +4,7 @@ The repository carries **106 active patches across three environments**:
 
 | Collection | Target | Count | Purpose |
 |---|---|---:|---|
-| [`patches/`](patches/README.md) | SGLang v0.5.23 (`/data/sgl-v0523`, `sglang-triton36-v0523`) | **104** | RDNA4 serving, model compatibility, correctness, and performance |
+| [`patches/`](patches/README.md) | SGLang v0.5.23 (`/data/sgl-v0523`, `sglang-triton36-v0523`) | **106** | RDNA4 serving, model compatibility, correctness, and performance |
 | [`llmcompressor-patches/`](llmcompressor-patches/README.md) | llmcompressor calibration environment | **1** | Unfused Qwen3 MoE experts for GPTQ calibration |
 | [`ream-patches/`](ream-patches/README.md) | Samsung SAIL REAM clone | **1** | Memory-safe, resumable expert merging |
 
@@ -13,7 +13,7 @@ Tooling files that support REAM/REAP are not counted as patches. Upstream contri
 
 ## SGLang series
 
-Apply the 104 numeric patches in filename order to pristine SGLang v0.5.23. Patch 072 was removed because
+Apply the 106 numeric patches in filename order to pristine SGLang v0.5.23. Patch 072 was removed because
 transformers 5.12.1 provides the Gemma 4 unified configuration and processor natively. Patch 083 replaces
 that count with the Mistral tokenizer-backend correction required by Devstral and Devstral 2. On the
 v0.5.16 rebase, patch 059 was dropped because its FuseEP dispatcher target was removed upstream, and patch
@@ -33,7 +33,7 @@ The v0.5.23 rebase (2026-11-15) went to 99: 063 was dropped as upstreamed (squar
 | FP8 | 005 039 042 044 045 074 082 106 121 122 128 | 11 |
 | Mamba2 hybrids | 043 046 047 049 073 114 124 | 7 |
 | Gemma 4 | 023 024 025 026 061 098 | 6 |
-| Inkling 2 | 133 134 135 136 137 | 5 |
+| Inkling 2 | 133 134 135 136 137 138 139 | 7 |
 | Model, parser, and speculative-decode plumbing | 007 015 016 036 040 048 055 056 057 058 062 083 089 090 091 092 093 095 096 100 103 105 115 117 120 132 | 26 |
 
 The detailed active index and replay procedure are in [`patches/README.md`](patches/README.md). The

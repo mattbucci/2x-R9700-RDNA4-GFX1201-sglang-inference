@@ -1,6 +1,6 @@
 # RDNA4 inference on 2× R9700
 
-SGLang v0.5.23 with 104 RDNA4 patches, tuned for coherent single-user inference at long context
+SGLang v0.5.23 with 106 RDNA4 patches, tuned for coherent single-user inference at long context
 (256K) on two AMD Radeon AI PRO R9700 GPUs (gfx1201, 32 GiB each, TP=2 over PCIe). The repository holds
 the patch series, the preset launcher, the benchmark and evaluation harnesses, the FP8/AWQ quantization
 pipeline, and the receipts behind every number below. Multi-user throughput is secondary.
@@ -102,27 +102,35 @@ The chart is regenerated from the per-cell receipts in [`benchmarks/quality/bake
 cells and the Qwopus, Flint-FP8 and Inkling-2-Mini cells on oh-my-pi
 ([receipt](benchmarks/qwopus38-27b-coder-flash-fp8/README.md)); each cell carries its harness line.
 
-**Qwen3.8-27B-FP8 v5** (DSpark preset, CTX=262144): seven scaffolds — opencode, opencode-dcp,
-little-coder, little-coder-rtk, oh-my-pi, prime-agent, deepagents-code — at 300/300 instances each, every
-scaffold inside the official per-instance SWE-bench image with no network, an opaque work tree, the task
-prompt on stdin and a 32,000-token output cap, Docker-scored with the official harness:
-
-| Scaffold | little-coder | little-coder-rtk | opencode | oh-my-pi | opencode-dcp | prime-agent | deepagents-code |
-|---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
-| Resolved / 300 | 59.7% | 59.0% | 58.3% | 58.0% | 57.0% | 56.0% | 41.7% |
-
+**Qwen3.8-27B-FP8 v5** (DSpark preset, CTX=262144): seven scaffolds at 300/300 instances each, inside the
+official per-instance SWE-bench image with no network, an opaque work tree, the prompt on stdin and a
+32,000-token output cap: little-coder 59.7%, little-coder-rtk 59.0%, opencode 58.3%, oh-my-pi 58.0%,
+opencode-dcp 57.0%, prime-agent 56.0%, deepagents-code 41.7%.
 Six scaffolds sit within four points; deepagents-code's gap is its own harness (91 of 300 sessions ran to the wall
 with no diff). All 2,100 sessions are audited: one infrastructure row (a server 5xx), zero git-history reads, and
 every upstream web attempt blocked by the sandbox (`audit_git_peek.py`, sandbox-aware). On oh-my-pi the Qwopus
 fine-tune scores 60.3%, Flint-FP8 with DFlash2 60.0% and Inkling-2-Mini 59.7% against this model's 58.0% on the
 same instances, all inside noise (McNemar p = 0.36, 0.47, 0.52); Inkling's mean session is 6.9 min against
-17.6 ([chart](benchmarks/inkling2/swebench_omp_rate_vs_time.png)). Every lane keeps the same 29-minute wall. With six scaffolds inside four
-points, new models and presets are scored on oh-my-pi alone (`SCAFFOLDS=omp`); the full matrix is run only to
-investigate a hosting error. Setup, audits and dispositions: [`evals/swebench/FP8_BAKEOFF_SETUP.md`](evals/swebench/FP8_BAKEOFF_SETUP.md)
-and [`benchmarks/FINDINGS.md`](benchmarks/FINDINGS.md).
+17.6 ([chart](benchmarks/inkling2/swebench_omp_rate_vs_time.png)). Every lane keeps the same 29-minute wall. New models and presets are scored on
+oh-my-pi alone (`SCAFFOLDS=omp`); the full matrix is run only to investigate a hosting error. Setup, audits and dispositions: [`evals/swebench/FP8_BAKEOFF_SETUP.md`](evals/swebench/FP8_BAKEOFF_SETUP.md) and [`benchmarks/FINDINGS.md`](benchmarks/FINDINGS.md).
 
-The [July matrix](evals/swebench/bake-off-2026-07-18.md) (coder-30b-a3b 36.0%, qwen35-27b 45.7%, qwen36-35b-a3b 46.7%
-on opencode; host-side rollouts at CTX=131072, sessions not audited for git/web exposure) is comparable within itself only.
+### Wide agent fan-out
+
+![Wide fan-out: modules resolved and session wall](benchmarks/fanout_wide_agents.png)
+
+One oh-my-pi `workflowz` session, one subagent per module over 24 single-bug modules, 30-minute wall
+([`evals/fanout`](evals/fanout/README.md), [findings](benchmarks/FINDINGS.md)). SWE-bench leaves these models level; this eval does not:
+
+| Model and settings | Resolved of 24 | Wall min | Follow-up TTFT p50 s |
+|---|:---:|:---:|:---:|
+| Inkling-2-Mini, 32 slots | 24, 24, 24, 24 | 9 to 18 | 0.3 to 0.4 |
+| Qwen3.8-27B-FP8 DSpark, 1 slot | 19, 22 | 30 (wall) | 214 |
+| Qwopus3.8-27B FP8 DSpark, 1 slot | 17 | 30 (wall) | 218 |
+| Flint-FP8, 8 slots, decode graphs to 8 | 11 | 30 (wall) | 110 |
+| Flint-FP8, 8 slots as shipped | 1 | 30 (wall) | 47 |
+
+For many parallel agents serve Inkling-2-Mini at 32 slots (`MAX_RUNNING=32`, decode graphs to 32,
+`--swa-full-tokens-ratio 0.25 --strip-thinking-cache`); the 1-slot presets stay the single-user depth choice.
 
 ### Closing the gap to vllm-radiance
 
@@ -237,7 +245,6 @@ CTX=262144 MEM=0.90 PORT=23335 ./scripts/launch.sh laguna
 MODEL=/path/to/checkpoint ./scripts/launch.sh qwen36-moe
 ENV_NAME=other-env SGLANG_DIR=/path/to/sglang ./scripts/launch.sh coder-30b
 GPU_IDS=0 TP=1 ./scripts/launch.sh coder-30b
-ENABLE_OVERLAP_SCHEDULE=1 ./scripts/launch.sh laguna  # experimental scheduler A/B
 ```
 
 The model checkpoint controls compressed-tensors FP8 detection. Presets supply the validated attention
@@ -250,7 +257,7 @@ relaunch faults on a stale one.
 | Component | Version |
 |---|---|
 | GPUs | 2× AMD Radeon AI PRO R9700, gfx1201, 32 GiB each |
-| SGLang | v0.5.23 + 104 patches |
+| SGLang | v0.5.23 + 106 patches |
 | Python | 3.12 |
 | PyTorch | 2.11.0+rocm7.2 |
 | ROCm | 7.2 |
@@ -263,14 +270,7 @@ Serving tree `/data/sgl-v0523` on the peeled commit `297e54fd1` of v0.5.23, cond
 to release tags. v0.5.22 is retained at `/data/sgl-v0522` / `sglang-triton36-v0522` as the rollback. Rebase
 procedure and per-version receipts: [`patches/README.md`](patches/README.md).
 
-TP=2 requires both kernel P2P support and IOMMU passthrough:
-
-```bash
-zcat /proc/config.gz | grep -E 'CONFIG_HSA_AMD_P2P|CONFIG_PCI_P2PDMA'
-grep -o 'iommu=pt' /proc/cmdline
-```
-
-Required kernel settings are `CONFIG_HSA_AMD_P2P=y`, `CONFIG_PCI_P2PDMA=y`, and the boot argument
+TP=2 requires `CONFIG_HSA_AMD_P2P=y`, `CONFIG_PCI_P2PDMA=y` (`zcat /proc/config.gz`) and the boot argument
 `iommu=pt`. `HSA_FORCE_FINE_GRAIN_PCIE=1` remains enabled but is not a substitute for those
 requirements. Because `iommu=pt` reduces DMA isolation, use this configuration only on a dedicated host
 with trusted workloads; GPU passthrough is not a safe multi-tenant sandbox. Host boot settings and

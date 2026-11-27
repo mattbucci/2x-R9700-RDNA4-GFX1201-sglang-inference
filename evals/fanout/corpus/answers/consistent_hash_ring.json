@@ -1,0 +1,16 @@
+{
+  "file": "src/consistent_hash_ring.py",
+  "line": 137,
+  "buggy": "            point = self._keys[(start + offset) % len(self._nodes)]",
+  "fixed": "            point = self._keys[(start + offset) % len(self._keys)]",
+  "function": "HashRing.get_nodes",
+  "summary": "The clockwise walk wraps the ring index modulo the number of nodes instead of the number of ring points, so it only ever visits the first few points: get_nodes(key, 1) disagrees with get_node(key) and replicas are wrong on any ring with more points than nodes.",
+  "keywords": [
+    "modulo",
+    "wrap",
+    "nodes",
+    "keys",
+    "points",
+    "index"
+  ]
+}

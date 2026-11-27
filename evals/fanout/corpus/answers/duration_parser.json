@@ -1,0 +1,15 @@
+{
+  "file": "src/duration_parser.py",
+  "line": 79,
+  "buggy": "        total += self.minutes * SECONDS_PER_HOUR",
+  "fixed": "        total += self.minutes * SECONDS_PER_MINUTE",
+  "function": "Duration.total_seconds",
+  "summary": "Minutes are multiplied by the seconds-per-hour constant, so any duration with a minutes component is 60 times too long there, e.g. PT30M gives 108000 seconds instead of 1800.",
+  "keywords": [
+    "minutes",
+    "seconds_per_hour",
+    "seconds_per_minute",
+    "constant",
+    "total_seconds"
+  ]
+}

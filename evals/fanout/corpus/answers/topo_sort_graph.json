@@ -1,0 +1,15 @@
+{
+  "file": "src/topo_sort_graph.py",
+  "line": 156,
+  "buggy": "                depth[child] = depth[node] + 1",
+  "fixed": "                depth[child] = max(depth[child], depth[node] + 1)",
+  "function": "DependencyGraph.levels",
+  "summary": "A node's depth is overwritten by whichever dependency is processed last instead of keeping the maximum, so a node with a deep and a shallow dependency lands in too low a layer, e.g. b->a, d->b, d->c puts d in layer 1 beside b.",
+  "keywords": [
+    "levels",
+    "max",
+    "depth",
+    "overwritten",
+    "layer"
+  ]
+}

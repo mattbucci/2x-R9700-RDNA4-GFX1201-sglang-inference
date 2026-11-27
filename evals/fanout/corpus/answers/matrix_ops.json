@@ -1,0 +1,16 @@
+{
+  "file": "src/matrix_ops.py",
+  "line": 176,
+  "buggy": "            pivot = max(range(col, size), key=lambda r: work[r][col])",
+  "fixed": "            pivot = max(range(col, size), key=lambda r: abs(work[r][col]))",
+  "function": "Matrix.determinant",
+  "summary": "The pivot row is chosen by the largest signed value instead of the largest absolute value, so a column whose remaining entries are zero and negative picks the zero as pivot and the determinant is reported as 0, e.g. Matrix([[0, 1], [-2, 3]]).determinant() returns 0 instead of 2.",
+  "keywords": [
+    "pivot",
+    "abs",
+    "absolute",
+    "negative",
+    "determinant",
+    "zero"
+  ]
+}

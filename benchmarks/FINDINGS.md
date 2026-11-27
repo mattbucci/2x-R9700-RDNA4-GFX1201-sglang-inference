@@ -3431,3 +3431,77 @@ per instance equal to the other cells. `aggregate_bakeoff.py` now keeps a cell's
 unchanged cell's timestamp on re-aggregation.
 
 ![Decode throughput at 1 to 8 requests, patch 136 against the Triton paths](inkling2/concurrency_hip_kernels.png)
+
+## Inkling-2-Mini: 32 slots for wide agent fan-out (patches 138 and 139, 2026-11-27)
+
+A single user who fans out 24 agents against the 8-slot server queues two thirds of them: on a recorded
+24-agent, 12-turn session replayed against the server, a follow-up turn waited a median 35.7 s for its first
+token. Two kernel changes make 32 slots worth serving.
+
+- **Patch 138, expert GEMM tile policy (prefill).** The Triton expert GEMM used a 128-wide K tile and four warps
+  at every row-block size. A sweep at 17 to 4096 tokens picks a 64-wide K tile and eight warps once a program
+  holds more than one 16-row block. Eight 1000-word prompts in one batch prefill in 3.2 s against 4.55 s
+  (1.43 times faster), arms `live dev dev live`, greedy texts identical
+  ([receipt](inkling2/expert-gemm-tile-policy-ab.txt)).
+- **Patch 139, HIP kernels up to 32 tokens (decode).** The per-expert kernel and the multi-row projection GEMM of
+  patch 136 stopped at 16 tokens, so 20 to 32 concurrent requests fell back to the Triton paths and decoded
+  slower than 16. An expert now gets a second run past sixteen routed rows
+  ([receipt](inkling2/decode-32-requests-hip-kernels-ab.txt), arms in both orders):
+
+| Concurrent requests | 1 | 8 | 16 | 20 | 24 | 32 |
+|---|---|---|---|---|---|---|
+| Patch 137 tree, tok/s | 79 | 365 | 565 | 381 | 490 | 577 |
+| Patches 138 + 139, tok/s | 79 | 367 | 568 | 546 | 695 | 813 |
+
+The recorded fan-out, replayed ([8 slots](inkling2/fanout-replay-8-slots-baseline.txt),
+[32 slots](inkling2/fanout-replay-32-slots-thinking-cache-ab.txt)):
+
+| Server | Wall s | Output tok/s | Follow-up TTFT p50 / p90 s |
+|---|---|---|---|
+| 8 slots, patch 137 tree | 737 | 176 | 35.7 / 43.7 |
+| 32 slots, patches 138 + 139, thinking stripped from the cache | 601, 603 | 215 | 0.7 / 1.1 |
+| 32 slots, patches 138 + 139, thinking kept in the cache | 626, 622 | 207 | 0.7 / 1.4 |
+
+`--strip-thinking-cache` stays on. The split between the full and the sliding-window pool is speed-neutral while
+neither pool fills ([receipt](inkling2/fanout-replay-pool-split-ab.txt): ratio 0.25 walls 803 and 795 s with the
+full pool at 0.91, ratio 0.125 walls 794 and 814 s with the pools at 0.65 and 0.55, a smaller conv-state pool
+795 s). Ratio 0.25 stays the default because many short sessions lose their cache below it; a fan-out of long
+sessions that fills the full pool is the case for 0.125. Pool capacity, 437,562 full tokens at ratio 0.25, is the
+limit on fan-out width: 24 agents at 35K to 55K tokens each peak at 0.45 to 0.91 of it.
+
+## Wide fan-out eval: slots and cache reuse decide the ranking that SWE-bench leaves level (2026-11-27)
+
+SWE-bench Lite on oh-my-pi puts Inkling-2-Mini, Qwopus, Flint-FP8 and Qwen3.8-27B-FP8 inside noise of each other
+(58.0 to 60.3 %), one session at a time. The fan-out eval ([`evals/fanout`](../evals/fanout/README.md)) asks the
+other question: one oh-my-pi `workflowz` session, one subagent per module over 24 single-bug Python modules,
+all in parallel, a hidden behaviour check per module, a 30-minute wall, sandboxed with no network
+([receipts](quality/), `fanout-*.json`):
+
+![Wide fan-out: modules resolved and session wall per model and setting](fanout_wide_agents.png)
+
+| Model and settings | Runs | Resolved of 24 | Wall min | Half resolved min | Output tok/s | Cache hit | Follow-up TTFT p50 / p90 s |
+|---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| Inkling-2-Mini, 32 slots, window ratio 0.125 | 2 | 24 / 24 | 12.3 (9.2 to 15.5) | 4.5 | 188 | 0.94 | 0.3 / 1.6 |
+| Inkling-2-Mini, 32 slots, window ratio 0.25 | 2 | 24 / 24 | 16.7 (15.2 to 18.2) | 4.4 | 182 | 0.94 | 0.4 / 1.8 |
+| Qwen3.8-27B-FP8 DSpark, 1 slot | 2 | 19 / 22 | 30.0 (wall) | 20.1 | 70 | 0.57 (one run) | 214 / 534 |
+| Qwopus3.8-27B FP8 DSpark, 1 slot | 1 | 17 | 30.0 (wall) | 23.3 | 72 | 0.45 | 218 / 704 |
+| Flint-FP8, 8 slots, decode graphs to 8 | 1 | 11 | 30.0 (wall) | none | 150 | not reported | 110 / 215 |
+| Flint-FP8, 8 slots (preset as shipped) | 1 | 1 | 30.0 (wall) | none | 75 | not reported | 47 / 559 |
+
+- **Inkling-2-Mini at 32 slots is the wide fan-out recommendation.** It is the only server that finishes: all
+  24 modules in 9 to 18 minutes, half of them inside 5, with a follow-up turn reaching its first token in under
+  half a second at the median. The four runs span 553 to 1,090 s of wall on sampling alone, so the two window
+  ratios are not separated by this eval; 0.25 stays the default.
+- **The 1-slot DSpark presets are correct and queue-bound.** Qwen3.8 and Qwopus fix what they reach (one edited
+  module per run failed its check, each an indentation error), and the 24 agents wait a median 3.6 minutes per
+  follow-up turn behind one slot. Their single-user depth ranking is unchanged; they are the wrong server for a
+  wide fan-out.
+- **Flint as shipped cannot serve a fan-out.** The preset captures decode graphs for one request, so eight
+  running requests share about 110 tok/s, and the hybrid cache hits only at chunk boundaries, so most turns
+  prefill again. `EXTRA_ARGS="--cuda-graph-max-bs-decode 8"` doubles the output rate and takes it from 1 to 11
+  modules; it still ends at the wall.
+- **A hosting error found by the eval.** oh-my-pi keys the Qwen thinking flags on "qwen" in the model id; under
+  the Qwopus id it sent OpenAI effort names that the served template refuses (49 of 186 requests returned HTTP
+  400 and were resent without the parameter; that run read 12 and is not published). The harness now probes the
+  server and declares the Qwen thinking format, and the clean run is the row above.
+- One run does not rank two close settings: repeat a label before reading a difference in wall time.

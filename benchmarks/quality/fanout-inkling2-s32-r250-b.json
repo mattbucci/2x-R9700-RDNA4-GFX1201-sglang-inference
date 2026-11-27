@@ -1,0 +1,298 @@
+{
+ "eval": "fanout-wide-agents",
+ "tag": "inkling2-s32-r250-b",
+ "label": "Inkling-2-Mini, 32 slots, window ratio 0.25",
+ "served_model": "/data/models/Inkling-2-Mini",
+ "settings": "inkling2 preset, 32 slots, swa-full-tokens-ratio 0.25, strip-thinking-cache, patches 133-139",
+ "scaffold": "oh-my-pi omp/18.12.2 workflowz",
+ "width": 32,
+ "modules": 24,
+ "wall_budget_s": 1800,
+ "resolved": 24,
+ "resolve_rate_pct": 100.0,
+ "edited": 24,
+ "notes": 24,
+ "report": true,
+ "wall_s": 1090.3,
+ "hit_wall": false,
+ "session_rc": 0,
+ "time_to_half_resolved_s": 264.1,
+ "time_to_all_resolved_s": 596.2,
+ "resolved_per_hour": 79.2,
+ "wire": {
+  "requests": 350,
+  "status": {
+   "200": 350
+  },
+  "finish": {
+   "tool_calls": 325,
+   "None": 24,
+   "stop": 1
+  },
+  "conversations": 26,
+  "max_inflight": 49,
+  "prompt_tokens": 6379311,
+  "cached_tokens": 6005422,
+  "cache_hit_rate": 0.941,
+  "output_tokens": 173726,
+  "reasoning_tokens": 120732,
+  "output_tok_s": 159.3,
+  "max_prompt_tokens": 62653,
+  "turns_per_conversation_p50": 11,
+  "first_turn_ttft_s": {
+   "p50": 8.99,
+   "p90": 14.25
+  },
+  "followup_ttft_s": {
+   "p50": 0.39,
+   "p90": 1.61,
+   "max": 5.1
+  }
+ },
+ "rows": [
+  {
+   "module": "base64_stream_codec",
+   "edited": true,
+   "resolved": true,
+   "changed_lines": 1,
+   "answer_line_changed": true,
+   "note": true,
+   "last_edit_s": 230.1,
+   "check_tail": null
+  },
+  {
+   "module": "binary_search_utils",
+   "edited": true,
+   "resolved": true,
+   "changed_lines": 1,
+   "answer_line_changed": true,
+   "note": true,
+   "last_edit_s": 594.2,
+   "check_tail": null
+  },
+  {
+   "module": "bloom_filter",
+   "edited": true,
+   "resolved": true,
+   "changed_lines": 1,
+   "answer_line_changed": true,
+   "note": true,
+   "last_edit_s": 142.0,
+   "check_tail": null
+  },
+  {
+   "module": "bounded_work_queue",
+   "edited": true,
+   "resolved": true,
+   "changed_lines": 1,
+   "answer_line_changed": true,
+   "note": true,
+   "last_edit_s": 324.1,
+   "check_tail": null
+  },
+  {
+   "module": "consistent_hash_ring",
+   "edited": true,
+   "resolved": true,
+   "changed_lines": 1,
+   "answer_line_changed": true,
+   "note": true,
+   "last_edit_s": 140.0,
+   "check_tail": null
+  },
+  {
+   "module": "cron_schedule",
+   "edited": true,
+   "resolved": true,
+   "changed_lines": 1,
+   "answer_line_changed": true,
+   "note": true,
+   "last_edit_s": 356.1,
+   "check_tail": null
+  },
+  {
+   "module": "csv_dialect_parser",
+   "edited": true,
+   "resolved": true,
+   "changed_lines": 1,
+   "answer_line_changed": true,
+   "note": true,
+   "last_edit_s": 450.1,
+   "check_tail": null
+  },
+  {
+   "module": "duration_parser",
+   "edited": true,
+   "resolved": true,
+   "changed_lines": 1,
+   "answer_line_changed": true,
+   "note": true,
+   "last_edit_s": 126.0,
+   "check_tail": null
+  },
+  {
+   "module": "interval_set",
+   "edited": true,
+   "resolved": true,
+   "changed_lines": 1,
+   "answer_line_changed": true,
+   "note": true,
+   "last_edit_s": 246.1,
+   "check_tail": null
+  },
+  {
+   "module": "json_pointer_patch",
+   "edited": true,
+   "resolved": true,
+   "changed_lines": 1,
+   "answer_line_changed": true,
+   "note": true,
+   "last_edit_s": 196.1,
+   "check_tail": null
+  },
+  {
+   "module": "lru_ttl_cache",
+   "edited": true,
+   "resolved": true,
+   "changed_lines": 1,
+   "answer_line_changed": true,
+   "note": true,
+   "last_edit_s": 458.1,
+   "check_tail": null
+  },
+  {
+   "module": "markdown_table_format",
+   "edited": true,
+   "resolved": true,
+   "changed_lines": 1,
+   "answer_line_changed": true,
+   "note": true,
+   "last_edit_s": 382.1,
+   "check_tail": null
+  },
+  {
+   "module": "matrix_ops",
+   "edited": true,
+   "resolved": true,
+   "changed_lines": 1,
+   "answer_line_changed": true,
+   "note": true,
+   "last_edit_s": 234.1,
+   "check_tail": null
+  },
+  {
+   "module": "min_heap_scheduler",
+   "edited": true,
+   "resolved": true,
+   "changed_lines": 1,
+   "answer_line_changed": true,
+   "note": true,
+   "last_edit_s": 596.2,
+   "check_tail": null
+  },
+  {
+   "module": "money_allocation",
+   "edited": true,
+   "resolved": true,
+   "changed_lines": 1,
+   "answer_line_changed": true,
+   "note": true,
+   "last_edit_s": 314.1,
+   "check_tail": null
+  },
+  {
+   "module": "retry_policy",
+   "edited": true,
+   "resolved": true,
+   "changed_lines": 1,
+   "answer_line_changed": true,
+   "note": true,
+   "last_edit_s": 160.0,
+   "check_tail": null
+  },
+  {
+   "module": "ring_buffer",
+   "edited": true,
+   "resolved": true,
+   "changed_lines": 1,
+   "answer_line_changed": true,
+   "note": true,
+   "last_edit_s": 132.0,
+   "check_tail": null
+  },
+  {
+   "module": "semver_range",
+   "edited": true,
+   "resolved": true,
+   "changed_lines": 1,
+   "answer_line_changed": true,
+   "note": true,
+   "last_edit_s": 362.1,
+   "check_tail": null
+  },
+  {
+   "module": "sliding_window_stats",
+   "edited": true,
+   "resolved": true,
+   "changed_lines": 1,
+   "answer_line_changed": true,
+   "note": true,
+   "last_edit_s": 224.1,
+   "check_tail": null
+  },
+  {
+   "module": "text_diff_lcs",
+   "edited": true,
+   "resolved": true,
+   "changed_lines": 1,
+   "answer_line_changed": true,
+   "note": true,
+   "last_edit_s": 264.1,
+   "check_tail": null
+  },
+  {
+   "module": "token_bucket",
+   "edited": true,
+   "resolved": true,
+   "changed_lines": 1,
+   "answer_line_changed": true,
+   "note": true,
+   "last_edit_s": 132.0,
+   "check_tail": null
+  },
+  {
+   "module": "topo_sort_graph",
+   "edited": true,
+   "resolved": true,
+   "changed_lines": 1,
+   "answer_line_changed": true,
+   "note": true,
+   "last_edit_s": 310.1,
+   "check_tail": null
+  },
+  {
+   "module": "trie_autocomplete",
+   "edited": true,
+   "resolved": true,
+   "changed_lines": 1,
+   "answer_line_changed": true,
+   "note": true,
+   "last_edit_s": 470.1,
+   "check_tail": null
+  },
+  {
+   "module": "union_find_groups",
+   "edited": true,
+   "resolved": true,
+   "changed_lines": 1,
+   "answer_line_changed": true,
+   "note": true,
+   "last_edit_s": 272.1,
+   "check_tail": null
+  }
+ ],
+ "corpus_sha256": "b1f7cb508c7db638",
+ "harness": "bubblewrap sandbox: no network, empty home, /data and /tmp hidden; hidden behaviour check per module",
+ "timestamp": "2026-11-27T02:20:18",
+ "thinking_format": "default"
+}

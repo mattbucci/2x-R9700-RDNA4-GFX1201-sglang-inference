@@ -1,0 +1,15 @@
+{
+  "file": "src/min_heap_scheduler.py",
+  "line": 153,
+  "buggy": "            self._sift_down(idx)",
+  "fixed": "            self._restore(idx)",
+  "function": "Scheduler.cancel",
+  "summary": "cancel() moves the last heap entry into the freed slot and only sifts it down, but the replacement can be smaller than its new parent and must sift up; e.g. priorities 1,10,2,11,12,4,3 then cancelling the 11 task pops 4 before 3.",
+  "keywords": [
+    "cancel",
+    "sift",
+    "up",
+    "heap",
+    "order"
+  ]
+}

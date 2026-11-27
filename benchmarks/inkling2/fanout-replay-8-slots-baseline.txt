@@ -1,0 +1,4 @@
+agents=24 turns=12 echo=1 wall=737s ok=288/288 errors=0  new=361334 cached=7665204 hit=0.95 out=129395 out_tok_s=175.5
+  turn0 ttft p50 10.4 p90 25.4 max 30.3 | follow-up ttft p50 35.7 p90 43.7 max 48.0 | follow-up hits {'full': 178, 'prompt': 83, 'shared': 2, 'none': 1} uncached p50 1124 p90 1201  max prompt 37069
+server: new 361334 cached 7665204 hit rate 0.95 max usage full/swa/mamba [0.27, 0.16, 0.03]
+

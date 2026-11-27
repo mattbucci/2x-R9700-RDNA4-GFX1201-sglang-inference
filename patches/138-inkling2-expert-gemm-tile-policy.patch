@@ -1,0 +1,44 @@
+diff --git a/python/sglang/kernels/ops/moe/inkling2_moe_rdna4.py b/python/sglang/kernels/ops/moe/inkling2_moe_rdna4.py
+index 724efc5..a2574c8 100644
+--- a/python/sglang/kernels/ops/moe/inkling2_moe_rdna4.py
++++ b/python/sglang/kernels/ops/moe/inkling2_moe_rdna4.py
+@@ -246,8 +246,10 @@ def _launch(a, w, s, factor, out, routing, top_k, a_per_slot, nvfp4, block_m):
+     sorted_ids, expert_ids, num_post = routing
+     n = w.shape[1]
+     k = a.shape[1]
++    # Tiles from a sweep on gfx1201 at 17 to 4096 tokens (TP2 slices): a 64-wide K tile, and
++    # more warps once a program holds more than one 16-row block.
+     block_n = 64
+-    block_k = 128 if k % 128 == 0 else 64
++    block_k = 64
+     grid = (triton.cdiv(sorted_ids.shape[0], block_m), triton.cdiv(n, block_n))
+     _ink2_expert_gemm[grid](
+         a,
+@@ -274,11 +276,17 @@ def _launch(a, w, s, factor, out, routing, top_k, a_per_slot, nvfp4, block_m):
+         BLOCK_M=block_m,
+         BLOCK_N=block_n,
+         BLOCK_K=block_k,
+-        num_warps=4,
++        num_warps=4 if block_m == 16 else 8,
+         num_stages=2,
+     )
+ 
+ 
++def _gemm_block_m(slots: int, num_experts: int) -> int:
++    """Rows per program: a program dequantizes its expert's weight tile once for all of its
++    rows, so the block grows with the mean rows per expert (prefill), up to 256."""
++    return min(max(triton.next_power_of_2(slots // num_experts + 1), 16), 256)
++
++
+ @torch.compile(dynamic=True, fullgraph=True)
+ def _weighted_sum(down: torch.Tensor, weights: torch.Tensor) -> torch.Tensor:
+     tokens, top_k = weights.shape
+@@ -322,7 +330,7 @@ def inkling2_routed_experts(
+         h = _capped_swiglu_interleaved(gate_up, gate_cap, up_cap)
+         _launch_gemv(h, w2, w2_scale, w2_factor, down, flat, top_k, True, nvfp4, 64, 512, 4 if nvfp4 else 8)
+         return _weighted_sum(down, topk_weights)
+-    block_m = 16
++    block_m = _gemm_block_m(tokens * top_k, num_experts)
+     routing = moe_align_block_size(topk_ids, block_m, num_experts)
+     _launch(x, w13, w13_scale, w13_factor, gate_up, routing, top_k, False, nvfp4, block_m)
+     h = _capped_swiglu_interleaved(gate_up, gate_cap, up_cap)

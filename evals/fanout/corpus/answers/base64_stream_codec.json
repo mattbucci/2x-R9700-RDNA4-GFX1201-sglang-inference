@@ -1,0 +1,15 @@
+{
+  "file": "src/base64_stream_codec.py",
+  "line": 89,
+  "buggy": "        self._pending = data[cut:]",
+  "fixed": "        self._pending = buf[cut:]",
+  "function": "StreamEncoder.update",
+  "summary": "The carry-over is sliced from the new chunk instead of the combined buffer, so bytes are lost or duplicated whenever a previous update left pending bytes, e.g. update(b'a') then update(b'bcd') drops the 'd'.",
+  "keywords": [
+    "pending",
+    "buf",
+    "data",
+    "carry",
+    "chunk"
+  ]
+}
