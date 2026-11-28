@@ -78,28 +78,32 @@ def load_shared(pattern):
     for f in sorted(glob.glob(pattern)):
         r = json.loads(Path(f).read_text())
         if r.get("eval") == "fanout-shared-feature":
-            groups.setdefault((r["served_model"].rstrip("/").split("/")[-1], r["width"]), []).append(r)
+            groups.setdefault((r["served_model"].rstrip("/").split("/")[-1] + " " + r.get("keyword", "workflowz")
+                               + (" + plan" if r.get("plan") == "explicit" else ""),
+                               r["width"]), []).append(r)
     rows = []
     for (model, width), runs in sorted(groups.items()):
         w = [r["wire"] for r in runs]
         rows.append({"model": model, "width": width, "runs": len(runs), "total": runs[0]["checks_total"],
                      "passed": [r["checks_passed"] for r in runs], "wall": [r["wall_s"] for r in runs],
                      "hit_wall": [r["hit_wall"] for r in runs],
-                     "agents": [max(0, x.get("conversations", 1) - 1) for x in w],
+                     "agents": [r["agents"]["subagents"] if "agents" in r else None for r in runs],
                      "inflight": [x.get("max_inflight") for x in w],
                      "peak": [x.get("conversation_peak_prompt", {}).get("p50") for x in w],
+                     "largest": [x.get("max_prompt_tokens") for x in w],
                      "hit": [x.get("cache_hit_rate") for x in w], "prompt": [x.get("prompt_tokens") for x in w]})
     return rows
 
 
 def table_shared(rows):
-    out = ["| Model | Width | Runs | Checks passed | Wall min | Subagents | Max in flight | Context per conversation p50 | Prompt tokens M | Cache hit |",
-           "|---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|"]
+    out = ["| Model and keyword | Width | Runs | Checks passed | Wall min | Subagents | Max in flight | Context per conversation p50 | Largest conversation | Prompt tokens M | Cache hit |",
+           "|---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|"]
     j = lambda xs, f: " / ".join("n/a" if x is None else f(x) for x in xs)
     for r in rows:
         out.append(f"| {r['model']} | {r['width']} | {r['runs']} | {j(r['passed'], str)} of {r['total']} | "
                    f"{j([w / 60 for w in r['wall']], lambda x: f'{x:.0f}')}{' (wall)' if any(r['hit_wall']) else ''} | "
                    f"{j(r['agents'], str)} | {j(r['inflight'], str)} | {j(r['peak'], lambda x: f'{x / 1000:.0f}K')} | "
+                   f"{j(r['largest'], lambda x: f'{x / 1000:.0f}K')} | "
                    f"{j(r['prompt'], lambda x: f'{x / 1e6:.1f}')} | {j(r['hit'], lambda x: f'{x:.2f}')} |")
     return "\n".join(out)
 

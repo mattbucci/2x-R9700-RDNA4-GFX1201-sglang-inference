@@ -3527,3 +3527,41 @@ Two tasks on [simple-llm-router](https://github.com/mattbucci/simple-llm-router)
   from 0.92 to 0.32. Halving the width finished 16 copies, so width trades total time against cache thrash.
 - `task.maxConcurrency` only caps agents the orchestrator chooses to start, so a width sweep needs a task the
   orchestrator decomposes; the shared spec is not one.
+
+Three ways to ask for the same feature, width 24, two runs each, all on the server before patch 140
+(receipts `fanout-shared-*.json`; `chart_fanout.py --shared`):
+
+| Prompt | Checks passed | Wall min | Subagents | Largest conversation | Prompt tokens | Cache hit |
+|---|:---:|:---:|:---:|:---:|:---:|:---:|
+| `workflowz` + spec | 24, 24 | 23, 26 | 0, 0 | 189K, 197K | 19.9M, 16.7M | 0.99 |
+| `orchestrate` + spec | 24, 24 | 25, 14 | 4, 1 | 106K, 137K | 10.1M, 5.6M | 0.97 |
+| `workflowz` + spec + explicit plan (4 scouts, 5 file-disjoint builders, 3 reviewers) | 17, 24 | 46, 43 | 12, 12 | 223K, 191K | 28.3M, 27.5M | 0.97 |
+
+- **`orchestrate` forces the fan-out.** oh-my-pi's built-in keyword tells the orchestrator to dispatch disjoint
+  edits as parallel subagents rather than do the work itself. It used the fewest prompt tokens and the smallest
+  orchestrator context of the three.
+- **The explicit plan costs the most.** Twelve subagents return their evidence to the orchestrator, whose context
+  grows past 190K; the session takes 45 minutes against about 25, at 1.4 to 5 times the prompt tokens.
+- **The 17 is a hosting error, fixed by patch 140.** At 223K oh-my-pi compacted the orchestrator with its handoff
+  prompt under `tool_choice: "none"`. The server dropped the tools from the template, Inkling called a tool anyway,
+  and the raw `<|content_invoke_tool_json|>` markup came back as the summary. The orchestrator lost the spec,
+  invented an instruction to drop the `/metrics` counter, and deleted a working implementation.
+
+## Inkling 2: `tool_choice: "none"` keeps the tools and rules the call out (patch 140, 2026-11-28)
+
+Upstream removes the tools from the prompt under `tool_choice: "none"`. Two costs for an agent's compaction
+request: the prompt prefix no longer matches the cached conversation, and Inkling, reading a context full of tool
+calls with no tools declared, still calls one, which the server returns as raw markup in `content`. Patch 140
+keeps the tools and samples under a structural tag that requires a thinking or text kind after every
+`<|message_model|>` header ([receipt](inkling2/tool-choice-none-handoff-ab.json)):
+
+| oh-my-pi handoff probe, 8 samples | Upstream | Patch 140 |
+|---|:---:|:---:|
+| Structured handoffs at 94K tokens | 7 (1 raw-markup leak) | 7 (1 loop to the 32K limit) |
+| Structured handoffs at 158K tokens | 6 (2 leaks) | 8 |
+| Compaction after an agent turn at 158K: cached tokens, first token | 0, 77.2 s | 155,648, 2.3 s |
+
+Banning only the invoke tokens is not enough: the call is decided at the header, where Inkling writes the tool
+name, and a headed message without a content kind is dropped by the output parser (8 of 8 empty answers). A
+request that only a tool can serve (a 142-token "check this file" prompt) loops under the grammar where upstream
+leaked markup; agents send `none` to summarise, which the grammar serves.

@@ -1,0 +1,140 @@
+diff --git a/python/sglang/srt/function_call/base_format_detector.py b/python/sglang/srt/function_call/base_format_detector.py
+index 86d11be..5e37094 100644
+--- a/python/sglang/srt/function_call/base_format_detector.py
++++ b/python/sglang/srt/function_call/base_format_detector.py
+@@ -367,6 +367,13 @@ class BaseFormatDetector(ABC):
+         constraints and parse the model's native output format instead."""
+         return False
+ 
++    @classmethod
++    def tool_choice_none_structural_tag(cls) -> Optional[StructuralTag]:
++        """A constraint that rules out tool calls. When set, a
++        ``tool_choice="none"`` request keeps its tools in the prompt (the same
++        prefix as its tool turns) and samples under this tag instead."""
++        return None
++
+     @classmethod
+     def parses_without_tools(cls) -> bool:
+         """Return True if tool-call markup is parsed even when a request
+diff --git a/python/sglang/srt/function_call/inkling_detector.py b/python/sglang/srt/function_call/inkling_detector.py
+index b453ca0..e44ee2d 100644
+--- a/python/sglang/srt/function_call/inkling_detector.py
++++ b/python/sglang/srt/function_call/inkling_detector.py
+@@ -16,6 +16,8 @@ from sglang.srt.function_call.core_types import (
+ from sglang.srt.parser.inkling_tokenizer import (
+     CONTENT_INVOKE_TOOL_JSON,
+     CONTENT_INVOKE_TOOL_TEXT,
++    CONTENT_TEXT,
++    CONTENT_THINKING,
+     END_MESSAGE,
+     INKLING_CONTROL_TOKENS,
+     INKLING_SPECIAL_TOKEN_IDS,
+@@ -47,6 +49,52 @@ class InklingDetector(BaseFormatDetector):
+         self._stream_call_index = 0
+         self._raw_passthrough = False
+ 
++    @classmethod
++    def tool_choice_none_structural_tag(cls) -> StructuralTag:
++        """Every model message must open with a thinking or text kind.
++
++        A call is decided at the header: ``<|message_model|>`` followed by a
++        tool name. A tool-heavy context with its tools stripped still draws
++        calls, which reach the client as raw markup, and banning only the
++        invoke kinds leaves a headed message the parser drops.
++        """
++        ids = INKLING_SPECIAL_TOKEN_IDS
++        invoke = [ids[CONTENT_INVOKE_TOOL_JSON], ids[CONTENT_INVOKE_TOOL_TEXT]]
++        return StructuralTag.model_validate(
++            {
++                "type": "structural_tag",
++                "format": {
++                    "type": "token_triggered_tags",
++                    "trigger_tokens": [ids[MESSAGE_MODEL]],
++                    "exclude_tokens": invoke,
++                    "tags": [
++                        {
++                            "type": "tag",
++                            "begin": {"type": "token", "token": ids[MESSAGE_MODEL]},
++                            "content": {
++                                "type": "sequence",
++                                "elements": [
++                                    {
++                                        "type": "or",
++                                        "elements": [
++                                            {"type": "token", "token": ids[CONTENT_THINKING]},
++                                            {"type": "token", "token": ids[CONTENT_TEXT]},
++                                        ],
++                                    },
++                                    {
++                                        "type": "any_tokens",
++                                        "exclude_tokens": [ids[END_MESSAGE], ids[MESSAGE_MODEL]]
++                                        + invoke,
++                                    },
++                                ],
++                            },
++                            "end": {"type": "token", "token": ids[END_MESSAGE]},
++                        }
++                    ],
++                },
++            }
++        )
++
+     def has_tool_call(self, text: str) -> bool:
+         return self.bot_token in text or CONTENT_INVOKE_TOOL_TEXT in text
+ 
+diff --git a/python/sglang/srt/entrypoints/openai/serving_chat.py b/python/sglang/srt/entrypoints/openai/serving_chat.py
+index 44acb57..ccdcc42 100644
+--- a/python/sglang/srt/entrypoints/openai/serving_chat.py
++++ b/python/sglang/srt/entrypoints/openai/serving_chat.py
+@@ -1858,6 +1858,13 @@ class OpenAIServingChat(OpenAIServingBase):
+         tools = None
+         tool_call_stop = None
+         required_parsed_natively = glm_constraint
++        if effective_tools and request.tool_choice == "none" and self.tool_call_parser:
++            none_tag = FunctionCallParser.ToolCallParserEnum[
++                self.tool_call_parser
++            ].tool_choice_none_structural_tag()
++            if none_tag is not None and request.tools:
++                tools = [item.model_dump() for item in request.tools]
++                tool_call_constraint = ("structural_tag", none_tag)
+         if effective_tools and request.tool_choice != "none":
+             request.skip_special_tokens = False
+             if not isinstance(request.tool_choice, str):
+diff --git a/test/registered/unit/entrypoints/openai/test_serving_chat.py b/test/registered/unit/entrypoints/openai/test_serving_chat.py
+index 08a567a..6e79d8f 100644
+--- a/test/registered/unit/entrypoints/openai/test_serving_chat.py
++++ b/test/registered/unit/entrypoints/openai/test_serving_chat.py
+@@ -461,6 +461,33 @@ class ServingChatTestCase(CustomTestCase):
+         )
+         self.assertFalse(self.chat._tool_call_parsing_active(declared_none))
+ 
++    def test_tool_choice_none_keeps_inkling_tools_under_a_no_call_grammar(self):
++        """A tool-heavy Inkling context with its tools stripped still draws a call,
++        which reaches the client as raw markup; the tools stay and a grammar rules
++        the call out at the message header."""
++        self.template_manager.chat_template_name = None
++        self.template_manager.jinja_template_content_format = "string"
++        self.tm.tokenizer.apply_chat_template.return_value = [1, 2, 3]
++        tools = [{"type": "function", "function": {"name": "lookup"}}]
++        user = [{"role": "user", "content": "Summarize."}]
++        for parser, keeps in (("hermes", False), ("inkling2", True)):
++            with self.subTest(parser=parser):
++                self.chat.tool_call_parser = parser
++                request = ChatCompletionRequest(
++                    model="x", messages=user, tools=tools, tool_choice="none"
++                )
++                processed = self.chat._process_messages(request, is_multimodal=False)
++                kwargs = self.tm.tokenizer.apply_chat_template.call_args.kwargs
++                self.assertEqual(bool(kwargs.get("tools")), keeps)
++                constraint = processed.tool_call_constraint
++                self.assertEqual(constraint is not None, keeps)
++                if keeps:
++                    self.assertEqual(constraint[0], "structural_tag")
++                    tag = constraint[1].model_dump(by_alias=True)["format"]
++                    self.assertEqual(tag["trigger_tokens"], [200001])
++                    self.assertEqual(sorted(tag["exclude_tokens"]), [200049, 200057])
++                self.assertFalse(self.chat._tool_call_parsing_active(request))
++
+     def test_m3_request_contract_rejects_what_the_template_cannot_honor(self):
+         """The M3 format check requires 400 for these; other models keep accepting them."""
+         weather = {"name": "get_weather", "arguments": "{}"}

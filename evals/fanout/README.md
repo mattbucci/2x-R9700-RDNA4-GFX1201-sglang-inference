@@ -33,6 +33,9 @@ with the Go SDK and module cache under `/data/tools`):
 - `--task shared`: one copy and the prompt a user would type, `workflowz` plus a five-part token-accounting spec
   (counter, `GET /v1/usage`, two count-tokens endpoints, auth and OpenAPI, tests and docs). oh-my-pi chooses the
   split. `router/check_accounting.py` scores the final tree on 24 checks; `router/accounting.patch` passes all.
+  `--keyword orchestrate` opens the prompt with oh-my-pi's orchestration keyword, which forces parallel
+  subagents; `--plan explicit` appends a written fan-out plan (scout, build and review pools, file owners and the
+  shared API contract). The receipt counts subagents from oh-my-pi's session store.
 
 Model-written Go is built and run only inside the sandbox. A preflight proves the baseline fails each check suite
 and the reference passes it. `--server-log` records the peak pool usage of the run.

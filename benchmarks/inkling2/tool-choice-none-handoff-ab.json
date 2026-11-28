@@ -1,0 +1,355 @@
+{
+ "eval": "tool-choice-none-handoff",
+ "served_model": "/data/models/Inkling-2-Mini",
+ "settings": "production preset, 32 slots, swa ratio 0.25",
+ "probe": "first K messages of a real oh-my-pi session (fanout shared-inkling2-w24-b) + oh-my-pi's handoff prompt, 6 tools declared, tool_choice none, reasoning high, temperature 0.7, max_tokens 32000, 8 parallel samples",
+ "arms": {
+  "baseline_94k": {
+   "samples": 8,
+   "structured": 7,
+   "raw_markup": 1,
+   "loops": 0,
+   "rows": [
+    {
+     "finish": "stop",
+     "completion_tokens": 6875,
+     "prompt_tokens": 93358,
+     "structured_handoff": true,
+     "raw_tool_markup": false,
+     "loop": false,
+     "head": "## Goal\nAdd token accounting to `simple-llm-router` (Go reverse proxy for OpenAI- and Anthropic-compatible LLM backends;"
+    },
+    {
+     "finish": "stop",
+     "completion_tokens": 7977,
+     "prompt_tokens": 93358,
+     "structured_handoff": true,
+     "raw_tool_markup": false,
+     "loop": false,
+     "head": "## Goal\nAdd token accounting to `simple-llm-router` (a Go reverse proxy for OpenAI- and Anthropic-compatible LLM backend"
+    },
+    {
+     "finish": "stop",
+     "completion_tokens": 6848,
+     "prompt_tokens": 93358,
+     "structured_handoff": true,
+     "raw_tool_markup": false,
+     "loop": false,
+     "head": "## Goal\nAdd token accounting to the `simple-llm-router` Go reverse proxy (module root is the current directory; offline "
+    },
+    {
+     "finish": "stop",
+     "completion_tokens": 8657,
+     "prompt_tokens": 93358,
+     "structured_handoff": true,
+     "raw_tool_markup": false,
+     "loop": false,
+     "head": "## Goal\nAdd token accounting to `simple-llm-router` (Go reverse proxy for OpenAI- and Anthropic-compatible LLM backends;"
+    },
+    {
+     "finish": "stop",
+     "completion_tokens": 243,
+     "prompt_tokens": 93358,
+     "structured_handoff": false,
+     "raw_tool_markup": true,
+     "loop": false,
+     "head": "<|message_model|>bash<|content_invoke_tool_json|>{\"name\":\"bash\",\"args\":{\"command\":\"git status --short; echo ===; git dif"
+    },
+    {
+     "finish": "stop",
+     "completion_tokens": 8450,
+     "prompt_tokens": 93358,
+     "structured_handoff": true,
+     "raw_tool_markup": false,
+     "loop": false,
+     "head": "## Goal\n\nAdd token accounting to `simple-llm-router` (Go reverse proxy for OpenAI- and Anthropic-compatible LLM backends"
+    },
+    {
+     "finish": "stop",
+     "completion_tokens": 6133,
+     "prompt_tokens": 93358,
+     "structured_handoff": true,
+     "raw_tool_markup": false,
+     "loop": false,
+     "head": "## Goal\nAdd token accounting to `simple-llm-router` (Go reverse proxy for OpenAI- and Anthropic-compatible LLM backends;"
+    },
+    {
+     "finish": "stop",
+     "completion_tokens": 8563,
+     "prompt_tokens": 93358,
+     "structured_handoff": true,
+     "raw_tool_markup": false,
+     "loop": false,
+     "head": "## Goal\nAdd token accounting to `simple-llm-router` (Go reverse proxy for OpenAI- and Anthropic-compatible LLM backends;"
+    }
+   ]
+  },
+  "patch140_94k": {
+   "samples": 8,
+   "structured": 7,
+   "raw_markup": 0,
+   "loops": 1,
+   "rows": [
+    {
+     "finish": "stop",
+     "completion_tokens": 4653,
+     "prompt_tokens": 94079,
+     "structured_handoff": true,
+     "raw_tool_markup": false,
+     "loop": false,
+     "head": "## Goal\nAdd token accounting to the `simple-llm-router` Go repository (current directory is the module root, `github.com"
+    },
+    {
+     "finish": "length",
+     "completion_tokens": 32000,
+     "prompt_tokens": 94079,
+     "structured_handoff": false,
+     "raw_tool_markup": false,
+     "loop": true,
+     "head": "I need to capture the exact current state before writing the handoff. Let me verify the repo state.I need to verify the "
+    },
+    {
+     "finish": "stop",
+     "completion_tokens": 9140,
+     "prompt_tokens": 94079,
+     "structured_handoff": true,
+     "raw_tool_markup": false,
+     "loop": false,
+     "head": "## Goal\nAdd token accounting to `simple-llm-router` (Go reverse proxy for OpenAI- and Anthropic-compatible LLM backends;"
+    },
+    {
+     "finish": "stop",
+     "completion_tokens": 7313,
+     "prompt_tokens": 94079,
+     "structured_handoff": true,
+     "raw_tool_markup": false,
+     "loop": false,
+     "head": "## Goal\nAdd token accounting to `simple-llm-router` (Go 1.23 reverse proxy for OpenAI- and Anthropic-compatible LLM back"
+    },
+    {
+     "finish": "stop",
+     "completion_tokens": 9735,
+     "prompt_tokens": 94079,
+     "structured_handoff": true,
+     "raw_tool_markup": false,
+     "loop": false,
+     "head": "## Goal\nAdd token accounting to the Go repository `simple-llm-router` (module `github.com/mattbucci/simple-llm-router`, "
+    },
+    {
+     "finish": "stop",
+     "completion_tokens": 7038,
+     "prompt_tokens": 94079,
+     "structured_handoff": true,
+     "raw_tool_markup": false,
+     "loop": false,
+     "head": "## Goal\nAdd token accounting to the `simple-llm-router` Go repository (module root = current directory): a Prometheus co"
+    },
+    {
+     "finish": "stop",
+     "completion_tokens": 8197,
+     "prompt_tokens": 94079,
+     "structured_handoff": true,
+     "raw_tool_markup": false,
+     "loop": false,
+     "head": "## Goal\nAdd token accounting to `simple-llm-router` (Go reverse proxy for OpenAI- and Anthropic-compatible LLM backends;"
+    },
+    {
+     "finish": "stop",
+     "completion_tokens": 7953,
+     "prompt_tokens": 94079,
+     "structured_handoff": true,
+     "raw_tool_markup": false,
+     "loop": false,
+     "head": "## Goal\nAdd token accounting to `simple-llm-router` (Go reverse proxy for OpenAI/Anthropic-compatible LLM backends; repo"
+    }
+   ]
+  },
+  "baseline_158k": {
+   "samples": 8,
+   "structured": 6,
+   "raw_markup": 2,
+   "loops": 0,
+   "rows": [
+    {
+     "finish": "stop",
+     "completion_tokens": 4043,
+     "prompt_tokens": 158526,
+     "structured_handoff": true,
+     "raw_tool_markup": false,
+     "loop": false,
+     "head": "## Goal\nAdd token accounting to `simple-llm-router` (a Go reverse proxy for OpenAI- and Anthropic-compatible LLM backend"
+    },
+    {
+     "finish": "stop",
+     "completion_tokens": 3940,
+     "prompt_tokens": 158526,
+     "structured_handoff": true,
+     "raw_tool_markup": false,
+     "loop": false,
+     "head": "## Goal\nAdd token accounting to `simple-llm-router` (Go reverse proxy for OpenAI- and Anthropic-compatible LLM backends;"
+    },
+    {
+     "finish": "stop",
+     "completion_tokens": 4859,
+     "prompt_tokens": 158526,
+     "structured_handoff": true,
+     "raw_tool_markup": false,
+     "loop": false,
+     "head": "## Goal\nAdd token accounting to the Go reverse proxy `simple-llm-router` (module root: `github.com/mattbucci/simple-llm-"
+    },
+    {
+     "finish": "stop",
+     "completion_tokens": 5387,
+     "prompt_tokens": 158526,
+     "structured_handoff": true,
+     "raw_tool_markup": false,
+     "loop": false,
+     "head": "## Goal\nAdd token accounting to the simple-llm-router repository (Go reverse proxy for OpenAI- and Anthropic-compatible "
+    },
+    {
+     "finish": "stop",
+     "completion_tokens": 234,
+     "prompt_tokens": 158526,
+     "structured_handoff": false,
+     "raw_tool_markup": true,
+     "loop": false,
+     "head": "<|message_model|>bash<|content_invoke_tool_json|>{\"name\":\"bash\",\"args\":{\"command\":\"go build ./... 2>&1; echo \\\"build exi"
+    },
+    {
+     "finish": "stop",
+     "completion_tokens": 186,
+     "prompt_tokens": 158526,
+     "structured_handoff": false,
+     "raw_tool_markup": true,
+     "loop": false,
+     "head": "<|message_model|>bash<|content_invoke_tool_json|>{\"name\":\"bash\",\"args\":{\"command\":\"ls docs/engineering/ | tail -5; echo "
+    },
+    {
+     "finish": "stop",
+     "completion_tokens": 3941,
+     "prompt_tokens": 158526,
+     "structured_handoff": true,
+     "raw_tool_markup": false,
+     "loop": false,
+     "head": "## Goal\nAdd token accounting to `simple-llm-router` (Go reverse proxy for OpenAI- and Anthropic-compatible LLM backends;"
+    },
+    {
+     "finish": "stop",
+     "completion_tokens": 3663,
+     "prompt_tokens": 158526,
+     "structured_handoff": true,
+     "raw_tool_markup": false,
+     "loop": false,
+     "head": "## Goal\nAdd token accounting to `simple-llm-router` (Go reverse proxy for OpenAI- and Anthropic-compatible LLM backends;"
+    }
+   ]
+  },
+  "patch140_158k": {
+   "samples": 8,
+   "structured": 8,
+   "raw_markup": 0,
+   "loops": 0,
+   "rows": [
+    {
+     "finish": "stop",
+     "completion_tokens": 5622,
+     "prompt_tokens": 159247,
+     "structured_handoff": true,
+     "raw_tool_markup": false,
+     "loop": false,
+     "head": "## Goal\nAdd token accounting to `simple-llm-router` (Go reverse proxy for OpenAI- and Anthropic-compatible LLM backends;"
+    },
+    {
+     "finish": "stop",
+     "completion_tokens": 4871,
+     "prompt_tokens": 159247,
+     "structured_handoff": true,
+     "raw_tool_markup": false,
+     "loop": false,
+     "head": "## Goal\nAdd token accounting to the `simple-llm-router` repository (Go reverse proxy for OpenAI- and Anthropic-compatibl"
+    },
+    {
+     "finish": "stop",
+     "completion_tokens": 4983,
+     "prompt_tokens": 159247,
+     "structured_handoff": true,
+     "raw_tool_markup": false,
+     "loop": false,
+     "head": "## Goal\nAdd token accounting to the simple-llm-router Go repository (module root = current directory, `github.com/mattbu"
+    },
+    {
+     "finish": "stop",
+     "completion_tokens": 3365,
+     "prompt_tokens": 159247,
+     "structured_handoff": true,
+     "raw_tool_markup": false,
+     "loop": false,
+     "head": "## Goal\n\nAdd token accounting to `simple-llm-router` (Go reverse proxy for OpenAI- and Anthropic-compatible LLM backends"
+    },
+    {
+     "finish": "stop",
+     "completion_tokens": 4562,
+     "prompt_tokens": 159247,
+     "structured_handoff": true,
+     "raw_tool_markup": false,
+     "loop": false,
+     "head": "## Goal\nAdd token accounting to `simple-llm-router` (Go reverse proxy for OpenAI- and Anthropic-compatible LLM backends;"
+    },
+    {
+     "finish": "stop",
+     "completion_tokens": 5892,
+     "prompt_tokens": 159247,
+     "structured_handoff": true,
+     "raw_tool_markup": false,
+     "loop": false,
+     "head": "## Goal\nAdd token accounting to `simple-llm-router` (Go reverse proxy for OpenAI- and Anthropic-compatible LLM backends;"
+    },
+    {
+     "finish": "stop",
+     "completion_tokens": 5759,
+     "prompt_tokens": 159247,
+     "structured_handoff": true,
+     "raw_tool_markup": false,
+     "loop": false,
+     "head": "## Goal\nAdd token accounting to the `simple-llm-router` repository (Go reverse proxy for OpenAI- and Anthropic-compatibl"
+    },
+    {
+     "finish": "stop",
+     "completion_tokens": 6990,
+     "prompt_tokens": 159247,
+     "structured_handoff": true,
+     "raw_tool_markup": false,
+     "loop": false,
+     "head": "## Goal\nAdd token accounting to the `simple-llm-router` repository (Go reverse proxy for OpenAI- and Anthropic-compatibl"
+    }
+   ]
+  }
+ },
+ "prefix_reuse_158k": {
+  "note": "an auto agent turn, then the same conversation + handoff prompt under tool_choice none; cached tokens and time to first token of the second request",
+  "baseline": {
+   "prompt_tokens": 158527,
+   "cached_tokens": 0,
+   "ttft_s": 77.24
+  },
+  "patch140": {
+   "prompt_tokens": 158996,
+   "cached_tokens": 155648,
+   "ttft_s": 2.34
+  }
+ },
+ "short_probe": {
+  "note": "142-token prompt asking for a file check then a summary, 8 samples",
+  "baseline": {
+   "raw_markup": 7,
+   "length": 3
+  },
+  "patch140": {
+   "raw_markup": 0,
+   "length": 8,
+   "note": "loops on a request only a tool can serve"
+  }
+ },
+ "capabilities_patch140": "basic, tool_call, thinking, vision pass; video unsupported by the checkpoint (same as before)",
+ "unit_tests": "test_serving_chat.py + function_call: 850 passed"
+}

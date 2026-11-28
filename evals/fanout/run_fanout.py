@@ -92,6 +92,42 @@ GO_ENV = ["--ro-bind", GO_SDK, "/home/agent/go-sdk", "--ro-bind", GO_MODCACHE, "
           "--setenv", "GOCACHE", "/home/agent/.cache/go-build"]
 GO_PATH = "/home/agent/bin:/home/agent/go-sdk/bin:/usr/local/bin:/usr/bin:/bin"
 
+# Appended for --plan explicit: the way a user who wants a fan-out writes it, naming the phases, the
+# file-disjoint owners and the shared contract up front.
+SHARED_PLAN = """
+Fan out like this. Use one named workpool per phase; push every item of a phase in one cell.
+
+Phase 1, understand (pool "scout", read only, return exact paths, signatures and line numbers):
+- metrics: internal/observability/metrics.go, how ops reach the owner goroutine and how render() writes series.
+- routing: internal/server/server.go handleRouted and internal/router/proxy.go, where the reported usage
+  (rec.PromptTokens, rec.CompletionTokens, rec.ReasoningTokens, rec.Backend, rec.UpstreamModel) is known for
+  OpenAI, Anthropic, streaming and non-streaming requests.
+- http surface: route registration, s.authed, writeJSON, writeAPIErrorFor, bodyReadError, model.ErrBadRequest.
+- docs: internal/server/openapi.go path entries, docs/engineering ADR format and index, README endpoint list.
+
+Phase 2, implement (pool "build", one worker per unit, each edits only its own files; agents may message each
+other at agent://<id> for contract questions). The shared contract, fixed now:
+    // internal/observability
+    type UsageRow struct { Backend, Model string; Requests, PromptTokens, CompletionTokens, ReasoningTokens int64 }
+      (JSON names backend, model, requests, prompt_tokens, completion_tokens, reasoning_tokens)
+    func (m *Metrics) Tokens(backend, model string, prompt, completion, reasoning int)  // one routed request
+    func (m *Metrics) Usage() []UsageRow                                               // sorted backend, model
+- A, internal/observability/metrics.go + internal/observability/tokens_test.go: the contract, the counter
+  family and its render block, tests asserting on llmrouter_tokens_total.
+- B, internal/server/tokencount.go + internal/server/tokencount_test.go (new): both count-tokens handlers
+  and the estimator, with tests by path.
+- C, internal/server/usage.go + internal/server/usage_test.go (new): the GET /v1/usage handler on m.Usage(),
+  with a test by path.
+- D, internal/server/openapi.go: the three path entries.
+- E, docs/engineering/0025-token-accounting.md, the ADR index and README.md.
+The orchestrator itself owns internal/server/server.go: the three route registrations behind s.authed and the
+s.metrics.Tokens call where handleRouted records the usage.
+
+Phase 3, verify: the orchestrator runs gofmt, go build, go vet and go test on the whole tree, then a pool
+"review" of three read-only reviewers (streaming and Anthropic usage reach the counter; auth on every new route;
+estimator edge cases against the spec) whose evidence-backed findings it fixes and re-verifies.
+"""
+
 
 def sha_file(p):
     try:
@@ -223,6 +259,14 @@ def pool_peaks(log, offset):
     return {"full": full, "window": swa, "lines": seen} if seen else None
 
 
+def session_agents(home):
+    """Subagent names from oh-my-pi's session store: the orchestrator writes <session>.jsonl, each subagent a
+    <session>/<Name>.jsonl beside it."""
+    root = home / PROFILE / "agent" / "sessions"
+    names = sorted(p.stem for p in root.glob("*/*/*.jsonl")) if root.exists() else []
+    return {"subagents": len(names), "names": names}
+
+
 def quantile(xs, p):
     xs = sorted(xs)
     return xs[min(len(xs) - 1, int(p * len(xs)))] if xs else None
@@ -293,6 +337,10 @@ def main():
                          "counter in its own checkout of simple-llm-router; shared: one checkout, a plain workflowz "
                          "prompt with the token-accounting spec, oh-my-pi plans the split")
     ap.add_argument("--router-src", default="/data/tools/simple-llm-router", help="git checkout at the pinned commit")
+    ap.add_argument("--keyword", choices=("workflowz", "orchestrate"), default="workflowz",
+                    help="shared task: the oh-my-pi magic keyword that opens the prompt (orchestrate forces fan-out)")
+    ap.add_argument("--plan", choices=("none", "explicit"), default="none",
+                    help="shared task: append an explicit fan-out plan (phases, file owners, shared contract)")
     ap.add_argument("--server-log", default="", help="server log to read peak pool usage from")
     a = ap.parse_args()
 
@@ -357,7 +405,7 @@ def main():
         contextWindow: {max_len or 262144}
         maxTokens: 32000{compat}
 """)
-    prompt = SHARED_PROMPT if shared else (ROUTER_PROMPT.format(n=len(modules), first=f"./{modules[0]}", last=f"./{modules[-1]}") if router
+    prompt = SHARED_PROMPT.replace("workflowz", a.keyword, 1) + (SHARED_PLAN if a.plan == "explicit" else "") if shared else (ROUTER_PROMPT.format(n=len(modules), first=f"./{modules[0]}", last=f"./{modules[-1]}") if router
               else PROMPT.format(n=len(modules)))
     log_offset = os.path.getsize(a.server_log) if a.server_log and os.path.exists(a.server_log) else 0
     (run / "prompt.md").write_text(prompt)
@@ -446,14 +494,15 @@ def main():
     receipt = {
         "eval": "fanout-shared-feature" if shared else "fanout-router-feature" if router else "fanout-wide-agents", "tag": a.tag, "label": a.label, "served_model": served, "settings": a.settings,
         "thinking_format": thinking_format or "default",
-        "scaffold": f"oh-my-pi {omp_version} workflowz", "width": a.width, "modules": n, "wall_budget_s": a.wall,
+        "scaffold": f"oh-my-pi {omp_version} {a.keyword if shared else 'workflowz'}", "keyword": a.keyword if shared else "workflowz",
+        "plan": a.plan if shared else None, "width": a.width, "modules": n, "wall_budget_s": a.wall,
         "resolved": resolved, "resolve_rate_pct": round(100 * resolved / n, 1), "edited": sum(r["edited"] for r in rows),
         "notes": sum(r["note"] for r in rows), "report": (ws / "REPORT.md").exists(),
         "wall_s": round(wall, 1), "hit_wall": hit_wall, "session_rc": rc,
         "time_to_half_resolved_s": t_at(0.5), "time_to_all_resolved_s": t_at(1.0),
         "resolved_per_hour": round(resolved / wall * 3600, 1),
         "checks_passed": rows[0]["passed"] if shared else None, "checks_total": rows[0]["total"] if shared else None,
-        "wire": wire_summary(cap, t0), "rows": rows,
+        "wire": wire_summary(cap, t0), "rows": rows, "agents": session_agents(home),
         "pool_peak": pool_peaks(a.server_log, log_offset) if a.server_log else None,
         "corpus_sha256": ROUTER_COMMIT[:16] + ("-accounting" if shared else "") if router else
         hashlib.sha256("".join(sha_file(CORPUS / "src" / f"{m}.py") for m in modules).encode()).hexdigest()[:16],

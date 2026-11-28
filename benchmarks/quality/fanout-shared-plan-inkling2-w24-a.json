@@ -1,0 +1,130 @@
+{
+ "eval": "fanout-shared-feature",
+ "tag": "shared-plan-inkling2-w24-a",
+ "label": "Inkling-2-Mini, 32 slots, workflowz + plan, width 24",
+ "served_model": "/data/models/Inkling-2-Mini",
+ "settings": "32 slots, swa ratio 0.25, strip-thinking-cache",
+ "thinking_format": "default",
+ "scaffold": "oh-my-pi omp/18.12.2 workflowz",
+ "keyword": "workflowz",
+ "plan": "explicit",
+ "width": 24,
+ "modules": 1,
+ "wall_budget_s": 3600,
+ "resolved": 0,
+ "resolve_rate_pct": 0.0,
+ "edited": 1,
+ "notes": 0,
+ "report": false,
+ "wall_s": 2736.1,
+ "hit_wall": false,
+ "session_rc": 0,
+ "time_to_half_resolved_s": null,
+ "time_to_all_resolved_s": null,
+ "resolved_per_hour": 0.0,
+ "checks_passed": 17,
+ "checks_total": 24,
+ "wire": {
+  "requests": 412,
+  "status": {
+   "200": 412
+  },
+  "finish": {
+   "tool_calls": 404,
+   "None": 5,
+   "stop": 3
+  },
+  "errors": [],
+  "conversations": 15,
+  "max_inflight": 11,
+  "prompt_tokens": 28253130,
+  "cached_tokens": 27432336,
+  "cache_hit_rate": 0.971,
+  "output_tokens": 194906,
+  "reasoning_tokens": 125076,
+  "output_tok_s": 71.2,
+  "max_prompt_tokens": 223017,
+  "turns_per_conversation_p50": 11,
+  "conversation_peak_prompt": {
+   "p50": 36177,
+   "max": 223017
+  },
+  "conversation_prompt_total": {
+   "p50": 159740,
+   "max": 19285941
+  },
+  "first_turn_ttft_s": {
+   "p50": 4.01,
+   "p90": 7.56
+  },
+  "followup_ttft_s": {
+   "p50": 0.6,
+   "p90": 1.86,
+   "max": 100.0
+  }
+ },
+ "rows": [
+  {
+   "module": "repo",
+   "edited": true,
+   "resolved": false,
+   "checks": {
+    "build": true,
+    "vet": true,
+    "tests": true,
+    "own_test": false,
+    "endpoint_tests": true,
+    "docs": false,
+    "readme": true,
+    "series_exact": false,
+    "stream_counted": false,
+    "anthropic_counted": false,
+    "no_usage_adds_nothing": false,
+    "type_line": false,
+    "old_series_kept": true,
+    "usage_empty": true,
+    "usage_rows": true,
+    "count_anthropic_string": true,
+    "count_anthropic_blocks": true,
+    "count_anthropic_bad": true,
+    "count_openai": true,
+    "count_openai_bad": true,
+    "count_minimum": true,
+    "openapi_paths": true,
+    "auth_rejects": true,
+    "auth_accepts": true
+   },
+   "passed": 17,
+   "total": 24,
+   "note": false,
+   "last_edit_s": 2714.7,
+   "check_tail": "failed: own_test docs series_exact stream_counted anthropic_counted no_usage_adds_nothing type_line"
+  }
+ ],
+ "pool_peak": {
+  "full": 0.98,
+  "window": 0.13,
+  "lines": 491
+ },
+ "corpus_sha256": "aa285b964aad000d-accounting",
+ "harness": "bubblewrap sandbox: no network, empty home, /data and /tmp hidden; hidden behaviour check per of the one shared checkout (24 checks: build, vet, tests, docs, /metrics, /v1/usage, count-tokens, auth, OpenAPI against a stub backend)",
+ "timestamp": "2026-11-27T23:25:59",
+ "agents": {
+  "subagents": 12,
+  "names": [
+   "build-1",
+   "build-2",
+   "build-3",
+   "build-4",
+   "build-5",
+   "review-1",
+   "review-2",
+   "review-3",
+   "scout-1",
+   "scout-2",
+   "scout-3",
+   "scout-4"
+  ]
+ },
+ "note": "Server without patch 140: the orchestrator's context compaction (tool_choice none) returned raw tool-call markup as the handoff summary; the orchestrator lost the spec and removed the finished /metrics counter. See benchmarks/inkling2/tool-choice-none-handoff-ab.json."
+}

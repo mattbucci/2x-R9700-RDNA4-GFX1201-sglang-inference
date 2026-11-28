@@ -106,5 +106,9 @@
  },
  "corpus_sha256": "aa285b964aad000d-accounting",
  "harness": "bubblewrap sandbox: no network, empty home, /data and /tmp hidden; hidden behaviour check per of the one shared checkout (24 checks: build, vet, tests, docs, /metrics, /v1/usage, count-tokens, auth, OpenAPI against a stub backend)",
- "timestamp": "2026-11-27T20:53:17"
+ "timestamp": "2026-11-27T20:53:17",
+ "agents": {
+  "subagents": 0,
+  "names": []
+ }
 }
