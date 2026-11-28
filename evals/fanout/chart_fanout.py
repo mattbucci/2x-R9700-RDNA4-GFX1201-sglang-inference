@@ -79,7 +79,8 @@ def load_shared(pattern):
         r = json.loads(Path(f).read_text())
         if r.get("eval") == "fanout-shared-feature":
             groups.setdefault((r["served_model"].rstrip("/").split("/")[-1] + " " + r.get("keyword", "workflowz")
-                               + (" + plan" if r.get("plan") == "explicit" else ""),
+                               + (" + plan" if r.get("plan") == "explicit" else "")
+                               + (", patch 140" if "patch 140" in r.get("settings", "") else ""),
                                r["width"]), []).append(r)
     rows = []
     for (model, width), runs in sorted(groups.items()):
@@ -113,23 +114,24 @@ def chart_shared(rows, path):
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
     fig, (a, b) = plt.subplots(1, 2, figsize=(12, 4.2))
-    for model in sorted({r["model"] for r in rows}):
+    for i, model in enumerate(sorted({r["model"] for r in rows})):
         rs = [r for r in rows if r["model"] == model]
+        c = f"C{i}"
         for r in rs:
-            a.scatter([r["width"]] * r["runs"], r["passed"], color="#3b6ea5", alpha=0.7)
-            b.scatter([r["width"]] * r["runs"], [w / 60 for w in r["wall"]],
-                      color=["#b5651d" if h else "#6b9e5b" for h in r["hit_wall"]], alpha=0.8)
+            a.scatter([r["width"]] * r["runs"], r["passed"], color=c, alpha=0.7)
+            for w, h in zip(r["wall"], r["hit_wall"]):
+                b.scatter([r["width"]], [w / 60], color=c, alpha=0.8, marker="x" if h else "o")
         xs = [r["width"] for r in rs]
-        a.plot(xs, [sum(r["passed"]) / r["runs"] for r in rs], label=model)
-        b.plot(xs, [sum(r["wall"]) / r["runs"] / 60 for r in rs], label=model)
+        a.plot(xs, [sum(r["passed"]) / r["runs"] for r in rs], color=c, label=model)
+        b.plot(xs, [sum(r["wall"]) / r["runs"] / 60 for r in rs], color=c, label=model)
     total = max(r["total"] for r in rows)
     for ax in (a, b):
         ax.set_xscale("log", base=2); ax.set_xticks(sorted({r["width"] for r in rows}))
         ax.set_xticklabels([str(x) for x in sorted({r["width"] for r in rows})]); ax.set_xlabel("task.maxConcurrency")
         ax.legend(fontsize=8)
     a.set_ylim(0, total + 1); a.set_ylabel(f"hidden checks passed of {total}")
-    b.set_ylim(0, None); b.set_ylabel("session wall, min (brown: hit the wall)")
-    fig.suptitle("Shared checkout: one plain workflowz prompt, token accounting in simple-llm-router", fontsize=11)
+    b.set_ylim(0, None); b.set_ylabel("session wall, min (x: hit the wall)")
+    fig.suptitle("Shared checkout: token accounting in simple-llm-router, per prompt and width (dots: runs, line: mean)", fontsize=11)
     fig.tight_layout(); fig.savefig(path, dpi=130); print("wrote", path)
 
 

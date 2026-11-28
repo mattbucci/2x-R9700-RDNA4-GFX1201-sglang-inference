@@ -1,0 +1,129 @@
+{
+ "eval": "fanout-shared-feature",
+ "tag": "shared-plan140-inkling2-w24-b",
+ "label": "Inkling-2-Mini, 32 slots, workflowz + plan, width 24",
+ "served_model": "/data/models/Inkling-2-Mini",
+ "settings": "32 slots, swa ratio 0.25, strip-thinking-cache, patch 140",
+ "thinking_format": "default",
+ "scaffold": "oh-my-pi omp/18.12.2 workflowz",
+ "keyword": "workflowz",
+ "plan": "explicit",
+ "width": 24,
+ "modules": 1,
+ "wall_budget_s": 7200,
+ "resolved": 1,
+ "resolve_rate_pct": 100.0,
+ "edited": 1,
+ "notes": 0,
+ "report": false,
+ "wall_s": 1824.7,
+ "hit_wall": false,
+ "session_rc": 0,
+ "time_to_half_resolved_s": 1780.5,
+ "time_to_all_resolved_s": 1780.5,
+ "resolved_per_hour": 2.0,
+ "checks_passed": 24,
+ "checks_total": 24,
+ "wire": {
+  "requests": 321,
+  "status": {
+   "200": 321
+  },
+  "finish": {
+   "tool_calls": 315,
+   "None": 5,
+   "stop": 1
+  },
+  "errors": [],
+  "conversations": 14,
+  "max_inflight": 11,
+  "prompt_tokens": 13830508,
+  "cached_tokens": 13378598,
+  "cache_hit_rate": 0.967,
+  "output_tokens": 157782,
+  "reasoning_tokens": 97522,
+  "output_tok_s": 86.5,
+  "max_prompt_tokens": 153618,
+  "turns_per_conversation_p50": 17,
+  "conversation_peak_prompt": {
+   "p50": 23580,
+   "max": 153618
+  },
+  "conversation_prompt_total": {
+   "p50": 276777,
+   "max": 8548652
+  },
+  "first_turn_ttft_s": {
+   "p50": 3.89,
+   "p90": 5.32
+  },
+  "followup_ttft_s": {
+   "p50": 0.53,
+   "p90": 1.71,
+   "max": 3.46
+  }
+ },
+ "rows": [
+  {
+   "module": "repo",
+   "edited": true,
+   "resolved": true,
+   "checks": {
+    "build": true,
+    "vet": true,
+    "tests": true,
+    "own_test": true,
+    "endpoint_tests": true,
+    "docs": true,
+    "readme": true,
+    "series_exact": true,
+    "stream_counted": true,
+    "anthropic_counted": true,
+    "no_usage_adds_nothing": true,
+    "type_line": true,
+    "old_series_kept": true,
+    "usage_empty": true,
+    "usage_rows": true,
+    "count_anthropic_string": true,
+    "count_anthropic_blocks": true,
+    "count_anthropic_bad": true,
+    "count_openai": true,
+    "count_openai_bad": true,
+    "count_minimum": true,
+    "openapi_paths": true,
+    "auth_rejects": true,
+    "auth_accepts": true
+   },
+   "passed": 24,
+   "total": 24,
+   "note": false,
+   "last_edit_s": 1780.5,
+   "check_tail": null
+  }
+ ],
+ "agents": {
+  "subagents": 12,
+  "names": [
+   "build-1",
+   "build-2",
+   "build-3",
+   "build-4",
+   "build-5",
+   "review-1",
+   "review-2",
+   "review-3",
+   "understand-1",
+   "understand-2",
+   "understand-3",
+   "understand-4"
+  ]
+ },
+ "pool_peak": {
+  "full": 0.43,
+  "window": 0.13,
+  "lines": 337
+ },
+ "corpus_sha256": "aa285b964aad000d-accounting",
+ "harness": "bubblewrap sandbox: no network, empty home, /data and /tmp hidden; hidden behaviour check per of the one shared checkout (24 checks: build, vet, tests, docs, /metrics, /v1/usage, count-tokens, auth, OpenAPI against a stub backend)",
+ "timestamp": "2026-11-28T05:04:15"
+}

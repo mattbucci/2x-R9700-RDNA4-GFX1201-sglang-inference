@@ -3547,6 +3547,27 @@ Three ways to ask for the same feature, width 24, two runs each, all on the serv
   and the raw `<|content_invoke_tool_json|>` markup came back as the summary. The orchestrator lost the spec,
   invented an instruction to drop the `/metrics` counter, and deleted a working implementation.
 
+Width sweep on the explicit-plan prompt, on the patch 140 server, two runs per width in opposite orders (24, 6,
+3 then 3, 6, 24; receipts `fanout-shared-plan140-*.json`):
+
+![Shared checkout: checks passed and wall per prompt and width](fanout_shared_width.png)
+
+| `task.maxConcurrency` | Checks passed | Wall min | Subagents | Max in flight | Largest conversation | Prompt tokens | Compactions |
+|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| 24 | 24, 24 | 32, 30 | 12, 12 | 11, 11 | 134K, 154K | 16.8M, 13.8M | 0 |
+| 6 | 24, 24 | 30, 39 | 12, 12 | 11, 10 | 170K, 177K | 20.0M, 25.8M | 0 |
+| 3 | 24, 24 | 37, 27 | 9, 10 | 7, 7 | 203K, 146K | 24.2M, 19.9M | 0 |
+
+- **Width does not change quality or wall on this task.** Every run passes 24 of 24. Walls spread 27 to 39
+  minutes within a width and overlap across widths.
+- **Width 6 runs the plan as written.** No phase has more than five agents, so 6 and 24 start the same twelve
+  subagents; the orchestrator launches the builders before the last scouts report, so up to 11 run at once.
+- **Width 3 rewrites the plan.** The orchestrator merges it to three scouts and three builders (once a second
+  round of three builders); fewer agents carry more each and report more back to the orchestrator.
+- Width 24 used the fewest prompt tokens in both orders (13.8M to 16.8M against 19.9M to 25.8M). The patch 140
+  runs finish in 27 to 39 minutes against 43 and 46 before it, but none of them compacted, so the gap cannot be
+  credited to the patch.
+
 ## Inkling 2: `tool_choice: "none"` keeps the tools and rules the call out (patch 140, 2026-11-28)
 
 Upstream removes the tools from the prompt under `tool_choice: "none"`. Two costs for an agent's compaction
