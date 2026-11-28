@@ -22,5 +22,21 @@ the fan-out (queueing, cache reuse, time to first token).
 - Receipts: `benchmarks/quality/fanout-<tag>.json`. The pinned scaffold is `/data/tools/omp-18.12.2/omp` with
   `task.maxConcurrency` 32.
 
+## Router tasks
+
+Two tasks on simple-llm-router (Go, pinned to commit `aa285b9`, staged offline at `/data/tools/simple-llm-router`
+with the Go SDK and module cache under `/data/tools`):
+
+- `--task router`: 24 copies of the repo in one workspace, a prescriptive prompt with one subagent per copy, each
+  adding the `llmrouter_tokens_total` counter. `router/check_router.py` checks each copy (build, vet, tests, a Go
+  test of the series, `/metrics` against a stub backend); `router/reference.patch` passes it.
+- `--task shared`: one copy and the prompt a user would type, `workflowz` plus a five-part token-accounting spec
+  (counter, `GET /v1/usage`, two count-tokens endpoints, auth and OpenAPI, tests and docs). oh-my-pi chooses the
+  split. `router/check_accounting.py` scores the final tree on 24 checks; `router/accounting.patch` passes all.
+
+Model-written Go is built and run only inside the sandbox. A preflight proves the baseline fails each check suite
+and the reference passes it. `--server-log` records the peak pool usage of the run.
+`chart_fanout.py --shared` tabulates the shared receipts by width.
+
 Run the same label at least twice before ranking two settings: sampled sessions of the same server differ by up
 to a factor of two in wall time.

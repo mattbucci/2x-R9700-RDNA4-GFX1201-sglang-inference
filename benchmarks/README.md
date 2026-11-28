@@ -475,7 +475,7 @@ v0.5.23, `O` = v0.5.22). Tables: [rebase note](../patches/v0523-rebase-2026-11-1
 - [`inkling2/expert-gemm-tile-policy-ab.txt`](inkling2/expert-gemm-tile-policy-ab.txt): Inkling-2-Mini prefill, patch 138 expert GEMM tile policy against the live tree in both orders, with greedy text hashes.
 - [`inkling2/decode-32-requests-hip-kernels-ab.txt`](inkling2/decode-32-requests-hip-kernels-ab.txt): Inkling-2-Mini decode at 1 to 32 concurrent requests, patch 139 (HIP kernels up to 32 tokens) by part and in both orders.
 - [`inkling2/fanout-replay-8-slots-baseline.txt`](inkling2/fanout-replay-8-slots-baseline.txt), [`fanout-replay-32-slots-thinking-cache-ab.txt`](inkling2/fanout-replay-32-slots-thinking-cache-ab.txt), [`fanout-replay-pool-split-ab.txt`](inkling2/fanout-replay-pool-split-ab.txt): recorded 24-agent, 12-turn fan-out replayed against 8 and 32 slots, with and without the thinking cache strip, and across window-pool ratios.
-- [`quality/fanout-*.json`](quality/): wide fan-out eval receipts ([`evals/fanout`](../evals/fanout/README.md)), one per run; chart `fanout_wide_agents.png`.
+- [`quality/fanout-*.json`](quality/): wide fan-out eval receipts ([`evals/fanout`](../evals/fanout/README.md)), one per run; chart `fanout_wide_agents.png`; `fanout-router-*.json` and `fanout-shared-*.json` are the simple-llm-router tasks.
 - [`inkling2/swebench-omp-pairs-2026-11-24.json`](inkling2/swebench-omp-pairs-2026-11-24.json),
   [`swebench-omp-git-peek-2026-11-24.json`](inkling2/swebench-omp-git-peek-2026-11-24.json): Inkling-2-Mini SWE-bench Lite
   oh-my-pi cell (179 / 300), paired counts against the qwen38, Qwopus and Flint cells and the leak audit; charts

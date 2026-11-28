@@ -1,0 +1,543 @@
+{
+ "eval": "fanout-router-feature",
+ "tag": "router-inkling2-s32-r250-w12-a",
+ "label": "Inkling-2-Mini, 32 slots, 12 agents at a time",
+ "served_model": "/data/models/Inkling-2-Mini",
+ "settings": "32 slots, --swa-full-tokens-ratio 0.25, --strip-thinking-cache",
+ "thinking_format": "default",
+ "scaffold": "oh-my-pi omp/18.12.2 workflowz",
+ "width": 12,
+ "modules": 24,
+ "wall_budget_s": 5400,
+ "resolved": 16,
+ "resolve_rate_pct": 66.7,
+ "edited": 22,
+ "notes": 12,
+ "report": false,
+ "wall_s": 5400.0,
+ "hit_wall": true,
+ "session_rc": 137,
+ "time_to_half_resolved_s": 3602.5,
+ "time_to_all_resolved_s": null,
+ "resolved_per_hour": 10.7,
+ "wire": {
+  "requests": 1029,
+  "status": {
+   "200": 1029
+  },
+  "finish": {
+   "tool_calls": 1007,
+   "None": 22
+  },
+  "errors": [],
+  "conversations": 25,
+  "max_inflight": 25,
+  "prompt_tokens": 37007024,
+  "cached_tokens": 25890913,
+  "cache_hit_rate": 0.7,
+  "output_tokens": 200215,
+  "reasoning_tokens": 150431,
+  "output_tok_s": 37.1,
+  "max_prompt_tokens": 64217,
+  "turns_per_conversation_p50": 33,
+  "first_turn_ttft_s": {
+   "p50": 6.87,
+   "p90": 50.3
+  },
+  "followup_ttft_s": {
+   "p50": 0.58,
+   "p90": 55.22,
+   "max": 81.57
+  }
+ },
+ "rows": [
+  {
+   "module": "w01",
+   "edited": true,
+   "resolved": false,
+   "checks": {
+    "build": true,
+    "vet": true,
+    "tests": true,
+    "own_test": false,
+    "series_exact": false,
+    "stream_counted": false,
+    "anthropic_counted": false,
+    "no_usage_adds_nothing": false,
+    "type_line": true,
+    "old_series_kept": true
+   },
+   "note": false,
+   "last_edit_s": 5200.0,
+   "check_tail": "failed: own_test series_exact stream_counted anthropic_counted no_usage_adds_nothing"
+  },
+  {
+   "module": "w02",
+   "edited": true,
+   "resolved": true,
+   "checks": {
+    "build": true,
+    "vet": true,
+    "tests": true,
+    "own_test": true,
+    "series_exact": true,
+    "stream_counted": true,
+    "anthropic_counted": true,
+    "no_usage_adds_nothing": true,
+    "type_line": true,
+    "old_series_kept": true
+   },
+   "note": true,
+   "last_edit_s": 736.6,
+   "check_tail": null
+  },
+  {
+   "module": "w03",
+   "edited": true,
+   "resolved": true,
+   "checks": {
+    "build": true,
+    "vet": true,
+    "tests": true,
+    "own_test": true,
+    "series_exact": true,
+    "stream_counted": true,
+    "anthropic_counted": true,
+    "no_usage_adds_nothing": true,
+    "type_line": true,
+    "old_series_kept": true
+   },
+   "note": true,
+   "last_edit_s": 1184.2,
+   "check_tail": null
+  },
+  {
+   "module": "w04",
+   "edited": true,
+   "resolved": true,
+   "checks": {
+    "build": true,
+    "vet": true,
+    "tests": true,
+    "own_test": true,
+    "series_exact": true,
+    "stream_counted": true,
+    "anthropic_counted": true,
+    "no_usage_adds_nothing": true,
+    "type_line": true,
+    "old_series_kept": true
+   },
+   "note": true,
+   "last_edit_s": 752.7,
+   "check_tail": null
+  },
+  {
+   "module": "w05",
+   "edited": true,
+   "resolved": true,
+   "checks": {
+    "build": true,
+    "vet": true,
+    "tests": true,
+    "own_test": true,
+    "series_exact": true,
+    "stream_counted": true,
+    "anthropic_counted": true,
+    "no_usage_adds_nothing": true,
+    "type_line": true,
+    "old_series_kept": true
+   },
+   "note": true,
+   "last_edit_s": 624.3,
+   "check_tail": null
+  },
+  {
+   "module": "w06",
+   "edited": true,
+   "resolved": true,
+   "checks": {
+    "build": true,
+    "vet": true,
+    "tests": true,
+    "own_test": true,
+    "series_exact": true,
+    "stream_counted": true,
+    "anthropic_counted": true,
+    "no_usage_adds_nothing": true,
+    "type_line": true,
+    "old_series_kept": true
+   },
+   "note": true,
+   "last_edit_s": 706.5,
+   "check_tail": null
+  },
+  {
+   "module": "w07",
+   "edited": true,
+   "resolved": true,
+   "checks": {
+    "build": true,
+    "vet": true,
+    "tests": true,
+    "own_test": true,
+    "series_exact": true,
+    "stream_counted": true,
+    "anthropic_counted": true,
+    "no_usage_adds_nothing": true,
+    "type_line": true,
+    "old_series_kept": true
+   },
+   "note": true,
+   "last_edit_s": 694.5,
+   "check_tail": null
+  },
+  {
+   "module": "w08",
+   "edited": true,
+   "resolved": true,
+   "checks": {
+    "build": true,
+    "vet": true,
+    "tests": true,
+    "own_test": true,
+    "series_exact": true,
+    "stream_counted": true,
+    "anthropic_counted": true,
+    "no_usage_adds_nothing": true,
+    "type_line": true,
+    "old_series_kept": true
+   },
+   "note": true,
+   "last_edit_s": 552.0,
+   "check_tail": null
+  },
+  {
+   "module": "w09",
+   "edited": true,
+   "resolved": true,
+   "checks": {
+    "build": true,
+    "vet": true,
+    "tests": true,
+    "own_test": true,
+    "series_exact": true,
+    "stream_counted": true,
+    "anthropic_counted": true,
+    "no_usage_adds_nothing": true,
+    "type_line": true,
+    "old_series_kept": true
+   },
+   "note": false,
+   "last_edit_s": 5342.5,
+   "check_tail": null
+  },
+  {
+   "module": "w10",
+   "edited": true,
+   "resolved": true,
+   "checks": {
+    "build": true,
+    "vet": true,
+    "tests": true,
+    "own_test": true,
+    "series_exact": true,
+    "stream_counted": true,
+    "anthropic_counted": true,
+    "no_usage_adds_nothing": true,
+    "type_line": true,
+    "old_series_kept": true
+   },
+   "note": true,
+   "last_edit_s": 822.9,
+   "check_tail": null
+  },
+  {
+   "module": "w11",
+   "edited": true,
+   "resolved": true,
+   "checks": {
+    "build": true,
+    "vet": true,
+    "tests": true,
+    "own_test": true,
+    "series_exact": true,
+    "stream_counted": true,
+    "anthropic_counted": true,
+    "no_usage_adds_nothing": true,
+    "type_line": true,
+    "old_series_kept": true
+   },
+   "note": true,
+   "last_edit_s": 710.6,
+   "check_tail": null
+  },
+  {
+   "module": "w12",
+   "edited": true,
+   "resolved": true,
+   "checks": {
+    "build": true,
+    "vet": true,
+    "tests": true,
+    "own_test": true,
+    "series_exact": true,
+    "stream_counted": true,
+    "anthropic_counted": true,
+    "no_usage_adds_nothing": true,
+    "type_line": true,
+    "old_series_kept": true
+   },
+   "note": true,
+   "last_edit_s": 808.9,
+   "check_tail": null
+  },
+  {
+   "module": "w13",
+   "edited": false,
+   "resolved": false,
+   "checks": {
+    "build": true,
+    "vet": true,
+    "tests": true,
+    "own_test": false,
+    "series_exact": false,
+    "stream_counted": false,
+    "anthropic_counted": false,
+    "no_usage_adds_nothing": false,
+    "type_line": false,
+    "old_series_kept": true
+   },
+   "note": false,
+   "last_edit_s": null,
+   "check_tail": "failed: own_test series_exact stream_counted anthropic_counted no_usage_adds_nothing type_line"
+  },
+  {
+   "module": "w14",
+   "edited": true,
+   "resolved": false,
+   "checks": {
+    "build": true,
+    "vet": true,
+    "tests": true,
+    "own_test": false,
+    "series_exact": false,
+    "stream_counted": false,
+    "anthropic_counted": false,
+    "no_usage_adds_nothing": false,
+    "type_line": false,
+    "old_series_kept": true
+   },
+   "note": false,
+   "last_edit_s": 5194.0,
+   "check_tail": "failed: own_test series_exact stream_counted anthropic_counted no_usage_adds_nothing type_line"
+  },
+  {
+   "module": "w15",
+   "edited": true,
+   "resolved": false,
+   "checks": {
+    "build": true,
+    "vet": true,
+    "tests": true,
+    "own_test": false,
+    "series_exact": true,
+    "stream_counted": true,
+    "anthropic_counted": true,
+    "no_usage_adds_nothing": true,
+    "type_line": true,
+    "old_series_kept": true
+   },
+   "note": false,
+   "last_edit_s": 5390.6,
+   "check_tail": "failed: own_test"
+  },
+  {
+   "module": "w16",
+   "edited": true,
+   "resolved": true,
+   "checks": {
+    "build": true,
+    "vet": true,
+    "tests": true,
+    "own_test": true,
+    "series_exact": true,
+    "stream_counted": true,
+    "anthropic_counted": true,
+    "no_usage_adds_nothing": true,
+    "type_line": true,
+    "old_series_kept": true
+   },
+   "note": false,
+   "last_edit_s": 5372.6,
+   "check_tail": null
+  },
+  {
+   "module": "w17",
+   "edited": true,
+   "resolved": true,
+   "checks": {
+    "build": true,
+    "vet": true,
+    "tests": true,
+    "own_test": true,
+    "series_exact": true,
+    "stream_counted": true,
+    "anthropic_counted": true,
+    "no_usage_adds_nothing": true,
+    "type_line": true,
+    "old_series_kept": true
+   },
+   "note": false,
+   "last_edit_s": 5316.4,
+   "check_tail": null
+  },
+  {
+   "module": "w18",
+   "edited": true,
+   "resolved": false,
+   "checks": {
+    "build": true,
+    "vet": true,
+    "tests": true,
+    "own_test": false,
+    "series_exact": true,
+    "stream_counted": true,
+    "anthropic_counted": true,
+    "no_usage_adds_nothing": true,
+    "type_line": true,
+    "old_series_kept": true
+   },
+   "note": false,
+   "last_edit_s": 5175.9,
+   "check_tail": "failed: own_test"
+  },
+  {
+   "module": "w19",
+   "edited": true,
+   "resolved": true,
+   "checks": {
+    "build": true,
+    "vet": true,
+    "tests": true,
+    "own_test": true,
+    "series_exact": true,
+    "stream_counted": true,
+    "anthropic_counted": true,
+    "no_usage_adds_nothing": true,
+    "type_line": true,
+    "old_series_kept": true
+   },
+   "note": false,
+   "last_edit_s": 5167.9,
+   "check_tail": null
+  },
+  {
+   "module": "w20",
+   "edited": true,
+   "resolved": true,
+   "checks": {
+    "build": true,
+    "vet": true,
+    "tests": true,
+    "own_test": true,
+    "series_exact": true,
+    "stream_counted": true,
+    "anthropic_counted": true,
+    "no_usage_adds_nothing": true,
+    "type_line": true,
+    "old_series_kept": true
+   },
+   "note": true,
+   "last_edit_s": 3602.5,
+   "check_tail": null
+  },
+  {
+   "module": "w21",
+   "edited": false,
+   "resolved": false,
+   "checks": {
+    "build": true,
+    "vet": true,
+    "tests": true,
+    "own_test": false,
+    "series_exact": false,
+    "stream_counted": false,
+    "anthropic_counted": false,
+    "no_usage_adds_nothing": false,
+    "type_line": false,
+    "old_series_kept": true
+   },
+   "note": false,
+   "last_edit_s": null,
+   "check_tail": "failed: own_test series_exact stream_counted anthropic_counted no_usage_adds_nothing type_line"
+  },
+  {
+   "module": "w22",
+   "edited": true,
+   "resolved": false,
+   "checks": {
+    "build": true,
+    "vet": true,
+    "tests": true,
+    "own_test": false,
+    "series_exact": true,
+    "stream_counted": true,
+    "anthropic_counted": true,
+    "no_usage_adds_nothing": true,
+    "type_line": true,
+    "old_series_kept": true
+   },
+   "note": false,
+   "last_edit_s": 5141.8,
+   "check_tail": "failed: own_test"
+  },
+  {
+   "module": "w23",
+   "edited": true,
+   "resolved": true,
+   "checks": {
+    "build": true,
+    "vet": true,
+    "tests": true,
+    "own_test": true,
+    "series_exact": true,
+    "stream_counted": true,
+    "anthropic_counted": true,
+    "no_usage_adds_nothing": true,
+    "type_line": true,
+    "old_series_kept": true
+   },
+   "note": true,
+   "last_edit_s": 2294.0,
+   "check_tail": null
+  },
+  {
+   "module": "w24",
+   "edited": true,
+   "resolved": false,
+   "checks": {
+    "build": true,
+    "vet": true,
+    "tests": true,
+    "own_test": false,
+    "series_exact": true,
+    "stream_counted": true,
+    "anthropic_counted": true,
+    "no_usage_adds_nothing": true,
+    "type_line": true,
+    "old_series_kept": true
+   },
+   "note": false,
+   "last_edit_s": 5055.5,
+   "check_tail": "failed: own_test"
+  }
+ ],
+ "pool_peak": {
+  "full": 0.98,
+  "window": 0.25,
+  "lines": 3495
+ },
+ "corpus_sha256": "aa285b964aad000d",
+ "harness": "bubblewrap sandbox: no network, empty home, /data and /tmp hidden; hidden behaviour check per checkout (build, vet, tests, /metrics against a stub backend)",
+ "timestamp": "2026-11-27T19:34:40"
+}

@@ -3505,3 +3505,25 @@ all in parallel, a hidden behaviour check per module, a 30-minute wall, sandboxe
   400 and were resent without the parameter; that run read 12 and is not published). The harness now probes the
   server and declares the Qwen thinking format, and the clean run is the row above.
 - One run does not rank two close settings: repeat a label before reading a difference in wall time.
+
+## Fan-out on one feature: oh-my-pi keeps a coupled change in one session (2026-11-27)
+
+Two tasks on [simple-llm-router](https://github.com/mattbucci/simple-llm-router) at `aa285b9`, Inkling-2-Mini at
+32 slots and window ratio 0.25 ([`evals/fanout`](../evals/fanout/README.md), receipts `fanout-router-*.json` and
+`fanout-shared-*.json`):
+
+| Task | Agents at once | Result | Wall | Context per conversation | Prompt tokens | Cache hit | Peak full pool |
+|---|:---:|:---|:---:|:---:|:---:|:---:|:---:|
+| 24 copies of the repo, one token counter each, prescriptive fan-out prompt | 24 | 0 of 24 copies | 60 min (wall) | up to 75K | 18.0M | 0.58 | 0.98 |
+| the same, `task.maxConcurrency` 12 | 12 | 16 of 24 copies | 90 min (wall) | up to 64K | 37.0M | 0.70 | 0.98 |
+| one repo, plain `workflowz` prompt with a five-part token-accounting spec | 1 (0 subagents) | 24 of 24 checks, 2 runs | 23 and 26 min | 189K and 197K | 19.9M and 16.7M | 0.99 | n/a |
+
+- **The plain prompt never fanned out.** The workflowz notice tells the orchestrator to scout inline first and to
+  handle a single edit directly. Across three runs at width 24 (one pilot under an earlier spec wording) the model read the
+  code, judged the feature one coupled change, and built, tested and smoke-ran it alone. One long session is the
+  cheap case for this server: one cache prefix, a 0.99 hit rate, about 50 tok/s.
+- **Independent deep sessions exhaust the pool.** Each copy grows to about 60K tokens, so 24 of them need about
+  three times the 437K-token full pool at ratio 0.25. The pool fills about ten minutes in and the hit rate falls
+  from 0.92 to 0.32. Halving the width finished 16 copies, so width trades total time against cache thrash.
+- `task.maxConcurrency` only caps agents the orchestrator chooses to start, so a width sweep needs a task the
+  orchestrator decomposes; the shared spec is not one.

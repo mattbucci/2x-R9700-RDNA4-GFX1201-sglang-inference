@@ -1,0 +1,159 @@
+--- a/internal/observability/metrics.go
++++ b/internal/observability/metrics.go
+@@ -19,6 +19,13 @@
+ 	status  int
+ }
+ 
++// tokenKey identifies one tokens_total series.
++type tokenKey struct {
++	backend string
++	model   string
++	kind    string
++}
++
+ // Metrics is a hand-rolled Prometheus exporter. To honor the no-locks rule
+ // (ADR-0015) the counters live behind a single owner goroutine; callers reach it
+ // only over channels, never a shared map under a mutex (ADR-0011).
+@@ -33,18 +40,20 @@
+ 	opFailover
+ 	opInFlight
+ 	opHealth
++	opTokens
+ 	opScrape
+ )
+ 
+ type metricOp struct {
+-	kind    opKind
+-	backend string
+-	model   string
+-	status  int
+-	latency time.Duration
+-	delta   int
+-	healthy bool
+-	reply   chan string
++	kind                          opKind
++	backend                       string
++	model                         string
++	status                        int
++	latency                       time.Duration
++	delta                         int
++	healthy                       bool
++	prompt, completion, reasoning int
++	reply                         chan string
+ }
+ 
+ // latencyBounds are the histogram bucket upper bounds in seconds.
+@@ -66,6 +75,7 @@
+ 	var inFlight int64
+ 	var failovers int64
+ 	health := map[string]float64{} // backend -> 1/0
++	tokens := map[tokenKey]int64{}
+ 
+ 	for {
+ 		select {
+@@ -99,8 +109,14 @@
+ 				} else {
+ 					health[op.backend] = 0
+ 				}
++			case opTokens:
++				for kind, n := range map[string]int{"prompt": op.prompt, "completion": op.completion, "reasoning": op.reasoning} {
++					if n > 0 {
++						tokens[tokenKey{backend: op.backend, model: op.model, kind: kind}] += int64(n)
++					}
++				}
+ 			case opScrape:
+-				op.reply <- render(requests, buckets, latencySum, latencyCount, inFlight, failovers, health)
++				op.reply <- render(requests, buckets, latencySum, latencyCount, inFlight, failovers, health, tokens)
+ 			}
+ 		}
+ 	}
+@@ -111,6 +127,15 @@
+ 	m.send(metricOp{kind: opRequestDone, backend: backend, model: model, status: status, latency: latency})
+ }
+ 
++// Tokens adds a completed request's token usage to the per-backend, per-model
++// counters (ADR-0011). Zero counts add nothing.
++func (m *Metrics) Tokens(backend, model string, prompt, completion, reasoning int) {
++	if prompt <= 0 && completion <= 0 && reasoning <= 0 {
++		return
++	}
++	m.send(metricOp{kind: opTokens, backend: backend, model: model, prompt: prompt, completion: completion, reasoning: reasoning})
++}
++
+ // IncFailover records one failover/retry (ADR-0006).
+ func (m *Metrics) IncFailover() { m.send(metricOp{kind: opFailover}) }
+ 
+@@ -144,7 +169,7 @@
+ 	}
+ }
+ 
+-func render(requests map[requestKey]int64, buckets []int64, latencySum float64, latencyCount, inFlight, failovers int64, health map[string]float64) string {
++func render(requests map[requestKey]int64, buckets []int64, latencySum float64, latencyCount, inFlight, failovers int64, health map[string]float64, tokens map[tokenKey]int64) string {
+ 	var b strings.Builder
+ 
+ 	b.WriteString("# HELP llmrouter_requests_total Total requests by backend, model, and status.\n")
+@@ -199,6 +224,26 @@
+ 		fmt.Fprintf(&b, "llmrouter_backend_health{backend=\"%s\"} %g\n", esc(k), health[k])
+ 	}
+ 
++	b.WriteString("# HELP llmrouter_tokens_total Tokens reported by upstream usage, by backend, model, and type.\n")
++	b.WriteString("# TYPE llmrouter_tokens_total counter\n")
++	tkeys := make([]tokenKey, 0, len(tokens))
++	for k := range tokens {
++		tkeys = append(tkeys, k)
++	}
++	sort.Slice(tkeys, func(i, j int) bool {
++		if tkeys[i].backend != tkeys[j].backend {
++			return tkeys[i].backend < tkeys[j].backend
++		}
++		if tkeys[i].model != tkeys[j].model {
++			return tkeys[i].model < tkeys[j].model
++		}
++		return tkeys[i].kind < tkeys[j].kind
++	})
++	for _, k := range tkeys {
++		fmt.Fprintf(&b, "llmrouter_tokens_total{backend=\"%s\",model=\"%s\",type=\"%s\"} %d\n",
++			esc(k.backend), esc(k.model), k.kind, tokens[k])
++	}
++
+ 	return b.String()
+ }
+ 
+--- a/internal/observability/tokens_test.go
++++ b/internal/observability/tokens_test.go
+@@ -0,0 +1,25 @@
++package observability
++
++import (
++	"context"
++	"strings"
++	"testing"
++)
++
++func TestTokensTotal(t *testing.T) {
++	ctx, cancel := context.WithCancel(context.Background())
++	defer cancel()
++	m := New(ctx)
++	m.Tokens("a", "m", 3, 2, 0)
++	m.Tokens("a", "m", 4, 1, 5)
++	out := m.Render()
++	for _, want := range []string{
++		`llmrouter_tokens_total{backend="a",model="m",type="prompt"} 7`,
++		`llmrouter_tokens_total{backend="a",model="m",type="completion"} 3`,
++		`llmrouter_tokens_total{backend="a",model="m",type="reasoning"} 5`,
++	} {
++		if !strings.Contains(out, want) {
++			t.Fatalf("missing %q in\n%s", want, out)
++		}
++	}
++}
+--- a/internal/server/server.go
++++ b/internal/server/server.go
+@@ -166,6 +166,7 @@
+ 		rec.Latency = time.Since(start)
+ 		rec.Emit(ctx, s.logger)
+ 		s.metrics.RequestDone(rec.Backend, rec.UpstreamModel, status, rec.Latency)
++		s.metrics.Tokens(rec.Backend, rec.UpstreamModel, rec.PromptTokens, rec.CompletionTokens, rec.ReasoningTokens)
+ 	}()
+ 
+ 	// (B) Registered last, runs first: the request path must never crash the

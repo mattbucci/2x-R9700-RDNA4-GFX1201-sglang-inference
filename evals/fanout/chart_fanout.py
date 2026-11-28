@@ -2,6 +2,7 @@
 """Chart and table for the wide fan-out eval, from benchmarks/quality/fanout-*.json.
 
     python evals/fanout/chart_fanout.py            # writes benchmarks/fanout_wide_agents.png, prints the table
+    python evals/fanout/chart_fanout.py --shared   # width sweep on the shared checkout: benchmarks/fanout_shared_width.png
 """
 import argparse, glob, json
 from pathlib import Path
@@ -14,6 +15,8 @@ def load(pattern):
     groups = {}
     for f in sorted(glob.glob(pattern)):
         r = json.loads(Path(f).read_text())
+        if r.get("eval") != "fanout-wide-agents":
+            continue
         groups.setdefault(r["label"], []).append(r)
     rows = []
     for label, runs in groups.items():
@@ -69,12 +72,78 @@ def chart(rows, path):
     fig.tight_layout(); fig.savefig(path, dpi=130); print("wrote", path)
 
 
+def load_shared(pattern):
+    """Shared-checkout receipts grouped by (model, width): checks passed of the hidden suite, wall, subagents."""
+    groups = {}
+    for f in sorted(glob.glob(pattern)):
+        r = json.loads(Path(f).read_text())
+        if r.get("eval") == "fanout-shared-feature":
+            groups.setdefault((r["served_model"].rstrip("/").split("/")[-1], r["width"]), []).append(r)
+    rows = []
+    for (model, width), runs in sorted(groups.items()):
+        w = [r["wire"] for r in runs]
+        rows.append({"model": model, "width": width, "runs": len(runs), "total": runs[0]["checks_total"],
+                     "passed": [r["checks_passed"] for r in runs], "wall": [r["wall_s"] for r in runs],
+                     "hit_wall": [r["hit_wall"] for r in runs],
+                     "agents": [max(0, x.get("conversations", 1) - 1) for x in w],
+                     "inflight": [x.get("max_inflight") for x in w],
+                     "peak": [x.get("conversation_peak_prompt", {}).get("p50") for x in w],
+                     "hit": [x.get("cache_hit_rate") for x in w], "prompt": [x.get("prompt_tokens") for x in w]})
+    return rows
+
+
+def table_shared(rows):
+    out = ["| Model | Width | Runs | Checks passed | Wall min | Subagents | Max in flight | Context per conversation p50 | Prompt tokens M | Cache hit |",
+           "|---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|"]
+    j = lambda xs, f: " / ".join("n/a" if x is None else f(x) for x in xs)
+    for r in rows:
+        out.append(f"| {r['model']} | {r['width']} | {r['runs']} | {j(r['passed'], str)} of {r['total']} | "
+                   f"{j([w / 60 for w in r['wall']], lambda x: f'{x:.0f}')}{' (wall)' if any(r['hit_wall']) else ''} | "
+                   f"{j(r['agents'], str)} | {j(r['inflight'], str)} | {j(r['peak'], lambda x: f'{x / 1000:.0f}K')} | "
+                   f"{j(r['prompt'], lambda x: f'{x / 1e6:.1f}')} | {j(r['hit'], lambda x: f'{x:.2f}')} |")
+    return "\n".join(out)
+
+
+def chart_shared(rows, path):
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    fig, (a, b) = plt.subplots(1, 2, figsize=(12, 4.2))
+    for model in sorted({r["model"] for r in rows}):
+        rs = [r for r in rows if r["model"] == model]
+        for r in rs:
+            a.scatter([r["width"]] * r["runs"], r["passed"], color="#3b6ea5", alpha=0.7)
+            b.scatter([r["width"]] * r["runs"], [w / 60 for w in r["wall"]],
+                      color=["#b5651d" if h else "#6b9e5b" for h in r["hit_wall"]], alpha=0.8)
+        xs = [r["width"] for r in rs]
+        a.plot(xs, [sum(r["passed"]) / r["runs"] for r in rs], label=model)
+        b.plot(xs, [sum(r["wall"]) / r["runs"] / 60 for r in rs], label=model)
+    total = max(r["total"] for r in rows)
+    for ax in (a, b):
+        ax.set_xscale("log", base=2); ax.set_xticks(sorted({r["width"] for r in rows}))
+        ax.set_xticklabels([str(x) for x in sorted({r["width"] for r in rows})]); ax.set_xlabel("task.maxConcurrency")
+        ax.legend(fontsize=8)
+    a.set_ylim(0, total + 1); a.set_ylabel(f"hidden checks passed of {total}")
+    b.set_ylim(0, None); b.set_ylabel("session wall, min (brown: hit the wall)")
+    fig.suptitle("Shared checkout: one plain workflowz prompt, token accounting in simple-llm-router", fontsize=11)
+    fig.tight_layout(); fig.savefig(path, dpi=130); print("wrote", path)
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--glob", default=str(REPO / "benchmarks" / "quality" / "fanout-*.json"))
     ap.add_argument("--out", default=str(REPO / "benchmarks" / "fanout_wide_agents.png"))
     ap.add_argument("--no-chart", action="store_true")
+    ap.add_argument("--shared", action="store_true", help="width sweep on the shared-checkout task")
     a = ap.parse_args()
+    if a.shared:
+        rows = load_shared(a.glob)
+        if not rows:
+            raise SystemExit("no shared receipts")
+        print(table_shared(rows))
+        if not a.no_chart:
+            chart_shared(rows, a.out if a.out != ap.get_default("out") else str(REPO / "benchmarks" / "fanout_shared_width.png"))
+        return
     rows = load(a.glob)
     if not rows:
         raise SystemExit("no receipts")
